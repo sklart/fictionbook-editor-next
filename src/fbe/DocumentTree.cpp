@@ -141,6 +141,13 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_rebar = CFrameWindowImplBase<>::CreateSimpleReBarCtrl(*this, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CS_HREDRAW);
 	m_toolbar = CFrameWindowImplBase<>::CreateSimpleToolBarCtrl(*this, IDR_DOCUMENT_TREE, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	CFrameWindowImplBase<>::AddSimpleReBarBandCtrl(m_rebar, m_toolbar);
+	if(m_rebar.IsWindow())
+	{
+		m_rebarBaseStyle = ::GetWindowLongPtr(m_rebar, GWL_STYLE);
+		REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_STYLE;
+		if(m_rebar.GetBandInfo(0, &band)) m_rebarBandBaseStyle = band.fStyle;
+		m_rebarThemeStateCaptured = true;
+	}
 
 	_EDMnr.InitStandartEDs();
 	int edsCount = _EDMnr.GetStEDsCount();
@@ -196,7 +203,8 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	this->GetClientRect(&clientRect);
 	::GetWindowRect(m_toolbar, &rebarRect);
 	::GetWindowRect(m_view_bar, &viewBarRect);
-	int rebarHight = rebarRect.bottom - rebarRect.top + (/*GetSystemMetrics(SM_CYDLGFRAME) + */GetSystemMetrics(SM_CYEDGE))*2;
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	int rebarHight = rebarRect.bottom - rebarRect.top + (dark ? 0 : GetSystemMetrics(SM_CYEDGE) * 2);
 	rebarRect.left = treeRect.left = clientRect.left;
 	rebarRect.right = treeRect.right = clientRect.right;
 
@@ -254,7 +262,29 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	m_tree.SetBkColor(ThemeManager::WindowColor());
 	m_tree.SetTextColor(ThemeManager::TextColor());
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
-	if(m_rebar.IsWindow()) ::SendMessage(m_rebar, RB_SETBKCOLOR, 0, ThemeManager::ControlColor());
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	if(m_rebar.IsWindow())
+	{
+		if(!m_rebarThemeStateCaptured)
+		{
+			m_rebarBaseStyle = ::GetWindowLongPtr(m_rebar, GWL_STYLE);
+			REBARBANDINFO baseBand = {}; baseBand.cbSize = sizeof(baseBand); baseBand.fMask = RBBIM_STYLE;
+			if(m_rebar.GetBandInfo(0, &baseBand)) m_rebarBandBaseStyle = baseBand.fStyle;
+			m_rebarThemeStateCaptured = true;
+		}
+		::SetWindowLongPtr(m_rebar, GWL_STYLE, dark ? m_rebarBaseStyle & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : m_rebarBaseStyle);
+		::SendMessage(m_rebar, RB_SETBKCOLOR, 0, dark ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE));
+		for(int index = 0; index < static_cast<int>(m_rebar.GetBandCount()); ++index)
+		{
+			REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_STYLE | RBBIM_COLORS;
+			if(!m_rebar.GetBandInfo(index, &band)) continue;
+			band.fStyle = dark ? band.fStyle & ~RBBS_CHILDEDGE : m_rebarBandBaseStyle;
+			band.clrBack = dark ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE);
+			band.clrFore = dark ? ThemeManager::TextColor() : ::GetSysColor(COLOR_BTNTEXT);
+			m_rebar.SetBandInfo(index, &band);
+		}
+		::SetWindowPos(m_rebar, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+	}
 	if(m_toolbar.IsWindow()) ::SendMessage(m_toolbar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	if(m_view_bar.IsWindow())
 	{

@@ -413,14 +413,27 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 
 	UINT uState = lpItem ->itemState;
 	CRect rcDraw = lpItem ->rcItem;
+	const bool useDarkPalette = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 
 	//
 	// If we have a theme
 	//
 
 	m_fPopupActive = false;
+	if(useDarkPalette)
+	{
+		const bool disabled = (uState & ODS_DISABLED) != 0;
+		const bool pressed = (uState & ODS_SELECTED) != 0 || m_fPopupActive;
+		const bool hot = (uState & ODS_HOTLIGHT) != 0 || m_fMouseOver;
+		const COLORREF surface = disabled ? ThemeManager::ControlColor() :
+			pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : ThemeManager::ControlColor();
+		dc.FillSolidRect(&rcDraw, surface);
+		dc.FrameRect(&rcDraw, ThemeManager::Brush((hot || pressed) ? THEME_COLOR_FOCUS : THEME_COLOR_BORDER));
+		rcDraw.InflateRect(-1, -1);
+		if(pressed) rcDraw.OffsetRect(1, 1);
+	}
 #if !defined (COLORBUTTON_NOTHEMES)
-	if (m_hTheme != NULL)
+	else if (m_hTheme != NULL)
 	{
 
 		//
@@ -472,7 +485,7 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 	// Draw focus
 	//
 
-	if ((uState & ODS_FOCUS) != 0 || m_fPopupActive) 
+	if (((uState & ODS_FOCUS) != 0 || m_fPopupActive) && !useDarkPalette)
 	{
 		CRect rcFocus (rcDraw.left, rcDraw.top, 
 			rcDraw.right - 1, rcDraw.bottom);
@@ -493,8 +506,9 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 		rcArrow .right  = rcArrow.left + g_ciArrowSizeX;
 		rcArrow .bottom = (rcDraw .bottom + rcDraw .top) / 2 + g_ciArrowSizeY / 2;
 
-		DrawArrow (dc, rcArrow, 0, 
-			(uState & ODS_DISABLED) ? ::GetSysColor (COLOR_GRAYTEXT) : RGB (0,0,0));
+		DrawArrow (dc, rcArrow, 0,
+			(uState & ODS_DISABLED) ? (useDarkPalette ? ThemeManager::DisabledTextColor() : ::GetSysColor (COLOR_GRAYTEXT)) :
+			(useDarkPalette ? ThemeManager::TextColor() : RGB (0,0,0)));
 
 		rcDraw.right = rcArrow.left - ::GetSystemMetrics (SM_CXEDGE) / 2;
 	}
@@ -503,7 +517,13 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 	// Draw separator
 	//
 
-	dc .DrawEdge (&rcDraw, EDGE_ETCHED, BF_RIGHT);
+	if(useDarkPalette)
+	{
+		RECT separator = rcDraw;
+		separator.left = separator.right - 1;
+		dc.FillSolidRect(&separator, ThemeManager::BorderColor());
+	}
+	else dc .DrawEdge (&rcDraw, EDGE_ETCHED, BF_RIGHT);
 	rcDraw.right -= (::GetSystemMetrics (SM_CXEDGE) * 2) + 1 ;
 
 	//
@@ -514,7 +534,7 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 	{
 		dc .SetBkColor ((m_clrCurrent == CLR_DEFAULT) ? m_clrDefault : m_clrCurrent);
 		dc .ExtTextOut (0, 0, ETO_OPAQUE, &rcDraw, NULL, 0, NULL);
-		dc .FrameRect (&rcDraw, (HBRUSH)::GetStockObject (BLACK_BRUSH));
+		dc .FrameRect (&rcDraw, useDarkPalette ? ThemeManager::ControlBrush() : (HBRUSH)::GetStockObject (BLACK_BRUSH));
 	}
 	return 1;
 }

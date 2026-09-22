@@ -392,7 +392,11 @@ void ApplyPreferredAppMode(bool dark)
 
 void ApplyModernTitleBar(HWND window, bool dark)
 {
-	HMODULE dwmapi = ::GetModuleHandleW(L"dwmapi.dll");
+	// DwmSetWindowAttribute is absent on older Windows and dwmapi.dll need not
+	// have been loaded yet.  Resolve it at the point a real top-level HWND is
+	// available; this keeps the Windows 7 path harmless and avoids a light
+	// non-client frame briefly appearing on modern Windows.
+	HMODULE dwmapi = ::LoadLibraryW(L"dwmapi.dll");
 	DwmSetWindowAttributeFn setAttribute = dwmapi ? reinterpret_cast<DwmSetWindowAttributeFn>(::GetProcAddress(dwmapi, "DwmSetWindowAttribute")) : NULL;
 	if(setAttribute)
 	{
@@ -400,7 +404,22 @@ void ApplyModernTitleBar(HWND window, bool dark)
 		// 20 is the documented Windows 10 20H1 attribute; 19 is used by 1809.
 		if(FAILED(setAttribute(window, 20, &enabled, sizeof(enabled))))
 			setAttribute(window, 19, &enabled, sizeof(enabled));
+
+		// These attributes are supported on Windows 11.  Numeric constants keep
+		// the v143/Windows 7 SDK baseline intact; unsupported attributes simply
+		// fail and leave the system title bar unchanged.
+		const DWORD kDwmBorderColor = 34;
+		const DWORD kDwmCaptionColor = 35;
+		const DWORD kDwmTextColor = 36;
+		const COLORREF kDwmDefaultColor = 0xFFFFFFFF;
+		const COLORREF caption = dark ? ThemeManager::WindowColor() : kDwmDefaultColor;
+		const COLORREF text = dark ? ThemeManager::TextColor() : kDwmDefaultColor;
+		const COLORREF border = dark ? ThemeManager::BorderColor() : kDwmDefaultColor;
+		setAttribute(window, kDwmCaptionColor, &caption, sizeof(caption));
+		setAttribute(window, kDwmTextColor, &text, sizeof(text));
+		setAttribute(window, kDwmBorderColor, &border, sizeof(border));
 	}
+	if(dwmapi) ::FreeLibrary(dwmapi);
 	HMODULE uxtheme = ::LoadLibraryW(L"uxtheme.dll");
 	if(uxtheme)
 	{

@@ -25,11 +25,13 @@ $bitmapHelper = [regex]::Match($factory, '(?s)int ToolbarFactory::AddBitmapFromM
 if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'LoadImage\(module, MAKEINTRESOURCE\(bitmapResourceId\)' -or
     $bitmapHelper.Value -notmatch 'toolbar\.GetImageList\(\)' -or
-	$bitmapHelper.Value -notmatch 'DIBSECTION bitmapSection' -or
-    $bitmapHelper.Value -notmatch 'ImageList_AddMasked\(toolbar\.GetImageList\(\), colorBitmap, RGB\(192, 192, 192\)\)') {
-    throw 'Table toolbar bitmap helper must append a 24x24 bitmap through the owned image list and the RGB(192,192,192) mask key.'
+	$bitmapHelper.Value -notmatch 'CreateAlphaBitmap\(source, 24, 24\)' -or
+    $bitmapHelper.Value -notmatch 'ImageList_Add\(toolbar\.GetImageList\(\), alpha, NULL\)') {
+    throw 'Table toolbar bitmap helper must append a 24x24 alpha bitmap through the owned image list.'
 }
-if ($bitmapHelper.Value -match 'pixel\[[012]\]\s*=\s*0') { throw 'Table toolbar transparency-key pixels must not be rewritten to visible black.' }
+if ($factory -notmatch '(?s)HBITMAP ToolbarFactory::CreateAlphaBitmap\(.*?biBitCount = 32.*?transparentCanvas.*?maximum >= 180.*?return target;') {
+    throw 'Table toolbar bitmap conversion must create 32-bit alpha pixels and remove the neutral light canvas without a fixed RGB mask.'
+}
 if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?FindResource\(.*?RT_TOOLBAR.*?ownedImages\.Create\(24, 24, ILC_COLOR32 \| ILC_MASK.*?ImageList_LoadImage\(.*?CopyToolbarImages\(ownedImages, sourceImages, standardImageCount\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
     throw 'Command toolbar must create one application-owned ILC_COLOR32|ILC_MASK image list from the RT_TOOLBAR strip before adding buttons.'
 }
@@ -102,18 +104,20 @@ foreach ($path in $bitmapPaths) {
     $pixelOffset = [BitConverter]::ToInt32($bytes, 10)
     $rowStride = [int]([Math]::Ceiling(($width * $bitCount) / 32.0) * 4)
     if ($pixelOffset -lt 54 -or $pixelOffset + ($rowStride * $height) -gt $bytes.Length) { throw "$($path.Name) has invalid BMP pixel data." }
-    $hasTransparentKey = $false
-    for ($y = 0; $y -lt $height -and -not $hasTransparentKey; $y++) {
+    $hasLightCanvas = $false
+    for ($y = 0; $y -lt $height -and -not $hasLightCanvas; $y++) {
         $rowStart = $pixelOffset + ($y * $rowStride)
         for ($x = 0; $x -lt $width; $x++) {
             $pixelStart = $rowStart + ($x * 3)
-            if ($bytes[$pixelStart] -eq 192 -and $bytes[$pixelStart + 1] -eq 192 -and $bytes[$pixelStart + 2] -eq 192) {
-                $hasTransparentKey = $true
+            $maximum = [Math]::Max($bytes[$pixelStart], [Math]::Max($bytes[$pixelStart + 1], $bytes[$pixelStart + 2]))
+            $minimum = [Math]::Min($bytes[$pixelStart], [Math]::Min($bytes[$pixelStart + 1], $bytes[$pixelStart + 2]))
+            if ($maximum -ge 180 -and ($maximum - $minimum) -le 20) {
+                $hasLightCanvas = $true
                 break
             }
         }
     }
-    if (-not $hasTransparentKey) { throw "$($path.Name) must contain RGB(192,192,192) toolbar transparency-key pixels." }
+    if (-not $hasLightCanvas) { throw "$($path.Name) must contain a neutral light canvas for alpha conversion." }
 }
 
 Write-Host 'Table toolbar native bitmap and UpdateUI contract passed.'

@@ -15,6 +15,9 @@ private:
 	WTL::CReBarCtrl m_rebar;
 	int m_toolbarOrientation;
 	int m_maxTbwidth;
+	LONG_PTR m_rebarBaseStyle = 0;
+	UINT m_rebarBandBaseStyle = 0;
+	bool m_rebarThemeStateCaptured = false;
 
 	CCommandBarCtrl m_view_bar;
 	CMenu m_st_menu;

@@ -111,39 +111,20 @@ static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT
 
 std::map<UINT, HBITMAP> g_ownedNativeMenuBitmaps;
 std::map<HWND, LONG_PTR> g_rebarBaseStyles;
-std::map<HWND, std::map<UINT, UINT> > g_rebarBaseBandStyles;
+struct RebarBandThemeState
+{
+	UINT style;
+	COLORREF back;
+	COLORREF fore;
+};
+std::map<HWND, std::map<UINT, RebarBandThemeState> > g_rebarBaseBandStyles;
 
 void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT commandId)
 {
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL) return;
-	DIBSECTION sourceInfo = {};
-	if(::GetObject(source, sizeof(sourceInfo), &sourceInfo) != sizeof(sourceInfo) || sourceInfo.dsBm.bmWidth != 16 ||
-		(sourceInfo.dsBmih.biHeight < 0 ? -sourceInfo.dsBmih.biHeight : sourceInfo.dsBmih.biHeight) != 16)
-	{
-		::DeleteObject(source);
-		return;
-	}
-	HIMAGELIST images = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 1, 1);
-	const int image = images != NULL ? ::ImageList_AddMasked(images, source, RGB(192, 192, 192)) : -1;
+	HBITMAP bitmap = ToolbarFactory::CreateAlphaBitmap(source, 16, 16);
 	::DeleteObject(source);
-	if(image < 0) { if(images != NULL) ::ImageList_Destroy(images); return; }
-	HDC screen = ::GetDC(NULL);
-	HDC memory = screen != NULL ? ::CreateCompatibleDC(screen) : NULL;
-	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = 16;
-	info.bmiHeader.biHeight = 16; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
-	HBITMAP bitmap = memory != NULL ? ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, NULL, NULL, 0) : NULL;
-	if(bitmap != NULL)
-	{
-		HGDIOBJ previous = ::SelectObject(memory, bitmap);
-		IMAGELISTDRAWPARAMS draw = {}; draw.cbSize = sizeof(draw); draw.himl = images; draw.i = image; draw.hdcDst = memory;
-		draw.fStyle = ILD_TRANSPARENT; draw.fState = ILS_ALPHA; draw.Frame = 255;
-		if(!::ImageList_DrawIndirect(&draw)) { ::SelectObject(memory, previous); ::DeleteObject(bitmap); bitmap = NULL; }
-		else ::SelectObject(memory, previous);
-	}
-	if(memory != NULL) ::DeleteDC(memory);
-	if(screen != NULL) ::ReleaseDC(NULL, screen);
-	::ImageList_Destroy(images);
 	if(bitmap == NULL) return;
 	g_ownedNativeMenuBitmaps[commandId] = bitmap;
 	ThemeManager::RegisterNativeMenuBitmap(commandId, bitmap);
@@ -167,14 +148,21 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 	std::map<HWND, LONG_PTR>::iterator style = g_rebarBaseStyles.find(window);
 	if(style == g_rebarBaseStyles.end()) style = g_rebarBaseStyles.insert(std::make_pair(window, ::GetWindowLongPtr(window, GWL_STYLE))).first;
 	::SetWindowLongPtr(window, GWL_STYLE, dark ? style->second & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : style->second);
-	std::map<UINT, UINT>& baseBands = g_rebarBaseBandStyles[window];
+	::SendMessage(window, RB_SETBKCOLOR, 0, dark ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE));
+	std::map<UINT, RebarBandThemeState>& baseBands = g_rebarBaseBandStyles[window];
 	for(int index = 0; index < static_cast<int>(rebar.GetBandCount()); ++index)
 	{
-		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_STYLE;
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_STYLE | RBBIM_COLORS;
 		if(!rebar.GetBandInfo(index, &info)) continue;
-		if(baseBands.find(info.wID) == baseBands.end()) baseBands[info.wID] = info.fStyle;
-		const UINT base = baseBands[info.wID];
-		info.fStyle = dark ? info.fStyle & ~RBBS_CHILDEDGE : (info.fStyle & ~RBBS_CHILDEDGE) | (base & RBBS_CHILDEDGE);
+		if(baseBands.find(info.wID) == baseBands.end())
+		{
+			RebarBandThemeState base = { info.fStyle, info.clrBack, info.clrFore };
+			baseBands[info.wID] = base;
+		}
+		const RebarBandThemeState& base = baseBands[info.wID];
+		info.fStyle = dark ? info.fStyle & ~RBBS_CHILDEDGE : base.style;
+		info.clrBack = dark ? ThemeManager::ControlColor() : base.back;
+		info.clrFore = dark ? ThemeManager::TextColor() : base.fore;
 		rebar.SetBandInfo(index, &info);
 	}
 	::SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
