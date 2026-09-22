@@ -30,6 +30,8 @@ extern CSettings _Settings;
 
 namespace FB {
 
+static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document);
+
 static bool IsHighContrastEnabled()
 {
 	// The unattended runtime regression uses this switch to exercise the same
@@ -869,6 +871,10 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		TraceDocumentEvent(L"D112", L"book load returned false", filename);
 		return false;
 	}
+
+	// apiLoadFB2 builds the BODY DOM.  Reapply the runtime-only table overlay
+	// afterwards so it remains present without becoming part of the FB2 model.
+	ApplyRuntimeTableTheme(m_editor.Document());
 
 	if (diagnosticsActive)
 	{

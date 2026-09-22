@@ -20,6 +20,7 @@ $contextAttributeBars = Read-ProjectFile 'src\fbe\ui\ContextAttributeBars.cpp'
 $contextAttributeControls = Read-ProjectFile 'src\fbe\ui\ContextAttributeControls.cpp'
 $fbDoc = Read-ProjectFile 'src\fbe\FBDoc.cpp'
 $settingsEditorPage = Read-ProjectFile 'src\fbe\settings\ui\SettingsEditorPage.cpp'
+$settingsEditorPageHeader = Read-ProjectFile 'src\fbe\settings\ui\SettingsEditorPage.h'
 $modelessDialog = Read-ProjectFile 'src\fbe\ModelessDialog.h'
 $aboutBox = Read-ProjectFile 'src\fbe\AboutBox.cpp'
 $scriptVisuals = Read-ProjectFile 'src\fbe\scripts\ScriptVisualResources.cpp'
@@ -94,6 +95,9 @@ foreach($required in @('ApplyRuntimeTableTheme', 'fbe-runtime-dark-table-theme',
 if($fbDoc -like '*runtime\main.css*' -or $fbDoc -notlike '*never BODY*') { throw 'BODY table theme must remain a runtime MSHTML override and must not replace BODY colours.' }
 foreach($required in @('AutomaticBodyColor', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'm_background.SetDefaultColor', 'm_foreground.SetDefaultColor')) {
 	if($settingsEditorPage -notlike "*$required*") { throw "Automatic BODY colour buttons do not show their effective Dark value: $required." }
+}
+if($settingsEditorPage -notlike '*OnThemeChanged*' -or $settingsEditorPageHeader -notlike '*MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)*') {
+	throw 'Automatic BODY colour buttons do not refresh while Settings previews a live theme change.'
 }
 foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::TextColor()', 'ThemeManager::DisabledTextColor()', 'IsWindowEnabled(m_hWnd)')) {
 	if($contextAttributeControls -notlike "*$required*") { throw "Context attribute captions do not apply the theme palette: $required." }

@@ -120,6 +120,17 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	return 1;
 }
 
+LRESULT CSettingsEditorPage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(!m_background.IsWindow() || !m_foreground.IsWindow()) return 0;
+	// General-page live preview may switch Light/Dark while this page remains
+	// open.  Refresh defaults without changing an explicit user swatch.
+	m_background.SetDefaultColor(AutomaticBodyColor(true));
+	m_foreground.SetDefaultColor(AutomaticBodyColor(false));
+	UpdateBackgroundPreview();
+	return 0;
+}
+
 LRESULT CSettingsEditorPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
 	if(!Validate()) return 0;
@@ -187,11 +198,10 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
 	COLORREF foreground = m_foreground.GetColor();
 	COLORREF background = m_background.GetColor();
-	// CLR_DEFAULT is a ColorButton sentinel, not an actual COLORREF.  The
-	// preview must render the same system defaults as the editor instead of
-	// interpreting that sentinel as black.
-	if(foreground == CLR_DEFAULT) foreground = ::GetSysColor(COLOR_WINDOWTEXT);
-	if(background == CLR_DEFAULT) background = ::GetSysColor(COLOR_WINDOW);
+	// CLR_DEFAULT is a ColorButton sentinel, not an actual COLORREF.  Keep the
+	// preview aligned with the effective Automatic swatches, including Dark.
+	if(foreground == CLR_DEFAULT) foreground = AutomaticBodyColor(false);
+	if(background == CLR_DEFAULT) background = AutomaticBodyColor(true);
 	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, foreground, background, text);
 	m_backgroundPreview.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }

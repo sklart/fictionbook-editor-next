@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atlhost.h>
+#include "..\\..\\ThemeManager.h"
 #include "..\\..\\extras\\ColorButton.h"
 #include "..\\..\\resource.h"
 #include "SettingsPageLifecycle.h"
@@ -45,6 +46,7 @@ public:
 	enum { IDD = IDD_SETTINGS_EDITOR };
 	BEGIN_MSG_MAP(CSettingsEditorPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_BROWSE, BN_CLICKED, OnBrowseBackground)
@@ -62,6 +64,7 @@ public:
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)
 	END_MSG_MAP()
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBrowseBackground(WORD, WORD, HWND, BOOL&);
