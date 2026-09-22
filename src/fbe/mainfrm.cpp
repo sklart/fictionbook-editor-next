@@ -145,6 +145,7 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 	if(!::IsWindow(rebar)) return;
 	const HWND window = rebar;
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	ThemeManager::ApplyToWindow(window);
 	std::map<HWND, LONG_PTR>::iterator style = g_rebarBaseStyles.find(window);
 	if(style == g_rebarBaseStyles.end()) style = g_rebarBaseStyles.insert(std::make_pair(window, ::GetWindowLongPtr(window, GWL_STYLE))).first;
 	::SetWindowLongPtr(window, GWL_STYLE, dark ? style->second & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : style->second);
@@ -160,12 +161,63 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 			baseBands[info.wID] = base;
 		}
 		const RebarBandThemeState& base = baseBands[info.wID];
-		info.fStyle = dark ? info.fStyle & ~RBBS_CHILDEDGE : base.style;
+		info.fStyle = dark ? base.style & ~RBBS_CHILDEDGE : base.style;
+		// Fixed bands do not need a gripper.  Movable command/script bands keep
+		// their native drag affordance, now hosted by a dark themed rebar.
+		if(dark && (base.style & RBBS_FIXEDSIZE)) info.fStyle |= RBBS_NOGRIPPER;
 		info.clrBack = dark ? ThemeManager::ControlColor() : base.back;
 		info.clrFore = dark ? ThemeManager::TextColor() : base.fore;
 		rebar.SetBandInfo(index, &info);
 	}
 	::SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+}
+
+const UINT_PTR kStatusBarThemeSubclassId = 0x46425342; // "FBSB"
+
+LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	if(message == WM_NCDESTROY)
+	{
+		::RemoveWindowSubclass(window, StatusBarThemeProc, kStatusBarThemeSubclassId);
+		return ::DefSubclassProc(window, message, wParam, lParam);
+	}
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	if(!dark) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_ERASEBKGND) return 1;
+	if(message != WM_PAINT) return ::DefSubclassProc(window, message, wParam, lParam);
+
+	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint);
+	RECT client = {}; ::GetClientRect(window, &client);
+	::FillRect(dc, &client, ThemeManager::ControlBrush());
+	const int count = static_cast<int>(::SendMessage(window, SB_GETPARTS, 0, 0));
+	for(int index = 0; index < count; ++index)
+	{
+		RECT pane = {}; if(!::SendMessage(window, SB_GETRECT, index, reinterpret_cast<LPARAM>(&pane))) continue;
+		if(index != 0)
+		{
+			RECT separator = { pane.left, pane.top + 2, pane.left + 1, pane.bottom - 2 };
+			::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		}
+		wchar_t text[1024] = {};
+		::SendMessage(window, SB_GETTEXTW, index, reinterpret_cast<LPARAM>(text));
+		::SetBkMode(dc, TRANSPARENT);
+		::SetTextColor(dc, index == 0 ? ThemeManager::TextColor() : ThemeManager::SecondaryTextColor());
+		pane.left += 6; pane.right -= 4;
+		::DrawText(dc, text, -1, &pane, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+	}
+	if((::GetWindowLongPtr(window, GWL_STYLE) & SBARS_SIZEGRIP) != 0)
+	{
+		const int size = ::GetSystemMetrics(SM_CXVSCROLL);
+		for(int offset = 4; offset <= size - 3; offset += 4)
+		{
+			const int left = client.right - offset;
+			const int top = client.bottom - 3;
+			::MoveToEx(dc, left, top, NULL);
+			::LineTo(dc, client.right - 3, client.bottom - offset);
+		}
+	}
+	::EndPaint(window, &paint);
+	return 0;
 }
 
 
@@ -207,10 +259,13 @@ void ApplyMainMenuRebarBandTheme(CReBarCtrl& rebar, HWND menuBar)
 	if(!::IsWindow(rebar) || !::IsWindow(menuBar)) return;
 	for(int band = 0; band < static_cast<int>(rebar.GetBandCount()); ++band)
 	{
-		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_COLORS;
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_COLORS | RBBIM_STYLE;
 		if(!rebar.GetBandInfo(band, &info) || info.hwndChild != menuBar) continue;
 		info.clrBack = ThemeManager::IsDark() ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE);
 		info.clrFore = ThemeManager::IsDark() ? ThemeManager::TextColor() : ::GetSysColor(COLOR_BTNTEXT);
+		std::map<HWND, std::map<UINT, RebarBandThemeState> >::iterator bands = g_rebarBaseBandStyles.find(rebar);
+		if(bands != g_rebarBaseBandStyles.end() && bands->second.find(info.wID) != bands->second.end())
+			info.fStyle = ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ? (bands->second[info.wID].style & ~RBBS_CHILDEDGE) | RBBS_NOGRIPPER : bands->second[info.wID].style;
 		rebar.SetBandInfo(band, &info);
 		return;
 	}
@@ -222,7 +277,7 @@ void ApplyContextAttributeRebarBandTheme(CReBarCtrl& rebar, const ContextAttribu
 	const HWND contextBars[] = { bars.LinksBar(), bars.TableBar(), bars.TableBar2() };
 	for(int band = 0; band < static_cast<int>(rebar.GetBandCount()); ++band)
 	{
-		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_COLORS;
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_COLORS | RBBIM_STYLE;
 		if(!rebar.GetBandInfo(band, &info)) continue;
 		bool isContextBar = false;
 		for(HWND contextBar : contextBars)
@@ -230,6 +285,9 @@ void ApplyContextAttributeRebarBandTheme(CReBarCtrl& rebar, const ContextAttribu
 		if(!isContextBar) continue;
 		info.clrBack = ThemeManager::ControlColor();
 		info.clrFore = ThemeManager::TextColor();
+		std::map<HWND, std::map<UINT, RebarBandThemeState> >::iterator bands = g_rebarBaseBandStyles.find(rebar);
+		if(bands != g_rebarBaseBandStyles.end() && bands->second.find(info.wID) != bands->second.end())
+			info.fStyle = ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ? (bands->second[info.wID].style & ~RBBS_CHILDEDGE) | RBBS_NOGRIPPER : bands->second[info.wID].style;
 		rebar.SetBandInfo(band, &info);
 	}
 }
@@ -2600,6 +2658,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   // create status bar
   CreateSimpleStatusBar();
   m_status.SubclassWindow(m_hWndStatusBar);
+	ThemeManager::ApplyToWindow(m_status);
+	::SetWindowSubclass(m_status, StatusBarThemeProc, kStatusBarThemeSubclassId, 0);
   int panes[] =
   {
 	  ID_DEFAULT_PANE,
@@ -2919,6 +2979,7 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 	if(::IsWindow(m_MenuBar))
 		::RemoveWindowSubclass(m_MenuBar, MainMenuBarWindowThemeProc, kMainMenuBarWindowThemeSubclassId);
 	if(::IsWindow(m_ScriptsToolbar)) ::RemoveWindowSubclass(m_ScriptsToolbar, ScriptsToolbarSubclassProc, 1);
+	if(::IsWindow(m_status)) ::RemoveWindowSubclass(m_status, StatusBarThemeProc, kStatusBarThemeSubclassId);
 	ReleaseOwnedNativeMenuBitmaps();
 	g_rebarBaseStyles.erase(m_rebar);
 	g_rebarBaseBandStyles.erase(m_rebar);
@@ -6332,6 +6393,11 @@ LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	ApplyMainRebarTheme(m_rebar);
 	ApplyMainMenuRebarBandTheme(m_rebar, m_MenuBar);
 	ApplyContextAttributeRebarBandTheme(m_rebar, m_contextAttributeBars);
+	if(m_status.IsWindow())
+	{
+		ThemeManager::ApplyToWindow(m_status);
+		::InvalidateRect(m_status, NULL, TRUE);
+	}
 	if(m_document_tree.IsWindow())
 		ThemeManager::ApplyToWindow(m_document_tree);
 	// Apply only resolved defaults; explicit BODY colours and background images

@@ -2,6 +2,7 @@
 #include "ToolbarFactory.h"
 #include "..\\StartupTrace.h"
 #include "..\\UiMetrics.h"
+#include <vector>
 namespace { struct ToolbarResourceData { WORD version; WORD width; WORD height; WORD itemCount; WORD* Items() { return reinterpret_cast<WORD*>(this + 1); } }; BOOL CALLBACK SetDialogFontForToolbarChild(HWND window, LPARAM) { ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE); return TRUE; } bool CopyToolbarImages(HIMAGELIST destination, HIMAGELIST source, int imageCount) { for(int index = 0; index < imageCount; ++index) { HICON icon = ::ImageList_GetIcon(source, index, ILD_NORMAL); const int copiedIndex = icon != NULL ? ::ImageList_AddIcon(destination, icon) : -1; if(icon != NULL) ::DestroyIcon(icon); if(copiedIndex != index) return false; } return true; } }
 bool ToolbarFactory::ImageListHasMaskPlane(HIMAGELIST imageList) { IMAGEINFO imageInfo = {}; return imageList != NULL && ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL; }
 void ToolbarFactory::SetDialogFontForToolbarRow(HWND window, bool includeChildren) { if(window == NULL) return; ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE); if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0); }
@@ -29,6 +30,10 @@ HBITMAP ToolbarFactory::CreateAlphaBitmap(HBITMAP source, int width, int height)
 	const BYTE* sourceBits = static_cast<const BYTE*>(sourceInfo.dsBm.bmBits);
 	DWORD* pixels = static_cast<DWORD*>(targetBits);
 	const bool sourceBottomUp = sourceInfo.dsBmih.biHeight > 0;
+	std::vector<BYTE> canvas(width * height, 0);
+	std::vector<BYTE> connectedCanvas(width * height, 0);
+	std::vector<int> pending;
+	pending.reserve(width * height);
 	for(int y = 0; y < height; ++y)
 	{
 		const int sourceY = sourceBottomUp ? height - 1 - y : y;
@@ -41,12 +46,35 @@ HBITMAP ToolbarFactory::CreateAlphaBitmap(HBITMAP source, int width, int height)
 			const BYTE maximum = max(red, max(green, blue));
 			const BYTE minimum = min(red, min(green, blue));
 			// Legacy table bitmaps use several light neutral shades for their
-			// rectangular canvas.  Remove that canvas by alpha, rather than a
-			// single RGB key, while retaining coloured and dark table strokes.
-			const bool transparentCanvas = maximum >= 180 && maximum - minimum <= 20;
-			pixels[y * width + x] = transparentCanvas ? 0 : (0xFF000000 | (static_cast<DWORD>(red) << 16) | (static_cast<DWORD>(green) << 8) | blue);
+			// rectangular canvas.  Record candidates first: only the component
+			// connected to an outer edge becomes transparent below.  White and
+			// grey details enclosed by a table glyph must stay opaque.
+			const int index = y * width + x;
+			canvas[index] = maximum >= 180 && maximum - minimum <= 20 ? 1 : 0;
+			pixels[index] = 0xFF000000 | (static_cast<DWORD>(red) << 16) | (static_cast<DWORD>(green) << 8) | blue;
 		}
 	}
+	for(int y = 0; y < height; ++y)
+	{
+		for(int x = 0; x < width; ++x)
+		{
+			if(x != 0 && y != 0 && x != width - 1 && y != height - 1) continue;
+			const int index = y * width + x;
+			if(canvas[index] && !connectedCanvas[index]) { connectedCanvas[index] = 1; pending.push_back(index); }
+		}
+	}
+	for(size_t cursor = 0; cursor < pending.size(); ++cursor)
+	{
+		const int index = pending[cursor];
+		const int x = index % width;
+		const int y = index / width;
+		const int neighbours[] = { x > 0 ? index - 1 : -1, x + 1 < width ? index + 1 : -1,
+			y > 0 ? index - width : -1, y + 1 < height ? index + width : -1 };
+		for(int neighbour : neighbours)
+			if(neighbour >= 0 && canvas[neighbour] && !connectedCanvas[neighbour]) { connectedCanvas[neighbour] = 1; pending.push_back(neighbour); }
+	}
+	for(int index = 0; index < width * height; ++index)
+		if(connectedCanvas[index]) pixels[index] = 0;
 	return target;
 }
 

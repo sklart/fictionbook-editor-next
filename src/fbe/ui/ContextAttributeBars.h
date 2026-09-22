@@ -42,4 +42,5 @@ private:
 	CCustomStatic m_idCaption, m_hrefCaption, m_sectionCaption, m_imageTitleCaption, m_tableIdCaption, m_tableStyleCaption, m_cellIdCaption, m_cellStyleCaption, m_colspanCaption, m_rowspanCaption, m_rowAlignCaption, m_alignCaption, m_valignCaption;
 	bool AddCaption(CCustomStatic& caption, HWND bar, int position, UINT textId, LPCWSTR placeholder, HFONT font);
 	bool AddBox(HWND bar, int position, CComboBox& box, CCustomEdit& edit, DWORD style, UINT id, HFONT font);
+	void ApplyBoxTheme(CComboBox& box);
 };

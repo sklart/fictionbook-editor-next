@@ -2193,6 +2193,51 @@ static BodyEditorColors ResolveBodyEditorColors()
 	// Windows system colours selected above.
 	return colors;
 }
+
+static CString CssColor(COLORREF color)
+{
+	CString value;
+	value.Format(L"#%02X%02X%02X", GetRValue(color), GetGValue(color), GetBValue(color));
+	return value;
+}
+
+static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document)
+{
+	if(!document) return;
+	MSHTML::IHTMLDocument3Ptr document3(document);
+	if(!document3) return;
+	MSHTML::IHTMLElementPtr style(document3->getElementById(L"fbe-runtime-dark-table-theme"));
+	if(!style)
+	{
+		MSHTML::IHTMLElementPtr head(document->createElement(L"STYLE"));
+		MSHTML::IHTMLElementCollectionPtr heads(document3->getElementsByTagName(L"HEAD"));
+		if(!head || !heads || heads->length == 0) return;
+		head->id = L"fbe-runtime-dark-table-theme";
+		MSHTML::IHTMLDOMNodePtr headNode(heads->item(_variant_t(0), _variant_t()));
+		if(!headNode) return;
+		headNode->appendChild(MSHTML::IHTMLDOMNodePtr(head));
+		style = head;
+	}
+	MSHTML::IHTMLStyleElementPtr styleElement(style);
+	MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
+	if(!sheet) return;
+	if(!ThemeManager::IsDark() || IsHighContrastEnabled())
+	{
+		sheet->cssText = L"";
+		return;
+	}
+	const CString headerBackground = CssColor(ThemeManager::ControlColor());
+	const CString text = CssColor(ThemeManager::TextColor());
+	const CString border = CssColor(ThemeManager::BorderColor());
+	CString css;
+	// This style sheet exists only in the live MSHTML document.  It targets
+	// table cells, never BODY, so document background/image settings and FB2
+	// serialization remain independent of the interface theme.
+	css.Format(L"#fbw_body table.table th{background-color:%s !important;color:%s !important;}"
+		L"#fbw_body table.table th,#fbw_body table.table td{border-color:%s !important;}",
+		static_cast<LPCWSTR>(headerBackground), static_cast<LPCWSTR>(text), static_cast<LPCWSTR>(border));
+	sheet->cssText = static_cast<LPCWSTR>(css);
+}
 bool Doc::SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType)
 {
 	output.clear();
@@ -2371,7 +2416,8 @@ void  Doc::ApplyConfChanges() {
     fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
     hs->backgroundColor=(const wchar_t *)fss;
 
-    ApplyEditorBackground(hs);
+	ApplyEditorBackground(hs);
+	ApplyRuntimeTableTheme(m_editor.Document());
 
 	bool mode = _Settings.FastMode();
 	SetFastMode(mode);

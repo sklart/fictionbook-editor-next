@@ -4,6 +4,7 @@
 #include "../ThemeManager.h"
 #include "../toolbars/ToolbarFactory.h"
 #include "../resource.h"
+#include <map>
 
 namespace
 {
@@ -16,6 +17,8 @@ void AddPlaceholder(HWND bar, LPCWSTR text)
 CString TextOf(const CWindow& window) { CString text; window.GetWindowText(text); return text; }
 
 const UINT_PTR kContextAttributeThemeSubclassId = 0x46424152; // "FBAR"
+const UINT_PTR kContextAttributeBoxThemeSubclassId = 0x46424258; // "FBBX"
+std::map<HWND, LONG_PTR> g_contextAttributeBoxBaseExStyles;
 
 bool IsHighContrastEnabled()
 {
@@ -48,6 +51,44 @@ LRESULT CALLBACK ContextAttributeBarThemeProc(HWND window, UINT message, WPARAM 
 		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
 	}
 	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
+LRESULT CALLBACK ContextAttributeBoxThemeProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	if(message == WM_NCDESTROY)
+	{
+		g_contextAttributeBoxBaseExStyles.erase(window);
+		::RemoveWindowSubclass(window, ContextAttributeBoxThemeProc, kContextAttributeBoxThemeSubclassId);
+		return ::DefSubclassProc(window, message, wParam, lParam);
+	}
+	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == WM_PAINT && ThemeManager::IsDark() && !IsHighContrastEnabled())
+	{
+		// CLIENTEDGE is deliberately removed in Dark mode; paint an in-client
+		// one-pixel border so the band's outer geometry and DPI layout remain intact.
+		RECT bounds = {}; ::GetWindowRect(window, &bounds);
+		HDC dc = ::GetWindowDC(window);
+		if(dc != NULL)
+		{
+			RECT border = { 0, 0, bounds.right - bounds.left, bounds.bottom - bounds.top };
+			::FrameRect(dc, &border, ThemeManager::Brush(THEME_COLOR_BORDER));
+			::ReleaseDC(window, dc);
+		}
+	}
+	return result;
+}
+
+void ApplyContextAttributeBoxTheme(HWND box)
+{
+	if(!::IsWindow(box)) return;
+	std::map<HWND, LONG_PTR>::iterator base = g_contextAttributeBoxBaseExStyles.find(box);
+	if(base == g_contextAttributeBoxBaseExStyles.end())
+		base = g_contextAttributeBoxBaseExStyles.insert(std::make_pair(box, ::GetWindowLongPtr(box, GWL_EXSTYLE))).first;
+	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
+	::SetWindowLongPtr(box, GWL_EXSTYLE, dark ? base->second & ~static_cast<LONG_PTR>(WS_EX_CLIENTEDGE) : base->second);
+	::SetWindowSubclass(box, ContextAttributeBoxThemeProc, kContextAttributeBoxThemeSubclassId, 0);
+	::SetWindowPos(box, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+	::RedrawWindow(box, NULL, NULL, RDW_INVALIDATE | RDW_FRAME);
 }
 
 void ApplyContextBarTheme(HWND bar)
@@ -107,7 +148,13 @@ bool ContextAttributeBars::Create(HWND parent)
 }
 
 void ContextAttributeBars::Destroy() { if(m_linksBar) ::DestroyWindow(m_linksBar); if(m_tableBar) ::DestroyWindow(m_tableBar); if(m_tableBar2) ::DestroyWindow(m_tableBar2); m_linksBar = m_tableBar = m_tableBar2 = NULL; }
-void ContextAttributeBars::ApplyTheme() { ApplyContextBarTheme(m_linksBar); ApplyContextBarTheme(m_tableBar); ApplyContextBarTheme(m_tableBar2); }
+void ContextAttributeBars::ApplyBoxTheme(CComboBox& box) { ApplyContextAttributeBoxTheme(box); }
+void ContextAttributeBars::ApplyTheme()
+{
+	ApplyContextBarTheme(m_linksBar); ApplyContextBarTheme(m_tableBar); ApplyContextBarTheme(m_tableBar2);
+	CComboBox* boxes[] = { &m_idBox, &m_hrefBox, &m_sectionBox, &m_imageTitleBox, &m_tableIdBox, &m_tableStyleBox, &m_cellIdBox, &m_cellStyleBox, &m_colspanBox, &m_rowspanBox, &m_rowAlignBox, &m_alignBox, &m_valignBox };
+	for(CComboBox* box : boxes) ApplyBoxTheme(*box);
+}
 void ContextAttributeBars::UpdateMetrics() { ToolbarFactory::SetDialogFontForToolbarRow(m_linksBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar, true); ToolbarFactory::SetDialogFontForToolbarRow(m_tableBar2, true); ToolbarFactory::AutoSizeToolbar(m_linksBar); ToolbarFactory::AutoSizeToolbar(m_tableBar); ToolbarFactory::AutoSizeToolbar(m_tableBar2); }
 void ContextAttributeBars::UpdateLocalization()
 {

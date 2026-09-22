@@ -2,6 +2,7 @@
 #include "SettingsEditorPage.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\ThemeManager.h"
 #include "..\\..\\..\\common\\ModernFileDialog.h"
 #include "..\\..\\utils\\utils.h"
 
@@ -18,6 +19,17 @@ int __stdcall EnumFontProc(const ENUMLOGFONTEX* logFont, const NEWTEXTMETRICEX*,
 void SetText(HWND window, int controlId, LPCWSTR key, LPCWSTR fallback)
 {
 	::SetDlgItemText(window, controlId, FbeLoadRuntimeStringByKey(key, fallback));
+}
+
+COLORREF AutomaticBodyColor(bool background)
+{
+	const DWORD configured = background ? _Settings.GetColorBG() : _Settings.GetColorFG();
+	if(configured != CLR_DEFAULT) return configured;
+	// Mirror the effective default used by the visual BODY editor.  In Dark mode
+	// an Automatic swatch must not misleadingly display a light system colour.
+	if(_Settings.GetEditorBackgroundKind() == L"none" && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		return background ? ThemeManager::WindowColor() : ThemeManager::TextColor();
+	return ::GetSysColor(background ? COLOR_WINDOW : COLOR_WINDOWTEXT);
 }
 }
 
@@ -50,8 +62,8 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_foreground.SetCustomText(moreColorsText);
 	m_background.SetDefaultText(automaticColorText);
 	m_background.SetCustomText(moreColorsText);
-	m_background.SetDefaultColor(::GetSysColor(COLOR_WINDOW));
-	m_foreground.SetDefaultColor(::GetSysColor(COLOR_WINDOWTEXT));
+	m_background.SetDefaultColor(AutomaticBodyColor(true));
+	m_foreground.SetDefaultColor(AutomaticBodyColor(false));
 	m_background.SetColor(_Settings.GetColorBG());
 	m_foreground.SetColor(_Settings.GetColorFG());
 

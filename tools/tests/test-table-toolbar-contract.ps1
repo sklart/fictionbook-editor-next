@@ -29,8 +29,11 @@ if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'ImageList_Add\(toolbar\.GetImageList\(\), alpha, NULL\)') {
     throw 'Table toolbar bitmap helper must append a 24x24 alpha bitmap through the owned image list.'
 }
-if ($factory -notmatch '(?s)HBITMAP ToolbarFactory::CreateAlphaBitmap\(.*?biBitCount = 32.*?transparentCanvas.*?maximum >= 180.*?return target;') {
-    throw 'Table toolbar bitmap conversion must create 32-bit alpha pixels and remove the neutral light canvas without a fixed RGB mask.'
+if ($factory -notmatch '(?s)HBITMAP ToolbarFactory::CreateAlphaBitmap\(.*?biBitCount = 32.*?canvas\[.*?x != 0.*?connectedCanvas.*?pending.*?return target;') {
+	throw 'Table toolbar bitmap conversion must create 32-bit alpha pixels and remove only the edge-connected neutral light canvas.'
+}
+if ($factory -match 'pixels\[index\] = transparentCanvas \? 0') {
+	throw 'Table toolbar bitmap conversion must not make every light neutral icon detail transparent.'
 }
 if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?FindResource\(.*?RT_TOOLBAR.*?ownedImages\.Create\(24, 24, ILC_COLOR32 \| ILC_MASK.*?ImageList_LoadImage\(.*?CopyToolbarImages\(ownedImages, sourceImages, standardImageCount\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
     throw 'Command toolbar must create one application-owned ILC_COLOR32|ILC_MASK image list from the RT_TOOLBAR strip before adding buttons.'

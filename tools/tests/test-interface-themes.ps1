@@ -18,6 +18,8 @@ $documentTree = Read-ProjectFile 'src\fbe\DocumentTree.cpp'
 $documentTreeHeader = Read-ProjectFile 'src\fbe\DocumentTree.h'
 $contextAttributeBars = Read-ProjectFile 'src\fbe\ui\ContextAttributeBars.cpp'
 $contextAttributeControls = Read-ProjectFile 'src\fbe\ui\ContextAttributeControls.cpp'
+$fbDoc = Read-ProjectFile 'src\fbe\FBDoc.cpp'
+$settingsEditorPage = Read-ProjectFile 'src\fbe\settings\ui\SettingsEditorPage.cpp'
 $modelessDialog = Read-ProjectFile 'src\fbe\ModelessDialog.h'
 $aboutBox = Read-ProjectFile 'src\fbe\AboutBox.cpp'
 $scriptVisuals = Read-ProjectFile 'src\fbe\scripts\ScriptVisualResources.cpp'
@@ -55,6 +57,9 @@ foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl
 foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
+foreach($required in @('RBBS_NOGRIPPER', 'RBBS_FIXEDSIZE', 'StatusBarThemeProc', 'SB_GETPARTS', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR')) {
+	if($mainFrame -notlike "*$required*") { throw "Rebar/status bar Dark surface lacks the required native-theme handling: $required." }
+}
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {
 	if($scriptVisuals -notlike "*$required*") { throw "Script visual resources do not create native alpha menu bitmaps: $required." }
 }
@@ -79,6 +84,16 @@ foreach($dialogSource in @($modelessDialog, $aboutBox)) {
 }
 foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCOLORSTATIC', 'WM_CTLCOLOREDIT', 'WM_CTLCOLORLISTBOX', 'TB_SETCOLORSCHEME', 'CCM_SETBKCOLOR', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()')) {
 	if($contextAttributeBars -notlike "*$required*") { throw "Context attribute bars do not apply the theme palette: $required." }
+}
+foreach($required in @('ContextAttributeBoxThemeProc', 'WS_EX_CLIENTEDGE', 'GWL_EXSTYLE', 'SWP_FRAMECHANGED', 'THEME_COLOR_BORDER', 'ApplyBoxTheme')) {
+	if($contextAttributeBars -notlike "*$required*") { throw "Context attribute boxes do not replace the Dark client edge with a themed border: $required." }
+}
+foreach($required in @('ApplyRuntimeTableTheme', 'fbe-runtime-dark-table-theme', 'table.table th', 'table.table td', 'ThemeManager::ControlColor()', 'ThemeManager::BorderColor()', 'sheet->cssText')) {
+	if($fbDoc -notlike "*$required*") { throw "BODY table headers do not receive the runtime-only Dark table theme: $required." }
+}
+if($fbDoc -like '*runtime\main.css*' -or $fbDoc -notlike '*never BODY*') { throw 'BODY table theme must remain a runtime MSHTML override and must not replace BODY colours.' }
+foreach($required in @('AutomaticBodyColor', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'm_background.SetDefaultColor', 'm_foreground.SetDefaultColor')) {
+	if($settingsEditorPage -notlike "*$required*") { throw "Automatic BODY colour buttons do not show their effective Dark value: $required." }
 }
 foreach($required in @('ThemeManager::ControlBrush()', 'ThemeManager::TextColor()', 'ThemeManager::DisabledTextColor()', 'IsWindowEnabled(m_hWnd)')) {
 	if($contextAttributeControls -notlike "*$required*") { throw "Context attribute captions do not apply the theme palette: $required." }

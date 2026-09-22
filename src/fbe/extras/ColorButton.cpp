@@ -419,7 +419,6 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 	// If we have a theme
 	//
 
-	m_fPopupActive = false;
 	if(useDarkPalette)
 	{
 		const bool disabled = (uState & ODS_DISABLED) != 0;
@@ -485,7 +484,12 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 	// Draw focus
 	//
 
-	if (((uState & ODS_FOCUS) != 0 || m_fPopupActive) && !useDarkPalette)
+	if (((uState & ODS_FOCUS) != 0 || m_fPopupActive) && useDarkPalette)
+	{
+		CRect rcFocus(rcDraw.left + 2, rcDraw.top + 2, rcDraw.right - 2, rcDraw.bottom - 2);
+		dc.FrameRect(&rcFocus, ThemeManager::Brush(THEME_COLOR_FOCUS));
+	}
+	else if (((uState & ODS_FOCUS) != 0 || m_fPopupActive) && !useDarkPalette)
 	{
 		CRect rcFocus (rcDraw.left, rcDraw.top, 
 			rcDraw.right - 1, rcDraw.bottom);
