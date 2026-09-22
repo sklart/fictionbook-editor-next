@@ -278,7 +278,12 @@ static bool AddCommandBarBitmapFromModule(CCommandBarCtrl& commandBar, HINSTANCE
 	if(bitmap == NULL)
 		return false;
 
+	// The legacy 16x16 table-menu BMPs use magenta only as their transparent
+	// canvas.  Scope the WTL mask override to this registration so the command
+	// bar's global/default mask remains untouched for every other bitmap.
+	const COLORREF previousMask = commandBar.SetImageMaskColor(RGB(255, 0, 255));
 	const BOOL added = commandBar.AddBitmap(bitmap, commandId);
+	commandBar.SetImageMaskColor(previousMask);
 	::DeleteObject(bitmap);
 	return added != FALSE;
 }

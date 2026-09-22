@@ -29,6 +29,15 @@ if (-not $bitmapHelper.Success -or
     $bitmapHelper.Value -notmatch 'ImageList_Add\(toolbar\.GetImageList\(\), alpha, NULL\)') {
     throw 'Table toolbar bitmap helper must append a 24x24 alpha bitmap through the owned image list.'
 }
+$menuBitmapHelper = [regex]::Match($cpp, '(?s)static bool AddCommandBarBitmapFromModule\(.*?return added != FALSE;\s*\}')
+if (-not $menuBitmapHelper.Success -or
+	$menuBitmapHelper.Value -notmatch 'const COLORREF previousMask = commandBar\.SetImageMaskColor\(RGB\(255, 0, 255\)\)' -or
+	$menuBitmapHelper.Value -notmatch '(?s)SetImageMaskColor\(RGB\(255, 0, 255\)\).*?commandBar\.AddBitmap\(bitmap, commandId\).*?commandBar\.SetImageMaskColor\(previousMask\)') {
+	throw 'WTL table-menu bitmap registration must scope the exact magenta mask to AddBitmap and restore the prior mask.'
+}
+if ($menuBitmapHelper.Value -match 'm_clrMask') {
+	throw 'WTL table-menu bitmap registration must not modify CCommandBarCtrl global m_clrMask directly.'
+}
 if ($factory -notmatch '(?s)HBITMAP ToolbarFactory::CreateAlphaBitmap\(.*?biBitCount = 32.*?keyBlue = 0xFF.*?keyGreen = 0x00.*?keyRed = 0xFF.*?blue == keyBlue && green == keyGreen && red == keyRed \? 0.*?return target;') {
 	throw 'Table toolbar bitmap conversion must create 32-bit alpha pixels using only the exact magenta transparency key.'
 }
