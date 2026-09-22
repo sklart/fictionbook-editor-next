@@ -38,6 +38,7 @@ foreach($required in @(
     'CSplitUndoProbeParent',
     'split-undo-probe',
     'body-source-transition-runtime',
+	'phase-b-cache-runtime',
     'settings-dialog-runtime')) {
     if($scenarioText -notmatch [regex]::Escape($required)) {
         throw "Runtime scenario harness is missing: $required"

@@ -56,6 +56,56 @@
 		::PostQuitMessage(saved ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"phase-b-cache-runtime"))
+	{
+		if (!StartupTrace::Enabled() || !m_doc || !m_doc->m_body.Document())
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		// Validate twice in the same apartment.  The first pass may legitimately
+		// use a schema loaded earlier in this lifecycle; only the second pass is
+		// required not to add another schema load.
+		ShowView(SOURCE);
+		int line = 0, column = 0;
+		const bool firstValidation = m_doc->SetXMLAndValidate(m_source, true, line, column);
+		const ULONGLONG schemasAfterFirst = StartupTrace::XsdSchemaLoadCount();
+		const bool secondValidation = m_doc->SetXMLAndValidate(m_source, true, line, column);
+		const ULONGLONG schemasAfterSecond = StartupTrace::XsdSchemaLoadCount();
+
+		const ULONGLONG serializationsBefore = StartupTrace::SourceSerializationCount();
+		ShowView(BODY); ShowView(SOURCE);
+		const ULONGLONG serializationsAfterFirst = StartupTrace::SourceSerializationCount();
+		ShowView(BODY); ShowView(SOURCE);
+		const ULONGLONG serializationsAfterSecond = StartupTrace::SourceSerializationCount();
+
+		ShowView(BODY);
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document()->body);
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(0L), _variant_t()) : MSHTML::IHTMLElementPtr());
+		bool edited = false;
+		if (paragraph)
+		{
+			CString text(static_cast<LPCWSTR>(_bstr_t(paragraph->innerText)));
+			text += L" phase-b-cache-edit";
+			paragraph->innerText = _bstr_t(static_cast<LPCWSTR>(text));
+			BOOL handled = FALSE;
+			OnEdChange(0, 0, NULL, handled);
+			edited = true;
+		}
+		ShowView(SOURCE);
+		const ULONGLONG serializationsAfterEdit = StartupTrace::SourceSerializationCount();
+		const bool xsdSecondUnchanged = schemasAfterSecond == schemasAfterFirst;
+		const bool sourceSecondUnchanged = serializationsAfterSecond == serializationsAfterFirst;
+		const bool sourceInvalidatedAfterEdit = edited && serializationsAfterEdit > serializationsAfterSecond;
+		CStringA report;
+		report.Format("first_validation=%d\nxsd_after_first=%I64u\nsecond_validation=%d\nxsd_after_second=%I64u\nxsd_second_equals_first=%d\nsource_before=%I64u\nsource_after_first=%I64u\nsource_after_second=%I64u\nunchanged_second_source=%d\nsource_after_edit=%I64u\nedit_invalidates_source=%d\n",
+			firstValidation, schemasAfterFirst, secondValidation, schemasAfterSecond, xsdSecondUnchanged,
+			serializationsBefore, serializationsAfterFirst, serializationsAfterSecond, sourceSecondUnchanged,
+			serializationsAfterEdit, sourceInvalidatedAfterEdit);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(firstValidation && secondValidation && xsdSecondUnchanged && sourceSecondUnchanged && sourceInvalidatedAfterEdit && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"body-source-transition-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;
