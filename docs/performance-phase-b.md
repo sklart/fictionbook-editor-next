@@ -62,6 +62,14 @@ Phase B устраняет повторную фиксированную раб�
 заявляет искусственный процент ускорения. Полный release gate и ручной smoke
 остаются отдельными этапами по scope задачи.
 
+## Финальная cardinality-проверка
+
+- `phase-b-cache-runtime`: second XSD validation schema loads = `0`;
+  second unchanged BODY → SOURCE serializations = `0`; реальная BODY-правка
+  инвалидирует serialized source cache.
+- SearchDocumentAdapter/MSHTML: incremental search snapshot builds / queries =
+  `1 / 4`; scoped search query runs = `1`.
+
 ## Ограничения
 
 Не менялись BinaryStore, DOM virtualization, background DOM/validation,

@@ -167,3 +167,16 @@ selection-context, toolbar, CheckCommand и JS/COM. Общий legacy-счётч
 выделенный scoped-счётчик доказывает ровно один базовый запрос в каждом
 SelectionContext build. Это доказательство отсутствия регрессии, а не
 искусственная цель по проценту ускорения.
+
+### Финализация Phase A
+
+Финальный targeted run
+`test-fbe-idle-interaction-performance-runtime.ps1 -ParagraphCount 1000`
+зафиксировал: `interaction_elapsed_ms=14000`,
+`check_command_calls=0`, `js_com_calls=2010`,
+`selection_container_queries=18030`,
+`selection_context_builds=2010` и
+`selection_context_container_queries=2010`. Каждый из 2 010 реальных
+selection/document events выполнил один JS batch; следующие 1 000 неизменных
+idle сохранили нули для command-state, SelectionContext, toolbar,
+`CheckCommand()` и JS/COM.
