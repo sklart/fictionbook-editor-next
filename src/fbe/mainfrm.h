@@ -239,6 +239,12 @@ public:
 	void RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar);
 	void SavePortableToolbarLayout();
 	void DestroyScriptToolbarRuntimeControls();
+	void DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
+	bool PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
+	bool CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
+	bool SetScriptToolbarRuntimeVisible(ScriptToolbarRuntime& runtime, bool visible);
+	bool ReorderScriptToolbarRuntimeBands(const std::vector<ScriptToolbarDefinition>& definitions);
+	bool ApplyScriptToolbarRuntimeDelta(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
 	bool ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
 	bool UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items);
 	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);

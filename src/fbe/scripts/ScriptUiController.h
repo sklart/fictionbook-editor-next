@@ -15,6 +15,8 @@ public:
 	MenuBuilder& Menu() { return m_menu; }
 	const MenuBuilder& Menu() const { return m_menu; }
 	VisualResources& Visuals() { return m_visuals; }
+	UINT InitializeCount() const { return m_initializeCount; }
+	UINT DiscoveryCount() const { return m_discoveryCount; }
 	void SetLastScript(const ScriptDescriptor& script);
 	void ClearLastScript() { m_lastUid.Empty(); }
 	const CString& LastScriptUid() const { return m_lastUid; }
@@ -30,5 +32,7 @@ private:
 	MenuBuilder m_menu;
 	VisualResources m_visuals;
 	CString m_lastUid;
+	UINT m_initializeCount;
+	UINT m_discoveryCount;
 };
 }

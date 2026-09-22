@@ -17,6 +17,13 @@ Must $frame 'ID_VIEW_SCRIPT_TOOLBARS_MANAGE, L"fbe\.menu\.idr_mainframe\.view\.s
 Must $rc 'MENUITEM "Manage script toolbars\.\.\."' 'resource template stays ASCII-safe'
 Must $menuLocalization 'fbe\.menu\.idr_mainframe\.view\.script_toolbar_manager' 'script-toolbar management menu has a localization key'
 Must $frame 'ApplyScriptToolbarDefinitions\(previous, current\)' 'visibility changes use the same transactional persistence path'
+Must $frame 'bool CMainFrame::ApplyScriptToolbarRuntimeDelta\(' 'runtime changes are isolated from persistence'
+Must $frame 'ApplyScriptToolbarRuntimeDelta\(previous, current\)' 'management applies an in-memory runtime delta'
+if($frame -match 'bool CMainFrame::ApplyScriptToolbarRuntimeDelta\([\s\S]*?\n\}') { if($Matches[0] -match 'PortableToolbarStore::') { throw 'Runtime delta must not read or write Toolbars.xml.' } }
+if($frame -match 'bool CMainFrame::ApplyScriptToolbarDefinitions\([\s\S]*?\n\}') { if($Matches[0] -match 'if\(InitializeScripts\(\)\) return true') { throw 'Normal toolbar management must not run full script initialization.' } }
+Must $frame 'CreateScriptToolbarRuntime' 'new visible custom toolbar uses a narrow runtime creator'
+Must $frame 'DestroyScriptToolbarRuntime' 'removed or hidden custom toolbar owns its narrow destruction'
+Must $frame 'm_rebar\.ShowBand\(band, visible\)' 'scripts-main visibility uses its existing rebar band'
 Must $dialog 'm_manager\.Create' 'create panel action'
 Must $dialog 'm_manager\.Delete' 'delete panel action'
 Must $dialog 'm_manager\.Rename' 'rename panel action'

@@ -2181,15 +2181,81 @@ bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDe
 	PortableToolbarLayout layout = before;
 	layout.scriptToolbars = current; layout.scriptsToolbarPresent = true;
 	if(!PortableToolbarStore::Save(layout)) return false;
-	if(InitializeScripts()) return true;
-	// Runtime recovery intentionally uses the already committed definitions.  It
-	// must not re-read a file whose rollback may have failed after the atomic
-	// replacement, otherwise an I/O error can turn a recoverable UI failure into
-	// a partially rebuilt toolbar collection.
+	const ULONGLONG started = ::GetTickCount64();
+	if(ApplyScriptToolbarRuntimeDelta(previous, current))
+	{
+		CString message; message.Format(L"script toolbar runtime delta succeeded in %llu ms", ::GetTickCount64() - started);
+		StartupTrace::Event(L"plugin", L"P104", message);
+		return true;
+	}
+	// The snapshot is restored even when the reverse delta will need the full
+	// fallback: runtime recovery must never decide the persistent state.
 	const bool persistenceRestored = PortableToolbarStore::RestoreSnapshot(snapshot);
-	InitializeScriptsFromDefinitions(previous, hadPersistedMainDefinition);
+	const bool runtimeRestored = ApplyScriptToolbarRuntimeDelta(current, previous);
+	if(!runtimeRestored) InitializeScriptsFromDefinitions(previous, hadPersistedMainDefinition);
+	CString message; message.Format(L"script toolbar runtime delta rolled back in %llu ms", ::GetTickCount64() - started);
+	StartupTrace::Event(L"plugin", L"P105", message);
 	if(!persistenceRestored) StartupTrace::Event(L"plugin", L"P105", L"script toolbar persistence rollback failed; runtime restored from memory");
 	return false;
+}
+
+namespace
+{
+bool SameScriptToolbarItems(const std::vector<PortableToolbarItem>& left, const std::vector<PortableToolbarItem>& right)
+{
+	if(left.size() != right.size()) return false;
+	for(size_t index = 0; index < left.size(); ++index)
+		if(left[index].separator != right[index].separator || left[index].command != right[index].command || left[index].width != right[index].width || left[index].scriptUid != right[index].scriptUid || left[index].relativePath != right[index].relativePath) return false;
+	return true;
+}
+
+const ScriptToolbarDefinition* FindScriptToolbarDefinition(const std::vector<ScriptToolbarDefinition>& definitions, const CString& id)
+{
+	for(size_t index = 0; index < definitions.size(); ++index) if(definitions[index].id == id) return &definitions[index];
+	return NULL;
+}
+}
+
+bool CMainFrame::ApplyScriptToolbarRuntimeDelta(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current)
+{
+	for(size_t index = m_scriptToolbars.Items().size(); index > 0; --index)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index - 1];
+		if(runtime.definition.id != L"scripts-main" && FindScriptToolbarDefinition(current, runtime.definition.id) == NULL)
+		{
+			DestroyScriptToolbarRuntime(runtime);
+			m_scriptToolbars.Remove(runtime.definition.id);
+		}
+	}
+	m_scriptToolbars.Reorder(current);
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+		const ScriptToolbarDefinition* old = FindScriptToolbarDefinition(previous, runtime.definition.id);
+		if(runtime.definition.id == L"scripts-main")
+		{
+			if(runtime.window == NULL) runtime.window = m_ScriptsToolbar;
+			if(old == NULL || old->visible != runtime.definition.visible)
+				if(!SetScriptToolbarRuntimeVisible(runtime, runtime.definition.visible)) return false;
+			continue;
+		}
+		if(!runtime.definition.visible)
+		{
+			if(runtime.window != NULL) DestroyScriptToolbarRuntime(runtime);
+			continue;
+		}
+		if(runtime.window == NULL)
+		{
+			if(!CreateScriptToolbarRuntime(runtime)) return false;
+			continue;
+		}
+		if(old == NULL || !SameScriptToolbarItems(old->items, runtime.definition.items))
+			if(!PopulateScriptToolbarRuntime(runtime)) return false;
+	}
+	if(!ReorderScriptToolbarRuntimeBands(current)) return false;
+	RefreshScriptToolbarViewMenu();
+	if(::IsWindow(m_rebar)) { m_rebar.SendMessage(WM_SIZE); UpdateLayout(); }
+	return true;
 }
 
 bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items)
@@ -2433,21 +2499,116 @@ void CMainFrame::InitializeExtensionUi()
 void CMainFrame::DestroyScriptToolbarRuntimeControls()
 {
 	for(size_t index = m_scriptToolbars.Items().size(); index > 0; --index)
+		DestroyScriptToolbarRuntime(m_scriptToolbars.Items()[index - 1]);
+	if(::IsWindow(m_rebar)) { m_rebar.SendMessage(WM_SIZE); UpdateLayout(); }
+}
+
+void CMainFrame::DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
+{
+	if(runtime.definition.id == L"scripts-main") return;
+	if(::IsWindow(m_rebar))
 	{
-		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index - 1];
-		if(runtime.window == NULL || runtime.window == m_ScriptsToolbar) continue;
-		if(::IsWindow(m_rebar))
-			for(int band = m_rebar.GetBandCount() - 1; band >= 0; --band)
+		int band = runtime.rebarBandId == 0 ? -1 : m_rebar.IdToIndex(runtime.rebarBandId);
+		if(band < 0 && runtime.window != NULL)
+			for(int index = m_rebar.GetBandCount() - 1; index >= 0; --index)
 			{
 				REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD;
-				if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == runtime.window)
-					m_rebar.DeleteBand(band);
+				if(m_rebar.GetBandInfo(index, &info) && info.hwndChild == runtime.window) { band = index; break; }
 			}
-		if(::IsWindow(runtime.window)) ::DestroyWindow(runtime.window);
-		runtime.window = NULL;
-		runtime.rebarBandId = 0;
+		if(band >= 0) m_rebar.DeleteBand(band);
 	}
-	if(::IsWindow(m_rebar)) { m_rebar.SendMessage(WM_SIZE); UpdateLayout(); }
+	if(runtime.window != NULL)
+	{
+		UIRemoveToolBar(runtime.window);
+		const int catalog = m_aButtons.FindKey(runtime.window); if(catalog >= 0) m_aButtons.RemoveAt(catalog);
+		const int defaults = m_aDefaultButtons.FindKey(runtime.window); if(defaults >= 0) m_aDefaultButtons.RemoveAt(defaults);
+		if(::IsWindow(runtime.window)) ::DestroyWindow(runtime.window);
+	}
+	runtime.window = NULL;
+	runtime.rebarBandId = 0;
+}
+
+bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
+{
+	if(runtime.window == NULL || !::IsWindow(runtime.window)) return false;
+	CToolBarCtrl toolbar = runtime.window;
+	TBBUTTONS catalog;
+	if(!GetAvailableButtons(runtime.window, catalog)) return false;
+	for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+	{
+		const ScriptDescriptor& script = m_scripts.Menu().Item(index);
+		if(script.isFolder || script.commandId < 1) continue;
+		const UINT command = ID_SCRIPT_BASE + script.commandId;
+		bool present = false;
+		for(int button = 0; button < catalog.GetSize(); ++button)
+			if(catalog[button].idCommand == static_cast<int>(command)) { present = true; break; }
+		if(!present) { AddTbButton(runtime.window, script.name, command, TBSTATE_ENABLED, m_scripts.Menu().VisualAt(index).icon); if(!GetAvailableButtons(runtime.window, catalog)) return false; }
+	}
+	std::vector<PortableToolbarItem> items = runtime.definition.items;
+	for(size_t item = 0; item < items.size(); ++item)
+		if(!items[item].separator && (!items[item].scriptUid.IsEmpty() || !items[item].relativePath.IsEmpty()))
+		{
+			items[item].command = 0;
+			for(int script = 0; script < m_scripts.Menu().Count(); ++script)
+				if(!m_scripts.Menu().Item(script).isFolder && m_scripts.Menu().Item(script).commandId > 0 &&
+					(m_scripts.Menu().Item(script).uid == items[item].scriptUid || (!items[item].relativePath.IsEmpty() && m_scripts.Menu().Item(script).relativePath == items[item].relativePath)))
+				{ items[item].command = ID_SCRIPT_BASE + m_scripts.Menu().Item(script).commandId; break; }
+		}
+	std::vector<TBBUTTON> buttons(catalog.GetSize());
+	for(int index = 0; index < catalog.GetSize(); ++index) buttons[index] = catalog[index];
+	ToolbarLayoutAdapter::Apply(toolbar, items, buttons);
+	return true;
+}
+
+bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
+{
+	if(runtime.definition.id == L"scripts-main" || !runtime.definition.visible) return runtime.window != NULL;
+	if(runtime.window != NULL && ::IsWindow(runtime.window)) return PopulateScriptToolbarRuntime(runtime);
+	runtime.window = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+	if(runtime.window == NULL) return false;
+	SetDialogFontForToolbarRow(runtime.window);
+	CToolBarCtrl toolbar = runtime.window;
+	toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
+	if(!InitToolBar(toolbar, IDR_SCRIPTS) || !UIAddToolBar(toolbar) || !PopulateScriptToolbarRuntime(runtime) ||
+		!AddSimpleReBarBand(toolbar, 0, TRUE, 0, FALSE)) { DestroyScriptToolbarRuntime(runtime); return false; }
+	for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_ID;
+		if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == runtime.window) { runtime.rebarBandId = info.wID; break; }
+	}
+	if(runtime.rebarBandId == 0) { DestroyScriptToolbarRuntime(runtime); return false; }
+	if(m_testFailAfterCustomToolbarCreates > 0 && --m_testFailAfterCustomToolbarCreates == 0) { DestroyScriptToolbarRuntime(runtime); return false; }
+	return true;
+}
+
+bool CMainFrame::SetScriptToolbarRuntimeVisible(ScriptToolbarRuntime& runtime, bool visible)
+{
+	if(runtime.definition.id == L"scripts-main")
+	{
+		const int band = runtime.rebarBandId == 0 ? -1 : m_rebar.IdToIndex(runtime.rebarBandId);
+		if(band < 0) return false;
+		return m_rebar.ShowBand(band, visible) != FALSE;
+	}
+	if(visible) return CreateScriptToolbarRuntime(runtime);
+	DestroyScriptToolbarRuntime(runtime);
+	return true;
+}
+
+bool CMainFrame::ReorderScriptToolbarRuntimeBands(const std::vector<ScriptToolbarDefinition>& definitions)
+{
+	ScriptToolbarRuntime* main = m_scriptToolbars.Find(L"scripts-main");
+	int insertion = main == NULL || main->rebarBandId == 0 ? -1 : m_rebar.IdToIndex(main->rebarBandId);
+	if(insertion < 0) return false;
+	++insertion;
+	for(size_t definition = 0; definition < definitions.size(); ++definition)
+	{
+		if(definitions[definition].id == L"scripts-main" || !definitions[definition].visible) continue;
+		ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(definitions[definition].id);
+		if(runtime == NULL || runtime->rebarBandId == 0) return false;
+		const int band = m_rebar.IdToIndex(runtime->rebarBandId);
+		if(band < 0 || !m_rebar.MoveBand(band, insertion++)) return false;
+	}
+	return true;
 }
 
 bool CMainFrame::InitializeScripts()
@@ -2476,33 +2637,21 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	m_scriptToolbars.Reset();
 	for(size_t index = 0; index < definitions.size(); ++index) m_scriptToolbars.Add(definitions[index]);
 	if(m_scriptToolbars.Find(L"scripts-main") == NULL) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; m_scriptToolbars.Add(main); }
-	bool controlsCreated = true; int customControlsCreated = 0;
+	// The main toolbar is created with the frame and has its own lifecycle.
+	// Custom toolbar HWNDs are created only after the script catalogue, command
+	// IDs and visual resources are available below.
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
 	{
 		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
-		if(runtime.definition.id == L"scripts-main")
-		{
-			runtime.window = m_ScriptsToolbar;
-			if(::IsWindow(m_rebar))
-				for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
-				{
-					REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_ID;
-					if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == m_ScriptsToolbar) { runtime.rebarBandId = info.wID; if(hasPersistedMainDefinition) m_rebar.ShowBand(band, runtime.definition.visible); break; }
-				}
-			continue;
-		}
-		if(!runtime.definition.visible) continue;
-		runtime.window = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
-		if(runtime.window == NULL) { controlsCreated = false; break; }
-		SetDialogFontForToolbarRow(runtime.window); CToolBarCtrl toolbar = runtime.window; toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS); InitToolBar(toolbar, IDR_SCRIPTS); UIAddToolBar(toolbar);
-		if(!AddSimpleReBarBand(toolbar, 0, TRUE, 0, FALSE)) { ::DestroyWindow(runtime.window); runtime.window = NULL; controlsCreated = false; break; }
-		const int band = m_rebar.GetBandCount() - 1;
-		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
-		if(band < 0 || !m_rebar.GetBandInfo(band, &info)) { DestroyScriptToolbarRuntimeControls(); controlsCreated = false; break; }
-		runtime.rebarBandId = info.wID;
-		if(m_testFailAfterCustomToolbarCreates > 0 && ++customControlsCreated >= m_testFailAfterCustomToolbarCreates) { m_testFailAfterCustomToolbarCreates = 0; controlsCreated = false; break; }
+		if(runtime.definition.id != L"scripts-main") continue;
+		runtime.window = m_ScriptsToolbar;
+		if(::IsWindow(m_rebar))
+			for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
+			{
+				REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_ID;
+				if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == m_ScriptsToolbar) { runtime.rebarBandId = info.wID; if(hasPersistedMainDefinition) m_rebar.ShowBand(band, runtime.definition.visible); break; }
+			}
 	}
-	if(!controlsCreated) { DestroyScriptToolbarRuntimeControls(); return false; }
 	StartupTrace::Event(L"plugin", L"P100", L"script directory resolved");
 	CString serializedCommandIds;
 	HMENU mainMenu = m_MenuBar.GetMenu();
@@ -2511,12 +2660,17 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 		[this](const CString& path) { ScriptDiscoveryRuntime runtime(this); return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run"); },
 		[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
 			if(!script.isFolder && visual.icon != NULL) AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
-			for(size_t toolbarIndex = 0; !script.isFolder && toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex) if(m_scriptToolbars.Items()[toolbarIndex].window != NULL && m_scriptToolbars.Items()[toolbarIndex].window != m_ScriptsToolbar) AddTbButton(m_scriptToolbars.Items()[toolbarIndex].window, script.name, command, TBSTATE_ENABLED, visual.icon);
 			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }
 			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
 			ThemeManager::RegisterNativeMenuBitmap(command, visual.NativeMenuBitmap());
 		},
 		[this](ScriptDescriptor& script) { InitScriptHotkey(script); })) _Settings.SetScriptCommandIds(serializedCommandIds);
+	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
+		if(m_scriptToolbars.Items()[toolbarIndex].definition.id != L"scripts-main" && m_scriptToolbars.Items()[toolbarIndex].definition.visible && !CreateScriptToolbarRuntime(m_scriptToolbars.Items()[toolbarIndex]))
+		{
+			DestroyScriptToolbarRuntimeControls();
+			return false;
+		}
 	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
 	{
 		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[toolbarIndex];
@@ -2529,6 +2683,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == items[itemIndex].scriptUid && script.commandId > 0) { items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
 		ToolbarLayoutAdapter::Apply(runtime.window, items, catalog);
 	}
+	if(!ReorderScriptToolbarRuntimeBands(definitions)) { DestroyScriptToolbarRuntimeControls(); return false; }
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");
 	StartupTrace::Event(L"plugin", L"P130", L"scripts sorted");
 	ApplyMainRebarTheme(m_rebar);

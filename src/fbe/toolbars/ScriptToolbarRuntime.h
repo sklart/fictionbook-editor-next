@@ -17,6 +17,9 @@ public:
 	void Reset();
 	ScriptToolbarRuntime& Add(const ScriptToolbarDefinition& definition);
 	ScriptToolbarRuntime* Find(const CString& id);
+	const ScriptToolbarRuntime* Find(const CString& id) const;
+	bool Remove(const CString& id);
+	void Reorder(const std::vector<ScriptToolbarDefinition>& definitions);
 	const std::vector<ScriptToolbarRuntime>& Items() const { return m_items; }
 	std::vector<ScriptToolbarRuntime>& Items() { return m_items; }
 

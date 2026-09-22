@@ -7,7 +7,7 @@
 namespace FbeScripts
 {
 UiController::UiController(UINT folderCommandBase, UINT folderCommandCount)
-	: m_menu(folderCommandBase, folderCommandCount) {}
+	: m_menu(folderCommandBase, folderCommandCount), m_initializeCount(0), m_discoveryCount(0) {}
 
 void UiController::SetLastScript(const ScriptDescriptor& script)
 {
@@ -32,9 +32,10 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 	const std::function<void(ScriptDescriptor&)>& registerHotkey)
 {
 	if(scriptsMenu == NULL) return false;
+	++m_initializeCount;
 	m_menu.Clear(); ClearLastScript();
 	ScriptRegistry registry; if(!registry.Load()) return false;
-	Catalog catalog; if(!catalog.Discover(folder, L"*.js", &registry)) return false;
+	Catalog catalog; ++m_discoveryCount; if(!catalog.Discover(folder, L"*.js", &registry)) return false;
 	const std::vector<ScriptDescriptor>& candidates = catalog.Items();
 	for(size_t index = 0; index < candidates.size(); ++index)
 	{
