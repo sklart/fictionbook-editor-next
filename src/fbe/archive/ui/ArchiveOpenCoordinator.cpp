@@ -3,6 +3,7 @@
 #include "..\..\ArchiveEntryPicker.h"
 #include "..\..\document\DocumentLocation.h"
 #include "..\..\RuntimeLocalization.h"
+#include "..\..\utils\utils.h"
 static bool IsArchiveTestScenario(const wchar_t* expected) { wchar_t mode[4] = {}, scenario[64] = {}; return ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 && mode[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) == wcslen(expected) && wcscmp(scenario, expected) == 0; }
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
@@ -78,5 +79,5 @@ void FbeArchiveUi::ShowError(HWND owner, const FbeArchive::Error& error)
 	}
 	const CString text = FbeLoadRuntimeStringByKey(key, fallback);
 	const CString caption = FbeLoadRuntimeStringByKey(L"fbe.archive.error.caption", L"Archive");
-	::MessageBox(owner, text, caption, MB_OK | MB_ICONEXCLAMATION);
+	U::MessageBox(owner, text, caption, MB_OK | MB_ICONEXCLAMATION);
 }

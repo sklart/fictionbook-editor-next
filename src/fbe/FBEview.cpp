@@ -2359,7 +2359,7 @@ void  CFBEView::DoReplace() {
       return;
 	if (CheckReplacementRange(sel, m_fo.fRegexp) == ReplacementPreflightResult::CrossParagraph)
 	{
-		::MessageBox(m_hWnd, CrossParagraphReplacementError(),
+		U::MessageBox(m_hWnd, CrossParagraphReplacementError(),
 			FbeLoadRuntimeStringByKey(L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONEXCLAMATION);
 		return;
 	}
@@ -2421,7 +2421,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	CString preview;
 	preview.Format(FbeLoadRuntimeStringByKey(
 		L"fbe.replace.preview.message", L"Number of replacements: %Iu. Continue?"), count);
-	if (::MessageBox(m_hWnd, preview, FbeLoadRuntimeStringByKey(
+	if (U::MessageBox(m_hWnd, preview, FbeLoadRuntimeStringByKey(
 		L"fbe.replace.preview.caption", L"Replace All"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return -2;
 	// The confirmation is modal, so the preview normally stays unchanged. Still
@@ -2844,7 +2844,7 @@ public:
 		return;
 	} else if (!error.IsEmpty())
 	{
-		::MessageBox(m_hWnd, error, FbeLoadRuntimeStringByKey(L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONEXCLAMATION);
+		U::MessageBox(m_hWnd, error, FbeLoadRuntimeStringByKey(L"fbe.replace.preview.caption", L"Replace All"), MB_OK | MB_ICONEXCLAMATION);
 	} else
 	{
 		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
@@ -2892,7 +2892,7 @@ LRESULT  CFBEView::OnFindNext(WORD, WORD, HWND, BOOL&) {
   if (!DoSearch())
   {
 	if (!m_last_search_error.IsEmpty() && LastSearchErrorIsRegexp())
-		::MessageBox(m_hWnd, m_last_search_error, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
+		U::MessageBox(m_hWnd, m_last_search_error, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
 	else if (m_last_search_error.IsEmpty())
 		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
   }
@@ -3898,7 +3898,7 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
 	wchar_t cpt[MAX_LOAD_STRING + 1];
 	FbeLoadString(_Module.GetResourceInstance(), IDS_OUT_OF_MEM_MSG, msg, MAX_LOAD_STRING);
 	FbeLoadString(_Module.GetResourceInstance(), IDR_MAINFRAME, cpt, MAX_LOAD_STRING);
-    ::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
+	U::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
   }
 
   return false;
@@ -3980,7 +3980,7 @@ bool CFBEView::GoToReference(bool fCheck)
 		wchar_t msg[MAX_LOAD_STRING + 1];
 		FbeLoadString(_Module.GetResourceInstance(), IDR_MAINFRAME, cpt, MAX_LOAD_STRING);
 		FbeLoadString(_Module.GetResourceInstance(), IDS_GOTO_REF_FAIL_MSG, msg, MAX_LOAD_STRING);
-		::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONINFORMATION);
+		U::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONINFORMATION);
 		return false;
 	}
 	if (!result.HasTarget()) return false;
@@ -4595,11 +4595,11 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 	CString error;
 	HRESULT hr = ImportImageForFb2(filename, options, imported, error);
 	if (hr == E_ABORT) {
-		if (::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
+		if (U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
 		options.flattenTransparentJpeg = true;
 		hr = ImportImageForFb2(filename, options, imported, error);
 	}
-	if (FAILED(hr)) { if (!error.IsEmpty()) ::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
+	if (FAILED(hr)) { if (!error.IsEmpty()) U::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
 	try
 	{
 		FbeImage::ImageInsertionResult result;

@@ -61,8 +61,6 @@
 #include <map>
 #include <psapi.h>
 
-
-
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
@@ -2944,18 +2942,18 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	  const CString warning(GetDiagnosticTraceText(L"fbe.trace.warning",
 		  L"FBE Next запущен в режиме диагностики. Запись диагностического журнала может замедлять работу программы и содержит сведения о действиях с книгами.\n\n"
 		  L"Отключить диагностический режим для следующих запусков? Для применения потребуется перезапустить программу."));
-	  if (::MessageBox(m_hWnd, warning, caption, MB_YESNO | MB_ICONWARNING) == IDYES)
+	  if (U::MessageBox(m_hWnd, warning, caption, MB_YESNO | MB_ICONWARNING) == IDYES)
 	  {
 		  if (m_diagnostic_commands.SetEnabledForNextLaunch(false))
 		  {
-			  ::MessageBox(m_hWnd,
+			  U::MessageBox(m_hWnd,
 				  GetDiagnosticTraceText(L"fbe.trace.disable.completed",
 					  L"Диагностический режим будет отключён после перезапуска FBE Next."),
 				  caption, MB_OK | MB_ICONINFORMATION);
 		  }
 		  else
 		  {
-			  ::MessageBox(m_hWnd,
+			  U::MessageBox(m_hWnd,
 				  GetDiagnosticTraceText(L"fbe.trace.change_failed",
 					  L"Не удалось изменить настройку диагностического журнала."),
 				  caption, MB_OK | MB_ICONERROR);
@@ -4235,7 +4233,7 @@ LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 {
 	if(!m_diagnostic_commands.OpenCurrentLog())
 	{
-		::MessageBox(m_hWnd,
+		U::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.open_failed", L"Не удалось открыть диагностический журнал."),
 			GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"), MB_OK | MB_ICONERROR);
 	}
@@ -4245,7 +4243,7 @@ LRESULT CMainFrame::OnToolsOpenDiagnosticLog(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnToolsOpenDiagnosticFolder(WORD, WORD, HWND, BOOL&)
 {
 	if (!m_diagnostic_commands.OpenLogFolder())
-		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.open_folder_failed", L"Could not open the diagnostic log folder."),
+		U::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.open_folder_failed", L"Could not open the diagnostic log folder."),
 			GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"), MB_OK | MB_ICONERROR);
 	return 0;
 }
@@ -4269,7 +4267,7 @@ LRESULT CMainFrame::OnToolsCopyDiagnosticLogPath(WORD, WORD, HWND, BOOL&)
 		::CloseClipboard();
 	}
 	if (!copied)
-		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.copy_path_failed", L"Could not copy the diagnostic log path."),
+		U::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.copy_path_failed", L"Could not copy the diagnostic log path."),
 			GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"), MB_OK | MB_ICONERROR);
 	return 0;
 }
@@ -4277,20 +4275,20 @@ LRESULT CMainFrame::OnToolsCopyDiagnosticLogPath(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 {
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
-	if (::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_confirmation", L"Clear old diagnostic logs? The current log will be preserved."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
+	if (U::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_confirmation", L"Clear old diagnostic logs? The current log will be preserved."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
 	const StartupTrace::DiagnosticLogCleanupResult cleanup = m_diagnostic_commands.ClearOldLogSessions();
 	if (cleanup.sessionsFound == 0 && cleanup.filesFailed == 0)
 	{
 		StartupTrace::Event(L"diagnostic", L"DG122", L"no old trace sessions found");
-		::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_empty", L"No old diagnostic logs were found."), caption, MB_OK | MB_ICONINFORMATION);
+		U::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.clear_empty", L"No old diagnostic logs were found."), caption, MB_OK | MB_ICONINFORMATION);
 	}
 	else if (cleanup.filesFailed == 0 && cleanup.sessionsPartiallyDeleted == 0 && cleanup.sessionsFailed == 0)
 	{
 		CString details; details.Format(L"sessions-found=%u; sessions-fully-deleted=%u; sessions-partially-deleted=%u; sessions-failed=%u; files-deleted=%u", cleanup.sessionsFound, cleanup.sessionsFullyDeleted, cleanup.sessionsPartiallyDeleted, cleanup.sessionsFailed, cleanup.filesDeleted);
 		StartupTrace::Event(L"diagnostic", L"DG120", details);
 		CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_completed_details", L"Deleted %u diagnostic sessions (%u files)."), cleanup.sessionsFullyDeleted, cleanup.filesDeleted);
-		::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
+		U::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
 	}
 	else
 	{
@@ -4302,7 +4300,7 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_partial", L"Fully deleted sessions: %u\nPartially deleted sessions: %u\nFailed sessions: %u\nDeleted files: %u\nFailed files: %u."), cleanup.sessionsFullyDeleted, cleanup.sessionsPartiallyDeleted, cleanup.sessionsFailed, cleanup.filesDeleted, cleanup.filesFailed);
 		else
 			message.Format(GetDiagnosticTraceText(L"fbe.trace.clear_delete_failed", L"Could not delete %u diagnostic log files; Win32 error %lu."), cleanup.filesFailed, static_cast<unsigned long>(cleanup.lastError));
-		::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONERROR);
+		U::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONERROR);
 	}
 	return 0;
 }
@@ -4310,7 +4308,7 @@ LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 {
 	CString packagePath, error;
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
-	if (::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_confirmation", L"Create a diagnostic package?\n\nIt includes selected diagnostic logs, environment and FBELib information, and a matching technical crash report when available.\n\nIt never includes books, book text, XML/HTML, settings, recovery files, user scripts, images, or Base64 data."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
+	if (U::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_confirmation", L"Create a diagnostic package?\n\nIt includes selected diagnostic logs, environment and FBELib information, and a matching technical crash report when available.\n\nIt never includes books, book text, XML/HTML, settings, recovery files, user scripts, images, or Base64 data."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
 	if (!m_diagnostic_commands.CreatePackage(packagePath, error))
 	{
@@ -4319,11 +4317,11 @@ LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 		LPCWSTR fallback = L"Could not write the diagnostic package.";
 		if (error.Find(L"No diagnostic trace session") >= 0 || error.Find(L"trace session could not") >= 0) { key = L"fbe.trace.package_no_session"; fallback = L"No diagnostic trace session is available."; }
 		else if (error.Find(L"Privacy scan rejected") >= 0) { key = L"fbe.trace.package_privacy_rejected"; fallback = L"The diagnostic package was not created because its privacy check rejected diagnostic content."; }
-		::MessageBox(m_hWnd, GetDiagnosticTraceText(key, fallback), caption, MB_OK | MB_ICONERROR);
+		U::MessageBox(m_hWnd, GetDiagnosticTraceText(key, fallback), caption, MB_OK | MB_ICONERROR);
 		return 0;
 	}
 	CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.package_created", L"Diagnostic package created:\n%s"), (LPCWSTR)packagePath);
-	::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
+	U::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
@@ -4332,7 +4330,7 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
 	if(enabled)
 	{
-		::MessageBox(m_hWnd,
+		U::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.already_enabled",
 				L"Диагностический журнал уже включён для следующих запусков FBE Next. После перезапуска программа предупредит о диагностическом режиме и предложит его отключить."),
 			caption, MB_OK | MB_ICONINFORMATION);
@@ -4342,12 +4340,12 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	const CString question(GetDiagnosticTraceText(L"fbe.trace.enable.question",
 			L"Диагностический журнал содержит технические сведения о запуске, командах и ошибках COM. Текст книги, XML, HTML, Base64 и содержимое пользовательских сценариев не записываются; пути обезличиваются.\n\n"
 			L"Включить его для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу."));
-	if(::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
+	if(U::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
 		return 0;
 
 	if(!m_diagnostic_commands.SetEnabledForNextLaunch(true))
 	{
-		::MessageBox(m_hWnd,
+		U::MessageBox(m_hWnd,
 			GetDiagnosticTraceText(L"fbe.trace.change_failed",
 				L"Не удалось изменить настройку диагностического журнала."),
 			caption, MB_OK | MB_ICONERROR);
@@ -4356,7 +4354,7 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 
 	const CString result(GetDiagnosticTraceText(L"fbe.trace.enable.completed",
 		L"Диагностический журнал включён. Перезапустите FBE Next, чтобы начать запись."));
-	::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
+	U::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }
 
@@ -5062,7 +5060,7 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
 		HRESULT importResult = m_doc->ImportBinary(fileName, error, &wasConverted);
 		if (importResult == E_ABORT) {
 			const CString question = FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?");
-			if (::MessageBox(m_hWnd, question, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES)
+			if (U::MessageBox(m_hWnd, question, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) == IDYES)
 				importResult = m_doc->ImportBinary(fileName, error, &wasConverted, true);
 			else
 				continue;
@@ -5079,7 +5077,7 @@ LRESULT CMainFrame::OnEditAddBinary(WORD, WORD, HWND, BOOL&) {
 	if (!failures.IsEmpty()) {
 		CString summary = FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_summary", L"Added: %d\r\nConverted: %d\r\nFailed:\r\n%s");
 		CString message; message.Format(summary, added, converted, (LPCWSTR)failures);
-		::MessageBox(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_OK | MB_ICONWARNING);
+		U::MessageBox(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_OK | MB_ICONWARNING);
 	}
   }
 

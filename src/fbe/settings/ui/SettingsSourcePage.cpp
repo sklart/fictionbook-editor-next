@@ -554,7 +554,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 				conflict.Format(ThemeString(L"fbe.theme.conflict.replace",
 					L"Theme \"%s\" (ID: %s) already exists.\n\nReplace the existing user theme?\nYes: replace\nNo: import a copy\nCancel: skip this file."),
 					static_cast<LPCWSTR>(parsedTheme.info.name), static_cast<LPCWSTR>(parsedTheme.info.id));
-				const int decision = ::MessageBox(m_hWnd, conflict, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNOCANCEL | MB_ICONQUESTION);
+				const int decision = U::MessageBox(m_hWnd, conflict, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNOCANCEL | MB_ICONQUESTION);
 				if(decision == IDCANCEL) { ++cancelled; continue; }
 				if(decision == IDYES) conflictMode = XmlSourceThemes::IMPORT_THEME_REPLACE_USER;
 			}			if(XmlSourceThemes::ImportThemeFile(parsedTheme, importedId, error, conflictMode))
@@ -579,7 +579,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		result.Format(ThemeString(L"fbe.theme.import.summary", L"Imported: %d. Errors: %d. Cancelled: %d."), imported, failed, cancelled);
 		if(!failures.IsEmpty()) result += L"\r\n\r\n" + failures;
 		if(failed > shownFailures) { CString more; more.Format(ThemeString(L"fbe.theme.import.more_errors", L"Additional errors: %d."), failed - shownFailures); result += L"\r\n" + more; }
-		::MessageBox(m_hWnd, result, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | (failed ? MB_ICONWARNING : MB_ICONINFORMATION));
+		U::MessageBox(m_hWnd, result, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | (failed ? MB_ICONWARNING : MB_ICONINFORMATION));
 		return 0;
 	}
 
@@ -595,12 +595,12 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 			deletedThemeWasActive ?
 			L"Delete active user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel. The editor will switch to FBE Light and manual colors will be reset." :
 			L"Delete user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel."), static_cast<LPCWSTR>(sourceName));
-		if(::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+		if(U::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 			return 0;
 		const CString fallbackId = XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT);
 		CString error;
 		if(!XmlSourceThemes::DeleteUserTheme(sourceId, error))
-			::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
+			U::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
 		else if(deletedThemeWasActive)
 		{
 			_Settings.SetXmlSrcThemeId(fallbackId, false);
@@ -643,7 +643,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 			m_source_colors[XML_SRC_COLOR_BACKGROUND].GetColor() != CLR_DEFAULT,
 			hasExistingMetadata, metadata);
 		if(!XmlSourceThemes::SaveThemeAsUser(name, colors, savedId, error, &metadata))
-			::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
+			U::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
 		else
 		{
 			ReloadSourceThemes(savedId);
@@ -668,7 +668,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 	// Existing user themes retain optional metadata without a self-referential base id.
 	if(metadata.baseThemeId.CompareNoCase(exportId) == 0) metadata.baseThemeId.Empty();
 	if(!XmlSourceThemes::ExportThemeFile(exportId, sourceName, colors, dialog.m_szFileName, error, &metadata))
-		::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
+		U::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
 	return 0;
 }
 

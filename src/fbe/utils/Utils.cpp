@@ -609,6 +609,10 @@ void  ReportError(_com_error& e) {
   VBErr = true;
 }
 
+UINT MessageBox(HWND owner, const TCHAR* message, const TCHAR* title, UINT type) {
+	return ThemeManager::MessageBox(owner, message, title, type);
+}
+
 UINT  MessageBox(UINT type, UINT titleID, UINT msgID, ...) {
   CString title, msg, str;
   title = FbeLoadRuntimeString(titleID);

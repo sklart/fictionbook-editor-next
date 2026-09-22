@@ -739,7 +739,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	  wchar_t cpt[MAX_LOAD_STRING + 1];
 	  FbeLoadString(_Module.GetResourceInstance(), IDS_SCINTILLA_LOAD_ERR_MSG, msg, MAX_LOAD_STRING);
 	  FbeLoadString(_Module.GetResourceInstance(), IDS_ERRMSGBOX_CAPTION, cpt, MAX_LOAD_STRING);      
-    ::MessageBox(NULL, msg, cpt,MB_OK|MB_ICONERROR);
+    U::MessageBox(NULL, msg, cpt,MB_OK|MB_ICONERROR);
     goto out;
   }
 	StartupTrace::Event(L"startup", L"S164", L"editor modules initialized");

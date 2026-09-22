@@ -19,5 +19,5 @@ inline void ShowBinarySaveFailure(HWND owner, const CString& destination, DWORD 
 	CString message;
 	message.Format(templateText, destination.GetString(), reason.GetString(), error);
 	const CString caption = FbeLoadRuntimeStringByKey(L"fbe.binary_save.failed.caption", L"Save image");
-	::MessageBox(owner, message, caption, MB_OK | MB_ICONERROR);
+	U::MessageBox(owner, message, caption, MB_OK | MB_ICONERROR);
 }

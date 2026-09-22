@@ -4,11 +4,12 @@
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\..\\common\\ModernFileDialog.h"
 #include "..\\..\\StartupTrace.h"
+#include "..\\..\\utils\\utils.h"
 
 extern CSettings _Settings;
 
 namespace { void SetText(HWND window, int id, LPCWSTR key, LPCWSTR fallback) { ::SetDlgItemText(window, id, FbeLoadRuntimeStringByKey(key, fallback)); } }
-namespace { void DictionaryError(HWND owner, LPCWSTR key, LPCWSTR fallback) { MessageBeep(MB_ICONERROR); ::MessageBox(owner, FbeLoadRuntimeStringByKey(key, fallback), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR); } }
+namespace { void DictionaryError(HWND owner, LPCWSTR key, LPCWSTR fallback) { MessageBeep(MB_ICONERROR); U::MessageBox(owner, FbeLoadRuntimeStringByKey(key, fallback), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR); } }
 
 LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {

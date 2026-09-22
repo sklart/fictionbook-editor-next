@@ -137,6 +137,9 @@ namespace U // place all utilities into their own namespace
   CString GetWindowText(HWND hWnd);
   void	  ReportError(HRESULT hr);
   void	  ReportError(_com_error& e);
+	// Uses the shared FBE-owned message surface in Dark and the system dialog
+	// in Light/High Contrast. Keep the Win32 argument order for direct callers.
+	UINT	  MessageBox(HWND owner, const TCHAR *message, const TCHAR *title, UINT type);
   UINT	  MessageBox(UINT type,const TCHAR *title,const TCHAR *msg,...);
   UINT	  MessageBox(UINT type, UINT titleID, UINT msgID, ...);
   CString GetProgDir();

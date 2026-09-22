@@ -8,6 +8,7 @@
 #include "SpellParagraphTraversal.h"
 #include "RuntimeLocalization.h"
 #include "StartupTrace.h"
+#include "utils.h"
 
 static void SetRuntimeSpellText(HWND dialog, int controlId, LPCWSTR key, LPCWSTR fallback)
 {
@@ -490,7 +491,7 @@ void CSpeller::AddToDictionary()
 		Hunspell_add(currDict, str);
 		// add to custom dictionary
 		m_CustomDict.Add(word);
-		if(!SaveCustomDict()) ::MessageBox(m_frame, FbeLoadRuntimeStringByKey(L"fbe.spelling.custom_dictionary.save_failed", L"The word was added for this session, but the custom dictionary could not be saved."), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"), MB_OK | MB_ICONERROR);
+		if(!SaveCustomDict()) U::MessageBox(m_frame, FbeLoadRuntimeStringByKey(L"fbe.spelling.custom_dictionary.save_failed", L"The word was added for this session, but the custom dictionary could not be saved."), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"), MB_OK | MB_ICONERROR);
 		// recheck page
 		ClearAllMarks();
 		HighlightMisspells();
@@ -505,7 +506,7 @@ void CSpeller::AddToDictionary(CString word)
 	Hunspell_add(currDict, str);
 	// add to custom dictionary
 	m_CustomDict.Add(word);
-	if(!SaveCustomDict()) ::MessageBox(m_frame, FbeLoadRuntimeStringByKey(L"fbe.spelling.custom_dictionary.save_failed", L"The word was added for this session, but the custom dictionary could not be saved."), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"), MB_OK | MB_ICONERROR);
+	if(!SaveCustomDict()) U::MessageBox(m_frame, FbeLoadRuntimeStringByKey(L"fbe.spelling.custom_dictionary.save_failed", L"The word was added for this session, but the custom dictionary could not be saved."), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"), MB_OK | MB_ICONERROR);
 	// recheck page
 	ClearAllMarks();
 	HighlightMisspells();

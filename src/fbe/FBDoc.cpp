@@ -2418,11 +2418,11 @@ void Doc::AddBinary(const CString& filename)
 	CString error;
 	HRESULT hr = ImportBinary(filename, error);
 	if (hr == E_ABORT) {
-		if (::MessageBox(NULL, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
+		if (U::MessageBox(NULL, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
 		hr = ImportBinary(filename, error, NULL, true);
 	}
 	if (FAILED(hr)) {
-		if (!error.IsEmpty()) ::MessageBox(NULL, error, L"FictionBook Editor", MB_OK | MB_ICONERROR);
+		if (!error.IsEmpty()) U::MessageBox(NULL, error, L"FictionBook Editor", MB_OK | MB_ICONERROR);
 		else U::ReportError(hr);
 	}
 }
@@ -2787,7 +2787,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 	  wchar_t cpt[MAX_LOAD_STRING + 1];
 	  FbeLoadString(_Module.GetResourceInstance(), IDS_OUT_OF_MEM_MSG, msg, MAX_LOAD_STRING);
 	  FbeLoadString(_Module.GetResourceInstance(), IDR_MAINFRAME, cpt, MAX_LOAD_STRING);
-      ::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
+	  U::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
       return false;
     }
     ::SendMessage(sci, SCI_GETTEXT, textlen+1, (LPARAM)buffer.data());
@@ -2799,7 +2799,7 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 	  wchar_t cpt[MAX_LOAD_STRING + 1];
 	  FbeLoadString(_Module.GetResourceInstance(), IDS_OUT_OF_MEM_MSG, msg, MAX_LOAD_STRING);
 	  FbeLoadString(_Module.GetResourceInstance(), IDR_MAINFRAME, cpt, MAX_LOAD_STRING);
-      ::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
+	  U::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
       return false;
     }
     ::MultiByteToWideChar(CP_UTF8,0,buffer.data(),textlen,ustr,ulen);

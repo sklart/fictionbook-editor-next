@@ -5,6 +5,7 @@
 #include "Settings.h"
 #include "settings\\ui\\SettingsTooltips.h"
 #include "RuntimeLocalization.h"
+#include "utils.h"
 
 extern CSettings _Settings;
 extern bool VBErr;
@@ -592,7 +593,7 @@ public:
 	m_selvalid = false;
 	if (!m_view->DoSearchFromScopeStart()) {
 		if (!m_view->LastSearchError().IsEmpty() && m_view->LastSearchErrorIsRegexp())
-			::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_replace.caption", L"Replace"), MB_OK | MB_ICONEXCLAMATION);
+			U::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_replace.caption", L"Replace"), MB_OK | MB_ICONEXCLAMATION);
 		else
 			U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 	} else {
@@ -648,7 +649,7 @@ public:
 			if (!VBErr)
 			{
 				if (!m_view->LastSearchError().IsEmpty() && m_view->LastSearchErrorIsRegexp())
-					::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
+					U::MessageBox(m_hWnd, m_view->LastSearchError(), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find.caption", L"Find"), MB_OK | MB_ICONEXCLAMATION);
 				else if (m_view->LastSearchError().IsEmpty())
 					U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
 				else

@@ -6,6 +6,7 @@
 
 #include "mainfrm.h"
 #include "ScriptDiagnostics.h"
+#include "utils.h"
 
 
 #define	MAXARGS	32

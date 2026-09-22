@@ -26,6 +26,7 @@ $aboutBox = Read-ProjectFile 'src\fbe\AboutBox.cpp'
 $scriptVisuals = Read-ProjectFile 'src\fbe\scripts\ScriptVisualResources.cpp'
 $colorButton = Read-ProjectFile 'src\fbe\extras\ColorButton.cpp'
 $utils = Read-ProjectFile 'src\fbe\utils\Utils.cpp'
+$utilsHeader = Read-ProjectFile 'src\fbe\utils\utils.h'
 
 foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
@@ -79,6 +80,16 @@ if($managerHeader -notlike '*int MessageBox(HWND owner, LPCWSTR message, LPCWSTR
 }
 foreach($required in @('ThemeManager::MessageBox(::GetActiveWindow(),str,title,type)', 'ThemeManager::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR)')) {
 	if($utils -notlike "*$required*") { throw "Common FBE error/confirmation messages bypass the shared themed wrapper: $required." }
+}
+if($utilsHeader -notlike '*MessageBox(HWND owner, const TCHAR *message, const TCHAR *title, UINT type)*') {
+	throw 'Direct FBE-owned messages do not have the owner-preserving themed wrapper.'
+}
+foreach($source in @(
+	' src\fbe\FBE.cpp', ' src\fbe\FBDoc.cpp', ' src\fbe\FBEview.cpp', ' src\fbe\mainfrm.cpp',
+	' src\fbe\settings\ui\SettingsAdvancedPage.cpp', ' src\fbe\settings\ui\SettingsSourcePage.cpp',
+	' src\fbe\settings\ui\SettingsSpellingPage.cpp', ' src\fbe\Speller.cpp')) {
+	$directMessageSource = Read-ProjectFile $source.Trim()
+	if($directMessageSource -match '(?<!U)::MessageBox\(') { throw "FBE-owned message dialog bypasses the shared themed wrapper: $($source.Trim())." }
 }
 foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ApplyNativeMenuBitmaps', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not attach registered native popup bitmaps: $required." }
