@@ -162,9 +162,11 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 		}
 		const RebarBandThemeState& base = baseBands[info.wID];
 		info.fStyle = dark ? base.style & ~RBBS_CHILDEDGE : base.style;
-		// Fixed bands do not need a gripper.  Movable command/script bands keep
-		// their native drag affordance, now hosted by a dark themed rebar.
-		if(dark && (base.style & RBBS_FIXEDSIZE)) info.fStyle |= RBBS_NOGRIPPER;
+		// FBE persists toolbar visibility/order through its own layout commands;
+		// the native rebar drag gripper is not an exposed interaction contract.
+		// It remains a bright system-rendered artifact in Dark, so remove it on
+		// every upper band instead of leaving a mixed light strip behind.
+		if(dark) info.fStyle |= RBBS_NOGRIPPER;
 		info.clrBack = dark ? ThemeManager::ControlColor() : base.back;
 		info.clrFore = dark ? ThemeManager::TextColor() : base.fore;
 		rebar.SetBandInfo(index, &info);

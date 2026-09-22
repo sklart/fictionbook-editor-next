@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "ThemeManager.h"
+#include "RuntimeLocalization.h"
+#include "resource.h"
 #include <map>
+#include <vector>
 
 namespace
 {
@@ -473,6 +476,207 @@ HRESULT CALLBACK ThemedTaskDialogCallback(HWND window, UINT notification, WPARAM
 		ApplyToWindow(window);
 	return state->callback != NULL ? state->callback(window, notification, wParam, lParam, state->callbackData) : S_OK;
 }
+
+struct ThemedMessageButton
+{
+	UINT id;
+	CString text;
+};
+
+class ThemedMessageDialog
+{
+	HWND m_window = NULL;
+	HWND m_owner = NULL;
+	CString m_message;
+	CString m_caption;
+	UINT m_type = 0;
+	int m_result = 0;
+	int m_buttonTop = 0;
+	UINT m_defaultId = IDOK;
+	std::vector<ThemedMessageButton> m_buttons;
+	std::vector<HWND> m_buttonWindows;
+
+	static ATOM RegisterWindowClass()
+	{
+		static ATOM atom = 0;
+		if(atom != 0) return atom;
+		WNDCLASSEXW klass = {}; klass.cbSize = sizeof(klass); klass.style = CS_HREDRAW | CS_VREDRAW;
+		klass.lpfnWndProc = WindowProc; klass.hInstance = _Module.GetModuleInstance();
+		klass.hCursor = ::LoadCursor(NULL, IDC_ARROW); klass.hbrBackground = NULL;
+		klass.lpszClassName = L"FBEThemedMessageDialog";
+		atom = ::RegisterClassExW(&klass);
+		return atom;
+	}
+
+	static LPCWSTR IconFor(UINT type)
+	{
+		switch(type & MB_ICONMASK)
+		{
+		case MB_ICONHAND: return IDI_ERROR;
+		case MB_ICONQUESTION: return IDI_QUESTION;
+		case MB_ICONEXCLAMATION: return IDI_WARNING;
+		case MB_ICONASTERISK: return IDI_INFORMATION;
+		default: return NULL;
+		}
+	}
+
+	static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		ThemedMessageDialog* dialog = reinterpret_cast<ThemedMessageDialog*>(::GetWindowLongPtrW(window, GWLP_USERDATA));
+		if(message == WM_NCCREATE)
+		{
+			dialog = static_cast<ThemedMessageDialog*>(reinterpret_cast<LPCREATESTRUCTW>(lParam)->lpCreateParams);
+			::SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(dialog));
+			dialog->m_window = window;
+		}
+		if(dialog == NULL) return ::DefWindowProcW(window, message, wParam, lParam);
+		switch(message)
+		{
+		case WM_CREATE: dialog->CreateControls(); return 0;
+		case WM_ERASEBKGND: return 1;
+		case WM_PAINT: dialog->Paint(); return 0;
+		case WM_COMMAND:
+			if(HIWORD(wParam) == BN_CLICKED) { dialog->Close(static_cast<UINT>(LOWORD(wParam))); return 0; }
+			break;
+		case WM_CLOSE: dialog->Close(dialog->CancelResult()); return 0;
+		case WM_DESTROY: return 0;
+		}
+		return ::DefWindowProcW(window, message, wParam, lParam);
+	}
+
+	CString ButtonText(UINT id) const
+	{
+		switch(id)
+		{
+		case IDOK: return FbeLoadRuntimeString(IDS_MB_OK);
+		case IDCANCEL: return FbeLoadRuntimeString(IDS_MB_CANCEL);
+		case IDYES: return FbeLoadRuntimeString(IDS_MB_YES);
+		case IDNO: return FbeLoadRuntimeString(IDS_MB_NO);
+		case IDABORT: return FbeLoadRuntimeString(IDS_MB_ABORT);
+		case IDRETRY: return FbeLoadRuntimeString(IDS_MB_RETRY);
+		case IDIGNORE: return FbeLoadRuntimeString(IDS_MB_IGNORE);
+		case IDCLOSE: return FbeLoadRuntimeString(IDS_MB_CLOSE);
+		default: return CString();
+		}
+	}
+
+	void AddButton(UINT id) { ThemedMessageButton button = { id, ButtonText(id) }; m_buttons.push_back(button); }
+
+	void BuildButtons()
+	{
+		switch(m_type & MB_TYPEMASK)
+		{
+		case MB_OKCANCEL: AddButton(IDOK); AddButton(IDCANCEL); break;
+		case MB_YESNO: AddButton(IDYES); AddButton(IDNO); break;
+		case MB_YESNOCANCEL: AddButton(IDYES); AddButton(IDNO); AddButton(IDCANCEL); break;
+		case MB_RETRYCANCEL: AddButton(IDRETRY); AddButton(IDCANCEL); break;
+		case MB_ABORTRETRYIGNORE: AddButton(IDABORT); AddButton(IDRETRY); AddButton(IDIGNORE); break;
+		default: AddButton(IDOK); break;
+		}
+		UINT defaultIndex = 0;
+		switch(m_type & MB_DEFMASK) { case MB_DEFBUTTON2: defaultIndex = 1; break; case MB_DEFBUTTON3: defaultIndex = 2; break; case MB_DEFBUTTON4: defaultIndex = 3; break; }
+		if(defaultIndex >= m_buttons.size()) defaultIndex = 0;
+		m_defaultId = m_buttons[defaultIndex].id;
+	}
+
+	int CancelResult() const
+	{
+		for(size_t index = 0; index < m_buttons.size(); ++index) if(m_buttons[index].id == IDCANCEL) return IDCANCEL;
+		for(size_t index = 0; index < m_buttons.size(); ++index) if(m_buttons[index].id == IDNO) return IDNO;
+		return static_cast<int>(m_defaultId);
+	}
+
+	void CreateControls()
+	{
+		const int iconX = 22, textX = 68, textY = 24;
+		if(LPCWSTR icon = IconFor(m_type))
+		{
+			HWND control = ::CreateWindowExW(0, WC_STATICW, NULL, WS_CHILD | WS_VISIBLE | SS_ICON, iconX, textY, 32, 32, m_window, NULL, _Module.GetModuleInstance(), NULL);
+			::SendMessageW(control, STM_SETICON, reinterpret_cast<WPARAM>(::LoadIconW(NULL, icon)), 0);
+		}
+		RECT client = {}; ::GetClientRect(m_window, &client);
+		::CreateWindowExW(0, WC_STATICW, m_message, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX,
+			textX, textY, client.right - textX - 20, m_buttonTop - textY - 14, m_window, NULL, _Module.GetModuleInstance(), NULL);
+		const int width = 92, gap = 9, margin = 18;
+		int x = client.right - margin - static_cast<int>(m_buttons.size()) * width - static_cast<int>(m_buttons.size() - 1) * gap;
+		for(size_t index = 0; index < m_buttons.size(); ++index)
+		{
+			const DWORD style = WS_CHILD | WS_VISIBLE | (m_buttons[index].id == m_defaultId ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON);
+			HWND button = ::CreateWindowExW(0, WC_BUTTONW, m_buttons[index].text, style, x, m_buttonTop + 12, width, 27,
+				m_window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(m_buttons[index].id)), _Module.GetModuleInstance(), NULL);
+			m_buttonWindows.push_back(button); x += width + gap;
+		}
+		ThemeManager::ApplyToWindow(m_window);
+		for(size_t index = 0; index < m_buttons.size(); ++index)
+			if(m_buttons[index].id == m_defaultId) { ::SetFocus(m_buttonWindows[index]); break; }
+	}
+
+	void Paint()
+	{
+		PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(m_window, &paint);
+		RECT client = {}; ::GetClientRect(m_window, &client);
+		RECT content = client; content.bottom = m_buttonTop;
+		::FillRect(dc, &content, ThemeManager::WindowBrush());
+		RECT buttons = client; buttons.top = m_buttonTop;
+		::FillRect(dc, &buttons, ThemeManager::ControlBrush());
+		RECT separator = { client.left, m_buttonTop, client.right, m_buttonTop + 1 };
+		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
+		::FrameRect(dc, &client, ThemeManager::Brush(THEME_COLOR_BORDER));
+		::EndPaint(m_window, &paint);
+	}
+
+	void Close(UINT result) { m_result = static_cast<int>(result); if(::IsWindow(m_window)) ::DestroyWindow(m_window); }
+
+	bool HandleMessage(MSG& message)
+	{
+		if(message.message != WM_KEYDOWN || (message.hwnd != m_window && !::IsChild(m_window, message.hwnd))) return false;
+		if(message.wParam == VK_ESCAPE) { Close(CancelResult()); return true; }
+		if(message.wParam == VK_RETURN)
+		{
+			for(size_t index = 0; index < m_buttons.size(); ++index)
+				if(m_buttons[index].id == m_defaultId) { ::SendMessage(m_buttonWindows[index], BM_CLICK, 0, 0); return true; }
+		}
+		if(message.wParam == VK_TAB)
+		{
+			HWND next = ::GetNextDlgTabItem(m_window, ::GetFocus(), (::GetKeyState(VK_SHIFT) & 0x8000) != 0);
+			if(next) ::SetFocus(next);
+			return true;
+		}
+		return false;
+	}
+
+public:
+	ThemedMessageDialog(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type) :
+		m_owner(owner), m_message(message ? message : L""), m_caption(caption ? caption : L""), m_type(type) {}
+
+	int Show()
+	{
+		if(RegisterWindowClass() == 0) return 0;
+		BuildButtons();
+		HDC dc = ::GetDC(NULL); HFONT font = static_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT));
+		HGDIOBJ old = ::SelectObject(dc, font); RECT text = { 0, 0, 420, 0 };
+		::DrawTextW(dc, m_message, -1, &text, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+		::SelectObject(dc, old); ::ReleaseDC(NULL, dc);
+		const int width = 500; m_buttonTop = (std::max)(104, static_cast<int>(text.bottom - text.top) + 48);
+		const int height = m_buttonTop + 57;
+		RECT ownerRect = {}; if(!::GetWindowRect(m_owner, &ownerRect)) ::SystemParametersInfoW(SPI_GETWORKAREA, 0, &ownerRect, 0);
+		const int x = ownerRect.left + ((ownerRect.right - ownerRect.left) - width) / 2;
+		const int y = ownerRect.top + ((ownerRect.bottom - ownerRect.top) - height) / 2;
+		m_window = ::CreateWindowExW(WS_EX_DLGMODALFRAME, L"FBEThemedMessageDialog", m_caption,
+			WS_POPUP | WS_CAPTION | WS_SYSMENU, x, y, width, height, m_owner, NULL, _Module.GetModuleInstance(), this);
+		if(!m_window) return 0;
+		const bool enableOwner = ::IsWindow(m_owner) && ::IsWindowEnabled(m_owner);
+		if(enableOwner) ::EnableWindow(m_owner, FALSE);
+		::ShowWindow(m_window, SW_SHOW); ::UpdateWindow(m_window); ::SetForegroundWindow(m_window);
+		MSG message = {};
+		while(::IsWindow(m_window) && ::GetMessageW(&message, NULL, 0, 0) > 0)
+		{
+			if(!HandleMessage(message) && !::IsDialogMessageW(m_window, &message)) { ::TranslateMessage(&message); ::DispatchMessageW(&message); }
+		}
+		if(enableOwner) { ::EnableWindow(m_owner, TRUE); ::SetForegroundWindow(m_owner); }
+		return m_result ? m_result : CancelResult();
+	}
+};
 }
 
 UINT TrackPopupMenu(HMENU menu, UINT flags, int x, int y, HWND owner)
@@ -490,6 +694,17 @@ void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap)
 void UnregisterNativeMenuBitmap(UINT command)
 {
 	g_nativeMenuBitmaps.erase(command);
+}
+
+int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type)
+{
+	// FBE's custom surface intentionally handles only ordinary in-process
+	// messages.  Service/system-modal requests retain their Windows semantics.
+	if(!IsDark() || IsHighContrastEnabled() || (type & (MB_SYSTEMMODAL | MB_SERVICE_NOTIFICATION)) != 0)
+		return ::MessageBoxW(owner, message, caption, type);
+	ThemedMessageDialog dialog(owner ? owner : ::GetActiveWindow(), message, caption, type);
+	const int result = dialog.Show();
+	return result != 0 ? result : ::MessageBoxW(owner, message, caption, type);
 }
 
 HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification)

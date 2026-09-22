@@ -25,6 +25,7 @@ $modelessDialog = Read-ProjectFile 'src\fbe\ModelessDialog.h'
 $aboutBox = Read-ProjectFile 'src\fbe\AboutBox.cpp'
 $scriptVisuals = Read-ProjectFile 'src\fbe\scripts\ScriptVisualResources.cpp'
 $colorButton = Read-ProjectFile 'src\fbe\extras\ColorButton.cpp'
+$utils = Read-ProjectFile 'src\fbe\utils\Utils.cpp'
 
 foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
@@ -58,7 +59,7 @@ foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl
 foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
-foreach($required in @('RBBS_NOGRIPPER', 'RBBS_FIXEDSIZE', 'StatusBarThemeProc', 'SB_GETPARTS', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
+foreach($required in @('RBBS_NOGRIPPER', 'FBE persists toolbar visibility/order', 'StatusBarThemeProc', 'SB_GETPARTS', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
 	if($mainFrame -notlike "*$required*") { throw "Rebar/status bar Dark surface lacks the required native-theme handling: $required." }
 }
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {
@@ -69,6 +70,15 @@ foreach($required in @('useDarkPalette', 'ThemeManager::ControlColor()', 'ThemeM
 }
 foreach($required in @('TrackPopupMenu', 'TaskDialogIndirect', 'TDN_CREATED', 'ThemedTaskDialogCallback', 'ApplyToWindow(window)')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not provide the native popup and TaskDialog wrappers: $required." }
+}
+foreach($required in @('ThemedMessageDialog', 'FBEThemedMessageDialog', 'MB_SYSTEMMODAL', 'MB_SERVICE_NOTIFICATION', 'ThemeManager::ApplyToWindow(m_window)', 'ThemeManager::WindowBrush()', 'ThemeManager::ControlBrush()', 'THEME_COLOR_SEPARATOR', 'VK_ESCAPE', 'VK_RETURN', 'IsDialogMessageW')) {
+	if($manager -notlike "*$required*") { throw "Theme manager does not provide the themed FBE-owned message dialog: $required." }
+}
+if($managerHeader -notlike '*int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type)*') {
+	throw 'Theme manager does not expose the FBE-owned message dialog wrapper.'
+}
+foreach($required in @('ThemeManager::MessageBox(::GetActiveWindow(),str,title,type)', 'ThemeManager::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR)')) {
+	if($utils -notlike "*$required*") { throw "Common FBE error/confirmation messages bypass the shared themed wrapper: $required." }
 }
 foreach($required in @('RegisterNativeMenuBitmap', 'UnregisterNativeMenuBitmap', 'ApplyNativeMenuBitmaps', 'MIIM_BITMAP', 'TrackPopupMenuEx')) {
 	if($manager -notlike "*$required*") { throw "Theme manager does not attach registered native popup bitmaps: $required." }
@@ -91,6 +101,9 @@ foreach($required in @('ContextAttributeBoxThemeProc', 'WS_EX_CLIENTEDGE', 'GWL_
 }
 foreach($required in @('ApplyRuntimeTableTheme', 'fbe-runtime-dark-table-theme', 'table.table th', 'table.table td', 'ThemeManager::ControlColor()', 'ThemeManager::BorderColor()', 'sheet->cssText')) {
 	if($fbDoc -notlike "*$required*") { throw "BODY table headers do not receive the runtime-only Dark table theme: $required." }
+}
+foreach($required in @('ApplyRuntimeScrollbarTheme', 'fbe-runtime-dark-scrollbar-theme', 'scrollbar-face-color', 'scrollbar-track-color', 'scrollbar-arrow-color', 'html,body', 'sheet->cssText = L""')) {
+	if($fbDoc -notlike "*$required*") { throw "BODY scrollbar runtime override is incomplete: $required." }
 }
 if($fbDoc -like '*runtime\main.css*' -or $fbDoc -notlike '*never BODY*') { throw 'BODY table theme must remain a runtime MSHTML override and must not replace BODY colours.' }
 foreach($required in @('AutomaticBodyColor', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'm_background.SetDefaultColor', 'm_foreground.SetDefaultColor')) {

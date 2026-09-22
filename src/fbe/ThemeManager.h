@@ -67,6 +67,9 @@ namespace ThemeManager
 	// attached recursively immediately before an FBE native popup is shown.
 	void RegisterNativeMenuBitmap(UINT command, HBITMAP bitmap);
 	void UnregisterNativeMenuBitmap(UINT command);
+	// FBE-owned replacement for ordinary confirmation and error message boxes.
+	// Light and High Contrast deliberately keep the native system dialog.
+	int MessageBox(HWND owner, LPCWSTR message, LPCWSTR caption, UINT type);
 	// Applies the theme as soon as a TaskDialog has a valid HWND, while keeping
 	// a caller-provided callback and its data intact.
 	HRESULT TaskDialogIndirect(const TASKDIALOGCONFIG& config, int* button, int* radioButton, BOOL* verification);

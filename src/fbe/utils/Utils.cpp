@@ -10,6 +10,7 @@
 #include "../res1.h"
 #include "../RuntimeLocalization.h"
 #include "../StartupTrace.h"
+#include "../ThemeManager.h"
 
 #include <iostream>
 #include <sstream>
@@ -550,7 +551,7 @@ void  ReportError(HRESULT hr)
   StartupTrace::HResult(L"utils", L"U100", hr, L"ReportError(HRESULT)");
 	if (IsUnattendedBatch()) return;
   CString cpt(FbeLoadRuntimeString(IDS_ERRMSGBOX_CAPTION));
-  ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
+	ThemeManager::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
 }
 
 void  ReportError(_com_error& e) {
@@ -604,7 +605,7 @@ void  ReportError(_com_error& e) {
   StartupTrace::ComException(L"utils", L"U110", e.Error(), NULL, e.ErrorInfo(),
     L"operation=ReportError(_com_error)");
 	if (IsUnattendedBatch()) { VBErr = true; return; }
-  ::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
+	ThemeManager::MessageBox(::GetActiveWindow(), err, cpt, MB_OK|MB_ICONERROR);
   VBErr = true;
 }
 
@@ -616,7 +617,7 @@ UINT  MessageBox(UINT type, UINT titleID, UINT msgID, ...) {
   va_start(ap,msgID);
   str.FormatV(msg,ap);
   va_end(ap);
-  return ::MessageBox(::GetActiveWindow(),str,title,type);
+	return ThemeManager::MessageBox(::GetActiveWindow(),str,title,type);
 }
 
 UINT  MessageBox(UINT type,const TCHAR *title,const TCHAR *msg, ...) {
@@ -625,7 +626,7 @@ UINT  MessageBox(UINT type,const TCHAR *title,const TCHAR *msg, ...) {
   va_start(ap,msg);
   str.FormatV(msg,ap);
   va_end(ap);
-  return ::MessageBox(::GetActiveWindow(),str,title,type);
+	return ThemeManager::MessageBox(::GetActiveWindow(),str,title,type);
 }
 
 CString	GetWindowText(HWND hWnd) {

@@ -31,6 +31,7 @@ extern CSettings _Settings;
 namespace FB {
 
 static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document);
+static void ApplyRuntimeScrollbarTheme(MSHTML::IHTMLDocument2Ptr document);
 
 static bool IsHighContrastEnabled()
 {
@@ -875,6 +876,7 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 	// apiLoadFB2 builds the BODY DOM.  Reapply the runtime-only table overlay
 	// afterwards so it remains present without becoming part of the FB2 model.
 	ApplyRuntimeTableTheme(m_editor.Document());
+	ApplyRuntimeScrollbarTheme(m_editor.Document());
 
 	if (diagnosticsActive)
 	{
@@ -2244,6 +2246,47 @@ static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document)
 		static_cast<LPCWSTR>(headerBackground), static_cast<LPCWSTR>(text), static_cast<LPCWSTR>(border));
 	sheet->cssText = static_cast<LPCWSTR>(css);
 }
+
+static void ApplyRuntimeScrollbarTheme(MSHTML::IHTMLDocument2Ptr document)
+{
+	if(!document) return;
+	MSHTML::IHTMLDocument3Ptr document3(document);
+	if(!document3) return;
+	MSHTML::IHTMLElementPtr style(document3->getElementById(L"fbe-runtime-dark-scrollbar-theme"));
+	if(!style)
+	{
+		MSHTML::IHTMLElementPtr head(document->createElement(L"STYLE"));
+		MSHTML::IHTMLElementCollectionPtr heads(document3->getElementsByTagName(L"HEAD"));
+		if(!head || !heads || heads->length == 0) return;
+		head->id = L"fbe-runtime-dark-scrollbar-theme";
+		MSHTML::IHTMLDOMNodePtr headNode(heads->item(_variant_t(0), _variant_t()));
+		if(!headNode) return;
+		headNode->appendChild(MSHTML::IHTMLDOMNodePtr(head));
+		style = head;
+	}
+	MSHTML::IHTMLStyleElementPtr styleElement(style);
+	MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
+	if(!sheet) return;
+	if(!ThemeManager::IsDark() || IsHighContrastEnabled())
+	{
+		sheet->cssText = L"";
+		return;
+	}
+	const CString track = CssColor(ThemeManager::ControlColor());
+	const CString thumb = CssColor(ThemeManager::BorderColor());
+	const CString arrows = CssColor(ThemeManager::TextColor());
+	CString css;
+	// MSHTML's legacy scrollbar properties are runtime CSS only.  They colour
+	// the document viewport without changing fbw_body, its custom background,
+	// or any serialized FB2/style data.
+	css.Format(L"html,body{scrollbar-face-color:%s;scrollbar-track-color:%s;"
+		L"scrollbar-arrow-color:%s;scrollbar-shadow-color:%s;scrollbar-darkshadow-color:%s;"
+		L"scrollbar-highlight-color:%s;scrollbar-3dlight-color:%s;}",
+		static_cast<LPCWSTR>(thumb), static_cast<LPCWSTR>(track), static_cast<LPCWSTR>(arrows),
+		static_cast<LPCWSTR>(thumb), static_cast<LPCWSTR>(thumb),
+		static_cast<LPCWSTR>(track), static_cast<LPCWSTR>(track));
+	sheet->cssText = static_cast<LPCWSTR>(css);
+}
 bool Doc::SerializeToMemory(std::vector<unsigned char>& output, FictionBookFileType targetType)
 {
 	output.clear();
@@ -2424,6 +2467,7 @@ void  Doc::ApplyConfChanges() {
 
 	ApplyEditorBackground(hs);
 	ApplyRuntimeTableTheme(m_editor.Document());
+	ApplyRuntimeScrollbarTheme(m_editor.Document());
 
 	bool mode = _Settings.FastMode();
 	SetFastMode(mode);
