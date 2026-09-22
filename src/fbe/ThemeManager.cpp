@@ -707,9 +707,7 @@ public:
 	{
 		if(RegisterWindowClass() == 0) return 0;
 		BuildButtons();
-		HDC ownerDc = ::GetDC(m_owner ? m_owner : NULL);
-		m_dpi = (std::max)(96, ::GetDeviceCaps(ownerDc, LOGPIXELSX));
-		::ReleaseDC(m_owner ? m_owner : NULL, ownerDc);
+		m_dpi = static_cast<int>(UiMetrics::DpiForWindow(m_owner));
 		MeasureLayout();
 		const int clientHeight = m_buttonTop + Scale(12 + 28 + 12);
 		RECT windowRect = { 0, 0, m_clientWidth, clientHeight };
