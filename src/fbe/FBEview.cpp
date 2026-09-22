@@ -1656,7 +1656,9 @@ MSHTML::IHTMLDOMNodePtr CFBEView::ResolveNormalizationScope()
 		// A cross-owner selection can alter multiple structural containers, so
 		// deliberately retain the conservative body-wide normalizer for it.
 		MSHTML::IHTMLElementPtr selectionBegin, selectionEnd;
-		if (GetSelectionInfo(std::addressof(selectionBegin), std::addressof(selectionEnd), NULL, NULL, MSHTML::IHTMLTxtRangePtr()))
+		int beginChar = 0;
+		int endChar = 0;
+		if (GetSelectionInfo(std::addressof(selectionBegin), std::addressof(selectionEnd), &beginChar, &endChar, MSHTML::IHTMLTxtRangePtr()))
 		{
 			MSHTML::IHTMLElementPtr beginOwner(FindNormalizationOwner(selectionBegin));
 			MSHTML::IHTMLElementPtr endOwner(FindNormalizationOwner(selectionEnd));
