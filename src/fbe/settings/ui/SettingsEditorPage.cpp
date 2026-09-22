@@ -21,16 +21,6 @@ void SetText(HWND window, int controlId, LPCWSTR key, LPCWSTR fallback)
 	::SetDlgItemText(window, controlId, FbeLoadRuntimeStringByKey(key, fallback));
 }
 
-COLORREF AutomaticBodyColor(bool background)
-{
-	const DWORD configured = background ? _Settings.GetColorBG() : _Settings.GetColorFG();
-	if(configured != CLR_DEFAULT) return configured;
-	// Mirror the effective default used by the visual BODY editor.  In Dark mode
-	// an Automatic swatch must not misleadingly display a light system colour.
-	if(_Settings.GetEditorBackgroundKind() == L"none" && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
-		return background ? ThemeManager::WindowColor() : ThemeManager::TextColor();
-	return ::GetSysColor(background ? COLOR_WINDOW : COLOR_WINDOWTEXT);
-}
 }
 
 LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
@@ -62,8 +52,6 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_foreground.SetCustomText(moreColorsText);
 	m_background.SetDefaultText(automaticColorText);
 	m_background.SetCustomText(moreColorsText);
-	m_background.SetDefaultColor(AutomaticBodyColor(true));
-	m_foreground.SetDefaultColor(AutomaticBodyColor(false));
 	m_background.SetColor(_Settings.GetColorBG());
 	m_foreground.SetColor(_Settings.GetColorFG());
 
@@ -116,6 +104,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_backgroundLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.cover", L"Cover"));
 	const CString layout = _Settings.GetEditorBackgroundLayout();
 	m_backgroundLayout.SetCurSel(layout == L"center" ? 1 : layout == L"contain" ? 2 : layout == L"cover" ? 3 : 0);
+	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
 	return 1;
 }
@@ -125,8 +114,7 @@ LRESULT CSettingsEditorPage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	if(!m_background.IsWindow() || !m_foreground.IsWindow()) return 0;
 	// General-page live preview may switch Light/Dark while this page remains
 	// open.  Refresh defaults without changing an explicit user swatch.
-	m_background.SetDefaultColor(AutomaticBodyColor(true));
-	m_foreground.SetDefaultColor(AutomaticBodyColor(false));
+	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
 	return 0;
 }
@@ -179,13 +167,43 @@ LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
 	ModernFileDialog::Request request; request.title = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.choose", L"Choose editor background").GetString();
 	request.defaultExtension = L"png"; request.fileMustExist = true; request.pathMustExist = true; request.filters = filters; request.filterCount = _countof(filters);
 	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
-	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty()) { m_customBackgroundPath = result.paths.front().c_str(); m_backgroundImage.SetCurSel(static_cast<int>(m_builtInBackgrounds.size() + 1)); UpdateBackgroundPreview(); }
+	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty()) { m_customBackgroundPath = result.paths.front().c_str(); m_backgroundImage.SetCurSel(static_cast<int>(m_builtInBackgrounds.size() + 1)); RefreshAutomaticColorDefaults(); UpdateBackgroundPreview(); }
 	return 0;
 }
 
-LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
+LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&) { RefreshAutomaticColorDefaults(); UpdateBackgroundPreview(); return 0; }
 LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
 LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&) { UpdateBackgroundPreview(); return 0; }
+
+void CSettingsEditorPage::GetSelectedBackground(CString& kind, CString& id) const
+{
+	kind = L"none";
+	id.Empty();
+	const int index = m_backgroundImage.GetCurSel();
+	if(index > 0 && index <= static_cast<int>(m_builtInBackgrounds.size()))
+	{
+		kind = L"builtin";
+		id = m_builtInBackgrounds[index - 1].id;
+	}
+	else if(index == static_cast<int>(m_builtInBackgrounds.size() + 1))
+		kind = L"custom";
+}
+
+EditorBackgroundColors CSettingsEditorPage::ResolvePreviewColors() const
+{
+	CString kind;
+	CString id;
+	GetSelectedBackground(kind, id);
+	return EditorBackgrounds::ResolveBodyColors(m_foreground.GetColor(), m_background.GetColor(), kind, id,
+		ThemeManager::IsHighContrast());
+}
+
+void CSettingsEditorPage::RefreshAutomaticColorDefaults()
+{
+	const EditorBackgroundColors colors = ResolvePreviewColors();
+	m_background.SetDefaultColor(colors.background);
+	m_foreground.SetDefaultColor(colors.foreground);
+}
 
 void CSettingsEditorPage::UpdateBackgroundPreview()
 {
@@ -196,13 +214,8 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	if(!path.IsEmpty()) { CImage image; if(SUCCEEDED(image.Load(path))) bitmap = image.Detach(); }
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
 	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
-	COLORREF foreground = m_foreground.GetColor();
-	COLORREF background = m_background.GetColor();
-	// CLR_DEFAULT is a ColorButton sentinel, not an actual COLORREF.  Keep the
-	// preview aligned with the effective Automatic swatches, including Dark.
-	if(foreground == CLR_DEFAULT) foreground = AutomaticBodyColor(false);
-	if(background == CLR_DEFAULT) background = AutomaticBodyColor(true);
-	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, foreground, background, text);
+	const EditorBackgroundColors colors = ResolvePreviewColors();
+	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, colors.foreground, colors.background, text);
 	m_backgroundPreview.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }
 

@@ -2168,38 +2168,9 @@ static BodyEditorColors ResolveBodyEditorColors()
 {
 	const DWORD configuredForeground = _Settings.GetColorFG();
 	const DWORD configuredBackground = _Settings.GetColorBG();
-	BodyEditorColors colors = {
-		configuredForeground == CLR_DEFAULT ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOWTEXT)) : configuredForeground,
-		configuredBackground == CLR_DEFAULT ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOW)) : configuredBackground
-	};
-	// Accessibility takes precedence over all FBE and background policies.
-	if(IsHighContrastEnabled()) return colors;
-
-	const CString backgroundKind = _Settings.GetEditorBackgroundKind();
-	if(backgroundKind == L"none")
-	{
-		// Interface colours are used only for an entirely standard BODY.
-		if(configuredForeground == CLR_DEFAULT && configuredBackground == CLR_DEFAULT && ThemeManager::IsDark())
-		{
-			colors.foreground = ThemeManager::TextColor();
-			colors.background = ThemeManager::WindowColor();
-		}
-		return colors;
-	}
-
-	if(backgroundKind == L"builtin")
-	{
-		COLORREF fallback = 0, text = 0;
-		if(EditorBackgrounds::GetBuiltInRecommendedColors(_Settings.GetEditorBackgroundId(), fallback, text))
-		{
-			if(configuredForeground == CLR_DEFAULT) colors.foreground = text;
-			if(configuredBackground == CLR_DEFAULT) colors.background = fallback;
-		}
-	}
-	// Custom images, including an unavailable file selected by the user, never
-	// inherit the interface palette.  Their remaining Default values stay the
-	// Windows system colours selected above.
-	return colors;
+	const EditorBackgroundColors resolved = EditorBackgrounds::ResolveBodyColors(configuredForeground, configuredBackground,
+		_Settings.GetEditorBackgroundKind(), _Settings.GetEditorBackgroundId(), IsHighContrastEnabled());
+	return { resolved.foreground, resolved.background };
 }
 
 static CString CssColor(COLORREF color)

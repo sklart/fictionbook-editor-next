@@ -13,6 +13,12 @@ struct EditorBackgroundDescriptor
 	CString recommendedTextColor;
 };
 
+struct EditorBackgroundColors
+{
+	COLORREF foreground;
+	COLORREF background;
+};
+
 // The runtime catalogue is deliberately optional: a bad or missing manifest only
 // disables built-in images and never affects the editor's normal colour background.
 class EditorBackgrounds
@@ -24,5 +30,9 @@ public:
 	// built-in background.  User-supplied images deliberately have no such
 	// policy and remain entirely user-controlled.
 	static bool GetBuiltInRecommendedColors(const CString& id, COLORREF& fallbackColor, COLORREF& textColor);
+	// Shared Automatic colour policy for the Settings preview and visual BODY.
+	// Explicit foreground/background values are always preserved.
+	static EditorBackgroundColors ResolveBodyColors(DWORD configuredForeground, DWORD configuredBackground,
+		const CString& backgroundKind, const CString& backgroundId, bool highContrast);
 	static bool IsSupportedLocalImage(const CString& path);
 };

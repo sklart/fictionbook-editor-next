@@ -6,7 +6,7 @@ $backgrounds = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe
 $frame = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\mainfrm.cpp')
 $workflow = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot '.github\workflows\build.yml')
 
-foreach($required in @('ResolveBodyEditorColors', 'ThemeManager::TextColor()', 'ThemeManager::WindowColor()', 'IsHighContrastEnabled()', 'backgroundKind == L"none"', 'backgroundKind == L"builtin"', 'GetBuiltInRecommendedColors')) {
+foreach($required in @('ResolveBodyEditorColors', 'EditorBackgrounds::ResolveBodyColors', 'IsHighContrastEnabled()')) {
     if($doc -notlike "*$required*") { throw "BODY theme resolution is missing $required." }
 }
 
@@ -19,15 +19,14 @@ foreach($required in @('fallbackColor', 'recommendedTextColor', 'ParseCssColor',
     if($backgrounds -notlike "*$required*") { throw "Built-in background metadata is not consumed: $required." }
 }
 
-$resolver = [regex]::Match($doc, 'static\s+BodyEditorColors\s+ResolveBodyEditorColors\(\)\s*\{[\s\S]*?\n\}')
-if(!$resolver.Success) { throw 'BODY colour resolver was not found.' }
+$resolver = [regex]::Match($backgrounds, 'EditorBackgroundColors\s+EditorBackgrounds::ResolveBodyColors\([\s\S]*?\n\}')
+if(!$resolver.Success) { throw 'Shared BODY colour resolver was not found.' }
 foreach($required in @(
     'configuredForeground == CLR_DEFAULT && configuredBackground == CLR_DEFAULT && ThemeManager::IsDark()', # Default FG + Default BG
-    'configuredForeground == CLR_DEFAULT ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOWTEXT)) : configuredForeground', # custom FG
-    'configuredBackground == CLR_DEFAULT ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOW)) : configuredBackground', # custom BG
+    'configuredForeground == CLR_DEFAULT ? ::GetSysColor(COLOR_WINDOWTEXT) : static_cast<COLORREF>(configuredForeground)', # custom FG
+    'configuredBackground == CLR_DEFAULT ? ::GetSysColor(COLOR_WINDOW) : static_cast<COLORREF>(configuredBackground)', # custom BG
     'if(backgroundKind == L"builtin")', # built-in background
-    'Custom images, including an unavailable file selected by the user, never', # custom background
-    'if(IsHighContrastEnabled()) return colors' # High Contrast
+    'if(highContrast) return colors' # High Contrast
 )) {
     if($resolver.Value -notlike "*$required*") { throw "BODY scenario is not protected: $required." }
 }

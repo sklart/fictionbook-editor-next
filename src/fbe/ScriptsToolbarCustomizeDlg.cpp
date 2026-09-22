@@ -2,6 +2,7 @@
 #include "ScriptsToolbarCustomizeDlg.h"
 #include "Settings.h"
 #include "RuntimeLocalization.h"
+#include "ThemeManager.h"
 #include "UiMetrics.h"
 #include "utils.h"
 
@@ -31,6 +32,9 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_availableList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE);
 	m_currentList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT);
 	m_panelList = GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL);
+	// Apply the same native listbox/scrollbar/client-edge treatment as the
+	// rest of the FBE-owned dialogs.  Light and High Contrast stay system-led.
+	ThemeManager::ApplyToWindow(m_hWnd);
 	m_scriptImages = reinterpret_cast<HIMAGELIST>(::SendMessage(m_toolbar, TB_GETIMAGELIST, 0, 0));
 	for(size_t index = 0; index < m_panels.size(); ++index) m_panelList.AddString(m_panels[index].name);
 	if(m_panelList.GetCount() == 0) m_panelList.AddString(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.main", L"Scripts"));
@@ -359,8 +363,15 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	const bool available = item.CtlID == IDC_SCRIPTS_TOOLBAR_AVAILABLE;
 	CDCHandle dc(item.hDC); CRect rect(item.rcItem);
 	const bool selected = (item.itemState & ODS_SELECTED) != 0;
-	dc.FillSolidRect(rect, ::GetSysColor(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW));
-	dc.SetTextColor(::GetSysColor(selected ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT));
+	const bool disabled = (item.itemState & ODS_DISABLED) != 0 || ::IsWindowEnabled(item.hwndItem) == FALSE;
+	const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	const COLORREF background = themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::WindowColor()) :
+		::GetSysColor(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW);
+	const COLORREF textColor = themed ? (disabled ? ThemeManager::DisabledTextColor() :
+		(selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor())) :
+		::GetSysColor(disabled ? COLOR_GRAYTEXT : (selected ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT));
+	dc.FillSolidRect(rect, background);
+	dc.SetTextColor(textColor);
 	dc.SetBkMode(TRANSPARENT);
 	const int textLength = static_cast<int>(::SendMessage(item.hwndItem, LB_GETTEXTLEN, item.itemID, 0));
 	CString text; LPWSTR textBuffer = text.GetBuffer(textLength); ::SendMessage(item.hwndItem, LB_GETTEXT, item.itemID, reinterpret_cast<LPARAM>(textBuffer)); text.ReleaseBuffer();
@@ -380,7 +391,9 @@ void CScriptsToolbarCustomizeDlg::DrawDragIndicator(const DRAWITEMSTRUCT& item)
 	const int count = m_currentList.GetCount();
 	if(m_dragInsert != static_cast<int>(item.itemID) && !(m_dragInsert == count && item.itemID + 1 == static_cast<UINT>(count))) return;
 	const int y = m_dragInsert == count ? item.rcItem.bottom - Scale(2) : item.rcItem.top;
-	CDCHandle(item.hDC).FillSolidRect(item.rcItem.left, y, item.rcItem.right - item.rcItem.left, Scale(2), ::GetSysColor(COLOR_HIGHLIGHT));
+	const COLORREF indicator = ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ?
+		ThemeManager::SelectionBackgroundColor() : ::GetSysColor(COLOR_HIGHLIGHT);
+	CDCHandle(item.hDC).FillSolidRect(item.rcItem.left, y, item.rcItem.right - item.rcItem.left, Scale(2), indicator);
 }
 void CScriptsToolbarCustomizeDlg::UpdateDragInsert(POINT point)
 {

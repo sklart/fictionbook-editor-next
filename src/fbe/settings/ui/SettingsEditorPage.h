@@ -71,6 +71,9 @@ public:
 	LRESULT OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewColorChanged(int, LPNMHDR, BOOL&);
+	void GetSelectedBackground(CString& kind, CString& id) const;
+	EditorBackgroundColors ResolvePreviewColors() const;
+	void RefreshAutomaticColorDefaults();
 	void UpdateBackgroundPreview();
 	bool Validate(); void Commit(); bool CancelChanges();
 };

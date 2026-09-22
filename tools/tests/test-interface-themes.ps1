@@ -117,8 +117,11 @@ foreach($required in @('ApplyRuntimeScrollbarTheme', 'fbe-runtime-dark-scrollbar
 	if($fbDoc -notlike "*$required*") { throw "BODY scrollbar runtime override is incomplete: $required." }
 }
 if($fbDoc -like '*runtime\main.css*' -or $fbDoc -notlike '*never BODY*') { throw 'BODY table theme must remain a runtime MSHTML override and must not replace BODY colours.' }
-foreach($required in @('AutomaticBodyColor', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'm_background.SetDefaultColor', 'm_foreground.SetDefaultColor')) {
+foreach($required in @('GetSelectedBackground', 'ResolvePreviewColors', 'EditorBackgrounds::ResolveBodyColors', 'RefreshAutomaticColorDefaults', 'm_background.SetDefaultColor', 'm_foreground.SetDefaultColor')) {
 	if($settingsEditorPage -notlike "*$required*") { throw "Automatic BODY colour buttons do not show their effective Dark value: $required." }
+}
+if($settingsEditorPage -notlike '*OnBackgroundSelectionChanged*RefreshAutomaticColorDefaults()*' -or $settingsEditorPage -notlike '*m_backgroundImage.GetCurSel()*') {
+	throw 'Automatic BODY preview does not recalculate from the currently selected background.'
 }
 if($settingsEditorPage -notlike '*OnThemeChanged*' -or $settingsEditorPageHeader -notlike '*MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)*') {
 	throw 'Automatic BODY colour buttons do not refresh while Settings previews a live theme change.'

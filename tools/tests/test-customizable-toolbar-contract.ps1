@@ -85,6 +85,18 @@ foreach ($required in @('CreateDialogFontForDpi', 'FbeApplyRuntimeDialogLocaliza
         throw "Диалог не сохраняет требуемое локальное поведение: $required"
     }
 }
+foreach ($required in @('ThemeManager::ApplyToWindow(m_hWnd)', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::SelectionBackgroundColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::IsHighContrast()')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Настройка панели скриптов не использует dark-aware palette: $required"
+    }
+}
+foreach ($required in @('const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast()',
+    'themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::WindowColor())',
+    'themed ? (disabled ? ThemeManager::DisabledTextColor()')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "DrawListItem must retain its explicit Dark/Light palette split: $required"
+    }
+}
 foreach ($required in @('BeginDeferWindowPos', 'DeferWindowPos', 'EndDeferWindowPos', 'RDW_ALLCHILDREN', 'SaveDC', 'IntersectClipRect', 'RestoreDC', 'ActivateList')) {
     if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Диалог не содержит безопасную layout/paint-защиту: $required"

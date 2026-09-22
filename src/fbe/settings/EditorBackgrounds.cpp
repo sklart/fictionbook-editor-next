@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "EditorBackgrounds.h"
+#include "..\\ThemeManager.h"
 #include "..\\RuntimeLocalization.h"
 #include "..\\utils\\utils.h"
 #include "..\\..\\common\\RuntimeLocalizationCommon.h"
@@ -104,6 +105,35 @@ bool EditorBackgrounds::GetBuiltInRecommendedColors(const CString& id, COLORREF&
 			return ParseCssColor(backgrounds[i].fallbackColor, fallbackColor) &&
 				ParseCssColor(backgrounds[i].recommendedTextColor, textColor);
 	return false;
+}
+
+EditorBackgroundColors EditorBackgrounds::ResolveBodyColors(DWORD configuredForeground, DWORD configuredBackground,
+	const CString& backgroundKind, const CString& backgroundId, bool highContrast)
+{
+	EditorBackgroundColors colors = {
+		configuredForeground == CLR_DEFAULT ? ::GetSysColor(COLOR_WINDOWTEXT) : static_cast<COLORREF>(configuredForeground),
+		configuredBackground == CLR_DEFAULT ? ::GetSysColor(COLOR_WINDOW) : static_cast<COLORREF>(configuredBackground)
+	};
+	if(highContrast) return colors;
+	if(backgroundKind == L"none")
+	{
+		if(configuredForeground == CLR_DEFAULT && configuredBackground == CLR_DEFAULT && ThemeManager::IsDark())
+		{
+			colors.foreground = ThemeManager::TextColor();
+			colors.background = ThemeManager::WindowColor();
+		}
+		return colors;
+	}
+	if(backgroundKind == L"builtin")
+	{
+		COLORREF fallback = 0, text = 0;
+		if(GetBuiltInRecommendedColors(backgroundId, fallback, text))
+		{
+			if(configuredForeground == CLR_DEFAULT) colors.foreground = text;
+			if(configuredBackground == CLR_DEFAULT) colors.background = fallback;
+		}
+	}
+	return colors;
 }
 
 bool EditorBackgrounds::IsSupportedLocalImage(const CString& source)
