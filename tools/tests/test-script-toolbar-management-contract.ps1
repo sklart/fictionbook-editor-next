@@ -24,6 +24,7 @@ if($frame -match 'bool CMainFrame::ApplyScriptToolbarDefinitions\([\s\S]*?\n\}')
 Must $frame 'CreateScriptToolbarRuntime' 'new visible custom toolbar uses a narrow runtime creator'
 Must $frame 'DestroyScriptToolbarRuntime' 'removed or hidden custom toolbar owns its narrow destruction'
 Must $frame 'm_rebar\.ShowBand\(band, visible\)' 'scripts-main visibility uses its existing rebar band'
+Must $frame 'band != insertion && !m_rebar\.MoveBand\(band, insertion\)' 'reorder accepts a band already occupying its target position'
 Must $dialog 'm_manager\.Create' 'create panel action'
 Must $dialog 'm_manager\.Delete' 'delete panel action'
 Must $dialog 'm_manager\.Rename' 'rename panel action'

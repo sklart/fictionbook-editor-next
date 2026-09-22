@@ -2606,7 +2606,12 @@ bool CMainFrame::ReorderScriptToolbarRuntimeBands(const std::vector<ScriptToolba
 		ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(definitions[definition].id);
 		if(runtime == NULL || runtime->rebarBandId == 0) return false;
 		const int band = m_rebar.IdToIndex(runtime->rebarBandId);
-		if(band < 0 || !m_rebar.MoveBand(band, insertion++)) return false;
+		if(band < 0) return false;
+		// RB_MOVEBAND does not report success when the band is already in the
+		// requested slot.  This is the normal case for an unchanged first custom
+		// panel, not a failed delta.
+		if(band != insertion && !m_rebar.MoveBand(band, insertion)) return false;
+		++insertion;
 	}
 	return true;
 }
