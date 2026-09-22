@@ -207,6 +207,8 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	}
 	if((::GetWindowLongPtr(window, GWL_STYLE) & SBARS_SIZEGRIP) != 0)
 	{
+		const HGDIOBJ oldPen = ::SelectObject(dc, ::GetStockObject(DC_PEN));
+		::SetDCPenColor(dc, ThemeManager::SeparatorColor());
 		const int size = ::GetSystemMetrics(SM_CXVSCROLL);
 		for(int offset = 4; offset <= size - 3; offset += 4)
 		{
@@ -215,6 +217,7 @@ LRESULT CALLBACK StatusBarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 			::MoveToEx(dc, left, top, NULL);
 			::LineTo(dc, client.right - 3, client.bottom - offset);
 		}
+		::SelectObject(dc, oldPen);
 	}
 	::EndPaint(window, &paint);
 	return 0;

@@ -94,6 +94,7 @@ $bitmapPaths = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\res') -F
 if ($bitmapPaths.Count -ne 8) { throw "Expected 8 table toolbar bitmaps, found $($bitmapPaths.Count)." }
 $disabledBitmapPaths = Get-ChildItem -LiteralPath (Join-Path $repoRoot 'src\fbe\res') -Filter 'table_toolbar_*_disabled.bmp'
 if ($disabledBitmapPaths.Count -ne 0) { throw 'Disabled table toolbar bitmaps must not be present; disabled rendering is generated programmatically.' }
+$enclosedLightDetails = 0
 foreach ($path in $bitmapPaths) {
     $bytes = [IO.File]::ReadAllBytes($path.FullName)
     if ($bytes.Length -lt 54 -or $bytes[0] -ne [byte][char]'B' -or $bytes[1] -ne [byte][char]'M') { throw "$($path.Name) is not a valid BMP." }
@@ -107,20 +108,41 @@ foreach ($path in $bitmapPaths) {
     $pixelOffset = [BitConverter]::ToInt32($bytes, 10)
     $rowStride = [int]([Math]::Ceiling(($width * $bitCount) / 32.0) * 4)
     if ($pixelOffset -lt 54 -or $pixelOffset + ($rowStride * $height) -gt $bytes.Length) { throw "$($path.Name) has invalid BMP pixel data." }
-    $hasLightCanvas = $false
-    for ($y = 0; $y -lt $height -and -not $hasLightCanvas; $y++) {
+	$canvas = New-Object bool[] ($width * $height)
+	for ($y = 0; $y -lt $height; $y++) {
         $rowStart = $pixelOffset + ($y * $rowStride)
         for ($x = 0; $x -lt $width; $x++) {
             $pixelStart = $rowStart + ($x * 3)
             $maximum = [Math]::Max($bytes[$pixelStart], [Math]::Max($bytes[$pixelStart + 1], $bytes[$pixelStart + 2]))
             $minimum = [Math]::Min($bytes[$pixelStart], [Math]::Min($bytes[$pixelStart + 1], $bytes[$pixelStart + 2]))
             if ($maximum -ge 180 -and ($maximum - $minimum) -le 20) {
-                $hasLightCanvas = $true
-                break
+				$canvas[$y * $width + $x] = $true
             }
         }
     }
+	$hasLightCanvas = $canvas -contains $true
     if (-not $hasLightCanvas) { throw "$($path.Name) must contain a neutral light canvas for alpha conversion." }
+	# Match CreateAlphaBitmap: only the candidate component reaching an edge is
+	# transparent.  Any enclosed neutral pixel is a glyph detail that must stay
+	# opaque; exercising every table bitmap guards against returning to a global
+	# light-pixel transparency rule.
+	$edgeConnected = New-Object bool[] ($width * $height)
+	$pending = [System.Collections.Generic.Queue[int]]::new()
+	for ($y = 0; $y -lt $height; $y++) {
+		for ($x = 0; $x -lt $width; $x++) {
+			if ($x -ne 0 -and $y -ne 0 -and $x -ne $width - 1 -and $y -ne $height - 1) { continue }
+			$index = $y * $width + $x
+			if ($canvas[$index] -and -not $edgeConnected[$index]) { $edgeConnected[$index] = $true; $pending.Enqueue($index) }
+		}
+	}
+	while ($pending.Count -gt 0) {
+		$index = $pending.Dequeue(); $x = $index % $width; $y = [int]($index / $width)
+		foreach ($neighbour in @($(if ($x -gt 0) { $index - 1 }), $(if ($x + 1 -lt $width) { $index + 1 }), $(if ($y -gt 0) { $index - $width }), $(if ($y + 1 -lt $height) { $index + $width }))) {
+			if ($null -ne $neighbour -and $canvas[$neighbour] -and -not $edgeConnected[$neighbour]) { $edgeConnected[$neighbour] = $true; $pending.Enqueue($neighbour) }
+		}
+	}
+	for ($index = 0; $index -lt $canvas.Length; $index++) { if ($canvas[$index] -and -not $edgeConnected[$index]) { ++$enclosedLightDetails } }
 }
+if ($enclosedLightDetails -eq 0) { throw 'Table toolbar fixtures must exercise enclosed light glyph details preserved by alpha conversion.' }
 
 Write-Host 'Table toolbar native bitmap and UpdateUI contract passed.'

@@ -58,7 +58,7 @@ foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl
 foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
-foreach($required in @('RBBS_NOGRIPPER', 'RBBS_FIXEDSIZE', 'StatusBarThemeProc', 'SB_GETPARTS', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR')) {
+foreach($required in @('RBBS_NOGRIPPER', 'RBBS_FIXEDSIZE', 'StatusBarThemeProc', 'SB_GETPARTS', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
 	if($mainFrame -notlike "*$required*") { throw "Rebar/status bar Dark surface lacks the required native-theme handling: $required." }
 }
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {
