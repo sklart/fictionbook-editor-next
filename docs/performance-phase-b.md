@@ -68,7 +68,8 @@ Phase B устраняет повторную фиксированную раб�
   second unchanged BODY → SOURCE serializations = `0`; реальная BODY-правка
   инвалидирует serialized source cache.
 - SearchDocumentAdapter/MSHTML: incremental search snapshot builds / queries =
-  `1 / 4`; scoped search query runs = `1`.
+  `1 / 4`; scoped search query runs = `1`; invalid scoped regexp сохраняет
+  diagnostic regexp.
 
 ## Ограничения
 

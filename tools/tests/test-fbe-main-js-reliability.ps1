@@ -131,6 +131,25 @@ GoToEndOfElement=function(){}; InflateIt=function(){};
 AddEpigraph(epigraphContainer, false);
 assert(epigraphContainer.inserted && epigraphContainer.inserted.children.length==2 && epigraphContainer.inserted.children[1].className!="text-author", "AddEpigraph compares collected tag names rather than their indexes");
 
+// The grouped BODY state receives ancestor-derived context: a caret inside
+// SPAN.code must latch Code and disable block-image commands without asking
+// MSHTML for another selection container/range.
+var commandContainer=element("command-paragraph"); commandContainer.tagName="P";
+var codeSpan=element("code-span"); codeSpan.tagName="SPAN"; codeSpan.className="code"; codeSpan.parentElement=commandContainer;
+var savedAddTitle=AddTitle, savedCloneContainer=CloneContainer, savedStyleNormal=StyleNormal, savedStyleSubtitle=StyleSubtitle, savedStyleTextAuthor=StyleTextAuthor;
+var savedInsImage=InsImage, savedInsInlineImage=InsInlineImage, savedAddImage=AddImage, savedAddEpigraph=AddEpigraph, savedAddAnnotation=AddAnnotation, savedAddTA=AddTA, savedMergeContainers=MergeContainers, savedRemoveOuterContainer=RemoveOuterContainer, savedStyleCode=StyleCode;
+AddTitle=CloneContainer=StyleNormal=StyleSubtitle=StyleTextAuthor=AddEpigraph=AddAnnotation=AddTA=MergeContainers=RemoveOuterContainer=function(){return false;};
+InsImage=InsInlineImage=AddImage=StyleCode=function(){return true;};
+var codeCaretState=GetBodyCommandState(commandContainer, true, true);
+assert((codeCaretState & 16384)!=0 && (codeCaretState & 8192)!=0, "SPAN.code caret latches Code state");
+assert((codeCaretState & 32)==0 && (codeCaretState & 128)==0, "SPAN.code caret disables block image commands");
+var plainSpanState=GetBodyCommandState(commandContainer, false, true);
+assert((plainSpanState & 16384)==0 && (plainSpanState & 32)==0 && (plainSpanState & 128)==0, "plain SPAN selection preserves image guard without latching Code");
+var plainState=GetBodyCommandState(commandContainer, false, false);
+assert((plainState & 32)!=0 && (plainState & 128)!=0, "plain caret keeps block image commands available");
+AddTitle=savedAddTitle; CloneContainer=savedCloneContainer; StyleNormal=savedStyleNormal; StyleSubtitle=savedStyleSubtitle; StyleTextAuthor=savedStyleTextAuthor;
+InsImage=savedInsImage; InsInlineImage=savedInsInlineImage; AddImage=savedAddImage; AddEpigraph=savedAddEpigraph; AddAnnotation=savedAddAnnotation; AddTA=savedAddTA; MergeContainers=savedMergeContainers; RemoveOuterContainer=savedRemoveOuterContainer; StyleCode=savedStyleCode;
+
 // Distinct missing and malformed XSL errors fail inside apiLoadFB2 without a
 // second JS exception, restore CSS, and leave the rendered editor DOM intact.
 function assertXslFailure(scenario, expectedError) {

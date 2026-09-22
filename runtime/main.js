@@ -2902,19 +2902,18 @@ function EscapeBlockImageAttribute(value)
 
 // UI refresh asks these related predicates together. Keep their legacy
 // implementations authoritative, but cross the MSHTML/JScript boundary once.
-function GetBodyCommandState(cp)
+function GetBodyCommandState(cp, insideCode, insideSpan)
 {
   var state = 0;
   function put(bit, value) { if(value) state |= bit; }
-  var code = IsCode(cp);
   put(1, AddTitle(cp,true)); put(2, CloneContainer(cp,true));
   put(4, StyleNormal(cp,true)); put(8, StyleSubtitle(cp,true));
-  put(16, StyleTextAuthor(cp,true)); put(32, InsImage(true) && !code);
-  put(64, InsInlineImage(true)); put(128, AddImage(cp,true) && !code);
+  put(16, StyleTextAuthor(cp,true)); put(32, InsImage(true) && !insideCode && !insideSpan);
+  put(64, InsInlineImage(true)); put(128, AddImage(cp,true) && !insideCode && !insideSpan);
   put(256, AddEpigraph(cp,true)); put(512, AddAnnotation(cp,true));
   put(1024, AddTA(cp,true)); put(2048, MergeContainers(cp,true));
   put(4096, RemoveOuterContainer(cp,true)); put(8192, StyleCode(true,cp,document.selection.createRange()));
-  put(16384, code);
+  put(16384, insideCode);
   return state;
 }
 

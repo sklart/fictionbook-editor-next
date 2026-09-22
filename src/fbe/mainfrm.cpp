@@ -1325,6 +1325,12 @@ void CMainFrame::RebuildSelectionContext()
 		{
 			const _bstr_t tagName(current->tagName);
 			const _bstr_t className(current->className);
+			if (U::scmp(tagName, L"SPAN") == 0)
+			{
+				m_selection_context.insideSpan = true;
+				if (U::scmp(className, L"code") == 0)
+					m_selection_context.insideCode = true;
+			}
 			if (!m_selection_context.structuralContainer &&
 				(U::scmp(tagName, L"P") == 0 || U::scmp(tagName, L"DIV") == 0))
 				m_selection_context.structuralContainer = current;
@@ -1362,14 +1368,14 @@ DWORD CMainFrame::BuildBodyCommandState(CFBEView& view)
 	try
 	{
 		CComDispatchDriver script(view.Script());
-		_variant_t container(m_selection_context.structuralContainer.GetInterfacePtr());
+		_variant_t args[3];
+		args[2] = m_selection_context.structuralContainer.GetInterfacePtr();
+		args[1] = m_selection_context.insideCode;
+		args[0] = m_selection_context.insideSpan;
 		_variant_t result;
 		StartupTrace::CountUiComCall();
-		script.Invoke1(L"GetBodyCommandState", &container, &result);
+		script.InvokeN(L"GetBodyCommandState", args, 3, &result);
 		DWORD state = result.vt == VT_I4 || result.vt == VT_UI4 ? static_cast<DWORD>(result) : 0;
-		// Legacy image checks shared this expensive selection-range predicate.
-		// Evaluate it once outside the JS batch and clear both dependent bits.
-		if (view.SelectionHasTags(L"SPAN")) state &= ~(32 | 128);
 		return state;
 	}
 	catch (const _com_error&)

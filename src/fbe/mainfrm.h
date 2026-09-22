@@ -189,12 +189,15 @@ public:
 		MSHTML::IHTMLElementPtr table;
 		MSHTML::IHTMLElementPtr tableCell;
 		MSHTML::IHTMLElementPtr anchor;
+		bool insideCode;
+		bool insideSpan;
 		bool valid;
-		SelectionContext() : valid(false) {}
+		SelectionContext() : insideCode(false), insideSpan(false), valid(false) {}
 		void Invalidate()
 		{
 			container = nullptr; structuralContainer = nullptr; image = nullptr;
 			section = nullptr; table = nullptr; tableCell = nullptr; anchor = nullptr;
+			insideCode = false; insideSpan = false;
 			valid = false;
 		}
 	} m_selection_context;

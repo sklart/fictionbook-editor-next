@@ -3432,7 +3432,13 @@ bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTM
 		}
 		m_design_search.SetScope(range, query.Scope);
 	}
-	return m_design_search.Coordinator().Rebuild(Document(), generation, query, errorText, &range);
+	if (!m_design_search.Coordinator().Rebuild(Document(), generation, query, errorText, &range))
+	{
+		if (expressionError != NULL)
+			*expressionError = query.Mode == AU::Search::SearchMode::Regex;
+		return false;
+	}
+	return true;
 }
 
 LRESULT CFBEView::OnSelectElement(WORD, WORD wID, HWND, BOOL&) {
