@@ -115,7 +115,35 @@ std::map<HWND, std::map<UINT, UINT> > g_rebarBaseBandStyles;
 
 void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT commandId)
 {
-	HBITMAP bitmap = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	if(source == NULL) return;
+	DIBSECTION sourceInfo = {};
+	if(::GetObject(source, sizeof(sourceInfo), &sourceInfo) != sizeof(sourceInfo) || sourceInfo.dsBm.bmWidth != 16 ||
+		(sourceInfo.dsBmih.biHeight < 0 ? -sourceInfo.dsBmih.biHeight : sourceInfo.dsBmih.biHeight) != 16)
+	{
+		::DeleteObject(source);
+		return;
+	}
+	HIMAGELIST images = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 1, 1);
+	const int image = images != NULL ? ::ImageList_AddMasked(images, source, RGB(192, 192, 192)) : -1;
+	::DeleteObject(source);
+	if(image < 0) { if(images != NULL) ::ImageList_Destroy(images); return; }
+	HDC screen = ::GetDC(NULL);
+	HDC memory = screen != NULL ? ::CreateCompatibleDC(screen) : NULL;
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = 16;
+	info.bmiHeader.biHeight = 16; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	HBITMAP bitmap = memory != NULL ? ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, NULL, NULL, 0) : NULL;
+	if(bitmap != NULL)
+	{
+		HGDIOBJ previous = ::SelectObject(memory, bitmap);
+		IMAGELISTDRAWPARAMS draw = {}; draw.cbSize = sizeof(draw); draw.himl = images; draw.i = image; draw.hdcDst = memory;
+		draw.fStyle = ILD_TRANSPARENT; draw.fState = ILS_ALPHA; draw.Frame = 255;
+		if(!::ImageList_DrawIndirect(&draw)) { ::SelectObject(memory, previous); ::DeleteObject(bitmap); bitmap = NULL; }
+		else ::SelectObject(memory, previous);
+	}
+	if(memory != NULL) ::DeleteDC(memory);
+	if(screen != NULL) ::ReleaseDC(NULL, screen);
+	::ImageList_Destroy(images);
 	if(bitmap == NULL) return;
 	g_ownedNativeMenuBitmaps[commandId] = bitmap;
 	ThemeManager::RegisterNativeMenuBitmap(commandId, bitmap);
