@@ -713,8 +713,12 @@ public:
   MSHTML::IHTMLElementPtr   SelectionStructCode();
   MSHTML::IHTMLElementPtr   SelectionStructImage();
   MSHTML::IHTMLElementPtr   SelectionStructSection();
-  MSHTML::IHTMLElementPtr   SelectionStructTable();
+	MSHTML::IHTMLElementPtr   SelectionStructTable();
 	MSHTML::IHTMLElementPtr   SelectionStructTableCon();
+	// The table-drag handler records this before a command-bar click can make
+	// MSHTML's transient selection unavailable.  UI snapshots may reuse it
+	// without issuing another SelectionContainer query.
+	MSHTML::IHTMLElementPtr   TableSelectionAnchor() const { return m_table_selection_anchor; }
 	CStringA TableStructuralSnapshot();
 	static void ResetTableGridBuildCountForTest();
 	static long TableGridBuildCountForTest();

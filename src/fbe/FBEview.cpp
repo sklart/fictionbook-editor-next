@@ -3383,14 +3383,17 @@ bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTM
 	if (expressionError != NULL)
 		*expressionError = false;
 	const std::uint64_t generation = SearchDocumentGeneration();
-	if (!m_design_search.Coordinator().Rebuild(Document(), generation, query, errorText))
-	{
-		if (expressionError != NULL)
-			*expressionError = query.Mode == AU::Search::SearchMode::Regex;
-		return false;
-	}
+	m_design_search.Coordinator().EnsureSnapshot(Document(), generation);
 	if (query.Scope == AU::Search::SearchScope::WholeDocument)
+	{
+		if (!m_design_search.Coordinator().Rebuild(Document(), generation, query, errorText))
+		{
+			if (expressionError != NULL)
+				*expressionError = query.Mode == AU::Search::SearchMode::Regex;
+			return false;
+		}
 		return true;
+	}
 
 	AU::Search::SearchRange range;
 	if (const AU::Search::SearchRange* savedScope = m_design_search.Scope(query.Scope))

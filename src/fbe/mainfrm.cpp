@@ -1341,16 +1341,40 @@ void CMainFrame::RebuildSelectionContext()
 					((U::scmp(tagName, L"DIV") == 0 || U::scmp(tagName, L"SPAN") == 0) && U::scmp(className, L"image") == 0)))
 				m_selection_context.anchor = current;
 		}
-		// Preserve SelectionStructTableCon's control-range fallback; ordinary
-		// text selections never reach it, so the common path remains one query.
+		// SelectionContainer already resolves MSHTML control ranges.  The only
+		// remaining transient case is a command-bar click during a table drag;
+		// reuse its recorded anchor instead of starting a second selection query.
 		if (!m_selection_context.tableCell)
-			m_selection_context.tableCell = m_doc->m_body.SelectionStructTableCon();
+			m_selection_context.tableCell = m_doc->m_body.TableSelectionAnchor();
 		m_selection_context.valid = true;
 		if (StartupTrace::Enabled()) ++g_idleProfile.selectionUpdates;
 	}
 	catch (const _com_error&)
 	{
 		m_selection_context.Invalidate();
+	}
+}
+
+DWORD CMainFrame::BuildBodyCommandState(CFBEView& view)
+{
+	if (!m_selection_context.structuralContainer || !view.Document())
+		return 0;
+	try
+	{
+		CComDispatchDriver script(view.Script());
+		_variant_t container(m_selection_context.structuralContainer.GetInterfacePtr());
+		_variant_t result;
+		StartupTrace::CountUiComCall();
+		script.Invoke1(L"GetBodyCommandState", &container, &result);
+		DWORD state = result.vt == VT_I4 || result.vt == VT_UI4 ? static_cast<DWORD>(result) : 0;
+		// Legacy image checks shared this expensive selection-range predicate.
+		// Evaluate it once outside the JS batch and clear both dependent bits.
+		if (view.SelectionHasTags(L"SPAN")) state &= ~(32 | 128);
+		return state;
+	}
+	catch (const _com_error&)
+	{
+		return 0;
 	}
 }
 
@@ -1523,39 +1547,29 @@ BOOL CMainFrame::OnIdle()
 
 		UIEnable(ID_EDIT_FINDNEXT, view.CanFindNext());
 
-		UIUpdateViewCmd(view, ID_STYLE_LINK);
-		UIUpdateViewCmd(view, ID_STYLE_NOTE);
-		UIUpdateViewCmd(view, ID_STYLE_NORMAL);
-		UIUpdateViewCmd(view, ID_STYLE_SUBTITLE);
-		UIUpdateViewCmd(view, ID_STYLE_TEXTAUTHOR);
-		UIUpdateViewCmd(view, ID_EDIT_ADD_TITLE);
-		UIUpdateViewCmd(view, ID_EDIT_ADD_BODY);
-		UIUpdateViewCmd(view, ID_EDIT_ADD_TA);
-		UIUpdateViewCmd(view, ID_EDIT_CLONE);
-		UIUpdateViewCmd(view, ID_EDIT_INS_IMAGE);
-		UIUpdateViewCmd(view, ID_EDIT_INS_INLINEIMAGE);
-		UIUpdateViewCmd(view, ID_EDIT_ADD_IMAGE);
-		UIUpdateViewCmd(view, ID_EDIT_ADD_EPIGRAPH);
-		UIUpdateViewCmd(view, ID_EDIT_ADD_ANN);
-		UIUpdateViewCmd(view, ID_EDIT_SPLIT);
-		UIUpdateViewCmd(view, ID_EDIT_INS_POEM);
-		UIUpdateViewCmd(view, ID_EDIT_INS_CITE);
-		UIUpdateViewCmd(view, ID_EDIT_CODE);
-		UISetCheckCmd(view, ID_EDIT_CODE);
-		UIUpdateViewCmd(view, ID_INSERT_TABLE);
-		UIUpdateViewCmd(view, ID_TABLE_INSERT_ROW_ABOVE);
-		UIUpdateViewCmd(view, ID_TABLE_INSERT_ROW_BELOW);
-		UIUpdateViewCmd(view, ID_TABLE_DELETE_ROW);
-		UIUpdateViewCmd(view, ID_TABLE_INSERT_COLUMN_LEFT);
-		UIUpdateViewCmd(view, ID_TABLE_INSERT_COLUMN_RIGHT);
-		UIUpdateViewCmd(view, ID_TABLE_DELETE_COLUMN);
-		UIUpdateViewCmd(view, ID_TABLE_TOGGLE_HEADER_CELL);
-		UIUpdateViewCmd(view, ID_TABLE_MAKE_HEADER_CELLS);
-		UIUpdateViewCmd(view, ID_TABLE_MAKE_NORMAL_CELLS);
-		UIUpdateViewCmd(view, ID_GOTO_FOOTNOTE);
-		UIUpdateViewCmd(view, ID_GOTO_REFERENCE);
-		UIUpdateViewCmd(view, ID_EDIT_MERGE);
-		UIUpdateViewCmd(view, ID_EDIT_REMOVE_OUTER_SECTION);
+		RebuildSelectionContext();
+		const DWORD bodyState = BuildBodyCommandState(view);
+		const auto enableBody = [&](WORD command, DWORD bit) { UIEnable(command, (bodyState & bit) != 0); };
+		bool canCreateLink = false;
+		try { canCreateLink = view.Document()->queryCommandEnabled(L"CreateLink") == VARIANT_TRUE; }
+		catch (const _com_error&) { }
+		UIEnable(ID_STYLE_LINK, canCreateLink);
+		UIEnable(ID_STYLE_NOTE, canCreateLink);
+		enableBody(ID_STYLE_NORMAL, 4); enableBody(ID_STYLE_SUBTITLE, 8); enableBody(ID_STYLE_TEXTAUTHOR, 16);
+		enableBody(ID_EDIT_ADD_TITLE, 1); UIEnable(ID_EDIT_ADD_BODY, true); enableBody(ID_EDIT_ADD_TA, 1024);
+		enableBody(ID_EDIT_CLONE, 2); enableBody(ID_EDIT_INS_IMAGE, 32); enableBody(ID_EDIT_INS_INLINEIMAGE, 64);
+		enableBody(ID_EDIT_ADD_IMAGE, 128); enableBody(ID_EDIT_ADD_EPIGRAPH, 256); enableBody(ID_EDIT_ADD_ANN, 512);
+		UIEnable(ID_EDIT_SPLIT, view.SplitContainer(true));
+		UIEnable(ID_EDIT_INS_POEM, view.InsertPoem(true));
+		UIEnable(ID_EDIT_INS_CITE, view.InsertCite(true));
+		enableBody(ID_EDIT_CODE, 8192); UISetCheck(ID_EDIT_CODE, (bodyState & 16384) != 0);
+		UIEnable(ID_INSERT_TABLE, view.InsertTable(true));
+		const bool tableCell = (bool)m_selection_context.tableCell;
+		const WORD tableCommands[] = { ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW, ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN, ID_TABLE_TOGGLE_HEADER_CELL, ID_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_NORMAL_CELLS };
+		for (size_t index = 0; index < _countof(tableCommands); ++index) UIEnable(tableCommands[index], tableCell);
+		UIEnable(ID_GOTO_FOOTNOTE, view.GoToFootnote(true) || view.GoToReference(true));
+		UIEnable(ID_GOTO_REFERENCE, view.GoToReference(true));
+		enableBody(ID_EDIT_MERGE, 2048); enableBody(ID_EDIT_REMOVE_OUTER_SECTION, 4096);
 
 		UIEnable(ID_GOTO_MATCHTAG, false);
 		UIEnable(ID_GOTO_WRONGTAG, false);
