@@ -4,20 +4,22 @@ scenario: this test exercises CFBEView::Normalize and VisualDomNormalizer. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 180, [switch]$KeepArtifacts)
 $ErrorActionPreference='Stop'
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-visual-dom-normalizer-' + [guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'visual-dom-normalizer'
+$directory = $isolation.Root
 $fixture = Join-Path $directory 'normalizer.fb2'
 $report = Join-Path $directory 'normalizer.tsv'
+$passed = $false
 try {
-    New-Item -ItemType Directory -Path $directory -Force | Out-Null
     @"
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Normalizer</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>normalizer-test</id><version>1.0</version></document-info></description><body><section><p>До</p><empty-line/><p>После</p></section></body></FictionBook>
 "@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
     $invokeNormalizer = {
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE timed out while normalizing the live DOM.' }
-        if($process.ExitCode -ne 0) { throw "FBE normalizer scenario failed: exit $($process.ExitCode)." }
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', '-b', $report, $fixture) -PassThru
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'visual-dom-normalizer' -Report $report -TimeoutSeconds $TimeoutSeconds
+        if($exitCode -ne 0) { throw "FBE normalizer scenario failed: exit $exitCode." }
     }
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'visual-dom-normalizer'
@@ -47,6 +49,10 @@ try {
     if(-not $saved.load($fixture)) { throw "Reopened normalization fixture is not XML: $($saved.parseError.reason)" }
     $section = $saved.selectSingleNode('/*[local-name()="FictionBook"]/*[local-name()="body"]/*[local-name()="section"]')
     if(-not $section -or $section.childNodes.length -ne 3 -or $section.childNodes.item(1).nodeName -ne 'empty-line') { throw 'Open → Save → Reopen lost or moved the FB2 empty-line.' }
+    $passed = $true
 }
-finally { if($KeepArtifacts) { Write-Host "Artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue } }
+finally {
+    if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
+    else { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
+}
 Write-Host 'Visual DOM normalizer production runtime passed.'

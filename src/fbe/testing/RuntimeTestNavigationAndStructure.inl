@@ -13,7 +13,7 @@
 		// The adjacent section deliberately contains a BR. A body-wide paste
 		// normalization would rewrite it; a scoped paste must not.
 		editable->innerHTML = L"<DIV class='section'><P>Before paste</P></DIV><DIV class='section'><P>Adjacent<BR>untouched</P></DIV>";
-		const CString pastePayload(L"paste-alpha\x00a0bold\r\npaste-beta\r\n\r\npaste-gamma");
+		const CString pastePayload(L"paste-alpha\u00A0bold\r\npaste-beta\r\n\r\npaste-gamma");
 		bool pasteNormalized = false;
 		CComPtr<IDataObject> originalClipboard;
 		if (SUCCEEDED(::OleGetClipboard(&originalClipboard)) && ::OpenClipboard(m_hWnd)) {
