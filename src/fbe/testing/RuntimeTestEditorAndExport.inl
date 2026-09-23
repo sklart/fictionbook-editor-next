@@ -1116,6 +1116,132 @@
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"theme-application-runtime"))
+	{
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		ThemeManager::ResetApplyDiagnostics();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const ThemeManager::ApplyDiagnostics initial = ThemeManager::GetApplyDiagnostics();
+		ThemeManager::ApplyToWindow(m_hWnd);
+		ThemeManager::ApplyToWindow(m_hWnd);
+		const ThemeManager::ApplyDiagnostics repeated = ThemeManager::GetApplyDiagnostics();
+		HWND newChild = ::CreateWindowExW(0, WC_STATICW, L"Theme child probe", WS_CHILD | WS_VISIBLE,
+			0, 0, 80, 20, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+		for(int iteration = 0; iteration < 100; ++iteration)
+		{
+			MSG message = {};
+			if(!::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) break;
+			::TranslateMessage(&message); ::DispatchMessageW(&message);
+		}
+		const ThemeManager::ApplyDiagnostics afterChild = ThemeManager::GetApplyDiagnostics();
+		const bool newChildThemed = newChild != NULL && afterChild.applied > repeated.applied;
+		if(newChild != NULL) ::DestroyWindow(newChild);
+		const int bandCount = static_cast<int>(m_rebar.GetBandCount());
+		REBARBANDINFO originalBand = {}; originalBand.cbSize = sizeof(originalBand); originalBand.fMask = RBBIM_ID | RBBIM_STYLE;
+		const bool haveBand = bandCount > 0 && m_rebar.GetBandInfo(0, &originalBand) != FALSE;
+		if(haveBand)
+		{
+			REBARBANDINFO hidden = originalBand; hidden.fMask = RBBIM_STYLE;
+			hidden.fStyle |= RBBS_HIDDEN;
+			m_rebar.SetBandInfo(0, &hidden);
+		}
+		const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		const DWORD userBefore = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+		DWORD userAt20 = userBefore;
+		int setUserDelta = 0, applyUserDelta = 0;
+		for(int iteration = 0; iteration < 40; ++iteration)
+		{
+			const DWORD beforeSet = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+			ThemeManager::SetSelectedTheme(iteration % 2 == 0 ? INTERFACE_THEME_LIGHT : INTERFACE_THEME_DARK);
+			const DWORD afterSet = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+			const DWORD afterApply = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+			setUserDelta += static_cast<int>(afterSet) - static_cast<int>(beforeSet);
+			applyUserDelta += static_cast<int>(afterApply) - static_cast<int>(afterSet);
+			if(iteration == 19) userAt20 = afterApply;
+		}
+		const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		const DWORD userAfter = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+		REBARBANDINFO finalBand = {}; finalBand.cbSize = sizeof(finalBand); finalBand.fMask = RBBIM_ID | RBBIM_STYLE;
+		const bool hiddenPreserved = haveBand && m_rebar.GetBandInfo(0, &finalBand) &&
+			finalBand.wID == originalBand.wID && (finalBand.fStyle & RBBS_HIDDEN) != 0;
+		if(haveBand)
+		{
+			REBARBANDINFO restored = finalBand; restored.fMask = RBBIM_STYLE;
+			restored.fStyle = (finalBand.fStyle & ~RBBS_HIDDEN) | (originalBand.fStyle & RBBS_HIDDEN);
+			m_rebar.SetBandInfo(0, &restored);
+		}
+		bool orderPreserved = bandCount > 1;
+		if(orderPreserved)
+		{
+			const BOOL moved = static_cast<BOOL>(m_rebar.SendMessage(RB_MOVEBAND, 0, bandCount - 1));
+			ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+			REBARBANDINFO movedBand = {}; movedBand.cbSize = sizeof(movedBand); movedBand.fMask = RBBIM_ID;
+			orderPreserved = moved && m_rebar.GetBandInfo(bandCount - 1, &movedBand) && movedBand.wID == originalBand.wID;
+			m_rebar.SendMessage(RB_MOVEBAND, bandCount - 1, 0);
+			ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		}
+		const UINT probeBandId = 0x7f20;
+		bool deletedBandCleared = false, reusedBandFresh = false;
+		HWND firstProbe = ::CreateWindowExW(0, WC_STATICW, L"rebar first", WS_CHILD | WS_VISIBLE,
+			0, 0, 40, 16, m_rebar, NULL, _Module.GetModuleInstance(), NULL);
+		if(firstProbe != NULL)
+		{
+			REBARBANDINFO probe = {}; probe.cbSize = sizeof(probe);
+			probe.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_STYLE | RBBIM_CHILDSIZE | RBBIM_SIZE;
+			probe.wID = probeBandId; probe.hwndChild = firstProbe; probe.fStyle = RBBS_CHILDEDGE;
+			probe.cxMinChild = 40; probe.cyMinChild = 16; probe.cx = 60;
+			if(m_rebar.InsertBand(-1, &probe))
+			{
+				ApplyMainRebarTheme(m_rebar);
+				const int probeIndex = static_cast<int>(m_rebar.GetBandCount()) - 1;
+				m_rebar.DeleteBand(probeIndex);
+				const std::map<HWND, std::map<UINT, RebarBandThemeState> >::const_iterator cache = g_rebarBaseBandStyles.find(m_rebar);
+				deletedBandCleared = cache == g_rebarBaseBandStyles.end() || cache->second.find(probeBandId) == cache->second.end();
+			}
+			::DestroyWindow(firstProbe);
+		}
+		HWND secondProbe = ::CreateWindowExW(0, WC_STATICW, L"rebar second", WS_CHILD | WS_VISIBLE,
+			0, 0, 40, 16, m_rebar, NULL, _Module.GetModuleInstance(), NULL);
+		if(secondProbe != NULL)
+		{
+			REBARBANDINFO probe = {}; probe.cbSize = sizeof(probe);
+			probe.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_STYLE | RBBIM_CHILDSIZE | RBBIM_SIZE;
+			probe.wID = probeBandId; probe.hwndChild = secondProbe; probe.fStyle = 0;
+			probe.cxMinChild = 40; probe.cyMinChild = 16; probe.cx = 60;
+			if(m_rebar.InsertBand(-1, &probe))
+			{
+				ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+				ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+				REBARBANDINFO current = {}; current.cbSize = sizeof(current); current.fMask = RBBIM_STYLE;
+				reusedBandFresh = m_rebar.GetBandInfo(static_cast<int>(m_rebar.GetBandCount()) - 1, &current) &&
+					(current.fStyle & RBBS_CHILDEDGE) == 0;
+				m_rebar.DeleteBand(static_cast<int>(m_rebar.GetBandCount()) - 1);
+			}
+			::DestroyWindow(secondProbe);
+		}
+		const ThemeManager::ApplyDiagnostics beforeRefresh = ThemeManager::GetApplyDiagnostics();
+		const bool refreshChanged = ThemeManager::RefreshSystemTheme();
+		const ThemeManager::ApplyDiagnostics afterRefresh = ThemeManager::GetApplyDiagnostics();
+		CStringA row; row.Format("initial_applied\t%I64u\r\nrepeated_delta\t%I64u\r\nnew_child_auto\t%d\r\nreentrant\t%I64u\r\nhidden_preserved\t%d\r\norder_preserved\t%d\r\ndeleted_band_cleared\t%d\r\nreused_band_fresh\t%d\r\ngdi_delta\t%d\r\nuser_delta\t%d\r\nuser_delta_first20\t%d\r\nuser_delta_second20\t%d\r\nset_user_delta\t%d\r\napply_user_delta\t%d\r\ntheme_message_user\t%I64d\r\nnative_palette_user\t%I64d\r\nfbe_message_user\t%I64d\r\nredraw_user\t%I64d\r\nrefresh_noop\t%d\r\n",
+			initial.applied, repeated.applied - initial.applied, newChildThemed ? 1 : 0,
+			afterRefresh.reentrant, hiddenPreserved ? 1 : 0,
+			orderPreserved ? 1 : 0, deletedBandCleared ? 1 : 0, reusedBandFresh ? 1 : 0,
+			static_cast<int>(gdiAfter) - static_cast<int>(gdiBefore),
+			static_cast<int>(userAfter) - static_cast<int>(userBefore),
+			static_cast<int>(userAt20) - static_cast<int>(userBefore),
+			static_cast<int>(userAfter) - static_cast<int>(userAt20),
+			setUserDelta, applyUserDelta,
+			afterRefresh.themeMessageUser, afterRefresh.nativePaletteUser,
+			afterRefresh.fbeMessageUser, afterRefresh.redrawUser,
+			!refreshChanged && afterRefresh.applied == beforeRefresh.applied ? 1 : 0);
+		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 	if (IsFbeTestScenario(L"themed-message-behavior"))
 	{
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
@@ -1375,28 +1501,31 @@
 		bool nativeFound = false;
 		std::thread driver([&]()
 		{
-			HWND native = NULL;
-			for(int retry = 0; retry < 500 && native == NULL; ++retry)
+			HWND ok = NULL;
+			for(int retry = 0; retry < 500 && ok == NULL; ++retry)
 			{
-				native = ::FindWindowW(NULL, L"FBE themed failure probe");
-				if(native == NULL) ::Sleep(10);
-			}
-			if(native == NULL) return;
-			nativeFound = true;
-			HWND ok = ::GetDlgItem(native, IDOK);
-			if(ok == NULL)
-				::EnumChildWindows(native, [](HWND child, LPARAM context) -> BOOL
+				// The failed themed window briefly has the same caption. Wait
+				// for the native fallback and for its button to be ready.
+				HWND native = ::FindWindowW(L"#32770", L"FBE themed failure probe");
+				if(native != NULL)
 				{
-					wchar_t className[32] = {};
-					::GetClassNameW(child, className, _countof(className));
-					if(_wcsicmp(className, L"Button") == 0 && ::IsWindowVisible(child) && ::IsWindowEnabled(child))
-					{
-						*reinterpret_cast<HWND*>(context) = child;
-						return FALSE;
-					}
-					return TRUE;
-				}, reinterpret_cast<LPARAM>(&ok));
-			if(ok != NULL) ::SendMessageW(ok, BM_CLICK, 0, 0);
+					ok = ::GetDlgItem(native, IDOK);
+					if(ok == NULL)
+						::EnumChildWindows(native, [](HWND child, LPARAM context) -> BOOL
+						{
+							wchar_t className[32] = {};
+							::GetClassNameW(child, className, _countof(className));
+							if(_wcsicmp(className, L"Button") == 0 && ::IsWindowVisible(child) && ::IsWindowEnabled(child))
+							{
+								*reinterpret_cast<HWND*>(context) = child;
+								return FALSE;
+							}
+							return TRUE;
+						}, reinterpret_cast<LPARAM>(&ok));
+				}
+				if(ok == NULL) ::Sleep(10);
+			}
+			if(ok != NULL) { nativeFound = true; ::SendMessageW(ok, BM_CLICK, 0, 0); }
 		});
 		const int answer = hook != NULL ? ThemeManager::MessageBox(m_hWnd, L"Creation failure must clean up before native fallback.",
 			L"FBE themed failure probe", MB_OK | MB_ICONERROR) : 0;

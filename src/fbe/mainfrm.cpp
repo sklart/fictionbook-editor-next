@@ -109,12 +109,19 @@ static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder men
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
 
 std::map<UINT, HBITMAP> g_ownedNativeMenuBitmaps;
-std::map<HWND, LONG_PTR> g_rebarBaseStyles;
+struct RebarThemeState
+{
+	LONG_PTR bandBorderBit;
+	bool darkApplied;
+};
+std::map<HWND, RebarThemeState> g_rebarBaseStyles;
 struct RebarBandThemeState
 {
-	UINT style;
+	UINT themeBits;
 	COLORREF back;
 	COLORREF fore;
+	HWND child;
+	bool darkApplied;
 };
 std::map<HWND, std::map<UINT, RebarBandThemeState> > g_rebarBaseBandStyles;
 
@@ -124,10 +131,20 @@ LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 {
 	if(message == WM_NCDESTROY)
 	{
+		g_rebarBaseStyles.erase(window);
+		g_rebarBaseBandStyles.erase(window);
 		::RemoveWindowSubclass(window, MainRebarThemeProc, kMainRebarThemeSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
 	}
+	UINT deletedBandId = 0;
+	if(message == RB_DELETEBAND)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID;
+		if(::SendMessageW(window, RB_GETBANDINFO, wParam, reinterpret_cast<LPARAM>(&info))) deletedBandId = info.wID;
+	}
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
+	if(message == RB_DELETEBAND && result && deletedBandId != 0)
+		g_rebarBaseBandStyles[window].erase(deletedBandId);
 	if(message != WM_PAINT || !ThemeManager::IsDark() || ThemeManager::IsHighContrast()) return result;
 	HDC dc = ::GetWindowDC(window);
 	if(dc == NULL) return result;
@@ -136,6 +153,27 @@ LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	{
 		RECT rect = {};
 		if(!::SendMessage(window, RB_GETRECT, band, reinterpret_cast<LPARAM>(&rect)) || rect.bottom <= rect.top) continue;
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_STYLE;
+		if(::SendMessage(window, RB_GETBANDINFO, band, reinterpret_cast<LPARAM>(&info)) &&
+			(info.fStyle & RBBS_NOGRIPPER) == 0 && ::IsWindow(info.hwndChild))
+		{
+			RECT child = {}; ::GetWindowRect(info.hwndChild, &child);
+			::MapWindowPoints(NULL, window, reinterpret_cast<POINT*>(&child), 2);
+			RECT grip = { rect.left, rect.top, (std::min)(child.left, rect.left + 12), rect.bottom - 1 };
+			if(grip.right > grip.left + 5)
+			{
+				::FillRect(dc, &grip, ThemeManager::ControlBrush());
+				const HGDIOBJ oldPen = ::SelectObject(dc, ::GetStockObject(DC_PEN));
+				::SetDCPenColor(dc, ThemeManager::BorderColor());
+				const int center = (grip.top + grip.bottom) / 2;
+				for(int offset = -3; offset <= 3; offset += 3)
+				{
+					::MoveToEx(dc, grip.left + 4, center + offset, NULL);
+					::LineTo(dc, grip.left + 8, center + offset);
+				}
+				::SelectObject(dc, oldPen);
+			}
+		}
 		RECT border = { rect.left, rect.bottom - 1, rect.right, rect.bottom };
 		::FillRect(dc, &border, ThemeManager::Brush(THEME_COLOR_BORDER));
 	}
@@ -171,32 +209,48 @@ void ApplyMainRebarTheme(CReBarCtrl& rebar)
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	ThemeManager::ApplyToWindow(window);
 	::SetWindowSubclass(window, MainRebarThemeProc, kMainRebarThemeSubclassId, 0);
-	std::map<HWND, LONG_PTR>::iterator style = g_rebarBaseStyles.find(window);
-	if(style == g_rebarBaseStyles.end()) style = g_rebarBaseStyles.insert(std::make_pair(window, ::GetWindowLongPtr(window, GWL_STYLE))).first;
-	::SetWindowLongPtr(window, GWL_STYLE, dark ? style->second & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : style->second);
+	const LONG_PTR currentStyle = ::GetWindowLongPtr(window, GWL_STYLE);
+	std::map<HWND, RebarThemeState>::iterator style = g_rebarBaseStyles.find(window);
+	if(style == g_rebarBaseStyles.end())
+		style = g_rebarBaseStyles.insert(std::make_pair(window,
+			RebarThemeState{ currentStyle & RBS_BANDBORDERS, false })).first;
+	if(!style->second.darkApplied) style->second.bandBorderBit = currentStyle & RBS_BANDBORDERS;
+	const LONG_PTR themedStyle = (currentStyle & ~static_cast<LONG_PTR>(RBS_BANDBORDERS)) |
+		(dark ? 0 : style->second.bandBorderBit);
+	if(themedStyle != currentStyle) ::SetWindowLongPtr(window, GWL_STYLE, themedStyle);
+	style->second.darkApplied = dark;
 	::SendMessage(window, RB_SETBKCOLOR, 0, dark ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE));
 	std::map<UINT, RebarBandThemeState>& baseBands = g_rebarBaseBandStyles[window];
 	for(int index = 0; index < static_cast<int>(rebar.GetBandCount()); ++index)
 	{
-		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_STYLE | RBBIM_COLORS;
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_STYLE | RBBIM_COLORS;
 		if(!rebar.GetBandInfo(index, &info)) continue;
-		if(baseBands.find(info.wID) == baseBands.end())
+		std::map<UINT, RebarBandThemeState>::iterator saved = baseBands.find(info.wID);
+		if(saved == baseBands.end() || saved->second.child != info.hwndChild)
 		{
-			RebarBandThemeState base = { info.fStyle, info.clrBack, info.clrFore };
-			baseBands[info.wID] = base;
+			RebarBandThemeState base = { info.fStyle & (RBBS_CHILDEDGE | RBBS_NOGRIPPER),
+				info.clrBack, info.clrFore, info.hwndChild, false };
+			saved = baseBands.insert_or_assign(info.wID, base).first;
 		}
-		const RebarBandThemeState& base = baseBands[info.wID];
-		info.fStyle = dark ? base.style & ~RBBS_CHILDEDGE : base.style;
-		// FBE persists toolbar visibility/order through its own layout commands;
-		// the native rebar drag gripper is not an exposed interaction contract.
-		// It remains a bright system-rendered artifact in Dark, so remove it on
-		// every upper band instead of leaving a mixed light strip behind.
-		if(dark) info.fStyle |= RBBS_NOGRIPPER;
-		info.clrBack = dark ? ThemeManager::ControlColor() : base.back;
-		info.clrFore = dark ? ThemeManager::TextColor() : base.fore;
-		rebar.SetBandInfo(index, &info);
+		RebarBandThemeState& base = saved->second;
+		if(!base.darkApplied)
+		{
+			base.themeBits = info.fStyle & (RBBS_CHILDEDGE | RBBS_NOGRIPPER);
+			base.back = info.clrBack; base.fore = info.clrFore;
+		}
+		const UINT targetStyle = (info.fStyle & ~(RBBS_CHILDEDGE | RBBS_NOGRIPPER)) |
+			(dark ? (base.themeBits & RBBS_NOGRIPPER) : base.themeBits);
+		const COLORREF targetBack = dark ? ThemeManager::ControlColor() : base.back;
+		const COLORREF targetFore = dark ? ThemeManager::TextColor() : base.fore;
+		if(info.fStyle != targetStyle || info.clrBack != targetBack || info.clrFore != targetFore)
+		{
+			info.fStyle = targetStyle; info.clrBack = targetBack; info.clrFore = targetFore;
+			rebar.SetBandInfo(index, &info);
+		}
+		base.darkApplied = dark;
 	}
-	::SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+	if(themedStyle != currentStyle)
+		::SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 const UINT_PTR kStatusBarThemeSubclassId = 0x46425342; // "FBSB"
@@ -343,12 +397,12 @@ void ApplyMainMenuRebarBandTheme(CReBarCtrl& rebar, HWND menuBar)
 	{
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_ID | RBBIM_CHILD | RBBIM_COLORS | RBBIM_STYLE;
 		if(!rebar.GetBandInfo(band, &info) || info.hwndChild != menuBar) continue;
-		info.clrBack = ThemeManager::IsDark() ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE);
-		info.clrFore = ThemeManager::IsDark() ? ThemeManager::TextColor() : ::GetSysColor(COLOR_BTNTEXT);
-		std::map<HWND, std::map<UINT, RebarBandThemeState> >::iterator bands = g_rebarBaseBandStyles.find(rebar);
-		if(bands != g_rebarBaseBandStyles.end() && bands->second.find(info.wID) != bands->second.end())
-			info.fStyle = ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ? (bands->second[info.wID].style & ~RBBS_CHILDEDGE) | RBBS_NOGRIPPER : bands->second[info.wID].style;
-		rebar.SetBandInfo(band, &info);
+		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		{
+			info.clrBack = ThemeManager::ControlColor();
+			info.clrFore = ThemeManager::TextColor();
+			rebar.SetBandInfo(band, &info);
+		}
 		return;
 	}
 }
@@ -365,12 +419,12 @@ void ApplyContextAttributeRebarBandTheme(CReBarCtrl& rebar, const ContextAttribu
 		for(HWND contextBar : contextBars)
 			if(info.hwndChild == contextBar) { isContextBar = true; break; }
 		if(!isContextBar) continue;
-		info.clrBack = ThemeManager::ControlColor();
-		info.clrFore = ThemeManager::TextColor();
-		std::map<HWND, std::map<UINT, RebarBandThemeState> >::iterator bands = g_rebarBaseBandStyles.find(rebar);
-		if(bands != g_rebarBaseBandStyles.end() && bands->second.find(info.wID) != bands->second.end())
-			info.fStyle = ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ? (bands->second[info.wID].style & ~RBBS_CHILDEDGE) | RBBS_NOGRIPPER : bands->second[info.wID].style;
-		rebar.SetBandInfo(band, &info);
+		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		{
+			info.clrBack = ThemeManager::ControlColor();
+			info.clrFore = ThemeManager::TextColor();
+			rebar.SetBandInfo(band, &info);
+		}
 	}
 }
 

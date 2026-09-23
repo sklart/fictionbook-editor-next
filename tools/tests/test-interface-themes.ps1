@@ -28,7 +28,7 @@ $colorButton = Read-ProjectFile 'src\fbe\extras\ColorButton.cpp'
 $utils = Read-ProjectFile 'src\fbe\utils\Utils.cpp'
 $utilsHeader = Read-ProjectFile 'src\fbe\utils\utils.h'
 
-foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'highContrastChanged', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
+foreach($required in @('AppsUseLightTheme', 'g_highContrast', 'systemPaletteChanged', 'UpdateSystemPalette', 'WH_CBT', 'HCBT_ACTIVATE', 'DwmSetWindowAttribute', 'SetWindowTheme', 'EnumThreadWindows', 'WM_FBE_THEMECHANGED')) {
     if($manager -notlike "*$required*") { throw "ThemeManager.cpp does not provide $required." }
 }
 foreach($required in @('THEME_COLOR_BORDER', 'THEME_COLOR_SEPARATOR', 'THEME_COLOR_SECONDARY_TEXT', 'THEME_COLOR_DISABLED_TEXT', 'THEME_COLOR_SELECTION_BACKGROUND', 'THEME_COLOR_SELECTION_TEXT', 'THEME_COLOR_HOVER', 'THEME_COLOR_PRESSED', 'THEME_COLOR_FOCUS', 'THEME_COLOR_ACCENT', 'THEME_COLOR_ERROR', 'THEME_COLOR_WARNING', 'THEME_COLOR_SUCCESS')) {
@@ -60,7 +60,7 @@ foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl
 foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
-foreach($required in @('RBBS_NOGRIPPER', 'FBE persists toolbar visibility/order', 'MainRebarThemeProc', 'RB_GETRECT', 'THEME_COLOR_BORDER', 'StatusBarThemeProc', 'SB_GETPARTS', 'WM_GETFONT', 'UiMetrics::DialogFont()', 'GetTextMetrics', 'ScaleForDpi', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
+foreach($required in @('RBBS_NOGRIPPER', 'g_rebarBaseBandStyles.erase(window)', 'RB_DELETEBAND', 'MainRebarThemeProc', 'RB_GETRECT', 'THEME_COLOR_BORDER', 'StatusBarThemeProc', 'SB_GETPARTS', 'WM_GETFONT', 'UiMetrics::DialogFont()', 'GetTextMetrics', 'ScaleForDpi', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
 	if($mainFrame -notlike "*$required*") { throw "Rebar/status bar Dark surface lacks the required native-theme handling: $required." }
 }
 foreach($required in @('CreateMenuBitmap', 'ImageList_DrawIndirect', 'ILC_COLOR32')) {

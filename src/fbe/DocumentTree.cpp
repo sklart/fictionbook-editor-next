@@ -301,7 +301,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CTreeWithToolBar::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark()) { bHandled = FALSE; return 0; }
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
 	RECT client = {}; GetClientRect(&client);
 	::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::ControlBrush());
 	return 1;
@@ -309,7 +309,7 @@ LRESULT CTreeWithToolBar::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BO
 
 LRESULT CTreeWithToolBar::OnToolbarCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar))
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar))
 	{
 		bHandled = FALSE;
 		return 0;
@@ -563,14 +563,14 @@ void CDocumentTree::PaintDarkTitle(HDC dc)
 
 LRESULT CDocumentTree::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark()) { bHandled = FALSE; return 0; }
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
 	PaintDarkTitle(reinterpret_cast<HDC>(wParam));
 	return 1;
 }
 
 LRESULT CDocumentTree::OnThemePaint(UINT, WPARAM, LPARAM, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark()) { bHandled = FALSE; return 0; }
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
 	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(m_hWnd, &paint);
 	PaintDarkTitle(dc);
 	::EndPaint(m_hWnd, &paint);

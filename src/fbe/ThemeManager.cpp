@@ -4,6 +4,8 @@
 #include "resource.h"
 #include "UiMetrics.h"
 #include <map>
+#include <array>
+#include <set>
 #include <vector>
 
 namespace
@@ -16,6 +18,55 @@ HBRUSH g_windowBrush = NULL;
 HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
 std::map<UINT, HBITMAP> g_nativeMenuBitmaps;
+const wchar_t kAppliedThemeGenerationProperty[] = L"FBE.AppliedThemeGeneration";
+const UINT kApplyNewThemeChild = WM_APP + 0x147;
+DWORD g_paletteGeneration = 1;
+ThemeManager::ApplyDiagnostics g_applyDiagnostics = {};
+bool g_recordApplyDiagnostics = false;
+thread_local std::set<HWND> g_windowsBeingThemed;
+std::array<COLORREF, 9> g_systemPalette = {};
+bool g_systemPaletteKnown = false;
+
+std::array<COLORREF, 9> SampleSystemPalette()
+{
+	return { ::GetSysColor(COLOR_WINDOW), ::GetSysColor(COLOR_BTNFACE), ::GetSysColor(COLOR_WINDOWTEXT),
+		::GetSysColor(COLOR_BTNTEXT), ::GetSysColor(COLOR_GRAYTEXT), ::GetSysColor(COLOR_HIGHLIGHT),
+		::GetSysColor(COLOR_HIGHLIGHTTEXT), ::GetSysColor(COLOR_3DSHADOW),
+		::GetSysColor(COLOR_3DLIGHT) };
+}
+
+bool UpdateSystemPalette()
+{
+	const std::array<COLORREF, 9> current = SampleSystemPalette();
+	const bool changed = !g_systemPaletteKnown || current != g_systemPalette;
+	g_systemPalette = current;
+	g_systemPaletteKnown = true;
+	return changed;
+}
+
+DWORD WindowsBuildNumber()
+{
+	static const DWORD build = []() -> DWORD
+	{
+		HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
+		if(ntdll == NULL) return 0;
+		typedef LONG (WINAPI* RtlGetVersionFn)(OSVERSIONINFOW*);
+		RtlGetVersionFn getVersion = reinterpret_cast<RtlGetVersionFn>(::GetProcAddress(ntdll, "RtlGetVersion"));
+		if(getVersion == NULL) return 0;
+		OSVERSIONINFOW version = {}; version.dwOSVersionInfoSize = sizeof(version);
+		return getVersion(&version) == 0 && version.dwMajorVersion >= 10 ? version.dwBuildNumber : 0;
+	}();
+	return build;
+}
+
+bool SupportsDarkMode() { return WindowsBuildNumber() >= 17763; }
+
+HANDLE AppliedThemeGeneration() { return reinterpret_cast<HANDLE>(static_cast<ULONG_PTR>(g_paletteGeneration)); }
+
+void AdvanceThemeGeneration()
+{
+	if(++g_paletteGeneration == 0) ++g_paletteGeneration;
+}
 
 void ApplyNativeMenuBitmaps(HMENU menu)
 {
@@ -61,7 +112,8 @@ void RebuildBrushes()
 }
 
 typedef HRESULT (WINAPI* DwmSetWindowAttributeFn)(HWND, DWORD, LPCVOID, DWORD);
-typedef HRESULT (WINAPI* SetPreferredAppModeFn)(int);
+typedef int (WINAPI* SetPreferredAppModeFn)(int);
+typedef BOOL (WINAPI* AllowDarkModeForAppFn)(BOOL);
 typedef void (WINAPI* FlushMenuThemesFn)();
 typedef BOOL (WINAPI* AdjustWindowRectExForDpiFn)(LPRECT, DWORD, BOOL, DWORD, UINT);
 
@@ -300,8 +352,21 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 	if(message == WM_NCDESTROY)
 	{
 		if(IsHeader(window)) delete reinterpret_cast<HeaderThemeState*>(::RemovePropW(window, kHeaderThemeStateProperty));
+		::RemovePropW(window, kAppliedThemeGenerationProperty);
 		::RemoveWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId);
 		return ::DefSubclassProc(window, message, wParam, lParam);
+	}
+	if(message == WM_PARENTNOTIFY && LOWORD(wParam) == WM_CREATE)
+	{
+		// Child creation can precede WM_CREATE of the child itself. Apply after
+		// it has finished initializing, without traversing an already themed tree.
+		::PostMessageW(window, kApplyNewThemeChild, 0, lParam);
+	}
+	if(message == kApplyNewThemeChild)
+	{
+		HWND child = reinterpret_cast<HWND>(lParam);
+		if(::IsWindow(child) && ::GetParent(child) == window) ThemeManager::ApplyToWindow(child);
+		return 0;
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
 	if(ThemeManager::IsDark() && HasClientEdge(window) && message == WM_NCPAINT)
@@ -389,16 +454,23 @@ void ApplyNativeControlPalette(HWND window)
 		::SendMessage(window, RB_SETBKCOLOR, 0, ThemeManager::ControlColor());
 }
 
-void ApplyPreferredAppMode(bool dark)
+void ApplyPreferredAppMode(bool dark, bool highContrast)
 {
-	// Ordinal 135 exists only on modern Windows 10 builds.  Resolving it at
-	// runtime leaves Windows 7 on the normal, supported light-menu path.
+	const DWORD build = WindowsBuildNumber();
+	if(build < 17763) return;
+	// On 1809 ordinal 135 is AllowDarkModeForApp(BOOL); from 1903 onward
+	// it is SetPreferredAppMode(enum). Never cast one variant to the other.
 	HMODULE uxtheme = ::LoadLibraryW(L"uxtheme.dll");
 	if(!uxtheme) return;
-	SetPreferredAppModeFn setMode = reinterpret_cast<SetPreferredAppModeFn>(::GetProcAddress(uxtheme, MAKEINTRESOURCEA(135)));
-	// AllowDark leaves popup menus light when FBE is explicitly Dark but Windows
-	// itself is light. ForceDark makes FBE's selected theme govern its menus.
-	if(setMode) setMode(dark ? 2 /* ForceDark */ : 0 /* Default */);
+	FARPROC ordinal135 = ::GetProcAddress(uxtheme, MAKEINTRESOURCEA(135));
+	if(ordinal135 != NULL)
+	{
+		if(build < 18362)
+			reinterpret_cast<AllowDarkModeForAppFn>(ordinal135)(dark && !highContrast ? TRUE : FALSE);
+		else
+			reinterpret_cast<SetPreferredAppModeFn>(ordinal135)(highContrast ? 0 /* Default */ :
+			(dark ? 2 /* ForceDark */ : 3 /* ForceLight */));
+	}
 	// Rebuild popup-menu rendering after changing the preferred app mode.  This
 	// export is available only on supported Windows 10/11 builds, so resolving
 	// it dynamically keeps the Windows 7 path untouched.
@@ -409,6 +481,8 @@ void ApplyPreferredAppMode(bool dark)
 
 void ApplyModernTitleBar(HWND window, bool dark)
 {
+	const LONG_PTR style = ::GetWindowLongPtrW(window, GWL_STYLE);
+	if(!SupportsDarkMode() || (style & WS_CHILD) != 0 || (style & WS_CAPTION) != WS_CAPTION) return;
 	// DwmSetWindowAttribute is absent on older Windows and dwmapi.dll need not
 	// have been loaded yet.  Resolve it at the point a real top-level HWND is
 	// available; this keeps the Windows 7 path harmless and avoids a light
@@ -447,9 +521,60 @@ void ApplyModernTitleBar(HWND window, bool dark)
 	}
 }
 
+void ApplyWindowSurface(HWND window)
+{
+	if(!::IsWindow(window)) return;
+	if(::GetPropW(window, kAppliedThemeGenerationProperty) == AppliedThemeGeneration())
+	{
+		if(g_recordApplyDiagnostics) ++g_applyDiagnostics.skipped;
+		return;
+	}
+	if(!g_windowsBeingThemed.insert(window).second)
+	{
+		if(g_recordApplyDiagnostics) ++g_applyDiagnostics.reentrant;
+		return;
+	}
+	struct ApplyGuard
+	{
+		HWND window;
+		~ApplyGuard() { g_windowsBeingThemed.erase(window); }
+	} guard = { window };
+	const DWORD userBefore = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
+	const bool dark = ThemeManager::IsDark() && !IsHighContrastEnabled();
+	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
+	if(dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window)))
+		::SetWindowTheme(window, L" ", L" ");
+	else if(dark && IsComboBox(window))
+		::SetWindowTheme(window, L"DarkMode_CFD", NULL);
+	else if(dark && IsComboDropList(window))
+		::SetWindowTheme(window, L"DarkMode_Explorer", NULL);
+	else
+		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
+	::SendMessageW(window, WM_THEMECHANGED, 0, 0);
+	if(!::IsWindow(window)) return;
+	const DWORD userAfterTheme = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
+	ApplyModernTitleBar(window, dark);
+	ApplyNativeControlPalette(window);
+	const DWORD userAfterPalette = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
+	::SendMessageW(window, WM_FBE_THEMECHANGED, 0, 0);
+	if(!::IsWindow(window)) return;
+	const DWORD userAfterFbe = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
+	::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
+	const DWORD userAfterRedraw = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
+	::SetPropW(window, kAppliedThemeGenerationProperty, AppliedThemeGeneration());
+	if(g_recordApplyDiagnostics)
+	{
+		++g_applyDiagnostics.applied;
+		g_applyDiagnostics.themeMessageUser += static_cast<int>(userAfterTheme) - static_cast<int>(userBefore);
+		g_applyDiagnostics.nativePaletteUser += static_cast<int>(userAfterPalette) - static_cast<int>(userAfterTheme);
+		g_applyDiagnostics.fbeMessageUser += static_cast<int>(userAfterFbe) - static_cast<int>(userAfterPalette);
+		g_applyDiagnostics.redrawUser += static_cast<int>(userAfterRedraw) - static_cast<int>(userAfterFbe);
+	}
+}
+
 BOOL CALLBACK ApplyChild(HWND window, LPARAM)
 {
-	ThemeManager::ApplyToWindow(window);
+	ApplyWindowSurface(window);
 	return TRUE;
 }
 
@@ -462,7 +587,11 @@ BOOL CALLBACK ApplyThreadWindow(HWND window, LPARAM)
 LRESULT CALLBACK ThemeCbtHookProc(int code, WPARAM wParam, LPARAM lParam)
 {
 	if(code == HCBT_ACTIVATE && wParam != 0)
-		ThemeManager::ApplyToWindow(reinterpret_cast<HWND>(wParam));
+	{
+		HWND window = reinterpret_cast<HWND>(wParam);
+		if(::GetPropW(window, kAppliedThemeGenerationProperty) != AppliedThemeGeneration())
+			ThemeManager::ApplyToWindow(window);
+	}
 	return ::CallNextHookEx(g_themeCbtHook, code, wParam, lParam);
 }
 
@@ -1014,14 +1143,23 @@ void SetSelectedTheme(InterfaceTheme theme)
 	g_selected = theme;
 	g_systemDark = ReadAppsUseLightTheme();
 	g_highContrast = IsHighContrastEnabled();
+	const bool systemPaletteChanged = UpdateSystemPalette();
+	const bool effectiveChanged = wasDark != IsDark() || wasHighContrast != g_highContrast;
+	const bool needsBrushes = g_windowBrush == NULL;
 	EnsureThemeCbtHook();
-	ApplyPreferredAppMode(IsDark() && !g_highContrast);
-	if(wasDark != IsDark() || wasHighContrast != g_highContrast || !g_windowBrush) RebuildBrushes();
+	if(effectiveChanged || needsBrushes) ApplyPreferredAppMode(IsDark(), g_highContrast);
+	if(effectiveChanged || systemPaletteChanged || needsBrushes)
+	{
+		AdvanceThemeGeneration();
+		RebuildBrushes();
+	}
 }
 
 InterfaceTheme GetSelectedTheme() { return g_selected; }
-bool IsDark() { return g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark); }
+bool IsDark() { return SupportsDarkMode() && (g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark)); }
 bool IsHighContrast() { return g_highContrast; }
+void ResetApplyDiagnostics() { g_applyDiagnostics = {}; g_recordApplyDiagnostics = true; }
+ApplyDiagnostics GetApplyDiagnostics() { return g_applyDiagnostics; }
 COLORREF Color(ThemeColorRole role)
 {
 	if(IsHighContrastEnabled())
@@ -1032,7 +1170,10 @@ COLORREF Color(ThemeColorRole role)
 		case THEME_COLOR_CONTROL: return ::GetSysColor(COLOR_BTNFACE);
 		case THEME_COLOR_TEXT: case THEME_COLOR_SECONDARY_TEXT: return ::GetSysColor(COLOR_WINDOWTEXT);
 		case THEME_COLOR_DISABLED_TEXT: return ::GetSysColor(COLOR_GRAYTEXT);
-		case THEME_COLOR_SELECTION_BACKGROUND: return ::GetSysColor(COLOR_HIGHLIGHT);
+		case THEME_COLOR_BORDER: return ::GetSysColor(COLOR_WINDOWTEXT);
+		case THEME_COLOR_SEPARATOR: return ::GetSysColor(COLOR_3DSHADOW);
+		case THEME_COLOR_SELECTION_BACKGROUND: case THEME_COLOR_HOVER: case THEME_COLOR_PRESSED:
+		case THEME_COLOR_FOCUS: case THEME_COLOR_ACCENT: return ::GetSysColor(COLOR_HIGHLIGHT);
 		case THEME_COLOR_SELECTION_TEXT: return ::GetSysColor(COLOR_HIGHLIGHTTEXT);
 		default: return ::GetSysColor(COLOR_WINDOWTEXT);
 		}
@@ -1102,39 +1243,16 @@ HBRUSH ControlBrush() { if(!g_controlBrush) RebuildBrushes(); return g_controlBr
 void ApplyToWindow(HWND window)
 {
 	if(!::IsWindow(window)) return;
-	const bool dark = IsDark() && !IsHighContrastEnabled();
-	::SetWindowSubclass(window, ThemeControlSubclassProc, kThemeControlSubclassId, 0);
-	// A single-space app/sub-app pair is the documented opt-out marker for
-	// visual styles. An empty string merely selects the default theme again.
-	if(dark && (UsesClassicSurfacePalette(window) || IsRadioButton(window)))
-		// UxTheme draws radio labels using its system disabled colour.  The
-		// classic path honours the parent's WM_CTLCOLORBTN palette, including
-		// DisabledTextColor(), while leaving ordinary buttons untouched.
-		::SetWindowTheme(window, L" ", L" ");
-	else if(dark && IsComboBox(window))
-		// DarkMode_CFD is the Windows 10/11 ComboBox visual-style contract. It
-		// themes the edit/list field, glyph, focused border and disabled state.
-		// On Windows 7 it is simply unavailable and falls back to light UxTheme.
-		::SetWindowTheme(window, L"DarkMode_CFD", NULL);
-	else if(dark && IsComboDropList(window))
-		::SetWindowTheme(window, L"DarkMode_Explorer", NULL);
-	else
-		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
-	// Common controls reset custom colours while processing WM_THEMECHANGED.
-	// Set their palette only after that notification has completed.
-	::SendMessage(window, WM_THEMECHANGED, 0, 0);
-	// WM_THEMECHANGED can reset the DWM non-client state.  Apply the title bar
-	// last so a main window created in Dark remains dark after all child themes.
-	ApplyModernTitleBar(window, dark);
-	ApplyNativeControlPalette(window);
-	::SendMessage(window, WM_FBE_THEMECHANGED, 0, 0);
-	::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
+	ApplyWindowSurface(window);
+	// EnumChildWindows already visits every descendant. Its callback must not
+	// recursively enumerate again; state set on each HWND also suppresses any
+	// nested calls made by WM_FBE_THEMECHANGED handlers.
 	::EnumChildWindows(window, ApplyChild, 0);
 }
 
 void ApplyToAllThreadWindows(DWORD threadId)
 {
-	RebuildBrushes();
+	if(g_windowBrush == NULL) RebuildBrushes();
 	::EnumThreadWindows(threadId, ApplyThreadWindow, 0);
 }
 
@@ -1144,9 +1262,12 @@ bool RefreshSystemTheme()
 	const bool oldHighContrast = g_highContrast;
 	g_systemDark = ReadAppsUseLightTheme();
 	g_highContrast = IsHighContrastEnabled();
-	const bool highContrastChanged = oldHighContrast != g_highContrast;
-	if((g_selected != INTERFACE_THEME_AUTOMATIC || oldDark == IsDark()) && !highContrastChanged) return false;
-	ApplyPreferredAppMode(IsDark() && !g_highContrast);
+	const bool effectiveChanged = oldDark != IsDark() || oldHighContrast != g_highContrast;
+	const bool systemPaletteChanged = UpdateSystemPalette();
+	if(!effectiveChanged && !systemPaletteChanged) return false;
+	if(effectiveChanged) ApplyPreferredAppMode(IsDark(), g_highContrast);
+	AdvanceThemeGeneration();
+	RebuildBrushes();
 	ApplyToAllThreadWindows(::GetCurrentThreadId());
 	return true;
 }

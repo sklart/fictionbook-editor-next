@@ -35,6 +35,18 @@ enum ThemeColorRole
 
 namespace ThemeManager
 {
+	struct ApplyDiagnostics
+	{
+		ULONGLONG applied;
+		ULONGLONG skipped;
+		ULONGLONG reentrant;
+		LONGLONG themeMessageUser;
+		LONGLONG nativePaletteUser;
+		LONGLONG fbeMessageUser;
+		LONGLONG redrawUser;
+	};
+	void ResetApplyDiagnostics();
+	ApplyDiagnostics GetApplyDiagnostics();
 	void SetSelectedTheme(InterfaceTheme theme);
 	InterfaceTheme GetSelectedTheme();
 	bool IsDark();
@@ -78,6 +90,6 @@ namespace ThemeManager
 	// to a window and all its children.  Safe to call on Windows 7.
 	void ApplyToWindow(HWND window);
 	void ApplyToAllThreadWindows(DWORD threadId);
-	// Returns true only when Automatic observed a Windows theme transition.
+	// Returns true when the effective theme, contrast mode, or system colours changed.
 	bool RefreshSystemTheme();
 }

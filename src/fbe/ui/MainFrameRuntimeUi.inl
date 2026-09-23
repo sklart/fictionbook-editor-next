@@ -150,7 +150,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		// The legacy command bitmaps contain a number of nearly-black strokes.
 		// Blend a light foreground over the normal image in dark mode so these
 		// strokes remain visible without replacing application-owned resources.
-		if (isCommandToolbar && ThemeManager::IsDark() && !disabled)
+		if (isCommandToolbar && ThemeManager::IsDark() && !ThemeManager::IsHighContrast() && !disabled)
 			return CDRF_NOTIFYPOSTPAINT;
 	}
 
@@ -162,7 +162,7 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		return CDRF_DODEFAULT;
 	}
 
-	if (isCommandToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark())
+	if (isCommandToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
 	{
 		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
 		const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));
