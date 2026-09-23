@@ -3,6 +3,7 @@
 #include "..\\..\\Settings.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\ThemeManager.h"
+#include "..\\..\\UiMetrics.h"
 #include "..\\..\\..\\common\\ModernFileDialog.h"
 #include "..\\..\\utils\\utils.h"
 
@@ -95,8 +96,23 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(m_builtInBackgrounds[i].localizationKey, m_builtInBackgrounds[i].name));
 	m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.custom", L"Custom image"));
 	int backgroundIndex = 0;
-	if(_Settings.GetEditorBackgroundKind() == L"builtin") for(size_t i = 0; i < m_builtInBackgrounds.size(); ++i) if(m_builtInBackgrounds[i].id == _Settings.GetEditorBackgroundId()) { backgroundIndex = static_cast<int>(i + 1); break; }
-	else if(_Settings.GetEditorBackgroundKind() == L"custom") backgroundIndex = static_cast<int>(m_builtInBackgrounds.size() + 1);
+	if(_Settings.GetEditorBackgroundKind() == L"builtin")
+	{
+		m_missingSavedBackground = true;
+		for(size_t i = 0; i < m_builtInBackgrounds.size(); ++i)
+		{
+			if(m_builtInBackgrounds[i].id == _Settings.GetEditorBackgroundId())
+			{
+				backgroundIndex = static_cast<int>(i + 1);
+				m_missingSavedBackground = false;
+				break;
+			}
+		}
+	}
+	else if(_Settings.GetEditorBackgroundKind() == L"custom")
+	{
+		backgroundIndex = static_cast<int>(m_builtInBackgrounds.size() + 1);
+	}
 	m_backgroundImage.SetCurSel(backgroundIndex);
 	m_backgroundLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.tile", L"Tile"));
 	m_backgroundLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.center", L"Center"));
@@ -153,12 +169,17 @@ void CSettingsEditorPage::Commit()
 	m_nbspCharacter.GetWindowText(character);
 	_Settings.SetNBSPChar(character);
 	const int backgroundIndex = m_backgroundImage.GetCurSel();
-	if(backgroundIndex <= 0) _Settings.SetEditorBackgroundKind(L"none");
+	if(backgroundIndex <= 0)
+	{
+		// A removed/unavailable built-in preset may have no row in the current
+		// catalogue. Opening Settings and pressing OK must not erase its choice.
+		if(!m_missingSavedBackground || m_backgroundSelectionChanged)
+			_Settings.SetEditorBackgroundKind(L"none");
+	}
 	else if(backgroundIndex <= static_cast<int>(m_builtInBackgrounds.size())) { _Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(m_builtInBackgrounds[backgroundIndex - 1].id); }
 	else _Settings.SetEditorBackgroundKind(L"custom");
 	_Settings.SetEditorBackgroundCustomPath(m_customBackgroundPath);
-	const int layoutIndex = m_backgroundLayout.GetCurSel();
-	_Settings.SetEditorBackgroundLayout(layoutIndex == 1 ? L"center" : layoutIndex == 2 ? L"contain" : layoutIndex == 3 ? L"cover" : L"tile");
+	_Settings.SetEditorBackgroundLayout(SelectedBackgroundLayout());
 }
 
 LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
@@ -171,7 +192,13 @@ LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
-LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&) { RefreshAutomaticColorDefaults(); UpdateBackgroundPreview(); return 0; }
+LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD controlId, HWND, BOOL&)
+{
+	if(controlId == IDC_EDITOR_BACKGROUND_IMAGE) m_backgroundSelectionChanged = true;
+	RefreshAutomaticColorDefaults();
+	UpdateBackgroundPreview();
+	return 0;
+}
 LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
 LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&) { UpdateBackgroundPreview(); return 0; }
 
@@ -189,6 +216,12 @@ void CSettingsEditorPage::GetSelectedBackground(CString& kind, CString& id) cons
 		kind = L"custom";
 }
 
+CString CSettingsEditorPage::SelectedBackgroundLayout() const
+{
+	const int index = m_backgroundLayout.GetCurSel();
+	return index == 1 ? L"center" : index == 2 ? L"contain" : index == 3 ? L"cover" : L"tile";
+}
+
 EditorBackgroundColors CSettingsEditorPage::ResolvePreviewColors() const
 {
 	CString kind;
@@ -203,6 +236,8 @@ void CSettingsEditorPage::RefreshAutomaticColorDefaults()
 	const EditorBackgroundColors colors = ResolvePreviewColors();
 	m_background.SetDefaultColor(colors.background);
 	m_foreground.SetDefaultColor(colors.foreground);
+	m_background.Invalidate();
+	m_foreground.Invalidate();
 }
 
 void CSettingsEditorPage::UpdateBackgroundPreview()
@@ -215,26 +250,94 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
 	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
 	const EditorBackgroundColors colors = ResolvePreviewColors();
-	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, colors.foreground, colors.background, text);
+	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, colors.foreground, colors.background,
+		SelectedBackgroundLayout(), text);
 	m_backgroundPreview.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }
 
-void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background, const CString& text)
+void CEditorBackgroundPreview::EnsureFontForDpi()
 {
-	if(m_bitmap) ::DeleteObject(m_bitmap); m_bitmap = bitmap;
-	if(m_font) ::DeleteObject(m_font); m_font = ::CreateFont(-::MulDiv(size, 96, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, face);
-	m_foreground = foreground; m_background = background; m_text = text; Invalidate();
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	if(m_font != NULL && m_fontDpi == dpi) return;
+	if(m_font) ::DeleteObject(m_font);
+	m_font = ::CreateFont(-::MulDiv(m_size, dpi, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, m_face);
+	m_fontDpi = dpi;
+}
+
+void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground,
+	COLORREF background, const CString& layout, const CString& text)
+{
+	if(m_bitmap) ::DeleteObject(m_bitmap);
+	m_bitmap = bitmap;
+	m_face = face;
+	m_size = size;
+	m_layout = layout;
+	m_foreground = foreground;
+	m_background = background;
+	m_text = text;
+	if(m_font) { ::DeleteObject(m_font); m_font = NULL; }
+	m_fontDpi = 0;
+	Invalidate();
 }
 
 LRESULT CEditorBackgroundPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 {
 	CPaintDC dc(m_hWnd); RECT rc; GetClientRect(&rc);
-	HBRUSH brush = m_bitmap ? ::CreatePatternBrush(m_bitmap) : ::CreateSolidBrush(m_background);
+	HBRUSH brush = ::CreateSolidBrush(m_background);
 	::FillRect(dc, &rc, brush); ::DeleteObject(brush);
+	if(m_bitmap)
+	{
+		BITMAP source = {};
+		if(::GetObject(m_bitmap, sizeof(source), &source) == sizeof(source) && source.bmWidth > 0 && source.bmHeight > 0)
+		{
+			HDC sourceDc = ::CreateCompatibleDC(dc);
+			if(sourceDc)
+			{
+				HGDIOBJ previousBitmap = ::SelectObject(sourceDc, m_bitmap);
+				const int saved = ::SaveDC(dc);
+				::IntersectClipRect(dc, rc.left, rc.top, rc.right, rc.bottom);
+				::SetStretchBltMode(dc, HALFTONE);
+				::SetBrushOrgEx(dc, 0, 0, NULL);
+				const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+				const int naturalWidth = (std::max)(1, ::MulDiv(source.bmWidth, dpi, 96));
+				const int naturalHeight = (std::max)(1, ::MulDiv(source.bmHeight, dpi, 96));
+				const int areaWidth = rc.right - rc.left, areaHeight = rc.bottom - rc.top;
+				if(m_layout == L"tile")
+				{
+					for(int y = 0; y < areaHeight; y += naturalHeight)
+						for(int x = 0; x < areaWidth; x += naturalWidth)
+							::StretchBlt(dc, x, y, naturalWidth, naturalHeight, sourceDc, 0, 0,
+								source.bmWidth, source.bmHeight, SRCCOPY);
+				}
+				else
+				{
+					int width = naturalWidth, height = naturalHeight;
+					if(m_layout == L"contain" || m_layout == L"cover")
+					{
+						const double horizontal = static_cast<double>(areaWidth) / naturalWidth;
+						const double vertical = static_cast<double>(areaHeight) / naturalHeight;
+						const double scale = m_layout == L"contain" ? (std::min)(horizontal, vertical) : (std::max)(horizontal, vertical);
+						width = (std::max)(1, static_cast<int>(naturalWidth * scale + 0.5));
+						height = (std::max)(1, static_cast<int>(naturalHeight * scale + 0.5));
+					}
+					::StretchBlt(dc, rc.left + (areaWidth - width) / 2, rc.top + (areaHeight - height) / 2,
+						width, height, sourceDc, 0, 0, source.bmWidth, source.bmHeight, SRCCOPY);
+				}
+				::RestoreDC(dc, saved);
+				::SelectObject(sourceDc, previousBitmap);
+				::DeleteDC(sourceDc);
+			}
+		}
+	}
 	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, m_foreground);
+	EnsureFontForDpi();
 	HFONT old = m_font ? static_cast<HFONT>(::SelectObject(dc, m_font)) : NULL;
 	RECT text = rc; ::InflateRect(&text, -6, -3); ::DrawText(dc, m_text, -1, &text, DT_LEFT | DT_VCENTER | DT_WORDBREAK);
-	if(old) ::SelectObject(dc, old); ::FrameRect(dc, &rc, static_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH))); return 0;
+	if(old) ::SelectObject(dc, old);
+	::FrameRect(dc, &rc, ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ?
+		ThemeManager::Brush(THEME_COLOR_BORDER) : static_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH)));
+	return 0;
 }
 
 LRESULT CEditorBackgroundPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)

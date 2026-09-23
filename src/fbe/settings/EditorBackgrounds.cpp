@@ -110,20 +110,15 @@ bool EditorBackgrounds::GetBuiltInRecommendedColors(const CString& id, COLORREF&
 EditorBackgroundColors EditorBackgrounds::ResolveBodyColors(DWORD configuredForeground, DWORD configuredBackground,
 	const CString& backgroundKind, const CString& backgroundId, bool highContrast)
 {
+	// High Contrast changes only the effective display palette. Keep the
+	// configured values untouched so leaving it restores explicit colors.
+	if(highContrast)
+		return { ::GetSysColor(COLOR_WINDOWTEXT), ::GetSysColor(COLOR_WINDOW) };
+	const bool dark = ThemeManager::IsDark() && !highContrast;
 	EditorBackgroundColors colors = {
-		configuredForeground == CLR_DEFAULT ? ::GetSysColor(COLOR_WINDOWTEXT) : static_cast<COLORREF>(configuredForeground),
-		configuredBackground == CLR_DEFAULT ? ::GetSysColor(COLOR_WINDOW) : static_cast<COLORREF>(configuredBackground)
+		configuredForeground == CLR_DEFAULT ? (dark ? ThemeManager::TextColor() : ::GetSysColor(COLOR_WINDOWTEXT)) : static_cast<COLORREF>(configuredForeground),
+		configuredBackground == CLR_DEFAULT ? (dark ? ThemeManager::WindowColor() : ::GetSysColor(COLOR_WINDOW)) : static_cast<COLORREF>(configuredBackground)
 	};
-	if(highContrast) return colors;
-	if(backgroundKind == L"none")
-	{
-		if(configuredForeground == CLR_DEFAULT && configuredBackground == CLR_DEFAULT && ThemeManager::IsDark())
-		{
-			colors.foreground = ThemeManager::TextColor();
-			colors.background = ThemeManager::WindowColor();
-		}
-		return colors;
-	}
 	if(backgroundKind == L"builtin")
 	{
 		COLORREF fallback = 0, text = 0;

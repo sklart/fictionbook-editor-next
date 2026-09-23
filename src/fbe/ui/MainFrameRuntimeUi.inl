@@ -129,6 +129,9 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 			HIMAGELIST imageList = m_CmdToolbar.GetImageList();
 			if (imageIndex < 0 || imageList == NULL)
 				return CDRF_DODEFAULT;
+			int imageWidth = 0, imageHeight = 0;
+			if(!::ImageList_GetIconSize(imageList, &imageWidth, &imageHeight) || imageWidth <= 0 || imageHeight <= 0)
+				return CDRF_DODEFAULT;
 
 			const RECT& rect = customDraw->nmcd.rc;
 			::DrawThemeParentBackground(m_CmdToolbar.m_hWnd, customDraw->nmcd.hdc, &rect);
@@ -137,21 +140,16 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 			draw.himl = imageList;
 			draw.i = imageIndex;
 			draw.hdcDst = customDraw->nmcd.hdc;
-			draw.x = rect.left + (rect.right - rect.left - 24) / 2;
-			draw.y = rect.top + (rect.bottom - rect.top - 24) / 2;
-			draw.cx = 24;
-			draw.cy = 24;
+			draw.x = rect.left + (rect.right - rect.left - imageWidth) / 2;
+			draw.y = rect.top + (rect.bottom - rect.top - imageHeight) / 2;
+			draw.cx = imageWidth;
+			draw.cy = imageHeight;
 			draw.rgbBk = CLR_NONE;
 			draw.rgbFg = CLR_NONE;
 			draw.fStyle = ILD_TRANSPARENT;
 			draw.fState = ILS_SATURATE;
 			return ::ImageList_DrawIndirect(&draw) ? CDRF_SKIPDEFAULT : CDRF_DODEFAULT;
 		}
-		// The legacy command bitmaps contain a number of nearly-black strokes.
-		// Blend a light foreground over the normal image in dark mode so these
-		// strokes remain visible without replacing application-owned resources.
-		if (isCommandToolbar && ThemeManager::IsDark() && !ThemeManager::IsHighContrast() && !disabled)
-			return CDRF_NOTIFYPOSTPAINT;
 	}
 
 	if (isScriptsToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
@@ -160,31 +158,6 @@ LRESULT CMainFrame::OnCommandToolbarCustomDraw(int, LPNMHDR pnmh, BOOL& bHandled
 		if((state & (CDIS_HOT | CDIS_SELECTED)) != 0)
 			::FrameRect(customDraw->nmcd.hdc, &customDraw->nmcd.rc, ThemeManager::Brush(THEME_COLOR_BORDER));
 		return CDRF_DODEFAULT;
-	}
-
-	if (isCommandToolbar && customDraw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
-	{
-		const UINT commandId = static_cast<UINT>(customDraw->nmcd.dwItemSpec);
-		const int imageIndex = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, commandId, 0));
-		HIMAGELIST imageList = m_CmdToolbar.GetImageList();
-		if (imageIndex < 0 || imageList == NULL)
-			return CDRF_DODEFAULT;
-
-		const RECT& rect = customDraw->nmcd.rc;
-		IMAGELISTDRAWPARAMS draw = {};
-		draw.cbSize = sizeof(draw);
-		draw.himl = imageList;
-		draw.i = imageIndex;
-		draw.hdcDst = customDraw->nmcd.hdc;
-		draw.x = rect.left + (rect.right - rect.left - 24) / 2;
-		draw.y = rect.top + (rect.bottom - rect.top - 24) / 2;
-		draw.cx = 24;
-		draw.cy = 24;
-		draw.rgbBk = CLR_NONE;
-		draw.rgbFg = ThemeManager::TextColor();
-		draw.fStyle = ILD_TRANSPARENT | ILD_BLEND50;
-	::ImageList_DrawIndirect(&draw);
-	return CDRF_DODEFAULT;
 	}
 
 	return CDRF_DODEFAULT;

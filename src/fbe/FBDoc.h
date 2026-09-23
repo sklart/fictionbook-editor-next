@@ -119,6 +119,7 @@ public:
 
   // config
   void	  ApplyConfChanges();
+  void      ApplyThemeAppearance();
 
   // active document table
   static Doc  *LocateDocument(const wchar_t *id);

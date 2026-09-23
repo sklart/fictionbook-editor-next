@@ -8,8 +8,10 @@ param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-table-toolbar-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'table-toolbar'
+$directory = $isolation.Root
+$passed = $false
 try {
     $fixture = Join-Path $directory 'toolbar.fb2'; $report = Join-Path $directory 'toolbar.tsv'
     @'
@@ -19,9 +21,9 @@ try {
     $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'table-toolbar-rendering'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -PassThru
-        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил toolbar rendering scenario.' }
-        if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE toolbar scenario failed: exit $($process.ExitCode)." }
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', $report, '--portable', $fixture) -PassThru
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'table-toolbar-rendering' -Report $report -TimeoutSeconds $TimeoutSeconds
+        if ($exitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE toolbar scenario failed: exit $exitCode." }
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $commands = @($rows.command_id | Select-Object -Unique)
@@ -39,7 +41,8 @@ try {
         $enabledChroma = ($inside | Measure-Object -Property chroma_pixels -Minimum).Minimum
         if ($enabledChroma -le $disabledChroma) { throw "Command $command enabled rendering is not more chromatic than disabled rendering ($enabledChroma <= $disabledChroma)." }
     }
+    $passed = $true
     Write-Host 'FBE table toolbar state and rendering transitions passed.'
 } finally {
-    if ($KeepArtifacts) { Write-Host "Toolbar artifacts: $directory" } else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed ($passed -and -not $KeepArtifacts)
 }

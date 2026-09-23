@@ -110,13 +110,14 @@ foreach($required in @('ApplyTheme()', 'ContextAttributeBarThemeProc', 'WM_CTLCO
 foreach($required in @('ContextAttributeBoxThemeProc', 'WS_EX_CLIENTEDGE', 'GWL_EXSTYLE', 'SWP_FRAMECHANGED', 'THEME_COLOR_BORDER', 'ApplyBoxTheme')) {
 	if($contextAttributeBars -notlike "*$required*") { throw "Context attribute boxes do not replace the Dark client edge with a themed border: $required." }
 }
-foreach($required in @('ApplyRuntimeTableTheme', 'fbe-runtime-dark-table-theme', 'table.table th', 'table.table td', 'ThemeManager::ControlColor()', 'ThemeManager::BorderColor()', 'sheet->cssText')) {
-	if($fbDoc -notlike "*$required*") { throw "BODY table headers do not receive the runtime-only Dark table theme: $required." }
+foreach($required in @('ApplyRuntimeTableTheme', 'fbe-runtime-dark-table-theme', 'table.table th', 'table.table td', 'ResolveBodyEditorColors()', 'BlendBodyColors', 'sheet->cssText')) {
+	if($fbDoc -notlike "*$required*") { throw "BODY table headers do not follow the resolved runtime palette: $required." }
 }
+if($fbDoc -like '*table.table th{background-color:%s !important*') { throw 'Runtime table colors must not override explicit cell colors with !important.' }
 foreach($required in @('ApplyRuntimeScrollbarTheme', 'fbe-runtime-dark-scrollbar-theme', 'scrollbar-face-color', 'scrollbar-track-color', 'scrollbar-arrow-color', 'html,body', 'sheet->cssText = L""')) {
 	if($fbDoc -notlike "*$required*") { throw "BODY scrollbar runtime override is incomplete: $required." }
 }
-if($fbDoc -like '*runtime\main.css*' -or $fbDoc -notlike '*never BODY*') { throw 'BODY table theme must remain a runtime MSHTML override and must not replace BODY colours.' }
+if($fbDoc -like '*runtime\main.css*') { throw 'BODY table theme must remain a runtime MSHTML override.' }
 foreach($required in @('GetSelectedBackground', 'ResolvePreviewColors', 'EditorBackgrounds::ResolveBodyColors', 'RefreshAutomaticColorDefaults', 'm_background.SetDefaultColor', 'm_foreground.SetDefaultColor')) {
 	if($settingsEditorPage -notlike "*$required*") { throw "Automatic BODY colour buttons do not show their effective Dark value: $required." }
 }
@@ -135,9 +136,10 @@ foreach($required in @('m_contextAttributeBars.ApplyTheme()', 'ApplyContextAttri
 foreach($required in @('CThemedSplitterWindow', 'CThemedHorSplitterWindow', 'ThemeManager::ControlBrush()', 'THEME_COLOR_BORDER', 'single horizontal structural border')) {
     if($mainFrameHeader -notlike "*$required*") { throw "Main frame does not theme splitter separator $required." }
 }
-foreach($required in @('isContextAttributeBar', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ILD_BLEND50', 'CDDS_ITEMPOSTPAINT')) {
+foreach($required in @('isContextAttributeBar', 'ThemeManager::ControlBrush()', 'ThemeManager::DisabledTextColor()', 'ThemeManager::HoverColor()', 'ThemeManager::SelectionTextColor()', 'ThemeManager::ControlColor()', 'ImageList_GetIconSize', 'CDDS_ITEMPOSTPAINT')) {
     if($toolbarUi -notlike "*$required*") { throw "Toolbar custom draw does not apply semantic colour $required." }
 }
+if($toolbarUi -like '*ILD_BLEND50*') { throw 'Command toolbar must not paint a second blended copy of its completed icons.' }
 foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark', 'UsesClassicSurfacePalette', 'SetWindowTheme(window, L" ", L" ")', 'ApplyNativeControlPalette(window);')) {
     if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }
 }

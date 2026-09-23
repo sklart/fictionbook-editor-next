@@ -534,12 +534,10 @@ LRESULT CColorButton::OnDrawItem (UINT /* unused: uMsg */, WPARAM /* unused: wPa
 	// Draw color
 	//
 
-	if ((uState & ODS_DISABLED) == 0)
-	{
-		dc .SetBkColor ((m_clrCurrent == CLR_DEFAULT) ? m_clrDefault : m_clrCurrent);
-		dc .ExtTextOut (0, 0, ETO_OPAQUE, &rcDraw, NULL, 0, NULL);
-		dc .FrameRect (&rcDraw, useDarkPalette ? ThemeManager::ControlBrush() : (HBRUSH)::GetStockObject (BLACK_BRUSH));
-	}
+	// Disabled affects the shell and arrow, not the meaning of the color sample.
+	dc .SetBkColor ((m_clrCurrent == CLR_DEFAULT) ? m_clrDefault : m_clrCurrent);
+	dc .ExtTextOut (0, 0, ETO_OPAQUE, &rcDraw, NULL, 0, NULL);
+	dc .FrameRect (&rcDraw, useDarkPalette ? ThemeManager::Brush(THEME_COLOR_BORDER) : (HBRUSH)::GetStockObject (BLACK_BRUSH));
 	return 1;
 }
 

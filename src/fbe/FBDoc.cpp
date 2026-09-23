@@ -30,6 +30,7 @@ extern CSettings _Settings;
 
 namespace FB {
 
+static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document);
 static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document);
 static void ApplyRuntimeScrollbarTheme(MSHTML::IHTMLDocument2Ptr document);
 
@@ -873,8 +874,9 @@ bool Doc::LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSour
 		return false;
 	}
 
-	// apiLoadFB2 builds the BODY DOM.  Reapply the runtime-only table overlay
-	// afterwards so it remains present without becoming part of the FB2 model.
+	// apiLoadFB2 builds the BODY DOM. Reapply runtime-only presentation sheets
+	// afterwards; none of them becomes part of the FB2 model.
+	ApplyRuntimeBodyColors(m_editor.Document());
 	ApplyRuntimeTableTheme(m_editor.Document());
 	ApplyRuntimeScrollbarTheme(m_editor.Document());
 
@@ -2180,12 +2182,58 @@ static CString CssColor(COLORREF color)
 	return value;
 }
 
+static void ApplyRuntimeBodyColors(MSHTML::IHTMLDocument2Ptr document)
+{
+	if (!document) return;
+	MSHTML::IHTMLDocument3Ptr document3(document);
+	if (!document3) return;
+	MSHTML::IHTMLElementPtr style(document3->getElementById(L"fbe-runtime-body-colors"));
+	if (!style)
+	{
+		MSHTML::IHTMLElementPtr head(document->createElement(L"STYLE"));
+		MSHTML::IHTMLElementCollectionPtr heads(document3->getElementsByTagName(L"HEAD"));
+		if (!head || !heads || heads->length == 0) return;
+		head->id = L"fbe-runtime-body-colors";
+		MSHTML::IHTMLDOMNodePtr headNode(heads->item(_variant_t(0), _variant_t()));
+		if (!headNode) return;
+		headNode->appendChild(MSHTML::IHTMLDOMNodePtr(head));
+		style = head;
+	}
+	MSHTML::IHTMLStyleElementPtr styleElement(style);
+	MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
+	if (!sheet) return;
+	const BodyEditorColors colors = ResolveBodyEditorColors();
+	const CString foreground = CssColor(static_cast<COLORREF>(colors.foreground));
+	const CString background = CssColor(static_cast<COLORREF>(colors.background));
+	CString css;
+	if (IsHighContrastEnabled())
+		css.Format(L"body{color:%s !important;background-color:%s !important;background-image:none !important;}",
+			static_cast<LPCWSTR>(foreground), static_cast<LPCWSTR>(background));
+	else
+		css.Format(L"body{color:%s;background-color:%s;}",
+			static_cast<LPCWSTR>(foreground), static_cast<LPCWSTR>(background));
+	sheet->cssText = static_cast<LPCWSTR>(css);
+}
+
+static COLORREF BlendBodyColors(COLORREF background, COLORREF foreground, int foregroundPercent)
+{
+	const int backgroundPercent = 100 - foregroundPercent;
+	return RGB((GetRValue(background) * backgroundPercent + GetRValue(foreground) * foregroundPercent) / 100,
+		(GetGValue(background) * backgroundPercent + GetGValue(foreground) * foregroundPercent) / 100,
+		(GetBValue(background) * backgroundPercent + GetBValue(foreground) * foregroundPercent) / 100);
+}
+
 static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document)
 {
 	if(!document) return;
 	MSHTML::IHTMLDocument3Ptr document3(document);
 	if(!document3) return;
+	const BodyEditorColors body = ResolveBodyEditorColors();
+	const COLORREF background = static_cast<COLORREF>(body.background);
+	const bool darkBody = !IsHighContrastEnabled() &&
+		(299 * GetRValue(background) + 587 * GetGValue(background) + 114 * GetBValue(background)) < 128000;
 	MSHTML::IHTMLElementPtr style(document3->getElementById(L"fbe-runtime-dark-table-theme"));
+	if(!darkBody && !style) return;
 	if(!style)
 	{
 		MSHTML::IHTMLElementPtr head(document->createElement(L"STYLE"));
@@ -2200,21 +2248,21 @@ static void ApplyRuntimeTableTheme(MSHTML::IHTMLDocument2Ptr document)
 	MSHTML::IHTMLStyleElementPtr styleElement(style);
 	MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
 	if(!sheet) return;
-	if(!ThemeManager::IsDark() || IsHighContrastEnabled())
+	if(!darkBody)
 	{
 		sheet->cssText = L"";
 		return;
 	}
-	const CString headerBackground = CssColor(ThemeManager::ControlColor());
-	const CString text = CssColor(ThemeManager::TextColor());
-	const CString border = CssColor(ThemeManager::BorderColor());
+	const COLORREF foreground = static_cast<COLORREF>(body.foreground);
+	const CString headerBackground = CssColor(BlendBodyColors(background, foreground, 12));
+	const CString border = CssColor(BlendBodyColors(background, foreground, 35));
 	CString css;
-	// This style sheet exists only in the live MSHTML document.  It targets
-	// table cells, never BODY, so document background/image settings and FB2
-	// serialization remain independent of the interface theme.
-	css.Format(L"#fbw_body table.table th{background-color:%s !important;color:%s !important;}"
-		L"#fbw_body table.table th,#fbw_body table.table td{border-color:%s !important;}",
-		static_cast<LPCWSTR>(headerBackground), static_cast<LPCWSTR>(text), static_cast<LPCWSTR>(border));
+	// This sheet is live-editor-only. Match the built-in table selectors, but
+	// do not use !important: explicit document cell colors retain precedence.
+	css.Format(L"div#fbw_body table.table{border-color:%s;}"
+		L"div#fbw_body table.table th{background-color:%s;}"
+		L"div#fbw_body table.table th,div#fbw_body table.table td{border-color:%s;}",
+		static_cast<LPCWSTR>(border), static_cast<LPCWSTR>(headerBackground), static_cast<LPCWSTR>(border));
 	sheet->cssText = static_cast<LPCWSTR>(css);
 }
 
@@ -2427,24 +2475,34 @@ void  Doc::ApplyConfChanges() {
       hs->fontSize=(const wchar_t *)fss;
     }
 
-    const BodyEditorColors colors = ResolveBodyEditorColors();
-    fs = colors.foreground;
-    fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
-    hs->color=(const wchar_t *)fss;
-
-    fs = colors.background;
-    fss.Format(_T("rgb(%d,%d,%d)"),GetRValue(fs),GetGValue(fs),GetBValue(fs));
-    hs->backgroundColor=(const wchar_t *)fss;
-
 	ApplyEditorBackground(hs);
-	ApplyRuntimeTableTheme(m_editor.Document());
-	ApplyRuntimeScrollbarTheme(m_editor.Document());
+	ApplyThemeAppearance();
 
 	bool mode = _Settings.FastMode();
 	SetFastMode(mode);
 	::SendMessage(m_frame, WM_COMMAND, MAKELONG(mode,IDN_FAST_MODE_CHANGE), (LPARAM)0);
   }
   catch (_com_error&) { }
+}
+
+void Doc::ApplyThemeAppearance()
+{
+	const long versionBefore = m_editor.GetVersionNumber();
+	const bool cleanBefore = m_body_ver == versionBefore && !m_editor.IsFormChanged();
+	const bool checkpointBefore = m_body_cp == versionBefore && !m_editor.IsFormCP();
+	try
+	{
+		ApplyRuntimeBodyColors(m_editor.Document());
+		ApplyRuntimeTableTheme(m_editor.Document());
+		ApplyRuntimeScrollbarTheme(m_editor.Document());
+		// MSHTML counts runtime stylesheet updates as document versions even
+		// though they do not touch editable BODY HTML or the FB2 model.
+		// Advance only matching baselines: never hide an existing user edit.
+		const long versionAfter = m_editor.GetVersionNumber();
+		if(cleanBefore) m_body_ver = versionAfter;
+		if(checkpointBefore) m_body_cp = versionAfter;
+	}
+	catch (_com_error&) { }
 }
 
 static int compare_nocase(const void* v1,const void* v2)

@@ -3512,7 +3512,7 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	if (::IsWindow(m_rebar)) m_rebar.SendMessage(WM_SIZE);
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());
 	if (m_doc)
-		m_doc->ApplyConfChanges();
+		m_doc->ApplyThemeAppearance();
 	if (m_source.IsWindow())
 	{
 		m_source.UpdateMetrics(BuildSourceEditorConfig());
@@ -6696,10 +6696,10 @@ LRESULT CMainFrame::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if(m_document_tree.IsWindow())
 		ThemeManager::ApplyToWindow(m_document_tree);
-	// Apply only resolved defaults; explicit BODY colours and background images
-	// remain document-editor settings and are preserved by Doc::ApplyConfChanges.
+	// Theme-only updates must not write to the editable BODY style or mark the
+	// document modified; explicit editor settings remain unchanged.
 	if(m_doc)
-		m_doc->ApplyConfChanges();
+		m_doc->ApplyThemeAppearance();
 	if(_Settings.GetXmlSrcColorPalette() == XML_SRC_COLOR_PALETTE_SYSTEM)
 		ApplyXmlSourceEditorChanges(false);
 	if(m_document_tree.IsWindow() && m_document_tree.m_tree.m_tree.IsWindow())

@@ -15,6 +15,11 @@ class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CS
 	COLORREF m_foreground = RGB(0, 0, 0);
 	COLORREF m_background = RGB(255, 255, 255);
 	CString m_text;
+	CString m_face;
+	CString m_layout;
+	int m_size = 12;
+	UINT m_fontDpi = 0;
+	void EnsureFontForDpi();
 public:
 	DECLARE_WND_SUPERCLASS(NULL, WC_STATIC)
 	BEGIN_MSG_MAP(CEditorBackgroundPreview)
@@ -22,7 +27,8 @@ public:
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 	END_MSG_MAP()
-	void SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background, const CString& text);
+	void SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background,
+		const CString& layout, const CString& text);
 	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnEraseBackground(UINT, WPARAM, LPARAM, BOOL&) { return 1; }
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
@@ -40,6 +46,8 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CEditorBackgroundPreview m_backgroundPreview;
 	std::vector<EditorBackgroundDescriptor> m_builtInBackgrounds;
 	CString m_customBackgroundPath;
+	bool m_missingSavedBackground = false;
+	bool m_backgroundSelectionChanged = false;
 	CSettingsTooltips m_tooltips;
 
 public:
@@ -72,6 +80,7 @@ public:
 	LRESULT OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewColorChanged(int, LPNMHDR, BOOL&);
 	void GetSelectedBackground(CString& kind, CString& id) const;
+	CString SelectedBackgroundLayout() const;
 	EditorBackgroundColors ResolvePreviewColors() const;
 	void RefreshAutomaticColorDefaults();
 	void UpdateBackgroundPreview();

@@ -759,6 +759,155 @@
 		appendTablePhase("save-1-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"settings-editor-page-runtime"))
+	{
+		CStringA report("case\tpassed\r\n");
+		auto append = [&](const char* name, bool passed)
+		{
+			CStringA row; row.Format("%s\t%d\r\n", name, passed ? 1 : 0);
+			report += row;
+		};
+		const CString missingCustom(L"C:\\FBE-missing-background.gif");
+		_Settings.SetEditorBackgroundKind(L"custom");
+		_Settings.SetEditorBackgroundCustomPath(missingCustom);
+		_Settings.SetColorBG(CLR_DEFAULT);
+		_Settings.SetColorFG(CLR_DEFAULT);
+		{
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
+			const int count = static_cast<int>(::SendMessageW(picker, CB_GETCOUNT, 0, 0));
+			const bool selected = count >= 2 && ::SendMessageW(picker, CB_GETCURSEL, 0, 0) == count - 1;
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			append("missing-custom-ok", window != NULL && selected &&
+				_Settings.GetEditorBackgroundKind() == L"custom" && _Settings.GetEditorBackgroundCustomPath() == missingCustom &&
+				_Settings.GetColorBG() == CLR_DEFAULT && _Settings.GetColorFG() == CLR_DEFAULT);
+			page.DestroyWindow();
+		}
+		_Settings.SetEditorBackgroundKind(L"builtin");
+		_Settings.SetEditorBackgroundId(L"removed-preset");
+		{
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			append("missing-builtin-ok", window != NULL && _Settings.GetEditorBackgroundKind() == L"builtin" &&
+				_Settings.GetEditorBackgroundId() == L"removed-preset");
+			page.DestroyWindow();
+		}
+		{
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
+			::SendMessageW(picker, CB_SETCURSEL, 0, 0);
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDC_EDITOR_BACKGROUND_IMAGE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(picker));
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			append("missing-builtin-select-none", window != NULL && _Settings.GetEditorBackgroundKind() == L"none");
+			page.DestroyWindow();
+		}
+		_Settings.SetEditorBackgroundKind(L"custom");
+		_Settings.SetEditorBackgroundCustomPath(missingCustom);
+		{
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
+			::SendMessageW(picker, CB_SETCURSEL, 0, 0);
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDC_EDITOR_BACKGROUND_IMAGE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(picker));
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), 0);
+			append("custom-cancel", window != NULL && _Settings.GetEditorBackgroundKind() == L"custom" &&
+				_Settings.GetEditorBackgroundCustomPath() == missingCustom);
+			page.DestroyWindow();
+		}
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"body-theme-runtime"))
+	{
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->body : NULL);
+		MSHTML::IHTMLElement2Ptr scrollable(body);
+		if(!document || !body || !scrollable) { output.Close(); ::PostQuitMessage(1); return 0; }
+		_Settings.SetEditorBackgroundKind(L"none");
+		_Settings.SetColorFG(CLR_DEFAULT); _Settings.SetColorBG(CLR_DEFAULT);
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		m_doc->ApplyConfChanges();
+		m_doc->MarkSavePoint();
+		MSHTML::IHTMLBodyElementPtr bodyElement(body);
+		MSHTML::IHTMLTxtRangePtr selection(bodyElement ? bodyElement->createTextRange() : NULL);
+		if(selection && selection->findText(L"Theme target", 0, 0)) selection->select();
+		MSHTML::IHTMLTxtRangePtr baselineSelection(selection ? selection->duplicate() : NULL);
+		scrollable->scrollTop = 160;
+		const long baselineScroll = scrollable->scrollTop;
+		const CString baselineHtml(static_cast<LPCWSTR>(body->innerHTML));
+		const bool baselineDirty = m_doc->DocChanged();
+		OLECMD baselineCommands[] = { { IDM_UNDO, 0 }, { IDM_REDO, 0 } };
+		m_doc->m_body.QueryStatus(baselineCommands, _countof(baselineCommands));
+		CStringA report("phase\tforeground\tbackground\ttable_dark\tno_important\tstate_ok\tconfigured_fg\tconfigured_bg\ttheme_dark\thigh_contrast\tsame_html\tsame_dirty\tsame_selection\tsame_scroll\tsame_undo\r\n");
+		auto append = [&](const char* phase)
+		{
+			MSHTML::IHTMLElement2Ptr themedBody(body);
+			MSHTML::IHTMLCurrentStylePtr bodyStyle(themedBody ? themedBody->currentStyle : NULL);
+			CString foreground, background;
+			if(bodyStyle)
+			{
+				_variant_t foregroundValue(bodyStyle->color), backgroundValue(bodyStyle->backgroundColor);
+				if(foregroundValue.vt == VT_BSTR && foregroundValue.bstrVal) foreground = foregroundValue.bstrVal;
+				if(backgroundValue.vt == VT_BSTR && backgroundValue.bstrVal) background = backgroundValue.bstrVal;
+			}
+			MSHTML::IHTMLDocument3Ptr document3(document);
+			MSHTML::IHTMLElementPtr style(document3 ? document3->getElementById(L"fbe-runtime-dark-table-theme") : NULL);
+			MSHTML::IHTMLStyleElementPtr styleElement(style);
+			MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
+			const CString tableCss(sheet ? static_cast<LPCWSTR>(sheet->cssText) : L"");
+			MSHTML::IHTMLTxtRangePtr currentSelection(document->selection->createRange());
+			OLECMD commands[] = { { IDM_UNDO, 0 }, { IDM_REDO, 0 } };
+			m_doc->m_body.QueryStatus(commands, _countof(commands));
+			const bool sameSelection = baselineSelection && currentSelection &&
+				baselineSelection->compareEndPoints(L"StartToStart", currentSelection) == 0 &&
+				baselineSelection->compareEndPoints(L"EndToEnd", currentSelection) == 0;
+			const bool sameHtml = baselineHtml == CString(static_cast<LPCWSTR>(body->innerHTML));
+			const bool sameDirty = baselineDirty == m_doc->DocChanged();
+			const bool sameScroll = baselineScroll == scrollable->scrollTop;
+			const bool sameUndo = baselineCommands[0].cmdf == commands[0].cmdf && baselineCommands[1].cmdf == commands[1].cmdf;
+			const bool stateOk = sameHtml && sameDirty && sameSelection && sameScroll && sameUndo;
+			CStringA foregroundUtf8(CW2A(foreground, CP_UTF8)), backgroundUtf8(CW2A(background, CP_UTF8));
+			CStringA row; row.Format("%s\t%s\t%s\t%d\t%d\t%d\t%lu\t%lu\t%d\t%d\t%d\t%d\t%d\t%d\t%d\r\n", phase,
+				foregroundUtf8.GetString(), backgroundUtf8.GetString(), tableCss.IsEmpty() ? 0 : 1,
+				tableCss.Find(L"!important") < 0 ? 1 : 0, stateOk ? 1 : 0,
+				static_cast<unsigned long>(_Settings.GetColorFG()), static_cast<unsigned long>(_Settings.GetColorBG()),
+				ThemeManager::IsDark() ? 1 : 0, ThemeManager::IsHighContrast() ? 1 : 0,
+				sameHtml ? 1 : 0, sameDirty ? 1 : 0, sameSelection ? 1 : 0, sameScroll ? 1 : 0, sameUndo ? 1 : 0);
+			report += row;
+		};
+		append("light-auto");
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId()); append("dark-auto");
+		_Settings.SetColorFG(RGB(0, 0, 0)); _Settings.SetColorBG(RGB(255, 255, 255));
+		m_doc->ApplyConfChanges(); append("dark-ui-light-body");
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		_Settings.SetColorFG(RGB(255, 255, 255)); _Settings.SetColorBG(RGB(20, 20, 20));
+		m_doc->ApplyConfChanges(); append("light-ui-dark-body");
+		_Settings.SetColorFG(CLR_DEFAULT); _Settings.SetColorBG(CLR_DEFAULT);
+		m_doc->ApplyConfChanges(); append("light-auto-again");
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		_Settings.SetColorFG(RGB(0, 0, 0)); _Settings.SetColorBG(RGB(255, 255, 255));
+		m_doc->ApplyConfChanges(); append("dark-explicit-again");
+		// A later palette switch must not accidentally acknowledge a real edit.
+		body->insertAdjacentHTML(L"beforeEnd", L"<p>Unsent user edit.</p>");
+		const CString editedHtml(static_cast<LPCWSTR>(body->innerHTML));
+		const bool dirtyBeforeTheme = m_doc->DocChanged();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		if(!dirtyBeforeTheme || !m_doc->DocChanged() ||
+			editedHtml != CString(static_cast<LPCWSTR>(body->innerHTML)))
+		{
+			output.Close(); ::PostQuitMessage(1); return 0;
+		}
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
 	if (IsFbeTestScenario(L"editor-background-runtime"))
 	{
 		StartupTrace::AppendTestStartupBreadcrumb("scenario-enter");
