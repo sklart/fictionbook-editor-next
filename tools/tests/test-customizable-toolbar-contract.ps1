@@ -128,5 +128,29 @@ if ($mainFrame.IndexOf('ShowScriptsToolbarCustomizeDialog()', [StringComparison]
 if ($mainFrame.IndexOf('m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog()', [StringComparison]::Ordinal) -lt 0) {
     throw 'Контекстное меню Scripts toolbar не открывает собственный диалог.'
 }
+if ($mainFrame.IndexOf('m_selBandID == ATL_IDW_BAND_FIRST+1) CustomizeCommandToolbar()', [StringComparison]::Ordinal) -lt 0) {
+    throw 'Контекстное меню основной панели не открывает тематизированный штатный диалог.'
+}
+foreach ($required in @(
+    'm_CmdToolbar.Customize()',
+    'SetWindowsHookExW(WH_CBT, ToolbarCustomizeCbtProc',
+    '::GetWindow(dialog, GW_OWNER) == ::GetAncestor(context->toolbar, GA_ROOT)',
+    'SetWindowSubclass(dialog, ToolbarCustomizeThemeProc',
+    'RemoveWindowSubclass(dialog, ToolbarCustomizeThemeProc',
+    'message == WM_CTLCOLORLISTBOX',
+    'message != WM_DRAWITEM',
+    'kCustomizeAvailableList = 201',
+    'kCustomizeCurrentList = 203',
+    'ThemeManager::ControlColor()',
+    'ThemeManager::DisabledTextColor()',
+    'ThemeManager::SelectionTextColor()',
+    'ImageList_GetIconSize',
+    'ImageList_Draw(imageList, LOWORD(bitmap), item->hDC, x, y, ILD_NORMAL)',
+    'UnhookWindowsHookEx(context.hook)'
+)) {
+    if ($mainFrameSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Штатный диалог панели команд потерял ограниченную dark-отрисовку: $required"
+    }
+}
 
 Write-Host 'Customizable toolbar TBN_GETBUTTONINFO contract passed.'

@@ -87,6 +87,132 @@ struct RecoveryDiagnostics
 RecoveryDiagnostics g_recoveryDiagnostics;
 }
 
+namespace
+{
+// The lists in comctl32's TB_CUSTOMIZE dialog are owner-drawn by comctl32.
+// WM_CTLCOLORLISTBOX alone cannot recolour their items, so scope the drawing
+// override to this one modal invocation. The native dialog still owns all
+// selection, drag/drop, reset and toolbar mutation behaviour.
+constexpr UINT_PTR kToolbarCustomizeThemeSubclass = 0x46424543; // "FBEC"
+constexpr int kCustomizeAvailableList = 201;
+constexpr int kCustomizeCurrentList = 203;
+
+struct ToolbarCustomizeImage
+{
+	std::wstring caption;
+	int bitmap;
+};
+
+struct ToolbarCustomizeThemeContext
+{
+	HWND toolbar = NULL;
+	HHOOK hook = NULL;
+	std::vector<ToolbarCustomizeImage> images;
+};
+
+thread_local ToolbarCustomizeThemeContext* g_toolbarCustomizeTheme = nullptr;
+
+LRESULT CALLBACK ToolbarCustomizeThemeProc(HWND dialog, UINT message, WPARAM wParam, LPARAM lParam,
+	UINT_PTR, DWORD_PTR reference)
+{
+	if(message == WM_NCDESTROY)
+	{
+		::RemoveWindowSubclass(dialog, ToolbarCustomizeThemeProc, kToolbarCustomizeThemeSubclass);
+		return ::DefSubclassProc(dialog, message, wParam, lParam);
+	}
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast())
+		return ::DefSubclassProc(dialog, message, wParam, lParam);
+
+	const HWND available = ::GetDlgItem(dialog, kCustomizeAvailableList);
+	const HWND current = ::GetDlgItem(dialog, kCustomizeCurrentList);
+	if(message == WM_CTLCOLORLISTBOX &&
+		(reinterpret_cast<HWND>(lParam) == available || reinterpret_cast<HWND>(lParam) == current))
+	{
+		HDC dc = reinterpret_cast<HDC>(wParam);
+		::SetBkColor(dc, ThemeManager::ControlColor());
+		::SetTextColor(dc, ThemeManager::TextColor());
+		return reinterpret_cast<LRESULT>(ThemeManager::ControlBrush());
+	}
+	if(message != WM_DRAWITEM || (wParam != kCustomizeAvailableList && wParam != kCustomizeCurrentList))
+		return ::DefSubclassProc(dialog, message, wParam, lParam);
+
+	const DRAWITEMSTRUCT* item = reinterpret_cast<const DRAWITEMSTRUCT*>(lParam);
+	const HWND list = wParam == kCustomizeAvailableList ? available : current;
+	if(!item || item->CtlType != ODT_LISTBOX || item->hwndItem != list || !item->hDC ||
+		!(::GetWindowLongPtrW(list, GWL_STYLE) & LBS_HASSTRINGS))
+		return ::DefSubclassProc(dialog, message, wParam, lParam);
+
+	const bool selected = (item->itemState & ODS_SELECTED) != 0;
+	::FillRect(item->hDC, &item->rcItem, ThemeManager::Brush(selected ? THEME_COLOR_SELECTION_BACKGROUND : THEME_COLOR_CONTROL));
+	if(item->itemID == static_cast<UINT>(-1)) return TRUE;
+
+	const LRESULT length = ::SendMessageW(list, LB_GETTEXTLEN, item->itemID, 0);
+	if(length == LB_ERR || length < 0 || length > 32767)
+		return TRUE;
+	std::vector<wchar_t> caption(static_cast<size_t>(length) + 1, L'\0');
+	if(::SendMessageW(list, LB_GETTEXT, item->itemID, reinterpret_cast<LPARAM>(caption.data())) == LB_ERR)
+		return TRUE;
+
+	ToolbarCustomizeThemeContext* context = reinterpret_cast<ToolbarCustomizeThemeContext*>(reference);
+	int iconWidth = 0;
+	if(context && ::IsWindow(context->toolbar))
+	{
+		for(const ToolbarCustomizeImage& image : context->images)
+		{
+			if(image.caption != caption.data() || image.bitmap < 0) continue;
+			const UINT bitmap = static_cast<UINT>(image.bitmap);
+			HIMAGELIST imageList = reinterpret_cast<HIMAGELIST>(::SendMessageW(context->toolbar,
+				TB_GETIMAGELIST, HIWORD(bitmap), 0));
+			int iconHeight = 0;
+			if(imageList && ::ImageList_GetIconSize(imageList, &iconWidth, &iconHeight))
+			{
+				const int x = item->rcItem.left + 3;
+				const int y = item->rcItem.top + (item->rcItem.bottom - item->rcItem.top - iconHeight) / 2;
+				::ImageList_Draw(imageList, LOWORD(bitmap), item->hDC, x, y, ILD_NORMAL);
+			}
+			break;
+		}
+	}
+
+	RECT textRect = item->rcItem;
+	textRect.left += iconWidth + 9;
+	textRect.right -= 3;
+	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(list, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font ? ::SelectObject(item->hDC, font) : NULL;
+	const COLORREF oldText = ::SetTextColor(item->hDC,
+		(item->itemState & (ODS_DISABLED | ODS_GRAYED)) ? ThemeManager::DisabledTextColor() :
+		selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor());
+	const int oldMode = ::SetBkMode(item->hDC, TRANSPARENT);
+	::DrawTextW(item->hDC, caption.data(), -1, &textRect,
+		DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+	::SetBkMode(item->hDC, oldMode);
+	::SetTextColor(item->hDC, oldText);
+	if(oldFont) ::SelectObject(item->hDC, oldFont);
+	if(item->itemState & ODS_FOCUS)
+		::FrameRect(item->hDC, &item->rcItem, ThemeManager::Brush(THEME_COLOR_FOCUS));
+	return TRUE;
+}
+
+LRESULT CALLBACK ToolbarCustomizeCbtProc(int code, WPARAM wParam, LPARAM lParam)
+{
+	ToolbarCustomizeThemeContext* context = g_toolbarCustomizeTheme;
+	if(code == HCBT_ACTIVATE && context)
+	{
+		HWND dialog = reinterpret_cast<HWND>(wParam);
+		const HWND available = ::GetDlgItem(dialog, kCustomizeAvailableList);
+		const HWND current = ::GetDlgItem(dialog, kCustomizeCurrentList);
+		wchar_t className[32] = {};
+		if(available && current &&
+			::GetWindow(dialog, GW_OWNER) == ::GetAncestor(context->toolbar, GA_ROOT) &&
+			::GetClassNameW(dialog, className, _countof(className)) &&
+			::lstrcmpW(className, L"#32770") == 0)
+			::SetWindowSubclass(dialog, ToolbarCustomizeThemeProc, kToolbarCustomizeThemeSubclass,
+				reinterpret_cast<DWORD_PTR>(context));
+	}
+	return ::CallNextHookEx(context ? context->hook : NULL, code, wParam, lParam);
+}
+}
+
 
 namespace
 {
@@ -2208,6 +2334,37 @@ void CMainFrame::AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand, 
 		tb.DeleteButton(idx);
 	}
 	tb.AutoSize();
+}
+
+void CMainFrame::CustomizeCommandToolbar()
+{
+	if(!::IsWindow(m_CmdToolbar) || !ThemeManager::IsDark() || ThemeManager::IsHighContrast())
+	{
+		m_CmdToolbar.Customize();
+		return;
+	}
+
+	ToolbarCustomizeThemeContext context;
+	context.toolbar = m_CmdToolbar;
+	TBBUTTONS available;
+	if(GetAvailableButtons(m_CmdToolbar, available))
+	{
+		for(int index = 0; index < available.GetSize(); ++index)
+		{
+			const TBBUTTON& button = available[index];
+			if((button.fsStyle & BTNS_SEP) || button.iBitmap < 0) continue;
+			CString caption;
+			if(GetButtonText(button, caption))
+				context.images.push_back({ static_cast<LPCWSTR>(caption), button.iBitmap });
+		}
+	}
+
+	ToolbarCustomizeThemeContext* previous = g_toolbarCustomizeTheme;
+	g_toolbarCustomizeTheme = &context;
+	context.hook = ::SetWindowsHookExW(WH_CBT, ToolbarCustomizeCbtProc, NULL, ::GetCurrentThreadId());
+	m_CmdToolbar.Customize();
+	if(context.hook) ::UnhookWindowsHookEx(context.hook);
+	g_toolbarCustomizeTheme = previous;
 }
 
 void CMainFrame::ShowScriptsToolbarCustomizeDialog()

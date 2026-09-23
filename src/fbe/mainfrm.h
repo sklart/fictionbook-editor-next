@@ -849,7 +849,7 @@ public:
   LRESULT OnToolCustomize(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /* unused: hWndCtl */, BOOL& /*bHandled*/)
   {
 	  UnhookSysDialogs();
-	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) m_CmdToolbar.Customize(); else
+	  if (m_selBandID == ATL_IDW_BAND_FIRST+1) CustomizeCommandToolbar(); else
 	  if (m_selBandID == ATL_IDW_BAND_FIRST+2) ShowScriptsToolbarCustomizeDialog();
 	  HookSysDialogs();
       return 0;
@@ -977,6 +977,7 @@ public:
   }
 
 	void ShowScriptsToolbarCustomizeDialog();
+	void CustomizeCommandToolbar();
 	void ShowScriptToolbarManagerDialog();
 
   LRESULT OnGoToReference(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */)
