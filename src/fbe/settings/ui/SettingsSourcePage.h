@@ -3,6 +3,7 @@
 #pragma once
 
 #include <atlhost.h>
+#include "..\\..\\ThemeManager.h"
 #include "..\\..\\extras\\ColorButton.h"
 #include <vector>
 #include "..\\..\\resource.h"
@@ -30,6 +31,7 @@ public:
 
 BEGIN_MSG_MAP(CSettingsSourcePage)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+	MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
 	MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
@@ -47,6 +49,7 @@ BEGIN_MSG_MAP(CSettingsSourcePage)
 END_MSG_MAP()
 
 	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnThemeChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSourcePaletteChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);

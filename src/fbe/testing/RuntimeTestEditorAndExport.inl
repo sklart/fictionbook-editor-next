@@ -1306,11 +1306,17 @@
 					break;
 				case 2: { // Tab changes focus; Enter activates that button, not the old default.
 					if(firstButton != NULL) ::PostMessageW(firstButton, WM_KEYDOWN, VK_TAB, 0);
-					::Sleep(100);
-					GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
-					keyboard = ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
-						focus.hwndFocus == ::GetDlgItem(dialog, IDNO);
-					if(focus.hwndFocus != NULL) ::PostMessageW(focus.hwndFocus, WM_KEYDOWN, VK_RETURN, 0);
+					HWND noButton = ::GetDlgItem(dialog, IDNO);
+					for(int retry = 0; retry < 100 && !keyboard; ++retry)
+					{
+						GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
+						keyboard = noButton != NULL &&
+							::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
+							focus.hwndFocus == noButton;
+						if(!keyboard) ::Sleep(10);
+					}
+					if(keyboard) ::PostMessageW(noButton, WM_KEYDOWN, VK_RETURN, 0);
+					else if(noButton != NULL) ::SendMessageW(noButton, BM_CLICK, 0, 0);
 					break;
 				}
 				case 3: // The second button is the native default for MB_DEFBUTTON2.

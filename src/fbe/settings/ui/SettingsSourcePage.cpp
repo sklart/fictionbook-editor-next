@@ -342,6 +342,24 @@ void CSettingsSourcePage::LoadSourceThemeControlsFromSettings()
 	UpdateSourceThemeDisplay();
 	InvalidateSourcePreview();
 }
+
+LRESULT CSettingsSourcePage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	// The System palette follows the live interface theme. Keep explicit color
+	// selections intact while refreshing the Automatic swatches in an open page.
+	if(!m_source_colors[XML_SRC_COLOR_TEXT].IsWindow()) return 0;
+	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
+	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
+	{
+		if(i == XML_SRC_COLOR_COMMENT) continue;
+		m_source_colors[i].SetDefaultColor(GetThemeDefaultColor(themeId,
+			static_cast<XmlSrcColorGroup>(i)));
+		m_source_colors[i].Invalidate();
+	}
+	InvalidateSourcePreview();
+	return 0;
+}
+
 void CSettingsSourcePage::UpdateSourceColorTooltips()
 {
 	static const int labels[XML_SRC_COLOR_GROUP_COUNT] = {
