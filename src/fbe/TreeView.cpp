@@ -25,7 +25,7 @@ static_assert(kNavigationPopupFirst > ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, "Navi
 static_assert(kNavigationPopupFirst > ID_SPELL_REPLACE_LAST, "Navigation popup must not overlap spell commands");
 static_assert(kNavigationPopupFirst > ID_PLUGIN_EXPORT_LAST, "Navigation popup must not overlap plugin commands");
 static_assert(kNavigationPopupFirst > ID_SCI_EXPAND9, "Navigation popup must not overlap Scintilla commands");
-static_assert(kNavigationPopupFirst > ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT, "Navigation popup must not overlap script commands");
+static_assert(kNavigationPopupFirst > ID_SCRIPT_BASE + 999, "Navigation popup must not overlap script commands");
 static_assert(kNavigationPopupLast <= 0xffffu, "Navigation popup command IDs must fit WM_COMMAND");
 }
 
