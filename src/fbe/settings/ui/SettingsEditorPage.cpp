@@ -29,6 +29,22 @@ bool PreviewGdiplusReady()
 	return session.Ready();
 }
 
+bool GetPreviewBitmapFileIdentity(const CString& path, ULONGLONG& size, FILETIME& lastWriteTime)
+{
+	WIN32_FILE_ATTRIBUTE_DATA attributes = {};
+	if(!::GetFileAttributesEx(path, GetFileExInfoStandard, &attributes) ||
+		(attributes.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+		return false;
+	size = (static_cast<ULONGLONG>(attributes.nFileSizeHigh) << 32) | attributes.nFileSizeLow;
+	lastWriteTime = attributes.ftLastWriteTime;
+	return true;
+}
+
+bool SameFileTime(const FILETIME& left, const FILETIME& right)
+{
+	return left.dwLowDateTime == right.dwLowDateTime && left.dwHighDateTime == right.dwHighDateTime;
+}
+
 HBITMAP LoadPreviewBitmap(const CString& path, bool& hasAlpha)
 {
 	hasAlpha = false;
@@ -316,15 +332,32 @@ void CSettingsEditorPage::RefreshAutomaticColorDefaults()
 
 void CSettingsEditorPage::UpdateCachedBackgroundBitmap(const CString& path)
 {
-	if(m_cachedBackgroundPath == path) return;
+	ULONGLONG size = 0;
+	FILETIME lastWriteTime = {};
+	if(path.IsEmpty() || !GetPreviewBitmapFileIdentity(path, size, lastWriteTime))
+	{
+		if(m_cachedBackgroundBitmap) ::DeleteObject(m_cachedBackgroundBitmap);
+		m_cachedBackgroundBitmap = NULL;
+		m_cachedBackgroundHasAlpha = false;
+		m_cachedBackgroundPath.Empty();
+		m_cachedBackgroundValid = false;
+		return;
+	}
+	if(m_cachedBackgroundValid && m_cachedBackgroundPath.CompareNoCase(path) == 0 &&
+		m_cachedBackgroundSize == size && SameFileTime(m_cachedBackgroundLastWriteTime, lastWriteTime)) return;
 	if(m_cachedBackgroundBitmap) ::DeleteObject(m_cachedBackgroundBitmap);
 	m_cachedBackgroundBitmap = NULL;
 	m_cachedBackgroundHasAlpha = false;
-	m_cachedBackgroundPath = path;
-	if(!path.IsEmpty())
+	m_cachedBackgroundValid = false;
+	m_cachedBackgroundPath.Empty();
+	++m_cachedBackgroundLoadCount;
+	m_cachedBackgroundBitmap = LoadPreviewBitmap(path, m_cachedBackgroundHasAlpha);
+	if(m_cachedBackgroundBitmap != NULL)
 	{
-		++m_cachedBackgroundLoadCount;
-		m_cachedBackgroundBitmap = LoadPreviewBitmap(path, m_cachedBackgroundHasAlpha);
+		m_cachedBackgroundPath = path;
+		m_cachedBackgroundSize = size;
+		m_cachedBackgroundLastWriteTime = lastWriteTime;
+		m_cachedBackgroundValid = true;
 	}
 }
 

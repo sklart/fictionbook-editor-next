@@ -952,7 +952,7 @@
 			page.DestroyWindow();
 		}
 		auto verifyAutomaticPair = [&](const char* name, InterfaceTheme theme, const wchar_t* kind, const wchar_t* id,
-			DWORD foreground, DWORD background)
+			DWORD foreground, DWORD background, COLORREF expectedForeground, COLORREF expectedBackground)
 		{
 			ThemeManager::SetSelectedTheme(theme);
 			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -960,13 +960,10 @@
 			_Settings.SetColorFG(foreground); _Settings.SetColorBG(background);
 			CSettingsEditorPage page;
 			const HWND window = page.Create(m_hWnd);
-			const EditorBackgroundColors expected = EditorBackgrounds::ResolveBodyColors(foreground, background, kind, id, ThemeManager::IsHighContrast());
-			const EditorBackgroundColors automaticForeground = EditorBackgrounds::ResolveBodyColors(CLR_DEFAULT, background, kind, id, ThemeManager::IsHighContrast());
-			const EditorBackgroundColors automaticBackground = EditorBackgrounds::ResolveBodyColors(foreground, CLR_DEFAULT, kind, id, ThemeManager::IsHighContrast());
 			const bool previewAndSwatches = window != NULL &&
-				page.m_backgroundPreview.m_foreground == expected.foreground && page.m_backgroundPreview.m_background == expected.background &&
-				page.m_foreground.GetDefaultColor() == automaticForeground.foreground &&
-				page.m_background.GetDefaultColor() == automaticBackground.background;
+				page.m_backgroundPreview.m_foreground == expectedForeground && page.m_backgroundPreview.m_background == expectedBackground &&
+				(foreground != CLR_DEFAULT || page.m_foreground.GetDefaultColor() == expectedForeground) &&
+				(background != CLR_DEFAULT || page.m_background.GetDefaultColor() == expectedBackground);
 			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
 			m_doc->ApplyConfChanges();
 			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
@@ -975,17 +972,17 @@
 			MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
 			CString css(sheet ? static_cast<LPCWSTR>(sheet->cssText) : L""); css.MakeLower();
 			CString expectedForeground, expectedBackground;
-			expectedForeground.Format(L"#%02x%02x%02x", GetRValue(expected.foreground), GetGValue(expected.foreground), GetBValue(expected.foreground));
-			expectedBackground.Format(L"#%02x%02x%02x", GetRValue(expected.background), GetGValue(expected.background), GetBValue(expected.background));
+			expectedForeground.Format(L"#%02x%02x%02x", GetRValue(expectedForeground), GetGValue(expectedForeground), GetBValue(expectedForeground));
+			expectedBackground.Format(L"#%02x%02x%02x", GetRValue(expectedBackground), GetGValue(expectedBackground), GetBValue(expectedBackground));
 			append(name, previewAndSwatches && css.Find(expectedForeground) >= 0 && css.Find(expectedBackground) >= 0);
 			page.DestroyWindow();
 		};
-		verifyAutomaticPair("dark-white-background-auto-text", INTERFACE_THEME_DARK, L"none", L"", CLR_DEFAULT, RGB(255, 255, 255));
-		verifyAutomaticPair("dark-black-text-auto-background", INTERFACE_THEME_DARK, L"none", L"", RGB(0, 0, 0), CLR_DEFAULT);
-		verifyAutomaticPair("light-black-background-auto-text", INTERFACE_THEME_LIGHT, L"none", L"", CLR_DEFAULT, RGB(0, 0, 0));
-		verifyAutomaticPair("light-white-text-auto-background", INTERFACE_THEME_LIGHT, L"none", L"", RGB(255, 255, 255), CLR_DEFAULT);
-		verifyAutomaticPair("explicit-body-colors", INTERFACE_THEME_DARK, L"none", L"", RGB(12, 34, 56), RGB(210, 190, 170));
-		verifyAutomaticPair("builtin-background-automatic", INTERFACE_THEME_DARK, L"builtin", L"12_graphite_dark", CLR_DEFAULT, CLR_DEFAULT);
+		verifyAutomaticPair("dark-white-background-auto-text", INTERFACE_THEME_DARK, L"none", L"", CLR_DEFAULT, RGB(255, 255, 255), RGB(0, 0, 0), RGB(255, 255, 255));
+		verifyAutomaticPair("dark-black-text-auto-background", INTERFACE_THEME_DARK, L"none", L"", RGB(0, 0, 0), CLR_DEFAULT, RGB(0, 0, 0), RGB(255, 255, 255));
+		verifyAutomaticPair("light-black-background-auto-text", INTERFACE_THEME_LIGHT, L"none", L"", CLR_DEFAULT, RGB(0, 0, 0), RGB(255, 255, 255), RGB(0, 0, 0));
+		verifyAutomaticPair("light-white-text-auto-background", INTERFACE_THEME_LIGHT, L"none", L"", RGB(255, 255, 255), CLR_DEFAULT, RGB(255, 255, 255), RGB(0, 0, 0));
+		verifyAutomaticPair("explicit-body-colors", INTERFACE_THEME_DARK, L"none", L"", RGB(12, 34, 56), RGB(210, 190, 170), RGB(12, 34, 56), RGB(210, 190, 170));
+		verifyAutomaticPair("builtin-background-automatic", INTERFACE_THEME_DARK, L"builtin", L"12_graphite_dark", CLR_DEFAULT, CLR_DEFAULT, RGB(232, 232, 232), RGB(61, 61, 60));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
@@ -1084,6 +1081,38 @@
 					if(window != NULL) page.DestroyWindow();
 				}
 		}
+		const CString cachePath = CString(directory) + L"\\alpha-cache-refresh.png";
+		auto saveOpaque = [](const CString& path, DWORD argb) {
+			CImage image; if(!image.Create(1, 1, 32, CImage::createAlphaChannel)) return false;
+			*static_cast<DWORD*>(image.GetPixelAddress(0, 0)) = argb; return SUCCEEDED(image.Save(path));
+		};
+		bool cacheSaved = saveOpaque(cachePath, 0xFFFF0000);
+		WIN32_FILE_ATTRIBUTE_DATA first = {};
+		cacheSaved = cacheSaved && ::GetFileAttributesEx(cachePath, GetFileExInfoStandard, &first) != FALSE;
+		_Settings.SetEditorBackgroundKind(L"custom"); _Settings.SetEditorBackgroundCustomPath(cachePath);
+		_Settings.SetEditorBackgroundLayout(L"tile"); _Settings.SetColorBG(RGB(255, 255, 255)); _Settings.SetColorFG(CLR_DEFAULT);
+		CSettingsEditorPage cachePage; const HWND cacheWindow = cachePage.Create(m_hWnd);
+		const unsigned int firstLoad = cachePage.m_cachedBackgroundLoadCount;
+		BOOL handled = FALSE; cachePage.m_backgroundLayout.SetCurSel(1); cachePage.OnBackgroundSelectionChanged(0, IDC_EDITOR_BACKGROUND_LAYOUT, NULL, handled);
+		cachePage.m_fontSize.SetWindowText(L"14"); cachePage.OnPreviewSettingsChanged(0, 0, NULL, handled);
+		cachePage.m_foreground.SetColor(RGB(10, 20, 30)); cachePage.OnPreviewColorChanged(0, NULL, handled);
+		const bool reused = firstLoad == 1 && cachePage.m_cachedBackgroundLoadCount == firstLoad;
+		cacheSaved = cacheSaved && saveOpaque(cachePath, 0xFF0000FF);
+		HANDLE file = ::CreateFile(cachePath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+		if(file != INVALID_HANDLE_VALUE) {
+			ULARGE_INTEGER time = {}; time.LowPart = first.ftLastWriteTime.dwLowDateTime; time.HighPart = first.ftLastWriteTime.dwHighDateTime; time.QuadPart += 20000000ULL;
+			FILETIME changed = { time.LowPart, time.HighPart }; cacheSaved = cacheSaved && ::SetFileTime(file, NULL, NULL, &changed) != FALSE; ::CloseHandle(file);
+		} else cacheSaved = false;
+		cachePage.m_backgroundLayout.SetCurSel(0); cachePage.UpdateBackgroundPreview(); cachePage.m_backgroundPreview.m_text.Empty();
+		RECT rect = {}; cachePage.m_backgroundPreview.GetClientRect(&rect); const int width = rect.right - rect.left, height = rect.bottom - rect.top;
+		HDC screen = ::GetDC(NULL), memory = screen ? ::CreateCompatibleDC(screen) : NULL;
+		HBITMAP canvas = screen && width > 0 && height > 0 ? ::CreateCompatibleBitmap(screen, width, height) : NULL; COLORREF actual = CLR_INVALID;
+		if(memory && canvas) { HGDIOBJ old = ::SelectObject(memory, canvas); cachePage.m_backgroundPreview.PaintPreview(memory, rect); actual = ::GetPixel(memory, width / 2, height / 2); ::SelectObject(memory, old); }
+		if(canvas) ::DeleteObject(canvas); if(memory) ::DeleteDC(memory); if(screen) ::ReleaseDC(NULL, screen);
+		const bool reloaded = cacheWindow && cacheSaved && reused && cachePage.m_cachedBackgroundLoadCount == 2 &&
+			actual != CLR_INVALID && abs(GetRValue(actual)) <= 3 && abs(GetGValue(actual)) <= 3 && abs(GetBValue(actual) - 255) <= 3;
+		allPassed = allPassed && reloaded; CStringA cacheRow; cacheRow.Format("same-path-reload\t%d\t%06lx\t%06lx\r\n", reloaded ? 1 : 0, static_cast<unsigned long>(actual), static_cast<unsigned long>(RGB(0, 0, 255))); report += cacheRow;
+		if(cacheWindow) cachePage.DestroyWindow();
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); ::PostQuitMessage(allPassed ? 0 : 1); return 0;
 	}

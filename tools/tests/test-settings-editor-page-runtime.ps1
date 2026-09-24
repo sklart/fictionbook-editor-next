@@ -44,7 +44,7 @@ try {
         $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_PREVIEW_DIRECTORY = $savedMode, $savedScenario, $savedDirectory
     }
     $alphaRows = @(Import-Csv -LiteralPath $alphaReport -Delimiter "`t")
-    if($alphaRows.Count -ne 24) { throw "Expected 24 PNG alpha preview cases, got $($alphaRows.Count)." }
+    if($alphaRows.Count -ne 25) { throw "Expected 24 PNG alpha preview cases plus same-path cache refresh, got $($alphaRows.Count)." }
     foreach($row in $alphaRows) {
         if($row.passed -ne '1') { throw "Settings preview alpha mismatch: $($row | ConvertTo-Json -Compress)" }
     }

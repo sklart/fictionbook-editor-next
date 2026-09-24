@@ -53,6 +53,9 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CString m_cachedBackgroundPath;
 	HBITMAP m_cachedBackgroundBitmap = NULL;
 	bool m_cachedBackgroundHasAlpha = false;
+	ULONGLONG m_cachedBackgroundSize = 0;
+	FILETIME m_cachedBackgroundLastWriteTime = {};
+	bool m_cachedBackgroundValid = false;
 	unsigned int m_cachedBackgroundLoadCount = 0;
 	bool m_missingSavedBackground = false;
 	bool m_backgroundSelectionChanged = false;
