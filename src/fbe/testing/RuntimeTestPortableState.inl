@@ -70,7 +70,8 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptToolbarRollbackPersisted = IsFbeTestScenario(L"script-toolbar-rollback-persisted-runtime");
 	const bool scriptToolbarRollbackPartial = IsFbeTestScenario(L"script-toolbar-rollback-partial-runtime");
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !navigationScriptsRuntime)
+	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -82,7 +83,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !navigationScriptsRuntime)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
@@ -90,9 +91,22 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };
 	auto mainHasDefault = [&]() { TBBUTTON button = {}; return m_ScriptsToolbar.GetButtonCount() > 0 && m_ScriptsToolbar.GetButton(0, &button) && button.idCommand == ID_LAST_SCRIPT; };
+	if(navigationScriptsReloadRuntime)
+	{
+		const bool initialized = InitializeScripts(); RefreshNavigationScriptTree(); CTreeView& tree = m_document_tree.m_tree.m_tree;
+		CString childUid; for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(m_scripts.Menu().Item(index).relativePath == L"foldera/child.js") childUid = m_scripts.Menu().Item(index).uid;
+		PortableToolbarLayout persisted; PortableToolbarStore::Load(persisted); ScriptToolbarDefinition* toolbar = NULL;
+		for(size_t toolbarIndex = 0; toolbarIndex < persisted.scriptToolbars.size(); ++toolbarIndex) if(persisted.scriptToolbars[toolbarIndex].id == L"navigation-runtime-toolbar") { toolbar = &persisted.scriptToolbars[toolbarIndex]; break; }
+		bool uidRestored = false;
+		for(size_t index = 0; toolbar != NULL && toolbar->name == L"Navigation renamed" && index < toolbar->items.size(); ++index) if(toolbar->items[index].scriptUid == childUid) { uidRestored = true; break; }
+		const bool modeRestored = _Settings.DocumentTreeScripts() && tree.IsScriptMode(); const bool treeRestored = tree.ScriptTreeNodeCount() == 5 && tree.FindScriptTreeItem(L"foldera/folderb/deep.js") != NULL;
+		const bool restored = initialized && modeRestored && treeRestored;
+		CStringA report; report.Format("phase=navigation-scripts-reload\ninitialized=%d\nmode=%d\ntree=%d\nuid=%d\nrestored=%d\nresult=%s\n", initialized, modeRestored, treeRestored, uidRestored, restored, restored ? "pass" : "fail"); WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
 	if(navigationScriptsRuntime)
 	{
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		_Settings.SetDocumentTreeScripts(true, true);
 		const bool initialized = InitializeScripts();
 		// The probe is executed during startup, before a command-line document
 		// finishes its usual view activation.  Exercise the normal design-view
@@ -120,7 +134,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool dragGuarded = dragHandled && !tree.IsStructuralDragActive();
 		const UINT discoveryBefore = m_scripts.DiscoveryCount();
 		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), changed = previous;
-		ScriptToolbarDefinition target; target.id = L"navigation-runtime-toolbar"; target.name = L"Navigation runtime"; changed.push_back(target);
+		ScriptToolbarDefinition target; target.id = L"navigation-runtime-toolbar"; target.name = L"Navigation runtime"; target.visible = true; changed.push_back(target);
 		const bool applied = ApplyScriptToolbarDefinitions(previous, changed);
 		CString childUid; int childCommand = -1; for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(m_scripts.Menu().Item(index).relativePath == L"foldera/child.js") { childUid = m_scripts.Menu().Item(index).uid; childCommand = m_scripts.Menu().Item(index).commandId; }
 		const bool toolbarAdded = applied && AddScriptToToolbar(childUid, target.id);
@@ -128,8 +142,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		for(size_t index = 0; uidPersisted && index < persisted.scriptToolbars.size(); ++index) if(persisted.scriptToolbars[index].id == target.id) { uidPersisted = !persisted.scriptToolbars[index].items.empty() && persisted.scriptToolbars[index].items[0].scriptUid == childUid; break; }
 		std::vector<ScriptToolbarDefinition> renamed = currentDefinitions(); for(size_t index = 0; index < renamed.size(); ++index) if(renamed[index].id == target.id) renamed[index].name = L"Navigation renamed";
 		const bool targetRenamed = toolbarAdded && ApplyScriptToolbarDefinitions(currentDefinitions(), renamed) && tree.HasScriptToolbarTarget(target.id, L"Navigation renamed");
-		std::vector<ScriptToolbarDefinition> deleted = currentDefinitions(); for(std::vector<ScriptToolbarDefinition>::iterator index = deleted.begin(); index != deleted.end(); ++index) if(index->id == target.id) { deleted.erase(index); break; }
-		const bool targetDeleted = targetRenamed && ApplyScriptToolbarDefinitions(currentDefinitions(), deleted) && !tree.HasScriptToolbarTarget(target.id, L"Navigation renamed");
+		std::vector<ScriptToolbarDefinition> deleted = currentDefinitions(); ScriptToolbarDefinition temporary; temporary.id = L"navigation-delete-toolbar"; temporary.name = L"Navigation delete"; deleted.push_back(temporary);
+		const bool temporaryAdded = targetRenamed && ApplyScriptToolbarDefinitions(currentDefinitions(), deleted) && tree.HasScriptToolbarTarget(temporary.id, temporary.name);
+		deleted = currentDefinitions(); for(std::vector<ScriptToolbarDefinition>::iterator index = deleted.begin(); index != deleted.end(); ++index) if(index->id == temporary.id) { deleted.erase(index); break; }
+		const bool targetDeleted = temporaryAdded && ApplyScriptToolbarDefinitions(currentDefinitions(), deleted) && !tree.HasScriptToolbarTarget(temporary.id, temporary.name) && tree.HasScriptToolbarTarget(target.id, L"Navigation renamed");
 		const bool targetLive = targetDeleted && m_scripts.DiscoveryCount() == discoveryBefore;
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
