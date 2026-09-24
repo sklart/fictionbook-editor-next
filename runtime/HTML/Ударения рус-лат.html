@@ -1,0 +1,99 @@
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ <!-- version 2.0 -->
+ <meta http-equiv="MSThemeCompatible" content="yes">
+ <title>:: Ударения (рус-лат) ::</title>
+ <style>
+  body { font-family: Tahoma; font-size: 12px; margin: 4px; }
+  table { table-layout: fixed; }
+  td   { font-family: Arial Unicode MS; font-size: 18px;
+         text-align: center; border-bottom: 1px dashed;
+         border-right: 1px dashed; width: 10%; }
+  td.hdr { font-family: Tahoma; font-size: 12px;
+           text-align: left; font-weight: bold;
+           background-color: #e8e8e8; padding-left: 6px;
+           height: 20px; }
+  td.sep { border: none; height: 8px; }
+ </style>
+</head>
+<body>
+<div id=divForTable></div>
+<script>
+function myMain() {
+
+ function onClick() {
+  if (event.srcElement.nodeName == "TD" &&
+      fbw_body.contains(fb2doc.selection.createRange().parentElement())) {
+   var ht = event.srcElement.innerHTML;
+   if (ht == "" || ht == "&nbsp;") return;
+   fb2window.eval('window.external.BeginUndoUnit(document,"Вставка ударения");' +
+   'var rng=document.selection.createRange();' +
+   'rng.pasteHTML("' + ht + '");' +
+   'rng.collapse(false);' +
+   'rng.select();' +
+   'window.external.EndUndoUnit(document);');
+  }
+ }
+
+ var params     = window.dialogArguments;
+ var fbw_body   = params["fbw_body"];
+ var fb2doc     = params["document"];
+ var fb2window  = params["window"];
+
+ var tableX = 10; // всего столбцов в таблице (сетка фиксированная)
+
+ // Группы: заголовок + строка символов
+ // Каждая буква с ударением - HTML-код: "буква&#769;"
+ var groups = [
+  { hdr: "Русские — строчные:",
+    cells: ["а&#769;", "е&#769;", "ё&#769;", "и&#769;", "о&#769;",
+            "у&#769;", "ы&#769;", "э&#769;", "ю&#769;", "я&#769;"] },
+  { hdr: "Русские — заглавные:",
+    cells: ["А&#769;", "Е&#769;", "Ё&#769;", "И&#769;", "О&#769;",
+            "У&#769;", "Ы&#769;", "Э&#769;", "Ю&#769;", "Я&#769;"] },
+  { sep: true },
+  { hdr: "Латиница — строчные:",
+    cells: ["a&#769;", "e&#769;", "i&#769;", "o&#769;", "u&#769;",
+            "y&#769;", "", "", "", ""] },
+  { hdr: "Латиница — заглавные:",
+    cells: ["A&#769;", "E&#769;", "I&#769;", "O&#769;", "U&#769;",
+            "Y&#769;", "", "", "", ""] }
+ ];
+
+ var htmlStr = "<TABLE cellspacing=0 cellpadding=2 width=100%>";
+
+ for (var g = 0; g < groups.length; g++) {
+  var grp = groups[g];
+
+  // Пустая полоса-разделитель между русским и латинским блоками
+  if (grp.sep) {
+   htmlStr += "<TR><TD class=sep colspan=" + tableX + "></TD></TR>";
+   continue;
+  }
+
+  // Заголовок группы - на всю ширину
+  htmlStr += "<TR><TD class=hdr colspan=" + tableX + ">" +
+             grp.hdr + "</TD></TR>";
+
+  // Строка с символами
+  htmlStr += "<TR>";
+  for (var x = 0; x < tableX; x++) {
+   var myChar = grp.cells[x];
+   htmlStr += "<TD onmouseover='this.style.fontWeight=\"bold\";" +
+              "this.style.backgroundColor=\"cyan\";' " +
+              "onmouseout='this.style.fontWeight=\"normal\";" +
+              "this.style.backgroundColor=\"white\";'>" +
+              (myChar != undefined && myChar != "" ? myChar : "&nbsp;") +
+              "</TD>";
+  }
+  htmlStr += "</TR>";
+ }
+
+ htmlStr += "</TABLE>";
+ document.getElementById("divForTable").innerHTML = htmlStr;
+ document.body.onclick = function() { onClick(); };
+}
+
+myMain();
+</script>
+</body>

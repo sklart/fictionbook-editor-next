@@ -1,5 +1,5 @@
 // Скрипт "Проверить правильность нумерации заголовков" для редактора FBE
-// version 3.3
+// version 3.4
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
@@ -24,19 +24,14 @@
 //    словесные числительные — до ~1000 (до «тысячи»)
 //    Продолжает нумерацию от первого заголовка в группе (Глава 62 → 63 → 64...)
 
-// version 3.3, 05.01.2026
-// - Полная переработка словаря русских числительных: использованы готовые формы
-//   по родам из проверенного скрипта конвертации чисел
-// - Исправлено распознавание всех составных числительных (сто десятая, сто двадцать первая...)
-// - Римские и арабские заголовки корректно разделяются по группам
-// - Перезапуски нумерации после римских разделов работают правильно
-// - Добавлены настройки тихого режима и выбора разделов
+// version 3.4, 01.08.2026
+// - Добавлена настройка searchLostTitles для отключения поиска потерянных заголовков в обычных абзацах
 //======================================
 
 function Run() {
     // Название и версия скрипта
     var scriptName = "Проверить правильность нумерации заголовков";
-    var scriptVersion = "3.3";
+    var scriptVersion = "3.4";
 
     // ==================================================
     // НАСТРОЙКИ СКРИПТА ====== можно менять по необходимости ======
@@ -50,6 +45,9 @@ function Run() {
     
     // Обрабатывать раздел комментариев
     var processCommentsSection = 0; // 0 - нет, 1 - да
+    
+    // Искать потерянные заголовки в обычных абзацах (только при ошибках в нумерации)
+    var searchLostTitles = 0; // 1 - искать, 0 - не искать
 
     // Получаем неразрывный пробел из настроек FBE
     var nbspChar, nbspEntity;
@@ -1431,7 +1429,6 @@ function Run() {
             parent = parent.parentNode;
         }
         
-        // Пропускаем сноски/комментарии если не задано их обрабатывать
         if (inNotesSection && !processNotesSection) {
             if (div.className && typeof div.className == 'string') {
                 var classes = div.className.split(' ');
@@ -1524,7 +1521,10 @@ function Run() {
         }
     }
 
-    if (stats.errorsFound > 0) lostTitles = findLostTitles(dominantPattern);
+    // Поиск потерянных заголовков — ТОЛЬКО если включено в настройках и есть ошибки
+    if (stats.errorsFound > 0 && searchLostTitles == 1) {
+        lostTitles = findLostTitles(dominantPattern);
+    }
 
     var totalTime = new Date() - startTime;
     var timeSeconds = (totalTime / 1000).toFixed(2).replace('.', ',');
@@ -1544,7 +1544,7 @@ function Run() {
         return;
     }
     
-    if (lostTitles.length > 0) {
+    if (lostTitles.length > 0 && searchLostTitles == 1) {
         message += showLostTitlesReport(lostTitles);
         message += "\n✗ Автоматическое исправление невозможно!\n   Разметьте потерянные заголовки вручную и повторно запустите скрипт.\n\nВремя проверки: " + timeSeconds + " сек\n---------------------------";
         MsgBox(message, "FBE скрипт");
@@ -1566,7 +1566,7 @@ function Run() {
         message += "\n";
     }
     
-    if (allTitles.length > 0 && errors.length > 0) {
+    if (allTitles.length > 0 && errors.length > 0 && searchLostTitles == 1) {
         var missingNumbers = [];
         for (i = 0; i < errors.length; i++) {
             if (errors[i] && errors[i].expected) missingNumbers.push(errors[i].expected);
@@ -1597,7 +1597,6 @@ function Run() {
         return;
     }
 
-    // Таймер запускаем после confirm
     var fixStartTime = new Date();
     
     window.external.BeginUndoUnit(document, scriptName + " - исправление нумерации");

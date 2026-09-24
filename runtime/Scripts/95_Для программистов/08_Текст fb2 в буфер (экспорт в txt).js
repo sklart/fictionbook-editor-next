@@ -1,5 +1,5 @@
-// Скрипт "Текст fb2 в буфер (экспорт в txt) для редактора FBE
-// version 2.1
+// Скрипт "Текст fb2 в буфер (экспорт в txt)" для редактора FBE
+// version 2.6
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
@@ -8,17 +8,24 @@
 // Настройки скрипта позволяют опционально:
 // - создавать оглавление из имеющихся заголовков, 
 // - копировать или пропускать разделы аннотации, хистори, сносок и комментариев,
-// - обрамлять заголовки, подзаголовки и размеченные блочные элементы пустыми строками.
+// - обрамлять заголовки, подзаголовки и размеченные блочные элементы пустыми строками,
+// - сохранять результат в txt файл в папку с исходным fb2 документом.
 // Иллюстрации заменяются на их упоминание в соответствующих местах в скобках: [иллюстрация].
+// Скрипт ищет путь к текущему файлу тремя способами.
+// Для версий FBE начиная с 2.8.5 применяется самый быстрый и точный способ - штатно через API FBE.
+// Для старых версий FBE (до 2.8.5) применяется самый медленный способ, определяющий путь,
+// но не дающий точного названия текущего fb2 файла.
+// Поэтому название txt файла создается из названия документа, указанного в Description.
+// Настройка отображения имени и пути к txt файлу в статистике - по умолчанию выключено (режим "паранойя").
 // Скрипт не вносит никаких изменений в fb2 документ.
 // Режим работы: обычный или тихий.
 
-// version 2.1, 28.05.2026
+// version 2.6, 03.08.2026
 //======================================
 
 function Run() {
     var scriptName = "Текст fb2 в буфер (экспорт в txt)";
-    var version = "2.1";
+    var version = "2.6";
 
     // ==================================================
     // НАСТРОЙКИ СКРИПТА ====== можно менять по необходимости ======
@@ -53,6 +60,15 @@ function Run() {
     
     // Обрамлять другие блочные DIV-элементы пустыми строками (annotation, epigraph, poem, cite)
     var wrapDivElements = 1; // 0 - нет, 1 - да
+    
+    // Сохранять txt файл в папку с документом
+    var saveToFile = 1; // 0 - нет, 1 - да
+    
+    // Создавать копию файла или перезаписывать
+    var overwriteFile = 1; // 0 - перезаписывать, 1 - создавать копию с нумерацией
+    
+    // Показывать имя и путь к txt файлу в статистике
+    var showFilePath = 0; // 0 - нет, 1 - да
 
     // ==================================================
     // НАЧАЛО ОСНОВНОЙ ЧАСТИ СКРИПТА
@@ -67,11 +83,15 @@ function Run() {
     var commentsSections = 0;
     var resultText = "";
     var tocText = "";
+    var fileSaved = false;
+    var saveError = "";
+    var savedFilePath = "";
     
     // ==================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
     // ==================================================
     
+    // Извлечение чистого текста из элемента (без тегов)
     function getCleanText(el) {
         var txt = "";
         var kids = el.childNodes;
@@ -86,16 +106,19 @@ function Run() {
         return txt;
     }
     
+    // Убираем начальные и конечные пробелы
     function trimStr(str) {
         return str.replace(/^\s+/, "").replace(/\s+$/, "");
     }
     
+    // Проверяет, заканчивается ли строка пустой строкой
     function endsWithBlankLine(txt) {
         if (txt.length == 0) return true;
         if (txt.length >= 2 && txt.substring(txt.length - 2) == "\n\n") return true;
         return false;
     }
     
+    // Добавляет пустую строку в конец
     function appendBlankLine(txt) {
         if (txt.length == 0) return txt;
         while (txt.length > 1 && txt.substring(txt.length - 2) == "\n\n") {
@@ -106,6 +129,7 @@ function Run() {
         return txt;
     }
     
+    // Извлечение текста заголовка для оглавления (все P через буллет)
     function extractTitleText(titleDiv) {
         var titleText = "";
         var pElements = titleDiv.getElementsByTagName("P");
@@ -119,6 +143,7 @@ function Run() {
         return titleText;
     }
     
+    // Извлечение текста заголовка для вывода в тексте (каждый P с новой строки)
     function extractTitleTextForBody(titleDiv) {
         var titleText = "";
         var pElements = titleDiv.getElementsByTagName("P");
@@ -130,6 +155,7 @@ function Run() {
         return titleText;
     }
     
+    // Получение автора и названия из description
     function getAuthorAndTitleFromDesc() {
         var authorName = "";
         var bookTitle = "";
@@ -161,6 +187,7 @@ function Run() {
         return { author: authorName, title: bookTitle };
     }
     
+    // Получение автора и названия из заголовка body (запасной вариант)
     function getAuthorAndTitleFromBody() {
         var authorName = "", bookTitle = "";
         var fbwBody = document.getElementById("fbw_body");
@@ -191,7 +218,7 @@ function Run() {
         return { author: authorName, title: bookTitle };
     }
     
-    // Подсчёт заголовков (отдельно от оглавления)
+    // Подсчёт заголовков в body (отдельно от оглавления)
     function countTitles(container, skipFirstTitle) {
         var children = container.childNodes;
         var firstTitleSkipped = false;
@@ -213,6 +240,7 @@ function Run() {
         }
     }
     
+    // Подсчёт заголовков внутри section (рекурсивно)
     function countTitlesInSection(section) {
         var children = section.childNodes;
         for (var i = 0; i < children.length; i++) {
@@ -227,7 +255,7 @@ function Run() {
         }
     }
     
-    // Формирование оглавления
+    // Формирование оглавления (рекурсивный обход body)
     function buildTOC(container, indent, skipFirstTitle) {
         var children = container.childNodes;
         var firstTitleSkipped = false;
@@ -250,6 +278,7 @@ function Run() {
         }
     }
     
+    // Поиск заголовков внутри section для оглавления
     function findTitleInSection(section, indent) {
         var children = section.childNodes;
         for (var i = 0; i < children.length; i++) {
@@ -265,6 +294,7 @@ function Run() {
         }
     }
     
+    // Подсчёт количества section внутри контейнера
     function countSections(container) {
         var count = 0;
         var divs = container.getElementsByTagName("DIV");
@@ -274,6 +304,7 @@ function Run() {
         return count;
     }
     
+    // Убираем множественные пустые строки (больше 2 подряд)
     function normalizeSpacing(txt) {
         var reMultiNl = new RegExp("\n\n\n+", "g");
         while (txt.indexOf("\n\n\n") != -1) {
@@ -282,6 +313,7 @@ function Run() {
         return txt;
     }
     
+    // Обработка дочерних элементов внутри section/body (основная функция обхода)
     function processChildren(container, includeTitles, skipFirstTitle, globalResult) {
         var txt = "";
         var children = container.childNodes;
@@ -375,6 +407,7 @@ function Run() {
         return txt;
     }
     
+    // Склонение числительных
     function pad(number) {
         var n = number % 100;
         if (n >= 11 && n <= 19) return 2;
@@ -384,9 +417,207 @@ function Run() {
         return 2;
     }
     
+    // ДА/НЕТ для настроек
     function yesNo(value) {
         if (value == 1) return "\u221A (ДА)";
         return "\u2717 (НЕТ)";
+    }
+    
+    // Очистка имени файла от запрещённых символов
+    function sanitizeFileName(name) {
+        var result = "";
+        var forbidden = "\\/:*?\"<>|";
+        for (var i = 0; i < name.length; i++) {
+            var ch = name.charAt(i);
+            var isForbidden = false;
+            for (var j = 0; j < forbidden.length; j++) {
+                if (ch == forbidden.charAt(j)) { isForbidden = true; break; }
+            }
+            if (!isForbidden) result += ch;
+        }
+        return trimStr(result);
+    }
+    
+    // Определение пути к текущему fb2 документу (три метода)
+    function getDocumentPath() {
+        var folderPath = "";
+        var fileName = "";
+        var fb2Path = "";
+        
+        // Метод 1: Штатное API FBE (начиная с FBE 2.8.5)
+        try {
+            fb2Path = window.external.GetDocumentFilePath();
+            fileName = window.external.GetDocumentFileName();
+            folderPath = window.external.GetDocumentDirectory();
+            if (folderPath != "") return { folder: folderPath, file: fileName, full: fb2Path, method: "API" };
+        } catch(e) {}
+        
+        // Метод 2: PowerShell (заголовок окна)
+        try {
+            var shell = new ActiveXObject("WScript.Shell");
+            var fso = new ActiveXObject("Scripting.FileSystemObject");
+            var tempFile = "C:\\__fbe_path_result.txt";
+            
+            var psCmd = "powershell -ExecutionPolicy Bypass -command \"(Get-Process -Name 'fbe' -ErrorAction SilentlyContinue).MainWindowTitle\" > \"" + tempFile + "\" 2>&1";
+            shell.Run(psCmd, 0, true);
+            
+            if (fso.FileExists(tempFile)) {
+                var file = fso.OpenTextFile(tempFile, 1, false, -1);
+                var title = "";
+                if (!file.AtEndOfStream) {
+                    title = file.ReadLine();
+                    title = title.replace(/^\s+|\s+$/g, "");
+                }
+                file.Close();
+                try { fso.DeleteFile(tempFile); } catch(e) {}
+                
+                if (title.length > 0) {
+                    var pathMatch = title.match(/[A-Za-z]:\\.+?\.fb2/i);
+                    if (pathMatch) {
+                        fb2Path = pathMatch[0];
+                        var lastSlash = fb2Path.lastIndexOf("\\");
+                        if (lastSlash != -1) {
+                            folderPath = fb2Path.substring(0, lastSlash);
+                            fileName = fb2Path.substring(lastSlash + 1);
+                            return { folder: folderPath, file: fileName, full: fb2Path, method: "PowerShell" };
+                        }
+                    }
+                }
+            }
+        } catch(e) {}
+        
+        // Метод 3: Временный файл + CMD-поиск (запасной)
+        try {
+            var shell2 = new ActiveXObject("WScript.Shell");
+            var fso2 = new ActiveXObject("Scripting.FileSystemObject");
+            var tempFile2 = "C:\\__fbe_path_result.txt";
+            
+            var binObjects = document.all.binobj.getElementsByTagName("DIV");
+            var binData = "";
+            if (binObjects.length > 0) {
+                binData = binObjects[0].base64data;
+            } else {
+                binData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
+            }
+            
+            var testId = "__fbe_path_test_" + new Date().getTime();
+            window.external.SaveBinary(testId, binData, 0);
+            
+            var drivesToCheck = [];
+            try {
+                var allDrives = fso2.Drives;
+                for (var dc = new Enumerator(allDrives); !dc.atEnd(); dc.moveNext()) {
+                    var drv = dc.item();
+                    if (drv.IsReady) drivesToCheck.push(drv.DriveLetter + ":");
+                }
+            } catch(e) {
+                drivesToCheck = ["C:"];
+            }
+            
+            var foundPath = "";
+            for (var d = 0; d < drivesToCheck.length; d++) {
+                var disk = drivesToCheck[d];
+                var cmd = "cmd /u /c dir /s /b \"" + disk + "\\" + testId + "*\" > \"" + tempFile2 + "\" 2>nul";
+                shell2.Run(cmd, 0, true);
+                
+                if (fso2.FileExists(tempFile2)) {
+                    var resultFile = fso2.OpenTextFile(tempFile2, 1, false, -1);
+                    var line = "";
+                    if (!resultFile.AtEndOfStream) {
+                        line = resultFile.ReadLine();
+                        line = line.replace(/^\s+|\s+$/g, "");
+                        if (line.length > 0 && line.indexOf(testId) != -1) foundPath = line;
+                    }
+                    resultFile.Close();
+                    try { fso2.DeleteFile(tempFile2); } catch(e) {}
+                    if (foundPath != "") break;
+                }
+            }
+            
+            if (foundPath != "") {
+                try { fso2.DeleteFile(foundPath); } catch(e) {}
+                var lastSlash2 = foundPath.lastIndexOf("\\");
+                if (lastSlash2 != -1) {
+                    folderPath = foundPath.substring(0, lastSlash2);
+                    fileName = "(неизвестно)";
+                    return { folder: folderPath, file: fileName, full: foundPath, method: "CMD" };
+                }
+            }
+        } catch(e) {}
+        
+        return { folder: "", file: "", full: "", method: "не найден" };
+    }
+    
+    // Сохранение текста в txt файл (с перезаписью или созданием копии)
+    function saveTextToFile(folderPath, baseFileName, textToSave, createCopy) {
+        var fso;
+        try {
+            fso = new ActiveXObject("Scripting.FileSystemObject");
+        } catch(e) {
+            return { success: false, error: "Не удалось создать объект FileSystemObject: " + e.message, path: "" };
+        }
+        
+        if (!fso.FolderExists(folderPath)) {
+            return { success: false, error: "Папка не существует: " + folderPath, path: "" };
+        }
+        
+        var safeName = sanitizeFileName(baseFileName);
+        if (safeName == "") safeName = "документ";
+        
+        var exportFileName = safeName + "_export.txt";
+        var fullPath = folderPath + "\\" + exportFileName;
+        
+        if (createCopy == 0) {
+            // Перезаписываем существующий файл
+            try {
+                var file = fso.CreateTextFile(fullPath, true, true);
+                file.Write(textToSave);
+                file.Close();
+                return { success: true, path: fullPath, method: "перезаписан" };
+            } catch(e) {
+                return { success: false, error: "Ошибка записи файла: " + e.message, path: "" };
+            }
+        } else {
+            // Создаём копию с нумерацией
+            if (!fso.FileExists(fullPath)) {
+                try {
+                    var fileNew = fso.CreateTextFile(fullPath, true, true);
+                    fileNew.Write(textToSave);
+                    fileNew.Close();
+                    return { success: true, path: fullPath, method: "сохранён (новый)" };
+                } catch(e) {
+                    return { success: false, error: "Ошибка записи файла: " + e.message, path: "" };
+                }
+            }
+            
+            var counter = 1;
+            var found = false;
+            var newFullPath = "";
+            
+            while (counter <= 999) {
+                var candidateName = safeName + "_export(" + counter + ").txt";
+                var candidatePath = folderPath + "\\" + candidateName;
+                if (!fso.FileExists(candidatePath)) {
+                    newFullPath = candidatePath;
+                    found = true;
+                    break;
+                }
+                counter++;
+            }
+            
+            if (!found) {
+                return { success: false, error: "Не удалось создать копию: превышен лимит (999)", path: "" };
+            }
+            
+            try {
+                var fileCopy = fso.CreateTextFile(newFullPath, true, true);
+                fileCopy.Write(textToSave);
+                fileCopy.Close();
+                return { success: true, path: newFullPath, method: "сохранён (копия)" };
+            } catch(e) {
+                return { success: false, error: "Ошибка записи файла: " + e.message, path: "" };
+            }
+        }
     }
     
     // ==================================================
@@ -401,6 +632,7 @@ function Run() {
     
     var bodyChildren = fbwBody.childNodes;
     
+    // Получаем автора и название книги
     var descAT = getAuthorAndTitleFromDesc();
     var bodyAT = getAuthorAndTitleFromBody();
     var allMatch = (descAT.author == bodyAT.author && descAT.title == bodyAT.title && descAT.author != "" && descAT.title != "");
@@ -484,16 +716,52 @@ function Run() {
                 if (fn3 == "" && processMainSection) sp = true;
                 else if (fn3 == "notes" && processNotesSection) sp = true;
                 else if (fn3 == "comments" && processCommentsSection) sp = true;
-                if (sp) resultText += processChildren(bodyChild, true, skipBodyTitle, resultText);
+                if (sp) {
+                    var skipTitle = (fn3 == "") ? skipBodyTitle : false;
+                    resultText += processChildren(bodyChild, true, skipTitle, resultText);
+                }
             }
         }
     }
     
+    // Нормализация пустых строк
     resultText = normalizeSpacing(resultText);
     resultText = resultText.replace(/\n+$/, "\n");
     totalChars = resultText.length;
     
+    // Всегда копируем в буфер обмена
     if (resultText.length > 0) window.clipboardData.setData("text", resultText);
+    
+    // Сохраняем в txt файл (если включено)
+    if (saveToFile == 1 && resultText.length > 0) {
+        var pathInfo = getDocumentPath();
+        
+        if (pathInfo.folder != "") {
+            var baseFileName = "";
+            if (pathInfo.file != "" && pathInfo.method != "CMD") {
+                var dotPos = pathInfo.file.lastIndexOf(".fb2");
+                if (dotPos == -1) dotPos = pathInfo.file.lastIndexOf(".FB2");
+                if (dotPos != -1) {
+                    baseFileName = pathInfo.file.substring(0, dotPos);
+                } else {
+                    baseFileName = pathInfo.file;
+                }
+            } else {
+                baseFileName = displayTitle;
+                if (baseFileName == "") baseFileName = "документ";
+            }
+            
+            var saveResult = saveTextToFile(pathInfo.folder, baseFileName, resultText, overwriteFile);
+            fileSaved = saveResult.success;
+            if (saveResult.success) {
+                savedFilePath = saveResult.path;
+            } else {
+                saveError = saveResult.error;
+            }
+        } else {
+            saveError = "Не удалось определить путь к документу.\nВозможно, это новый (ещё не сохранённый) документ.";
+        }
+    }
     
     // ==================================================
     // СТАТИСТИКА
@@ -509,8 +777,18 @@ function Run() {
         msg += "ver. " + version + "\n";
         msg += "---------------------------------------\n\n";
         
-        if (resultText.length > 0) msg += "\u221A Текст скопирован в буфер обмена\n";
-        else msg += "\u2717 Ничего не скопировано!\n";
+        if (resultText.length > 0) {
+            msg += "\u221A Текст скопирован в буфер обмена\n";
+            if (saveToFile == 1 && fileSaved) {
+                msg += "\u221A Текст сохранён в txt файл\n";
+            }
+        } else {
+            msg += "\u2717 Ничего не скопировано!\n";
+        }
+        
+        if (saveToFile == 1 && saveError != "") {
+            msg += "\u2717 Ошибка сохранения файла: " + saveError + "\n";
+        }
         
         msg += "---------------------------------------\n";
         msg += "Настройки копирования:\n";
@@ -523,6 +801,11 @@ function Run() {
         msg += "  \u2022 Пустые строки вокруг заголовков: " + yesNo(wrapTitles) + "\n";
         msg += "  \u2022 Пустые строки вокруг подзаголовков: " + yesNo(wrapSubtitles) + "\n";
         msg += "  \u2022 Обрамление DIV: " + yesNo(wrapDivElements) + "\n";
+        msg += "  \u2022 Сохранение в txt файл: " + yesNo(saveToFile) + "\n";
+        if (saveToFile == 1) {
+            msg += "  \u2022 Режим сохранения: " + (overwriteFile == 0 ? "перезаписывать" : "создавать копии") + "\n";
+            msg += "  \u2022 Показывать путь к файлу: " + yesNo(showFilePath) + "\n";
+        }
         msg += "---------------------------------------\n\n";
         
         if (displayAuthor != "" || displayTitle != "") {
@@ -531,26 +814,48 @@ function Run() {
             msg += "\n";
         }
         
-        if (createTOC) {
-            msg += "\u221A Всего заголовков в оглавлении: " + totalTitles + "\n";
-        } else {
-            msg += "\u221A Всего заголовков в оглавлении: 0 (отключено)\n";
-        }
-        msg += "\u221A Всего скопировано заголовков: " + totalTitles + "\n";
-        msg += "\u221A Всего скопировано подзаголовков: " + totalSubtitles + "\n";
-        msg += "\u221A Всего скопировано абзацев: " + totalParagraphs + "\n";
-        msg += "\u221A Всего скопировано символов: " + totalChars + "\n";
+        msg += "Всего скопировано:\n\n";
+        msg += "\u221A Заголовков: " + totalTitles + "\n";
+        msg += "\u221A Абзацев (включая заголовки): " + (totalParagraphs + totalTitles) + "\n";
+        msg += "\u221A Символов: " + totalChars + "\n";
         
-        if (notesSections > 0) msg += "\u221A Примечаний: " + notesSections + "\n";
-        if (commentsSections > 0) msg += "\u221A Комментариев: " + commentsSections + "\n";
+        if (processNotesSection) {
+            if (notesSections > 0) {
+                msg += "\u221A Примечаний: " + notesSections + "\n";
+            } else {
+                msg += "\u221A Примечаний: отсутствуют\n";
+            }
+        } else {
+            msg += "\u221A Примечаний: отключены\n";
+        }
+        
+        if (processCommentsSection) {
+            if (commentsSections > 0) {
+                msg += "\u221A Комментариев: " + commentsSections + "\n";
+            } else {
+                msg += "\u221A Комментариев: отсутствуют\n";
+            }
+        } else {
+            msg += "\u221A Комментариев: отключены\n";
+        }
         
         msg += "\n---------------------------------------\n";
+        
+        if (saveToFile == 1 && fileSaved && savedFilePath != "" && showFilePath == 1) {
+            msg += "Файл сохранён: " + savedFilePath + "\n";
+            msg += "\n---------------------------------------\n";
+        }
+        
         msg += "Время выполнения: " + elapsedFormatted + " сек.";
         
         MsgBox(msg);
     } else {
         if (resultText.length == 0) {
             MsgBox(scriptName + "\nver. " + version + "\n---------------------------------------\n\n\u2717 Ошибка: ничего не скопировано! Проверьте настройки скрипта.");
+        }
+        
+        if (saveToFile == 1 && saveError != "") {
+            MsgBox(scriptName + "\nver. " + version + "\n---------------------------------------\n\n\u2717 Ошибка сохранения файла: " + saveError);
         }
     }
 }

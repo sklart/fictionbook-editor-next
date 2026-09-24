@@ -1,0 +1,259 @@
+<html>
+<head>
+<title>Параметры расстановки иллюстраций</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+body {
+    font-family: Tahoma, sans-serif;
+    margin: 10px;
+    padding: 0;
+    font-size: 15px;
+}
+.form-container {
+    margin: 5px;
+}
+h3 {
+    margin: 0 0 3px 0;
+    font-size: 16px;
+}
+.version-info {
+    margin: 0 0 15px 0;
+    font-size: 13px;
+    color: #666;
+}
+.help-btn {
+    width: 28px;
+    height: 28px;
+    border: 2px solid #FFA500;
+    background: #FFD700;
+    color: #000;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 50%;
+    padding: 0;
+    line-height: 24px;
+    text-align: center;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+.help-btn:hover {
+    background: #FFC000;
+}
+.help-panel {
+    display: none;
+    margin: 10px auto;
+    width: 90%;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #FFFEF5;
+    border: 2px solid #FFA500;
+    padding: 10px;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.3;
+    text-align: left;
+}
+.help-panel b {
+    color: #000;
+}
+.checkbox-group {
+    margin: 10px 0;
+    padding: 8px;
+    font-size: 15px;
+}
+.sub-checkbox {
+    margin: 3px 0 3px 25px;
+    font-size: 13px;
+}
+.sub-checkbox input[type="checkbox"] {
+    margin-right: 6px;
+}
+.radio-group {
+    margin: 5px 0 3px 25px;
+    font-size: 13px;
+}
+.radio-group label {
+    display: inline-block;
+    margin: 2px 15px 2px 0;
+}
+.radio-group input[type="radio"] {
+    margin-right: 4px;
+}
+.hint-text {
+    margin: 3px 0 3px 25px;
+    font-size: 12px;
+    color: #888;
+}
+.buttons {
+    margin-top: 15px;
+    text-align: center;
+}
+input[type="button"] {
+    padding: 6px 15px;
+    margin: 0 10px;
+    font-size: 15px;
+}
+input[type="checkbox"] {
+    margin-right: 8px;
+    transform: scale(1.1);
+}
+</style>
+</head>
+<body>
+<div class="form-container">
+    <h3>Вставить любые иллюстрации в началах и концах секций</h3>
+    <div class="version-info" id="versionInfo"></div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" name="insertStart" id="insertStart" checked>
+        <label for="insertStart">Расставить иллюстрации <strong>в начале</strong> секций</label>
+        <div class="hint-text" id="hintStart"></div>
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" name="insertEnd" id="insertEnd" checked>
+        <label for="insertEnd">Расставить иллюстрации <strong>в конце</strong> секций</label>
+        <div class="hint-text" id="hintEnd"></div>
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" id="skipNameless" checked>
+        <label for="skipNameless">Пропускать безымянные секции</label>
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" id="insertBeforeAfter" checked>
+        <label for="insertBeforeAfter">Вставлять рядом с существующими обычными картинками</label>
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" id="insertEmptyLine" checked>
+        <label for="insertEmptyLine">Вставлять пустую строку между соседними картинками</label>
+    </div>
+    
+    <div class="checkbox-group">
+        <span style="font-weight:bold;">Режим обработки:</span>
+        <div class="radio-group">
+            <label><input type="radio" name="modeSection" value="all" checked> Все секции</label>
+            <label><input type="radio" name="modeSection" value="top"> Верхний уровень</label>
+            <label><input type="radio" name="modeSection" value="bottom"> Нижний уровень</label>
+        </div>
+    </div>
+    
+    <!-- Панель помощи (в потоке, раскрывается над кнопками) -->
+    <div class="help-panel" id="helpPanel"></div>
+    
+    <div class="buttons">
+        <button class="help-btn" onclick="toggleHelp()" title="Помощь">?</button>
+        <input type="button" value="Выполнить" onclick="doOK()">
+        <input type="button" value="Отмена" onclick="doCancel()">
+    </div>
+</div>
+
+<script>
+// Получаем версию из аргументов диалога
+var scriptVersion = "1.3";
+try {
+    if (window.dialogArguments) {
+        scriptVersion = window.dialogArguments;
+    }
+} catch(e) {}
+
+// Отображаем версию
+document.getElementById('versionInfo').innerHTML = 'ver. ' + scriptVersion;
+
+// Обновляет подсказки под чекбоксами
+function updateHints() {
+    var startChecked = document.getElementById('insertStart').checked;
+    var endChecked = document.getElementById('insertEnd').checked;
+    
+    var hintStart = document.getElementById('hintStart');
+    var hintEnd = document.getElementById('hintEnd');
+    
+    hintStart.innerHTML = '';
+    hintEnd.innerHTML = '';
+    
+    if (startChecked) {
+        hintStart.innerHTML = '• Картинки с меткой "start" будут принудительно расставлены в начала секций';
+    } else {
+        hintStart.innerHTML = '• Галка выключена, но картинки с меткой "start" всё равно будут расставлены';
+    }
+    
+    if (endChecked) {
+        hintEnd.innerHTML = '• Картинки с меткой "end" будут принудительно расставлены в концы секций';
+    } else {
+        hintEnd.innerHTML = '• Галка выключена, но картинки с меткой "end" всё равно будут расставлены';
+    }
+}
+
+// Обновляет текст помощи
+function updateHelpText() {
+    var hp = document.getElementById('helpPanel');
+    hp.innerHTML = '<b>Инструкция:</b><br><br>' +
+        '• <b>Расставить иллюстрации в начале/в конце секций</b> — выберите, куда расставлять реальные картинки.<br><br>' +
+        '• <b>Как скрипт определяет, куда ставить картинку:</b><br>' +
+        '&nbsp;&nbsp;- Если в имени файла есть слово "start" (в любом регистре) — картинка ПРИНУДИТЕЛЬНО расставляется в начала секций.<br>' +
+        '&nbsp;&nbsp;- Если есть слово "end" — ПРИНУДИТЕЛЬНО в концы секций.<br>' +
+        '&nbsp;&nbsp;- Если меток нет — назначение определяется настройками выше.<br><br>' +
+        '• <b>Несколько картинок одного типа</b> — расставляются циклически в алфавитном порядке имён файлов.<br><br>' +
+        '• <b>Пустые картинки (#undefined)</b> — реальные картинки вставляются перед ними (для начал) или после них (для концов).<br><br>' +
+        '• <b>Существующие обычные картинки:</b><br>' +
+        '&nbsp;&nbsp;- В начале секции — новая вставляется ПЕРЕД уже имеющейся.<br>' +
+        '&nbsp;&nbsp;- В конце секции — новая вставляется ПОСЛЕ уже имеющейся.<br>' +
+        '&nbsp;&nbsp;- Если галка выключена — секции с обычными картинками пропускаются.<br><br>' +
+        '• <b>Вставлять пустую строку между соседними картинками</b> — при вставке рядом с уже существующей картинкой добавляется пустая строка между ними.<br><br>' +
+        '• <b>Все секции / Верхний уровень / Нижний уровень</b> — фильтр секций для обработки.<br>' +
+        '&nbsp;&nbsp;- <b>Верхний уровень</b> — секции прямо в body (не вложенные в другие).<br>' +
+        '&nbsp;&nbsp;- <b>Нижний уровень</b> — секции без вложенных (листовые).<br><br>' +
+        '• <b>Пропускать безымянные секции</b> — секции без заголовка не обрабатываются (обычно служебные в начале документа).<br><br>' +
+        '<span style="color:#CC6600;"><b>ВАЖНО:</b> Перед запуском рекомендуется обработать документ скриптом «13_Почистить структуру.js» из папки 08_Структура разделов.</span>';
+}
+
+// Показать/скрыть панель помощи
+function toggleHelp() {
+    var hp = document.getElementById('helpPanel');
+    if (hp.style.display == 'block') {
+        hp.style.display = 'none';
+    } else {
+        updateHelpText();
+        hp.style.display = 'block';
+    }
+}
+
+function doOK() {
+    var modeSection = 'all';
+    var radios = document.getElementsByName('modeSection');
+    for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+            modeSection = radios[i].value;
+            break;
+        }
+    }
+    
+    var params = {
+        insertStart: document.getElementById('insertStart').checked,
+        insertEnd: document.getElementById('insertEnd').checked,
+        skipNameless: document.getElementById('skipNameless').checked,
+        insertBeforeAfter: document.getElementById('insertBeforeAfter').checked,
+        insertEmptyLine: document.getElementById('insertEmptyLine').checked,
+        modeSection: modeSection
+    };
+    window.returnValue = params;
+    window.close();
+}
+
+function doCancel() {
+    window.returnValue = null;
+    window.close();
+}
+
+window.onload = function() {
+    updateHints();
+    document.getElementById('insertStart').focus();
+    document.getElementById('insertStart').onclick = updateHints;
+    document.getElementById('insertEnd').onclick = updateHints;
+};
+</script>
+</body>
+</html>

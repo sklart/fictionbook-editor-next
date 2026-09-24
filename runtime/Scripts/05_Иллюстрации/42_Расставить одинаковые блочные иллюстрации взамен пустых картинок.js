@@ -1,10 +1,12 @@
 // Скрипт "Расставить одинаковые блочные иллюстрации взамен пустых картинок"
-// version 1.6
+// version 1.7
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
 // Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок
 // (#undefined) в fb2 документах.
+// При наличии выделения, скрипт заменяет картинки-пустышки только в выделенных секциях,
+// в противном случае - обрабатывается сразу весь документ.
 // В документе предварительно должны быть расставлены пустые картинки
 // и прикреплена одна иллюстрация с именем файла, например, 1234567 (без указания расширения).
 // Скрипт находит прикреплённый файл по имени, игнорируя префиксы _, unused_, unused__.
@@ -14,13 +16,17 @@
 // Режим работы: обычный или тихий.
 // Поддержка отмены действий (Ctrl+Z).
 
-// version 1.6, 08.04.2026
+// version 1.7, 24.07.2026
+
+// v. 1.7: Добавлена обработка выделенных секций:
+// При наличии выделения, скрипт заменяет картинки-пустышки только в выделенных секциях,
+// в противном случае - обрабатывается сразу весь документ.
 //======================================
 
 function Run() {
     // Название и версия для сообщений
     var scriptName = "Расставить одинаковые блочные иллюстрации взамен пустых картинок";
-    var version = "1.6";
+    var version = "1.7";
 
     // ==================================================
     // НАСТРОЙКИ СКРИПТА ====== можно менять по необходимости ======
@@ -62,48 +68,171 @@ function Run() {
     // Проверяем существование иллюстрации в документе
     var imageCheckResult = checkImageExists(UserImageName);
     
-    // Подсчитываем количество пустых картинок с учётом настроек разделов
-    var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);
-    var emptyCount = emptyCountResult.total;
+    // ==================================================
+    // ПРОВЕРКА НАЛИЧИЯ ВЫДЕЛЕНИЯ
+    // ==================================================
+    
+    var selRange = document.selection.createRange();
+    var hasSelection = false;
+    
+    if (selRange && selRange.compareEndPoints("StartToEnd", selRange) != 0) {
+        if (selRange.parentElement().nodeName != "TEXTAREA" && selRange.parentElement().nodeName != "INPUT") {
+            hasSelection = true;
+        }
+    }
+    
+    // ==================================================
+    // СБОР СЕКЦИЙ ДЛЯ ОБРАБОТКИ
+    // ==================================================
+    
+    var targetSections = [];
+    
+    if (hasSelection) {
+        // РЕЖИМ: ОБРАБОТКА ВЫДЕЛЕННЫХ СЕКЦИЙ
+        
+        function getNextNode(el) {
+            if (el.firstChild && el.nodeName != "P")
+                el = el.firstChild;
+            else {
+                while (el && !el.nextSibling)
+                    el = el.parentNode;
+                if (el && el.nextSibling)
+                    el = el.nextSibling;
+            }
+            return el;
+        }
+        
+        function findParentSection(el) {
+            var current = el;
+            while (current && current.nodeType == 1) {
+                if (current.className && current.className.indexOf('section') !== -1) {
+                    return current;
+                }
+                current = current.parentNode;
+            }
+            return null;
+        }
+        
+        var trStart = document.selection.createRange();
+        trStart.collapse(true);
+        var blockStartEl = trStart.parentElement();
+        
+        var trEnd = document.selection.createRange();
+        trEnd.collapse(false);
+        var blockEndEl = trEnd.parentElement();
+        
+        var ptr = blockStartEl;
+        var collectedSections = [];
+        
+        while (ptr && ptr != null) {
+            var section = findParentSection(ptr);
+            if (section) {
+                var alreadyExists = false;
+                for (var k = 0; k < collectedSections.length; k++) {
+                    if (collectedSections[k] === section) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                if (!alreadyExists) {
+                    collectedSections.push(section);
+                }
+            }
+            if (ptr === blockEndEl) break;
+            ptr = getNextNode(ptr);
+            if (!ptr) break;
+        }
+        
+        targetSections = collectedSections;
+    }
+    
+    // ==================================================
+    // ПОДСЧЁТ ПУСТЫХ КАРТИНОК В ОБРАБАТЫВАЕМОЙ ОБЛАСТИ
+    // ==================================================
+    
+    var emptyCount = 0;
+    
+    if (hasSelection) {
+        // Считаем только в выделенных секциях
+        for (var s = 0; s < targetSections.length; s++) {
+            var section = targetSections[s];
+            
+            // Проверяем, в каком разделе находится секция
+            var sectionBody = findParentBody(section);
+            var fbname = sectionBody ? (sectionBody.getAttribute("fbname") || "") : "";
+            
+            var shouldCount = false;
+            if (fbname == "") {
+                shouldCount = true;
+            } else if (fbname == "notes" && processNotesSection == 1) {
+                shouldCount = true;
+            } else if (fbname == "comments" && processCommentsSection == 1) {
+                shouldCount = true;
+            }
+            
+            if (shouldCount) {
+                emptyCount += countEmptyInContainer(section);
+            }
+        }
+    } else {
+        // Считаем во всём документе (старая логика)
+        var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);
+        emptyCount = emptyCountResult.total;
+    }
+    
+    // ==================================================
+    // ПРОВЕРКИ И ПОДТВЕРЖДЕНИЕ
+    // ==================================================
     
     // Проверяем случай: нет ни картинки, ни пустышек
     if (!imageCheckResult.found && emptyCount == 0) {
-        MsgBox(scriptName + "\n" +
+        var msgNoAll = scriptName + "\n" +
                "ver. " + version + "\n\n" +
                "В документе отсутствует иллюстрация с указанным именем.\n" +
-               "Пустых картинок (#undefined) в документе не обнаружено.\n" +
+               "Пустых картинок (#undefined) в обрабатываемой области не обнаружено.\n" +
                "Обрабатывать нечего!\n\n" +
                "* Для работы скрипта должны быть расставлены\n" +
-               "пустые картинки и одна иллюстрация с именем файла " + UserImageName);
+               "пустые картинки и одна иллюстрация с именем файла " + UserImageName;
+        MsgBox(msgNoAll);
         return;
     }
     
     // Проверяем случай: нет картинки
     if (!imageCheckResult.found) {
-        MsgBox(scriptName + "\n" +
+        var msgNoImage = scriptName + "\n" +
                "ver. " + version + "\n\n" +
                "В документе отсутствует иллюстрация с указанным именем.\n\n" +
                "Прикрепите к документу файл иллюстрации с именем:\n" +
                UserImageName + " (jpg или png)\n" +
-               "и запустите скрипт повторно.");
+               "и запустите скрипт повторно.";
+        MsgBox(msgNoImage);
         return;
     }
     
     // Проверяем случай: нет пустышек
     if (emptyCount == 0) {
-        MsgBox(scriptName + "\n" +
+        var msgNoEmpty = scriptName + "\n" +
                "ver. " + version + "\n\n" +
-               "Пустых картинок (#undefined) в документе не обнаружено.\n\n" +
+               "Пустых картинок (#undefined) в обрабатываемой области не обнаружено.\n\n" +
                "Расставьте в документе пустые картинки в нужных местах\n" +
-               "и запустите скрипт повторно.");
+               "и запустите скрипт повторно.";
+        MsgBox(msgNoEmpty);
         return;
     }
     
     var actualImageName = imageCheckResult.actualName;
     var displayImageName = (showActualFileName == 1) ? actualImageName : UserImageName;
     
-    // Формируем строку с настройками разделов
-    var settingsStr = "\n- Обработка разделов:\n";
+    // Формируем строку с настройками
+    var settingsStr = "";
+    settingsStr += "Режим обработки: ";
+    if (hasSelection) {
+        settingsStr += "ВЫДЕЛЕНИЕ\n";
+        settingsStr += "Выделено секций: " + targetSections.length + "\n";
+    } else {
+        settingsStr += "ВЕСЬ ДОКУМЕНТ\n";
+    }
+    settingsStr += "\n- Обработка разделов:\n";
     settingsStr += "  • Основной раздел: ДА\n";
     if (processNotesSection == 1) {
         settingsStr += "  • Раздел сносок (примечаний): ДА\n";
@@ -118,12 +247,14 @@ function Run() {
     
     // Если обычный режим - показываем окно подтверждения
     if (showStatistics == 1) {
-        var result = AskYesNo(scriptName + "\n" +
+        var confirmMsg = scriptName + "\n" +
                               "ver. " + version + "\n\n" +
                               "Найдена заданная иллюстрация: " + displayImageName + "\n" +
                               "Найдено пустых картинок (#undefined): " + emptyCount + "\n" +
                               settingsStr + "\n" +
-                              "Заменить все пустые картинки (#undefined) на эту иллюстрацию?");
+                              "Заменить все пустые картинки (#undefined) на эту иллюстрацию?";
+        
+        var result = AskYesNo(confirmMsg);
         
         if (result != 1) {
             return;
@@ -146,58 +277,103 @@ function Run() {
         window.external.SetStatusBarText("Заменяем пустые иллюстрации...");
     } catch(e) {}
     
-    // Находим все пустые картинки
+    // ==================================================
+    // СБОР ПУСТЫХ КАРТИНОК ДЛЯ ЗАМЕНЫ
+    // ==================================================
+    
     var emptyImages = [];
     
-    // Находим все DIV с классом body
-    var allBodyDivs = [];
-    var allDivs = document.getElementsByTagName("DIV");
-    for (var d = 0; d < allDivs.length; d++) {
-        var div = allDivs[d];
-        if (div.className == "body") {
-            allBodyDivs.push(div);
-        }
-    }
-    
-    // Обрабатываем каждый найденный body
-    for (var b = 0; b < allBodyDivs.length; b++) {
-        var bodyElement = allBodyDivs[b];
-        var fbname = bodyElement.getAttribute("fbname") || "";
-        
-        // Проверяем, нужно ли обрабатывать этот раздел
-        var shouldProcess = false;
-        if (fbname == "") {
-            shouldProcess = true;
-        } else if (fbname == "notes" && processNotesSection == 1) {
-            shouldProcess = true;
-        } else if (fbname == "comments" && processCommentsSection == 1) {
-            shouldProcess = true;
-        }
-        
-        if (!shouldProcess) {
-            // Считаем количество пропущенных картинок в этом разделе
-            var skippedCount = countEmptyInBody(bodyElement);
-            if (fbname == "notes") {
-                stats.skippedNotes += skippedCount;
-            } else if (fbname == "comments") {
-                stats.skippedComments += skippedCount;
-            }
-            continue;
-        }
-        
-        // Ищем все div с классом image внутри этого body
-        var divs = bodyElement.getElementsByTagName("div");
-        for (var i = 0; i < divs.length; i++) {
-            var div = divs[i];
-            var className = div.className ? div.className.toString() : '';
+    if (hasSelection) {
+        // Ищем пустые картинки только в выделенных секциях
+        for (var s2 = 0; s2 < targetSections.length; s2++) {
+            var section2 = targetSections[s2];
             
-            if (className.indexOf('image') != -1) {
-                var href = div.getAttribute('href');
-                if (href) {
-                    var hrefLower = href.toLowerCase();
-                    // Проверяем оба варианта пустых картинок: #undefined и #nobin_undefined
-                    if (hrefLower == "#undefined" || hrefLower == "#nobin_undefined") {
-                        emptyImages.push(div);
+            // Проверяем раздел
+            var sectionBody2 = findParentBody(section2);
+            var fbname2 = sectionBody2 ? (sectionBody2.getAttribute("fbname") || "") : "";
+            
+            var shouldProcess2 = false;
+            if (fbname2 == "") {
+                shouldProcess2 = true;
+            } else if (fbname2 == "notes" && processNotesSection == 1) {
+                shouldProcess2 = true;
+            } else if (fbname2 == "comments" && processCommentsSection == 1) {
+                shouldProcess2 = true;
+            }
+            
+            if (!shouldProcess2) {
+                var skippedInSection = countEmptyInContainer(section2);
+                if (fbname2 == "notes") {
+                    stats.skippedNotes += skippedInSection;
+                } else if (fbname2 == "comments") {
+                    stats.skippedComments += skippedInSection;
+                }
+                continue;
+            }
+            
+            // Ищем все div с классом image внутри этой секции
+            var divs = section2.getElementsByTagName("div");
+            for (var i = 0; i < divs.length; i++) {
+                var div = divs[i];
+                var className = div.className ? div.className.toString() : '';
+                
+                if (className.indexOf('image') != -1) {
+                    var href = div.getAttribute('href');
+                    if (href) {
+                        var hrefLower = href.toLowerCase();
+                        if (hrefLower == "#undefined" || hrefLower == "#nobin_undefined") {
+                            emptyImages.push(div);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Старая логика: ищем по всем body
+        var allBodyDivs = [];
+        var allDivs = document.getElementsByTagName("DIV");
+        for (var d = 0; d < allDivs.length; d++) {
+            var div = allDivs[d];
+            if (div.className == "body") {
+                allBodyDivs.push(div);
+            }
+        }
+        
+        for (var b = 0; b < allBodyDivs.length; b++) {
+            var bodyElement = allBodyDivs[b];
+            var fbname = bodyElement.getAttribute("fbname") || "";
+            
+            var shouldProcess = false;
+            if (fbname == "") {
+                shouldProcess = true;
+            } else if (fbname == "notes" && processNotesSection == 1) {
+                shouldProcess = true;
+            } else if (fbname == "comments" && processCommentsSection == 1) {
+                shouldProcess = true;
+            }
+            
+            if (!shouldProcess) {
+                var skippedCount = countEmptyInBody(bodyElement);
+                if (fbname == "notes") {
+                    stats.skippedNotes += skippedCount;
+                } else if (fbname == "comments") {
+                    stats.skippedComments += skippedCount;
+                }
+                continue;
+            }
+            
+            var bodyDivs = bodyElement.getElementsByTagName("div");
+            for (var i2 = 0; i2 < bodyDivs.length; i2++) {
+                var div2 = bodyDivs[i2];
+                var className2 = div2.className ? div2.className.toString() : '';
+                
+                if (className2.indexOf('image') != -1) {
+                    var href2 = div2.getAttribute('href');
+                    if (href2) {
+                        var hrefLower2 = href2.toLowerCase();
+                        if (hrefLower2 == "#undefined" || hrefLower2 == "#nobin_undefined") {
+                            emptyImages.push(div2);
+                        }
                     }
                 }
             }
@@ -206,7 +382,10 @@ function Run() {
     
     stats.totalFound = emptyImages.length;
     
-    // Заменяем найденные пустые картинки
+    // ==================================================
+    // ЗАМЕНА ПУСТЫХ КАРТИНОК
+    // ==================================================
+    
     for (var j = emptyImages.length - 1; j >= 0; j--) {
         var oldDiv = emptyImages[j];
         var newDiv = createImageElement(actualImageName);
@@ -233,6 +412,15 @@ function Run() {
     if (showStatistics == 1) {
         var resultMessage = scriptName + "\n" +
                            "ver. " + version + "\n\n";
+        
+        resultMessage += "Режим обработки: ";
+        if (hasSelection) {
+            resultMessage += "ВЫДЕЛЕНИЕ\n";
+            resultMessage += "Выделено секций: " + targetSections.length + "\n\n";
+        } else {
+            resultMessage += "ВЕСЬ ДОКУМЕНТ\n\n";
+        }
+        
         resultMessage += "✓ Всего найдено пустых картинок: " + stats.totalFound + "\n";
         resultMessage += "✓ Заменено на \"" + displayImageName + "\": " + stats.replaced + "\n";
         
@@ -249,7 +437,46 @@ function Run() {
     }
 }
 
-// Подсчитывает количество пустых картинок с учётом настроек разделов
+// ==================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ==================================================
+
+// Поиск родительского body для элемента
+function findParentBody(element) {
+    var current = element;
+    while (current && current.nodeType == 1) {
+        if (current.className && current.className.indexOf('body') !== -1) {
+            return current;
+        }
+        current = current.parentNode;
+    }
+    return null;
+}
+
+// Подсчитывает количество пустых картинок в указанном контейнере (секции или body)
+function countEmptyInContainer(container) {
+    var count = 0;
+    
+    var divs = container.getElementsByTagName("div");
+    for (var i = 0; i < divs.length; i++) {
+        var div = divs[i];
+        var className = div.className ? div.className.toString() : '';
+        
+        if (className.indexOf('image') != -1) {
+            var href = div.getAttribute('href');
+            if (href) {
+                var hrefLower = href.toLowerCase();
+                if (hrefLower == "#undefined" || hrefLower == "#nobin_undefined") {
+                    count++;
+                }
+            }
+        }
+    }
+    
+    return count;
+}
+
+// Подсчитывает количество пустых картинок с учётом настроек разделов (для режима "весь документ")
 function countEmptyImagesWithSettings(processNotes, processComments) {
     var result = {
         total: 0,
@@ -258,7 +485,6 @@ function countEmptyImagesWithSettings(processNotes, processComments) {
         comments: 0
     };
     
-    // Находим все DIV с классом body
     var allBodyDivs = [];
     var allDivs = document.getElementsByTagName("DIV");
     for (var d = 0; d < allDivs.length; d++) {
@@ -291,25 +517,7 @@ function countEmptyImagesWithSettings(processNotes, processComments) {
 
 // Подсчитывает количество пустых картинок в указанном body
 function countEmptyInBody(bodyElement) {
-    var count = 0;
-    
-    var divs = bodyElement.getElementsByTagName("div");
-    for (var i = 0; i < divs.length; i++) {
-        var div = divs[i];
-        var className = div.className ? div.className.toString() : '';
-        
-        if (className.indexOf('image') != -1) {
-            var href = div.getAttribute('href');
-            if (href) {
-                var hrefLower = href.toLowerCase();
-                if (hrefLower == "#undefined" || hrefLower == "#nobin_undefined") {
-                    count++;
-                }
-            }
-        }
-    }
-    
-    return count;
+    return countEmptyInContainer(bodyElement);
 }
 
 // Удаляет расширение из имени файла
@@ -331,10 +539,8 @@ function checkImageExists(imageName) {
     var baseName = removeExtension(imageName).toLowerCase();
     var supportedExtensions = ['.png', '.jpg', '.jpeg'];
     
-    // Возможные префиксы для имени файла
     var possiblePrefixes = ["", "_", "unused_", "unused__"];
     
-    // Ищем бинарные объекты (иллюстрации)
     var binObjects = document.all.binobj;
     if (binObjects) {
         var binaryDivs = binObjects.getElementsByTagName("DIV");
@@ -349,7 +555,6 @@ function checkImageExists(imageName) {
                     var imageIdLower = imageId.toLowerCase();
                     var imageIdWithoutExt = removeExtension(imageIdLower);
                     
-                    // Проверяем все возможные варианты с префиксами
                     for (var p = 0; p < possiblePrefixes.length; p++) {
                         if (imageIdWithoutExt === possiblePrefixes[p] + baseName) {
                             for (var extIdx = 0; extIdx < supportedExtensions.length; extIdx++) {
@@ -366,24 +571,22 @@ function checkImageExists(imageName) {
         }
     }
     
-    // Если не нашли в binobj, ищем в документе
     if (!result.found) {
         var allDivs = document.getElementsByTagName('div');
-        for (var i = 0; i < allDivs.length; i++) {
-            var div = allDivs[i];
-            var className = div.className ? div.className.toString() : '';
-            if (className.indexOf('image') != -1) {
-                var href = div.getAttribute('href');
+        for (var i2 = 0; i2 < allDivs.length; i2++) {
+            var div2 = allDivs[i2];
+            var className2 = div2.className ? div2.className.toString() : '';
+            if (className2.indexOf('image') != -1) {
+                var href = div2.getAttribute('href');
                 if (href && href.charAt(0) === '#') {
                     var imgName = href.substring(1);
                     var imgNameLower = imgName.toLowerCase();
                     var imgNameWithoutExt = removeExtension(imgNameLower);
                     
-                    // Проверяем все возможные варианты с префиксами
-                    for (var p = 0; p < possiblePrefixes.length; p++) {
-                        if (imgNameWithoutExt === possiblePrefixes[p] + baseName) {
-                            for (var extIdx = 0; extIdx < supportedExtensions.length; extIdx++) {
-                                if (imgNameLower.indexOf(supportedExtensions[extIdx], imgNameWithoutExt.length) != -1) {
+                    for (var p2 = 0; p2 < possiblePrefixes.length; p2++) {
+                        if (imgNameWithoutExt === possiblePrefixes[p2] + baseName) {
+                            for (var extIdx2 = 0; extIdx2 < supportedExtensions.length; extIdx2++) {
+                                if (imgNameLower.indexOf(supportedExtensions[extIdx2], imgNameWithoutExt.length) != -1) {
                                     result.found = true;
                                     result.actualName = imgName;
                                     return result;

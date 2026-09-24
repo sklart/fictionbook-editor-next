@@ -1,43 +1,42 @@
 // Скрипт "Расставить маркеры иллюстраций по реперной карте" для редактора FBE
-// version 2.5
+// version 2.8
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
 // Второй скрипт из комплекта для переноса иллюстраций между fb2-документами.
-// Работает в паре со Скриптом 1 "Снять реперную карту fb2 документа для переноса иллюстраций.js".
+// Работает в паре со Скриптом 1 "Создать реперную карту fb2 документа для переноса иллюстраций.js".
 //
 // Как работает эта пара скриптов:
 // Создать реперную карту fb2 документа для переноса иллюстраций.js
 // и
 // Расставить маркеры иллюстраций по реперной карте.js
 
-// Открываем исходный документ с иллюстрациями.
-// Запускаем скрипт для создания реперной карты данного документа.
+// Открываем исходный fb2 документ с иллюстрациями.
+// Запускаем этот скрипт для создания реперной карты данного документа.
 // Открываем целевой документ с отредактированным текстом и без иллюстраций.
 // Запускаем второй скрипт Расставить маркеры иллюстраций по реперной карте.js
 // Второй скрипт расставляет в целевом документе текстовые маркеры типа zzz_pic
 // или сразу пустые картинки (в зависимости от включенных настроек во втором скрипте)
 // на местах, максимально совпадающих с исходным документом.
-// В случае наличия предполагаемых ошибок расстановки,
-// скрипт создает файл отчета об ошибках в той же папке D:\\FBE_Compare,
-// где первым скриптом создается реперная карта исходного документа.
+// При наличии ошибок расстановки второй скрипт создает файл отчета в папке с текущим fb2 документом
+// или в жестко заданной в настройках папке, например D:\\FBE_Compare.
 
 // Далее можно:
 // Проверить в целевом документе расстановку текстовых маркеров,
 // при необходимости переставить отдельные маркеры вручную.
 // Заменить текстовые маркеры zzz_pic на <image l:href="#undefined"/> глобальной заменой в режиме XML кода.
 // Подцепить на места пустышек реальные иллюстрации скриптом "15_Расставить иллюстрации по заданным местам.js"
-//
-// Особенности данного скрипта:
-// - Чтение реперной карты из TXT через FSO
-// - Поиск мест вставки по текстовым реперам с учётом корректуры целевого текста
-// - Вставка текстовых маркеров или сразу пустых картинок (на выбор в настройках ниже)
-// - Учёт пустых строк вокруг иллюстраций (из карты)
+
+// Особенности данного скрипта:.
+// - Чтение реперной карты из TXT через FileSystemObject.
+// - Поиск мест вставки по текстовым реперам с учётом возможных незначительных отличий целевого текста.
+// - Вставка текстовых маркеров или сразу пустых картинок (на выбор в настройках ниже).
+// - Учёт пустых строк вокруг иллюстраций (из карты).
 
 // Режим работы: обычный или тихий.
 // Поддержка отмены действий (Ctrl+Z).
 
-// version 2.5, 01.07.2026
+// version 2.8, 10.08.2026
 //======================================
 
 // ==================================================
@@ -70,20 +69,157 @@ function isEmptyText(text) {
 
 function Run() {
     var scriptName = "Расставить маркеры иллюстраций по реперной карте";
-    var version = "2.5";
+    var version = "2.8";
 
     // ==================================================
-    // НАСТРОЙКИ СКРИПТА
+    // НАСТРОЙКИ СКРИПТА ====== можно менять по необходимости ======
     // ==================================================
 
+    // --- Настройка типа вставки ---
+    // 0 — вставлять текстовый маркер (безопасно, легко править руками)
+    // 1 — вставлять сразу пустую картинку <image l:href="#undefined"/>
+    var insertType = 1;
+
+    var markerText = "zzz_pic";                    // Текст маркера (если insertType = 0)
+    var addEmptyLines = 1;                         // Добавлять пустые строки вокруг: 0 — нет, 1 — да
+    var minAnchorLength = 3;                       // Минимальная длина репера (более короткие отбрасываются)
+    var showStatistics = 1;                        // 1 — показывать статистику, 0 — тихий режим
+
+    // --- Настройка путей ---
+    // Запасная папка (используется, если автоопределение не сработало ИЛИ карта не найдена рядом с fb2)
     var workFolder = "D:\\FBE_Compare";
-    var mapFileName = "fb2_reper_map.txt";
+    var mapFileName = "fb2_reper_map.txt";          // Имя файла реперной карты
     var reportFileName = "отчет_о_пропущенных_картинках.txt"; // Имя файла отчёта
-    var insertType = "marker";
-    var markerText = "zzz_pic";
-    var addEmptyLines = 1;
-    var showStatistics = 1;
-    var minAnchorLength = 3;
+
+    // --- Настройка сохранения отчёта ---
+    var overwriteFile = 0; // 0 — перезаписывать, 1 — создавать копию с нумерацией
+
+    // ==================================================
+    // ОПРЕДЕЛЕНИЕ ПАПКИ С ДОКУМЕНТОМ
+    // ==================================================
+
+    var documentFolder = "";
+    var fb2FileName = "";
+    var fb2FilePath = "";
+
+    // --- Метод 1: Штатное API FBE ---
+    try {
+        documentFolder = window.external.GetDocumentDirectory();
+        fb2FileName = window.external.GetDocumentFileName();
+        fb2FilePath = window.external.GetDocumentFilePath();
+    } catch(e) {}
+
+    // --- Метод 2: PowerShell (заголовок окна) ---
+    if (documentFolder == "") {
+        var shell, fso;
+        try {
+            shell = new ActiveXObject("WScript.Shell");
+            fso = new ActiveXObject("Scripting.FileSystemObject");
+        } catch(e) {}
+
+        if (shell && fso) {
+            var tempFile = "C:\\__fbe_path_result.txt";
+            try {
+                var psCmd = "powershell -ExecutionPolicy Bypass -command \"(Get-Process -Name 'fbe' -ErrorAction SilentlyContinue).MainWindowTitle\" > \"" + tempFile + "\" 2>&1";
+                shell.Run(psCmd, 0, true);
+
+                if (fso.FileExists(tempFile)) {
+                    var file = fso.OpenTextFile(tempFile, 1, false, -1);
+                    var title = "";
+                    if (!file.AtEndOfStream) {
+                        title = file.ReadLine();
+                        title = title.replace(/^\s+|\s+$/g, "");
+                    }
+                    file.Close();
+                    try { fso.DeleteFile(tempFile); } catch(e) {}
+
+                    if (title.length > 0) {
+                        var pathMatch = title.match(/[A-Za-z]:\\.+?\.fb2/i);
+                        if (pathMatch) {
+                            fb2FilePath = pathMatch[0];
+                            var lastSlash = fb2FilePath.lastIndexOf("\\");
+                            if (lastSlash != -1) {
+                                documentFolder = fb2FilePath.substring(0, lastSlash);
+                                fb2FileName = fb2FilePath.substring(lastSlash + 1);
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+    }
+
+    // --- Метод 3: Временный файл + CMD-поиск ---
+    if (documentFolder == "") {
+        try {
+            if (!shell) shell = new ActiveXObject("WScript.Shell");
+            if (!fso) fso = new ActiveXObject("Scripting.FileSystemObject");
+        } catch(e) {}
+
+        if (shell && fso) {
+            var binObjects = document.all.binobj.getElementsByTagName("DIV");
+            var binData = "";
+            if (binObjects.length > 0) {
+                binData = binObjects[0].base64data;
+            } else {
+                binData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
+            }
+
+            var testId = "__fbe_path_test_" + new Date().getTime();
+            try {
+                window.external.SaveBinary(testId, binData, 0);
+            } catch(e) {}
+
+            var tempFile = "C:\\__fbe_path_result.txt";
+            var drivesToCheck = ["C:"];
+            try {
+                var allDrives = fso.Drives;
+                var dcEnum = new Enumerator(allDrives);
+                drivesToCheck = [];
+                for (; !dcEnum.atEnd(); dcEnum.moveNext()) {
+                    var drv = dcEnum.item();
+                    if (drv.IsReady) drivesToCheck.push(drv.DriveLetter + ":");
+                }
+            } catch(e) {}
+
+            var foundPath = "";
+            for (var d = 0; d < drivesToCheck.length; d++) {
+                var disk = drivesToCheck[d];
+                var cmd = "cmd /u /c dir /s /b \"" + disk + "\\" + testId + "*\" > \"" + tempFile + "\" 2>nul";
+                try {
+                    shell.Run(cmd, 0, true);
+                    if (fso.FileExists(tempFile)) {
+                        var resultFile = fso.OpenTextFile(tempFile, 1, false, -1);
+                        var line = "";
+                        if (!resultFile.AtEndOfStream) {
+                            line = resultFile.ReadLine();
+                            line = line.replace(/^\s+|\s+$/g, "");
+                            if (line.length > 0 && line.indexOf(testId) != -1) {
+                                foundPath = line;
+                            }
+                        }
+                        resultFile.Close();
+                        try { fso.DeleteFile(tempFile); } catch(e) {}
+                        if (foundPath != "") break;
+                    }
+                } catch(ec) {}
+            }
+
+            if (foundPath != "") {
+                var lastSlash2 = foundPath.lastIndexOf("\\");
+                if (lastSlash2 != -1) {
+                    documentFolder = foundPath.substring(0, lastSlash2);
+                    fb2FileName = "(неизвестно)";
+                }
+                try { fso.DeleteFile(foundPath); } catch(e) {}
+            }
+        }
+    }
+
+    // --- Используем запасную папку, если автоопределение не сработало ---
+    if (documentFolder == "") {
+        documentFolder = workFolder;
+    }
 
     // ==================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ВНУТРИ RUN
@@ -250,7 +386,7 @@ function Run() {
     }
 
     function createInsertElement() {
-        if (insertType == "undefined") {
+        if (insertType == 1) {
             var div = document.createElement("DIV");
             div.className = "image";
             div.setAttribute("href", "#undefined");
@@ -396,7 +532,8 @@ function Run() {
         return positions;
     }
 
-    // Строгий поиск
+    // Поиск позиции: если верхние и нижние реперы нашлись в одном элементе,
+    // вставляем маркер после этого элемента
     function findStrict(elements, startIndex, anchorsAbove, anchorsBelow) {
         if (anchorsAbove.length == 0) {
             var bestIdx = -1, bestCount = 0;
@@ -421,6 +558,18 @@ function Run() {
         for (var ap = 0; ap < allAbove.length; ap++) {
             var aIdx = allAbove[ap].index;
             var aCount = allAbove[ap].count;
+
+            // Сначала проверяем этот же элемент на нижние реперы
+            var sameElementBelow = countMatchingAnchors(elements[aIdx].cleaned, anchorsBelow);
+            if (sameElementBelow > 0) {
+                var pairScore = aCount + sameElementBelow;
+                if (pairScore > bestPair.score) {
+                    bestPair.aboveIdx = aIdx;
+                    bestPair.score = pairScore;
+                }
+            }
+
+            // Затем ищем нижние в следующих элементах
             var bestBelow = { idx: -1, count: 0 };
             for (var j = aIdx + 1; j < Math.min(elements.length, aIdx + 200); j++) {
                 var bCount = countMatchingAnchors(elements[j].cleaned, anchorsBelow);
@@ -445,7 +594,6 @@ function Run() {
         return { index: -1, isBefore: false, score: 0 };
     }
 
-    // Мягкий поиск в окне
     function findSoftInWindow(elements, windowStart, windowEnd, anchorsAbove, anchorsBelow) {
         if (windowStart >= windowEnd) return { index: -1, isBefore: false, score: 0 };
 
@@ -456,6 +604,13 @@ function Run() {
         for (var i = windowStart; i <= windowEnd && i < elements.length; i++) {
             var aboveScore = countMatchingAnchors(elements[i].cleaned, anchorsAbove);
             if (aboveScore > 0) {
+                // Проверяем этот же элемент на нижние реперы
+                var sameElementBelow = countMatchingAnchors(elements[i].cleaned, anchorsBelow);
+                if (sameElementBelow > 0) {
+                    var score = aboveScore + sameElementBelow;
+                    if (score > bestScore) { bestScore = score; bestIdx = i; bestIsBefore = false; }
+                }
+
                 var bestBelowAfter = 0;
                 for (var j = i + 1; j < Math.min(elements.length, i + 200); j++) {
                     var bCount = countMatchingAnchors(elements[j].cleaned, anchorsBelow);
@@ -476,7 +631,7 @@ function Run() {
                     var score = aboveScore + bestBelowBefore;
                     if (score > bestScore) { bestScore = score; bestIdx = bestBelowBeforeIdx; bestIsBefore = true; }
                 }
-                if (bestBelowAfter == 0 && bestBelowBefore == 0 && aboveScore > bestScore) {
+                if (bestBelowAfter == 0 && bestBelowBefore == 0 && sameElementBelow == 0 && aboveScore > bestScore) {
                     bestScore = aboveScore; bestIdx = i; bestIsBefore = false;
                 }
             }
@@ -494,23 +649,39 @@ function Run() {
     // ЧТЕНИЕ РЕПЕРНОЙ КАРТЫ
     // ==================================================
 
-    var fullPath = workFolder + "\\" + mapFileName;
+    var fullPath = documentFolder + "\\" + mapFileName;
     var fileContent = "";
     var readSuccess = false;
     var readError = "";
 
     try {
-        var fso = new ActiveXObject("Scripting.FileSystemObject");
-        if (fso.FileExists(fullPath)) {
-            var file = fso.OpenTextFile(fullPath, 1, false, -1);
+        var fsoReader = new ActiveXObject("Scripting.FileSystemObject");
+        if (fsoReader.FileExists(fullPath)) {
+            var file = fsoReader.OpenTextFile(fullPath, 1, false, -1);
             fileContent = file.ReadAll();
             file.Close();
             readSuccess = true;
-        } else {
-            readError = "Файл не найден: " + fullPath;
         }
-    } catch (e) {
-        readError = e.message;
+    } catch (e) {}
+
+    // Если карта не найдена рядом с документом — ищем в запасной папке
+    if (!readSuccess && documentFolder != workFolder) {
+        fullPath = workFolder + "\\" + mapFileName;
+        try {
+            var fsoReader2 = new ActiveXObject("Scripting.FileSystemObject");
+            if (fsoReader2.FileExists(fullPath)) {
+                var file2 = fsoReader2.OpenTextFile(fullPath, 1, false, -1);
+                fileContent = file2.ReadAll();
+                file2.Close();
+                readSuccess = true;
+            } else {
+                readError = "Файл не найден ни в папке с документом:\n" + documentFolder + "\nни в запасной папке:\n" + workFolder;
+            }
+        } catch (e2) {
+            readError = e2.message;
+        }
+    } else if (!readSuccess) {
+        readError = "Файл не найден: " + fullPath;
     }
 
     if (!readSuccess) {
@@ -574,10 +745,11 @@ function Run() {
 
     if (showStatistics == 1) {
         var confirmMsg = scriptName + "\nver. " + version + "\n----------------------------------------\n\n";
+        confirmMsg += "Папка с документом:\n" + documentFolder + "\n\n";
         confirmMsg += "Найдено в карте:\n• Картинок: " + imagesData.length + "\n• Секций в исходнике: " + totalSections + "\n";
         if (bookTitle.length > 0 && bookTitle != "NO_TITLE") confirmMsg += "• Книга: " + bookTitle + "\n";
         if (totalFilteredAnchors > 0) confirmMsg += "\n• Отфильтровано коротких реперов: " + totalFilteredAnchors + "\n";
-        confirmMsg += "\nНастройки:\n• Тип вставки: " + (insertType == "marker" ? "текстовый маркер \"" + markerText + "\"" : "пустая картинка #undefined") + "\n";
+        confirmMsg += "\nНастройки:\n• Тип вставки: " + (insertType == 0 ? "текстовый маркер \"" + markerText + "\"" : "пустая картинка #undefined") + "\n";
         confirmMsg += "• Пустые строки: " + (addEmptyLines ? "ДА" : "НЕТ") + "\n• Мин. длина репера: " + minAnchorLength + " симв.\n\n";
         confirmMsg += "Алгоритм: двухпроходный\n\nРасставить маркеры в текущем документе?";
         if (!AskYesNo(confirmMsg)) return;
@@ -660,7 +832,7 @@ function Run() {
 
     var markersInserted = 0;
     var markersSkipped = 0;
-    var skippedList = []; // Полный список пропущенных для отчёта
+    var skippedList = [];
 
     window.external.BeginUndoUnit(document, "Расстановка маркеров картинок");
 
@@ -677,7 +849,6 @@ function Run() {
             markersInserted++;
         } else {
             markersSkipped++;
-            // Собираем информацию для отчёта
             var skipInfo = "";
             skipInfo += "Картинка #" + imgInfo.imageNumber + " (" + imgInfo.name + ")\r\n";
             skipInfo += "  Секция в исходнике: " + imgInfo.sectionIndex + "\r\n";
@@ -688,7 +859,6 @@ function Run() {
             skipInfo += imgInfo.anchorsBelow.length > 0 ? imgInfo.anchorsBelow.join(" | ") : "нет";
             skipInfo += "\r\n";
 
-            // Глобальный поиск реперов
             if (imgInfo.anchorsAbove.length > 0) {
                 var abovePos = globalSearchAnchors(allElements, imgInfo.anchorsAbove, 0);
                 if (abovePos.length > 0) {
@@ -730,8 +900,30 @@ function Run() {
     if (skippedList.length > 0) {
         try {
             var reportFso = new ActiveXObject("Scripting.FileSystemObject");
-            try { reportFso.CreateFolder(workFolder); } catch (e) {}
-            var reportPath = workFolder + "\\" + reportFileName;
+            try { reportFso.CreateFolder(documentFolder); } catch (e) {}
+            
+            var reportPath = documentFolder + "\\" + reportFileName;
+            
+            if (overwriteFile == 1 && reportFso.FileExists(reportPath)) {
+                var baseName = reportFileName;
+                var dotPos = baseName.lastIndexOf(".");
+                var nameWithoutExt = baseName;
+                var ext = "";
+                if (dotPos != -1) {
+                    nameWithoutExt = baseName.substring(0, dotPos);
+                    ext = baseName.substring(dotPos);
+                }
+                
+                var counter = 1;
+                var newPath;
+                do {
+                    newPath = documentFolder + "\\" + nameWithoutExt + "_" + counter + ext;
+                    counter++;
+                } while (reportFso.FileExists(newPath));
+                
+                reportPath = newPath;
+            }
+            
             var reportFile = reportFso.CreateTextFile(reportPath, true, true);
             
             reportFile.Write("========================================\r\n");
@@ -740,6 +932,10 @@ function Run() {
             reportFile.Write("\r\n");
             reportFile.Write("Скрипт: " + scriptName + " v" + version + "\r\n");
             reportFile.Write("Дата: " + new Date() + "\r\n");
+            reportFile.Write("\r\n");
+            reportFile.Write("Путь к fb2-файлу:\r\n" + (fb2FilePath || documentFolder) + "\r\n");
+            reportFile.Write("\r\n");
+            reportFile.Write("Имя fb2-файла:\r\n" + (fb2FileName || "(неизвестно)") + "\r\n");
             reportFile.Write("\r\n");
             reportFile.Write("Всего картинок в карте: " + imagesData.length + "\r\n");
             reportFile.Write("Успешно вставлено: " + markersInserted + "\r\n");
@@ -775,6 +971,7 @@ function Run() {
 
     if (showStatistics == 1) {
         var msg = scriptName + "\nver. " + version + "\n----------------------------------------\n\n";
+        msg += "Папка: " + documentFolder + "\n\n";
         msg += "✓ Картинок в карте: " + imagesData.length + "\n";
         msg += "✓ Всего текстовых элементов: " + allElements.length + "\n";
         if (totalFilteredAnchors > 0) msg += "✓ Отфильтровано коротких реперов: " + totalFilteredAnchors + "\n";
@@ -782,17 +979,16 @@ function Run() {
         if (markersSkipped > 0) {
             msg += "✗ Пропущено (не найдено): " + markersSkipped + "\n";
         }
-        msg += "\nТип вставки: " + (insertType == "marker" ? "текстовый маркер \"" + markerText + "\"" : "пустая картинка #undefined") + "\n";
+        msg += "\nТип вставки: " + (insertType == 0 ? "текстовый маркер \"" + markerText + "\"" : "пустая картинка #undefined") + "\n";
         msg += "Алгоритм: двухпроходный\n";
         msg += "\nВремя выполнения: " + elapsedStr + " сек.\n";
 
         if (reportSaved) {
-            msg += "\n✓ Отчёт сохранён:\n  " + workFolder + "\\" + reportFileName + "\n";
+            msg += "\n✓ Отчёт сохранён:\n  " + documentFolder + "\\" + reportFileName + "\n";
         } else if (skippedList.length > 0) {
             msg += "\n✗ Не удалось сохранить отчёт: " + reportError + "\n";
         }
 
-        // Краткая диагностика — только первые 3 в окне
         if (skippedList.length > 0) {
             msg += "\n----------------------------------------\n";
             msg += "ПЕРВЫЕ 3 ПРОПУЩЕННЫЕ (подробности в отчёте):\n";

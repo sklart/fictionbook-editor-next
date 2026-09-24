@@ -1,0 +1,565 @@
+<html>
+<head>
+<title>Параметры вложенности однотипных разделов</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+body {
+    font-family: Tahoma, sans-serif;
+    margin: 10px;
+    padding: 0;
+    font-size: 14px;
+}
+.form-container {
+    margin: 5px;
+}
+h3 {
+    margin: 0 0 3px 0;
+    font-size: 15px;
+}
+.version-info {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    color: #666;
+}
+.help-btn {
+    width: 26px;
+    height: 26px;
+    border: 2px solid #FFA500;
+    background: #FFD700;
+    color: #000;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 50%;
+    padding: 0;
+    line-height: 22px;
+    text-align: center;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+.help-btn:hover {
+    background: #FFC000;
+}
+.help-panel {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 80%;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #FFFEF5;
+    border: 2px solid #FFA500;
+    padding: 10px;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.3;
+    z-index: 100;
+    text-align: left;
+}
+.help-panel b {
+    color: #000;
+}
+.field-group {
+    margin: 8px 0;
+    padding: 5px;
+    font-size: 14px;
+}
+.field-group-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.two-columns-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.two-columns-table td {
+    vertical-align: top;
+    padding: 0;
+}
+.two-columns-table td.left {
+    padding-right: 10px;
+}
+.radio-row {
+    margin: 3px 0 3px 5px;
+    font-size: 13px;
+}
+.radio-row-full {
+    margin: 3px 0 3px 5px;
+    font-size: 13px;
+}
+.radio-row input[type="radio"] {
+    margin-right: 5px;
+}
+.radio-row input[type="text"],
+.radio-row-full input[type="text"] {
+    width: 200px;
+    padding: 3px;
+    font-size: 13px;
+    margin-left: 5px;
+}
+.count-info {
+    color: #666;
+    font-size: 12px;
+    margin-left: 3px;
+}
+.checkbox-group {
+    margin: 8px 0;
+    padding: 5px;
+    font-size: 13px;
+}
+.buttons {
+    margin-top: 15px;
+    text-align: center;
+    position: relative;
+}
+input[type="button"] {
+    padding: 6px 15px;
+    margin: 0 10px;
+    font-size: 14px;
+}
+input[type="checkbox"] {
+    margin-right: 8px;
+    transform: scale(1.1);
+}
+</style>
+</head>
+<body>
+<div class="form-container">
+    <h3>Произвести вложенность однотипных разделов</h3>
+    <div class="version-info" id="versionInfo"></div>
+    
+    <div class="field-group">
+        <div class="field-group-title">БУДУЩИЕ РОДИТЕЛЬСКИЕ РАЗДЕЛЫ:</div>
+        <table class="two-columns-table" cellpadding="0" cellspacing="0">
+        <tr>
+        <td class="left">
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentBook"><label for="parentBook">Книга</label><span class="count-info" id="parentBookCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentTom"><label for="parentTom">Том</label><span class="count-info" id="parentTomCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentPart"><label for="parentPart">Часть</label><span class="count-info" id="parentPartCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentChapter"><label for="parentChapter">Глава</label><span class="count-info" id="parentChapterCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentSection"><label for="parentSection">Раздел</label><span class="count-info" id="parentSectionCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentAppendix"><label for="parentAppendix">Приложение</label><span class="count-info" id="parentAppendixCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentParagraph"><label for="parentParagraph">Параграф</label><span class="count-info" id="parentParagraphCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentExercise"><label for="parentExercise">Задание</label><span class="count-info" id="parentExerciseCount"></span>
+            </div>
+        </td>
+        <td>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentBookEn"><label for="parentBookEn">Book</label><span class="count-info" id="parentBookEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentVolume"><label for="parentVolume">Volume</label><span class="count-info" id="parentVolumeCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentPartEn"><label for="parentPartEn">Part</label><span class="count-info" id="parentPartEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentChapterEn"><label for="parentChapterEn">Chapter</label><span class="count-info" id="parentChapterEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentSectionEn"><label for="parentSectionEn">Section</label><span class="count-info" id="parentSectionEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentAppendixEn"><label for="parentAppendixEn">Appendix</label><span class="count-info" id="parentAppendixEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentParagraphEn"><label for="parentParagraphEn">Paragraph</label><span class="count-info" id="parentParagraphEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="parentType" id="parentExerciseEn"><label for="parentExerciseEn">Exercise</label><span class="count-info" id="parentExerciseEnCount"></span>
+            </div>
+        </td>
+        </tr>
+        </table>
+        <div class="radio-row-full">
+            <input type="radio" name="parentType" id="parentArabic1"><label for="parentArabic1">Арабские - 1 уровень (1)</label><span class="count-info" id="parentArabic1Count"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="parentType" id="parentArabic2"><label for="parentArabic2">Арабские - 2 уровня (1.1)</label><span class="count-info" id="parentArabic2Count"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="parentType" id="parentArabic3"><label for="parentArabic3">Арабские - 3 уровня (1.1.2)</label><span class="count-info" id="parentArabic3Count"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="parentType" id="parentRoman"><label for="parentRoman">Только римские цифры</label><span class="count-info" id="parentRomanCount"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="parentType" id="parentCustom"><label for="parentCustom">Свой вариант (начинается с или содержит):</label>
+            <input type="text" id="parentCustomText" value="" maxlength="50" onkeyup="selectCustom('parent')" onchange="selectCustom('parent')">
+        </div>
+    </div>
+    
+    <div class="field-group">
+        <div class="field-group-title">БУДУЩИЕ ВЛОЖЕННЫЕ РАЗДЕЛЫ:</div>
+        <table class="two-columns-table" cellpadding="0" cellspacing="0">
+        <tr>
+        <td class="left">
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childBook"><label for="childBook">Книга</label><span class="count-info" id="childBookCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childTom"><label for="childTom">Том</label><span class="count-info" id="childTomCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childPart"><label for="childPart">Часть</label><span class="count-info" id="childPartCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childChapter"><label for="childChapter">Глава</label><span class="count-info" id="childChapterCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childSection"><label for="childSection">Раздел</label><span class="count-info" id="childSectionCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childAppendix"><label for="childAppendix">Приложение</label><span class="count-info" id="childAppendixCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childParagraph"><label for="childParagraph">Параграф</label><span class="count-info" id="childParagraphCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childExercise"><label for="childExercise">Задание</label><span class="count-info" id="childExerciseCount"></span>
+            </div>
+        </td>
+        <td>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childBookEn"><label for="childBookEn">Book</label><span class="count-info" id="childBookEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childVolume"><label for="childVolume">Volume</label><span class="count-info" id="childVolumeCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childPartEn"><label for="childPartEn">Part</label><span class="count-info" id="childPartEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childChapterEn"><label for="childChapterEn">Chapter</label><span class="count-info" id="childChapterEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childSectionEn"><label for="childSectionEn">Section</label><span class="count-info" id="childSectionEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childAppendixEn"><label for="childAppendixEn">Appendix</label><span class="count-info" id="childAppendixEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childParagraphEn"><label for="childParagraphEn">Paragraph</label><span class="count-info" id="childParagraphEnCount"></span>
+            </div>
+            <div class="radio-row">
+                <input type="radio" name="childType" id="childExerciseEn"><label for="childExerciseEn">Exercise</label><span class="count-info" id="childExerciseEnCount"></span>
+            </div>
+        </td>
+        </tr>
+        </table>
+        <div class="radio-row-full">
+            <input type="radio" name="childType" id="childArabic1"><label for="childArabic1">Арабские - 1 уровень (1)</label><span class="count-info" id="childArabic1Count"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="childType" id="childArabic2"><label for="childArabic2">Арабские - 2 уровня (1.1)</label><span class="count-info" id="childArabic2Count"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="childType" id="childArabic3"><label for="childArabic3">Арабские - 3 уровня (1.1.2)</label><span class="count-info" id="childArabic3Count"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="childType" id="childRoman"><label for="childRoman">Только римские цифры</label><span class="count-info" id="childRomanCount"></span>
+        </div>
+        <div class="radio-row-full">
+            <input type="radio" name="childType" id="childCustom"><label for="childCustom">Свой вариант (начинается с или содержит):</label>
+            <input type="text" id="childCustomText" value="" maxlength="50" onkeyup="selectCustom('child')" onchange="selectCustom('child')">
+        </div>
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" name="includeBeforeNext" id="includeBeforeNext">
+        <label for="includeBeforeNext"><strong>Вкладывать разделы с нетипичными заголовками</strong>, расположенные перед следующим родителем</label>
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" name="removeEmptySections" id="removeEmptySections" checked>
+        <label for="removeEmptySections"><strong>Убирать пустые секции в начале родительских</strong>, если они содержат только пустые строки</label>
+    </div>
+    
+    <div class="buttons">
+        <div class="help-panel" id="helpPanel"></div>
+        <button class="help-btn" onclick="toggleHelp()" title="Помощь">?</button>
+        <input type="button" value="Выполнить" onclick="doOK()">
+        <input type="button" value="Отмена" onclick="doCancel()">
+    </div>
+</div>
+
+<script>
+var scriptVersion = "5.3";
+var analysis = null;
+
+try {
+    if (window.dialogArguments) {
+        scriptVersion = window.dialogArguments.version;
+        analysis = window.dialogArguments.analysis;
+    }
+} catch(e) {}
+
+document.getElementById('versionInfo').innerHTML = 'ver. ' + scriptVersion;
+
+var countsData = null;
+if (analysis && analysis.counts) {
+    countsData = analysis.counts;
+}
+
+// Заполняем количества
+if (countsData) {
+    document.getElementById('parentBookCount').innerHTML = '(' + (countsData["Книга"] || 0) + ')';
+    document.getElementById('parentTomCount').innerHTML = '(' + (countsData["Том"] || 0) + ')';
+    document.getElementById('parentPartCount').innerHTML = '(' + (countsData["Часть"] || 0) + ')';
+    document.getElementById('parentChapterCount').innerHTML = '(' + (countsData["Глава"] || 0) + ')';
+    document.getElementById('parentSectionCount').innerHTML = '(' + (countsData["Раздел"] || 0) + ')';
+    document.getElementById('parentAppendixCount').innerHTML = '(' + (countsData["Приложение"] || 0) + ')';
+    document.getElementById('parentParagraphCount').innerHTML = '(' + (countsData["Параграф"] || 0) + ')';
+    document.getElementById('parentExerciseCount').innerHTML = '(' + (countsData["Задание"] || 0) + ')';
+    document.getElementById('parentArabic1Count').innerHTML = '(' + (countsData["Арабские - 1 уровень"] || 0) + ')';
+    document.getElementById('parentArabic2Count').innerHTML = '(' + (countsData["Арабские - 2 уровня"] || 0) + ')';
+    document.getElementById('parentArabic3Count').innerHTML = '(' + (countsData["Арабские - 3 уровня"] || 0) + ')';
+    document.getElementById('parentRomanCount').innerHTML = '(' + (countsData["Римские"] || 0) + ')';
+    
+    document.getElementById('parentBookEnCount').innerHTML = '(' + (countsData["Book"] || 0) + ')';
+    document.getElementById('parentVolumeCount').innerHTML = '(' + (countsData["Volume"] || 0) + ')';
+    document.getElementById('parentPartEnCount').innerHTML = '(' + (countsData["Part"] || 0) + ')';
+    document.getElementById('parentChapterEnCount').innerHTML = '(' + (countsData["Chapter"] || 0) + ')';
+    document.getElementById('parentSectionEnCount').innerHTML = '(' + (countsData["Section"] || 0) + ')';
+    document.getElementById('parentAppendixEnCount').innerHTML = '(' + (countsData["Appendix"] || 0) + ')';
+    document.getElementById('parentParagraphEnCount').innerHTML = '(' + (countsData["Paragraph"] || 0) + ')';
+    document.getElementById('parentExerciseEnCount').innerHTML = '(' + (countsData["Exercise"] || 0) + ')';
+    
+    document.getElementById('childBookCount').innerHTML = '(' + (countsData["Книга"] || 0) + ')';
+    document.getElementById('childTomCount').innerHTML = '(' + (countsData["Том"] || 0) + ')';
+    document.getElementById('childPartCount').innerHTML = '(' + (countsData["Часть"] || 0) + ')';
+    document.getElementById('childChapterCount').innerHTML = '(' + (countsData["Глава"] || 0) + ')';
+    document.getElementById('childSectionCount').innerHTML = '(' + (countsData["Раздел"] || 0) + ')';
+    document.getElementById('childAppendixCount').innerHTML = '(' + (countsData["Приложение"] || 0) + ')';
+    document.getElementById('childParagraphCount').innerHTML = '(' + (countsData["Параграф"] || 0) + ')';
+    document.getElementById('childExerciseCount').innerHTML = '(' + (countsData["Задание"] || 0) + ')';
+    document.getElementById('childArabic1Count').innerHTML = '(' + (countsData["Арабские - 1 уровень"] || 0) + ')';
+    document.getElementById('childArabic2Count').innerHTML = '(' + (countsData["Арабские - 2 уровня"] || 0) + ')';
+    document.getElementById('childArabic3Count').innerHTML = '(' + (countsData["Арабские - 3 уровня"] || 0) + ')';
+    document.getElementById('childRomanCount').innerHTML = '(' + (countsData["Римские"] || 0) + ')';
+    
+    document.getElementById('childBookEnCount').innerHTML = '(' + (countsData["Book"] || 0) + ')';
+    document.getElementById('childVolumeCount').innerHTML = '(' + (countsData["Volume"] || 0) + ')';
+    document.getElementById('childPartEnCount').innerHTML = '(' + (countsData["Part"] || 0) + ')';
+    document.getElementById('childChapterEnCount').innerHTML = '(' + (countsData["Chapter"] || 0) + ')';
+    document.getElementById('childSectionEnCount').innerHTML = '(' + (countsData["Section"] || 0) + ')';
+    document.getElementById('childAppendixEnCount').innerHTML = '(' + (countsData["Appendix"] || 0) + ')';
+    document.getElementById('childParagraphEnCount').innerHTML = '(' + (countsData["Paragraph"] || 0) + ')';
+    document.getElementById('childExerciseEnCount').innerHTML = '(' + (countsData["Exercise"] || 0) + ')';
+}
+
+// НЕМЕДЛЕННО отмечаем радиокнопки
+if (countsData) {
+    var typesArray = [];
+    typesArray.push({type: 'Книга', count: countsData["Книга"] || 0});
+    typesArray.push({type: 'Том', count: countsData["Том"] || 0});
+    typesArray.push({type: 'Часть', count: countsData["Часть"] || 0});
+    typesArray.push({type: 'Глава', count: countsData["Глава"] || 0});
+    typesArray.push({type: 'Раздел', count: countsData["Раздел"] || 0});
+    typesArray.push({type: 'Приложение', count: countsData["Приложение"] || 0});
+    typesArray.push({type: 'Параграф', count: countsData["Параграф"] || 0});
+    typesArray.push({type: 'Задание', count: countsData["Задание"] || 0});
+    typesArray.push({type: 'Book', count: countsData["Book"] || 0});
+    typesArray.push({type: 'Volume', count: countsData["Volume"] || 0});
+    typesArray.push({type: 'Part', count: countsData["Part"] || 0});
+    typesArray.push({type: 'Chapter', count: countsData["Chapter"] || 0});
+    typesArray.push({type: 'Section', count: countsData["Section"] || 0});
+    typesArray.push({type: 'Appendix', count: countsData["Appendix"] || 0});
+    typesArray.push({type: 'Paragraph', count: countsData["Paragraph"] || 0});
+    typesArray.push({type: 'Exercise', count: countsData["Exercise"] || 0});
+    typesArray.push({type: 'Арабские - 1 уровень', count: countsData["Арабские - 1 уровень"] || 0});
+    typesArray.push({type: 'Арабские - 2 уровня', count: countsData["Арабские - 2 уровня"] || 0});
+    typesArray.push({type: 'Арабские - 3 уровня', count: countsData["Арабские - 3 уровня"] || 0});
+    typesArray.push({type: 'Римские', count: countsData["Римские"] || 0});
+    
+    for (var i = 0; i < typesArray.length - 1; i++) {
+        for (var j = 0; j < typesArray.length - i - 1; j++) {
+            if (typesArray[j].count < typesArray[j + 1].count) {
+                var tmp = typesArray[j];
+                typesArray[j] = typesArray[j + 1];
+                typesArray[j + 1] = tmp;
+            }
+        }
+    }
+    
+    var childType = typesArray[0].type;
+    var parentType = typesArray[1].type;
+    
+    var suffixMap = {
+        'Книга': 'Book',
+        'Том': 'Tom',
+        'Часть': 'Part',
+        'Глава': 'Chapter',
+        'Раздел': 'Section',
+        'Приложение': 'Appendix',
+        'Параграф': 'Paragraph',
+        'Задание': 'Exercise',
+        'Book': 'BookEn',
+        'Volume': 'Volume',
+        'Part': 'PartEn',
+        'Chapter': 'ChapterEn',
+        'Section': 'SectionEn',
+        'Appendix': 'AppendixEn',
+        'Paragraph': 'ParagraphEn',
+        'Exercise': 'ExerciseEn',
+        'Арабские - 1 уровень': 'Arabic1',
+        'Арабские - 2 уровня': 'Arabic2',
+        'Арабские - 3 уровня': 'Arabic3',
+        'Римские': 'Roman'
+    };
+    
+    var parentRadioId = 'parent' + suffixMap[parentType];
+    var childRadioId = 'child' + suffixMap[childType];
+    
+    var parentRadio = document.getElementById(parentRadioId);
+    var childRadio = document.getElementById(childRadioId);
+    
+    if (parentRadio) parentRadio.checked = true;
+    if (childRadio) childRadio.checked = true;
+}
+
+// Функция автоматического выбора радиокнопки "Свой вариант" при вводе текста
+function selectCustom(prefix) {
+    var customRadio = document.getElementById(prefix + 'Custom');
+    if (customRadio) {
+        customRadio.checked = true;
+    }
+}
+
+function updateHelpText() {
+    var hp = document.getElementById('helpPanel');
+    hp.innerHTML = '<b>Инструкция:</b><br><br>' +
+        '• <b>Назначение:</b> Скрипт вкладывает однотипные разделы с единообразными заголовками (Часть, Глава, Раздел, арабские или римские цифры) внутрь других однотипных разделов.<br><br>' +
+        '• <b>Обработка:</b> Обрабатывается только основной раздел документа (сноски и комментарии не обрабатываются). Производится обработка только разделов первого уровня (без вложенности). Уже вложенные разделы скрипт не обрабатывает.<br><br>' +
+        '• <b>Глубина вложенности:</b> Вложенность производится на глубину только 1 раздела.<br><br>' +
+        '• <b>Будущие родительские разделы</b> — выберите тип заголовков, в которые будут вложены другие разделы.<br><br>' +
+        '• <b>Будущие вложенные разделы</b> — выберите тип заголовков, которые будут вложены в родительские.<br><br>' +
+        '• В скобках показано количество заголовков каждого типа в документе.<br><br>' +
+        '• <b>Арабские - 1 уровень</b> — заголовок из одной цифры (1, 2, 3... с точкой в конце или без).<br><br>' +
+        '• <b>Арабские - 2 уровня</b> — заголовок из двух цифр, разделённых точкой (1.1, 2.3... с точкой в конце или без).<br><br>' +
+        '• <b>Арабские - 3 уровня</b> — заголовок из трёх цифр, разделённых точками (1.1.2, 2.3.4... с точкой в конце или без).<br><br>' +
+        '• <b>Римские цифры</b> — заголовок целиком состоит из римских цифр (I, V, X... с точкой в конце или без).<br><br>' +
+        '• <b>Свой вариант</b> — введите ключевое слово типичного заголовка. Если поле заполнено, выбор сработает автоматически.<br><br>' +
+        '• <b>Вкладывать разделы с нетипичными заголовками перед следующим родителем</b> — если включено, то нетипичные разделы в конце группы будут вложены. Для последнего родителя эта настройка не применяется.<br><br>' +
+        '• <b>Убирать пустые секции в начале родительских</b> — если включено, то после вложения будут удалены пустые безымянные секции и пустые строки.<br><br>' +
+        '<span style="color:#CC6600;"><b>ВАЖНО:</b> Разделы до первого родительского и после последнего родительского не обрабатываются.</span>';
+}
+
+function toggleHelp() {
+    var hp = document.getElementById('helpPanel');
+    if (hp.style.display == 'block') {
+        hp.style.display = 'none';
+    } else {
+        updateHelpText();
+        hp.style.display = 'block';
+    }
+}
+
+function getParentPrefix() {
+    // Сначала проверяем свой вариант
+    var customText = document.getElementById('parentCustomText').value;
+    customText = customText.replace(/^\s+|\s+$/g, '');
+    if (customText !== '') {
+        return 'CUSTOM:' + customText;
+    }
+    
+    var radios = document.getElementsByName('parentType');
+    for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+            var id = radios[i].id;
+            if (id == 'parentBook') return 'Книга';
+            if (id == 'parentTom') return 'Том';
+            if (id == 'parentPart') return 'Часть';
+            if (id == 'parentChapter') return 'Глава';
+            if (id == 'parentSection') return 'Раздел';
+            if (id == 'parentAppendix') return 'Приложение';
+            if (id == 'parentParagraph') return 'Параграф';
+            if (id == 'parentExercise') return 'Задание';
+            if (id == 'parentBookEn') return 'Book';
+            if (id == 'parentVolume') return 'Volume';
+            if (id == 'parentPartEn') return 'Part';
+            if (id == 'parentChapterEn') return 'Chapter';
+            if (id == 'parentSectionEn') return 'Section';
+            if (id == 'parentAppendixEn') return 'Appendix';
+            if (id == 'parentParagraphEn') return 'Paragraph';
+            if (id == 'parentExerciseEn') return 'Exercise';
+            if (id == 'parentArabic1') return 'Арабские - 1 уровень';
+            if (id == 'parentArabic2') return 'Арабские - 2 уровня';
+            if (id == 'parentArabic3') return 'Арабские - 3 уровня';
+            if (id == 'parentRoman') return 'Римские';
+        }
+    }
+    return 'Часть';
+}
+
+function getChildPrefix() {
+    // Сначала проверяем свой вариант
+    var customText = document.getElementById('childCustomText').value;
+    customText = customText.replace(/^\s+|\s+$/g, '');
+    if (customText !== '') {
+        return 'CUSTOM:' + customText;
+    }
+    
+    var radios = document.getElementsByName('childType');
+    for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+            var id = radios[i].id;
+            if (id == 'childBook') return 'Книга';
+            if (id == 'childTom') return 'Том';
+            if (id == 'childPart') return 'Часть';
+            if (id == 'childChapter') return 'Глава';
+            if (id == 'childSection') return 'Раздел';
+            if (id == 'childAppendix') return 'Приложение';
+            if (id == 'childParagraph') return 'Параграф';
+            if (id == 'childExercise') return 'Задание';
+            if (id == 'childBookEn') return 'Book';
+            if (id == 'childVolume') return 'Volume';
+            if (id == 'childPartEn') return 'Part';
+            if (id == 'childChapterEn') return 'Chapter';
+            if (id == 'childSectionEn') return 'Section';
+            if (id == 'childAppendixEn') return 'Appendix';
+            if (id == 'childParagraphEn') return 'Paragraph';
+            if (id == 'childExerciseEn') return 'Exercise';
+            if (id == 'childArabic1') return 'Арабские - 1 уровень';
+            if (id == 'childArabic2') return 'Арабские - 2 уровня';
+            if (id == 'childArabic3') return 'Арабские - 3 уровня';
+            if (id == 'childRoman') return 'Римские';
+        }
+    }
+    return 'Глава';
+}
+
+function doOK() {
+    var params = {
+        parentPrefix: getParentPrefix(),
+        childPrefix: getChildPrefix(),
+        includeBeforeNext: document.getElementById('includeBeforeNext').checked,
+        removeEmptySections: document.getElementById('removeEmptySections').checked
+    };
+    window.returnValue = params;
+    window.close();
+}
+
+function doCancel() {
+    window.returnValue = null;
+    window.close();
+}
+</script>
+</body>
+</html>

@@ -1,26 +1,28 @@
 // Скрипт "Объединить разорванные абзацы (автоматически)" для редактора FBE
-// version 1.8
+// version 3.8
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
 // Скрипт предназначен для автоматического объединения разорванных абзацев в fb2 документах.
 // Скрипт находит и склеивает абзацы, которые были неправильно разорваны при конвертации.
-// Обрабатывает случаи: предлоги/союзы в конце абзаца, глаголы прошедшего времени,
-// переносы слов через тире, незакрытые кавычки и другие признаки незаконченной мысли.
-// Сохраняет исходное форматирование текста (курсив, жирный, ссылки, сноски).
-// Исключает из обработки аннотации, заголовки, подзаголовки, эпиграфы, цитаты, стихи, таблицы, а также строки, оформленные как списки.
-// Работает как со всем документом, так и с выделенным фрагментом.
+// Обрабатывается 12 базовых случаев + те же 12 случаев с пустой строкой (всего 24 варианта).
+// Отдельные настройки склейки для каждого из 24 случаев (можно включать/выключать).
+// Сохраняется исходное форматирование текста (курсив, жирный, ссылки, сноски).
+// Не склеиваются абзацы в аннотациях, заголовках, подзаголовках, эпиграфах, цитатах, стихах,
+// таблицах, а также абзацы, оформленные как списки.
+// При наличии выделения обрабатывается только текст внутри выделения.
+// При отсутствии выделения обрабатывается весь документ.
 // Обработка разделов сносок и комментариев (опционально).
 // Режим работы скрипта: обычный или тихий.
 // Поддержка отмены всех действий (Ctrl+Z).
 
-// version 1.8, 05.02.2026
+// version 3.8, 01.08.2026
 //======================================
 
 function Run() {
     // Название и версия для сообщений
     var scriptName = "Объединить разорванные абзацы (автоматически)";
-    var version = "1.8";
+    var version = "3.8";
     
     // Запускаем таймер
     var startTime = new Date().getTime();
@@ -39,29 +41,125 @@ function Run() {
     var processCommentsSection = 0; // 0 - нет, 1 - да
     
     // ==================================================
-    // НАСТРОЙКИ СКЛЕЙКИ - можно регулировать ======
+    // НАСТРОЙКИ СКЛЕЙКИ — БЕЗ ПУСТОЙ СТРОКИ ======
     // ==================================================
     
-    // На конце абзаца - предлог или союз с маленькой буквы
-    // склеиваем - 1, пропускаем - 0
+    // 1. Строчная буква в конце A + строчная буква в начале B (базовая склейка)
+    // Склеиваем - 1, пропускаем - 0
+    var mergeBasicLowerLower = 1; // По умолчанию - 1 - склеиваем
+    
+    // 2. Союз/предлог в конце A + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
     var mergePrepositionConjunction = 1; // По умолчанию - 1 - склеиваем
     
-    // Маленькая буква + тире + пробел + маленькая буква
-    // склеиваем - 1, пропускаем - 0
+    // 3. Строчная буква + тире/дефис + строчная буква (без ПС)
+    // Склеиваем - 1, пропускаем - 0
     var mergeLowerDashLower = 1; // По умолчанию - 1 - склеиваем
     
-    // Закрывающая кавычка + маленькая буква (НЕ список)
-    // склеиваем - 1, пропускаем - 0
-    var mergeQuoteLower = 1; // По умолчанию - 1 - сливаем
+    // 4. Закрывающая кавычка + строчная буква (НЕ список)
+    // Склеиваем - 1, пропускаем - 0
+    var mergeQuoteLower = 1; // По умолчанию - 1 - склеиваем
+    
+    // 5. Запятая в конце A + тире + пробел + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeCommaDashLower = 1; // По умолчанию - 1 - склеиваем
+    
+    // 6. Запятая в конце A + заглавная буква в начале B (обращение, имя собственное)
+    // Склеиваем - 1, пропускаем - 0
+    var mergeCommaUpper = 1; // По умолчанию - 1 - склеиваем
+    
+    // Максимальная длина текста абзаца B (без тегов) для варианта "запятая + заглавная буква"
+    // Если длина текста абзаца B меньше или равна этому значению - считаем обращением/именем
+    var maxCommaUpperLength = 300; // По умолчанию - 300 символов
+    
+    // 7. Строчная буква + двойные кавычки в конце A + заглавная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeQuoteUpper = 1; // По умолчанию - 1 - склеиваем
+    
+    // 8. Строчная буква + двойные кавычки в конце A + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerQuoteLower = 1; // По умолчанию - 1 - склеиваем
+    
+    // 9. Строчная буква в конце A + открывающая кавычка + заглавная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerOpenQuoteUpper = 1; // По умолчанию - 1 - склеиваем
+    
+    // 10. Строчная буква в конце A + заглавная буква в начале B (короткий абзац B)
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerUpper = 1; // По умолчанию - 1 - склеиваем
+    
+    // Максимальная длина текста абзаца B (без тегов) для варианта "строчная + заглавная"
+    // Если длина текста абзаца B меньше или равна этому значению - считаем продолжением
+    var maxLowerUpperLength = 300; // По умолчанию - 300 символов
+    
+    // 11. Многоточие в конце A + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeEllipsisLower = 1; // По умолчанию - 1 - склеиваем
+    
+    // 12. Многоточие в конце A + кавычки + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeEllipsisQuoteLower = 1; // По умолчанию - 1 - склеиваем
+    
+    // ==================================================
+    // НАСТРОЙКИ СКЛЕЙКИ — С ПУСТОЙ СТРОКОЙ (ПС) ======
+    // ==================================================
+    
+    // 13. Строчная буква в конце A + ПС + строчная буква в начале B (базовая склейка с ПС)
+    // Склеиваем - 1, пропускаем - 0
+    var mergeBasicLowerLowerPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 14. Союз/предлог в конце A + ПС + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergePrepositionConjunctionPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 15. Строчная буква + тире/дефис в конце A + ПС + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerDashLowerPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 16. Закрывающая кавычка в конце A + ПС + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeQuoteLowerPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 17. Запятая в конце A + тире + ПС + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeCommaDashLowerPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 18. Запятая в конце A + заглавная буква в начале B (обращение) + ПС
+    // Склеиваем - 1, пропускаем - 0
+    var mergeCommaUpperPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 19. Строчная буква + кавычки в конце A + ПС + заглавная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeQuoteUpperPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 20. Строчная буква + кавычки в конце A + ПС + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerQuoteLowerPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 21. Строчная буква в конце A + откр. кавычка + ПС + заглавная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerOpenQuoteUpperPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 22. Строчная буква в конце A + ПС + заглавная буква в начале B (короткий B)
+    // Склеиваем - 1, пропускаем - 0
+    var mergeLowerUpperPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 23. Многоточие в конце A + ПС + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeEllipsisLowerPS = 1; // По умолчанию - 1 - склеиваем
+    
+    // 24. Многоточие в конце A + ПС + кавычки + строчная буква в начале B
+    // Склеиваем - 1, пропускаем - 0
+    var mergeEllipsisQuoteLowerPS = 1; // По умолчанию - 1 - склеиваем
     
     // ==================================================
     // БЛОЧНЫЕ ЭЛЕМЕНТЫ, КОТОРЫЕ НЕ ОБРАБАТЫВАЕМ (склейка запрещена)
     // ==================================================
     
-    // Основные блочные элементы FB2
+    // Основные элементы FB2, в которых склейка не производится
     var blockElements = ["title", "subtitle", "cite", "epigraph", "poem", "stanza", "text-author"];
     
-    // Другие элементы с внутренней структурой
+    // Другие элементы внутренней структуры
     var structuralElements = ["annotation", "history"];
     
     // ==================================================
@@ -73,7 +171,6 @@ function Run() {
         // Короткие союзы (1-3 буквы) - строго по алфавиту
         "а", "в", "вон", "вот", "да", "же", "и", "ибо", "или", "как", "к", "ко", "ли", "мол",
         "не", "ни", "но", "о", "от", "по", "раз", "с", "то", "у", "что",
-        
         // Длинные союзы (4+ буквы) - строго по алфавиту
         "будто", "ведь", "дабы", "дескать", "допустим", 
         "едва", "ежели", "если", "если бы", "затем что", "зато", 
@@ -91,7 +188,6 @@ function Run() {
         // Короткие предлоги (1-3 буквы) - строго по алфавиту
         "без", "в", "вне", "во", "для", "до", "за", "из", "изо", "к", "ко", "на", "над", "о", 
         "об", "обо", "от", "ото", "по", "под", "при", "про", "с", "со", "у",
-        
         // Длинные предлоги (4+ буквы) - строго по алфавиту
         "безо", "близ", "благодаря", "ввиду", "вдали", "вдалеке", 
         "вдоль", "возле", "вокруг", "вместо", "внутри", 
@@ -337,21 +433,18 @@ function Run() {
         "получился", "появился", "радовался", "рассмеялся", "случился", 
         "смеялся", "старался", "торопился", "убрался", "увиделся", "удивился", "ужаснулся", 
         "улыбался",
-        
         // Женский род
         "боялась", "встретилась", "возмутилась", "закрылась", "закончилась", 
         "обрадовалась", "обратилась", "оказалась", "открылась", "показалась", "поклонилась", 
         "получилась", "появилась", "радовалась", "рассмеялась", "случилась", 
         "смеялась", "старалась", "торопилась", "убралась", "увиделась", "удивилась", "ужаснулась", 
         "улыбалась",
-        
         // Средний род
         "боялось", "встретилось", "возмутилось", "закрылось", "закончилось", 
         "обрадовалось", "обратилось", "оказалось", "открылось", "показалось", "поклонилось", 
         "получилось", "появилось", "радовалось", "рассмеялось", "случилось", 
         "смеялось", "старалось", "торопилось", "убралось", "увиделось", "удивилось", "ужаснулось", 
         "улыбалось",
-        
         // Множественное число
         "боялись", "встретились", "возмутились", "закрылись", "закончились", 
         "обрадовались", "обратились", "оказались", "открылись", "показались", "поклонились", 
@@ -424,7 +517,7 @@ function Run() {
         /^\d+\.\d+\.?\s/,      // 1.1., 1.2
         /^[а-я]\d?\.\s/,       // а., б1., в.
         /^[a-z]\d?\.\s/,       // a., b1., c.
-        /^\d+\.\d+\)\s/,       // 1.1), 1.2)
+        /^\d+\.\d+\)\s/        // 1.1), 1.2)
     ];
     
     // Регулярное выражение для проверки начала диалога
@@ -448,13 +541,17 @@ function Run() {
         nbspEntity = "&nbsp;";
     }
     
+    // --------------------------------------------------
+    // Базовые проверки
+    // --------------------------------------------------
+    
     // Функция для проверки, является ли элемент пустой строкой
     function isEmptyLine(element) {
         if (!element || element.nodeName != "P") return false;
         var html = element.innerHTML;
         // Удаляем все теги кроме img и проверяем на пробелы
         var cleanHtml = html.replace(/<(?!img)[^>]*?>/gi, "");
-        var emptyRegex = new RegExp("^( | |&nbsp;|" + nbspChar + ")*?$", "i");
+        var emptyRegex = new RegExp("^( | |&nbsp;|" + nbspChar + ")*?$", "i");
         return emptyRegex.test(cleanHtml);
     }
     
@@ -478,7 +575,6 @@ function Run() {
     // Функция для проверки, начинается ли текст с паттерна списка
     function isListPattern(text) {
         if (!text) return false;
-        
         for (var i = 0; i < listPatterns.length; i++) {
             var pattern = listPatterns[i];
             if (pattern && typeof pattern.test === "function") {
@@ -493,6 +589,39 @@ function Run() {
         }
         return false;
     }
+    
+    // Проверка, является ли начало абзаца элементом списка
+    function startsWithListItem(element) {
+        var text = getFirstChars(element, 10);
+        return isListPattern(text);
+    }
+    
+    // Проверка, является ли конец абзаца элементом списка
+    function endsWithListItem(element) {
+        var text = getTextContent(element);
+        text = normalizeSpaces(text);
+        var last20Chars = text.length > 20 ? text.substr(text.length - 20) : text;
+        
+        for (var j = 0; j < listPatterns.length; j++) {
+            var pattern = listPatterns[j];
+            if (pattern && typeof pattern.test === "function") {
+                try {
+                    if (pattern.test(last20Chars)) {
+                        var match = last20Chars.match(pattern);
+                        if (match && match.index != undefined) {
+                            var afterMatch = last20Chars.substr(match.index + match[0].length);
+                            if (/^\s*$/.test(afterMatch)) return true;
+                        }
+                    }
+                } catch(e) { continue; }
+            }
+        }
+        return false;
+    }
+    
+    // --------------------------------------------------
+    // Проверка символов
+    // --------------------------------------------------
     
     // Функция для проверки, является ли символ строчной буквой
     function isLowerCaseChar(char) {
@@ -539,11 +668,17 @@ function Run() {
                char == "«" || char == "\"" || char == "(" || char == "[";
     }
     
-    // Функция для проверки, является ли символ закрывающим разделителем
-    function isClosingDelimiter(char) {
+    // Функция для проверки, является ли символ знаком препинания (точка, запятая, !, ?, :, ;, …)
+    function isPunctuationMark(char) {
         if (!char) return false;
-        return char == "." || char == "!" || char == "?" || char == "…" ||
-               char == "»" || char == "\"" || char == ")" || char == "]";
+        return char == "." || char == "," || char == "!" || char == "?" || 
+               char == ":" || char == ";" || char == "…";
+    }
+    
+    // Функция для проверки, является ли символ закрывающей кавычкой
+    function isClosingQuote(char) {
+        if (!char) return false;
+        return char == "»" || char == "\"" || char == "”" || char == "“";
     }
     
     // Функция для проверки, является ли символ дефисом/тире
@@ -552,10 +687,13 @@ function Run() {
         return char == "-" || char == "–" || char == "—";
     }
     
+    // --------------------------------------------------
+    // Навигация по структуре документа
+    // --------------------------------------------------
+    
     // Функция для проверки, находится ли элемент в разделе примечаний/комментариев
     function isInSpecialSection(element) {
         if (!element) return false;
-        
         var parent = element.parentNode;
         while (parent) {
             if (parent.nodeName == "DIV" && parent.className == "body") {
@@ -576,7 +714,6 @@ function Run() {
     // Функция для проверки, есть ли между элементами empty-line
     function hasEmptyLineBetween(elementA, elementB) {
         if (!elementA || !elementB) return false;
-        
         var current = elementA.nextSibling;
         while (current && current != elementB) {
             if (current.nodeName == "P" && isEmptyLine(current)) {
@@ -584,9 +721,34 @@ function Run() {
             }
             current = current.nextSibling;
         }
-        
         return false;
     }
+    
+    // Функция для получения следующего элемента P
+    function getNextNode(el) {
+        if (el.firstChild && el.nodeName != "P") {
+            el = el.firstChild;
+        } else {
+            while (el && !el.nextSibling) {
+                el = el.parentNode;
+            }
+            if (el && el.nextSibling) el = el.nextSibling; 
+        }
+        return el;
+    }
+    
+    // Функция для получения следующего элемента P
+    function getNextP(el) {
+        var savedEl = el;
+        while (el && (el.nodeName != "P" || el == savedEl)) {
+            el = getNextNode(el);
+        }
+        return el;
+    }
+    
+    // --------------------------------------------------
+    // Извлечение текста и символов
+    // --------------------------------------------------
     
     // Функция для получения текстового содержимого элемента (без тегов)
     function getTextContent(element) {
@@ -612,7 +774,6 @@ function Run() {
                 if (node.nodeName == "IMG" || (node.nodeName == "SPAN" && node.className == "image")) {
                     return;
                 }
-                
                 for (var i = 0; i < node.childNodes.length; i++) {
                     traverse(node.childNodes[i]);
                 }
@@ -626,7 +787,6 @@ function Run() {
     // Функция для нормализации пробелов в строке
     function normalizeSpaces(text) {
         if (!text) return "";
-        
         // Заменяем различные пробелы на обычный пробел
         var unusualSpaces = String.fromCharCode(160) +  // неразрывный пробел
             String.fromCharCode(8194) +  // EN SPACE
@@ -638,28 +798,23 @@ function Run() {
             String.fromCharCode(8201) +  // THIN SPACE
             String.fromCharCode(8202) +  // HAIR SPACE
             nbspChar;
-            
         var regex = new RegExp("[" + unusualSpaces + "]", "g");
         text = text.replace(regex, " ");
-        
         // Заменяем множественные пробелы на один
         text = text.replace(/\s+/g, " ");
-        
         return text;
     }
     
     // Функция для удаления начальных пробелов (аналог trim начала)
     function trimStart(text) {
         if (!text) return "";
-        var result = text.replace(/^\s+/, "");
-        return result;
+        return text.replace(/^\s+/, "");
     }
     
     // Функция для удаления конечных пробелов (аналог trim конца)
     function trimEnd(text) {
         if (!text) return "";
-        var result = text.replace(/\s+$/, "");
-        return result;
+        return text.replace(/\s+$/, "");
     }
     
     // Функция для получения последнего значимого символа из абзаца
@@ -667,9 +822,7 @@ function Run() {
         var text = getTextContent(element);
         text = normalizeSpaces(text);
         text = trimEnd(text); // Удаляем конечные пробелы
-        
         if (text.length == 0) return "";
-        
         // Ищем последний непробельный символ
         for (var i = text.length - 1; i >= 0; i--) {
             if (text.charAt(i) != " ") {
@@ -684,12 +837,9 @@ function Run() {
         var text = getTextContent(element);
         text = normalizeSpaces(text);
         text = trimEnd(text); // Удаляем конечные пробелы
-        
         if (text.length == 0) return "";
-        
         var words = text.split(/\s+/);
         if (words.length == 0) return "";
-        
         return words[words.length - 1].toLowerCase();
     }
     
@@ -698,7 +848,6 @@ function Run() {
         var text = getTextContent(element);
         text = normalizeSpaces(text);
         text = trimStart(text); // Удаляем начальные пробелы
-        
         if (text.length == 0) return "";
         if (text.length < count) return text;
         return text.substr(0, count);
@@ -709,12 +858,9 @@ function Run() {
         var text = getTextContent(element);
         text = normalizeSpaces(text);
         text = trimStart(text); // Удаляем начальные пробелы
-        
         if (text.length == 0) return "";
-        
         var words = text.split(/\s+/);
         if (words.length == 0) return "";
-        
         return words[0];
     }
     
@@ -743,7 +889,6 @@ function Run() {
                 if (node.nodeName == "IMG" || (node.nodeName == "SPAN" && node.className == "image")) {
                     return "";
                 }
-                
                 for (var i = 0; i < node.childNodes.length; i++) {
                     var result = findFirstChar(node.childNodes[i]);
                     if (result) return result;
@@ -753,6 +898,27 @@ function Run() {
         }
         
         return findFirstChar(element);
+    }
+    
+    // Функция для получения первого значимого символа, пропуская открывающие кавычки
+    function getFirstCharAfterQuotes(element) {
+        if (!element) return "";
+        var text = getTextContent(element);
+        text = normalizeSpaces(text);
+        text = trimStart(text);
+        if (text.length == 0) return "";
+        var firstChar = text.charAt(0);
+        // Если первый символ — открывающая кавычка, берём следующий
+        if (firstChar == "«" || firstChar == "\"") {
+            // Пропускаем кавычку и возможные пробелы после неё
+            var rest = text.substr(1);
+            rest = trimStart(rest);
+            if (rest.length > 0) {
+                return rest.charAt(0);
+            }
+            return "";
+        }
+        return firstChar;
     }
     
     // Функция для получения последнего символа из абзаца (с учетом форматирования)
@@ -780,7 +946,6 @@ function Run() {
                 if (node.nodeName == "IMG" || (node.nodeName == "SPAN" && node.className == "image")) {
                     return "";
                 }
-                
                 for (var i = node.childNodes.length - 1; i >= 0; i--) {
                     var result = findLastChar(node.childNodes[i]);
                     if (result) return result;
@@ -792,31 +957,48 @@ function Run() {
         return findLastChar(element);
     }
     
+    // Функция для получения предпоследнего значимого символа (нужна для проверки открывающей кавычки)
+    function getSecondLastRealChar(element) {
+        if (!element) return "";
+        var text = getTextContent(element);
+        text = normalizeSpaces(text);
+        text = trimEnd(text);
+        if (text.length < 2) return "";
+        // Ищем предпоследний непробельный символ
+        var foundLast = false;
+        for (var i = text.length - 1; i >= 0; i--) {
+            var ch = text.charAt(i);
+            if (ch != " ") {
+                if (foundLast) return ch;
+                foundLast = true;
+            }
+        }
+        return "";
+    }
+    
+    // --------------------------------------------------
+    // Проверка элементов
+    // --------------------------------------------------
+    
     // Функция для проверки, является ли элемент заголовком
     function isTitleElement(element) {
         if (!element) return false;
-        
         // Проверяем класс элемента
         if (element.className == "title" || element.className == "subtitle") {
             return true;
         }
-        
         // Проверяем родительский элемент
         var parent = element.parentNode;
         if (parent && parent.className == "title") {
             return true;
         }
-        
         // Проверяем текст на заглавные буквы и короткую длину
         var text = getTextContent(element);
         text = normalizeSpaces(text);
-        
         if (text.length > 150) return false; // Слишком длинный для заголовка
-        
         // Подсчитываем процент заглавных букв
         var upperCount = 0;
         var letterCount = 0;
-        
         for (var i = 0; i < text.length; i++) {
             var char = text.charAt(i);
             if (isUpperCaseChar(char) || isLowerCaseChar(char)) {
@@ -826,11 +1008,16 @@ function Run() {
                 }
             }
         }
-        
         if (letterCount > 0 && upperCount / letterCount > 0.7) {
             return true; // Более 70% заглавных букв
         }
-        
+        return false;
+    }
+    
+    // Проверка, является ли элемент защищённым (subtitle, text-author и т.д.)
+    function isProtectedElement(element) {
+        if (!element) return false;
+        if (element.className == "subtitle" || element.className == "text-author") return true;
         return false;
     }
     
@@ -838,188 +1025,39 @@ function Run() {
     function hasHookWordAtEnd(element) {
         var lastWord = getLastWord(element);
         if (!lastWord) return false;
-        
         // Проверяем, есть ли это слово в словаре "крючков"
         for (var i = 0; i < hookWords.length; i++) {
             if (lastWord == hookWords[i].toLowerCase()) {
                 return true;
             }
         }
-        
         return false;
-    }
-    
-    // Функция для проверки, заканчивается ли абзац на запрещенное слово (союз, предлог и т.д.)
-    function endsWithForbiddenWord(element) {
-        if (mergePrepositionConjunction == 0) return false;
-        
-        var lastWord = getLastWord(element);
-        if (!lastWord) return false;
-        
-        return isInArray(forbiddenEndWords, lastWord);
-    }
-    
-    // Функция для проверки, заканчивается ли абзац на глагол прошедшего времени
-    function endsWithPastTenseVerb(element) {
-        var lastWord = getLastWord(element);
-        if (!lastWord) return false;
-        
-        return isInArray(allPastTenseVerbs, lastWord);
-    }
-    
-    // Функция для проверки, начинается ли абзац с диалога (тире в начале)
-    function startsWithDialogue(element) {
-        var firstWords = getFirstChars(element, 10);
-        if (!firstWords) return false;
-        
-        // Проверяем, что регулярное выражение инициализировано
-        if (!dialogueStartRegex) return false;
-        
-        try {
-            return dialogueStartRegex.test(firstWords);
-        } catch(e) {
-            return false;
-        }
-    }
-    
-    // Функция для проверки, содержит ли текст шаблон "маленькая буква + тире + пробел + маленькая буква"
-    function hasLowerDashLowerPattern(elementA, elementB) {
-        if (mergeLowerDashLower == 0) return false;
-        
-        var textA = getTextContent(elementA);
-        var textB = getTextContent(elementB);
-        
-        if (!textA || !textB) return false;
-        
-        // Получаем последние 20 символов из A и первые 20 символов из B
-        var endA = normalizeSpaces(textA).substr(Math.max(0, textA.length - 20));
-        var startB = normalizeSpaces(textB).substr(0, 20);
-        
-        // Проверяем, есть ли тире в конце A или начале B
-        var hasDashAtEnd = false;
-        var hasDashAtStart = false;
-        
-        try {
-            var dashAtEndRegex = /[—–-]\s*$/;
-            var dashAtStartRegex = /^\s*[—–-]/;
-            
-            hasDashAtEnd = dashAtEndRegex.test(endA);
-            hasDashAtStart = dashAtStartRegex.test(startB);
-        } catch(e) {
-            return false;
-        }
-        
-        if (hasDashAtEnd || hasDashAtStart) {
-            // Проверяем, что до и после тире буквы (любого регистра)
-            if (hasDashAtEnd) {
-                // Ищем букву перед тире
-                var beforeDash = "";
-                try {
-                    var beforeDashRegex = /[^а-яa-zА-ЯA-Z]*[—–-].*$/;
-                    beforeDash = endA.replace(beforeDashRegex, "");
-                } catch(e) {
-                    return false;
-                }
-                
-                if (beforeDash.length > 0) {
-                    var lastChar = beforeDash.charAt(beforeDash.length - 1);
-                    if (isLetter(lastChar)) {
-                        // Проверяем первую букву в B
-                        var firstCharB = getFirstRealChar(elementB);
-                        if (firstCharB && isLetter(firstCharB)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            
-            if (hasDashAtStart) {
-                // Ищем букву после тире
-                var afterDash = "";
-                try {
-                    var afterDashRegex = /^.*?[—–-]\s*/;
-                    afterDash = startB.replace(afterDashRegex, "");
-                } catch(e) {
-                    return false;
-                }
-                
-                if (afterDash.length > 0) {
-                    var firstChar = afterDash.charAt(0);
-                    if (isLetter(firstChar)) {
-                        // Проверяем последнюю букву в A
-                        var lastCharA = getLastRealChar(elementA);
-                        if (lastCharA && isLetter(lastCharA)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        
-        return false;
-    }
-    
-    // Функция для проверки, заканчивается ли абзац на закрывающую кавычку, а следующий начинается с маленькой буквы
-    function hasQuoteLowerPattern(elementA, elementB) {
-        if (mergeQuoteLower == 0) return false;
-        
-        var lastCharA = getLastRealChar(elementA);
-        var firstCharB = getFirstRealChar(elementB);
-        
-        // Проверяем, что A заканчивается на закрывающую кавычку
-        if (lastCharA != "»" && lastCharA != "\"" && lastCharA != ")" && lastCharA != "]") {
-            return false;
-        }
-        
-        // Проверяем, что B начинается с маленькой буквы
-        if (!firstCharB || !isLowerCaseChar(firstCharB)) {
-            return false;
-        }
-        
-        // Важная проверка: следующий абзац НЕ должен быть списком!
-        var firstCharsB = getFirstChars(elementB, 10);
-        if (isListPattern(firstCharsB)) {
-            return false; // Это список - не склеиваем!
-        }
-        
-        return true;
     }
     
     // Функция для проверки, начинается ли текст с "слова-продолжения"
     function hasContinuationWordAtStart(element) {
         var firstWord = getFirstWord(element);
         if (!firstWord) return false;
-        
         // Приводим к нижнему регистру для сравнения
         var firstWordLower = firstWord.toLowerCase();
-        
         // Проверяем, есть ли это слово в словаре "продолжений"
         for (var i = 0; i < continuationWords.length; i++) {
             if (firstWordLower == continuationWords[i].toLowerCase()) {
                 return true;
             }
         }
-        
         return false;
-    }
-    
-    // Функция для проверки, является ли слово именем собственным (начинается с заглавной)
-    function isProperName(word) {
-        if (!word || word.length == 0) return false;
-        return isUpperCaseChar(word.charAt(0));
     }
     
     // Функция для проверки, является ли абзац очень коротким
     function isVeryShortParagraph(element) {
         var text = getTextContent(element);
         text = normalizeSpaces(text);
-        
         // Считаем слова
         var words = text.split(/\s+/);
         if (words.length == 0 || (words.length == 1 && words[0] == "")) {
             return false; // Пустой абзац
         }
-        
         // Очень короткий = 2-3 слова
         return words.length <= 3;
     }
@@ -1027,12 +1065,10 @@ function Run() {
     // Функция для проверки, является ли элемент таблицей или другим сложным блоком
     function isComplexBlock(element) {
         if (!element) return false;
-        
         // Проверяем на таблицы
         if (element.nodeName == "TABLE" || element.nodeName == "TR" || element.nodeName == "TD" || element.nodeName == "TH") {
             return true;
         }
-        
         // Проверяем на другие сложные элементы
         if (element.nodeName == "DIV") {
             var className = element.className || "";
@@ -1043,7 +1079,6 @@ function Run() {
                 return true;
             }
         }
-        
         // Рекурсивно проверяем детей
         var children = element.childNodes;
         for (var i = 0; i < children.length; i++) {
@@ -1051,18 +1086,331 @@ function Run() {
                 return true;
             }
         }
-        
         return false;
     }
+    
+    // --------------------------------------------------
+    // Базовые проверки паттернов
+    // --------------------------------------------------
+    
+    // Функция для проверки, заканчивается ли абзац на запрещенное слово (союз, предлог и т.д.)
+    function endsWithForbiddenWord(element) {
+        if (mergePrepositionConjunction == 0 && mergePrepositionConjunctionPS == 0) return false;
+        var lastWord = getLastWord(element);
+        if (!lastWord) return false;
+        return isInArray(forbiddenEndWords, lastWord);
+    }
+    
+    // Функция для проверки, заканчивается ли абзац на глагол прошедшего времени
+    function endsWithPastTenseVerb(element) {
+        var lastWord = getLastWord(element);
+        if (!lastWord) return false;
+        return isInArray(allPastTenseVerbs, lastWord);
+    }
+    
+    // Функция для проверки, начинается ли абзац с диалога (тире в начале)
+    function startsWithDialogue(element) {
+        var firstWords = getFirstChars(element, 10);
+        if (!firstWords) return false;
+        if (!dialogueStartRegex) return false;
+        try {
+            return dialogueStartRegex.test(firstWords);
+        } catch(e) {
+            return false;
+        }
+    }
+    
+    // --------------------------------------------------
+    // Функции проверки всех паттернов склейки
+    // --------------------------------------------------
+    
+    // 3. Строчная буква + тире/дефис + строчная буква
+    function hasLowerDashLowerPattern(elementA, elementB) {
+        if (mergeLowerDashLower == 0 && mergeLowerDashLowerPS == 0) return false;
+        var textA = getTextContent(elementA);
+        var textB = getTextContent(elementB);
+        if (!textA || !textB) return false;
+        // Получаем последние 20 символов из A и первые 20 символов из B
+        var endA = normalizeSpaces(textA).substr(Math.max(0, textA.length - 20));
+        var startB = normalizeSpaces(textB).substr(0, 20);
+        // Проверяем, есть ли тире в конце A или начале B
+        var hasDashAtEnd = false;
+        var hasDashAtStart = false;
+        try {
+            hasDashAtEnd = /[—–-]\s*$/.test(endA);
+            hasDashAtStart = /^\s*[—–-]/.test(startB);
+        } catch(e) {
+            return false;
+        }
+        if (hasDashAtEnd || hasDashAtStart) {
+            if (hasDashAtEnd) {
+                var beforeDash = "";
+                try {
+                    beforeDash = endA.replace(/[^а-яa-zА-ЯA-Z]*[—–-].*$/, "");
+                } catch(e) {
+                    return false;
+                }
+                if (beforeDash.length > 0) {
+                    var lastChar = beforeDash.charAt(beforeDash.length - 1);
+                    if (isLetter(lastChar)) {
+                        var firstCharB = getFirstRealChar(elementB);
+                        if (firstCharB && isLetter(firstCharB)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            if (hasDashAtStart) {
+                var afterDash = "";
+                try {
+                    afterDash = startB.replace(/^.*?[—–-]\s*/, "");
+                } catch(e) {
+                    return false;
+                }
+                if (afterDash.length > 0) {
+                    var firstChar = afterDash.charAt(0);
+                    if (isLetter(firstChar)) {
+                        var lastCharA = getLastRealChar(elementA);
+                        if (lastCharA && isLetter(lastCharA)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    // 4. Закрывающая кавычка + строчная буква (НЕ список)
+    function hasQuoteLowerPattern(elementA, elementB) {
+        if (mergeQuoteLower == 0 && mergeQuoteLowerPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        var firstCharB = getFirstRealChar(elementB);
+        // Проверяем, что A заканчивается на закрывающую кавычку
+        if (lastCharA != "»" && lastCharA != "\"" && lastCharA != ")" && lastCharA != "]") {
+            return false;
+        }
+        // Проверяем, что B начинается с маленькой буквы
+        if (!firstCharB || !isLowerCaseChar(firstCharB)) {
+            return false;
+        }
+        // Важная проверка: следующий абзац НЕ должен быть списком!
+        if (startsWithListItem(elementB)) {
+            return false; // Это список - не склеиваем!
+        }
+        return true;
+    }
+    
+    // 5. Запятая в конце A + тире + пробел + маленькая буква в начале B
+    function hasCommaDashLowerPattern(elementA, elementB) {
+        if (mergeCommaDashLower == 0 && mergeCommaDashLowerPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        // Проверяем, что A заканчивается на запятую
+        if (lastCharA != ",") return false;
+        // Получаем первые символы B для проверки на тире
+        var firstCharsB = getFirstChars(elementB, 10);
+        if (!firstCharsB) return false;
+        // Проверяем, что B начинается с тире (любого вида) + пробел
+        var startsWithDash = false;
+        try {
+            if (/^[—–-]\s/.test(firstCharsB)) {
+                startsWithDash = true;
+            }
+        } catch(e) {
+            return false;
+        }
+        if (!startsWithDash) return false;
+        // Извлекаем символ ПОСЛЕ тире+пробела и проверяем, что это строчная буква
+        var afterDash = firstCharsB.replace(/^[—–-]\s+/, "");
+        if (afterDash.length == 0) return false;
+        var firstCharAfterDash = afterDash.charAt(0);
+        if (!isLowerCaseChar(firstCharAfterDash)) return false;
+        return true;
+    }
+    
+    // 6. Запятая в конце A + заглавная буква в начале B (обращение)
+    function hasCommaUpperPattern(elementA, elementB) {
+        if (mergeCommaUpper == 0 && mergeCommaUpperPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        // Проверяем, что A заканчивается на запятую
+        if (lastCharA != ",") return false;
+        // Проверяем первую букву B (после возможных кавычек)
+        var firstCharB = getFirstCharAfterQuotes(elementB);
+        if (!firstCharB || !isUpperCaseChar(firstCharB)) return false;
+        // Проверяем длину текста абзаца B (без тегов)
+        var textB = getTextContent(elementB);
+        textB = normalizeSpaces(textB);
+        textB = trimEnd(textB);
+        if (textB.length > maxCommaUpperLength) return false;
+        return true;
+    }
+    
+    // 7. Строчная буква + двойные кавычки в конце A + заглавная буква в начале B
+    function hasQuoteUpperPattern(elementA, elementB) {
+        if (mergeQuoteUpper == 0 && mergeQuoteUpperPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        // Проверяем, что A заканчивается на двойные кавычки (ёлочка или прямые)
+        if (lastCharA != "»" && lastCharA != "\"") return false;
+        // Проверяем, что перед закрывающей кавычкой строчная буква
+        var textA = getTextContent(elementA);
+        textA = normalizeSpaces(textA);
+        textA = trimEnd(textA);
+        if (textA.length < 2) return false;
+        // Ищем последний значимый символ ПЕРЕД кавычкой
+        var foundQuote = false;
+        for (var i = textA.length - 1; i >= 0; i--) {
+            var ch = textA.charAt(i);
+            if (ch == "»" || ch == "\"") {
+                foundQuote = true;
+                continue;
+            }
+            if (foundQuote && ch != " ") {
+                if (!isLowerCaseChar(ch)) return false;
+                break;
+            }
+        }
+        if (!foundQuote) return false;
+        // Проверяем, что B начинается с заглавной буквы (после возможных кавычек)
+        var firstCharB = getFirstCharAfterQuotes(elementB);
+        if (!isUpperCaseChar(firstCharB)) return false;
+        // Проверяем, что B НЕ список
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // 8. Строчная буква + двойные кавычки в конце A + строчная буква в начале B
+    function hasLowerQuoteLowerPattern(elementA, elementB) {
+        if (mergeLowerQuoteLower == 0 && mergeLowerQuoteLowerPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        // Проверяем, что A заканчивается на двойные кавычки (ёлочка или прямые)
+        if (lastCharA != "»" && lastCharA != "\"") return false;
+        // Проверяем, что перед закрывающей кавычкой строчная буква
+        var textA = getTextContent(elementA);
+        textA = normalizeSpaces(textA);
+        textA = trimEnd(textA);
+        if (textA.length < 2) return false;
+        // Ищем последний значимый символ ПЕРЕД кавычкой
+        var foundQuote = false;
+        for (var i = textA.length - 1; i >= 0; i--) {
+            var ch = textA.charAt(i);
+            if (ch == "»" || ch == "\"") {
+                foundQuote = true;
+                continue;
+            }
+            if (foundQuote && ch != " ") {
+                if (!isLowerCaseChar(ch)) return false;
+                break;
+            }
+        }
+        if (!foundQuote) return false;
+        // Проверяем, что B начинается с маленькой буквы (после возможных кавычек)
+        var firstCharB = getFirstCharAfterQuotes(elementB);
+        if (!isLowerCaseChar(firstCharB)) return false;
+        // Проверяем, что B НЕ список
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // 9. Строчная буква в конце A + открывающая кавычка + заглавная буква в начале B
+    function hasLowerOpenQuoteUpperPattern(elementA, elementB) {
+        if (mergeLowerOpenQuoteUpper == 0 && mergeLowerOpenQuoteUpperPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        // A НЕ должен заканчиваться на кавычку
+        if (lastCharA == "»" || lastCharA == "\"") return false;
+        // A должен заканчиваться на строчную букву
+        if (!isLowerCaseChar(lastCharA)) return false;
+        // B должен начинаться с открывающей кавычки
+        var textB = getTextContent(elementB);
+        textB = normalizeSpaces(textB);
+        textB = trimStart(textB);
+        if (textB.length == 0) return false;
+        var firstCharB = textB.charAt(0);
+        if (firstCharB != "«" && firstCharB != "\"") return false;
+        // За кавычкой должна идти заглавная буква
+        var firstCharAfterQuote = getFirstCharAfterQuotes(elementB);
+        if (!isUpperCaseChar(firstCharAfterQuote)) return false;
+        // Проверяем, что B НЕ список
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // 10. Строчная буква в конце A + заглавная буква в начале B (короткий абзац B)
+    function hasLowerUpperPattern(elementA, elementB) {
+        if (mergeLowerUpper == 0 && mergeLowerUpperPS == 0) return false;
+        var lastCharA = getLastRealChar(elementA);
+        // A должен заканчиваться на строчную букву
+        if (!isLowerCaseChar(lastCharA)) return false;
+        // B должен начинаться с заглавной буквы (после возможных кавычек)
+        var firstCharB = getFirstCharAfterQuotes(elementB);
+        if (!isUpperCaseChar(firstCharB)) return false;
+        // Проверяем длину текста абзаца B (без тегов)
+        var textB = getTextContent(elementB);
+        textB = normalizeSpaces(textB);
+        textB = trimEnd(textB);
+        if (textB.length > maxLowerUpperLength) return false;
+        // Проверяем, что B НЕ список
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // 11. Многоточие в конце A + строчная буква в начале B
+    function hasEllipsisLowerPattern(elementA, elementB) {
+        if (mergeEllipsisLower == 0 && mergeEllipsisLowerPS == 0) return false;
+        // A должен заканчиваться на многоточие
+        if (getLastRealChar(elementA) != "…") return false;
+        // B должен начинаться со строчной буквы
+        var firstCharB = getFirstRealChar(elementB);
+        if (!firstCharB || !isLowerCaseChar(firstCharB)) return false;
+        // Проверяем, что B НЕ список
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // 12. Многоточие в конце A + кавычки + строчная буква в начале B
+    function hasEllipsisQuoteLowerPattern(elementA, elementB) {
+        if (mergeEllipsisQuoteLower == 0 && mergeEllipsisQuoteLowerPS == 0) return false;
+        // A должен заканчиваться на многоточие
+        if (getLastRealChar(elementA) != "…") return false;
+        // B должен начинаться с кавычки
+        var textB = getTextContent(elementB);
+        textB = normalizeSpaces(textB);
+        textB = trimStart(textB);
+        if (textB.length == 0) return false;
+        var firstCharB = textB.charAt(0);
+        if (firstCharB != "«" && firstCharB != "\"") return false;
+        // После кавычки должна идти строчная буква
+        if (!isLowerCaseChar(getFirstCharAfterQuotes(elementB))) return false;
+        // Проверяем, что B НЕ список
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // Открывающая кавычка + заглавная буква в конце A + строчная буква в начале B
+    function hasOpenQuoteUpperLowerPattern(elementA, elementB) {
+        if (mergeBasicLowerLower == 0 && mergeBasicLowerLowerPS == 0) return false;
+        // A должен заканчиваться на заглавную букву
+        var lastCharA = getLastRealChar(elementA);
+        if (!isUpperCaseChar(lastCharA)) return false;
+        // Перед заглавной буквой должна быть открывающая кавычка
+        var secondLastCharA = getSecondLastRealChar(elementA);
+        if (secondLastCharA != "«" && secondLastCharA != "\"") return false;
+        // B должен начинаться со строчной буквы
+        var firstCharB = getFirstRealChar(elementB);
+        if (!firstCharB || !isLowerCaseChar(firstCharB)) return false;
+        // B не должен быть списком
+        if (startsWithListItem(elementB)) return false;
+        return true;
+    }
+    
+    // --------------------------------------------------
+    // Функция объединения абзацев
+    // --------------------------------------------------
     
     // Функция для объединения двух абзацев С СОХРАНЕНИЕМ ФОРМАТИРОВАНИЯ
     function mergeParagraphs(paraA, paraB) {
         if (!paraA || !paraB) return false;
-        
         // Проверяем, нет ли сложных блоков
-        if (isComplexBlock(paraA) || isComplexBlock(paraB)) {
-            return false;
-        }
+        if (isComplexBlock(paraA) || isComplexBlock(paraB)) return false;
         
         // Получаем последний символ A и первый символ B
         var lastCharA = getLastRealChar(paraA);
@@ -1076,12 +1424,12 @@ function Run() {
         if (isHyphenDash(lastCharA)) {
             addSpace = false;
         }
-        // 2. A заканчивается на открывающую кавычку или скобку
-        else if (lastCharA == "«" || lastCharA == "\"" || lastCharA == "(" || lastCharA == "[") {
+        // 2. A заканчивается на открывающую кавычку или скобку (прямую кавычку " не проверяем — она может быть и закрывающей)
+        else if (lastCharA == "«" || lastCharA == "(" || lastCharA == "[") {
             addSpace = false;
         }
         // 3. B начинается с закрывающей кавычки или скобки
-        else if (firstCharB == "»" || firstCharB == "\"" || firstCharB == ")" || firstCharB == "]") {
+        else if (firstCharB == "»" || firstCharB == ")" || firstCharB == "]") {
             addSpace = false;
         }
         // 4. B начинается с пунктуации
@@ -1091,11 +1439,9 @@ function Run() {
         }
         // 5. A заканчивается на пробел (уже есть)
         else if (getLastSignificantChar(paraA) === "") {
-            // Если в конце A уже пробел (последний значимый символ не найден через пробелы)
             addSpace = false;
         }
         
-        // Копируем все содержимое из paraA в paraB
         var movedContent = false;
         
         // Если нужно добавить пробел, добавляем текстовый узел с пробелом
@@ -1121,28 +1467,38 @@ function Run() {
             paraA.parentNode.removeChild(paraA);
             return true;
         }
-        
         return false;
     }
     
-    // Функция для получения следующего элемента P (похожа на функцию из примера скрипта)
-    function getNextNode(el) {
-        if (el.firstChild && el.nodeName != "P")
-            el = el.firstChild;
-        else {
-            while (el && !el.nextSibling)
-                el = el.parentNode;
-            if (el && el.nextSibling) el = el.nextSibling; 
+    // Функция для поиска следующего НЕПУСТОГО P после elementA
+    function getNextNonEmptyP(elementA) {
+        if (!elementA) return null;
+        var current = elementA.nextSibling;
+        var emptyLines = [];
+        while (current) {
+            if (current.nodeType == 1 && current.nodeName == "P") {
+                if (isEmptyLine(current)) {
+                    emptyLines.push(current);
+                } else {
+                    // Нашли непустой P
+                    return { element: current, emptyLines: emptyLines };
+                }
+            }
+            // Если встретили не-P элемент — прерываем (нельзя перешагивать через другие элементы)
+            if (current.nodeType == 1 && current.nodeName != "P") break;
+            current = current.nextSibling;
         }
-        return el;
+        return null;
     }
     
-    // Функция для получения следующего элемента P
-    function getNextP(el) {
-        var savedEl = el;
-        while (el && (el.nodeName != "P" || el == savedEl))
-            el = getNextNode(el);
-        return el;
+    // Проверка, нужно ли включать режим поиска через ПС
+    function needEmptyLineCheck() {
+        return mergeBasicLowerLowerPS == 1 || mergePrepositionConjunctionPS == 1 || 
+               mergeLowerDashLowerPS == 1 || mergeQuoteLowerPS == 1 || 
+               mergeCommaDashLowerPS == 1 || mergeCommaUpperPS == 1 || 
+               mergeQuoteUpperPS == 1 || mergeLowerQuoteLowerPS == 1 || 
+               mergeLowerOpenQuoteUpperPS == 1 || mergeLowerUpperPS == 1 || 
+               mergeEllipsisLowerPS == 1 || mergeEllipsisQuoteLowerPS == 1;
     }
     
     // ==================================================
@@ -1152,17 +1508,53 @@ function Run() {
     // Начинаем блок отмены действий
     window.external.BeginUndoUnit(document, scriptName);
     
-    // Статистика
+    // --------------------------------------------------
+    // Инициализация счётчиков статистики
+    // --------------------------------------------------
+    
     var processedPairs = 0;
     var mergedPairs = 0;
     var skippedPairs = 0;
+    
+    // Счётчики по типам склеек — без ПС
+    var basicLowerMerges = 0;
     var verbMerges = 0;
     var prepositionMerges = 0;
     var dashPatternMerges = 0;
     var quoteMerges = 0;
+    var commaDashMerges = 0;
+    var commaUpperMerges = 0;
+    var quoteUpperMerges = 0;
+    var lowerQuoteLowerMerges = 0;
+    var lowerOpenQuoteUpperMerges = 0;
+    var lowerUpperMerges = 0;
+    var ellipsisLowerMerges = 0;
+    var ellipsisQuoteLowerMerges = 0;
+    var openQuoteUpperLowerMerges = 0;
+    
+    // Счётчики по типам склеек — с ПС
+    var basicLowerMergesPS = 0;
+    var verbMergesPS = 0;
+    var prepositionMergesPS = 0;
+    var dashPatternMergesPS = 0;
+    var quoteMergesPS = 0;
+    var commaDashMergesPS = 0;
+    var commaUpperMergesPS = 0;
+    var quoteUpperMergesPS = 0;
+    var lowerQuoteLowerMergesPS = 0;
+    var lowerOpenQuoteUpperMergesPS = 0;
+    var lowerUpperMergesPS = 0;
+    var ellipsisLowerMergesPS = 0;
+    var ellipsisQuoteLowerMergesPS = 0;
+    var openQuoteUpperLowerMergesPS = 0;
     
     // Определяем режим обработки
     var isSelectionMode = false;
+    var emptyCheckEnabled = needEmptyLineCheck();
+    
+    // --------------------------------------------------
+    // Сбор абзацев для обработки
+    // --------------------------------------------------
     
     // Получаем body документа
     var fbwBody = document.getElementById("fbw_body");
@@ -1215,17 +1607,14 @@ function Run() {
                     // Проверяем блочные элементы-контейнеры
                     var parent = ptr.parentNode;
                     if (parent && parent.nodeName == "DIV") {
-                        if (isInArray(blockElements, parent.className) ||
-                            isInArray(structuralElements, parent.className)) {
-                            // Пропускаем P внутри блочных элементов
-                        } else {
+                        if (!isInArray(blockElements, parent.className) &&
+                            !isInArray(structuralElements, parent.className)) {
                             paragraphs.push(ptr);
                         }
                     } else {
                         paragraphs.push(ptr);
                     }
                 }
-                
                 if (ptr === endElement) break;
                 ptr = getNextP(ptr);
             }
@@ -1236,49 +1625,37 @@ function Run() {
     if (paragraphs.length == 0) {
         // Работаем со ВСЕМ документом
         // Находим все элементы P в основном body (рекурсивно)
-        
         function collectAllParagraphs(element) {
             if (!element) return;
-            
             // Проверяем, находится ли элемент в исключенном разделе
             var specialSection = isInSpecialSection(element);
-            if (specialSection) {
-                return; // Пропускаем этот раздел
-            }
-            
+            if (specialSection) return;
             // Проверяем блочные элементы-контейнеры
             if (element.nodeName == "DIV") {
                 if (isInArray(blockElements, element.className) ||
                     isInArray(structuralElements, element.className)) {
-                    return; // Пропускаем блочные элементы
+                    return;
                 }
             }
-            
             // Пропускаем таблицы и сложные блоки
-            if (isComplexBlock(element)) {
-                return;
-            }
-            
+            if (isComplexBlock(element)) return;
             // Собираем элементы P
             if (element.nodeName == "P") {
-                // Проверяем родительский элемент
                 var parent = element.parentNode;
                 if (parent && parent.nodeName == "DIV") {
                     if (isInArray(blockElements, parent.className) ||
                         isInArray(structuralElements, parent.className)) {
-                        return; // Пропускаем P внутри блочных элементов
+                        return;
                     }
                 }
                 paragraphs.push(element);
                 return;
             }
-            
             // Рекурсивно обходим детей
             for (var i = 0; i < element.childNodes.length; i++) {
                 collectAllParagraphs(element.childNodes[i]);
             }
         }
-        
         collectAllParagraphs(fbwBody);
     }
     
@@ -1293,6 +1670,10 @@ function Run() {
         return;
     }
     
+    // --------------------------------------------------
+    // Основной цикл обработки пар абзацев
+    // --------------------------------------------------
+    
     // Обрабатываем пары абзацев в обратном порядке
     for (var i = paragraphs.length - 1; i > 0; i--) {
         var paraA = paragraphs[i - 1];
@@ -1301,8 +1682,14 @@ function Run() {
         processedPairs++;
         
         // ==================================================
-        // ПРИНЦИП 0: НЕПРИКОСНОВЕННОСТЬ БЛОЧНЫХ ЭЛЕМЕНТОВ
+        // ПРИНЦИП 0: ЗАЩИТА БЛОЧНЫХ ЭЛЕМЕНТОВ
         // ==================================================
+        
+        // Проверяем, что элементы не являются защищёнными (subtitle, text-author)
+        if (isProtectedElement(paraA) || isProtectedElement(paraB)) {
+            skippedPairs++;
+            continue;
+        }
         
         // Проверяем родительские элементы
         var parentA = paraA.parentNode;
@@ -1330,113 +1717,39 @@ function Run() {
         }
         
         // ==================================================
-        // ШАГ 1: ПРОВЕРКА КОНЦА АБЗАЦА A
+        // ПРИНЦИП 0б: ЗАЩИТА СПИСКОВ
         // ==================================================
         
-        var lastCharA = getLastSignificantChar(paraA);
-        var firstCharB = getFirstRealChar(paraB);
-        
-        // Основание для рассмотрения (ОР):
-        // 1. Окончание на строчную букву
-        // 2. Окончание на дефис
-        // 3. Окончание на открывающий разделитель
-        var hasBasis = false;
-        
-        if (isLowerCaseChar(lastCharA)) {
-            hasBasis = true; // ОР-1
-        } else if (isHyphenDash(lastCharA)) {
-            hasBasis = true; // ОР-2
-        } else if (isOpeningDelimiter(lastCharA)) {
-            hasBasis = true; // ОР-3
-        }
-        
-        // ДОПОЛНИТЕЛЬНЫЕ ОСНОВАНИЯ:
-        // 4. Кончается на запрещенное слово (союз, предлог и т.д.)
-        var endsWithForbidden = endsWithForbiddenWord(paraA);
-        // 5. Кончается на глагол прошедшего времени
-        var endsWithVerb = endsWithPastTenseVerb(paraA);
-        // 6. Паттерн "маленькая буква + тире + пробел + маленькая буква"
-        var hasDashPattern = hasLowerDashLowerPattern(paraA, paraB);
-        // 7. Паттерн "закрывающая кавычка + маленькая буква"
-        var hasQuotePattern = hasQuoteLowerPattern(paraA, paraB);
-        
-        // Если нет основания для рассмотрения - пропускаем
-        if (!hasBasis && !endsWithForbidden && !endsWithVerb && !hasDashPattern && !hasQuotePattern) {
-            skippedPairs++;
-            continue;
+        // Если A — элемент списка, а B — нет, то не склеиваем
+        if (endsWithListItem(paraA)) {
+            if (!startsWithListItem(paraB)) {
+                skippedPairs++;
+                continue;
+            }
         }
         
         // ==================================================
-        // ШАГ 2: СТОП-ФИЛЬТРЫ (ДОБАВЛЕНА ПРОВЕРКА СПИСКОВ)
+        // СТОП-ФИЛЬТРЫ (выполняются ДО ПС-проверки)
         // ==================================================
         
+        var lastCharA_sf = getLastSignificantChar(paraA);
         var stopFilter = false;
         
         // СФ-1: Абзац B — начало списка
-        var firstCharsB = getFirstChars(paraB, 10);
-        if (isListPattern(firstCharsB)) {
+        if (startsWithListItem(paraB)) {
             stopFilter = true;
         }
         
-        // ДОБАВЛЕНО: Проверяем, является ли абзац A элементом списка
-        // Если A заканчивается элементом списка (а), б), 1., и т.д.), а B НЕ является продолжением списка,
-        // то не склеиваем!
-        var textA = getTextContent(paraA);
-        textA = normalizeSpaces(textA);
-        var last20Chars = textA.length > 20 ? textA.substr(textA.length - 20) : textA;
-        
-        // Ищем паттерны списков в конце A
-        var endsWithListItem = false;
-        for (var j = 0; j < listPatterns.length; j++) {
-            var pattern = listPatterns[j];
-            if (pattern && typeof pattern.test === "function") {
-                try {
-                    if (pattern.test(last20Chars)) {
-                        // Найдено совпадение, проверяем что паттерн действительно в конце
-                        var match = last20Chars.match(pattern);
-                        if (match && match.index != undefined) {
-                            // Проверяем, что после паттерна только пробелы
-                            var afterMatch = last20Chars.substr(match.index + match[0].length);
-                            var whitespaceRegex = /^\s*$/;
-                            if (whitespaceRegex.test(afterMatch)) {
-                                endsWithListItem = true;
-                                break;
-                            }
-                        }
-                    }
-                } catch(e) {
-                    continue;
-                }
-            }
-        }
-        
-        // Если A заканчивается элементом списка, а B НЕ начинается с элемента списка - не склеиваем!
-        if (endsWithListItem) {
-            var firstCharsBFull = getFirstChars(paraB, 20);
-            var isBStartListItem = false;
-            
-            try {
-                isBStartListItem = isListPattern(firstCharsBFull);
-            } catch(e) {
-                isBStartListItem = false;
-            }
-            
-            if (!isBStartListItem) {
-                stopFilter = true;
-            }
-        }
-        
         // СФ-2: В абзаце A уже есть закрывающая кавычка/скобка
-        if (!stopFilter && (lastCharA == "«" || lastCharA == "\"" || lastCharA == "(" || lastCharA == "[")) {
-            var textA = getTextContent(paraA);
-            textA = normalizeSpaces(textA);
-            
-            // Ищем парные закрывающие символы в последних 20 символах
-            var lastPart = textA.substr(Math.max(0, textA.length - 20));
-            if ((lastCharA == "«" && stringContains(lastPart, "»")) ||
-                (lastCharA == "\"" && stringContains(lastPart, "\"")) ||
-                (lastCharA == "(" && stringContains(lastPart, ")")) ||
-                (lastCharA == "[" && stringContains(lastPart, "]"))) {
+        // Для « проверяем наличие », для ( проверяем ), для [ проверяем ]
+        // Для прямой кавычки " не блокируем — она может быть как открывающей, так и закрывающей
+        if (!stopFilter && (lastCharA_sf == "«" || lastCharA_sf == "(" || lastCharA_sf == "[")) {
+            var textA_sf = getTextContent(paraA);
+            textA_sf = normalizeSpaces(textA_sf);
+            var lastPart_sf = textA_sf.length > 20 ? textA_sf.substr(textA_sf.length - 20) : textA_sf;
+            if ((lastCharA_sf == "«" && stringContains(lastPart_sf, "»")) ||
+                (lastCharA_sf == "(" && stringContains(lastPart_sf, ")")) ||
+                (lastCharA_sf == "[" && stringContains(lastPart_sf, "]"))) {
                 stopFilter = true;
             }
         }
@@ -1446,8 +1759,173 @@ function Run() {
             stopFilter = true;
         }
         
-        // Если сработал стоп-фильтр - пропускаем
+        // ==================================================
+        // ПРОВЕРКА ПАТТЕРНОВ С ПС (№13-24)
+        // ==================================================
+        
+        if (emptyCheckEnabled && isEmptyLine(paraB)) {
+            var nextResult = getNextNonEmptyP(paraA);
+            if (nextResult && nextResult.emptyLines.length > 0) {
+                var realParaB = nextResult.element;
+                
+                // Применяем те же стоп-фильтры к realParaB
+                if (!stopFilter && !isProtectedElement(realParaB) && realParaB.parentNode == parentA) {
+                    var firstCharB_ps = getFirstRealChar(realParaB);
+                    if (firstCharB_ps && isLowerCaseChar(firstCharB_ps) && !startsWithListItem(realParaB)) {
+                        var lastCharA_ps = getLastSignificantChar(paraA);
+                        var emptyPatternType = "";
+                        
+                        // Проверяем все 12 паттернов для ПС-случая
+                        var endsWithForbiddenPS = endsWithForbiddenWord(paraA);
+                        var endsWithVerbPS = endsWithPastTenseVerb(paraA);
+                        var firstCharBafterQuotesPS = getFirstCharAfterQuotes(realParaB);
+                        
+                        // Сначала проверяем специальные паттерны
+                        if (mergePrepositionConjunctionPS == 1 && endsWithForbiddenPS && isLetter(firstCharBafterQuotesPS)) {
+                            emptyPatternType = "preposition";
+                        }
+                        else if (mergeLowerDashLowerPS == 1 && hasLowerDashLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "dash";
+                        }
+                        else if (mergeQuoteLowerPS == 1 && hasQuoteLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "quote";
+                        }
+                        else if (mergeCommaDashLowerPS == 1 && hasCommaDashLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "commadash";
+                        }
+                        else if (mergeCommaUpperPS == 1 && hasCommaUpperPattern(paraA, realParaB)) {
+                            emptyPatternType = "commaupper";
+                        }
+                        else if (mergeQuoteUpperPS == 1 && hasQuoteUpperPattern(paraA, realParaB)) {
+                            emptyPatternType = "quoteupper";
+                        }
+                        else if (mergeLowerQuoteLowerPS == 1 && hasLowerQuoteLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "lowerquotelower";
+                        }
+                        else if (mergeLowerOpenQuoteUpperPS == 1 && hasLowerOpenQuoteUpperPattern(paraA, realParaB)) {
+                            emptyPatternType = "loweropenquoteupper";
+                        }
+                        else if (mergeLowerUpperPS == 1 && hasLowerUpperPattern(paraA, realParaB)) {
+                            emptyPatternType = "lowerupper";
+                        }
+                        else if (mergeEllipsisLowerPS == 1 && hasEllipsisLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "ellipsislower";
+                        }
+                        else if (mergeEllipsisQuoteLowerPS == 1 && hasEllipsisQuoteLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "ellipsisquotelower";
+                        }
+                        else if (mergeBasicLowerLowerPS == 1 && hasOpenQuoteUpperLowerPattern(paraA, realParaB)) {
+                            emptyPatternType = "openquoteupperlower";
+                        }
+                        // Базовая склейка (п.13) — ПОСЛЕДНЕЙ
+                        else if (mergeBasicLowerLowerPS == 1 && isLowerCaseChar(lastCharA_ps) && isLowerCaseChar(firstCharBafterQuotesPS)) {
+                            emptyPatternType = "basic";
+                        }
+                        else if (mergeBasicLowerLowerPS == 1 && isOpeningDelimiter(lastCharA_ps) && isLowerCaseChar(firstCharBafterQuotesPS)) {
+                            emptyPatternType = "basic";
+                        }
+                        
+                        if (emptyPatternType != "") {
+                            // Удаляем все пустые строки между ними
+                            for (var e = 0; e < nextResult.emptyLines.length; e++) {
+                                var emptyLine = nextResult.emptyLines[e];
+                                if (emptyLine.parentNode) emptyLine.parentNode.removeChild(emptyLine);
+                            }
+                            
+                            // Склеиваем
+                            if (mergeParagraphs(paraA, realParaB)) {
+                                mergedPairs++;
+                                
+                                if (emptyPatternType == "basic") basicLowerMergesPS++;
+                                else if (emptyPatternType == "preposition") prepositionMergesPS++;
+                                else if (emptyPatternType == "dash") dashPatternMergesPS++;
+                                else if (emptyPatternType == "quote") quoteMergesPS++;
+                                else if (emptyPatternType == "commadash") commaDashMergesPS++;
+                                else if (emptyPatternType == "commaupper") commaUpperMergesPS++;
+                                else if (emptyPatternType == "quoteupper") quoteUpperMergesPS++;
+                                else if (emptyPatternType == "lowerquotelower") lowerQuoteLowerMergesPS++;
+                                else if (emptyPatternType == "loweropenquoteupper") lowerOpenQuoteUpperMergesPS++;
+                                else if (emptyPatternType == "lowerupper") lowerUpperMergesPS++;
+                                else if (emptyPatternType == "ellipsislower") ellipsisLowerMergesPS++;
+                                else if (emptyPatternType == "ellipsisquotelower") ellipsisQuoteLowerMergesPS++;
+                                else if (emptyPatternType == "openquoteupperlower") openQuoteUpperLowerMergesPS++;
+                                
+                                // Обновляем массив paragraphs
+                                paragraphs[i - 1] = realParaB;
+                                var newParagraphs = [];
+                                for (var p = 0; p < paragraphs.length; p++) {
+                                    var keep = true;
+                                    if (paragraphs[p] === paraA) keep = false;
+                                    for (var e2 = 0; e2 < nextResult.emptyLines.length; e2++) {
+                                        if (paragraphs[p] === nextResult.emptyLines[e2]) keep = false;
+                                    }
+                                    if (keep) newParagraphs.push(paragraphs[p]);
+                                }
+                                paragraphs = newParagraphs;
+                                i = paragraphs.length - 1;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+            skippedPairs++;
+            continue;
+        }
+        
+        // Пропускаем, если paraA пустая
+        if (isEmptyLine(paraA)) {
+            skippedPairs++;
+            continue;
+        }
+        
+        // Если стоп-фильтр сработал — пропускаем
         if (stopFilter) {
+            skippedPairs++;
+            continue;
+        }
+        
+        // ==================================================
+        // ШАГ 1: ПРОВЕРКА КОНЦА АБЗАЦА A (сбор оснований)
+        // ==================================================
+        
+        var lastCharA = getLastSignificantChar(paraA);
+        var firstCharB = getFirstRealChar(paraB);
+        var firstCharBafterQuotes = getFirstCharAfterQuotes(paraB);
+        
+        // Основание для рассмотрения (ОР):
+        // 1. Окончание на строчную букву
+        // 2. Окончание на дефис
+        // 3. Окончание на открывающий разделитель
+        var hasBasis = false;
+        if (isLowerCaseChar(lastCharA)) {
+            hasBasis = true; // ОР-1
+        } else if (isHyphenDash(lastCharA)) {
+            hasBasis = true; // ОР-2
+        } else if (isOpeningDelimiter(lastCharA)) {
+            hasBasis = true; // ОР-3
+        }
+        
+        // ДОПОЛНИТЕЛЬНЫЕ ОСНОВАНИЯ:
+        var endsWithForbidden = endsWithForbiddenWord(paraA);
+        var endsWithVerb = endsWithPastTenseVerb(paraA);
+        var hasDashPattern = hasLowerDashLowerPattern(paraA, paraB);
+        var hasQuotePattern = hasQuoteLowerPattern(paraA, paraB);
+        var patCommaDash = hasCommaDashLowerPattern(paraA, paraB);
+        var patCommaUpper = hasCommaUpperPattern(paraA, paraB);
+        var patQuoteUpper = hasQuoteUpperPattern(paraA, paraB);
+        var patLowerQuoteLower = hasLowerQuoteLowerPattern(paraA, paraB);
+        var patLowerOpenQuoteUpper = hasLowerOpenQuoteUpperPattern(paraA, paraB);
+        var patLowerUpper = hasLowerUpperPattern(paraA, paraB);
+        var patEllipsisLower = hasEllipsisLowerPattern(paraA, paraB);
+        var patEllipsisQuoteLower = hasEllipsisQuoteLowerPattern(paraA, paraB);
+        var patOpenQuoteUpperLower = hasOpenQuoteUpperLowerPattern(paraA, paraB);
+        
+        // Если нет ни одного основания для рассмотрения - пропускаем
+        if (!hasBasis && !endsWithForbidden && !endsWithVerb && !hasDashPattern && !hasQuotePattern &&
+            !patCommaDash && !patCommaUpper && !patQuoteUpper && !patLowerQuoteLower && 
+            !patLowerOpenQuoteUpper && !patLowerUpper && !patEllipsisLower && !patEllipsisQuoteLower &&
+            !patOpenQuoteUpperLower) {
             skippedPairs++;
             continue;
         }
@@ -1458,99 +1936,151 @@ function Run() {
         
         var hasEmptyLine = hasEmptyLineBetween(paraA, paraB);
         var shouldMerge = false;
-        var isVerbCase = false;
-        var isPrepositionCase = false;
-        var isDashPatternCase = false;
-        var isQuoteCase = false;
+        var mergeType = "";
         
         if (!hasEmptyLine) {
-            // Случай А: НЕТ empty-line между абзацами
+            // Случай А: НЕТ empty-line между абзацами — склейка высоковероятна
             
-            // Склейка высоковероятна при:
-            // 1. Дефис (ОР-2)
-            if (isHyphenDash(lastCharA)) {
+            if (endsWithVerb && startsWithDialogue(paraB)) {
                 shouldMerge = true;
+                mergeType = "verb";
             }
-            // 2. Строчная-строчная (ОР-1 + строчное начало B)
-            else if (isLowerCaseChar(lastCharA) && isLowerCaseChar(firstCharB)) {
+            else if (endsWithVerb && isLetter(firstCharBafterQuotes)) {
                 shouldMerge = true;
+                mergeType = "verb";
             }
-            // 3. Открытый разделитель + строчное начало B
-            else if (isOpeningDelimiter(lastCharA) && isLowerCaseChar(firstCharB)) {
+            else if (endsWithForbidden && isLetter(firstCharBafterQuotes)) {
                 shouldMerge = true;
+                mergeType = "preposition";
             }
-            // 4. Глагол прошедшего времени в конце A + начало B с диалога
-            else if (endsWithVerb && startsWithDialogue(paraB)) {
-                shouldMerge = true;
-                isVerbCase = true;
-            }
-            // 5. Глагол прошедшего времени в конце A + буква в начале B (любая!)
-            else if (endsWithVerb && isLetter(firstCharB)) {
-                shouldMerge = true;
-                isVerbCase = true;
-            }
-            // 6. Запрещенное слово в конце A + буква в начале B (любая!)
-            else if (endsWithForbidden && isLetter(firstCharB)) {
-                shouldMerge = true;
-                isPrepositionCase = true;
-            }
-            // 7. Паттерн "маленькая буква + тире + пробел + маленькая буква"
             else if (hasDashPattern) {
                 shouldMerge = true;
-                isDashPatternCase = true;
+                mergeType = "dash";
             }
-            // 8. Паттерн "закрывающая кавычка + маленькая буква" (НЕ список!)
             else if (hasQuotePattern) {
                 shouldMerge = true;
-                isQuoteCase = true;
+                mergeType = "quote";
+            }
+            else if (patCommaDash) {
+                shouldMerge = true;
+                mergeType = "commadash";
+            }
+            else if (patCommaUpper) {
+                shouldMerge = true;
+                mergeType = "commaupper";
+            }
+            else if (patQuoteUpper) {
+                shouldMerge = true;
+                mergeType = "quoteupper";
+            }
+            else if (patLowerQuoteLower) {
+                shouldMerge = true;
+                mergeType = "lowerquotelower";
+            }
+            else if (patLowerOpenQuoteUpper) {
+                shouldMerge = true;
+                mergeType = "loweropenquoteupper";
+            }
+            else if (patLowerUpper) {
+                shouldMerge = true;
+                mergeType = "lowerupper";
+            }
+            else if (patEllipsisLower) {
+                shouldMerge = true;
+                mergeType = "ellipsislower";
+            }
+            else if (patEllipsisQuoteLower) {
+                shouldMerge = true;
+                mergeType = "ellipsisquotelower";
+            }
+            else if (patOpenQuoteUpperLower) {
+                shouldMerge = true;
+                mergeType = "openquoteupperlower";
+            }
+            // Базовая склейка (п.1) — ПОСЛЕДНЕЙ
+            else if (mergeBasicLowerLower == 1) {
+                if (isHyphenDash(lastCharA)) {
+                    shouldMerge = true;
+                    mergeType = "basic";
+                }
+                else if (isLowerCaseChar(lastCharA) && isLowerCaseChar(firstCharBafterQuotes)) {
+                    shouldMerge = true;
+                    mergeType = "basic";
+                }
+                else if (isOpeningDelimiter(lastCharA) && isLowerCaseChar(firstCharBafterQuotes)) {
+                    shouldMerge = true;
+                    mergeType = "basic";
+                }
             }
             
         } else {
-            // Случай Б: ЕСТЬ empty-line между абзацами
+            // Случай Б: ЕСТЬ empty-line между абзацами — нужны усиливающие признаки
             
             // Сильнейшее доказательство: дефис
             if (isHyphenDash(lastCharA)) {
                 shouldMerge = true;
+                mergeType = "basic";
             }
-            // Сильное доказательство: ОР-1 или ОР-3 + усиливающие признаки
-            else if (isLowerCaseChar(lastCharA) || isOpeningDelimiter(lastCharA) || endsWithVerb || endsWithForbidden || hasDashPattern || hasQuotePattern) {
-                var hasEnhancingEvidence = false;
-                
-                // 1. Абзац A очень короткий (2-3 слова)
-                if (isVeryShortParagraph(paraA)) {
-                    hasEnhancingEvidence = true;
-                }
-                // 2. В конце A есть "слово-крючок"
-                else if (hasHookWordAtEnd(paraA)) {
-                    hasEnhancingEvidence = true;
-                }
-                // 3. В начале B есть анафорическое местоимение
-                else if (hasContinuationWordAtStart(paraB)) {
-                    hasEnhancingEvidence = true;
-                }
-                // 4. Глагол прошедшего времени + начало диалога
-                else if (endsWithVerb && startsWithDialogue(paraB)) {
-                    hasEnhancingEvidence = true;
-                    isVerbCase = true;
-                }
-                // 5. Запрещенное слово + буква в начале
-                else if (endsWithForbidden && isLetter(firstCharB)) {
-                    hasEnhancingEvidence = true;
-                    isPrepositionCase = true;
-                }
-                // 6. Паттерн "маленькая буква + тире + пробел + маленькая буква"
-                else if (hasDashPattern) {
-                    hasEnhancingEvidence = true;
-                    isDashPatternCase = true;
-                }
-                // 7. Паттерн "закрывающая кавычка + маленькая буква"
-                else if (hasQuotePattern) {
-                    hasEnhancingEvidence = true;
-                    isQuoteCase = true;
-                }
-                
-                if (hasEnhancingEvidence) {
-                    shouldMerge = true;
+            // Специальные паттерны с усиливающими признаками
+            else if (endsWithVerb && startsWithDialogue(paraB)) {
+                shouldMerge = true;
+                mergeType = "verb";
+            }
+            else if (endsWithForbidden && isLetter(firstCharBafterQuotes)) {
+                shouldMerge = true;
+                mergeType = "preposition";
+            }
+            else if (hasDashPattern) {
+                shouldMerge = true;
+                mergeType = "dash";
+            }
+            else if (hasQuotePattern) {
+                shouldMerge = true;
+                mergeType = "quote";
+            }
+            else if (patCommaDash) {
+                shouldMerge = true;
+                mergeType = "commadash";
+            }
+            else if (patCommaUpper) {
+                shouldMerge = true;
+                mergeType = "commaupper";
+            }
+            else if (patQuoteUpper) {
+                shouldMerge = true;
+                mergeType = "quoteupper";
+            }
+            else if (patLowerQuoteLower) {
+                shouldMerge = true;
+                mergeType = "lowerquotelower";
+            }
+            else if (patLowerOpenQuoteUpper) {
+                shouldMerge = true;
+                mergeType = "loweropenquoteupper";
+            }
+            else if (patLowerUpper) {
+                shouldMerge = true;
+                mergeType = "lowerupper";
+            }
+            else if (patEllipsisLower) {
+                shouldMerge = true;
+                mergeType = "ellipsislower";
+            }
+            else if (patEllipsisQuoteLower) {
+                shouldMerge = true;
+                mergeType = "ellipsisquotelower";
+            }
+            else if (patOpenQuoteUpperLower) {
+                shouldMerge = true;
+                mergeType = "openquoteupperlower";
+            }
+            // Усиливающие признаки для базового случая
+            else if (mergeBasicLowerLower == 1) {
+                if (isLowerCaseChar(lastCharA) || isOpeningDelimiter(lastCharA) || endsWithVerb || endsWithForbidden) {
+                    if (isVeryShortParagraph(paraA) || hasHookWordAtEnd(paraA) || hasContinuationWordAtStart(paraB)) {
+                        shouldMerge = true;
+                        mergeType = "basic";
+                    }
                 }
             }
         }
@@ -1562,18 +2092,23 @@ function Run() {
         if (shouldMerge) {
             if (mergeParagraphs(paraA, paraB)) {
                 mergedPairs++;
-                if (isVerbCase) {
-                    verbMerges++;
-                }
-                if (isPrepositionCase) {
-                    prepositionMerges++;
-                }
-                if (isDashPatternCase) {
-                    dashPatternMerges++;
-                }
-                if (isQuoteCase) {
-                    quoteMerges++;
-                }
+                
+                // Увеличиваем только ОДИН счётчик, соответствующий типу
+                if (mergeType == "verb") verbMerges++;
+                else if (mergeType == "preposition") prepositionMerges++;
+                else if (mergeType == "dash") dashPatternMerges++;
+                else if (mergeType == "quote") quoteMerges++;
+                else if (mergeType == "commadash") commaDashMerges++;
+                else if (mergeType == "commaupper") commaUpperMerges++;
+                else if (mergeType == "quoteupper") quoteUpperMerges++;
+                else if (mergeType == "lowerquotelower") lowerQuoteLowerMerges++;
+                else if (mergeType == "loweropenquoteupper") lowerOpenQuoteUpperMerges++;
+                else if (mergeType == "lowerupper") lowerUpperMerges++;
+                else if (mergeType == "ellipsislower") ellipsisLowerMerges++;
+                else if (mergeType == "ellipsisquotelower") ellipsisQuoteLowerMerges++;
+                else if (mergeType == "openquoteupperlower") openQuoteUpperLowerMerges++;
+                else if (mergeType == "basic") basicLowerMerges++;
+                
                 // После слияния обновляем массив paragraphs
                 paragraphs[i - 1] = paraB;
                 paragraphs.splice(i, 1);
@@ -1587,7 +2122,7 @@ function Run() {
     window.external.EndUndoUnit(document);
     
     // ==================================================
-    // ВЫВОД СТАТИСТИКИ (ИСПРАВЛЕННОЕ ОФОРМЛЕНИЕ)
+    // ВЫВОД СТАТИСТИКИ
     // ==================================================
     
     var endTime = new Date().getTime();
@@ -1599,36 +2134,56 @@ function Run() {
         var message = scriptName + "\n" +
                      "ver. " + version + "\n\n";
         
-        // Добавляем информацию о режиме обработки
+        // Информация о режиме обработки
         message += "Параметры обработки:\n";
         if (isSelectionMode) {
-            message += "• Режим обработки: Выделенный фрагмент\n";
+            message += "• Режим: ВЫДЕЛЕНИЕ\n";
         } else {
-            message += "• Режим обработки: Весь основной раздел\n";
+            message += "• Режим: ВЕСЬ ДОКУМЕНТ\n";
         }
-        
         message += "• Обработка раздела сносок: " + (processNotesSection ? "Да" : "Нет") + "\n";
         message += "• Обработка раздела комментариев: " + (processCommentsSection ? "Да" : "Нет") + "\n\n";
         
         // Основная статистика
-        message += "✓ Обработано пар абзацев: " + processedPairs + "\n" +
-                  "✓ Объединено пар: " + mergedPairs + "\n";
+        message += "✓ Обработано пар абзацев: " + processedPairs + "\n";
+        message += "✓ Объединено пар: " + mergedPairs + "\n";
         
-        if (verbMerges > 0) {
-            message += "  • глаголов: " + verbMerges + "\n";
-        }
-        if (prepositionMerges > 0) {
-            message += "  • союзов/предлогов: " + prepositionMerges + "\n";
-        }
-        if (dashPatternMerges > 0) {
-            message += "  • паттернов с тире: " + dashPatternMerges + "\n";
-        }
-        if (quoteMerges > 0) {
-            message += "  • кавычек с текстом: " + quoteMerges + "\n";
-        }
+        // Детализация по типам склеек — без ПС
+        message += "  Без пустой строки:\n";
+        if (basicLowerMerges > 0) message += "    • базовая (строчная + строчная): " + basicLowerMerges + "\n";
+        if (verbMerges > 0) message += "    • глагол + строчная/диалог: " + verbMerges + "\n";
+        if (prepositionMerges > 0) message += "    • союз/предлог + строчная: " + prepositionMerges + "\n";
+        if (dashPatternMerges > 0) message += "    • строчная-тире + строчная: " + dashPatternMerges + "\n";
+        if (quoteMerges > 0) message += "    • закр. кавычка + строчная: " + quoteMerges + "\n";
+        if (commaDashMerges > 0) message += "    • запятая + тире + строчная: " + commaDashMerges + "\n";
+        if (commaUpperMerges > 0) message += "    • запятая + заглавная: " + commaUpperMerges + "\n";
+        if (quoteUpperMerges > 0) message += "    • строчная + кавычки + заглавная: " + quoteUpperMerges + "\n";
+        if (lowerQuoteLowerMerges > 0) message += "    • строчная + кавычки + строчная: " + lowerQuoteLowerMerges + "\n";
+        if (lowerOpenQuoteUpperMerges > 0) message += "    • строчная + откр.кавычки + заглавная: " + lowerOpenQuoteUpperMerges + "\n";
+        if (lowerUpperMerges > 0) message += "    • строчная + заглавная (короткий B): " + lowerUpperMerges + "\n";
+        if (ellipsisLowerMerges > 0) message += "    • многоточие + строчная: " + ellipsisLowerMerges + "\n";
+        if (ellipsisQuoteLowerMerges > 0) message += "    • многоточие + кавычки + строчная: " + ellipsisQuoteLowerMerges + "\n";
+        if (openQuoteUpperLowerMerges > 0) message += "    • откр.кавычки + заглавная + строчная: " + openQuoteUpperLowerMerges + "\n";
         
-        message += "✓ Пропущено пар: " + skippedPairs + "\n" +
-                  "\n✓ Время обработки: " + timeStr + " сек\n";
+        // Детализация по типам склеек — с ПС
+        message += "  С пустой строкой:\n";
+        if (basicLowerMergesPS > 0) message += "    • базовая (строчная + строчная) + ПС: " + basicLowerMergesPS + "\n";
+        if (verbMergesPS > 0) message += "    • глагол + ПС + строчная/диалог: " + verbMergesPS + "\n";
+        if (prepositionMergesPS > 0) message += "    • союз/предлог + ПС + строчная: " + prepositionMergesPS + "\n";
+        if (dashPatternMergesPS > 0) message += "    • строчная-тире + ПС + строчная: " + dashPatternMergesPS + "\n";
+        if (quoteMergesPS > 0) message += "    • закр. кавычка + ПС + строчная: " + quoteMergesPS + "\n";
+        if (commaDashMergesPS > 0) message += "    • запятая + тире + ПС + строчная: " + commaDashMergesPS + "\n";
+        if (commaUpperMergesPS > 0) message += "    • запятая + заглавная + ПС: " + commaUpperMergesPS + "\n";
+        if (quoteUpperMergesPS > 0) message += "    • строчная + кавычки + заглавная + ПС: " + quoteUpperMergesPS + "\n";
+        if (lowerQuoteLowerMergesPS > 0) message += "    • строчная + кавычки + строчная + ПС: " + lowerQuoteLowerMergesPS + "\n";
+        if (lowerOpenQuoteUpperMergesPS > 0) message += "    • строчная + откр.кавычки + заглавная + ПС: " + lowerOpenQuoteUpperMergesPS + "\n";
+        if (lowerUpperMergesPS > 0) message += "    • строчная + заглавная (короткий B) + ПС: " + lowerUpperMergesPS + "\n";
+        if (ellipsisLowerMergesPS > 0) message += "    • многоточие + ПС + строчная: " + ellipsisLowerMergesPS + "\n";
+        if (ellipsisQuoteLowerMergesPS > 0) message += "    • многоточие + кавычки + ПС + строчная: " + ellipsisQuoteLowerMergesPS + "\n";
+        if (openQuoteUpperLowerMergesPS > 0) message += "    • откр.кавычки + заглавная + ПС + строчная: " + openQuoteUpperLowerMergesPS + "\n";
+        
+        message += "✓ Пропущено пар: " + skippedPairs + "\n";
+        message += "\n✓ Время обработки: " + timeStr + " сек\n";
         
         MsgBox(message);
     }

@@ -1,10 +1,14 @@
-//Скрипт набора «Поиск форматирования»
+//Скрипт "Переход на следующий абзац с курсивом" из набора «Поиск форматирования»
 //Автор Sclex
 //Топик про скрипты FBE: http://www.fictionbook.org/forum/viewtopic.php?t=4412
 //Мой сайт про мои скрипты: http://scripts.fictionbook.org
+// Версия 1.3
+// 13.08.2026
+// Добавлено позиционирование найденного примерно по центру экрана,
+// как это сделано в других похожих скриптах (TaKir)
 
 function Run() {
- var versionStr="Переход на следующий абзац с курсивом v1.2.";
+ var versionStr="Переход на следующий абзац с курсивом v1.3.";
  var scriptDirection="forward";
  var isItTagWeLookingFor=function (t) {if (t.nodeName=="I" || t.nodeName=="EM") return true; else return false;}
  var paragraphIndent=true;
@@ -12,17 +16,15 @@ function Run() {
  var randomNum,beginMarkerId,endMarkerId,beginMarkerEl,endMarkerEl,range1,range2,el,el2,el3,b,placeWhereToStop,fbw_body,nowInTagWeLookingFor,tagWeLookingFor_count;
  window.external.BeginUndoUnit(document,versionStr);
 
- function scrollIfItNeeds() {
+ function scrollIfItNeeds() { 
   var selection = document.selection;
   if (selection) {
     var range = selection.createRange();
     var rect = range.getBoundingClientRect();
-    
-    // Проверяем, находится ли выделение менее чем в 20 пикселях от нижнего края окна
-    if (document.documentElement.clientHeight - rect.bottom < 20) {
-      // Прокручиваем документ на 50 пикселей вниз
-      window.scrollBy(0, 50);
-    }
+    // var correction = (rect.bottom - document.documentElement.clientHeight/2); // центр
+   var correction = (rect.bottom - document.documentElement.clientHeight/2); // верх
+   // var popravka = (rect.bottom - document.documentElement.clientHeight/8* 6); // низ
+   window.scrollBy(0, correction);
   }
  }
  

@@ -1,6 +1,9 @@
 // Скрипт «Выделить предыдущий целиком жирный абзац»
 // Автор Sclex
-// Версия 1.2
+// Версия 1.3
+// 13.08.2026
+// Добавлено позиционирование найденного примерно по центру экрана,
+// как это сделано в других похожих скриптах (TaKir)
 
 function Run() {
 
@@ -61,6 +64,18 @@ function Run() {
    el=getPreviousNode(el);
   return el;
  }
+ 
+ function scrollIfItNeeds() { 
+  var selection = document.selection;
+  if (selection) {
+    var range = selection.createRange();
+    var rect = range.getBoundingClientRect();
+    // var correction = (rect.bottom - document.documentElement.clientHeight/2); // центр
+   var correction = (rect.bottom - document.documentElement.clientHeight/2); // верх
+   // var popravka = (rect.bottom - document.documentElement.clientHeight/8* 6); // низ
+   window.scrollBy(0, correction);
+  }
+ }
 
  var rndm, startId,endId;
 
@@ -105,6 +120,7 @@ function Run() {
    tr1.moveStart("character",-1);
   tr1.moveEnd("character",-1);
   tr1.select();
+  scrollIfItNeeds();
   var scriptResult="Found";
  }
  else {

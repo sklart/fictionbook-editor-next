@@ -1,5 +1,5 @@
 // Скрипт "Создать реперную карту fb2 документа для переноса иллюстраций" для редактора FBE
-// version 2.0
+// version 2.1
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
@@ -9,13 +9,15 @@
 // Данный скрипт предназначен для создания TXT-файла с реперной картой иллюстраций fb2 документа
 // для последующего переноса иллюстраций в откорректированную версию fb2-документа
 // (в другой документ, например, с отредактированным текстом).
-// Для работы скрипт создает служебную папку D:\\FBE_Compare (путь можно изменить в настройках ниже).
+// Скрипт создает реперную txt карту иллюстраций в папке с текущим fb2 документом
+// или в жестко заданной в настройках папке, например D:\\FBE_Compare.
 // В данную папку скрипт помещает созданный txt файл fb2_reper_map.txt
 // с реперной картой расположения иллюстраций в исходном файле.
 // Также в данную папку помещается файл с отчетом об ошибках (при их наличии)
 // после работы второго скрипта - расстановки маркеров иллюстраций в целевом документе.
 // Скрипт учитывает наличие пустых строк вокруг иллюстраций.
-// Сохраняет реперную карту в TXT через FileSystemObject
+// Сохраняет реперную карту в TXT через FileSystemObject.
+// Настройка перезаписи/копирования файла карты в соответствующую папку.
 // Скрипт не вносит никаких изменений в fb2 документ.
 // Режим работы: обычный или тихий.
 
@@ -24,15 +26,15 @@
 // и
 // Расставить маркеры иллюстраций по реперной карте.js
 
-// Открываем исходный документ с иллюстрациями.
+// Открываем исходный fb2 документ с иллюстрациями.
 // Запускаем этот скрипт для создания реперной карты данного документа.
 // Открываем целевой документ с отредактированным текстом и без иллюстраций.
 // Запускаем второй скрипт Расставить маркеры иллюстраций по реперной карте.js
 // Второй скрипт расставляет в целевом документе текстовые маркеры типа zzz_pic
 // или сразу пустые картинки (в зависимости от включенных настроек во втором скрипте)
 // на местах, максимально совпадающих с исходным документом.
-// В случае наличия предполагаемых ошибок расстановки,
-// скрип создает файл отчета об ошибках в той же папке D:\\FBE_Compare
+// При наличии ошибок расстановки второй скрипт создает файл отчета в папке с текущим fb2 документом
+// или в жестко заданной в настройках папке, например D:\\FBE_Compare.
 
 // Далее можно:
 // Проверить в целевом документе расстановку текстовых маркеров,
@@ -40,17 +42,13 @@
 // Заменить текстовые маркеры zzz_pic на <image l:href="#undefined"/> глобальной заменой в режиме XML кода.
 // Подцепить на места пустышек реальные иллюстрации скриптом "15_Расставить иллюстрации по заданным местам.js"
 
-// version 2.0, 30.06.2026
+// version 2.1, 30.06.2026
 //======================================
 
 // ==================================================
 // ГЛОБАЛЬНЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// (вынесены из Run для доступности из всех функций)
 // ==================================================
 
-// Получение локального имени бинарника из href
-// Пример: "#i_001.jpg" → "i_001.jpg"
-// Взято из скрипта Sclex без изменений
 function getLocalHref(name) {
     var name1 = name;
     if (name1.charAt(0) != "#") {
@@ -66,8 +64,6 @@ function getLocalHref(name) {
     return name1;
 }
 
-// Проверка, является ли текст пустым
-// Учитывает обычные пробелы, неразрывные, &nbsp; и необычные пробелы
 function isEmptyText(text) {
     if (!text || text.length == 0) return true;
     var normalized = "";
@@ -93,18 +89,21 @@ function isEmptyText(text) {
 }
 
 function Run() {
-    // ==================================================
-    // ШАПКА СКРИПТА
-    // ==================================================
     var scriptName = "Создать реперную карту fb2 документа для переноса иллюстраций";
-    var version = "2.0";
+    var version = "2.1";
 
     // ==================================================
     // НАСТРОЙКИ СКРИПТА ====== можно менять по необходимости ======
     // ==================================================
 
-    var workFolder = "D:\\FBE_Compare";          // Путь к рабочей папке (создаётся автоматически)
+    // --- Настройка путей ---
+    // Запасная папка (используется, если автоопределение не сработало)
+    var workFolder = "D:\\FBE_Compare";
     var mapFileName = "fb2_reper_map.txt";        // Имя файла реперной карты
+
+    // --- Настройка сохранения ---
+    var overwriteFile = 0; // 0 — перезаписывать, 1 — создавать копию с нумерацией
+
     var shortParagraphThreshold = 50;              // Порог короткого абзаца в символах (меньше — короткий)
     var wordsPerAnchor = 3;                        // Сколько слов брать из начала, середины и конца абзаца
     var showStatistics = 1;                        // 1 — показывать статистику, 0 — тихий режим (только ошибки)
@@ -112,12 +111,134 @@ function Run() {
     var processCommentsSection = 0;                // Обрабатывать раздел комментариев: 0 — нет, 1 — да
 
     // ==================================================
+    // ОПРЕДЕЛЕНИЕ ПАПКИ С ДОКУМЕНТОМ
+    // ==================================================
+
+    var documentFolder = "";
+    var fb2FileName = "";
+
+    // --- Метод 1: Штатное API FBE ---
+    try {
+        documentFolder = window.external.GetDocumentDirectory();
+        fb2FileName = window.external.GetDocumentFileName();
+    } catch(e) {}
+
+    // --- Метод 2: PowerShell (заголовок окна) ---
+    if (documentFolder == "") {
+        var shell, fso;
+        try {
+            shell = new ActiveXObject("WScript.Shell");
+            fso = new ActiveXObject("Scripting.FileSystemObject");
+        } catch(e) {}
+
+        if (shell && fso) {
+            var tempFile = "C:\\__fbe_path_result.txt";
+            try {
+                var psCmd = "powershell -ExecutionPolicy Bypass -command \"(Get-Process -Name 'fbe' -ErrorAction SilentlyContinue).MainWindowTitle\" > \"" + tempFile + "\" 2>&1";
+                shell.Run(psCmd, 0, true);
+
+                if (fso.FileExists(tempFile)) {
+                    var file = fso.OpenTextFile(tempFile, 1, false, -1);
+                    var title = "";
+                    if (!file.AtEndOfStream) {
+                        title = file.ReadLine();
+                        title = title.replace(/^\s+|\s+$/g, "");
+                    }
+                    file.Close();
+                    try { fso.DeleteFile(tempFile); } catch(e) {}
+
+                    if (title.length > 0) {
+                        var pathMatch = title.match(/[A-Za-z]:\\.+?\.fb2/i);
+                        if (pathMatch) {
+                            var fb2Path = pathMatch[0];
+                            var lastSlash = fb2Path.lastIndexOf("\\");
+                            if (lastSlash != -1) {
+                                documentFolder = fb2Path.substring(0, lastSlash);
+                                fb2FileName = fb2Path.substring(lastSlash + 1);
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+    }
+
+    // --- Метод 3: Временный файл + CMD-поиск ---
+    if (documentFolder == "") {
+        try {
+            if (!shell) shell = new ActiveXObject("WScript.Shell");
+            if (!fso) fso = new ActiveXObject("Scripting.FileSystemObject");
+        } catch(e) {}
+
+        if (shell && fso) {
+            var binObjects = document.all.binobj.getElementsByTagName("DIV");
+            var binData = "";
+            if (binObjects.length > 0) {
+                binData = binObjects[0].base64data;
+            } else {
+                binData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==";
+            }
+
+            var testId = "__fbe_path_test_" + new Date().getTime();
+            try {
+                window.external.SaveBinary(testId, binData, 0);
+            } catch(e) {}
+
+            var tempFile = "C:\\__fbe_path_result.txt";
+            var drivesToCheck = ["C:"];
+            try {
+                var allDrives = fso.Drives;
+                var dcEnum = new Enumerator(allDrives);
+                drivesToCheck = [];
+                for (; !dcEnum.atEnd(); dcEnum.moveNext()) {
+                    var drv = dcEnum.item();
+                    if (drv.IsReady) drivesToCheck.push(drv.DriveLetter + ":");
+                }
+            } catch(e) {}
+
+            var foundPath = "";
+            for (var d = 0; d < drivesToCheck.length; d++) {
+                var disk = drivesToCheck[d];
+                var cmd = "cmd /u /c dir /s /b \"" + disk + "\\" + testId + "*\" > \"" + tempFile + "\" 2>nul";
+                try {
+                    shell.Run(cmd, 0, true);
+                    if (fso.FileExists(tempFile)) {
+                        var resultFile = fso.OpenTextFile(tempFile, 1, false, -1);
+                        var line = "";
+                        if (!resultFile.AtEndOfStream) {
+                            line = resultFile.ReadLine();
+                            line = line.replace(/^\s+|\s+$/g, "");
+                            if (line.length > 0 && line.indexOf(testId) != -1) {
+                                foundPath = line;
+                            }
+                        }
+                        resultFile.Close();
+                        try { fso.DeleteFile(tempFile); } catch(e) {}
+                        if (foundPath != "") break;
+                    }
+                } catch(ec) {}
+            }
+
+            if (foundPath != "") {
+                var lastSlash2 = foundPath.lastIndexOf("\\");
+                if (lastSlash2 != -1) {
+                    documentFolder = foundPath.substring(0, lastSlash2);
+                    fb2FileName = "(неизвестно)";
+                }
+                try { fso.DeleteFile(foundPath); } catch(e) {}
+            }
+        }
+    }
+
+    // --- Используем запасную папку, если автоопределение не сработало ---
+    if (documentFolder == "") {
+        documentFolder = workFolder;
+    }
+
+    // ==================================================
     // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ВНУТРИ RUN
     // ==================================================
 
-    // ----- Работа с текстом -----
-
-    // Рекурсивное получение всего текста из элемента (только текстовые узлы)
     function getElementText(element) {
         var text = "";
         if (!element) return text;
@@ -133,35 +254,29 @@ function Run() {
         return text;
     }
 
-    // Проверка, является ли абзац пустым (только пробелы, &nbsp;, неразрывные пробелы)
     function isEmptyParagraph(paragraph) {
         if (!paragraph || paragraph.nodeType != 1 || paragraph.nodeName != "P") return false;
         var text = getElementText(paragraph);
         return isEmptyText(text);
     }
 
-    // Очистка текста: оставляем только буквы (русские и латинские) и цифры, в нижний регистр
-    // Используется для сравнения реперов без учёта знаков препинания и пробелов
     function cleanText(text) {
         if (!text) return "";
         var result = "";
         for (var i = 0; i < text.length; i++) {
             var ch = text.charAt(i);
             var code = ch.charCodeAt(0);
-            if ((code >= 48 && code <= 57) ||       // 0-9
-                (code >= 65 && code <= 90) ||        // A-Z
-                (code >= 97 && code <= 122) ||       // a-z
-                (code >= 1040 && code <= 1103) ||    // А-Я, а-я
-                code == 1025 || code == 1105) {      // Ё, ё
+            if ((code >= 48 && code <= 57) ||
+                (code >= 65 && code <= 90) ||
+                (code >= 97 && code <= 122) ||
+                (code >= 1040 && code <= 1103) ||
+                code == 1025 || code == 1105) {
                 result += ch.toLowerCase();
             }
         }
         return result;
     }
 
-    // Извлечение слов из оригинального текста
-    // Слово — непрерывная последовательность букв/цифр
-    // Разделители — любые другие символы (пробелы, знаки препинания и т.д.)
     function extractWordsFromOriginal(text) {
         var words = [];
         if (!text || text.length == 0) return words;
@@ -189,16 +304,12 @@ function Run() {
         return words;
     }
 
-    // ----- Проверка типов элементов -----
-
-    // Проверка: является ли узел заголовком (DIV class="title" или class="subtitle")
     function isTitle(node) {
         if (!node || node.nodeType != 1 || node.nodeName != "DIV") return false;
         var cls = node.className || "";
         return cls == "title" || cls == "subtitle";
     }
 
-    // Проверка: является ли узел блочной картинкой (DIV class="image" с href)
     function isImage(node) {
         if (!node || node.nodeType != 1) return false;
         if (node.nodeName == "DIV") {
@@ -213,28 +324,21 @@ function Run() {
         return false;
     }
 
-    // Проверка: является ли узел секцией (DIV class="section")
     function isSection(node) {
         if (!node || node.nodeType != 1 || node.nodeName != "DIV") return false;
         return (node.className || "") == "section";
     }
 
-    // Проверка: является ли узел телом документа (DIV class="body")
     function isBody(node) {
         if (!node || node.nodeType != 1 || node.nodeName != "DIV") return false;
         return (node.className || "") == "body";
     }
 
-    // ----- Извлечение реперов из текста -----
-
-    // Получение длины текста абзаца
     function getParagraphLength(paragraph) {
         var text = getElementText(paragraph);
         return text.length;
     }
 
-    // Извлечение реперов из текста: N слов из начала, N из середины, N из конца
-    // N задаётся в настройке wordsPerAnchor
     function getAnchorsFromText(text) {
         var words = extractWordsFromOriginal(text);
         var anchors = [];
@@ -244,7 +348,6 @@ function Run() {
         var n = wordsPerAnchor;
         if (n > words.length) n = words.length;
 
-        // Начало: первые n слов
         var anchorBegin = "";
         for (var i = 0; i < n; i++) {
             if (i > 0) anchorBegin += " ";
@@ -252,7 +355,6 @@ function Run() {
         }
         anchors.push(anchorBegin);
 
-        // Середина: n слов из середины
         if (words.length >= n * 2) {
             var midStart = Math.floor((words.length - n) / 2);
             var anchorMid = "";
@@ -272,7 +374,6 @@ function Run() {
             if (count > 0) anchors.push(anchorMid);
         }
 
-        // Конец: последние n слов
         if (words.length > n) {
             var anchorEnd = "";
             for (var i = words.length - n; i < words.length; i++) {
@@ -285,15 +386,11 @@ function Run() {
         return anchors;
     }
 
-    // Извлечение реперов из абзаца (получаем текст, затем извлекаем слова)
     function getAnchorsFromParagraph(paragraph) {
         var text = getElementText(paragraph);
         return getAnchorsFromText(text);
     }
 
-    // ----- Работа с заголовками -----
-
-    // Получение заголовка секции (текст из первого title внутри секции)
     function getSectionTitle(sectionElement) {
         if (!sectionElement) return "";
         var children = sectionElement.childNodes;
@@ -306,7 +403,6 @@ function Run() {
         return "";
     }
 
-    // Получение заголовка книги (title внутри body)
     function getBodyTitle(bodyElement) {
         if (!bodyElement) return "";
         var children = bodyElement.childNodes;
@@ -319,10 +415,6 @@ function Run() {
         return "";
     }
 
-    // ----- Подсчёт пустых строк вокруг картинки -----
-
-    // Подсчёт количества пустых абзацев непосредственно рядом с элементом
-    // direction: -1 = вверх, 1 = вниз
     function countEmptyLinesAround(element, direction) {
         var count = 0;
         var current = element;
@@ -338,7 +430,6 @@ function Run() {
             if (!current) break;
             if (current.parentNode != parent) break;
 
-            // Пропускаем пустые текстовые узлы
             if (current.nodeType == 3) {
                 if (isEmptyText(current.nodeValue || "")) {
                     continue;
@@ -349,7 +440,6 @@ function Run() {
 
             if (current.nodeType != 1) continue;
 
-            // Считаем пустые абзацы
             if (current.nodeName == "P") {
                 if (isEmptyParagraph(current)) {
                     count++;
@@ -359,16 +449,12 @@ function Run() {
                 }
             }
 
-            // Любой другой элемент — не пустая строка
             break;
         }
 
         return count;
     }
 
-    // ----- Сбор картинок и секций -----
-
-    // Рекурсивный сбор картинок из контейнера (без захода во вложенные секции)
     function collectImagesRecursive(container, sectionIndex, bodyType, resultArray) {
         if (!container) return;
         var children = container.childNodes;
@@ -398,8 +484,6 @@ function Run() {
         }
     }
 
-    // Рекурсивный обход секций и сбор информации о них
-    // Заходит во все уровни вложенности, нумерует секции сквозным индексом
     function collectSectionsRecursive(container, parentIndex, level, bodyType, sectionsArr, imagesArr) {
         if (!container) return;
         var children = container.childNodes;
@@ -413,7 +497,6 @@ function Run() {
                 var secTitle = getSectionTitle(child);
                 var secTitleClean = cleanText(secTitle);
 
-                // Собираем картинки, непосредственно принадлежащие этой секции
                 var directImages = [];
                 collectImagesFromSectionDirect(child, secIndex, bodyType, directImages);
                 for (var di = 0; di < directImages.length; di++) {
@@ -431,13 +514,11 @@ function Run() {
                     element: child
                 });
 
-                // Рекурсивно заходим во вложенные секции
                 collectSectionsRecursive(child, secIndex, level + 1, bodyType, sectionsArr, imagesArr);
             }
         }
     }
 
-    // Сбор картинок только из прямых потомков секции (без захода во вложенные секции)
     function collectImagesFromSectionDirect(sectionElement, sectionIndex, bodyType, resultArray) {
         if (!sectionElement) return;
         var children = sectionElement.childNodes;
@@ -459,16 +540,12 @@ function Run() {
                         });
                     }
                 } else if (cls != "section") {
-                    // Заходим в другие DIV (epigraph и т.д.), но не в секции
                     collectImagesFromSectionDirect(child, sectionIndex, bodyType, resultArray);
                 }
             }
         }
     }
 
-    // ----- Определение групп картинок -----
-
-    // Проверка, идут ли две картинки подряд (без значимого текста между ними)
     function areConsecutiveImages(img1, img2) {
         if (!img1 || !img2) return false;
         var elem1 = img1.element;
@@ -517,10 +594,6 @@ function Run() {
         return false;
     }
 
-    // ----- Пробивка границ секций для поиска реперов -----
-
-    // Основная функция сбора реперов в одном направлении
-    // Сначала ищет внутри текущего контейнера, затем пробивает границы
     function collectAnchorsDirection(imageElement, direction, ignoreImages) {
         var anchors = [];
         var shortParagraphs = [];
@@ -528,7 +601,6 @@ function Run() {
         var current = imageElement;
         var container = imageElement.parentNode;
 
-        // Первый проход — внутри текущего контейнера
         while (true) {
             if (direction == -1) {
                 current = current.previousSibling;
@@ -539,7 +611,6 @@ function Run() {
             if (!current) break;
             if (current.parentNode != container) break;
 
-            // Пропускаем пустые текстовые узлы
             if (current.nodeType == 3) {
                 if (isEmptyText(current.nodeValue || "")) continue;
                 continue;
@@ -547,16 +618,13 @@ function Run() {
 
             if (current.nodeType != 1) continue;
 
-            // Достигли границы секции или body — останавливаемся
             if (isSection(current) || isBody(current)) break;
 
-            // Наткнулись на другую картинку
             if (isImage(current)) {
                 if (ignoreImages) continue;
                 else break;
             }
 
-            // Наткнулись на заголовок — используем как репер
             if (isTitle(current)) {
                 var titleText = getElementText(current);
                 if (!isEmptyText(titleText)) {
@@ -568,7 +636,6 @@ function Run() {
                 break;
             }
 
-            // Эпиграф, цитата, аннотация — извлекаем текст как репер
             if (current.nodeName == "DIV") {
                 var cls2 = current.className || "";
                 if (cls2 == "epigraph" || cls2 == "cite" || cls2 == "annotation") {
@@ -583,20 +650,17 @@ function Run() {
                 }
             }
 
-            // Обычный абзац
             if (current.nodeName == "P") {
                 if (isEmptyParagraph(current)) continue;
 
                 var pLength = getParagraphLength(current);
                 if (pLength >= shortParagraphThreshold) {
-                    // Длинный абзац — извлекаем реперы и выходим
                     var pAnchors = getAnchorsFromParagraph(current);
                     for (var a = 0; a < pAnchors.length; a++) {
                         anchors.push(pAnchors[a]);
                     }
                     break;
                 } else {
-                    // Короткий абзац — накапливаем
                     shortParagraphs.push(current);
                     shortParagraphsTotalLength += pLength;
                     if (shortParagraphs.length >= 6 || shortParagraphsTotalLength >= shortParagraphThreshold * 2) {
@@ -615,7 +679,6 @@ function Run() {
             }
         }
 
-        // Если накопили короткие абзацы, но не нашли длинный — используем их
         if (shortParagraphs.length > 0 && anchors.length == 0) {
             var combinedText = "";
             for (var s = 0; s < shortParagraphs.length; s++) {
@@ -628,7 +691,6 @@ function Run() {
             }
         }
 
-        // Если не нашли — пробиваем границы секций
         if (anchors.length == 0) {
             anchors = climbLevelsForAnchors(imageElement, direction, ignoreImages);
         }
@@ -636,8 +698,6 @@ function Run() {
         return anchors;
     }
 
-    // Циклический подъём по уровням секций для поиска текста за границами
-    // Поднимается от текущей секции вплоть до body, пока не найдёт текст
     function climbLevelsForAnchors(imageElement, direction, ignoreImages) {
         var currentElement = imageElement;
 
@@ -645,18 +705,15 @@ function Run() {
             var container = currentElement.parentNode;
             if (!container) break;
 
-            // Пробуем найти sibling на текущем уровне
             var sibling = findNextSiblingSkipEmpty(currentElement, direction, container);
 
             if (sibling) {
                 if (isSection(sibling)) {
-                    // Нашли секцию — ищем текст внутри неё
                     var textElement = findFirstTextInSection(sibling, direction);
                     if (textElement) {
                         return extractAnchorsFromElement(textElement);
                     }
                 } else {
-                    // Нашли другой элемент — пробуем извлечь из него текст
                     var textElement = findTextInElement(sibling, direction);
                     if (textElement) {
                         return extractAnchorsFromElement(textElement);
@@ -664,7 +721,6 @@ function Run() {
                 }
             }
 
-            // Не нашли sibling — проверяем вложенные секции внутри container
             if (isSection(container)) {
                 var innerSection = findInnerSection(container, currentElement, direction);
                 if (innerSection) {
@@ -675,21 +731,17 @@ function Run() {
                 }
             }
 
-            // Дошли до body — дальше некуда
             if (isBody(container)) break;
 
-            // Поднимаемся на уровень выше
             currentElement = container;
         }
 
         return [];
     }
 
-    // Найти следующий/предыдущий значимый sibling, пропуская пустые элементы
     function findNextSiblingSkipEmpty(element, direction, parentContainer) {
         var current = element;
 
-        // Поднимаемся, пока не окажемся прямым потомком parentContainer
         while (current && current.parentNode != parentContainer) {
             current = current.parentNode;
         }
@@ -705,7 +757,6 @@ function Run() {
                 continue;
             }
             if (sibling.nodeType == 1) {
-                // Пропускаем пустые абзацы
                 if (sibling.nodeName == "P" && isEmptyParagraph(sibling)) {
                     sibling = (direction == 1) ? sibling.nextSibling : sibling.previousSibling;
                     continue;
@@ -718,12 +769,10 @@ function Run() {
         return null;
     }
 
-    // Найти вложенную секцию после/до элемента внутри того же контейнера
     function findInnerSection(container, element, direction) {
         if (!container) return null;
         var children = container.childNodes;
 
-        // Находим позицию элемента среди детей контейнера
         var pos = -1;
         for (var i = 0; i < children.length; i++) {
             if (children[i] == element) {
@@ -732,7 +781,6 @@ function Run() {
             }
         }
         if (pos == -1) {
-            // Если элемент не прямой потомок — ищем его предка
             var ancestor = element;
             while (ancestor && ancestor.parentNode != container) {
                 ancestor = ancestor.parentNode;
@@ -748,7 +796,6 @@ function Run() {
         }
         if (pos == -1) return null;
 
-        // Ищем вложенную секцию в нужном направлении
         if (direction == 1) {
             for (var i = pos + 1; i < children.length; i++) {
                 if (isSection(children[i])) return children[i];
@@ -762,7 +809,6 @@ function Run() {
         return null;
     }
 
-    // Извлечение реперов из найденного элемента (абзац, заголовок и т.д.)
     function extractAnchorsFromElement(element) {
         if (!element) return [];
         if (element.nodeName == "P") {
@@ -774,7 +820,6 @@ function Run() {
         return getAnchorsFromText(getElementText(element));
     }
 
-    // Найти первый текстовый элемент внутри секции в заданном направлении
     function findFirstTextInSection(section, direction) {
         if (!section) return null;
 
@@ -794,11 +839,9 @@ function Run() {
         return null;
     }
 
-    // Рекурсивный поиск первого непустого текстового элемента
     function findTextInElement(element, direction) {
         if (!element || element.nodeType != 1) return null;
 
-        // Проверяем сам элемент
         if (element.nodeName == "P" && !isEmptyParagraph(element)) {
             return element;
         }
@@ -810,9 +853,9 @@ function Run() {
 
         if (element.nodeName == "DIV") {
             var cls = element.className || "";
-            if (cls == "image") return null;           // Картинки пропускаем
+            if (cls == "image") return null;
             if (cls == "section") {
-                return findFirstTextInSection(element, direction);  // Заходим во вложенную секцию
+                return findFirstTextInSection(element, direction);
             }
             if (cls == "epigraph" || cls == "cite" || cls == "annotation") {
                 var blockText = getElementText(element);
@@ -820,7 +863,6 @@ function Run() {
             }
         }
 
-        // Ищем в детях
         var children = element.childNodes;
         if (direction == 1) {
             for (var i = 0; i < children.length; i++) {
@@ -848,7 +890,6 @@ function Run() {
     var startTime = new Date().getTime();
 
     try {
-        // Поиск тела документа
         var fbwBody = document.getElementById("fbw_body");
         if (!fbwBody) {
             if (showStatistics == 1) {
@@ -858,7 +899,6 @@ function Run() {
             return;
         }
 
-        // Сбор всех разделов body (основной, сноски, комментарии)
         var bodyElements = [];
         var allDivs = document.getElementsByTagName("DIV");
         for (var d = 0; d < allDivs.length; d++) {
@@ -898,13 +938,11 @@ function Run() {
             var bodyElement = bodyInfo.element;
             var bodyType = bodyInfo.type;
 
-            // Получаем заголовок книги из основного body
             if (bodyType == "main") {
                 bookTitle = getBodyTitle(bodyElement);
                 bookTitleClean = cleanText(bookTitle);
             }
 
-            // Собираем картинки, которые напрямую в body (вне секций, до первой секции)
             var bodyChildren = bodyElement.childNodes;
             for (var c = 0; c < bodyChildren.length; c++) {
                 var child = bodyChildren[c];
@@ -928,7 +966,6 @@ function Run() {
                 }
             }
 
-            // Рекурсивно собираем все секции и картинки в них
             collectSectionsRecursive(bodyElement, 0, 1, bodyType, allSections, allImages);
         }
 
@@ -943,7 +980,6 @@ function Run() {
             return;
         }
 
-        // Определяем группы картинок (идущих подряд без текста)
         var imageGroups = [];
         var currentGroup = [];
 
@@ -966,7 +1002,6 @@ function Run() {
             imageGroups.push(currentGroup);
         }
 
-        // Собираем реперы и пустые строки для каждой группы
         var imagesInfo = [];
 
         for (var gi = 0; gi < imageGroups.length; gi++) {
@@ -974,16 +1009,12 @@ function Run() {
             var firstImage = group[0];
             var lastImage = group[group.length - 1];
 
-            // Реперы сверху — от текста над первой картинкой группы
             var anchorsAbove = collectAnchorsDirection(firstImage.element, -1, true);
-            // Реперы снизу — от текста под последней картинкой группы
             var anchorsBelow = collectAnchorsDirection(lastImage.element, 1, true);
 
-            // Пустые строки вокруг
             var emptyAbove = countEmptyLinesAround(firstImage.element, -1);
             var emptyBelow = countEmptyLinesAround(lastImage.element, 1);
 
-            // Присваиваем одинаковые реперы всем картинкам в группе
             for (var gi2 = 0; gi2 < group.length; gi2++) {
                 imagesInfo.push({
                     name: group[gi2].name,
@@ -998,10 +1029,9 @@ function Run() {
         }
 
         // ==================================================
-        // ФАЗА 2: ЗАПИСЬ В TXT (только запись)
+        // ФАЗА 2: ЗАПИСЬ В TXT
         // ==================================================
 
-        // Формируем содержимое файла
         var fileContent = "";
         fileContent += "FBE_REPER_MAP|1.0\r\n";
         fileContent += "TOTAL_IMAGES|" + totalImages + "\r\n";
@@ -1013,7 +1043,6 @@ function Run() {
         }
         fileContent += "\r\n";
 
-        // Секции
         for (var si = 0; si < allSections.length; si++) {
             var sec = allSections[si];
             if (sec && sec.index) {
@@ -1022,14 +1051,12 @@ function Run() {
         }
         fileContent += "\r\n";
 
-        // Картинки с реперами
         for (var ii = 0; ii < imagesInfo.length; ii++) {
             var imgInfo = imagesInfo[ii];
             fileContent += "IMAGE|" + (ii + 1) + "|" + imgInfo.name + "|" + imgInfo.sectionIndex + "\r\n";
             fileContent += "EMPTY_ABOVE|" + (ii + 1) + "|" + imgInfo.emptyAbove + "\r\n";
             fileContent += "EMPTY_BELOW|" + (ii + 1) + "|" + imgInfo.emptyBelow + "\r\n";
 
-            // Реперы сверху
             if (imgInfo.anchorsAbove.length > 0) {
                 fileContent += "ANCHOR_ABOVE|" + (ii + 1);
                 for (var aa = 0; aa < imgInfo.anchorsAbove.length; aa++) {
@@ -1040,7 +1067,6 @@ function Run() {
                 fileContent += "ANCHOR_ABOVE|" + (ii + 1) + "|NO_TEXT\r\n";
             }
 
-            // Реперы снизу
             if (imgInfo.anchorsBelow.length > 0) {
                 fileContent += "ANCHOR_BELOW|" + (ii + 1);
                 for (var ab = 0; ab < imgInfo.anchorsBelow.length; ab++) {
@@ -1052,20 +1078,39 @@ function Run() {
             }
         }
 
-        // Запись файла через FileSystemObject (ActiveX)
-        var fullPath = workFolder + "\\" + mapFileName;
+        // Запись файла
+        var fullPath = documentFolder + "\\" + mapFileName;
         var writeSuccess = false;
         var writeError = "";
 
         try {
-            var fso = new ActiveXObject("Scripting.FileSystemObject");
-            // Создаём папку, если её нет
+            var fsoWriter = new ActiveXObject("Scripting.FileSystemObject");
             try {
-                fso.CreateFolder(workFolder);
-            } catch (e) {
-                // Папка уже существует — это нормально
+                fsoWriter.CreateFolder(documentFolder);
+            } catch (e) {}
+
+            // Проверяем, существует ли файл, и создаём копию если нужно
+            if (overwriteFile == 1 && fsoWriter.FileExists(fullPath)) {
+                var baseName = mapFileName;
+                var dotPos = baseName.lastIndexOf(".");
+                var nameWithoutExt = baseName;
+                var ext = "";
+                if (dotPos != -1) {
+                    nameWithoutExt = baseName.substring(0, dotPos);
+                    ext = baseName.substring(dotPos);
+                }
+
+                var counter = 1;
+                var newPath;
+                do {
+                    newPath = documentFolder + "\\" + nameWithoutExt + "_" + counter + ext;
+                    counter++;
+                } while (fsoWriter.FileExists(newPath));
+
+                fullPath = newPath;
             }
-            var file = fso.CreateTextFile(fullPath, true, true);  // true, true = перезаписать, Unicode
+
+            var file = fsoWriter.CreateTextFile(fullPath, true, true);
             file.Write(fileContent);
             file.Close();
             writeSuccess = true;
@@ -1082,7 +1127,6 @@ function Run() {
         var elapsedStr = Math.round(elapsed * 1000) / 1000;
         elapsedStr = "" + elapsedStr;
 
-        // Подсчёт секций по уровням
         var level1Count = 0;
         var level2Count = 0;
         var level3Count = 0;
@@ -1103,6 +1147,9 @@ function Run() {
             msg += "ver. " + version + "\n";
             msg += "----------------------------------------\n";
             msg += "\n";
+            if (documentFolder != "") {
+                msg += "Папка: " + documentFolder + "\n\n";
+            }
             if (bookTitle.length > 0) {
                 msg += "✓ Заголовок книги: " + bookTitle + "\n";
                 msg += "\n";
@@ -1139,7 +1186,6 @@ function Run() {
 
             MsgBox(msg);
         } else {
-            // Тихий режим — сообщаем только об ошибках
             if (!writeSuccess) {
                 MsgBox(scriptName + "\n" + "ver. " + version + "\n----------------------------------------\n" +
                        "✗ Ошибка записи файла: " + writeError + "\n");

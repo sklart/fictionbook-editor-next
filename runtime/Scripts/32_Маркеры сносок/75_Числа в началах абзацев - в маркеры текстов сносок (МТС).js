@@ -1,5 +1,5 @@
 // Скрипт "Числа в началах абзацев - в маркеры текстов сносок (МТС)" для редактора FBE
-// version 2.1
+// version 2.2
 // Идея - TaKir
 // Реализация - DeepSeek, TaKir
 
@@ -17,15 +17,15 @@
 // Поддержка отмены действий (Ctrl+Z).
 
 // ВАЖНО: для быстрой работы в режиме выделения рекомендуется разбивать документ на секции (главы).
-// В одной огромной секции без подсекций возможны замедления из-за перестройки DOM в IE6.
+// В одной огромной секции без подсекций возможны замедления и зависания из-за перестройки DOM в IE6.
 // В режиме без выделения такой проблемы нет.
 
-// version 2.1, 12.07.2026
+// version 2.2, 20.07.2026
 //======================================
 
 function Run() {
     var scriptName = "Числа в началах абзацев - в маркеры текстов сносок (МТС)";
-    var version = "2.1";
+    var version = "2.2";
 
     // ==================================================
     // НАСТРОЙКИ СКРИПТА ====== можно менять по необходимости ======
@@ -54,7 +54,7 @@ function Run() {
     // 4 - Обрамить фигурными скобками {34}
     // 5 - Обрамить квадратными скобками с тильдами [~34~]
     // 6 - Обрамить фигурными скобками с тильдами {~34~}
-    var formatMode = 3;
+    var formatMode = 0;
 
     // Использовать другие маркеры, если звёздочки или решётки уже есть в документе:
     // 0 - нет, только предупредить и завершить
@@ -627,47 +627,32 @@ function Run() {
         return;
     }
 
+    // ==================================================
+    // ОПРЕДЕЛЕНИЕ ВЫДЕЛЕНИЯ (исправленный метод)
+    // ==================================================
+
     var hasSelection = false;
-    var selectionElements = [];
-    var blockStartEl = null;
-    var blockEndEl = null;
+    var selectionRange = null;
 
     try {
-        var tr = document.selection.createRange();
-        if (tr && tr.compareEndPoints("StartToEnd", tr) != 0) {
-            if (tr.parentElement().nodeName != "TEXTAREA" && tr.parentElement().nodeName != "INPUT") {
-                hasSelection = true;
-
-                var tr3 = document.selection.createRange();
-                tr3.collapse(true);
-                blockStartEl = tr3.parentElement();
-                tr3 = document.selection.createRange();
-                tr3.collapse(false);
-                blockEndEl = tr3.parentElement();
-
-                function getNextNode(el) {
-                    if (el.firstChild && el.nodeName != "P")
-                        el = el.firstChild;
-                    else {
-                        while (el && !el.nextSibling)
-                            el = el.parentNode;
-                        if (el && el.nextSibling) el = el.nextSibling;
+        var sel = document.selection;
+        if (sel && sel.type && sel.type == "Text") {
+            var tr = sel.createRange();
+            if (tr && tr.compareEndPoints("StartToEnd", tr) != 0) {
+                var parentEl = tr.parentElement();
+                if (parentEl && parentEl.nodeName != "TEXTAREA" && parentEl.nodeName != "INPUT") {
+                    var checkEl = parentEl;
+                    var insideFbwBody = false;
+                    var depth = 0;
+                    while (checkEl && depth < 100) {
+                        depth++;
+                        if (checkEl === fbw_body) { insideFbwBody = true; break; }
+                        checkEl = checkEl.parentNode;
                     }
-                    return el;
-                }
-
-                function getNextP(el) {
-                    var savedEl = el;
-                    while (el && (el.nodeName != "P" || el == savedEl))
-                        el = getNextNode(el);
-                    return el;
-                }
-
-                var ptr = blockStartEl;
-                while (ptr && fbw_body.contains(ptr)) {
-                    selectionElements.push(ptr);
-                    if (ptr === blockEndEl) break;
-                    ptr = getNextP(ptr);
+                    if (insideFbwBody) {
+                        hasSelection = true;
+                        selectionRange = tr.duplicate();
+                    }
                 }
             }
         }
@@ -704,11 +689,20 @@ function Run() {
     var paragraphsToProcess = [];
 
     if (hasSelection) {
-        for (var e = 0; e < selectionElements.length; e++) {
-            var el = selectionElements[e];
-            if (el.nodeName == "P") {
-                paragraphsToProcess.push(el);
-            }
+        // Исправленный метод: собираем все P в fbw_body и проверяем пересечение с выделением
+        var allPElements = fbw_body.getElementsByTagName("P");
+        for (var ap = 0; ap < allPElements.length; ap++) {
+            var pEl = allPElements[ap];
+            try {
+                if (!pEl || !fbw_body.contains(pEl)) continue;
+                var pRange = document.body.createTextRange();
+                pRange.moveToElementText(pEl);
+                var comp1 = selectionRange.compareEndPoints("StartToEnd", pRange);
+                var comp2 = selectionRange.compareEndPoints("EndToStart", pRange);
+                if (comp1 < 0 && comp2 > 0) {
+                    paragraphsToProcess.push(pEl);
+                }
+            } catch (e2) {}
         }
     } else {
         var bodyDivs = document.getElementsByTagName("DIV");
