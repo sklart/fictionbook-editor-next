@@ -971,10 +971,10 @@
 			MSHTML::IHTMLStyleElementPtr styleElement(style);
 			MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
 			CString css(sheet ? static_cast<LPCWSTR>(sheet->cssText) : L""); css.MakeLower();
-			CString expectedForeground, expectedBackground;
-			expectedForeground.Format(L"#%02x%02x%02x", GetRValue(expectedForeground), GetGValue(expectedForeground), GetBValue(expectedForeground));
-			expectedBackground.Format(L"#%02x%02x%02x", GetRValue(expectedBackground), GetGValue(expectedBackground), GetBValue(expectedBackground));
-			append(name, previewAndSwatches && css.Find(expectedForeground) >= 0 && css.Find(expectedBackground) >= 0);
+			CString expectedForegroundCss, expectedBackgroundCss;
+			expectedForegroundCss.Format(L"#%02x%02x%02x", GetRValue(expectedForeground), GetGValue(expectedForeground), GetBValue(expectedForeground));
+			expectedBackgroundCss.Format(L"#%02x%02x%02x", GetRValue(expectedBackground), GetGValue(expectedBackground), GetBValue(expectedBackground));
+			append(name, previewAndSwatches && css.Find(expectedForegroundCss) >= 0 && css.Find(expectedBackgroundCss) >= 0);
 			page.DestroyWindow();
 		};
 		verifyAutomaticPair("dark-white-background-auto-text", INTERFACE_THEME_DARK, L"none", L"", CLR_DEFAULT, RGB(255, 255, 255), RGB(0, 0, 0), RGB(255, 255, 255));
@@ -1113,6 +1113,20 @@
 			actual != CLR_INVALID && abs(GetRValue(actual)) <= 3 && abs(GetGValue(actual)) <= 3 && abs(GetBValue(actual) - 255) <= 3;
 		allPassed = allPassed && reloaded; CStringA cacheRow; cacheRow.Format("same-path-reload\t%d\t%06lx\t%06lx\r\n", reloaded ? 1 : 0, static_cast<unsigned long>(actual), static_cast<unsigned long>(RGB(0, 0, 255))); report += cacheRow;
 		if(cacheWindow) cachePage.DestroyWindow();
+		const CString retryPath = CString(directory) + L"\\alpha-cache-retry.png";
+		HANDLE damaged = ::CreateFile(retryPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		DWORD damagedBytes = 0; const char invalidPng[] = "not a png";
+		const bool damagedWritten = damaged != INVALID_HANDLE_VALUE && ::WriteFile(damaged, invalidPng, sizeof(invalidPng), &damagedBytes, NULL) != FALSE;
+		if(damaged != INVALID_HANDLE_VALUE) ::CloseHandle(damaged);
+		_Settings.SetEditorBackgroundCustomPath(retryPath);
+		CSettingsEditorPage retryPage; const HWND retryWindow = retryPage.Create(m_hWnd);
+		const bool firstLoadFailed = damagedWritten && retryPage.m_cachedBackgroundLoadCount == 1 && retryPage.m_cachedBackgroundBitmap == NULL && !retryPage.m_cachedBackgroundValid;
+		const bool repaired = saveOpaque(retryPath, 0xFF0000FF);
+		retryPage.UpdateBackgroundPreview();
+		const bool retryLoaded = retryWindow && firstLoadFailed && repaired && retryPage.m_cachedBackgroundLoadCount == 2 &&
+			retryPage.m_cachedBackgroundBitmap != NULL && retryPage.m_cachedBackgroundHasAlpha && retryPage.m_cachedBackgroundValid;
+		allPassed = allPassed && retryLoaded; CStringA retryRow; retryRow.Format("same-path-retry-after-failure\t%d\t%d\t%d\r\n", retryLoaded ? 1 : 0, firstLoadFailed ? 1 : 0, retryPage.m_cachedBackgroundLoadCount); report += retryRow;
+		if(retryWindow) retryPage.DestroyWindow();
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); ::PostQuitMessage(allPassed ? 0 : 1); return 0;
 	}
