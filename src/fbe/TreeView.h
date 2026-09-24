@@ -141,6 +141,14 @@ public:
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	void SetScriptMode(bool value);
 	bool IsScriptMode() const { return m_script_mode; }
+	// Runtime regression probes: expose the rendered navigation state without
+	// giving callers ownership of the native tree or its image list.
+	HTREEITEM FindScriptTreeItem(const CString& relativePath) const;
+	bool HasScriptTreeParent(const CString& relativePath, const CString& parentRelativePath) const;
+	size_t ScriptTreeNodeCount() const { return m_script_nodes.size(); }
+	int ScriptImageCount() const { return m_ImageList.GetImageCount(); }
+	bool IsStructuralDragActive() const { return m_drag; }
+	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 
   CTreeItem GetMoveElementFrom(){m_move_from.m_pTreeView = this; return m_move_from;}
   CTreeItem GetMoveElementTo(){m_move_to.m_pTreeView = this;return m_move_to;}

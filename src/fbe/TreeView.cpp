@@ -769,6 +769,27 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 
 void CTreeView::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars) { m_script_toolbars = toolbars; }
 
+HTREEITEM CTreeView::FindScriptTreeItem(const CString& relativePath) const
+{
+	for(std::map<HTREEITEM, size_t>::const_iterator it = m_script_nodes.begin(); it != m_script_nodes.end(); ++it)
+		if(it->second < m_script_items.size() && m_script_items[it->second].relativePath == relativePath) return it->first;
+	return NULL;
+}
+
+bool CTreeView::HasScriptTreeParent(const CString& relativePath, const CString& parentRelativePath) const
+{
+	const HTREEITEM item = FindScriptTreeItem(relativePath);
+	const HTREEITEM parent = FindScriptTreeItem(parentRelativePath);
+	return item != NULL && parent != NULL && GetParentItem(item) == parent;
+}
+
+bool CTreeView::HasScriptToolbarTarget(const CString& id, const CString& name) const
+{
+	for(size_t index = 0; index < m_script_toolbars.size(); ++index)
+		if(m_script_toolbars[index].id == id && m_script_toolbars[index].name == name) return true;
+	return false;
+}
+
 void CTreeView::SetScriptMode(bool value)
 {
 	if(m_script_mode == value) return;

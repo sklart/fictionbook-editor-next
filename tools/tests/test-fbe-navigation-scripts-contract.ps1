@@ -22,6 +22,7 @@ Must $tree 'TPM_RETURNCMD' 'popup returns local commands without global routing'
 Must $tree 'enum NavigationPopupCommand' 'popup IDs are local enum values'
 if($tree -match '57600|kNavigationPopupFirst|kNavigationPopupLast') { throw 'Navigation popup must not reserve global resource IDs.' }
 Must $tree 'PrepareScriptImages\(\)' 'visual mapping is prepared outside tree rebuild'
+Must $treeHeader 'ScriptImageCount\(\)' 'runtime probe reads the native image-list count without owning it'
 if($tree -match 'void CTreeView::BuildScriptChildren\([\s\S]*?\n\}') { if($Matches[0] -match 'AddIcon\(|AddImage\(') { throw 'Tree rebuild must not append image-list slots.' } }
 Must $tree 'visual\.icon != NULL' 'ICO visual snapshot is supported'
 Must $tree 'visual\.bitmap != NULL' 'BMP visual snapshot is supported'
@@ -44,6 +45,9 @@ Must $resource 'ID_DOCUMENT_TREE_MODE_SCRIPTS\s+57601' 'mode scripts resource ID
 if($documentTree -match '57872|57873') { throw 'Navigation mode commands must not use magic numbers.' }
 if($tree -match 'ID_SCRIPT_BASE \+ 999') { throw 'Navigation code must use ScriptCommandCount rather than a duplicated capacity.' }
 Must $settings 'DOCUMENT_TREE_SCRIPTS_KEY' 'settings schema persists navigation mode'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'navigation-scripts-runtime' 'runtime scenario exercises the native navigation tree'
+Must (Text 'tools\build\verify-release.ps1') 'test-fbe-navigation-scripts-runtime\.ps1' 'release gate runs navigation runtime regression'
+Must (Text '.github\workflows\build.yml') 'test-fbe-navigation-scripts-runtime\.ps1' 'CI runs navigation runtime regression'
 foreach($key in @('fbe.document_tree.mode.caption', 'fbe.document_tree.scripts.run', 'fbe.document_tree.scripts.add_to_toolbar', 'fbe.document_tree.scripts.open_location')) {
     Must $localization ('"' + [regex]::Escape($key) + '"') "localized $key"
 }

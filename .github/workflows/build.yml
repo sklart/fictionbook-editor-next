@@ -120,6 +120,11 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-script-toolbar-lifecycle-runtime.ps1 -FbeExe out/Release/FBE.exe -IncludeInstalled
+      - name: Run navigation scripts runtime regression
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-fbe-navigation-scripts-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Run keyboard layout C++ regression
         shell: pwsh
         run: |
