@@ -1123,9 +1123,24 @@
 		const bool firstLoadFailed = damagedWritten && retryPage.m_cachedBackgroundLoadCount == 1 && retryPage.m_cachedBackgroundBitmap == NULL && !retryPage.m_cachedBackgroundValid;
 		const bool repaired = saveOpaque(retryPath, 0xFF0000FF);
 		retryPage.UpdateBackgroundPreview();
+		retryPage.m_backgroundPreview.m_text.Empty();
+		RECT retryRect = {}; retryPage.m_backgroundPreview.GetClientRect(&retryRect);
+		const int retryWidth = retryRect.right - retryRect.left, retryHeight = retryRect.bottom - retryRect.top;
+		HDC retryScreen = ::GetDC(NULL), retryMemory = retryScreen ? ::CreateCompatibleDC(retryScreen) : NULL;
+		HBITMAP retryCanvas = retryScreen && retryWidth > 0 && retryHeight > 0 ? ::CreateCompatibleBitmap(retryScreen, retryWidth, retryHeight) : NULL;
+		COLORREF retryPixel = CLR_INVALID;
+		if(retryMemory && retryCanvas)
+		{
+			HGDIOBJ old = ::SelectObject(retryMemory, retryCanvas);
+			retryPage.m_backgroundPreview.PaintPreview(retryMemory, retryRect);
+			retryPixel = ::GetPixel(retryMemory, retryWidth / 2, retryHeight / 2);
+			::SelectObject(retryMemory, old);
+		}
+		if(retryCanvas) ::DeleteObject(retryCanvas); if(retryMemory) ::DeleteDC(retryMemory); if(retryScreen) ::ReleaseDC(NULL, retryScreen);
 		const bool retryLoaded = retryWindow && firstLoadFailed && repaired && retryPage.m_cachedBackgroundLoadCount == 2 &&
-			retryPage.m_cachedBackgroundBitmap != NULL && retryPage.m_cachedBackgroundHasAlpha && retryPage.m_cachedBackgroundValid;
-		allPassed = allPassed && retryLoaded; CStringA retryRow; retryRow.Format("same-path-retry-after-failure\t%d\t%d\t%d\r\n", retryLoaded ? 1 : 0, firstLoadFailed ? 1 : 0, retryPage.m_cachedBackgroundLoadCount); report += retryRow;
+			retryPage.m_cachedBackgroundBitmap != NULL && retryPage.m_cachedBackgroundHasAlpha && retryPage.m_cachedBackgroundValid &&
+			retryPixel != CLR_INVALID && abs(GetRValue(retryPixel)) <= 3 && abs(GetGValue(retryPixel)) <= 3 && abs(GetBValue(retryPixel) - 255) <= 3;
+		allPassed = allPassed && retryLoaded; CStringA retryRow; retryRow.Format("same-path-retry-after-failure\t%d\t%06lx\t%06lx\r\n", retryLoaded ? 1 : 0, static_cast<unsigned long>(retryPixel), static_cast<unsigned long>(RGB(0, 0, 255))); report += retryRow;
 		if(retryWindow) retryPage.DestroyWindow();
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); ::PostQuitMessage(allPassed ? 0 : 1); return 0;
