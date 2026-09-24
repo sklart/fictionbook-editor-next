@@ -6,6 +6,7 @@ on:
     paths:
       - "runtime/**/*.js"
       - "runtime/**/*.html"
+      - "runtime/**/*.htm"
       - "tools/lint-scripts/**"
       - "eslint.config.js"
       - "package.json"
@@ -15,6 +16,7 @@ on:
     paths:
       - "runtime/**/*.js"
       - "runtime/**/*.html"
+      - "runtime/**/*.htm"
       - "tools/lint-scripts/**"
       - "eslint.config.js"
       - "package.json"

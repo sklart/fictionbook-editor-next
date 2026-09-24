@@ -1400,6 +1400,13 @@
     "occurrence": 1
   },
   {
+    "file": "runtime/HTML/Разметить заголовки разделов согласно оглавлению документа - основной диалог.htm",
+    "ruleId": null,
+    "message": "Parsing error: Unexpected token else",
+    "sourceContext": "else {",
+    "occurrence": 1
+  },
+  {
     "file": "runtime/HTML/Разметка подписей к иллюстрациям.html",
     "ruleId": "no-redeclare",
     "message": "'aa' is already defined.",
@@ -1600,6 +1607,181 @@
     "ruleId": "no-undef",
     "message": "'сhangePos' is not defined.",
     "sourceContext": "сhangePos=tt.offset;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски из выделенных абзацев - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "dialogHeight=\"640px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски из выделенных абзацев - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски из выделенных абзацев - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски из выделенных абзацев - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "dialogWidth=\"700px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски из выделенных абзацев - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски из выделенных абзацев - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски из выделенных абзацев - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'upperIndex1' is not defined.",
+    "sourceContext": "upperIndex1=true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных звездочками - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "dialogHeight=\"640px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных звездочками - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных звездочками - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных звездочками - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "dialogWidth=\"700px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных звездочками - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных звездочками - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных звездочками - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'upperIndex1' is not defined.",
+    "sourceContext": "upperIndex1=true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками карет - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "dialogHeight=\"640px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками карет - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных знаками карет - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками карет - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "dialogWidth=\"700px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками карет - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных знаками карет - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками карет - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'upperIndex1' is not defined.",
+    "sourceContext": "upperIndex1=true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками решетки - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "dialogHeight=\"640px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками решетки - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных знаками решетки - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками решетки - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "dialogWidth=\"700px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками решетки - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных знаками решетки - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных знаками решетки - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'upperIndex1' is not defined.",
+    "sourceContext": "upperIndex1=true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных маркерами - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "dialogHeight=\"640px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных маркерами - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogHeight' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных маркерами - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных маркерами - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "dialogWidth=\"700px\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных маркерами - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'dialogWidth' is not defined.",
+    "sourceContext": "var msgWindow = window.open(\"Создать сноски или комментарии из абзацев, помеченных маркерами - показ текстов сносок.htm\",null,\"height=\"+dialogHeight+\",width=\"+dialogWidth+\",status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/HTML/Создать сноски или комментарии из абзацев, помеченных маркерами - задание параметров.htm",
+    "ruleId": "no-undef",
+    "message": "'upperIndex1' is not defined.",
+    "sourceContext": "upperIndex1=true;",
     "occurrence": 1
   },
   {
@@ -11326,6 +11508,153 @@
     "occurrence": 1
   },
   {
+    "file": "runtime/Scripts/02_Примечания/47_Объединить разделы сносок и комментариев.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < commentsChildren.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/47_Объединить разделы сносок и комментариев.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < notesChildren.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'found' is already defined.",
+    "sourceContext": "var found = false;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'found' is already defined.",
+    "sourceContext": "var found = false;",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < allCommentIds.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < allLinks.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < allNoteIds.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < commentsSections.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < missingIds.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < notesSections.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < orderedIds.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < orderedIds.length; i++) {",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < orderedIds.length; i++) {",
+    "occurrence": 3
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < unusedIds.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'id' is already defined.",
+    "sourceContext": "var id = allCommentIds[i];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'id' is already defined.",
+    "sourceContext": "var id = allNoteIds[i];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'id' is already defined.",
+    "sourceContext": "var id = orderedIds[i];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'id' is already defined.",
+    "sourceContext": "var id = orderedIds[i];",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'j' is already defined.",
+    "sourceContext": "for (var j = 0; j < orderedIds.length; j++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'j' is already defined.",
+    "sourceContext": "for (var j = 0; j < orderedIds.length; j++) {",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/02_Примечания/48_Объединить разделы сносок и комментариев по порядку.js",
+    "ruleId": "no-redeclare",
+    "message": "'secId' is already defined.",
+    "sourceContext": "var secId = commentsSections[i].getAttribute(\"id\") || \"\";",
+    "occurrence": 1
+  },
+  {
     "file": "runtime/Scripts/03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
     "ruleId": null,
     "message": "Parsing error: Assigning to rvalue",
@@ -15675,8 +16004,8 @@
   {
     "file": "runtime/Scripts/05_Иллюстрации/32_Расставить подписи к иллюстрациям из выделенного фрагмента.js",
     "ruleId": null,
-    "message": "Parsing error: The keyword 'char' is reserved",
-    "sourceContext": "var char = html.charAt(i);",
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyLineBefore) = true;",
     "occurrence": 1
   },
   {
@@ -16782,35 +17111,21 @@
     "file": "runtime/Scripts/05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
     "ruleId": "no-redeclare",
     "message": "'div' is already defined.",
-    "sourceContext": "var div = allDivs[i];",
+    "sourceContext": "var div = allDivs[d];",
     "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
     "ruleId": "no-redeclare",
-    "message": "'div' is already defined.",
-    "sourceContext": "var div = divs[i];",
+    "message": "'fbname' is already defined.",
+    "sourceContext": "var fbname = bodyElement.getAttribute(\"fbname\") || \"\";",
     "occurrence": 1
   },
   {
     "file": "runtime/Scripts/05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
     "ruleId": "no-redeclare",
-    "message": "'extIdx' is already defined.",
-    "sourceContext": "for (var extIdx = 0; extIdx < supportedExtensions.length; extIdx++) {",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
-    "ruleId": "no-redeclare",
-    "message": "'i' is already defined.",
-    "sourceContext": "for (var i = 0; i < allDivs.length; i++) {",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
-    "ruleId": "no-redeclare",
-    "message": "'p' is already defined.",
-    "sourceContext": "for (var p = 0; p < possiblePrefixes.length; p++) {",
+    "message": "'section' is already defined.",
+    "sourceContext": "var section = targetSections[s];",
     "occurrence": 1
   },
   {
@@ -17054,6 +17369,20 @@
   {
     "file": "runtime/Scripts/05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.js",
     "ruleId": "no-redeclare",
+    "message": "'d' is already defined.",
+    "sourceContext": "for (var d = 0; d < allDivs.length; d++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'file' is already defined.",
+    "sourceContext": "var file = fsoWriter.CreateTextFile(fullPath, true, true);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.js",
+    "ruleId": "no-redeclare",
     "message": "'found' is already defined.",
     "sourceContext": "var found = findTextInElement(children[i], direction);",
     "occurrence": 1
@@ -17133,6 +17462,13 @@
     "ruleId": "no-redeclare",
     "message": "'s' is already defined.",
     "sourceContext": "for (var s = 0; s < shortParagraphs.length; s++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/48_Создать реперную карту fb2 документа для переноса иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'tempFile' is already defined.",
+    "sourceContext": "var tempFile = \"C:\\\\__fbe_path_result.txt\";",
     "occurrence": 1
   },
   {
@@ -17448,6 +17784,251 @@
     "ruleId": "no-self-assign",
     "message": "'mImg[n].outerHTML' is assigned to itself.",
     "sourceContext": "mImg[n].outerHTML=mImg[n].outerHTML; // для обновления имени в дереве структуры FBE",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/52_Вставить любые иллюстрации в началах и концах секций.js",
+    "ruleId": null,
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(p) = true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/53_Вставить N пустых блочных иллюстраций подряд по месту курсора.js",
+    "ruleId": null,
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(p) = true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'bin' is already defined.",
+    "sourceContext": "var bin = binaries[b];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'colorStr' is already defined.",
+    "sourceContext": "var colorStr = (pf.colorModel != \"\") ? pf.colorModel : \"\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'colorStr' is already defined.",
+    "sourceContext": "var colorStr = ecf.colorModel;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'colorStr' is already defined.",
+    "sourceContext": "var colorStr = gaf.colorModel;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'colorStr' is already defined.",
+    "sourceContext": "var colorStr = raf.colorModel;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'dpiStr' is already defined.",
+    "sourceContext": "var dpiStr = \"неизвестно\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'dpiStr' is already defined.",
+    "sourceContext": "var dpiStr = \"неизвестно\";",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'dpiStr' is already defined.",
+    "sourceContext": "var dpiStr = \"неизвестно\";",
+    "occurrence": 3
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'dpiStr' is already defined.",
+    "sourceContext": "var dpiStr = (pf.dpi > 0) ? pf.dpi + \" dpi\" : \"dpi неизвестно\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'hexData' is already defined.",
+    "sourceContext": "var hexData = getFileHexViaPowerShell(savedPath, 2000);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < problemFiles.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'pf' is already defined.",
+    "sourceContext": "var pf = problemFiles[i];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'pf' is already defined.",
+    "sourceContext": "var pf = problemFiles[p];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'sizeStr' is already defined.",
+    "sourceContext": "var sizeStr = formatFileSize(ecf.size);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'sizeStr' is already defined.",
+    "sourceContext": "var sizeStr = formatFileSize(gaf.size);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'sizeStr' is already defined.",
+    "sourceContext": "var sizeStr = formatFileSize(pf.size);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/54_Проверить качество иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'sizeStr' is already defined.",
+    "sourceContext": "var sizeStr = formatFileSize(raf.size);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/56_Вынести инлайн иллюстрации из заголовков.js",
+    "ruleId": null,
+    "message": "Parsing error: Assigning to rvalue",
+    "sourceContext": "window.external.inflateBlock(emptyP) = true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/57_Перейти на предыдущую пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/57_Перейти на предыдущую пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/58_Перейти на следующую пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/58_Перейти на следующую пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/59_Перейти на предыдущую НЕ-пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/59_Перейти на предыдущую НЕ-пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/60_Перейти на следующую НЕ-пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/60_Перейти на следующую НЕ-пустую 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/61_Перейти на предыдущую битую или ошибочную 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/61_Перейти на предыдущую битую или ошибочную 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/62_Перейти на следующую битую или ошибочную 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/62_Перейти на следующую битую или ошибочную 'блочную' иллюстрацию.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/63_Проверить ссылки 'блочных' иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < allDivs.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/63_Проверить ссылки 'блочных' иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "var nbspChar = String.fromCharCode(160);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/05_Иллюстрации/63_Проверить ссылки 'блочных' иллюстраций.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "var nbspEntity = \"&nbsp;\";",
     "occurrence": 1
   },
   {
@@ -17847,6 +18428,132 @@
     "ruleId": "no-undef",
     "message": "'historyChange' is not defined.",
     "sourceContext": "var mR = historyChange(ScriptName, NumerusVersion_, myName, nbspEntity); // Запускаем функцию изменения версии и истории файла, и получаем результаты:",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-redeclare",
+    "message": "'count_09' is already defined.",
+    "sourceContext": "var count_09 = 0;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "!(SaveNext.nodeName==\"DIV\" &&",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "((SaveNext.className==\"history\" && !ObrabotkaHistory) ||",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "(SaveNext.className==\"annotation\" && !ObrabotkaAnnotation))))",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "{ SaveNext=SaveNext.firstChild; } // либо углубляемся...",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "{ SaveNext=SaveNext.firstChild; } // либо углубляемся...",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "if (SaveNext.firstChild!=null && SaveNext.nodeName!=\"P\" &&",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "if (SaveNext.firstChild!=null && SaveNext.nodeName!=\"P\" &&",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "if (SaveNext==body) {ProcessingEnding=true;}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "ptr=SaveNext;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=ptr;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.nextSibling; //и переходим на соседний элемент",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.nextSibling; //и переходим на соседний элемент",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.parentNode; // ...либо поднимаемся (если уже сходили вглубь)",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.parentNode; // ...либо поднимаемся (если уже сходили вглубь)",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/02_Генеральная уборка.js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "while (SaveNext.nextSibling==null) {",
     "occurrence": 1
   },
   {
@@ -126567,6 +127274,132 @@
     "occurrence": 1
   },
   {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-redeclare",
+    "message": "'count_09' is already defined.",
+    "sourceContext": "var count_09 = 0;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "!(SaveNext.nodeName==\"DIV\" &&",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "((SaveNext.className==\"history\" && !ObrabotkaHistory) ||",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "(SaveNext.className==\"annotation\" && !ObrabotkaAnnotation))))",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "{ SaveNext=SaveNext.firstChild; } // либо углубляемся...",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "{ SaveNext=SaveNext.firstChild; } // либо углубляемся...",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "if (SaveNext.firstChild!=null && SaveNext.nodeName!=\"P\" &&",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "if (SaveNext.firstChild!=null && SaveNext.nodeName!=\"P\" &&",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "if (SaveNext==body) {ProcessingEnding=true;}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "ptr=SaveNext;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=ptr;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.nextSibling; //и переходим на соседний элемент",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.nextSibling; //и переходим на соседний элемент",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.parentNode; // ...либо поднимаемся (если уже сходили вглубь)",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "SaveNext=SaveNext.parentNode; // ...либо поднимаемся (если уже сходили вглубь)",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",
+    "ruleId": "no-undef",
+    "message": "'SaveNext' is not defined.",
+    "sourceContext": "while (SaveNext.nextSibling==null) {",
+    "occurrence": 1
+  },
+  {
     "file": "runtime/Scripts/06_Чистка/10_Точка..js",
     "ruleId": "no-redeclare",
     "message": "'nbspChar' is already defined.",
@@ -131024,6 +131857,76 @@
     "message": "'strongElement' is already defined.",
     "sourceContext": "var strongElement = document.createElement(\"STRONG\");",
     "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'endIndex' is already defined.",
+    "sourceContext": "var endIndex;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'flag' is already defined.",
+    "sourceContext": "var flag = true;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'isLastBeforeNextParent' is already defined.",
+    "sourceContext": "var isLastBeforeNextParent = (s == endIndex - 1);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'isTypicalChild' is already defined.",
+    "sourceContext": "var isTypicalChild = matchesTitleType(sectionTitle, childPrefix);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'lowerTitle' is already defined.",
+    "sourceContext": "var lowerTitle = toLowerCaseStr(titleText);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'parentIndex' is already defined.",
+    "sourceContext": "var parentIndex = parentIndices[pi];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'pi' is already defined.",
+    "sourceContext": "for (var pi = 0; pi < parentIndices.length; pi++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'s' is already defined.",
+    "sourceContext": "for (var s = parentIndex + 1; s < endIndex; s++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'section' is already defined.",
+    "sourceContext": "var section = topSections[s];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/08_Структура разделов/56_Произвести вложенность однотипных разделов.js",
+    "ruleId": "no-redeclare",
+    "message": "'sectionTitle' is already defined.",
+    "sourceContext": "var sectionTitle = getSectionTitleText(section);",
+    "occurrence": 1
   },
   {
     "file": "runtime/Scripts/09_Стихи/01_Объединить выделенные подряд идущие стихи в один стих.js",
@@ -201908,6 +202811,55 @@
     "occurrence": 1
   },
   {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'allP' is already defined.",
+    "sourceContext": "var allP = targetBodies[tb].getElementsByTagName(\"P\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'ap' is already defined.",
+    "sourceContext": "for (var ap = 0; ap < allP.length; ap++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'ap' is already defined.",
+    "sourceContext": "for (var ap = 0; ap < allP.length; ap++) {",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'nodeMap' is already defined.",
+    "sourceContext": "var nodeMap = data.textNodes;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'r' is already defined.",
+    "sourceContext": "for (var r = 0; r < replacements.length; r++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'replacements' is already defined.",
+    "sourceContext": "var replacements = data.replacements;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/21_Поиск и замена/91_Расставить потерянные внутриабзацные многоточия.js",
+    "ruleId": "no-redeclare",
+    "message": "'tn' is already defined.",
+    "sourceContext": "for (var tn = 0; tn < nodeMap.length; tn++) {",
+    "occurrence": 1
+  },
+  {
     "file": "runtime/Scripts/21_Поиск и замена/95_Создать таблицу межсловных тире-дефисов (с переходом).js",
     "ruleId": "no-redeclare",
     "message": "'i' is already defined.",
@@ -208987,6 +209939,20 @@
   {
     "file": "runtime/Scripts/32_Маркеры сносок/75_Числа в началах абзацев - в маркеры текстов сносок (МТС).js",
     "ruleId": "no-redeclare",
+    "message": "'allPElements' is already defined.",
+    "sourceContext": "var allPElements = fbw_body.getElementsByTagName(\"P\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/75_Числа в началах абзацев - в маркеры текстов сносок (МТС).js",
+    "ruleId": "no-redeclare",
+    "message": "'ap' is already defined.",
+    "sourceContext": "for (var ap = 0; ap < allP.length; ap++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/75_Числа в началах абзацев - в маркеры текстов сносок (МТС).js",
+    "ruleId": "no-redeclare",
     "message": "'b' is already defined.",
     "sourceContext": "for (var b = 0; b < numStartInNode; b++) {",
     "occurrence": 1
@@ -209013,6 +209979,13 @@
     "occurrence": 1
   },
   {
+    "file": "runtime/Scripts/32_Маркеры сносок/75_Числа в началах абзацев - в маркеры текстов сносок (МТС).js",
+    "ruleId": "no-redeclare",
+    "message": "'pEl' is already defined.",
+    "sourceContext": "var pEl = allPElements[ap];",
+    "occurrence": 1
+  },
+  {
     "file": "runtime/Scripts/32_Маркеры сносок/76_Посчитать маркеры знаков сносок (МЗС).js",
     "ruleId": "no-redeclare",
     "message": "'elapsed' is already defined.",
@@ -209031,6 +210004,272 @@
     "ruleId": "no-redeclare",
     "message": "'timeStr' is already defined.",
     "sourceContext": "var timeStr = elapsed.toFixed(3).replace(\".\", \",\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/79_Посчитать абзацы в выделении.js",
+    "ruleId": "no-redeclare",
+    "message": "'foundDigit' is already defined.",
+    "sourceContext": "var foundDigit = false;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/80_Разметить многоабзацные тексты будущих сносок маркерами.js",
+    "ruleId": "no-redeclare",
+    "message": "'ap' is already defined.",
+    "sourceContext": "for (var ap = 0; ap < allP.length; ap++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/80_Разметить многоабзацные тексты будущих сносок маркерами.js",
+    "ruleId": "no-redeclare",
+    "message": "'foundDigit' is already defined.",
+    "sourceContext": "var foundDigit = false;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/80_Разметить многоабзацные тексты будущих сносок маркерами.js",
+    "ruleId": "no-redeclare",
+    "message": "'i' is already defined.",
+    "sourceContext": "for (var i = 0; i < paraData.length; i++) {",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/80_Разметить многоабзацные тексты будущих сносок маркерами.js",
+    "ruleId": "no-redeclare",
+    "message": "'pElement' is already defined.",
+    "sourceContext": "var pElement = data.element;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'foundLen' is already defined.",
+    "sourceContext": "var pNode,foundPos,foundLen;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspChar' is already defined.",
+    "sourceContext": "try { var nbspChar=window.external.GetNBSP(); var nbspEntity; if (nbspChar.charCodeAt(0)==160) nbspEntity=\"&nbsp;\"; else nbspEntity=nbspChar;}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "catch(e) { var nbspChar=String.fromCharCode(160); var nbspEntity=\"&nbsp;\";}",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'nbspEntity' is already defined.",
+    "sourceContext": "try { var nbspChar=window.external.GetNBSP(); var nbspEntity; if (nbspChar.charCodeAt(0)==160) nbspEntity=\"&nbsp;\"; else nbspEntity=nbspChar;}",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'re' is already defined.",
+    "sourceContext": "var tr,tr2,el,el2,el3,myIndex,s,s_html,s1_len,ignoreNullPosition,desc,rslt,newPos,re,macrosRE;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'rslt' is already defined.",
+    "sourceContext": "var fbwBody,tmpNode,s1WithTagsRemoved,s2WithTagsRemoved,minPos,minHtmlPos,currPos,i,rslt,foundLen;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'rslt' is already defined.",
+    "sourceContext": "var tr,tr2,el,el2,el3,myIndex,s,s_html,s1_len,ignoreNullPosition,desc,rslt,newPos,re,macrosRE;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'s_len' is already defined.",
+    "sourceContext": "var s_len;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-redeclare",
+    "message": "'sel' is already defined.",
+    "sourceContext": "var sel=document.selection;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'macrosRE_' is not defined.",
+    "sourceContext": "macroses[macrosName.toLowerCase()]=\"(\"+macrosRE_.replace(/ /g,nbspChar).replace(find_xA0,replaceA0)+\")\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'macrosRE_' is not defined.",
+    "sourceContext": "macrosRE_=macrosRE.replace(macrosNameRE_2,replaceMacroses);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'macrosRE_' is not defined.",
+    "sourceContext": "re=new RegExp(\"(\"+macrosRE_.replace(/ /g,nbspChar).replace(find_xA0,replaceA0)+\")\",\"g\");",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'posit' is not defined.",
+    "sourceContext": "posit[lookBehCnt]=re_.substr(begin,4)==\"(?<=\";",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'posit' is not defined.",
+    "sourceContext": "posit[lookBehCnt]=re_.substr(begin,4)==\"(?<=\";",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'posit' is not defined.",
+    "sourceContext": "posit=[];",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'posit' is not defined.",
+    "sourceContext": "posit=[];",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'posit' is not defined.",
+    "sourceContext": "positive[regExpCnt]=posit;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'posit' is not defined.",
+    "sourceContext": "positive[regExpCnt]=posit;",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'ptr' is not defined.",
+    "sourceContext": "el=ptr;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'ptr' is not defined.",
+    "sourceContext": "ptr=el;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'ptr' is not defined.",
+    "sourceContext": "ptr=el2;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'ptr' is not defined.",
+    "sourceContext": "s_html=ptr.innerHTML;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'ptr' is not defined.",
+    "sourceContext": "tr.moveToElementText(ptr);",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "if (ignoreNullPosition ? minPos==s1_html_len+1 : minPos==s1_html_len) break;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "if (ignoreNullPosition ? minPos==s1_html_len+1 : minPos==s1_html_len) break;",
+    "occurrence": 2
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "regExps[i].lastIndex=s1_html_len;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "s1_html_len=0;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "s1_html_len=k1;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "s1_html_len=s1_len2;",
+    "occurrence": 1
+  },
+  {
+    "file": "runtime/Scripts/32_Маркеры сносок/81_Найти абзацы одновременно с маркерами МЗС и МТС.js",
+    "ruleId": "no-undef",
+    "message": "'s1_html_len' is not defined.",
+    "sourceContext": "savedIndex=s1_html_len+(ignoreNullPosition?1:0);",
     "occurrence": 1
   },
   {

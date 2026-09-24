@@ -12,7 +12,7 @@ const writeBaseline = process.argv.includes("--write-baseline");
 const eslint = new ESLint({ cwd: root });
 const jsResults = await eslint.lintFiles(["runtime/**/*.js"]);
 const htmlPaths = readdirSync(path.join(root, "runtime"), { recursive: true, withFileTypes: true })
-  .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".html"))
+  .filter((entry) => entry.isFile() && /\.html?$/i.test(entry.name))
   .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name))
   .filter((filePath) => !/[/\\](generated|vendor)[/\\]/i.test(filePath));
 const inlineScripts = htmlPaths.flatMap((filePath) => extractInlineScripts(filePath));

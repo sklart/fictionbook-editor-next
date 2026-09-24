@@ -11,14 +11,14 @@ const source = [
   "</script>",
   "</html>"
 ].join("\n");
-const scripts = extractInlineScriptsFromSource("runtime/dialog.html", source);
+const scripts = extractInlineScriptsFromSource("runtime/dialog.htm", source);
 assert.equal(scripts.length, 1, "Внешний script src не должен извлекаться.");
 assert.equal(scripts[0].startLine, 3, "Диагностика inline script должна указывать строку HTML.");
 assert.equal(scripts[0].paddedCode.split("\n")[3], "var legacy = missing;", "Код должен сохранять исходный номер строки.");
 const eslint = new ESLint({
   overrideConfigFile: true,
   overrideConfig: [{
-    files: ["runtime/**/*.html"],
+    files: ["runtime/**/*.htm"],
     languageOptions: { ecmaVersion: 3, sourceType: "script" },
     rules: { "no-undef": "error" }
   }]

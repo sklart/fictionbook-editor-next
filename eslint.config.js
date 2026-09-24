@@ -15,7 +15,7 @@ export default [
     ]
   },
   {
-    files: ["runtime/**/*.js", "runtime/**/*.html"],
+    files: ["runtime/**/*.js", "runtime/**/*.html", "runtime/**/*.htm"],
     languageOptions: {
       ecmaVersion: 3,
       sourceType: "script",

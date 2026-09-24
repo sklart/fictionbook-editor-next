@@ -64,7 +64,7 @@
             if (ignored(file.Path)) continue;
             extension = fso.GetExtensionName(file.Name).toLowerCase();
             if (extension === "js") compile(file.Path, read(file.Path), "", 0);
-            if (extension === "html") checkHtml(file.Path);
+            if (extension === "html" || extension === "htm") checkHtml(file.Path);
         }
         for (; !folders.atEnd(); folders.moveNext()) {
             child = folders.item();
