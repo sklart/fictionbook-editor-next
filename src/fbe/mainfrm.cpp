@@ -2491,6 +2491,8 @@ bool CMainFrame::ApplyScriptToolbarRuntimeDelta(const std::vector<ScriptToolbarD
 			if(runtime.window == NULL) runtime.window = m_ScriptsToolbar;
 			if(old == NULL || old->visible != runtime.definition.visible)
 				if(!SetScriptToolbarRuntimeVisible(runtime, runtime.definition.visible)) return false;
+			if(old == NULL || !SameScriptToolbarItems(old->items, runtime.definition.items))
+				if(!PopulateScriptToolbarRuntime(runtime)) return false;
 			continue;
 		}
 		if(!runtime.definition.visible)
@@ -2529,6 +2531,39 @@ bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<P
 	if(!PortableToolbarStore::Save(layout)) return false;
 	if(ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(id)) runtime->definition.items = persisted;
 	return true;
+}
+
+bool CMainFrame::AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId)
+{
+	if(scriptUid.IsEmpty()) return false;
+	const ScriptDescriptor* script = NULL;
+	for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+		if(!m_scripts.Menu().Item(index).isFolder && m_scripts.Menu().Item(index).uid == scriptUid) { script = &m_scripts.Menu().Item(index); break; }
+	if(script == NULL) return false;
+	std::vector<ScriptToolbarDefinition> previous, current;
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) previous.push_back(m_scriptToolbars.Items()[index].definition);
+	current = previous;
+	for(size_t index = 0; index < current.size(); ++index)
+		if(current[index].id == toolbarId)
+		{
+			for(size_t item = 0; item < current[index].items.size(); ++item)
+				if(!current[index].items[item].separator && current[index].items[item].scriptUid == scriptUid) return true;
+			PortableToolbarItem item = {}; item.separator = false; item.command = 0; item.width = 0; item.relativePath = script->relativePath; item.scriptUid = scriptUid;
+			current[index].items.push_back(item);
+			return ApplyScriptToolbarDefinitions(previous, current);
+		}
+	return false;
+}
+
+void CMainFrame::RefreshNavigationScriptTree()
+{
+	std::vector<ScriptTreeToolbarTarget> toolbars;
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) {
+		ScriptTreeToolbarTarget target; target.id = m_scriptToolbars.Items()[index].definition.id; target.name = m_scriptToolbars.Items()[index].definition.name; toolbars.push_back(target);
+	}
+	m_document_tree.SetScriptCatalog(m_scripts.Menu().Items(), toolbars,
+		[this](const CString& uid, const CString& id) { AddScriptToToolbar(uid, id); },
+		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); });
 }
 
 void CMainFrame::RefreshScriptToolbarViewMenu()
@@ -2948,6 +2983,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 	ApplyMainRebarTheme(m_rebar);
 	ApplyRuntimeMainFrameMenuLocalization(mainMenu);
 	RefreshScriptToolbarViewMenu();
+	RefreshNavigationScriptTree();
 	return true;
 }
 

@@ -335,16 +335,19 @@ LRESULT CTreeWithToolBar::OnToolbarCustomDraw(int, LPNMHDR header, BOOL& bHandle
 
 void CTreeWithToolBar::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v)
 {
+	if(m_tree.IsScriptMode()) return;
 	m_tree.GetDocumentStructure(v);
 }
 
 void CTreeWithToolBar::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node)
 {
+	if(m_tree.IsScriptMode()) return;
 	m_tree.UpdateDocumentStructure(v, node);
 }
 
 void CTreeWithToolBar::HighlightItemAtPos(MSHTML::IHTMLElement *p)
 {
+	if(m_tree.IsScriptMode()) return;
 	m_tree.HighlightItemAtPos(p);
 }
 
@@ -367,6 +370,7 @@ void CTreeWithToolBar::FillViewBar()
 
 	m_st_menu = ::CreateMenu();	
 	m_script_menu = ::CreateMenu();
+	m_navigation_menu = ::CreateMenu();
 	HMENU bar = ::CreateMenu();
 
 
@@ -378,6 +382,12 @@ void CTreeWithToolBar::FillViewBar()
 
 	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_st_menu, elsMenuItem);
 	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_script_menu, scriptsMenuItem);
+	::AppendMenu(m_navigation_menu, MF_STRING | (_Settings.DocumentTreeScripts() ? MF_UNCHECKED : MF_CHECKED), ID_DOCUMENT_TREE_SHOW_STRUCTURE,
+		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.structure", L"Document structure"));
+	::AppendMenu(m_navigation_menu, MF_STRING | (_Settings.DocumentTreeScripts() ? MF_CHECKED : MF_UNCHECKED), ID_DOCUMENT_TREE_SHOW_SCRIPTS,
+		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.scripts", L"Scripts"));
+	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_navigation_menu,
+		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.caption", L"View"));
 
 	int picType = 0;
 	HANDLE picHandle = 0;
@@ -450,7 +460,13 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 
 	bar.ModifyMenu(0, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_st_menu, elsMenuItem);
 	bar.ModifyMenu(1, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_script_menu, scriptsMenuItem);
+	bar.ModifyMenu(2, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_navigation_menu,
+		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.caption", L"View"));
 	m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
+	m_navigation_menu.ModifyMenu(ID_DOCUMENT_TREE_SHOW_STRUCTURE, MF_BYCOMMAND | MF_STRING, ID_DOCUMENT_TREE_SHOW_STRUCTURE,
+		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.structure", L"Document structure"));
+	m_navigation_menu.ModifyMenu(ID_DOCUMENT_TREE_SHOW_SCRIPTS, MF_BYCOMMAND | MF_STRING, ID_DOCUMENT_TREE_SHOW_SCRIPTS,
+		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.scripts", L"Scripts"));
 	m_view_bar.Invalidate();
 }
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
@@ -506,6 +522,31 @@ LRESULT CTreeWithToolBar::OnMenuClear(WORD /* unused: wNotifyCode */, WORD /* un
 	return 0;
 }
 
+LRESULT CTreeWithToolBar::OnShowDocumentStructure(WORD, WORD, HWND, BOOL&)
+{
+	_Settings.SetDocumentTreeScripts(false, true);
+	m_tree.SetScriptMode(false);
+	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_SHOW_STRUCTURE, MF_BYCOMMAND | MF_CHECKED);
+	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_SHOW_SCRIPTS, MF_BYCOMMAND | MF_UNCHECKED);
+	return 0;
+}
+
+LRESULT CTreeWithToolBar::OnShowScripts(WORD, WORD, HWND, BOOL&)
+{
+	_Settings.SetDocumentTreeScripts(true, true);
+	m_tree.SetScriptMode(true);
+	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_SHOW_STRUCTURE, MF_BYCOMMAND | MF_UNCHECKED);
+	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_SHOW_SCRIPTS, MF_BYCOMMAND | MF_CHECKED);
+	return 0;
+}
+
+void CTreeWithToolBar::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	const std::function<void(const CString&, const CString&)>& addToToolbar,
+	const std::function<void(const CString&)>& openLocation)
+{
+	m_tree.SetScriptCatalog(items, toolbars, addToToolbar, openLocation);
+}
+
 
 //==================================================================================================================
 
@@ -516,6 +557,7 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 
 	m_tree.Create(*this, rcDefault);
 	m_tree.m_tree.SetMainwindow(GetParent());
+	m_tree.m_tree.SetScriptMode(_Settings.DocumentTreeScripts());
 	/*m_element_browser.Create(*this, rcDefault);
 	m_element_browser.m_tree.SetMainwindow(GetParent());*/
 	this->SetClient(m_tree);
@@ -609,6 +651,13 @@ void CDocumentTree::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,M
 void CDocumentTree::HighlightItemAtPos(MSHTML::IHTMLElement *p)
 {
 	m_tree.HighlightItemAtPos(p);
+}
+
+void CDocumentTree::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	const std::function<void(const CString&, const CString&)>& addToToolbar,
+	const std::function<void(const CString&)>& openLocation)
+{
+	m_tree.SetScriptCatalog(items, toolbars, addToToolbar, openLocation);
 }
 
 CTreeItem CDocumentTree::GetSelectedItem()

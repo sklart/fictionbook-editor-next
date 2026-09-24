@@ -459,6 +459,19 @@ LRESULT CTreeView::OnClick(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam
 
 LRESULT CTreeView::OnDblClick(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM lParam, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode)
+	{
+		UINT flags = 0;
+		CTreeItem item(HitTest(CPoint(LOWORD(lParam), HIWORD(lParam)), &flags), this);
+		if((flags & TVHT_ONITEM) && !item.IsNull())
+		{
+			SelectItem(item);
+			const ScriptDescriptor* script = SelectedScript();
+			if(script != NULL && script->isFolder) item.Expand((item.GetState(TVIS_EXPANDED) & TVIS_EXPANDED) ? TVE_COLLAPSE : TVE_EXPAND);
+			else RunSelectedScript();
+		}
+		return 0;
+	}
   // check if we double-clicked an already selected item item
   UINT	  flags=0;
   CTreeItem ii(HitTest(CPoint(LOWORD(lParam),HIWORD(lParam)),&flags));
@@ -504,6 +517,15 @@ LRESULT CTreeView::OnChar(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unus
 
 LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& bHandled)
 {  
+	if(m_script_mode && wParam == VK_RETURN)
+	{
+		const ScriptDescriptor* script = SelectedScript();
+		if(script != NULL && script->isFolder) {
+			CTreeItem item = GetSelectedItem(); item.Expand((item.GetState(TVIS_EXPANDED) & TVIS_EXPANDED) ? TVE_COLLAPSE : TVE_EXPAND);
+		} else RunSelectedScript();
+		bHandled = TRUE;
+		return 0;
+	}
   if (wParam==VK_RETURN)
     ::PostMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_RETURN),(LPARAM)m_hWnd);
 
@@ -658,6 +680,33 @@ LRESULT CTreeView::OnRClick(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOO
 
 LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPARAM lParam, BOOL& /*bHandled*/)
 {
+	if(m_script_mode)
+	{
+		CPoint point = (CPoint)lParam;
+		if(point.x == -1 && point.y == -1) point = (CPoint)GetMessagePos();
+		CPoint client(point); ScreenToClient(&client);
+		CTreeItem item(HitTest(client, NULL), this);
+		if(item.IsNull()) return 0;
+		SelectItem(item);
+		const ScriptDescriptor* script = SelectedScript();
+		if(script == NULL || script->isFolder) return 0;
+		CMenu menu; menu.CreatePopupMenu();
+		menu.AppendMenu(MF_STRING, ID_DOCUMENT_TREE_RUN_SCRIPT, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
+		CMenu toolbars; toolbars.CreatePopupMenu();
+		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
+			toolbars.AppendMenu(MF_STRING, ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE + static_cast<UINT>(index), m_script_toolbars[index].name);
+		if(m_script_toolbars.empty()) toolbars.AppendMenu(MF_STRING | MF_GRAYED, static_cast<UINT_PTR>(0), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.no_toolbars", L"No script toolbars"));
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(static_cast<HMENU>(toolbars)), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >"));
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, ID_DOCUMENT_TREE_OPEN_SCRIPT_LOCATION, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
+		const UINT command = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, point.x, point.y, m_hWnd);
+		if(command == ID_DOCUMENT_TREE_RUN_SCRIPT) RunSelectedScript();
+		else if(command == ID_DOCUMENT_TREE_OPEN_SCRIPT_LOCATION) { if(m_open_script_location) m_open_script_location(script->path); }
+		else if(command >= ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE && command < ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE + m_script_toolbars.size())
+			if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE].id);
+		return 1;
+	}
 	CPoint ptMousePos = (CPoint)lParam;
 		
 	// i	f Shift-F10
@@ -687,6 +736,52 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 	::TrackPopupMenu(pPopup, TPM_LEFTALIGN, ptMousePos.x, ptMousePos.y, 0, *this, 0);
 
 	return 1;
+}
+
+void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	const std::function<void(const CString&, const CString&)>& addToToolbar,
+	const std::function<void(const CString&)>& openLocation)
+{
+	m_script_items = items; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation;
+	if(m_script_mode) RebuildScriptTree();
+}
+
+void CTreeView::SetScriptMode(bool value)
+{
+	if(m_script_mode == value) return;
+	m_script_mode = value;
+	if(m_script_mode) RebuildScriptTree();
+	else UpdateAll();
+}
+
+void CTreeView::RebuildScriptTree()
+{
+	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear();
+	CTreeItem root = InsertItem(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.root", L"Scripts"), 0, 0, TVI_ROOT, TVI_LAST);
+	std::map<CString, HTREEITEM> parents; parents[CString()] = root;
+	for(size_t index = 0; index < m_script_items.size(); ++index)
+	{
+		const ScriptDescriptor& script = m_script_items[index];
+		std::map<CString, HTREEITEM>::const_iterator parent = parents.find(script.parentId);
+		if(parent == parents.end()) continue;
+		CTreeItem item = InsertItem(script.name, 0, 0, parent->second, TVI_LAST);
+		m_script_nodes[item] = index;
+		if(script.isFolder) parents[script.id] = item;
+	}
+	root.Expand(TVE_EXPAND);
+}
+
+const ScriptDescriptor* CTreeView::SelectedScript()
+{
+	std::map<HTREEITEM, size_t>::const_iterator found = m_script_nodes.find(GetSelectedItem());
+	return found == m_script_nodes.end() || found->second >= m_script_items.size() ? NULL : &m_script_items[found->second];
+}
+
+void CTreeView::RunSelectedScript()
+{
+	const ScriptDescriptor* script = SelectedScript();
+	if(script != NULL && !script->isFolder && script->commandId > 0)
+		::SendMessage(m_main_window, WM_COMMAND, MAKEWPARAM(ID_SCRIPT_BASE + script->commandId, 0), 0);
 }
 
 

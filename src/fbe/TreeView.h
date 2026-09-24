@@ -2,7 +2,16 @@
 #define	LTREEVIEW_H
 
 #include "ElementDescMnr.h"
+#include "scripts\\ScriptDescriptor.h"
 #include <map>
+#include <vector>
+#include <functional>
+
+struct ScriptTreeToolbarTarget
+{
+	CString id;
+	CString name;
+};
 
 typedef CWinTraits<WS_CHILD|WS_VISIBLE|
 		   TVS_HASBUTTONS|TVS_LINESATROOT|TVS_SHOWSELALWAYS,0>
@@ -18,6 +27,12 @@ protected:
   HIMAGELIST			m_himlDrag;
   CTreeItem				m_move_from;
   CTreeItem				m_move_to;
+	bool m_script_mode;
+	std::vector<ScriptDescriptor> m_script_items;
+	std::vector<ScriptTreeToolbarTarget> m_script_toolbars;
+	std::map<HTREEITEM, size_t> m_script_nodes;
+	std::function<void(const CString&, const CString&)> m_add_script_to_toolbar;
+	std::function<void(const CString&)> m_open_script_location;
   std::map<long, HTREEITEM>	m_source_index;
   ULONGLONG				m_tree_index_lookup_count;
   ULONGLONG				m_tree_linear_fallback_count;
@@ -40,7 +55,7 @@ public:
 public:
   DECLARE_WND_SUPERCLASS(_T("Tree"), CTreeViewCtrlEx::GetWndClassName())
 
-  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
+  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
     
   BOOL PreTranslateMessage(MSG* pMsg);
   
@@ -111,6 +126,11 @@ public:
   void UpdateAll();
   void HighlightItemAtPos(MSHTML::IHTMLElement *p);
   void SetMainwindow(HWND hwnd){m_main_window = hwnd;}
+	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+		const std::function<void(const CString&, const CString&)>& addToToolbar,
+		const std::function<void(const CString&)>& openLocation);
+	void SetScriptMode(bool value);
+	bool IsScriptMode() const { return m_script_mode; }
 
   CTreeItem GetMoveElementFrom(){m_move_from.m_pTreeView = this; return m_move_from;}
   CTreeItem GetMoveElementTo(){m_move_to.m_pTreeView = this;return m_move_to;}
@@ -153,6 +173,9 @@ protected:
   bool MoveLeftWithChildren(HTREEITEM hitem);
   bool MoveLeftWithAllNext(HTREEITEM hitem);
   void FillEDMnr();
+	void RebuildScriptTree();
+	const ScriptDescriptor* SelectedScript();
+	void RunSelectedScript();
 
   //bool MoveRightOne(HTREEITEM hitem);
   //bool MoveRightWithChildren(HTREEITEM hitem);

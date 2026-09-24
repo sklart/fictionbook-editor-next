@@ -22,6 +22,7 @@ public:
 	ScriptDescriptor& Item(int index) { return m_items[index]; }
 	const ScriptDescriptor& Item(int index) const { return m_items[index]; }
 	const VisualResource& VisualAt(int index) const { return m_visuals[index]; }
+	const std::vector<ScriptDescriptor>& Items() const { return m_items; }
 	void ResetFolderCommands() { m_nextFolderCommand = 0; }
 	UINT NextFolderCommand() { return m_nextFolderCommand < m_folderCommandCount ? m_folderCommandBase + m_nextFolderCommand++ : 0; }
 

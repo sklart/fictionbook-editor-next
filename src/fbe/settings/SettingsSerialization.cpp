@@ -86,6 +86,7 @@ const wchar_t SRC_FONT_KEY[]			= L"SrcFont";
 const wchar_t VIEW_STATUS_BAR_KEY[]		= L"ViewStatusBar";
 const wchar_t STATUS_BAR_PANES_KEY[]		= L"StatusBarPanes";
 const wchar_t VIEW_DOCUMENT_TREE_KEY[]	= L"ViewDocumentTree";
+const wchar_t DOCUMENT_TREE_SCRIPTS_KEY[] = L"DocumentTreeScripts";
 const wchar_t SPLITTER_POS_KEY[]		= L"SplitterPos";
 const wchar_t FIND_RESULTS_PANE_HEIGHT_KEY[] = L"FindResultsPaneHeight";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
@@ -162,6 +163,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(VIEW_STATUS_BAR_KEY);
 	properties.push_back(STATUS_BAR_PANES_KEY);
 	properties.push_back(VIEW_DOCUMENT_TREE_KEY);
+	properties.push_back(DOCUMENT_TREE_SCRIPTS_KEY);
 	properties.push_back(SPLITTER_POS_KEY);
 	properties.push_back(FIND_RESULTS_PANE_HEIGHT_KEY);
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
@@ -339,6 +341,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == VIEW_DOCUMENT_TREE_KEY)
 	{
 		property = GetStringedProperty(&m_view_doc_tree, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == DOCUMENT_TREE_SCRIPTS_KEY)
+	{
+		property = GetStringedProperty(&m_document_tree_scripts, KEY_BOOL);
 		return true;
 	}
 	else if(sProperty == SPLITTER_POS_KEY)
@@ -691,6 +698,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == VIEW_DOCUMENT_TREE_KEY)
 	{
 		m_view_doc_tree = StrToBool(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == DOCUMENT_TREE_SCRIPTS_KEY)
+	{
+		m_document_tree_scripts = StrToBool(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == SPLITTER_POS_KEY)

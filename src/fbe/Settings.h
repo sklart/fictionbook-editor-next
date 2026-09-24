@@ -191,6 +191,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	bool		m_view_status_bar;
 	DWORD		m_status_bar_panes;
 	bool		m_view_doc_tree;
+	bool		m_document_tree_scripts;
 
 	// added by SeNS
 	bool		m_usespell_check;
@@ -311,6 +312,7 @@ public:
 	bool ViewStatusBar()const;
 	DWORD StatusBarPanes()const;
 	bool ViewDocumentTree()const;
+	bool DocumentTreeScripts()const;
 	bool RestoreFilePosition()const;
 
 	CString GetKeyPath()const;
@@ -408,6 +410,7 @@ public:
 	void	SetViewStatusBar(bool view,  bool apply = false);
 	void	SetStatusBarPanes(DWORD panes, bool apply = false);
 	void	SetViewDocumentTree(bool view,  bool apply = false);
+	void SetDocumentTreeScripts(bool value, bool apply = false);
 	void	SetSplitterPos(DWORD pos,  bool apply = false);
 	void	SetFindResultsPaneHeight(DWORD height, bool apply = false);
 	void	SetToolbarsSettings(CString& settings,  bool apply = false);

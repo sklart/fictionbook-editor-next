@@ -248,6 +248,11 @@ bool CSettings::ViewDocumentTree()const
 	return m_view_doc_tree;
 }
 
+bool CSettings::DocumentTreeScripts()const
+{
+	return m_document_tree_scripts;
+}
+
 bool CSettings::RestoreFilePosition()const
 {
 	return m_restore_file_position;
@@ -800,6 +805,13 @@ void CSettings::SetViewStatusBar(bool view, bool apply)
 void CSettings::SetViewDocumentTree(bool view, bool apply)
 {
 	m_view_doc_tree = view;
+	if(apply)
+		Save();
+}
+
+void CSettings::SetDocumentTreeScripts(bool value, bool apply)
+{
+	m_document_tree_scripts = value;
 	if(apply)
 		Save();
 }

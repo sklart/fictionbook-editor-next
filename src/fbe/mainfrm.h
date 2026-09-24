@@ -247,6 +247,8 @@ public:
 	bool ApplyScriptToolbarRuntimeDelta(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
 	bool ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
 	bool UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items);
+	bool AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId);
+	void RefreshNavigationScriptTree();
 	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);
 	void RefreshScriptToolbarViewMenu();
 	void InitScriptHotkey(ScriptDescriptor&);
