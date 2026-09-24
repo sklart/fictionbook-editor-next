@@ -249,6 +249,7 @@ public:
 	bool UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items);
 	bool AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId);
 	void RefreshNavigationScriptTree();
+	void RefreshNavigationScriptToolbarTargets();
 	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);
 	void RefreshScriptToolbarViewMenu();
 	void InitScriptHotkey(ScriptDescriptor&);

@@ -14,6 +14,21 @@ extern CElementDescMnr _EDMnr;
 
 static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKELONG(0, command)); }
 
+namespace
+{
+const UINT kNavigationPopupFirst = 57600;
+const UINT kNavigationPopupRunScript = kNavigationPopupFirst;
+const UINT kNavigationPopupOpenLocation = kNavigationPopupFirst + 1;
+const UINT kNavigationPopupAddToolbarBase = kNavigationPopupFirst + 16;
+const UINT kNavigationPopupLast = kNavigationPopupAddToolbarBase + 255;
+static_assert(kNavigationPopupFirst > ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, "Navigation popup must not overlap dynamic toolbar commands");
+static_assert(kNavigationPopupFirst > ID_SPELL_REPLACE_LAST, "Navigation popup must not overlap spell commands");
+static_assert(kNavigationPopupFirst > ID_PLUGIN_EXPORT_LAST, "Navigation popup must not overlap plugin commands");
+static_assert(kNavigationPopupFirst > ID_SCI_EXPAND9, "Navigation popup must not overlap Scintilla commands");
+static_assert(kNavigationPopupFirst > ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT, "Navigation popup must not overlap script commands");
+static_assert(kNavigationPopupLast <= 0xffffu, "Navigation popup command IDs must fit WM_COMMAND");
+}
+
 struct RuntimeTreeMenuBinding
 {
 	UINT commandId;
@@ -576,6 +591,7 @@ LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* u
 
 LRESULT CTreeView::OnBegindrag(int /* unused: idCtrl */, LPNMHDR mhdr, BOOL& bHandled)
 {
+	if(m_script_mode) { bHandled = TRUE; return 0; }
 	LPNMTREEVIEW pnmtv = (LPNMTREEVIEW) mhdr;
 	
 	m_move_from.m_hTreeItem = pnmtv->itemNew.hItem;	
@@ -591,6 +607,7 @@ LRESULT CTreeView::OnBegindrag(int /* unused: idCtrl */, LPNMHDR mhdr, BOOL& bHa
 
 LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM, BOOL& bHandled)
 {
+	if(m_script_mode) { bHandled = TRUE; return 0; }
 	if(m_drag)
 	{
 		EndDrag();
@@ -602,6 +619,7 @@ LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM, BOOL& bHandled)
 
 LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
+	if(m_script_mode) { bHandled = TRUE; return 0; }
 	if(m_drag)
 	{
 		POINTS Pos = MAKEPOINTS(lParam);
@@ -663,6 +681,13 @@ LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 
 LRESULT CTreeView::OnRClick(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
 {
+	if(m_script_mode)
+	{
+		UINT flags = 0; CTreeItem item(HitTest(CPoint(LOWORD(lParam), HIWORD(lParam)), &flags), this);
+		if(!item.IsNull()) SelectItem(item);
+		SendMessage(WM_CONTEXTMENU, reinterpret_cast<WPARAM>(m_hWnd), GetMessagePos());
+		return 0;
+	}
 	if(m_drag)
 	{
 		EndDrag();
@@ -691,20 +716,20 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 		const ScriptDescriptor* script = SelectedScript();
 		if(script == NULL || script->isFolder) return 0;
 		CMenu menu; menu.CreatePopupMenu();
-		menu.AppendMenu(MF_STRING, ID_DOCUMENT_TREE_RUN_SCRIPT, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
+		menu.AppendMenu(MF_STRING, kNavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
 		CMenu toolbars; toolbars.CreatePopupMenu();
 		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
-			toolbars.AppendMenu(MF_STRING, ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE + static_cast<UINT>(index), m_script_toolbars[index].name);
+			toolbars.AppendMenu(MF_STRING, kNavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
 		if(m_script_toolbars.empty()) toolbars.AppendMenu(MF_STRING | MF_GRAYED, static_cast<UINT_PTR>(0), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.no_toolbars", L"No script toolbars"));
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(static_cast<HMENU>(toolbars)), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, ID_DOCUMENT_TREE_OPEN_SCRIPT_LOCATION, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
+		menu.AppendMenu(MF_STRING, kNavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
 		const UINT command = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, point.x, point.y, m_hWnd);
-		if(command == ID_DOCUMENT_TREE_RUN_SCRIPT) RunSelectedScript();
-		else if(command == ID_DOCUMENT_TREE_OPEN_SCRIPT_LOCATION) { if(m_open_script_location) m_open_script_location(script->path); }
-		else if(command >= ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE && command < ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE + m_script_toolbars.size())
-			if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - ID_DOCUMENT_TREE_ADD_SCRIPT_TOOLBAR_BASE].id);
+		if(command == kNavigationPopupRunScript) RunSelectedScript();
+		else if(command == kNavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); }
+		else if(command >= kNavigationPopupAddToolbarBase && command < kNavigationPopupAddToolbarBase + m_script_toolbars.size())
+			if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - kNavigationPopupAddToolbarBase].id);
 		return 1;
 	}
 	CPoint ptMousePos = (CPoint)lParam;
@@ -738,13 +763,15 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 	return 1;
 }
 
-void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<HICON>& icons, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 	const std::function<void(const CString&, const CString&)>& addToToolbar,
 	const std::function<void(const CString&)>& openLocation)
 {
-	m_script_items = items; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation;
+	m_script_items = items; m_script_icons = icons; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation;
 	if(m_script_mode) RebuildScriptTree();
 }
+
+void CTreeView::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars) { m_script_toolbars = toolbars; }
 
 void CTreeView::SetScriptMode(bool value)
 {
@@ -758,17 +785,22 @@ void CTreeView::RebuildScriptTree()
 {
 	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear();
 	CTreeItem root = InsertItem(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.root", L"Scripts"), 0, 0, TVI_ROOT, TVI_LAST);
-	std::map<CString, HTREEITEM> parents; parents[CString()] = root;
+	BuildScriptChildren(root, CString());
+	root.Expand(TVE_EXPAND);
+}
+
+void CTreeView::BuildScriptChildren(HTREEITEM parent, const CString& parentId)
+{
 	for(size_t index = 0; index < m_script_items.size(); ++index)
 	{
 		const ScriptDescriptor& script = m_script_items[index];
-		std::map<CString, HTREEITEM>::const_iterator parent = parents.find(script.parentId);
-		if(parent == parents.end()) continue;
-		CTreeItem item = InsertItem(script.name, 0, 0, parent->second, TVI_LAST);
+		if(script.parentId != parentId) continue;
+		const HICON icon = index < m_script_icons.size() ? m_script_icons[index] : NULL;
+		const int image = icon != NULL ? AddIcon(icon) : 0;
+		CTreeItem item = InsertItem(script.name, image, image, parent, TVI_LAST);
 		m_script_nodes[item] = index;
-		if(script.isFolder) parents[script.id] = item;
+		if(script.isFolder) BuildScriptChildren(item, script.id);
 	}
-	root.Expand(TVE_EXPAND);
 }
 
 const ScriptDescriptor* CTreeView::SelectedScript()
@@ -861,6 +893,7 @@ void CTreeView::EndDrag()
 
 LRESULT CTreeView::OnCut(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	// remove last selection
 	SetItemState(m_move_from, 0, TVIS_CUT);
 	HTREEITEM hitem = GetSelectedItem();
@@ -870,6 +903,7 @@ LRESULT CTreeView::OnCut(WORD /* unused: wNotifyCode */, WORD /* unused: wID */,
 }
 LRESULT CTreeView::OnPaste(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	// remove selection
 	SetItemState(m_move_from, 0, TVIS_CUT);
 	m_move_to = GetSelectedItem();
@@ -878,25 +912,29 @@ LRESULT CTreeView::OnPaste(WORD /* unused: wNotifyCode */, WORD /* unused: wID *
 	return 0;
 }
 LRESULT CTreeView::OnView(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
-{	
+{
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_VIEW_ELEMENT),(LPARAM)m_hWnd);
 	return 0;
 }
 
 LRESULT CTreeView::OnViewSource(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_VIEW_ELEMENT_SOURCE),(LPARAM)m_hWnd);
 	return 0;
 }
 
 LRESULT CTreeView::OnDelete(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_DELETE_ELEMENT),(LPARAM)m_hWnd);
 	return 0;
 }
 
 LRESULT CTreeView::OnRight(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	//m_move_from = GetSelectedItem();
 	
 	// ???? ????????? ??????? ?????? ?????? ????????
@@ -961,7 +999,8 @@ LRESULT CTreeView::OnRight(WORD /* unused: wNotifyCode */, WORD /* unused: wID *
 }
 
 LRESULT CTreeView::OnRightOne(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
-{	
+{
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_MOVE_ELEMENT_ONE),(LPARAM)m_hWnd);
 	/*HTREEITEM item = GetFirstSelectedItem();
 	if(!item)
@@ -978,29 +1017,34 @@ LRESULT CTreeView::OnRightOne(WORD /* unused: wNotifyCode */, WORD /* unused: wI
 
 LRESULT CTreeView::OnRightSmart(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_MOVE_ELEMENT_SMART),(LPARAM)m_hWnd);
 	return 0;
 }
 
 LRESULT CTreeView::OnLeftOne(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_MOVE_LEFT_ONE),(LPARAM)m_hWnd);
 	return 0;
 }
 
 LRESULT CTreeView::OnLeftWithChildren(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_MOVE_LEFT),(LPARAM)m_hWnd);
 	return 0;
 }
 LRESULT CTreeView::OnMerge(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window, WM_COMMAND, TreeCommandWParam(IDN_TREE_MERGE), (LPARAM)m_hWnd);
 	return 0;
 }
 
 LRESULT CTreeView::OnLeft(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	if(m_script_mode) return 0;
 	::SendMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_MOVE_LEFT),(LPARAM)m_hWnd);
 	/*m_move_from = GetSelectedItem();
 	m_move_to = TreeView_GetParent(*this, m_move_from);

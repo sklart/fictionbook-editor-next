@@ -29,6 +29,7 @@ protected:
   CTreeItem				m_move_to;
 	bool m_script_mode;
 	std::vector<ScriptDescriptor> m_script_items;
+	std::vector<HICON> m_script_icons;
 	std::vector<ScriptTreeToolbarTarget> m_script_toolbars;
 	std::map<HTREEITEM, size_t> m_script_nodes;
 	std::function<void(const CString&, const CString&)> m_add_script_to_toolbar;
@@ -126,9 +127,10 @@ public:
   void UpdateAll();
   void HighlightItemAtPos(MSHTML::IHTMLElement *p);
   void SetMainwindow(HWND hwnd){m_main_window = hwnd;}
-	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<HICON>& icons, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation);
+	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	void SetScriptMode(bool value);
 	bool IsScriptMode() const { return m_script_mode; }
 
@@ -174,6 +176,7 @@ protected:
   bool MoveLeftWithAllNext(HTREEITEM hitem);
   void FillEDMnr();
 	void RebuildScriptTree();
+	void BuildScriptChildren(HTREEITEM parent, const CString& parentId);
 	const ScriptDescriptor* SelectedScript();
 	void RunSelectedScript();
 
