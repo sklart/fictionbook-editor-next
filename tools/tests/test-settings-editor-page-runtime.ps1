@@ -23,7 +23,9 @@ try {
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $expected = @('missing-custom-ok', 'missing-builtin-ok', 'missing-builtin-select-none', 'custom-cancel',
         'explicit-colors-automatic-swatches', 'foreground-automatic-preview', 'background-automatic-preview',
-        'automatic-settings-body', 'automatic-to-explicit')
+        'automatic-settings-body', 'automatic-to-explicit', 'dark-white-background-auto-text',
+        'dark-black-text-auto-background', 'light-black-background-auto-text', 'light-white-text-auto-background',
+        'explicit-body-colors', 'builtin-background-automatic')
     if($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) Settings cases, got $($rows.Count)." }
     foreach($name in $expected) {
         $matches = @($rows | Where-Object case -eq $name)

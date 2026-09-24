@@ -29,6 +29,46 @@ bool PreviewGdiplusReady()
 	return session.Ready();
 }
 
+HBITMAP LoadPreviewBitmap(const CString& path, bool& hasAlpha)
+{
+	hasAlpha = false;
+	if(!PreviewGdiplusReady()) return NULL;
+	Gdiplus::Bitmap source(path);
+	const UINT width = source.GetWidth(), height = source.GetHeight();
+	if(source.GetLastStatus() != Gdiplus::Ok || width == 0 || height == 0 || width > INT_MAX || height > INT_MAX)
+		return NULL;
+	if(path.Right(4).CompareNoCase(L".png") != 0)
+	{
+		HBITMAP bitmap = NULL;
+		return source.GetHBITMAP(Gdiplus::Color(255, 255, 255, 255), &bitmap) == Gdiplus::Ok ? bitmap : NULL;
+	}
+	BITMAPINFO info = {};
+	info.bmiHeader.biSize = sizeof(info.bmiHeader);
+	info.bmiHeader.biWidth = static_cast<LONG>(width);
+	info.bmiHeader.biHeight = -static_cast<LONG>(height);
+	info.bmiHeader.biPlanes = 1;
+	info.bmiHeader.biBitCount = 32;
+	info.bmiHeader.biCompression = BI_RGB;
+	void* bits = NULL;
+	HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+	if(bitmap == NULL || bits == NULL) { if(bitmap) ::DeleteObject(bitmap); return NULL; }
+	Gdiplus::Rect area(0, 0, static_cast<INT>(width), static_cast<INT>(height));
+	Gdiplus::BitmapData pixels = {};
+	if(source.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppPARGB, &pixels) != Gdiplus::Ok)
+	{
+		::DeleteObject(bitmap);
+		return NULL;
+	}
+	BYTE* target = static_cast<BYTE*>(bits);
+	const BYTE* row = static_cast<const BYTE*>(pixels.Scan0);
+	const size_t targetStride = static_cast<size_t>(width) * 4;
+	for(UINT y = 0; y < height; ++y, target += targetStride, row += pixels.Stride)
+		::CopyMemory(target, row, targetStride);
+	source.UnlockBits(&pixels);
+	hasAlpha = true;
+	return bitmap;
+}
+
 int __stdcall EnumFontProc(const ENUMLOGFONTEX* logFont, const NEWTEXTMETRICEX*, DWORD, LPARAM data)
 {
 	static_cast<CSimpleArray<CString>*>(reinterpret_cast<void*>(data))->Add(logFont->elfLogFont.lfFaceName);
@@ -40,6 +80,11 @@ void SetText(HWND window, int controlId, LPCWSTR key, LPCWSTR fallback)
 	::SetDlgItemText(window, controlId, FbeLoadRuntimeStringByKey(key, fallback));
 }
 
+}
+
+CSettingsEditorPage::~CSettingsEditorPage()
+{
+	if(m_cachedBackgroundBitmap) ::DeleteObject(m_cachedBackgroundBitmap);
 }
 
 LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
@@ -269,49 +314,28 @@ void CSettingsEditorPage::RefreshAutomaticColorDefaults()
 	m_foreground.Invalidate();
 }
 
+void CSettingsEditorPage::UpdateCachedBackgroundBitmap(const CString& path)
+{
+	if(m_cachedBackgroundPath == path) return;
+	if(m_cachedBackgroundBitmap) ::DeleteObject(m_cachedBackgroundBitmap);
+	m_cachedBackgroundBitmap = NULL;
+	m_cachedBackgroundHasAlpha = false;
+	m_cachedBackgroundPath = path;
+	if(!path.IsEmpty())
+	{
+		++m_cachedBackgroundLoadCount;
+		m_cachedBackgroundBitmap = LoadPreviewBitmap(path, m_cachedBackgroundHasAlpha);
+	}
+}
+
 void CSettingsEditorPage::UpdateBackgroundPreview()
 {
 	CString path; const int index = m_backgroundImage.GetCurSel();
 	if(index > 0 && index <= static_cast<int>(m_builtInBackgrounds.size())) EditorBackgrounds::ResolveBuiltIn(m_builtInBackgrounds[index - 1].id, path);
 	else if(index == static_cast<int>(m_builtInBackgrounds.size() + 1) && EditorBackgrounds::IsSupportedLocalImage(m_customBackgroundPath)) path = m_customBackgroundPath;
-	HBITMAP bitmap = NULL;
-	bool bitmapHasAlpha = false;
-	if(!ThemeManager::IsHighContrast() && !path.IsEmpty())
-	{
-		CImage image;
-		if(SUCCEEDED(image.Load(path)))
-		{
-			if(path.Right(4).CompareNoCase(L".png") == 0)
-			{
-				// AlphaBlend requires premultiplied BGRA. CImage::Load retains
-				// straight ARGB, so request PARGB from GDI+ for the preview only.
-				if(PreviewGdiplusReady())
-				{
-					Gdiplus::Bitmap source(path);
-					const UINT width = source.GetWidth(), height = source.GetHeight();
-					CImage premultiplied;
-					if(source.GetLastStatus() == Gdiplus::Ok && width > 0 && height > 0 &&
-						width <= INT_MAX && height <= INT_MAX &&
-						premultiplied.Create(static_cast<int>(width), static_cast<int>(height), 32, CImage::createAlphaChannel))
-					{
-						Gdiplus::Rect area(0, 0, static_cast<INT>(width), static_cast<INT>(height));
-						Gdiplus::BitmapData pixels = {};
-						if(source.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppPARGB, &pixels) == Gdiplus::Ok)
-						{
-							BYTE* target = static_cast<BYTE*>(premultiplied.GetBits());
-							const BYTE* row = static_cast<const BYTE*>(pixels.Scan0);
-							for(UINT y = 0; y < height; ++y, target += premultiplied.GetPitch(), row += pixels.Stride)
-								::CopyMemory(target, row, static_cast<SIZE_T>(width) * 4);
-							source.UnlockBits(&pixels);
-							bitmap = premultiplied.Detach();
-							bitmapHasAlpha = true;
-						}
-					}
-				}
-			}
-			else bitmap = image.Detach();
-		}
-	}
+	UpdateCachedBackgroundBitmap(path);
+	const HBITMAP bitmap = ThemeManager::IsHighContrast() ? NULL : m_cachedBackgroundBitmap;
+	const bool bitmapHasAlpha = !ThemeManager::IsHighContrast() && m_cachedBackgroundHasAlpha;
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
 	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
 	const EditorBackgroundColors colors = ResolvePreviewColors();
@@ -333,7 +357,6 @@ void CEditorBackgroundPreview::EnsureFontForDpi()
 void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, bool bitmapHasAlpha, const CString& face, int size, COLORREF foreground,
 	COLORREF background, const CString& layout, const CString& text)
 {
-	if(m_bitmap) ::DeleteObject(m_bitmap);
 	m_bitmap = bitmap;
 	m_bitmapHasAlpha = bitmapHasAlpha;
 	m_face = face;
@@ -422,7 +445,7 @@ void CEditorBackgroundPreview::PaintPreview(HDC dc, const RECT& rc)
 
 LRESULT CEditorBackgroundPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
 {
-	if(m_bitmap) { ::DeleteObject(m_bitmap); m_bitmap = NULL; }
+	m_bitmap = NULL;
 	if(m_font) { ::DeleteObject(m_font); m_font = NULL; }
 	return 0;
 }

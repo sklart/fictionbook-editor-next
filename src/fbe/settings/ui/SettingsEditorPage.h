@@ -50,11 +50,16 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CEditorBackgroundPreview m_backgroundPreview;
 	std::vector<EditorBackgroundDescriptor> m_builtInBackgrounds;
 	CString m_customBackgroundPath;
+	CString m_cachedBackgroundPath;
+	HBITMAP m_cachedBackgroundBitmap = NULL;
+	bool m_cachedBackgroundHasAlpha = false;
+	unsigned int m_cachedBackgroundLoadCount = 0;
 	bool m_missingSavedBackground = false;
 	bool m_backgroundSelectionChanged = false;
 	CSettingsTooltips m_tooltips;
 
 public:
+	~CSettingsEditorPage();
 	enum { IDD = IDD_SETTINGS_EDITOR };
 	BEGIN_MSG_MAP(CSettingsEditorPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -87,6 +92,7 @@ public:
 	CString SelectedBackgroundLayout() const;
 	EditorBackgroundColors ResolvePreviewColors() const;
 	void RefreshAutomaticColorDefaults();
+	void UpdateCachedBackgroundBitmap(const CString& path);
 	void UpdateBackgroundPreview();
 	bool Validate(); void Commit(); bool CancelChanges();
 };

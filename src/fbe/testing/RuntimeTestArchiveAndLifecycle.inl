@@ -894,10 +894,14 @@
 			const HWND window = page.Create(m_hWnd);
 			const EditorBackgroundColors defaults = EditorBackgrounds::ResolveBodyColors(
 				CLR_DEFAULT, CLR_DEFAULT, L"none", L"", ThemeManager::IsHighContrast());
+			const EditorBackgroundColors automaticForeground = EditorBackgrounds::ResolveBodyColors(
+				CLR_DEFAULT, RGB(20, 40, 220), L"none", L"", ThemeManager::IsHighContrast());
+			const EditorBackgroundColors automaticBackground = EditorBackgrounds::ResolveBodyColors(
+				RGB(230, 20, 20), CLR_DEFAULT, L"none", L"", ThemeManager::IsHighContrast());
 			append("explicit-colors-automatic-swatches", window != NULL &&
 				page.m_foreground.GetColor() == RGB(230, 20, 20) && page.m_background.GetColor() == RGB(20, 40, 220) &&
-				page.m_foreground.GetDefaultColor() == defaults.foreground &&
-				page.m_background.GetDefaultColor() == defaults.background &&
+				page.m_foreground.GetDefaultColor() == automaticForeground.foreground &&
+				page.m_background.GetDefaultColor() == automaticBackground.background &&
 				page.m_backgroundPreview.m_foreground == RGB(230, 20, 20) &&
 				page.m_backgroundPreview.m_background == RGB(20, 40, 220));
 			BOOL handled = FALSE;
@@ -905,8 +909,8 @@
 			page.OnPreviewColorChanged(0, NULL, handled);
 			append("foreground-automatic-preview", window != NULL &&
 				page.m_foreground.GetColor() == CLR_DEFAULT &&
-				page.m_foreground.GetDefaultColor() == defaults.foreground &&
-				page.m_backgroundPreview.m_foreground == defaults.foreground &&
+				page.m_foreground.GetDefaultColor() == automaticForeground.foreground &&
+				page.m_backgroundPreview.m_foreground == automaticForeground.foreground &&
 				page.m_backgroundPreview.m_background == RGB(20, 40, 220));
 			page.m_background.SetColor(CLR_DEFAULT);
 			page.OnPreviewColorChanged(0, NULL, handled);
@@ -947,6 +951,41 @@
 				_Settings.GetColorFG() == RGB(230, 20, 20) && _Settings.GetColorBG() == RGB(20, 40, 220));
 			page.DestroyWindow();
 		}
+		auto verifyAutomaticPair = [&](const char* name, InterfaceTheme theme, const wchar_t* kind, const wchar_t* id,
+			DWORD foreground, DWORD background)
+		{
+			ThemeManager::SetSelectedTheme(theme);
+			ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+			_Settings.SetEditorBackgroundKind(kind); _Settings.SetEditorBackgroundId(id);
+			_Settings.SetColorFG(foreground); _Settings.SetColorBG(background);
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			const EditorBackgroundColors expected = EditorBackgrounds::ResolveBodyColors(foreground, background, kind, id, ThemeManager::IsHighContrast());
+			const EditorBackgroundColors automaticForeground = EditorBackgrounds::ResolveBodyColors(CLR_DEFAULT, background, kind, id, ThemeManager::IsHighContrast());
+			const EditorBackgroundColors automaticBackground = EditorBackgrounds::ResolveBodyColors(foreground, CLR_DEFAULT, kind, id, ThemeManager::IsHighContrast());
+			const bool previewAndSwatches = window != NULL &&
+				page.m_backgroundPreview.m_foreground == expected.foreground && page.m_backgroundPreview.m_background == expected.background &&
+				page.m_foreground.GetDefaultColor() == automaticForeground.foreground &&
+				page.m_background.GetDefaultColor() == automaticBackground.background;
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			m_doc->ApplyConfChanges();
+			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr style(document3 ? document3->getElementById(L"fbe-runtime-body-colors") : NULL);
+			MSHTML::IHTMLStyleElementPtr styleElement(style);
+			MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
+			CString css(sheet ? static_cast<LPCWSTR>(sheet->cssText) : L""); css.MakeLower();
+			CString expectedForeground, expectedBackground;
+			expectedForeground.Format(L"#%02x%02x%02x", GetRValue(expected.foreground), GetGValue(expected.foreground), GetBValue(expected.foreground));
+			expectedBackground.Format(L"#%02x%02x%02x", GetRValue(expected.background), GetGValue(expected.background), GetBValue(expected.background));
+			append(name, previewAndSwatches && css.Find(expectedForeground) >= 0 && css.Find(expectedBackground) >= 0);
+			page.DestroyWindow();
+		};
+		verifyAutomaticPair("dark-white-background-auto-text", INTERFACE_THEME_DARK, L"none", L"", CLR_DEFAULT, RGB(255, 255, 255));
+		verifyAutomaticPair("dark-black-text-auto-background", INTERFACE_THEME_DARK, L"none", L"", RGB(0, 0, 0), CLR_DEFAULT);
+		verifyAutomaticPair("light-black-background-auto-text", INTERFACE_THEME_LIGHT, L"none", L"", CLR_DEFAULT, RGB(0, 0, 0));
+		verifyAutomaticPair("light-white-text-auto-background", INTERFACE_THEME_LIGHT, L"none", L"", RGB(255, 255, 255), CLR_DEFAULT);
+		verifyAutomaticPair("explicit-body-colors", INTERFACE_THEME_DARK, L"none", L"", RGB(12, 34, 56), RGB(210, 190, 170));
+		verifyAutomaticPair("builtin-background-automatic", INTERFACE_THEME_DARK, L"builtin", L"12_graphite_dark", CLR_DEFAULT, CLR_DEFAULT);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
@@ -991,6 +1030,18 @@
 					_Settings.SetColorFG(CLR_DEFAULT);
 					CSettingsEditorPage page;
 					const HWND window = page.Create(m_hWnd);
+					const unsigned int initialLoadCount = page.m_cachedBackgroundLoadCount;
+					BOOL handled = FALSE;
+					page.m_backgroundLayout.SetCurSel((layout + 1) % _countof(layouts));
+					page.OnBackgroundSelectionChanged(0, IDC_EDITOR_BACKGROUND_LAYOUT, NULL, handled);
+					page.m_fontSize.SetWindowText(L"14"); page.OnPreviewSettingsChanged(0, 0, NULL, handled);
+					page.m_foreground.SetColor(RGB(10, 20, 30)); page.OnPreviewColorChanged(0, NULL, handled);
+					const bool cacheReused = initialLoadCount == 1 && page.m_cachedBackgroundLoadCount == initialLoadCount;
+					page.m_backgroundLayout.SetCurSel(static_cast<int>(layout));
+					page.OnBackgroundSelectionChanged(0, IDC_EDITOR_BACKGROUND_LAYOUT, NULL, handled);
+					// Paint the original geometry after exercising a different layout;
+					// the cache assertion above is independent of the draw mode.
+					page.m_backgroundPreview.m_layout = layouts[layout];
 					page.m_backgroundPreview.m_text.Empty();
 					RECT rc = {}; page.m_backgroundPreview.GetClientRect(&rc);
 					const int width = rc.right - rc.left, height = rc.bottom - rc.top;
@@ -1022,7 +1073,7 @@
 						(GetRValue(color) * alpha + GetRValue(background) * (255 - alpha) + 127) / 255,
 						(GetGValue(color) * alpha + GetGValue(background) * (255 - alpha) + 127) / 255,
 						(GetBValue(color) * alpha + GetBValue(background) * (255 - alpha) + 127) / 255);
-					const bool passed = imagesSaved && window != NULL && page.m_backgroundPreview.m_bitmapHasAlpha && actual != CLR_INVALID &&
+					const bool passed = imagesSaved && window != NULL && cacheReused && page.m_backgroundPreview.m_bitmapHasAlpha && actual != CLR_INVALID &&
 						abs(GetRValue(actual) - GetRValue(expected)) <= 3 &&
 						abs(GetGValue(actual) - GetGValue(expected)) <= 3 &&
 						abs(GetBValue(actual) - GetBValue(expected)) <= 3;

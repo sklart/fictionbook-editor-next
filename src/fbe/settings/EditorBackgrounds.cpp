@@ -4,6 +4,7 @@
 #include "..\\RuntimeLocalization.h"
 #include "..\\utils\\utils.h"
 #include "..\\..\\common\\RuntimeLocalizationCommon.h"
+#include <cmath>
 #include <string>
 
 namespace {
@@ -46,6 +47,25 @@ bool IsSchemaVersionOne(const std::wstring& json, size_t valueStart)
 	if(valueStart >= json.size() || json[valueStart] != L'1') return false;
 	size_t end = valueStart + 1; FbeRuntimeLocalization::JsonSkipWhitespace(json, end);
 	return end < json.size() && (json[end] == L',' || json[end] == L'}');
+}
+
+double RelativeLuminance(COLORREF color)
+{
+	auto linear = [](BYTE component) {
+		const double value = component / 255.0;
+		return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
+	};
+	return 0.2126 * linear(GetRValue(color)) + 0.7152 * linear(GetGValue(color)) + 0.0722 * linear(GetBValue(color));
+}
+
+COLORREF AutomaticContrastColor(COLORREF fixedColor)
+{
+	// The endpoint with the larger WCAG contrast ratio is also the most
+	// predictable choice for the BODY's two Automatic controls.
+	const double luminance = RelativeLuminance(fixedColor);
+	const double blackContrast = (luminance + 0.05) / 0.05;
+	const double whiteContrast = 1.05 / (luminance + 0.05);
+	return blackContrast >= whiteContrast ? RGB(0, 0, 0) : RGB(255, 255, 255);
 }
 }
 
@@ -127,6 +147,16 @@ EditorBackgroundColors EditorBackgrounds::ResolveBodyColors(DWORD configuredFore
 			if(configuredForeground == CLR_DEFAULT) colors.foreground = text;
 			if(configuredBackground == CLR_DEFAULT) colors.background = fallback;
 		}
+	}
+	else if(configuredForeground == CLR_DEFAULT && configuredBackground != CLR_DEFAULT)
+	{
+		// A user-selected solid background is the actual contrast surface.  Do
+		// not inspect a custom image: it remains entirely user-controlled.
+		colors.foreground = AutomaticContrastColor(static_cast<COLORREF>(configuredBackground));
+	}
+	else if(configuredForeground != CLR_DEFAULT && configuredBackground == CLR_DEFAULT)
+	{
+		colors.background = AutomaticContrastColor(static_cast<COLORREF>(configuredForeground));
 	}
 	return colors;
 }
