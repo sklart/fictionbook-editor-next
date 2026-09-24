@@ -42,6 +42,7 @@ protected:
 	std::map<HTREEITEM, size_t> m_script_nodes;
 	std::function<void(const CString&, const CString&)> m_add_script_to_toolbar;
 	std::function<void(const CString&)> m_open_script_location;
+	std::function<void(UINT)> m_run_script;
   std::map<long, HTREEITEM>	m_source_index;
   ULONGLONG				m_tree_index_lookup_count;
   ULONGLONG				m_tree_linear_fallback_count;
@@ -137,7 +138,8 @@ public:
   void SetMainwindow(HWND hwnd){m_main_window = hwnd;}
 	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
-		const std::function<void(const CString&)>& openLocation);
+		const std::function<void(const CString&)>& openLocation,
+		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	void SetScriptMode(bool value);
 	bool IsScriptMode() const { return m_script_mode; }

@@ -542,9 +542,9 @@ LRESULT CTreeWithToolBar::OnShowScripts(WORD, WORD, HWND, BOOL&)
 
 void CTreeWithToolBar::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 	const std::function<void(const CString&, const CString&)>& addToToolbar,
-	const std::function<void(const CString&)>& openLocation)
+	const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript)
 {
-	m_tree.SetScriptCatalog(items, visuals, toolbars, addToToolbar, openLocation);
+	m_tree.SetScriptCatalog(items, visuals, toolbars, addToToolbar, openLocation, runScript);
 }
 
 void CTreeWithToolBar::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars) { m_tree.SetScriptToolbarTargets(toolbars); }
@@ -657,9 +657,9 @@ void CDocumentTree::HighlightItemAtPos(MSHTML::IHTMLElement *p)
 
 void CDocumentTree::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 	const std::function<void(const CString&, const CString&)>& addToToolbar,
-	const std::function<void(const CString&)>& openLocation)
+	const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript)
 {
-	m_tree.SetScriptCatalog(items, visuals, toolbars, addToToolbar, openLocation);
+	m_tree.SetScriptCatalog(items, visuals, toolbars, addToToolbar, openLocation, runScript);
 }
 
 void CDocumentTree::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars) { m_tree.SetScriptToolbarTargets(toolbars); }

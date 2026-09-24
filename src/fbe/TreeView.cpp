@@ -760,9 +760,10 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 
 void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 	const std::function<void(const CString&, const CString&)>& addToToolbar,
-	const std::function<void(const CString&)>& openLocation)
+	const std::function<void(const CString&)>& openLocation,
+	const std::function<void(UINT)>& runScript)
 {
-	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation;
+	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
 	PrepareScriptImages();
 	if(m_script_mode) RebuildScriptTree();
 }
@@ -840,7 +841,7 @@ void CTreeView::RunSelectedScript()
 {
 	const ScriptDescriptor* script = SelectedScript();
 	if(script != NULL && !script->isFolder && script->commandId > 0)
-		::SendMessage(m_main_window, WM_COMMAND, MAKEWPARAM(ID_SCRIPT_BASE + script->commandId, 0), 0);
+		m_run_script ? m_run_script(script->commandId) : ::SendMessage(m_main_window, WM_COMMAND, MAKEWPARAM(ID_SCRIPT_BASE + script->commandId, 0), 0);
 }
 
 

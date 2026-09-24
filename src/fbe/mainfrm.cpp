@@ -2566,7 +2566,8 @@ void CMainFrame::RefreshNavigationScriptTree()
 	for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; visuals.push_back(visual); }
 	m_document_tree.SetScriptCatalog(m_scripts.Menu().Items(), visuals, toolbars,
 		[this](const CString& uid, const CString& id) { AddScriptToToolbar(uid, id); },
-		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); });
+		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); },
+		[this](UINT commandId) { BOOL handled = FALSE; OnToolsScript(0, static_cast<WORD>(ID_SCRIPT_BASE + commandId), NULL, handled); });
 }
 
 void CMainFrame::RefreshNavigationScriptToolbarTargets()

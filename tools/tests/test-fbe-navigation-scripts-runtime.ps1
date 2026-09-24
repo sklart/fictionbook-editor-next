@@ -16,9 +16,9 @@ try {
     [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=NavigationScriptsRuntime`r`n", [Text.UTF8Encoding]::new($false))
     if(Test-Path -LiteralPath $dataDirectory) { Remove-Item -LiteralPath $dataDirectory -Recurse -Force }
     $scripts = Join-Path $dataDirectory 'Scripts'
-    New-Item -ItemType Directory -Path (Join-Path $scripts 'FolderA'),(Join-Path $scripts 'FolderB') -Force | Out-Null
-    foreach($path in @('Root.js', 'FolderA\Child.js', 'FolderB\Deep.js')) {
-        [IO.File]::WriteAllText((Join-Path $scripts $path), "function Run() { }`r`n", [Text.UTF8Encoding]::new($false))
+    New-Item -ItemType Directory -Path (Join-Path $scripts 'FolderA'),(Join-Path $scripts 'FolderA\FolderB') -Force | Out-Null
+    foreach($path in @('Root.js', 'FolderA\Child.js', 'FolderA\FolderB\Deep.js')) {
+        [IO.File]::WriteAllText((Join-Path $scripts $path), "function Run() {}`r`n", [Text.UTF8Encoding]::new($false))
     }
     $document = Join-Path $dataDirectory 'navigation-runtime.fb2'
     [IO.File]::WriteAllText($document, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Navigation runtime</book-title><lang>ru</lang></title-info></description><body><section><title><p>Test</p></title><p>Test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))

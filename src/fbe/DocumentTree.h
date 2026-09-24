@@ -86,7 +86,7 @@ public:
 	LRESULT OnShowScripts(WORD, WORD, HWND, BOOL&);
 	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
-		const std::function<void(const CString&)>& openLocation);
+		const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
@@ -152,7 +152,7 @@ public:
 	CTreeItem GetSelectedItem();
 	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
-		const std::function<void(const CString&)>& openLocation);
+		const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 
 	BEGIN_MSG_MAP(CDocumentTree)

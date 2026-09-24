@@ -17,6 +17,7 @@ Must $tree 'BuildScriptChildren\(root, CString\(\)\)' 'tree recursively starts f
 Must $tree 'if\(script\.parentId != parentId\) continue;' 'tree builds children by parentId without flat-order dependency'
 Must $tree 'BuildScriptChildren\(item, script\.id\)' 'tree supports arbitrary folder nesting'
 Must $tree 'ID_SCRIPT_BASE \+ script->commandId' 'script activation uses the existing command runtime path'
+Must $frame 'OnToolsScript\(0, static_cast<WORD>\(ID_SCRIPT_BASE \+ commandId\)' 'tree activation delegates to the existing main-frame script command runtime'
 Must $tree 'NavigationPopupAddToolbarBase \+ static_cast<UINT>\(index\)' 'toolbar submenu is built dynamically'
 Must $tree 'TPM_RETURNCMD' 'popup returns local commands without global routing'
 Must $tree 'enum NavigationPopupCommand' 'popup IDs are local enum values'

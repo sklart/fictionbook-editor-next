@@ -101,15 +101,19 @@ void CMainFrame::RunPortableStateTestScenario()
 		RefreshNavigationScriptTree();
 		CTreeView& tree = m_document_tree.m_tree.m_tree;
 		tree.SetScriptMode(true);
-		const HTREEITEM folderA = tree.FindScriptTreeItem(L"foldera");
-		const HTREEITEM child = tree.FindScriptTreeItem(L"foldera/child.js");
-		const HTREEITEM deep = tree.FindScriptTreeItem(L"folderb/deep.js");
+		HTREEITEM folderA = tree.FindScriptTreeItem(L"foldera");
+		HTREEITEM child = tree.FindScriptTreeItem(L"foldera/child.js");
+		const HTREEITEM folderB = tree.FindScriptTreeItem(L"foldera/folderb");
+		const HTREEITEM deep = tree.FindScriptTreeItem(L"foldera/folderb/deep.js");
 		const HTREEITEM root = tree.FindScriptTreeItem(L"root.js");
-		const bool hierarchy = folderA != NULL && child != NULL && deep != NULL && root != NULL &&
-			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.ScriptTreeNodeCount() == 5;
+		const bool hierarchy = folderA != NULL && child != NULL && folderB != NULL && deep != NULL && root != NULL &&
+			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
 		const int imagesBefore = tree.ScriptImageCount(); tree.SetScriptMode(false); tree.SetScriptMode(true); const bool imagesStable = tree.ScriptImageCount() == imagesBefore;
+		folderA = tree.FindScriptTreeItem(L"foldera"); child = tree.FindScriptTreeItem(L"foldera/child.js");
 		m_scripts.ClearLastScript(); tree.SelectItem(child); BOOL handled = FALSE; tree.OnKeyDown(WM_KEYDOWN, VK_RETURN, 0, handled);
 		const ScriptDescriptor* ran = m_scripts.LastScript(); const bool enterRuns = handled && ran != NULL && ran->relativePath == L"foldera/child.js";
+		CTreeItem(folderA, &tree).Expand(TVE_EXPAND); m_scripts.ClearLastScript(); CRect childRect; tree.GetItemRect(child, &childRect, TRUE); BOOL doubleClickHandled = FALSE; tree.OnDblClick(WM_LBUTTONDBLCLK, 0, MAKELPARAM(childRect.left + 2, childRect.top + 2), doubleClickHandled);
+		ran = m_scripts.LastScript(); const bool doubleClickRuns = ran != NULL && ran->relativePath == L"foldera/child.js";
 		m_scripts.ClearLastScript(); tree.SelectItem(folderA); handled = FALSE; tree.OnKeyDown(WM_KEYDOWN, VK_RETURN, 0, handled);
 		const bool folderOnly = handled && m_scripts.LastScript() == NULL;
 		NMTREEVIEW drag = {}; drag.itemNew.hItem = child; BOOL dragHandled = FALSE; tree.OnBegindrag(0, reinterpret_cast<LPNMHDR>(&drag), dragHandled);
@@ -118,7 +122,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), changed = previous;
 		ScriptToolbarDefinition target; target.id = L"navigation-runtime-toolbar"; target.name = L"Navigation runtime"; changed.push_back(target);
 		const bool applied = ApplyScriptToolbarDefinitions(previous, changed);
-		CString childUid; for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(m_scripts.Menu().Item(index).relativePath == L"foldera/child.js") childUid = m_scripts.Menu().Item(index).uid;
+		CString childUid; int childCommand = -1; for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(m_scripts.Menu().Item(index).relativePath == L"foldera/child.js") { childUid = m_scripts.Menu().Item(index).uid; childCommand = m_scripts.Menu().Item(index).commandId; }
 		const bool toolbarAdded = applied && AddScriptToToolbar(childUid, target.id);
 		PortableToolbarLayout persisted; bool uidPersisted = toolbarAdded && PortableToolbarStore::Load(persisted);
 		for(size_t index = 0; uidPersisted && index < persisted.scriptToolbars.size(); ++index) if(persisted.scriptToolbars[index].id == target.id) { uidPersisted = !persisted.scriptToolbars[index].items.empty() && persisted.scriptToolbars[index].items[0].scriptUid == childUid; break; }
@@ -129,8 +133,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool targetLive = targetDeleted && m_scripts.DiscoveryCount() == discoveryBefore;
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
-		CStringA report; const bool passed = initialized && hierarchy && imagesStable && folderOnly && dragGuarded && uidPersisted && targetLive;
-		report.Format("phase=navigation-scripts\nhierarchy=%d\nimages-stable=%d\nenter-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", hierarchy, imagesStable, enterRuns, folderOnly, dragGuarded, uidPersisted, targetLive, passed ? "pass" : "fail");
+		CStringA report; const bool passed = initialized && hierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive;
+		report.Format("phase=navigation-scripts\nhierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", hierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, uidPersisted, targetLive, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)
