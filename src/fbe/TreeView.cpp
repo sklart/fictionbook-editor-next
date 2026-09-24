@@ -795,6 +795,12 @@ bool CTreeView::HasScriptToolbarTarget(const CString& id, const CString& name) c
 	return false;
 }
 
+int CTreeView::ScriptTreeImage(HTREEITEM item) const
+{
+	int normal = 0, selected = 0;
+	return item != NULL && GetItemImage(item, normal, selected) ? normal : -1;
+}
+
 bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 {
 	const ScriptDescriptor* script = SelectedScript();

@@ -122,6 +122,13 @@ void CMainFrame::RunPortableStateTestScenario()
 		const HTREEITEM root = tree.FindScriptTreeItem(L"root.js");
 		const bool hierarchy = folderA != NULL && child != NULL && folderB != NULL && deep != NULL && root != NULL &&
 			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
+		const bool visualMapping = tree.ScriptTreeImage(root) > 0 && tree.ScriptTreeImage(child) > 0 && tree.ScriptTreeImage(deep) == 0;
+		std::vector<ScriptDescriptor> reverseCatalog = m_scripts.Menu().Items(); std::vector<ScriptTreeVisual> reverseVisuals;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; reverseVisuals.push_back(visual); }
+		std::reverse(reverseCatalog.begin(), reverseCatalog.end()); std::reverse(reverseVisuals.begin(), reverseVisuals.end());
+		tree.SetScriptCatalog(reverseCatalog, reverseVisuals, std::vector<ScriptTreeToolbarTarget>(), std::function<void(const CString&, const CString&)>(), std::function<void(const CString&)>(), std::function<void(UINT)>());
+		const bool unorderedHierarchy = tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
+		RefreshNavigationScriptTree();
 		const int imagesBefore = tree.ScriptImageCount(); RefreshNavigationScriptTree(); RefreshNavigationScriptTree(); tree.SetScriptMode(false); tree.SetScriptMode(true); const bool imagesStable = tree.ScriptImageCount() == imagesBefore;
 		folderA = tree.FindScriptTreeItem(L"foldera"); child = tree.FindScriptTreeItem(L"foldera/child.js"); const HTREEITEM refreshedRoot = tree.FindScriptTreeItem(L"root.js"); const HTREEITEM refreshedDeep = tree.FindScriptTreeItem(L"foldera/folderb/deep.js");
 		m_scripts.ClearLastScript(); tree.SelectItem(child); BOOL handled = FALSE; tree.OnKeyDown(WM_KEYDOWN, VK_RETURN, 0, handled);
@@ -154,8 +161,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool targetLive = targetDeleted && ApplyScriptToolbarDefinitions(currentDefinitions(), withoutA) && !tree.HasScriptToolbarTarget(targetA.id, targetA.name) && m_scripts.DiscoveryCount() == discoveryBefore;
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
-		CStringA report; const bool passed = initialized && hierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive;
-		report.Format("phase=navigation-scripts\nhierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", hierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
+		CStringA report; const bool passed = initialized && hierarchy && visualMapping && unorderedHierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive;
+		report.Format("phase=navigation-scripts\nhierarchy=%d\nvisual-mapping=%d\nunordered-hierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", hierarchy, visualMapping, unorderedHierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)

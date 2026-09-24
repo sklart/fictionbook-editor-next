@@ -158,6 +158,7 @@ public:
 	bool HasScriptTreeParent(const CString& relativePath, const CString& parentRelativePath) const;
 	size_t ScriptTreeNodeCount() const { return m_script_nodes.size(); }
 	int ScriptImageCount() const { return m_ImageList.GetImageCount(); }
+	int ScriptTreeImage(HTREEITEM item) const;
 	bool IsStructuralDragActive() const { return m_drag; }
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 	bool ExecuteScriptPopupCommand(UINT command);

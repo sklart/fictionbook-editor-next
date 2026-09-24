@@ -20,6 +20,9 @@ try {
     foreach($path in @('Root.js', 'FolderA\Child.js', 'FolderA\FolderB\Deep.js')) {
         [IO.File]::WriteAllText((Join-Path $scripts $path), "function Run() {}`r`n", [Text.UTF8Encoding]::new($false))
     }
+    $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'src\export-docx\res\ExportDOCX.ico') -Destination (Join-Path $scripts 'Root.ico')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'packaging\nsis\res\fbe-wizard.bmp') -Destination (Join-Path $scripts 'FolderA\Child.bmp')
     $document = Join-Path $dataDirectory 'navigation-runtime.fb2'
     [IO.File]::WriteAllText($document, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Navigation runtime</book-title><lang>ru</lang></title-info></description><body><section><title><p>Test</p></title><p>Test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
     $savedMode = $env:FBE_NEXT_TEST_MODE; $savedScenario = $env:FBE_NEXT_TEST_SCENARIO
