@@ -818,6 +818,7 @@ bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 void CTreeView::SetScriptMode(bool value)
 {
 	if(m_script_mode == value) return;
+	if(value && m_drag) EndDrag();
 	m_script_mode = value;
 	if(m_script_mode) RebuildScriptTree();
 	else UpdateAll();

@@ -30,6 +30,7 @@ if($tree -match 'void CTreeView::BuildScriptChildren\([\s\S]*?\n\}') { if($Match
 Must $tree 'visual\.icon != NULL' 'ICO visual snapshot is supported'
 Must $tree 'visual\.bitmap != NULL' 'BMP visual snapshot is supported'
 Must $tree 'if\(m_script_mode\) \{ bHandled = TRUE; return 0; \}' 'script mode fail-closes structural drag notifications'
+Must $tree 'if\(value && m_drag\) EndDrag\(\);' 'switching to script mode releases an in-flight structural drag safely'
 foreach($handler in @('OnCut', 'OnPaste', 'OnDelete', 'OnRight', 'OnLeft', 'OnMerge')) {
     $handlerStart = $tree.IndexOf("LRESULT CTreeView::$handler")
     if($handlerStart -lt 0 -or $tree.IndexOf('if(m_script_mode) return 0;', $handlerStart) -lt 0) { throw "Missing navigation scripts contract: script mode blocks $handler" }
