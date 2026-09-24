@@ -20,8 +20,9 @@ Must $tree 'ID_SCRIPT_BASE \+ script->commandId' 'script activation uses the exi
 Must $frame 'OnToolsScript\(0, static_cast<WORD>\(ID_SCRIPT_BASE \+ commandId\)' 'tree activation delegates to the existing main-frame script command runtime'
 Must $tree 'NavigationPopupAddToolbarBase \+ static_cast<UINT>\(index\)' 'toolbar submenu is built dynamically'
 Must $tree 'TPM_RETURNCMD' 'popup returns local commands without global routing'
-Must $tree 'enum NavigationPopupCommand' 'popup IDs are local enum values'
-if($tree -match '57600|kNavigationPopupFirst|kNavigationPopupLast') { throw 'Navigation popup must not reserve global resource IDs.' }
+Must $treeHeader 'enum NavigationPopupCommand' 'popup IDs are local enum values'
+Must $tree 'ExecuteScriptPopupCommand\(command\)' 'popup dispatch uses the same production command handler exercised by runtime tests'
+if($treeHeader -match '57600|kNavigationPopupFirst|kNavigationPopupLast') { throw 'Navigation popup must not reserve global resource IDs.' }
 Must $tree 'PrepareScriptImages\(\)' 'visual mapping is prepared outside tree rebuild'
 Must $tree 'const bool refreshImages = m_script_images\.size\(\) != items\.size\(\) \|\| !ScriptVisualsMatch\(m_script_visuals, visuals, items\.size\(\)\);' 'unchanged catalog refresh reuses image slots'
 Must $treeHeader 'ScriptImageCount\(\)' 'runtime probe reads the native image-list count without owning it'

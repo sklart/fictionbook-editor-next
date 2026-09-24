@@ -20,6 +20,15 @@ struct ScriptTreeVisual
 	ScriptTreeVisual() : icon(NULL), bitmap(NULL) {}
 };
 
+// These values are consumed only by TPM_RETURNCMD in the scripts popup; they
+// are never routed through WM_COMMAND or the application's command ranges.
+enum NavigationPopupCommand
+{
+	NavigationPopupRunScript = 1,
+	NavigationPopupOpenLocation = 2,
+	NavigationPopupAddToolbarBase = 100
+};
+
 typedef CWinTraits<WS_CHILD|WS_VISIBLE|
 		   TVS_HASBUTTONS|TVS_LINESATROOT|TVS_SHOWSELALWAYS,0>
 		  CLPTVWinTraits;
@@ -151,6 +160,7 @@ public:
 	int ScriptImageCount() const { return m_ImageList.GetImageCount(); }
 	bool IsStructuralDragActive() const { return m_drag; }
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
+	bool ExecuteScriptPopupCommand(UINT command);
 
   CTreeItem GetMoveElementFrom(){m_move_from.m_pTreeView = this; return m_move_from;}
   CTreeItem GetMoveElementTo(){m_move_to.m_pTreeView = this;return m_move_to;}

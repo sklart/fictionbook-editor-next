@@ -16,13 +16,6 @@ static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKEL
 
 namespace
 {
-enum NavigationPopupCommand
-{
-	NavigationPopupRunScript = 1,
-	NavigationPopupOpenLocation = 2,
-	NavigationPopupAddToolbarBase = 100
-};
-
 bool ScriptVisualsMatch(const std::vector<ScriptTreeVisual>& left, const std::vector<ScriptTreeVisual>& right, size_t itemCount)
 {
 	for(size_t index = 0; index < itemCount; ++index)
@@ -734,10 +727,7 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_STRING, NavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
 		const UINT command = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, point.x, point.y, m_hWnd);
-		if(command == NavigationPopupRunScript) RunSelectedScript();
-		else if(command == NavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); }
-		else if(command >= NavigationPopupAddToolbarBase && command - NavigationPopupAddToolbarBase < m_script_toolbars.size())
-			if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - NavigationPopupAddToolbarBase].id);
+		ExecuteScriptPopupCommand(command);
 		return 1;
 	}
 	CPoint ptMousePos = (CPoint)lParam;
@@ -802,6 +792,20 @@ bool CTreeView::HasScriptToolbarTarget(const CString& id, const CString& name) c
 {
 	for(size_t index = 0; index < m_script_toolbars.size(); ++index)
 		if(m_script_toolbars[index].id == id && m_script_toolbars[index].name == name) return true;
+	return false;
+}
+
+bool CTreeView::ExecuteScriptPopupCommand(UINT command)
+{
+	const ScriptDescriptor* script = SelectedScript();
+	if(script == NULL || script->isFolder) return false;
+	if(command == NavigationPopupRunScript) { RunSelectedScript(); return true; }
+	if(command == NavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); return true; }
+	if(command >= NavigationPopupAddToolbarBase && command - NavigationPopupAddToolbarBase < m_script_toolbars.size())
+	{
+		if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - NavigationPopupAddToolbarBase].id);
+		return true;
+	}
 	return false;
 }
 
