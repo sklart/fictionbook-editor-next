@@ -100,7 +100,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		bool uidRestored = false;
 		for(size_t index = 0; toolbar != NULL && toolbar->name == L"Navigation renamed" && index < toolbar->items.size(); ++index) if(toolbar->items[index].scriptUid == childUid) { uidRestored = true; break; }
 		const bool modeRestored = _Settings.DocumentTreeScripts() && tree.IsScriptMode(); const bool treeRestored = tree.ScriptTreeNodeCount() == 5 && tree.FindScriptTreeItem(L"foldera/folderb/deep.js") != NULL;
-		const bool restored = initialized && modeRestored && treeRestored;
+		const bool restored = initialized && modeRestored && treeRestored && uidRestored;
 		CStringA report; report.Format("phase=navigation-scripts-reload\ninitialized=%d\nmode=%d\ntree=%d\nuid=%d\nrestored=%d\nresult=%s\n", initialized, modeRestored, treeRestored, uidRestored, restored, restored ? "pass" : "fail"); WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)

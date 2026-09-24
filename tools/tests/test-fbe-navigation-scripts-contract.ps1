@@ -35,6 +35,7 @@ foreach($handler in @('OnCut', 'OnPaste', 'OnDelete', 'OnRight', 'OnLeft', 'OnMe
 Must $frame 'bool CMainFrame::AddScriptToToolbar' 'toolbar add has a transactional owner'
 Must $frame 'item\.scriptUid = scriptUid' 'toolbar persistence stores script UID'
 Must $frame 'ApplyScriptToolbarDefinitions\(previous, current\)' 'toolbar add uses existing persistence and runtime delta'
+Must $frame 'if\(captured\.empty\(\) && !runtime\.definition\.items\.empty\(\)\) captured = runtime\.definition\.items;' 'shutdown cannot erase a custom toolbar UID after an empty native capture'
 if($frame -match 'bool CMainFrame::AddScriptToToolbar[\s\S]*?\n\}') { if($Matches[0] -match 'InitializeScripts\(') { throw 'Navigation toolbar add must not reinitialize scripts.' } }
 Must $frame 'void CMainFrame::RefreshNavigationScriptToolbarTargets\(\)' 'toolbar targets have a lightweight refresh path'
 if($frame -match 'bool CMainFrame::ApplyScriptToolbarDefinitions[\s\S]*?\n\}') { Must $Matches[0] 'RefreshNavigationScriptToolbarTargets\(\)' 'successful toolbar update refreshes navigation targets' }

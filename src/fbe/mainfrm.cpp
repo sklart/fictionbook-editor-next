@@ -2764,6 +2764,11 @@ void CMainFrame::SavePortableToolbarLayout()
 		const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[toolbarIndex];
 		if(runtime.window == NULL || runtime.definition.id == L"scripts-main") continue;
 		std::vector<PortableToolbarItem> captured; ToolbarLayoutAdapter::Capture(runtime.window, captured);
+		// A rebar child can be temporarily empty while its deferred toolbar
+		// layout is being materialized.  Its definition is the transactional
+		// source written by AddScriptToToolbar; do not erase a persisted UID
+		// merely because this transient capture has no buttons.
+		if(captured.empty() && !runtime.definition.items.empty()) captured = runtime.definition.items;
 		for(size_t itemIndex = 0; itemIndex < captured.size(); ++itemIndex) if(!captured[itemIndex].separator && captured[itemIndex].command >= ID_SCRIPT_BASE + 1 && captured[itemIndex].command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) if(!m_scripts.Menu().Item(scriptIndex).isFolder && m_scripts.Menu().Item(scriptIndex).commandId == captured[itemIndex].command - ID_SCRIPT_BASE) { captured[itemIndex].command = 0; captured[itemIndex].scriptUid = m_scripts.Menu().Item(scriptIndex).uid; break; }
 		bool found = false; for(size_t definitionIndex = 0; definitionIndex < layout.scriptToolbars.size(); ++definitionIndex) if(layout.scriptToolbars[definitionIndex].id == runtime.definition.id) { const std::vector<PortableToolbarItem> previous = layout.scriptToolbars[definitionIndex].items; layout.scriptToolbars[definitionIndex].items = MergeUnavailableScriptToolbarItems(captured, previous, m_scripts); layout.scriptToolbars[definitionIndex].visible = runtime.definition.visible; found = true; break; }
