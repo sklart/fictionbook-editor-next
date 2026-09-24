@@ -22,6 +22,19 @@ enum NavigationPopupCommand
 	NavigationPopupOpenLocation = 2,
 	NavigationPopupAddToolbarBase = 100
 };
+
+bool ScriptVisualsMatch(const std::vector<ScriptTreeVisual>& left, const std::vector<ScriptTreeVisual>& right, size_t itemCount)
+{
+	for(size_t index = 0; index < itemCount; ++index)
+	{
+		const HICON leftIcon = index < left.size() ? left[index].icon : NULL;
+		const HICON rightIcon = index < right.size() ? right[index].icon : NULL;
+		const HBITMAP leftBitmap = index < left.size() ? left[index].bitmap : NULL;
+		const HBITMAP rightBitmap = index < right.size() ? right[index].bitmap : NULL;
+		if(leftIcon != rightIcon || leftBitmap != rightBitmap) return false;
+	}
+	return true;
+}
 }
 
 struct RuntimeTreeMenuBinding
@@ -763,8 +776,9 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 	const std::function<void(const CString&)>& openLocation,
 	const std::function<void(UINT)>& runScript)
 {
+	const bool refreshImages = m_script_images.size() != items.size() || !ScriptVisualsMatch(m_script_visuals, visuals, items.size());
 	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
-	PrepareScriptImages();
+	if(refreshImages) PrepareScriptImages();
 	if(m_script_mode) RebuildScriptTree();
 }
 

@@ -122,7 +122,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const HTREEITEM root = tree.FindScriptTreeItem(L"root.js");
 		const bool hierarchy = folderA != NULL && child != NULL && folderB != NULL && deep != NULL && root != NULL &&
 			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
-		const int imagesBefore = tree.ScriptImageCount(); tree.SetScriptMode(false); tree.SetScriptMode(true); const bool imagesStable = tree.ScriptImageCount() == imagesBefore;
+		const int imagesBefore = tree.ScriptImageCount(); RefreshNavigationScriptTree(); RefreshNavigationScriptTree(); tree.SetScriptMode(false); tree.SetScriptMode(true); const bool imagesStable = tree.ScriptImageCount() == imagesBefore;
 		folderA = tree.FindScriptTreeItem(L"foldera"); child = tree.FindScriptTreeItem(L"foldera/child.js");
 		m_scripts.ClearLastScript(); tree.SelectItem(child); BOOL handled = FALSE; tree.OnKeyDown(WM_KEYDOWN, VK_RETURN, 0, handled);
 		const ScriptDescriptor* ran = m_scripts.LastScript(); const bool enterRuns = handled && ran != NULL && ran->relativePath == L"foldera/child.js";

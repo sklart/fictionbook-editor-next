@@ -23,6 +23,7 @@ Must $tree 'TPM_RETURNCMD' 'popup returns local commands without global routing'
 Must $tree 'enum NavigationPopupCommand' 'popup IDs are local enum values'
 if($tree -match '57600|kNavigationPopupFirst|kNavigationPopupLast') { throw 'Navigation popup must not reserve global resource IDs.' }
 Must $tree 'PrepareScriptImages\(\)' 'visual mapping is prepared outside tree rebuild'
+Must $tree 'const bool refreshImages = m_script_images\.size\(\) != items\.size\(\) \|\| !ScriptVisualsMatch\(m_script_visuals, visuals, items\.size\(\)\);' 'unchanged catalog refresh reuses image slots'
 Must $treeHeader 'ScriptImageCount\(\)' 'runtime probe reads the native image-list count without owning it'
 if($tree -match 'void CTreeView::BuildScriptChildren\([\s\S]*?\n\}') { if($Matches[0] -match 'AddIcon\(|AddImage\(') { throw 'Tree rebuild must not append image-list slots.' } }
 Must $tree 'visual\.icon != NULL' 'ICO visual snapshot is supported'
