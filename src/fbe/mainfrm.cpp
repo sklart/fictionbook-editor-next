@@ -227,7 +227,7 @@ static_assert(ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST, "Plug-in and spell sugges
 static_assert(ID_PLUGIN_IMPORT_LAST < ID_PLUGIN_EXPORT_FIRST, "Import and export command ranges overlap");
 static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < ID_PLUGIN_IMPORT_FIRST, "Plug-in and script command ranges overlap");
 static_assert(ID_PLUGIN_EXPORT_LAST < ID_LAST_SCRIPT, "Plug-in and regular command ranges overlap");
-static_assert(ID_SCRIPT_BASE + 999 < ID_SPELL_REPLACE_FIRST, "Script and spell suggestion command IDs overlap");
+static_assert(ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT < ID_SPELL_REPLACE_FIRST, "Script and spell suggestion command IDs overlap");
 static_assert(ID_SPELL_REPLACE_LAST < ID_SCI_COLLAPSE_BASE, "Scintilla and spell suggestion command IDs overlap");
 static_assert(ID_SPELL_REPLACE_LAST < 0xffff, "Spell suggestion command IDs must fit in WM_COMMAND");
 static_assert(ID_FILE_MRU_LAST <= 0xffff, "MRU command IDs must fit in WM_COMMAND");
@@ -2559,12 +2559,12 @@ bool CMainFrame::AddScriptToToolbar(const CString& scriptUid, const CString& too
 void CMainFrame::RefreshNavigationScriptTree()
 {
 	std::vector<ScriptTreeToolbarTarget> toolbars;
-	std::vector<HICON> icons;
+	std::vector<ScriptTreeVisual> visuals;
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) {
 		ScriptTreeToolbarTarget target; target.id = m_scriptToolbars.Items()[index].definition.id; target.name = m_scriptToolbars.Items()[index].definition.name; toolbars.push_back(target);
 	}
-	for(int index = 0; index < m_scripts.Menu().Count(); ++index) icons.push_back(m_scripts.Menu().VisualAt(index).icon);
-	m_document_tree.SetScriptCatalog(m_scripts.Menu().Items(), icons, toolbars,
+	for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; visuals.push_back(visual); }
+	m_document_tree.SetScriptCatalog(m_scripts.Menu().Items(), visuals, toolbars,
 		[this](const CString& uid, const CString& id) { AddScriptToToolbar(uid, id); },
 		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); });
 }

@@ -16,17 +16,12 @@ static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKEL
 
 namespace
 {
-const UINT kNavigationPopupFirst = 57600;
-const UINT kNavigationPopupRunScript = kNavigationPopupFirst;
-const UINT kNavigationPopupOpenLocation = kNavigationPopupFirst + 1;
-const UINT kNavigationPopupAddToolbarBase = kNavigationPopupFirst + 16;
-const UINT kNavigationPopupLast = kNavigationPopupAddToolbarBase + 255;
-static_assert(kNavigationPopupFirst > ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, "Navigation popup must not overlap dynamic toolbar commands");
-static_assert(kNavigationPopupFirst > ID_SPELL_REPLACE_LAST, "Navigation popup must not overlap spell commands");
-static_assert(kNavigationPopupFirst > ID_PLUGIN_EXPORT_LAST, "Navigation popup must not overlap plugin commands");
-static_assert(kNavigationPopupFirst > ID_SCI_EXPAND9, "Navigation popup must not overlap Scintilla commands");
-static_assert(kNavigationPopupFirst > ID_SCRIPT_BASE + 999, "Navigation popup must not overlap script commands");
-static_assert(kNavigationPopupLast <= 0xffffu, "Navigation popup command IDs must fit WM_COMMAND");
+enum NavigationPopupCommand
+{
+	NavigationPopupRunScript = 1,
+	NavigationPopupOpenLocation = 2,
+	NavigationPopupAddToolbarBase = 100
+};
 }
 
 struct RuntimeTreeMenuBinding
@@ -716,20 +711,20 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 		const ScriptDescriptor* script = SelectedScript();
 		if(script == NULL || script->isFolder) return 0;
 		CMenu menu; menu.CreatePopupMenu();
-		menu.AppendMenu(MF_STRING, kNavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
+		menu.AppendMenu(MF_STRING, NavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
 		CMenu toolbars; toolbars.CreatePopupMenu();
 		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
-			toolbars.AppendMenu(MF_STRING, kNavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
+			toolbars.AppendMenu(MF_STRING, NavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
 		if(m_script_toolbars.empty()) toolbars.AppendMenu(MF_STRING | MF_GRAYED, static_cast<UINT_PTR>(0), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.no_toolbars", L"No script toolbars"));
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(static_cast<HMENU>(toolbars)), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, kNavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
+		menu.AppendMenu(MF_STRING, NavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
 		const UINT command = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, point.x, point.y, m_hWnd);
-		if(command == kNavigationPopupRunScript) RunSelectedScript();
-		else if(command == kNavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); }
-		else if(command >= kNavigationPopupAddToolbarBase && command < kNavigationPopupAddToolbarBase + m_script_toolbars.size())
-			if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - kNavigationPopupAddToolbarBase].id);
+		if(command == NavigationPopupRunScript) RunSelectedScript();
+		else if(command == NavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); }
+		else if(command >= NavigationPopupAddToolbarBase && command - NavigationPopupAddToolbarBase < m_script_toolbars.size())
+			if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - NavigationPopupAddToolbarBase].id);
 		return 1;
 	}
 	CPoint ptMousePos = (CPoint)lParam;
@@ -763,11 +758,12 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 	return 1;
 }
 
-void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<HICON>& icons, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 	const std::function<void(const CString&, const CString&)>& addToToolbar,
 	const std::function<void(const CString&)>& openLocation)
 {
-	m_script_items = items; m_script_icons = icons; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation;
+	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation;
+	PrepareScriptImages();
 	if(m_script_mode) RebuildScriptTree();
 }
 
@@ -789,14 +785,24 @@ void CTreeView::RebuildScriptTree()
 	root.Expand(TVE_EXPAND);
 }
 
+void CTreeView::PrepareScriptImages()
+{
+	m_script_images.assign(m_script_items.size(), 0);
+	for(size_t index = 0; index < m_script_items.size() && index < m_script_visuals.size(); ++index)
+	{
+		const ScriptTreeVisual& visual = m_script_visuals[index];
+		if(visual.icon != NULL) m_script_images[index] = AddIcon(visual.icon);
+		else if(visual.bitmap != NULL) m_script_images[index] = AddImage(visual.bitmap);
+	}
+}
+
 void CTreeView::BuildScriptChildren(HTREEITEM parent, const CString& parentId)
 {
 	for(size_t index = 0; index < m_script_items.size(); ++index)
 	{
 		const ScriptDescriptor& script = m_script_items[index];
 		if(script.parentId != parentId) continue;
-		const HICON icon = index < m_script_icons.size() ? m_script_icons[index] : NULL;
-		const int image = icon != NULL ? AddIcon(icon) : 0;
+		const int image = index < m_script_images.size() ? m_script_images[index] : 0;
 		CTreeItem item = InsertItem(script.name, image, image, parent, TVI_LAST);
 		m_script_nodes[item] = index;
 		if(script.isFolder) BuildScriptChildren(item, script.id);

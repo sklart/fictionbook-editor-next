@@ -2,7 +2,7 @@
 #define	LTREEVIEW_H
 
 #include "ElementDescMnr.h"
-#include "scripts\\ScriptDescriptor.h"
+#include "scripts\\ScriptUiController.h"
 #include <map>
 #include <vector>
 #include <functional>
@@ -11,6 +11,13 @@ struct ScriptTreeToolbarTarget
 {
 	CString id;
 	CString name;
+};
+
+struct ScriptTreeVisual
+{
+	HICON icon;
+	HBITMAP bitmap;
+	ScriptTreeVisual() : icon(NULL), bitmap(NULL) {}
 };
 
 typedef CWinTraits<WS_CHILD|WS_VISIBLE|
@@ -29,7 +36,8 @@ protected:
   CTreeItem				m_move_to;
 	bool m_script_mode;
 	std::vector<ScriptDescriptor> m_script_items;
-	std::vector<HICON> m_script_icons;
+	std::vector<ScriptTreeVisual> m_script_visuals;
+	std::vector<int> m_script_images;
 	std::vector<ScriptTreeToolbarTarget> m_script_toolbars;
 	std::map<HTREEITEM, size_t> m_script_nodes;
 	std::function<void(const CString&, const CString&)> m_add_script_to_toolbar;
@@ -127,7 +135,7 @@ public:
   void UpdateAll();
   void HighlightItemAtPos(MSHTML::IHTMLElement *p);
   void SetMainwindow(HWND hwnd){m_main_window = hwnd;}
-	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<HICON>& icons, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
@@ -176,6 +184,7 @@ protected:
   bool MoveLeftWithAllNext(HTREEITEM hitem);
   void FillEDMnr();
 	void RebuildScriptTree();
+	void PrepareScriptImages();
 	void BuildScriptChildren(HTREEITEM parent, const CString& parentId);
 	const ScriptDescriptor* SelectedScript();
 	void RunSelectedScript();

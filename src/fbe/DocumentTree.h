@@ -63,8 +63,8 @@ public:
 		COMMAND_RANGE_HANDLER(IDC_TREE_BASE, IDC_TREE_BASE + 99, OnMenuCommand)
 		COMMAND_RANGE_HANDLER(IDC_TREE_ST_BASE, IDC_TREE_ST_BASE + 99, OnMenuStCommand)
 		COMMAND_ID_HANDLER(IDC_TREE_CLEAR_ALL, OnMenuClear)
-		COMMAND_ID_HANDLER(57872, OnShowDocumentStructure)
-		COMMAND_ID_HANDLER(57873, OnShowScripts)
+		COMMAND_ID_HANDLER(ID_DOCUMENT_TREE_MODE_STRUCTURE, OnShowDocumentStructure)
+		COMMAND_ID_HANDLER(ID_DOCUMENT_TREE_MODE_SCRIPTS, OnShowScripts)
 
 		NOTIFY_CODE_HANDLER(TTN_GETDISPINFO, OnToolTipText)
 	END_MSG_MAP()
@@ -84,7 +84,7 @@ public:
 	LRESULT OnMenuClear(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnShowDocumentStructure(WORD, WORD, HWND, BOOL&);
 	LRESULT OnShowScripts(WORD, WORD, HWND, BOOL&);
-	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<HICON>& icons, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
@@ -150,7 +150,7 @@ public:
 	void UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHTML::IHTMLDOMNodePtr node);
 	void HighlightItemAtPos(MSHTML::IHTMLElement *p);
 	CTreeItem GetSelectedItem();
-	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<HICON>& icons, const std::vector<ScriptTreeToolbarTarget>& toolbars,
+	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
