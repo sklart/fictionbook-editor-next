@@ -21,14 +21,33 @@ try {
         $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario
     }
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
-    $expected = @('missing-custom-ok', 'missing-builtin-ok', 'missing-builtin-select-none', 'custom-cancel')
+    $expected = @('missing-custom-ok', 'missing-builtin-ok', 'missing-builtin-select-none', 'custom-cancel',
+        'explicit-colors-automatic-swatches', 'foreground-automatic-preview', 'background-automatic-preview',
+        'automatic-settings-body', 'automatic-to-explicit')
     if($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) Settings cases, got $($rows.Count)." }
     foreach($name in $expected) {
         $matches = @($rows | Where-Object case -eq $name)
         if($matches.Count -ne 1 -or $matches[0].passed -ne '1') { throw "Settings Editor page failed $name." }
     }
+    $alphaReport = Join-Path $isolation.Root 'preview-alpha.tsv'
+    $savedMode, $savedScenario, $savedDirectory = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_PREVIEW_DIRECTORY
+    try {
+        $env:FBE_NEXT_TEST_MODE = '1'
+        $env:FBE_NEXT_TEST_SCENARIO = 'settings-editor-alpha-runtime'
+        $env:FBE_NEXT_TEST_PREVIEW_DIRECTORY = $isolation.Root
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', $alphaReport, '--portable', $fixture) -PassThru
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'settings-editor-alpha-runtime' -Report $alphaReport -TimeoutSeconds $TimeoutSeconds
+        if($exitCode -ne 0) { throw "Settings Editor alpha preview exited with $exitCode." }
+    } finally {
+        $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_PREVIEW_DIRECTORY = $savedMode, $savedScenario, $savedDirectory
+    }
+    $alphaRows = @(Import-Csv -LiteralPath $alphaReport -Delimiter "`t")
+    if($alphaRows.Count -ne 24) { throw "Expected 24 PNG alpha preview cases, got $($alphaRows.Count)." }
+    foreach($row in $alphaRows) {
+        if($row.passed -ne '1') { throw "Settings preview alpha mismatch: $($row | ConvertTo-Json -Compress)" }
+    }
     $passed = $true
-    Write-Host 'Settings Editor page preserves unavailable backgrounds and Automatic colors through no-op OK and Cancel.'
+    Write-Host 'Settings Editor Automatic swatches/BODY and 24 transparent PNG preview cases passed.'
 } finally {
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

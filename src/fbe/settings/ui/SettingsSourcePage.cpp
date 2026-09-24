@@ -573,7 +573,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 					L"Theme \"%s\" (ID: %s) already exists.\n\nReplace the existing user theme?\nYes: replace\nNo: import a copy\nCancel: skip this file."),
 					static_cast<LPCWSTR>(parsedTheme.info.name), static_cast<LPCWSTR>(parsedTheme.info.id));
 				const int decision = U::MessageBox(m_hWnd, conflict, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNOCANCEL | MB_ICONQUESTION);
-				if(decision == IDCANCEL) { ++cancelled; continue; }
+				if(decision != IDYES && decision != IDNO) { ++cancelled; continue; }
 				if(decision == IDYES) conflictMode = XmlSourceThemes::IMPORT_THEME_REPLACE_USER;
 			}			if(XmlSourceThemes::ImportThemeFile(parsedTheme, importedId, error, conflictMode))
 			{

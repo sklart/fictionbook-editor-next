@@ -1426,6 +1426,10 @@ bool	CMainFrame::DiscardChanges() {
 			_Settings.Load();
 			return false;
 		}
+    default:
+		// An interrupted dialog is not consent to discard unsaved changes.
+		_Settings.Load();
+		return false;
     }
   }
   return true;
@@ -3499,7 +3503,9 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
   // Batch jobs have neither an operator nor an interactive close contract.
   // Their individual scenario handlers have already saved or recorded failure
   // before posting WM_CLOSE, so never let DiscardChanges() show a modal prompt.
-  const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty();
+  // The save-decision close regression deliberately exercises that prompt.
+  const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty() &&
+	!RuntimeTests::IsScenario(L"save-decision-quit-close");
   if (unattendedBatch || DiscardChanges())
   {
 	m_recovery.DeleteIfWritten();
@@ -6260,9 +6266,10 @@ void CMainFrame::SourceGoTo(int line, int col)
 bool CMainFrame::CheckFileTimeStamp()
 {
 	if (m_document_session.Location().storagePath.IsEmpty() || !IsDocumentLocationModified(m_document_session.Location())) return false;
-	if(IDYES == U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG, static_cast<LPCWSTR>(m_doc->m_filename)))
-		return ReloadFile();
-	m_document_session.AcceptExternalVersion();
+	const int decision = U::MessageBox(MB_YESNO, IDS_FILE_CHANGED_CPT, IDS_FILE_CHANGED_MSG,
+		static_cast<LPCWSTR>(m_doc->m_filename));
+	if(decision == IDYES) return ReloadFile();
+	if(decision == IDNO) m_document_session.AcceptExternalVersion();
 	return false;
 }
 

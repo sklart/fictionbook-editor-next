@@ -1379,6 +1379,46 @@
 					if(::IsWindow(dialog) && noButton != NULL) ::SendMessageW(noButton, BM_CLICK, 0, 0);
 					break;
 				}
+				case 9: { // A long message must be focusable and readable to its last line.
+					::PostMessageW(firstButton, WM_KEYDOWN, VK_TAB, 0);
+					bool editFocused = false;
+					for(int retry = 0; retry < 100 && !editFocused; ++retry)
+					{
+						GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
+						editFocused = ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
+							focus.hwndFocus == edit;
+						if(!editFocused) ::Sleep(10);
+					}
+					bool lastLineVisible = false, returnedToButton = false;
+					LRESULT observedLines = 0, observedLast = 0, observedPosition = 0;
+					RECT observedTextArea = {};
+					if(editFocused)
+					{
+						for(int page = 0; page < 256; ++page)
+							::SendMessageW(edit, WM_KEYDOWN, VK_NEXT, 0);
+						observedLines = ::SendMessageW(edit, EM_GETLINECOUNT, 0, 0);
+						observedLast = ::SendMessageW(edit, EM_LINEINDEX, observedLines - 1, 0);
+						observedPosition = ::SendMessageW(edit, EM_POSFROMCHAR, observedLast, 0);
+						::SendMessageW(edit, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&observedTextArea));
+						const int y = GET_Y_LPARAM(observedPosition);
+						lastLineVisible = observedLines > 1 && y >= observedTextArea.top && y < observedTextArea.bottom;
+						::PostMessageW(edit, WM_KEYDOWN, VK_TAB, 0);
+						for(int retry = 0; retry < 100 && !returnedToButton; ++retry)
+						{
+							GUITHREADINFO focus = {}; focus.cbSize = sizeof(focus);
+							returnedToButton = ::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &focus) &&
+								focus.hwndFocus == firstButton;
+							if(!returnedToButton) ::Sleep(10);
+						}
+					}
+					keyboard = editFocused && lastLineVisible && returnedToButton;
+					bounds.AppendFormat(";focus=%d;last=%d;return=%d;lines=%Id;index=%Id;y=%d;area=%ld,%ld",
+						editFocused ? 1 : 0, lastLineVisible ? 1 : 0, returnedToButton ? 1 : 0,
+						observedLines, observedLast, GET_Y_LPARAM(observedPosition), observedTextArea.top, observedTextArea.bottom);
+					if(keyboard) ::PostMessageW(firstButton, WM_KEYDOWN, VK_RETURN, 0);
+					else ::SendMessageW(firstButton, BM_CLICK, 0, 0); // Cleanup only; keyboard remains failed.
+					break;
+				}
 				}
 			});
 			const int result = ThemeManager::MessageBox(m_hWnd, message, caption, type);
@@ -1397,6 +1437,7 @@
 		runDialog("long-warning", MB_OK | MB_ICONWARNING, 6, IDOK, 10000);
 		runDialog("localized-mnemonic", MB_YESNO, 7, IDNO, 20);
 		runDialog("arrow-space", MB_YESNO, 8, IDNO, 20);
+		runDialog("long-keyboard-scroll", MB_OK | MB_ICONWARNING, 9, IDOK, 10000);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"themed-message-quit"))

@@ -169,8 +169,10 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           choco upgrade nsis --version=3.12.0 --no-progress --yes
           ./tools/build/resolve-nsis.ps1 | Out-Null
-      - name: Verify universal release binaries
+      - name: Verify universal release binaries and Dark Theme stabilization runtime
         shell: pwsh
+        env:
+          FBE_RUNTIME_FAILURE_ARTIFACTS: out/tests/runtime-failure
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches' }
@@ -215,6 +217,14 @@ jobs:
         with:
           name: editor-background-runtime-diagnostics
           path: out/tests/editor-background-runtime-failure/**
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload failed runtime diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: runtime-failure-diagnostics
+          path: out/tests/runtime-failure/**
           if-no-files-found: warn
           retention-days: 7
 

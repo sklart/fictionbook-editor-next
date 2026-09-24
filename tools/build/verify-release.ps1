@@ -157,6 +157,14 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-editor-background-assets.ps1") -RuntimeDirectory (Join-Path $outputDir "EditorBackgrounds")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-dialog-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+# Mandatory post-build Dark Theme stabilization contour. Each script throws
+# on failure and retains its isolated runtime diagnostics for inspection.
+& (Join-Path $repoRoot "tools\tests\test-fbe-status-bar-long-paint-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-themed-message-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-theme-application-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-body-theme-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-settings-editor-page-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-save-decision-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-regression.ps1")
 & (Join-Path $repoRoot "tools\tests\test-editor-background-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-runtime-verification-isolation.ps1")

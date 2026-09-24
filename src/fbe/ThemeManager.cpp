@@ -550,7 +550,8 @@ void ApplyWindowSurface(HWND window)
 		::SetWindowTheme(window, L"DarkMode_Explorer", NULL);
 	else
 		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
-	::SendMessageW(window, WM_THEMECHANGED, 0, 0);
+	// SetWindowTheme sends WM_THEMECHANGED itself; a second synthetic message
+	// can cause controls to rebuild their theme resources twice.
 	if(!::IsWindow(window)) return;
 	const DWORD userAfterTheme = g_recordApplyDiagnostics ? ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS) : 0;
 	ApplyModernTitleBar(window, dark);
@@ -814,7 +815,7 @@ class ThemedMessageDialog
 		RECT client = {}; ::GetClientRect(m_window, &client);
 		const int contentHeight = m_buttonTop - textY - Scale(12);
 		m_messageWindow = ::CreateWindowExW(0, WC_EDITW, m_message,
-			WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
 			textX, textY, m_textWidth, contentHeight, m_window, NULL, _Module.GetModuleInstance(), NULL);
 		if(m_messageWindow == NULL) return false;
 		::SendMessageW(m_messageWindow, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
@@ -998,6 +999,12 @@ class ThemedMessageDialog
 			return false;
 		}
 		if(message.message != WM_KEYDOWN) return false;
+		if(message.wParam == VK_TAB && ::GetFocus() == m_messageWindow && !m_buttonWindows.empty())
+		{
+			const bool reverse = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
+			::SetFocus(reverse ? m_buttonWindows.back() : m_buttonWindows.front());
+			return true;
+		}
 		if(message.wParam == VK_ESCAPE)
 		{
 			if(const int cancel = CancelResult()) Close(static_cast<UINT>(cancel));

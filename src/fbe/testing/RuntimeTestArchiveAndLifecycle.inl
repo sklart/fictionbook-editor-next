@@ -759,6 +759,74 @@
 		appendTablePhase("save-1-complete");
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
+	if (IsFbeTestScenario(L"save-decision-quit-new") ||
+		IsFbeTestScenario(L"save-decision-quit-open") ||
+		IsFbeTestScenario(L"save-decision-quit-close"))
+	{
+		// Exercise the real operation and DiscardChanges gate. A real modal
+		// dialog receives WM_QUIT, which must remain a non-answer and retain its
+		// exit code; the -b report does not bypass the close confirmation here.
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ShowView(SOURCE);
+		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> source(static_cast<size_t>(length) + 1);
+		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+		char* marker = strstr(source.data(), "SAVE_DECISION_ORIGINAL");
+		if(marker != NULL)
+		{
+			const sptr_t start = static_cast<sptr_t>(marker - source.data());
+			m_source.SendMessage(SCI_SETSEL, start, start + strlen("SAVE_DECISION_ORIGINAL"));
+			m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>("SAVE_DECISION_DIRTY"));
+		}
+		const bool dirtyBefore = marker != NULL && DocChanged();
+		const bool savedRecovery = dirtyBefore && SaveRecoveryNow();
+		const CString snapshot = m_recovery.SnapshotPath();
+		const bool recoveryBefore = savedRecovery && ::GetFileAttributesW(snapshot) != INVALID_FILE_ATTRIBUTES;
+		FB::Doc* const original = m_doc;
+		const CString filename = m_doc->m_filename;
+		const DWORD mainThread = ::GetCurrentThreadId();
+		bool found = false, posted = false;
+		std::thread driver([&]()
+		{
+			HWND dialog = NULL;
+			for(int retry = 0; retry < 500 && dialog == NULL; ++retry)
+			{
+				dialog = ::FindWindowW(L"FBEThemedMessageDialog", NULL);
+				if(dialog == NULL) ::Sleep(10);
+			}
+			found = dialog != NULL;
+			posted = ::PostThreadMessageW(mainThread, WM_QUIT, 73, 0) != FALSE;
+		});
+		bool cancelled = false;
+		if(IsFbeTestScenario(L"save-decision-quit-new"))
+		{
+			BOOL handled = FALSE;
+			OnFileNew(0, ID_FILE_NEW, NULL, handled);
+			cancelled = m_doc == original;
+		}
+		else if(IsFbeTestScenario(L"save-decision-quit-open"))
+		{
+			wchar_t path[MAX_PATH] = {};
+			const DWORD pathLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_DECISION_OPEN_PATH", path, _countof(path));
+			cancelled = pathLength > 0 && pathLength < _countof(path) && LoadFile(path) == CANCELLED;
+		}
+		else
+		{
+			BOOL handled = FALSE;
+			OnClose(WM_CLOSE, 0, 0, handled);
+			cancelled = ::IsWindow(m_hWnd) != FALSE;
+		}
+		driver.join();
+		const bool retained = cancelled && m_doc == original && m_doc->m_filename == filename &&
+			DocChanged() && ::GetFileAttributesW(snapshot) != INVALID_FILE_ATTRIBUTES;
+		CStringA report; report.Format("dirty_before\t%d\r\nrecovery_before\t%d\r\ndialog_found\t%d\r\nquit_posted\t%d\r\noperation_cancelled\t%d\r\ndocument_retained\t%d\r\nrecovery_retained\t%d\r\n",
+			dirtyBefore ? 1 : 0, recoveryBefore ? 1 : 0, found ? 1 : 0, posted ? 1 : 0,
+			cancelled ? 1 : 0, retained ? 1 : 0,
+			::GetFileAttributesW(snapshot) != INVALID_FILE_ATTRIBUTES ? 1 : 0);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close();
+		return 0; // The modal dialog reposted WM_QUIT with code 73.
+	}
 	if (IsFbeTestScenario(L"settings-editor-page-runtime"))
 	{
 		CStringA report("case\tpassed\r\n");
@@ -817,8 +885,156 @@
 				_Settings.GetEditorBackgroundCustomPath() == missingCustom);
 			page.DestroyWindow();
 		}
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		_Settings.SetEditorBackgroundKind(L"none");
+		_Settings.SetColorFG(RGB(230, 20, 20));
+		_Settings.SetColorBG(RGB(20, 40, 220));
+		{
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			const EditorBackgroundColors defaults = EditorBackgrounds::ResolveBodyColors(
+				CLR_DEFAULT, CLR_DEFAULT, L"none", L"", ThemeManager::IsHighContrast());
+			append("explicit-colors-automatic-swatches", window != NULL &&
+				page.m_foreground.GetColor() == RGB(230, 20, 20) && page.m_background.GetColor() == RGB(20, 40, 220) &&
+				page.m_foreground.GetDefaultColor() == defaults.foreground &&
+				page.m_background.GetDefaultColor() == defaults.background &&
+				page.m_backgroundPreview.m_foreground == RGB(230, 20, 20) &&
+				page.m_backgroundPreview.m_background == RGB(20, 40, 220));
+			BOOL handled = FALSE;
+			page.m_foreground.SetColor(CLR_DEFAULT);
+			page.OnPreviewColorChanged(0, NULL, handled);
+			append("foreground-automatic-preview", window != NULL &&
+				page.m_foreground.GetColor() == CLR_DEFAULT &&
+				page.m_foreground.GetDefaultColor() == defaults.foreground &&
+				page.m_backgroundPreview.m_foreground == defaults.foreground &&
+				page.m_backgroundPreview.m_background == RGB(20, 40, 220));
+			page.m_background.SetColor(CLR_DEFAULT);
+			page.OnPreviewColorChanged(0, NULL, handled);
+			append("background-automatic-preview", window != NULL &&
+				page.m_background.GetColor() == CLR_DEFAULT &&
+				page.m_background.GetDefaultColor() == defaults.background &&
+				page.m_backgroundPreview.m_foreground == defaults.foreground &&
+				page.m_backgroundPreview.m_background == defaults.background);
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			m_doc->ApplyConfChanges();
+			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr style(document3 ? document3->getElementById(L"fbe-runtime-body-colors") : NULL);
+			MSHTML::IHTMLStyleElementPtr styleElement(style);
+			MSHTML::IHTMLStyleSheetPtr sheet(styleElement ? styleElement->styleSheet : NULL);
+			CString css(sheet ? static_cast<LPCWSTR>(sheet->cssText) : L"");
+			css.MakeLower();
+			CString expectedForeground, expectedBackground;
+			expectedForeground.Format(L"#%02x%02x%02x", GetRValue(defaults.foreground),
+				GetGValue(defaults.foreground), GetBValue(defaults.foreground));
+			expectedBackground.Format(L"#%02x%02x%02x", GetRValue(defaults.background),
+				GetGValue(defaults.background), GetBValue(defaults.background));
+			append("automatic-settings-body", _Settings.GetColorFG() == CLR_DEFAULT &&
+				_Settings.GetColorBG() == CLR_DEFAULT && css.Find(expectedForeground) >= 0 &&
+				css.Find(expectedBackground) >= 0);
+			page.DestroyWindow();
+		}
+		{
+			CSettingsEditorPage page;
+			const HWND window = page.Create(m_hWnd);
+			BOOL handled = FALSE;
+			page.m_foreground.SetColor(RGB(230, 20, 20));
+			page.m_background.SetColor(RGB(20, 40, 220));
+			page.OnPreviewColorChanged(0, NULL, handled);
+			const bool preview = page.m_backgroundPreview.m_foreground == RGB(230, 20, 20) &&
+				page.m_backgroundPreview.m_background == RGB(20, 40, 220);
+			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			append("automatic-to-explicit", window != NULL && preview &&
+				_Settings.GetColorFG() == RGB(230, 20, 20) && _Settings.GetColorBG() == RGB(20, 40, 220));
+			page.DestroyWindow();
+		}
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
+	}
+	if (IsFbeTestScenario(L"settings-editor-alpha-runtime"))
+	{
+		wchar_t directory[MAX_PATH] = {};
+		const DWORD directoryLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_PREVIEW_DIRECTORY", directory, _countof(directory));
+		if(directoryLength == 0 || directoryLength >= _countof(directory)) { output.Close(); ::PostQuitMessage(1); return 0; }
+		struct AlphaSample { const wchar_t* name; DWORD argb; BYTE alpha; COLORREF color; };
+		const AlphaSample samples[] = {
+			{ L"transparent", 0x00FF0000, 0, RGB(255, 0, 0) },
+			{ L"half", 0x8000FF00, 128, RGB(0, 255, 0) },
+			{ L"opaque", 0xFF0000FF, 255, RGB(0, 0, 255) }
+		};
+		const wchar_t* layouts[] = { L"tile", L"center", L"contain", L"cover" };
+		CString paths[_countof(samples)];
+		bool imagesSaved = true;
+		for(size_t sample = 0; sample < _countof(samples); ++sample)
+		{
+			paths[sample].Format(L"%s\\alpha-%s.png", directory, samples[sample].name);
+			CImage image;
+			imagesSaved = imagesSaved && image.Create(1, 1, 32, CImage::createAlphaChannel) != FALSE;
+			if(imagesSaved)
+			{
+				*static_cast<DWORD*>(image.GetPixelAddress(0, 0)) = samples[sample].argb;
+				imagesSaved = SUCCEEDED(image.Save(paths[sample]));
+			}
+		}
+		CStringA report("case\tpassed\tactual\texpected\r\n");
+		bool allPassed = imagesSaved;
+		for(int dark = 0; dark < 2; ++dark)
+		{
+			ThemeManager::SetSelectedTheme(dark ? INTERFACE_THEME_DARK : INTERFACE_THEME_LIGHT);
+			const COLORREF background = dark ? RGB(20, 30, 40) : RGB(240, 230, 220);
+			for(size_t layout = 0; layout < _countof(layouts); ++layout)
+				for(size_t sample = 0; sample < _countof(samples); ++sample)
+				{
+					_Settings.SetEditorBackgroundKind(L"custom");
+					_Settings.SetEditorBackgroundCustomPath(paths[sample]);
+					_Settings.SetEditorBackgroundLayout(layouts[layout]);
+					_Settings.SetColorBG(background);
+					_Settings.SetColorFG(CLR_DEFAULT);
+					CSettingsEditorPage page;
+					const HWND window = page.Create(m_hWnd);
+					page.m_backgroundPreview.m_text.Empty();
+					RECT rc = {}; page.m_backgroundPreview.GetClientRect(&rc);
+					const int width = rc.right - rc.left, height = rc.bottom - rc.top;
+					HDC screen = ::GetDC(NULL);
+					HDC memory = screen ? ::CreateCompatibleDC(screen) : NULL;
+					HBITMAP canvas = screen && width > 0 && height > 0 ? ::CreateCompatibleBitmap(screen, width, height) : NULL;
+					COLORREF actual = CLR_INVALID;
+					int sampleX = width / 2, sampleY = height / 2;
+					if(layout == 1) // A 1px centered image may sit left of the geometric center.
+					{
+						const UINT dpi = UiMetrics::DpiForWindow(page.m_backgroundPreview);
+						const int natural = (std::max)(1, ::MulDiv(1, dpi, 96));
+						sampleX = (width - natural) / 2 + natural / 2;
+						sampleY = (height - natural) / 2 + natural / 2;
+					}
+					if(memory != NULL && canvas != NULL)
+					{
+						HGDIOBJ old = ::SelectObject(memory, canvas);
+						page.m_backgroundPreview.PaintPreview(memory, rc);
+						actual = ::GetPixel(memory, sampleX, sampleY);
+						::SelectObject(memory, old);
+					}
+					if(canvas != NULL) ::DeleteObject(canvas);
+					if(memory != NULL) ::DeleteDC(memory);
+					if(screen != NULL) ::ReleaseDC(NULL, screen);
+					const BYTE alpha = samples[sample].alpha;
+					const COLORREF color = samples[sample].color;
+					const COLORREF expected = RGB(
+						(GetRValue(color) * alpha + GetRValue(background) * (255 - alpha) + 127) / 255,
+						(GetGValue(color) * alpha + GetGValue(background) * (255 - alpha) + 127) / 255,
+						(GetBValue(color) * alpha + GetBValue(background) * (255 - alpha) + 127) / 255);
+					const bool passed = imagesSaved && window != NULL && page.m_backgroundPreview.m_bitmapHasAlpha && actual != CLR_INVALID &&
+						abs(GetRValue(actual) - GetRValue(expected)) <= 3 &&
+						abs(GetGValue(actual) - GetGValue(expected)) <= 3 &&
+						abs(GetBValue(actual) - GetBValue(expected)) <= 3;
+					allPassed = allPassed && passed;
+					CStringA row; row.Format("%s-%S-%S\t%d\t%06lx\t%06lx\r\n", dark ? "dark" : "light", layouts[layout],
+						samples[sample].name, passed ? 1 : 0, static_cast<unsigned long>(actual), static_cast<unsigned long>(expected));
+					report += row;
+					if(window != NULL) page.DestroyWindow();
+				}
+		}
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close(); ::PostQuitMessage(allPassed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"body-theme-runtime"))
 	{

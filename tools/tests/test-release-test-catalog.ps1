@@ -26,6 +26,12 @@ if ($fullProfile.tests.id -notcontains 'release.source-safety' -or
     throw 'FULL profile does not contain its FAST, TABLE and FULL scenarios.'
 }
 foreach ($id in @(
+        'release.fbe-status-bar-long-paint-runtime',
+        'release.fbe-themed-message-runtime',
+        'release.fbe-theme-application-runtime',
+        'release.fbe-body-theme-runtime',
+        'release.settings-editor-page-runtime',
+        'release.fbe-save-decision-runtime',
         'release.fbe-table-production-roundtrip.huge',
         'release.fbe-table-failure-safety.fault-change-colspan-after-normalize',
         'release.fbe-table-structural-production.command-route.insert-row-above',

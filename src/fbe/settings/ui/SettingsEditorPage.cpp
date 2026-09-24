@@ -11,6 +11,24 @@ extern CSettings _Settings;
 
 namespace
 {
+struct PreviewGdiplusSession
+{
+	ULONG_PTR token = 0;
+	PreviewGdiplusSession()
+	{
+		Gdiplus::GdiplusStartupInput input;
+		if(Gdiplus::GdiplusStartup(&token, &input, NULL) != Gdiplus::Ok) token = 0;
+	}
+	~PreviewGdiplusSession() { if(token != 0) Gdiplus::GdiplusShutdown(token); }
+	bool Ready() const { return token != 0; }
+};
+
+bool PreviewGdiplusReady()
+{
+	static PreviewGdiplusSession session;
+	return session.Ready();
+}
+
 int __stdcall EnumFontProc(const ENUMLOGFONTEX* logFont, const NEWTEXTMETRICEX*, DWORD, LPARAM data)
 {
 	static_cast<CSimpleArray<CString>*>(reinterpret_cast<void*>(data))->Add(logFont->elfLogFont.lfFaceName);
@@ -200,7 +218,12 @@ LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD controlId, 
 	return 0;
 }
 LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
-LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&) { UpdateBackgroundPreview(); return 0; }
+LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&)
+{
+	RefreshAutomaticColorDefaults();
+	UpdateBackgroundPreview();
+	return 0;
+}
 
 void CSettingsEditorPage::GetSelectedBackground(CString& kind, CString& id) const
 {
@@ -233,9 +256,15 @@ EditorBackgroundColors CSettingsEditorPage::ResolvePreviewColors() const
 
 void CSettingsEditorPage::RefreshAutomaticColorDefaults()
 {
-	const EditorBackgroundColors colors = ResolvePreviewColors();
-	m_background.SetDefaultColor(colors.background);
-	m_foreground.SetDefaultColor(colors.foreground);
+	CString kind, id;
+	GetSelectedBackground(kind, id);
+	// Each Automatic swatch is independent of that control's explicit value.
+	const EditorBackgroundColors background = EditorBackgrounds::ResolveBodyColors(
+		m_foreground.GetColor(), CLR_DEFAULT, kind, id, ThemeManager::IsHighContrast());
+	const EditorBackgroundColors foreground = EditorBackgrounds::ResolveBodyColors(
+		CLR_DEFAULT, m_background.GetColor(), kind, id, ThemeManager::IsHighContrast());
+	m_background.SetDefaultColor(background.background);
+	m_foreground.SetDefaultColor(foreground.foreground);
 	m_background.Invalidate();
 	m_foreground.Invalidate();
 }
@@ -246,11 +275,47 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	if(index > 0 && index <= static_cast<int>(m_builtInBackgrounds.size())) EditorBackgrounds::ResolveBuiltIn(m_builtInBackgrounds[index - 1].id, path);
 	else if(index == static_cast<int>(m_builtInBackgrounds.size() + 1) && EditorBackgrounds::IsSupportedLocalImage(m_customBackgroundPath)) path = m_customBackgroundPath;
 	HBITMAP bitmap = NULL;
-	if(!path.IsEmpty()) { CImage image; if(SUCCEEDED(image.Load(path))) bitmap = image.Detach(); }
+	bool bitmapHasAlpha = false;
+	if(!ThemeManager::IsHighContrast() && !path.IsEmpty())
+	{
+		CImage image;
+		if(SUCCEEDED(image.Load(path)))
+		{
+			if(path.Right(4).CompareNoCase(L".png") == 0)
+			{
+				// AlphaBlend requires premultiplied BGRA. CImage::Load retains
+				// straight ARGB, so request PARGB from GDI+ for the preview only.
+				if(PreviewGdiplusReady())
+				{
+					Gdiplus::Bitmap source(path);
+					const UINT width = source.GetWidth(), height = source.GetHeight();
+					CImage premultiplied;
+					if(source.GetLastStatus() == Gdiplus::Ok && width > 0 && height > 0 &&
+						width <= INT_MAX && height <= INT_MAX &&
+						premultiplied.Create(static_cast<int>(width), static_cast<int>(height), 32, CImage::createAlphaChannel))
+					{
+						Gdiplus::Rect area(0, 0, static_cast<INT>(width), static_cast<INT>(height));
+						Gdiplus::BitmapData pixels = {};
+						if(source.LockBits(&area, Gdiplus::ImageLockModeRead, PixelFormat32bppPARGB, &pixels) == Gdiplus::Ok)
+						{
+							BYTE* target = static_cast<BYTE*>(premultiplied.GetBits());
+							const BYTE* row = static_cast<const BYTE*>(pixels.Scan0);
+							for(UINT y = 0; y < height; ++y, target += premultiplied.GetPitch(), row += pixels.Stride)
+								::CopyMemory(target, row, static_cast<SIZE_T>(width) * 4);
+							source.UnlockBits(&pixels);
+							bitmap = premultiplied.Detach();
+							bitmapHasAlpha = true;
+						}
+					}
+				}
+			}
+			else bitmap = image.Detach();
+		}
+	}
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
 	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
 	const EditorBackgroundColors colors = ResolvePreviewColors();
-	m_backgroundPreview.SetPreview(bitmap, U::GetWindowText(m_fonts), size, colors.foreground, colors.background,
+	m_backgroundPreview.SetPreview(bitmap, bitmapHasAlpha, U::GetWindowText(m_fonts), size, colors.foreground, colors.background,
 		SelectedBackgroundLayout(), text);
 	m_backgroundPreview.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }
@@ -265,11 +330,12 @@ void CEditorBackgroundPreview::EnsureFontForDpi()
 	m_fontDpi = dpi;
 }
 
-void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground,
+void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, bool bitmapHasAlpha, const CString& face, int size, COLORREF foreground,
 	COLORREF background, const CString& layout, const CString& text)
 {
 	if(m_bitmap) ::DeleteObject(m_bitmap);
 	m_bitmap = bitmap;
+	m_bitmapHasAlpha = bitmapHasAlpha;
 	m_face = face;
 	m_size = size;
 	m_layout = layout;
@@ -284,6 +350,12 @@ void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, const CString& face, i
 LRESULT CEditorBackgroundPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 {
 	CPaintDC dc(m_hWnd); RECT rc; GetClientRect(&rc);
+	PaintPreview(dc, rc);
+	return 0;
+}
+
+void CEditorBackgroundPreview::PaintPreview(HDC dc, const RECT& rc)
+{
 	HBRUSH brush = ::CreateSolidBrush(m_background);
 	::FillRect(dc, &rc, brush); ::DeleteObject(brush);
 	if(m_bitmap)
@@ -303,12 +375,21 @@ LRESULT CEditorBackgroundPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 				const int naturalWidth = (std::max)(1, ::MulDiv(source.bmWidth, dpi, 96));
 				const int naturalHeight = (std::max)(1, ::MulDiv(source.bmHeight, dpi, 96));
 				const int areaWidth = rc.right - rc.left, areaHeight = rc.bottom - rc.top;
+				const BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+				auto drawImage = [&](int x, int y, int width, int height)
+				{
+					if(m_bitmapHasAlpha)
+						::AlphaBlend(dc, x, y, width, height, sourceDc, 0, 0,
+							source.bmWidth, source.bmHeight, blend);
+					else
+						::StretchBlt(dc, x, y, width, height, sourceDc, 0, 0,
+							source.bmWidth, source.bmHeight, SRCCOPY);
+				};
 				if(m_layout == L"tile")
 				{
 					for(int y = 0; y < areaHeight; y += naturalHeight)
 						for(int x = 0; x < areaWidth; x += naturalWidth)
-							::StretchBlt(dc, x, y, naturalWidth, naturalHeight, sourceDc, 0, 0,
-								source.bmWidth, source.bmHeight, SRCCOPY);
+							drawImage(x, y, naturalWidth, naturalHeight);
 				}
 				else
 				{
@@ -321,8 +402,8 @@ LRESULT CEditorBackgroundPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 						width = (std::max)(1, static_cast<int>(naturalWidth * scale + 0.5));
 						height = (std::max)(1, static_cast<int>(naturalHeight * scale + 0.5));
 					}
-					::StretchBlt(dc, rc.left + (areaWidth - width) / 2, rc.top + (areaHeight - height) / 2,
-						width, height, sourceDc, 0, 0, source.bmWidth, source.bmHeight, SRCCOPY);
+					drawImage(rc.left + (areaWidth - width) / 2, rc.top + (areaHeight - height) / 2,
+						width, height);
 				}
 				::RestoreDC(dc, saved);
 				::SelectObject(sourceDc, previousBitmap);
@@ -337,7 +418,6 @@ LRESULT CEditorBackgroundPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 	if(old) ::SelectObject(dc, old);
 	::FrameRect(dc, &rc, ThemeManager::IsDark() && !ThemeManager::IsHighContrast() ?
 		ThemeManager::Brush(THEME_COLOR_BORDER) : static_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH)));
-	return 0;
 }
 
 LRESULT CEditorBackgroundPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)

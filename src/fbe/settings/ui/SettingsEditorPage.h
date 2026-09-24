@@ -10,7 +10,9 @@
 
 class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CStatic>
 {
+	friend class CMainFrame; // Runtime settings/preview regression probes.
 	HBITMAP m_bitmap = NULL;
+	bool m_bitmapHasAlpha = false;
 	HFONT m_font = NULL;
 	COLORREF m_foreground = RGB(0, 0, 0);
 	COLORREF m_background = RGB(255, 255, 255);
@@ -20,6 +22,7 @@ class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CS
 	int m_size = 12;
 	UINT m_fontDpi = 0;
 	void EnsureFontForDpi();
+	void PaintPreview(HDC dc, const RECT& rc);
 public:
 	DECLARE_WND_SUPERCLASS(NULL, WC_STATIC)
 	BEGIN_MSG_MAP(CEditorBackgroundPreview)
@@ -27,7 +30,7 @@ public:
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 	END_MSG_MAP()
-	void SetPreview(HBITMAP bitmap, const CString& face, int size, COLORREF foreground, COLORREF background,
+	void SetPreview(HBITMAP bitmap, bool bitmapHasAlpha, const CString& face, int size, COLORREF foreground, COLORREF background,
 		const CString& layout, const CString& text);
 	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnEraseBackground(UINT, WPARAM, LPARAM, BOOL&) { return 1; }
@@ -36,6 +39,7 @@ public:
 
 class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public ISettingsPage
 {
+	friend class CMainFrame; // Runtime settings/preview regression probes.
 	CColorButton m_foreground;
 	CColorButton m_background;
 	CComboBox m_fonts;

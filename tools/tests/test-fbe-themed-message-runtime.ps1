@@ -22,7 +22,7 @@ try {
     }
     if (-not (Test-Path -LiteralPath $report)) { throw 'Themed-message scenario produced no report.' }
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
-    $expected = @('forged-command', 'yesno-escape', 'focused-enter', 'default-second', 'close-cancel', 'escape-cancel', 'long-warning', 'localized-mnemonic', 'arrow-space')
+    $expected = @('forged-command', 'yesno-escape', 'focused-enter', 'default-second', 'close-cancel', 'escape-cancel', 'long-warning', 'localized-mnemonic', 'arrow-space', 'long-keyboard-scroll')
     if ($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) dialog cases, got $($rows.Count)." }
     foreach ($name in $expected) {
         $matching = @($rows | Where-Object case -eq $name)

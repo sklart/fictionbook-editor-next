@@ -61,5 +61,16 @@ function Complete-IsolatedFbeRuntime {
         throw "Disposable runtime leaked FBE.exe process(es): $($leftovers.ProcessId -join ', '). Runtime failure artifacts: $($Isolation.Root)"
     }
     if ($Passed) { Remove-Item -LiteralPath $Isolation.Root -Recurse -Force }
-    else { Write-Host "Runtime failure artifacts: $($Isolation.Root)" }
+    else {
+        Write-Host "Runtime failure artifacts: $($Isolation.Root)"
+        if ($env:FBE_RUNTIME_FAILURE_ARTIFACTS) {
+            $destination = Join-Path $env:FBE_RUNTIME_FAILURE_ARTIFACTS ([IO.Path]::GetFileName($Isolation.Root))
+            New-Item -ItemType Directory -Path $destination -Force | Out-Null
+            Get-ChildItem -LiteralPath $Isolation.Root -File | Where-Object { $_.Extension -in @('.tsv', '.log') -or $_.Name -eq 'test-stage.txt' } |
+                Copy-Item -Destination $destination -Force
+            $recovery = Join-Path $Isolation.DataPath 'Recovery'
+            if (Test-Path -LiteralPath $recovery) { Copy-Item -LiteralPath $recovery -Destination (Join-Path $destination 'Recovery') -Recurse -Force }
+            Write-Host "CI runtime diagnostics: $destination"
+        }
+    }
 }
