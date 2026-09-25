@@ -269,23 +269,26 @@ LRESULT CScriptsToolbarCustomizeDlg::OnReset(WORD, WORD, HWND, BOOL&)
 }
 void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
 {
-	const int gap = Scale(7), buttonWidth = Scale(86), buttonColumn = buttonWidth;
-	const int top = Scale(45), bottom = Scale(42);
+	const int gap = Scale(8), buttonWidth = Scale(88), buttonColumn = buttonWidth;
+	const int labelWidth = Scale(52), controlHeight = Scale(24);
+	const int top = Scale(64), bottom = Scale(42);
 	const int listWidth = (width - buttonColumn - gap * 4) / 2;
 	const int left = gap, buttonsLeft = left + listWidth + gap, right = buttonsLeft + buttonColumn + gap;
-	const int listHeight = height - top - bottom;
-	HDWP defer = ::BeginDeferWindowPos(12); const UINT flags = SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOREDRAW;
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL), NULL, left, gap, Scale(55), Scale(24), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH), NULL, left + Scale(58), gap, listWidth - Scale(58), Scale(24), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL), NULL, left, Scale(29), listWidth, Scale(18), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL), NULL, right, Scale(29), listWidth, Scale(18), flags);
+	const int listHeight = (std::max)(Scale(120), height - top - bottom);
+	HDWP defer = ::BeginDeferWindowPos(14); const UINT flags = SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOREDRAW;
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL), NULL, left, gap, labelWidth, controlHeight, flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH), NULL, left + labelWidth, gap, listWidth - labelWidth, controlHeight, flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL_LABEL), NULL, right, gap, labelWidth, controlHeight, flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_PANEL), NULL, right + labelWidth, gap, listWidth - labelWidth, controlHeight, flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL), NULL, left, Scale(38), listWidth, Scale(18), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL), NULL, right, Scale(38), listWidth, Scale(18), flags);
 	defer = ::DeferWindowPos(defer, m_availableList, NULL, left, top, listWidth, listHeight, flags);
 	defer = ::DeferWindowPos(defer, m_currentList, NULL, right, top, listWidth, listHeight, flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD), NULL, buttonsLeft, top + Scale(25), buttonWidth, Scale(25), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE), NULL, buttonsLeft, top + Scale(55), buttonWidth, Scale(25), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP), NULL, buttonsLeft, top + Scale(105), buttonWidth, Scale(25), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN), NULL, buttonsLeft, top + Scale(135), buttonWidth, Scale(25), flags);
-	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_RESET), NULL, buttonsLeft, top + Scale(205), buttonWidth, Scale(26), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_ADD), NULL, buttonsLeft, top + Scale(24), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_REMOVE), NULL, buttonsLeft, top + Scale(56), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_UP), NULL, buttonsLeft, top + Scale(112), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_DOWN), NULL, buttonsLeft, top + Scale(144), buttonWidth, Scale(25), flags);
+	defer = ::DeferWindowPos(defer, GetDlgItem(IDC_SCRIPTS_TOOLBAR_RESET), NULL, buttonsLeft, top + Scale(216), buttonWidth, Scale(26), flags);
 	defer = ::DeferWindowPos(defer, GetDlgItem(IDCANCEL), NULL, width - gap - buttonWidth, height - bottom + gap, buttonWidth, Scale(26), flags);
 	if(defer != NULL) ::EndDeferWindowPos(defer);
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
@@ -338,7 +341,7 @@ void CScriptsToolbarCustomizeDlg::UpdateMetrics()
 	m_dialogFont = UiMetrics::CreateDialogFontForDpi(m_dpi);
 	const WPARAM font = reinterpret_cast<WPARAM>(m_dialogFont != NULL ? m_dialogFont : ::GetStockObject(DEFAULT_GUI_FONT));
 	::SendMessage(m_hWnd, WM_SETFONT, font, TRUE);
-	const UINT controls[] = { IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL, IDC_SCRIPTS_TOOLBAR_SEARCH, IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL,
+	const UINT controls[] = { IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL, IDC_SCRIPTS_TOOLBAR_SEARCH, IDC_SCRIPTS_TOOLBAR_PANEL_LABEL, IDC_SCRIPTS_TOOLBAR_PANEL, IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL,
 		IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL, IDC_SCRIPTS_TOOLBAR_AVAILABLE, IDC_SCRIPTS_TOOLBAR_CURRENT, IDC_SCRIPTS_TOOLBAR_ADD,
 		IDC_SCRIPTS_TOOLBAR_REMOVE, IDC_SCRIPTS_TOOLBAR_UP, IDC_SCRIPTS_TOOLBAR_DOWN, IDC_SCRIPTS_TOOLBAR_RESET, IDCANCEL };
 	for(int i = 0; i < _countof(controls); ++i) ::SendMessage(GetDlgItem(controls[i]), WM_SETFONT, font, TRUE);

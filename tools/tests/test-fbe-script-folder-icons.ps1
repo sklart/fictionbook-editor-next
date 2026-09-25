@@ -23,8 +23,11 @@ foreach($required in @('SHGetFileInfo', 'FILE_ATTRIBUTE_DIRECTORY', 'FILE_ATTRIB
     if($visuals -notmatch $required) { throw "Missing standard visual fallback: $required" }
 }
 if($tree -notmatch 'if\(visual\.icon != NULL\) m_script_images\[index\] = AddScriptIcon\(visual\.icon\);\s*else if\(visual\.bitmap != NULL\) m_script_images\[index\] = AddScriptImage\(visual\.bitmap\);') { throw 'Tree must consume the catalog VisualResource without rereading sidecars.' }
-if($tree -notmatch 'm_scriptImageList\.Create\(16,16,ILC_COLOR32\|ILC_MASK' -or $tree -notmatch 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' -or $tree -notmatch 'SetImageList\(m_ImageList,TVSIL_NORMAL\)') { throw 'Script and structural trees must use separate native image lists.' }
-if($tree -notmatch 'CopyImage\(bitmap, IMAGE_BITMAP, 16, 16' -or $tree -notmatch 'CopyImage\(icon, IMAGE_ICON, 16, 16') { throw 'Sidecar visuals must be normalized to 16x16 before entering the script image list.' }
+if($tree -notmatch 'kScriptImageSize = 20' -or $tree -notmatch 'm_scriptImageList\.Create\(kScriptImageSize,kScriptImageSize,ILC_COLOR32\|ILC_MASK' -or $tree -notmatch 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' -or $tree -notmatch 'SetImageList\(m_ImageList,TVSIL_NORMAL\)') { throw 'Script and structural trees must use separate native image lists with a readable scripts size.' }
+if($tree -notmatch 'CopyImage\(bitmap, IMAGE_BITMAP, kScriptImageSize, kScriptImageSize' -or $tree -notmatch 'CopyImage\(icon, IMAGE_ICON, kScriptImageSize, kScriptImageSize') { throw 'Sidecar visuals must be normalized to the scripts image-list size.' }
+foreach($required in @('SetWindowTheme(m_hWnd, L" ", L" ")', 'SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi))', 'SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi))', 'GetScriptTreeMetrics')) {
+    if($tree -notmatch [regex]::Escape($required)) { throw "Scripts tree legacy visual metric is missing: $required" }
+}
 if($main -notmatch 'm_scripts\.Menu\(\)\.VisualAt\(index\)\.icon' -or $main -notmatch 'm_scripts\.Menu\(\)\.VisualAt\(index\)\.bitmap') { throw 'Navigation tree must receive the same catalog VisualResource as the main menu.' }
 if(-not (Test-Path -LiteralPath (Join-Path $root 'runtime\Scripts\01_Регистр.ico'))) { throw 'Bundled Scripts folder lost the 01_Регистр.ico smoke resource.' }
 $symbolMenuId = 10000

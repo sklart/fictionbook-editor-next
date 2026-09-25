@@ -27,6 +27,7 @@ if($treeHeader -match '57600|kNavigationPopupFirst|kNavigationPopupLast') { thro
 Must $tree 'PrepareScriptImages\(\)' 'visual mapping is prepared outside tree rebuild'
 Must $tree 'const bool refreshImages = m_script_images\.size\(\) != items\.size\(\) \|\| !ScriptVisualsMatch\(m_script_visuals, visuals, items\.size\(\)\);' 'unchanged catalog refresh reuses image slots'
 Must $treeHeader 'ScriptImageCount\(\)' 'runtime probe reads the native image-list count without owning it'
+Must $treeHeader 'GetScriptTreeMetrics\(' 'runtime probe exposes scripts-tree icon, row, indent and expander metrics'
 if($tree -match 'void CTreeView::BuildScriptChildren\([\s\S]*?\n\}') { if($Matches[0] -match 'AddIcon\(|AddImage\(') { throw 'Tree rebuild must not append image-list slots.' } }
 Must $tree 'visual\.icon != NULL' 'ICO visual snapshot is supported'
 Must $tree 'visual\.bitmap != NULL' 'BMP visual snapshot is supported'
@@ -90,6 +91,8 @@ Must $settings 'DOCUMENT_TREE_SCRIPTS_KEY' 'settings schema persists navigation 
 Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
 Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select their own image list'
 Must $tree 'SetImageList\(m_ImageList,TVSIL_NORMAL\)' 'structure restores the legacy structural image list'
+Must $tree 'SetWindowTheme\(m_hWnd, L" ", L" "\)' 'scripts use native legacy plus/minus expanders instead of themed chevrons'
+Must $tree 'kScriptImageSize = 20' 'scripts-tree icons use the readable 20px visual size'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'navigation-scripts-runtime' 'runtime scenario exercises the native navigation tree'
 Must (Text 'tools\build\verify-release.ps1') 'test-fbe-navigation-scripts-runtime\.ps1' 'release gate runs navigation runtime regression'
 Must (Text '.github\workflows\build.yml') 'test-fbe-navigation-scripts-runtime\.ps1' 'CI runs navigation runtime regression'

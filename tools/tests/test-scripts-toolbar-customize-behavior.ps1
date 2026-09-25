@@ -158,6 +158,9 @@ foreach ($required in @('ActivateList', 'BeginDeferWindowPos', 'DeferWindowPos',
         throw "Scripts toolbar selection/layout paint regression guard is missing: $required"
     }
 }
+foreach ($required in @('IDC_SCRIPTS_TOOLBAR_PANEL_LABEL), NULL, right, gap', 'IDC_SCRIPTS_TOOLBAR_PANEL), NULL, right + labelWidth, gap', 'const int top = Scale(64)', 'const int listHeight = (std::max)(Scale(120), height - top - bottom)', 'IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL), NULL, right, Scale(38)')) {
+    if ($dialog -notmatch [regex]::Escape($required)) { throw "Scripts toolbar layout grid is incomplete: $required" }
+}
 if ($dialog -notmatch 'if\(other\.GetSelCount\(\) > 0\) \{ ::SendMessage\(other, LB_SETSEL, FALSE, -1\); UpdateButtonState\(\); \}') {
     throw 'ActivateList must refresh buttons only after it clears the opposite selection.'
 }

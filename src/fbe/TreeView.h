@@ -152,6 +152,9 @@ public:
 		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	void SetScriptMode(bool value);
+	// Scripts use legacy plus/minus expanders and roomier rows without changing
+	// the established document-structure tree appearance.
+	void ApplyModeAppearance();
 	bool IsScriptMode() const { return m_script_mode; }
 	// Runtime regression probes: expose the rendered navigation state without
 	// giving callers ownership of the native tree or its image list.
@@ -162,6 +165,7 @@ public:
 	HIMAGELIST StructuralImageList() const { return m_ImageList; }
 	HIMAGELIST ScriptImageList() const { return m_scriptImageList; }
 	int ScriptTreeImage(HTREEITEM item) const;
+	bool GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& indent, bool& legacyExpanders) const;
 	bool IsStructuralDragActive() const { return m_drag; }
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 	bool ExecuteScriptPopupCommand(UINT command);

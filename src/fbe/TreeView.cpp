@@ -9,10 +9,18 @@
 #include "FBDoc.h"
 #include "TreeView.h"
 #include "RuntimeLocalization.h"
+#include "UiMetrics.h"
 
 extern CElementDescMnr _EDMnr;
 
 static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKELONG(0, command)); }
+
+namespace
+{
+const int kScriptImageSize = 20;
+const int kScriptItemHeight = 24;
+const int kScriptIndent = 20;
+}
 
 namespace
 {
@@ -429,7 +437,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   
   // "OnInitialUpdate"
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
-	  m_scriptImageList.Create(16,16,ILC_COLOR32|ILC_MASK,16,8);
+	  m_scriptImageList.Create(kScriptImageSize,kScriptImageSize,ILC_COLOR32|ILC_MASK,16,8);
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
   SetScrollTime(1);
@@ -803,6 +811,21 @@ int CTreeView::ScriptTreeImage(HTREEITEM item) const
 	return item != NULL && GetItemImage(item, normal, selected) ? normal : -1;
 }
 
+bool CTreeView::GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& indent, bool& legacyExpanders) const
+{
+	imageSize = 0;
+	itemHeight = GetItemHeight();
+	indent = GetIndent();
+	legacyExpanders = m_script_mode;
+	if(!m_scriptImageList.IsNull())
+	{
+		IMAGEINFO image = {};
+		if(::ImageList_GetImageInfo(m_scriptImageList, 0, &image))
+			imageSize = image.rcImage.right - image.rcImage.left;
+	}
+	return m_script_mode && imageSize > 0 && itemHeight >= imageSize && indent >= imageSize;
+}
+
 bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 {
 	const ScriptDescriptor* script = SelectedScript();
@@ -822,8 +845,29 @@ void CTreeView::SetScriptMode(bool value)
 	if(m_script_mode == value) return;
 	if(value && m_drag) EndDrag();
 	m_script_mode = value;
+	ApplyModeAppearance();
 	if(m_script_mode) { SetImageList(m_scriptImageList,TVSIL_NORMAL); RebuildScriptTree(); }
 	else { SetImageList(m_ImageList,TVSIL_NORMAL); UpdateAll(); }
+}
+
+void CTreeView::ApplyModeAppearance()
+{
+	if(!IsWindow()) return;
+	if(m_script_mode)
+	{
+		// A disabled visual style makes the native tree render the familiar
+		// square plus/minus expanders, independently of Explorer chevrons.
+		::SetWindowTheme(m_hWnd, L" ", L" ");
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi));
+		SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi));
+	}
+	else
+	{
+		::SetWindowTheme(m_hWnd, NULL, NULL);
+		SetItemHeight(-1);
+	}
+	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
 }
 
 void CTreeView::RebuildScriptTree()
@@ -837,10 +881,10 @@ void CTreeView::RebuildScriptTree()
 void CTreeView::PrepareScriptImages()
 {
 	// Script sidecars do not share the legacy structural strip: it has a
-	// different cell height and mask format.  Recreate this 16x16 alpha list
+	// different cell height and mask format.  Recreate this 20x20 alpha list
 	// only when the catalog visuals actually changed.
 	m_scriptImageList.Destroy();
-	m_scriptImageList.Create(16,16,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+1,8);
+	m_scriptImageList.Create(kScriptImageSize,kScriptImageSize,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+1,8);
 	m_script_images.assign(m_script_items.size(), 0);
 	for(size_t index = 0; index < m_script_items.size() && index < m_script_visuals.size(); ++index)
 	{
@@ -853,7 +897,7 @@ void CTreeView::PrepareScriptImages()
 int CTreeView::AddScriptImage(HBITMAP bitmap)
 {
 	if(bitmap == NULL) return -1;
-	HBITMAP normalized = static_cast<HBITMAP>(::CopyImage(bitmap, IMAGE_BITMAP, 16, 16, LR_CREATEDIBSECTION));
+	HBITMAP normalized = static_cast<HBITMAP>(::CopyImage(bitmap, IMAGE_BITMAP, kScriptImageSize, kScriptImageSize, LR_CREATEDIBSECTION));
 	if(normalized == NULL) return -1;
 	const int image = m_scriptImageList.Add(normalized, RGB(255,0,255));
 	::DeleteObject(normalized);
@@ -863,7 +907,7 @@ int CTreeView::AddScriptImage(HBITMAP bitmap)
 int CTreeView::AddScriptIcon(HICON icon)
 {
 	if(icon == NULL) return -1;
-	HICON normalized = static_cast<HICON>(::CopyImage(icon, IMAGE_ICON, 16, 16, 0));
+	HICON normalized = static_cast<HICON>(::CopyImage(icon, IMAGE_ICON, kScriptImageSize, kScriptImageSize, 0));
 	if(normalized == NULL) return -1;
 	const int image = m_scriptImageList.AddIcon(normalized);
 	::DestroyIcon(normalized);

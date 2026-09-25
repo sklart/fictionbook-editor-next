@@ -154,6 +154,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_tree.SetBkColor(ThemeManager::WindowColor());
 	m_tree.SetTextColor(ThemeManager::TextColor());
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
+	m_tree.ApplyModeAppearance();
 	m_rebar = CFrameWindowImplBase<>::CreateSimpleReBarCtrl(*this, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CS_HREDRAW);
 	m_toolbar = CFrameWindowImplBase<>::CreateSimpleToolBarCtrl(*this, IDR_DOCUMENT_TREE, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	CFrameWindowImplBase<>::AddSimpleReBarBandCtrl(m_rebar, m_toolbar);
@@ -659,8 +660,8 @@ void CDocumentTree::LayoutModeButton()
 	if(!m_mode_button.IsWindow()) return;
 	RECT client = {}; GetClientRect(&client);
 	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-	const int extent = (std::max)(1, (std::min)(UiMetrics::ScaleForDpi(22, dpi), m_cxyHeader));
-	const int iconSize = (std::min)(UiMetrics::ScaleForDpi(16, dpi), (std::max)(1, extent - 2));
+	const int extent = (std::max)(1, (std::min)(UiMetrics::ScaleForDpi(18, dpi), m_cxyHeader));
+	const int iconSize = (std::min)(UiMetrics::ScaleForDpi(14, dpi), (std::max)(1, extent - 4));
 	m_mode_button.SetBitmapSize(iconSize, iconSize);
 	m_mode_button.SetButtonSize(extent, extent);
 	RECT close = {};
