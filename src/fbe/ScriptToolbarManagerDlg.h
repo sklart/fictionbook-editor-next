@@ -11,6 +11,8 @@ public:
 	BEGIN_MSG_MAP(CScriptToolbarManagerDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		COMMAND_HANDLER(IDC_SCRIPT_PANELS_LIST, LBN_SELCHANGE, OnSelection)
+		COMMAND_HANDLER(IDC_SCRIPT_PANELS_LIST, LBN_DBLCLK, OnListDoubleClick)
+		COMMAND_HANDLER(IDC_SCRIPT_PANEL_INLINE_EDIT, EN_KILLFOCUS, OnInlineEditKillFocus)
 		COMMAND_HANDLER(IDC_SCRIPT_PANEL_CREATE, BN_CLICKED, OnCreatePanel)
 		COMMAND_HANDLER(IDC_SCRIPT_PANEL_RENAME, BN_CLICKED, OnRename)
 		COMMAND_HANDLER(IDC_SCRIPT_PANEL_DELETE, BN_CLICKED, OnDelete)
@@ -20,14 +22,14 @@ public:
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 	END_MSG_MAP()
 private:
-	ScriptToolbarManager& m_manager; std::function<bool(const std::vector<ScriptToolbarDefinition>&, const std::vector<ScriptToolbarDefinition>&)> m_changed; CListBox m_list;
+	ScriptToolbarManager& m_manager; std::function<bool(const std::vector<ScriptToolbarDefinition>&, const std::vector<ScriptToolbarDefinition>&)> m_changed; CListBox m_list; CEdit m_inlineEdit;
 	std::vector<ScriptToolbarDefinition> m_lastCommitted;
-	bool m_renameEditing = false;
-	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnSelection(WORD, WORD, HWND, BOOL&);
+	CString m_editingId;
+	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnSelection(WORD, WORD, HWND, BOOL&); LRESULT OnListDoubleClick(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCreatePanel(WORD, WORD, HWND, BOOL&); LRESULT OnRename(WORD, WORD, HWND, BOOL&); LRESULT OnDelete(WORD, WORD, HWND, BOOL&);
-	LRESULT OnUp(WORD, WORD, HWND, BOOL&); LRESULT OnDown(WORD, WORD, HWND, BOOL&); LRESULT OnVisible(WORD, WORD, HWND, BOOL&); LRESULT OnClose(WORD, WORD, HWND, BOOL&);
+	LRESULT OnUp(WORD, WORD, HWND, BOOL&); LRESULT OnDown(WORD, WORD, HWND, BOOL&); LRESULT OnVisible(WORD, WORD, HWND, BOOL&); LRESULT OnClose(WORD, WORD, HWND, BOOL&); LRESULT OnInlineEditKillFocus(WORD, WORD, HWND, BOOL&);
 	void Refresh(const CString& preferredId = CString()); CString SelectedId() const; CString NextDefaultPanelName() const; bool Commit(const CString& preferredId = CString());
-	bool ApplyRename();
+	bool BeginRename(); bool FinishRename(bool apply); void EndRenameForAction();
 public:
 	BOOL PreTranslateMessage(MSG* message);
 };

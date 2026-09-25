@@ -37,14 +37,16 @@ Must $frame 'band != insertion && !m_rebar\.MoveBand\(band, insertion\)' 'reorde
 Must $dialog 'm_manager\.Create' 'create panel action'
 Must $dialog 'NextDefaultPanelName\(\)' 'create uses a generated display name rather than edit-control input'
 Must $dialog 'FbeLoadRuntimeStringByKey\(L"fbe\.script_toolbar_manager\.default_name"\)' 'generated display name uses runtime localization'
-Must $dialog 'Commit\(createdId\)' 'created panel is selected after the incremental commit'
-Must $dialog 'EM_SETSEL,0,-1' 'created name is selected for immediate rename'
+Must $dialog 'Commit\(id\)' 'created panel is selected after the incremental commit'
+Must $dialog 'LB_GETITEMRECT|GetItemRect' 'inline edit is positioned over the selected list row'
+Must $dialog 'm_inlineEdit\.SetSel\(0,-1\)' 'created name is selected for immediate inline rename'
 if($dialog -match 'LRESULT CScriptToolbarManagerDlg::OnCreatePanel[^\r\n]*') { if($Matches[0] -match 'GetDlgItemText') { throw 'Create must not consume stale text from the name edit control.' } }
 Must $dialog 'm_manager\.Delete' 'delete panel action'
 Must $dialog 'm_manager\.Rename' 'rename panel action'
 Must $dialog 'Commit\(previous\)' 'delete keeps the preceding row selected'
-Must $dialog 'VK_RETURN && m_renameEditing' 'Enter applies an active rename'
-Must $dialog 'VK_ESCAPE && m_renameEditing' 'Escape cancels an active rename'
+Must $dialog 'VK_RETURN' 'Enter applies an active inline rename'
+Must $dialog 'VK_ESCAPE' 'Escape cancels an inline rename'
+Must $dialog 'VK_F2' 'F2 opens inline rename'
 Must $dialog 'm_manager\.SetVisible' 'visibility action'
 Must $collection 'if\(id == L"scripts-main"\) return false' 'main panel cannot be deleted'
 Must $collection 'CString ScriptToolbarCollection::NextDefaultName' 'display-name allocation is separate from internal NextId'
@@ -54,4 +56,6 @@ Must $localization 'fbe\.script_toolbar_manager\.default_name' 'default panel-na
 foreach($language in @('en-US','ru-RU','uk-UA','de-DE','fr-FR','es-ES','it-IT','pl-PL','pt-PT','nl-NL','cs-CZ','bg-BG')) { if($localization -notmatch ('"' + [regex]::Escape($language) + '"\s*:\s*"[^"\r\n]*%u')) { throw "Default panel-name localization lacks a numbered $language translation." } }
 Must $manager 'definition->visible = visible' 'visibility persists in definition'
 Must $dialog 'm_changed\(m_lastCommitted, m_manager\.Collection\(\)\.Items\(\)\)' 'dialog supplies pre-change state for rollback'
+if($dialog -match 'IDC_SCRIPT_PANEL_NAME|GetDlgItemText\(IDC_SCRIPT_PANEL_NAME|SetDlgItemText\(IDC_SCRIPT_PANEL_NAME') { throw 'Production manager must not use the removed Name edit control.' }
+if($rc -match 'IDC_SCRIPT_PANEL_NAME|IDC_SCRIPT_PANEL_NAME_LABEL') { throw 'Manager dialog must not contain the removed Name controls.' }
 Write-Host 'Script toolbar management contract passed.'

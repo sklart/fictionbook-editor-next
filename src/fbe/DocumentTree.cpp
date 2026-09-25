@@ -657,16 +657,16 @@ void CDocumentTree::LayoutModeButton()
 {
 	if(!m_mode_button.IsWindow()) return;
 	RECT client = {}; GetClientRect(&client);
-	const int width = UiMetrics::ScaleForDpi(22, UiMetrics::DpiForWindow(m_hWnd));
-	const int height = (std::max)(1, (std::min)(width, m_cxyHeader));
-	const int iconSize = (std::min)(UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_hWnd)), height);
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	const int extent = (std::max)(1, (std::min)(UiMetrics::ScaleForDpi(22, dpi), m_cxyHeader));
+	const int iconSize = (std::min)(UiMetrics::ScaleForDpi(16, dpi), (std::max)(1, extent - 2));
 	m_mode_button.SetBitmapSize(iconSize, iconSize);
-	m_mode_button.SetButtonSize(height, height);
+	m_mode_button.SetButtonSize(extent, extent);
 	RECT close = {};
 	if(m_tb.IsWindow()) { ::GetWindowRect(m_tb, &close); ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&close), 2); }
-	const int left = (std::max)(0, static_cast<int>((close.left > 0 ? close.left : client.right - m_cxToolBar) - width));
-	const int top = (std::max)(0, (m_cxyHeader - height) / 2);
-	m_mode_button.SetWindowPos(NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+	const int left = (std::max)(0, static_cast<int>((close.left > 0 ? close.left : client.right - m_cxToolBar) - extent));
+	const int top = (std::max)(0, (m_cxyHeader - extent) / 2);
+	m_mode_button.SetWindowPos(NULL, left, top, extent, extent, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void CDocumentTree::RefreshModeButton()
@@ -691,7 +691,7 @@ bool CDocumentTree::GetModeButtonProbe(RECT& title, RECT& button, RECT& close, i
 	TBBUTTON nativeButton = {};
 	if(!::SendMessage(m_mode_button, TB_GETBUTTON, 0, reinterpret_cast<LPARAM>(&nativeButton))) return false;
 	image = nativeButton.iBitmap; command = nativeButton.idCommand;
-	return image >= 0 && button.left >= title.left && button.top >= title.top && button.right <= title.right && button.bottom <= title.bottom && (!m_tb.IsWindow() || button.right <= close.left);
+	return image >= 0 && button.right - button.left == button.bottom - button.top && button.right - button.left <= title.bottom - title.top && button.left >= title.left && button.top >= title.top && button.right <= title.right && button.bottom <= title.bottom && (!m_tb.IsWindow() || button.right <= close.left);
 }
 
 LRESULT CDocumentTree::OnToggleMode(WORD, WORD, HWND, BOOL&)

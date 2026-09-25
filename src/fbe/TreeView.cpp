@@ -852,12 +852,22 @@ void CTreeView::PrepareScriptImages()
 
 int CTreeView::AddScriptImage(HBITMAP bitmap)
 {
-	return bitmap != NULL ? m_scriptImageList.Add(bitmap, RGB(255,0,255)) : -1;
+	if(bitmap == NULL) return -1;
+	HBITMAP normalized = static_cast<HBITMAP>(::CopyImage(bitmap, IMAGE_BITMAP, 16, 16, LR_CREATEDIBSECTION));
+	if(normalized == NULL) return -1;
+	const int image = m_scriptImageList.Add(normalized, RGB(255,0,255));
+	::DeleteObject(normalized);
+	return image;
 }
 
 int CTreeView::AddScriptIcon(HICON icon)
 {
-	return icon != NULL ? m_scriptImageList.AddIcon(icon) : -1;
+	if(icon == NULL) return -1;
+	HICON normalized = static_cast<HICON>(::CopyImage(icon, IMAGE_ICON, 16, 16, 0));
+	if(normalized == NULL) return -1;
+	const int image = m_scriptImageList.AddIcon(normalized);
+	::DestroyIcon(normalized);
+	return image;
 }
 
 void CTreeView::BuildScriptChildren(HTREEITEM parent, const CString& parentId)

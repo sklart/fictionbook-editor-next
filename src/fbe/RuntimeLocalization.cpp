@@ -35,7 +35,6 @@ static const RuntimeDialogBinding g_runtimeDialogBindings[] = {
 	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_RESET, L"fbe.scripts_toolbar_customize.reset" },
 	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDCANCEL, L"fbe.scripts_toolbar_customize.close" },
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, 0, L"fbe.script_toolbar_manager.caption" },
-	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_NAME_LABEL, L"fbe.script_toolbar_manager.name" },
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_CREATE, L"fbe.script_toolbar_manager.create" },
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_RENAME, L"fbe.script_toolbar_manager.rename" },
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_DELETE, L"fbe.script_toolbar_manager.delete" },
