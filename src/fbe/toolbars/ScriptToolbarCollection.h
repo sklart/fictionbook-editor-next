@@ -12,6 +12,7 @@ public:
 	ScriptToolbarDefinition* Find(const CString& id);
 	const ScriptToolbarDefinition* Find(const CString& id) const;
 	ScriptToolbarDefinition& Add(const CString& name);
+	CString NextDefaultName(const CString& format) const;
 	bool Remove(const CString& id);
 	bool Rename(const CString& id, const CString& name);
 	bool Move(const CString& id, size_t destination);

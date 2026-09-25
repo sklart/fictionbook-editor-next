@@ -259,6 +259,29 @@ void CMainFrame::RunPortableStateTestScenario()
 		ScriptToolbarDefinition* main = NULL;
 		for(size_t index = 0; index < definitions.size(); ++index) if(definitions[index].id == L"scripts-main") { main = &definitions[index]; break; }
 		if(main == NULL) { ScriptToolbarDefinition item; item.id = L"scripts-main"; item.name = L"Scripts"; definitions.insert(definitions.begin(), item); main = &definitions.front(); }
+		const CString defaultNameFormat = FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.default_name");
+		ScriptToolbarCollection generatedNames;
+		ScriptToolbarDefinition& firstGenerated = generatedNames.Add(generatedNames.NextDefaultName(defaultNameFormat));
+		const CString firstGeneratedId = firstGenerated.id, firstGeneratedName = firstGenerated.name;
+		ScriptToolbarDefinition& secondGenerated = generatedNames.Add(generatedNames.NextDefaultName(defaultNameFormat));
+		const CString secondGeneratedId = secondGenerated.id;
+		generatedNames.Rename(secondGeneratedId, L"Correction");
+		ScriptToolbarDefinition& replacementGenerated = generatedNames.Add(generatedNames.NextDefaultName(defaultNameFormat));
+		const CString replacementGeneratedId = replacementGenerated.id, replacementGeneratedName = replacementGenerated.name;
+		ScriptToolbarDefinition& thirdGenerated = generatedNames.Add(generatedNames.NextDefaultName(defaultNameFormat));
+		const CString thirdGeneratedId = thirdGenerated.id, thirdGeneratedName = thirdGenerated.name;
+		ScriptToolbarCollection deletedNames;
+		ScriptToolbarDefinition& firstDeleted = deletedNames.Add(deletedNames.NextDefaultName(defaultNameFormat));
+		const CString firstDeletedId = firstDeleted.id;
+		ScriptToolbarDefinition& secondDeleted = deletedNames.Add(deletedNames.NextDefaultName(defaultNameFormat));
+		const CString secondDeletedId = secondDeleted.id;
+		deletedNames.Remove(secondDeletedId);
+		ScriptToolbarDefinition& replacementDeleted = deletedNames.Add(deletedNames.NextDefaultName(defaultNameFormat));
+		const CString replacementDeletedId = replacementDeleted.id, replacementDeletedName = replacementDeleted.name;
+		CString expectedFirst, expectedSecond, expectedThird; expectedFirst.Format(defaultNameFormat, 1); expectedSecond.Format(defaultNameFormat, 2); expectedThird.Format(defaultNameFormat, 3);
+		const bool defaultNames = !defaultNameFormat.IsEmpty() && firstGeneratedName == expectedFirst && replacementGeneratedName == expectedSecond && thirdGeneratedName == expectedThird &&
+			firstGeneratedId == L"toolbar-1" && secondGeneratedId == L"toolbar-2" && replacementGeneratedId == L"toolbar-3" && thirdGeneratedId == L"toolbar-4" &&
+			firstDeletedId == L"toolbar-1" && replacementDeletedId == L"toolbar-2" && replacementDeletedName == expectedSecond;
 		CString knownUid;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(!m_scripts.Menu().Item(index).isFolder && !m_scripts.Menu().Item(index).uid.IsEmpty()) { knownUid = m_scripts.Menu().Item(index).uid; break; }
 		for(int index = 1; index <= 5; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-toolbar-%d", index); item.name.Format(L"Runtime toolbar %d", index); item.visible = true; definitions.push_back(item); }
@@ -303,8 +326,8 @@ void CMainFrame::RunPortableStateTestScenario()
 			if(item.id == L"runtime-toolbar-5" && item.items.size() > 1 && item.items[1].scriptUid == L"runtime-missing-script-uid") missingPreserved = true;
 			if(index > 0 && item.id == definitions[1].id) orderPreserved = true;
 		}
-		const bool passed = created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved;
-		CStringA report; report.Format("phase=script-toolbar-lifecycle\nmode=%s\ncreated=%d\nrenamed-reordered=%d\nhidden=%d\nshown=%d\ndeleted=%d\nincremental=%d\nuntouched-stable=%d\nreloads=%d\nmissing-uid=%d\npersistence=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", created, renamedAndReordered, hidden, shown, deleted, incremental, untouchedStable, reloads, missingPreserved, loaded && orderPreserved, passed ? "pass" : "fail");
+		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved;
+		CStringA report; report.Format("phase=script-toolbar-lifecycle\nmode=%s\ndefault-names=%d\ncreated=%d\nrenamed-reordered=%d\nhidden=%d\nshown=%d\ndeleted=%d\nincremental=%d\nuntouched-stable=%d\nreloads=%d\nmissing-uid=%d\npersistence=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", defaultNames, created, renamedAndReordered, hidden, shown, deleted, incremental, untouchedStable, reloads, missingPreserved, loaded && orderPreserved, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if (diagnosticCleanup)

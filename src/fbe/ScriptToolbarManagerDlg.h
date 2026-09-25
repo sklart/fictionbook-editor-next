@@ -25,5 +25,5 @@ private:
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&); LRESULT OnSelection(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCreatePanel(WORD, WORD, HWND, BOOL&); LRESULT OnRename(WORD, WORD, HWND, BOOL&); LRESULT OnDelete(WORD, WORD, HWND, BOOL&);
 	LRESULT OnUp(WORD, WORD, HWND, BOOL&); LRESULT OnDown(WORD, WORD, HWND, BOOL&); LRESULT OnVisible(WORD, WORD, HWND, BOOL&); LRESULT OnClose(WORD, WORD, HWND, BOOL&);
-	void Refresh(); CString SelectedId() const; bool Commit();
+	void Refresh(const CString& preferredId = CString()); CString SelectedId() const; CString NextDefaultPanelName() const; bool Commit(const CString& preferredId = CString());
 };

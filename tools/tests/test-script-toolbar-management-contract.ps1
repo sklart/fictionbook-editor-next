@@ -2,7 +2,7 @@ param([string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path)
 $ErrorActionPreference='Stop'
 function Text($p) { Get-Content -Raw -LiteralPath (Join-Path $RepoRoot $p) }
 function Must($t,$p,$n) { if($t -notmatch $p){throw "Missing management contract: $n"} }
-$frame=Text 'src\fbe\mainfrm.cpp'; $dialog=Text 'src\fbe\ScriptToolbarManagerDlg.cpp'; $manager=Text 'src\fbe\toolbars\ScriptToolbarManager.cpp'; $collection=Text 'src\fbe\toolbars\ScriptToolbarCollection.cpp'; $resource=Text 'src\fbe\resource.h'; $rc=Text 'src\fbe\FBE.rc'; $menuLocalization=Text 'localization\app-ui\fbe-idr-mainframe-menu.json'
+$frame=Text 'src\fbe\mainfrm.cpp'; $dialog=Text 'src\fbe\ScriptToolbarManagerDlg.cpp'; $manager=Text 'src\fbe\toolbars\ScriptToolbarManager.cpp'; $collection=Text 'src\fbe\toolbars\ScriptToolbarCollection.cpp'; $resource=Text 'src\fbe\resource.h'; $rc=Text 'src\fbe\FBE.rc'; $menuLocalization=Text 'localization\app-ui\fbe-idr-mainframe-menu.json'; $localization=Text 'localization\app-ui\fbe-small-dialogs.json'
 Must $frame 'PortableToolbarStore::Load\(persistedToolbars\)' 'installed and portable definitions load through settings directory'
 Must $frame 'if\(runtime\.window == NULL\) continue;' 'empty custom toolbar reaches layout adapter'
 Must $frame 'ToolbarLayoutAdapter::Apply\(runtime\.window, items, catalog\)' 'UID layout is applied to every runtime control'
@@ -26,10 +26,20 @@ Must $frame 'DestroyScriptToolbarRuntime' 'removed or hidden custom toolbar owns
 Must $frame 'm_rebar\.ShowBand\(band, visible\)' 'scripts-main visibility uses its existing rebar band'
 Must $frame 'band != insertion && !m_rebar\.MoveBand\(band, insertion\)' 'reorder accepts a band already occupying its target position'
 Must $dialog 'm_manager\.Create' 'create panel action'
+Must $dialog 'NextDefaultPanelName\(\)' 'create uses a generated display name rather than edit-control input'
+Must $dialog 'FbeLoadRuntimeStringByKey\(L"fbe\.script_toolbar_manager\.default_name"\)' 'generated display name uses runtime localization'
+Must $dialog 'Commit\(createdId\)' 'created panel is selected after the incremental commit'
+Must $dialog 'EM_SETSEL,0,-1' 'created name is selected for immediate rename'
+if($dialog -match 'LRESULT CScriptToolbarManagerDlg::OnCreatePanel[\s\S]*?\n(?=LRESULT)') { if($Matches[0] -match 'GetDlgItemText') { throw 'Create must not consume stale text from the name edit control.' } }
 Must $dialog 'm_manager\.Delete' 'delete panel action'
 Must $dialog 'm_manager\.Rename' 'rename panel action'
 Must $dialog 'm_manager\.SetVisible' 'visibility action'
 Must $collection 'if\(id == L"scripts-main"\) return false' 'main panel cannot be deleted'
+Must $collection 'CString ScriptToolbarCollection::NextDefaultName' 'display-name allocation is separate from internal NextId'
+Must $collection 'm_items\[index\]\.id != L"scripts-main"' 'main Scripts toolbar does not reserve generated display-name numbers'
+Must $collection 'name\.CompareNoCase\(candidate\)' 'generated names are checked case-insensitively'
+Must $localization 'fbe\.script_toolbar_manager\.default_name' 'default panel-name localization key exists'
+foreach($language in @('en-US','ru-RU','uk-UA','de-DE','fr-FR','es-ES','it-IT','pl-PL','pt-PT','nl-NL','cs-CZ','bg-BG')) { if($localization -notmatch ('"' + [regex]::Escape($language) + '"\s*:\s*"[^"\r\n]*%u')) { throw "Default panel-name localization lacks a numbered $language translation." } }
 Must $manager 'definition->visible = visible' 'visibility persists in definition'
 Must $dialog 'm_changed\(m_lastCommitted, m_manager\.Collection\(\)\.Items\(\)\)' 'dialog supplies pre-change state for rollback'
 Write-Host 'Script toolbar management contract passed.'
