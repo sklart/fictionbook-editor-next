@@ -122,7 +122,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const HTREEITEM root = tree.FindScriptTreeItem(L"root.js");
 		const bool hierarchy = folderA != NULL && child != NULL && folderB != NULL && deep != NULL && root != NULL &&
 			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
-		const bool visualMapping = tree.ScriptTreeImage(root) > 0 && tree.ScriptTreeImage(child) > 0 && tree.ScriptTreeImage(deep) == 0;
+		const bool visualMapping = tree.ScriptTreeImage(root) > 0 && tree.ScriptTreeImage(folderA) > 0 && tree.ScriptTreeImage(child) > 0 && tree.ScriptTreeImage(folderB) > 0 && tree.ScriptTreeImage(deep) > 0;
 		std::vector<ScriptDescriptor> reverseCatalog = m_scripts.Menu().Items(); std::vector<ScriptTreeVisual> reverseVisuals;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; reverseVisuals.push_back(visual); }
 		std::reverse(reverseCatalog.begin(), reverseCatalog.end()); std::reverse(reverseVisuals.begin(), reverseVisuals.end());

@@ -34,7 +34,7 @@ HBITMAP CreateMenuBitmap(HICON icon)
 }
 }
 
-VisualResource VisualResources::Load(const CString& directory, const CString& baseName) const
+VisualResource VisualResources::Load(const CString& directory, const CString& baseName, bool folder) const
 {
 	VisualResource result;
 	const CString base = directory + baseName;
@@ -48,6 +48,14 @@ VisualResource VisualResources::Load(const CString& directory, const CString& ba
 		const DWORD iconAttributes = ::GetFileAttributes(iconPath);
 		if (iconAttributes != INVALID_FILE_ATTRIBUTES && (iconAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 			result.icon = static_cast<HICON>(::LoadImage(NULL, iconPath, IMAGE_ICON, 0, 0, LR_LOADFROMFILE));
+		if(result.icon == NULL)
+		{
+			SHFILEINFOW info = {};
+			const DWORD attributes = folder ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+			::SHGetFileInfo(folder ? L"folder" : L"script.js", attributes, &info, sizeof(info),
+				SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES);
+			result.icon = info.hIcon;
+		}
 		result.menuBitmap = CreateMenuBitmap(result.icon);
 	}
 	return result;

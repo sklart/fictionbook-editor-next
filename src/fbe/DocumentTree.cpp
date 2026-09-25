@@ -5,6 +5,7 @@
 
 #include "DocumentTree.h"
 #include "ElementDescMnr.h"
+#include "toolbars\\ToolbarFactory.h"
 
 #include "Settings.h"
 extern CSettings _Settings;
@@ -166,6 +167,16 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_view_bar.Create(*this, rect, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	m_view_bar.SetStyle(ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	FillViewBar();
+	m_mode_bar.Create(*this, rect, NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBSTYLE_FLAT | TBSTYLE_LIST | CCS_NODIVIDER | CCS_NORESIZE);
+	::SendMessage(m_mode_bar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
+	TBBUTTON modeButtons[2] = {};
+	modeButtons[0].iBitmap = I_IMAGENONE; modeButtons[0].idCommand = ID_DOCUMENT_TREE_MODE_STRUCTURE;
+	modeButtons[0].fsState = TBSTATE_ENABLED; modeButtons[0].fsStyle = BTNS_CHECKGROUP | BTNS_AUTOSIZE | BTNS_SHOWTEXT;
+	modeButtons[1].iBitmap = I_IMAGENONE; modeButtons[1].idCommand = ID_DOCUMENT_TREE_MODE_SCRIPTS;
+	modeButtons[1].fsState = TBSTATE_ENABLED; modeButtons[1].fsStyle = BTNS_CHECKGROUP | BTNS_AUTOSIZE | BTNS_SHOWTEXT;
+	::SendMessage(m_mode_bar, TB_ADDBUTTONS, _countof(modeButtons), reinterpret_cast<LPARAM>(modeButtons));
+	ToolbarFactory::SetDialogFontForToolbarRow(m_mode_bar);
+	RefreshModeButtons();
 	::SetWindowSubclass(m_view_bar, DocumentTreeViewBarWindowThemeProc,
 		kDocumentTreeViewBarWindowThemeSubclassId, 0);
 	::SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc, kDocumentTreeViewBarThemeSubclassId,
@@ -201,10 +212,12 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	RECT rebarRect = {0, 0, 0, 0};
 	RECT treeRect = {0, 0, 0, 0};
 	RECT viewBarRect = {0, 0, 0, 0};
+	RECT modeBarRect = {0, 0, 0, 0};
 	
 	this->GetClientRect(&clientRect);
 	::GetWindowRect(m_toolbar, &rebarRect);
 	::GetWindowRect(m_view_bar, &viewBarRect);
+	::GetWindowRect(m_mode_bar, &modeBarRect);
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	int rebarHight = rebarRect.bottom - rebarRect.top + (dark ? 0 : GetSystemMetrics(SM_CYEDGE) * 2);
 	rebarRect.left = treeRect.left = clientRect.left;
@@ -212,6 +225,8 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 
 	int viewBarHight = viewBarRect.bottom - viewBarRect.top;
 	int viewBarWidth = viewBarRect.right - viewBarRect.left;
+	int modeBarHight = modeBarRect.bottom - modeBarRect.top;
+	int modeBarWidth = modeBarRect.right - modeBarRect.left;
 
 	viewBarRect.left = clientRect.left;
 	viewBarRect.right = clientRect.left + viewBarWidth;
@@ -226,11 +241,15 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		rebarRect.top = clientRect.bottom - rebarHight;
 		
 		rebarRect.bottom = rebarRect.top + rebarHight;
-		treeRect.top = clientRect.top + viewBarHight;
+		treeRect.top = clientRect.top + (std::max)(viewBarHight, modeBarHight);
 		treeRect.bottom = rebarRect.top;
 
 		viewBarRect.top = clientRect.top;
 		viewBarRect.bottom = viewBarRect.top + viewBarHight;
+		modeBarRect.left = viewBarRect.right;
+		modeBarRect.right = modeBarRect.left + modeBarWidth;
+		modeBarRect.top = clientRect.top;
+		modeBarRect.bottom = modeBarRect.top + modeBarHight;
 	}
 
 	// ?????? ????? ????? ???????????? ??????. ??? ???? ???????? ???????? ??? ????.
@@ -249,6 +268,7 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
 		m_maxTbwidth = rebarRect.right - rebarRect.left;
 	}
+	::MoveWindow(m_mode_bar, modeBarRect.left, modeBarRect.top, modeBarRect.right - modeBarRect.left, modeBarRect.bottom - modeBarRect.top, true);
 	
 	::MoveWindow(m_tree, treeRect.left, treeRect.top, treeRect.right - treeRect.left, treeRect.bottom - treeRect.top, true);	
 
@@ -297,6 +317,15 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 		::SendMessage(m_view_bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
 		::InvalidateRect(m_view_bar, NULL, TRUE);
 	}
+	if(m_mode_bar.IsWindow())
+	{
+		::SendMessage(m_mode_bar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
+		COLORSCHEME colours = {}; colours.dwSize = sizeof(colours);
+		colours.clrBtnHighlight = ThemeManager::HoverColor();
+		colours.clrBtnShadow = ThemeManager::BorderColor();
+		::SendMessage(m_mode_bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
+		::InvalidateRect(m_mode_bar, NULL, TRUE);
+	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 	return 0;
 }
@@ -311,7 +340,7 @@ LRESULT CTreeWithToolBar::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BO
 
 LRESULT CTreeWithToolBar::OnToolbarCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar))
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar && header->hwndFrom != m_mode_bar))
 	{
 		bHandled = FALSE;
 		return 0;
@@ -372,7 +401,6 @@ void CTreeWithToolBar::FillViewBar()
 
 	m_st_menu = ::CreateMenu();	
 	m_script_menu = ::CreateMenu();
-	m_navigation_menu = ::CreateMenu();
 	HMENU bar = ::CreateMenu();
 
 
@@ -384,12 +412,6 @@ void CTreeWithToolBar::FillViewBar()
 
 	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_st_menu, elsMenuItem);
 	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_script_menu, scriptsMenuItem);
-	::AppendMenu(m_navigation_menu, MF_STRING | (_Settings.DocumentTreeScripts() ? MF_UNCHECKED : MF_CHECKED), ID_DOCUMENT_TREE_MODE_STRUCTURE,
-		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.structure", L"Document structure"));
-	::AppendMenu(m_navigation_menu, MF_STRING | (_Settings.DocumentTreeScripts() ? MF_CHECKED : MF_UNCHECKED), ID_DOCUMENT_TREE_MODE_SCRIPTS,
-		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.scripts", L"Scripts"));
-	::AppendMenu(bar, MF_POPUP|MF_STRING, (UINT)(HMENU)m_navigation_menu,
-		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.caption", L"View"));
 
 	int picType = 0;
 	HANDLE picHandle = 0;
@@ -449,27 +471,36 @@ void CTreeWithToolBar::FillViewBar()
 void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 {
 	CMenuHandle bar = m_view_bar.GetMenu();
-	if(bar.IsNull())
-		return;
+	if(!bar.IsNull())
+	{
+		wchar_t elsMenuItem[MAX_LOAD_STRING + 1];
+		wchar_t scriptsMenuItem[MAX_LOAD_STRING + 1];
+		wchar_t cleanupMenuItem[MAX_LOAD_STRING + 1];
+		FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_ELEMENTS, elsMenuItem, MAX_LOAD_STRING);
+		FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_SCRIPTS, scriptsMenuItem, MAX_LOAD_STRING);
+		FbeLoadString(_Module.GetResourceInstance(), IDS_DOC_TREE_CLEANUP, cleanupMenuItem, MAX_LOAD_STRING);
+		bar.ModifyMenu(0, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_st_menu, elsMenuItem);
+		bar.ModifyMenu(1, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_script_menu, scriptsMenuItem);
+		m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
+		m_view_bar.Invalidate();
+	}
+	RefreshModeButtons();
+}
 
-	wchar_t elsMenuItem[MAX_LOAD_STRING + 1];
-	wchar_t scriptsMenuItem[MAX_LOAD_STRING + 1];
-	wchar_t cleanupMenuItem[MAX_LOAD_STRING + 1];
-
-	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_ELEMENTS, elsMenuItem, MAX_LOAD_STRING);
-	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_SCRIPTS, scriptsMenuItem, MAX_LOAD_STRING);
-	FbeLoadString(_Module.GetResourceInstance(), IDS_DOC_TREE_CLEANUP, cleanupMenuItem, MAX_LOAD_STRING);
-
-	bar.ModifyMenu(0, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_st_menu, elsMenuItem);
-	bar.ModifyMenu(1, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_script_menu, scriptsMenuItem);
-	bar.ModifyMenu(2, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_navigation_menu,
-		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.caption", L"View"));
-	m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
-	m_navigation_menu.ModifyMenu(ID_DOCUMENT_TREE_MODE_STRUCTURE, MF_BYCOMMAND | MF_STRING, ID_DOCUMENT_TREE_MODE_STRUCTURE,
-		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.structure", L"Document structure"));
-	m_navigation_menu.ModifyMenu(ID_DOCUMENT_TREE_MODE_SCRIPTS, MF_BYCOMMAND | MF_STRING, ID_DOCUMENT_TREE_MODE_SCRIPTS,
-		FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.scripts", L"Scripts"));
-	m_view_bar.Invalidate();
+void CTreeWithToolBar::RefreshModeButtons()
+{
+	if(!m_mode_bar.IsWindow()) return;
+	const bool scripts = m_tree.IsScriptMode();
+	const CString structure = FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.structure", L"Document structure");
+	const CString script = FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.scripts", L"Scripts");
+	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT | TBIF_STATE;
+	button.pszText = const_cast<LPWSTR>(structure.GetString()); button.fsState = TBSTATE_ENABLED | (scripts ? 0 : TBSTATE_CHECKED);
+	::SendMessage(m_mode_bar, TB_SETBUTTONINFOW, ID_DOCUMENT_TREE_MODE_STRUCTURE, reinterpret_cast<LPARAM>(&button));
+	button.pszText = const_cast<LPWSTR>(script.GetString()); button.fsState = TBSTATE_ENABLED | (scripts ? TBSTATE_CHECKED : 0);
+	::SendMessage(m_mode_bar, TB_SETBUTTONINFOW, ID_DOCUMENT_TREE_MODE_SCRIPTS, reinterpret_cast<LPARAM>(&button));
+	ToolbarFactory::AutoSizeToolbar(m_mode_bar);
+	::InvalidateRect(m_mode_bar, NULL, TRUE);
+	SendMessage(WM_SIZE, 0, 0);
 }
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 {
@@ -526,18 +557,22 @@ LRESULT CTreeWithToolBar::OnMenuClear(WORD /* unused: wNotifyCode */, WORD /* un
 
 LRESULT CTreeWithToolBar::OnShowDocumentStructure(WORD, WORD, HWND, BOOL&)
 {
-	_Settings.SetDocumentTreeScripts(false, true); m_tree.SetScriptMode(false);
-	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_MODE_STRUCTURE, MF_BYCOMMAND | MF_CHECKED);
-	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_MODE_SCRIPTS, MF_BYCOMMAND | MF_UNCHECKED);
+	SetScriptMode(false);
 	return 0;
 }
 
 LRESULT CTreeWithToolBar::OnShowScripts(WORD, WORD, HWND, BOOL&)
 {
-	_Settings.SetDocumentTreeScripts(true, true); m_tree.SetScriptMode(true);
-	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_MODE_STRUCTURE, MF_BYCOMMAND | MF_UNCHECKED);
-	::CheckMenuItem(m_navigation_menu, ID_DOCUMENT_TREE_MODE_SCRIPTS, MF_BYCOMMAND | MF_CHECKED);
+	SetScriptMode(true);
 	return 0;
+}
+
+void CTreeWithToolBar::SetScriptMode(bool scripts)
+{
+	_Settings.SetDocumentTreeScripts(scripts, true);
+	m_tree.SetScriptMode(scripts);
+	RefreshModeButtons();
+	if(m_modeChanged) m_modeChanged();
 }
 
 void CTreeWithToolBar::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
@@ -559,6 +594,7 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 
 	m_tree.Create(*this, rcDefault);
 	m_tree.m_tree.SetMainwindow(GetParent());
+	m_tree.SetModeChangedHandler([this]() { RefreshLocalizedTitle(); });
 	m_tree.m_tree.SetScriptMode(_Settings.DocumentTreeScripts());
 	/*m_element_browser.Create(*this, rcDefault);
 	m_element_browser.m_tree.SetMainwindow(GetParent());*/
@@ -572,11 +608,10 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 
 void CDocumentTree::RefreshLocalizedTitle()
 {
-	wchar_t capt[MAX_LOAD_STRING + 1];
-	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCUMENT_TREE_CAPTION, capt, MAX_LOAD_STRING);
-	m_title = capt;
-	this->SetTitle(capt);
-	this->SetWindowText(capt);
+	m_title = FbeLoadRuntimeStringByKey(m_tree.m_tree.IsScriptMode() ? L"fbe.document_tree.mode.scripts" : L"fbe.document_tree.mode.structure",
+		m_tree.m_tree.IsScriptMode() ? L"Scripts" : L"Document structure");
+	this->SetTitle(m_title);
+	this->SetWindowText(m_title);
 	m_tree.RefreshLocalizedMenuCaptions();
 }
 

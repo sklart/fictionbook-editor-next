@@ -45,6 +45,13 @@ if($frame -match 'bool CMainFrame::ApplyScriptToolbarDefinitions[\s\S]*?\n\}') {
 Must $documentTree 'SetDocumentTreeScripts\(' 'mode selection is persisted'
 Must $documentTree 'ID_DOCUMENT_TREE_MODE_STRUCTURE' 'mode structure command has a named resource ID'
 Must $documentTree 'ID_DOCUMENT_TREE_MODE_SCRIPTS' 'mode scripts command has a named resource ID'
+Must $documentTree 'BTNS_CHECKGROUP \| BTNS_AUTOSIZE \| BTNS_SHOWTEXT' 'mode controls are direct keyboard-accessible toggle buttons'
+Must $documentTree 'm_mode_bar\.Create' 'mode controls occupy the navigation header row'
+Must $documentTree 'WS_TABSTOP' 'mode controls participate in keyboard focus navigation'
+Must $documentTree 'RefreshModeButtons\(\)' 'mode controls update checked state and localized captions'
+Must $documentTree 'SetModeChangedHandler' 'mode click updates the pane title'
+Must $documentTree 'FbeLoadRuntimeStringByKey\(m_tree\.m_tree\.IsScriptMode\(\)' 'pane title follows the active localized mode'
+if($documentTree -match 'm_navigation_menu|fbe\.document_tree\.mode\.caption') { throw 'Navigation mode must no longer be hidden behind a View popup.' }
 Must $resource 'ID_DOCUMENT_TREE_MODE_STRUCTURE\s+57600' 'mode structure resource ID is allocated'
 Must $resource 'ID_DOCUMENT_TREE_MODE_SCRIPTS\s+57601' 'mode scripts resource ID is allocated'
 if($documentTree -match '57872|57873') { throw 'Navigation mode commands must not use magic numbers.' }

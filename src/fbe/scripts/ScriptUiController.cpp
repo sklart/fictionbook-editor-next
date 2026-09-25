@@ -6,6 +6,19 @@
 
 namespace FbeScripts
 {
+namespace
+{
+void ResolveVisualPathParts(const ScriptDescriptor& descriptor, CString& directory, CString& baseName)
+{
+	CString path = descriptor.path;
+	while(!path.IsEmpty() && (path[path.GetLength() - 1] == L'\\' || path[path.GetLength() - 1] == L'/')) path.Delete(path.GetLength() - 1);
+	const int slash = path.ReverseFind(L'\\');
+	directory = slash >= 0 ? path.Left(slash + 1) : CString();
+	baseName = slash >= 0 ? path.Mid(slash + 1) : path;
+	if(!descriptor.isFolder && baseName.GetLength() >= 3) baseName.Delete(baseName.GetLength() - 3, 3);
+}
+}
+
 UiController::UiController(UINT folderCommandBase, UINT folderCommandCount)
 	: m_menu(folderCommandBase, folderCommandCount), m_initializeCount(0), m_discoveryCount(0) {}
 
@@ -41,10 +54,9 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 	{
 		const ScriptDescriptor& candidate = candidates[index];
 		if(!candidate.isFolder && !isRunnable(candidate.path)) continue;
-		const CString directory = candidate.isFolder ? candidate.path : candidate.path.Left(candidate.path.ReverseFind(L'\\') + 1);
-		CString picture(candidate.path.Mid(candidate.path.ReverseFind(L'\\') + 1));
-		if(!candidate.isFolder && picture.GetLength() >= 3) picture.Delete(picture.GetLength() - 3, 3);
-		VisualResource visual = m_visuals.Load(directory, picture); m_menu.Add(candidate, static_cast<VisualResource&&>(visual));
+		CString directory, picture;
+		ResolveVisualPathParts(candidate, directory, picture);
+		VisualResource visual = m_visuals.Load(directory, picture, candidate.isFolder); m_menu.Add(candidate, static_cast<VisualResource&&>(visual));
 	}
 	const bool changed = m_menu.AssignCommandIds(ScriptCommandCount, persistedCommandIds, updatedCommandIds);
 	while(::GetMenuItemCount(scriptsMenu) > 0) ::RemoveMenu(scriptsMenu, 0, MF_BYPOSITION);

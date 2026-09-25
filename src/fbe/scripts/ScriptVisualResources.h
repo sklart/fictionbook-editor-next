@@ -20,6 +20,6 @@ struct VisualResource
 class VisualResources
 {
 public:
-	VisualResource Load(const CString& directory, const CString& baseName) const;
+	VisualResource Load(const CString& directory, const CString& baseName, bool folder) const;
 };
 }

@@ -20,9 +20,10 @@ private:
 	bool m_rebarThemeStateCaptured = false;
 
 	CCommandBarCtrl m_view_bar;
+	WTL::CToolBarCtrl m_mode_bar;
 	CMenu m_st_menu;
 	CMenu m_script_menu;
-	CMenu m_navigation_menu;
+	std::function<void()> m_modeChanged;
 
 public:
 	CTreeView m_tree;
@@ -88,6 +89,7 @@ public:
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
+	void SetModeChangedHandler(const std::function<void()>& handler) { m_modeChanged = handler; }
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
 	{
@@ -129,6 +131,8 @@ public:
 private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();
 	void FillViewBar();
+	void RefreshModeButtons();
+	void SetScriptMode(bool scripts);
 	void ClearTree();
 	//ViewElements(unsigned)
 };
