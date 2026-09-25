@@ -222,7 +222,8 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	::GetWindowRect(m_toolbar, &rebarRect);
 	::GetWindowRect(m_view_bar, &viewBarRect);
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
-	int rebarHight = rebarRect.bottom - rebarRect.top + (dark ? 0 : GetSystemMetrics(SM_CYEDGE) * 2);
+	const bool rebarVisible = m_rebar.IsWindowVisible() != FALSE;
+	int rebarHight = rebarVisible ? rebarRect.bottom - rebarRect.top + (dark ? 0 : GetSystemMetrics(SM_CYEDGE) * 2) : 0;
 	rebarRect.left = treeRect.left = clientRect.left;
 	rebarRect.right = treeRect.right = clientRect.right;
 
@@ -262,7 +263,7 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 
 	if((rebarRect.right - rebarRect.left) > m_maxTbwidth || moved)
 	{
-		::MoveWindow(m_rebar, rebarRect.left, rebarRect.top, rebarRect.right - rebarRect.left, rebarRect.bottom - rebarRect.top, true);
+		if(rebarVisible) ::MoveWindow(m_rebar, rebarRect.left, rebarRect.top, rebarRect.right - rebarRect.left, rebarRect.bottom - rebarRect.top, true);
 		if(viewBarVisible) ::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
 		m_maxTbwidth = rebarRect.right - rebarRect.left;
 	}
@@ -487,6 +488,7 @@ void CTreeWithToolBar::UpdateViewBarMode(bool scripts)
 	// The Elements selector belongs to Structure mode.  The old descriptor
 	// scripts popup is no longer part of either navigation mode.
 	m_view_bar.ShowWindow(scripts ? SW_HIDE : SW_SHOW);
+	m_rebar.ShowWindow(scripts ? SW_HIDE : SW_SHOW);
 	m_view_bar.HideButton(0, scripts ? TRUE : FALSE);
 	m_view_bar.HideButton(1, TRUE);
 	m_view_bar.Invalidate();

@@ -150,13 +150,13 @@ void CMainFrame::RunPortableStateTestScenario()
 		if(tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
 		else if(_Settings.DocumentTreeScripts()) { m_document_tree.m_tree.ToggleScriptMode(); m_document_tree.m_tree.ToggleScriptMode(); }
 		RECT title = {}, modeButton = {}, closeButton = {}; int initialImage = -1; UINT initialCommand = 0;
-		const bool modeButtonReady = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.GetModeButtonProbe(title, modeButton, closeButton, initialImage, initialCommand) && initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
+		const bool modeButtonReady = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(title, modeButton, closeButton, initialImage, initialCommand) && initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
 		m_document_tree.m_tree.ToggleScriptMode();
 		RECT scriptsTitle = {}, scriptsButton = {}, scriptsClose = {}; int scriptsImage = -1; UINT scriptsCommand = 0;
-		const bool switchedScripts = tree.IsScriptMode() && _Settings.DocumentTreeScripts() && !m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.GetModeButtonProbe(scriptsTitle, scriptsButton, scriptsClose, scriptsImage, scriptsCommand) && scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE;
+		const bool switchedScripts = tree.IsScriptMode() && _Settings.DocumentTreeScripts() && !m_document_tree.m_tree.IsModeSelectorVisible() && !m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(scriptsTitle, scriptsButton, scriptsClose, scriptsImage, scriptsCommand) && scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE;
 		m_document_tree.m_tree.ToggleScriptMode();
 		RECT structureTitle = {}, structureButton = {}, structureClose = {}; int structureImage = -1; UINT structureCommand = 0;
-		const bool switchedStructure = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.GetModeButtonProbe(structureTitle, structureButton, structureClose, structureImage, structureCommand) && structureImage == 0 && structureCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
+		const bool switchedStructure = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(structureTitle, structureButton, structureClose, structureImage, structureCommand) && structureImage == 0 && structureCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
 		m_document_tree.m_tree.ToggleScriptMode();
 		HTREEITEM folderA = tree.FindScriptTreeItem(L"foldera");
 		HTREEITEM child = tree.FindScriptTreeItem(L"foldera/child.js");

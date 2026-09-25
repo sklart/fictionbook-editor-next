@@ -91,6 +91,7 @@ public:
 	void SetModeChangedHandler(const std::function<void()>& handler) { m_modeChanged = handler; }
 	void ToggleScriptMode() { SetScriptMode(!m_tree.IsScriptMode()); }
 	bool IsModeSelectorVisible() const { return m_view_bar.IsWindowVisible() != FALSE; }
+	bool IsStructuralToolbarVisible() const { return m_rebar.IsWindowVisible() != FALSE; }
 	void RefreshModeControls();
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
