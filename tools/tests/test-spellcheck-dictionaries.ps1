@@ -169,7 +169,9 @@ if ($suggestionIdCollisions.Count -ne 0 -or
     $paste2.Count -ne 1 -or ($paste2[0].Value -ge 33000 -and $paste2[0].Value -le 33031) -or
     $res1Header -notmatch '#define ID_SCI_COLLAPSE_BASE\s+40000' -or 33031 -ge 40000 -or
     $mainFrameImplementation -notmatch 'ID_LAST_PLUGIN < ID_SPELL_REPLACE_FIRST' -or
-    $mainFrameImplementation -notmatch 'ID_SCRIPT_BASE \+ 999 < ID_SPELL_REPLACE_FIRST' -or
+    $mainFrameImplementation -notmatch 'const int SCRIPT_COMMAND_COUNT = FbeScripts::ScriptCommandCount;' -or
+    $mainFrameImplementation -notmatch 'ID_SCRIPT_BASE \+ SCRIPT_COMMAND_COUNT < ID_SPELL_REPLACE_FIRST' -or
+    $mainFrameImplementation -match 'ID_SCRIPT_BASE \+ 999 < ID_SPELL_REPLACE_FIRST' -or
     $mainFrameImplementation -notmatch 'ID_SPELL_REPLACE_LAST < ID_SCI_COLLAPSE_BASE' -or
     $mainFrameSource -notmatch 'm_Speller->Replace\s*\(wID - ID_SPELL_REPLACE_FIRST\)') {
     throw "Spell suggestion command range must not overlap FBE, plug-in or script commands."
