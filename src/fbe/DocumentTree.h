@@ -90,6 +90,8 @@ public:
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	void SetModeChangedHandler(const std::function<void()>& handler) { m_modeChanged = handler; }
 	void ToggleScriptMode() { SetScriptMode(!m_tree.IsScriptMode()); }
+	bool IsModeSelectorVisible() const { return m_view_bar.IsWindowVisible() != FALSE; }
+	void RefreshModeControls();
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
 	{
@@ -131,6 +133,8 @@ public:
 private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();
 	void FillViewBar();
+	void ApplyViewBarMetrics();
+	void UpdateViewBarMode(bool scripts);
 	void SetScriptMode(bool scripts);
 	void ClearTree();
 	//ViewElements(unsigned)
@@ -159,6 +163,7 @@ public:
 		const std::function<void(const CString&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
+	bool GetModeButtonProbe(RECT& title, RECT& button, RECT& close, int& image, UINT& command) const;
 
 	BEGIN_MSG_MAP(CDocumentTree)
 		MESSAGE_HANDLER(WM_CREATE, OnCreate)

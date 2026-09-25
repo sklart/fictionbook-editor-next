@@ -6,6 +6,7 @@
 #include "DocumentTree.h"
 #include "ElementDescMnr.h"
 #include "toolbars\\ToolbarFactory.h"
+#include "UiMetrics.h"
 
 #include "Settings.h"
 extern CSettings _Settings;
@@ -24,7 +25,9 @@ bool AddDocumentTreeModeImage(CImageList& images, UINT resourceId)
 	HIMAGELIST source = ::ImageList_LoadImage(_Module.GetResourceInstance(), MAKEINTRESOURCE(resourceId), 16, 1,
 		RGB(255, 0, 255), IMAGE_BITMAP, LR_CREATEDIBSECTION);
 	if(source == NULL) return false;
-	const bool copied = ::ImageList_GetImageCount(source) > 0 && ::ImageList_Copy(images, images.GetImageCount(), source, 0, ILCF_MOVE);
+	HICON icon = ::ImageList_GetImageCount(source) > 0 ? ::ImageList_GetIcon(source, 0, ILD_NORMAL) : NULL;
+	const bool copied = icon != NULL && ::ImageList_AddIcon(images, icon) >= 0;
+	if(icon != NULL) ::DestroyIcon(icon);
 	::ImageList_Destroy(source);
 	return copied;
 }
@@ -172,11 +175,13 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	
 	_EDMnr.InitScriptEDs();
 	RECT rect;
-	SetRect(&rect, 0, 0, 500, 20);
+	SetRect(&rect, 0, 0, 500, UiMetrics::ScaleForDpi(28, UiMetrics::DpiForWindow(m_hWnd)));
 	this->ModifyStyle(0, WS_POPUP, 0);
 	m_view_bar.Create(*this, rect, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	m_view_bar.SetStyle(ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	FillViewBar();
+	ApplyViewBarMetrics();
+	UpdateViewBarMode(false);
 	::SetWindowSubclass(m_view_bar, DocumentTreeViewBarWindowThemeProc,
 		kDocumentTreeViewBarWindowThemeSubclassId, 0);
 	::SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc, kDocumentTreeViewBarThemeSubclassId,
@@ -221,7 +226,8 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	rebarRect.left = treeRect.left = clientRect.left;
 	rebarRect.right = treeRect.right = clientRect.right;
 
-	int viewBarHight = viewBarRect.bottom - viewBarRect.top;
+	const bool viewBarVisible = m_view_bar.IsWindowVisible() != FALSE;
+	int viewBarHight = viewBarVisible ? viewBarRect.bottom - viewBarRect.top : 0;
 	int viewBarWidth = viewBarRect.right - viewBarRect.left;
 
 	viewBarRect.left = clientRect.left;
@@ -257,7 +263,7 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	if((rebarRect.right - rebarRect.left) > m_maxTbwidth || moved)
 	{
 		::MoveWindow(m_rebar, rebarRect.left, rebarRect.top, rebarRect.right - rebarRect.left, rebarRect.bottom - rebarRect.top, true);
-		::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
+		if(viewBarVisible) ::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
 		m_maxTbwidth = rebarRect.right - rebarRect.left;
 	}
 	::MoveWindow(m_tree, treeRect.left, treeRect.top, treeRect.right - treeRect.left, treeRect.bottom - treeRect.top, true);	
@@ -300,6 +306,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	if(m_toolbar.IsWindow()) ::SendMessage(m_toolbar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 	if(m_view_bar.IsWindow())
 	{
+		ApplyViewBarMetrics();
 		::SendMessage(m_view_bar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
 		COLORSCHEME colours = {}; colours.dwSize = sizeof(colours);
 		colours.clrBtnHighlight = ThemeManager::HoverColor();
@@ -466,6 +473,30 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 		m_view_bar.Invalidate();
 	}
 }
+
+void CTreeWithToolBar::ApplyViewBarMetrics()
+{
+	if(!m_view_bar.IsWindow()) return;
+	::SendMessage(m_view_bar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+	m_view_bar.AutoSize();
+}
+
+void CTreeWithToolBar::UpdateViewBarMode(bool scripts)
+{
+	if(!m_view_bar.IsWindow()) return;
+	// The Elements selector belongs to Structure mode.  The old descriptor
+	// scripts popup is no longer part of either navigation mode.
+	m_view_bar.ShowWindow(scripts ? SW_HIDE : SW_SHOW);
+	m_view_bar.HideButton(0, scripts ? TRUE : FALSE);
+	m_view_bar.HideButton(1, TRUE);
+	m_view_bar.Invalidate();
+	SendMessage(WM_SIZE);
+}
+
+void CTreeWithToolBar::RefreshModeControls()
+{
+	UpdateViewBarMode(m_tree.IsScriptMode());
+}
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 {
 	bool ctrl_state = (GetKeyState(VK_CONTROL) & 0x8000) != 0x0;
@@ -535,6 +566,7 @@ void CTreeWithToolBar::SetScriptMode(bool scripts)
 {
 	_Settings.SetDocumentTreeScripts(scripts, true);
 	m_tree.SetScriptMode(scripts);
+	UpdateViewBarMode(scripts);
 	if(m_modeChanged) m_modeChanged();
 }
 
@@ -559,10 +591,12 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 	m_tree.m_tree.SetMainwindow(GetParent());
 	m_tree.SetModeChangedHandler([this]() { RefreshLocalizedTitle(); });
 	m_tree.m_tree.SetScriptMode(_Settings.DocumentTreeScripts());
+	m_tree.RefreshModeControls();
 	CreateModeButton();
 	/*m_element_browser.Create(*this, rcDefault);
 	m_element_browser.m_tree.SetMainwindow(GetParent());*/
 	this->SetClient(m_tree);
+	LayoutModeButton();
 	RefreshLocalizedTitle();
 	ThemeManager::ApplyToWindow(m_hWnd);
     bHandled=FALSE;
@@ -580,31 +614,37 @@ void CDocumentTree::RefreshLocalizedTitle()
 	RefreshModeButton();
 }
 
-LRESULT CDocumentTree::OnSize(UINT, WPARAM, LPARAM, BOOL& bHandled)
+LRESULT CDocumentTree::OnSize(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
-	// CPaneContainer performs the client layout in its chained handler; the
-	// compact mode button is anchored independently in that same title area.
+	// Move the close button first.  It is the anchor for the mode button and
+	// changes position when a startup dialog restores the frame size.
+	CPaneContainer::UpdateLayout(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 	LayoutModeButton();
-	bHandled = FALSE;
+	bHandled = TRUE;
 	return 0;
 }
 
 void CDocumentTree::CreateModeButton()
 {
-	if(!m_mode_images.Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 1) ||
-		!AddDocumentTreeModeImage(m_mode_images, IDR_SCRIPTS) ||
-		!AddDocumentTreeModeImage(m_mode_images, IDB_STRUCTURE))
+	bool imagesReady = m_mode_images.Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 1) &&
+		AddDocumentTreeModeImage(m_mode_images, IDR_SCRIPTS) && AddDocumentTreeModeImage(m_mode_images, IDB_STRUCTURE);
+	if(!imagesReady)
 	{
 		m_mode_images.Destroy();
-		return;
+		imagesReady = m_mode_images.Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 1);
+		HICON fallback = ::LoadIcon(NULL, IDI_APPLICATION);
+		if(imagesReady && fallback != NULL) { ::ImageList_AddIcon(m_mode_images, fallback); ::ImageList_AddIcon(m_mode_images, fallback); }
 	}
 	const DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBSTYLE_TOOLTIPS | TBSTYLE_FLAT |
 		CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NOMOVEY;
-	m_mode_button.Create(m_hWnd, rcDefault, NULL, style);
+	if(!imagesReady || m_mode_button.Create(m_hWnd, rcDefault, NULL, style) == NULL) return;
 	m_mode_button.SetButtonStructSize();
 	m_mode_button.SetImageList(m_mode_images);
-	m_mode_button.SetBitmapSize(16, 16);
-	m_mode_button.SetButtonSize(22, 22);
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	const int iconSize = UiMetrics::ScaleForDpi(16, dpi);
+	const int buttonSize = UiMetrics::ScaleForDpi(22, dpi);
+	m_mode_button.SetBitmapSize(iconSize, iconSize);
+	m_mode_button.SetButtonSize(buttonSize, buttonSize);
 	TBBUTTON button = {}; button.iBitmap = 0; button.idCommand = ID_DOCUMENT_TREE_MODE_SCRIPTS;
 	button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON;
 	m_mode_button.AddButtons(1, &button);
@@ -615,9 +655,11 @@ void CDocumentTree::LayoutModeButton()
 {
 	if(!m_mode_button.IsWindow()) return;
 	RECT client = {}; GetClientRect(&client);
-	const int width = 22;
-	const int height = 22;
-	const int left = (std::max)(0L, client.right - m_cxToolBar - width);
+	const int width = UiMetrics::ScaleForDpi(22, UiMetrics::DpiForWindow(m_hWnd));
+	const int height = (std::min)(width, m_cxyHeader);
+	RECT close = {};
+	if(m_tb.IsWindow()) { ::GetWindowRect(m_tb, &close); ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&close), 2); }
+	const int left = (std::max)(0, static_cast<int>((close.left > 0 ? close.left : client.right - m_cxToolBar) - width));
 	const int top = (std::max)(0, (m_cxyHeader - height) / 2);
 	m_mode_button.SetWindowPos(NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
@@ -626,12 +668,25 @@ void CDocumentTree::RefreshModeButton()
 {
 	if(!m_mode_button.IsWindow()) return;
 	const bool scripts = m_tree.m_tree.IsScriptMode();
-	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_COMMAND | TBIF_IMAGE;
+	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_COMMAND | TBIF_IMAGE | TBIF_BYINDEX;
 	button.idCommand = scripts ? ID_DOCUMENT_TREE_MODE_STRUCTURE : ID_DOCUMENT_TREE_MODE_SCRIPTS;
 	button.iImage = scripts ? 1 : 0;
 	::SendMessage(m_mode_button, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button));
 	::InvalidateRect(m_mode_button, NULL, TRUE);
 	LayoutModeButton();
+}
+
+bool CDocumentTree::GetModeButtonProbe(RECT& title, RECT& button, RECT& close, int& image, UINT& command) const
+{
+	::SetRectEmpty(&title); ::SetRectEmpty(&button); ::SetRectEmpty(&close); image = -1; command = 0;
+	if(!m_mode_button.IsWindow() || !::IsWindowVisible(m_mode_button)) return false;
+	GetClientRect(&title); title.bottom = m_cxyHeader;
+	::GetWindowRect(m_mode_button, &button); ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&button), 2);
+	if(m_tb.IsWindow()) { ::GetWindowRect(m_tb, &close); ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&close), 2); }
+	TBBUTTON nativeButton = {};
+	if(!::SendMessage(m_mode_button, TB_GETBUTTON, 0, reinterpret_cast<LPARAM>(&nativeButton))) return false;
+	image = nativeButton.iBitmap; command = nativeButton.idCommand;
+	return image >= 0 && button.left >= title.left && button.top >= title.top && button.right <= title.right && button.bottom <= title.bottom && (!m_tb.IsWindow() || button.right <= close.left);
 }
 
 LRESULT CDocumentTree::OnToggleMode(WORD, WORD, HWND, BOOL&)
@@ -668,7 +723,7 @@ void CDocumentTree::PaintDarkTitle(HDC dc)
 	{
 		RECT separator = title; separator.top = separator.bottom - 1;
 		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
-		RECT text = title; text.left += 6; text.right -= m_cxToolBar + 22;
+		RECT text = title; text.left += 6; text.right -= m_cxToolBar + UiMetrics::ScaleForDpi(22, UiMetrics::DpiForWindow(m_hWnd));
 		HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_hWnd, WM_GETFONT, 0, 0));
 		HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
 		::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::TextColor());
@@ -689,7 +744,7 @@ void CDocumentTree::PaintLightTitle(HDC dc)
 	}
 	if((m_dwExtendedStyle & PANECNT_DIVIDER) != 0)
 		::DrawEdge(dc, &title, BDR_SUNKENOUTER, BF_FLAT | BF_ADJUST | BF_BOTTOM);
-	RECT text = title; text.left += m_cxyTextOffset; text.right -= m_cxyTextOffset + m_cxToolBar + 22;
+	RECT text = title; text.left += m_cxyTextOffset; text.right -= m_cxyTextOffset + m_cxToolBar + UiMetrics::ScaleForDpi(22, UiMetrics::DpiForWindow(m_hWnd));
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_hWnd, WM_GETFONT, 0, 0));
 	HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
 	::SetTextColor(dc, ::GetSysColor(COLOR_WINDOWTEXT));

@@ -3924,13 +3924,13 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	// CreateEx has returned and no later creation message can reset DWM's
 	// non-client state.  Reapply the selected title-bar theme at this boundary.
 	ThemeManager::ApplyToWindow(m_hWnd);
+	// Apply the persisted pane width before a recovery prompt enters its modal
+	// loop, so the startup dialog never exposes the temporary default splitter.
+	m_splitter.SetSplitterPos(_Settings.GetSplitterPos());
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-start");
 	TryRestoreRecovery();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-recovery-complete");
 	SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
-
-	//SetSplitterPos works best after the default WM_CREATE has been handled
-	m_splitter.SetSplitterPos(_Settings.GetSplitterPos());
 
 	_Settings.LoadHotkeyGroups();
 	DestroyAcceleratorTable(m_hAccel);

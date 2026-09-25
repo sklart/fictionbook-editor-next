@@ -147,7 +147,17 @@ void CMainFrame::RunPortableStateTestScenario()
 		m_editor_view_state.Reset(EditorView::Body, EditorView::Description);
 		RefreshNavigationScriptTree();
 		CTreeView& tree = m_document_tree.m_tree.m_tree;
-		tree.SetScriptMode(true);
+		if(tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
+		else if(_Settings.DocumentTreeScripts()) { m_document_tree.m_tree.ToggleScriptMode(); m_document_tree.m_tree.ToggleScriptMode(); }
+		RECT title = {}, modeButton = {}, closeButton = {}; int initialImage = -1; UINT initialCommand = 0;
+		const bool modeButtonReady = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.GetModeButtonProbe(title, modeButton, closeButton, initialImage, initialCommand) && initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
+		m_document_tree.m_tree.ToggleScriptMode();
+		RECT scriptsTitle = {}, scriptsButton = {}, scriptsClose = {}; int scriptsImage = -1; UINT scriptsCommand = 0;
+		const bool switchedScripts = tree.IsScriptMode() && _Settings.DocumentTreeScripts() && !m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.GetModeButtonProbe(scriptsTitle, scriptsButton, scriptsClose, scriptsImage, scriptsCommand) && scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE;
+		m_document_tree.m_tree.ToggleScriptMode();
+		RECT structureTitle = {}, structureButton = {}, structureClose = {}; int structureImage = -1; UINT structureCommand = 0;
+		const bool switchedStructure = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.GetModeButtonProbe(structureTitle, structureButton, structureClose, structureImage, structureCommand) && structureImage == 0 && structureCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
+		m_document_tree.m_tree.ToggleScriptMode();
 		HTREEITEM folderA = tree.FindScriptTreeItem(L"foldera");
 		HTREEITEM child = tree.FindScriptTreeItem(L"foldera/child.js");
 		const HTREEITEM folderB = tree.FindScriptTreeItem(L"foldera/folderb");
@@ -155,7 +165,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const HTREEITEM root = tree.FindScriptTreeItem(L"root.js");
 		const bool hierarchy = folderA != NULL && child != NULL && folderB != NULL && deep != NULL && root != NULL &&
 			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
-		const bool visualMapping = tree.ScriptTreeImage(root) > 0 && tree.ScriptTreeImage(folderA) > 0 && tree.ScriptTreeImage(child) > 0 && tree.ScriptTreeImage(folderB) > 0 && tree.ScriptTreeImage(deep) > 0;
+		const bool visualMapping = tree.ScriptTreeImage(root) >= 0 && tree.ScriptTreeImage(folderA) >= 0 && tree.ScriptTreeImage(child) >= 0 && tree.ScriptTreeImage(folderB) >= 0 && tree.ScriptTreeImage(deep) >= 0 && tree.ScriptImageList() != tree.StructuralImageList();
 		std::vector<ScriptDescriptor> reverseCatalog = m_scripts.Menu().Items(); std::vector<ScriptTreeVisual> reverseVisuals;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; reverseVisuals.push_back(visual); }
 		std::reverse(reverseCatalog.begin(), reverseCatalog.end()); std::reverse(reverseVisuals.begin(), reverseVisuals.end());
@@ -196,8 +206,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool structuralDragWorks = structuralNode != NULL && !structuralDragHandled && tree.IsStructuralDragActive(); tree.SetScriptMode(true);
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
-		CStringA report; const bool passed = initialized && hierarchy && visualMapping && unorderedHierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive && structuralDragWorks;
-		report.Format("phase=navigation-scripts\nhierarchy=%d\nvisual-mapping=%d\nunordered-hierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", hierarchy, visualMapping, unorderedHierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
+		CStringA report; const bool passed = initialized && modeButtonReady && switchedStructure && switchedScripts && hierarchy && visualMapping && unorderedHierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive && structuralDragWorks;
+		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nhierarchy=%d\nvisual-mapping=%d\nunordered-hierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, hierarchy, visualMapping, unorderedHierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)

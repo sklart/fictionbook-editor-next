@@ -6,6 +6,7 @@ function Must([string]$text, [string]$pattern, [string]$name) { if($text -notmat
 $tree = Text 'src\fbe\TreeView.cpp'
 $treeHeader = Text 'src\fbe\TreeView.h'; $resource = Text 'src\fbe\resource.h'
 $documentTree = Text 'src\fbe\DocumentTree.cpp'
+$documentTreeHeader = Text 'src\fbe\DocumentTree.h'
 $frame = Text 'src\fbe\mainfrm.cpp'
 $settings = Text 'src\fbe\settings\SettingsSerialization.cpp'
 $localization = Text 'localization\app-ui\catalog.json'
@@ -54,6 +55,23 @@ Must $documentTree 'AddDocumentTreeModeImage\(m_mode_images, IDR_SCRIPTS\)' 'scr
 Must $documentTree 'AddDocumentTreeModeImage\(m_mode_images, IDB_STRUCTURE\)' 'structure target uses the historical structure bitmap cell'
 Must $documentTree 'fbe\.document_tree\.mode\.show_scripts' 'scripts tooltip is runtime-localized'
 Must $documentTree 'fbe\.document_tree\.mode\.show_structure' 'structure tooltip is runtime-localized'
+Must $documentTree 'ImageList_GetIcon\(source, 0, ILD_NORMAL\)' 'mode image is extracted from the legacy strip before adding to the new list'
+Must $documentTree 'ImageList_AddIcon\(images, icon\)' 'mode image is copied through an icon handle rather than cross-list ImageList_Copy'
+if($documentTree -match 'ImageList_Copy\(images') { throw 'Mode button must not move bitmap slots across image lists.' }
+Must $documentTree 'GetModeButtonProbe' 'runtime test can verify the visible title-area button and its rect'
+Must $documentTree 'TBIF_COMMAND \| TBIF_IMAGE \| TBIF_BYINDEX' 'mode button updates and probes the first toolbar button by index'
+Must $documentTree 'CPaneContainer::UpdateLayout\(GET_X_LPARAM\(lParam\), GET_Y_LPARAM\(lParam\)\);\s*LayoutModeButton\(\)' 'mode button follows the close button after a pane resize'
+Must $documentTree 'm_view_bar\.HideButton\(0, scripts \? TRUE : FALSE\)' 'Elements selector is hidden only in Scripts mode'
+Must $documentTree 'm_view_bar\.ShowWindow\(scripts \? SW_HIDE : SW_SHOW\)' 'mode selector bar is absent in Scripts mode'
+Must $documentTree 'm_view_bar\.HideButton\(1, TRUE\)' 'legacy descriptor Scripts selector is always hidden'
+Must $documentTreeHeader 'IsModeSelectorVisible' 'runtime test can verify selector visibility by mode'
+Must $documentTree 'm_tree\.RefreshModeControls\(\)' 'startup synchronizes the visible selector with the persisted mode'
+Must $documentTree 'UiMetrics::ScaleForDpi\(28, UiMetrics::DpiForWindow\(m_hWnd\)\)' 'mode selector has a DPI-aware initial height'
+Must $documentTree 'm_view_bar\.AutoSize\(\)' 'mode selector measures its text with the menu font'
+if($frame.IndexOf('m_splitter.SetSplitterPos(_Settings.GetSplitterPos());') -gt $frame.IndexOf('TryRestoreRecovery();')) { throw 'Persisted splitter width must be restored before the recovery prompt.' }
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS' 'structure mode exposes the scripts target image and command'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE' 'scripts mode exposes the structure target image and command'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'structureImage == 0 && structureCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS' 'returning to structure restores the scripts target image and command'
 Must $documentTree 'SetModeChangedHandler' 'mode click updates the pane title'
 Must $documentTree 'FbeLoadRuntimeStringByKey\(m_tree\.m_tree\.IsScriptMode\(\)' 'pane title follows the active localized mode'
 if($documentTree -match 'm_navigation_menu|fbe\.document_tree\.mode\.caption') { throw 'Navigation mode must no longer be hidden behind a View popup.' }
@@ -62,6 +80,9 @@ Must $resource 'ID_DOCUMENT_TREE_MODE_SCRIPTS\s+57601' 'mode scripts resource ID
 if($documentTree -match '57872|57873') { throw 'Navigation mode commands must not use magic numbers.' }
 if($tree -match 'ID_SCRIPT_BASE \+ 999') { throw 'Navigation code must use ScriptCommandCount rather than a duplicated capacity.' }
 Must $settings 'DOCUMENT_TREE_SCRIPTS_KEY' 'settings schema persists navigation mode'
+Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
+Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select their own image list'
+Must $tree 'SetImageList\(m_ImageList,TVSIL_NORMAL\)' 'structure restores the legacy structural image list'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'navigation-scripts-runtime' 'runtime scenario exercises the native navigation tree'
 Must (Text 'tools\build\verify-release.ps1') 'test-fbe-navigation-scripts-runtime\.ps1' 'release gate runs navigation runtime regression'
 Must (Text '.github\workflows\build.yml') 'test-fbe-navigation-scripts-runtime\.ps1' 'CI runs navigation runtime regression'
