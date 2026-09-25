@@ -41,7 +41,6 @@ static const RuntimeDialogBinding g_runtimeDialogBindings[] = {
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_UP, L"fbe.script_toolbar_manager.up" },
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_DOWN, L"fbe.script_toolbar_manager.down" },
 	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDC_SCRIPT_PANEL_VISIBLE, L"fbe.script_toolbar_manager.visible" },
-	{ IDD_SCRIPT_TOOLBAR_MANAGER, IDCANCEL, L"fbe.script_toolbar_manager.close" },
 	{ IDD_TABLE, 0, L"fbe.dialog.idd_table.caption" },
 	{ IDD_TABLE, IDOK, L"fbe.dialog.idd_table.ok" },
 	{ IDD_TABLE, IDCANCEL, L"fbe.dialog.idd_table.cancel" },
