@@ -61,6 +61,7 @@ if($documentTree -match 'ImageList_Copy\(images') { throw 'Mode button must not 
 Must $documentTree 'GetModeButtonProbe' 'runtime test can verify the visible title-area button and its rect'
 Must $documentTree 'TBIF_COMMAND \| TBIF_IMAGE \| TBIF_BYINDEX' 'mode button updates and probes the first toolbar button by index'
 Must $documentTree 'CPaneContainer::UpdateLayout\(GET_X_LPARAM\(lParam\), GET_Y_LPARAM\(lParam\)\);\s*LayoutModeButton\(\)' 'mode button follows the close button after a pane resize'
+Must $documentTree 'm_mode_button\.SetButtonSize\(height, height\)' 'mode button background never exceeds the title-bar height'
 Must $documentTree 'm_view_bar\.HideButton\(0, scripts \? TRUE : FALSE\)' 'Elements selector is hidden only in Scripts mode'
 Must $documentTree 'm_view_bar\.ShowWindow\(scripts \? SW_HIDE : SW_SHOW\)' 'mode selector bar is absent in Scripts mode'
 Must $documentTree 'm_rebar\.ShowWindow\(scripts \? SW_HIDE : SW_SHOW\)' 'structural toolbar is absent in Scripts mode'

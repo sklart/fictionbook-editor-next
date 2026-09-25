@@ -658,7 +658,10 @@ void CDocumentTree::LayoutModeButton()
 	if(!m_mode_button.IsWindow()) return;
 	RECT client = {}; GetClientRect(&client);
 	const int width = UiMetrics::ScaleForDpi(22, UiMetrics::DpiForWindow(m_hWnd));
-	const int height = (std::min)(width, m_cxyHeader);
+	const int height = (std::max)(1, (std::min)(width, m_cxyHeader));
+	const int iconSize = (std::min)(UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_hWnd)), height);
+	m_mode_button.SetBitmapSize(iconSize, iconSize);
+	m_mode_button.SetButtonSize(height, height);
 	RECT close = {};
 	if(m_tb.IsWindow()) { ::GetWindowRect(m_tb, &close); ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&close), 2); }
 	const int left = (std::max)(0, static_cast<int>((close.left > 0 ? close.left : client.right - m_cxToolBar) - width));
