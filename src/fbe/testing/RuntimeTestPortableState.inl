@@ -173,6 +173,12 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool unorderedHierarchy = tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
 		RefreshNavigationScriptTree();
 		const int imagesBefore = tree.ScriptImageCount(); RefreshNavigationScriptTree(); RefreshNavigationScriptTree(); tree.SetScriptMode(false); tree.SetScriptMode(true); const bool imagesStable = tree.ScriptImageCount() == imagesBefore;
+		// The fixture scripts deliberately have no UI body.  Probe navigation
+		// dispatch without asynchronously executing one while startup closes.
+		std::vector<ScriptDescriptor> commandCatalog = m_scripts.Menu().Items(); std::vector<ScriptTreeVisual> commandVisuals; std::vector<ScriptTreeToolbarTarget> commandTargets;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; commandVisuals.push_back(visual); }
+		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) { ScriptTreeToolbarTarget target; target.id = m_scriptToolbars.Items()[index].definition.id; target.name = m_scriptToolbars.Items()[index].definition.name; commandTargets.push_back(target); }
+		tree.SetScriptCatalog(commandCatalog, commandVisuals, commandTargets, [this](const CString& uid, const CString& id) { AddScriptToToolbar(uid, id); }, std::function<void(const CString&)>(), [this](UINT commandId) { for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(!m_scripts.Menu().Item(index).isFolder && m_scripts.Menu().Item(index).commandId == static_cast<int>(commandId)) { m_scripts.SetLastScript(m_scripts.Menu().Item(index)); break; } });
 		folderA = tree.FindScriptTreeItem(L"foldera"); child = tree.FindScriptTreeItem(L"foldera/child.js"); const HTREEITEM refreshedRoot = tree.FindScriptTreeItem(L"root.js"); const HTREEITEM refreshedDeep = tree.FindScriptTreeItem(L"foldera/folderb/deep.js");
 		m_scripts.ClearLastScript(); tree.SelectItem(child); BOOL handled = FALSE; tree.OnKeyDown(WM_KEYDOWN, VK_RETURN, 0, handled);
 		const ScriptDescriptor* ran = m_scripts.LastScript(); const bool enterRuns = handled && ran != NULL && ran->relativePath == L"foldera/child.js";

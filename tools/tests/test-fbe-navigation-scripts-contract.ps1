@@ -72,6 +72,9 @@ if($frame.IndexOf('m_splitter.SetSplitterPos(_Settings.GetSplitterPos());') -gt 
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS' 'structure mode exposes the scripts target image and command'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE' 'scripts mode exposes the structure target image and command'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'structureImage == 0 && structureCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS' 'returning to structure restores the scripts target image and command'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'The fixture scripts deliberately have no UI body' 'runtime probe does not execute fixture scripts during shutdown'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'commandTargets\.push_back\(target\)' 'runtime probe preserves live script-toolbar targets'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'AddScriptToToolbar\(uid, id\)' 'runtime probe preserves production toolbar insertion'
 Must $documentTree 'SetModeChangedHandler' 'mode click updates the pane title'
 Must $documentTree 'FbeLoadRuntimeStringByKey\(m_tree\.m_tree\.IsScriptMode\(\)' 'pane title follows the active localized mode'
 if($documentTree -match 'm_navigation_menu|fbe\.document_tree\.mode\.caption') { throw 'Navigation mode must no longer be hidden behind a View popup.' }
