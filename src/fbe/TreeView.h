@@ -37,6 +37,7 @@ class CTreeView : public CWindowImpl<CTreeView, CTreeViewCtrlEx, CLPTVWinTraits>
 {
 protected:
   WTL::CImageList		m_ImageList;
+	WTL::CImageList		m_scriptImageList;
   HTREEITEM				m_last_lookup_item;
   HWND					m_main_window;
   bool					m_drag;
@@ -157,7 +158,9 @@ public:
 	HTREEITEM FindScriptTreeItem(const CString& relativePath) const;
 	bool HasScriptTreeParent(const CString& relativePath, const CString& parentRelativePath) const;
 	size_t ScriptTreeNodeCount() const { return m_script_nodes.size(); }
-	int ScriptImageCount() const { return m_ImageList.GetImageCount(); }
+	int ScriptImageCount() const { return m_scriptImageList.GetImageCount(); }
+	HIMAGELIST StructuralImageList() const { return m_ImageList; }
+	HIMAGELIST ScriptImageList() const { return m_scriptImageList; }
 	int ScriptTreeImage(HTREEITEM item) const;
 	bool IsStructuralDragActive() const { return m_drag; }
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
@@ -206,6 +209,8 @@ protected:
   void FillEDMnr();
 	void RebuildScriptTree();
 	void PrepareScriptImages();
+	int AddScriptImage(HBITMAP bitmap);
+	int AddScriptIcon(HICON icon);
 	void BuildScriptChildren(HTREEITEM parent, const CString& parentId);
 	const ScriptDescriptor* SelectedScript();
 	void RunSelectedScript();

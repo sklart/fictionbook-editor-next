@@ -39,9 +39,12 @@ Must $dialog 'NextDefaultPanelName\(\)' 'create uses a generated display name ra
 Must $dialog 'FbeLoadRuntimeStringByKey\(L"fbe\.script_toolbar_manager\.default_name"\)' 'generated display name uses runtime localization'
 Must $dialog 'Commit\(createdId\)' 'created panel is selected after the incremental commit'
 Must $dialog 'EM_SETSEL,0,-1' 'created name is selected for immediate rename'
-if($dialog -match 'LRESULT CScriptToolbarManagerDlg::OnCreatePanel[\s\S]*?\n(?=LRESULT)') { if($Matches[0] -match 'GetDlgItemText') { throw 'Create must not consume stale text from the name edit control.' } }
+if($dialog -match 'LRESULT CScriptToolbarManagerDlg::OnCreatePanel[^\r\n]*') { if($Matches[0] -match 'GetDlgItemText') { throw 'Create must not consume stale text from the name edit control.' } }
 Must $dialog 'm_manager\.Delete' 'delete panel action'
 Must $dialog 'm_manager\.Rename' 'rename panel action'
+Must $dialog 'Commit\(previous\)' 'delete keeps the preceding row selected'
+Must $dialog 'VK_RETURN && m_renameEditing' 'Enter applies an active rename'
+Must $dialog 'VK_ESCAPE && m_renameEditing' 'Escape cancels an active rename'
 Must $dialog 'm_manager\.SetVisible' 'visibility action'
 Must $collection 'if\(id == L"scripts-main"\) return false' 'main panel cannot be deleted'
 Must $collection 'CString ScriptToolbarCollection::NextDefaultName' 'display-name allocation is separate from internal NextId'

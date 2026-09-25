@@ -429,6 +429,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   
   // "OnInitialUpdate"
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
+	  m_scriptImageList.Create(16,16,ILC_COLOR32|ILC_MASK,16,8);
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
   SetScrollTime(1);
@@ -443,6 +444,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
 LRESULT CTreeView::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
   SetImageList(NULL,TVSIL_NORMAL);
+  m_scriptImageList.Destroy();
   m_ImageList.Destroy();
 /*  delete m_bodyED;
   delete m_sectionED;
@@ -820,8 +822,8 @@ void CTreeView::SetScriptMode(bool value)
 	if(m_script_mode == value) return;
 	if(value && m_drag) EndDrag();
 	m_script_mode = value;
-	if(m_script_mode) RebuildScriptTree();
-	else UpdateAll();
+	if(m_script_mode) { SetImageList(m_scriptImageList,TVSIL_NORMAL); RebuildScriptTree(); }
+	else { SetImageList(m_ImageList,TVSIL_NORMAL); UpdateAll(); }
 }
 
 void CTreeView::RebuildScriptTree()
@@ -834,13 +836,28 @@ void CTreeView::RebuildScriptTree()
 
 void CTreeView::PrepareScriptImages()
 {
+	// Script sidecars do not share the legacy structural strip: it has a
+	// different cell height and mask format.  Recreate this 16x16 alpha list
+	// only when the catalog visuals actually changed.
+	m_scriptImageList.Destroy();
+	m_scriptImageList.Create(16,16,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+1,8);
 	m_script_images.assign(m_script_items.size(), 0);
 	for(size_t index = 0; index < m_script_items.size() && index < m_script_visuals.size(); ++index)
 	{
 		const ScriptTreeVisual& visual = m_script_visuals[index];
-		if(visual.icon != NULL) m_script_images[index] = AddIcon(visual.icon);
-		else if(visual.bitmap != NULL) m_script_images[index] = AddImage(visual.bitmap);
+		if(visual.icon != NULL) m_script_images[index] = AddScriptIcon(visual.icon);
+		else if(visual.bitmap != NULL) m_script_images[index] = AddScriptImage(visual.bitmap);
 	}
+}
+
+int CTreeView::AddScriptImage(HBITMAP bitmap)
+{
+	return bitmap != NULL ? m_scriptImageList.Add(bitmap, RGB(255,0,255)) : -1;
+}
+
+int CTreeView::AddScriptIcon(HICON icon)
+{
+	return icon != NULL ? m_scriptImageList.AddIcon(icon) : -1;
 }
 
 void CTreeView::BuildScriptChildren(HTREEITEM parent, const CString& parentId)

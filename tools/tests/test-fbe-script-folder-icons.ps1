@@ -22,7 +22,8 @@ if($visuals.IndexOf('const CString bitmapPath') -gt $visuals.IndexOf('const CStr
 foreach($required in @('SHGetFileInfo', 'FILE_ATTRIBUTE_DIRECTORY', 'FILE_ATTRIBUTE_NORMAL', 'SHGFI_USEFILEATTRIBUTES')) {
     if($visuals -notmatch $required) { throw "Missing standard visual fallback: $required" }
 }
-if($tree -notmatch 'if\(visual\.icon != NULL\) m_script_images\[index\] = AddIcon\(visual\.icon\);\s*else if\(visual\.bitmap != NULL\) m_script_images\[index\] = AddImage\(visual\.bitmap\);') { throw 'Tree must consume the catalog VisualResource without rereading sidecars.' }
+if($tree -notmatch 'if\(visual\.icon != NULL\) m_script_images\[index\] = AddScriptIcon\(visual\.icon\);\s*else if\(visual\.bitmap != NULL\) m_script_images\[index\] = AddScriptImage\(visual\.bitmap\);') { throw 'Tree must consume the catalog VisualResource without rereading sidecars.' }
+if($tree -notmatch 'm_scriptImageList\.Create\(16,16,ILC_COLOR32\|ILC_MASK' -or $tree -notmatch 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' -or $tree -notmatch 'SetImageList\(m_ImageList,TVSIL_NORMAL\)') { throw 'Script and structural trees must use separate native image lists.' }
 if($main -notmatch 'm_scripts\.Menu\(\)\.VisualAt\(index\)\.icon' -or $main -notmatch 'm_scripts\.Menu\(\)\.VisualAt\(index\)\.bitmap') { throw 'Navigation tree must receive the same catalog VisualResource as the main menu.' }
 if(-not (Test-Path -LiteralPath (Join-Path $root 'runtime\Scripts\01_Регистр.ico'))) { throw 'Bundled Scripts folder lost the 01_Регистр.ico smoke resource.' }
 $symbolMenuId = 10000
