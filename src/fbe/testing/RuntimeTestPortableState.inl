@@ -69,9 +69,10 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptToolbarRollbackNoMain = IsFbeTestScenario(L"script-toolbar-rollback-no-main-runtime");
 	const bool scriptToolbarRollbackPersisted = IsFbeTestScenario(L"script-toolbar-rollback-persisted-runtime");
 	const bool scriptToolbarRollbackPartial = IsFbeTestScenario(L"script-toolbar-rollback-partial-runtime");
+	const bool scriptToolbarRuntimeSize = IsFbeTestScenario(L"script-toolbar-runtime-size");
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -83,7 +84,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
@@ -91,6 +92,38 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };
 	auto mainHasDefault = [&]() { TBBUTTON button = {}; return m_ScriptsToolbar.GetButtonCount() > 0 && m_ScriptsToolbar.GetButton(0, &button) && button.idCommand == ID_LAST_SCRIPT; };
+	if(scriptToolbarRuntimeSize)
+	{
+		::CreateDirectory(scriptsDirectory, NULL);
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		if(!InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), definitions = previous;
+		for(int index = 1; index <= 8; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-size-%d", index); item.name.Format(L"Runtime size %d", index); item.visible = true; definitions.push_back(item); }
+		RECT stockRect = {}; ::GetWindowRect(m_ScriptsToolbar, &stockRect);
+		const int stockHeight = stockRect.bottom - stockRect.top;
+		auto oneRow = [&]() {
+			int matching = 0;
+			for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) {
+				const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index]; if(runtime.definition.id.Left(13) != L"runtime-size-") continue;
+				const int band = m_rebar.IdToIndex(runtime.rebarBandId); RECT toolbarRect = {}, bandRect = {};
+				if(runtime.window != NULL && band >= 0 && ::GetWindowRect(runtime.window, &toolbarRect) && m_rebar.GetRect(band, &bandRect) &&
+					abs(toolbarRect.bottom - toolbarRect.top - stockHeight) <= ::GetSystemMetrics(SM_CYEDGE) * 2 && abs(bandRect.bottom - bandRect.top - stockHeight) <= ::GetSystemMetrics(SM_CYEDGE) * 2) ++matching;
+			}
+			return stockHeight > 0 && matching == 8;
+		};
+		const bool created = ApplyScriptToolbarDefinitions(previous, definitions) && oneRow();
+		std::vector<ScriptToolbarDefinition> current = currentDefinitions();
+		for(size_t index = 0; index < current.size(); ++index) if(current[index].id == L"runtime-size-1") { PortableToolbarItem item = {}; item.scriptUid = L"runtime-size-missing-uid"; current[index].items.push_back(item); break; }
+		const bool added = created && ApplyScriptToolbarDefinitions(definitions, current) && oneRow();
+		std::vector<ScriptToolbarDefinition> hidden = current;
+		for(size_t index = 0; index < hidden.size(); ++index) if(hidden[index].id == L"runtime-size-2") { hidden[index].visible = false; break; }
+		const bool hiddenOk = added && ApplyScriptToolbarDefinitions(current, hidden);
+		const bool shown = hiddenOk && ApplyScriptToolbarDefinitions(hidden, current) && oneRow();
+		const bool restarted = shown && InitializeScripts() && oneRow();
+		const bool passed = created && added && hiddenOk && shown && restarted;
+		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-show=%d\nrestart=%d\nresult=%s\n", created, added, hiddenOk && shown, restarted, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
 	if(navigationScriptsReloadRuntime)
 	{
 		const bool initialized = InitializeScripts(); RefreshNavigationScriptTree(); CTreeView& tree = m_document_tree.m_tree.m_tree;

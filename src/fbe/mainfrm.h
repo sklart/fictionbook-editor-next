@@ -242,6 +242,7 @@ public:
 	void DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
 	bool PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
 	bool CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime);
+	bool NormalizeScriptToolbarRuntimeBand(ScriptToolbarRuntime& runtime);
 	bool SetScriptToolbarRuntimeVisible(ScriptToolbarRuntime& runtime, bool visible);
 	bool ReorderScriptToolbarRuntimeBands(const std::vector<ScriptToolbarDefinition>& definitions);
 	bool ApplyScriptToolbarRuntimeDelta(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);

@@ -23,6 +23,15 @@ if($frame -match 'bool CMainFrame::ApplyScriptToolbarRuntimeDelta\([\s\S]*?\n\}'
 if($frame -match 'bool CMainFrame::ApplyScriptToolbarDefinitions\([\s\S]*?\n\}') { if($Matches[0] -match 'if\(InitializeScripts\(\)\) return true') { throw 'Normal toolbar management must not run full script initialization.' } }
 Must $frame 'CreateScriptToolbarRuntime' 'new visible custom toolbar uses a narrow runtime creator'
 Must $frame 'DestroyScriptToolbarRuntime' 'removed or hidden custom toolbar owns its narrow destruction'
+Must $frame 'ToolbarFactory::AutoSizeToolbar\(runtime\.window\)' 'dynamic toolbar is autosized before entering the rebar'
+Must $frame 'NormalizeScriptToolbarRuntimeBand' 'dynamic toolbar band receives measured row metrics'
+if($frame -match 'bool CMainFrame::CreateScriptToolbarRuntime[\s\S]*?\n\}') {
+    $creator = $Matches[0]
+    if($creator.IndexOf('ToolbarFactory::AutoSizeToolbar(runtime.window)') -gt $creator.IndexOf('AddSimpleReBarBand(toolbar')) { throw 'Dynamic toolbar must autosize before AddSimpleReBarBand.' }
+    Must $creator 'NormalizeScriptToolbarRuntimeBand\(runtime\)' 'dynamic toolbar normalizes its rebar band after insertion'
+}
+Must $frame 'TB_GETBUTTONSIZE' 'band height is derived from toolbar metrics'
+Must $frame 'm_ScriptsToolbar' 'empty panel falls back to the stock Scripts row at the same DPI'
 Must $frame 'm_rebar\.ShowBand\(band, visible\)' 'scripts-main visibility uses its existing rebar band'
 Must $frame 'band != insertion && !m_rebar\.MoveBand\(band, insertion\)' 'reorder accepts a band already occupying its target position'
 Must $dialog 'm_manager\.Create' 'create panel action'

@@ -45,10 +45,15 @@ if($frame -match 'bool CMainFrame::ApplyScriptToolbarDefinitions[\s\S]*?\n\}') {
 Must $documentTree 'SetDocumentTreeScripts\(' 'mode selection is persisted'
 Must $documentTree 'ID_DOCUMENT_TREE_MODE_STRUCTURE' 'mode structure command has a named resource ID'
 Must $documentTree 'ID_DOCUMENT_TREE_MODE_SCRIPTS' 'mode scripts command has a named resource ID'
-Must $documentTree 'BTNS_CHECKGROUP \| BTNS_AUTOSIZE \| BTNS_SHOWTEXT' 'mode controls are direct keyboard-accessible toggle buttons'
-Must $documentTree 'm_mode_bar\.Create' 'mode controls occupy the navigation header row'
-Must $documentTree 'WS_TABSTOP' 'mode controls participate in keyboard focus navigation'
-Must $documentTree 'RefreshModeButtons\(\)' 'mode controls update checked state and localized captions'
+if($documentTree -match 'm_mode_bar|RefreshModeButtons') { throw 'Navigation mode must not create a separate mode toolbar row.' }
+Must $documentTree 'm_mode_button\.Create' 'mode control is a child of the pane title area'
+Must $documentTree 'TBSTYLE_TOOLTIPS' 'mode button provides a native tooltip'
+Must $documentTree 'WS_TABSTOP' 'mode button participates in keyboard focus navigation'
+Must $documentTree 'ToggleScriptMode\(\)' 'mode button uses the existing persisted mode transition'
+Must $documentTree 'AddDocumentTreeModeImage\(m_mode_images, IDR_SCRIPTS\)' 'scripts target uses the historical scripts bitmap'
+Must $documentTree 'AddDocumentTreeModeImage\(m_mode_images, IDB_STRUCTURE\)' 'structure target uses the historical structure bitmap cell'
+Must $documentTree 'fbe\.document_tree\.mode\.show_scripts' 'scripts tooltip is runtime-localized'
+Must $documentTree 'fbe\.document_tree\.mode\.show_structure' 'structure tooltip is runtime-localized'
 Must $documentTree 'SetModeChangedHandler' 'mode click updates the pane title'
 Must $documentTree 'FbeLoadRuntimeStringByKey\(m_tree\.m_tree\.IsScriptMode\(\)' 'pane title follows the active localized mode'
 if($documentTree -match 'm_navigation_menu|fbe\.document_tree\.mode\.caption') { throw 'Navigation mode must no longer be hidden behind a View popup.' }
@@ -60,7 +65,7 @@ Must $settings 'DOCUMENT_TREE_SCRIPTS_KEY' 'settings schema persists navigation 
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'navigation-scripts-runtime' 'runtime scenario exercises the native navigation tree'
 Must (Text 'tools\build\verify-release.ps1') 'test-fbe-navigation-scripts-runtime\.ps1' 'release gate runs navigation runtime regression'
 Must (Text '.github\workflows\build.yml') 'test-fbe-navigation-scripts-runtime\.ps1' 'CI runs navigation runtime regression'
-foreach($key in @('fbe.document_tree.mode.caption', 'fbe.document_tree.scripts.run', 'fbe.document_tree.scripts.add_to_toolbar', 'fbe.document_tree.scripts.open_location')) {
+foreach($key in @('fbe.document_tree.mode.caption', 'fbe.document_tree.mode.show_scripts', 'fbe.document_tree.mode.show_structure', 'fbe.document_tree.scripts.run', 'fbe.document_tree.scripts.add_to_toolbar', 'fbe.document_tree.scripts.open_location')) {
     Must $localization ('"' + [regex]::Escape($key) + '"') "localized $key"
 }
 Write-Host 'Navigation scripts tree contract passed.'

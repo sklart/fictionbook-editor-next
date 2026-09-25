@@ -2876,16 +2876,49 @@ bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 	SetDialogFontForToolbarRow(runtime.window);
 	CToolBarCtrl toolbar = runtime.window;
 	toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
-	if(!InitToolBar(toolbar, IDR_SCRIPTS) || !UIAddToolBar(toolbar) || !PopulateScriptToolbarRuntime(runtime) ||
-		!AddSimpleReBarBand(toolbar, 0, TRUE, 0, FALSE)) { DestroyScriptToolbarRuntime(runtime); return false; }
+	if(!InitToolBar(toolbar, IDR_SCRIPTS) || !UIAddToolBar(toolbar) || !PopulateScriptToolbarRuntime(runtime))
+		{ DestroyScriptToolbarRuntime(runtime); return false; }
+	ToolbarFactory::AutoSizeToolbar(runtime.window);
+	if(!AddSimpleReBarBand(toolbar, 0, TRUE, 0, FALSE)) { DestroyScriptToolbarRuntime(runtime); return false; }
 	for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
 	{
 		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD | RBBIM_ID;
 		if(m_rebar.GetBandInfo(band, &info) && info.hwndChild == runtime.window) { runtime.rebarBandId = info.wID; break; }
 	}
 	if(runtime.rebarBandId == 0) { DestroyScriptToolbarRuntime(runtime); return false; }
+	if(!NormalizeScriptToolbarRuntimeBand(runtime)) { DestroyScriptToolbarRuntime(runtime); return false; }
 	if(m_testFailAfterCustomToolbarCreates > 0 && --m_testFailAfterCustomToolbarCreates == 0) { DestroyScriptToolbarRuntime(runtime); return false; }
 	return true;
+}
+
+bool CMainFrame::NormalizeScriptToolbarRuntimeBand(ScriptToolbarRuntime& runtime)
+{
+	const int band = m_rebar.IdToIndex(runtime.rebarBandId);
+	if(band < 0 || runtime.window == NULL || !::IsWindow(runtime.window)) return false;
+
+	RECT runtimeRect = {}; ::GetWindowRect(runtime.window, &runtimeRect);
+	const LRESULT runtimeButtonSize = ::SendMessage(runtime.window, TB_GETBUTTONSIZE, 0, 0);
+	int rowHeight = runtimeRect.bottom - runtimeRect.top;
+	rowHeight = (std::max)(rowHeight, static_cast<int>(HIWORD(runtimeButtonSize)));
+
+	// The stock Scripts toolbar is the authoritative row metric at the current
+	// DPI.  It also supplies a non-zero height while a newly-created panel is
+	// intentionally empty.
+	if(::IsWindow(m_ScriptsToolbar))
+	{
+		RECT stockRect = {}; ::GetWindowRect(m_ScriptsToolbar, &stockRect);
+		const LRESULT stockButtonSize = ::SendMessage(m_ScriptsToolbar, TB_GETBUTTONSIZE, 0, 0);
+		const int stockHeight = (std::max)(static_cast<int>(stockRect.bottom - stockRect.top), static_cast<int>(HIWORD(stockButtonSize)));
+		if(stockHeight > 0) rowHeight = stockHeight;
+	}
+	if(rowHeight <= 0) return false;
+
+	REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILDSIZE;
+	info.cxMinChild = (std::max)(0L, runtimeRect.right - runtimeRect.left);
+	info.cyMinChild = rowHeight;
+	info.cyChild = rowHeight;
+	info.cyMaxChild = rowHeight;
+	return m_rebar.SetBandInfo(band, &info) != FALSE;
 }
 
 bool CMainFrame::SetScriptToolbarRuntimeVisible(ScriptToolbarRuntime& runtime, bool visible)

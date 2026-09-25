@@ -19,6 +19,16 @@ const UINT_PTR kDocumentTreeViewBarWindowThemeSubclassId = 0xFBE5;
 static_assert(ID_DOCUMENT_TREE_MODE_STRUCTURE > ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, "Navigation mode commands must not overlap dynamic toolbar commands");
 static_assert(ID_DOCUMENT_TREE_MODE_SCRIPTS <= 0xffffu, "Navigation mode command must fit WM_COMMAND");
 
+bool AddDocumentTreeModeImage(CImageList& images, UINT resourceId)
+{
+	HIMAGELIST source = ::ImageList_LoadImage(_Module.GetResourceInstance(), MAKEINTRESOURCE(resourceId), 16, 1,
+		RGB(255, 0, 255), IMAGE_BITMAP, LR_CREATEDIBSECTION);
+	if(source == NULL) return false;
+	const bool copied = ::ImageList_GetImageCount(source) > 0 && ::ImageList_Copy(images, images.GetImageCount(), source, 0, ILCF_MOVE);
+	::ImageList_Destroy(source);
+	return copied;
+}
+
 bool ShowNativeDocumentTreeViewBarPopup(HWND commandBar, int item)
 {
 	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(commandBar, CBRM_GETMENU, 0, 0));
@@ -167,16 +177,6 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_view_bar.Create(*this, rect, NULL, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	m_view_bar.SetStyle(ATL_SIMPLE_TOOLBAR_PANE_STYLE);
 	FillViewBar();
-	m_mode_bar.Create(*this, rect, NULL, WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBSTYLE_FLAT | TBSTYLE_LIST | CCS_NODIVIDER | CCS_NORESIZE);
-	::SendMessage(m_mode_bar, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
-	TBBUTTON modeButtons[2] = {};
-	modeButtons[0].iBitmap = I_IMAGENONE; modeButtons[0].idCommand = ID_DOCUMENT_TREE_MODE_STRUCTURE;
-	modeButtons[0].fsState = TBSTATE_ENABLED; modeButtons[0].fsStyle = BTNS_CHECKGROUP | BTNS_AUTOSIZE | BTNS_SHOWTEXT;
-	modeButtons[1].iBitmap = I_IMAGENONE; modeButtons[1].idCommand = ID_DOCUMENT_TREE_MODE_SCRIPTS;
-	modeButtons[1].fsState = TBSTATE_ENABLED; modeButtons[1].fsStyle = BTNS_CHECKGROUP | BTNS_AUTOSIZE | BTNS_SHOWTEXT;
-	::SendMessage(m_mode_bar, TB_ADDBUTTONS, _countof(modeButtons), reinterpret_cast<LPARAM>(modeButtons));
-	ToolbarFactory::SetDialogFontForToolbarRow(m_mode_bar);
-	RefreshModeButtons();
 	::SetWindowSubclass(m_view_bar, DocumentTreeViewBarWindowThemeProc,
 		kDocumentTreeViewBarWindowThemeSubclassId, 0);
 	::SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc, kDocumentTreeViewBarThemeSubclassId,
@@ -212,12 +212,10 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	RECT rebarRect = {0, 0, 0, 0};
 	RECT treeRect = {0, 0, 0, 0};
 	RECT viewBarRect = {0, 0, 0, 0};
-	RECT modeBarRect = {0, 0, 0, 0};
 	
 	this->GetClientRect(&clientRect);
 	::GetWindowRect(m_toolbar, &rebarRect);
 	::GetWindowRect(m_view_bar, &viewBarRect);
-	::GetWindowRect(m_mode_bar, &modeBarRect);
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	int rebarHight = rebarRect.bottom - rebarRect.top + (dark ? 0 : GetSystemMetrics(SM_CYEDGE) * 2);
 	rebarRect.left = treeRect.left = clientRect.left;
@@ -225,8 +223,6 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 
 	int viewBarHight = viewBarRect.bottom - viewBarRect.top;
 	int viewBarWidth = viewBarRect.right - viewBarRect.left;
-	int modeBarHight = modeBarRect.bottom - modeBarRect.top;
-	int modeBarWidth = modeBarRect.right - modeBarRect.left;
 
 	viewBarRect.left = clientRect.left;
 	viewBarRect.right = clientRect.left + viewBarWidth;
@@ -241,15 +237,11 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		rebarRect.top = clientRect.bottom - rebarHight;
 		
 		rebarRect.bottom = rebarRect.top + rebarHight;
-		treeRect.top = clientRect.top + (std::max)(viewBarHight, modeBarHight);
+		treeRect.top = clientRect.top + viewBarHight;
 		treeRect.bottom = rebarRect.top;
 
 		viewBarRect.top = clientRect.top;
 		viewBarRect.bottom = viewBarRect.top + viewBarHight;
-		modeBarRect.left = viewBarRect.right;
-		modeBarRect.right = modeBarRect.left + modeBarWidth;
-		modeBarRect.top = clientRect.top;
-		modeBarRect.bottom = modeBarRect.top + modeBarHight;
 	}
 
 	// ?????? ????? ????? ???????????? ??????. ??? ???? ???????? ???????? ??? ????.
@@ -268,8 +260,6 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		::MoveWindow(m_view_bar, viewBarRect.left, viewBarRect.top, viewBarRect.right - viewBarRect.left, viewBarRect.bottom - viewBarRect.top, true);
 		m_maxTbwidth = rebarRect.right - rebarRect.left;
 	}
-	::MoveWindow(m_mode_bar, modeBarRect.left, modeBarRect.top, modeBarRect.right - modeBarRect.left, modeBarRect.bottom - modeBarRect.top, true);
-	
 	::MoveWindow(m_tree, treeRect.left, treeRect.top, treeRect.right - treeRect.left, treeRect.bottom - treeRect.top, true);	
 
 	return 0;
@@ -317,15 +307,6 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 		::SendMessage(m_view_bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
 		::InvalidateRect(m_view_bar, NULL, TRUE);
 	}
-	if(m_mode_bar.IsWindow())
-	{
-		::SendMessage(m_mode_bar, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
-		COLORSCHEME colours = {}; colours.dwSize = sizeof(colours);
-		colours.clrBtnHighlight = ThemeManager::HoverColor();
-		colours.clrBtnShadow = ThemeManager::BorderColor();
-		::SendMessage(m_mode_bar, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
-		::InvalidateRect(m_mode_bar, NULL, TRUE);
-	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 	return 0;
 }
@@ -340,7 +321,7 @@ LRESULT CTreeWithToolBar::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BO
 
 LRESULT CTreeWithToolBar::OnToolbarCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar && header->hwndFrom != m_mode_bar))
+	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast() || (header->hwndFrom != m_toolbar && header->hwndFrom != m_view_bar))
 	{
 		bHandled = FALSE;
 		return 0;
@@ -484,23 +465,6 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 		m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
 		m_view_bar.Invalidate();
 	}
-	RefreshModeButtons();
-}
-
-void CTreeWithToolBar::RefreshModeButtons()
-{
-	if(!m_mode_bar.IsWindow()) return;
-	const bool scripts = m_tree.IsScriptMode();
-	const CString structure = FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.structure", L"Document structure");
-	const CString script = FbeLoadRuntimeStringByKey(L"fbe.document_tree.mode.scripts", L"Scripts");
-	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT | TBIF_STATE;
-	button.pszText = const_cast<LPWSTR>(structure.GetString()); button.fsState = TBSTATE_ENABLED | (scripts ? 0 : TBSTATE_CHECKED);
-	::SendMessage(m_mode_bar, TB_SETBUTTONINFOW, ID_DOCUMENT_TREE_MODE_STRUCTURE, reinterpret_cast<LPARAM>(&button));
-	button.pszText = const_cast<LPWSTR>(script.GetString()); button.fsState = TBSTATE_ENABLED | (scripts ? TBSTATE_CHECKED : 0);
-	::SendMessage(m_mode_bar, TB_SETBUTTONINFOW, ID_DOCUMENT_TREE_MODE_SCRIPTS, reinterpret_cast<LPARAM>(&button));
-	ToolbarFactory::AutoSizeToolbar(m_mode_bar);
-	::InvalidateRect(m_mode_bar, NULL, TRUE);
-	SendMessage(WM_SIZE, 0, 0);
 }
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 {
@@ -571,7 +535,6 @@ void CTreeWithToolBar::SetScriptMode(bool scripts)
 {
 	_Settings.SetDocumentTreeScripts(scripts, true);
 	m_tree.SetScriptMode(scripts);
-	RefreshModeButtons();
 	if(m_modeChanged) m_modeChanged();
 }
 
@@ -596,6 +559,7 @@ LRESULT CDocumentTree::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 	m_tree.m_tree.SetMainwindow(GetParent());
 	m_tree.SetModeChangedHandler([this]() { RefreshLocalizedTitle(); });
 	m_tree.m_tree.SetScriptMode(_Settings.DocumentTreeScripts());
+	CreateModeButton();
 	/*m_element_browser.Create(*this, rcDefault);
 	m_element_browser.m_tree.SetMainwindow(GetParent());*/
 	this->SetClient(m_tree);
@@ -613,6 +577,79 @@ void CDocumentTree::RefreshLocalizedTitle()
 	this->SetTitle(m_title);
 	this->SetWindowText(m_title);
 	m_tree.RefreshLocalizedMenuCaptions();
+	RefreshModeButton();
+}
+
+LRESULT CDocumentTree::OnSize(UINT, WPARAM, LPARAM, BOOL& bHandled)
+{
+	// CPaneContainer performs the client layout in its chained handler; the
+	// compact mode button is anchored independently in that same title area.
+	LayoutModeButton();
+	bHandled = FALSE;
+	return 0;
+}
+
+void CDocumentTree::CreateModeButton()
+{
+	if(!m_mode_images.Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 1) ||
+		!AddDocumentTreeModeImage(m_mode_images, IDR_SCRIPTS) ||
+		!AddDocumentTreeModeImage(m_mode_images, IDB_STRUCTURE))
+	{
+		m_mode_images.Destroy();
+		return;
+	}
+	const DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP | TBSTYLE_TOOLTIPS | TBSTYLE_FLAT |
+		CCS_NODIVIDER | CCS_NORESIZE | CCS_NOPARENTALIGN | CCS_NOMOVEY;
+	m_mode_button.Create(m_hWnd, rcDefault, NULL, style);
+	m_mode_button.SetButtonStructSize();
+	m_mode_button.SetImageList(m_mode_images);
+	m_mode_button.SetBitmapSize(16, 16);
+	m_mode_button.SetButtonSize(22, 22);
+	TBBUTTON button = {}; button.iBitmap = 0; button.idCommand = ID_DOCUMENT_TREE_MODE_SCRIPTS;
+	button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON;
+	m_mode_button.AddButtons(1, &button);
+	LayoutModeButton();
+}
+
+void CDocumentTree::LayoutModeButton()
+{
+	if(!m_mode_button.IsWindow()) return;
+	RECT client = {}; GetClientRect(&client);
+	const int width = 22;
+	const int height = 22;
+	const int left = (std::max)(0L, client.right - m_cxToolBar - width);
+	const int top = (std::max)(0, (m_cxyHeader - height) / 2);
+	m_mode_button.SetWindowPos(NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void CDocumentTree::RefreshModeButton()
+{
+	if(!m_mode_button.IsWindow()) return;
+	const bool scripts = m_tree.m_tree.IsScriptMode();
+	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_COMMAND | TBIF_IMAGE;
+	button.idCommand = scripts ? ID_DOCUMENT_TREE_MODE_STRUCTURE : ID_DOCUMENT_TREE_MODE_SCRIPTS;
+	button.iImage = scripts ? 1 : 0;
+	::SendMessage(m_mode_button, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button));
+	::InvalidateRect(m_mode_button, NULL, TRUE);
+	LayoutModeButton();
+}
+
+LRESULT CDocumentTree::OnToggleMode(WORD, WORD, HWND, BOOL&)
+{
+	m_tree.ToggleScriptMode();
+	return 0;
+}
+
+LRESULT CDocumentTree::OnModeToolTip(int idCtrl, LPNMHDR header, BOOL& bHandled)
+{
+	if(header == NULL || (idCtrl != ID_DOCUMENT_TREE_MODE_SCRIPTS && idCtrl != ID_DOCUMENT_TREE_MODE_STRUCTURE)) { bHandled = FALSE; return 0; }
+	LPNMTTDISPINFOW tooltip = reinterpret_cast<LPNMTTDISPINFOW>(header);
+	const bool scripts = m_tree.m_tree.IsScriptMode();
+	const CString text = FbeLoadRuntimeStringByKey(scripts ? L"fbe.document_tree.mode.show_structure" : L"fbe.document_tree.mode.show_scripts",
+		scripts ? L"Show document structure" : L"Show scripts");
+	SecureHelper::strncpyW_x(tooltip->szText, _countof(tooltip->szText), text.GetString(), _TRUNCATE);
+	bHandled = TRUE;
+	return 0;
 }
 
 void CDocumentTree::PaintDarkTitle(HDC dc)
@@ -631,13 +668,34 @@ void CDocumentTree::PaintDarkTitle(HDC dc)
 	{
 		RECT separator = title; separator.top = separator.bottom - 1;
 		::FillRect(dc, &separator, ThemeManager::Brush(THEME_COLOR_SEPARATOR));
-		RECT text = title; text.left += 6; text.right -= 26;
+		RECT text = title; text.left += 6; text.right -= m_cxToolBar + 22;
 		HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_hWnd, WM_GETFONT, 0, 0));
 		HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
 		::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::TextColor());
 		::DrawTextW(dc, m_title, -1, &text, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
 		if(oldFont) ::SelectObject(dc, oldFont);
 	}
+}
+
+void CDocumentTree::PaintLightTitle(HDC dc)
+{
+	RECT title = {}; GetClientRect(&title);
+	title.bottom = m_cxyHeader;
+	UINT border = BF_LEFT | BF_TOP | BF_ADJUST | BF_RIGHT;
+	if((m_dwExtendedStyle & PANECNT_NOBORDER) == 0)
+	{
+		if((m_dwExtendedStyle & PANECNT_FLATBORDER) != 0) border |= BF_FLAT;
+		::DrawEdge(dc, &title, EDGE_ETCHED, border);
+	}
+	if((m_dwExtendedStyle & PANECNT_DIVIDER) != 0)
+		::DrawEdge(dc, &title, BDR_SUNKENOUTER, BF_FLAT | BF_ADJUST | BF_BOTTOM);
+	RECT text = title; text.left += m_cxyTextOffset; text.right -= m_cxyTextOffset + m_cxToolBar + 22;
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_hWnd, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+	::SetTextColor(dc, ::GetSysColor(COLOR_WINDOWTEXT));
+	::SetBkMode(dc, TRANSPARENT);
+	::DrawTextW(dc, m_title, -1, &text, DT_LEFT | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+	if(oldFont) ::SelectObject(dc, oldFont);
 }
 
 LRESULT CDocumentTree::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
@@ -649,15 +707,29 @@ LRESULT CDocumentTree::OnThemeEraseBackground(UINT, WPARAM wParam, LPARAM, BOOL&
 
 LRESULT CDocumentTree::OnThemePaint(UINT, WPARAM, LPARAM, BOOL& bHandled)
 {
-	if(!ThemeManager::IsDark() || ThemeManager::IsHighContrast()) { bHandled = FALSE; return 0; }
 	PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(m_hWnd, &paint);
-	PaintDarkTitle(dc);
+	if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast()) PaintDarkTitle(dc);
+	else PaintLightTitle(dc);
 	::EndPaint(m_hWnd, &paint);
+	bHandled = TRUE;
 	return 0;
 }
 
 LRESULT CDocumentTree::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
+	if(m_mode_button.IsWindow())
+	{
+		if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
+		{
+			::SendMessage(m_mode_button, CCM_SETBKCOLOR, 0, ThemeManager::ControlColor());
+			COLORSCHEME colours = {}; colours.dwSize = sizeof(colours);
+			colours.clrBtnHighlight = ThemeManager::HoverColor();
+			colours.clrBtnShadow = ThemeManager::BorderColor();
+			::SendMessage(m_mode_button, TB_SETCOLORSCHEME, 0, reinterpret_cast<LPARAM>(&colours));
+		}
+		else ::SendMessage(m_mode_button, CCM_SETBKCOLOR, 0, ::GetSysColor(COLOR_BTNFACE));
+	}
+	LayoutModeButton();
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME);
 	return 0;
 }
