@@ -218,6 +218,7 @@
 	<ClCompile Include="search\SearchPresetCatalog.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\SearchPresetStore.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\ui\RegexHelpDialog.cpp"><Filter>Source Files\Search</Filter></ClCompile>
+	<ClCompile Include="search\ui\RegexHelpMarkdown.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\SearchDocumentAdapter.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\DocumentSearchCoordinator.cpp"><Filter>Source Files\Search</Filter></ClCompile>
 	<ClCompile Include="search\SearchSession.cpp"><Filter>Source Files\Search</Filter></ClCompile>
@@ -459,6 +460,7 @@
 	<ClInclude Include="search\SearchPresetCatalog.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchPresetStore.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\ui\RegexHelpDialog.h"><Filter>Header Files\Search</Filter></ClInclude>
+	<ClInclude Include="search\ui\RegexHelpMarkdown.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\ui\ComboBoxEdit.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\RegexPcre2MatchLoop.h"><Filter>Header Files\Search</Filter></ClInclude>
 	<ClInclude Include="search\SearchSession.h"><Filter>Header Files\Search</Filter></ClInclude>

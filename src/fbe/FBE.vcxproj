@@ -329,6 +329,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClCompile Include="search\SearchPresetCatalog.cpp" />
     <ClCompile Include="search\SearchPresetStore.cpp" />
     <ClCompile Include="search\ui\RegexHelpDialog.cpp" />
+    <ClCompile Include="search\ui\RegexHelpMarkdown.cpp" />
     <ClCompile Include="search\ui\RegexQuickReferencePopup.cpp" />
 	<ClCompile Include="search\SearchDocumentAdapter.cpp" />
 	<ClCompile Include="ReplacementPreflight.cpp" />
@@ -569,6 +570,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="search\SearchPresetCatalog.h" />
     <ClInclude Include="search\SearchPresetStore.h" />
     <ClInclude Include="search\ui\RegexHelpDialog.h" />
+    <ClInclude Include="search\ui\RegexHelpMarkdown.h" />
     <ClInclude Include="search\ui\ComboBoxEdit.h" />
     <ClInclude Include="search\ui\RegexQuickReferencePopup.h" />
     <ClInclude Include="search\RegexPcre2MatchLoop.h" />

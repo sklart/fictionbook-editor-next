@@ -6,7 +6,7 @@
       "ExportEPUBBatch.exe", "ImportEPUBBatch.exe", "Scintilla.dll", "Lexilla.dll",
       "Plugins\\plugins.json", "Plugins\\ExportHTML.dll", "Plugins\\ExportDOCX.dll",
       "Plugins\\ExportEPUB.dll", "Plugins\\ImportEPUB.dll", "Plugins\\ImportEPUBLunaSVG.dll",
-      "Resources\\Words.xml",
+      "Resources\\Words.xml",`r`n      "Help\\en-US\\regex-design.md", "Help\\en-US\\regex-source.md",`r`n      "Help\\ru-RU\\regex-design.md", "Help\\ru-RU\\regex-source.md",
       "genres.txt", "genres.rus.txt", "genres.ukr.txt", "genres.librusec.txt", "genres.rus.librusec.txt",
       "Dict\\de_DE.aff", "Dict\\de_DE.dic", "Dict\\en_US.aff", "Dict\\en_US.dic", "Dict\\ru_RU.aff", "Dict\\ru_RU.dic", "Dict\\uk_UA.aff", "Dict\\uk_UA.dic", "Dict\\sources.json",
       "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"

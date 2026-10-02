@@ -215,7 +215,11 @@ int RegexQuickReferencePopup::DesiredPopupHeight(UINT dpi) const
     const int buttonHeight = UiMetrics::ScaleForDpi(22, dpi);
     const int rowHeight = UiMetrics::ScaleForDpi(20, dpi);
     const int rows = (std::max)(countRows(leftIndexes), countRows(rightIndexes));
-    return border * 2 + gap * 3 + captionHeight + buttonHeight + rowHeight * (std::max)(1, rows);
+    // ListBox reserves its own border and can round the client area down at fractional DPI.
+    // Reserve one extra row plus chrome so a fully fitting catalog does not show a needless scrollbar.
+    const int listChrome = border * 2 + UiMetrics::ScaleForDpi(3, dpi);
+    const int reserve = UiMetrics::ScaleForDpi(4, dpi);
+    return border * 2 + gap * 3 + captionHeight + buttonHeight + listChrome + reserve + rowHeight * (std::max)(1, rows);
 }
 
 LRESULT RegexQuickReferencePopup::OnPaint(UINT, WPARAM, LPARAM, BOOL&)

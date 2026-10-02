@@ -306,17 +306,36 @@ public:
         const int padding = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(button));
         return (std::max)(minimum, (std::min)(maximum, static_cast<int>(extent.cx) + padding));
     }
+    int VisiblePresetTreeRowsFrom(HWND tree, HTREEITEM item) const
+    {
+        int rows = 0;
+        for (HTREEITEM current = item; current; current = TreeView_GetNextSibling(tree, current))
+        {
+            ++rows;
+            if ((TreeView_GetItemState(tree, current, TVIS_EXPANDED) & TVIS_EXPANDED) != 0)
+                rows += VisiblePresetTreeRowsFrom(tree, TreeView_GetChild(tree, current));
+        }
+        return rows;
+    }
+
+    int VisiblePresetTreeRows(HWND tree) const
+    {
+        return tree ? VisiblePresetTreeRowsFrom(tree, TreeView_GetRoot(tree)) : 0;
+    }
     PresetPanelMetrics GetPresetPanelMetrics(int availableHeight = 0) const
     {
         RECT marginUnits = { 0, 0, 6, 6 };
         RECT lineUnits = { 0, 0, 0, 12 };
-        RECT treeUnits = { 0, 0, 0, 72 };
         const HWND dialog = DialogWindow();
-        if (dialog) { ::MapDialogRect(dialog, &marginUnits); ::MapDialogRect(dialog, &lineUnits); ::MapDialogRect(dialog, &treeUnits); }
+        if (dialog) { ::MapDialogRect(dialog, &marginUnits); ::MapDialogRect(dialog, &lineUnits); }
         PresetPanelMetrics metrics = {};
         metrics.margin = (std::max)(1, static_cast<int>(marginUnits.right));
         metrics.lineHeight = (std::max)(1, static_cast<int>(lineUnits.bottom));
-        metrics.treeHeight = (std::max)(metrics.lineHeight * 6, static_cast<int>(treeUnits.bottom));
+        const HWND tree = dialog ? ::GetDlgItem(dialog, IDC_FIND_PRESETS_TREE) : NULL;
+        const int itemHeight = tree ? static_cast<int>(::SendMessage(tree, TVM_GETITEMHEIGHT, 0, 0)) : metrics.lineHeight;
+        const int visibleRows = tree ? VisiblePresetTreeRows(tree) : 0;
+        const int targetRows = (std::max)(10, visibleRows);
+        metrics.treeHeight = (std::max)(metrics.lineHeight * 10, (std::max)(1, itemHeight) * targetRows + metrics.margin * 2);
         RECT client = {}; if(dialog) ::GetClientRect(dialog, &client);
         const int previewWidth = (std::max)(metrics.lineHeight * 8, static_cast<int>(client.right - client.left) - metrics.margin * 2);
         metrics.previewHeight = PreviewHeightForCurrentSelection(dialog, previewWidth, metrics.lineHeight);

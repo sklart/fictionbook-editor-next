@@ -2,11 +2,11 @@
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
-foreach ($token in @('enum class HelpLineKind { Title, Heading, Body, Syntax, Example, Note }', 'struct HelpBlock', 'BuildHelpBlocks', 'AddQuickReferenceSyntax', 'HelpLineKind::Syntax', 'HelpLineKind::Example', 'HelpLineKind::Note', 'CFM_FACE', 'Consolas', 'PFM_STARTINDENT', 'PFM_SPACEBEFORE', 'titleParagraph', 'headingParagraph', 'bodyParagraph', 'noteParagraph')) {
-    if ($source -notmatch [regex]::Escape($token)) { throw "Missing Regex Help formatting behavior: $token" }
+$parser = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpMarkdown.cpp')
+$dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
+foreach ($token in @('MarkdownBlockKind', 'ParseMarkdown', 'ParseInlineCode', 'ReadUtf8File', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'dwEffects = bold ? CFE_BOLD : 0', 'Consolas', 'PFM_SPACEAFTER', 'PFM_STARTINDENT')) {
+    if ($parser -notmatch [regex]::Escape($token)) { throw "Missing Markdown formatting behavior: $token" }
 }
-if ($source -match 'ClassifyHelpLine|section ==') { throw 'Regex Help formatting must use explicit HelpBlock kinds, not section indexes.' }
-if ($source.Contains('L"\r\n\r\n"')) { throw 'Help blocks must use one paragraph break; paragraph spacing belongs to PARAFORMAT2.' }
-if (-not $source.Contains('L"\r\n"')) { throw 'Help blocks need paragraph separators.' }
-Write-Host 'Regex Help formatting contract passed.'
+if ($parser -match 'JoinHelpBlocks|starts\[|ClassifyHelpLine|section ==') { throw 'Markdown renderer retains position-based or joined-text formatting.' }
+if ($dialog -notmatch 'FbeRegexHelp::RenderMarkdown') { throw 'Regex Help dialog does not render parsed Markdown blocks.' }
+Write-Host 'Regex Help Markdown formatting contract passed.'

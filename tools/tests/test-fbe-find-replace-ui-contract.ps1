@@ -15,6 +15,7 @@ $view = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp'
 $sourceView = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $presetCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchPresetCatalog.cpp')
 $regexHelp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ui\RegexHelpDialog.cpp')
+$regexHelpMarkdown = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ui\RegexHelpMarkdown.cpp')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.h')
 $settingsSerialization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsSerialization.cpp')
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
@@ -110,24 +111,17 @@ foreach ($dialogBlock in @($find, $replace)) {
     }
     Require $dialogBlock 'DIALOGEX 0, 0, 326,' 'base compact dialog width provides a shared grid'
 }
-Require $regexHelp 'PCRE2-16' 'Design regex help engine'
-Require $regexHelp 'Scintilla regular expressions in its documented C\+\+11 mode' 'Source regex help engine'
+Require $regexHelp 'FbeRegexHelp::LoadMarkdown' 'Regex help loads Markdown at dialog creation'
+Require $regexHelp 'FbeRegexHelp::RenderMarkdown' 'Regex help renders parsed Markdown'
 Require $regexHelp 'ThemeManager::ApplyToWindow\(m_hWnd\)' 'Regex help theme integration'
 Require $regexHelp 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)' 'Regex help runtime localization'
-Require $regexHelp 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
-Require $regexHelp 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
+Require $regexHelpMarkdown 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
+Require $regexHelpMarkdown 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
 Require $regexHelp 'SetFocus\(GetDlgItem\(IDC_REGEX_HELP_CLOSE\)\)' 'Regex help focuses Close'
-Require $regexHelp 'ApplyHelpBlockStyles' 'Regex help formats explicit blocks'
-Require $regexHelp 'CFM_BOLD' 'Regex help uses bold formatting for headings'
-Require $regexHelp 'CFM_SIZE' 'Regex help gives its title a distinct size'
-Require $regexHelp 'PFM_SPACEBEFORE' 'Regex help spaces heading paragraphs'
-Require $regexHelp 'enum class HelpLineKind' 'Regex help uses explicit help-line kinds'
-Require $regexHelp 'struct HelpBlock' 'Regex help stores explicit structural blocks'
-Require $regexHelp 'BuildHelpBlocks' 'Regex help builds Design and Source blocks explicitly'
-Require $regexHelp 'AddQuickReferenceSyntax' 'Regex help reuses Quick Reference syntax'
-if($regexHelp -match 'ClassifyHelpLine|section ==') { throw 'Regex help must not classify blocks by paragraph number.' }
-if ($regexHelp -match 'Find\(static_cast<wchar_t>\(92\)\)') { throw 'Regex help must not classify whole lines as code merely because they contain a regex token.' }
-Require $regexHelp 'IDC_REGEX_HELP_CLOSE' 'Regex help uses its dedicated Close control for layout and dispatch'
+foreach ($token in @('ReadUtf8File', 'ParseMarkdown', 'ParseInlineCode', 'HelpPathForLocale', 'GetPreferredRuntimeLocaleName', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'dwEffects = bold ? CFE_BOLD : 0', 'Consolas')) {
+    if ($regexHelpMarkdown -notmatch [regex]::Escape($token)) { throw "Missing Markdown Regex Help behavior: $token" }
+}
+if ($regexHelpMarkdown -match 'JoinHelpBlocks|starts\[' -or $regexHelp -match 'BuildHelpBlocks|AddQuickReferenceSyntax') { throw 'Regex Help must not keep the embedded joined-text implementation.' }Require $regexHelp 'IDC_REGEX_HELP_CLOSE' 'Regex help uses its dedicated Close control for layout and dispatch'
 Require $regexHelp 'MonitorFromRect' 'Regex help restores its saved normal position on a valid monitor'
 Require $regexHelp 'WM_FBE_THEMECHANGED' 'Regex help reapplies its Rich Edit palette on app theme changes'
 Require $regexHelp 'WM_GETMINMAXINFO' 'Regex help enforces a minimum resizable size'

@@ -307,6 +307,7 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-search-templates-open-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-formatting.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-runtime-localization.ps1")
+& (Join-Path $repoRoot "tools\tests\test-regex-help-markdown.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-escape.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-runtime.ps1") -PlatformToolset $PlatformToolset
 & (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-popup.ps1")

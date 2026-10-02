@@ -10,6 +10,9 @@ Require 'OnTogglePresets[\s\S]*?SetPresetPanelVisible\(!collapse\)[\s\S]*?collap
 Require 'RefreshPresetPanel\(\);[\s\S]*?SetWindowPos[\s\S]*?ResizePresetPanelForCurrentSelection\(\);[\s\S]*?ShowWindow' 'template panel populates and lays out before becoming visible'
 Require 'TVM_SETREDRAW|WM_SETREDRAW' 'template tree redraw is suspended during population'
 Require 'GetPresetCategoryName' 'built-in templates are grouped by localized category'
+foreach ($treeId in @('IDC_FIND_PRESETS_TREE')) {
+    if ($resources -notmatch "$treeId.*TVS_HASBUTTONS" -and $resources -notmatch "TVS_HASBUTTONS.*$treeId") { throw 'Preset tree must expose expand/collapse buttons.' }
+}
 Require 'SearchPresetSafety::ReviewOnly' 'review-only templates have an explicit safety state'
 if ($source -match 'for\(std::map<int, HTREEITEM>::const_iterator category.*?TVE_EXPAND') { throw 'Built-in categories must start collapsed.' }
 Require 'if\(parent && parent != userRoot\) TreeView_Expand\(tree, parent, TVE_EXPAND\)' 'selected preset category is expanded on restore'
@@ -38,7 +41,9 @@ $visibilityHandler = $source.Substring($visibleStart, $visibleEnd - $visibleStar
 if ($visibilityHandler -match 'SetSearchTemplatesPanelPinned') { throw 'Unexpected implicit pin reset in visibility setter.' }
 Require 'struct PresetPanelMetrics' 'shared preset panel metrics'
 Require 'GetPresetPanelMetrics\(int availableHeight = 0\)' 'adaptive metrics function'
-Require 'metrics\.treeHeight = \(std::max\)\(metrics\.lineHeight \* 6' 'dense six-row default tree'
+Require 'VisiblePresetTreeRowsFrom' 'logical visible tree-row counter'
+Require 'const int targetRows = \(std::max\)\(10, visibleRows\)' 'ten-row adaptive tree minimum'
+Require 'itemHeight\) \* targetRows' 'tree height based on the actual item height'
 Require 'PreviewHeightForCurrentSelection' 'preview height follows selected preset content'
 Require 'DT_CALCRECT \| DT_WORDBREAK' 'preview uses wrapped text measurement'
 Require 'lineHeight \* 4' 'preview is bounded to four lines'

@@ -165,6 +165,7 @@ jobs:
           ./tools/tests/test-search-templates-open-runtime.ps1 -FbeExe ./out/Release/FBE.exe
           ./tools/tests/test-regex-help-formatting.ps1
           ./tools/tests/test-regex-help-runtime-localization.ps1
+          ./tools/tests/test-regex-help-markdown.ps1
           ./tools/tests/test-regex-help-escape.ps1
           ./tools/tests/test-regex-quick-reference-runtime.ps1 -PlatformToolset v143
           ./tools/tests/test-regex-quick-reference-popup.ps1
