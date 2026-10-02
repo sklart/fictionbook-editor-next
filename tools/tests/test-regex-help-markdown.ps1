@@ -23,5 +23,5 @@ foreach ($language in $catalog.targetLanguages) {
     $hasBoth = (Test-Path -LiteralPath (Join-Path $root "runtime\Help\$locale\regex-design.md")) -and (Test-Path -LiteralPath (Join-Path $root "runtime\Help\$locale\regex-source.md"))
     if (-not $hasBoth -and $readme -notmatch 'en-US') { throw "Missing documented fallback policy for $locale." }
 }
-foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Table', 'ParseInlineCode', 'HelpPathForLocale')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
+foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Table', 'ParseInlineCode', 'ParseMarkdownText', 'RunRuntimeSmoke', 'HelpPathForLocale')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
 Write-Host 'Regex Help Markdown content and fallback contract passed.'

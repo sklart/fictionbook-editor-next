@@ -26,6 +26,7 @@
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
 #include "SearchReplace.h"
+#include "search\ui\RegexHelpMarkdown.h"
 #include "document\\ArchiveRecentDocuments.h"
 #include "document\\recent\\RecentDocumentsStore.h"
 #include "document\\recent\\RecentDocumentsManager.h"
