@@ -810,6 +810,22 @@
             }
             return expectedExpanded && !otherExpanded;
         };
+        auto verifyTreeContract = [](FRBase* panel, HWND tree) -> bool
+        {
+            if (!panel || !tree) return false;
+            const DWORD style = static_cast<DWORD>(::GetWindowLongPtr(tree, GWL_STYLE));
+            const DWORD required = TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS;
+            RECT client = {}; ::GetClientRect(tree, &client);
+            const int itemHeight = TreeView_GetItemHeight(tree);
+            HTREEITEM root = TreeView_GetRoot(tree);
+            if ((style & required) != required || !root || itemHeight <= 0 || client.bottom - client.top < itemHeight * 10) return false;
+            TreeView_SelectItem(tree, root);
+            for (int pump = 0; pump < 2; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
+            const int actions[] = { IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE };
+            for (size_t index = 0; index < _countof(actions); ++index)
+                if (::IsWindowEnabled(panel->FRBase::GetDlgItem(actions[index]))) return false;
+            return true;
+        };
         struct PinProbe { int foreground; int background; COLORREF tint; bool drawn; };
 		auto probePin = [](FRBase* panel, bool pinned) -> PinProbe
 		{
@@ -857,11 +873,11 @@
 		m_doc->m_body.OnFind(0, ID_EDIT_FIND, m_doc->m_body, handled);
 		CFindDlgBase* find = m_doc->m_body.m_find_dlg; if (find) find->SetPresetPanelVisible(true);
 		HWND findTree = find ? find->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
-		const bool findOk = find && ::IsWindow(find->DialogWindow()) && findTree && hasRoots(findTree) && hasPreset(findTree) && preservesCategoryState(find, findTree) && verifyPins(find);
+		const bool findOk = find && ::IsWindow(find->DialogWindow()) && findTree && hasRoots(findTree) && hasPreset(findTree) && verifyTreeContract(find, findTree) && preservesCategoryState(find, findTree) && verifyPins(find);
 		m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
 		CReplaceDlgBase* replace = m_doc->m_body.m_replace_dlg; if (replace) replace->SetPresetPanelVisible(true);
 		HWND replaceTree = replace ? replace->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
-		const bool replaceOk = replace && ::IsWindow(replace->DialogWindow()) && replaceTree && hasRoots(replaceTree) && hasPreset(replaceTree) && preservesCategoryState(replace, replaceTree) && verifyPins(replace);
+		const bool replaceOk = replace && ::IsWindow(replace->DialogWindow()) && replaceTree && hasRoots(replaceTree) && hasPreset(replaceTree) && verifyTreeContract(replace, replaceTree) && preservesCategoryState(replace, replaceTree) && verifyPins(replace);
 		for (int pump = 0; pump < 8; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
 		CStringA report; report.Format("find=%d\r\nreplace=%d\r\n", findOk ? 1 : 0, replaceOk ? 1 : 0);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
