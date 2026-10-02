@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param([string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path)
 
 $ErrorActionPreference = 'Stop'
@@ -6,7 +6,7 @@ $doc = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\FBDoc.c
 $backgrounds = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\settings\EditorBackgrounds.cpp')
 $frame = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\mainfrm.cpp')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\Settings.cpp')
-$readme = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'runtime\EditorBackgrounds\README.md')
+$readme = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'runtime\Backgrounds\README.md')
 
 # UrlCreateFromPath is the Win32 conversion used by the app.  These representative
 # paths assert the URI/CSS contract for spaces, Unicode and reserved characters.

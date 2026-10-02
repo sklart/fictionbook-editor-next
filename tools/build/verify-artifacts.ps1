@@ -87,10 +87,10 @@ try {
         }
     }
     foreach ($directory in @($manifest.core.runtimeDirectories)) {
-        if (-not ($entries | Where-Object { $_ -like "$directory\*" })) { throw "Portable archive is missing runtime directory: $directory" }
+        if (-not ($entries | Where-Object { $_ -clike "$directory\*" })) { throw "Portable archive is missing runtime directory: $directory" }
     }
     foreach ($forbidden in @($manifest.core.forbidden) + @($manifest.portable.forbidden)) {
-        if ($entries -contains $forbidden -or ($entries | Where-Object { $_ -like "$forbidden\*" })) { throw "Portable archive contains forbidden payload: $forbidden" }
+        if ($entries -ccontains $forbidden -or ($entries | Where-Object { $_ -clike "$forbidden\*" })) { throw "Portable archive contains forbidden payload: $forbidden" }
     }
     if ($entries | Where-Object { $_ -match '\.(pdb|lib|exp|obj)$' }) { throw 'Portable archive contains build artifacts.' }
     foreach ($name in @('Scintilla.dll', 'Lexilla.dll', 'ExportDOCXBatch.exe', 'ExportEPUBBatch.exe', 'ImportEPUBBatch.exe', 'portable.ini')) {

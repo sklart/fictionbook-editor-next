@@ -14,7 +14,7 @@ FBDoc применяет фон документа, main frame обновляе�
 
 ## Последствия
 
-Не меняются runtime manifest, путь `EditorBackgrounds`, сохранённые settings
+Не меняются runtime manifest, runtime-путь `Backgrounds`, сохранённые settings
 или fallback при отсутствующем ресурсе. `test-fbe-settings-background-boundary.ps1`
 фиксирует путь и отсутствие coordinator-зависимостей, а assets/regression
 tests проверяют поведение.

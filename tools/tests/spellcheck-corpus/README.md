@@ -42,7 +42,7 @@ Next. Он сравнивает словари на подготовленных
 
 .\tools\tests\spellcheck-corpus\compare-dictionaries.ps1 `
   -HunspellExe .\out\tools\hunspell-probe.exe `
-  -CurrentDictionary .\out\Release\dict\ru_RU `
+  -CurrentDictionary .\out\Release\Dict\ru_RU `
   -CandidateDictionary <candidate-dictionary>\ru_RU `
   -Prepared .\tools\tests\spellcheck-corpus\data\prepared-smoke `
   -Output .\tools\tests\spellcheck-corpus\results-local

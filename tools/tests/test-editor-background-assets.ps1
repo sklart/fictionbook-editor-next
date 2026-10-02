@@ -9,9 +9,9 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 }
 Add-Type -AssemblyName System.Drawing
-$root = Join-Path $RepositoryRoot 'runtime\EditorBackgrounds'
+$root = Join-Path $RepositoryRoot 'runtime\Backgrounds'
 $manifestPath = Join-Path $root 'backgrounds.json'
-if(-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Missing runtime\EditorBackgrounds.' }
+if(-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'Missing runtime\Backgrounds.' }
 if(-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw 'Missing backgrounds.json.' }
 $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 | ConvertFrom-Json
 if($manifest.schemaVersion -ne 1 -or @($manifest.backgrounds).Count -ne 14) { throw 'Background manifest must be schema v1 with 14 entries.' }
@@ -35,7 +35,7 @@ for($index = 0; $index -lt $manifest.backgrounds.Count; ++$index) {
 if((Get-ChildItem -LiteralPath $root -Filter *.png -File).Count -ne 14) { throw 'Runtime folder must contain exactly 14 PNG backgrounds.' }
 if($RuntimeDirectory) {
     $RuntimeDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RuntimeDirectory)
-    if(-not (Test-Path -LiteralPath $RuntimeDirectory -PathType Container)) { throw "Staged runtime is missing EditorBackgrounds: $RuntimeDirectory" }
+    if(-not (Test-Path -LiteralPath $RuntimeDirectory -PathType Container)) { throw "Staged runtime is missing Backgrounds: $RuntimeDirectory" }
     if(-not (Test-Path -LiteralPath (Join-Path $RuntimeDirectory 'backgrounds.json') -PathType Leaf)) { throw 'Staged runtime is missing backgrounds.json.' }
     if((Get-ChildItem -LiteralPath $RuntimeDirectory -Filter *.png -File).Count -ne 14) { throw 'Staged runtime must contain exactly 14 PNG backgrounds.' }
     foreach($entry in $manifest.backgrounds) {
@@ -45,6 +45,6 @@ if($RuntimeDirectory) {
     }
 }
 $packageManifest = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'packaging\package-manifest.json') -Encoding UTF8 | ConvertFrom-Json
-if($packageManifest.core.runtimeDirectories -notcontains 'EditorBackgrounds') { throw 'Portable package manifest does not preserve EditorBackgrounds.' }
+if($packageManifest.core.runtimeDirectories -notcontains 'Backgrounds') { throw 'Portable package manifest does not preserve Backgrounds.' }
 foreach($key in @('group','image','browse','layout','none','custom','tile','center','contain','cover','choose')) { if(-not $catalog.strings.PSObject.Properties["fbe.settings.editor_background.$key"]) { throw "Missing localized UI key: $key" } }
 Write-Host 'Editor background assets verified.'

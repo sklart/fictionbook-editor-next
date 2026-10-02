@@ -98,7 +98,7 @@ convention или правила владения памятью.
 - Regex wrapper и его PCRE2 cache/match-loop расположены в `src/fbe/search`.
   Это editor-only поисковая подсистема; boundary и PCRE2 fixture-проверки
   сохраняют её независимость от координаторов окна и документа.
-- `EditorBackgrounds` расположен в `src/fbe/settings`: это каталог и
+- Runtime-каталог `Backgrounds` используется в `src/fbe/settings`: это каталог и
   валидация настроек/runtime-ресурсов, а не владелец document/view. Его
   callers остаются в FBDoc, main frame и settings page.
 - `runtime` содержит и сопровождаемые файлы, и бинарные входы. Их происхождение

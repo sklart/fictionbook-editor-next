@@ -14,7 +14,7 @@ if (-not (Get-Command Get-ThirdPartyRepoRoot -ErrorAction SilentlyContinue)) {
 
 function Get-DictionaryManifest {
     $repoRoot = Get-ThirdPartyRepoRoot
-    $path = Join-Path $repoRoot 'runtime\dict\sources.json'
+    $path = Join-Path $repoRoot 'runtime\Dict\sources.json'
     if (-not (Test-Path -LiteralPath $path)) { throw "Dictionary manifest not found: $path" }
     return Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
 }
@@ -24,10 +24,10 @@ function Get-DictionaryCatalog {
     $manifest = Get-DictionaryManifest
 
     return @(
-        [pscustomobject]@{ Name='dict-en_US'; Dictionary='en_US'; DisplayName='Dictionary en_US'; Repository=[string]$manifest.en_US.repository; RepositoryUrl='https://github.com/en-wl/wordlist.git'; LocalPath=(Join-Path $repoRoot 'runtime\dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern='^rel-(\d{4}\.\d{2}\.\d{2})$' }
-        [pscustomobject]@{ Name='dict-ru_RU'; Dictionary='ru_RU'; DisplayName='Dictionary ru_RU'; Repository=[string]$manifest.ru_RU.repository; RepositoryUrl='https://github.com/Goudron/ru-spelling-dictionary.git'; LocalPath=(Join-Path $repoRoot 'runtime\dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern='^v?(\d+\.\d+\.\d+)$' }
-        [pscustomobject]@{ Name='dict-uk_UA'; Dictionary='uk_UA'; DisplayName='Dictionary uk_UA'; Repository=[string]$manifest.uk_UA.repository; RepositoryUrl='https://github.com/brown-uk/dict_uk.git'; LocalPath=(Join-Path $repoRoot 'runtime\dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern='^v?(\d+\.\d+\.\d+)$' }
-        [pscustomobject]@{ Name='dict-de_DE'; Dictionary='de_DE'; DisplayName='Dictionary de_DE'; Repository=[string]$manifest.de_DE.repository; RepositoryUrl='https://github.com/LibreOffice/dictionaries.git'; LocalPath=(Join-Path $repoRoot 'runtime\dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern=$null }
+        [pscustomobject]@{ Name='dict-en_US'; Dictionary='en_US'; DisplayName='Dictionary en_US'; Repository=[string]$manifest.en_US.repository; RepositoryUrl='https://github.com/en-wl/wordlist.git'; LocalPath=(Join-Path $repoRoot 'runtime\Dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern='^rel-(\d{4}\.\d{2}\.\d{2})$' }
+        [pscustomobject]@{ Name='dict-ru_RU'; Dictionary='ru_RU'; DisplayName='Dictionary ru_RU'; Repository=[string]$manifest.ru_RU.repository; RepositoryUrl='https://github.com/Goudron/ru-spelling-dictionary.git'; LocalPath=(Join-Path $repoRoot 'runtime\Dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern='^v?(\d+\.\d+\.\d+)$' }
+        [pscustomobject]@{ Name='dict-uk_UA'; Dictionary='uk_UA'; DisplayName='Dictionary uk_UA'; Repository=[string]$manifest.uk_UA.repository; RepositoryUrl='https://github.com/brown-uk/dict_uk.git'; LocalPath=(Join-Path $repoRoot 'runtime\Dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern='^v?(\d+\.\d+\.\d+)$' }
+        [pscustomobject]@{ Name='dict-de_DE'; Dictionary='de_DE'; DisplayName='Dictionary de_DE'; Repository=[string]$manifest.de_DE.repository; RepositoryUrl='https://github.com/LibreOffice/dictionaries.git'; LocalPath=(Join-Path $repoRoot 'runtime\Dict'); Kind='Dictionary'; UpdateMode='Manual'; TagPattern=$null }
     )
 }
 

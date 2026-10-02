@@ -58,7 +58,7 @@ foreach ($kind in @('core', 'integration')) {
 $coreDestinations = @($layout.core.copy | Where-Object { -not $_.contents } | ForEach-Object { $_.destination.Replace('/', '\') })
 $coreDestinations += @($layout.core.aliases | ForEach-Object { $_.destination.Replace('/', '\') })
 foreach ($required in @($manifest.core.required)) {
-    if ($required -notin $coreDestinations -and $required -notmatch '^(Plugins|dict|Lang|Themes|Scripts|Utilities|EditorBackgrounds|Resources|THIRD-PARTY-LICENSES)\\' -and $required -notmatch '^genres\.') {
+    if ($required -notin $coreDestinations -and $required -notmatch '^(Backgrounds|Dict|HTML|Help|Lang|Plugins|Resources|Scripts|Themes|TreeCmd|Utilities|THIRD-PARTY-LICENSES)\\' -and $required -notmatch '^genres\.') {
         throw "Core manifest item is not represented by a package-layout entry: $required"
     }
 }

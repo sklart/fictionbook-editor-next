@@ -77,6 +77,17 @@ function Remove-ObsoleteReleaseArtifacts {
         }
     }
 
+    # Do not retain the pre-PascalCase runtime directories in a reused
+    # development output: direct launches must exercise the package layout.
+    foreach ($legacyRuntimeDirectory in @("dict", "EditorBackgrounds", "ArchiveMruRuntimeData")) {
+        $legacyRuntimePath = Get-ChildItem -LiteralPath $OutputDirectory -Directory -Force |
+            Where-Object { $_.Name -ceq $legacyRuntimeDirectory } |
+            Select-Object -First 1
+        if ($legacyRuntimePath) {
+            Remove-Item -LiteralPath $legacyRuntimePath.FullName -Recurse -Force
+            Write-Host "Удалён устаревший runtime-каталог: $($legacyRuntimePath.FullName)"
+        }
+    }
     # A non-empty defaults directory may contain an operator's local files.
     # Remove an empty one even when its legacy seed was removed by an earlier run.
     $legacyDefaultsDirectory = Join-Path $OutputDirectory "defaults"
@@ -234,6 +245,36 @@ function Export-BuiltInResources {
     Write-Host "Встроенные ресурсы подготовлены рядом с бинарниками: $destinationDirectory"
 }
 
+function Export-SpellcheckDictionaries {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    $source = Join-Path $repoRoot 'runtime\Dict'
+    if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+        throw "Не найден runtime-каталог словарей: $source"
+    }
+    $destination = Join-Path $OutputDirectory 'Dict'
+    if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Recurse -Force }
+    Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
+    Write-Host "Словари подготовлены рядом с бинарниками: $destination"
+}
+function Export-EditorBackgroundAssets {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OutputDirectory
+    )
+
+    $source = Join-Path $repoRoot 'runtime\Backgrounds'
+    if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+        throw "Не найден runtime-каталог фонов: $source"
+    }
+    $destination = Join-Path $OutputDirectory 'Backgrounds'
+    if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Recurse -Force }
+    Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
+    Write-Host "Фоны редактора подготовлены рядом с бинарниками: $destination"
+}
 function Copy-EditorRuntimeToDevelopmentOutput {
     param(
         [Parameter(Mandatory)]
@@ -381,6 +422,8 @@ if ($WarningsAsErrors) {
 
 Export-RuntimeLanguageFiles -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 Export-BuiltInResources -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Export-SpellcheckDictionaries -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
+Export-EditorBackgroundAssets -OutputDirectory (Join-Path $repoRoot "out\$Configuration")
 
 # A partial or interrupted build must never leave the previous ImportEPUB
 # output looking authoritative.

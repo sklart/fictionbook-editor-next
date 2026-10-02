@@ -37,7 +37,7 @@ function Get-Rejected([string]$Dictionary, [string[]]$Words) {
 foreach($property in $baseline.languages.psobject.Properties) {
     $case = $property.Value; [xml]$fb2 = Get-Content -Raw -LiteralPath (Join-Path $corpus "fixtures\fb2\$($case.file)")
     $words = @([regex]::Matches($fb2.FictionBook.body.InnerText, "[\p{L}\p{N}]+(?:['’ʼ-][\p{L}\p{N}]+)*") | ForEach-Object Value)
-    $dictionary = Join-Path $root "out\$Configuration\dict\$($case.dictionary)"
+    $dictionary = Join-Path $root "out\$Configuration\Dict\$($case.dictionary)"
     $result = Get-Result $dictionary $words
     $rejectedWords = Get-Rejected $dictionary $words
     $expectedRejected = @($case.falsePositives) + @($case.knownTypos.psobject.Properties.Name)

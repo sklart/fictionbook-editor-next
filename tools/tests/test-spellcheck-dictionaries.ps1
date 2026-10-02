@@ -1,6 +1,6 @@
-﻿<#
+<#
 .SYNOPSIS
-Проверяет словари орфографии в out\<Configuration>\dict и ожидаемые Hunspell-связанные инварианты в исходниках.
+Проверяет словари орфографии в out\<Configuration>\Dict и ожидаемые Hunspell-связанные инварианты в исходниках.
 #>
 
 [CmdletBinding()]
@@ -66,7 +66,7 @@ foreach ($dictionaryName in $expectedDictionaryEncodings.Keys) {
     }
 }
 
-$manifestPath = Join-Path $repoRoot "runtime\dict\sources.json"
+$manifestPath = Join-Path $repoRoot "runtime\Dict\sources.json"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Не найден manifest происхождения словарей: $manifestPath" }
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
@@ -77,8 +77,8 @@ foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
         [string]::IsNullOrWhiteSpace($entry.fixtureSource)) {
         throw "Provenance словаря неполный: $dictionaryName требует полный upstream SHA, дату, variant и localChanges."
     }
-    $runtimeAff = Join-Path $repoRoot "runtime\dict\$dictionaryName.aff"
-    $runtimeDic = Join-Path $repoRoot "runtime\dict\$dictionaryName.dic"
+    $runtimeAff = Join-Path $repoRoot "runtime\Dict\$dictionaryName.aff"
+    $runtimeDic = Join-Path $repoRoot "runtime\Dict\$dictionaryName.dic"
     if ((Get-FileHash -LiteralPath $runtimeAff -Algorithm SHA256).Hash -ne $entry.affSha256) { throw "SHA-256 aff не совпадает с sources.json: $dictionaryName" }
     if ((Get-FileHash -LiteralPath $runtimeDic -Algorithm SHA256).Hash -ne $entry.dicSha256) { throw "SHA-256 dic не совпадает с sources.json: $dictionaryName" }
     $stagedAff = Join-Path $dictDir "$dictionaryName.aff"

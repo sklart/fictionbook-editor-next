@@ -277,7 +277,7 @@ public:
 		}
 		if (_Settings.GetUseSpellChecker())
 		{
-			m_Speller = new CSpeller(U::GetProgDir()+L"dict\\");
+			m_Speller = new CSpeller(U::GetProgDir()+L"Dict\\");
 		}
 		else
 		{

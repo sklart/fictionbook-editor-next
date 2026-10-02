@@ -1142,7 +1142,7 @@
 		}
 		if (!m_Speller)
 		{
-			m_Speller = new CSpeller(U::GetProgDir() + L"dict\\");
+			m_Speller = new CSpeller(U::GetProgDir() + L"Dict\\");
 			m_Speller->SetFrame(m_hWnd);
 			m_Speller->AttachDocument(m_doc->m_body.Document());
 		}

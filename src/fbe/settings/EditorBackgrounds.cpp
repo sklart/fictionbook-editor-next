@@ -72,7 +72,7 @@ COLORREF AutomaticContrastColor(COLORREF fixedColor)
 void EditorBackgrounds::Load(std::vector<EditorBackgroundDescriptor>& backgrounds)
 {
 	backgrounds.clear();
-	std::wstring json; const CString manifest = U::GetProgDirFile(L"EditorBackgrounds\\backgrounds.json");
+	std::wstring json; const CString manifest = U::GetProgDirFile(L"Backgrounds\\backgrounds.json");
 	if(!FbeRuntimeLocalization::ReadUtf8TextFile(manifest, json)) return;
 	size_t schema = 0; FbeRuntimeLocalization::JsonSkipWhitespace(json, schema);
 	if(!FbeRuntimeLocalization::JsonFindObjectMember(json, schema, L"schemaVersion", schema) || !IsSchemaVersionOne(json, schema)) return;
@@ -111,7 +111,7 @@ bool EditorBackgrounds::ResolveBuiltIn(const CString& id, CString& filePath)
 	std::vector<EditorBackgroundDescriptor> backgrounds; Load(backgrounds);
 	for(size_t i = 0; i < backgrounds.size(); ++i) if(backgrounds[i].id == id)
 	{
-		filePath = U::GetProgDirFile(L"EditorBackgrounds\\") + backgrounds[i].fileName;
+		filePath = U::GetProgDirFile(L"Backgrounds\\") + backgrounds[i].fileName;
 		return IsRegularFile(filePath);
 	}
 	return false;

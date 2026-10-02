@@ -6588,7 +6588,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	{
 		if (!m_Speller)
 		{
-			m_Speller = new CSpeller(U::GetProgDir()+L"dict\\");
+			m_Speller = new CSpeller(U::GetProgDir()+L"Dict\\");
 			m_Speller->SetEnabled(false);
 		}
 		if (!m_Speller->Enabled())

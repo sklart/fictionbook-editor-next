@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Runs FBE.exe's unattended editor-background scenario against the real MSHTML DOM.
 #>
@@ -87,7 +87,7 @@ $FbeExe = Join-Path $portableRuntime 'FBE.exe'
 $fixture = Join-Path $directory 'background.fb2'
 $png = Join-Path $directory 'Фоны FBE # % (тест).png'
 $missing = Join-Path $directory 'нет # % (фон).png'
-$builtin = Join-Path (Split-Path $FbeExe -Parent) 'EditorBackgrounds\01_clean_white.png'
+$builtin = Join-Path (Split-Path $FbeExe -Parent) 'Backgrounds\01_clean_white.png'
 $completed = $false
 try {
     if(-not (Test-Path -LiteralPath $builtin -PathType Leaf)) { throw "В staged runtime отсутствует built-in фон: $builtin" }

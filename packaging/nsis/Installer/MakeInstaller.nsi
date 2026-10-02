@@ -1452,6 +1452,8 @@ Section !$(Scripts) Scripts_id
 	File /r ${INPUTDIR}\Utilities\*.*
 	SetOutPath "$INSTDIR\Themes"
 	File /r ${INPUTDIR}\Themes\*.*
+	SetOutPath "$INSTDIR\Backgrounds"
+	File /r ${INPUTDIR}\Backgrounds\*.*
 SectionEnd
 
 SubSection !$(Dictionaries) Dictionaries_id
@@ -1459,27 +1461,27 @@ SubSection !$(Dictionaries) Dictionaries_id
         Section $(EnglishDict) Dict01
       SectionIn RO
  	  SetOutPath "$INSTDIR\Dict"
-	  File "${INPUTDIR}\dict\en_US.dic"
-	  File "${INPUTDIR}\dict\en_US.aff"
+	  File "${INPUTDIR}\Dict\en_US.dic"
+	  File "${INPUTDIR}\Dict\en_US.aff"
         SectionEnd
 
         Section $(RussianDict) Dict02
       SectionIn RO
  	  SetOutPath "$INSTDIR\Dict"
-	  File "${INPUTDIR}\dict\ru_RU.dic"
-	  File "${INPUTDIR}\dict\ru_RU.aff"
+	  File "${INPUTDIR}\Dict\ru_RU.dic"
+	  File "${INPUTDIR}\Dict\ru_RU.aff"
         SectionEnd
 
         Section /o $(UkrainianDict) Dict03
 	  SetOutPath "$INSTDIR\Dict"
-	  File "${INPUTDIR}\dict\uk_UA.dic"
-	  File "${INPUTDIR}\dict\uk_UA.aff"
+	  File "${INPUTDIR}\Dict\uk_UA.dic"
+	  File "${INPUTDIR}\Dict\uk_UA.aff"
         SectionEnd
 
         Section /o $(GermanDict) Dict08
 	  SetOutPath "$INSTDIR\Dict"
-	  File "${INPUTDIR}\dict\de_DE.dic"
-	  File "${INPUTDIR}\dict\de_DE.aff"
+	  File "${INPUTDIR}\Dict\de_DE.dic"
+	  File "${INPUTDIR}\Dict\de_DE.aff"
         SectionEnd
 
 SubSectionEnd
@@ -1745,6 +1747,7 @@ fbd_uninstall_done:
 
   ;Scripts
   RMDir /r "$INSTDIR\Dict"
+  RMDir /r "$INSTDIR\Backgrounds"
   RMDir /r "$INSTDIR\Scripts"
   RMDir /r "$INSTDIR\TreeCmd"
   RMDir /r "$INSTDIR\HTML"

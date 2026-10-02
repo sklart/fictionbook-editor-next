@@ -140,7 +140,7 @@ extern const CString Tokens;
 class CSpeller																																											   
 {																																														   
 public:
-	CSpeller(CString dictPath = L"..\\dict");
+	CSpeller(CString dictPath = L"..\\Dict");
 	~CSpeller();
 	void AttachDocument(MSHTML::IHTMLDocumentPtr doc);
 	void SetFrame(HWND frame) { m_frame = frame; }
