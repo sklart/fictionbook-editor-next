@@ -30,4 +30,18 @@ foreach($key in $keys | Select-Object -Unique) {
         if([string]::IsNullOrWhiteSpace([string]$entry.Value.translations.$language)) { throw "Empty $language translation for $key" }
     }
 }
-Write-Host "Search preset localization contract passed ($($ids.Count) built-ins, $($keys.Count) strings)."
+$expectedRussianCategories = @{
+    whitespace = 'Пробелы и отступы'; punctuation = 'Пунктуация'; typography = 'Типографика'; proofreading = 'Вычитка';
+    ocr = 'OCR и распознавание'; dashes_numbers = 'Тире и числа'; names = 'Имена и сокращения'; xml_formatting = 'Форматирование XML';
+    diagnostics = 'Диагностика'; fb2_structure = 'Структура FB2'; links_notes = 'Ссылки и сноски'; import_artifacts = 'Артефакты импорта'
+}
+foreach ($category in $categories) {
+    $translations = $catalog.strings."fbe.search_preset.category.$category".translations
+    if ($translations.'ru-RU' -ne $expectedRussianCategories[$category]) { throw "Russian category label is not canonical: $category" }
+    $english = [string]$translations.'en-US'
+    foreach ($language in $catalog.targetLanguages) {
+        $label = [string]$translations.$language
+        if ($label -match '^(Search template|Шаблон поиска|Шаблон пошуку|Suchvorlage|Modèle de recherche|Plantilla de búsqueda|Modello di ricerca|Szablon wyszukiwania|Modelo de pesquisa|Zoeksjabloon|Vyhledávací šablona|Шаблон за търсене)') { throw "Category label still has a template prefix: $language/$category" }
+        if ($language -ne 'en-US' -and $label -eq $english) { throw "Category label was not translated: $language/$category" }
+    }
+}Write-Host "Search preset localization contract passed ($($ids.Count) built-ins, $($keys.Count) strings)."
