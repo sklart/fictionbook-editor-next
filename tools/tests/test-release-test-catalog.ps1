@@ -1,4 +1,4 @@
-<# Ensures the machine-readable release catalog is complete and listable. #>
+﻿<# Ensures the machine-readable release catalog is complete and listable. #>
 [CmdletBinding()]
 param()
 
@@ -57,11 +57,11 @@ $importAbi = $catalog.tests | Where-Object id -eq 'release.import-epub-batch-dll
 if ($importAbi.invocations.command -notmatch '-DllPath' -or $importAbi.invocations.command -notmatch '-BatchPath' -or $importAbi.invocations.command -notmatch '-SmokeEpubPath') {
     throw 'Catalog loses continued arguments of the ImportEPUB ABI scenario.'
 }
-$pcre2 = $catalog.tests | Where-Object id -eq 'release.pcre2'
-if ($pcre2.invocations.command -notmatch '@pcre2TestArguments') {
-    throw 'Catalog loses the declared pcre2 splatting invocation.'
+$pcre2Tests = @($catalog.tests | Where-Object { $_.id -in @('release.pcre2-wrapper', 'release.pcre2-replace', 'release.pcre2-cache') })
+if ($pcre2Tests.Count -ne 3 -or @($pcre2Tests | Where-Object { $_.invocations.command -notmatch '@pcre2TestArguments' }).Count -ne 0) {
+    throw 'Catalog loses a declared pcre2 splatting invocation.'
 }
-if ($null -ne $pcre2.fixtures -or $pcre2.timeoutSeconds -ne 'declared-by-test') {
+if (@($pcre2Tests | Where-Object { $null -ne $_.fixtures -or $_.timeoutSeconds -ne 'declared-by-test' }).Count -ne 0) {
     throw 'Catalog must represent legacy unknown metadata explicitly, not as empty metadata.'
 }
 Write-Host "Release test catalog passed: $($catalog.tests.Count) scenarios."
