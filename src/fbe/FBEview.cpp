@@ -3023,9 +3023,13 @@ bool CFBEView::Init()
   if (FAILED(hr) || !document) return false;
   m_hdoc = document.p;
 	// A full hosted-document reload replaces every source coordinate even when
-	// MSHTML happens to retain its internal version number.
-	AdvanceSearchDocumentGeneration();
-	ResetSearchScope();
+	// MSHTML happens to retain its internal version number. A newly created view
+	// has no DOM-scoped search state and its results pane is not ready yet.
+	if (m_initialized)
+	{
+		AdvanceSearchDocumentGeneration(false);
+		ResetSearchScope();
+	}
 
   bool autoUrlDetectDisabled = false;
   try
