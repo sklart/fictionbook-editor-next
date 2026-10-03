@@ -2,6 +2,7 @@
 #include "search\\ui\\ComboBoxEdit.h"
 #include "search\\ui\\RegexQuickReferencePopup.h"
 #include "ThemeManager.h"
+#include "UiMetrics.h"
 
 CAppModule _Module;
 
@@ -120,6 +121,26 @@ int FailCheckpoint(int checkpoint, const char* message)
     return checkpoint;
 }
 
+bool GetItemCenter(HWND list, int row, POINT& center, RECT& item)
+{
+    item = {};
+    if (::SendMessage(list, LB_GETITEMRECT, row, reinterpret_cast<LPARAM>(&item)) == LB_ERR)
+        return false;
+    center.x = (item.left + item.right) / 2;
+    center.y = (item.top + item.bottom) / 2;
+    return true;
+}
+
+int FailHoverCheckpoint(HWND list, int expectedRow, const POINT& point, const RECT& item)
+{
+    const LRESULT itemFromPoint = ::SendMessage(list, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y));
+    fprintf(stderr, "FAIL checkpoint 16: hover did not select an entry\n");
+    fprintf(stderr, "  dpi=%u curSel=%ld itemFromPoint=%ld row=%d outside=%d expectedRow=%d rect=(%ld,%ld)-(%ld,%ld) point=(%ld,%ld)\n",
+        UiMetrics::DpiForWindow(list), static_cast<long>(::SendMessage(list, LB_GETCURSEL, 0, 0)),
+        static_cast<long>(itemFromPoint), LOWORD(itemFromPoint), HIWORD(itemFromPoint), expectedRow,
+        item.left, item.top, item.right, item.bottom, point.x, point.y);
+    return 16;
+}
 int FailFocusCheckpoint(int checkpoint, const char* message, HWND expected, HWND popup, HWND left, HWND right, HWND owner)
 {
     const HWND focus = ::GetFocus();
@@ -159,13 +180,22 @@ int TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     const HWND right = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_RIGHT);
     // Verify the focus selected by RegexQuickReferencePopup itself before any interaction.
     if (::GetFocus() != left) return FailFocusCheckpoint(15, "popup did not activate left list before keyboard navigation", left, popupWindow, left, right, owner);
-    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(8, 22));
+    const int headerRow = 0;
+    const int entryRow = 1;
+    POINT headerCenter = {};
+    POINT entryCenter = {};
+    RECT headerRect = {};
+    RECT entryRect = {};
+    if (!GetItemCenter(left, headerRow, headerCenter, headerRect) || !GetItemCenter(left, entryRow, entryCenter, entryRect))
+        return FailCheckpoint(16, "could not get list item rectangles");
+    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(entryCenter.x, entryCenter.y));
     DispatchUntilIdle(messageLoop);
-    if (::SendMessage(left, LB_GETCURSEL, 0, 0) <= 0 || ::SendMessage(right, LB_GETCURSEL, 0, 0) != LB_ERR || inserts != 1) return FailCheckpoint(16, "hover did not select an entry");
-    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(8, 5));
+    if (::SendMessage(left, LB_GETCURSEL, 0, 0) != entryRow || ::SendMessage(right, LB_GETCURSEL, 0, 0) != LB_ERR || inserts != 1)
+        return FailHoverCheckpoint(left, entryRow, entryCenter, entryRect);
+    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(headerCenter.x, headerCenter.y));
     DispatchUntilIdle(messageLoop);
     if (!::IsWindow(popupWindow) || inserts != 1) return FailCheckpoint(17, "category/header click inserted or closed popup");
-    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(8, 22));
+    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(entryCenter.x, entryCenter.y));
     DispatchUntilIdle(messageLoop);
     ::PostMessage(left, WM_KEYDOWN, VK_RIGHT, 0);
     DispatchUntilIdle(messageLoop);
@@ -173,7 +203,7 @@ int TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     ::PostMessage(right, WM_KEYDOWN, VK_LEFT, 0);
     DispatchUntilIdle(messageLoop);
     if (::GetFocus() != left) return FailFocusCheckpoint(19, "VK_LEFT did not move focus to left list", left, popupWindow, left, right, owner);
-    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(8, 22));
+    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(entryCenter.x, entryCenter.y));
     DispatchUntilIdle(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 2) return FailCheckpoint(20, "selected regexp was not inserted");
 
