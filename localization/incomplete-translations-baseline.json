@@ -614,30 +614,6 @@
         "pt-PT",
         "uk-UA"
       ],
-      "fbe.tooltip.find.status": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.tooltip.find.text": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
       "fbe.tooltip.find.unicode_properties": [
         "bg-BG",
         "cs-CZ",
