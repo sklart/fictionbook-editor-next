@@ -74,7 +74,7 @@ Write-Host 'Strict first-party IDL: src\contracts\FBEContracts.vcxproj'
 & $msbuild $contractProject /t:Rebuild /m:1 /v:minimal /nologo `
     "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:PlatformToolset=$PlatformToolset" "/p:FbeLanguageStandard=$FbeLanguageStandard" `
     "/p:FbeStrictWarningsOutRoot=$strictOutRoot\" "/p:FbeStrictWarningsIntRoot=$strictIntRoot\" `
-    /p:FbeStrictWarnings=true /p:BuildProjectReferences=false
+    /p:FbeStrictWarnings=true /p:FbeStrictWarningsIsolatedOutput=true /p:BuildProjectReferences=false
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $projects = @(
@@ -98,7 +98,7 @@ foreach ($relativeProject in $projects) {
     & $msbuild $project /t:Rebuild /m:1 /v:minimal /nologo `
         "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/p:PlatformToolset=$PlatformToolset" "/p:FbeLanguageStandard=$FbeLanguageStandard" `
         "/p:FbeStrictWarningsOutRoot=$strictOutRoot\" "/p:FbeStrictWarningsIntRoot=$strictIntRoot\" `
-        /p:FbeStrictWarnings=true /p:BuildProjectReferences=false
+        /p:FbeStrictWarnings=true /p:FbeStrictWarningsIsolatedOutput=true /p:BuildProjectReferences=false
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

@@ -20,16 +20,44 @@ foreach ($required in @(
     './tools/build/build-shell-integration.ps1 -Configuration Release -Platform x64 -PlatformToolset v143',
     './tools/build/Initialize-CiUtf8.ps1',
     './tools/tests/test-first-party-msbuild-policy.ps1',
-    './tools/tests/test-plugin-localization-catalog.ps1',
+    './tools/tests/test-localization-preflight.ps1',
     './tools/tests/test-ci-build-contract.ps1 -RequireArtifacts')) {
     if (-not $workflow.Contains($required)) { throw "CI workflow is missing '$required'." }
 }
-$localizationStep = $workflow.IndexOf('- name: Validate plugin localization catalog')
+$localizationStep = $workflow.IndexOf('- name: Validate localization preflight')
 $validateFixtures = $workflow.IndexOf('- name: Initialize MSBuild policy fixtures')
 if ($localizationStep -lt 0 -or $localizationStep -gt $validateFixtures) {
-    throw 'Plugin localization catalog must run before validate initializes submodules and later checks.'
+    throw 'Localization preflight must run before validate initializes submodules and later checks.'
 }
-
+if ($workflow -match '(?s)- name: Strict first-party native warnings' -or -not $workflow.Contains('StrictFirstPartyWarnings = $true')) {
+    throw 'CI must apply strict first-party warnings during the production build without a separate rebuild.'
+}
+if (-not $workflow.Contains('SkipLocalizationPreflight = $true') -or -not $workflow.Contains('SkipEarlyRuntimeSuites = $true')) {
+    throw 'Late CI verification must skip preflight and post-build suites already completed by build.'
+}
+foreach ($suite in @('test-search-core-suite.ps1')) {
+    if ([regex]::Matches($workflow, [regex]::Escape($suite)).Count -ne 1 -or [regex]::Matches((Get-Content -Raw -LiteralPath (Join-Path $root 'tools\build\verify-release.ps1')), [regex]::Escape($suite)).Count -ne 1) {
+        throw "The '$suite' suite must be invoked once in build and once in the default local verifier."
+    }
+}
+$packageBlock = [regex]::Match($workflow, '(?s)package:.*?publish:').Value
+if ($packageBlock -match '(?m)^\s*submodules:\s*recursive\s*$' -or
+    $packageBlock -notmatch 'git submodule update --init --depth=1 third_party/scintilla third_party/pcre2 third_party/hunspell third_party/libwebp third_party/openjpeg third_party/libheif third_party/libde265 third_party/aom third_party/lunasvg third_party/uac' -or
+    $packageBlock -notmatch 'git -C third_party/lunasvg submodule update --init --depth=1 plutovg') {
+    throw 'Package must use the explicit shallow license-submodule checkout, including only the required nested PlutoVG license.'
+}
+$buildBlock = [regex]::Match($workflow, '(?s)build:.*?package:').Value
+if ($buildBlock -notmatch '(?s)- name: Ensure NSIS 3\.13\s*\n\s*if: github\.event_name == ''pull_request''' -or
+    $packageBlock -notmatch '(?s)- name: Ensure NSIS 3\.13\s*\n\s*shell: pwsh' -or
+    $packageBlock -notmatch 'Smoke packaged installer upgrade and uninstall') {
+    throw 'NSIS must run only for PR smoke in build and once for the real package setup on push/tag.'
+}
+$imageCache = [regex]::Match($workflow, '(?s)- name: Restore prepared image stack cache.*?(?=\n\s*- name:)').Value
+foreach ($requiredPath in @('build/libwebp','build/openjpeg','build/aom','build/libde265','build/libheif')) { if ($imageCache -notmatch [regex]::Escape($requiredPath)) { throw "Image cache is missing $requiredPath." } }
+foreach ($script in @('tools\build\build-libwebp.ps1','tools\build\build-openjpeg.ps1')) {
+    $scriptText = Get-Content -Raw -LiteralPath (Join-Path $root $script)
+    foreach ($required in @('Resolve-VsCmake.ps1','CmakeBuildTree.ps1','-Action Prepare','-Action Write')) { if (-not $scriptText.Contains($required)) { throw "$script must use the shared CMake resolver and fingerprint." } }
+}
 if ($workflow -notmatch '(?m)^\s*build:\s*\r?\n\s*needs:\s*validate\s*$' -or
     $workflow -notmatch '(?m)^\s*package:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, build\]\s*$' -or
     $workflow -notmatch '(?m)^\s*publish:\s*\r?\n\s*if:.*\r?\n\s*needs:\s*\[validate, package\]\s*$') {

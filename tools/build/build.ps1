@@ -28,6 +28,8 @@ param(
 
     [switch]$ReusePreparedPcre2,
 
+    [switch]$ReusePreparedImageStack,
+
     [switch]$SkipVersionSync,
 
     [string]$BatchOutputDirectory,
@@ -36,7 +38,10 @@ param(
     # Numeric VERSIONINFO остаётся основанным на src/version.h.
     [string]$ReleaseVersion,
 
-    [switch]$WarningsAsErrors
+    [switch]$WarningsAsErrors,
+
+    # Apply the established first-party /W4 /WX policy to the production build.
+    [switch]$StrictFirstPartyWarnings
 )
 
 $ErrorActionPreference = "Stop"
@@ -129,11 +134,16 @@ function Assert-PreparedDependencies {
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\include\pcre2.h"),
         (Join-Path $repoRoot "build\pcre2\install\$Configuration\lib\pcre2-16-static.lib"),
         (Join-Path $repoRoot "build\hunspell\lib\$Configuration\libhunspell.lib"),
+        (Join-Path $repoRoot "build\libwebp\install\$Configuration\include"),
         (Join-Path $repoRoot "build\libwebp\install\$Configuration\lib\libwebp.lib"),
+        (Join-Path $repoRoot "build\openjpeg\install\$Configuration\include"),
         (Join-Path $repoRoot "build\openjpeg\install\$Configuration\lib\openjp2.lib"),
         (Join-Path $repoRoot "build\libheif\install\$Configuration\include\libheif\heif.h"),
+        (Join-Path $repoRoot "build\libheif\install\$Configuration\include"),
         (Join-Path $repoRoot "build\libheif\install\$Configuration\lib\heif.lib"),
+        (Join-Path $repoRoot "build\libde265\install\$Configuration\include"),
         (Join-Path $repoRoot "build\libde265\install\$Configuration\lib\libde265.lib"),
+        (Join-Path $repoRoot "build\aom\install\$Configuration\include"),
         (Join-Path $repoRoot "build\aom\install\$Configuration\lib\aom.lib"),
         (Join-Path $repoRoot "build\libarchive\install\$Configuration\include\archive.h"),
         (Join-Path $repoRoot "build\libarchive\install\$Configuration\lib\archive.lib")
@@ -336,12 +346,30 @@ else {
 Write-Host "Подготовка generated Hunspell project/header..."
 & (Join-Path $repoRoot "tools\build\build-hunspell.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -PrepareOnly
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& (Join-Path $repoRoot "tools\build\build-libwebp.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& (Join-Path $repoRoot "tools\build\build-libheif.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($ReusePreparedImageStack) {
+    $imageInputs = @(
+        (Join-Path $repoRoot "build\libwebp\install\$Configuration\include"),
+        (Join-Path $repoRoot "build\libwebp\install\$Configuration\lib\libwebp.lib"),
+        (Join-Path $repoRoot "build\openjpeg\install\$Configuration\include"),
+        (Join-Path $repoRoot "build\openjpeg\install\$Configuration\lib\openjp2.lib"),
+        (Join-Path $repoRoot "build\aom\install\$Configuration\include"),
+        (Join-Path $repoRoot "build\aom\install\$Configuration\lib\aom.lib"),
+        (Join-Path $repoRoot "build\libde265\install\$Configuration\include"),
+        (Join-Path $repoRoot "build\libde265\install\$Configuration\lib\libde265.lib"),
+        (Join-Path $repoRoot "build\libheif\install\$Configuration\lib\heif.lib")
+    )
+    $missingImageInputs = @($imageInputs | Where-Object { -not (Test-Path -LiteralPath $_) })
+    if ($missingImageInputs.Count) { throw ("Image-stack cache was reported as reusable, but files are missing: {0}" -f ($missingImageInputs -join '; ')) }
+    Write-Host 'Используется проверенный cache image stack; CMake configure/build пропущены.'
+}
+else {
+    & (Join-Path $repoRoot "tools\build\build-libwebp.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & (Join-Path $repoRoot "tools\build\build-openjpeg.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & (Join-Path $repoRoot "tools\build\build-libheif.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 & (Join-Path $repoRoot "tools\build\build-libarchive.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -413,6 +441,9 @@ if ($cleanFirstPartyOutputs) {
 
 if ($WarningsAsErrors) {
     $properties += "/p:TreatWarningAsError=true"
+}
+if ($StrictFirstPartyWarnings) {
+    $properties += "/p:FbeStrictWarnings=true"
 }
 
 . (Join-Path $repoRoot "tools\build\build-scintilla.ps1") `

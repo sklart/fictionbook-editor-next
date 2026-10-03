@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- Project-specific leaves prevent a command-line property from leaking
-       one project's intermediates into a project reference. -->
-  <PropertyGroup>
+  <!-- Strict diagnostics do not require a second artifact tree.  Keep output
+       isolation solely for the explicit diagnostic rebuild tool. -->
+  <PropertyGroup Condition="'$(FbeStrictWarningsIsolatedOutput)' == 'true'">
     <FbeStrictWarningsOutRoot Condition="'$(FbeStrictWarningsOutRoot)' == ''">$(FbeRepoRoot)\out\strict-warnings\</FbeStrictWarningsOutRoot>
     <FbeStrictWarningsIntRoot Condition="'$(FbeStrictWarningsIntRoot)' == ''">$(FbeRepoRoot)\build\strict-warnings\</FbeStrictWarningsIntRoot>
     <OutDir>$(FbeStrictWarningsOutRoot)$(MSBuildProjectName)\$(Configuration)\</OutDir>

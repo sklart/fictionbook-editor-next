@@ -51,7 +51,22 @@ foreach ($needle in @('CompatibilityTarget', 'CommonCoreDirectory', 'deployment.
 foreach ($needle in @('CompatibilityTarget', 'Modern', 'Win7')) { Forbid $fingerprint $needle 'editor runtime fingerprint' }
 foreach ($needle in @('CompatibilityTarget')) { Forbid $release $needle 'create-release.ps1' }
 foreach ($needle in @('CompatibilityTarget', 'artifacts\\Modern', 'artifacts\\Win7')) { Forbid $artifacts $needle 'verify-artifacts.ps1' }
-Require $verify 'check-win7-imports.ps1' 'verify-release.ps1'
+$localizationPreflight = Text 'tools\tests\test-localization-preflight.ps1'
+Require $workflow 'test-localization-preflight.ps1' 'workflow localization preflight'
+Require $verify 'SkipLocalizationPreflight' 'verify-release localization preflight switch'
+Require $verify 'SkipEarlyRuntimeSuites' 'verify-release early runtime suite switch'
+Require $workflow 'SkipEarlyRuntimeSuites = $true' 'workflow duplicate suite suppression'
+foreach ($test in @('test-plugin-localization-catalog.ps1','test-fbv-localization-resources.ps1','test-fbe-property-schema-localization.ps1','test-export-html-localization-resources.ps1','test-export-docx-localization-resources.ps1','test-export-epub-localization-resources.ps1','test-import-epub-localization-resources.ps1','test-localization-export.ps1','test-localization-runtime-contract.ps1','test-runtime-lang-export.ps1','test-fbe-runtime-lang-overlay.ps1','test-fbv-runtime-lang-overlay.ps1','test-export-html-runtime-lang-overlay.ps1','test-export-docx-runtime-lang-overlay.ps1','test-export-epub-runtime-lang-overlay.ps1','test-import-epub-runtime-lang-overlay.ps1','test-search-preset-localization.ps1','test-regex-help-runtime-localization.ps1','test-fbe-binary-editor-localization.ps1','test-product-hardcoded-cyrillic-audit.ps1')) {
+    Require $localizationPreflight $test 'localization preflight static suite'
+    if ($verify.Contains($test)) { throw "$test must not be rerun by verify-release after preflight." }
+}
+Require $verify 'test-runtime-lang-output-layout.ps1' 'post-build localization output-layout test'
+if ((Get-OccurrenceCount $workflow 'test-search-core-suite.ps1') -ne 1 -or (Get-OccurrenceCount $verify 'test-search-core-suite.ps1') -ne 1) {
+    throw 'Search Core must be one explicit build suite and one default local verifier suite.'
+}
+foreach ($test in @('test-search-session.ps1','test-literal-search-mshtml-differential.ps1','test-search-document-adapter-mshtml.ps1','test-search-preset-store.ps1','test-pcre2-match-loop.ps1')) {
+    if ($verify.Contains($test)) { throw "$test must be delegated to test-search-core-suite.ps1." }
+}Require $verify 'check-win7-imports.ps1' 'verify-release.ps1'
 Require $verify 'out\editor-runtime' 'verify-release.ps1'
 foreach ($test in @('test-release-test-catalog.ps1', 'test-fb2-common-boundary.ps1', 'test-first-party-msbuild-policy.ps1', 'test-fbe-contract-generation.ps1', 'test-fbe-plugin-host-boundary.ps1', 'test-fbe-source-helpers-boundary.ps1', 'test-fbe-search-boundary.ps1', 'test-fbe-settings-background-boundary.ps1', 'test-package-layout.ps1', 'test-release-artifact-cleanup.ps1', 'test-package-layout-copy.ps1', 'test-package-layout-integration-stage.ps1', 'test-package-layout-core-stage.ps1', 'test-editor-runtime-output-isolation.ps1', 'test-fbe-table-visual-mode.ps1', 'test-fbe-table-structure-boundary.ps1', 'test-table-toolbar-contract.ps1', 'test-fbe-context-attribute-bars.ps1', 'test-fbe-context-attribute-bars-runtime.ps1', 'test-fbe-script-document-path-api.ps1', 'test-fbe-script-document-path-runtime.ps1', 'test-fbe-backup-settings.ps1', 'test-fbe-auto-url-detect.ps1', 'test-xml-source-themes.ps1', 'test-xml-source-current-line.ps1', 'test-fbe-filename-state.ps1', 'test-fbe-source-xml-declaration.ps1', 'test-source-idle-toolbar-localization-contract.ps1', 'test-external-file-check-throttle-contract.ps1', 'test-clipboard-listener-contract.ps1', 'test-ui-dirty-state-contract.ps1', 'test-selection-context-cache-contract.ps1', 'test-mainframe-idle-profiler-contract.ps1', 'test-fbe-spellcheck-scroll-contract.ps1', 'test-description-idle-contract.ps1')) { Require $verify $test 'verify-release FAST contour' }
 foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-table-production-roundtrip.ps1', 'test-fbe-table-structural-performance.ps1', 'test-fbe-table-failure-safety.ps1', 'test-fbe-spellcheck-local-edit-performance.ps1', 'test-fbe-spellcheck-scroll-runtime.ps1', 'test-fbe-idle-performance-runtime.ps1', 'test-fbe-idle-interaction-performance-runtime.ps1')) { Require $verify $test 'verify-release FULL contour' }

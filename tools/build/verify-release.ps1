@@ -8,6 +8,12 @@ param(
 
     [switch]$SkipUpdateManifest,
 
+    # CI already ran this source-only preflight in validate.
+    [switch]$SkipLocalizationPreflight,
+
+    # CI already ran post-build suites in the build job.
+    [switch]$SkipEarlyRuntimeSuites,
+
     # Table regressions are intentionally opt-in while portable finalization is
     # in progress. They remain available for their dedicated test contour.
     [switch]$RunTableTests,
@@ -20,6 +26,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+if (-not $SkipLocalizationPreflight) {
+    & (Join-Path $repoRoot 'tools\tests\test-localization-preflight.ps1')
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 . (Join-Path $PSScriptRoot 'editor-runtime-helpers.ps1')
 $trackedEditorRuntimeSnapshot = Get-TrackedEditorRuntimeDllSnapshot -RepositoryRoot $repoRoot
 $outputDir = Join-Path $repoRoot "out\$Configuration"
@@ -130,7 +140,9 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-schema-metadata-culture.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fb2-common-boundary.ps1")
-& (Join-Path $repoRoot "tools\tests\test-first-party-msbuild-policy.ps1")
+if (-not $SkipEarlyRuntimeSuites) {
+    & (Join-Path $repoRoot "tools\tests\test-first-party-msbuild-policy.ps1")
+}
 & (Join-Path $repoRoot "tools\tests\test-release-optimization-profile.ps1") -RequireEffectiveFlags
 & (Join-Path $repoRoot "tools\tests\test-fbe-contract-generation.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-plugin-x64-rejection.ps1") -Configuration $Configuration
@@ -138,9 +150,6 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fbe-source-helpers-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-search-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-find-results-pane-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-session.ps1")
-& (Join-Path $repoRoot "tools\tests\test-literal-search-mshtml-differential.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-document-adapter-mshtml.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-background-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-package-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-artifact-cleanup.ps1")
@@ -178,6 +187,7 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-fbe-editor-view-lifecycle-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-context-attribute-bars-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cli-argument-parsing.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-customizable-toolbar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-scripts-toolbar-customize-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-script-toolbar-lifecycle-contract.ps1")
@@ -187,6 +197,8 @@ $requiredSymbols = @(
 & (Join-Path $repoRoot "tools\tests\test-script-toolbar-lifecycle-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-navigation-scripts-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-startup-validation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+}
+
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structure-boundary.ps1")
 # Fast table smoke: real structural edit, live DOM Undo/Redo, Save -> reopen and XSD.
@@ -271,7 +283,6 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 & (Join-Path $repoRoot "tools\tests\test-fbe-reference-navigation-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-reference-navigation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-mouse-selection-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-binary-editor-localization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-image-codec-build-contract.ps1")
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
@@ -296,30 +307,10 @@ $pcre2TestArguments = @{
 if ($PlatformToolset) {
     $pcre2TestArguments.PlatformToolset = $PlatformToolset
 }
-& (Join-Path $repoRoot "tools\tests\test-search-preset-store.ps1") -PlatformToolset $PlatformToolset
-& (Join-Path $repoRoot "tools\tests\test-search-preset-catalog.ps1") @pcre2TestArguments
-& (Join-Path $repoRoot "tools\tests\test-search-preset-localization.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-preset-design-fixtures.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset
-& (Join-Path $repoRoot "tools\tests\test-search-preset-source-scintilla.ps1") -PlatformToolset $PlatformToolset
-& (Join-Path $repoRoot "tools\tests\test-search-preset-preview.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-preset-live-refresh.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-templates-panel-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-templates-pin-rendering.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-templates-open-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-& (Join-Path $repoRoot "tools\tests\test-regex-help-formatting.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-help-runtime-localization.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-help-markdown.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-help-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-& (Join-Path $repoRoot "tools\tests\test-regex-help-escape.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-runtime.ps1") -PlatformToolset $PlatformToolset
-& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-popup.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-catalog.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-insertion.ps1")
-& (Join-Path $repoRoot "tools\tests\test-regex-quick-reference-localization.ps1")
-& (Join-Path $repoRoot "tools\tests\test-search-preset-nbsp.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-find-replace-selection-seed.ps1")
-& (Join-Path $repoRoot "tools\tests\test-pcre2.ps1") @pcre2TestArguments
-& (Join-Path $repoRoot "tools\tests\test-pcre2-match-loop.ps1") @pcre2TestArguments
+if (-not $SkipEarlyRuntimeSuites) {
+    & (Join-Path $repoRoot 'tools\tests\test-search-core-suite.ps1') -Configuration $Configuration -PlatformToolset $PlatformToolset -FbeExe (Join-Path $outputDir 'FBE.exe')
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 & (Join-Path $repoRoot "tools\tests\test-pcre2-wrapper.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-replace.ps1") @pcre2TestArguments
 & (Join-Path $repoRoot "tools\tests\test-pcre2-cache.ps1") @pcre2TestArguments
@@ -347,12 +338,8 @@ if ($PlatformToolset) {
 # видимым, но не должен блокировать выпуск до фиксации отдельного эталона.
 # Строгий режим -FailOnFindings используется в узких regression-fixture.
 & (Join-Path $repoRoot "tools\localization\analyze-product-hardcoded-cyrillic.ps1")
-& (Join-Path $repoRoot "tools\tests\test-product-hardcoded-cyrillic-audit.ps1")
 & (Join-Path $repoRoot "tools\tests\test-release-notes-format.ps1")
-& (Join-Path $repoRoot "tools\tests\test-plugin-localization-catalog.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbv-localization-resources.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-property-schema-localization.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-html-localization-resources.ps1")
+if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-standalone.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-correctness.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-settings-xsl.ps1")
@@ -364,31 +351,28 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-export-html-split.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-split-e2e.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-export-html-modes.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-docx-localization-resources.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-epub-localization-resources.ps1")
-& (Join-Path $repoRoot "tools\tests\test-import-epub-localization-resources.ps1")
-& (Join-Path $repoRoot "tools\tests\test-localization-export.ps1")
+}
+
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-mnemonics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-find-replace-ui-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-dialog-coverage.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-dialog-layout-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-no-fbe-locale-resource-dll.ps1")
-& (Join-Path $repoRoot "tools\tests\test-localization-runtime-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-document-tree-tooltips-localization.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-next-isolation.ps1")
 & (Join-Path $repoRoot "tools\tests\test-portable-deployment-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-portable-scripts-infrastructure.ps1")
+if (-not $SkipEarlyRuntimeSuites) {
+    & (Join-Path $repoRoot "tools\tests\test-portable-scripts-infrastructure.ps1")
+}
 & (Join-Path $repoRoot "tools\tests\test-runtime-paths-cli.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-copies-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-diagnostic-cleanup-isolation.ps1") -FbeExecutable (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-portable-atomic-persistence.ps1")
 & (Join-Path $repoRoot "tools\tests\test-mode-aware-updater.ps1")
 & (Join-Path $repoRoot "tools\tests\test-mode-aware-updater-behavior.ps1")
-& (Join-Path $repoRoot "tools\tests\test-runtime-lang-export.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-lang-output-layout.ps1") -Configuration $Configuration -OutputDirectory $outputDir
-& (Join-Path $repoRoot "tools\tests\test-fbe-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-status-bar-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-status-bar-unicode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-status-bar-behavior.ps1")
@@ -396,11 +380,6 @@ if ($PlatformToolset) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-selection-transfer-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-body-source-transition-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-& (Join-Path $repoRoot "tools\tests\test-fbv-runtime-lang-overlay.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-html-runtime-lang-overlay.ps1")
-& (Join-Path $repoRoot "tools\tests\test-import-epub-runtime-lang-overlay.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-epub-runtime-lang-overlay.ps1")
-& (Join-Path $repoRoot "tools\tests\test-export-docx-runtime-lang-overlay.ps1")
 & (Join-Path $repoRoot "tools\tests\test-language-packs-inventory.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-language-pack-plan.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-installer-language-fallbacks.ps1")

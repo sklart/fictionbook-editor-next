@@ -21,11 +21,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
-      - name: Validate plugin localization catalog
+      - name: Validate localization preflight
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/tests/test-plugin-localization-catalog.ps1
+          ./tools/tests/test-localization-preflight.ps1
       # validate reads the Lexilla and Hunspell projects to enforce the
       # boundary between first-party and vendored MSBuild policy. Fetching
       # every submodule here is unnecessary and makes this fast job depend on
@@ -40,6 +40,9 @@ jobs:
           ./tools/version/sync-version.ps1
           git diff --exit-code -- packaging/nsis/Installer/version.nsh
           ./tools/tests/test-release-pipeline-deduplication.ps1
+          ./tools/tests/test-localization-preflight-regression.ps1
+          ./tools/tests/test-ci-suite-deduplication.ps1
+          ./tools/tests/test-image-stack-cache-contract.ps1
           ./tools/tests/test-update-release-pipeline.ps1
           ./tools/tests/test-update-manifest.ps1
           ./tools/tests/test-legacy308-migration-policy.ps1
@@ -57,13 +60,14 @@ jobs:
 
           ./tools/tests/test-script-toolbar-lifecycle-contract.ps1
           ./tools/tests/test-shift-toolbar-quick-customization-contract.ps1
+          ./tools/tests/test-customizable-toolbar-contract.ps1
+          ./tools/tests/test-scripts-toolbar-customize-behavior.ps1
           ./tools/tests/test-fbe-script-folder-icons.ps1
           ./tools/tests/test-fbe-settings-tooltips.ps1
           ./tools/tests/test-fbe-body-interface-theme.ps1
           ./tools/tests/test-ci-build-contract.ps1
           ./tools/tests/test-modern-file-dialog-contract.ps1
           ./tools/tests/test-export-html-options-dialog.ps1
-          ./tools/tests/test-export-html-settings-xsl.ps1
           ./tools/tests/test-export-docx-modern-file-dialog.ps1
           ./tools/tests/test-export-epub-modern-file-dialog.ps1
           ./tools/tests/test-import-epub-modern-file-dialog-owner.ps1
@@ -95,14 +99,17 @@ jobs:
         with:
           path: build/hunspell
           key: ${{ runner.os }}-hunspell-release-win32-v143-mt-${{ hashFiles('third_party/hunspell/**', 'tools/build/build-hunspell.ps1') }}
-      - name: Restore image decoder stack cache
+      - name: Restore prepared image stack cache
         uses: actions/cache@v6
+        id: image-stack-cache
         with:
           path: |
+            build/libwebp
+            build/openjpeg
             build/aom
             build/libde265
             build/libheif
-          key: ${{ runner.os }}-image-decoders-release-win32-v143-vc144-${{ hashFiles('third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/CmakeBuildTree.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
+          key: ${{ runner.os }}-image-stack-release-win32-v143-vc144-${{ hashFiles('third_party/libwebp/**', 'third_party/openjpeg/**', 'third_party/aom/**', 'third_party/libde265/**', 'third_party/libheif/**', 'tools/build/Resolve-VsCmake.ps1', 'tools/build/CmakeBuildTree.ps1', 'tools/build/build-libwebp.ps1', 'tools/build/build-openjpeg.ps1', 'tools/build/build-aom.ps1', 'tools/build/build-libde265.ps1', 'tools/build/build-libheif.ps1') }}
       - name: Restore universal editor runtime cache
         uses: actions/cache@v6
         with:
@@ -112,22 +119,26 @@ jobs:
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches' }
+          $arguments = @{ Configuration = 'Release'; Platform = 'Win32'; PlatformToolset = 'v143'; SkipUpx = $true; WarningsAsErrors = $true; StrictFirstPartyWarnings = $true; ReuseEditorRuntime = $true; SkipVersionSync = $true; BatchOutputDirectory = 'out/target-batches' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.ReleaseVersion = $env:GITHUB_REF_NAME.Substring(1) }
           if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
+          if ('${{ steps.image-stack-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedImageStack = $true }
           ./tools/build/build.ps1 @arguments
       - name: Run ExportHTML writer ownership harness
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-export-html-standalone.ps1
+          ./tools/tests/test-export-html-correctness.ps1
+          ./tools/tests/test-export-html-settings-xsl.ps1
+          ./tools/tests/test-export-html-resource-audit.ps1
+          ./tools/tests/test-export-html-settings-store.ps1
+          ./tools/tests/test-export-html-template-selection.ps1
+          ./tools/tests/test-export-html-template-resolver-native.ps1
           ./tools/tests/test-export-html-writer.ps1
           ./tools/tests/test-export-html-split.ps1
           ./tools/tests/test-export-html-split-e2e.ps1 -FbeExe out/Release/FBE.exe
-      - name: Strict first-party native warnings
-        shell: pwsh
-        run: |
-          ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/build/build-first-party-strict.ps1 -Configuration Release -Platform Win32 -PlatformToolset v143
+          ./tools/tests/test-export-html-modes.ps1
       - name: Run installed script toolbar lifecycle regression in isolated profile
         shell: pwsh
         env:
@@ -140,6 +151,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fbe-navigation-scripts-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fbe-script-startup-validation-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Run keyboard layout C++ regression
         shell: pwsh
         run: |
@@ -150,33 +162,7 @@ jobs:
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/tests/test-search-session.ps1
-          ./tools/tests/test-literal-search-mshtml-differential.ps1
-          ./tools/tests/test-search-document-adapter-mshtml.ps1
-          ./tools/tests/test-search-preset-store.ps1 -PlatformToolset v143
-          ./tools/tests/test-search-preset-catalog.ps1 -Configuration Release -UsePreparedPcre2 -PlatformToolset v143
-          ./tools/tests/test-search-preset-localization.ps1
-          ./tools/tests/test-search-preset-design-fixtures.ps1 -Configuration Release -PlatformToolset v143
-          ./tools/tests/test-search-preset-source-scintilla.ps1 -PlatformToolset v143
-          ./tools/tests/test-search-preset-preview.ps1
-          ./tools/tests/test-search-preset-live-refresh.ps1
-          ./tools/tests/test-search-templates-panel-contract.ps1
-          ./tools/tests/test-search-templates-pin-rendering.ps1
-          ./tools/tests/test-search-templates-open-runtime.ps1 -FbeExe ./out/Release/FBE.exe
-          ./tools/tests/test-regex-help-formatting.ps1
-          ./tools/tests/test-regex-help-runtime-localization.ps1
-          ./tools/tests/test-regex-help-markdown.ps1
-          ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
-          ./tools/tests/test-regex-help-escape.ps1
-          ./tools/tests/test-regex-quick-reference-runtime.ps1 -PlatformToolset v143
-          ./tools/tests/test-regex-quick-reference-popup.ps1
-          ./tools/tests/test-regex-quick-reference-catalog.ps1
-          ./tools/tests/test-regex-quick-reference-insertion.ps1
-          ./tools/tests/test-regex-quick-reference-localization.ps1
-          ./tools/tests/test-search-preset-nbsp.ps1
-          ./tools/tests/test-fbe-find-replace-selection-seed.ps1
-          ./tools/tests/test-fbe-find-replace-ui-contract.ps1
-          ./tools/tests/test-pcre2-match-loop.ps1 -Configuration Release -UsePreparedPcre2
+          ./tools/tests/test-search-core-suite.ps1 -Configuration Release -PlatformToolset v143 -FbeExe ./out/Release/FBE.exe
       - name: Run filesystem backup regression
         shell: pwsh
         run: |
@@ -208,6 +194,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -PlatformToolset v143
       - name: Ensure NSIS 3.13
+        if: github.event_name == 'pull_request'
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
@@ -219,11 +206,12 @@ jobs:
           FBE_RUNTIME_FAILURE_ARTIFACTS: out/tests/runtime-failure
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; BatchOutputDirectory = 'out/target-batches' }
+          $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; SkipLocalizationPreflight = $true; SkipEarlyRuntimeSuites = $true; BatchOutputDirectory = 'out/target-batches' }
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
           ./tools/build/verify-release.ps1 @arguments
       - name: Smoke bundled plugin upgrade and uninstall
-        shell: pwsh
+        if: github.event_name == 'pull_request'
+        shell: pw
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           $testRoot = 'out/tests/bundled-plugin-installer-smoke'
@@ -289,8 +277,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
           fetch-depth: 1
+      - name: Initialize package license submodules
+        shell: pwsh
+        run: |
+          # Packaging stages only license notices from these sources. Keep this
+          # checkout shallow and explicit; do not recursively fetch build-only
+          # third-party trees.
+          git submodule update --init --depth=1 third_party/scintilla third_party/pcre2 third_party/hunspell third_party/libwebp third_party/openjpeg third_party/libheif third_party/libde265 third_party/aom third_party/lunasvg third_party/uac
+          git -C third_party/lunasvg submodule update --init --depth=1 plutovg
       - name: Download compiled inputs
         uses: actions/download-artifact@v8
         with:
@@ -313,6 +308,13 @@ jobs:
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true }
           }
           ./tools/build/create-release.ps1 @arguments
+      - name: Smoke packaged installer upgrade and uninstall
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          $setup = Get-ChildItem -LiteralPath out/artifacts -Filter '*-setup.exe' -File | Where-Object { $_.Name -notmatch '-win7-' } | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $setup) { throw 'The package job did not produce the canonical setup artifact.' }
+          ./tools/tests/test-bundled-plugin-upgrade-uninstall.ps1 -InstallerPath $setup -PluginSourceDirectory out/package/InstallerInput/Plugins -TestDirectory out/tests/packaged-plugin-installer-smoke
       - name: Verify release archives
         shell: pwsh
         run: |
