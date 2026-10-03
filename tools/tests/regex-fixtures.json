@@ -605,6 +605,46 @@
     ],
     "replace": [
       {
+        "id": "pcre_replace_zero_length_dollar_zero",
+        "subject": "a",
+        "pattern": "(?=a)",
+        "replacement": "$0X",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "Xa"
+      },
+      {
+        "id": "pcre_replace_zero_length_backslash_zero",
+        "subject": "a",
+        "pattern": "(?=a)",
+        "replacement": "\\0X",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": "Xa"
+      },
+      {
+        "id": "pcre_replace_optional_empty_capture",
+        "subject": "b",
+        "pattern": "(a)?b",
+        "replacement": "$1",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": ""
+      },
+      {
+        "id": "pcre_replace_missing_last_capture",
+        "subject": "b",
+        "pattern": "b",
+        "replacement": "$+",
+        "ignoreCase": false,
+        "global": false,
+        "multiline": false,
+        "expectedText": ""
+      },
+      {
         "id": "pcre_replace_first_capture_group",
         "subject": "(22)",
         "pattern": "\\((\\d+)\\)",

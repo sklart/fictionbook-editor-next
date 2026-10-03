@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "search/SearchPresetCatalog.h"
+#include "search/ReplacementParser.h"
+#include "search/RegexBackend.h"
 #include "RuntimeLocalization.h"
 #include <map>
 #include <iostream>
@@ -33,86 +35,10 @@ struct FbeMatch
     std::vector<CString> submatches;
 };
 
-// Test mirror of production replacement grammar; changes in FBEview.cpp:GetReplStr must require synchronized fixture update.
-// PCRE2 supplies only matching; replacement expansion deliberately follows FBE.
-struct ReplacementRun
-{
-    int flags;
-    int start;
-    int length;
-};
-
-CString GetReplStr(const CString& rstr, const FbeMatch& match)
-{
-    enum { Strong = 1, Emphasis = 2, Upper = 4, Lower = 8, Title = 16 };
-    CString result;
-    CString value;
-    bool emptyParameter = false;
-    int flags = 0;
-    ReplacementRun current = {};
-    std::vector<ReplacementRun> runs;
-    for (int index = 0; index < rstr.GetLength(); ++index)
-    {
-        if ((rstr[index] == L'$' || rstr[index] == L'\\') && index < rstr.GetLength() - 1)
-        {
-            const wchar_t marker = rstr[++index];
-            if (marker == L'0') value = match.value;
-            else if (marker == L'+') value = match.submatches.empty() ? CString() : match.submatches.back();
-            else if (marker >= L'1' && marker <= L'9')
-            {
-                const size_t group = static_cast<size_t>(marker - L'1');
-                value = group < match.submatches.size() ? match.submatches[group] : CString();
-                emptyParameter = value.IsEmpty();
-            }
-            else if (marker == L'T') { flags |= Title; continue; }
-            else if (marker == L'U') { flags |= Upper; continue; }
-            else if (marker == L'L') { flags |= Lower; continue; }
-            else if (marker == L'S') { flags |= Strong; continue; }
-            else if (marker == L'E') { flags |= Emphasis; continue; }
-            else if (marker == L'Q') { flags = 0; continue; }
-            else continue;
-        }
-        if (current.flags != flags && current.flags && current.start < result.GetLength())
-        {
-            current.length = result.GetLength() - current.start;
-            runs.push_back(current);
-            current.flags = 0;
-        }
-        if (flags)
-        {
-            current.flags = flags;
-            current.start = result.GetLength();
-        }
-        if (!emptyParameter)
-        {
-            if (!value.IsEmpty()) { result += value; value.Empty(); }
-            else result += rstr[index];
-        }
-        else emptyParameter = false;
-    }
-    if (current.flags && current.start < result.GetLength())
-    {
-        current.length = result.GetLength() - current.start;
-        runs.push_back(current);
-    }
-    TCHAR* characters = result.GetBuffer(result.GetLength());
-    for (std::vector<ReplacementRun>::const_iterator run = runs.begin(); run != runs.end(); ++run)
-    {
-        if (run->flags & Upper) CharUpperBuff(characters + run->start, run->length);
-        else if (run->flags & Lower) CharLowerBuff(characters + run->start, run->length);
-        else if ((run->flags & Title) && run->length > 0)
-        {
-            CharUpperBuff(characters + run->start, 1);
-            CharLowerBuff(characters + run->start + 1, run->length - 1);
-        }
-    }
-    result.ReleaseBuffer(result.GetLength());
-    return result;
-}
 bool Match(const SearchPreset& preset, LPCWSTR subject, CString* replacementResult = NULL) {
  int error=0; PCRE2_SIZE offset=0;
  CString pattern(preset.findText);
- if (preset.wholeWord) pattern = L"(?<![\\p{L}\\p{N}_])(?:" + pattern + L")(?![\\p{L}\\p{N}_])";
+ if (preset.wholeWord) pattern = AU::RegexBackend::BuildWholeWordRegexPattern(pattern);
  uint32_t flags=PCRE2_UTF|PCRE2_MULTILINE|(preset.matchCase?0:PCRE2_CASELESS);
  if (preset.unicodeProperties) flags|=PCRE2_UCP;
  pcre2_code* code=pcre2_compile((PCRE2_SPTR)(LPCWSTR)pattern,pattern.GetLength(),flags,&error,&offset,NULL); if(!code)return false;
@@ -144,7 +70,11 @@ bool Match(const SearchPreset& preset, LPCWSTR subject, CString* replacementResu
      for (std::vector<FbeMatch>::reverse_iterator match = matches.rbegin(); match != matches.rend(); ++match)
      {
          output.Delete(static_cast<int>(match->start), static_cast<int>(match->length));
-         output.Insert(static_cast<int>(match->start), GetReplStr(preset.replacementText, *match));
+         AU::Search::ReplacementMatch replacementMatch;
+         replacementMatch.Value = match->value;
+         replacementMatch.SubMatches = match->submatches;
+         std::vector<AU::Search::ReplacementFormattingRun> formatting;
+         output.Insert(static_cast<int>(match->start), AU::Search::ExpandRegexReplacement(preset.replacementText, replacementMatch, formatting));
      }
      *replacementResult = output;
  }

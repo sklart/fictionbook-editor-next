@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <psapi.h>
 #include <cstdlib>
 #include <cstring>
@@ -246,6 +246,59 @@ static bool VerifyMinimalReplaceTarget(HWND editor)
 	return observedApiDifference;
 }
 
+static bool VerifyRegexStatus(HWND editor)
+{
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("abc"));
+	SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
+	SendMessage(editor, SCI_SETTARGETEND, 3, 0);
+	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+	SendMessage(editor, SCI_SETSTATUS, SC_STATUS_OK, 0);
+	if (SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("(")) != -1 ||
+		SendMessage(editor, SCI_GETSTATUS, 0, 0) != SC_STATUS_WARN_REGEX)
+		return false;
+	SendMessage(editor, SCI_SETSTATUS, SC_STATUS_OK, 0);
+	if (SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("a")) != 0 ||
+		SendMessage(editor, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
+		return false;
+	return true;
+}
+static bool VerifyUtf8ReplaceAllOffsets(HWND editor)
+{
+	static const char* const symbols[] = { "\xC2\xA0", "\xE2\x96\xAB", "\xE2\x96\xA1", "\xE2\x97\xA6" };
+	for (size_t index = 0; index < _countof(symbols); ++index)
+	{
+		const std::string pattern = std::string("a") + symbols[index] + "b";
+		const std::string replacement = std::string("X") + symbols[index] + "YZ";
+		const std::string subject = pattern + " " + pattern;
+		const std::string expected = replacement + " " + replacement;
+		SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(subject.c_str()));
+		int end = static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+		int next = 0;
+		int replacements = 0;
+		SendMessage(editor, SCI_SETTARGETSTART, next, 0);
+		SendMessage(editor, SCI_SETTARGETEND, end, 0);
+		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_MATCHCASE, 0);
+		LRESULT position = SendMessage(editor, SCI_SEARCHINTARGET, pattern.size(), reinterpret_cast<LPARAM>(pattern.c_str()));
+		while (position != -1)
+		{
+			const int matchLength = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0) - SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+			const int replacementLength = static_cast<int>(SendMessage(editor, SCI_REPLACETARGET, replacement.size(), reinterpret_cast<LPARAM>(replacement.c_str())));
+			end += replacementLength - matchLength;
+			next = static_cast<int>(position) + replacementLength;
+			++replacements;
+			if (next >= end) break;
+			SendMessage(editor, SCI_SETTARGETSTART, next, 0);
+			SendMessage(editor, SCI_SETTARGETEND, end, 0);
+			SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_MATCHCASE, 0);
+			position = SendMessage(editor, SCI_SEARCHINTARGET, pattern.size(), reinterpret_cast<LPARAM>(pattern.c_str()));
+		}
+		std::string text(expected.size() + 8, '\0');
+		SendMessage(editor, SCI_GETTEXT, text.size(), reinterpret_cast<LPARAM>(&text[0]));
+		text.resize(std::strlen(text.c_str()));
+		if (replacements != 2 || text != expected) return false;
+	}
+	return true;
+}
 static bool VerifyModernSourceFeatures(HWND editor)
 {
 	SendMessage(editor, SCI_SETCOMMANDEVENTS, FALSE, 0);
@@ -694,6 +747,20 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 5;
+	}
+	if (!VerifyRegexStatus(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 14;
+	}
+	if (!VerifyUtf8ReplaceAllOffsets(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 15;
 	}
 	if (!VerifyMinimalReplaceTarget(editor))
 	{

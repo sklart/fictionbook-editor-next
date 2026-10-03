@@ -1,8 +1,8 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param([ValidateSet("Debug","Release")][string]$Configuration="Release",[string]$PlatformToolset="v143")
 $ErrorActionPreference="Stop";$env:PATH="C:\Program Files\Git\cmd;" + $env:PATH;$root=(Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 & (Join-Path $root "tools\build\Import-VsDevEnvironment.ps1") -Arch x86 -HostArch x64 -PlatformToolset $PlatformToolset
 $install=Join-Path $root "build\pcre2\install\$Configuration"; & (Join-Path $root "tools\build\build-pcre2.ps1") -Configuration $Configuration -PlatformToolset $PlatformToolset -Quiet;if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
 $dir=Join-Path $root "out\tests\search-preset-design-fixtures";New-Item -ItemType Directory -Force -Path $dir|Out-Null;$exe=Join-Path $dir "search-preset-design-fixtures.exe"
-& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE /utf-8 "/I$root\third_party\wtl" "/I$root\src\fbe" "/I$install\include" "/Fo$dir\\" (Join-Path $PSScriptRoot "search-preset-design-fixtures.cpp") (Join-Path $root "src\fbe\search\SearchPresetCatalog.cpp") /link /SUBSYSTEM:CONSOLE "/LIBPATH:$install\lib" pcre2-16-static.lib "/OUT:$exe"
+& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE /utf-8 "/I$root\third_party\wtl" "/I$root\src\fbe" "/I$install\include" "/Fo$dir\\" (Join-Path $PSScriptRoot "search-preset-design-fixtures.cpp") (Join-Path $root "src\fbe\search\SearchPresetCatalog.cpp") (Join-Path $root "src\fbe\search\ReplacementParser.cpp") /link /SUBSYSTEM:CONSOLE "/LIBPATH:$install\lib" pcre2-16-static.lib "/OUT:$exe"
 if($LASTEXITCODE -ne 0){exit $LASTEXITCODE};& $exe;if($LASTEXITCODE -ne 0){throw "Design preset fixtures failed with exit code $LASTEXITCODE."};Write-Host "All built-in Design presets passed positive/negative and replacement fixtures."

@@ -79,7 +79,7 @@ bool DocumentSearchCoordinator::Rebuild(
 	else
 	{
 		AU::RegexBackend::Options options;
-		options.Pattern = query.Text.c_str();
+		options.Pattern = query.WholeWord ? AU::RegexBackend::BuildWholeWordRegexPattern(query.Text.c_str()) : query.Text.c_str();
 		options.IgnoreCase = query.MatchCase ? VARIANT_FALSE : VARIANT_TRUE;
 		options.Global = VARIANT_TRUE;
 		options.Multiline = query.Multiline ? VARIANT_TRUE : VARIANT_FALSE;

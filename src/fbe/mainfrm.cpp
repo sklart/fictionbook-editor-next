@@ -4130,7 +4130,22 @@ private:
   ScopedMallocChar& operator=(const ScopedMallocChar&);
 };
 
-static bool PrepareScintillaRegexReplaceTarget(CWindow source, CString& patternText, int findFlags) {
+static bool ScintillaRegexSearchFailed(CWindow source, int position, bool useRegexp)
+{
+  return useRegexp && position == -1 && source.SendMessage(SCI_GETSTATUS) != SC_STATUS_OK;
+}
+
+static void ShowScintillaRegexError(CFBEView* view)
+{
+  const CString message = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+  if (view != NULL)
+  {
+    U::MessageBox(view->m_hWnd, message, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+  }
+}
+
+static bool PrepareScintillaRegexReplaceTarget(CWindow source, const CString& searchText, int findFlags) {
+  CString patternText(searchText);
   // ??? SCI_REPLACETARGETRE ????? ?????? ???????? ????? ?? ???????? target,
   // ????? Scintilla ????? ???????? ?????? ??????? ????? TARGETFROMSELECTION.
   if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
@@ -4145,6 +4160,7 @@ static bool PrepareScintillaRegexReplaceTarget(CWindow source, CString& patternT
   const int targetStart = source.SendMessage(SCI_GETTARGETSTART);
   const int targetEnd = source.SendMessage(SCI_GETTARGETEND);
   source.SendMessage(SCI_SETSEARCHFLAGS,BuildScintillaSearchFlags(findFlags, true),0);
+  source.SendMessage(SCI_SETSTATUS, SC_STATUS_OK);
   const int matchPos = source.SendMessage(SCI_SEARCHINTARGET,patlen,(LPARAM)pattern.get());
   const bool readyToReplace = matchPos == targetStart &&
     source.SendMessage(SCI_GETTARGETEND) == targetEnd;
@@ -4193,9 +4209,10 @@ public:
 
   virtual void DoFind() {
     if (!m_view->SciFindNext(m_source,false,false))
-	{
-		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
-	}
+    {
+      if (!m_view->LastSearchErrorIsRegexp())
+        U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
+    }
     else {
       SaveString();
       SaveHistory();
@@ -4212,13 +4229,16 @@ public:
         m_source.SendMessage(SCI_TARGETFROMSELECTION);
 
       if (readyToReplace) {
+        CString replacementText(m_view->m_fo.replacement);
+        if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
+          replacementText.Replace(L"\u00A0", _Settings.GetNBSPChar());
         DWORD   len=::WideCharToMultiByte(CP_UTF8,0,
-		m_view->m_fo.replacement,m_view->m_fo.replacement.GetLength(),
+		replacementText,replacementText.GetLength(),
 		NULL,0,NULL,NULL);
         std::vector<char> tmp(len+1);
         if (!tmp.empty()) {
 	  ::WideCharToMultiByte(CP_UTF8,0,
-		        m_view->m_fo.replacement,m_view->m_fo.replacement.GetLength(),
+		        replacementText,replacementText.GetLength(),
 		        tmp.data(),len,NULL,NULL);
 	  tmp[len]='\0';
 	  if (m_view->m_fo.fRegexp)
@@ -4235,82 +4255,88 @@ public:
     if (m_view->m_fo.pattern.IsEmpty())
       return;
 
-    // setup search flags
-    int flags = BuildScintillaSearchFlags(m_view->m_fo.flags, m_view->m_fo.fRegexp);
-    m_source.SendMessage(SCI_SETSEARCHFLAGS,flags,0);
+    const int flags = BuildScintillaSearchFlags(m_view->m_fo.flags, m_view->m_fo.fRegexp);
+    m_source.SendMessage(SCI_SETSEARCHFLAGS, flags, 0);
+    int end = m_source.SendMessage(SCI_GETLENGTH);
+    m_source.SendMessage(SCI_SETTARGETSTART, 0);
+    m_source.SendMessage(SCI_SETTARGETEND, end);
 
-    // setup target range
-    int	  end=m_source.SendMessage(SCI_GETLENGTH);
-    m_source.SendMessage(SCI_SETTARGETSTART,0);
-    m_source.SendMessage(SCI_SETTARGETEND,end);
-
-    // convert search pattern and replacement to utf8
-    int	  patlen, num_pat_nbsp = 0, num_rep_nbsp = 0;
-	// added by SeNS
-	if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
-		num_pat_nbsp = m_view->m_fo.pattern.Replace( L"\u00A0", _Settings.GetNBSPChar());
-    ScopedMallocChar pattern(AU::ToUtf8(m_view->m_fo.pattern,patlen));
-    if (pattern.get()==NULL)
+    // Source controls retain the user's U+00A0 in their fields. Normalize
+    // only the UTF-8 data sent to Scintilla; byte positions must never be
+    // corrected by guessed UTF-16/NBSP arithmetic.
+    CString patternText(m_view->m_fo.pattern);
+    CString replacementText(m_view->m_fo.replacement);
+    if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
+    {
+      patternText.Replace(L"\u00A0", _Settings.GetNBSPChar());
+      replacementText.Replace(L"\u00A0", _Settings.GetNBSPChar());
+    }
+    int patlen = 0;
+    ScopedMallocChar pattern(AU::ToUtf8(patternText, patlen));
+    if (pattern.get() == NULL)
       return;
-    int	  replen;
-	// added by SeNS
-	if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
-		num_rep_nbsp = m_view->m_fo.replacement.Replace( L"\u00A0", _Settings.GetNBSPChar());
-    ScopedMallocChar replacement(AU::ToUtf8(m_view->m_fo.replacement,replen));
-    if (replacement.get()==NULL) {
+    int replen = 0;
+    ScopedMallocChar replacement(AU::ToUtf8(replacementText, replen));
+    if (replacement.get() == NULL)
+      return;
+
+    m_source.SendMessage(SCI_SETSTATUS, SC_STATUS_OK);
+    int pos = m_source.SendMessage(SCI_SEARCHINTARGET, patlen, (LPARAM)pattern.get());
+    if (ScintillaRegexSearchFailed(m_source, pos, m_view->m_fo.fRegexp))
+    {
+      m_view->m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+      m_view->m_last_search_error_is_regexp = true;
+      ShowScintillaRegexError(m_view);
       return;
     }
 
-    // find first match
-    int pos=m_source.SendMessage(SCI_SEARCHINTARGET,patlen,(LPARAM)pattern.get());
-
-    int   num_repl=0;
-
-    if (pos!=-1 && pos<=end) {
-      int   last_match=pos;
-
+    int num_repl = 0;
+    if (pos != -1 && pos <= end) {
+      int last_match = pos;
       m_source.SendMessage(SCI_BEGINUNDOACTION);
-      while (pos!=-1) {
-	int matchlen=m_source.SendMessage(SCI_GETTARGETEND)-m_source.SendMessage(SCI_GETTARGETSTART);
-	matchlen -= num_pat_nbsp*2;
-
-	int mvp=0;
-	if (matchlen<=0) {
-	  char	ch=(char)m_source.SendMessage(SCI_GETCHARAT,m_source.SendMessage(SCI_GETTARGETEND));
-	  if (ch=='\r' || ch=='\n')
-	    mvp=1;
-	}
-	int rlen=matchlen;
-	if (m_view->m_fo.fRegexp)
-	  rlen=m_source.SendMessage(SCI_REPLACETARGETRE,replen,(LPARAM)replacement.get());
-	else
-	  m_source.SendMessage(SCI_REPLACETARGET,replen,(LPARAM)replacement.get());
-
-	end += rlen-matchlen;
-	last_match=pos+rlen+mvp+num_rep_nbsp*2;
-	if (last_match>=end)
-	  pos=-1;
-	else {
-	  m_source.SendMessage(SCI_SETTARGETSTART,last_match);
-	  m_source.SendMessage(SCI_SETTARGETEND,end);
-	  pos=m_source.SendMessage(SCI_SEARCHINTARGET,patlen,(LPARAM)pattern.get());
-	}
-	++num_repl;
+      while (pos != -1) {
+        const int matchlen = m_source.SendMessage(SCI_GETTARGETEND) - m_source.SendMessage(SCI_GETTARGETSTART);
+        int mvp = 0;
+        if (matchlen <= 0) {
+          const char ch = static_cast<char>(m_source.SendMessage(SCI_GETCHARAT, m_source.SendMessage(SCI_GETTARGETEND)));
+          if (ch == '\r' || ch == '\n') mvp = 1;
+        }
+        int rlen = matchlen;
+        if (m_view->m_fo.fRegexp)
+          rlen = m_source.SendMessage(SCI_REPLACETARGETRE, replen, (LPARAM)replacement.get());
+        else
+          m_source.SendMessage(SCI_REPLACETARGET, replen, (LPARAM)replacement.get());
+        end += rlen - matchlen;
+        last_match = pos + rlen + mvp;
+        if (last_match >= end)
+          pos = -1;
+        else {
+          m_source.SendMessage(SCI_SETTARGETSTART, last_match);
+          m_source.SendMessage(SCI_SETTARGETEND, end);
+          m_source.SendMessage(SCI_SETSTATUS, SC_STATUS_OK);
+          pos = m_source.SendMessage(SCI_SEARCHINTARGET, patlen, (LPARAM)pattern.get());
+          if (ScintillaRegexSearchFailed(m_source, pos, m_view->m_fo.fRegexp)) {
+            m_source.SendMessage(SCI_ENDUNDOACTION);
+            m_view->m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+            m_view->m_last_search_error_is_regexp = true;
+            ShowScintillaRegexError(m_view);
+            return;
+          }
+        }
+        ++num_repl;
       }
       m_source.SendMessage(SCI_ENDUNDOACTION);
     }
 
-
-    if (num_repl>0) {
+    if (num_repl > 0) {
       SaveString();
       SaveHistory();
       U::MessageBox(MB_OK, IDS_REPL_ALL_CAPT, IDS_REPL_DONE_MSG, num_repl);
       MakeClose();
-      m_selvalid=false;
-    } else
-	{
-		U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
-	}
+      m_selvalid = false;
+    } else {
+      U::MessageBox(MB_OK | MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
+    }
   }
 };
 

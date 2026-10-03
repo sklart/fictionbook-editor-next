@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "structure/BodyStructuralEditor.h"
 #include "ReplacementPreflight.h"
+#include "search/ReplacementParser.h"
 #include "LinkNavigation.h"
 #include "navigation/LinkDomNavigation.h"
 #include "navigation/ReferenceNavigation.h"
@@ -2172,198 +2173,40 @@ bool CFBEView::DoSearchStd(bool fMore)
 	return DoSearchNative(fMore, AU::Search::SearchMode::Literal);
 }
 
-static CString GetSM(AU::ReSubMatches sm, int idx)
+static AU::Search::ReplacementMatch BuildReplacementMatch(AU::ReMatch match)
 {
-	if(!sm)
-		return CString();
-
-	if(idx < 0 || idx >= sm->Count)
-		return CString();
-
-	_variant_t vt(sm->Item[idx]);
-
-	if(V_VT(&vt) == VT_BSTR)
-		return V_BSTR(&vt);
-
-	return CString();
+	AU::Search::ReplacementMatch result;
+	if (!match)
+		return result;
+	result.Value = match->Value;
+	AU::ReSubMatches subMatches(match->SubMatches);
+	if (!subMatches)
+		return result;
+	for (long index = 0; index < subMatches->Count; ++index)
+		result.SubMatches.push_back(subMatches->Item[index]);
+	return result;
 }
 
-struct RR
+static CString PrepareRegexReplacementText(const CString& replacementTemplate, AU::ReMatch match,
+	std::vector<AU::Search::ReplacementFormattingRun>& formatting)
 {
-	enum
-	{
-		STRONG = 1,
-		EMPHASIS = 2,
-		UPPER = 4,
-		LOWER = 8,
-		TITLE = 16
-	};
-
-	int flags;
-	int start;
-	int len;
-};
-
-typedef CSimpleValArray<RR> RRList;
-
-static void ApplyCaseMap(TCHAR* text, int start, int len, DWORD flags)
-{
-	if (!text || len <= 0)
-		return;
-
-	if (flags == LCMAP_UPPERCASE)
-	{
-		CharUpperBuff(text + start, len);
-		return;
-	}
-
-	if (flags == LCMAP_LOWERCASE)
-		CharLowerBuff(text + start, len);
-}
-
-
-static CString GetReplStr(const CString& rstr, AU::ReMatch rm, RRList& rl)
-{
-	CString rep;
-	rep.GetBuffer(rstr.GetLength());
-	rep.ReleaseBuffer(0);
-
-	AU::ReSubMatches rs(rm->SubMatches);
-
-	RR cr;
-	memset(&cr, 0, sizeof(cr));
-	int flags=0;
-
-	CString rv;
-	bool emptyParam = false;
-
-	for(int i = 0; i < rstr.GetLength(); ++i)
-	{
-		if ((rstr[i] == L'$' && i < rstr.GetLength() - 1) ||
-			(rstr[i] == L'\\' && i < rstr.GetLength() - 1))
-		{
-			switch(rstr[++i])
-			{
-				//case L'&': // whole match
-				case L'0': // whole match
-					rv=(const wchar_t *)rm->Value;
-					break;
-				case L'+': // last submatch
-					rv = GetSM(rs, rs->Count - 1);
-					break;
-				case L'1':
-				case L'2':
-				case L'3':
-				case L'4':
-				case L'5':
-				case L'6':
-				case L'7':
-				case L'8':
-				case L'9':
-					rv = GetSM(rs, rstr[i] - L'0' - 1);
-					if(rv.IsEmpty()) 
-						emptyParam = true;
-					break;
-				case L'T': // title case
-					flags |= RR::TITLE;
-					continue;
-				case L'U': // uppercase
-					flags |= RR::UPPER;
-					continue;
-				case L'L': // lowercase
-					flags |= RR::LOWER;
-					continue;
-				case L'S': // strong
-					flags |= RR::STRONG;
-					continue;
-				case L'E': // emphasis
-					flags |= RR::EMPHASIS;
-					continue;
-				case L'Q': // turn off flags
-					flags = 0;
-					continue;
-				default: // ignore
-					continue;
-			}
-		}
-
-		if(cr.flags != flags && cr.flags && cr.start < rep.GetLength())
-		{
-			cr.len = rep.GetLength() - cr.start;
-			rl.Add(cr);
-			cr.flags = 0;
-		}
-
-		if(flags)
-		{
-			cr.flags = flags;
-			cr.start = rep.GetLength();
-		}
-
-		// SeNS: fix for issue #142
-		if (!emptyParam)
-		{
-			if(!rv.IsEmpty())
-			{
-				rep += rv;
-				rv.Empty();
-			}
-			else rep += rstr[i];
-		}
-		else emptyParam = false;
-	}
-
-		if(cr.flags && cr.start < rep.GetLength())
-		{
-			cr.len = rep.GetLength() - cr.start;
-			rl.Add(cr);
-		}
-
-		// process case conversions here
-		int tl = rep.GetLength();
-		TCHAR* cp = rep.GetBuffer(tl);
-		for(int j = 0; j < rl.GetSize();)
-		{
-			RR rr = rl[j];
-			if(rr.flags & RR::UPPER)
-				ApplyCaseMap(cp, rr.start, rr.len, LCMAP_UPPERCASE);
-			else if(rr.flags & RR::LOWER)
-				ApplyCaseMap(cp, rr.start, rr.len, LCMAP_LOWERCASE);
-			else if(rr.flags & RR::TITLE && rr.len > 0)
-			{
-				ApplyCaseMap(cp, rr.start, 1, LCMAP_UPPERCASE);
-				ApplyCaseMap(cp, rr.start + 1, rr.len - 1, LCMAP_LOWERCASE);
-			}
-	
-			if((rr.flags &~ (RR::UPPER | RR::LOWER | RR::TITLE)) == 0)
-				rl.RemoveAt(j);
-			else
-				++j;
-		}
-
-		rep.ReleaseBuffer(tl);
-
-	return rep;
-}
-
-static CString PrepareRegexReplacementText(const CString& replacementTemplate, AU::ReMatch match, RRList& formatting)
-{
-	CString replacement(GetReplStr(replacementTemplate, match, formatting));
+	CString replacement(AU::Search::ExpandRegexReplacement(
+		replacementTemplate, BuildReplacementMatch(match), formatting));
 	NormalizeReplacementNbsp(replacement);
 	return replacement;
 }
 
-static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CString& repl, const RRList& rl)
+static void ApplyReplacementFormatting(MSHTML::IHTMLTxtRangePtr sel, const CString& repl, const std::vector<AU::Search::ReplacementFormattingRun>& rl)
 {
-	for(int i = 0; i < rl.GetSize(); ++i)
+	for (std::size_t i = 0; i < rl.size(); ++i)
 	{
-		RR rr = rl[i];
+		const AU::Search::ReplacementFormattingRun& rr = rl[i];
 		MSHTML::IHTMLTxtRangePtr range = sel->duplicate();
-		range->move(L"character", rr.start - repl.GetLength());
-		range->moveEnd(L"character", rr.len);
-		if(rr.flags & RR::STRONG)
+		range->move(L"character", rr.Start - repl.GetLength());
+		range->moveEnd(L"character", rr.Length);
+		if(rr.Flags & AU::Search::ReplacementFormatStrong)
 			range->execCommand(L"Bold", VARIANT_FALSE);
-		if(rr.flags & RR::EMPHASIS)
+		if(rr.Flags & AU::Search::ReplacementFormatEmphasis)
 			range->execCommand(L"Italic", VARIANT_FALSE);
 	}
 }
@@ -2395,7 +2238,7 @@ void  CFBEView::DoReplace() {
 	m_mk_srv->BeginUndoUnit(L"replace");
 
     if (m_fo.hasMatch && m_fo.match) { // use regexp match copy
-      RRList	rl;
+      std::vector<AU::Search::ReplacementFormattingRun> rl;
       CString rep(PrepareRegexReplacementText(m_fo.replacement, m_fo.match, rl));
 
       sel->text=(const wchar_t *)rep;
@@ -2504,7 +2347,7 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			if (result == NULL)
 				throw _com_error(E_FAIL);
 			CString replacement;
-			RRList formatting;
+			std::vector<AU::Search::ReplacementFormattingRun> formatting;
 			if (m_fo.fRegexp)
 			{
 				const AU::Search::SearchHit& hit = result->Hit;
@@ -2613,7 +2456,7 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 			const AU::Search::SearchResult* result = m_design_search.Coordinator().GetResults().GetAt(index);
 			if (result == NULL) continue;
 			CString replacement;
-			RRList formatting;
+			std::vector<AU::Search::ReplacementFormattingRun> formatting;
 			if (m_fo.fRegexp)
 			{
 				const AU::Search::SearchHit& hit = result->Hit;
@@ -3912,13 +3755,16 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
     flags|=SCFIND_REGEXP|SCFIND_CXX11REGEX;
   int rev=m_fo.flags & FRF_REVERSE && !fFwdOnly;
 
-  NormalizeSearchPatternNbsp(m_fo.pattern);
+  // Source search must not rewrite the user-visible Find field while
+  // adapting U+00A0 to the configured document-space character.
+  CString searchPattern(m_fo.pattern);
+  NormalizeSearchPatternNbsp(searchPattern);
 
-  DWORD   len=::WideCharToMultiByte(CP_UTF8,0, m_fo.pattern,m_fo.pattern.GetLength(), NULL,0,NULL,NULL);
+  DWORD   len=::WideCharToMultiByte(CP_UTF8,0, searchPattern,searchPattern.GetLength(), NULL,0,NULL,NULL);
   std::vector<char> tmp(len+1);
   if (!tmp.empty()) 
   {
-    ::WideCharToMultiByte(CP_UTF8,0, m_fo.pattern,m_fo.pattern.GetLength(), tmp.data(),len,NULL,NULL);
+    ::WideCharToMultiByte(CP_UTF8,0, searchPattern,searchPattern.GetLength(), tmp.data(),len,NULL,NULL);
     tmp[len]='\0';
     int p1=::SendMessage(src,SCI_GETSELECTIONSTART,0,0);
     int p2=::SendMessage(src,SCI_GETSELECTIONEND,0,0);
@@ -3931,8 +3777,20 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
     ::SendMessage(src,SCI_SETTARGETSTART,p1,0);
     ::SendMessage(src,SCI_SETTARGETEND,p2,0);
     ::SendMessage(src,SCI_SETSEARCHFLAGS,flags,0);
+    // Scintilla keeps regexp syntax errors in its status channel. Reset it
+    // before every attempt so a previous error cannot taint a later Find.
+    m_last_search_error.Empty();
+    m_last_search_error_is_regexp = false;
+    ::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
     // this sometimes hangs in reverse search :)
     int ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
+    if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
+    {
+        m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+        m_last_search_error_is_regexp = true;
+        U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+        return false;
+    }
     if (ret==-1) 
 	{ // try wrap
 		if (p1!=p3) 
@@ -3940,7 +3798,15 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
 			::SendMessage(src,SCI_SETTARGETSTART,p3,0);
 			::SendMessage(src,SCI_SETTARGETEND,p1,0);
 			::SendMessage(src,SCI_SETSEARCHFLAGS,flags,0);
+            ::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
 			ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
+            if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
+            {
+                m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+                m_last_search_error_is_regexp = true;
+                U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+                return false;
+            }
 		}
 		if (ret==-1) 
 		{

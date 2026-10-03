@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
@@ -35,10 +35,12 @@ function Convert-ToUtf8Hex([string]$Text) {
 
 & cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE /D_UNICODE `
     "/I$(Join-Path $repoRoot "third_party\wtl")" `
+    "/I$(Join-Path $repoRoot "src\fbe")" `
     "/I$(Join-Path $repoRoot "src\fbe\search")" `
     "/I$(Join-Path $installDir "include")" `
-    "/Fo$(Join-Path $testDir "pcre2-replace-smoke.obj")" `
+    "/Fo$testDir\" `
     (Join-Path $PSScriptRoot "pcre2-replace-smoke.cpp") `
+    (Join-Path $repoRoot "src\fbe\search\ReplacementParser.cpp") `
     "/link" "/SUBSYSTEM:CONSOLE" `
     "/LIBPATH:$(Join-Path $installDir "lib")" `
     "pcre2-16-static.lib" "/OUT:$testExe"

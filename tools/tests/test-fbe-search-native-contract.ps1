@@ -9,6 +9,8 @@ $controller = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
 $frame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+$parser = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ReplacementParser.cpp')
+$snapshot = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchTextSnapshot.cpp')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
@@ -31,6 +33,19 @@ Assert-NotContains $source 'm_fo\.scope = AU::Search::SearchScope::WholeDocument
 Assert-NotContains $source 'm_fo\.unicodeProperties = false' 'Replace must not discard UCP on open'
 Assert-Contains $source 'return DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);' 'native regex Find Next'
 Assert-NotContains $source 'DoSearchNative\(fMore, AU::Search::SearchMode::Regex\);\s*/\*\s*Legacy implementation' 'unreachable legacy regexp implementation'
+Assert-NotContains $source 'GetReplStr\(' 'replacement parser copy in FBEview'
+Assert-Contains $source 'AU::Search::ExpandRegexReplacement' 'FBE uses the production replacement parser'
+Assert-Contains $parser 'Empty and nonparticipating captures are intentional empty output' 'empty capture replacement semantics'
+Assert-Contains $parser 'CloseRun\(result, activeFlags, activeStart, formatting\)' 'format runs close at mode changes'
+Assert-Contains $parser 'ReplacementFormatStrong' 'production strong formatting run'
+Assert-Contains $snapshot 'explicit anchor for an empty source paragraph' 'mapped zero-length paragraph anchor'
+Assert-Contains $frame 'SCI_SETSTATUS, SC_STATUS_OK' 'Source search resets Scintilla status'
+Assert-Contains $frame 'SCI_GETSTATUS' 'Source search reads Scintilla status'
+Assert-Contains $frame 'fbe\.regex\.error\.source' 'Source regexp error is localized'
+Assert-NotContains $frame 'num_pat_nbsp|num_rep_nbsp' 'NBSP byte-offset correction arithmetic'
+Assert-Contains $source 'CString searchPattern\(m_fo\.pattern\)' 'Source Find normalizes a pattern copy'
+Assert-Contains $frame 'CString patternText\(m_view->m_fo\.pattern\)' 'Source Replace All normalizes a pattern copy'
+Assert-Contains $frame 'CString replacementText\(m_view->m_fo\.replacement\)' 'Source Replace All normalizes a replacement copy'
 Assert-Contains $source 'CheckReplacementRange' 'production replacement preflight'
 Assert-Contains $source 'fbe\.replace\.cross_paragraph' 'clear cross-paragraph replacement error'
 Assert-Contains $source 'const std::size_t count = m_design_search\.Coordinator\(\)\.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open an empty mutation path'

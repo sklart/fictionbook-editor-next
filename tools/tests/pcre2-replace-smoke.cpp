@@ -12,6 +12,7 @@
 #define PCRE2_STATIC
 #include "pcre2.h"
 #include "RegexPcre2MatchLoop.h"
+#include "ReplacementParser.h"
 
 typedef CSimpleArray<CString> CStrings;
 
@@ -116,171 +117,6 @@ public:
 	}
 };
 
-struct RR
-{
-	enum
-	{
-		STRONG = 1,
-		EMPHASIS = 2,
-		UPPER = 4,
-		LOWER = 8,
-		TITLE = 16
-	};
-
-	int flags;
-	int start;
-	int len;
-};
-
-typedef CSimpleValArray<RR> RRList;
-
-static void ApplyCaseMap(TCHAR* text, int start, int len, DWORD flags)
-{
-	if (!text || len <= 0)
-		return;
-
-	if (flags == LCMAP_UPPERCASE)
-	{
-		CharUpperBuff(text + start, len);
-		return;
-	}
-
-	if (flags == LCMAP_LOWERCASE)
-		CharLowerBuff(text + start, len);
-}
-
-static CString GetSM(ISubMatches* sm, int idx)
-{
-	if(!sm)
-		return CString();
-
-	if(idx < 0 || idx >= sm->GetCount())
-		return CString();
-
-	return sm->GetItem(idx);
-}
-
-static CString GetReplStr(const CString& rstr, IMatch2* rm, RRList& rl)
-{
-	CString rep;
-	rep.GetBuffer(rstr.GetLength());
-	rep.ReleaseBuffer(0);
-
-	ISubMatches* rs = rm->GetSubMatches();
-
-	RR cr;
-	memset(&cr, 0, sizeof(cr));
-	int flags = 0;
-
-	CString rv;
-	bool emptyParam = false;
-
-	for (int i = 0; i < rstr.GetLength(); ++i)
-	{
-		if ((rstr[i] == L'$' && i < rstr.GetLength() - 1) ||
-			(rstr[i] == L'\\' && i < rstr.GetLength() - 1))
-		{
-			switch (rstr[++i])
-			{
-			case L'0':
-				rv = rm->GetValue();
-				break;
-			case L'+':
-				rv = GetSM(rs, rs->GetCount() - 1);
-				break;
-			case L'1':
-			case L'2':
-			case L'3':
-			case L'4':
-			case L'5':
-			case L'6':
-			case L'7':
-			case L'8':
-			case L'9':
-				rv = GetSM(rs, rstr[i] - L'0' - 1);
-				if (rv.IsEmpty())
-					emptyParam = true;
-				break;
-			case L'T':
-				flags |= RR::TITLE;
-				continue;
-			case L'U':
-				flags |= RR::UPPER;
-				continue;
-			case L'L':
-				flags |= RR::LOWER;
-				continue;
-			case L'S':
-				flags |= RR::STRONG;
-				continue;
-			case L'E':
-				flags |= RR::EMPHASIS;
-				continue;
-			case L'Q':
-				flags = 0;
-				continue;
-			default:
-				continue;
-			}
-		}
-
-		if (cr.flags != flags && cr.flags && cr.start < rep.GetLength())
-		{
-			cr.len = rep.GetLength() - cr.start;
-			rl.Add(cr);
-			cr.flags = 0;
-		}
-
-		if (flags)
-		{
-			cr.flags = flags;
-			cr.start = rep.GetLength();
-		}
-
-		if (!emptyParam)
-		{
-			if (!rv.IsEmpty())
-			{
-				rep += rv;
-				rv.Empty();
-			}
-			else
-				rep += rstr[i];
-		}
-		else
-			emptyParam = false;
-	}
-
-	if (cr.flags && cr.start < rep.GetLength())
-	{
-		cr.len = rep.GetLength() - cr.start;
-		rl.Add(cr);
-	}
-
-	int tl = rep.GetLength();
-	TCHAR* cp = rep.GetBuffer(tl);
-	for (int j = 0; j < rl.GetSize();)
-	{
-		RR rr = rl[j];
-		if (rr.flags & RR::UPPER)
-			ApplyCaseMap(cp, rr.start, rr.len, LCMAP_UPPERCASE);
-		else if (rr.flags & RR::LOWER)
-			ApplyCaseMap(cp, rr.start, rr.len, LCMAP_LOWERCASE);
-		else if (rr.flags & RR::TITLE && rr.len > 0)
-		{
-			ApplyCaseMap(cp, rr.start, 1, LCMAP_UPPERCASE);
-			ApplyCaseMap(cp, rr.start + 1, rr.len - 1, LCMAP_LOWERCASE);
-		}
-
-		if((rr.flags &~ (RR::UPPER | RR::LOWER | RR::TITLE)) == 0)
-			rl.RemoveAt(j);
-		else
-			++j;
-	}
-	rep.ReleaseBuffer(tl);
-	return rep;
-}
-
 static int HexValue(char ch)
 {
 	if (ch >= '0' && ch <= '9')
@@ -347,8 +183,14 @@ static CString ApplyReplace(
 		if (!match)
 			continue;
 
-		RRList rl;
-		CString repl = GetReplStr(replacement, match, rl);
+		AU::Search::ReplacementMatch replacementMatch;
+		replacementMatch.Value = match->GetValue();
+		ISubMatches* subMatches = match->GetSubMatches();
+		if (subMatches != NULL)
+			for (long subMatch = 0; subMatch < subMatches->GetCount(); ++subMatch)
+				replacementMatch.SubMatches.push_back(subMatches->GetItem(subMatch));
+		std::vector<AU::Search::ReplacementFormattingRun> formatting;
+		CString repl = AU::Search::ExpandRegexReplacement(replacement, replacementMatch, formatting);
 		result.Delete(match->GetFirstIndex(), match->GetLength());
 		result.Insert(match->GetFirstIndex(), repl);
 		applied++;
@@ -360,8 +202,39 @@ static CString ApplyReplace(
 	return result;
 }
 
+static int VerifyReplacementFormatting()
+{
+	AU::Search::ReplacementMatch match;
+	match.Value = L"ivan";
+	match.SubMatches.push_back(L"ivan");
+	struct Case { LPCWSTR replacement; LPCWSTR expected; int flags; int length; };
+	const Case cases[] = {
+		{ L"\\Uabc\\Q", L"ABC", 0, 0 },
+		{ L"\\U$1-test\\Q", L"IVAN-TEST", 0, 0 },
+		{ L"\\T$1\\Q", L"Ivan", 0, 0 },
+		{ L"\\U$1\\Q-$1", L"IVAN-ivan", 0, 0 },
+		{ L"\\Sabc def\\Q", L"abc def", AU::Search::ReplacementFormatStrong, 7 },
+		{ L"\\Eabc def\\Q", L"abc def", AU::Search::ReplacementFormatEmphasis, 7 }
+	};
+	for (size_t index = 0; index < sizeof(cases) / sizeof(cases[0]); ++index)
+	{
+		std::vector<AU::Search::ReplacementFormattingRun> formatting;
+		const CString result = AU::Search::ExpandRegexReplacement(cases[index].replacement, match, formatting);
+		if (result != cases[index].expected) return 40 + static_cast<int>(index * 2);
+		if (cases[index].flags == 0)
+		{
+			if (!formatting.empty()) return 41 + static_cast<int>(index * 2);
+		}
+		else if (formatting.size() != 1 || formatting[0].Flags != cases[index].flags ||
+			formatting[0].Start != 0 || formatting[0].Length != cases[index].length)
+			return 41 + static_cast<int>(index * 2);
+	}
+	return 0;
+}
 int main(int argc, char* argv[])
 {
+	const int formattingResult = VerifyReplacementFormatting();
+	if (formattingResult != 0) return formattingResult;
 	if (argc != 8)
 		return 30;
 

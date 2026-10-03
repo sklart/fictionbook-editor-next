@@ -91,6 +91,69 @@ static int VerifyLargeFindAllResultSet(std::size_t matchCount)
 	return 0;
 }
 
+static int VerifyWholeWordRegex()
+{
+	struct Fixture { LPCWSTR pattern; LPCWSTR subject; int expected; };
+	const Fixture fixtures[] = {
+		{ L"тест", L"тест подтест тест2 _тест", 1 },
+		{ L"word", L"word password word2 _word", 1 },
+		{ L"42", L"42 142 42x _42", 1 }
+	};
+	for (const Fixture& fixture : fixtures)
+	{
+		AU::RegexBackend::Options options;
+		options.Pattern = AU::RegexBackend::BuildWholeWordRegexPattern(fixture.pattern);
+		options.Global = VARIANT_TRUE;
+		options.UnicodeProperties = true;
+		CSimpleArray<AU::RegexBackend::MatchData> matches;
+		CString error;
+		if (!AU::RegexBackend::Execute(options, fixture.subject, matches, error) || matches.GetSize() != fixture.expected)
+			return 125;
+	}
+	if (AU::RegexBackend::BuildWholeWordRegexPattern(L"\\bтест\\b") != L"\\bтест\\b" ||
+		AU::RegexBackend::BuildWholeWordRegexPattern(L"(?<=x)test") != L"(?<=x)test")
+		return 126;
+	return 0;
+}
+static int VerifyEmptyParagraphRegexAnchors()
+{
+	MSHTML::IHTMLDocument2Ptr document;
+	document.CreateInstance(L"htmlfile");
+	IPersistStreamInitPtr persist(document);
+	if (!document || !persist || FAILED(persist->InitNew()) || !WriteHtml(document,
+		L"<html><body><div id='fbw_body'><p id='empty-first'></p><p>text</p><p id='empty-last'></p></div></body></html>"))
+		return 130;
+	DocumentSearchCoordinator coordinator;
+	AU::Search::SearchQuery query;
+	query.Mode = AU::Search::SearchMode::Regex;
+	query.Multiline = true;
+	for (const wchar_t* expression : { L"^$", L"^", L"$", L"(?=text)", L"(?<=text)" })
+	{
+		query.Text = expression;
+		if (!coordinator.Rebuild(document, 130, query) || coordinator.GetResults().GetCount() == 0)
+			return 131;
+		for (std::size_t index = 0; index < coordinator.GetResults().GetCount(); ++index)
+		{
+			const AU::Search::SearchResult* result = coordinator.GetResults().GetAt(index);
+			MSHTML::IHTMLTxtRangePtr range;
+			if (result == NULL || result->Hit.Length != 0 ||
+				!coordinator.CreateResultRange(document, 130, index, range) || !range ||
+				range->compareEndPoints(L"StartToEnd", range) != 0)
+				return 132;
+		}
+	}
+	query.Text = L"^$";
+	if (!coordinator.Rebuild(document, 130, query) || coordinator.GetResults().GetCount() != 2)
+		return 133;
+	MSHTML::IHTMLTxtRangePtr firstEmpty;
+	if (!coordinator.CreateResultRange(document, 130, 0, firstEmpty) || !firstEmpty)
+		return 134;
+	firstEmpty->text = L"inserted";
+	CString html(static_cast<LPCWSTR>(_bstr_t(MSHTML::IHTMLElementPtr(document->body)->innerHTML)));
+	if (html.Find(L"inserted") < 0 || html.Find(L"text") < 0)
+		return 135;
+	return 0;
+}
 int wmain()
 {
 	if (FAILED(CoInitialize(NULL))) return 1;
@@ -439,6 +502,11 @@ int wmain()
 			if (result) break;
 		}
 	}
+
+	if (!result)
+		result = VerifyWholeWordRegex();
+	if (!result)
+		result = VerifyEmptyParagraphRegexAnchors();
 
 	persist = NULL;
 	document = NULL;

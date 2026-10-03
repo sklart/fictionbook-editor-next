@@ -84,8 +84,8 @@ void SearchTextSnapshotBuilder::Append(
 	const std::wstring& text,
 	const SearchDocumentPosition& documentStart)
 {
-	if (text.empty())
-		return;
+	// Keep an explicit anchor for an empty source paragraph. A zero-length
+	// regex hit (^$, ^, $, lookaround) must still map back to its DOM position.
 	SearchTextSegment segment = {};
 	segment.SearchOffset = m_snapshot.Text.size();
 	segment.Length = text.size();

@@ -34,6 +34,18 @@ struct Options {
 };
 
 const wchar_t* GetBackendDisplayName();
+
+// Whole-word RegExp searches use FBE's Unicode word definition.  Patterns
+// that already carry an explicit word boundary or lookaround remain untouched
+// so FBE does not silently add a second, potentially contradictory boundary.
+inline CString BuildWholeWordRegexPattern(const CString& pattern)
+{
+	if (pattern.Find(L"\\b") >= 0 || pattern.Find(L"\\B") >= 0 ||
+		pattern.Find(L"(?=") >= 0 || pattern.Find(L"(?!") >= 0 ||
+		pattern.Find(L"(?<=") >= 0 || pattern.Find(L"(?<!") >= 0)
+		return pattern;
+	return L"(?<![\\p{L}\\p{N}_])(?:" + pattern + L")(?![\\p{L}\\p{N}_])";
+}
 bool Execute(
 	const Options& options,
 	const CString& sourceString,
