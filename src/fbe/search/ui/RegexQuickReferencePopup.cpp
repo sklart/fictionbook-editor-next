@@ -336,6 +336,15 @@ void RegexQuickReferencePopup::Activate() { CListBox& list = ::GetFocus() == m_r
 LRESULT RegexQuickReferencePopup::OnActivate(WORD, WORD, HWND, BOOL&) { Activate(); return 0; }
 LRESULT RegexQuickReferencePopup::OnFullHelp(WORD, WORD, HWND, BOOL&) { const std::function<void()> callback = m_openFullHelp; DestroyWindow(); if(callback) callback(); return 0; }
 LRESULT RegexQuickReferencePopup::OnKeyDown(UINT, WPARAM key, LPARAM, BOOL&) { if(key == VK_ESCAPE) DestroyWindow(); else if(key == VK_RETURN) Activate(); else if(key == VK_F1) { BOOL ignored = FALSE; OnFullHelp(0, 0, NULL, ignored); } return 0; }
-LRESULT RegexQuickReferencePopup::OnKillFocus(UINT, WPARAM, LPARAM, BOOL&) { HWND focus = ::GetFocus(); if(focus != m_hWnd && !::IsChild(m_hWnd, focus)) PostMessage(WM_CLOSE); return 0; }
+LRESULT RegexQuickReferencePopup::OnKillFocus(UINT, WPARAM nextFocus, LPARAM, BOOL&)
+{
+    // WM_KILLFOCUS supplies the destination HWND. GetFocus() is transient at
+    // this point and may still be this popup (or NULL), which made child
+    // list-box focus transitions close the popup depending on message timing.
+    const HWND focus = reinterpret_cast<HWND>(nextFocus);
+    if (focus != m_hWnd && !::IsChild(m_hWnd, focus))
+        PostMessage(WM_CLOSE);
+    return 0;
+}
 LRESULT RegexQuickReferencePopup::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); m_left.Invalidate(); m_right.Invalidate(); m_caption.Invalidate(); m_fullHelp.Invalidate(); return 0; }
 LRESULT RegexQuickReferencePopup::OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) { if(m_toolTip != NULL) { ::DestroyWindow(m_toolTip); m_toolTip = NULL; } if(m_messageLoop) { m_messageLoop->RemoveMessageFilter(this); m_messageLoop = NULL; } handled = FALSE; return 0; }
