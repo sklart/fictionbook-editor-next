@@ -216,5 +216,85 @@ int wmain()
 		return 41;
 	if (!adjacentSnapshot.TryGetDocumentPosition(5, &position) || position.SourceId != 20 || position.SourceOffset != 1)
 		return 42;
+	// A single Design replacement invalidates stale hits and then rebuilds from
+	// the current document. The selected replacement supplies the live caret:
+	// its end for forward search and its start for backward search.
+	auto rebuildSingleReplaceSearch = [](SearchSession& singleSession, const std::wstring& text,
+		const SearchQuery& singleQuery, std::uint64_t generation) {
+		singleSession.Invalidate();
+		if (singleSession.IsValid()) return false;
+		singleSession.SetQuery(singleQuery);
+		singleSession.SetHits(FindLiteralMatches(text, singleQuery), generation);
+		return singleSession.IsValidFor(generation);
+	};
+	SearchQuery singleReplaceQuery;
+	singleReplaceQuery.Text = L"...";
+	SearchSession singleReplaceSession;
+	std::wstring ellipsisDocument = L"... ... ... ...";
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, ellipsisDocument, singleReplaceQuery, 201) ||
+		singleReplaceSession.SelectNearestFor(201, 0, SearchDirection::Forward, &wrapped)->Start != 0)
+		return 54;
+	std::size_t forwardCaret = 1;
+	ellipsisDocument.replace(0, 3, L"\x2026");
+	for (const std::size_t expected : std::vector<std::size_t>{ 2, 4, 6 })
+	{
+		if (!rebuildSingleReplaceSearch(singleReplaceSession, ellipsisDocument, singleReplaceQuery,
+			202 + expected)) return 55;
+		const SearchHit* next = singleReplaceSession.SelectNearestFor(202 + expected, forwardCaret,
+			SearchDirection::Forward, &wrapped);
+		if (!next || next->Start != expected || wrapped) return 56;
+		ellipsisDocument.replace(next->Start, next->Length, L"\x2026");
+		forwardCaret = next->Start + 1;
+	}
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, ellipsisDocument, singleReplaceQuery, 210) ||
+		singleReplaceSession.SelectNearestFor(210, forwardCaret, SearchDirection::Forward, &wrapped) != NULL)
+		return 57;
+
+	for (const std::wstring& replacement : std::vector<std::wstring>{ L"X", L"ABCDE", L"" })
+	{
+		std::wstring document = L"abc abc";
+		SearchQuery query;
+		query.Text = L"abc";
+		if (!rebuildSingleReplaceSearch(singleReplaceSession, document, query, 220) ||
+			singleReplaceSession.SelectNearestFor(220, 0, SearchDirection::Forward, &wrapped)->Start != 0)
+			return 58;
+		document.replace(0, 3, replacement);
+		const std::size_t nextOffset = replacement.size();
+		if (!rebuildSingleReplaceSearch(singleReplaceSession, document, query, 221)) return 59;
+		const SearchHit* next = singleReplaceSession.SelectNearestFor(221, nextOffset, SearchDirection::Forward, &wrapped);
+		if (!next || next->Start != replacement.size() + 1 || wrapped) return 60;
+
+		document = L"abc abc";
+		if (!rebuildSingleReplaceSearch(singleReplaceSession, document, query, 222) ||
+			singleReplaceSession.SelectNearestFor(222, document.size(), SearchDirection::Backward, &wrapped)->Start != 4)
+			return 61;
+		document.replace(4, 3, replacement);
+		if (!rebuildSingleReplaceSearch(singleReplaceSession, document, query, 223)) return 62;
+		const SearchHit* previous = singleReplaceSession.SelectNearestFor(223, 4, SearchDirection::Backward, &wrapped);
+		if (!previous || previous->Start != 0 || wrapped) return 63;
+	}
+	// Replacing with the same text still rebuilds the generation. Navigation
+	// must skip the selected hit and only wrap after the next/previous candidate.
+	std::wstring sameText = L"abc abc";
+	SearchQuery sameQuery;
+	sameQuery.Text = L"abc";
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, sameText, sameQuery, 230) ||
+		singleReplaceSession.SelectNearestFor(230, 0, SearchDirection::Forward, &wrapped)->Start != 0)
+		return 64;
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, sameText, sameQuery, 231)) return 65;
+	const SearchHit* forwardNext = singleReplaceSession.SelectNearestFor(231, 3, SearchDirection::Forward, &wrapped);
+	if (!forwardNext || forwardNext->Start != 4 || wrapped) return 66;
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, sameText, sameQuery, 232)) return 67;
+	const SearchHit* forwardWrapped = singleReplaceSession.SelectNearestFor(232, 7, SearchDirection::Forward, &wrapped);
+	if (!forwardWrapped || forwardWrapped->Start != 0 || !wrapped) return 68;
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, sameText, sameQuery, 233) ||
+		singleReplaceSession.SelectNearestFor(233, 7, SearchDirection::Backward, &wrapped)->Start != 4)
+		return 69;
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, sameText, sameQuery, 234)) return 70;
+	const SearchHit* backwardPrevious = singleReplaceSession.SelectNearestFor(234, 4, SearchDirection::Backward, &wrapped);
+	if (!backwardPrevious || backwardPrevious->Start != 0 || wrapped) return 71;
+	if (!rebuildSingleReplaceSearch(singleReplaceSession, sameText, sameQuery, 235)) return 72;
+	const SearchHit* backwardWrapped = singleReplaceSession.SelectNearestFor(235, 0, SearchDirection::Backward, &wrapped);
+	if (!backwardWrapped || backwardWrapped->Start != 4 || !wrapped) return 73;
 	return 0;
 }

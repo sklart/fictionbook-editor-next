@@ -288,6 +288,9 @@ protected:
 	CString m_last_search_error;
 	bool m_last_search_error_is_regexp;
 	MSHTML::IHTMLTxtRangePtr m_is_start;
+	// Native Design search snapshots use transient offsets. A Selection scope
+	// also retains this live MSHTML range so it can be remapped after a replace.
+	MSHTML::IHTMLTxtRangePtr m_selection_search_scope;
 	DesignSearchController m_design_search;
 	// A completed Replace All invalidates snapshot offsets. Keep a short
 	// presentation-only result so an open Results pane does not call that

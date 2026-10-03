@@ -49,7 +49,7 @@ Assert-Contains $dialog 'OnCancel[\s\S]*?GetData\(\);[\s\S]*?SaveSearchOptions\(
 Assert-Contains $dialog 'OnClose[\s\S]*?GetData\(\);[\s\S]*?SaveSearchOptions\(\);' 'close button persists Find options without history'
 Assert-Contains $dialog 'CBN_DROPDOWN, OnScopeDropDown' 'Scope is refreshed when its list opens'
 Assert-Contains $dialog 'HasSavedSearchScope\(\)' 'saved Selection scope stays available while generation is current'
-Assert-Contains $dialog 'EnableWindow\(unicode, ::IsDlgButtonChecked' 'UCP availability follows RegExp without clearing its state'
+Assert-Contains $dialog '::EnableWindow\(unicode,[\s\S]*?::IsDlgButtonChecked' 'UCP availability follows RegExp without clearing its state'
 Assert-Contains $dialog 'class CReplaceDlgBase[\s\S]*?PopulateFindScopes\(\)' 'Replace exposes the same scope list as Find'
 Assert-Contains $dialog 'class CReplaceDlgBase[\s\S]*?IDC_FIND_UNICODE_PROPERTIES' 'Replace exposes UCP'
 Assert-Contains $dialog 'class CReplaceDlgBase[\s\S]*?IDC_FIND_FROM_START' 'Replace exposes From start'
@@ -86,6 +86,13 @@ Assert-Contains $singleReplace 'CheckReplacementRange\(sel, m_fo\.fRegexp\) == R
 $singleGuard = $singleReplace.IndexOf('CheckReplacementRange(sel, m_fo.fRegexp)')
 $singleUndo = $singleReplace.IndexOf('BeginUndoUnit(L"replace")')
 if ($singleGuard -lt 0 -or $singleUndo -lt 0 -or $singleGuard -gt $singleUndo) { throw 'Single Replace must reject a cross-paragraph range before opening Undo.' }
+if ($header -notmatch 'MSHTML::IHTMLTxtRangePtr\s+m_selection_search_scope') { throw 'Selection scope must retain a live MSHTML anchor across a single replacement.' }
+Assert-Contains $singleReplace 'bool replaced = false;' 'single Replace tracks a successful DOM text mutation'
+Assert-Contains $singleReplace 'if \(replaced\)[\s\S]*?m_fo\.ClearMatch\(\);[\s\S]*?AdvanceSearchDocumentGeneration\(\);' 'single Replace clears the saved match and invalidates snapshots before the next Find'
+Assert-NotContains $singleReplace 'oldLen|newLen|replacementDelta|offsetDelta' 'single Replace must not compensate stale search offsets by text-length deltas'
+Assert-Contains $source 'void CFBEView::ResetSearchScope\(\)[\s\S]*?m_selection_search_scope\.Release\(\);' 'resetting search scope releases its live Selection anchor'
+Assert-Contains $source 'if \(m_selection_search_scope\)[\s\S]*?scopeSelection = m_selection_search_scope->duplicate\(\);' 'Selection search remaps its live scope after snapshot invalidation'
+Assert-Contains $source 'm_design_search\.SetScope\(range, query\.Scope\);[\s\S]*?if \(query\.Scope == AU::Search::SearchScope::Selection\)[\s\S]*?m_selection_search_scope = scopeSelection->duplicate\(\);' 'initial Selection search captures a live scope anchor'
 
 $replaceAll = [regex]::Match($source, 'int\s+CFBEView::ReplaceAllSearchCore\(CString\* errorText\)[\s\S]*?\r?\n}\r?\n\r?\nint\s+CFBEView::GlobalReplace').Value
 if ([string]::IsNullOrWhiteSpace($replaceAll)) { throw 'Unable to locate native Replace All path.' }

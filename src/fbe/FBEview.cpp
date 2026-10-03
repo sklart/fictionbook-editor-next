@@ -2379,6 +2379,7 @@ static CString CrossParagraphReplacementError()
 }
 
 void  CFBEView::DoReplace() {
+  bool replaced = false;
   try {
     MSHTML::IHTMLTxtRangePtr  sel(Document()->selection->createRange());
     if (!(bool)sel)
@@ -2398,11 +2399,12 @@ void  CFBEView::DoReplace() {
       CString rep(PrepareRegexReplacementText(m_fo.replacement, m_fo.match, rl));
 
       sel->text=(const wchar_t *)rep;
+      replaced = true;
       ApplyReplacementFormatting(sel, rep, rl);
       adv=rep.GetLength();
-	  m_fo.ClearMatch();
     } else { // plain text
       sel->text=(const wchar_t *)m_fo.replacement;
+      replaced = true;
       adv=m_fo.replacement.GetLength();
     }
     sel->moveStart(L"character",-adv);
@@ -2410,6 +2412,13 @@ void  CFBEView::DoReplace() {
   }
   catch (_com_error& e) {
     U::ReportError(e);
+  }
+  if (replaced)
+  {
+    // Replacement changes MSHTML text synchronously, while RANGE_SINK may be
+    // delivered later. Do not let the next Find reuse pre-replacement offsets.
+    m_fo.ClearMatch();
+    AdvanceSearchDocumentGeneration();
   }
   m_mk_srv->EndUndoUnit();
 }
@@ -3016,6 +3025,7 @@ bool CFBEView::Init()
 	// A full hosted-document reload replaces every source coordinate even when
 	// MSHTML happens to retain its internal version number.
 	AdvanceSearchDocumentGeneration();
+	ResetSearchScope();
 
   bool autoUrlDetectDisabled = false;
   try
@@ -3480,6 +3490,7 @@ bool CFBEView::HasTextSelection()
 void CFBEView::ResetSearchScope()
 {
 	m_design_search.ResetScope();
+	m_selection_search_scope.Release();
 }
 
 bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText, bool* expressionError)
@@ -3509,6 +3520,8 @@ bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTM
 		MSHTML::IHTMLTxtRangePtr scopeSelection(selection);
 		if (query.Scope == AU::Search::SearchScope::Selection)
 		{
+			if (m_selection_search_scope)
+				scopeSelection = m_selection_search_scope->duplicate();
 			if (!scopeSelection || scopeSelection->compareEndPoints(L"StartToEnd", scopeSelection) == 0)
 			{
 				if (errorText != NULL) *errorText = static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.search.error.selection_scope_unavailable", L"The selected search scope is no longer available."));
@@ -3535,6 +3548,8 @@ bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTM
 			return false;
 		}
 		m_design_search.SetScope(range, query.Scope);
+		if (query.Scope == AU::Search::SearchScope::Selection)
+			m_selection_search_scope = scopeSelection->duplicate();
 	}
 	if (!m_design_search.Coordinator().Rebuild(Document(), generation, query, errorText, &range))
 	{
