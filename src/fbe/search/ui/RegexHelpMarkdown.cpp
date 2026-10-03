@@ -159,7 +159,10 @@ CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, bool t
     HDC dc = richEdit ? ::GetDC(richEdit) : NULL;
     const int dpi = dc ? ::GetDeviceCaps(dc, LOGPIXELSY) : 96;
     if (dc) ::ReleaseDC(richEdit, dc);
-    format.yHeight = (std::max)(1, ::MulDiv(title ? 11 : 9, 1440, dpi));
+    // CHARFORMAT2::yHeight is expressed in twips, not device pixels. RichEdit performs the DPI conversion.
+    // Dividing by monitor DPI made the Help text smaller on high-DPI displays.
+    (void)dpi;
+    format.yHeight = (title ? 14 : 10) * 20;
     if (monospace) ::lstrcpynW(format.szFaceName, L"Consolas", LF_FACESIZE);
     else { HFONT font = UiMetrics::DialogFont(); LOGFONTW logFont = {}; if (font && ::GetObjectW(font, sizeof(logFont), &logFont)) ::lstrcpynW(format.szFaceName, logFont.lfFaceName, LF_FACESIZE); }
     return format;
@@ -242,19 +245,19 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     ParseMarkdownText(L"", empty);
     ParseMarkdownText(L"```regex\n[", malformed);
     ParseMarkdownText(L"> unknown extension", unknown);
-    bool title = false, heading = false, body = false, list = false, code = false, table = false, inlineCode = false;
+    bool hasTitle = false, hasHeading = false, hasBody = false, hasList = false, hasCode = false, hasTable = false, hasInlineCode = false;
     for (size_t index = 0; index < parsed.size(); ++index)
     {
         const MarkdownBlock& block = parsed[index];
-        title = title || block.kind == MarkdownBlockKind::Title;
-        heading = heading || block.kind == MarkdownBlockKind::Heading;
-        body = body || block.kind == MarkdownBlockKind::Body;
-        list = list || block.kind == MarkdownBlockKind::List;
-        code = code || block.kind == MarkdownBlockKind::Code;
-        table = table || block.kind == MarkdownBlockKind::Table;
-        inlineCode = inlineCode || !block.inlineCode.empty();
+        hasTitle = hasTitle || block.kind == MarkdownBlockKind::Title;
+        hasHeading = hasHeading || block.kind == MarkdownBlockKind::Heading;
+        hasBody = hasBody || block.kind == MarkdownBlockKind::Body;
+        hasList = hasList || block.kind == MarkdownBlockKind::List;
+        hasCode = hasCode || block.kind == MarkdownBlockKind::Code;
+        hasTable = hasTable || block.kind == MarkdownBlockKind::Table;
+        hasInlineCode = hasInlineCode || !block.inlineCode.empty();
     }
-    const bool parser = title && heading && body && list && code && table && inlineCode && empty.empty() && !malformed.empty() && !unknown.empty();
+    const bool parser = hasTitle && hasHeading && hasBody && hasList && hasCode && hasTable && hasInlineCode && empty.empty() && !malformed.empty() && !unknown.empty();
     HMODULE richEditLibrary = ::LoadLibraryW(L"Msftedit.dll");
     HWND richEdit = richEditLibrary ? ::CreateWindowExW(0, MSFTEDIT_CLASS, L"", WS_POPUP | ES_MULTILINE, 0, 0, 16, 16, owner, NULL, NULL, NULL) : NULL;
     bool formatting = false;
@@ -273,11 +276,11 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         };
         const int textLength = ::GetWindowTextLengthW(richEdit);
         CString rendered; wchar_t* buffer = rendered.GetBuffer(textLength + 1); ::GetWindowTextW(richEdit, buffer, textLength + 1); rendered.ReleaseBuffer();
-        CHARFORMAT2 title = {}, heading = {}, body = {}, code = {};
+        CHARFORMAT2 titleFormat = {}, headingFormat = {}, bodyFormat = {}, codeFormat = {};
         const int titleAt = rendered.Find(L"Title"), headingAt = rendered.Find(L"Heading"), bodyAt = rendered.Find(L"Body"), codeAt = rendered.Find(L"Code");
-        formatting = titleAt >= 0 && headingAt >= 0 && bodyAt >= 0 && codeAt >= 0 && formatAt(titleAt, title) && formatAt(headingAt, heading) && formatAt(bodyAt, body) && formatAt(codeAt, code) &&
-            (title.dwEffects & CFE_BOLD) != 0 && (heading.dwEffects & CFE_BOLD) != 0 && (body.dwEffects & CFE_BOLD) == 0 &&
-            (code.dwEffects & CFE_BOLD) == 0 && ::lstrcmpiW(code.szFaceName, L"Consolas") == 0 && title.yHeight > body.yHeight;
+        formatting = titleAt >= 0 && headingAt >= 0 && bodyAt >= 0 && codeAt >= 0 && formatAt(titleAt, titleFormat) && formatAt(headingAt, headingFormat) && formatAt(bodyAt, bodyFormat) && formatAt(codeAt, codeFormat) &&
+            (titleFormat.dwEffects & CFE_BOLD) != 0 && (headingFormat.dwEffects & CFE_BOLD) != 0 && (bodyFormat.dwEffects & CFE_BOLD) == 0 &&
+            (codeFormat.dwEffects & CFE_BOLD) == 0 && ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0 && titleFormat.yHeight > bodyFormat.yHeight && bodyFormat.yHeight >= 200;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);

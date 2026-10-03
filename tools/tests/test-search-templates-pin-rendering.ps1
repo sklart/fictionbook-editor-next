@@ -14,7 +14,7 @@ foreach ($size in 16,20,24,32) {
     if ([BitConverter]::ToUInt16($bytes, 28) -ne 1) { throw "Pin mask $size px must be 1-bit, not color-derived." }
     $offset = [BitConverter]::ToInt32($bytes, 10)
     $stride = [int](([Math]::Floor(($size + 31) / 32)) * 4)
-    $foregroundCount = 0; $backgroundCount = 0; $minX = $size; $minY = $size; $maxX = -1; $maxY = -1; $hasLowerNeedle = $false
+    $foregroundCount = 0; $backgroundCount = 0; $minX = $size; $minY = $size; $maxX = -1; $maxY = -1; $hasLowerNeedle = $false; $foregroundByRow = New-Object int[] $size
     # This is the same off-screen BGRA composition contract as DrawPresetPinGlyph:
     # bit 1 selects the themed glyph, bit 0 keeps the button surface.
     $surface = New-Object byte[] ($size * $size * 4)
@@ -23,7 +23,7 @@ foreach ($size in 16,20,24,32) {
             $sourceRow = $size - 1 - $y
             $covered = ($bytes[$offset + $sourceRow * $stride + [int]($x / 8)] -band (0x80 -shr ($x % 8))) -ne 0
             $pixel = 4 * ($y * $size + $x)
-            if ($covered) { $surface[$pixel] = 215; $surface[$pixel + 1] = 120; $surface[$pixel + 2] = 0; ++$foregroundCount; $minX = [Math]::Min($minX, $x); $minY = [Math]::Min($minY, $y); $maxX = [Math]::Max($maxX, $x); $maxY = [Math]::Max($maxY, $y); if ($y -ge [int]($size * 0.70) -and [Math]::Abs($x - (($size - 1) / 2)) -le 2) { $hasLowerNeedle = $true } }
+            if ($covered) { $surface[$pixel] = 215; $surface[$pixel + 1] = 120; $surface[$pixel + 2] = 0; ++$foregroundCount; ++$foregroundByRow[$y]; $minX = [Math]::Min($minX, $x); $minY = [Math]::Min($minY, $y); $maxX = [Math]::Max($maxX, $x); $maxY = [Math]::Max($maxY, $y); if ($y -ge [int]($size * 0.70) -and [Math]::Abs($x - (($size - 1) / 2)) -le 2) { $hasLowerNeedle = $true } }
             else { $surface[$pixel] = 245; $surface[$pixel + 1] = 245; $surface[$pixel + 2] = 245; ++$backgroundCount }
             $surface[$pixel + 3] = 255
         }
@@ -31,5 +31,11 @@ foreach ($size in 16,20,24,32) {
     $coverage = $foregroundCount / ($size * $size)
     if ($foregroundCount -le 0 -or $backgroundCount -le 0 -or $coverage -lt 0.03 -or $coverage -gt 0.55) { throw "Pin coverage for $size px is not a visible glyph: $coverage." }
     if ($minX -le 0 -or $minY -le 0 -or $maxX -ge $size - 1 -or $maxY -ge $size - 1 -or -not $hasLowerNeedle) { throw "Pin mask $size px is not a centered pin silhouette with a needle." }
+    $headRows = $foregroundByRow[([int]($size * .10))..([int]($size * .45))]
+    $baseRows = $foregroundByRow[([int]($size * .45))..([int]($size * .70))]
+    $needleRows = $foregroundByRow[([int]($size * .70))..([int]($size * .94))]
+    if ((($headRows | Measure-Object -Maximum).Maximum -lt 3) -or (($baseRows | Measure-Object -Maximum).Maximum -le (($headRows | Measure-Object -Maximum).Maximum)) -or (($needleRows | Where-Object { $_ -gt 0 -and $_ -le 3 }).Count -lt 2)) {
+        throw "Pin mask $size px must retain a filled head, a wider pin bar, and a narrow lower needle."
+    }
 }
 Write-Host 'Search templates pin rendering smoke passed.'

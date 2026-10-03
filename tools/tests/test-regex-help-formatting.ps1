@@ -8,5 +8,9 @@ foreach ($token in @('MarkdownBlockKind', 'ParseMarkdown', 'ParseInlineCode', 'R
     if ($parser -notmatch [regex]::Escape($token)) { throw "Missing Markdown formatting behavior: $token" }
 }
 if ($parser -match 'JoinHelpBlocks|starts\[|ClassifyHelpLine|section ==') { throw 'Markdown renderer retains position-based or joined-text formatting.' }
+if ($parser -match 'MulDiv\(title \? 11 : 9, 1440, dpi\)') { throw 'RichEdit help text must not divide its twip size by monitor DPI.' }
+foreach ($required in @('format.yHeight = (title ? 14 : 10) * 20', 'bodyFormat.yHeight >= 200')) {
+    if ($parser -notmatch [regex]::Escape($required)) { throw "Readable Help font-size contract is missing: $required" }
+}
 if ($dialog -notmatch 'FbeRegexHelp::RenderMarkdown') { throw 'Regex Help dialog does not render parsed Markdown blocks.' }
 Write-Host 'Regex Help Markdown formatting contract passed.'
