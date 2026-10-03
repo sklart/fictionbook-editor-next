@@ -1845,8 +1845,15 @@
 		// The plugin itself receives deterministic options through its test-only
 		// environment hook; activation and Export still follow the normal FBE
 		// local-COM production path.
+		WORD exportCommand = 0;
+		for (int index = 0; index < m_plugins.ExportPlugins().GetSize(); ++index)
+		{
+			const PluginDescriptor* descriptor = m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[index]);
+			if (descriptor != NULL && descriptor->id == L"export-html") { exportCommand = static_cast<WORD>(ID_EXPORT_BASE + index); break; }
+		}
+		if (exportCommand == 0) { output.Close(); ::PostQuitMessage(1); return 0; }
 		BOOL handled = FALSE;
-		OnToolsExport(0, ID_EXPORT_BASE, m_hWnd, handled);
+		OnToolsExport(0, exportCommand, m_hWnd, handled);
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 
