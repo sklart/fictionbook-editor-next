@@ -44,6 +44,13 @@ try {
     Write-Json 'localization\app-ui\fbe-small-dialogs.json' $catalog
     $output = Invoke-Preflight 1
     if ($output -notmatch 'STALE baseline entries:' -or $output -notmatch 'translation is now present') { throw "Stale baseline entry was not reported: $output" }
+    $catalog.strings.sample | Add-Member -Force -NotePropertyName fallback -NotePropertyValue 'en-US'
+    Write-Json 'localization\incomplete-translations-baseline.json' ([ordered]@{ formatVersion=1; catalogs=[ordered]@{} })
+    Write-Json 'localization\app-ui\fbe-small-dialogs.json' $catalog
+    $output = Invoke-Preflight 1
+    if ($output -notmatch 'production fallback/needsTranslation is forbidden') { throw "Strict small-dialog catalog fallback was not rejected: $output" }
+    $catalog.strings.sample.PSObject.Properties.Remove('fallback')
+    Write-Json 'localization\app-ui\fbe-small-dialogs.json' $catalog
 
     $appCatalogPath = Join-Path $tempRoot 'localization\app-ui\catalog.json'
     $appCatalog = Get-Content -Raw -LiteralPath $appCatalogPath | ConvertFrom-Json

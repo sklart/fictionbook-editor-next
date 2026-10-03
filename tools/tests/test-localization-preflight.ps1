@@ -104,7 +104,7 @@ foreach ($relativePath in $productionCatalogs) {
     foreach ($entryProperty in $entries) {
         $key = [string]$entryProperty.Name; $entry = $entryProperty.Value
         if (-not $entry.PSObject.Properties['translations']) { Add-Issue $structuralIssues $relativePath $key '(all)' 'translations missing'; continue }
-        if ($relativePath -notin $baselineAllowedCatalogs -and ($entry.needsTranslation -or $entry.fallback)) { Add-Issue $structuralIssues $relativePath $key '(all)' 'production fallback/needsTranslation is forbidden' }
+        if ($entry.needsTranslation -or $entry.fallback) { Add-Issue $structuralIssues $relativePath $key '(all)' 'production fallback/needsTranslation is forbidden' }
         $sourceTranslation = $entry.translations.PSObject.Properties['en-US']
         foreach ($language in $productionLanguages) {
             $translation = $entry.translations.PSObject.Properties[$language]
