@@ -29,9 +29,9 @@ runtime/HTML/**/*.js text eol=crlf
 runtime/HTML/**/*.html text eol=crlf
 runtime/HTML/**/*.htm text eol=crlf
 runtime/HTML/**/*.css text eol=crlf
-runtime/dict/*.aff -text
-runtime/dict/*.dic -text
-runtime/EditorBackgrounds/*.png -text
+runtime/Dict/*.aff -text
+runtime/Dict/*.dic -text
+runtime/Backgrounds/*.png -text
 
 # Generated and vendored inputs retain the encoding and EOL selected by their
 # producer. First-party editor settings are defined in .editorconfig; this

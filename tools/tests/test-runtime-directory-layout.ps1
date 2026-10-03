@@ -14,6 +14,24 @@ $sourceRuntimeDirectories = @('Backgrounds', 'Dict', 'Help', 'HTML', 'Plugins', 
 $legacyDirectories = @('dict', 'EditorBackgrounds', 'ArchiveMruRuntimeData')
 function Test-ExactDirectory([string]$Parent, [string]$Name) { return @((Get-ChildItem -LiteralPath $Parent -Directory -Force | Select-Object -ExpandProperty Name) -ccontains $Name) }
 
+$attributesPath = Join-Path $repoRoot '.gitattributes'
+$attributeLines = @(Get-Content -LiteralPath $attributesPath -Encoding UTF8)
+$canonicalAttributeRules = @(
+    'runtime/Dict/*.aff -text',
+    'runtime/Dict/*.dic -text',
+    'runtime/Backgrounds/*.png -text'
+)
+$legacyAttributeRules = @(
+    'runtime/dict/*.aff -text',
+    'runtime/dict/*.dic -text',
+    'runtime/EditorBackgrounds/*.png -text'
+)
+foreach($rule in $canonicalAttributeRules) {
+    if($attributeLines -cnotcontains $rule) { throw "Git attributes must contain the canonical, case-sensitive rule: $rule" }
+}
+foreach($rule in $legacyAttributeRules) {
+    if($attributeLines -ccontains $rule) { throw "Git attributes must not contain a legacy rule: $rule" }
+}
 foreach($directory in $sourceRuntimeDirectories) {
     if(-not (Test-ExactDirectory (Join-Path $repoRoot "runtime") $directory)) {
         throw "Runtime source directory is missing: $directory"
