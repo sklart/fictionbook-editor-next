@@ -338,18 +338,6 @@
         "pt-PT",
         "uk-UA"
       ],
-      "fbe.settings.tooltip.source.font": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
       "fbe.settings.tooltip.source.invisible": [
         "bg-BG",
         "cs-CZ",
@@ -386,43 +374,7 @@
         "pt-PT",
         "uk-UA"
       ],
-      "fbe.settings.tooltip.source.syntax": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.settings.tooltip.source.tags": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
       "fbe.settings.tooltip.source.whitespace": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.settings.tooltip.source.wrap": [
         "bg-BG",
         "cs-CZ",
         "de-DE",
