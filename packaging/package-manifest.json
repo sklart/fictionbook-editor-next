@@ -9,6 +9,17 @@
       "Resources\\Words.xml",
       "Help\\en-US\\regex-design.md", "Help\\en-US\\regex-source.md",
       "Help\\ru-RU\\regex-design.md", "Help\\ru-RU\\regex-source.md",
+      "Help\\uk-UA\\regex-design.md", "Help\\uk-UA\\regex-source.md",
+      "Help\\de-DE\\regex-design.md", "Help\\de-DE\\regex-source.md",
+      "Help\\fr-FR\\regex-design.md", "Help\\fr-FR\\regex-source.md",
+      "Help\\es-ES\\regex-design.md", "Help\\es-ES\\regex-source.md",
+      "Help\\it-IT\\regex-design.md", "Help\\it-IT\\regex-source.md",
+      "Help\\pl-PL\\regex-design.md", "Help\\pl-PL\\regex-source.md",
+      "Help\\pt-PT\\regex-design.md", "Help\\pt-PT\\regex-source.md",
+      "Help\\nl-NL\\regex-design.md", "Help\\nl-NL\\regex-source.md",
+      "Help\\cs-CZ\\regex-design.md", "Help\\cs-CZ\\regex-source.md",
+      "Help\\bg-BG\\regex-design.md", "Help\\bg-BG\\regex-source.md",
+
       "genres.txt", "genres.rus.txt", "genres.ukr.txt", "genres.librusec.txt", "genres.rus.librusec.txt",
       "Dict\\de_DE.aff", "Dict\\de_DE.dic", "Dict\\en_US.aff", "Dict\\en_US.dic", "Dict\\ru_RU.aff", "Dict\\ru_RU.dic", "Dict\\uk_UA.aff", "Dict\\uk_UA.dic", "Dict\\sources.json",
       "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
