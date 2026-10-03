@@ -2,42 +2,6 @@
   "formatVersion": 1,
   "catalogs": {
     "localization\\app-ui\\fbe-small-dialogs.json": {
-      "fbe.dialog.idd_setting_other.default_encoding": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.dialog.idd_setting_other.open_file": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.dialog.idd_setting_other.save_file": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
       "fbe.dialog.idd_settings_words.new_word": [
         "bg-BG",
         "cs-CZ",
