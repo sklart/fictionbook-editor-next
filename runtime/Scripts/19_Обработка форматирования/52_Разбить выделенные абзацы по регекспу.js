@@ -75,8 +75,8 @@ function arrayContains(arr, item) {
 }
 
 // Проверка, является ли символ пробельным.
-function isWhitespace(char) {
-    return char == ' ' || char == '\r' || char == '\n';
+function isWhitespace(currentChar) {
+    return currentChar == ' ' || currentChar == '\r' || currentChar == '\n';
 }
 
 // Обрезка ведущих и замыкающих пробельных символов строки.
@@ -92,7 +92,7 @@ try {
     if (nbspChar.charCodeAt(0) != 160)
         nbspEntity = nbspChar;
 } catch (e) {
-    var nbspChar = String.fromCharCode(160);
+    nbspChar = String.fromCharCode(160);
 }
 
 // Экранированная версия nbspEntity для безопасного использования в RegExp.
@@ -261,8 +261,8 @@ function getPositionMapping(html, normalizedText, ignoreFootnotes) {
         fbeSpaces[fbeSpaces.length] = nbspEntity;
     }
     while (htmlIndex < html.length && textIndex <= normalizedText.length) {
-        var char = html.charAt(htmlIndex);
-        if (char == '<') {
+        var currentChar = html.charAt(htmlIndex);
+        if (currentChar == '<') {
             var tagEnd = -1;
             for (var k = htmlIndex; k < html.length; k++) {
                 if (html.charAt(k) == '>') {
@@ -306,7 +306,7 @@ function getPositionMapping(html, normalizedText, ignoreFootnotes) {
         }
 
         // Обрабатываем HTML-сущности
-        if (char == '&') {
+        if (currentChar == '&') {
             var foundEntity = false;
             for (var e = 0; e < htmlEntities.length; e++) {
                 var entity = htmlEntities[e];
@@ -335,9 +335,9 @@ function getPositionMapping(html, normalizedText, ignoreFootnotes) {
             if (foundEntity) continue;
             if (html.charAt(htmlIndex + 1) == '#') {
                 var semicolonPos = -1;
-                for (var k = htmlIndex; k < html.length; k++) {
-                    if (html.charAt(k) == ';') {
-                        semicolonPos = k;
+                for (var numericEntityIndex = htmlIndex; numericEntityIndex < html.length; numericEntityIndex++) {
+                    if (html.charAt(numericEntityIndex) == ';') {
+                        semicolonPos = numericEntityIndex;
                         break;
                     }
                 }
@@ -358,12 +358,12 @@ function getPositionMapping(html, normalizedText, ignoreFootnotes) {
         // Обрабатываем спецсимволы FBE и неразрывный пробел
         var isFbeSpace = false;
         for (var s = 0; s < fbeSpaces.length; s++) {
-            if (char == fbeSpaces[s]) {
+            if (currentChar == fbeSpaces[s]) {
                 isFbeSpace = true;
                 break;
             }
         }
-        if (isFbeSpace || char.charCodeAt(0) == 160) {
+        if (isFbeSpace || currentChar.charCodeAt(0) == 160) {
             mapping[mapping.length] = {
                 htmlPos: htmlIndex,
                 textPos: textIndex,
@@ -398,10 +398,10 @@ function convertTextPosToHtmlPos(textPos, mapping) {
     }
     var bestMatch = -1;
     var bestMatchIndex = -1;
-    for (var i = 0; i < mapping.length; i++) {
-        if (mapping[i].textPos <= textPos && mapping[i].textPos > bestMatch) {
-            bestMatch = mapping[i].textPos;
-            bestMatchIndex = i;
+    for (var candidateIndex = 0; candidateIndex < mapping.length; candidateIndex++) {
+        if (mapping[candidateIndex].textPos <= textPos && mapping[candidateIndex].textPos > bestMatch) {
+            bestMatch = mapping[candidateIndex].textPos;
+            bestMatchIndex = candidateIndex;
         }
     }
     if (bestMatchIndex != -1) {
@@ -540,13 +540,13 @@ function isInsideHtmlTag(html, pos) {
     }
     if (!beforeTag) return false;
     var afterTag = false;
-    for (var i = pos; i < html.length; i++) {
-        var ch = html.charAt(i);
-        if (ch == '>') {
+    for (var afterIndex = pos; afterIndex < html.length; afterIndex++) {
+        var afterChar = html.charAt(afterIndex);
+        if (afterChar == '>') {
             afterTag = true;
             break;
         }
-        if (ch == '<') break;
+        if (afterChar == '<') break;
     }
     return afterTag;
 }
@@ -646,8 +646,8 @@ function splitHTMLByMarkers(html, marker) {
     var fullTag = '';
 
     while (i < len) {
-        var char = html.charAt(i);
-        if (char === '<') {
+        var currentChar = html.charAt(i);
+        if (currentChar === '<') {
             inTag = true;
             tagName = '';
             isClosing = false;
@@ -692,7 +692,7 @@ function splitHTMLByMarkers(html, marker) {
                 i++;
                 continue;
             }
-        } else if (!inTag && char === marker.charAt(0)) {
+        } else if (!inTag && currentChar === marker.charAt(0)) {
             var isFullMarker = true;
             for (var m = 0; m < marker.length; m++) {
                 if (i + m >= len || html.charAt(i + m) !== marker.charAt(m)) {
@@ -715,11 +715,11 @@ function splitHTMLByMarkers(html, marker) {
                 i += marker.length;
                 continue;
             } else {
-                currentPart += char;
+                currentPart += currentChar;
                 i++;
             }
         } else {
-            currentPart += char;
+            currentPart += currentChar;
             i++;
         }
     }
@@ -799,9 +799,9 @@ function getParagraphsInSelection() {
                             break;
                         }
                         if (child.nodeType == 1) {
-                            var firstParagraph = findFirstParagraphInElement(child);
-                            if (firstParagraph) {
-                                nextInParent = firstParagraph;
+                            var childFirstParagraph = findFirstParagraphInElement(child);
+                            if (childFirstParagraph) {
+                                nextInParent = childFirstParagraph;
                                 break;
                             }
                         }
