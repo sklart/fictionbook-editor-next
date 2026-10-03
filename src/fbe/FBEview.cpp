@@ -3494,7 +3494,15 @@ bool CFBEView::HasTextSelection()
 void CFBEView::ResetSearchScope()
 {
 	m_design_search.ResetScope();
-	m_selection_search_scope.Release();
+	try
+	{
+		m_selection_search_scope.Release();
+	}
+	catch (const _com_error& error)
+	{
+		StartupTrace::HResult(L"webbrowser", L"WB207", error.Error(), L"Release stale selection search scope");
+		m_selection_search_scope.Detach();
+	}
 }
 
 bool CFBEView::RebuildDocumentSearch(const AU::Search::SearchQuery& query, MSHTML::IHTMLTxtRangePtr selection, std::wstring* errorText, bool* expressionError)
