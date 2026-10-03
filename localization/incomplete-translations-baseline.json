@@ -110,54 +110,6 @@
         "pt-PT",
         "uk-UA"
       ],
-      "fbe.search.error.current_section_unavailable": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.search.error.mapping_failed": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.search.error.scope_mapping_failed": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.search.error.selection_scope_unavailable": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
       "fbe.settings.editor_background.browse": [
         "bg-BG",
         "cs-CZ",

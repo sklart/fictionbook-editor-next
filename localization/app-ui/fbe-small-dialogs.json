@@ -871,19 +871,19 @@
     },
     "fbe.search.error.mapping_failed": {
       "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
-      "translations": { "en-US": "Search could not be mapped to the document.", "ru-RU": "Не удалось сопоставить поиск с документом." }
+      "translations": { "en-US": "Search could not be mapped to the document.", "ru-RU": "Не удалось сопоставить поиск с документом.", "uk-UA": "Не вдалося зіставити пошук із документом.", "de-DE": "Die Suche konnte dem Dokument nicht zugeordnet werden.", "fr-FR": "La recherche n'a pas pu être associée au document.", "es-ES": "No se pudo asociar la búsqueda al documento.", "it-IT": "Non è stato possibile associare la ricerca al documento.", "pl-PL": "Nie można było powiązać wyszukiwania z dokumentem.", "pt-PT": "Não foi possível associar a pesquisa ao documento.", "nl-NL": "De zoekopdracht kon niet aan het document worden gekoppeld.", "cs-CZ": "Vyhledávání se nepodařilo přiřadit k dokumentu.", "bg-BG": "Търсенето не можа да бъде съпоставено с документа." }
     },
     "fbe.search.error.selection_scope_unavailable": {
       "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
-      "translations": { "en-US": "The selected search scope is no longer available.", "ru-RU": "Выбранная область поиска больше недоступна." }
+      "translations": { "en-US": "The selected search scope is no longer available.", "ru-RU": "Выбранная область поиска больше недоступна.", "uk-UA": "Вибрана область пошуку більше недоступна.", "de-DE": "Der ausgewählte Suchbereich ist nicht mehr verfügbar.", "fr-FR": "La zone de recherche sélectionnée n'est plus disponible.", "es-ES": "El ámbito de búsqueda seleccionado ya no está disponible.", "it-IT": "L'ambito di ricerca selezionato non è più disponibile.", "pl-PL": "Wybrany zakres wyszukiwania nie jest już dostępny.", "pt-PT": "O âmbito de pesquisa selecionado já não está disponível.", "nl-NL": "Het geselecteerde zoekbereik is niet meer beschikbaar.", "cs-CZ": "Vybraný rozsah hledání již není k dispozici.", "bg-BG": "Избраният обхват на търсене вече не е наличен." }
     },
     "fbe.search.error.current_section_unavailable": {
       "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
-      "translations": { "en-US": "The current section is not available for search.", "ru-RU": "Текущий раздел недоступен для поиска." }
+      "translations": { "en-US": "The current section is not available for search.", "ru-RU": "Текущий раздел недоступен для поиска.", "uk-UA": "Поточний розділ недоступний для пошуку.", "de-DE": "Der aktuelle Abschnitt ist für die Suche nicht verfügbar.", "fr-FR": "La section actuelle n'est pas disponible pour la recherche.", "es-ES": "La sección actual no está disponible para la búsqueda.", "it-IT": "La sezione corrente non è disponibile per la ricerca.", "pl-PL": "Bieżąca sekcja nie jest dostępna do wyszukiwania.", "pt-PT": "A secção atual não está disponível para pesquisa.", "nl-NL": "De huidige sectie is niet beschikbaar voor zoeken.", "cs-CZ": "Aktuální oddíl není pro hledání k dispozici.", "bg-BG": "Текущият раздел не е наличен за търсене." }
     },
     "fbe.search.error.scope_mapping_failed": {
       "resource": "IDD_FIND", "kind": "VALUE", "targetId": "",
-      "translations": { "en-US": "The selected search scope could not be mapped to the document.", "ru-RU": "Не удалось сопоставить выбранную область поиска с документом." }
+      "translations": { "en-US": "The selected search scope could not be mapped to the document.", "ru-RU": "Не удалось сопоставить выбранную область поиска с документом.", "uk-UA": "Не вдалося зіставити вибрану область пошуку з документом.", "de-DE": "Der ausgewählte Suchbereich konnte dem Dokument nicht zugeordnet werden.", "fr-FR": "La zone de recherche sélectionnée n'a pas pu être associée au document.", "es-ES": "No se pudo asociar el ámbito de búsqueda seleccionado al documento.", "it-IT": "Non è stato possibile associare l'ambito di ricerca selezionato al documento.", "pl-PL": "Nie można było powiązać wybranego zakresu wyszukiwania z dokumentem.", "pt-PT": "Não foi possível associar o âmbito de pesquisa selecionado ao documento.", "nl-NL": "Het geselecteerde zoekbereik kon niet aan het document worden gekoppeld.", "cs-CZ": "Vybraný rozsah hledání se nepodařilo přiřadit k dokumentu.", "bg-BG": "Избраният обхват на търсене не можа да бъде съпоставен с документа." }
     },
     "fbe.dialog.idd_find.caption": {
       "resource": "IDD_FIND",
