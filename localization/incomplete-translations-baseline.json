@@ -2,18 +2,6 @@
   "formatVersion": 1,
   "catalogs": {
     "localization\\app-ui\\fbe-small-dialogs.json": {
-      "fbe.dialog.idd_settings_words.new_word": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
       "fbe.settings.tooltip.advanced.browse": [
         "bg-BG",
         "cs-CZ",
@@ -615,18 +603,6 @@
         "uk-UA"
       ],
       "fbe.settings.tooltip.words.show_exclusions": [
-        "bg-BG",
-        "cs-CZ",
-        "de-DE",
-        "es-ES",
-        "fr-FR",
-        "it-IT",
-        "nl-NL",
-        "pl-PL",
-        "pt-PT",
-        "uk-UA"
-      ],
-      "fbe.settings.words.encountered": [
         "bg-BG",
         "cs-CZ",
         "de-DE",
