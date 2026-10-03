@@ -51,6 +51,12 @@ try {
     Write-Json 'localization\app-ui\catalog.json' $appCatalog
     $output = Invoke-Preflight 1
     if ($output -notmatch 'production fallback/needsTranslation is forbidden') { throw "Strict application catalog fallback was not rejected: $output" }
+    $appCatalog.strings.sample.PSObject.Properties.Remove('fallback')
+    $appCatalog.strings.sample.translations.'en-US' = 'Path: %s'
+    $appCatalog.strings.sample.translations.'de-DE' = 'Pfad: %d'
+    Write-Json 'localization\app-ui\catalog.json' $appCatalog
+    $output = Invoke-Preflight 1
+    if ($output -notmatch 'format placeholder set differs from en-US' -or $output -notmatch 'de-DE') { throw "Placeholder mismatch was not reported: $output" }
 }
 finally { if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force } }
 Write-Host 'Localization preflight ratchet regression passed.'

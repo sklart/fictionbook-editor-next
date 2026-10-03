@@ -37,6 +37,14 @@ function Add-Issue($List, [string]$Catalog, [string]$Key, [string]$Language, [st
     $List.Add([pscustomobject]@{ Catalog=$Catalog; Key=$Key; Language=$Language; State=$State })
 }
 function Get-PairId([string]$Catalog, [string]$Key, [string]$Language) { return ($Catalog, $Key, $Language -join '|') }
+function Get-FormatPlaceholders($Text) {
+    if ($null -eq $Text) { return @() }
+    # C/Win32 printf placeholders. %% is a literal percent and intentionally excluded.
+    return @([regex]::Matches([string]$Text, '(?<!%)%(?:\d+\$)?[-+ #0]*\d*(?:\.\d+)?[diuoxXfFeEgGaAcCsSp]') | ForEach-Object Value | Sort-Object)
+}
+function Test-SameFormatPlaceholders($Source, $Translation) {
+    return ((Get-FormatPlaceholders $Source) -join '|') -ceq ((Get-FormatPlaceholders $Translation) -join '|')
+}
 function Write-GroupedIssues([string]$Title, $Items) {
     Write-Host $Title
     if (-not $Items.Count) { Write-Host '  0'; return }
@@ -97,10 +105,12 @@ foreach ($relativePath in $productionCatalogs) {
         $key = [string]$entryProperty.Name; $entry = $entryProperty.Value
         if (-not $entry.PSObject.Properties['translations']) { Add-Issue $structuralIssues $relativePath $key '(all)' 'translations missing'; continue }
         if ($relativePath -notin $baselineAllowedCatalogs -and ($entry.needsTranslation -or $entry.fallback)) { Add-Issue $structuralIssues $relativePath $key '(all)' 'production fallback/needsTranslation is forbidden' }
+        $sourceTranslation = $entry.translations.PSObject.Properties['en-US']
         foreach ($language in $productionLanguages) {
             $translation = $entry.translations.PSObject.Properties[$language]
             if (-not $translation) { $actualDebt.Add([pscustomobject]@{ Catalog=$relativePath; Key=$key; Language=$language; State='missing' }) }
             elseif ($null -eq $translation.Value -or [string]::IsNullOrWhiteSpace([string]$translation.Value)) { $actualDebt.Add([pscustomobject]@{ Catalog=$relativePath; Key=$key; Language=$language; State='empty' }) }
+            elseif ($sourceTranslation -and -not (Test-SameFormatPlaceholders $sourceTranslation.Value $translation.Value)) { Add-Issue $structuralIssues $relativePath $key $language 'format placeholder set differs from en-US' }
         }
     }
 }
