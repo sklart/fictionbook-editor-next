@@ -135,6 +135,7 @@ private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();
 	void FillViewBar();
 	void ApplyViewBarMetrics();
+	void EnsureViewBarElementTextWidth();
 	void UpdateViewBarMode(bool scripts);
 	void SetScriptMode(bool scripts);
 	void ClearTree();

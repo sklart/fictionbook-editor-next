@@ -665,6 +665,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <None Include="res\doc.bmp" />
     <None Include="res\document.bmp" />
     <None Include="res\error.bmp" />
+    <None Include="res\imgph.png" />
     <None Include="res\Fb2-shema.bmp" />
     <None Include="res\FBE.svg" />
     <None Include="res\FBE2.svg" />

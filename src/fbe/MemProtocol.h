@@ -1,6 +1,8 @@
 #ifndef MEMPROTOCOL_H
 #define MEMPROTOCOL_H
 
+#include "resource.h"
+
 EXTERN_C const GUID CLSID_MemProtocol;
 
 class ATL_NO_VTABLE CMemProtocol :
@@ -65,10 +67,32 @@ okreport:
       }
     }
 
-    // fallback to a builtin image
-    HRESULT hr=U::LoadFile(U::GetProgDirFile(_T("imgph.png")),&m_data);
-    if (SUCCEEDED(hr))
-      goto gotit;
+    // A missing binary is the normal representation of an empty FB2 image.
+    // Serve the common FBE 2.8.5 placeholder from the executable resource so
+    // a document never depends on imgph.png next to the executable.
+    HRSRC resource = ::FindResource(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDR_EMPTY_IMAGE_PLACEHOLDER), RT_RCDATA);
+    HGLOBAL resourceData = resource != NULL ? ::LoadResource(_Module.GetResourceInstance(), resource) : NULL;
+    const DWORD resourceBytes = resource != NULL ? ::SizeofResource(_Module.GetResourceInstance(), resource) : 0;
+    const void* resourceBytesPtr = resourceData != NULL ? ::LockResource(resourceData) : NULL;
+    HRESULT hr = E_FAIL;
+    if (resourceBytes != 0 && resourceBytesPtr != NULL)
+    {
+      SAFEARRAY* bytes = ::SafeArrayCreateVector(VT_UI1, 0, resourceBytes);
+      if (bytes != NULL)
+      {
+        void* destination = NULL;
+        if (SUCCEEDED(::SafeArrayAccessData(bytes, &destination)))
+        {
+          memcpy(destination, resourceBytesPtr, resourceBytes);
+          ::SafeArrayUnaccessData(bytes);
+          V_VT(&m_data) = VT_ARRAY | VT_UI1;
+          V_ARRAY(&m_data) = bytes;
+          goto gotit;
+        }
+        ::SafeArrayDestroy(bytes);
+      }
+      hr = E_OUTOFMEMORY;
+    }
 
     // or fail
     m_bytes=0;

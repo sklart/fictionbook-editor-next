@@ -6,6 +6,7 @@
 #define IDUPDATE                        2
 #define IDOK2                           3
 #define IDD_ABOUTBOX                    100
+#define IDR_EMPTY_IMAGE_PLACEHOLDER      57602
 #define ID_VIEW_TREE                    101
 #define IDS_PANE_INS                    102
 #define IDS_PANE_OVR                    103

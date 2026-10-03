@@ -224,6 +224,7 @@ LRESULT CTreeWithToolBar::OnClose(UINT /* unused: uMsg */, WPARAM /* unused: wPa
 
 LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
+	EnsureViewBarElementTextWidth();
 	RECT clientRect = {0, 0, 0, 0};
 	RECT rebarRect = {0, 0, 0, 0};
 	RECT treeRect = {0, 0, 0, 0};
@@ -486,6 +487,27 @@ void CTreeWithToolBar::ApplyViewBarMetrics()
 	if(!m_view_bar.IsWindow()) return;
 	::SendMessage(m_view_bar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
 	m_view_bar.AutoSize();
+	EnsureViewBarElementTextWidth();
+}
+
+void CTreeWithToolBar::EnsureViewBarElementTextWidth()
+{
+	if(!m_view_bar.IsWindow()) return;
+	wchar_t text[MAX_LOAD_STRING + 1] = {};
+	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX;
+	button.pszText = text; button.cchText = _countof(text);
+	if(!::SendMessage(m_view_bar, TB_GETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button)) || text[0] == L'\0') return;
+	HDC dc = ::GetDC(m_view_bar); if(dc == NULL) return;
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_view_bar, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font != NULL ? ::SelectObject(dc, font) : NULL;
+	SIZE extent = {}; ::GetTextExtentPoint32W(dc, text, static_cast<int>(wcslen(text)), &extent);
+	if(oldFont != NULL) ::SelectObject(dc, oldFont);
+	::ReleaseDC(m_view_bar, dc);
+	const int desiredWidth = extent.cx + UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_view_bar));
+	if(button.cx >= desiredWidth) return;
+	button.cx = static_cast<WORD>((std::min)(desiredWidth, 0xffff));
+	button.pszText = NULL; button.cchText = 0;
+	::SendMessage(m_view_bar, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button));
 }
 
 void CTreeWithToolBar::UpdateViewBarMode(bool scripts)

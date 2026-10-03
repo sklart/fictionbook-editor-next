@@ -1007,6 +1007,8 @@ END
 
 ABOUT_FILE              ABOUT_FILE              "..\\..\\runtime\\contributors.txt"
 
+IDR_EMPTY_IMAGE_PLACEHOLDER RCDATA               "res\\imgph.png"
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // String Table

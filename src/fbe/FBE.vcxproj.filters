@@ -661,6 +661,9 @@
     <None Include="res\error.bmp">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\imgph.png">
+      <Filter>Resource Files</Filter>
+    </None>
     <None Include="res\Fb2-shema.bmp">
       <Filter>Resource Files</Filter>
     </None>
