@@ -157,7 +157,7 @@ int TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return FailCheckpoint(14, "create-popup-for-pointer-and-focus");
     const HWND left = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT);
     const HWND right = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_RIGHT);
-    if (::SetFocus(left) != NULL || ::GetFocus() == left) DispatchUntilIdle(messageLoop);
+    // Verify the focus selected by RegexQuickReferencePopup itself before any interaction.
     if (::GetFocus() != left) return FailFocusCheckpoint(15, "popup did not activate left list before keyboard navigation", left, popupWindow, left, right, owner);
     ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(8, 22));
     DispatchUntilIdle(messageLoop);
