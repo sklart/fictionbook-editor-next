@@ -148,7 +148,7 @@ function Assert-PreparedDependencies {
         (Join-Path $repoRoot "build\libarchive\install\$Configuration\include\archive.h"),
         (Join-Path $repoRoot "build\libarchive\install\$Configuration\lib\archive.lib")
     )
-    $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    $missing = @($requiredPaths | Where-Object { -not (Test-Path -LiteralPath $_) })
     if ($missing.Count -gt 0) {
         throw ("Нельзя пропустить подготовку зависимостей; отсутствуют: {0}" -f ($missing -join "; "))
     }
