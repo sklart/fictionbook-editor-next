@@ -35,15 +35,11 @@ struct Options {
 
 const wchar_t* GetBackendDisplayName();
 
-// Whole-word RegExp searches use FBE's Unicode word definition.  Patterns
-// that already carry an explicit word boundary or lookaround remain untouched
-// so FBE does not silently add a second, potentially contradictory boundary.
+// Whole-word RegExp searches always use FBE's Unicode word definition.  The
+// option is an external constraint: its meaning must not change merely because
+// the expression itself happens to contain a boundary or a lookaround.
 inline CString BuildWholeWordRegexPattern(const CString& pattern)
 {
-	if (pattern.Find(L"\\b") >= 0 || pattern.Find(L"\\B") >= 0 ||
-		pattern.Find(L"(?=") >= 0 || pattern.Find(L"(?!") >= 0 ||
-		pattern.Find(L"(?<=") >= 0 || pattern.Find(L"(?<!") >= 0)
-		return pattern;
 	return L"(?<![\\p{L}\\p{N}_])(?:" + pattern + L")(?![\\p{L}\\p{N}_])";
 }
 bool Execute(

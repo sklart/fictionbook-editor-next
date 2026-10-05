@@ -11,6 +11,7 @@ $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsP
 $frame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $parser = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ReplacementParser.cpp')
 $snapshot = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchTextSnapshot.cpp')
+$regexBackend = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\RegexBackend.h')
 
 function Assert-Contains([string]$text, [string]$pattern, [string]$description) {
     if ($text -notmatch $pattern) { throw "Missing $description." }
@@ -43,6 +44,9 @@ Assert-Contains $frame 'SCI_SETSTATUS, SC_STATUS_OK' 'Source search resets Scint
 Assert-Contains $frame 'SCI_GETSTATUS' 'Source search reads Scintilla status'
 Assert-Contains $frame 'fbe\.regex\.error\.source' 'Source regexp error is localized'
 Assert-NotContains $frame 'num_pat_nbsp|num_rep_nbsp' 'NBSP byte-offset correction arithmetic'
+Assert-Contains $frame 'ScintillaPositionAfter\(m_source, static_cast<int>\(m_source\.SendMessage\(SCI_GETTARGETEND\)\)\)' 'Source Replace All advances zero-length matches through SCI_POSITIONAFTER'
+Assert-Contains $source 'skipCurrentZeroLength[\s\S]*?ScintillaPositionAfter\(src, p1\)' 'Source Find advances a replaced zero-length match through SCI_POSITIONAFTER'
+Assert-Contains $source 'ScintillaPositionBefore\(src, p1\)' 'Source reverse search uses a Scintilla character boundary'
 Assert-Contains $source 'CString searchPattern\(m_fo\.pattern\)' 'Source Find normalizes a pattern copy'
 Assert-Contains $frame 'CString patternText\(m_view->m_fo\.pattern\)' 'Source Replace All normalizes a pattern copy'
 Assert-Contains $frame 'CString replacementText\(m_view->m_fo\.replacement\)' 'Source Replace All normalizes a replacement copy'
@@ -103,6 +107,8 @@ $singleUndo = $singleReplace.IndexOf('BeginUndoUnit(L"replace")')
 if ($singleGuard -lt 0 -or $singleUndo -lt 0 -or $singleGuard -gt $singleUndo) { throw 'Single Replace must reject a cross-paragraph range before opening Undo.' }
 if ($header -notmatch 'MSHTML::IHTMLTxtRangePtr\s+m_selection_search_scope') { throw 'Selection scope must retain a live MSHTML anchor across a single replacement.' }
 Assert-Contains $singleReplace 'bool replaced = false;' 'single Replace tracks a successful DOM text mutation'
+Assert-Contains $singleReplace 'zeroLengthNoOp = m_fo\.match->Length == 0 && rep\.IsEmpty\(\) && rl\.empty\(\)' 'Design single Replace recognizes zero-length empty no-op'
+Assert-Contains $singleReplace 'if \(!zeroLengthNoOp\)[\s\S]*?BeginUndoUnit\(L"replace"\)' 'Design no-op does not open an Undo mutation'
 Assert-Contains $singleReplace 'if \(replaced\)[\s\S]*?m_fo\.ClearMatch\(\);[\s\S]*?AdvanceSearchDocumentGeneration\(\);' 'single Replace clears the saved match and invalidates snapshots before the next Find'
 Assert-NotContains $singleReplace 'oldLen|newLen|replacementDelta|offsetDelta' 'single Replace must not compensate stale search offsets by text-length deltas'
 Assert-Contains $source 'void CFBEView::ResetSearchScope\(\)[\s\S]*?m_selection_search_scope\.Release\(\);' 'resetting search scope releases its live Selection anchor'
@@ -124,6 +130,7 @@ Assert-Contains $replaceAll 'MB_YESNO \| MB_ICONQUESTION\) != IDYES\)\s*return -
 Assert-Contains $replaceAll 'if \(!previewIsCurrent\(\)\)[\s\S]*?return -1;[\s\S]*?std::vector<MSHTML::IHTMLTxtRangePtr> ranges' 'changed preview identity blocks replacement before ranges and Undo'
 Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?m_find_results_completion_status = completion;' 'successful replacement clears stale preview rows and reports completion'
 Assert-Contains $replaceAll 'SetControlledReplaceAllMutation\(true\);[\s\S]*?BeginUndoUnit\(L"replace all"\)' 'Replace All coalesces its own RANGE_SINK notifications before mutation'
+Assert-Contains $replaceAll 'zeroLengthNoOp = result->Hit\.Length == 0 && replacement\.IsEmpty\(\) && formatting\.empty\(\);[\s\S]*?if \(zeroLengthNoOp\)[\s\S]*?continue;' 'Design Replace All skips zero-length empty no-op writes'
 Assert-Contains $replaceAll 'SetReplaceAllCompletion\(replaced\);[\s\S]*?PostMessage\(m_hWnd, AU::WM_FINALIZE_REPLACE_ALL_COMPLETION' 'successful Replace All schedules one protected completion phase'
 
 Assert-Contains $source 'OnFinalizeReplaceAllCompletion[\s\S]*?TakeReplaceAllCompletion\(\);[\s\S]*?AdvanceSearchDocumentGeneration\(false\);[\s\S]*?m_find_results_completion_status = completion;[\s\S]*?WM_REFRESH_FIND_RESULTS_PANE' 'posted completion finalizes one invalidation before publishing the Results-pane status'
@@ -133,6 +140,9 @@ $globalReplace = [regex]::Match($source, 'int\s+CFBEView::GlobalReplace\(MSHTML:
 if ([string]::IsNullOrWhiteSpace($globalReplace)) { throw 'Unable to locate Search Core GlobalReplace path.' }
 Assert-Contains $globalReplace 'const std::size_t count = m_design_search\.Coordinator\(\)\.GetResults\(\)\.GetCount\(\);\s*if \(count == 0\)\s*return 0;' 'GlobalReplace does not open a no-op Undo unit or invalidate results'
 Assert-Contains $globalReplace 'bool mutationApplied = false;' 'GlobalReplace tracks actual DOM writes'
+Assert-Contains $globalReplace 'zeroLengthNoOp = result->Hit\.Length == 0 && replacement\.IsEmpty\(\) && formatting\.empty\(\);[\s\S]*?if \(zeroLengthNoOp\)[\s\S]*?continue;' 'Global Replace skips zero-length empty no-op writes'
 Assert-Contains $globalReplace 'catch \(_com_error& err\)[\s\S]*?if \(mutationApplied\)\s*AdvanceSearchDocumentGeneration\(\);' 'GlobalReplace invalidates partial failed writes only'
+Assert-Contains $regexBackend 'return L"\(\?<!\[\\\\p\{L\}\\\\p\{N\}_\]\)\(\?:" \+ pattern' 'whole-word RegExp always adds external Unicode boundaries'
+Assert-NotContains $regexBackend 'pattern\.Find\(L"\\\\b"\)|pattern\.Find\(L"\(\?<="\)' 'whole-word RegExp no longer depends on internal boundaries or lookarounds'
 
 Write-Host 'Native Search Core contracts passed.'

@@ -299,6 +299,52 @@ static bool VerifyUtf8ReplaceAllOffsets(HWND editor)
 	}
 	return true;
 }
+
+// This mirrors the Source Replace All cursor rule.  In particular, a
+// zero-length match must advance by a Scintilla character boundary after the
+// replacement, never by a guessed UTF-8 byte count.
+static bool VerifyZeroLengthRegexReplaceProgress(HWND editor)
+{
+	struct Case { const char* subject; const char* pattern; const char* replacement; const char* expected; int expectedCount; };
+	static const Case cases[] = {
+		{ "a", "(?=a)", "", "a", 1 },
+		{ "abc", "^", "", "abc", 1 },
+		{ "abc", "$", "", "abc", 1 },
+		{ "abc", "\\b", "", "abc", 2 },
+		{ "a", "(?=a)", "X", "Xa", 1 },
+		{ "\xF0\x9F\x98\x80", "(?=\xF0\x9F\x98\x80)", "X", "X\xF0\x9F\x98\x80", 1 }
+	};
+	for (size_t index = 0; index < _countof(cases); ++index)
+	{
+		const Case& fixture = cases[index];
+		SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(fixture.subject));
+		int end = static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+		SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
+		SendMessage(editor, SCI_SETTARGETEND, end, 0);
+		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+		int position = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern)));
+		int replacements = 0;
+		while (position != -1 && replacements <= 16)
+		{
+			const int matchLength = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0) - SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+			const int replacementLength = static_cast<int>(SendMessage(editor, SCI_REPLACETARGETRE, std::strlen(fixture.replacement), reinterpret_cast<LPARAM>(fixture.replacement)));
+			end += replacementLength - matchLength;
+			const int next = matchLength == 0
+				? static_cast<int>(SendMessage(editor, SCI_POSITIONAFTER, SendMessage(editor, SCI_GETTARGETEND, 0, 0), 0))
+				: position + replacementLength;
+			++replacements;
+			if (next >= end) break;
+			SendMessage(editor, SCI_SETTARGETSTART, next, 0);
+			SendMessage(editor, SCI_SETTARGETEND, end, 0);
+			SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+			position = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern)));
+		}
+		std::string text(static_cast<size_t>(end) + 8, '\0');
+		SendMessage(editor, SCI_GETTEXT, text.size(), reinterpret_cast<LPARAM>(&text[0]));
+		if (replacements != fixture.expectedCount || text.c_str() != std::string(fixture.expected)) return false;
+	}
+	return true;
+}
 static bool VerifyModernSourceFeatures(HWND editor)
 {
 	SendMessage(editor, SCI_SETCOMMANDEVENTS, FALSE, 0);
@@ -761,6 +807,13 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 15;
+	}
+	if (!VerifyZeroLengthRegexReplaceProgress(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 16;
 	}
 	if (!VerifyMinimalReplaceTarget(editor))
 	{

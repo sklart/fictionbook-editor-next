@@ -4135,6 +4135,18 @@ static bool ScintillaRegexSearchFailed(CWindow source, int position, bool useReg
   return useRegexp && position == -1 && source.SendMessage(SCI_GETSTATUS) != SC_STATUS_OK;
 }
 
+// Scintilla positions are UTF-8 byte offsets.  Advance only through Scintilla
+// so a zero-length regexp match can never split a multi-byte code point.
+static int ScintillaPositionAfter(CWindow source, int position)
+{
+  return static_cast<int>(source.SendMessage(SCI_POSITIONAFTER, position));
+}
+
+static int ScintillaPositionBefore(CWindow source, int position)
+{
+  return static_cast<int>(source.SendMessage(SCI_POSITIONBEFORE, position));
+}
+
 static void ShowScintillaRegexError(CFBEView* view)
 {
   const CString message = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
@@ -4194,6 +4206,7 @@ public:
 class CSciReplaceDlg : public CReplaceDlgBase {
 public:
   CWindow	m_source;
+  bool m_resume_after_zero_length = false;
 
   CSciReplaceDlg(CFBEView *view,HWND src) :
     CReplaceDlgBase(view), m_source(src)
@@ -4208,7 +4221,9 @@ public:
 	}
 
   virtual void DoFind() {
-    if (!m_view->SciFindNext(m_source,false,false))
+    const bool skipCurrentZeroLength = m_resume_after_zero_length;
+    m_resume_after_zero_length = false;
+    if (!m_view->SciFindNext(m_source,false,false, skipCurrentZeroLength))
     {
       if (!m_view->LastSearchErrorIsRegexp())
         U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_END_MSG, static_cast<LPCWSTR>(m_view->m_fo.pattern));
@@ -4229,6 +4244,7 @@ public:
         m_source.SendMessage(SCI_TARGETFROMSELECTION);
 
       if (readyToReplace) {
+		const int matchLength = static_cast<int>(m_source.SendMessage(SCI_GETTARGETEND) - m_source.SendMessage(SCI_GETTARGETSTART));
         CString replacementText(m_view->m_fo.replacement);
         if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
           replacementText.Replace(L"\u00A0", _Settings.GetNBSPChar());
@@ -4245,6 +4261,14 @@ public:
 	    m_source.SendMessage(SCI_REPLACETARGETRE,len,(LPARAM)tmp.data());
 	  else
 	    m_source.SendMessage(SCI_REPLACETARGET,len,(LPARAM)tmp.data());
+	  if (matchLength == 0) {
+		// DoFind() recognizes this collapsed selection and obtains the next
+		// start through SCI_POSITIONAFTER, including for UTF-8/non-BMP text.
+		const int resume = static_cast<int>(m_source.SendMessage(SCI_GETTARGETEND));
+		m_source.SendMessage(SCI_SETSELECTIONSTART, resume);
+		m_source.SendMessage(SCI_SETSELECTIONEND, resume);
+		m_resume_after_zero_length = true;
+	  }
         }
       }
       m_selvalid=false;
@@ -4296,18 +4320,15 @@ public:
       m_source.SendMessage(SCI_BEGINUNDOACTION);
       while (pos != -1) {
         const int matchlen = m_source.SendMessage(SCI_GETTARGETEND) - m_source.SendMessage(SCI_GETTARGETSTART);
-        int mvp = 0;
-        if (matchlen <= 0) {
-          const char ch = static_cast<char>(m_source.SendMessage(SCI_GETCHARAT, m_source.SendMessage(SCI_GETTARGETEND)));
-          if (ch == '\r' || ch == '\n') mvp = 1;
-        }
         int rlen = matchlen;
         if (m_view->m_fo.fRegexp)
           rlen = m_source.SendMessage(SCI_REPLACETARGETRE, replen, (LPARAM)replacement.get());
         else
           m_source.SendMessage(SCI_REPLACETARGET, replen, (LPARAM)replacement.get());
         end += rlen - matchlen;
-        last_match = pos + rlen + mvp;
+        last_match = matchlen == 0
+          ? ScintillaPositionAfter(m_source, static_cast<int>(m_source.SendMessage(SCI_GETTARGETEND)))
+          : pos + rlen;
         if (last_match >= end)
           pos = -1;
         else {

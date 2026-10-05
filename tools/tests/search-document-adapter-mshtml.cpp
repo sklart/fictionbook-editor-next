@@ -2,6 +2,7 @@
 
 #include "SearchDocumentAdapter.h"
 #include "DocumentSearchCoordinator.h"
+#include "DesignSearchController.h"
 #include "ReplacementPreflight.h"
 #include "search\\LiteralSearch.h"
 #include "search\\RegexBackend.h"
@@ -118,9 +119,58 @@ static int VerifyWholeWordRegex()
 			return 125;
 		}
 	}
-	if (AU::RegexBackend::BuildWholeWordRegexPattern(L"\\bтест\\b") != L"\\bтест\\b" ||
-		AU::RegexBackend::BuildWholeWordRegexPattern(L"(?<=x)test") != L"(?<=x)test")
+	if (AU::RegexBackend::BuildWholeWordRegexPattern(L"\\bтест\\b") !=
+		L"(?<![\\p{L}\\p{N}_])(?:\\bтест\\b)(?![\\p{L}\\p{N}_])" ||
+		AU::RegexBackend::BuildWholeWordRegexPattern(L"(?<=x)test") !=
+		L"(?<![\\p{L}\\p{N}_])(?:(?<=x)test)(?![\\p{L}\\p{N}_])")
 		return 126;
+	return 0;
+}
+
+static int VerifyZeroLengthRegexReplaceSemantics()
+{
+	struct Fixture { LPCWSTR pattern; LPCWSTR subject; LPCWSTR replacement; int expectedCount; LPCWSTR expectedText; };
+	const Fixture fixtures[] = {
+		{ L"(?=a)", L"a", L"", 1, L"a" },
+		{ L"^", L"abc", L"", 1, L"abc" },
+		{ L"$", L"abc", L"", 1, L"abc" },
+		{ L"\\b", L"abc", L"", 2, L"abc" },
+		{ L"(?=a)", L"a", L"X", 1, L"Xa" }
+	};
+	for (std::size_t index = 0; index < _countof(fixtures); ++index)
+	{
+		const Fixture& fixture = fixtures[index];
+		AU::RegexBackend::Options options;
+		options.Pattern = fixture.pattern;
+		options.Global = VARIANT_TRUE;
+		CSimpleArray<AU::RegexBackend::MatchData> matches;
+		CString error;
+		if (!AU::RegexBackend::Execute(options, fixture.subject, matches, error) || matches.GetSize() != fixture.expectedCount)
+			return 133 + static_cast<int>(index);
+		for (int matchIndex = 0; matchIndex < matches.GetSize(); ++matchIndex)
+			if (!matches[matchIndex].Value.IsEmpty()) return 139 + static_cast<int>(index);
+
+		CString replaced(fixture.subject);
+		for (int matchIndex = matches.GetSize() - 1; matchIndex >= 0; --matchIndex)
+			if (!fixture.replacement[0])
+				continue; // Design zero-length + empty replacement is a real no-op.
+			else
+				replaced.Insert(matches[matchIndex].FirstIndex, fixture.replacement);
+		if (replaced != fixture.expectedText) return 145 + static_cast<int>(index);
+	}
+
+	AU::Search::SearchQuery query;
+	query.Text = L"(?=a)";
+	query.Mode = AU::Search::SearchMode::Regex;
+	AU::Search::SearchHit zeroHit(0, 0);
+	DesignSearchController controller;
+	controller.RecordHit(query, zeroHit);
+	if (!controller.ShouldSkipZeroLength(query, AU::Search::SearchRange(0, 0))) return 151;
+	// A zero-length empty replacement without formatting deliberately does not
+	// call Advance(); the next Find must retain this guard and skip position 0.
+	if (!controller.ShouldSkipZeroLength(query, AU::Search::SearchRange(0, 0))) return 152;
+	controller.Advance();
+	if (controller.ShouldSkipZeroLength(query, AU::Search::SearchRange(0, 0))) return 153;
 	return 0;
 }
 static int VerifyEmptyParagraphRegexAnchors()
@@ -516,6 +566,8 @@ int wmain()
 
 	if (!result)
 		result = VerifyWholeWordRegex();
+	if (!result)
+		result = VerifyZeroLengthRegexReplaceSemantics();
 	if (!result)
 		result = VerifyEmptyParagraphRegexAnchors();
 

@@ -18,6 +18,7 @@ $sources = @(
     (Join-Path $repoRoot 'src\fbe\search\SearchDocumentAdapter.cpp'),
     (Join-Path $repoRoot 'src\fbe\ReplacementPreflight.cpp'),
     (Join-Path $repoRoot 'src\fbe\search\DocumentSearchCoordinator.cpp'),
+	(Join-Path $repoRoot 'src\fbe\search\DesignSearchController.cpp'),
     (Join-Path $repoRoot 'src\fbe\search\SearchSession.cpp'),
 	(Join-Path $repoRoot 'src\fbe\search\SearchResults.cpp'),
     (Join-Path $repoRoot 'src\fbe\search\SearchTextSnapshot.cpp'),

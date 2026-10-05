@@ -2223,6 +2223,7 @@ static CString CrossParagraphReplacementError()
 
 void  CFBEView::DoReplace() {
   bool replaced = false;
+  bool undoStarted = false;
   try {
     MSHTML::IHTMLTxtRangePtr  sel(Document()->selection->createRange());
     if (!(bool)sel)
@@ -2235,23 +2236,31 @@ void  CFBEView::DoReplace() {
 	}
     int			      adv=0;
 
-	m_mk_srv->BeginUndoUnit(L"replace");
-
     if (m_fo.hasMatch && m_fo.match) { // use regexp match copy
       std::vector<AU::Search::ReplacementFormattingRun> rl;
       CString rep(PrepareRegexReplacementText(m_fo.replacement, m_fo.match, rl));
-
-      sel->text=(const wchar_t *)rep;
-      replaced = true;
-      ApplyReplacementFormatting(sel, rep, rl);
       adv=rep.GetLength();
+	  const bool zeroLengthNoOp = m_fo.match->Length == 0 && rep.IsEmpty() && rl.empty();
+	  if (!zeroLengthNoOp)
+	  {
+		m_mk_srv->BeginUndoUnit(L"replace");
+		undoStarted = true;
+		sel->text=(const wchar_t *)rep;
+		replaced = true;
+		ApplyReplacementFormatting(sel, rep, rl);
+	  }
     } else { // plain text
+	  m_mk_srv->BeginUndoUnit(L"replace");
+	  undoStarted = true;
       sel->text=(const wchar_t *)m_fo.replacement;
       replaced = true;
       adv=m_fo.replacement.GetLength();
     }
-    sel->moveStart(L"character",-adv);
-    sel->select();
+	if (replaced)
+	{
+	  sel->moveStart(L"character",-adv);
+	  sel->select();
+	}
   }
   catch (_com_error& e) {
     U::ReportError(e);
@@ -2263,7 +2272,8 @@ void  CFBEView::DoReplace() {
     m_fo.ClearMatch();
     AdvanceSearchDocumentGeneration();
   }
-  m_mk_srv->EndUndoUnit();
+  if (undoStarted)
+    m_mk_srv->EndUndoUnit();
 }
 
 int CFBEView::ReplaceAllSearchCore(CString* errorText)
@@ -2367,6 +2377,9 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 				replacement = m_fo.replacement;
 				NormalizeReplacementNbsp(replacement);
 			}
+			const bool zeroLengthNoOp = result->Hit.Length == 0 && replacement.IsEmpty() && formatting.empty();
+			if (zeroLengthNoOp)
+				continue;
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			mutationApplied = true;
 			if (m_fo.fRegexp)
@@ -2473,6 +2486,9 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 				replacement = m_fo.replacement;
 				NormalizeReplacementNbsp(replacement);
 			}
+			const bool zeroLengthNoOp = result->Hit.Length == 0 && replacement.IsEmpty() && formatting.empty();
+			if (zeroLengthNoOp)
+				continue;
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			mutationApplied = true;
 			if (m_fo.fRegexp) ApplyReplacementFormatting(ranges[index], replacement, formatting);
@@ -3742,7 +3758,17 @@ void  CFBEView::OnFocusIn(IDispatch *evt) {
 }
 
 // find/replace support for scintilla
-bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
+static int ScintillaPositionAfter(HWND source, int position)
+{
+	return static_cast<int>(::SendMessage(source, SCI_POSITIONAFTER, position, 0));
+}
+
+static int ScintillaPositionBefore(HWND source, int position)
+{
+	return static_cast<int>(::SendMessage(source, SCI_POSITIONBEFORE, position, 0));
+}
+
+bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf, bool skipCurrentZeroLength) {
   if (m_fo.pattern.IsEmpty())
     return true;
 
@@ -3769,8 +3795,9 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf) {
     int p1=::SendMessage(src,SCI_GETSELECTIONSTART,0,0);
     int p2=::SendMessage(src,SCI_GETSELECTIONEND,0,0);
 	if (p2>p1 && !rev) p1=p2;
-//   if (p1!=p2 && !rev) ++p1;
-    if (rev) --p1;
+	if (skipCurrentZeroLength)
+		p1 = rev ? ScintillaPositionBefore(src, p1) : ScintillaPositionAfter(src, p1);
+    else if (rev) p1 = ScintillaPositionBefore(src, p1);
     if (p1<0) p1=0;
     p2=rev ? 0 : ::SendMessage(src,SCI_GETLENGTH,0,0);
     int p3=p2==0 ? ::SendMessage(src,SCI_GETLENGTH,0,0) : 0;
