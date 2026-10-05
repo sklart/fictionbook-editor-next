@@ -25,7 +25,7 @@ $sources = @(
     (Join-Path $repoRoot 'src\fbe\search\RegexBackend.cpp'),
     (Join-Path $repoRoot 'src\fbe\search\RegexBackendPcre2.cpp')
 )
-& cl.exe /nologo /EHsc /std:c++17 /MT /DUNICODE "/I$(Join-Path $repoRoot 'src\fbe')" "/I$(Join-Path $repoRoot 'src\fbe\search')" "/I$(Join-Path $repoRoot 'third_party\wtl')" "/I$(Join-Path $installDir 'include')" "/Fo$testDir\" $sources /link /SUBSYSTEM:CONSOLE ole32.lib oleaut32.lib uuid.lib "/LIBPATH:$(Join-Path $installDir 'lib')" pcre2-16-static.lib "/OUT:$testExe"
+& cl.exe /nologo /EHsc /std:c++17 /utf-8 /MT /DUNICODE "/I$(Join-Path $repoRoot 'src\fbe')" "/I$(Join-Path $repoRoot 'src\fbe\search')" "/I$(Join-Path $repoRoot 'third_party\wtl')" "/I$(Join-Path $installDir 'include')" "/Fo$testDir\" $sources /link /SUBSYSTEM:CONSOLE ole32.lib oleaut32.lib uuid.lib "/LIBPATH:$(Join-Path $installDir 'lib')" pcre2-16-static.lib "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $testExe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

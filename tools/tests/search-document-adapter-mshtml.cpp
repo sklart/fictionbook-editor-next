@@ -99,16 +99,24 @@ static int VerifyWholeWordRegex()
 		{ L"word", L"word password word2 _word", 1 },
 		{ L"42", L"42 142 42x _42", 1 }
 	};
-	for (const Fixture& fixture : fixtures)
+	for (std::size_t fixtureIndex = 0; fixtureIndex < _countof(fixtures); ++fixtureIndex)
 	{
+		const Fixture& fixture = fixtures[fixtureIndex];
 		AU::RegexBackend::Options options;
 		options.Pattern = AU::RegexBackend::BuildWholeWordRegexPattern(fixture.pattern);
 		options.Global = VARIANT_TRUE;
 		options.UnicodeProperties = true;
 		CSimpleArray<AU::RegexBackend::MatchData> matches;
 		CString error;
-		if (!AU::RegexBackend::Execute(options, fixture.subject, matches, error) || matches.GetSize() != fixture.expected)
+		const bool executed = AU::RegexBackend::Execute(options, fixture.subject, matches, error);
+		if (!executed || matches.GetSize() != fixture.expected)
+		{
+			fwprintf(stderr,
+				L"FAIL checkpoint 125: whole-word fixture %Iu; pattern='%s'; compiled='%s'; expected=%d; actual=%d; executed=%d; error='%s'\n",
+				fixtureIndex, fixture.pattern, static_cast<LPCWSTR>(options.Pattern), fixture.expected,
+				matches.GetSize(), executed ? 1 : 0, static_cast<LPCWSTR>(error));
 			return 125;
+		}
 	}
 	if (AU::RegexBackend::BuildWholeWordRegexPattern(L"\\bтест\\b") != L"\\bтест\\b" ||
 		AU::RegexBackend::BuildWholeWordRegexPattern(L"(?<=x)test") != L"(?<=x)test")
