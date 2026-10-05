@@ -116,7 +116,9 @@ static bool  SearchUnder(CTreeItem& ret,CTreeItem ii,MSHTML::IHTMLElement *p) {
   CTreeItem   jj(ii.GetChild());
   while (!jj.IsNull()) {
     MSHTML::IHTMLElement    *n=(MSHTML::IHTMLElement *)jj.GetData();
-    if (n && n->contains(p)) {
+    // IHTMLElement::contains is not a reliable self-match on all MSHTML
+    // document modes.  A caret can resolve directly to the structural node.
+    if (n && (n == p || n->contains(p))) {
       ret=jj;
       if (jj.HasChildren())
 	SearchUnder(ret,jj,p);
@@ -170,7 +172,7 @@ void CTreeView::RebuildSourceIndex()
 
 void  CTreeView::HighlightItemAtPos(MSHTML::IHTMLElement *p) {
   CTreeItem ii(LocatePosition(p));
-  if (ii==m_last_lookup_item)
+  if (ii==m_last_lookup_item && static_cast<HTREEITEM>(ii) == m_current_item)
     return;
   m_last_lookup_item=ii;
   const HTREEITEM previous = m_current_item;
@@ -183,14 +185,30 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 {
 	if(header == NULL || header->code != NM_CUSTOMDRAW) { bHandled = FALSE; return CDRF_DODEFAULT; }
 	LPNMTVCUSTOMDRAW draw = reinterpret_cast<LPNMTVCUSTOMDRAW>(header);
-	if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT || ThemeManager::IsHighContrast())
-		return CDRF_DODEFAULT;
-	if(reinterpret_cast<HTREEITEM>(draw->nmcd.dwItemSpec) == m_current_item &&
-		!(GetItemState(m_current_item, TVIS_SELECTED) & TVIS_SELECTED))
+	if(ThemeManager::IsHighContrast()) return CDRF_DODEFAULT;
+	const HTREEITEM item = reinterpret_cast<HTREEITEM>(draw->nmcd.dwItemSpec);
+	if(draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT && item == m_current_item)
 	{
-		draw->clrTextBk = ThemeManager::HoverColor();
-		draw->clrText = ThemeManager::TextColor();
-		return CDRF_NEWFONT;
+		if(!(GetItemState(m_current_item, TVIS_SELECTED) & TVIS_SELECTED))
+		{
+			draw->clrTextBk = ThemeManager::HoverColor();
+			draw->clrText = ThemeManager::TextColor();
+			return CDRF_NEWFONT | CDRF_NOTIFYPOSTPAINT;
+		}
+		// A selected current item keeps the native selection background, then
+		// receives the accent marker at post-paint below.
+		return CDRF_NOTIFYPOSTPAINT;
+	}
+	if(draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && item == m_current_item)
+	{
+		RECT bounds = {};
+		if(GetItemRect(item, &bounds, FALSE))
+		{
+			const int markerWidth = (std::max)(1, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(m_hWnd)));
+			bounds.right = (std::min)(bounds.right, bounds.left + markerWidth);
+			HBRUSH marker = ::CreateSolidBrush(ThemeManager::AccentColor());
+			if(marker) { ::FillRect(draw->nmcd.hdc, &bounds, marker); ::DeleteObject(marker); }
+		}
 	}
 	return CDRF_DODEFAULT;
 }
@@ -560,14 +578,7 @@ LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* u
 {  
 	if(!m_script_mode && wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000))
 	{
-		ClearSelection();
-		HTREEITEM first = GetRootItem();
-		for(HTREEITEM item = first; item != NULL; item = GetNextVisibleItem(item))
-			SetItemState(item, TVIS_SELECTED, TVIS_SELECTED);
-		if(first != NULL) SelectItem(first);
-		for(HTREEITEM item = first; item != NULL; item = GetNextVisibleItem(item))
-			SetItemState(item, TVIS_SELECTED, TVIS_SELECTED);
-		m_hItemFirstSel = first;
+		SelectAllVisibleItems();
 		bHandled = TRUE;
 		return 0;
 	}
@@ -1300,6 +1311,20 @@ void CTreeView::ClearSelection()
 	for (CTreeItem hItem(GetRootItem(), this); hItem!=NULL; hItem=GetNextItem(hItem))
 		if ( GetItemState( hItem, TVIS_SELECTED ) & TVIS_SELECTED )
 			SetItemState( hItem, 0, TVIS_SELECTED );
+}
+
+void CTreeView::SelectAllVisibleItems()
+{
+	ClearSelection();
+	HTREEITEM first = GetRootItem();
+	for(HTREEITEM item = first; item != NULL; item = GetNextVisibleItem(item))
+		SetItemState(item, TVIS_SELECTED, TVIS_SELECTED);
+	if(first != NULL) SelectItem(first);
+	// TreeView has one native caret item; preserve the complete logical
+	// selection after moving that caret to the first visible item.
+	for(HTREEITEM item = first; item != NULL; item = GetNextVisibleItem(item))
+		SetItemState(item, TVIS_SELECTED, TVIS_SELECTED);
+	m_hItemFirstSel = first;
 }
 
 // SelectItems	- Selects items from hItemFrom to hItemTo. Does not

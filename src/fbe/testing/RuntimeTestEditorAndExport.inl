@@ -2,6 +2,7 @@
 	{
 		CString original;
 		const bool read = GetInternalXmlScriptSourceText(original);
+		const bool originalDirty = read && m_doc->DocChanged();
 		const XmlScriptDiagnostic valid = read ? ValidateInternalXmlScriptText(original) : XmlScriptDiagnostic();
 		const XmlScriptDiagnostic invalid = read ? ValidateInternalXmlScriptText(original + L"<") : XmlScriptDiagnostic();
 		CString changed(original);
@@ -10,20 +11,79 @@
 		CString afterApply;
 		const bool changedInDocument = applied.valid && GetInternalXmlScriptSourceText(afterApply) && afterApply.Find(L"XML_API_AFTER") >= 0;
 		const bool dirty = applied.valid && m_doc->DocChanged();
-		const XmlScriptDiagnostic undone = applied.valid ? UndoInternalXmlScriptApply() : XmlScriptDiagnostic();
+		if(applied.valid) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0); }
 		CString afterUndo;
-		const bool restored = undone.valid && GetInternalXmlScriptSourceText(afterUndo) && afterUndo.Find(L"XML_API_BEFORE") >= 0;
+		const bool restored = applied.valid && GetInternalXmlScriptSourceText(afterUndo) && afterUndo.Find(L"XML_API_BEFORE") >= 0;
+		const bool undoRestoredDirtyState = restored && m_doc->DocChanged() == originalDirty;
+		if(restored) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0); }
+		CString afterRedo;
+		const bool redone = restored && GetInternalXmlScriptSourceText(afterRedo) && afterRedo.Find(L"XML_API_AFTER") >= 0;
 		const bool bodyReady = m_doc->m_body.Document() != NULL;
 		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
-		const bool passed = read && valid.valid && !invalid.valid && prepared && changedInDocument && dirty && undone.valid && restored && bodyReady && treeReady;
+		const bool passed = read && valid.valid && !invalid.valid && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && bodyReady && treeReady;
 		CStringA report;
-		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\napply=%d\ndirty=%d\nundo=%d\nbody=%d\ntree=%d\nresult=%s\n",
-			read, valid.valid, !invalid.valid, changedInDocument, dirty, undone.valid && restored, bodyReady, treeReady, passed ? "pass" : "fail");
+		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\napply=%d\ndirty=%d\nundo=%d\nundo_dirty_restored=%d\nredo=%d\nbody=%d\ntree=%d\nresult=%s\n",
+			read, valid.valid, !invalid.valid, changedInDocument, dirty, restored, undoRestoredDirtyState, redone, bodyReady, treeReady, passed ? "pass" : "fail");
 		DWORD written = 0;
 		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close();
 		::PostQuitMessage(passed ? 0 : 1);
 		return 0;
+	}
+	if (IsFbeTestScenario(L"document-tree-selection-runtime"))
+	{
+		// The normal UI performs this when the pane is shown.  Exercise the
+		// same structure model even when a developer profile hides the pane.
+		CTreeView& tree = m_document_tree.m_tree.m_tree;
+		tree.SetScriptMode(false);
+		m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
+		auto countVisible = [&]() -> size_t { size_t count = 0; for(HTREEITEM item = tree.GetRootItem(); item != NULL; item = tree.GetNextVisibleItem(item)) ++count; return count; };
+		auto countSelectedVisible = [&]() -> size_t { size_t count = 0; for(HTREEITEM item = tree.GetRootItem(); item != NULL; item = tree.GetNextVisibleItem(item)) if(tree.GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED) ++count; return count; };
+		auto click = [&](HTREEITEM item, UINT flags) -> bool
+		{
+			RECT rect = {}; if(item == NULL || !tree.GetItemRect(item, &rect, TRUE)) return false;
+			BOOL handled = FALSE; tree.OnClick(WM_LBUTTONDOWN, flags, MAKELPARAM(rect.left + 1, rect.top + 1), handled); return true;
+		};
+		HTREEITEM first = tree.GetRootItem();
+		HTREEITEM second = first ? tree.GetNextVisibleItem(first) : NULL;
+		HTREEITEM third = second ? tree.GetNextVisibleItem(second) : NULL;
+		const bool hasItems = first != NULL && second != NULL && third != NULL;
+		const bool initial = hasItems && click(first, 0) && click(second, MK_CONTROL) && click(third, MK_CONTROL);
+		const bool multiSelectPreserved = initial && countSelectedVisible() == 3 &&
+			(tree.GetItemState(first, TVIS_SELECTED) & TVIS_SELECTED) && (tree.GetItemState(second, TVIS_SELECTED) & TVIS_SELECTED) && (tree.GetItemState(third, TVIS_SELECTED) & TVIS_SELECTED);
+		const bool removeOne = multiSelectPreserved && click(second, MK_CONTROL) && countSelectedVisible() == 2 &&
+			(tree.GetItemState(first, TVIS_SELECTED) & TVIS_SELECTED) && !(tree.GetItemState(second, TVIS_SELECTED) & TVIS_SELECTED) && (tree.GetItemState(third, TVIS_SELECTED) & TVIS_SELECTED);
+		tree.SelectAllVisibleItems();
+		const size_t visibleCount = countVisible();
+		const bool selectAll = visibleCount > 0 && countSelectedVisible() == visibleCount;
+		MSHTML::IHTMLElementPtr element(reinterpret_cast<MSHTML::IHTMLElement*>(tree.GetItemData(third)));
+		MSHTML::IHTMLElementPtr cursorElement;
+		if(element)
+		{
+			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(element)->getElementsByTagName(L"P"));
+			cursorElement = paragraphs && paragraphs->length ? MSHTML::IHTMLElementPtr(paragraphs->item(_variant_t(0L), _variant_t())) : element;
+		}
+		if(cursorElement)
+		{
+			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLTxtRangePtr range(body ? MSHTML::IHTMLBodyElementPtr(body)->createTextRange() : MSHTML::IHTMLTxtRangePtr());
+			if(range) { range->moveToElementText(cursorElement); range->collapse(VARIANT_TRUE); range->select(); }
+			// Use the same Body-to-tree route as normal caret movement.
+			m_document_tree.HighlightItemAtPos(m_doc->m_body.SelectionContainer());
+			// The tree stores structural containers, while the caret is usually in
+			// a descendant P.  Verify that the resolved structural node itself is
+			// still independently tracked when it belongs to the selection.
+			m_document_tree.HighlightItemAtPos(element);
+		}
+		const HTREEITEM current = tree.CurrentStructureItem();
+		const bool currentInsideSelection = cursorElement && current != NULL &&
+			(tree.GetItemState(current, TVIS_SELECTED) & TVIS_SELECTED) && countSelectedVisible() == visibleCount;
+		const bool passed = hasItems && multiSelectPreserved && removeOne && selectAll && currentInsideSelection;
+		CStringA report;
+		report.Format("multi=%d\nremove_one=%d\nselect_all=%d\ncurrent_in_selection=%d\ncurrent=%d\nelement=%d\ncursor=%d\nresult=%s\n",
+			multiSelectPreserved, removeOne, selectAll, currentInsideSelection, current != NULL, element != NULL, cursorElement != NULL, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{

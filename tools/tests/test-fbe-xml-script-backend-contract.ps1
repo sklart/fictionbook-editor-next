@@ -17,8 +17,11 @@ Require $backend 'CreateDOM\(m_document->m_encoding\)' 'BODY XML must use produc
 Require $backend 'SetXMLAndValidate\(m_source\.m_hWnd, true' 'Validation must use the production validation path.'
 Require $backend 'SetXMLAndValidate\(m_source\.m_hWnd, false' 'Apply must use the production LoadFromDOM path.'
 Require $backend 'GetSourceText\(previous\)' 'Apply must capture a rollback snapshot before mutation.'
-Require $backend 'm_undoSnapshots\.push_back' 'Apply must create one logical undo snapshot.'
-Require $backend 'UndoLastApply' 'XML backend must expose rollback/undo behavior.'
+Require $backend 'public IOleUndoUnit' 'Apply must use the standard MSHTML undo manager.'
+Require $backend 'manager->Add\(unit\)' 'Apply must register exactly one standard undo unit.'
+Require $backend 'GetDescription' 'The standard undo unit must expose its operation name.'
+Require $backend 'm_description = operationName' 'The caller supplied operation name must describe the undo unit.'
+if($backend -match 'm_undoSnapshots|UndoLastApply') { throw 'XML backend must not maintain a parallel undo stack.' }
 Require $backend 'documentWasDirty' 'Undo must restore the captured dirty-state contract.'
 Require $backend 'm_document->ResetSavePoint' 'Successful XML application must mark the document dirty.'
 Require $backend 'm_synchronize\(text\)' 'Successful XML application must request UI synchronization.'
@@ -29,6 +32,8 @@ Require $frame 'GetDocumentStructure\(m_doc->m_body.Document\(\)\)' 'Document Tr
 Require $frame 'MarkRecoveryDirty\(\)' 'XML application must update recovery/dirty UI state.'
 Require $runtime 'xml-script-backend-runtime' 'A real editor runtime scenario is required.'
 Require $runtime 'invalid_rejected' 'Runtime scenario must cover rejected XML.'
+Require $runtime 'ID_EDIT_UNDO' "Runtime scenario must invoke FBE's normal Undo command."
+Require $runtime 'ID_EDIT_REDO' "Runtime scenario must invoke FBE's normal Redo command."
 Require $pendingIdl '\[id\(32\).*GetSourceText' 'Pending IDL diff must reserve a new GetSourceText DISPID.'
 Require $pendingIdl '\[id\(33\).*ValidateSourceText' 'Pending IDL diff must reserve a new ValidateSourceText DISPID.'
 Require $pendingIdl '\[id\(34\).*GetLastSourceDiagnostic' 'Pending IDL diff must define COM-friendly diagnostics.'

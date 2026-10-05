@@ -76,7 +76,7 @@ public:
 public:
   DECLARE_WND_SUPERCLASS(_T("Tree"), CTreeViewCtrlEx::GetWndClassName())
 
-  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_current_item(NULL), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
+  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_current_item(NULL), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), m_hItemFirstSel(NULL), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
     
   BOOL PreTranslateMessage(MSG* pMsg);
   
@@ -171,6 +171,9 @@ public:
 	bool GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& indent, bool& legacyExpanders) const;
 	bool IsStructuralDragActive() const { return m_drag; }
 	HTREEITEM CurrentStructureItem() const { return m_current_item; }
+	// Used by the Ctrl+A command and runtime coverage; visible items mirror the
+	// native tree's keyboard-selection semantics.
+	void SelectAllVisibleItems();
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 	bool ExecuteScriptPopupCommand(UINT command);
 

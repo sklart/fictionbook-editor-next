@@ -1487,11 +1487,6 @@ XmlScriptDiagnostic CMainFrame::ApplyInternalXmlScriptText(const CString& text, 
 	return m_xml_script_backend.ApplySourceText(text, operationName);
 }
 
-XmlScriptDiagnostic CMainFrame::UndoInternalXmlScriptApply()
-{
-	return m_xml_script_backend.UndoLastApply();
-}
-
 void CMainFrame::SynchronizeAfterXmlScriptApply(const CString& sourceText)
 {
 	const int byteCount = ::WideCharToMultiByte(CP_UTF8, 0, sourceText,

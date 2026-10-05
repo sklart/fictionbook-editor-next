@@ -343,7 +343,6 @@ public:
 	bool GetInternalXmlScriptSourceText(CString& text) const;
 	XmlScriptDiagnostic ValidateInternalXmlScriptText(const CString& text) const;
 	XmlScriptDiagnostic ApplyInternalXmlScriptText(const CString& text, const CString& operationName);
-	XmlScriptDiagnostic UndoInternalXmlScriptApply();
 
 	EditorSourceOperationResult CommitSourceDocument() override;
 	void ApplyEditorViewCommandUi(EditorView previous, EditorView target);

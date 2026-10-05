@@ -2,10 +2,10 @@
 
 #include <atlstr.h>
 #include <functional>
-#include <vector>
 
 namespace FB { class Doc; }
 class SourceEditorControl;
+class XmlScriptUndoUnit;
 
 struct XmlScriptDiagnostic
 {
@@ -27,19 +27,11 @@ public:
 	bool GetSourceText(CString& text) const;
 	XmlScriptDiagnostic ValidateSourceText(const CString& text) const;
 	XmlScriptDiagnostic ApplySourceText(const CString& text, const CString& operationName);
-	bool CanUndo() const;
-	XmlScriptDiagnostic UndoLastApply();
 private:
-	struct UndoSnapshot
-	{
-		CString text;
-		bool documentWasDirty;
-	};
-
-	XmlScriptDiagnostic ApplyValidatedText(const CString& text, bool recordUndo, bool markDocumentDirty);
+	friend class XmlScriptUndoUnit;
+	XmlScriptDiagnostic ApplySnapshot(const CString& text, bool markDocumentDirty);
 	FB::Doc*& m_document;
 	SourceEditorControl& m_source;
 	std::function<bool()> m_sourceIsActive;
 	SynchronizeCallback m_synchronize;
-	std::vector<UndoSnapshot> m_undoSnapshots;
 };

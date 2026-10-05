@@ -31,7 +31,7 @@ try {
         }
     } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario }
     $result = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split '=', 2; if($parts.Count -eq 2) { $result[$parts[0]] = $parts[1] } }
-    foreach($key in @('read', 'validate', 'invalid_rejected', 'apply', 'dirty', 'undo', 'body', 'tree')) {
+    foreach($key in @('read', 'validate', 'invalid_rejected', 'apply', 'dirty', 'undo', 'undo_dirty_restored', 'redo', 'body', 'tree')) {
         if($result[$key] -ne '1') { throw "XML scripting backend runtime check failed: $key (value '$($result[$key])')." }
     }
     if($result['result'] -ne 'pass') { throw "XML scripting backend runtime result: $($result['result'])" }

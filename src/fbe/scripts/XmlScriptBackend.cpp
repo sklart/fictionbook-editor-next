@@ -5,6 +5,80 @@
 #include "../source/SourceDocumentTransfer.h"
 #include "../source/ui/SourceEditorControl.h"
 
+namespace
+{
+CComPtr<IOleUndoManager> GetUndoManager(FB::Doc* document)
+{
+	CComPtr<IOleUndoManager> manager;
+	if(document == NULL || !document->m_body.Document()) return manager;
+	IServiceProviderPtr provider(document->m_body.Document());
+	if(provider) provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager));
+	return manager;
+}
+
+class UndoManagerDisableScope
+{
+public:
+	explicit UndoManagerDisableScope(const CComPtr<IOleUndoManager>& manager) : m_manager(manager), m_disabled(false)
+	{
+		if(m_manager && SUCCEEDED(m_manager->Enable(FALSE))) m_disabled = true;
+	}
+	~UndoManagerDisableScope() { if(m_disabled) m_manager->Enable(TRUE); }
+private:
+	CComPtr<IOleUndoManager> m_manager;
+	bool m_disabled;
+};
+}
+
+// This unit is deliberately registered with MSHTML's normal undo manager.
+// Consequently the ordinary FBE Undo/Redo commands own its lifetime and drive
+// both directions; XmlScriptBackend does not maintain a parallel undo stack.
+class XmlScriptUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit
+{
+public:
+	BEGIN_COM_MAP(XmlScriptUndoUnit)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+	END_COM_MAP()
+
+	void Initialize(XmlScriptBackend* backend, const CString& before, const CString& after,
+		bool beforeWasDirty, const CString& operationName)
+	{
+		m_backend = backend; m_before = before; m_after = after;
+		m_beforeWasDirty = beforeWasDirty;
+		m_description = operationName.IsEmpty() ? L"Apply XML source" : operationName;
+		m_applyBefore = true;
+	}
+
+	STDMETHOD(Do)(IOleUndoManager* manager)
+	{
+		if(m_backend == NULL) return E_UNEXPECTED;
+		const XmlScriptDiagnostic diagnostic = m_backend->ApplySnapshot(
+			m_applyBefore ? m_before : m_after, m_applyBefore ? m_beforeWasDirty : true);
+		if(!diagnostic.valid) return E_FAIL;
+		m_applyBefore = !m_applyBefore;
+		return manager ? manager->Add(this) : S_OK;
+	}
+
+	STDMETHOD(GetDescription)(BSTR* description)
+	{
+		if(description == NULL) return E_POINTER;
+		*description = m_description.AllocSysString();
+		return *description ? S_OK : E_OUTOFMEMORY;
+	}
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id)
+	{
+		if(classId == NULL || id == NULL) return E_POINTER;
+		*classId = CLSID_NULL; *id = 0; return S_OK;
+	}
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+
+private:
+	XmlScriptBackend* m_backend = NULL;
+	CString m_before, m_after, m_description;
+	bool m_beforeWasDirty = false;
+	bool m_applyBefore = true;
+};
+
 XmlScriptBackend::XmlScriptBackend(FB::Doc*& document, SourceEditorControl& source,
 	const std::function<bool()>& sourceIsActive, const SynchronizeCallback& synchronize) :
 	m_document(document), m_source(source), m_sourceIsActive(sourceIsActive), m_synchronize(synchronize) {}
@@ -29,32 +103,57 @@ XmlScriptDiagnostic XmlScriptBackend::ValidateSourceText(const CString& text) co
 	::SysFreeString(candidate); return diagnostic;
 }
 
-XmlScriptDiagnostic XmlScriptBackend::ApplyValidatedText(const CString& text, bool recordUndo, bool markDocumentDirty)
+XmlScriptDiagnostic XmlScriptBackend::ApplySnapshot(const CString& text, bool markDocumentDirty)
 {
-	XmlScriptDiagnostic diagnostic = ValidateSourceText(text);
-	if(!diagnostic.valid) return diagnostic;
-	CString previous;
-	const bool documentWasDirty = m_document->DocChanged() || m_source.SendMessage(SCI_GETMODIFY) != 0;
-	if(recordUndo && !GetSourceText(previous)) { diagnostic.valid = false; diagnostic.message = L"Could not capture the document before applying XML."; return diagnostic; }
+	XmlScriptDiagnostic diagnostic;
+	if(m_document == NULL) { diagnostic.message = L"No document is open."; return diagnostic; }
 	const BSTR candidate = text.AllocSysString();
 	if(candidate == NULL) { diagnostic.valid = false; diagnostic.message = L"Out of memory."; return diagnostic; }
 	diagnostic.valid = m_document->SetXMLAndValidate(m_source.m_hWnd, false, diagnostic.line, diagnostic.column, &diagnostic.message, candidate);
 	::SysFreeString(candidate);
 	if(!diagnostic.valid) return diagnostic;
-	// LoadFromDOM establishes a production save point. An Apply call is an
-	// edit, whereas an undo restores the dirty state captured before it.
+	// LoadFromDOM establishes a production save point. The undo unit restores
+	// the captured state rather than pretending every transition is an edit.
 	if(markDocumentDirty) m_document->ResetSavePoint();
-	if(recordUndo) m_undoSnapshots.push_back({ previous, documentWasDirty });
 	if(m_synchronize) m_synchronize(text);
 	return diagnostic;
 }
 
-XmlScriptDiagnostic XmlScriptBackend::ApplySourceText(const CString& text, const CString& /*operationName*/) { return ApplyValidatedText(text, true, true); }
-bool XmlScriptBackend::CanUndo() const { return !m_undoSnapshots.empty(); }
-XmlScriptDiagnostic XmlScriptBackend::UndoLastApply()
+XmlScriptDiagnostic XmlScriptBackend::ApplySourceText(const CString& text, const CString& operationName)
 {
-	XmlScriptDiagnostic diagnostic;
-	if(m_undoSnapshots.empty()) { diagnostic.message = L"No XML script operation can be undone."; return diagnostic; }
-	const UndoSnapshot snapshot = m_undoSnapshots.back(); diagnostic = ApplyValidatedText(snapshot.text, false, snapshot.documentWasDirty);
-	if(diagnostic.valid) m_undoSnapshots.pop_back(); return diagnostic;
+	XmlScriptDiagnostic diagnostic = ValidateSourceText(text);
+	if(!diagnostic.valid) return diagnostic;
+	CString previous;
+	const bool documentWasDirty = m_document->DocChanged() || m_source.SendMessage(SCI_GETMODIFY) != 0;
+	if(!GetSourceText(previous)) { diagnostic.valid = false; diagnostic.message = L"Could not capture the document before applying XML."; return diagnostic; }
+
+	// Suppress transient MSHTML units produced by LoadFromDOM.  The one unit
+	// added below is the sole operation exposed through FBE's normal Ctrl+Z.
+	{
+		UndoManagerDisableScope suppress(GetUndoManager(m_document));
+		diagnostic = ApplySnapshot(text, true);
+	}
+	if(!diagnostic.valid) return diagnostic;
+
+	CComPtr<IOleUndoManager> manager = GetUndoManager(m_document);
+	CComObject<XmlScriptUndoUnit>* unit = NULL;
+	HRESULT result = manager ? CComObject<XmlScriptUndoUnit>::CreateInstance(&unit) : E_NOINTERFACE;
+	if(SUCCEEDED(result))
+	{
+		unit->AddRef();
+		unit->Initialize(this, previous, text, documentWasDirty, operationName);
+		result = manager->Add(unit);
+		unit->Release();
+	}
+	if(SUCCEEDED(result)) return diagnostic;
+
+	// Registration is part of the atomic Apply contract: never leave an XML
+	// mutation behind that the ordinary FBE Undo command cannot reverse.
+	{
+		UndoManagerDisableScope suppress(GetUndoManager(m_document));
+		ApplySnapshot(previous, documentWasDirty);
+	}
+	diagnostic.valid = false;
+	diagnostic.message = L"Could not register the XML operation with the standard undo manager.";
+	return diagnostic;
 }
