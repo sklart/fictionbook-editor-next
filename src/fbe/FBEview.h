@@ -695,6 +695,8 @@ public:
 	}
 
   // searching in scintilla
+  bool FindPreviousSkippingZeroLengthGuard(HWND src, int flags, const char* pattern, int patternLength,
+    int zeroLengthGuardFirst, int zeroLengthGuardLast, int rangeEnd, int& result);
   bool SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrentZeroLength = false,
     int zeroLengthGuardStart = -1, int zeroLengthGuardEnd = -1);
 
