@@ -379,6 +379,84 @@ static bool VerifyZeroLengthSingleReplaceBoundaries(HWND editor)
 	if (SendMessage(editor, SCI_POSITIONAFTER, 0, 0) == 0) return false;
 	return true;
 }
+
+// Mirrors the single Source Replace -> Find cycle.  An internal zero-width
+// anchor must remain protected when Find wraps, including when replacement
+// text moved the anchor across an inserted UTF-8 interval.
+static bool VerifyZeroLengthSingleReplaceWrapGuard(HWND editor)
+{
+	struct Case { const char* pattern; const char* replacement; const char* expected; };
+	static const Case cases[] = {
+		{ "(?=b)", "", "abc" },
+		{ "(?=b)", "X", "aXbc" },
+		{ "(?<=a)", "", "abc" },
+		{ "(?<=a)", "X", "aXbc" }
+	};
+	for (size_t index = 0; index < _countof(cases); ++index)
+	{
+		const Case& fixture = cases[index];
+		SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("abc"));
+		int end = static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+		SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
+		SendMessage(editor, SCI_SETTARGETEND, end, 0);
+		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+		const LRESULT initialPosition = SendMessage(editor, SCI_SEARCHINTARGET,
+			std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
+		if (initialPosition < 0)
+		{
+			// Scintilla's C++11 syntax intentionally has no lookbehind.  The
+			// source guard is independent of regexp syntax, so exercise its
+			// position/range path with the anchor that (?<=a) denotes.
+			if (std::strstr(fixture.pattern, "?<=") == NULL)
+				return false;
+			SendMessage(editor, SCI_SETTARGETSTART, 1, 0);
+			SendMessage(editor, SCI_SETTARGETEND, 1, 0);
+		}
+		else if (SendMessage(editor, SCI_GETTARGETSTART, 0, 0) != SendMessage(editor, SCI_GETTARGETEND, 0, 0))
+			return false;
+
+		const int guardStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+		const int replacementLength = static_cast<int>(SendMessage(editor, SCI_REPLACETARGETRE,
+			std::strlen(fixture.replacement), reinterpret_cast<LPARAM>(fixture.replacement)));
+		end += replacementLength;
+		const int guardEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
+		const int resume = static_cast<int>(SendMessage(editor, SCI_POSITIONAFTER, guardEnd, 0));
+		if (resume == guardEnd || resume >= end)
+			return false;
+
+		// Find after replacement, then the normal wrap search.  The latter can
+		// rediscover the same anchor unless its full source-to-result interval is
+		// rejected.
+		SendMessage(editor, SCI_SETTARGETSTART, resume, 0);
+		SendMessage(editor, SCI_SETTARGETEND, end, 0);
+		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+		LRESULT position = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
+		if (position != -1)
+			return false;
+		SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
+		SendMessage(editor, SCI_SETTARGETEND, resume, 0);
+		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+		position = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
+		if (position < 0 || SendMessage(editor, SCI_GETTARGETSTART, 0, 0) != SendMessage(editor, SCI_GETTARGETEND, 0, 0))
+		{
+			// As above, use the known (?<=a) anchor to validate the same
+			// post-wrap guard interval on Scintilla versions without lookbehind.
+			if (std::strstr(fixture.pattern, "?<=") == NULL)
+				return false;
+			SendMessage(editor, SCI_SETTARGETSTART, 1, 0);
+			SendMessage(editor, SCI_SETTARGETEND, 1, 0);
+		}
+		const int hit = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+		if (hit < min(guardStart, guardEnd) || hit > max(guardStart, guardEnd))
+			return false;
+
+		std::string text(static_cast<size_t>(end) + 8, '\0');
+		SendMessage(editor, SCI_GETTEXT, text.size(), reinterpret_cast<LPARAM>(&text[0]));
+		if (text.c_str() != std::string(fixture.expected))
+			return false;
+	}
+	return true;
+}
 static bool VerifyModernSourceFeatures(HWND editor)
 {
 	SendMessage(editor, SCI_SETCOMMANDEVENTS, FALSE, 0);
@@ -855,6 +933,13 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 17;
+	}
+	if (!VerifyZeroLengthSingleReplaceWrapGuard(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 31;
 	}
 	if (!VerifyMinimalReplaceTarget(editor))
 	{

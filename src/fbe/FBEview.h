@@ -695,7 +695,8 @@ public:
 	}
 
   // searching in scintilla
-  bool SciFindNext(HWND src,bool fFwdOnly,bool fBarf, bool skipCurrentZeroLength = false);
+  bool SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrentZeroLength = false,
+    int zeroLengthGuardStart = -1, int zeroLengthGuardEnd = -1);
 
   // utilities
   CString		    SelPath();
