@@ -99,6 +99,7 @@ public:
 
 		COMMAND_HANDLER(IDC_BUTTON_DEFAULT, BN_CLICKED, OnBnClickedButtonDefault)
 		COMMAND_HANDLER(IDC_BUTTON_HOTKEY_ASSIGN, BN_CLICKED, OnBnClickedButtonHotkeyAssign)
+		COMMAND_HANDLER(IDC_BUTTON_HOTKEY_EXPORT, BN_CLICKED, OnBnClickedButtonHotkeyExport)
 		COMMAND_HANDLER(IDC_CHANGE_KEYB, BN_CLICKED, OnChangeKeyboardLayout)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsHotkeysDlg>)
 	END_MSG_MAP()
@@ -112,6 +113,7 @@ public:
 	LRESULT OnBnClickedButtonDefault(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedButtonHotkeyDelete(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedButtonHotkeyAssign(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnBnClickedButtonHotkeyExport(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnChangeKeyboardLayout(WORD, WORD, HWND, BOOL&);
 
 	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);

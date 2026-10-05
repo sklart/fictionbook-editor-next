@@ -45,6 +45,40 @@ static CString GetHotkeyGroupDisplayName(const CHotkeysGroup& group)
 	return group.m_name_resource_id ? FbeLoadRuntimeString(group.m_name_resource_id, group.m_name) : group.m_name;
 }
 
+static CString BuildHotkeysExportText(const std::vector<CHotkeysGroup>& groups)
+{
+	CString text(L"FictionBook Editor Next\r\nHotkeys\r\n");
+	for(size_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex)
+	{
+		const CHotkeysGroup& group = groups[groupIndex];
+		CString rows;
+		for(size_t hotkeyIndex = 0; hotkeyIndex < group.m_hotkeys.size(); ++hotkeyIndex)
+		{
+			const CHotkey& hotkey = group.m_hotkeys[hotkeyIndex];
+			if(hotkey.m_accel.key == 0) continue;
+			CString row(GetHotkeyDisplayName(hotkey));
+			row += L"\t" + U::AccelToString(hotkey.m_accel) + L"\r\n";
+			rows += row;
+		}
+		if(!rows.IsEmpty()) text += L"\r\n" + GetHotkeyGroupDisplayName(group) + L"\r\n" + rows;
+	}
+	return text;
+}
+
+static bool WriteUtf8TextFile(const CString& path, const CString& text)
+{
+	const int size = ::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), NULL, 0, NULL, NULL);
+	if(size == 0 && !text.IsEmpty()) return false;
+	std::vector<char> bytes(static_cast<size_t>(size));
+	if(size && !::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), &bytes[0], size, NULL, NULL)) return false;
+	HANDLE file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return false;
+	const BYTE bom[] = { 0xEF, 0xBB, 0xBF }; DWORD written = 0;
+	const bool ok = ::WriteFile(file, bom, sizeof(bom), &written, NULL) != FALSE && written == sizeof(bom) &&
+		(size == 0 || (::WriteFile(file, &bytes[0], static_cast<DWORD>(bytes.size()), &written, NULL) != FALSE && written == bytes.size()));
+	::CloseHandle(file); return ok;
+}
+
 // CSettingsHotkeysDlg
 CSettingsHotkeysDlg::CSettingsHotkeysDlg(): m_count(0), m_accel(),
 											m_initHkGroups(_Settings.m_hotkey_groups),
@@ -85,6 +119,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_ACTIONS, L"fbe.dialog.idd_hotkeys.actions", L"Actions");
 	SetRuntimeHotkeysText(m_hWnd, IDC_STATIC_HOTKEY_COLLISION, L"fbe.dialog.idd_hotkeys.collision", L"Collision");
 	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_ASSIGN, L"fbe.dialog.idd_hotkeys.assign", L"Assign");
+	SetRuntimeHotkeysText(m_hWnd, IDC_BUTTON_HOTKEY_EXPORT, L"fbe.dialog.idd_hotkeys.export", L"Export...");
 	SetRuntimeHotkeysText(m_hWnd, IDC_SETTINGS_OTHER_KEYBOARD, L"fbe.dialog.idd_setting_other.keyboard", L"Keyboard layout");
 	SetRuntimeHotkeysText(m_hWnd, IDC_CHANGE_KEYB, L"fbe.dialog.idd_setting_other.change_keyboard", L"Change layout on startup");
 	SetRuntimeHotkeysText(m_hWnd, IDC_SETTINGS_OTHER_CHANGE_TO, L"fbe.dialog.idd_setting_other.layout", L"Change to:");
@@ -115,6 +150,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_tooltips.Add(GetDlgItem(IDC_BUTTON_DEFAULT), L"fbe.settings.tooltip.hotkeys.default", L"Restore the selected command's default shortcut.");
 	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_DELETE), L"fbe.settings.tooltip.hotkeys.delete", L"Remove the shortcut from the selected command.");
 	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_ASSIGN), L"fbe.settings.tooltip.hotkeys.assign", L"Assign the entered shortcut to the selected command.");
+	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_EXPORT), L"fbe.settings.tooltip.hotkeys.export", L"Export assigned shortcuts to a UTF-8 text file.");
 	m_tooltips.Add(m_changeKeyb, L"fbe.settings.tooltip.hotkeys.change_layout", L"Changes the keyboard layout when FictionBook Editor Next starts.");
 	m_tooltips.Add(m_keybLayout, L"fbe.settings.tooltip.hotkeys.layout", L"Keyboard layout used at startup when layout switching is enabled.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_CHANGE_TO), L"fbe.settings.tooltip.hotkeys.layout_disabled", L"Available after enabling Change layout on startup.");
@@ -542,6 +578,17 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyAssign(WORD /* unused: wNoti
 	TestAndSet();
 	ClearAndSet();
 
+	return 0;
+}
+
+LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyExport(WORD, WORD, HWND, BOOL&)
+{
+	static const wchar_t filter[] = L"Text files (*.txt)\0*.txt\0\0";
+	CFileDialog dialog(FALSE, L"txt", L"FBE-Next-Hotkeys.txt", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST,
+		filter, m_hWnd);
+	if(dialog.DoModal() != IDOK) return 0;
+	if(!WriteUtf8TextFile(dialog.m_szFileName, BuildHotkeysExportText(_Settings.m_hotkey_groups)))
+		U::MessageBox(m_hWnd, L"Could not export hotkeys.", L"FictionBook Editor", MB_OK | MB_ICONERROR);
 	return 0;
 }
 
