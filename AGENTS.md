@@ -15,11 +15,11 @@ developer checkout or CI must not depend on this absolute path.
   structural work. An explicit task whose stated purpose is to evolve the
   public COM API may modify 'src/contracts/fbe.idl'.
   Such changes must preserve backward compatibility: do not renumber or reuse
-  exising DISPIDs, do not change existing GUIDs, method signatures, calling
+  existing DISPIDs, do not change existing GUIDs, method signatures, calling
   conventions, ownership rules or the order of existing vtable entries.
-  Addictive changes must use new identifiers and require affected MIDL,
+  Additive changes must use new identifiers and require affected MIDL,
   contract and runtime verification. Generated MIDL outputs remain untracked
-  unless a separate tracked-generated policy explicitly reauires otherwise.
+  unless a separate tracked-generated policy explicitly requires otherwise.
 - `src/common` is only for code with real consumers outside one product.
   Windows/COM code may remain there when its dependencies are explicit; do not
   present it as portable core.
