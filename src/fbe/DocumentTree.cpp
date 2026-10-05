@@ -480,6 +480,7 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 		m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
 		m_view_bar.Invalidate();
 	}
+	EnsureViewBarElementTextWidth();
 }
 
 void CTreeWithToolBar::ApplyViewBarMetrics()
@@ -496,7 +497,8 @@ void CTreeWithToolBar::EnsureViewBarElementTextWidth()
 	wchar_t text[MAX_LOAD_STRING + 1] = {};
 	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX;
 	button.pszText = text; button.cchText = _countof(text);
-	if(!::SendMessage(m_view_bar, TB_GETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button)) || text[0] == L'\0') return;
+	const LRESULT result = ::SendMessage(m_view_bar, TB_GETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button));
+	if(result == -1 || text[0] == L'\0') return;
 	HDC dc = ::GetDC(m_view_bar); if(dc == NULL) return;
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_view_bar, WM_GETFONT, 0, 0));
 	HGDIOBJ oldFont = font != NULL ? ::SelectObject(dc, font) : NULL;

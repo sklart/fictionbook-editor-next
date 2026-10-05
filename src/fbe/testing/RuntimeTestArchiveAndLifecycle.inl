@@ -106,6 +106,38 @@
 		::PostQuitMessage(firstValidation && secondValidation && xsdSecondUnchanged && sourceSecondUnchanged && sourceInvalidatedAfterEdit && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"empty-image-placeholder-runtime"))
+	{
+		auto bodyPlaceholderState = [&]()
+		{
+			MSHTML::IHTMLDocument2Ptr document(m_doc ? m_doc->m_body.Document() : NULL);
+			MSHTML::IHTMLBodyElementPtr body(document ? document->body : NULL);
+			MSHTML::IHTMLElementPtr bodyElement(body);
+			const CString html(bodyElement ? static_cast<LPCWSTR>(_bstr_t(bodyElement->innerHTML)) : L"");
+			return html.Find(L"href=\"#undefined\"") >= 0 &&
+				html.Find(L"fbw-internal:#undefined") >= 0 &&
+				html.Find(L"fbw-internal:#\"") < 0;
+		};
+		ShowView(BODY);
+		const bool bodyOpened = bodyPlaceholderState();
+		ShowView(SOURCE);
+		const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+		std::vector<char> source(static_cast<size_t>(length) + 1);
+		m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+		const bool sourcePreserved = strstr(source.data(), "#undefined") != NULL && strstr(source.data(), "fbw-internal:#") == NULL;
+		ShowView(BODY);
+		const bool bodyAfterSource = bodyPlaceholderState();
+		const CString filename(m_doc->m_filename);
+		const bool saved = !filename.IsEmpty() && m_doc->Save();
+		const bool reopened = saved && LoadFile(filename) == OK;
+		const bool bodyAfterReopen = reopened && bodyPlaceholderState();
+		CStringA report;
+		report.Format("body_open=%d\nsource=%d\nbody_after_source=%d\nsaved=%d\nreopened=%d\nbody_after_reopen=%d\n",
+			bodyOpened, sourcePreserved, bodyAfterSource, saved, reopened, bodyAfterReopen);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(bodyOpened && sourcePreserved && bodyAfterSource && saved && reopened && bodyAfterReopen ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"body-source-transition-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;
