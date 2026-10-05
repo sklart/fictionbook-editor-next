@@ -378,6 +378,8 @@ public:
 	void InvalidateSelectionContext() { m_selection_context.Invalidate(); }
 	void RebuildSelectionContext();
 	DWORD BuildBodyCommandState(CFBEView& view);
+	void UpdateTableCommandState();
+	bool RebuildCommandToolbarImages(UINT dpi);
 
 	// source<->html exchange
 	bool SourceToHTML();

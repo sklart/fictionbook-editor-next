@@ -378,13 +378,13 @@
 			sourceApplied = sourceEdited && !IsSourceActive();
 			if (sourceApplied)
 			{
-				for (; saveAttempts < 30; ++saveAttempts)
+				for (; saveAttempts < 30;)
 				{
+					++saveAttempts;
 					saveStatus = SaveFile(false);
 					if (saveStatus == OK || m_doc->GetLastSaveError() != HRESULT_FROM_WIN32(ERROR_UNABLE_TO_REMOVE_REPLACED)) break;
 					::Sleep(10);
 				}
-				++saveAttempts;
 			}
 			saved = saveStatus == OK;
 		}

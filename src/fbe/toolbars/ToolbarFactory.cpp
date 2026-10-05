@@ -60,3 +60,60 @@ int ToolbarFactory::AddBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module,
 	::DeleteObject(alpha);
 	return imageIndex;
 }
+
+int ToolbarFactory::CommandToolbarImageSize(UINT dpi)
+{
+	return UiMetrics::ScaleForDpi(24, dpi ? dpi : 96);
+}
+
+bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT toolbarResourceId, UINT dpi)
+{
+	HINSTANCE module = _Module.GetResourceInstance();
+	HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
+	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
+	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
+	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24) return false;
+	int standardImageCount = 0;
+	for(int index = 0; index < toolbarData->itemCount; ++index) if(toolbarData->Items()[index] != 0) ++standardImageCount;
+	const int imageSize = CommandToolbarImageSize(dpi);
+	if(!ownedImages.Create(imageSize, imageSize, ILC_COLOR32 | ILC_MASK, standardImageCount + 8, 8)) return false;
+	HIMAGELIST sourceImages = ::ImageList_LoadImage(module, MAKEINTRESOURCE(toolbarResourceId), 24, 1, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+	const bool copied = sourceImages != NULL && ::ImageList_GetImageCount(sourceImages) >= standardImageCount && CopyToolbarImages(ownedImages, sourceImages, standardImageCount);
+	if(sourceImages != NULL) ::ImageList_Destroy(sourceImages);
+	if(!copied) { ownedImages.Destroy(); return false; }
+	return true;
+}
+
+void ToolbarFactory::ApplyCommandToolbarMetrics(HWND toolbar, UINT toolbarResourceId, UINT dpi)
+{
+	HINSTANCE module = _Module.GetResourceInstance();
+	HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
+	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
+	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
+	if(toolbar == NULL || toolbarData == NULL) return;
+	const int imageSize = CommandToolbarImageSize(dpi);
+	::SendMessage(toolbar, TB_SETBITMAPSIZE, 0, MAKELONG(imageSize, imageSize));
+	::SendMessage(toolbar, TB_SETBUTTONSIZE, 0, MAKELONG(UiMetrics::ScaleForDpi(toolbarData->width + 7, dpi), UiMetrics::ScaleForDpi(toolbarData->height + 7, dpi)));
+	AutoSizeToolbar(toolbar);
+}
+
+int ToolbarFactory::AddBitmapFromModule(HIMAGELIST imageList, HINSTANCE module, UINT bitmapResourceId, int imageSize)
+{
+	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	if(source == NULL || imageList == NULL) return -1;
+	HBITMAP alpha = CreateAlphaBitmap(source, 24, 24);
+	::DeleteObject(source);
+	if(alpha == NULL) return -1;
+	HBITMAP scaled = alpha;
+	if(imageSize != 24)
+	{
+		BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = imageSize; info.bmiHeader.biHeight = -imageSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+		void* ignored = NULL; scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &ignored, NULL, 0);
+		HDC sourceDc = ::CreateCompatibleDC(NULL), targetDc = ::CreateCompatibleDC(NULL);
+		if(scaled == NULL || sourceDc == NULL || targetDc == NULL) { if(scaled && scaled != alpha) ::DeleteObject(scaled); if(sourceDc) ::DeleteDC(sourceDc); if(targetDc) ::DeleteDC(targetDc); ::DeleteObject(alpha); return -1; }
+		HGDIOBJ oldSource = ::SelectObject(sourceDc, alpha), oldTarget = ::SelectObject(targetDc, scaled);
+		::SetStretchBltMode(targetDc, HALFTONE); ::StretchBlt(targetDc, 0, 0, imageSize, imageSize, sourceDc, 0, 0, 24, 24, SRCCOPY);
+		::SelectObject(sourceDc, oldSource); ::SelectObject(targetDc, oldTarget); ::DeleteDC(sourceDc); ::DeleteDC(targetDc); ::DeleteObject(alpha);
+	}
+	const int imageIndex = ::ImageList_Add(imageList, scaled, NULL); ::DeleteObject(scaled); return imageIndex;
+}

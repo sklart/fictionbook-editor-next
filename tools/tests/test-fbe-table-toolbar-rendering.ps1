@@ -33,7 +33,6 @@ try {
         $inside = @($rows | Where-Object { $_.command_id -eq $command -and $_.phase -like 'inside-*' })
         if ($outside.Count -ne 2 -or $inside.Count -ne 3) { throw "Incomplete transition matrix for command $command." }
         if (@($outside | Where-Object enabled -ne 0).Count) { throw "Command $command remained enabled outside a table." }
-        if (@($inside | Where-Object enabled -ne 1).Count) { throw "Command $command was disabled inside a table." }
         if (@($inside | Where-Object image_index -lt 0).Count) { throw "Command $command lost its toolbar image." }
         if (@($outside + $inside | Where-Object image_list_has_mask -ne 1).Count) { throw "Command $command rendered without an image-list mask plane." }
         if (@($outside + $inside | Where-Object image_black_pixels -ne 0).Count) { throw "Command $command rendered visible black pixels in its 24x24 image area." }
@@ -41,6 +40,12 @@ try {
         $enabledChroma = ($inside | Measure-Object -Property chroma_pixels -Minimum).Minimum
         if ($enabledChroma -le $disabledChroma) { throw "Command $command enabled rendering is not more chromatic than disabled rendering ($enabledChroma <= $disabledChroma)." }
     }
+    foreach($command in $commands[0..5]) { if(@($rows | Where-Object { $_.command_id -eq $command -and $_.phase -like 'inside-*' -and $_.enabled -ne 1 }).Count) { throw "Structural command $command was disabled in a valid 2x2 table." } }
+    $makeHeader, $makeNormal = $commands[6], $commands[7]
+    if(@($rows | Where-Object { $_.command_id -eq $makeHeader -and $_.phase -like 'inside-1' -and $_.enabled -ne 1 }).Count -or
+       @($rows | Where-Object { $_.command_id -eq $makeHeader -and $_.phase -eq 'inside-2' -and $_.enabled -ne 0 }).Count) { throw 'Make header must be enabled for TD and disabled for TH.' }
+    if(@($rows | Where-Object { $_.command_id -eq $makeNormal -and $_.phase -like 'inside-1' -and $_.enabled -ne 0 }).Count -or
+       @($rows | Where-Object { $_.command_id -eq $makeNormal -and $_.phase -eq 'inside-2' -and $_.enabled -ne 1 }).Count) { throw 'Make normal must be disabled for TD and enabled for TH.' }
     $passed = $true
     Write-Host 'FBE table toolbar state and rendering transitions passed.'
 } finally {

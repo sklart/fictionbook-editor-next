@@ -48,6 +48,11 @@ if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?Fi
     throw 'Command toolbar must create one application-owned ILC_COLOR32|ILC_MASK image list from the RT_TOOLBAR strip before adding buttons.'
 }
 if ($cpp -match 'EnsureToolbarImageListHasMask') {
+if ($factory -notmatch 'CommandToolbarImageSize' -or $factory -notmatch 'CreateCommandToolbarImages' -or $cpp -notmatch 'RebuildCommandToolbarImages\(newDpi\)') {
+    throw 'Command toolbar must rebuild its owned DPI-aware image list on WM_DPICHANGED.'
+}
+if ($factory -match 'TB_SETBITMAPSIZE[^\r\n]*MAKELONG\(24, 24\)') { throw 'Runtime command-toolbar geometry must not be fixed to 24px.' }
+
     throw 'Delayed command-toolbar image-list reconstruction must not remain.'
 }
 if ($header -notmatch 'CImageList\s+m_commandToolbarImages') {

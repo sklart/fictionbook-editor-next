@@ -1907,13 +1907,7 @@ BOOL CMainFrame::OnIdle()
 		UIEnable(ID_EDIT_INS_CITE, view.InsertCite(true));
 		enableBody(ID_EDIT_CODE, 8192); UISetCheck(ID_EDIT_CODE, (bodyState & 16384) != 0);
 		UIEnable(ID_INSERT_TABLE, view.InsertTable(true));
-		const bool tableCell = (bool)m_selection_context.tableCell;
-		FbeTable::Grid tableGrid;
-		const bool hasTableGrid = tableCell && FbeTable::BuildGrid(FbeTable::FindTableElement(m_selection_context.tableCell), tableGrid);
-		const WORD tableCommands[] = { ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW, ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN, ID_TABLE_TOGGLE_HEADER_CELL, ID_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_NORMAL_CELLS };
-		for (size_t index = 0; index < _countof(tableCommands); ++index) UIEnable(tableCommands[index], tableCell);
-		UIEnable(ID_TABLE_DELETE_ROW, hasTableGrid && tableGrid.rows.size() > 1);
-		UIEnable(ID_TABLE_DELETE_COLUMN, hasTableGrid && tableGrid.columns > 1);
+		UpdateTableCommandState();
 		UIEnable(ID_GOTO_FOOTNOTE, view.GoToFootnote(true) || view.GoToReference(true));
 		UIEnable(ID_GOTO_REFERENCE, view.GoToReference(true));
 		enableBody(ID_EDIT_MERGE, 2048); enableBody(ID_EDIT_REMOVE_OUTER_SECTION, 4096);
@@ -2123,19 +2117,7 @@ BOOL CMainFrame::OnIdle()
 	{
 	if (m_editor_view_state.Current() == BODY)
 		RebuildSelectionContext();
-	const bool tableCommandEnabled = m_editor_view_state.Current() == BODY && m_doc && m_selection_context.tableCell;
-	const UINT tableCommands[] = {
-		ID_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_BELOW, ID_TABLE_DELETE_ROW,
-		ID_TABLE_INSERT_COLUMN_LEFT, ID_TABLE_INSERT_COLUMN_RIGHT, ID_TABLE_DELETE_COLUMN,
-		ID_TABLE_MAKE_HEADER_CELLS, ID_TABLE_MAKE_NORMAL_CELLS
-	};
-	for (size_t index = 0; index < _countof(tableCommands); ++index) {
-		UIEnable(tableCommands[index], tableCommandEnabled);
-	}
-	FbeTable::Grid tableGrid;
-	const bool hasTableGrid = tableCommandEnabled && FbeTable::BuildGrid(FbeTable::FindTableElement(m_selection_context.tableCell), tableGrid);
-	UIEnable(ID_TABLE_DELETE_ROW, hasTableGrid && tableGrid.rows.size() > 1);
-	UIEnable(ID_TABLE_DELETE_COLUMN, hasTableGrid && tableGrid.columns > 1);
+	UpdateTableCommandState();
 	}
 
 	// update UI
@@ -3308,6 +3290,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     info.iImage = m_table_toolbar_image_indices[index];
     m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
   }
+	RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
   UIAddToolBar(m_CmdToolbar);
 
   m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
@@ -3924,6 +3907,63 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_FRAME);
 	return 0;
 }
+void CMainFrame::UpdateTableCommandState()
+{
+	const bool body = m_editor_view_state.Current() == BODY && m_doc != NULL;
+	MSHTML::IHTMLElementPtr currentCell(body ? FbeTable::FindTableCell(m_selection_context.tableCell) : MSHTML::IHTMLElementPtr());
+	FbeTable::Grid grid;
+	const bool validCell = currentCell && FbeTable::BuildGrid(FbeTable::FindTableElement(currentCell), grid) && FbeTable::FindCell(grid, currentCell) >= 0;
+	const bool canDeleteRow = validCell && grid.rows.size() > 1;
+	const bool canDeleteColumn = validCell && grid.columns > 1;
+	bool hasTd = false, hasTh = false;
+	if(validCell)
+	{
+		std::vector<MSHTML::IHTMLElementPtr> cells;
+		if(!FbeTable::GetSelectedCells(m_doc->m_body.Document(), currentCell, cells)) cells.push_back(currentCell);
+		for(size_t index = 0; index < cells.size(); ++index)
+		{
+			const CString tag(cells[index] ? static_cast<LPCWSTR>(cells[index]->tagName) : L"");
+			hasTd = hasTd || tag.CompareNoCase(L"TD") == 0;
+			hasTh = hasTh || tag.CompareNoCase(L"TH") == 0;
+		}
+	}
+	UIEnable(ID_TABLE_INSERT_ROW_ABOVE, validCell); UIEnable(ID_TABLE_INSERT_ROW_BELOW, validCell);
+	UIEnable(ID_TABLE_DELETE_ROW, canDeleteRow);
+	UIEnable(ID_TABLE_INSERT_COLUMN_LEFT, validCell); UIEnable(ID_TABLE_INSERT_COLUMN_RIGHT, validCell);
+	UIEnable(ID_TABLE_DELETE_COLUMN, canDeleteColumn);
+	UIEnable(ID_TABLE_TOGGLE_HEADER_CELL, validCell);
+	UIEnable(ID_TABLE_MAKE_HEADER_CELLS, hasTd); UIEnable(ID_TABLE_MAKE_NORMAL_CELLS, hasTh);
+}
+
+bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
+{
+	if(!::IsWindow(m_CmdToolbar)) return false;
+	CImageList replacement;
+	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_MAINFRAME, dpi)) return false;
+	const HINSTANCE module = ATL::_AtlBaseModule.GetModuleInstance();
+	const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
+	int imageIndices[8] = {};
+	for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
+	{
+		imageIndices[index] = ToolbarFactory::AddBitmapFromModule(static_cast<HIMAGELIST>(replacement), module, kTableToolbarCommands[index].bitmapResourceId, imageSize);
+		if(imageIndices[index] < 0) return false;
+	}
+	HIMAGELIST oldImages = m_commandToolbarImages.Detach();
+	HIMAGELIST newImages = replacement.Detach();
+	HIMAGELIST replaced = m_CmdToolbar.SetImageList(newImages);
+	if(replaced != oldImages) { m_CmdToolbar.SetImageList(oldImages); ::ImageList_Destroy(newImages); m_commandToolbarImages.Attach(oldImages); return false; }
+	m_commandToolbarImages.Attach(newImages);
+	if(oldImages) ::ImageList_Destroy(oldImages);
+	for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
+	{
+		m_table_toolbar_image_indices[index] = imageIndices[index];
+		TBBUTTONINFO info = {}; info.cbSize = sizeof(info); info.dwMask = TBIF_IMAGE; info.iImage = imageIndices[index];
+		m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
+	}
+	ToolbarFactory::ApplyCommandToolbarMetrics(m_CmdToolbar, IDR_MAINFRAME, dpi);
+	return true;
+}
+
 LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 {
 	const UINT newDpi = HIWORD(wParam);
@@ -3952,7 +3992,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	m_current_dpi = newDpi;
 	UiMetrics::UpdateForWindow(m_hWnd);
 	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
-	if (::IsWindow(m_CmdToolbar)) { SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
+	if (::IsWindow(m_CmdToolbar)) { RebuildCommandToolbarImages(newDpi); SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
 	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }
 	m_contextAttributeBars.UpdateMetrics();
 	if (::IsWindow(m_rebar)) m_contextAttributeBars.NormalizeRebarBands(m_rebar);
