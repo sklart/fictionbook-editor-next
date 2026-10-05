@@ -6,6 +6,7 @@
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
 #include "..\\..\\ThemeManager.h"
+#include "..\\..\\testing\\RuntimeTestScenarioMode.h"
 
 extern CSettings _Settings;
 
@@ -14,10 +15,14 @@ namespace
 	bool IsSettingsDialogRuntimeTest()
 	{
 		wchar_t mode[4] = {}, scenario[64] = {};
-		return ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 && mode[0] == L'1' &&
-			::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) == wcslen(L"settings-dialog-runtime") &&
-			wcscmp(scenario, L"settings-dialog-runtime") == 0;
+		if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1')
+			return false;
+		const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
+		return (scenarioLength == wcslen(L"settings-dialog-runtime") && wcscmp(scenario, L"settings-dialog-runtime") == 0) ||
+			(scenarioLength == wcslen(L"backup-settings-save-runtime") && wcscmp(scenario, L"backup-settings-save-runtime") == 0);
 	}
+
+	bool IsBackupSettingsSaveRuntimeTest() { return RuntimeTests::IsScenario(L"backup-settings-save-runtime"); }
 }
 
 // CSettingsDlg
@@ -127,7 +132,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	{
 		// Test-only automation still commits through the normal global OK path.
 		// Use independent pages so ApplyConfChanges covers more than one category.
-		m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, BST_CHECKED);
+		m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, IsBackupSettingsSaveRuntimeTest() ? BST_UNCHECKED : BST_CHECKED);
 		m_editorPage->SendDlgItemMessage(IDC_NBSP_CHAR, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"\x25AB"));
 		m_sourcePage->CheckDlgButton(IDC_WRAP, BST_CHECKED);
 		m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);

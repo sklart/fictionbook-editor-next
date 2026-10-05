@@ -341,6 +341,59 @@
 		::PostQuitMessage(persisted && applied ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"backup-settings-save-runtime") || IsFbeTestScenario(L"backup-settings-save-runtime-verify"))
+	{
+		const bool verifyOnly = IsFbeTestScenario(L"backup-settings-save-runtime-verify");
+		if (!verifyOnly)
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_TOOLS_OPTIONS, 0), 0);
+		const bool backupDisabled = !_Settings.GetCreateBackupFile();
+		bool sourceEdited = false;
+		bool sourceApplied = false;
+		FILE_OP_STATUS saveStatus = FAIL;
+		int saveAttempts = 0;
+		bool saved = false;
+		if (!verifyOnly && backupDisabled)
+		{
+			ShowView(SOURCE);
+			const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> source(static_cast<size_t>(length) + 1);
+			m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(source.data()));
+			const char* markerText = "BACKUP_RUNTIME_BEFORE";
+			const char* replacementText = "BACKUP_RUNTIME_AFTER";
+			const char* marker = strstr(source.data(), markerText);
+			if (!marker)
+			{
+				markerText = "BACKUP_RUNTIME_AFTER";
+				replacementText = "BACKUP_RUNTIME_FINAL";
+				marker = strstr(source.data(), markerText);
+			}
+			if (marker)
+			{
+				const sptr_t start = static_cast<sptr_t>(marker - source.data());
+				m_source.SendMessage(SCI_SETSEL, start, start + strlen(markerText));
+				m_source.SendMessage(SCI_REPLACESEL, 0, reinterpret_cast<LPARAM>(replacementText));
+				sourceEdited = true;
+			}
+			ShowView(BODY);
+			sourceApplied = sourceEdited && !IsSourceActive();
+			if (sourceApplied)
+			{
+				for (; saveAttempts < 30; ++saveAttempts)
+				{
+					saveStatus = SaveFile(false);
+					if (saveStatus == OK || m_doc->GetLastSaveError() != HRESULT_FROM_WIN32(ERROR_UNABLE_TO_REMOVE_REPLACED)) break;
+					::Sleep(10);
+				}
+				++saveAttempts;
+			}
+			saved = saveStatus == OK;
+		}
+		CStringA report;
+		report.Format("settings_dialog=%d\nbackup_disabled=%d\nsource_edited=%d\nsource_applied=%d\nsaved=%d\nsave_attempts=%d\nsave_status=%d\nsave_error=0x%08lX\n", !verifyOnly, backupDisabled, sourceEdited, sourceApplied, saved, saveAttempts, saveStatus, static_cast<unsigned long>(m_doc->GetLastSaveError()));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(backupDisabled && (verifyOnly || (sourceEdited && sourceApplied && saved)) ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"editor-view-lifecycle-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;

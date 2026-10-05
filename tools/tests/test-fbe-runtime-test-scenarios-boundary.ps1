@@ -39,7 +39,8 @@ foreach($required in @(
     'split-undo-probe',
     'body-source-transition-runtime',
 	'phase-b-cache-runtime',
-    'settings-dialog-runtime')) {
+    'settings-dialog-runtime',
+    'backup-settings-save-runtime')) {
     if($scenarioText -notmatch [regex]::Escape($required)) {
         throw "Runtime scenario harness is missing: $required"
     }

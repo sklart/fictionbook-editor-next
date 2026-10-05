@@ -40,6 +40,9 @@ int wmain()
     Require(Read(file) == L"new" && Read(file + L".bak") == L"old");
     DeleteFile((file + L".bak").c_str()); Write(file, L"old"); Write(temp, L"new"); FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false);
     Require(Read(file) == L"new" && GetFileAttributes((file + L".bak").c_str()) == INVALID_FILE_ATTRIBUTES);
+    Write(file, L"old-no-backup-existing"); Write(file + L".bak", L"preserved-backup"); Write(temp, L"new-no-backup-existing");
+    FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), false);
+    Require(Read(file) == L"new-no-backup-existing" && Read(file + L".bak") == L"preserved-backup");
     Write(file, L"old2"); Write(file + L".bak", L"older"); Write(temp, L"new2"); FbeBackupFileCommit::CommitSavedFile(temp.c_str(), file.c_str(), true);
     Require(Read(file) == L"new2" && Read(file + L".bak") == L"old2");
     Write(file, L"old3"); Write(file + L".bak", L"previous-backup"); Write(temp, L"new3");
