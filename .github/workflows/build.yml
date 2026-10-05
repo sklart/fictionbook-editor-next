@@ -194,6 +194,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/build-provenance.ps1 -Action Write -Kind Runtime -Configuration Release -ProfileDirectory out/editor-runtime -BatchDirectory out/target-batches -PlatformToolset v143
       - name: Ensure NSIS 3.13
+        if: github.event_name == 'pull_request'
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
@@ -210,7 +211,7 @@ jobs:
           ./tools/build/verify-release.ps1 @arguments
       - name: Smoke bundled plugin upgrade and uninstall
         if: github.event_name == 'pull_request'
-        shell: pw
+        shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           $testRoot = 'out/tests/bundled-plugin-installer-smoke'
