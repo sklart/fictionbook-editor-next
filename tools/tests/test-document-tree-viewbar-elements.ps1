@@ -37,20 +37,22 @@ $popupStart = $source.IndexOf('bool ShowNativeDocumentTreeViewBarPopup')
 $popupEnd = $source.IndexOf('LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc', $popupStart)
 if($popupStart -lt 0 -or $popupEnd -lt 0) { throw 'Не найден popup Элементы.' }
 $popup = $source.Substring($popupStart, $popupEnd - $popupStart)
-if([string]::IsNullOrWhiteSpace($popup) -or $popup -notmatch 'WM_INITMENUPOPUP' -or $popup -notmatch 'ThemeManager::TrackPopupMenu' -or $popup -match 'TrackPopupMenuEx') { throw 'Popup Элементы должен использовать подготовку command bar и ThemeManager::TrackPopupMenu.' }
+if([string]::IsNullOrWhiteSpace($popup) -or $popup -notmatch 'WM_INITMENUPOPUP[\s\S]*?ApplyStructureMenuCheckmarks\(\)[\s\S]*?ThemeManager::TrackPopupMenu' -or $popup -match 'TrackPopupMenuEx') { throw 'После WM_INITMENUPOPUP popup Элементы должен повторно назначать checkmark bitmap до ThemeManager::TrackPopupMenu.' }
 
-$checkmarksStart = $source.IndexOf('void CTreeWithToolBar::RefreshStructureMenuCheckmarks()')
+$checkmarksStart = $source.IndexOf('void CTreeWithToolBar::EnsureStructureMenuCheckmarkBitmaps()')
 $checkmarksEnd = $source.IndexOf('void CTreeWithToolBar::RefreshLocalizedMenuCaptions()', $checkmarksStart)
 if($checkmarksStart -lt 0 -or $checkmarksEnd -lt 0) { throw 'Не найдена настройка checkmark-битмапов меню Элементы.' }
 $checkmarks = $source.Substring($checkmarksStart, $checkmarksEnd - $checkmarksStart)
-foreach($required in @('MIIM_CHECKMARKS', 'hbmpChecked', 'hbmpUnchecked', 'ThemeManager::IsDark()', 'ThemeManager::IsHighContrast()', 'UiMetrics::ScaleForDpi(16, dpi)', 'SetMenuItemInfoW(m_st_menu, index, TRUE, &info)')) {
+foreach($required in @('EnsureStructureMenuCheckmarkBitmaps', 'ApplyStructureMenuCheckmarks', 'MIIM_CHECKMARKS', 'hbmpChecked', 'hbmpUnchecked', 'ThemeManager::IsDark()', 'ThemeManager::IsHighContrast()', 'UiMetrics::ScaleForDpi(16, dpi)', 'SetMenuItemInfoW(m_st_menu, index, TRUE, &info)')) {
     if(-not $source.Contains($required)) { throw "Не хватает dark checkmark-контракта: $required" }
 }
 if($checkmarks -notmatch 'if\(!dark\)[\s\S]{0,220}ClearStructureMenuCheckmarks\(\)') { throw 'При возврате в Light должны удаляться custom checkmark-битмапы.' }
+if($source -notmatch 'CreatePen\(PS_SOLID, \(std::max\)\(1, UiMetrics::ScaleForDpi\(1, dpi\)\), RGB\(255, 255, 255\)\)' -or $source -match 'ScaleForDpi\(2, dpi\), RGB\(255, 255, 255\)') { throw 'Галочка checkbox должна рисоваться тонкой линией в 1 DPI-scaled px.' }
+if($source -notmatch 'pixels\[index\] = \(pixels\[index\] & 0x00ffffffu\) \| 0xff000000u') { throw 'После GDI-рисования 32-bit DIB должен получать детерминированный alpha-канал.' }
 if($source -match 'MFT_OWNERDRAW|MF_OWNERDRAW') { throw 'Меню Элементы не должно переводиться в owner-draw.' }
-if($source -notmatch 'bool CTreeWithToolBar::GetStructureMenuCheckmarkProbe\(bool expectCustomBitmaps\)' -or $source -notmatch 'm_structureMenuCheckmarkDpi == UiMetrics::DpiForWindow\(m_hWnd\)') { throw 'Runtime probe должен проверять custom checkmarks и их DPI.' }
+if($source -notmatch 'bool CTreeWithToolBar::GetStructureMenuCheckmarkProbe\(bool expectCustomBitmaps\)' -or $source -notmatch 'bool CTreeWithToolBar::VerifyStructureMenuCheckmarkDpiBitmaps\(\) const' -or $source -notmatch '96, 120, 144, 192') { throw 'Runtime probe должен проверять custom checkmarks и 100/125/150/200% DPI.' }
 $runtime = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\testing\RuntimeTestPortableState.inl')
-foreach($required in @('GetStructureMenuCheckmarkProbe(false)', 'GetStructureMenuCheckmarkProbe(true)', 'viewbar-checkmarks-light-before', 'viewbar-checkmarks-dark', 'viewbar-checkmarks-light-after')) {
+foreach($required in @('PrepareViewBarPopupThemeProbe()', 'GetStructureMenuCheckmarkProbe(false)', 'GetStructureMenuCheckmarkProbe(true)', 'VerifyStructureMenuCheckmarkDpiBitmaps()', 'viewbar-checkmarks-light-before', 'viewbar-checkmarks-dark-after-popup', 'viewbar-checkmarks-light-after', 'viewbar-checkmarks-dark-again', 'viewbar-checkmarks-dpi-100-125-150-200')) {
     if(-not $runtime.Contains($required)) { throw "Runtime Light-Dark-Light не проверяет checkmarks: $required" }
 }
 

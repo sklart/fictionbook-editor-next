@@ -51,7 +51,7 @@ HBITMAP CreateDocumentTreeMenuCheckmarkBitmap(UINT dpi, bool checked)
 	::DeleteObject(border);
 	if(checked)
 	{
-		HPEN check = ::CreatePen(PS_SOLID, (std::max)(1, UiMetrics::ScaleForDpi(2, dpi)), RGB(255, 255, 255));
+		HPEN check = ::CreatePen(PS_SOLID, (std::max)(1, UiMetrics::ScaleForDpi(1, dpi)), RGB(255, 255, 255));
 		oldPen = ::SelectObject(dc, check);
 		const int left = box.left + (std::max)(1, UiMetrics::ScaleForDpi(2, dpi));
 		const int middle = box.top + (box.bottom - box.top) * 3 / 5;
@@ -64,6 +64,9 @@ HBITMAP CreateDocumentTreeMenuCheckmarkBitmap(UINT dpi, bool checked)
 	}
 	::SelectObject(dc, oldBitmap);
 	::DeleteDC(dc);
+	DWORD* pixels = static_cast<DWORD*>(bits);
+	for(int index = 0; index < extent * extent; ++index)
+		pixels[index] = (pixels[index] & 0x00ffffffu) | 0xff000000u;
 	return bitmap;
 }
 
@@ -79,7 +82,7 @@ bool AddDocumentTreeModeImage(CImageList& images, UINT resourceId)
 	return copied;
 }
 
-bool ShowNativeDocumentTreeViewBarPopup(HWND commandBar, int item)
+bool ShowNativeDocumentTreeViewBarPopup(CTreeWithToolBar& tree, HWND commandBar, int item)
 {
 	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(commandBar, CBRM_GETMENU, 0, 0));
 	if(menu == NULL || item < 0 || item >= ::GetMenuItemCount(menu)) return false;
@@ -95,6 +98,7 @@ bool ShowNativeDocumentTreeViewBarPopup(HWND commandBar, int item)
 	// ThemeManager restores FBE-owned menu bitmaps and opens the menu.  Direct
 	// Direct native tracking skips that preparation and flashes a light popup first.
 	::SendMessage(commandBar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
+	tree.ApplyStructureMenuCheckmarks();
 	const UINT command = ThemeManager::TrackPopupMenu(popup,
 		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, owner);
 	if(command != 0)
@@ -115,7 +119,8 @@ LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, W
 		}
 		else if(message == WM_KEYDOWN && (wParam == VK_DOWN || wParam == VK_RETURN || wParam == VK_SPACE))
 			item = static_cast<int>(::SendMessage(window, TB_GETHOTITEM, 0, 0));
-		if(item >= 0 && ShowNativeDocumentTreeViewBarPopup(window, item)) return 0;
+		CTreeWithToolBar* const tree = reinterpret_cast<CTreeWithToolBar*>(reference);
+		if(item >= 0 && tree != NULL && ShowNativeDocumentTreeViewBarPopup(*tree, window, item)) return 0;
 	}
 	const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);
 	if(message == WM_FBE_THEMECHANGED)
@@ -342,7 +347,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	m_tree.SetTextColor(ThemeManager::TextColor());
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
-	RefreshStructureMenuCheckmarks();
+	ApplyStructureMenuCheckmarks();
 	if(m_rebar.IsWindow())
 	{
 		if(!m_rebarThemeStateCaptured)
@@ -516,7 +521,7 @@ void CTreeWithToolBar::FillViewBar()
 	::AppendMenu(m_script_menu, MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
 
 	m_view_bar.AttachMenu(bar);
-	RefreshStructureMenuCheckmarks();
+	ApplyStructureMenuCheckmarks();
 }
 
 void CTreeWithToolBar::ClearStructureMenuCheckmarks()
@@ -541,7 +546,7 @@ void CTreeWithToolBar::ClearStructureMenuCheckmarks()
 	m_structureMenuCheckmarkDpi = 0;
 }
 
-void CTreeWithToolBar::RefreshStructureMenuCheckmarks()
+void CTreeWithToolBar::EnsureStructureMenuCheckmarkBitmaps()
 {
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	if(!dark)
@@ -560,6 +565,13 @@ void CTreeWithToolBar::RefreshStructureMenuCheckmarks()
 		ClearStructureMenuCheckmarks();
 		return;
 	}
+	m_structureMenuCheckmarkDpi = dpi;
+}
+
+void CTreeWithToolBar::ApplyStructureMenuCheckmarks()
+{
+	EnsureStructureMenuCheckmarkBitmaps();
+	if(m_st_menu.IsNull() || m_structureMenuCheckedBitmap == NULL || m_structureMenuUncheckedBitmap == NULL) return;
 	const int count = m_st_menu.GetMenuItemCount();
 	for(int index = 0; index < count; ++index)
 	{
@@ -570,7 +582,6 @@ void CTreeWithToolBar::RefreshStructureMenuCheckmarks()
 		info.hbmpUnchecked = m_structureMenuUncheckedBitmap;
 		::SetMenuItemInfoW(m_st_menu, index, TRUE, &info);
 	}
-	m_structureMenuCheckmarkDpi = dpi;
 }
 
 void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
@@ -699,10 +710,31 @@ bool CTreeWithToolBar::GetStructureMenuCheckmarkProbe(bool expectCustomBitmaps) 
 		m_structureMenuCheckedBitmap == NULL && m_structureMenuUncheckedBitmap == NULL;
 }
 
+bool CTreeWithToolBar::VerifyStructureMenuCheckmarkDpiBitmaps() const
+{
+	const UINT dpis[] = { 96, 120, 144, 192 };
+	for(UINT dpi : dpis)
+	{
+		HBITMAP checked = CreateDocumentTreeMenuCheckmarkBitmap(dpi, true);
+		HBITMAP unchecked = CreateDocumentTreeMenuCheckmarkBitmap(dpi, false);
+		BITMAP checkedInfo = {}, uncheckedInfo = {};
+		const int extent = (std::max)(1, UiMetrics::ScaleForDpi(16, dpi));
+		const bool valid = checked != NULL && unchecked != NULL &&
+			::GetObject(checked, sizeof(checkedInfo), &checkedInfo) == sizeof(checkedInfo) &&
+			::GetObject(unchecked, sizeof(uncheckedInfo), &uncheckedInfo) == sizeof(uncheckedInfo) &&
+			checkedInfo.bmWidth == extent && checkedInfo.bmHeight == extent &&
+			uncheckedInfo.bmWidth == extent && uncheckedInfo.bmHeight == extent;
+		if(checked != NULL) ::DeleteObject(checked);
+		if(unchecked != NULL) ::DeleteObject(unchecked);
+		if(!valid) return false;
+	}
+	return true;
+}
+
 bool CTreeWithToolBar::PrepareViewBarPopupThemeProbe()
 {
 	if(!m_view_bar.IsWindow()) return false;
-	RefreshStructureMenuCheckmarks();
+	ApplyStructureMenuCheckmarks();
 	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(m_view_bar, CBRM_GETMENU, 0, 0));
 	const HMENU popup = menu != NULL ? ::GetSubMenu(menu, 0) : NULL;
 	if(popup == NULL) return false;
@@ -710,6 +742,7 @@ bool CTreeWithToolBar::PrepareViewBarPopupThemeProbe()
 	// It lets the runtime test verify the active theme path without synthesizing
 	// input into a modal native menu loop.
 	::SendMessage(m_view_bar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
+	ApplyStructureMenuCheckmarks();
 	return true;
 }
 

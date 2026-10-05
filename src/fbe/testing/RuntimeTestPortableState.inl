@@ -257,17 +257,22 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool lightBefore = viewBarReady() && lightBeforeCheckmarks;
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-		const bool darkCheckmarks = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(true);
-		const bool dark = ThemeManager::IsDark() && viewBarReady() && darkCheckmarks;
-		const bool popupPrepared = m_document_tree.m_tree.PrepareViewBarPopupThemeProbe();
+		const bool popupPreparedDark = m_document_tree.m_tree.PrepareViewBarPopupThemeProbe();
+		const bool darkCheckmarksAfterPopup = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(true);
+		const bool dpiCheckmarks = m_document_tree.m_tree.VerifyStructureMenuCheckmarkDpiBitmaps();
+		const bool dark = ThemeManager::IsDark() && viewBarReady() && darkCheckmarksAfterPopup;
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const bool lightAfterCheckmarks = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(false);
 		const bool lightAfter = !ThemeManager::IsDark() && viewBarReady() && lightAfterCheckmarks;
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool popupPreparedDarkAgain = m_document_tree.m_tree.PrepareViewBarPopupThemeProbe();
+		const bool darkAgainCheckmarks = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(true);
 		ThemeManager::SetSelectedTheme(originalTheme);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-		const bool passed = lightBefore && dark && popupPrepared && lightAfter;
-		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared=%d\nviewbar-light-after=%d\nviewbar-checkmarks-light-before=%d\nviewbar-checkmarks-dark=%d\nviewbar-checkmarks-light-after=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, lightBefore, dark, popupPrepared, lightAfter, lightBeforeCheckmarks, darkCheckmarks, lightAfterCheckmarks, width, measuredWidth, padding, passed ? "pass" : "fail");
+		const bool passed = lightBefore && dark && popupPreparedDark && dpiCheckmarks && lightAfter && popupPreparedDarkAgain && darkAgainCheckmarks;
+		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared-dark=%d\nviewbar-light-after=%d\nviewbar-popup-prepared-dark-again=%d\nviewbar-checkmarks-light-before=%d\nviewbar-checkmarks-dark-after-popup=%d\nviewbar-checkmarks-light-after=%d\nviewbar-checkmarks-dark-again=%d\nviewbar-checkmarks-dpi-100-125-150-200=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, lightBefore, dark, popupPreparedDark, lightAfter, popupPreparedDarkAgain, lightBeforeCheckmarks, darkCheckmarksAfterPopup, lightAfterCheckmarks, darkAgainCheckmarks, dpiCheckmarks, width, measuredWidth, padding, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)

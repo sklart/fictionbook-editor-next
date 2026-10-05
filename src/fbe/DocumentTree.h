@@ -97,6 +97,8 @@ public:
 	bool IsStructuralToolbarVisible() const { return m_rebar.IsWindowVisible() != FALSE; }
 	bool GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const;
 	bool GetStructureMenuCheckmarkProbe(bool expectCustomBitmaps) const;
+	bool VerifyStructureMenuCheckmarkDpiBitmaps() const;
+	void ApplyStructureMenuCheckmarks();
 	// Must run after CCommandBarCtrl finishes rebuilding its native theme state.
 	void FinalizeViewBarTheme();
 	bool PrepareViewBarPopupThemeProbe();
@@ -145,7 +147,7 @@ private:
 	void ApplyViewBarMetrics();
 	void RefreshViewBarElementText(LPCWSTR text);
 	void EnsureViewBarElementTextWidth();
-	void RefreshStructureMenuCheckmarks();
+	void EnsureStructureMenuCheckmarkBitmaps();
 	void ClearStructureMenuCheckmarks();
 	void UpdateViewBarMode(bool scripts);
 	void SetScriptMode(bool scripts);
