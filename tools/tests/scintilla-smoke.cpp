@@ -10,6 +10,7 @@
 
 #include "Scintilla.h"
 #include "SciLexer.h"
+#include "search/ScintillaRegexSearch.h"
 
 typedef void* (__stdcall *CreateLexerFn)(const char* name);
 
@@ -458,56 +459,27 @@ static bool VerifyZeroLengthSingleReplaceWrapGuard(HWND editor)
 	return true;
 }
 
-// Test counterpart of the Source reverse zero-length guard fallback.  The
-// optional bound records every forward target length so the large-document
-// regression can reject a prefix-wide rescan.
-static int FindPreviousSkippingZeroLengthGuardForTest(HWND editor, int rangeStart, int rangeEnd,
+// Performs the normal reverse search; only a protected zero-length result is
+// delegated to the production fallback implementation.
+static int SearchReverseWithProductionZeroLengthGuard(HWND editor, int rangeStart, int rangeEnd,
 	const char* pattern, int guardFirst, int guardLast, int* largestForwardRange = NULL)
 {
 	if (rangeStart == rangeEnd)
 		return -1;
-	auto search = [&](int start, int end) {
-		SendMessage(editor, SCI_SETTARGETSTART, start, 0);
-		SendMessage(editor, SCI_SETTARGETEND, end, 0);
-		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
-		return static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(pattern), reinterpret_cast<LPARAM>(pattern)));
-	};
-	int result = search(rangeStart, rangeEnd);
-	if (result == -1)
+	SendMessage(editor, SCI_SETTARGETSTART, rangeStart, 0);
+	SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
+	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+	const int found = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(pattern), reinterpret_cast<LPARAM>(pattern)));
+	if (found == -1)
 		return -1;
-	const int initialStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
-	const int initialEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
-	if (initialStart != initialEnd || initialStart < guardFirst || initialStart > guardLast)
-		return result;
-
-	const int guardLine = static_cast<int>(SendMessage(editor, SCI_LINEFROMPOSITION, guardFirst, 0));
-	const int lineStart = static_cast<int>(SendMessage(editor, SCI_POSITIONFROMLINE, guardLine, 0));
-	if (lineStart > rangeEnd)
-	{
-		int scanStart = lineStart;
-		int selected = -1;
-		while (scanStart <= guardFirst)
-		{
-			if (largestForwardRange != NULL)
-				*largestForwardRange = max(*largestForwardRange, guardFirst - scanStart);
-			result = search(scanStart, guardFirst);
-			if (result == -1)
-				break;
-			const int foundStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
-			const int foundEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
-			if (foundStart != foundEnd || foundStart < guardFirst || foundStart > guardLast)
-				selected = foundStart;
-			const int cursor = foundEnd > foundStart ? foundEnd : foundStart;
-			const int next = static_cast<int>(SendMessage(editor, SCI_POSITIONAFTER, cursor, 0));
-			if (next == cursor || next > guardFirst)
-				break;
-			scanStart = next;
-		}
-		if (selected != -1)
-			return selected;
-	}
-	const int previousLineEnd = static_cast<int>(SendMessage(editor, SCI_POSITIONBEFORE, lineStart, 0));
-	return previousLineEnd <= rangeEnd ? -1 : search(previousLineEnd, rangeEnd);
+	const int hitStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+	const int hitEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
+	if (hitStart != hitEnd || hitStart < guardFirst || hitStart > guardLast)
+		return found;
+	int result = found;
+	return AU::Search::FindPreviousSkippingZeroLengthGuard(editor, SCFIND_REGEXP | SCFIND_CXX11REGEX,
+		pattern, static_cast<int>(std::strlen(pattern)), guardFirst, guardLast, rangeEnd, true, result,
+		largestForwardRange) ? result : -1;
 }
 
 // Mirrors the reverse Source Replace -> Find -> wrap cycle.  The starting
@@ -546,7 +518,7 @@ static bool VerifyZeroLengthSingleReplaceReverseWrapGuard(HWND editor)
 		const int resume = guardFirst;
 
 		auto findReverseSkippingGuard = [&](int rangeStart, int rangeEnd) -> int {
-			return FindPreviousSkippingZeroLengthGuardForTest(editor, rangeStart, rangeEnd,
+			return SearchReverseWithProductionZeroLengthGuard(editor, rangeStart, rangeEnd,
 				fixture.pattern, guardFirst, guardLast);
 		};
 
@@ -588,7 +560,7 @@ static bool VerifyZeroLengthSingleReplaceReverseLineStarts(HWND editor)
 			const int guardBegin = min(guardFirst, guardLast), guardEnd = max(guardFirst, guardLast);
 
 			auto findNextReverse = [&](int rangeStart, int rangeEnd) -> int {
-				return FindPreviousSkippingZeroLengthGuardForTest(editor, rangeStart, rangeEnd,
+				return SearchReverseWithProductionZeroLengthGuard(editor, rangeStart, rangeEnd,
 					"^", guardBegin, guardEnd);
 			};
 
@@ -631,7 +603,7 @@ static bool VerifyZeroLengthReverseFallbackStaysOnCurrentLine(HWND editor)
 		const int guardLine = static_cast<int>(SendMessage(editor, SCI_LINEFROMPOSITION, guardFirst, 0));
 		const int expected = guardLine == 0 ? -1 : static_cast<int>(SendMessage(editor, SCI_POSITIONFROMLINE, guardLine - 1, 0));
 		int largestForwardRange = 0;
-		const int next = FindPreviousSkippingZeroLengthGuardForTest(editor, guardFirst, 0, "^",
+		const int next = SearchReverseWithProductionZeroLengthGuard(editor, guardFirst, 0, "^",
 			min(guardFirst, guardLast), max(guardFirst, guardLast), &largestForwardRange);
 		if (next != expected || largestForwardRange > 1)
 			return false;

@@ -6,6 +6,7 @@
 #include "structure/BodyStructuralEditor.h"
 #include "ReplacementPreflight.h"
 #include "search/ReplacementParser.h"
+#include "search/ScintillaRegexSearch.h"
 #include "LinkNavigation.h"
 #include "navigation/LinkDomNavigation.h"
 #include "navigation/ReferenceNavigation.h"
@@ -3781,85 +3782,6 @@ static int ScintillaPositionBefore(HWND source, int position)
 	return static_cast<int>(::SendMessage(source, SCI_POSITIONBEFORE, position, 0));
 }
 
-bool CFBEView::FindPreviousSkippingZeroLengthGuard(HWND src, int flags, const char* pattern, int patternLength,
-	int zeroLengthGuardFirst, int zeroLengthGuardLast, int rangeEnd, int& result)
-{
-	auto reportRegexError = [&]()
-	{
-		if (m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
-		{
-			m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-			m_last_search_error_is_regexp = true;
-			U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
-			return true;
-		}
-		return false;
-	};
-	auto search = [&](int start, int end)
-	{
-		::SendMessage(src, SCI_SETTARGETSTART, start, 0);
-		::SendMessage(src, SCI_SETTARGETEND, end, 0);
-		::SendMessage(src, SCI_SETSEARCHFLAGS, flags, 0);
-		::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
-		result = static_cast<int>(::SendMessage(src, SCI_SEARCHINTARGET, patternLength, reinterpret_cast<LPARAM>(pattern)));
-		return result != -1 || !reportRegexError();
-	};
-	auto isProtectedZeroLengthHit = [&]()
-	{
-		const int hitStart = static_cast<int>(::SendMessage(src, SCI_GETTARGETSTART, 0, 0));
-		const int hitEnd = static_cast<int>(::SendMessage(src, SCI_GETTARGETEND, 0, 0));
-		return hitStart == hitEnd && hitStart >= zeroLengthGuardFirst && hitStart <= zeroLengthGuardLast;
-	};
-
-	// The reverse target starts at the protected anchor. Limit the forward
-	// fallback to that anchor's line; the remaining preceding lines can still be
-	// searched in their natural reverse direction below.
-	const int guardLine = static_cast<int>(::SendMessage(src, SCI_LINEFROMPOSITION, zeroLengthGuardFirst, 0));
-	const int lineStart = static_cast<int>(::SendMessage(src, SCI_POSITIONFROMLINE, guardLine, 0));
-	if (lineStart > rangeEnd)
-	{
-		int scanStart = lineStart;
-		int selectedStart = -1;
-		int selectedEnd = -1;
-		while (scanStart <= zeroLengthGuardFirst)
-		{
-			if (!search(scanStart, zeroLengthGuardFirst))
-				return false;
-			if (result == -1)
-				break;
-			const int foundStart = static_cast<int>(::SendMessage(src, SCI_GETTARGETSTART, 0, 0));
-			const int foundEnd = static_cast<int>(::SendMessage(src, SCI_GETTARGETEND, 0, 0));
-			if (!isProtectedZeroLengthHit())
-			{
-				selectedStart = foundStart;
-				selectedEnd = foundEnd;
-			}
-			const int cursor = foundEnd > foundStart ? foundEnd : foundStart;
-			const int next = ScintillaPositionAfter(src, cursor);
-			if (next == cursor || next > zeroLengthGuardFirst)
-				break;
-			scanStart = next;
-		}
-		if (selectedStart != -1)
-		{
-			::SendMessage(src, SCI_SETTARGETSTART, selectedStart, 0);
-			::SendMessage(src, SCI_SETTARGETEND, selectedEnd, 0);
-			result = selectedStart;
-			return true;
-		}
-	}
-
-	// A current-line fallback did not find a usable hit. Search the earlier
-	// lines directly in reverse instead of repeatedly enumerating their prefix.
-	const int previousLineEnd = ScintillaPositionBefore(src, lineStart);
-	if (previousLineEnd <= rangeEnd)
-	{
-		result = -1;
-		return true;
-	}
-	return search(previousLineEnd, rangeEnd);
-}
-
 bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrentZeroLength,
 	int zeroLengthGuardStart, int zeroLengthGuardEnd) {
   if (m_fo.pattern.IsEmpty())
@@ -3936,9 +3858,14 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 		{
 			if(rev)
 			{
-				if (!FindPreviousSkippingZeroLengthGuard(src, flags, tmp.data(), static_cast<int>(len),
-					zeroLengthGuardFirst, zeroLengthGuardLast, rangeEnd, ret))
+				if (!AU::Search::FindPreviousSkippingZeroLengthGuard(src, flags, tmp.data(), static_cast<int>(len),
+					zeroLengthGuardFirst, zeroLengthGuardLast, rangeEnd, m_fo.fRegexp, ret, nullptr))
+				{
+					m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+					m_last_search_error_is_regexp = true;
+					U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
 					return false;
+				}
 				break;
 			}
 			// A replace may leave the old anchor at the same point (empty

@@ -5,6 +5,8 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$scintillaRegexHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ScintillaRegexSearch.h')
+$scintillaRegexSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ScintillaRegexSearch.cpp')
 $controller = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\DesignSearchController.cpp')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\SearchReplace.h')
 $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsPane.cpp')
@@ -54,15 +56,17 @@ Assert-Contains $source 'hitStart >= zeroLengthGuardFirst && hitStart <= zeroLen
 Assert-Contains $source 'guardBoundary = rev \? zeroLengthGuardFirst : zeroLengthGuardLast' 'Source starts reverse and forward searches from the respective guard boundary'
 Assert-Contains $source 'skipProtectedZeroLengthHits\(p2\)' 'Source rejects protected hits from the initial Scintilla result'
 Assert-Contains $source 'skipProtectedZeroLengthHits\(p1\)' 'Source rejects protected hits after wrap'
-Assert-Contains $header 'FindPreviousSkippingZeroLengthGuard' 'Source reverse zero-length fallback helper declaration'
-Assert-Contains $source 'bool CFBEView::FindPreviousSkippingZeroLengthGuard' 'Source reverse zero-length fallback helper definition'
-Assert-Contains $source 'SCI_LINEFROMPOSITION, zeroLengthGuardFirst' 'Source reverse fallback obtains the protected anchor line through Scintilla'
-Assert-Contains $source 'SCI_POSITIONFROMLINE, guardLine' 'Source reverse fallback obtains the protected line start through Scintilla'
-Assert-Contains $source 'int scanStart = lineStart' 'Source reverse fallback scans only the protected anchor line'
-Assert-NotContains $source 'int scanStart = rangeEnd' 'Source reverse fallback must not rescan the document prefix'
-Assert-Contains $source 'previousLineEnd = ScintillaPositionBefore\(src, lineStart\)' 'Source reverse fallback advances before the protected line with Scintilla coordinates'
-Assert-Contains $source 'return search\(previousLineEnd, rangeEnd\)' 'Source reverse fallback resumes ordinary reverse search before the previous line'
-Assert-Contains $source 'FindPreviousSkippingZeroLengthGuard\(src, flags, tmp\.data\(\)' 'Source Find delegates reverse guard filtering to the line-local helper'
+Assert-NotContains $header 'FindPreviousSkippingZeroLengthGuard' 'Source view must not own the reverse zero-length fallback'
+Assert-NotContains $source 'bool CFBEView::FindPreviousSkippingZeroLengthGuard' 'Source view must not define the reverse zero-length fallback'
+Assert-Contains $scintillaRegexHeader 'FindPreviousSkippingZeroLengthGuard' 'shared reverse zero-length fallback declaration'
+Assert-Contains $scintillaRegexSource 'bool FindPreviousSkippingZeroLengthGuard' 'shared reverse zero-length fallback definition'
+Assert-Contains $scintillaRegexSource 'SCI_LINEFROMPOSITION, zeroLengthGuardFirst' 'shared reverse fallback obtains the protected anchor line through Scintilla'
+Assert-Contains $scintillaRegexSource 'SCI_POSITIONFROMLINE, guardLine' 'shared reverse fallback obtains the protected line start through Scintilla'
+Assert-Contains $scintillaRegexSource 'int scanStart = lineStart' 'shared reverse fallback scans only the protected anchor line'
+Assert-NotContains $scintillaRegexSource 'int scanStart = rangeEnd' 'shared reverse fallback must not rescan the document prefix'
+Assert-Contains $scintillaRegexSource 'previousLineEnd = PositionBefore\(source, lineStart\)' 'shared reverse fallback advances before the protected line with Scintilla coordinates'
+Assert-Contains $scintillaRegexSource 'return search\(previousLineEnd, rangeEnd\)' 'shared reverse fallback resumes ordinary reverse search before the previous line'
+Assert-Contains $source 'AU::Search::FindPreviousSkippingZeroLengthGuard\(src, flags, tmp\.data\(\)' 'Source Find delegates reverse guard filtering to the shared helper'
 Assert-Contains $frame 'm_zero_length_guard_start = zeroLengthGuardStart' 'Source Replace records the original zero-length anchor'
 Assert-Contains $frame 'm_zero_length_guard_end = resume' 'Source Replace records the post-replacement zero-length anchor'
 Assert-Contains $source 'CString searchPattern\(m_fo\.pattern\)' 'Source Find normalizes a pattern copy'

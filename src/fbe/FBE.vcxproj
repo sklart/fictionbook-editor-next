@@ -327,6 +327,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClCompile Include="$(FbeApiOutputDirectory)FBE_i.c"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="search\RegexBackend.cpp" />
     <ClCompile Include="search\RegexBackendPcre2.cpp" />
+	<ClCompile Include="search\ScintillaRegexSearch.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="search\SearchPresetCatalog.cpp" />
     <ClCompile Include="search\SearchPresetStore.cpp" />
     <ClCompile Include="search\ui\RegexHelpDialog.cpp" />

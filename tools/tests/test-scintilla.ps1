@@ -48,10 +48,12 @@ function Copy-FileWithRetry(
 }
 
 & cl.exe /nologo /EHsc /std:c++17 /MT `
+    "/I$(Join-Path $repoRoot "src\fbe")" `
     "/I$(Join-Path $repoRoot "third_party\scintilla\include")" `
     "/I$(Join-Path $repoRoot "third_party\lexilla\include")" `
-    "/Fo$(Join-Path $testDir "scintilla-smoke.obj")" `
+    "/Fo$testDir\\" `
     (Join-Path $PSScriptRoot "scintilla-smoke.cpp") `
+    (Join-Path $repoRoot "src\fbe\search\ScintillaRegexSearch.cpp") `
     /link /SUBSYSTEM:CONSOLE user32.lib psapi.lib "/OUT:$testExe"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
