@@ -54,6 +54,8 @@ public:
 	CEdit		m_text;
 	CSettingsTooltips m_tooltips;
     bool m_templatesExpanded;
+    bool m_presetPinHot;
+    bool m_presetPinPressed;
     int m_lastRegexTarget;
     int m_compactDialogWidth;
     int m_compactDialogHeight;
@@ -73,12 +75,14 @@ public:
 
     LRESULT OnDestroyPresetPanel(UINT, WPARAM, LPARAM, BOOL&)
     {
+        HWND pin = GetDlgItem(IDC_FIND_PRESETS_PIN);
+        if (pin) ::RemoveWindowSubclass(pin, PresetPinButtonSubclassProc, 1);
         std::vector<FRBase*>& panels = OpenPresetPanels();
         panels.erase(std::remove(panels.begin(), panels.end(), this), panels.end());
         return 0;
     }
 
-    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_lastRegexTarget(IDC_TEXT), m_compactDialogWidth(0), m_compactDialogHeight(0), m_presetPanelHeight(0) { }
+    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_presetPinHot(false), m_presetPinPressed(false), m_lastRegexTarget(IDC_TEXT), m_compactDialogWidth(0), m_compactDialogHeight(0), m_presetPanelHeight(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -607,14 +611,56 @@ UINT PresetPinMaskResource(int size) const
         if(bitmap) ::DeleteObject(bitmap);
         ::DeleteObject(mask);
     }
+    static LRESULT CALLBACK PresetPinButtonSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
+    {
+        FRBase* panel = reinterpret_cast<FRBase*>(reference);
+        if (!panel) return ::DefSubclassProc(window, message, wParam, lParam);
+        switch (message)
+        {
+        case WM_MOUSEMOVE:
+            if (!panel->m_presetPinHot)
+            {
+                panel->m_presetPinHot = true;
+                TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, window, 0 };
+                ::TrackMouseEvent(&tracking);
+                ::InvalidateRect(window, NULL, FALSE);
+            }
+            break;
+        case WM_MOUSELEAVE:
+            if (panel->m_presetPinHot)
+            {
+                panel->m_presetPinHot = false;
+                ::InvalidateRect(window, NULL, FALSE);
+            }
+            break;
+        case WM_LBUTTONDOWN:
+            panel->m_presetPinPressed = true;
+            ::InvalidateRect(window, NULL, FALSE);
+            break;
+        case WM_LBUTTONUP:
+        case WM_CANCELMODE:
+            if (panel->m_presetPinPressed)
+            {
+                panel->m_presetPinPressed = false;
+                ::InvalidateRect(window, NULL, FALSE);
+            }
+            break;
+        case WM_NCDESTROY:
+            panel->m_presetPinHot = false;
+            panel->m_presetPinPressed = false;
+            ::RemoveWindowSubclass(window, PresetPinButtonSubclassProc, 1);
+            break;
+        }
+        return ::DefSubclassProc(window, message, wParam, lParam);
+    }
     LRESULT OnDrawItem(UINT, WPARAM, LPARAM data, BOOL&)
     {
         const DRAWITEMSTRUCT* draw = reinterpret_cast<const DRAWITEMSTRUCT*>(data);
         if (!draw || draw->CtlID != IDC_FIND_PRESETS_PIN) return 0;
         const bool pinned = _Settings.SearchTemplatesPanelPinned();
         const bool highContrast = ThemeManager::IsHighContrast();
-        const bool hot = (draw->itemState & ODS_HOTLIGHT) != 0;
-        const bool pressed = (draw->itemState & ODS_SELECTED) != 0;
+        const bool hot = (draw->itemState & ODS_HOTLIGHT) != 0 || m_presetPinHot;
+        const bool pressed = (draw->itemState & ODS_SELECTED) != 0 || m_presetPinPressed;
         const COLORREF surface = highContrast ? ::GetSysColor(COLOR_BTNFACE) :
             (pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : pinned ? ThemeManager::PressedColor() : ThemeManager::ControlColor());
         const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
@@ -922,6 +968,8 @@ UINT PresetPinMaskResource(int size) const
         SetRuntimeText(IDC_FIND_PRESETS_LABEL, L"fbe.search_preset.caption", L"Templates");
         ::CheckDlgButton(DialogWindow(), IDC_FIND_PRESETS_PIN, _Settings.SearchTemplatesPanelPinned() ? BST_CHECKED : BST_UNCHECKED);
         SetRuntimeText(IDC_FIND_PRESETS_PIN, L"fbe.search_preset.pin", L"");
+        HWND pin = GetDlgItem(IDC_FIND_PRESETS_PIN);
+        if (pin) ::SetWindowSubclass(pin, PresetPinButtonSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 
         SetRuntimeText(IDC_FIND_PRESET_APPLY, L"fbe.search_preset.apply", L"Apply");
         SetRuntimeText(IDC_FIND_PRESET_SAVE, L"fbe.search_preset.save_current", L"Save current...");

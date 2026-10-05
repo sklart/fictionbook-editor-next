@@ -175,7 +175,9 @@ CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int po
 {
     CHARFORMAT2 format = {}; format.cbSize = sizeof(format); format.dwMask = CFM_BOLD | CFM_FACE | CFM_COLOR | CFM_SIZE;
     format.dwEffects = bold ? CFE_BOLD : 0; format.crTextColor = ThemeManager::TextColor();
-    if (shaded) { format.dwMask |= CFM_BACKCOLOR; format.dwEffects &= ~CFE_AUTOBACKCOLOR; format.crBackColor = background; }
+    format.dwMask |= CFM_BACKCOLOR;
+    if (shaded) { format.dwEffects &= ~CFE_AUTOBACKCOLOR; format.crBackColor = background; }
+    else { format.dwEffects |= CFE_AUTOBACKCOLOR; format.crBackColor = ThemeManager::WindowColor(); }
     HDC dc = richEdit ? ::GetDC(richEdit) : NULL;
     const int dpi = dc ? ::GetDeviceCaps(dc, LOGPIXELSY) : 96;
     if (dc) ::ReleaseDC(richEdit, dc);
@@ -400,10 +402,27 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             (heading2Format.yHeight != heading3Format.yHeight || heading2Paragraph.dySpaceBefore != heading3Paragraph.dySpaceBefore) && bodyFormat.yHeight >= 200 && inlineFormat.yHeight == bodyFormat.yHeight;
         const bool tabs = formats && tableParagraph.cTabCount >= 2;
         const bool backgrounds = formats && (codeFormat.dwMask & CFM_BACKCOLOR) != 0 && (inlineFormat.dwMask & CFM_BACKCOLOR) != 0 && (tableFormat.dwMask & CFM_BACKCOLOR) != 0;
+        std::vector<MarkdownBlock> backgroundSequence;
+        AddBlock(backgroundSequence, MarkdownBlockKind::Code, L"code");
+        AddBlock(backgroundSequence, MarkdownBlockKind::Body, L"body-after-code");
+        AddBlock(backgroundSequence, MarkdownBlockKind::Table, L"table");
+        AddBlock(backgroundSequence, MarkdownBlockKind::Body, L"body-after-table");
+        AddBlock(backgroundSequence, MarkdownBlockKind::Note, L"note");
+        AddBlock(backgroundSequence, MarkdownBlockKind::Body, L"body-after-note");
+        RenderMarkdown(richEdit, backgroundSequence);
+        CString backgroundText; ReadRichEditText(richEdit, backgroundText);
+        CHARFORMAT2 bodyAfterCode = {}, bodyAfterTable = {}, bodyAfterNote = {};
+        const auto hasAutomaticBodyBackground = [](const CHARFORMAT2& format) -> bool {
+            return (format.dwMask & CFM_BACKCOLOR) != 0 && (format.dwEffects & CFE_AUTOBACKCOLOR) != 0;
+        };
+        const bool backgroundReset = formatAt(backgroundText.Find(L"body-after-code"), bodyAfterCode) &&
+            formatAt(backgroundText.Find(L"body-after-table"), bodyAfterTable) &&
+            formatAt(backgroundText.Find(L"body-after-note"), bodyAfterNote) &&
+            hasAutomaticBodyBackground(bodyAfterCode) && hasAutomaticBodyBackground(bodyAfterTable) && hasAutomaticBodyBackground(bodyAfterNote);
         const bool hangingIndent = formats && listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0;
         const bool link = formats && (linkFormat.dwEffects & CFE_UNDERLINE) != 0 && linkFormat.crTextColor == ThemeManager::AccentColor();
-        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (backgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0);
-        formatting = positions && textContract && formats && styles && faces && sizes && tabs && backgrounds && hangingIndent && link;
+        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (backgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0);
+        formatting = positions && textContract && formats && styles && faces && sizes && tabs && backgrounds && backgroundReset && hangingIndent && link;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);

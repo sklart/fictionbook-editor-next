@@ -21,7 +21,7 @@ foreach ($size in 16,20,24,32) {
     for ($y = 0; $y -lt $size; ++$y) {
         for ($x = 0; $x -lt $size; ++$x) {
             $sourceRow = $size - 1 - $y
-            $covered = ($bytes[$offset + $sourceRow * $stride + [int]($x / 8)] -band (0x80 -shr ($x % 8))) -ne 0
+            $covered = ($bytes[$offset + $sourceRow * $stride + [int][Math]::Floor($x / 8)] -band (0x80 -shr ($x % 8))) -ne 0
             $pixel = 4 * ($y * $size + $x)
             if ($covered) { $surface[$pixel] = 215; $surface[$pixel + 1] = 120; $surface[$pixel + 2] = 0; ++$foregroundCount; ++$foregroundByRow[$y]; $minX = [Math]::Min($minX, $x); $minY = [Math]::Min($minY, $y); $maxX = [Math]::Max($maxX, $x); $maxY = [Math]::Max($maxY, $y); if ($y -ge [int]($size * 0.70) -and [Math]::Abs($x - (($size - 1) / 2)) -le 2) { $hasLowerNeedle = $true } }
             else { $surface[$pixel] = 245; $surface[$pixel + 1] = 245; $surface[$pixel + 2] = 245; ++$backgroundCount }
@@ -37,5 +37,15 @@ foreach ($size in 16,20,24,32) {
     if ((($headRows | Measure-Object -Maximum).Maximum -lt 3) -or (($baseRows | Measure-Object -Maximum).Maximum -le (($headRows | Measure-Object -Maximum).Maximum)) -or (($needleRows | Where-Object { $_ -gt 0 -and $_ -le 3 }).Count -lt 2)) {
         throw "Pin mask $size px must retain a filled head, a wider pin bar, and a narrow lower needle."
     }
+    for ($y = 0; $y -lt $size; ++$y) {
+        for ($x = 0; $x -lt [int]($size / 2); ++$x) {
+            $sourceRow = $size - 1 - $y
+            $left = ($bytes[$offset + $sourceRow * $stride + [int][Math]::Floor($x / 8)] -band (0x80 -shr ($x % 8))) -ne 0
+            $rightX = $size - 1 - $x
+            $right = ($bytes[$offset + $sourceRow * $stride + [int][Math]::Floor($rightX / 8)] -band (0x80 -shr ($rightX % 8))) -ne 0
+            if ($left -ne $right) { throw "Pin mask $size px must be horizontally symmetric." }
+        }
+    }
 }
+if ((Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\res\icons\lucide\pin.svg')) -notmatch '<path ') { throw 'Pin SVG must contain the authored symmetric thumbtack path.' }
 Write-Host 'Search templates pin rendering smoke passed.'

@@ -82,10 +82,21 @@ if ($source -match 'IDI_FIND_PRESETS_PIN_OFF') { throw 'Pin-off icon remains a p
 Require 'UiMetrics::ScaleForDpi\(16, dpi\)' 'DPI-aware pin glyph rectangle'
 Require 'ODS_HOTLIGHT' 'flat pin hover state'
 Require 'ODS_SELECTED' 'flat pin pressed state'
+Require 'PresetPinButtonSubclassProc' 'pin mouse-state subclass'
+Require 'TrackMouseEvent' 'pin tracks mouse leave without polling'
+Require 'TME_LEAVE' 'pin receives a real hover exit'
+Require 'WM_MOUSELEAVE' 'pin clears hover state'
+Require 'm_presetPinHot' 'pin keeps its own hover state when ODS_HOTLIGHT is absent'
+Require 'm_presetPinPressed' 'pin keeps its own pressed state'
 Require 'ThemeManager::HoverColor\(\)' 'flat pin hover surface'
 Require 'ThemeManager::PressedColor\(\)' 'flat pin selected surface'
 if ($source -match 'DrawState|DSS_MONO') { throw 'Pin glyph must not use monochrome DrawState rendering.' }
 $pin = $catalog.strings.'fbe.search_preset.pin'.translations
 foreach ($language in $catalog.targetLanguages) { if ([string]::IsNullOrWhiteSpace([string]$pin.$language)) { throw "Missing pin tooltip for $language." } }
 if ($pin.'en-US' -ne 'Always open the templates panel' -or $pin.'ru-RU' -ne 'Всегда открывать панель шаблонов') { throw 'Pin tooltip semantics are not canonical.' }
+RequireRuntime 'WM_MOUSEMOVE' 'runtime pin hover transition'
+RequireRuntime 'WM_LBUTTONDOWN' 'runtime pin pressed transition'
+RequireRuntime 'WM_MOUSELEAVE' 'runtime pin hover exit'
+RequireRuntime 'EqualRect\(&before, &after\)' 'runtime pin state keeps its geometry'
+RequireRuntime 'lightHover.surface == lightHoverSurface' 'runtime light hover surface'
 Write-Host 'Templates pin, icon, and adaptive layout contract passed.'

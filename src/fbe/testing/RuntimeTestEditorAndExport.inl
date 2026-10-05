@@ -984,25 +984,41 @@
 			probe.drawn = probe.foreground > 0 && probe.background > 0 && probe.foreground < 40 * 40 / 2;
 			::SelectObject(memory, previous); ::DeleteDC(memory); ::DeleteObject(bitmap); ::ReleaseDC(panel->DialogWindow(), screen); return probe;
 		};
-		auto drawPinControl = [](FRBase* panel) -> bool
+		struct PinControlProbe { COLORREF surface; bool drawn; };
+		auto drawPinControl = [](FRBase* panel) -> PinControlProbe
 		{
+			PinControlProbe probe = {};
 			HWND pin = panel ? panel->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL; RECT rect = {};
-			if (!pin || !::GetClientRect(pin, &rect)) return false;
+			if (!pin || !::GetClientRect(pin, &rect)) return probe;
 			HDC screen = ::GetDC(pin), memory = screen ? ::CreateCompatibleDC(screen) : NULL;
-			HBITMAP bitmap = screen ? ::CreateCompatibleBitmap(screen, rect.right, rect.bottom) : NULL;
-			if (!memory || !bitmap) { if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (screen) ::ReleaseDC(pin, screen); return false; }
+			BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = rect.right; info.bmiHeader.biHeight = -rect.bottom; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
+			void* pixels = NULL; HBITMAP bitmap = screen ? ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL;
+			if (!memory || !bitmap || !pixels) { if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (screen) ::ReleaseDC(pin, screen); return probe; }
 			HGDIOBJ old = ::SelectObject(memory, bitmap); DRAWITEMSTRUCT draw = {}; draw.CtlID = IDC_FIND_PRESETS_PIN; draw.hDC = memory; draw.rcItem = rect;
-			BOOL handled = FALSE; panel->OnDrawItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
-			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(pin, screen); return true;
+			BOOL handled = FALSE; const LRESULT result = panel->OnDrawItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
+			const DWORD value = static_cast<DWORD*>(pixels)[0]; probe.surface = RGB(GetBValue(value), GetGValue(value), GetRValue(value)); probe.drawn = result != 0;
+			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(pin, screen); return probe;
 		};
 		auto verifyPins = [&](FRBase* panel) -> bool
 		{
+			HWND pin = panel ? panel->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL; RECT before = {}, after = {};
+			if (!pin || !::GetWindowRect(pin, &before)) return false;
 			const InterfaceTheme original = ThemeManager::GetSelectedTheme();
 			ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); const PinProbe lightOff = probePin(panel, false), lightOn = probePin(panel, true);
+			const PinControlProbe lightNormal = drawPinControl(panel);
+			const COLORREF lightHoverSurface = ThemeManager::HoverColor(), lightPressedSurface = ThemeManager::PressedColor();
+			::SendMessage(pin, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); const PinControlProbe lightHover = drawPinControl(panel);
+			::SendMessage(pin, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 1)); const PinControlProbe lightPressed = drawPinControl(panel);
+			::SendMessage(pin, WM_CANCELMODE, 0, 0); ::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
 			ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); const PinProbe darkOff = probePin(panel, false), darkOn = probePin(panel, true);
+			const PinControlProbe darkNormal = drawPinControl(panel);
+			::SendMessage(pin, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); const PinControlProbe darkHover = drawPinControl(panel);
+			::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
 			ThemeManager::SetSelectedTheme(original);
 			const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
-			return lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && drawPinControl(panel);
+			return ::GetWindowRect(pin, &after) && ::EqualRect(&before, &after) && lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints &&
+				lightNormal.drawn && lightHover.drawn && lightPressed.drawn && darkNormal.drawn && darkHover.drawn &&
+				lightHover.surface == lightHoverSurface && lightPressed.surface == lightPressedSurface && darkHover.surface != darkNormal.surface;
 		};
 		auto verifyLongPreviewLayout = [](FRBase* panel, HWND tree) -> bool
 		{
