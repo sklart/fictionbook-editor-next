@@ -302,8 +302,8 @@ bool RegexQuickReferencePopup::UpdateHoverSelection(HWND listWindow, POINT point
     const LRESULT item = ::SendMessage(listWindow, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y));
     const int row = LOWORD(item);
     if(HIWORD(item) != 0 || row < 0 || static_cast<size_t>(row) >= rows.size() || rows[row] < 0) return false;
-    CListBox& list = listWindow == m_right ? m_right : m_left;
-    if(list.GetCurSel() != row) list.SetCurSel(row);
+    if(::SendMessage(listWindow, LB_GETCURSEL, 0, 0) != row &&
+        ::SendMessage(listWindow, LB_SETCURSEL, row, 0) == LB_ERR) return false;
     ClearOtherSelection(listWindow);
     return true;
 }
