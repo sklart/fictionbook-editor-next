@@ -7,9 +7,11 @@ function Test-PinPixel([int]$Size, [int]$X, [int]$Y) {
     $center = ($Size - 1) / 2.0
     $distance = [Math]::Abs($X - $center)
     $relative = ($Y + 0.5) / $Size
-    if ($relative -ge 0.12 -and $relative -lt 0.50) { return $distance -le [Math]::Max(1, [Math]::Floor($Size * 0.16)) }
-    if ($relative -ge 0.50 -and $relative -lt 0.68) { return $distance -le [Math]::Max(2, [Math]::Floor($Size * 0.27)) }
-    if ($relative -ge 0.68 -and $relative -lt 0.88) { return $distance -le [Math]::Max(1, [Math]::Floor($Size * 0.055)) }
+    if ($relative -ge 0.12 -and $relative -lt 0.22) { return $distance -le [Math]::Max(2, [Math]::Floor($Size * 0.19)) }
+    if ($relative -ge 0.22 -and $relative -lt 0.38) { return $distance -le [Math]::Max(3, [Math]::Floor($Size * 0.25)) }
+    if ($relative -ge 0.38 -and $relative -lt 0.50) { return $distance -le [Math]::Max(1, [Math]::Floor($Size * 0.13)) }
+    if ($relative -ge 0.50 -and $relative -lt 0.62) { return $distance -le [Math]::Max(4, [Math]::Floor($Size * 0.36)) }
+    if ($relative -ge 0.62 -and $relative -lt 0.88) { return $distance -le [Math]::Max(1, [Math]::Floor($Size * 0.055)) }
     return $false
 }
 
