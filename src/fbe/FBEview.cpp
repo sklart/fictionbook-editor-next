@@ -2343,11 +2343,11 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 
 	int replaced = 0;
 	bool mutationApplied = false;
+	bool undoStarted = false;
 	// MSHTML notifies RANGE_SINK for every individual assignment below.  Those
 	// notifications are part of this one controlled operation; invalidate once
 	// after EndUndoUnit instead of repeatedly clearing the completion status.
 	m_design_search.SetControlledReplaceAllMutation(true);
-	m_mk_srv->BeginUndoUnit(L"replace all");
 	try
 	{
 		const AU::Search::SearchTextSnapshot& snapshot = m_design_search.Coordinator().GetSnapshot();
@@ -2380,6 +2380,11 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			const bool zeroLengthNoOp = result->Hit.Length == 0 && replacement.IsEmpty() && formatting.empty();
 			if (zeroLengthNoOp)
 				continue;
+			if (!undoStarted)
+			{
+				m_mk_srv->BeginUndoUnit(L"replace all");
+				undoStarted = true;
+			}
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			mutationApplied = true;
 			if (m_fo.fRegexp)
@@ -2389,7 +2394,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 	}
 	catch (const _com_error& error)
 	{
-		m_mk_srv->EndUndoUnit();
+		if (undoStarted)
+			m_mk_srv->EndUndoUnit();
 		m_design_search.SetControlledReplaceAllMutation(false);
 		if (mutationApplied)
 			AdvanceSearchDocumentGeneration();
@@ -2397,7 +2403,8 @@ int CFBEView::ReplaceAllSearchCore(CString* errorText)
 			*errorText = error.ErrorMessage();
 		return -1;
 	}
-	m_mk_srv->EndUndoUnit();
+	if (undoStarted)
+		m_mk_srv->EndUndoUnit();
 	m_fo.ClearMatch();
 	m_design_search.ClearReplacePreview();
 	if (replaced != 0)
@@ -2461,8 +2468,6 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 				return 0;
 
 		int replaced = 0;
-		m_mk_srv->BeginUndoUnit(L"replace");
-		undoStarted = true;
 		const AU::Search::SearchTextSnapshot& snapshot = m_design_search.Coordinator().GetSnapshot();
 		for (std::size_t index = count; index-- > 0;)
 		{
@@ -2489,13 +2494,21 @@ int CFBEView::GlobalReplace(MSHTML::IHTMLElementPtr elem, CString cntTag)
 			const bool zeroLengthNoOp = result->Hit.Length == 0 && replacement.IsEmpty() && formatting.empty();
 			if (zeroLengthNoOp)
 				continue;
+			if (!undoStarted)
+			{
+				m_mk_srv->BeginUndoUnit(L"replace");
+				undoStarted = true;
+			}
 			ranges[index]->text = static_cast<LPCWSTR>(replacement);
 			mutationApplied = true;
 			if (m_fo.fRegexp) ApplyReplacementFormatting(ranges[index], replacement, formatting);
 			++replaced;
 		}
-		m_mk_srv->EndUndoUnit();
-		undoStarted = false;
+		if (undoStarted)
+		{
+			m_mk_srv->EndUndoUnit();
+			undoStarted = false;
+		}
 		if (mutationApplied)
 			AdvanceSearchDocumentGeneration();
 		return replaced;
@@ -3795,8 +3808,18 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf, bool skipCurrentZe
     int p1=::SendMessage(src,SCI_GETSELECTIONSTART,0,0);
     int p2=::SendMessage(src,SCI_GETSELECTIONEND,0,0);
 	if (p2>p1 && !rev) p1=p2;
+	const int skippedZeroLengthPosition = p1;
+	bool exhaustedZeroLengthPosition = false;
 	if (skipCurrentZeroLength)
-		p1 = rev ? ScintillaPositionBefore(src, p1) : ScintillaPositionAfter(src, p1);
+	{
+		const int nextPosition = rev ? ScintillaPositionBefore(src, p1) : ScintillaPositionAfter(src, p1);
+		// SCI_POSITIONAFTER/BEFORE are document-aware (and therefore UTF-8-safe),
+		// but cannot advance beyond EOF/BOF. Do not search that same zero-width
+		// boundary again; the wrap pass below may still find a different hit.
+		exhaustedZeroLengthPosition = nextPosition == p1;
+		if (!exhaustedZeroLengthPosition)
+			p1 = nextPosition;
+	}
     else if (rev) p1 = ScintillaPositionBefore(src, p1);
     if (p1<0) p1=0;
     p2=rev ? 0 : ::SendMessage(src,SCI_GETLENGTH,0,0);
@@ -3810,7 +3833,9 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf, bool skipCurrentZe
     m_last_search_error_is_regexp = false;
     ::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
     // this sometimes hangs in reverse search :)
-    int ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
+    int ret = -1;
+    if (!exhaustedZeroLengthPosition)
+        ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
     if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
     {
         m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
@@ -3834,6 +3859,14 @@ bool CFBEView::SciFindNext(HWND src,bool fFwdOnly,bool fBarf, bool skipCurrentZe
                 U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
                 return false;
             }
+			if (exhaustedZeroLengthPosition && ret == skippedZeroLengthPosition &&
+				::SendMessage(src, SCI_GETTARGETSTART, 0, 0) == skippedZeroLengthPosition &&
+				::SendMessage(src, SCI_GETTARGETEND, 0, 0) == skippedZeroLengthPosition)
+			{
+				// A singleton ^/$ match must not be rediscovered by wrap after an
+				// empty replacement at BOF/EOF.
+				ret = -1;
+			}
 		}
 		if (ret==-1) 
 		{

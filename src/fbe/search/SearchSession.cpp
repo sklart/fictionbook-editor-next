@@ -162,7 +162,15 @@ const SearchHit* SearchSession::SelectNearest(
 				return GetCurrentHit();
 			}
 		}
-		m_currentIndex = 0;
+		for (std::size_t index = 0; index < m_hits.size(); ++index)
+		{
+			if (!skipZeroLengthAtOffset || m_hits[index].Length != 0 || m_hits[index].Start != offset)
+			{
+				m_currentIndex = index;
+				if (wrapped != NULL) *wrapped = true;
+				return GetCurrentHit();
+			}
+		}
 	}
 	else
 	{
@@ -176,11 +184,18 @@ const SearchHit* SearchSession::SelectNearest(
 				return GetCurrentHit();
 			}
 		}
-		m_currentIndex = m_hits.size() - 1;
+		for (std::size_t index = m_hits.size(); index != 0; --index)
+		{
+			const SearchHit& hit = m_hits[index - 1];
+			if (!skipZeroLengthAtOffset || hit.Length != 0 || hit.Start != offset)
+			{
+				m_currentIndex = index - 1;
+				if (wrapped != NULL) *wrapped = true;
+				return GetCurrentHit();
+			}
+		}
 	}
-	if (wrapped != NULL)
-		*wrapped = true;
-	return GetCurrentHit();
+	return NULL;
 }
 
 const SearchHit* SearchSession::SelectNearestFor(

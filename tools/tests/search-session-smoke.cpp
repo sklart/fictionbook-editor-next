@@ -92,6 +92,15 @@ int wmain()
 	if (session.SelectNearestFor(101, 1, SearchDirection::Forward, &wrapped)->Start != 1 || wrapped ||
 		session.SelectNearestFor(101, 1, SearchDirection::Backward, &wrapped)->Start != 1 || wrapped)
 		return 39;
+	// A Design no-op replacement retains its zero-length guard. At a document
+	// boundary there is no other result to wrap to, so Find must finish instead
+	// of immediately selecting the same ^ or $ hit again.
+	session.SetHits(std::vector<SearchHit>{ SearchHit(3, 0) }, 101);
+	if (session.SelectNearestFor(101, 3, SearchDirection::Forward, &wrapped, true) != NULL || wrapped)
+		return 40;
+	session.SetHits(std::vector<SearchHit>{ SearchHit(0, 0) }, 101);
+	if (session.SelectNearestFor(101, 0, SearchDirection::Backward, &wrapped, true) != NULL || wrapped)
+		return 41;
 	// A collapsed regexp hit at the caret is selectable initially, but a
 	// repeated Find Next/Previous must advance to a neighbouring anchor rather
 	// than select the same zero-length match forever.

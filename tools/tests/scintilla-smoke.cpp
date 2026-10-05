@@ -345,6 +345,40 @@ static bool VerifyZeroLengthRegexReplaceProgress(HWND editor)
 	}
 	return true;
 }
+
+// Single Replace uses the same character-boundary APIs as Replace All. At
+// EOF/BOF they deliberately return the input position, which means that a
+// zero-width $/^ result is exhausted rather than a reason to search it again.
+static bool VerifyZeroLengthSingleReplaceBoundaries(HWND editor)
+{
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("abc"));
+	const int end = static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+	SendMessage(editor, SCI_SETTARGETSTART, 0, 0);
+	SendMessage(editor, SCI_SETTARGETEND, end, 0);
+	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+	if (SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("$")) != end ||
+		SendMessage(editor, SCI_GETTARGETSTART, 0, 0) != end ||
+		SendMessage(editor, SCI_GETTARGETEND, 0, 0) != end ||
+		SendMessage(editor, SCI_POSITIONAFTER, end, 0) != end)
+		return false;
+
+	SendMessage(editor, SCI_SETTARGETSTART, end, 0);
+	SendMessage(editor, SCI_SETTARGETEND, 0, 0);
+	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+	if (SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("^")) != 0 ||
+		SendMessage(editor, SCI_GETTARGETSTART, 0, 0) != 0 ||
+		SendMessage(editor, SCI_GETTARGETEND, 0, 0) != 0 ||
+		SendMessage(editor, SCI_POSITIONBEFORE, 0, 0) != 0)
+		return false;
+
+	// Internal zero-length matches, including a non-BMP character, still have
+	// an advancing Scintilla position and remain searchable after replacement.
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("a"));
+	if (SendMessage(editor, SCI_POSITIONAFTER, 0, 0) == 0) return false;
+	SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("\xF0\x9F\x98\x80"));
+	if (SendMessage(editor, SCI_POSITIONAFTER, 0, 0) == 0) return false;
+	return true;
+}
 static bool VerifyModernSourceFeatures(HWND editor)
 {
 	SendMessage(editor, SCI_SETCOMMANDEVENTS, FALSE, 0);
@@ -814,6 +848,13 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 16;
+	}
+	if (!VerifyZeroLengthSingleReplaceBoundaries(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 17;
 	}
 	if (!VerifyMinimalReplaceTarget(editor))
 	{

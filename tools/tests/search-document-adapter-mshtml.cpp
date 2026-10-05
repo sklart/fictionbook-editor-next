@@ -6,6 +6,7 @@
 #include "ReplacementPreflight.h"
 #include "search\\LiteralSearch.h"
 #include "search\\RegexBackend.h"
+#include "search\\SearchSession.h"
 
 // RegexBackend localizes diagnostics through the editor runtime. The fixture
 // only verifies matching, so its deterministic fallback is sufficient here.
@@ -169,6 +170,16 @@ static int VerifyZeroLengthRegexReplaceSemantics()
 	// A zero-length empty replacement without formatting deliberately does not
 	// call Advance(); the next Find must retain this guard and skip position 0.
 	if (!controller.ShouldSkipZeroLength(query, AU::Search::SearchRange(0, 0))) return 152;
+	// The Design Find path must not wrap this only $ hit back to itself after
+	// the no-op replacement. The corresponding ^ case covers reverse search.
+	AU::Search::SearchSession searchSession;
+	bool wrapped = false;
+	searchSession.SetHits(std::vector<AU::Search::SearchHit>{ AU::Search::SearchHit(3, 0) }, 154);
+	if (searchSession.SelectNearestFor(154, 3, AU::Search::SearchDirection::Forward, &wrapped, true) != NULL || wrapped)
+		return 154;
+	searchSession.SetHits(std::vector<AU::Search::SearchHit>{ AU::Search::SearchHit(0, 0) }, 155);
+	if (searchSession.SelectNearestFor(155, 0, AU::Search::SearchDirection::Backward, &wrapped, true) != NULL || wrapped)
+		return 155;
 	controller.Advance();
 	if (controller.ShouldSkipZeroLength(query, AU::Search::SearchRange(0, 0))) return 153;
 	return 0;
