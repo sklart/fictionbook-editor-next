@@ -53,6 +53,12 @@ Require 'applyMinimum' 'Apply width has a DPI-aware minimum'
 Require 'applyMaximum' 'Apply width has a bounded maximum'
 Require 'row2Width = \(std::max\)\(0, \(contentWidth - margin \* 2\) / 3\)' 'equal second-row actions'
 Require 'm_presetPanelHeight = GetPresetPanelMetrics\(availablePanelHeight\)\.totalHeight' 'monitor constrained expanded height'
+Require 'const HMONITOR monitor = ::MonitorFromWindow\(dialog, MONITOR_DEFAULTTONEAREST\)' 'selection resize monitor lookup'
+Require 'const int availablePanelHeight = hasWorkArea' 'selection resize constrained available height'
+Require 'const int desiredHeight = GetPresetPanelMetrics\(availablePanelHeight\)\.totalHeight' 'selection resize uses monitor constrained metrics'
+if ($source -match 'void ResizePresetPanelForCurrentSelection\(\)[\s\S]{0,600}GetPresetPanelMetrics\(\)\.totalHeight') { throw 'Selection resize must not use an unconstrained panel height.' }
+Require 'const int footerHeight' 'preset layout reserves the action-button footer'
+Require 'const int minimumTree' 'preset layout has a tree minimum before shrinking preview'
 Require 'UiMetrics::ScaleForDpi\(18, UiMetrics::DpiForWindow\(dialog\)\)' 'DPI-aware compact pin size'
 foreach ($control in @('IDC_FIND_PRESET_APPLY','IDC_FIND_PRESET_SAVE','IDC_FIND_PRESET_UPDATE','IDC_FIND_PRESET_RENAME','IDC_FIND_PRESET_DELETE')) { Require ("SetWindowPos\(GetDlgItem\(" + $control + '\)') "layout for $control" }
 foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin-mask-16.bmp','src\fbe\res\icons\lucide\pin-mask-20.bmp','src\fbe\res\icons\lucide\pin-mask-24.bmp','src\fbe\res\icons\lucide\pin-mask-32.bmp','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
@@ -69,6 +75,10 @@ Require 'ThemeManager::AccentColor\(\)' 'pinned accent glyph'
 Require 'ThemeManager::SecondaryTextColor\(\)' 'unpinned secondary glyph'
 if ($source -match 'IDI_FIND_PRESETS_PIN_OFF') { throw 'Pin-off icon remains a production dependency.' }
 Require 'UiMetrics::ScaleForDpi\(16, dpi\)' 'DPI-aware pin glyph rectangle'
+Require 'ODS_HOTLIGHT' 'flat pin hover state'
+Require 'ODS_SELECTED' 'flat pin pressed state'
+Require 'ThemeManager::HoverColor\(\)' 'flat pin hover surface'
+Require 'ThemeManager::PressedColor\(\)' 'flat pin selected surface'
 if ($source -match 'DrawState|DSS_MONO') { throw 'Pin glyph must not use monochrome DrawState rendering.' }
 $pin = $catalog.strings.'fbe.search_preset.pin'.translations
 foreach ($language in $catalog.targetLanguages) { if ([string]::IsNullOrWhiteSpace([string]$pin.$language)) { throw "Missing pin tooltip for $language." } }

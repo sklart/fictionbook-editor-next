@@ -344,11 +344,15 @@ public:
         metrics.totalHeight = fixedHeight + metrics.treeHeight;
         if (availableHeight > 0 && metrics.totalHeight > availableHeight)
         {
-            const int minimumPreview = SelectedPreset() != NULL ? metrics.lineHeight * 2 : 0;
-            int reducedFixedHeight = metrics.lineHeight + minimumPreview + metrics.buttonHeight * 2 + metrics.margin * 5;
-            metrics.previewHeight = availableHeight >= reducedFixedHeight + metrics.lineHeight * 4 ? minimumPreview : metrics.previewHeight;
-            reducedFixedHeight = metrics.lineHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
-            metrics.treeHeight = (std::max)(metrics.lineHeight * 4, availableHeight - reducedFixedHeight);
+            // The footer is non-negotiable: first give the tree a scrollbar-sized
+            // minimum, then shrink the preview.  The final clamp is solely for
+            // an unusually small work area and still never hides an action row.
+            const int footerHeight = metrics.lineHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
+            const int minimumTree = (std::max)(metrics.lineHeight * 4, metrics.margin * 2);
+            metrics.treeHeight = (std::max)(minimumTree, (std::min)(metrics.treeHeight, availableHeight - footerHeight - metrics.previewHeight));
+            metrics.previewHeight = (std::max)(0, (std::min)(metrics.previewHeight, availableHeight - footerHeight - metrics.treeHeight));
+            if (footerHeight + metrics.treeHeight + metrics.previewHeight > availableHeight)
+                metrics.treeHeight = (std::max)(0, availableHeight - footerHeight - metrics.previewHeight);
             metrics.totalHeight = metrics.lineHeight + metrics.treeHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
         }
         return metrics;
@@ -409,16 +413,18 @@ public:
     {
         const HWND dialog = DialogWindow();
         if (!m_templatesExpanded || !dialog || m_compactDialogHeight == 0) return;
-        const int desiredHeight = GetPresetPanelMetrics().totalHeight;
+        const HMONITOR monitor = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO info = {}; info.cbSize = sizeof(info);
+        const bool hasWorkArea = monitor && ::GetMonitorInfo(monitor, &info);
+        const int availablePanelHeight = hasWorkArea ? (std::max)(0, static_cast<int>(info.rcWork.bottom - info.rcWork.top) - m_compactDialogHeight) : 0;
+        const int desiredHeight = GetPresetPanelMetrics(availablePanelHeight).totalHeight;
         if (desiredHeight != m_presetPanelHeight)
         {
             RECT window = {}; ::GetWindowRect(dialog, &window);
             const int width = window.right - window.left;
             const int height = m_compactDialogHeight + desiredHeight;
-            const HMONITOR monitor = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
-            MONITORINFO info = {}; info.cbSize = sizeof(info);
             int left = window.left; int top = window.top;
-            if (monitor && ::GetMonitorInfo(monitor, &info))
+            if (hasWorkArea)
             {
                 left = (std::max)(static_cast<int>(info.rcWork.left), (std::min)(left, static_cast<int>(info.rcWork.right) - width));
                 top = (std::max)(static_cast<int>(info.rcWork.top), (std::min)(top, static_cast<int>(info.rcWork.bottom) - height));
@@ -606,7 +612,11 @@ UINT PresetPinMaskResource(int size) const
         const DRAWITEMSTRUCT* draw = reinterpret_cast<const DRAWITEMSTRUCT*>(data);
         if (!draw || draw->CtlID != IDC_FIND_PRESETS_PIN) return 0;
         const bool pinned = _Settings.SearchTemplatesPanelPinned();
-        const COLORREF surface = pinned && !ThemeManager::IsHighContrast() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
+        const bool highContrast = ThemeManager::IsHighContrast();
+        const bool hot = (draw->itemState & ODS_HOTLIGHT) != 0;
+        const bool pressed = (draw->itemState & ODS_SELECTED) != 0;
+        const COLORREF surface = highContrast ? ::GetSysColor(COLOR_BTNFACE) :
+            (pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : pinned ? ThemeManager::PressedColor() : ThemeManager::ControlColor());
         const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
         DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned, surface);
         if (draw->itemState & ODS_FOCUS) ::DrawFocusRect(draw->hDC, &draw->rcItem);
