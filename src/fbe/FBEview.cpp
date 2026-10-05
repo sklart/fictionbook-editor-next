@@ -3828,11 +3828,12 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 	if (skipCurrentZeroLength)
 	{
 		const int guardBoundary = rev ? zeroLengthGuardFirst : zeroLengthGuardLast;
-		const int nextPosition = rev ? ScintillaPositionBefore(src, guardBoundary) : ScintillaPositionAfter(src, guardBoundary);
+		const int nextPosition = rev ? guardBoundary : ScintillaPositionAfter(src, guardBoundary);
 		// SCI_POSITIONAFTER/BEFORE are document-aware (and therefore UTF-8-safe),
-		// but cannot advance beyond EOF/BOF. Start from the entire protected
-		// interval, not from the selection after replacement text was inserted.
-		exhaustedZeroLengthPosition = nextPosition == guardBoundary;
+		// but cannot advance beyond EOF/BOF. A reverse search starts at the guard
+		// boundary itself and filters that logical hit below: starting before it
+		// would make Scintilla exclude a distinct zero-length hit at that boundary.
+		exhaustedZeroLengthPosition = !rev && nextPosition == guardBoundary;
 		if (!exhaustedZeroLengthPosition)
 			p1 = nextPosition;
 	}
@@ -3854,11 +3855,53 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 	{
 		while (ret != -1 && isProtectedZeroLengthHit())
 		{
+			if(rev)
+			{
+				// Backward SCI_SEARCHINTARGET treats its target start as exclusive
+				// for a zero-width result. Scan up to the protected boundary in the
+				// forward direction, retain the last unprotected match, and restore
+				// it as the reverse result. This filters only the just-replaced
+				// logical hit while preserving an adjacent anchor.
+				int scanStart = rangeEnd;
+				int selectedStart = -1;
+				int selectedEnd = -1;
+				while(scanStart <= zeroLengthGuardFirst)
+				{
+					::SendMessage(src, SCI_SETTARGETSTART, scanStart, 0);
+					::SendMessage(src, SCI_SETTARGETEND, zeroLengthGuardFirst, 0);
+					::SendMessage(src, SCI_SETSEARCHFLAGS, flags, 0);
+					::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
+					const int found = static_cast<int>(::SendMessage(src, SCI_SEARCHINTARGET, len, (LPARAM)tmp.data()));
+					if(found == -1)
+					{
+						if(m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
+						{
+							m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+							m_last_search_error_is_regexp = true;
+							U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+							return false;
+						}
+						break;
+					}
+					const int foundStart = static_cast<int>(::SendMessage(src, SCI_GETTARGETSTART, 0, 0));
+					const int foundEnd = static_cast<int>(::SendMessage(src, SCI_GETTARGETEND, 0, 0));
+					if(!isProtectedZeroLengthHit()) { selectedStart = foundStart; selectedEnd = foundEnd; }
+					const int cursor = foundEnd > foundStart ? foundEnd : foundStart;
+					const int next = ScintillaPositionAfter(src, cursor);
+					if(next == cursor || next > zeroLengthGuardFirst) break;
+					scanStart = next;
+				}
+				if(selectedStart == -1) { ret = -1; break; }
+				::SendMessage(src, SCI_SETTARGETSTART, selectedStart, 0);
+				::SendMessage(src, SCI_SETTARGETEND, selectedEnd, 0);
+				ret = selectedStart;
+				break;
+			}
 			// A replace may leave the old anchor at the same point (empty
 			// replacement) or move it across inserted text. Continue past the
 			// complete protected interval for both initial and wrap searches.
-			const int guardBoundary = rev ? zeroLengthGuardFirst : zeroLengthGuardLast;
-			const int continuation = rev ? ScintillaPositionBefore(src, guardBoundary) : ScintillaPositionAfter(src, guardBoundary);
+			const int guardBoundary = zeroLengthGuardLast;
+			const int continuation = ScintillaPositionAfter(src, guardBoundary);
 			if (continuation == guardBoundary || (!rev && continuation >= rangeEnd) || (rev && continuation <= rangeEnd))
 			{
 				ret = -1;

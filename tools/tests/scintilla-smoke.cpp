@@ -468,7 +468,11 @@ static bool VerifyZeroLengthSingleReplaceReverseWrapGuard(HWND editor)
 		{ "a\nb", "^", "X", "a\nXb", 0 },
 		{ "a\nb", "^", "", "a\nb", 0 },
 		{ "abc", "(?=b)", "", "abc", -1 },
-		{ "abc", "(?=b)", "X", "aXbc", -1 }
+		{ "abc", "(?=b)", "X", "aXbc", -1 },
+		{ "abb", "(?=b)", "", "abb", 1 },
+		{ "abb", "(?=b)", "X", "abXb", 1 },
+		{ "a\nb\nc", "^", "", "a\nb\nc", 2 },
+		{ "a\nb\nc", "^", "X", "a\nb\nXc", 2 }
 	};
 	for (size_t index = 0; index < _countof(cases); ++index)
 	{
@@ -487,8 +491,7 @@ static bool VerifyZeroLengthSingleReplaceReverseWrapGuard(HWND editor)
 		end += replacementLength;
 		const int guardEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
 		const int guardFirst = min(guardStart, guardEnd), guardLast = max(guardStart, guardEnd);
-		const int resume = static_cast<int>(SendMessage(editor, SCI_POSITIONBEFORE, guardFirst, 0));
-		if (resume == guardFirst) return false;
+		const int resume = guardFirst;
 
 		auto findReverseSkippingGuard = [&](int rangeStart, int rangeEnd) -> int {
 			if (rangeStart == rangeEnd) return -1;
@@ -496,25 +499,102 @@ static bool VerifyZeroLengthSingleReplaceReverseWrapGuard(HWND editor)
 			SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
 			SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
 			LRESULT position = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
-			while (position != -1)
+			if (position == -1) return -1;
+			const int hit = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+			if (hit < guardFirst || hit > guardLast) return hit;
+
+			// Scintilla's reverse target start excludes a zero-width anchor at that
+			// boundary. Enumerate the preceding interval forward and retain its
+			// final non-guard result, which is the next result for a reverse Find.
+			int scanStart = rangeEnd;
+			int selected = -1;
+			while (scanStart <= guardFirst)
 			{
-				const int hit = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
-				if (hit < guardFirst || hit > guardLast) return hit;
-				const int continuation = static_cast<int>(SendMessage(editor, SCI_POSITIONBEFORE, guardFirst, 0));
-				if (continuation == guardFirst || continuation <= rangeEnd) return -1;
-				SendMessage(editor, SCI_SETTARGETSTART, continuation, 0);
-				SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
+				SendMessage(editor, SCI_SETTARGETSTART, scanStart, 0);
+				SendMessage(editor, SCI_SETTARGETEND, guardFirst, 0);
 				SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
 				position = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
+				if (position == -1) break;
+				const int foundStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+				const int foundEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
+				if (foundStart < guardFirst || foundStart > guardLast) selected = foundStart;
+				const int cursor = foundEnd > foundStart ? foundEnd : foundStart;
+				const int next = static_cast<int>(SendMessage(editor, SCI_POSITIONAFTER, cursor, 0));
+				if (next == cursor || next > guardFirst) break;
+				scanStart = next;
 			}
-			return -1;
+			return selected;
 		};
 
-		if (findReverseSkippingGuard(resume, 0) != fixture.expectedAfterReplace) return false;
-		if (findReverseSkippingGuard(end, resume) != -1) return false;
+		const int initialAfterReplace = findReverseSkippingGuard(resume, 0);
+		if (initialAfterReplace != fixture.expectedAfterReplace) return false;
+		const int afterWrap = findReverseSkippingGuard(end, resume);
+		if (afterWrap != -1) return false;
 		std::string text(static_cast<size_t>(end) + 8, '\0');
 		SendMessage(editor, SCI_GETTEXT, text.size(), reinterpret_cast<LPARAM>(&text[0]));
 		if (text.c_str() != std::string(fixture.expected)) return false;
+	}
+	return true;
+}
+
+// A three-line anchor sequence proves that reverse guarding excludes exactly
+// the replaced ^ hit: the next two line starts remain reachable before wrap.
+static bool VerifyZeroLengthSingleReplaceReverseLineStarts(HWND editor)
+{
+	struct Case { const char* replacement; const char* expected; int wrapPosition; };
+	static const Case cases[] = { { "", "a\nb\nc", 4 }, { "X", "Xa\nXb\nXc", 6 } };
+	for(size_t index = 0; index < _countof(cases); ++index)
+	{
+		const Case& fixture = cases[index];
+		SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("a\nb\nc"));
+		int length = static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+		int start = length;
+		const int expectedHits[] = { 4, 2, 0 };
+		for(size_t step = 0; step < _countof(expectedHits); ++step)
+		{
+			SendMessage(editor, SCI_SETTARGETSTART, start, 0);
+			SendMessage(editor, SCI_SETTARGETEND, 0, 0);
+			SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+			const int current = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("^")));
+			if(current != expectedHits[step]) return false;
+			const int guardFirst = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+			length += static_cast<int>(SendMessage(editor, SCI_REPLACETARGETRE,
+				std::strlen(fixture.replacement), reinterpret_cast<LPARAM>(fixture.replacement)));
+			const int guardLast = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
+			const int guardBegin = min(guardFirst, guardLast), guardEnd = max(guardFirst, guardLast);
+
+			auto findNextReverse = [&](int rangeStart, int rangeEnd) -> int {
+				if(rangeStart == rangeEnd) return -1;
+				SendMessage(editor, SCI_SETTARGETSTART, rangeStart, 0);
+				SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
+				SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+				const int found = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("^")));
+				if(found == -1 || found < guardBegin || found > guardEnd) return found;
+				int scanStart = rangeEnd, selected = -1;
+				while(scanStart <= guardBegin)
+				{
+					SendMessage(editor, SCI_SETTARGETSTART, scanStart, 0);
+					SendMessage(editor, SCI_SETTARGETEND, guardBegin, 0);
+					SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+					const int candidate = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, 1, reinterpret_cast<LPARAM>("^")));
+					if(candidate == -1) break;
+					if(candidate < guardBegin || candidate > guardEnd) selected = candidate;
+					const int next = static_cast<int>(SendMessage(editor, SCI_POSITIONAFTER, candidate, 0));
+					if(next == candidate || next > guardBegin) break;
+					scanStart = next;
+				}
+				return selected;
+			};
+
+			int next = findNextReverse(guardBegin, 0);
+			if(next == -1 && guardBegin != length) next = findNextReverse(length, guardBegin);
+			const int expectedNext = step + 1 < _countof(expectedHits) ? expectedHits[step + 1] : fixture.wrapPosition;
+			if(next != expectedNext) return false;
+			start = next;
+		}
+		std::string text(static_cast<size_t>(length) + 8, '\0');
+		SendMessage(editor, SCI_GETTEXT, text.size(), reinterpret_cast<LPARAM>(&text[0]));
+		if(text.c_str() != std::string(fixture.expected)) return false;
 	}
 	return true;
 }
@@ -1008,6 +1088,13 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 32;
+	}
+	if (!VerifyZeroLengthSingleReplaceReverseLineStarts(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 33;
 	}
 	if (!VerifyMinimalReplaceTarget(editor))
 	{
