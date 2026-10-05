@@ -1,12 +1,6 @@
 # Project Root
 
-The repository root is the directory containing `FBE.sln`. On this automation
-host it is:
-
-D:\Download\FBeditor
-
-Use this directory as the workspace root for this task.
-Never switch to C:\Users\Sklyarov\Documents\FBeditor.
+The repository root is the directory containing `FBE.sln`. 
 
 Build scripts must resolve the repository root from their own location; a
 developer checkout or CI must not depend on this absolute path.
@@ -16,9 +10,16 @@ developer checkout or CI must not depend on this absolute path.
 - Keep top-level `src`, `runtime`, `localization`, `packaging`, `third_party`,
   `tools`, `docs` and the public PowerShell entry points.
 - `src/contracts/fbe.idl` is the plug-in COM contract. Its MIDL outputs belong
-  only in `build/generated/<Platform>/<Configuration>/fbe-api`; do not edit
-  interfaces, GUIDs, vtable order, calling conventions or ownership rules in a
-  structural change.
+  only in `build/generated/<Platform>/<Configuration>/fbe-api`
+  Do not change this contract incidentally as part of refactoring or other
+  structural work. An explicit task whose stated purpose is to evolve the
+  public COM API may modify 'src/contracts/fbe.idl'.
+  Such changes must preserve backward compatibility: do not renumber or reuse
+  exising DISPIDs, do not change existing GUIDs, method signatures, calling
+  conventions, ownership rules or the order of existing vtable entries.
+  Addictive changes must use new identifiers and require affected MIDL,
+  contract and runtime verification. Generated MIDL outputs remain untracked
+  unless a separate tracked-generated policy explicitly reauires otherwise.
 - `src/common` is only for code with real consumers outside one product.
   Windows/COM code may remain there when its dependencies are explicit; do not
   present it as portable core.
