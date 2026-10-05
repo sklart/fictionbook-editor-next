@@ -116,7 +116,7 @@ static CSimpleMap<CString, DescElement> g_desc_elements;
 static DISPID ExternalHelperMethodDispid(const wchar_t* method)
 {
 	if (!method) return DISPID_UNKNOWN;
-	static const wchar_t* const names[] = { L"", L"BeginUndoUnit", L"EndUndoUnit", L"inflateBlock", L"GenrePopup", L"GetStylePath", L"GetBinarySize", L"InflateParagraphs", L"GetUUID", L"MsgBox", L"AskYesNo", L"SaveBinary", L"GetExtendedStyle", L"DescShowElement", L"DescShowMenu", L"IsFastMode", L"SetStyleEx", L"GetImageDimsByPath", L"GetImageDimsByData", L"GetNBSP", L"GetViewWidth", L"GetViewHeight", L"GetProgramVersion", L"InputBox", L"GetModalResult", L"SetStatusBarText", L"GetDocumentFilePath", L"GetDocumentFileName", L"GetDocumentDirectory", L"IsDiagnosticTraceEnabled", L"TraceScript", L"GetLocalizedString" };
+	static const wchar_t* const names[] = { L"", L"BeginUndoUnit", L"EndUndoUnit", L"inflateBlock", L"GenrePopup", L"GetStylePath", L"GetBinarySize", L"InflateParagraphs", L"GetUUID", L"MsgBox", L"AskYesNo", L"SaveBinary", L"GetExtendedStyle", L"DescShowElement", L"DescShowMenu", L"IsFastMode", L"SetStyleEx", L"GetImageDimsByPath", L"GetImageDimsByData", L"GetNBSP", L"GetViewWidth", L"GetViewHeight", L"GetProgramVersion", L"InputBox", L"GetModalResult", L"SetStatusBarText", L"GetDocumentFilePath", L"GetDocumentFileName", L"GetDocumentDirectory", L"IsDiagnosticTraceEnabled", L"TraceScript", L"GetLocalizedString", L"GetSourceText", L"ValidateSourceText", L"GetLastSourceDiagnostic", L"ApplySourceText" };
 	for (DISPID dispid = 1; dispid < static_cast<DISPID>(_countof(names)); ++dispid)
 		if (wcscmp(method, names[dispid]) == 0) return dispid;
 	return DISPID_UNKNOWN;
@@ -124,7 +124,7 @@ static DISPID ExternalHelperMethodDispid(const wchar_t* method)
 
 static const wchar_t* ExternalHelperMethodName(DISPID dispid)
 {
-	static const wchar_t* const names[] = { L"other", L"BeginUndoUnit", L"EndUndoUnit", L"inflateBlock", L"GenrePopup", L"GetStylePath", L"GetBinarySize", L"InflateParagraphs", L"GetUUID", L"MsgBox", L"AskYesNo", L"SaveBinary", L"GetExtendedStyle", L"DescShowElement", L"DescShowMenu", L"IsFastMode", L"SetStyleEx", L"GetImageDimsByPath", L"GetImageDimsByData", L"GetNBSP", L"GetViewWidth", L"GetViewHeight", L"GetProgramVersion", L"InputBox", L"GetModalResult", L"SetStatusBarText", L"GetDocumentFilePath", L"GetDocumentFileName", L"GetDocumentDirectory", L"IsDiagnosticTraceEnabled", L"TraceScript", L"GetLocalizedString" };
+	static const wchar_t* const names[] = { L"other", L"BeginUndoUnit", L"EndUndoUnit", L"inflateBlock", L"GenrePopup", L"GetStylePath", L"GetBinarySize", L"InflateParagraphs", L"GetUUID", L"MsgBox", L"AskYesNo", L"SaveBinary", L"GetExtendedStyle", L"DescShowElement", L"DescShowMenu", L"IsFastMode", L"SetStyleEx", L"GetImageDimsByPath", L"GetImageDimsByData", L"GetNBSP", L"GetViewWidth", L"GetViewHeight", L"GetProgramVersion", L"InputBox", L"GetModalResult", L"SetStatusBarText", L"GetDocumentFilePath", L"GetDocumentFileName", L"GetDocumentDirectory", L"IsDiagnosticTraceEnabled", L"TraceScript", L"GetLocalizedString", L"GetSourceText", L"ValidateSourceText", L"GetLastSourceDiagnostic", L"ApplySourceText" };
 	return dispid > 0 && dispid < static_cast<DISPID>(_countof(names)) ? names[dispid] : names[0];
 }
 static bool IsLoadDiagnosticMethod(DISPID dispid) { return dispid == 5 || dispid == 6 || dispid == 7 || dispid == 8 || dispid == 12 || dispid == 13 || dispid == 17 || dispid == 18 || dispid == 19 || dispid == 22 || dispid == 29; }
@@ -311,6 +311,93 @@ HRESULT ExternalHelper::GetDocumentDirectory(BSTR* directory)
 	else if (separator > 0)
 		result = path.Left(separator);
 	*directory = result.AllocSysString();
+	return S_OK;
+}
+
+namespace
+{
+CString JsonEscape(const CString& value)
+{
+	CString escaped;
+	for(int index = 0; index < value.GetLength(); ++index)
+	{
+		const wchar_t character = value[index];
+		switch(character)
+		{
+		case L'\\': escaped += L"\\\\"; break;
+		case L'\"': escaped += L"\\\""; break;
+		case L'\r': escaped += L"\\r"; break;
+		case L'\n': escaped += L"\\n"; break;
+		case L'\t': escaped += L"\\t"; break;
+		default:
+			if(character < 0x20) { CString encoded; encoded.Format(L"\\u%04X", static_cast<unsigned int>(character)); escaped += encoded; }
+			else escaped += character;
+		}
+	}
+	return escaped;
+}
+
+CString SourceDiagnosticJson(const XmlScriptApiRequest& diagnostic)
+{
+	CString json;
+	json.Format(L"{\"valid\":%s,\"message\":\"%s\",\"line\":%d,\"column\":%d}",
+		diagnostic.valid ? L"true" : L"false", static_cast<LPCWSTR>(JsonEscape(diagnostic.message)),
+		diagnostic.line, diagnostic.column);
+	return json;
+}
+
+bool SendXmlScriptRequest(HWND host, XmlScriptApiRequest& request)
+{
+	return host != NULL && ::IsWindow(host) && ::SendMessage(host, AU::WM_XML_SCRIPT_API, 0, reinterpret_cast<LPARAM>(&request)) != 0;
+}
+}
+
+HRESULT ExternalHelper::GetSourceText(BSTR* text)
+{
+	if(!text) return E_POINTER;
+	*text = NULL;
+	XmlScriptApiRequest request(XmlScriptApiOperation::GetSourceText);
+	if(!SendXmlScriptRequest(m_xmlScriptHost, request) || !request.succeeded)
+	{
+		m_lastSourceDiagnostic = request;
+		if(m_lastSourceDiagnostic.message.IsEmpty()) m_lastSourceDiagnostic.message = L"No document is open.";
+		return S_OK;
+	}
+	m_lastSourceDiagnostic = request;
+	*text = request.resultText.AllocSysString();
+	return *text ? S_OK : E_OUTOFMEMORY;
+}
+
+HRESULT ExternalHelper::ValidateSourceText(BSTR text, BOOL* valid)
+{
+	if(!valid) return E_POINTER;
+	*valid = FALSE;
+	CString candidate(text ? text : L"");
+	XmlScriptApiRequest request(XmlScriptApiOperation::ValidateSourceText); request.text = &candidate;
+	SendXmlScriptRequest(m_xmlScriptHost, request);
+	m_lastSourceDiagnostic = request;
+	if(m_lastSourceDiagnostic.message.IsEmpty() && !request.succeeded) m_lastSourceDiagnostic.message = L"No document is open.";
+	*valid = request.valid ? TRUE : FALSE;
+	return S_OK;
+}
+
+HRESULT ExternalHelper::GetLastSourceDiagnostic(BSTR* diagnosticJson)
+{
+	if(!diagnosticJson) return E_POINTER;
+	*diagnosticJson = SourceDiagnosticJson(m_lastSourceDiagnostic).AllocSysString();
+	return *diagnosticJson ? S_OK : E_OUTOFMEMORY;
+}
+
+HRESULT ExternalHelper::ApplySourceText(BSTR text, BSTR action, BOOL* applied)
+{
+	if(!applied) return E_POINTER;
+	*applied = FALSE;
+	CString candidate(text ? text : L""), operation(action ? action : L"");
+	XmlScriptApiRequest request(XmlScriptApiOperation::ApplySourceText); request.text = &candidate; request.action = &operation;
+	SendXmlScriptRequest(m_xmlScriptHost, request);
+	m_lastSourceDiagnostic = request;
+	if(m_lastSourceDiagnostic.message.IsEmpty() && !request.succeeded) m_lastSourceDiagnostic.message = L"No document is open.";
+	*applied = request.valid ? TRUE : FALSE;
 	return S_OK;
 }
 struct Lang

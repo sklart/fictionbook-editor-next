@@ -9,6 +9,7 @@
 #include "BinaryFileSave.h"
 #include "BinarySaveNotification.h"
 #include "RuntimeLocalization.h"
+#include "XmlScriptApi.h"
 #include "..\\common\\ModernFileDialog.h"
 
 inline bool IsDiagnosticFaultInjectionEnabled(const wchar_t* point)
@@ -49,6 +50,8 @@ class ExternalHelper :
 {
   const CString* m_document_filename;
   const bool* m_document_namevalid;
+  HWND m_xmlScriptHost;
+  XmlScriptApiRequest m_lastSourceDiagnostic;
   static __declspec(thread) bool s_traceScriptActive;
   static CComAutoCriticalSection s_embeddedTypeInfoLock;
   static CComPtr<ITypeInfo> s_embeddedTypeInfo;
@@ -56,7 +59,7 @@ class ExternalHelper :
 
 public:
   static void FlushTraceSummary();
-  ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL) {}
+  ExternalHelper() : m_document_filename(NULL), m_document_namevalid(NULL), m_xmlScriptHost(NULL) {}
 
   DECLARE_NO_REGISTRY()
 
@@ -73,6 +76,7 @@ public:
     m_document_filename = filename;
     m_document_namevalid = namevalid;
   }
+  void SetXmlScriptHost(HWND host) { m_xmlScriptHost = host; }
   STDMETHOD(GetTypeInfoCount)(UINT* typeInfoCount);
   STDMETHOD(GetTypeInfo)(UINT typeInfo, LCID lcid, ITypeInfo** resultTypeInfo);
   STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR* names, UINT nameCount, LCID lcid, DISPID* dispids);
@@ -81,6 +85,10 @@ public:
   STDMETHOD(GetDocumentFilePath)(BSTR* path);
   STDMETHOD(GetDocumentFileName)(BSTR* name);
   STDMETHOD(GetDocumentDirectory)(BSTR* directory);
+  STDMETHOD(GetSourceText)(BSTR* text);
+  STDMETHOD(ValidateSourceText)(BSTR text, BOOL* valid);
+  STDMETHOD(GetLastSourceDiagnostic)(BSTR* diagnosticJson);
+  STDMETHOD(ApplySourceText)(BSTR text, BSTR action, BOOL* applied);
 
   STDMETHOD(IsDiagnosticTraceEnabled)(BOOL* enabled)
   {

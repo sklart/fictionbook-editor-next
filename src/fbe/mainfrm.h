@@ -38,6 +38,7 @@
 #include "source\\ui\\SourceEditorControl.h"
 #include "source\\SourceViewSession.h"
 #include "scripts\\XmlScriptBackend.h"
+#include "XmlScriptApi.h"
 #include "source\\BodySourceSelectionCoordinator.h"
 #include "view\\EditorViewState.h"
 #include "view\\EditorViewTransition.h"
@@ -460,6 +461,7 @@ public:
 		MESSAGE_HANDLER(AU::WM_SOURCE_MEMORY_BENCHMARK, OnSourceMemoryBenchmark)
 		MESSAGE_HANDLER(AU::WM_BODY_SCROLL, OnBodyScroll)
 		MESSAGE_HANDLER(AU::WM_DESCRIPTION_FORM_CHANGED, OnDescriptionFormChanged)
+		MESSAGE_HANDLER(AU::WM_XML_SCRIPT_API, OnXmlScriptApi)
 		MESSAGE_HANDLER(WM_CLOSE, OnClose)
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
@@ -659,6 +661,7 @@ public:
   LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnShowFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnHideFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnXmlScriptApi(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnRefreshFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDetachFindResultsPane(UINT, WPARAM, LPARAM, BOOL&);
 	void ShowFindResultsPane(CFBEView* view);

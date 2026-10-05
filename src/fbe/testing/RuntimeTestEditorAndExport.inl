@@ -30,6 +30,38 @@
 		::PostQuitMessage(passed ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"xml-script-com-runtime"))
+	{
+		CString original;
+		const bool read = GetInternalXmlScriptSourceText(original);
+		CString script =
+			L"var xml=window.external.GetSourceText();"
+			L"if(xml.indexOf('XML_API_BEFORE')<0)throw new Error('source');"
+			L"if(window.external.ValidateSourceText(xml+'<'))throw new Error('invalid accepted');"
+			L"var diagnostic=eval('('+window.external.GetLastSourceDiagnostic()+')');"
+			L"if(diagnostic.valid||!diagnostic.message||diagnostic.line<1)throw new Error('diagnostic');"
+			L"if(!window.external.ValidateSourceText(xml))throw new Error('valid rejected');"
+			L"var changed=xml.replace('XML_API_BEFORE','XML_API_AFTER \\u0451\\u043b\\u043a\\u0430');"
+			L"if(!window.external.ApplySourceText(changed,'\\u041d\\u043e\\u0440\\u043c\\u0430\\u043b\\u0438\\u0437\\u0430\\u0446\\u0438\\u044f XML'))throw new Error(window.external.GetLastSourceDiagnostic());";
+		MSHTML::IHTMLWindow2Ptr window(m_doc && m_doc->m_body.Document() ? m_doc->m_body.Document()->parentWindow : MSHTML::IHTMLWindow2Ptr());
+		const HRESULT scriptResult = window ? window->execScript(_bstr_t(script), _bstr_t(L"JScript")) : E_NOINTERFACE;
+		CString afterApply;
+		const bool applied = SUCCEEDED(scriptResult) && GetInternalXmlScriptSourceText(afterApply) && afterApply.Find(L"XML_API_AFTER") >= 0 && afterApply.Find(L"ёлка") >= 0;
+		const bool dirty = applied && m_doc->DocChanged();
+		if(applied) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0); }
+		CString afterUndo;
+		const bool undone = applied && GetInternalXmlScriptSourceText(afterUndo) && afterUndo.Find(L"XML_API_BEFORE") >= 0;
+		if(undone) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0); }
+		CString afterRedo;
+		const bool redone = undone && GetInternalXmlScriptSourceText(afterRedo) && afterRedo.Find(L"XML_API_AFTER") >= 0;
+		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
+		const bool passed = read && SUCCEEDED(scriptResult) && applied && dirty && undone && redone && treeReady;
+		CStringA report;
+		report.Format("get=%d\nvalidate=%d\ndiagnostic=%d\napply=%d\ndirty=%d\nundo=%d\nredo=%d\ntree=%d\nresult=%s\n",
+			read, SUCCEEDED(scriptResult), SUCCEEDED(scriptResult), applied, dirty, undone, redone, treeReady, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"document-tree-selection-runtime"))
 	{
 		// The normal UI performs this when the pane is shown.  Exercise the

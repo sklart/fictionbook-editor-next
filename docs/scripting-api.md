@@ -24,6 +24,7 @@
 
 ### Документ и окружение
 
+- [Работа с исходным XML документа](#работа-с-исходным-xml-документа)
 - [GetDocumentFilePath](#getdocumentfilepath)
 - [GetDocumentFileName](#getdocumentfilename)
 - [GetDocumentDirectory](#getdocumentdirectory)
@@ -185,6 +186,38 @@ window.external.SetStatusBarText("Обработано: " + count);
 ```
 
 ## Документ и окружение
+
+<a id="работа-с-исходным-xml-документа"></a>
+### Работа с исходным XML документа
+
+`document` — DOM визуального Body/MSHTML. Для полного XML FB2 или FBD используйте
+`GetSourceText()`: он включает `description`, `body` и `binary`. При активном
+изменённом Source метод возвращает актуальный текст Source без переключения режима.
+Большие `binary` могут существенно увеличить размер строки.
+
+`ValidateSourceText(xml)` полностью проверяет кандидат штатным контуром и
+возвращает булево значение. `GetLastSourceDiagnostic()` возвращает JSON
+последней XML-операции с полями `valid`, `message`, `line`, `column`.
+`ApplySourceText(xml, action)` повторно проверяет XML, применяет его только
+при успехе и создаёт одну обычную операцию Undo/Redo с описанием `action`.
+Неверный XML не меняет документ.
+
+```js
+function Run()
+{
+    var xml = window.external.GetSourceText();
+    var modified = xml.replace("старый текст", "новый текст");
+
+    if (!window.external.ValidateSourceText(modified))
+    {
+        var diagnostic = window.external.GetLastSourceDiagnostic();
+        window.external.MsgBox(diagnostic);
+        return;
+    }
+
+    window.external.ApplySourceText(modified, "Замена текста в XML");
+}
+```
 
 <a id="getdocumentfilepath"></a>
 ### `GetDocumentFilePath()`

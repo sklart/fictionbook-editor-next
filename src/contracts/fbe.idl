@@ -117,5 +117,9 @@ library FBELib
 	[id(29), helpstring("method IsDiagnosticTraceEnabled")] HRESULT IsDiagnosticTraceEnabled([out, retval] BOOL* enabled);
 	[id(30), helpstring("method TraceScript")] HRESULT TraceScript([in] BSTR code, [in] BSTR message);
 	[id(31), helpstring("method GetLocalizedString")] HRESULT GetLocalizedString([in] BSTR key, [out, retval] BSTR* text);
+	[id(32), helpstring("method GetSourceText")] HRESULT GetSourceText([out, retval] BSTR* text);
+	[id(33), helpstring("method ValidateSourceText")] HRESULT ValidateSourceText([in] BSTR text, [out, retval] BOOL* valid);
+	[id(34), helpstring("method GetLastSourceDiagnostic")] HRESULT GetLastSourceDiagnostic([out, retval] BSTR* diagnosticJson);
+	[id(35), helpstring("method ApplySourceText")] HRESULT ApplySourceText([in] BSTR text, [in] BSTR action, [out, retval] BOOL* applied);
   };
 };

@@ -1487,6 +1487,29 @@ XmlScriptDiagnostic CMainFrame::ApplyInternalXmlScriptText(const CString& text, 
 	return m_xml_script_backend.ApplySourceText(text, operationName);
 }
 
+LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
+{
+	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
+	if(request == NULL) return 0;
+	if(request->operation == XmlScriptApiOperation::GetSourceText)
+	{
+		request->succeeded = GetInternalXmlScriptSourceText(request->resultText);
+		request->valid = request->succeeded;
+		if(!request->succeeded) request->message = L"No document is open.";
+		return request->succeeded ? 1 : 0;
+	}
+	if(request->text == NULL) { request->message = L"XML text is missing."; return 0; }
+	const XmlScriptDiagnostic diagnostic = request->operation == XmlScriptApiOperation::ValidateSourceText
+		? ValidateInternalXmlScriptText(*request->text)
+		: ApplyInternalXmlScriptText(*request->text, request->action ? *request->action : CString());
+	request->succeeded = true;
+	request->valid = diagnostic.valid;
+	request->line = diagnostic.line;
+	request->column = diagnostic.column;
+	request->message = diagnostic.message;
+	return 1;
+}
+
 void CMainFrame::SynchronizeAfterXmlScriptApply(const CString& sourceText)
 {
 	const int byteCount = ::WideCharToMultiByte(CP_UTF8, 0, sourceText,

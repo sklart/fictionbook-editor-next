@@ -290,6 +290,8 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 	static const VARTYPE inflateParagraphsTypes[] = { VT_DISPATCH };
 	static const VARTYPE getExtendedStyleTypes[] = { VT_BSTR };
 	static const VARTYPE traceScriptTypes[] = { VT_BSTR, VT_BSTR };
+	static const VARTYPE validateSourceTextTypes[] = { VT_BSTR };
+	static const VARTYPE applySourceTextTypes[] = { VT_BSTR, VT_BSTR };
 	struct RequiredMethod { const wchar_t* name; DISPID dispid; bool core; const VARTYPE* types; UINT parameterCount; VARTYPE resultType; };
 	const RequiredMethod methods[] = {
 		{ L"GetStylePath", 5, true, NULL, 0, VT_BSTR },
@@ -299,7 +301,11 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		{ L"GetNBSP", 19, true, NULL, 0, VT_BSTR },
 		{ L"GetProgramVersion", 22, true, NULL, 0, VT_BSTR },
 		{ L"IsDiagnosticTraceEnabled", 29, false, NULL, 0, VT_I4 },
-		{ L"TraceScript", 30, false, traceScriptTypes, _countof(traceScriptTypes), VT_VOID }
+		{ L"TraceScript", 30, false, traceScriptTypes, _countof(traceScriptTypes), VT_VOID },
+		{ L"GetSourceText", 32, true, NULL, 0, VT_BSTR },
+		{ L"ValidateSourceText", 33, true, validateSourceTextTypes, _countof(validateSourceTextTypes), VT_I4 },
+		{ L"GetLastSourceDiagnostic", 34, true, NULL, 0, VT_BSTR },
+		{ L"ApplySourceText", 35, true, applySourceTextTypes, _countof(applySourceTextTypes), VT_I4 }
 	};
 	CString missingCore, missingDiagnostic, wrongCoreDispids, wrongDiagnosticDispids, wrongCoreSignatures, wrongDiagnosticSignatures;
 	for (UINT index = 0; index < _countof(methods); ++index)
@@ -463,7 +469,10 @@ IDispatchPtr  CFBEView::CreateHelper()
 	if(FAILED(CComObject<ExternalHelper>::CreateInstance(&obj)))
 		obj = NULL;
 	else
+	{
 		obj->SetDocumentFilePathSource(m_document_filename, m_document_namevalid);
+		obj->SetXmlScriptHost(m_frame);
+	}
 	return obj;
 }
 

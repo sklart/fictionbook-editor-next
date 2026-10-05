@@ -8,8 +8,8 @@ $header = Get-Content -Raw (Join-Path $root 'src\fbe\scripts\XmlScriptBackend.h'
 $doc = Get-Content -Raw (Join-Path $root 'src\fbe\FBDoc.cpp')
 $frame = Get-Content -Raw (Join-Path $root 'src\fbe\mainfrm.cpp')
 $runtime = Get-Content -Raw (Join-Path $root 'src\fbe\testing\RuntimeTestEditorAndExport.inl')
-$pendingIdl = Get-Content -Raw (Join-Path $root 'docs\architecture\xml-scripting-api-idl-pending.md')
 $idl = Get-Content -Raw (Join-Path $root 'src\contracts\fbe.idl')
+$external = Get-Content -Raw (Join-Path $root 'src\fbe\ExternalHelper.cpp')
 function Require([string]$text, [string]$token, [string]$message) { if($text -notmatch $token) { throw $message } }
 Require $header 'class XmlScriptBackend' 'Internal XML backend is missing.'
 Require $backend 'SourceDocumentTransfer::ReadSourceText' 'Active Source must be read from Scintilla.'
@@ -34,9 +34,12 @@ Require $runtime 'xml-script-backend-runtime' 'A real editor runtime scenario is
 Require $runtime 'invalid_rejected' 'Runtime scenario must cover rejected XML.'
 Require $runtime 'ID_EDIT_UNDO' "Runtime scenario must invoke FBE's normal Undo command."
 Require $runtime 'ID_EDIT_REDO' "Runtime scenario must invoke FBE's normal Redo command."
-Require $pendingIdl '\[id\(32\).*GetSourceText' 'Pending IDL diff must reserve a new GetSourceText DISPID.'
-Require $pendingIdl '\[id\(33\).*ValidateSourceText' 'Pending IDL diff must reserve a new ValidateSourceText DISPID.'
-Require $pendingIdl '\[id\(34\).*GetLastSourceDiagnostic' 'Pending IDL diff must define COM-friendly diagnostics.'
-Require $pendingIdl '\[id\(35\).*ApplySourceText' 'Pending IDL diff must reserve a new ApplySourceText DISPID.'
-if($idl -match 'GetSourceText|ValidateSourceText|ApplySourceText') { throw 'COM IDL must remain unchanged while the public API is blocked.' }
-Write-Host 'Internal XML scripting backend contract passed.'
+Require $idl '\[id\(32\).*GetSourceText' 'GetSourceText must use DISPID 32.'
+Require $idl '\[id\(33\).*ValidateSourceText' 'ValidateSourceText must use DISPID 33.'
+Require $idl '\[id\(34\).*GetLastSourceDiagnostic' 'GetLastSourceDiagnostic must use DISPID 34.'
+Require $idl '\[id\(35\).*ApplySourceText' 'ApplySourceText must use DISPID 35.'
+Require $external 'JsonEscape' 'Source diagnostic JSON must escape parser text.'
+Require $external 'WM_XML_SCRIPT_API' 'COM adapter must delegate XML work to the editor backend.'
+Require $runtime 'xml-script-com-runtime' 'A real JScript window.external runtime scenario is required.'
+Require $runtime 'GetLastSourceDiagnostic' 'Runtime scenario must parse the public diagnostic.'
+Write-Host 'XML scripting backend and COM adapter contract passed.'
