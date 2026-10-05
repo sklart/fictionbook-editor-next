@@ -2766,7 +2766,7 @@ void Doc::GetWordList(int flags, CSimpleArray<Word>& words, CString /* unused: t
 }*/
 
 // source editing
-bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage) {
+bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage, BSTR sourceOverride) {
   errline=errcol=0;
   if (errorMessage)
     errorMessage->Empty();
@@ -2805,24 +2805,30 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
       rdr->putContentHandler(MSXML2::ISAXContentHandlerPtr(wrt));
 	}
 
-    // now parse it!
-    // oh well, let's waste more memory
-    int	    textlen=::SendMessage(sci, SCI_GETLENGTH, 0, 0);
-    std::vector<char> buffer;
-    try {
-      buffer.resize(textlen + 1);
-    } catch (const std::bad_alloc&) {
+    // Ordinary Source validation reads Scintilla.  The internal XML backend
+    // supplies a candidate BSTR, but both cases continue through this exact
+    // SAX/schema/FBD validation and LoadFromDOM implementation.
+    CComBSTR ustr;
+    if(sourceOverride != NULL) {
+      ustr.Attach(::SysAllocString(sourceOverride));
+    } else {
+      int textlen=::SendMessage(sci, SCI_GETLENGTH, 0, 0);
+      std::vector<char> buffer;
+      try {
+        buffer.resize(textlen + 1);
+      } catch (const std::bad_alloc&) {
 	  wchar_t msg[MAX_LOAD_STRING + 1];
 	  wchar_t cpt[MAX_LOAD_STRING + 1];
 	  FbeLoadString(_Module.GetResourceInstance(), IDS_OUT_OF_MEM_MSG, msg, MAX_LOAD_STRING);
 	  FbeLoadString(_Module.GetResourceInstance(), IDR_MAINFRAME, cpt, MAX_LOAD_STRING);
 	  U::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
-      return false;
+        return false;
+      }
+      ::SendMessage(sci, SCI_GETTEXT, textlen+1, (LPARAM)buffer.data());
+      DWORD ulen=::MultiByteToWideChar(CP_UTF8,0,buffer.data(),textlen,NULL,0);
+      ustr.Attach(::SysAllocStringLen(NULL,ulen));
+      if(ustr) ::MultiByteToWideChar(CP_UTF8,0,buffer.data(),textlen,ustr,ulen);
     }
-    ::SendMessage(sci, SCI_GETTEXT, textlen+1, (LPARAM)buffer.data());
-    DWORD   ulen=::MultiByteToWideChar(CP_UTF8,0,buffer.data(),textlen,NULL,0);
-    CComBSTR ustr;
-    ustr.Attach(::SysAllocStringLen(NULL,ulen));
     if (!ustr) {
 	  wchar_t msg[MAX_LOAD_STRING + 1];
 	  wchar_t cpt[MAX_LOAD_STRING + 1];
@@ -2831,8 +2837,6 @@ bool  Doc::SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errco
 	  U::MessageBox(::GetActiveWindow(), msg, cpt, MB_OK|MB_ICONERROR);
       return false;
     }
-    ::MultiByteToWideChar(CP_UTF8,0,buffer.data(),textlen,ustr,ulen);
-
     VARIANT vt;
     ::VariantInit(&vt);
     V_VT(&vt)=VT_BSTR;

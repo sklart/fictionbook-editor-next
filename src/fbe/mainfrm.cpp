@@ -1472,6 +1472,49 @@ void  CMainFrame::GetDocumentStructure() {
   m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
 }
 
+bool CMainFrame::GetInternalXmlScriptSourceText(CString& text) const
+{
+	return m_xml_script_backend.GetSourceText(text);
+}
+
+XmlScriptDiagnostic CMainFrame::ValidateInternalXmlScriptText(const CString& text) const
+{
+	return m_xml_script_backend.ValidateSourceText(text);
+}
+
+XmlScriptDiagnostic CMainFrame::ApplyInternalXmlScriptText(const CString& text, const CString& operationName)
+{
+	return m_xml_script_backend.ApplySourceText(text, operationName);
+}
+
+XmlScriptDiagnostic CMainFrame::UndoInternalXmlScriptApply()
+{
+	return m_xml_script_backend.UndoLastApply();
+}
+
+void CMainFrame::SynchronizeAfterXmlScriptApply(const CString& sourceText)
+{
+	const int byteCount = ::WideCharToMultiByte(CP_UTF8, 0, sourceText,
+		sourceText.GetLength(), NULL, 0, NULL, NULL);
+	m_source.SendMessage(SCI_CLEARALL);
+	if(byteCount > 0)
+	{
+		std::vector<char> utf8(static_cast<size_t>(byteCount));
+		::WideCharToMultiByte(CP_UTF8, 0, sourceText, sourceText.GetLength(),
+			utf8.data(), byteCount, NULL, NULL);
+		m_source.SendMessage(SCI_APPENDTEXT, byteCount, reinterpret_cast<LPARAM>(utf8.data()));
+	}
+	m_source.SendMessage(SCI_EMPTYUNDOBUFFER);
+	m_source.SendMessage(SCI_SETSAVEPOINT);
+	ClearSelection();
+	InvalidateSelectionContext();
+	if(_Settings.ViewDocumentTree()) m_document_tree.GetDocumentStructure(m_doc->m_body.Document());
+	m_need_title_update = true;
+	m_sel_changed = true;
+	MarkRecoveryDirty();
+	InvalidateUi(UiDirtyDocument | UiDirtySource | UiDirtySelection | UiDirtyToolbar | UiDirtyStatus);
+}
+
 void  CMainFrame::GoTo(MSHTML::IHTMLElement *e) {
   try {
     m_doc->m_body.GoTo(e);

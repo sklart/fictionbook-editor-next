@@ -1,3 +1,30 @@
+	if (IsFbeTestScenario(L"xml-script-backend-runtime"))
+	{
+		CString original;
+		const bool read = GetInternalXmlScriptSourceText(original);
+		const XmlScriptDiagnostic valid = read ? ValidateInternalXmlScriptText(original) : XmlScriptDiagnostic();
+		const XmlScriptDiagnostic invalid = read ? ValidateInternalXmlScriptText(original + L"<") : XmlScriptDiagnostic();
+		CString changed(original);
+		const bool prepared = changed.Replace(L"XML_API_BEFORE", L"XML_API_AFTER") == 1;
+		const XmlScriptDiagnostic applied = prepared ? ApplyInternalXmlScriptText(changed, L"XML scripting runtime test") : XmlScriptDiagnostic();
+		CString afterApply;
+		const bool changedInDocument = applied.valid && GetInternalXmlScriptSourceText(afterApply) && afterApply.Find(L"XML_API_AFTER") >= 0;
+		const bool dirty = applied.valid && m_doc->DocChanged();
+		const XmlScriptDiagnostic undone = applied.valid ? UndoInternalXmlScriptApply() : XmlScriptDiagnostic();
+		CString afterUndo;
+		const bool restored = undone.valid && GetInternalXmlScriptSourceText(afterUndo) && afterUndo.Find(L"XML_API_BEFORE") >= 0;
+		const bool bodyReady = m_doc->m_body.Document() != NULL;
+		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
+		const bool passed = read && valid.valid && !invalid.valid && prepared && changedInDocument && dirty && undone.valid && restored && bodyReady && treeReady;
+		CStringA report;
+		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\napply=%d\ndirty=%d\nundo=%d\nbody=%d\ntree=%d\nresult=%s\n",
+			read, valid.valid, !invalid.valid, changedInDocument, dirty, undone.valid && restored, bodyReady, treeReady, passed ? "pass" : "fail");
+		DWORD written = 0;
+		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close();
+		::PostQuitMessage(passed ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"table-structural"))
 	{
 		const ULONGLONG start = ::GetTickCount64();

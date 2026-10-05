@@ -73,7 +73,9 @@ public:
     AU::CPersistentWaitCursor wc;
     return SaveToFile(CString(),true,&errline,&errcol);
   }
-  bool	  SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage=NULL);
+  // sourceOverride is used by the internal XML-scripting backend.  It takes
+  // the exact same production SAX/schema/FBD path as Source validation.
+  bool	  SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage=NULL, BSTR sourceOverride=NULL);
   bool	  TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr *xml);
 
   //bool	  SetXML(MSXML2::IXMLDOMDocument2 *dom);

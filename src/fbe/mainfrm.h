@@ -37,6 +37,7 @@
 #include "source\\Fb2SourceAutocomplete.h"
 #include "source\\ui\\SourceEditorControl.h"
 #include "source\\SourceViewSession.h"
+#include "scripts\\XmlScriptBackend.h"
 #include "source\\BodySourceSelectionCoordinator.h"
 #include "view\\EditorViewState.h"
 #include "view\\EditorViewTransition.h"
@@ -261,7 +262,8 @@ public:
   CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_external_file_check(0), m_external_file_check_started(false), m_clipboard_listener_registered(false), m_clipboard_has_bitmap(false), m_last_clipboard_fallback_check(0), m_clipboard_fallback_check_started(false), m_ui_dirty(UiDirtyAll), m_last_sci_ovr(true), m_last_ie_ovr(true),
 	 m_doc_changed(false), m_sel_changed(false), m_change_state(false), m_need_title_update(false),
 	 m_recovery_generation(0), m_recovery_saved_generation(0), m_recovery_last_edit_tick(0),
-	m_current_dpi(96), m_status_layout_posted(false), m_source_view_session(m_source, m_doc, m_editor_selection_state, m_source_selection_coordinator), m_cb_updated(false),
+	m_current_dpi(96), m_status_layout_posted(false), m_source_view_session(m_source, m_doc, m_editor_selection_state, m_source_selection_coordinator),
+	m_xml_script_backend(m_doc, m_source, [this]() { return IsSourceActive(); }, [this](const CString& sourceText) { SynchronizeAfterXmlScriptApply(sourceText); }), m_cb_updated(false),
     m_cb_last_images(false), m_ignore_cb_changes(false), m_want_focus(0),
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
@@ -333,7 +335,15 @@ public:
 	EditorSelectionState m_editor_selection_state;
 	BodySourceSelectionCoordinator m_source_selection_coordinator;
 	SourceViewSession m_source_view_session;
+	XmlScriptBackend m_xml_script_backend;
 	Fb2SourceAutocomplete   m_fb2_autocomplete;
+	void SynchronizeAfterXmlScriptApply(const CString& sourceText);
+	// Internal native boundary for the future COM adapter. It is deliberately
+	// not an alternative public scripting API while fbe.idl is frozen.
+	bool GetInternalXmlScriptSourceText(CString& text) const;
+	XmlScriptDiagnostic ValidateInternalXmlScriptText(const CString& text) const;
+	XmlScriptDiagnostic ApplyInternalXmlScriptText(const CString& text, const CString& operationName);
+	XmlScriptDiagnostic UndoInternalXmlScriptApply();
 
 	EditorSourceOperationResult CommitSourceDocument() override;
 	void ApplyEditorViewCommandUi(EditorView previous, EditorView target);
