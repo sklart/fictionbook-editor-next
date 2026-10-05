@@ -12,6 +12,7 @@ static const Method methods[] = {
 	{L"GetViewWidth",20,INVOKE_FUNC,0,VT_INT,{}},{L"GetViewHeight",21,INVOKE_FUNC,0,VT_INT,{}},{L"GetProgramVersion",22,INVOKE_FUNC,0,VT_BSTR,{}},{L"InputBox",23,INVOKE_FUNC,3,VT_BSTR,{VT_BSTR,VT_BSTR,VT_BSTR}},{L"GetModalResult",24,INVOKE_FUNC,0,VT_INT,{}},
 	{L"SetStatusBarText",25,INVOKE_FUNC,1,VT_VOID,{VT_BSTR}},{L"GetDocumentFilePath",26,INVOKE_FUNC,0,VT_BSTR,{}},{L"GetDocumentFileName",27,INVOKE_FUNC,0,VT_BSTR,{}},{L"GetDocumentDirectory",28,INVOKE_FUNC,0,VT_BSTR,{}},
 	{L"IsDiagnosticTraceEnabled",29,INVOKE_FUNC,0,VT_I4,{}},{L"TraceScript",30,INVOKE_FUNC,2,VT_VOID,{VT_BSTR,VT_BSTR}},
+	{L"GetLocalizedString",31,INVOKE_FUNC,1,VT_BSTR,{VT_BSTR}},
 	{L"GetSourceText",32,INVOKE_FUNC,0,VT_BSTR,{}},{L"ValidateSourceText",33,INVOKE_FUNC,1,VT_I4,{VT_BSTR}},{L"GetLastSourceDiagnostic",34,INVOKE_FUNC,0,VT_BSTR,{}},{L"ApplySourceText",35,INVOKE_FUNC,2,VT_I4,{VT_BSTR,VT_BSTR}}
 };
 

@@ -34,7 +34,7 @@ dirty/recovery/UI-состояние. Каждая внутренняя опер
 ## MIDL
 
 Штатный MIDL генерирует результаты только в
-только в `build/generated/<Platform>/<Configuration>/fbe-api`:
+`build/generated/<Platform>/<Configuration>/fbe-api`:
 
 - `FBE.h`;
 - `FBE_i.c`;

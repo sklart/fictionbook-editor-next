@@ -19,7 +19,7 @@ CComPtr<IOleUndoManager> GetUndoManager(FB::Doc* document)
 class UndoManagerDisableScope
 {
 public:
-	explicit UndoManagerDisableScope(const CComPtr<IOleUndoManager>& manager) : m_manager(manager), m_disabled(false)
+	explicit UndoManagerDisableScope(IOleUndoManager* manager) : m_manager(manager), m_disabled(false)
 	{
 		if(m_manager && SUCCEEDED(m_manager->Enable(FALSE))) m_disabled = true;
 	}
@@ -52,8 +52,14 @@ public:
 	STDMETHOD(Do)(IOleUndoManager* manager)
 	{
 		if(m_backend == NULL) return E_UNEXPECTED;
-		const XmlScriptDiagnostic diagnostic = m_backend->ApplySnapshot(
-			m_applyBefore ? m_before : m_after, m_applyBefore ? m_beforeWasDirty : true);
+		XmlScriptDiagnostic diagnostic;
+		{
+			// Applying a snapshot recreates MSHTML's DOM. Keep that internal work
+			// out of the standard undo stack; this IOleUndoUnit is the sole unit.
+			UndoManagerDisableScope suppress(manager);
+			diagnostic = m_backend->ApplySnapshot(
+				m_applyBefore ? m_before : m_after, m_applyBefore ? m_beforeWasDirty : true);
+		}
 		if(!diagnostic.valid) return E_FAIL;
 		m_applyBefore = !m_applyBefore;
 		return manager ? manager->Add(this) : S_OK;
@@ -126,6 +132,7 @@ XmlScriptDiagnostic XmlScriptBackend::ApplySourceText(const CString& text, const
 	CString previous;
 	const bool documentWasDirty = m_document->DocChanged() || m_source.SendMessage(SCI_GETMODIFY) != 0;
 	if(!GetSourceText(previous)) { diagnostic.valid = false; diagnostic.message = L"Could not capture the document before applying XML."; return diagnostic; }
+	if(previous == text) return diagnostic;
 
 	// Suppress transient MSHTML units produced by LoadFromDOM.  The one unit
 	// added below is the sole operation exposed through FBE's normal Ctrl+Z.

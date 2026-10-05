@@ -5,6 +5,8 @@
 		const bool originalDirty = read && m_doc->DocChanged();
 		const XmlScriptDiagnostic valid = read ? ValidateInternalXmlScriptText(original) : XmlScriptDiagnostic();
 		const XmlScriptDiagnostic invalid = read ? ValidateInternalXmlScriptText(original + L"<") : XmlScriptDiagnostic();
+		const XmlScriptDiagnostic noOp = read ? ApplyInternalXmlScriptText(original, L"XML no-op runtime test") : XmlScriptDiagnostic();
+		const bool noOpPreserved = noOp.valid && m_doc->DocChanged() == originalDirty;
 		CString changed(original);
 		const bool prepared = changed.Replace(L"XML_API_BEFORE", L"XML_API_AFTER") == 1;
 		const XmlScriptDiagnostic applied = prepared ? ApplyInternalXmlScriptText(changed, L"XML scripting runtime test") : XmlScriptDiagnostic();
@@ -18,12 +20,18 @@
 		if(restored) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0); }
 		CString afterRedo;
 		const bool redone = restored && GetInternalXmlScriptSourceText(afterRedo) && afterRedo.Find(L"XML_API_AFTER") >= 0;
+		if(redone) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0); }
+		CString afterSecondUndo;
+		const bool secondUndo = redone && GetInternalXmlScriptSourceText(afterSecondUndo) && afterSecondUndo.Find(L"XML_API_BEFORE") >= 0;
+		if(secondUndo) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0); }
+		CString afterSecondRedo;
+		const bool secondRedo = secondUndo && GetInternalXmlScriptSourceText(afterSecondRedo) && afterSecondRedo.Find(L"XML_API_AFTER") >= 0;
 		const bool bodyReady = m_doc->m_body.Document() != NULL;
 		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
-		const bool passed = read && valid.valid && !invalid.valid && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && bodyReady && treeReady;
+		const bool passed = read && valid.valid && !invalid.valid && noOpPreserved && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && secondUndo && secondRedo && bodyReady && treeReady;
 		CStringA report;
-		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\napply=%d\ndirty=%d\nundo=%d\nundo_dirty_restored=%d\nredo=%d\nbody=%d\ntree=%d\nresult=%s\n",
-			read, valid.valid, !invalid.valid, changedInDocument, dirty, restored, undoRestoredDirtyState, redone, bodyReady, treeReady, passed ? "pass" : "fail");
+		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\nno_op=%d\napply=%d\ndirty=%d\nundo=%d\nundo_dirty_restored=%d\nredo=%d\nundo_second=%d\nredo_second=%d\nbody=%d\ntree=%d\nresult=%s\n",
+			read, valid.valid, !invalid.valid, noOpPreserved, changedInDocument, dirty, restored, undoRestoredDirtyState, redone, secondUndo, secondRedo, bodyReady, treeReady, passed ? "pass" : "fail");
 		DWORD written = 0;
 		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close();

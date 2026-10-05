@@ -21,8 +21,10 @@ Require $backend 'public IOleUndoUnit' 'Apply must use the standard MSHTML undo 
 Require $backend 'manager->Add\(unit\)' 'Apply must register exactly one standard undo unit.'
 Require $backend 'GetDescription' 'The standard undo unit must expose its operation name.'
 Require $backend 'm_description = operationName' 'The caller supplied operation name must describe the undo unit.'
+Require $backend 'UndoManagerDisableScope suppress\(manager\)' 'Undo/Redo snapshot application must suppress internal MSHTML undo units.'
 if($backend -match 'm_undoSnapshots|UndoLastApply') { throw 'XML backend must not maintain a parallel undo stack.' }
 Require $backend 'documentWasDirty' 'Undo must restore the captured dirty-state contract.'
+Require $backend 'if\(previous == text\) return diagnostic;' 'No-op XML Apply must finish before LoadFromDOM and undo registration.'
 Require $backend 'm_document->ResetSavePoint' 'Successful XML application must mark the document dirty.'
 Require $backend 'm_synchronize\(text\)' 'Successful XML application must request UI synchronization.'
 Require $doc 'BSTR sourceOverride' 'Production validation must accept an internal candidate without a second parser.'
@@ -34,11 +36,21 @@ Require $runtime 'xml-script-backend-runtime' 'A real editor runtime scenario is
 Require $runtime 'invalid_rejected' 'Runtime scenario must cover rejected XML.'
 Require $runtime 'ID_EDIT_UNDO' "Runtime scenario must invoke FBE's normal Undo command."
 Require $runtime 'ID_EDIT_REDO' "Runtime scenario must invoke FBE's normal Redo command."
+Require $runtime 'no_op' 'Runtime scenario must cover a no-op XML Apply.'
+Require $runtime 'undo_second' 'Runtime scenario must cover the second Undo transition.'
+Require $runtime 'redo_second' 'Runtime scenario must cover the second Redo transition.'
 Require $idl '\[id\(32\).*GetSourceText' 'GetSourceText must use DISPID 32.'
 Require $idl '\[id\(33\).*ValidateSourceText' 'ValidateSourceText must use DISPID 33.'
 Require $idl '\[id\(34\).*GetLastSourceDiagnostic' 'GetLastSourceDiagnostic must use DISPID 34.'
 Require $idl '\[id\(35\).*ApplySourceText' 'ApplySourceText must use DISPID 35.'
 Require $external 'JsonEscape' 'Source diagnostic JSON must escape parser text.'
+foreach($escapeCase in @(
+    @{ Text = 'case L''\\'': escaped += L"\\\\"'; Name = 'backslash' },
+    @{ Text = 'case L''\"'': escaped += L"\\\""'; Name = 'quote' },
+    @{ Text = 'case L''\r'': escaped += L"\\r"'; Name = 'CR' },
+    @{ Text = 'case L''\n'': escaped += L"\\n"'; Name = 'LF' },
+    @{ Text = 'case L''\t'': escaped += L"\\t"'; Name = 'tab' }
+)) { if(-not $external.Contains($escapeCase.Text)) { throw "Source diagnostic JSON must deterministically escape $($escapeCase.Name)." } }
 Require $external 'WM_XML_SCRIPT_API' 'COM adapter must delegate XML work to the editor backend.'
 Require $runtime 'xml-script-com-runtime' 'A real JScript window.external runtime scenario is required.'
 Require $runtime 'GetLastSourceDiagnostic' 'Runtime scenario must parse the public diagnostic.'
