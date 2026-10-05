@@ -470,11 +470,9 @@ static int SearchReverseWithProductionZeroLengthGuard(HWND editor, int rangeStar
 	SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
 	SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
 	const int found = static_cast<int>(SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(pattern), reinterpret_cast<LPARAM>(pattern)));
-	if (found == -1)
-		return -1;
 	const int hitStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
 	const int hitEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
-	if (hitStart != hitEnd || hitStart < guardFirst || hitStart > guardLast)
+	if (found != -1 && (hitStart != hitEnd || hitStart < guardFirst || hitStart > guardLast))
 		return found;
 	int result = found;
 	return AU::Search::FindPreviousSkippingZeroLengthGuard(editor, SCFIND_REGEXP | SCFIND_CXX11REGEX,
@@ -495,6 +493,11 @@ static bool VerifyZeroLengthSingleReplaceReverseWrapGuard(HWND editor)
 		{ "abc", "(?=b)", "X", "aXbc", -1 },
 		{ "abb", "(?=b)", "", "abb", 1 },
 		{ "abb", "(?=b)", "X", "abXb", 1 },
+		{ "abbb", "(?=bb)", "", "abbb", 1 },
+		// Inserting X at the protected position yields abXbb, so the earlier
+		// lookahead sees bX rather than bb and is no longer a match.
+		{ "abbb", "(?=bb)", "X", "abXbb", -1 },
+		{ "abbbb", "(?=bb)", "X", "abbXbb", 1 },
 		{ "a\nb\nc", "^", "", "a\nb\nc", 2 },
 		{ "a\nb\nc", "^", "X", "a\nb\nXc", 2 }
 	};

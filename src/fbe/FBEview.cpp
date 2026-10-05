@@ -3854,20 +3854,21 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
     int ret = -1;
 	auto skipProtectedZeroLengthHits = [&](int rangeEnd) -> bool
 	{
+		if(rev && skipCurrentZeroLength && (ret == -1 || isProtectedZeroLengthHit()))
+		{
+			if (!AU::Search::FindPreviousSkippingZeroLengthGuard(src, flags, tmp.data(), static_cast<int>(len),
+				zeroLengthGuardFirst, zeroLengthGuardLast, rangeEnd, m_fo.fRegexp, ret, nullptr))
+			{
+				m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+				m_last_search_error_is_regexp = true;
+				U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+				return false;
+			}
+			return true;
+		}
 		while (ret != -1 && isProtectedZeroLengthHit())
 		{
-			if(rev)
-			{
-				if (!AU::Search::FindPreviousSkippingZeroLengthGuard(src, flags, tmp.data(), static_cast<int>(len),
-					zeroLengthGuardFirst, zeroLengthGuardLast, rangeEnd, m_fo.fRegexp, ret, nullptr))
-				{
-					m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-					m_last_search_error_is_regexp = true;
-					U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
-					return false;
-				}
-				break;
-			}
+			if(rev) break;
 			// A replace may leave the old anchor at the same point (empty
 			// replacement) or move it across inserted text. Continue past the
 			// complete protected interval for both initial and wrap searches.

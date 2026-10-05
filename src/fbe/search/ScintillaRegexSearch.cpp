@@ -42,29 +42,31 @@ bool FindPreviousSkippingZeroLengthGuard(HWND source, int flags, const char* pat
 
 	const int guardLine = static_cast<int>(::SendMessage(source, SCI_LINEFROMPOSITION, zeroLengthGuardFirst, 0));
 	const int lineStart = static_cast<int>(::SendMessage(source, SCI_POSITIONFROMLINE, guardLine, 0));
-	if (lineStart > rangeEnd)
+	const int lineEnd = static_cast<int>(::SendMessage(source, SCI_GETLINEENDPOSITION, guardLine, 0));
+	const int scanBegin = (std::max)(lineStart, rangeEnd);
+	if (scanBegin < zeroLengthGuardFirst)
 	{
-		int scanStart = lineStart;
+		int scanStart = scanBegin;
 		int selectedStart = -1;
 		int selectedEnd = -1;
-		while (scanStart <= zeroLengthGuardFirst)
+		while (scanStart <= lineEnd)
 		{
 			if (largestForwardRange != nullptr)
-				*largestForwardRange = (std::max)(*largestForwardRange, zeroLengthGuardFirst - scanStart);
-			if (!search(scanStart, zeroLengthGuardFirst))
+				*largestForwardRange = (std::max)(*largestForwardRange, lineEnd - scanStart);
+			if (!search(scanStart, lineEnd))
 				return false;
 			if (result == -1)
 				break;
 			const int foundStart = static_cast<int>(::SendMessage(source, SCI_GETTARGETSTART, 0, 0));
 			const int foundEnd = static_cast<int>(::SendMessage(source, SCI_GETTARGETEND, 0, 0));
-			if (!isProtectedZeroLengthHit())
+			if (!isProtectedZeroLengthHit() && foundStart < zeroLengthGuardFirst && foundEnd <= zeroLengthGuardFirst)
 			{
 				selectedStart = foundStart;
 				selectedEnd = foundEnd;
 			}
 			const int cursor = foundEnd > foundStart ? foundEnd : foundStart;
 			const int next = PositionAfter(source, cursor);
-			if (next == cursor || next > zeroLengthGuardFirst)
+			if (next == cursor || next > lineEnd)
 				break;
 			scanStart = next;
 		}
