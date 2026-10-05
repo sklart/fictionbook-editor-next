@@ -95,3 +95,6 @@ foreach ($key in $registryKeys) {
     if ((Get-RegistrySnapshot $key) -cne $before[$key]) { throw "NSIS scope probe changed registry state: $key" }
 }
 Write-Host 'NSIS current-user, all-users and portable scope behavior passed.'
+# reg.exe returns 1 for an absent key, which is an expected observation above.
+# Do not leak that native status after every contract assertion has succeeded.
+exit 0
