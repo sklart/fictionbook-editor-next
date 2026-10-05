@@ -195,18 +195,21 @@ void CMainFrame::RunPortableStateTestScenario()
 		const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-		const bool lightBefore = viewBarReady();
+		const bool lightBeforeCheckmarks = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(false);
+		const bool lightBefore = viewBarReady() && lightBeforeCheckmarks;
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-		const bool dark = ThemeManager::IsDark() && viewBarReady();
+		const bool darkCheckmarks = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(true);
+		const bool dark = ThemeManager::IsDark() && viewBarReady() && darkCheckmarks;
 		const bool popupPrepared = m_document_tree.m_tree.PrepareViewBarPopupThemeProbe();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-		const bool lightAfter = !ThemeManager::IsDark() && viewBarReady();
+		const bool lightAfterCheckmarks = m_document_tree.m_tree.GetStructureMenuCheckmarkProbe(false);
+		const bool lightAfter = !ThemeManager::IsDark() && viewBarReady() && lightAfterCheckmarks;
 		ThemeManager::SetSelectedTheme(originalTheme);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const bool passed = lightBefore && dark && popupPrepared && lightAfter;
-		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared=%d\nviewbar-light-after=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, lightBefore, dark, popupPrepared, lightAfter, width, measuredWidth, padding, passed ? "pass" : "fail");
+		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared=%d\nviewbar-light-after=%d\nviewbar-checkmarks-light-before=%d\nviewbar-checkmarks-dark=%d\nviewbar-checkmarks-light-after=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, lightBefore, dark, popupPrepared, lightAfter, lightBeforeCheckmarks, darkCheckmarks, lightAfterCheckmarks, width, measuredWidth, padding, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)

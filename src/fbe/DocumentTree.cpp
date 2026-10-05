@@ -20,6 +20,53 @@ const UINT_PTR kDocumentTreeViewBarWindowThemeSubclassId = 0xFBE5;
 static_assert(ID_DOCUMENT_TREE_MODE_STRUCTURE > ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, "Navigation mode commands must not overlap dynamic toolbar commands");
 static_assert(ID_DOCUMENT_TREE_MODE_SCRIPTS <= 0xffffu, "Navigation mode command must fit WM_COMMAND");
 
+HBITMAP CreateDocumentTreeMenuCheckmarkBitmap(UINT dpi, bool checked)
+{
+	const int extent = (std::max)(1, UiMetrics::ScaleForDpi(16, dpi));
+	BITMAPINFO info = {};
+	info.bmiHeader.biSize = sizeof(info.bmiHeader);
+	info.bmiHeader.biWidth = extent;
+	info.bmiHeader.biHeight = -extent;
+	info.bmiHeader.biPlanes = 1;
+	info.bmiHeader.biBitCount = 32;
+	void* bits = NULL;
+	HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+	if(bitmap == NULL || bits == NULL) { if(bitmap != NULL) ::DeleteObject(bitmap); return NULL; }
+	HDC dc = ::CreateCompatibleDC(NULL);
+	if(dc == NULL) { ::DeleteObject(bitmap); return NULL; }
+	HGDIOBJ oldBitmap = ::SelectObject(dc, bitmap);
+	HBRUSH background = ::CreateSolidBrush(ThemeManager::ControlColor());
+	RECT canvas = { 0, 0, extent, extent };
+	::FillRect(dc, &canvas, background);
+	::DeleteObject(background);
+
+	const int inset = (std::max)(1, UiMetrics::ScaleForDpi(3, dpi));
+	RECT box = { inset, inset, extent - inset, extent - inset };
+	HPEN border = ::CreatePen(PS_SOLID, (std::max)(1, UiMetrics::ScaleForDpi(1, dpi)), RGB(205, 205, 205));
+	HGDIOBJ oldPen = ::SelectObject(dc, border);
+	HGDIOBJ oldBrush = ::SelectObject(dc, ::GetStockObject(HOLLOW_BRUSH));
+	::Rectangle(dc, box.left, box.top, box.right, box.bottom);
+	::SelectObject(dc, oldBrush);
+	::SelectObject(dc, oldPen);
+	::DeleteObject(border);
+	if(checked)
+	{
+		HPEN check = ::CreatePen(PS_SOLID, (std::max)(1, UiMetrics::ScaleForDpi(2, dpi)), RGB(255, 255, 255));
+		oldPen = ::SelectObject(dc, check);
+		const int left = box.left + (std::max)(1, UiMetrics::ScaleForDpi(2, dpi));
+		const int middle = box.top + (box.bottom - box.top) * 3 / 5;
+		const int right = box.right - (std::max)(1, UiMetrics::ScaleForDpi(2, dpi));
+		::MoveToEx(dc, left, middle, NULL);
+		::LineTo(dc, box.left + (box.right - box.left) * 9 / 20, box.bottom - (std::max)(1, UiMetrics::ScaleForDpi(3, dpi)));
+		::LineTo(dc, right, box.top + (std::max)(1, UiMetrics::ScaleForDpi(3, dpi)));
+		::SelectObject(dc, oldPen);
+		::DeleteObject(check);
+	}
+	::SelectObject(dc, oldBitmap);
+	::DeleteDC(dc);
+	return bitmap;
+}
+
 bool AddDocumentTreeModeImage(CImageList& images, UINT resourceId)
 {
 	HIMAGELIST source = ::ImageList_LoadImage(_Module.GetResourceInstance(), MAKEINTRESOURCE(resourceId), 16, 1,
@@ -215,6 +262,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 LRESULT CTreeWithToolBar::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	ClearStructureMenuCheckmarks();
 	if(m_view_bar.IsWindow())
 		::RemoveWindowSubclass(m_view_bar, DocumentTreeViewBarWindowThemeProc, kDocumentTreeViewBarWindowThemeSubclassId);
 	::RemoveWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc, kDocumentTreeViewBarThemeSubclassId);
@@ -294,6 +342,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	m_tree.SetTextColor(ThemeManager::TextColor());
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	RefreshStructureMenuCheckmarks();
 	if(m_rebar.IsWindow())
 	{
 		if(!m_rebarThemeStateCaptured)
@@ -467,6 +516,61 @@ void CTreeWithToolBar::FillViewBar()
 	::AppendMenu(m_script_menu, MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
 
 	m_view_bar.AttachMenu(bar);
+	RefreshStructureMenuCheckmarks();
+}
+
+void CTreeWithToolBar::ClearStructureMenuCheckmarks()
+{
+	if(!m_st_menu.IsNull())
+	{
+		const int count = m_st_menu.GetMenuItemCount();
+		for(int index = 0; index < count; ++index)
+		{
+			MENUITEMINFOW info = {};
+			info.cbSize = sizeof(info);
+			info.fMask = MIIM_CHECKMARKS;
+			info.hbmpChecked = NULL;
+			info.hbmpUnchecked = NULL;
+			::SetMenuItemInfoW(m_st_menu, index, TRUE, &info);
+		}
+	}
+	if(m_structureMenuCheckedBitmap != NULL) ::DeleteObject(m_structureMenuCheckedBitmap);
+	if(m_structureMenuUncheckedBitmap != NULL) ::DeleteObject(m_structureMenuUncheckedBitmap);
+	m_structureMenuCheckedBitmap = NULL;
+	m_structureMenuUncheckedBitmap = NULL;
+	m_structureMenuCheckmarkDpi = 0;
+}
+
+void CTreeWithToolBar::RefreshStructureMenuCheckmarks()
+{
+	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
+	if(!dark)
+	{
+		ClearStructureMenuCheckmarks();
+		return;
+	}
+	if(m_st_menu.IsNull()) return;
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	if(m_structureMenuCheckedBitmap != NULL && m_structureMenuUncheckedBitmap != NULL && m_structureMenuCheckmarkDpi == dpi) return;
+	ClearStructureMenuCheckmarks();
+	m_structureMenuCheckedBitmap = CreateDocumentTreeMenuCheckmarkBitmap(dpi, true);
+	m_structureMenuUncheckedBitmap = CreateDocumentTreeMenuCheckmarkBitmap(dpi, false);
+	if(m_structureMenuCheckedBitmap == NULL || m_structureMenuUncheckedBitmap == NULL)
+	{
+		ClearStructureMenuCheckmarks();
+		return;
+	}
+	const int count = m_st_menu.GetMenuItemCount();
+	for(int index = 0; index < count; ++index)
+	{
+		MENUITEMINFOW info = {};
+		info.cbSize = sizeof(info);
+		info.fMask = MIIM_CHECKMARKS;
+		info.hbmpChecked = m_structureMenuCheckedBitmap;
+		info.hbmpUnchecked = m_structureMenuUncheckedBitmap;
+		::SetMenuItemInfoW(m_st_menu, index, TRUE, &info);
+	}
+	m_structureMenuCheckmarkDpi = dpi;
 }
 
 void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
@@ -578,9 +682,27 @@ bool CTreeWithToolBar::GetViewBarElementProbe(CString& text, int& buttonWidth, i
 	return true;
 }
 
+bool CTreeWithToolBar::GetStructureMenuCheckmarkProbe(bool expectCustomBitmaps) const
+{
+	if(m_st_menu.IsNull() || m_st_menu.GetMenuItemCount() == 0) return false;
+	for(int index = 0; index < m_st_menu.GetMenuItemCount(); ++index)
+	{
+		MENUITEMINFOW info = {};
+		info.cbSize = sizeof(info);
+		info.fMask = MIIM_CHECKMARKS;
+		if(!::GetMenuItemInfoW(m_st_menu, index, TRUE, &info)) return false;
+		const bool custom = info.hbmpChecked == m_structureMenuCheckedBitmap &&
+			info.hbmpUnchecked == m_structureMenuUncheckedBitmap && info.hbmpChecked != NULL && info.hbmpUnchecked != NULL;
+		if(custom != expectCustomBitmaps) return false;
+	}
+	return expectCustomBitmaps ? m_structureMenuCheckmarkDpi == UiMetrics::DpiForWindow(m_hWnd) :
+		m_structureMenuCheckedBitmap == NULL && m_structureMenuUncheckedBitmap == NULL;
+}
+
 bool CTreeWithToolBar::PrepareViewBarPopupThemeProbe()
 {
 	if(!m_view_bar.IsWindow()) return false;
+	RefreshStructureMenuCheckmarks();
 	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(m_view_bar, CBRM_GETMENU, 0, 0));
 	const HMENU popup = menu != NULL ? ::GetSubMenu(menu, 0) : NULL;
 	if(popup == NULL) return false;

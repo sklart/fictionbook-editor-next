@@ -22,6 +22,9 @@ private:
 	CCommandBarCtrl m_view_bar;
 	CMenu m_st_menu;
 	CMenu m_script_menu;
+	HBITMAP m_structureMenuCheckedBitmap = NULL;
+	HBITMAP m_structureMenuUncheckedBitmap = NULL;
+	UINT m_structureMenuCheckmarkDpi = 0;
 	std::function<void()> m_modeChanged;
 
 public:
@@ -93,6 +96,7 @@ public:
 	bool IsModeSelectorVisible() const { return m_view_bar.IsWindowVisible() != FALSE; }
 	bool IsStructuralToolbarVisible() const { return m_rebar.IsWindowVisible() != FALSE; }
 	bool GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const;
+	bool GetStructureMenuCheckmarkProbe(bool expectCustomBitmaps) const;
 	// Must run after CCommandBarCtrl finishes rebuilding its native theme state.
 	void FinalizeViewBarTheme();
 	bool PrepareViewBarPopupThemeProbe();
@@ -141,6 +145,8 @@ private:
 	void ApplyViewBarMetrics();
 	void RefreshViewBarElementText(LPCWSTR text);
 	void EnsureViewBarElementTextWidth();
+	void RefreshStructureMenuCheckmarks();
+	void ClearStructureMenuCheckmarks();
 	void UpdateViewBarMode(bool scripts);
 	void SetScriptMode(bool scripts);
 	void ClearTree();

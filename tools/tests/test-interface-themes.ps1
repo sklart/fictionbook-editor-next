@@ -156,7 +156,7 @@ if($toolbarUi -like '*ILD_BLEND50*') { throw 'Command toolbar must not paint a s
 foreach($required in @('FlushMenuThemesFn', 'MAKEINTRESOURCEA(136)', 'ForceDark', 'UsesClassicSurfacePalette', 'SetWindowTheme(window, L" ", L" ")', 'ApplyNativeControlPalette(window);')) {
     if($manager -notlike "*$required*") { throw "Theme manager does not refresh native menu and control colours: $required." }
 }
-foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ShowNativeDocumentTreeViewBarPopup', 'TrackPopupMenuEx', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
+foreach($required in @('OnThemeChanged', 'OnThemePaint', 'PaintDarkTitle', 'OnToolbarCustomDraw', 'DocumentTreeViewBarThemeProc', 'DocumentTreeViewBarWindowThemeProc', 'ShowNativeDocumentTreeViewBarPopup', 'ThemeManager::TrackPopupMenu', 'ThemeManager::WindowColor()', 'ThemeManager::TextColor()', 'ThemeManager::ControlColor()', 'ThemeManager::SeparatorColor()', 'RB_SETBKCOLOR', 'TB_SETCOLORSCHEME')) {
 	if($documentTree -notlike "*$required*") { throw "Document Tree does not refresh $required on theme changes." }
 }
 foreach($required in @('MainMenuBarThemeProc', 'MainMenuBarWindowThemeProc', 'ShowNativeMainMenuPopup', 'ThemeManager::TrackPopupMenu', 'DarkMode_Explorer', 'ApplyMainMenuRebarBandTheme', 'RBBIM_COLORS', 'SetWindowSubclass(m_hWnd, MainMenuBarThemeProc', 'SetWindowSubclass(hWndCmdBar, MainMenuBarWindowThemeProc', 'CDRF_SKIPDEFAULT')) {

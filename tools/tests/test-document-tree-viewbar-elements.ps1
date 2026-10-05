@@ -39,4 +39,19 @@ if($popupStart -lt 0 -or $popupEnd -lt 0) { throw 'Не найден popup Эл�
 $popup = $source.Substring($popupStart, $popupEnd - $popupStart)
 if([string]::IsNullOrWhiteSpace($popup) -or $popup -notmatch 'WM_INITMENUPOPUP' -or $popup -notmatch 'ThemeManager::TrackPopupMenu' -or $popup -match 'TrackPopupMenuEx') { throw 'Popup Элементы должен использовать подготовку command bar и ThemeManager::TrackPopupMenu.' }
 
+$checkmarksStart = $source.IndexOf('void CTreeWithToolBar::RefreshStructureMenuCheckmarks()')
+$checkmarksEnd = $source.IndexOf('void CTreeWithToolBar::RefreshLocalizedMenuCaptions()', $checkmarksStart)
+if($checkmarksStart -lt 0 -or $checkmarksEnd -lt 0) { throw 'Не найдена настройка checkmark-битмапов меню Элементы.' }
+$checkmarks = $source.Substring($checkmarksStart, $checkmarksEnd - $checkmarksStart)
+foreach($required in @('MIIM_CHECKMARKS', 'hbmpChecked', 'hbmpUnchecked', 'ThemeManager::IsDark()', 'ThemeManager::IsHighContrast()', 'UiMetrics::ScaleForDpi(16, dpi)', 'SetMenuItemInfoW(m_st_menu, index, TRUE, &info)')) {
+    if(-not $source.Contains($required)) { throw "Не хватает dark checkmark-контракта: $required" }
+}
+if($checkmarks -notmatch 'if\(!dark\)[\s\S]{0,220}ClearStructureMenuCheckmarks\(\)') { throw 'При возврате в Light должны удаляться custom checkmark-битмапы.' }
+if($source -match 'MFT_OWNERDRAW|MF_OWNERDRAW') { throw 'Меню Элементы не должно переводиться в owner-draw.' }
+if($source -notmatch 'bool CTreeWithToolBar::GetStructureMenuCheckmarkProbe\(bool expectCustomBitmaps\)' -or $source -notmatch 'm_structureMenuCheckmarkDpi == UiMetrics::DpiForWindow\(m_hWnd\)') { throw 'Runtime probe должен проверять custom checkmarks и их DPI.' }
+$runtime = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\testing\RuntimeTestPortableState.inl')
+foreach($required in @('GetStructureMenuCheckmarkProbe(false)', 'GetStructureMenuCheckmarkProbe(true)', 'viewbar-checkmarks-light-before', 'viewbar-checkmarks-dark', 'viewbar-checkmarks-light-after')) {
+    if(-not $runtime.Contains($required)) { throw "Runtime Light-Dark-Light не проверяет checkmarks: $required" }
+}
+
 Write-Host "Document Tree Elements view-bar regression passed (longest=$($longest[0].Language): $($longest[0].Text))."
