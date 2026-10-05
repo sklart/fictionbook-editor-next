@@ -42,6 +42,7 @@ protected:
   HWND					m_main_window;
   bool					m_drag;
   HIMAGELIST			m_himlDrag;
+	HTREEITEM				m_current_item;
   CTreeItem				m_move_from;
   CTreeItem				m_move_to;
 	bool m_script_mode;
@@ -75,7 +76,7 @@ public:
 public:
   DECLARE_WND_SUPERCLASS(_T("Tree"), CTreeViewCtrlEx::GetWndClassName())
 
-  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
+  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_current_item(NULL), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
     
   BOOL PreTranslateMessage(MSG* pMsg);
   
@@ -105,6 +106,7 @@ public:
 
 	REFLECTED_NOTIFY_CODE_HANDLER(TVN_BEGINDRAG, OnBegindrag)
     REFLECTED_NOTIFY_CODE_HANDLER(TVN_DELETEITEM, OnDeleteItem)
+	REFLECTED_NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
    // REFLECTED_NOTIFY_CODE_HANDLER(NM_RCLICK, OnRClick)
   END_MSG_MAP()
     
@@ -129,6 +131,7 @@ public:
   LRESULT OnLeftOne(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);  
   LRESULT OnLeftWithChildren(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
   LRESULT OnMerge(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnCustomDraw(int /* unused: idCtrl */, LPNMHDR header, BOOL& bHandled);
 
   
   LRESULT OnDeleteItem(int /* unused: idCtrl */, LPNMHDR pnmh, BOOL& /* unused: bHandled */) {
@@ -167,6 +170,7 @@ public:
 	int ScriptTreeImage(HTREEITEM item) const;
 	bool GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& indent, bool& legacyExpanders) const;
 	bool IsStructuralDragActive() const { return m_drag; }
+	HTREEITEM CurrentStructureItem() const { return m_current_item; }
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 	bool ExecuteScriptPopupCommand(UINT command);
 

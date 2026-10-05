@@ -10,6 +10,7 @@
 #include "TreeView.h"
 #include "RuntimeLocalization.h"
 #include "UiMetrics.h"
+#include "ThemeManager.h"
 
 extern CElementDescMnr _EDMnr;
 
@@ -172,13 +173,26 @@ void  CTreeView::HighlightItemAtPos(MSHTML::IHTMLElement *p) {
   if (ii==m_last_lookup_item)
     return;
   m_last_lookup_item=ii;
-  ClearSelection();
- 
-  if (ii!=TVI_ROOT) {
-    SelectItem(ii);	
-   // EnsureVisible(ii);
-  } else
-    SelectItem(0);
+  const HTREEITEM previous = m_current_item;
+  m_current_item = ii != TVI_ROOT ? static_cast<HTREEITEM>(ii) : NULL;
+  if(previous) ::InvalidateRect(m_hWnd, NULL, FALSE);
+  if(m_current_item) ::InvalidateRect(m_hWnd, NULL, FALSE);
+}
+
+LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
+{
+	if(header == NULL || header->code != NM_CUSTOMDRAW) { bHandled = FALSE; return CDRF_DODEFAULT; }
+	LPNMTVCUSTOMDRAW draw = reinterpret_cast<LPNMTVCUSTOMDRAW>(header);
+	if(draw->nmcd.dwDrawStage != CDDS_ITEMPREPAINT || ThemeManager::IsHighContrast())
+		return CDRF_DODEFAULT;
+	if(reinterpret_cast<HTREEITEM>(draw->nmcd.dwItemSpec) == m_current_item &&
+		!(GetItemState(m_current_item, TVIS_SELECTED) & TVIS_SELECTED))
+	{
+		draw->clrTextBk = ThemeManager::HoverColor();
+		draw->clrText = ThemeManager::TextColor();
+		return CDRF_NEWFONT;
+	}
+	return CDRF_DODEFAULT;
 }
 
 
@@ -336,6 +350,7 @@ void  CTreeView::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& view) {
   TreeNode  *root=GetDocTree(view);
   if (!root) {
 		m_source_index.clear();
+		m_current_item = NULL;
     SetRedraw(FALSE);
     DeleteAllItems();
     SetRedraw(TRUE);
@@ -543,6 +558,19 @@ LRESULT CTreeView::OnChar(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unus
 
 LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& bHandled)
 {  
+	if(!m_script_mode && wParam == 'A' && (GetKeyState(VK_CONTROL) & 0x8000))
+	{
+		ClearSelection();
+		HTREEITEM first = GetRootItem();
+		for(HTREEITEM item = first; item != NULL; item = GetNextVisibleItem(item))
+			SetItemState(item, TVIS_SELECTED, TVIS_SELECTED);
+		if(first != NULL) SelectItem(first);
+		for(HTREEITEM item = first; item != NULL; item = GetNextVisibleItem(item))
+			SetItemState(item, TVIS_SELECTED, TVIS_SELECTED);
+		m_hItemFirstSel = first;
+		bHandled = TRUE;
+		return 0;
+	}
 	if(m_script_mode && wParam == VK_RETURN)
 	{
 		const ScriptDescriptor* script = SelectedScript();
@@ -872,6 +900,7 @@ void CTreeView::ApplyModeAppearance()
 
 void CTreeView::RebuildScriptTree()
 {
+	m_current_item = NULL;
 	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear();
 	// The pane caption already identifies Scripts.  Keep catalog descriptors at
 	// TVI_ROOT so the tree does not add a redundant synthetic parent node.
@@ -1216,6 +1245,12 @@ bool CTreeView::SetMultiSelection(UINT nFlags, CPoint point)
 				GetItemState(hItem, TVIS_SELECTED) & TVIS_SELECTED ?
 							0 : TVIS_SELECTED;
 
+			// The native caret is single-select.  Keep the complete logical
+			// selection before moving it and restore every selected item below.
+			std::vector<HTREEITEM> selectedItems;
+			for(CTreeItem selected(GetRootItem(), this); !selected.IsNull(); selected = GetNextItem(selected))
+				if(GetItemState(selected, TVIS_SELECTED) & TVIS_SELECTED) selectedItems.push_back(selected);
+
 			// Get old selected (focus) item and state
 			HTREEITEM hItemOld = GetSelectedItem();
 			UINT uOldSelState  = hItemOld ?
@@ -1232,9 +1267,10 @@ bool CTreeView::SetMultiSelection(UINT nFlags, CPoint point)
 			SelectItem(hItem);
 			SetItemState(hItem, uNewSelState,  TVIS_SELECTED);
 
-			// Restore state of old selected item
-			if (hItemOld && hItemOld != hItem)
-				SetItemState(hItemOld, uOldSelState, TVIS_SELECTED);
+			// Restore every pre-existing selection, except an item toggled off.
+			for(size_t index = 0; index < selectedItems.size(); ++index)
+				if(selectedItems[index] != hItem || uNewSelState != 0)
+					SetItemState(selectedItems[index], TVIS_SELECTED, TVIS_SELECTED);
 
 			m_hItemFirstSel = NULL;
 
