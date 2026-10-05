@@ -46,6 +46,8 @@ void DispatchMessages(CMessageLoop& messageLoop)
     }
 }
 
+void DispatchUntilIdle(CMessageLoop& messageLoop);
+
 bool Check(bool value)
 {
     return value;
@@ -95,9 +97,9 @@ LRESULT CALLBACK OutsideWindowProc(HWND window, UINT message, WPARAM wParam, LPA
     return ::DefWindowProc(window, message, wParam, lParam);
 }
 
-bool ShowPopup(HWND owner, HWND anchor, int& inserts, int& fullHelp, HWND& popupWindow)
+bool ShowPopup(HWND owner, HWND anchor, int& inserts, int& fullHelp, HWND& popupWindow, RegexQuickReferencePopup*& popup)
 {
-    RegexQuickReferencePopup* popup = new RegexQuickReferencePopup();
+    popup = new RegexQuickReferencePopup();
     if (!popup->Show(owner, anchor, FbeSearchPresets::SearchUiContext::Design, FbeSearchPresets::RegexQuickReferenceMode::Search,
         [&inserts](const FbeSearchPresets::RegexQuickReferenceEntry&) { ++inserts; }, [&fullHelp]() { ++fullHelp; })) return false;
     popupWindow = popup->m_hWnd;
@@ -113,6 +115,22 @@ bool ShowPopup(HWND owner, HWND anchor, int& inserts, int& fullHelp, HWND& popup
         !Check(CString(captionText) == L"Design — Find") || !Check(CString(fullHelpText) == L"Full help...") ||
         !Check(::SendMessage(left, LB_GETCOUNT, 0, 0) > 0)) return false;
     return true;
+}
+
+void DispatchSyntheticPointerMessage(RegexQuickReferencePopup& popup, CMessageLoop& messageLoop,
+    HWND target, UINT message, const POINT& point)
+{
+    // Posted mouse moves depend on the active desktop's pointer state and can
+    // be coalesced before an ATL message filter sees them. Exercise the same
+    // production filter directly with the actual list-relative coordinates;
+    // keyboard/focus scenarios below still traverse the normal queue.
+    MSG input = {};
+    input.hwnd = target;
+    input.message = message;
+    input.lParam = MAKELPARAM(point.x, point.y);
+    if (!popup.PreTranslateMessage(&input))
+        ::SendMessage(target, message, 0, input.lParam);
+    DispatchUntilIdle(messageLoop);
 }
 
 int FailCheckpoint(int checkpoint, const char* message)
@@ -164,18 +182,19 @@ int TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     int inserts = 0;
     int fullHelp = 0;
     HWND popupWindow = NULL;
+    RegexQuickReferencePopup* popup = NULL;
 
-    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return FailCheckpoint(10, "create-popup-for-Escape");
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow, popup)) return FailCheckpoint(10, "create-popup-for-Escape");
     ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_ESCAPE, 0);
     DispatchUntilIdle(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 0 || fullHelp != 0) return FailCheckpoint(11, "Escape did not close popup");
 
-    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return FailCheckpoint(12, "create-popup-for-Enter");
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow, popup)) return FailCheckpoint(12, "create-popup-for-Enter");
     ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_RETURN, 0);
     DispatchUntilIdle(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 1 || fullHelp != 0) return FailCheckpoint(13, "Enter did not insert and close popup");
 
-    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return FailCheckpoint(14, "create-popup-for-pointer-and-focus");
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow, popup)) return FailCheckpoint(14, "create-popup-for-pointer-and-focus");
     const HWND left = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT);
     const HWND right = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_RIGHT);
     // Verify the focus selected by RegexQuickReferencePopup itself before any interaction.
@@ -188,32 +207,28 @@ int TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     RECT entryRect = {};
     if (!GetItemCenter(left, headerRow, headerCenter, headerRect) || !GetItemCenter(left, entryRow, entryCenter, entryRect))
         return FailCheckpoint(16, "could not get list item rectangles");
-    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(entryCenter.x, entryCenter.y));
-    DispatchUntilIdle(messageLoop);
+    DispatchSyntheticPointerMessage(*popup, messageLoop, left, WM_MOUSEMOVE, entryCenter);
     if (::SendMessage(left, LB_GETCURSEL, 0, 0) != entryRow || ::SendMessage(right, LB_GETCURSEL, 0, 0) != LB_ERR || inserts != 1)
         return FailHoverCheckpoint(left, entryRow, entryCenter, entryRect);
-    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(headerCenter.x, headerCenter.y));
-    DispatchUntilIdle(messageLoop);
+    DispatchSyntheticPointerMessage(*popup, messageLoop, left, WM_LBUTTONUP, headerCenter);
     if (!::IsWindow(popupWindow) || inserts != 1) return FailCheckpoint(17, "category/header click inserted or closed popup");
-    ::PostMessage(left, WM_MOUSEMOVE, 0, MAKELPARAM(entryCenter.x, entryCenter.y));
-    DispatchUntilIdle(messageLoop);
+    DispatchSyntheticPointerMessage(*popup, messageLoop, left, WM_MOUSEMOVE, entryCenter);
     ::PostMessage(left, WM_KEYDOWN, VK_RIGHT, 0);
     DispatchUntilIdle(messageLoop);
     if (::GetFocus() != right) return FailFocusCheckpoint(18, "VK_RIGHT did not move focus to right list", right, popupWindow, left, right, owner);
     ::PostMessage(right, WM_KEYDOWN, VK_LEFT, 0);
     DispatchUntilIdle(messageLoop);
     if (::GetFocus() != left) return FailFocusCheckpoint(19, "VK_LEFT did not move focus to left list", left, popupWindow, left, right, owner);
-    ::PostMessage(left, WM_LBUTTONUP, 0, MAKELPARAM(entryCenter.x, entryCenter.y));
-    DispatchUntilIdle(messageLoop);
+    DispatchSyntheticPointerMessage(*popup, messageLoop, left, WM_LBUTTONUP, entryCenter);
     if (::IsWindow(popupWindow) || inserts != 2) return FailCheckpoint(20, "selected regexp was not inserted");
 
-    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return FailCheckpoint(21, "create-popup-for-Full-help");
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow, popup)) return FailCheckpoint(21, "create-popup-for-Full-help");
     HWND fullHelpButton = ::GetDlgItem(popupWindow, IDC_REGEX_QUICK_FULL_HELP);
     ::PostMessage(popupWindow, WM_COMMAND, MAKEWPARAM(IDC_REGEX_QUICK_FULL_HELP, BN_CLICKED), reinterpret_cast<LPARAM>(fullHelpButton));
     DispatchUntilIdle(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 2 || fullHelp != 1) return FailCheckpoint(22, "Full help button did not close popup");
 
-    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) return FailCheckpoint(23, "create-popup-for-F1");
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow, popup)) return FailCheckpoint(23, "create-popup-for-F1");
     ::PostMessage(::GetDlgItem(popupWindow, IDC_REGEX_QUICK_LEFT), WM_KEYDOWN, VK_F1, 0);
     DispatchUntilIdle(messageLoop);
     if (::IsWindow(popupWindow) || inserts != 2 || fullHelp != 2) return FailCheckpoint(24, "F1 did not open full help");
@@ -227,7 +242,7 @@ int TestPopupMessageLoop(HWND owner, HWND anchor, CMessageLoop& messageLoop)
     HWND outside = ::CreateWindowEx(0, windowClass.lpszClassName, L"outside", WS_CHILD | WS_VISIBLE, 60, 60, 80, 40, owner, NULL, _Module.GetModuleInstance(), NULL);
     if (!outside) return FailCheckpoint(26, "create outside window");
     ::SetWindowLongPtr(outside, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&outsideClicks));
-    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow)) { ::DestroyWindow(outside); return FailCheckpoint(27, "create-popup-for-outside-click"); }
+    if (!ShowPopup(owner, anchor, inserts, fullHelp, popupWindow, popup)) { ::DestroyWindow(outside); return FailCheckpoint(27, "create-popup-for-outside-click"); }
     ::PostMessage(outside, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(4, 4));
     DispatchUntilIdle(messageLoop);
     const bool outsideResult = !::IsWindow(popupWindow) && outsideClicks == 1;
