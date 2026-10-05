@@ -144,7 +144,10 @@ static int VerifyEmptyParagraphRegexAnchors()
 	}
 	query.Text = L"^$";
 	if (!coordinator.Rebuild(document, 130, query) || coordinator.GetResults().GetCount() != 2)
+	{
+		fprintf(stderr, "FAIL empty paragraph anchors: expected 2 ^$ matches, got %zu\n", coordinator.GetResults().GetCount());
 		return 133;
+	}
 	MSHTML::IHTMLTxtRangePtr firstEmpty;
 	if (!coordinator.CreateResultRange(document, 130, 0, firstEmpty) || !firstEmpty)
 		return 134;

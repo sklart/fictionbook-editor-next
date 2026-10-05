@@ -164,6 +164,7 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 		return builder.Build();
 	std::uint64_t nextSourceId = 1;
 	bool hasPreviousParagraph = false;
+	bool lastParagraphWasEmpty = false;
 	for (long index = 0; index < all->length; ++index)
 	{
 		MSHTML::IHTMLElementPtr element(all->item(index));
@@ -179,6 +180,7 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 		if (hasPreviousParagraph)
 			builder.AppendUnmapped(L"\n");
 		hasPreviousParagraph = true;
+		lastParagraphWasEmpty = paragraphText.IsEmpty();
 
 		const std::uint64_t sourceId = nextSourceId++;
 		m_sources.push_back({ sourceId, element });
@@ -189,6 +191,13 @@ AU::Search::SearchTextSnapshot SearchDocumentAdapter::BuildSnapshot(
 			std::wstring(static_cast<LPCWSTR>(paragraphText), paragraphText.GetLength()),
 			{ sourceId, 0 });
 	}
+
+	// A final empty paragraph needs a following text boundary: otherwise its
+	// zero-length source anchor aliases the final separator and ^$ can expose
+	// only the first empty paragraph. The separator is intentionally unmapped;
+	// the anchor immediately before it resolves to that final paragraph.
+	if (lastParagraphWasEmpty)
+		builder.AppendUnmapped(L"\n");
 
 	return builder.Build();
 }

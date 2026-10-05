@@ -51,6 +51,22 @@ bool SearchTextSnapshot::TryGetDocumentPosition(
 			return true;
 		}
 	}
+	// The synthetic separator after a terminal empty paragraph represents the
+	// boundary after that paragraph. PCRE2 can report `$` at its end; resolve
+	// it back to the same explicit zero-length source anchor.
+	if (searchOffset == Text.size())
+	{
+		for (std::size_t index = Segments.size(); index > 0; --index)
+		{
+			const SearchTextSegment& segment = Segments[index - 1];
+			if (segment.Length == 0 && segment.SearchOffset + 1 == searchOffset)
+			{
+				position->SourceId = segment.DocumentStart.SourceId;
+				position->SourceOffset = segment.DocumentStart.SourceOffset;
+				return true;
+			}
+		}
+	}
 	return false;
 }
 
