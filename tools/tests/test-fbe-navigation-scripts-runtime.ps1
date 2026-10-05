@@ -26,20 +26,28 @@ try {
 	Copy-Item -LiteralPath (Join-Path $repoRoot 'runtime\Scripts\01_Регистр.ico') -Destination (Join-Path $scripts 'FolderA.ico')
     $document = Join-Path $dataDirectory 'navigation-runtime.fb2'
     [IO.File]::WriteAllText($document, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Navigation runtime</book-title><lang>ru</lang></title-info></description><body><section><title><p>Test</p></title><p>Test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
-    $savedMode = $env:FBE_NEXT_TEST_MODE; $savedScenario = $env:FBE_NEXT_TEST_SCENARIO
+	$savedMode = $env:FBE_NEXT_TEST_MODE; $savedScenario = $env:FBE_NEXT_TEST_SCENARIO; $savedLocale = $env:FBE_NEXT_UI_LOCALE
     try {
-        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'navigation-scripts-runtime'
-        $process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts runtime test timed out.' }
-        $report = Join-Path $dataDirectory 'Diagnostics\portable-state-report.txt'
-        $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
-        if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^script-image-size=20$' -or $text -notmatch '(?m)^script-legacy-expanders=1$' -or $text -notmatch '(?m)^script-metrics=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts runtime failed:`n$text" }
+		$report = Join-Path $dataDirectory 'Diagnostics\portable-state-report.txt'
+		$env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'navigation-scripts-runtime'; $env:FBE_NEXT_UI_LOCALE = 'en-US'
+		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
+		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts runtime test timed out.' }
+		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^script-image-size=20$' -or $text -notmatch '(?m)^script-legacy-expanders=1$' -or $text -notmatch '(?m)^script-metrics=1$' -or $text -notmatch '(?m)^viewbar-elements=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts runtime failed:`n$text" }
+		foreach($locale in 'ru-RU','en-US','es-ES') {
+			$env:FBE_NEXT_TEST_SCENARIO = 'navigation-viewbar-elements-runtime'; $env:FBE_NEXT_UI_LOCALE = $locale
+			$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
+			if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "Document Tree view-bar runtime test timed out for $locale." }
+			$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+			if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-viewbar-elements$' -or $text -notmatch '(?m)^viewbar-elements=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Document Tree view-bar runtime failed for ${locale}:`n$text" }
+		}
         $env:FBE_NEXT_TEST_SCENARIO = 'navigation-scripts-reload-runtime'
+		$env:FBE_NEXT_UI_LOCALE = 'en-US'
         $process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts reload runtime test timed out.' }
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
         if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-scripts-reload$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts reload runtime failed:`n$text" }
-    } finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario }
+	} finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario; $env:FBE_NEXT_UI_LOCALE = $savedLocale }
     Write-Host 'Navigation scripts runtime regression passed.'
 } finally {
     if($hadIni) { [IO.File]::WriteAllText($portableIni, $oldIni, [Text.UTF8Encoding]::new($false)) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }

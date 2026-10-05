@@ -71,11 +71,12 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptToolbarRollbackPartial = IsFbeTestScenario(L"script-toolbar-rollback-partial-runtime");
 	const bool scriptToolbarRuntimeSize = IsFbeTestScenario(L"script-toolbar-runtime-size");
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
+	const bool navigationViewBarElementsRuntime = IsFbeTestScenario(L"navigation-viewbar-elements-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -185,6 +186,15 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool restored = initialized && modeRestored && treeRestored && uidRestored;
 		CStringA report; report.Format("phase=navigation-scripts-reload\ninitialized=%d\nmode=%d\ntree=%d\nuid=%d\nrestored=%d\nresult=%s\n", initialized, modeRestored, treeRestored, uidRestored, restored, restored ? "pass" : "fail"); WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
+	if(navigationViewBarElementsRuntime)
+	{
+		m_document_tree.m_tree.RefreshLocalizedMenuCaptions();
+		CString text; int width = 0, measuredWidth = 0, padding = 0;
+		const CString expected = FbeLoadRuntimeString(IDS_DOCTREE_MENU_ELEMENTS);
+		const bool passed = m_document_tree.m_tree.GetViewBarElementProbe(text, width, measuredWidth, padding) && text == expected && width >= measuredWidth + padding;
+		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, width, measuredWidth, padding, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
 	if(navigationScriptsRuntime)
 	{
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
@@ -200,6 +210,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		else if(_Settings.DocumentTreeScripts()) { m_document_tree.m_tree.ToggleScriptMode(); m_document_tree.m_tree.ToggleScriptMode(); }
 		RECT title = {}, modeButton = {}, closeButton = {}; int initialImage = -1; UINT initialCommand = 0;
 		const bool modeButtonReady = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(title, modeButton, closeButton, initialImage, initialCommand) && initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
+		CString viewBarText; int viewBarWidth = 0, viewBarMeasuredWidth = 0, viewBarPadding = 0;
+		const CString expectedViewBarText = FbeLoadRuntimeString(IDS_DOCTREE_MENU_ELEMENTS);
+		const bool viewBarElements = m_document_tree.m_tree.GetViewBarElementProbe(viewBarText, viewBarWidth, viewBarMeasuredWidth, viewBarPadding) &&
+			viewBarText == expectedViewBarText && viewBarWidth >= viewBarMeasuredWidth + viewBarPadding;
 		m_document_tree.m_tree.ToggleScriptMode();
 		RECT scriptsTitle = {}, scriptsButton = {}, scriptsClose = {}; int scriptsImage = -1; UINT scriptsCommand = 0;
 		const bool switchedScripts = tree.IsScriptMode() && _Settings.DocumentTreeScripts() && !m_document_tree.m_tree.IsModeSelectorVisible() && !m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(scriptsTitle, scriptsButton, scriptsClose, scriptsImage, scriptsCommand) && scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE;
@@ -263,8 +277,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool structuralDragWorks = structuralNode != NULL && !structuralDragHandled && tree.IsStructuralDragActive(); tree.SetScriptMode(true);
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
-		CStringA report; const bool passed = initialized && modeButtonReady && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && unorderedHierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive && structuralDragWorks;
-		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nhierarchy=%d\nvisual-mapping=%d\nscript-image-size=%d\nscript-item-height=%d\nscript-indent=%d\nscript-legacy-expanders=%d\nscript-metrics=%d\nunordered-hierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, hierarchy, visualMapping, scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders, scriptMetrics, unorderedHierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
+		CStringA report; const bool passed = initialized && modeButtonReady && viewBarElements && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && unorderedHierarchy && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && uidPersisted && targetLive && structuralDragWorks;
+		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nhierarchy=%d\nvisual-mapping=%d\nscript-image-size=%d\nscript-item-height=%d\nscript-indent=%d\nscript-legacy-expanders=%d\nscript-metrics=%d\nunordered-hierarchy=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, viewBarElements, viewBarWidth, viewBarMeasuredWidth, viewBarPadding, hierarchy, visualMapping, scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders, scriptMetrics, unorderedHierarchy, imagesStable, IsSourceActive(), childCommand, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)

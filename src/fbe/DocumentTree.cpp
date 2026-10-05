@@ -478,6 +478,10 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 		bar.ModifyMenu(0, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_st_menu, elsMenuItem);
 		bar.ModifyMenu(1, MF_BYPOSITION | MF_POPUP | MF_STRING, (HMENU)m_script_menu, scriptsMenuItem);
 		m_script_menu.ModifyMenu(IDC_TREE_CLEAR_ALL, MF_BYCOMMAND | MF_STRING, IDC_TREE_CLEAR_ALL, cleanupMenuItem);
+		// CCommandBarCtrl does not copy a changed menu caption back into an
+		// already-created toolbar button. Keep the visible selector in sync
+		// before measuring it for the current runtime language.
+		RefreshViewBarElementText(elsMenuItem);
 		m_view_bar.Invalidate();
 	}
 	EnsureViewBarElementTextWidth();
@@ -491,13 +495,27 @@ void CTreeWithToolBar::ApplyViewBarMetrics()
 	EnsureViewBarElementTextWidth();
 }
 
+void CTreeWithToolBar::RefreshViewBarElementText(LPCWSTR text)
+{
+	if(!m_view_bar.IsWindow() || text == NULL) return;
+	TBBUTTONINFOW writeButton = {};
+	writeButton.cbSize = sizeof(writeButton);
+	writeButton.dwMask = TBIF_TEXT | TBIF_BYINDEX;
+	writeButton.pszText = const_cast<LPWSTR>(text);
+	writeButton.cchText = static_cast<int>(wcslen(text));
+	::SendMessage(m_view_bar, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&writeButton));
+}
+
 void CTreeWithToolBar::EnsureViewBarElementTextWidth()
 {
 	if(!m_view_bar.IsWindow()) return;
 	wchar_t text[MAX_LOAD_STRING + 1] = {};
-	TBBUTTONINFOW button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX;
-	button.pszText = text; button.cchText = _countof(text);
-	const LRESULT result = ::SendMessage(m_view_bar, TB_GETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button));
+	TBBUTTONINFOW readButton = {};
+	readButton.cbSize = sizeof(readButton);
+	readButton.dwMask = TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX;
+	readButton.pszText = text;
+	readButton.cchText = _countof(text);
+	const LRESULT result = ::SendMessage(m_view_bar, TB_GETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&readButton));
 	if(result == -1 || text[0] == L'\0') return;
 	HDC dc = ::GetDC(m_view_bar); if(dc == NULL) return;
 	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_view_bar, WM_GETFONT, 0, 0));
@@ -506,10 +524,40 @@ void CTreeWithToolBar::EnsureViewBarElementTextWidth()
 	if(oldFont != NULL) ::SelectObject(dc, oldFont);
 	::ReleaseDC(m_view_bar, dc);
 	const int desiredWidth = extent.cx + UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_view_bar));
-	if(button.cx >= desiredWidth) return;
-	button.cx = static_cast<WORD>((std::min)(desiredWidth, 0xffff));
-	button.pszText = NULL; button.cchText = 0;
-	::SendMessage(m_view_bar, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button));
+	if(readButton.cx == desiredWidth) return;
+	// Keep the write mask deliberately separate from the read mask. Passing
+	// TBIF_TEXT with a null pszText clears the CommandBar caption on some
+	// common-controls versions, leaving the selector blank or as "V..".
+	TBBUTTONINFOW writeButton = {};
+	writeButton.cbSize = sizeof(writeButton);
+	writeButton.dwMask = TBIF_SIZE | TBIF_BYINDEX;
+	writeButton.cx = static_cast<WORD>((std::min)(desiredWidth, 0xffff));
+	::SendMessage(m_view_bar, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&writeButton));
+}
+
+bool CTreeWithToolBar::GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const
+{
+	text.Empty(); buttonWidth = 0; measuredTextWidth = 0; padding = 0;
+	if(!m_view_bar.IsWindow()) return false;
+	wchar_t buffer[MAX_LOAD_STRING + 1] = {};
+	TBBUTTONINFOW button = {};
+	button.cbSize = sizeof(button);
+	button.dwMask = TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX;
+	button.pszText = buffer;
+	button.cchText = _countof(buffer);
+	if(::SendMessage(m_view_bar, TB_GETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&button)) == -1 || buffer[0] == L'\0') return false;
+	HDC dc = ::GetDC(m_view_bar); if(dc == NULL) return false;
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(m_view_bar, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font != NULL ? ::SelectObject(dc, font) : NULL;
+	SIZE extent = {}; const BOOL measured = ::GetTextExtentPoint32W(dc, buffer, static_cast<int>(wcslen(buffer)), &extent);
+	if(oldFont != NULL) ::SelectObject(dc, oldFont);
+	::ReleaseDC(m_view_bar, dc);
+	if(!measured) return false;
+	text = buffer;
+	buttonWidth = button.cx;
+	measuredTextWidth = extent.cx;
+	padding = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_view_bar));
+	return true;
 }
 
 void CTreeWithToolBar::UpdateViewBarMode(bool scripts)

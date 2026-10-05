@@ -92,6 +92,7 @@ public:
 	void ToggleScriptMode() { SetScriptMode(!m_tree.IsScriptMode()); }
 	bool IsModeSelectorVisible() const { return m_view_bar.IsWindowVisible() != FALSE; }
 	bool IsStructuralToolbarVisible() const { return m_rebar.IsWindowVisible() != FALSE; }
+	bool GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const;
 	void RefreshModeControls();
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
@@ -135,6 +136,7 @@ private:
 	BOOL ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0) throw();
 	void FillViewBar();
 	void ApplyViewBarMetrics();
+	void RefreshViewBarElementText(LPCWSTR text);
 	void EnsureViewBarElementTextWidth();
 	void UpdateViewBarMode(bool scripts);
 	void SetScriptMode(bool scripts);
