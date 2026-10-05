@@ -877,15 +877,53 @@
 			const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
 			return lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && drawPinControl(panel);
 		};
+		auto verifyLongPreviewLayout = [](FRBase* panel, HWND tree) -> bool
+		{
+			if (!panel || !tree || panel->m_panelPresets.empty()) return false;
+			FbeSearchPresets::SearchPreset fixture(panel->m_panelPresets.front());
+			fixture.id = L"runtime.long-regexp";
+			fixture.name = L"Runtime long regular expression";
+			fixture.description = L"Runtime-only layout fixture for a deliberately long regular expression.";
+			fixture.findText = L"(?<!\\p{L})(?=[\\p{L}]*[A-Za-z])(?=[\\p{L}]*[А-ЯЁа-яё])\\p{L}+(?!\\p{L})|(?<!\\p{L})(?=[\\p{L}]*[0-9])(?=[\\p{L}]*[А-ЯЁа-яё])\\p{L}+(?!\\p{L})|(?<!\\p{L})(?=[\\p{L}]*[A-Za-z])(?=[\\p{L}]*[0-9])\\p{L}+(?!\\p{L})";
+			fixture.hasReplacement = panel->IsReplaceDialog();
+			fixture.replacementText = fixture.hasReplacement ? L"X" : L"";
+			const LPARAM fixtureIndex = static_cast<LPARAM>(panel->m_panelPresets.size());
+			panel->m_panelPresets.push_back(fixture);
+			HTREEITEM builtIn = TreeView_GetRoot(tree);
+			HTREEITEM category = builtIn ? TreeView_GetChild(tree, builtIn) : NULL;
+			if (!category) return false;
+			TreeView_Expand(tree, builtIn, TVE_EXPAND);
+			TreeView_Expand(tree, category, TVE_EXPAND);
+			const HTREEITEM item = FRBase::InsertPresetTreeItem(tree, category, fixture.name, fixtureIndex);
+			if (!item || !TreeView_SelectItem(tree, item)) return false;
+			for (int pump = 0; pump < 4; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
+			const HWND dialog = panel->DialogWindow();
+			const HWND preview = panel->FRBase::GetDlgItem(IDC_FIND_PRESET_DESCRIPTION);
+			RECT client = {}, window = {}, previewRect = {};
+			if (!dialog || !preview || !::GetClientRect(dialog, &client) || !::GetWindowRect(dialog, &window) || !::GetWindowRect(preview, &previewRect)) return false;
+			const HMONITOR monitor = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+			MONITORINFO monitorInfo = {}; monitorInfo.cbSize = sizeof(monitorInfo);
+			if (!monitor || !::GetMonitorInfo(monitor, &monitorInfo) || window.left < monitorInfo.rcWork.left || window.top < monitorInfo.rcWork.top || window.right > monitorInfo.rcWork.right || window.bottom > monitorInfo.rcWork.bottom) return false;
+			::MapWindowPoints(NULL, dialog, reinterpret_cast<LPPOINT>(&previewRect), 2);
+			const int actions[] = { IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_SAVE, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE };
+			for (size_t index = 0; index < _countof(actions); ++index)
+			{
+				HWND action = panel->FRBase::GetDlgItem(actions[index]); RECT actionRect = {}, overlap = {};
+				if (!action || !::IsWindowVisible(action) || !::GetWindowRect(action, &actionRect)) return false;
+				::MapWindowPoints(NULL, dialog, reinterpret_cast<LPPOINT>(&actionRect), 2);
+				if (actionRect.left < client.left || actionRect.top < client.top || actionRect.right > client.right || actionRect.bottom > client.bottom || ::IntersectRect(&overlap, &actionRect, &previewRect)) return false;
+			}
+			return ::GetWindowTextLength(preview) >= 250;
+		};
 		BOOL handled = FALSE;
 		m_doc->m_body.OnFind(0, ID_EDIT_FIND, m_doc->m_body, handled);
 		CFindDlgBase* find = m_doc->m_body.m_find_dlg; if (find) find->SetPresetPanelVisible(true);
 		HWND findTree = find ? find->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
-		const bool findOk = find && ::IsWindow(find->DialogWindow()) && findTree && hasRoots(findTree) && hasPreset(findTree) && verifyTreeContract(find, findTree) && preservesCategoryState(find, findTree) && verifyPins(find);
+		const bool findOk = find && ::IsWindow(find->DialogWindow()) && findTree && hasRoots(findTree) && hasPreset(findTree) && verifyTreeContract(find, findTree) && preservesCategoryState(find, findTree) && verifyPins(find) && verifyLongPreviewLayout(find, findTree);
 		m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
 		CReplaceDlgBase* replace = m_doc->m_body.m_replace_dlg; if (replace) replace->SetPresetPanelVisible(true);
 		HWND replaceTree = replace ? replace->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
-		const bool replaceOk = replace && ::IsWindow(replace->DialogWindow()) && replaceTree && hasRoots(replaceTree) && hasPreset(replaceTree) && verifyTreeContract(replace, replaceTree) && preservesCategoryState(replace, replaceTree) && verifyPins(replace);
+		const bool replaceOk = replace && ::IsWindow(replace->DialogWindow()) && replaceTree && hasRoots(replaceTree) && hasPreset(replaceTree) && verifyTreeContract(replace, replaceTree) && preservesCategoryState(replace, replaceTree) && verifyPins(replace) && verifyLongPreviewLayout(replace, replaceTree);
 		for (int pump = 0; pump < 8; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
 		CStringA report; report.Format("find=%d\r\nreplace=%d\r\n", findOk ? 1 : 0, replaceOk ? 1 : 0);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();

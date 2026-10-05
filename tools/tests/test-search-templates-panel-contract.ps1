@@ -3,9 +3,11 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SearchReplace.h')
+$runtime = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\testing\RuntimeTestEditorAndExport.inl')
 $resources = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.rc')
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 function Require([string]$pattern, [string]$description) { if ($source -notmatch $pattern) { throw "Missing $description." } }
+function RequireRuntime([string]$pattern, [string]$description) { if ($runtime -notmatch $pattern) { throw "Missing $description." } }
 Require 'OnTogglePresets[\s\S]*?SetPresetPanelVisible\(!collapse\)[\s\S]*?collapse && _Settings\.SearchTemplatesPanelPinned\(\)[\s\S]*?SetSearchTemplatesPanelPinned\(false, true\)' 'manual collapse pin reset'
 Require 'RefreshPresetPanel\(\);[\s\S]*?SetWindowPos[\s\S]*?ResizePresetPanelForCurrentSelection\(\);[\s\S]*?ShowWindow' 'template panel populates and lays out before becoming visible'
 Require 'TVM_SETREDRAW|WM_SETREDRAW' 'template tree redraw is suspended during population'
@@ -59,6 +61,9 @@ Require 'const int desiredHeight = GetPresetPanelMetrics\(availablePanelHeight\)
 if ($source -match 'void ResizePresetPanelForCurrentSelection\(\)[\s\S]{0,600}GetPresetPanelMetrics\(\)\.totalHeight') { throw 'Selection resize must not use an unconstrained panel height.' }
 Require 'const int footerHeight' 'preset layout reserves the action-button footer'
 Require 'const int minimumTree' 'preset layout has a tree minimum before shrinking preview'
+RequireRuntime 'verifyLongPreviewLayout' 'runtime smoke selects a long-regexp fixture'
+RequireRuntime 'MonitorFromWindow\(dialog, MONITOR_DEFAULTTONEAREST\)' 'runtime long-preview work-area check'
+RequireRuntime 'IDC_FIND_PRESET_APPLY, IDC_FIND_PRESET_SAVE, IDC_FIND_PRESET_UPDATE, IDC_FIND_PRESET_RENAME, IDC_FIND_PRESET_DELETE' 'runtime long-preview checks every footer action'
 Require 'UiMetrics::ScaleForDpi\(18, UiMetrics::DpiForWindow\(dialog\)\)' 'DPI-aware compact pin size'
 foreach ($control in @('IDC_FIND_PRESET_APPLY','IDC_FIND_PRESET_SAVE','IDC_FIND_PRESET_UPDATE','IDC_FIND_PRESET_RENAME','IDC_FIND_PRESET_DELETE')) { Require ("SetWindowPos\(GetDlgItem\(" + $control + '\)') "layout for $control" }
 foreach ($asset in @('src\fbe\res\icons\lucide\pin.svg','src\fbe\res\icons\lucide\pin-mask-16.bmp','src\fbe\res\icons\lucide\pin-mask-20.bmp','src\fbe\res\icons\lucide\pin-mask-24.bmp','src\fbe\res\icons\lucide\pin-mask-32.bmp','src\fbe\res\icons\lucide\LICENSE.txt')) { if (-not (Test-Path (Join-Path $root $asset))) { throw "Missing asset $asset" } }
