@@ -156,10 +156,26 @@ void SelectAndFormat(HWND richEdit, int start, int end, const CHARFORMAT2& forma
     ::SendMessage(richEdit, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph));
 }
 
-CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int pointSize)
+COLORREF HelpBlockBackground(MarkdownBlockKind kind)
+{
+    if (ThemeManager::IsHighContrast()) return ::GetSysColor(COLOR_WINDOW);
+    if (kind == MarkdownBlockKind::Code) return ThemeManager::IsDark() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
+    if (kind == MarkdownBlockKind::Table) return ThemeManager::IsDark() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
+    if (kind == MarkdownBlockKind::Note) return ThemeManager::IsDark() ? ThemeManager::ControlColor() : ThemeManager::HoverColor();
+    return ThemeManager::WindowColor();
+}
+
+COLORREF HelpTableHeaderBackground()
+{
+    if (ThemeManager::IsHighContrast()) return ::GetSysColor(COLOR_WINDOW);
+    return ThemeManager::IsDark() ? ThemeManager::HoverColor() : ThemeManager::HoverColor();
+}
+
+CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int pointSize, bool shaded = false, COLORREF background = 0)
 {
     CHARFORMAT2 format = {}; format.cbSize = sizeof(format); format.dwMask = CFM_BOLD | CFM_FACE | CFM_COLOR | CFM_SIZE;
     format.dwEffects = bold ? CFE_BOLD : 0; format.crTextColor = ThemeManager::TextColor();
+    if (shaded) { format.dwMask |= CFM_BACKCOLOR; format.dwEffects &= ~CFE_AUTOBACKCOLOR; format.crBackColor = background; }
     HDC dc = richEdit ? ::GetDC(richEdit) : NULL;
     const int dpi = dc ? ::GetDeviceCaps(dc, LOGPIXELSY) : 96;
     if (dc) ::ReleaseDC(richEdit, dc);
@@ -175,24 +191,28 @@ CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int po
 PARAFORMAT2 MakeParagraphFormat(const MarkdownBlock& block)
 {
     PARAFORMAT2 paragraph = {}; paragraph.cbSize = sizeof(paragraph); paragraph.dwMask = PFM_SPACEAFTER;
-    paragraph.dySpaceAfter = block.kind == MarkdownBlockKind::Title ? 140 : block.headingLevel == 2 ? 60 : block.headingLevel == 3 ? 35 : 25;
-    if (block.headingLevel == 2) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 120; }
-    if (block.headingLevel == 3) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 70; }
-    if (block.kind == MarkdownBlockKind::List) { paragraph.dwMask |= PFM_STARTINDENT; paragraph.dxStartIndent = 180; }
+    paragraph.dySpaceAfter = block.kind == MarkdownBlockKind::Title ? 220 : block.headingLevel == 2 ? 100 : block.headingLevel == 3 ? 60 : 40;
+    if (block.headingLevel == 2) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 180; }
+    if (block.headingLevel == 3) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 100; }
+    if (block.kind == MarkdownBlockKind::List) { paragraph.dwMask |= PFM_STARTINDENT | PFM_OFFSET; paragraph.dxStartIndent = 240; paragraph.dxOffset = -120; }
     if (block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table)
     {
-        paragraph.dwMask |= PFM_STARTINDENT | PFM_TABSTOPS;
+        paragraph.dwMask |= PFM_STARTINDENT | PFM_RIGHTINDENT | PFM_TABSTOPS | PFM_SPACEBEFORE;
         paragraph.dxStartIndent = 140;
+        paragraph.dxRightIndent = 140;
+        paragraph.dySpaceBefore = 60;
+        paragraph.dySpaceAfter = 60;
         paragraph.cTabCount = 4;
         paragraph.rgxTabs[0] = 720; paragraph.rgxTabs[1] = 1440; paragraph.rgxTabs[2] = 2160; paragraph.rgxTabs[3] = 2880;
     }
+    if (block.kind == MarkdownBlockKind::Note) { paragraph.dwMask |= PFM_STARTINDENT | PFM_SPACEBEFORE; paragraph.dxStartIndent = 140; paragraph.dySpaceBefore = 40; }
     return paragraph;
 }
 
 int PointSizeForBlock(const MarkdownBlock& block)
 {
-    if (block.kind == MarkdownBlockKind::Title) return 14;
-    if (block.headingLevel == 2) return 12;
+    if (block.kind == MarkdownBlockKind::Title) return 16;
+    if (block.headingLevel == 2) return 13;
     if (block.headingLevel == 3) return 11;
     return 10;
 }
@@ -268,16 +288,28 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
         ::SendMessage(richEdit, EM_SETSEL, first, first);
         ::SendMessage(richEdit, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(value)));
         const int last = static_cast<int>(::SendMessage(richEdit, WM_GETTEXTLENGTH, 0, 0)) - 2;
-        const bool bold = block.kind == MarkdownBlockKind::Title || block.kind == MarkdownBlockKind::Heading;
+        const bool tableHeader = block.kind == MarkdownBlockKind::Table && (index == 0 || blocks[index - 1].kind != MarkdownBlockKind::Table);
+        const bool bold = block.kind == MarkdownBlockKind::Title || block.kind == MarkdownBlockKind::Heading || tableHeader;
         const bool monospace = block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table;
-        const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block));
+        const bool shaded = block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table || block.kind == MarkdownBlockKind::Note;
+        const COLORREF background = tableHeader ? HelpTableHeaderBackground() : HelpBlockBackground(block.kind);
+        const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block), shaded, background);
         const PARAFORMAT2 paragraph = MakeParagraphFormat(block);
         SelectAndFormat(richEdit, first, (std::max)(first, last), format, paragraph);
         for (size_t span = 0; span < block.inlineCode.size(); ++span)
         {
-            CHARFORMAT2 code = MakeCharacterFormat(richEdit, false, true, 10);
+            CHARFORMAT2 code = MakeCharacterFormat(richEdit, false, true, 10, true, HelpBlockBackground(MarkdownBlockKind::Code));
             ::SendMessage(richEdit, EM_SETSEL, first + block.inlineCode[span].start, first + block.inlineCode[span].start + block.inlineCode[span].length);
             ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&code));
+        }
+        for (int link = value.Find(L"http"); link >= 0; )
+        {
+            int end = link; while (end < value.GetLength() && value[end] != L' ' && value[end] != L')' && value[end] != L'\r' && value[end] != L'\n') ++end;
+            CHARFORMAT2 hyperlink = MakeCharacterFormat(richEdit, false, false, 10);
+            hyperlink.dwMask |= CFM_UNDERLINE | CFM_COLOR; hyperlink.dwEffects |= CFE_UNDERLINE; hyperlink.crTextColor = ThemeManager::AccentColor();
+            ::SendMessage(richEdit, EM_SETSEL, first + link, first + end);
+            ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&hyperlink));
+            link = value.Find(L"http", end);
         }
     }
     ::SendMessage(richEdit, EM_SETSEL, 0, 0);
@@ -296,7 +328,7 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     const bool content = !enDesign.empty() && !enSource.empty() && !ruDesign.empty() && !ruSource.empty() &&
         enDesign[0].kind == MarkdownBlockKind::Title && enSource[0].kind == MarkdownBlockKind::Title;
     std::vector<MarkdownBlock> parsed, empty, malformed, unknown;
-    ParseMarkdownText(L"# Title\n## Heading two\n### Heading three\nBody `inline` text\n- one\n- two\n```text\n   leading\ntrailing   \n\ttab\n\nlast\n```\n| Syntax | Meaning |\n| --- | --- |\n| \\d | digit |\n| \\w | word |", parsed);
+    ParseMarkdownText(L"# Title\n## Heading two\n### Heading three\nBody `inline` text\n- one\n- two\n```text\n   leading\ntrailing   \n\ttab\n\nlast\n```\n| Syntax | Meaning |\n| --- | --- |\n| \\d | digit |\n| \\w | word |\nBody after table https://example.invalid", parsed);
     ParseMarkdownText(L"", empty);
     ParseMarkdownText(L"```regex\n[", malformed);
     ParseMarkdownText(L"> unknown extension", unknown);
@@ -352,22 +384,24 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             return ::SendMessage(richEdit, EM_GETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph)) != 0;
         };
         CString rendered; ReadRichEditText(richEdit, rendered);
-        CHARFORMAT2 titleFormat = {}, heading2Format = {}, heading3Format = {}, bodyFormat = {}, codeFormat = {}, tableFormat = {}, inlineFormat = {};
-        PARAFORMAT2 heading2Paragraph = {}, heading3Paragraph = {}, tableParagraph = {};
+        CHARFORMAT2 titleFormat = {}, heading2Format = {}, heading3Format = {}, bodyFormat = {}, codeFormat = {}, tableFormat = {}, inlineFormat = {}, afterTableFormat = {};
+        PARAFORMAT2 heading2Paragraph = {}, heading3Paragraph = {}, tableParagraph = {}, listParagraph = {};
         const int titleAt = rendered.Find(L"Title"), heading2At = rendered.Find(L"Heading two"), heading3At = rendered.Find(L"Heading three"), bodyAt = rendered.Find(L"Body"),
-            codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), inlineAt = rendered.Find(L"inline"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
-        const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && inlineAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
+            codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), inlineAt = rendered.Find(L"inline"), afterTableAt = rendered.Find(L"Body after table"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
+        const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
         const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax") >= 0 && rendered.Find(L"Meaning") >= 0 && rendered.Find(L"\t") >= 0;
         const bool formats = positions && formatAt(titleAt, titleFormat) && formatAt(heading2At, heading2Format) && formatAt(heading3At, heading3Format) && formatAt(bodyAt, bodyFormat) &&
-            formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(inlineAt, inlineFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph);
+            formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
         const bool styles = formats && (titleFormat.dwEffects & CFE_BOLD) != 0 && (heading2Format.dwEffects & CFE_BOLD) != 0 && (heading3Format.dwEffects & CFE_BOLD) != 0 &&
-            (bodyFormat.dwEffects & CFE_BOLD) == 0 && (codeFormat.dwEffects & CFE_BOLD) == 0 && (inlineFormat.dwEffects & CFE_BOLD) == 0;
+            (bodyFormat.dwEffects & CFE_BOLD) == 0 && (codeFormat.dwEffects & CFE_BOLD) == 0 && (inlineFormat.dwEffects & CFE_BOLD) == 0 && (afterTableFormat.dwEffects & CFE_BOLD) == 0;
         const bool faces = formats && ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0 && ::lstrcmpiW(tableFormat.szFaceName, L"Consolas") == 0 && ::lstrcmpiW(inlineFormat.szFaceName, L"Consolas") == 0;
         const bool sizes = formats && titleFormat.yHeight > heading2Format.yHeight && heading2Format.yHeight > bodyFormat.yHeight && heading3Format.yHeight >= bodyFormat.yHeight &&
             (heading2Format.yHeight != heading3Format.yHeight || heading2Paragraph.dySpaceBefore != heading3Paragraph.dySpaceBefore) && bodyFormat.yHeight >= 200 && inlineFormat.yHeight == bodyFormat.yHeight;
         const bool tabs = formats && tableParagraph.cTabCount >= 2;
-        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0);
-        formatting = positions && textContract && formats && styles && faces && sizes && tabs;
+        const bool backgrounds = formats && (codeFormat.dwMask & CFM_BACKCOLOR) != 0 && (inlineFormat.dwMask & CFM_BACKCOLOR) != 0 && (tableFormat.dwMask & CFM_BACKCOLOR) != 0;
+        const bool hangingIndent = formats && listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0;
+        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (backgrounds ? 128 : 0) | (hangingIndent ? 256 : 0);
+        formatting = positions && textContract && formats && styles && faces && sizes && tabs && backgrounds && hangingIndent;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
