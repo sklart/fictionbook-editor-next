@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ScriptMenuBuilder.h"
+#include "ScriptRegistry.h"
 #include "ScriptVisualResources.h"
 #include <functional>
 
@@ -30,6 +31,10 @@ public:
 
 private:
 	MenuBuilder m_menu;
+	// A catalogue refresh must use the identities it assigned earlier in the
+	// same process even while ScriptRegistry.xml is being atomically replaced.
+	ScriptRegistry m_registry;
+	bool m_registryLoaded;
 	VisualResources m_visuals;
 	CString m_lastUid;
 	UINT m_initializeCount;

@@ -1581,40 +1581,49 @@ function apiRunCmd(path)
 	window.Run=function() {
 	  if (window.msgText) alert(window.msgText);
 	};
-	var script=document.getElementById("userCmd");
-	if(!script)
+	if(!LoadUserCommandScript(path))
 		return;
-        script.src="file:///"+path;
         Run();
 	window.Run=function() {
 	  if (window.msgText) alert(window.msgText);
 	};
 }
 
+// MSHTML may reuse a script whose src has already been assigned. Replace the
+// element so every command invocation is a fresh load; the id remains stable
+// for legacy combo scripts which address userCmd directly.
+function LoadUserCommandScript(path)
+{
+	var previous=document.getElementById("userCmd");
+	if(!previous || !previous.parentNode)
+		return null;
+	var script=document.createElement("script");
+	script.id="userCmd";
+	script.language="JavaScript";
+	script.type="text/javascript";
+	previous.parentNode.replaceChild(script,previous);
+	script.src="file:///"+path;
+	return script;
+}
+
 function apiGetClassName(path)
 {
-	var script=document.getElementById("userCmd");
-	if(!script)
+	if(!LoadUserCommandScript(path))
 		return;
-	script.src="file:///"+path;
 	return GetClassName();
 }
 
 function apiGetTitle(path)
 {
-	var script=document.getElementById("userCmd");
-	if(!script)
+	if(!LoadUserCommandScript(path))
 		return;
-	script.src="file:///"+path;
 	return GetTitle();
 }
 
 function apiProcessCmd(path)
 {
-	var script=document.getElementById("userCmd");
-	if(!script)
+	if(!LoadUserCommandScript(path))
 		return;
-	script.src="file:///"+path;
 	ProcessCmd();
 }
 

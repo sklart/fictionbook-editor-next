@@ -73,10 +73,12 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
 	const bool navigationViewBarElementsRuntime = IsFbeTestScenario(L"navigation-viewbar-elements-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
+	const bool scriptLiveReloadRuntime = IsFbeTestScenario(L"script-live-reload-runtime");
+	const bool scriptCatalogRefreshRuntime = IsFbeTestScenario(L"script-catalog-refresh-runtime");
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -88,7 +90,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
@@ -103,6 +105,62 @@ void CMainFrame::RunPortableStateTestScenario()
 		}
 		return NULL;
 	};
+	if(scriptLiveReloadRuntime)
+	{
+		::CreateDirectory(scriptsDirectory, NULL);
+		const CString scriptPath = scriptsDirectory + L"live-reload.js";
+		const bool documentReady = m_doc != NULL;
+		const bool wroteFirst = WritePortableStateTestText(scriptPath, "function Run(){window.external.SetStatusBarText('version-1');}\n");
+		if(documentReady && wroteFirst) m_doc->RunScript(scriptPath);
+		const bool version1 = m_status_state.EffectiveMainText(false, false, CString()) == L"version-1";
+		const bool wroteSecond = WritePortableStateTestText(scriptPath, "function Run(){window.external.SetStatusBarText('version-2');}\n");
+		if(documentReady && wroteSecond) m_doc->RunScript(scriptPath);
+		const bool version2 = m_status_state.EffectiveMainText(false, false, CString()) == L"version-2";
+		const bool passed = documentReady && wroteFirst && version1 && wroteSecond && version2;
+		CStringA report; report.Format("phase=script-live-reload\nversion-1=%d\nversion-2=%d\nresult=%s\n", version1, version2, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(scriptCatalogRefreshRuntime)
+	{
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		_Settings.SetDocumentTreeScripts(true, true);
+		const bool initialized = InitializeScripts();
+		auto findScript = [this](LPCWSTR relativePath) -> const ScriptDescriptor* {
+			for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+				if(!m_scripts.Menu().Item(index).isFolder && m_scripts.Menu().Item(index).relativePath.CompareNoCase(relativePath) == 0) return &m_scripts.Menu().Item(index);
+			return NULL;
+		};
+		const ScriptDescriptor* rootBefore = initialized ? findScript(L"root.js") : NULL;
+		const CString rootUid = rootBefore == NULL ? CString() : rootBefore->uid;
+		const CString folderA = scriptsDirectory + L"FolderA";
+		const CString renamedFolder = scriptsDirectory + L"RenamedFolder";
+		const bool changedContents = WritePortableStateTestText(scriptsDirectory + L"Root.js", "function Run(){document.title='catalog-v2';}\n");
+		const bool added = WritePortableStateTestText(scriptsDirectory + L"Added.js", "function Run(){}\n");
+		const bool kept = WritePortableStateTestText(folderA + L"\\Keep.js", "function Run(){}\n");
+		const bool iconChanged = ::CopyFile(scriptsDirectory + L"Root.ico", scriptsDirectory + L"Added.ico", FALSE) != FALSE;
+		const bool childRemoved = ::DeleteFile(folderA + L"\\Child.js") != FALSE;
+		::DeleteFile(folderA + L"\\Child.bmp");
+		const bool folderRenamed = ::MoveFile(folderA, renamedFolder) != FALSE;
+		BOOL handled = FALSE;
+		OnToolsRefreshScripts(0, ID_TOOLS_REFRESH_SCRIPTS, NULL, handled);
+		const ScriptDescriptor* rootAfter = findScript(L"root.js");
+		const ScriptDescriptor* addedAfter = findScript(L"added.js");
+		const ScriptDescriptor* movedAfter = findScript(L"renamedfolder/folderb/deep.js");
+		const ScriptDescriptor* keptAfter = findScript(L"renamedfolder/keep.js");
+		const bool removed = findScript(L"foldera/child.js") == NULL && findScript(L"foldera/folderb/deep.js") == NULL;
+		bool addedVisual = false;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(addedAfter != NULL && &m_scripts.Menu().Item(index) == addedAfter)
+				addedVisual = m_scripts.Menu().VisualAt(index).icon != NULL || m_scripts.Menu().VisualAt(index).bitmap != NULL;
+		CTreeView& tree = m_document_tree.m_tree.m_tree;
+		if(!tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
+		const bool treeUpdated = tree.IsScriptMode() && tree.FindScriptTreeItem(L"renamedfolder/keep.js") != NULL && tree.FindScriptTreeItem(L"foldera/child.js") == NULL;
+		const bool retainedUid = rootBefore != NULL && rootAfter != NULL && rootAfter->uid == rootUid;
+		const bool documentAlive = m_doc != NULL;
+		const bool passed = initialized && changedContents && added && kept && iconChanged && childRemoved && folderRenamed && rootAfter != NULL && addedAfter != NULL && movedAfter != NULL && keptAfter != NULL && removed && addedVisual && treeUpdated && retainedUid && documentAlive;
+		CStringA report; report.Format("phase=script-catalog-refresh\ncontents=%d\nadded=%d\nremoved=%d\nrenamed=%d\nicon=%d\nroot-before=%d\nroot-after=%d\nroot-uid-length=%d\nroot-after-uid-length=%d\nuid=%d\ntree=%d\ndocument=%d\nresult=%s\n", changedContents, addedAfter != NULL, removed, movedAfter != NULL && keptAfter != NULL, addedVisual, rootBefore != NULL, rootAfter != NULL, rootUid.GetLength(), rootAfter == NULL ? 0 : rootAfter->uid.GetLength(), retainedUid, treeUpdated, documentAlive, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
 	if(scriptStartupValidationOn)
 	{
 		_Settings.SetScriptsFolder(scriptsDirectory, true);

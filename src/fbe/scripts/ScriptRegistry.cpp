@@ -55,14 +55,47 @@ CString ScriptRegistry::NewUid() const
 bool ScriptRegistry::Resolve(std::vector<ScriptDescriptor>& items)
 {
 	bool changed = false;
+	// A content fingerprint can legitimately be shared by several scripts.
+	// Claim each existing identity at most once during this discovery pass so a
+	// sequence of identical new files cannot keep moving one UID between paths.
+	std::vector<bool> claimed(m_identities.size(), false);
 	for(size_t index = 0; index < items.size(); ++index) {
 		ScriptDescriptor& script = items[index]; if(script.isFolder || script.relativePath.IsEmpty()) continue;
-		const CString fingerprint = Fingerprint(script.path); ScriptIdentity* matched = NULL;
-		for(size_t i = 0; i < m_identities.size(); ++i) if(m_identities[i].relativePath == script.relativePath) { matched = &m_identities[i]; break; }
-		if(matched == NULL && !fingerprint.IsEmpty()) { ScriptIdentity* candidate = NULL; for(size_t i = 0; i < m_identities.size(); ++i) if(m_identities[i].fingerprint == fingerprint) { if(candidate != NULL) { candidate = NULL; break; } candidate = &m_identities[i]; } matched = candidate; }
-		if(matched == NULL) { ScriptIdentity identity = { NewUid(), script.relativePath, fingerprint }; if(identity.uid.IsEmpty()) return false; m_identities.push_back(identity); matched = &m_identities.back(); changed = true; }
-		else if(matched->relativePath != script.relativePath || matched->fingerprint != fingerprint) { matched->relativePath = script.relativePath; matched->fingerprint = fingerprint; changed = true; }
-		script.uid = matched->uid;
+		const CString fingerprint = Fingerprint(script.path);
+		size_t matched = m_identities.size();
+		for(size_t i = 0; i < m_identities.size(); ++i)
+			if(!claimed[i] && m_identities[i].relativePath == script.relativePath) { matched = i; break; }
+		if(matched == m_identities.size() && !fingerprint.IsEmpty())
+		{
+			size_t candidate = m_identities.size();
+			for(size_t i = 0; i < m_identities.size(); ++i)
+				if(!claimed[i] && m_identities[i].fingerprint == fingerprint)
+				{
+					if(candidate != m_identities.size()) { candidate = m_identities.size(); break; }
+					candidate = i;
+				}
+			matched = candidate;
+		}
+		if(matched == m_identities.size())
+		{
+			ScriptIdentity identity = { NewUid(), script.relativePath, fingerprint };
+			if(identity.uid.IsEmpty()) return false;
+			m_identities.push_back(identity);
+			claimed.push_back(true);
+			matched = m_identities.size() - 1;
+			changed = true;
+		}
+		else
+		{
+			claimed[matched] = true;
+			if(m_identities[matched].relativePath != script.relativePath || m_identities[matched].fingerprint != fingerprint)
+			{
+				m_identities[matched].relativePath = script.relativePath;
+				m_identities[matched].fingerprint = fingerprint;
+				changed = true;
+			}
+		}
+		script.uid = m_identities[matched].uid;
 	}
 	return !changed || Save();
 }

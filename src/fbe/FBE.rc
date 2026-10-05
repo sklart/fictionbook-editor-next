@@ -954,6 +954,7 @@ BEGIN
     BEGIN
         MENUITEM "&Words...",                   ID_TOOLS_WORDS
         MENUITEM "&Settings...",                ID_VIEW_OPTIONS
+        MENUITEM "Refresh &scripts",            ID_TOOLS_REFRESH_SCRIPTS
         MENUITEM SEPARATOR
         MENUITEM "Spell &check...",             ID_TOOLS_SPELLCHECK
     END

@@ -606,6 +606,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_STYLE_NOLINK, L"fbe.menu.idr_mainframe.style.remove_link" },
 	{ ID_TOOLS_WORDS, L"fbe.menu.idr_mainframe.tools.words" },
 	{ ID_VIEW_OPTIONS, L"fbe.menu.idr_mainframe.tools.options" },
+	{ ID_TOOLS_REFRESH_SCRIPTS, L"fbe.menu.idr_mainframe.tools.refresh_scripts" },
 	{ ID_TOOLS_SPELLCHECK, L"fbe.menu.idr_mainframe.tools.spellcheck" },
 	{ ID_TOOLS_DIAGNOSTIC_TRACE, L"fbe.menu.idr_mainframe.tools.diagnostic_trace" },
 	{ ID_TOOLS_OPEN_DIAGNOSTIC_LOG, L"fbe.menu.idr_mainframe.tools.open_diagnostic_log" },
@@ -3671,9 +3672,12 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
   // Their individual scenario handlers have already saved or recorded failure
   // before posting WM_CLOSE, so never let DiscardChanges() show a modal prompt.
   // The save-decision close regression deliberately exercises that prompt.
-  const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty() &&
-	!RuntimeTests::IsScenario(L"save-decision-quit-close");
-  if (unattendedBatch || DiscardChanges())
+	wchar_t testMode[4] = {};
+	const bool unattendedTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 && testMode[0] == L'1' &&
+		!RuntimeTests::IsScenario(L"save-decision-quit-close");
+	const bool unattendedBatch = !AU::_ARGS.source_memory_benchmark_path.IsEmpty() &&
+		!RuntimeTests::IsScenario(L"save-decision-quit-close");
+	if (unattendedTest || unattendedBatch || DiscardChanges())
   {
 	m_recovery.DeleteIfWritten();
 	// added by SeNS
@@ -5040,6 +5044,15 @@ LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 	const CString result(GetDiagnosticTraceText(L"fbe.trace.enable.completed",
 		L"Диагностический журнал включён. Перезапустите FBE Next, чтобы начать запись."));
 	U::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
+	return 0;
+}
+
+LRESULT CMainFrame::OnToolsRefreshScripts(WORD, WORD, HWND, BOOL&)
+{
+	// Rebuild only script-owned presentation. The current document and general
+	// settings remain live while discovery refreshes menus, the tree and UID
+	// based toolbar/hotkey bindings.
+	InitializeScripts();
 	return 0;
 }
 

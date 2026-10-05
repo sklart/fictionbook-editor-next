@@ -1208,6 +1208,24 @@
         "bg-BG": "&Настройки..."
       }
     },
+    "fbe.menu.idr_mainframe.tools.refresh_scripts": {
+      "kind": "MENUITEM",
+      "targetId": "ID_TOOLS_REFRESH_SCRIPTS",
+      "translations": {
+        "en-US": "Refresh &scripts",
+        "ru-RU": "Обновить &скрипты",
+        "uk-UA": "Оновити &скрипти",
+        "de-DE": "&Skripte aktualisieren",
+        "fr-FR": "Actualiser les &scripts",
+        "es-ES": "Actualizar &scripts",
+        "it-IT": "Aggiorna &script",
+        "pl-PL": "Odśwież &skrypty",
+        "pt-PT": "Atualizar &scripts",
+        "nl-NL": "&Scripts vernieuwen",
+        "cs-CZ": "Obnovit &skripty",
+        "bg-BG": "Обновяване на &скриптове"
+      }
+    },
     "fbe.menu.idr_mainframe.tools.spellcheck": {
       "kind": "MENUITEM",
       "targetId": "ID_TOOLS_SPELLCHECK",

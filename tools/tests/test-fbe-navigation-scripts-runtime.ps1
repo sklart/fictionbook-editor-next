@@ -47,6 +47,16 @@ try {
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts reload runtime test timed out.' }
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
         if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-scripts-reload$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts reload runtime failed:`n$text" }
+		$env:FBE_NEXT_TEST_SCENARIO = 'script-live-reload-runtime'
+		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
+		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Live script reload runtime test timed out.' }
+		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=script-live-reload$' -or $text -notmatch '(?m)^version-1=1$' -or $text -notmatch '(?m)^version-2=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Live script reload runtime failed:`n$text" }
+		$env:FBE_NEXT_TEST_SCENARIO = 'script-catalog-refresh-runtime'
+		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
+		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Script catalogue refresh runtime test timed out.' }
+		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=script-catalog-refresh$' -or $text -notmatch '(?m)^contents=1$' -or $text -notmatch '(?m)^added=1$' -or $text -notmatch '(?m)^removed=1$' -or $text -notmatch '(?m)^renamed=1$' -or $text -notmatch '(?m)^icon=1$' -or $text -notmatch '(?m)^uid=1$' -or $text -notmatch '(?m)^tree=1$' -or $text -notmatch '(?m)^document=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Script catalogue refresh runtime failed:`n$text" }
 	} finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario; $env:FBE_NEXT_UI_LOCALE = $savedLocale }
     Write-Host 'Navigation scripts runtime regression passed.'
 } finally {

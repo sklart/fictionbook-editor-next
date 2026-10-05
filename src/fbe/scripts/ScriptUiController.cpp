@@ -20,7 +20,7 @@ void ResolveVisualPathParts(const ScriptDescriptor& descriptor, CString& directo
 }
 
 UiController::UiController(UINT folderCommandBase, UINT folderCommandCount)
-	: m_menu(folderCommandBase, folderCommandCount), m_initializeCount(0), m_discoveryCount(0) {}
+	: m_menu(folderCommandBase, folderCommandCount), m_registryLoaded(false), m_initializeCount(0), m_discoveryCount(0) {}
 
 void UiController::SetLastScript(const ScriptDescriptor& script)
 {
@@ -47,8 +47,12 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 	if(scriptsMenu == NULL) return false;
 	++m_initializeCount;
 	m_menu.Clear(); ClearLastScript();
-	ScriptRegistry registry; if(!registry.Load()) return false;
-	Catalog catalog; ++m_discoveryCount; if(!catalog.Discover(folder, L"*.js", &registry)) return false;
+	if(!m_registryLoaded)
+	{
+		if(!m_registry.Load()) return false;
+		m_registryLoaded = true;
+	}
+	Catalog catalog; ++m_discoveryCount; if(!catalog.Discover(folder, L"*.js", &m_registry)) return false;
 	const std::vector<ScriptDescriptor>& candidates = catalog.Items();
 	for(size_t index = 0; index < candidates.size(); ++index)
 	{
