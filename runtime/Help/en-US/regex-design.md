@@ -6,8 +6,6 @@ A complete guide to searching, replacing, and proofreading books in FictionBook 
 
 Revision: October 2, 2026. Source mode has a separate document, regex-source.md. In this guide, “pattern” means a regular expression; a “built-in template” is a saved expression and its settings in the Templates panel.
 
-Translation note: the expressions, replacement strings, and test samples have been preserved from the approved Russian edition. Russian words in code and test examples are intentional, particularly where Cyrillic letters, case, or mixed alphabets are being tested. Translate the explanations, not the samples, when comparing results.
-
 ## 1. How to use this guide
 
 A regular expression describes a search rule rather than one exact string. For example, `[0-9]+` finds a sequence of digits of any length, while `[ \t]{2,}` finds two or more ordinary spaces or tabs. The match itself and the text used to replace it are different things.

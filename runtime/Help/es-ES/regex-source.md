@@ -6,8 +6,6 @@ Guía completa de búsqueda y reemplazo en el XML de un libro en FictionBook Edi
 
 Edición: 2 de octubre de 2026. Diseño se describe en regex-design.md. Estas recetas son para Código; no copie patrones PCRE2 sin comprobarlos.
 
-Nota de traducción: expresiones, reemplazos y muestras permanecen idénticos a la edición rusa aprobada. Los textos rusos de los ejemplos son intencionados y mantienen comparables resultados y espacios.
-
 ## 1. Para qué sirve buscar en Código
 
 Aquí se ven etiquetas XML, atributos, enlaces, entidades y texto. Es apropiado para auditar FB2: elementos vacíos, HTML importado, enlaces de sustitución, atributos extraños y restos de conversión.

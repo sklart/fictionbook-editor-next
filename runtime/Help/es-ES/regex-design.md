@@ -6,8 +6,6 @@ Guía completa para buscar, reemplazar y corregir libros en FictionBook Editor N
 
 Edición: 2 de octubre de 2026. El modo Código se explica en regex-source.md. «Patrón» significa aquí una expresión regular; una «plantilla integrada» es una expresión guardada junto con sus opciones en el panel Plantillas.
 
-Nota de traducción: las expresiones, los reemplazos y los ejemplos de prueba se conservan sin cambios respecto a la edición rusa comprobada. Las palabras rusas en bloques de código son intencionadas, especialmente para comprobar cirílico, mayúsculas y alfabetos mezclados. No traduzca esas muestras al comparar resultados.
-
 ## 1. Cómo utilizar esta guía
 
 Una expresión regular describe una regla de búsqueda, no una sola cadena exacta. Por ejemplo, `[0-9]+` encuentra una secuencia de cifras de longitud variable, mientras que `[ \t]{2,}` encuentra dos o más espacios normales o tabulaciones. La coincidencia y el texto que la reemplaza son elementos distintos.

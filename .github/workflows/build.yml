@@ -163,6 +163,13 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-search-core-suite.ps1 -Configuration Release -PlatformToolset v143 -FbeExe ./out/Release/FBE.exe
+      - name: Run Full Regex Help regressions
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-regex-help-markdown.ps1
+          ./tools/tests/test-regex-help-formatting.ps1
+          ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
       - name: Run filesystem backup regression
         shell: pwsh
         run: |

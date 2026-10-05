@@ -6,8 +6,6 @@ Guide complet de recherche, de remplacement et de relecture des livres dans Fict
 
 Édition du 2 octobre 2026. Le mode Code est traité dans regex-source.md. Dans ce guide, « motif » désigne une expression régulière ; un « modèle intégré » est un ensemble enregistré comprenant une expression et ses paramètres dans le panneau Modèles.
 
-Note de traduction : les expressions, chaînes de remplacement et exemples de contrôle sont conservés tels quels depuis l’édition russe vérifiée. Les mots russes dans les blocs de code et les tests sont intentionnels, notamment pour vérifier le cyrillique, la casse et les alphabets mélangés. Ne traduisez pas ces échantillons pour comparer les résultats.
-
 ## 1. Utiliser ce guide
 
 Une expression régulière décrit une règle de recherche plutôt qu’une chaîne exacte. Par exemple, `[0-9]+` trouve une suite de chiffres de longueur quelconque, tandis que `[ \t]{2,}` trouve au moins deux espaces ordinaires ou tabulations. La correspondance trouvée et le texte qui la remplace sont deux choses différentes.

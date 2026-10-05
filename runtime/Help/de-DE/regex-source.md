@@ -6,8 +6,6 @@ Vollständiges Handbuch zum Suchen und Ersetzen im XML-Quelltext eines Buches in
 
 Stand: 2. Oktober 2026. Design wird in regex-design.md beschrieben. Diese Rezepte gelten für den Quelltextmodus; PCRE2-Ausdrücke dürfen nicht ungeprüft übernommen werden.
 
-Übersetzungshinweis: Ausdrücke, Ersetzungen und Kontrollbeispiele bleiben unverändert gegenüber der geprüften russischen Ausgabe. Russische Wörter in Beispielen sind beabsichtigt und sichern vergleichbare Treffer, Leerzeichen und Prüfergebnisse.
-
 ## 1. Zweck der Suche im Quelltextmodus
 
 Hier sind XML-Tags, Attribute, Links, Entitäten und Buchtext sichtbar. Der Modus eignet sich zur FB2-Prüfung: leere Elemente, importierte HTML-Tags, Platzhalterlinks, unerwartete Attribute und technische Konvertierungsreste.

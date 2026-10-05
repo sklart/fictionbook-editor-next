@@ -10,8 +10,22 @@ foreach ($locale in $locales) {
     foreach ($name in @('regex-design.md', 'regex-source.md')) {
         $path = Join-Path $root "runtime\Help\$locale\$name"
         if (-not (Test-Path -LiteralPath $path)) { throw "Missing localized Markdown help: $locale/$name" }
-        $text = Get-Content -Raw -Encoding UTF8 -LiteralPath $path
+        $bytes = [IO.File]::ReadAllBytes($path)
+        try { $text = [Text.UTF8Encoding]::new($false, $true).GetString($bytes) } catch { throw "$locale/$name is not valid UTF-8: $($_.Exception.Message)" }
+        if ([string]::IsNullOrWhiteSpace($text) -or $bytes.Length -lt 1024) { throw "$locale/$name is empty or unreasonably short" }
         foreach ($required in @('# ', '## ', '```')) { if (-not $text.Contains($required)) { throw "$locale/$name misses Markdown construct $required" } }
+        if (([regex]::Matches($text, '(?m)^```')).Count % 2 -ne 0) { throw "$locale/$name has unbalanced fenced blocks" }
+        if ($locale -ne 'en-US') {
+            $english = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes((Join-Path $root "runtime\Help\en-US\$name")))
+            if ($text -ceq $english) { throw "$locale/$name must not be an English copy" }
+        }
+        if ($locale -ne 'ru-RU') {
+            $firstSection = $text.IndexOf("`n## ")
+            if ($firstSection -lt 0) { throw "$locale/$name has no first H2 section" }
+            $preface = $text.Substring(0, $firstSection)
+            $translationNotes = @($preface -split '(?:\r?\n){2,}' | Where-Object { $_ -match '(?i)translation|übersetz|tradu|перекладу|превода|překlad|tłumacz|vertal' })
+            if ($translationNotes.Count -ne 1) { throw "$locale/$name must contain exactly one translation note before the first section; got $($translationNotes.Count)" }
+        }
     }
 }
 $design = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'runtime\Help\en-US\regex-design.md')
@@ -28,5 +42,5 @@ foreach ($locale in $locales) {
         if ($packageRequired -cnotcontains $packagePath) { throw "Package manifest misses localized Markdown help: $packagePath" }
     }
 }
-foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Table', 'ParseInlineCode', 'ParseMarkdownText', 'RunRuntimeSmoke', 'HelpPathForLocale')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
+foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Table', 'ParseInlineCode', 'ParseMarkdownText', 'RunRuntimeSmoke', 'HelpPathForLocale', 'EM_EXLIMITTEXT', 'Malformed Markdown code block.')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
 Write-Host 'Regex Help Markdown localization and package contract passed.'

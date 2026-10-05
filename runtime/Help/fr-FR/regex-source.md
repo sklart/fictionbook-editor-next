@@ -6,8 +6,6 @@ Guide complet de recherche et de remplacement dans le XML d’un livre avec Fict
 
 Édition du 2 octobre 2026. Le mode Design est décrit dans regex-design.md. Les recettes suivantes concernent le mode Code ; ne transposez pas les expressions PCRE2 sans vérification.
 
-Note de traduction : expressions, remplacements et tests sont identiques à l’édition russe approuvée. Les passages russes dans les exemples sont intentionnels et préservent la comparabilité des résultats et des espaces.
-
 ## 1. À quoi sert la recherche en mode Code
 
 Le mode Code expose balises XML, attributs, liens, entités et texte. Il convient à l’audit FB2 : éléments vides, balises HTML importées, liens de substitution, attributs inattendus et restes techniques de conversion.

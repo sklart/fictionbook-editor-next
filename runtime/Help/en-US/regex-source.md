@@ -6,8 +6,6 @@ A complete guide to searching and replacing in a book’s XML source in FictionB
 
 Revision: October 2, 2026. Design mode is covered separately in regex-design.md. These recipes are for Source mode; do not transfer PCRE2 expressions into it without checking them.
 
-Translation note: expressions, replacement strings, and test samples are unchanged from the approved Russian edition. Russian text in examples is intentional. Keeping the samples unchanged preserves the specified matches, whitespace, and validation results.
-
 ## 1. What Source-mode search is for
 
 Source exposes XML tags, attributes, links, entities, and the book’s text. It is suitable for auditing FB2: finding empty elements, imported HTML tags, placeholder links, unexpected attributes, and technical conversion remnants.

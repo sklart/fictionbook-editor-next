@@ -16,6 +16,7 @@ struct MarkdownInlineCode
 struct MarkdownBlock
 {
     MarkdownBlockKind kind;
+    int headingLevel;
     CString text;
     std::vector<MarkdownInlineCode> inlineCode;
 };

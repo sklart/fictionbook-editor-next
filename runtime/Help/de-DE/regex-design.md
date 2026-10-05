@@ -6,8 +6,6 @@ Vollständiges Handbuch zum Suchen, Ersetzen und Korrekturlesen von Büchern in 
 
 Stand: 2. Oktober 2026. Der Quelltextmodus wird in regex-source.md beschrieben. „Muster“ bezeichnet hier einen regulären Ausdruck; eine „integrierte Vorlage“ ist ein gespeicherter Ausdruck samt Einstellungen im Vorlagenbereich.
 
-Hinweis zur Übersetzung: Ausdrücke, Ersetzungszeichenfolgen und Kontrollbeispiele sind gegenüber der geprüften russischen Ausgabe unverändert. Russische Wörter in Code- und Testblöcken sind beabsichtigt, insbesondere bei kyrillischen Buchstaben, Groß-/Kleinschreibung und gemischten Alphabeten. Für den Ergebnisvergleich dürfen die Beispiele nicht übersetzt werden.
-
 ## 1. So verwenden Sie dieses Handbuch
 
 Ein regulärer Ausdruck beschreibt eine Suchregel statt einer einzigen genauen Zeichenfolge. Beispielsweise findet `[0-9]+` eine beliebig lange Ziffernfolge, während `[ \t]{2,}` mindestens zwei gewöhnliche Leerzeichen oder Tabulatoren findet. Der Treffer und der Text, durch den er ersetzt werden soll, sind unterschiedliche Dinge.
