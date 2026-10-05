@@ -750,7 +750,15 @@
 		const bool passed = FbeRegexHelp::RunRuntimeSmoke(m_hWnd, report);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
-	}	if (IsFbeTestScenario(L"search-templates-open-runtime"))
+	}
+	if (IsFbeTestScenario(L"regex-help-missing-files-runtime"))
+	{
+		CStringA report;
+		const bool passed = FbeRegexHelp::RunMissingFilesRuntimeSmoke(m_hWnd, report);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"search-templates-open-runtime"))
 	{
 		auto hasRoots = [](HWND tree) -> bool
 		{

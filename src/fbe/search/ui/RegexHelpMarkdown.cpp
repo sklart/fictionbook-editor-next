@@ -377,4 +377,29 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         enDesignLength, enDesignExpectedLength, enSourceLength, enSourceExpectedLength, ruDesignLength, ruDesignExpectedLength, ruSourceLength, ruSourceExpectedLength, passed ? "pass" : "fail");
     return passed;
 }
+
+bool RunMissingFilesRuntimeSmoke(HWND owner, CStringA& report)
+{
+    report.Empty();
+    std::vector<MarkdownBlock> fallback;
+    CString sourcePath;
+    const bool loaded = LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext::Design, L"zz-ZZ", fallback, sourcePath);
+    const bool content = !loaded && sourcePath.IsEmpty() && fallback.size() == 2 &&
+        fallback[0].kind == MarkdownBlockKind::Title && fallback[1].kind == MarkdownBlockKind::Note &&
+        fallback[1].text == L"Help file was not found.";
+    HMODULE richEditLibrary = ::LoadLibraryW(L"Msftedit.dll");
+    HWND richEdit = richEditLibrary ? ::CreateWindowExW(0, MSFTEDIT_CLASS, L"", WS_POPUP | ES_MULTILINE, 0, 0, 16, 16, owner, NULL, NULL, NULL) : NULL;
+    bool rendered = false;
+    if (richEdit)
+    {
+        RenderMarkdown(richEdit, fallback);
+        CString text;
+        rendered = ReadRichEditText(richEdit, text) && text.Find(L"Help file was not found.") >= 0;
+        ::DestroyWindow(richEdit);
+    }
+    if (richEditLibrary) ::FreeLibrary(richEditLibrary);
+    const bool passed = content && rendered;
+    report.Format("missing_files=%d\nfallback_content=%d\nfallback_render=%d\nresult=%s\n", !loaded, content, rendered, passed ? "pass" : "fail");
+    return passed;
+}
 }

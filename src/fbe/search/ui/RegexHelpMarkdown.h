@@ -29,5 +29,6 @@ void ParseMarkdownText(const CString& text, std::vector<MarkdownBlock>& blocks);
 bool LoadMarkdown(FbeSearchPresets::SearchUiContext context, std::vector<MarkdownBlock>& blocks, CString& sourcePath);
 // Test-only callable smoke for parser, fallback and RichEdit character formatting.
 bool RunRuntimeSmoke(HWND owner, CStringA& report);
+bool RunMissingFilesRuntimeSmoke(HWND owner, CStringA& report);
 void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks);
 }
