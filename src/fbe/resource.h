@@ -804,6 +804,7 @@
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST  57599
 #define ID_DOCUMENT_TREE_MODE_STRUCTURE       57600
 #define ID_DOCUMENT_TREE_MODE_SCRIPTS         57601
+#define ID_FILE_RESTART                       57602
 #define IDC_STATIC_WORDS_NEW_WORD       1626
 #define IDC_ARCHIVE_ENTRY_LIST           1638
 #define IDC_ARCHIVE_ENTRY_MESSAGE        1639
@@ -814,7 +815,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        269
-#define _APS_NEXT_COMMAND_VALUE         57602
+#define _APS_NEXT_COMMAND_VALUE         57603
 #define _APS_NEXT_CONTROL_VALUE         1670
 #define _APS_NEXT_SYMED_VALUE           133
 #endif

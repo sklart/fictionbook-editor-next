@@ -254,6 +254,24 @@
         "bg-BG": "Из&ход"
       }
     },
+    "fbe.menu.idr_mainframe.file.restart": {
+      "kind": "MENUITEM",
+      "targetId": "ID_FILE_RESTART",
+      "translations": {
+        "en-US": "&Restart FBE",
+        "ru-RU": "Пере&запустить FBE",
+        "uk-UA": "Пере&запустити FBE",
+        "de-DE": "FBE &neu starten",
+        "fr-FR": "&Redémarrer FBE",
+        "es-ES": "&Reiniciar FBE",
+        "it-IT": "&Riavvia FBE",
+        "pl-PL": "&Uruchom ponownie FBE",
+        "pt-PT": "&Reiniciar o FBE",
+        "nl-NL": "FBE &opnieuw starten",
+        "cs-CZ": "&Restartovat FBE",
+        "bg-BG": "Рестартирай &FBE"
+      }
+    },
     "fbe.menu.idr_mainframe.popup.edit": {
       "kind": "POPUP",
       "targetId": "",

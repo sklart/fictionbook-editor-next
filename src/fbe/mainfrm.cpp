@@ -551,6 +551,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_FILE_SAVE, L"fbe.menu.idr_mainframe.file.save" },
 	{ ID_FILE_SAVE_AS, L"fbe.menu.idr_mainframe.file.save_as" },
 	{ ID_FILE_VALIDATE, L"fbe.menu.idr_mainframe.file.validate" },
+	{ ID_FILE_RESTART, L"fbe.menu.idr_mainframe.file.restart" },
 	{ ID_APP_EXIT, L"fbe.menu.idr_mainframe.file.exit" },
 	{ ID_EDIT_UNDO, L"fbe.menu.idr_mainframe.edit.undo" },
 	{ ID_EDIT_REDO, L"fbe.menu.idr_mainframe.edit.redo" },

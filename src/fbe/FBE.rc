@@ -871,6 +871,8 @@ BEGIN
             MENUITEM "No Recent Files",             ID_FILE_MRU_FIRST, INACTIVE
         END
         MENUITEM SEPARATOR
+        MENUITEM "&Restart FBE",                ID_FILE_RESTART
+        MENUITEM SEPARATOR
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
     POPUP "&Edit"
