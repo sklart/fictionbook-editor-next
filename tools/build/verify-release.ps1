@@ -391,7 +391,11 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-nsis-legacy-archhandler-cleanup.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-components-page-layout.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-deployment-modes.ps1")
-& (Join-Path $repoRoot "tools\tests\test-nsis-install-scopes.ps1")
+if (-not $SkipEarlyRuntimeSuites) {
+    # CI runs this executable NSIS smoke in the PR build or package job, where
+    # the required compiler is provisioned exactly once for that job.
+    & (Join-Path $repoRoot "tools\tests\test-nsis-install-scopes.ps1")
+}
 & (Join-Path $repoRoot "tools\tests\test-nsis-ownership-safe-uninstall.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir

@@ -49,6 +49,8 @@ if ($packageBlock -match '(?m)^\s*submodules:\s*recursive\s*$' -or
 $buildBlock = [regex]::Match($workflow, '(?s)build:.*?package:').Value
 if ($buildBlock -notmatch '(?s)- name: Ensure NSIS 3\.13\s*\n\s*if: github\.event_name == ''pull_request''' -or
     $packageBlock -notmatch '(?s)- name: Ensure NSIS 3\.13\s*\n\s*shell: pwsh' -or
+    $buildBlock -notmatch '(?s)- name: Smoke NSIS install scopes\s*\n\s*if: github\.event_name == ''pull_request''' -or
+    $packageBlock -notmatch '(?s)- name: Smoke NSIS install scopes\s*\n\s*shell: pwsh' -or
     $packageBlock -notmatch 'Smoke packaged installer upgrade and uninstall') {
     throw 'NSIS must run only for PR smoke in build and once for the real package setup on push/tag.'
 }
