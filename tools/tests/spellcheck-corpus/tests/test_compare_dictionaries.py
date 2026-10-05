@@ -15,6 +15,9 @@ from compare_dictionaries import (
     describe_dictionary,
     describe_file,
     evaluate_annotated_corpora,
+    generate_report,
+    summarize_benchmark_delta,
+    summarize_vocabulary_delta,
 )
 
 
@@ -24,9 +27,9 @@ class CompareDictionariesAnnotatedTests(unittest.TestCase):
     def test_dictionary_and_probe_identities_include_sha256(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            base = root / "ru_RU"
-            aff = base.with_suffix(".aff")
-            dic = base.with_suffix(".dic")
+            base = root / "ru_RU-1.0.8"
+            aff = base.with_name(base.name + ".aff")
+            dic = base.with_name(base.name + ".dic")
             probe = root / "hunspell-probe.exe"
             aff.write_bytes(b"AFF-DATA\n")
             dic.write_bytes(b"DIC-DATA\n")
@@ -128,6 +131,56 @@ class CompareDictionariesAnnotatedTests(unittest.TestCase):
         self.assertEqual(fiction["tokens"], 4)
         self.assertEqual(fiction["unique_words"], 2)
         self.assertEqual(fiction["dictionaries"]["current"]["rejected_tokens"], 2)
+
+
+    def test_report_includes_all_suggestion_metrics_and_delta(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = Path(tmp) / "report.md"
+            generate_report(
+                report,
+                [("old", Path("old")), ("new", Path("new"))],
+                {"слово": 4},
+                {"fixture": {"слово": 4}},
+                {"old": {"слово"}, "new": set()},
+                {
+                    "cases": 2,
+                    "dictionaries": {
+                        "old": {"wrong_rejected": 1, "wrong_accepted": 1, "correct_accepted": 2, "correct_rejected": 0, "suggest_top1": 1, "suggest_top3": 1, "suggest_top5": 1, "suggest_top8": 1, "suggest_any": 1, "suggest_mrr": 0.5},
+                        "new": {"wrong_rejected": 2, "wrong_accepted": 0, "correct_accepted": 2, "correct_rejected": 0, "suggest_top1": 2, "suggest_top3": 2, "suggest_top5": 2, "suggest_top8": 2, "suggest_any": 2, "suggest_mrr": 1.0},
+                    },
+                },
+                {"newly_accepted": {"unique": 1, "tokens": 4}, "newly_rejected": {"unique": 0, "tokens": 0}},
+                {"fixed_false_accepts": 1, "suggestion_rank_improved": 1},
+            )
+            content = report.read_text(encoding="utf-8")
+            self.assertIn("Top-3", content)
+            self.assertIn("Top-8", content)
+            self.assertIn("Any", content)
+            self.assertIn("MRR", content)
+            self.assertIn("Исправленные ложные принятия", content)
+    def test_vocabulary_delta_counts_unique_and_occurrences(self) -> None:
+        delta = summarize_vocabulary_delta(
+            {"старое", "общее"},
+            {"новое", "общее"},
+            {"старое": 7, "новое": 3, "общее": 11},
+        )
+        self.assertEqual(delta["newly_accepted"], {"unique": 1, "tokens": 7})
+        self.assertEqual(delta["newly_rejected"], {"unique": 1, "tokens": 3})
+
+    def test_benchmark_delta_keeps_absent_suggestion_distinct_from_rank(self) -> None:
+        rows = [
+            {"dictionary": "old", "wrong": "ошбка", "correct": "ошибка", "source": "x", "correction": "", "domain": "", "wrong_rejected": False, "correct_accepted": False, "suggestion_rank": None},
+            {"dictionary": "new", "wrong": "ошбка", "correct": "ошибка", "source": "x", "correction": "", "domain": "", "wrong_rejected": True, "correct_accepted": True, "suggestion_rank": 3},
+            {"dictionary": "old", "wrong": "корета", "correct": "карета", "source": "x", "correction": "", "domain": "", "wrong_rejected": True, "correct_accepted": True, "suggestion_rank": 2},
+            {"dictionary": "new", "wrong": "корета", "correct": "карета", "source": "x", "correction": "", "domain": "", "wrong_rejected": False, "correct_accepted": False, "suggestion_rank": None},
+        ]
+        delta = summarize_benchmark_delta(rows, "old", "new")
+        self.assertEqual(delta["fixed_false_accepts"], 1)
+        self.assertEqual(delta["new_false_accepts"], 1)
+        self.assertEqual(delta["fixed_false_rejects"], 1)
+        self.assertEqual(delta["new_false_rejects"], 1)
+        self.assertEqual(delta["correct_suggestion_appeared"], 1)
+        self.assertEqual(delta["correct_suggestion_disappeared"], 1)
 
 
 if __name__ == "__main__":

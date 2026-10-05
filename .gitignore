@@ -76,3 +76,6 @@ FBE-Diagnostics-*.zip
 
 # ExportHTML native intermediate output is generated outside source control.
 /src/export-html/build/
+
+# Locally licensed spellcheck corpora; never commit source or derived files.
+/Corpora/

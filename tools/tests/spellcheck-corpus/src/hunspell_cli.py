@@ -11,9 +11,9 @@ class HunspellError(RuntimeError):
 
 def _dictionary_base(path: Path) -> str:
     if path.suffix.lower() in {".aff", ".dic"}:
-        path = path.with_suffix("")
-    aff = path.with_suffix(".aff")
-    dic = path.with_suffix(".dic")
+        path = path.with_name(path.name[:-4])
+    aff = path.with_name(path.name + ".aff")
+    dic = path.with_name(path.name + ".dic")
     if not aff.is_file() or not dic.is_file():
         raise FileNotFoundError(f"Dictionary pair not found: {aff} / {dic}")
     return str(path)

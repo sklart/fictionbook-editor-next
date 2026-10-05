@@ -178,7 +178,7 @@ static bool TestDictionary(const std::string& directory, const char* name, const
         // Fixed OCR regression cases: these must stay rejected by the bundled
         // Goudron dictionary; the corpus guard separately checks suggestions.
         for (const wchar_t* word : { L"сабака", L"карова", L"малако" }) ok &= Spell(dict, word, cp, false);
-        // Confirmed against Goudron 1.0.8 with bundled Hunspell 1.7.3.
+        // Stable bundled-dictionary regressions; keep these typos rejected.
         for (const wchar_t* word : { L"компьютерр", L"редакторр", L"литератуура", L"молокоо", L"жирафф" }) ok &= Spell(dict, word, cp, false);
         ok &= HasSuggestion(dict, L"собка", L"собака", cp);
         ok &= HasSuggestion(dict, L"корета", L"карета", cp);

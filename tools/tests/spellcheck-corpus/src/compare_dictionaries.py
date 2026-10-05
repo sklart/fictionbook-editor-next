@@ -50,9 +50,12 @@ def describe_file(path: Path) -> dict[str, Any]:
 
 def describe_dictionary(path: Path) -> dict[str, Any]:
     resolved = path.expanduser().resolve()
-    base = resolved.with_suffix("") if resolved.suffix.lower() in {".aff", ".dic"} else resolved
-    aff = base.with_suffix(".aff")
-    dic = base.with_suffix(".dic")
+    # Dictionary base names may contain dots (for example ru_RU-1.0.8).
+    # Strip only the explicitly supplied dictionary extension; with_suffix()
+    # would otherwise treat the trailing version component as an extension.
+    base = resolved.with_name(resolved.name[:-4]) if resolved.suffix.lower() in {".aff", ".dic"} else resolved
+    aff = base.with_name(base.name + ".aff")
+    dic = base.with_name(base.name + ".dic")
     if not aff.is_file() or not dic.is_file():
         raise FileNotFoundError(f"Dictionary pair not found: {aff} / {dic}")
     return {
@@ -294,7 +297,11 @@ def evaluate_benchmark(
             stats["correct_accepted"] += int(correct_accepted)
             stats["correct_rejected"] += int(not correct_accepted)
             stats["suggest_top1"] += int(rank == 1)
+            stats["suggest_top3"] += int(rank is not None and rank <= 3)
             stats["suggest_top5"] += int(rank is not None and rank <= 5)
+            stats["suggest_top8"] += int(rank is not None and rank <= 8)
+            stats["suggest_any"] += int(rank is not None)
+            stats["suggest_mrr"] += (1.0 / rank) if rank is not None else 0.0
             detailed.append(
                 {
                     **case,
@@ -305,8 +312,70 @@ def evaluate_benchmark(
                     "suggestions": proposed[:10],
                 }
             )
-        summary["dictionaries"][name] = dict(stats)
+        values = dict(stats)
+        # MRR is the mean reciprocal rank across all annotated typo cases.
+        values["suggest_mrr"] = float(values.get("suggest_mrr", 0.0)) / len(cases) if cases else 0.0
+        summary["dictionaries"][name] = values
     return summary, detailed
+
+
+def summarize_vocabulary_delta(
+    baseline: set[str],
+    candidate: set[str],
+    frequencies: Counter[str],
+) -> dict[str, dict[str, int]]:
+    """Summarize acceptance changes, retaining their corpus occurrence weight."""
+    def counts(words: set[str]) -> dict[str, int]:
+        return {
+            "unique": len(words),
+            "tokens": sum(frequencies.get(word, 0) for word in words),
+        }
+
+    return {
+        "newly_accepted": counts(baseline - candidate),
+        "newly_rejected": counts(candidate - baseline),
+    }
+
+
+def summarize_benchmark_delta(
+    rows: list[dict[str, Any]], baseline_name: str, candidate_name: str
+) -> dict[str, int]:
+    """Compare paired typo cases without treating a missing suggestion as rank zero."""
+    by_case: dict[tuple[str, str, str, str, str], dict[str, list[dict[str, Any]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for row in rows:
+        key = tuple(str(row.get(field, "")) for field in ("wrong", "correct", "source", "correction", "domain"))
+        by_case[key][str(row["dictionary"])].append(row)
+
+    result = Counter()
+    for per_dictionary in by_case.values():
+        baseline_rows = per_dictionary.get(baseline_name, [])
+        candidate_rows = per_dictionary.get(candidate_name, [])
+        if len(baseline_rows) != len(candidate_rows):
+            raise ValueError("Benchmark rows cannot be paired between dictionaries")
+        for baseline, candidate in zip(baseline_rows, candidate_rows, strict=True):
+            if not baseline["wrong_rejected"] and candidate["wrong_rejected"]:
+                result["fixed_false_accepts"] += 1
+            if baseline["wrong_rejected"] and not candidate["wrong_rejected"]:
+                result["new_false_accepts"] += 1
+            if not baseline["correct_accepted"] and candidate["correct_accepted"]:
+                result["fixed_false_rejects"] += 1
+            if baseline["correct_accepted"] and not candidate["correct_accepted"]:
+                result["new_false_rejects"] += 1
+
+            before = baseline.get("suggestion_rank")
+            after = candidate.get("suggestion_rank")
+            if before is None and after is not None:
+                result["correct_suggestion_appeared"] += 1
+            elif before is not None and after is None:
+                result["correct_suggestion_disappeared"] += 1
+            elif before is not None and after is not None:
+                if after < before:
+                    result["suggestion_rank_improved"] += 1
+                elif after > before:
+                    result["suggestion_rank_degraded"] += 1
+    return dict(result)
 
 
 def write_word_csv(
@@ -366,6 +435,8 @@ def generate_report(
     corpus_frequencies: dict[str, Counter[str]],
     misspelled: dict[str, set[str]],
     benchmark: dict[str, Any],
+    vocabulary_delta: dict[str, dict[str, int]] | None = None,
+    benchmark_delta: dict[str, int] | None = None,
     annotated: dict[str, Any] | None = None,
     dictionary_files: dict[str, Any] | None = None,
     hunspell_probe: dict[str, Any] | None = None,
@@ -410,14 +481,18 @@ def generate_report(
     lines.extend([
         "## Сводка по корпусам",
         "",
-        "| Корпус | Словоупотреблений | " + " | ".join(f"Не принято `{name}`" for name in names) + " |",
-        "|---|---:|" + "---:|" * len(names),
+        "| Корпус | Словоупотреблений | Уникальных слов | "
+        + " | ".join(f"Не принято `{name}` (unique / tokens / rate)" for name in names) + " |",
+        "|---|---:|---:|" + "---:|" * len(names),
     ])
     for corpus_id, counts in sorted(corpus_frequencies.items()):
-        cells = [corpus_id, f"{sum(counts.values()):,}"]
+        tokens = sum(counts.values())
+        cells = [corpus_id, f"{tokens:,}", f"{len(counts):,}"]
         for name in names:
-            rejected = sum(count for word, count in counts.items() if word in misspelled[name])
-            cells.append(f"{rejected:,}")
+            rejected_unique = sum(1 for word in counts if word in misspelled[name])
+            rejected_tokens = sum(count for word, count in counts.items() if word in misspelled[name])
+            rate = rejected_tokens / tokens if tokens else 0.0
+            cells.append(f"{rejected_unique:,} / {rejected_tokens:,} / {rate:.2%}")
         lines.append("| " + " | ".join(cells) + " |")
 
     annotated = annotated or {}
@@ -544,8 +619,8 @@ def generate_report(
     total_cases = int(benchmark.get("cases", 0))
     lines.append(f"Однословных пар «ошибка → исправление»: **{total_cases:,}**.")
     lines.append("")
-    lines.append("| Словарь | Ошибка обнаружена | Ошибка пропущена | Исправленное слово принято | Top-1 | Top-5 |")
-    lines.append("|---|---:|---:|---:|---:|---:|")
+    lines.append("| Словарь | Ошибка обнаружена | Ошибка пропущена | Исправленное слово принято | Исправленное слово отклонено | Top-1 | Top-3 | Top-5 | Top-8 | Any | MRR |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for name in names:
         stats = benchmark.get("dictionaries", {}).get(name, {})
         lines.append(
@@ -556,12 +631,43 @@ def generate_report(
                     str(stats.get("wrong_rejected", 0)),
                     str(stats.get("wrong_accepted", 0)),
                     str(stats.get("correct_accepted", 0)),
+                    str(stats.get("correct_rejected", 0)),
                     str(stats.get("suggest_top1", 0)),
+                    str(stats.get("suggest_top3", 0)),
                     str(stats.get("suggest_top5", 0)),
+                    str(stats.get("suggest_top8", 0)),
+                    str(stats.get("suggest_any", 0)),
+                    f"{float(stats.get('suggest_mrr', 0.0)):.6f}",
                 ]
             )
             + " |"
         )
+
+    if vocabulary_delta or benchmark_delta:
+        lines.extend(["", "## Дельта между первым и вторым словарём", ""])
+        if vocabulary_delta:
+            lines.extend([
+                "| Изменение покрытия | Уникальных слов | Словоупотреблений |",
+                "|---|---:|---:|",
+                *[
+                    f"| {label} | {int(vocabulary_delta.get(key, {}).get('unique', 0)):,} | {int(vocabulary_delta.get(key, {}).get('tokens', 0)):,} |"
+                    for key, label in (("newly_accepted", "Ново принятые"), ("newly_rejected", "Ново отклонённые"))
+                ],
+                "",
+            ])
+        if benchmark_delta:
+            labels = (
+                ("fixed_false_accepts", "Исправленные ложные принятия"),
+                ("new_false_accepts", "Новые ложные принятия"),
+                ("fixed_false_rejects", "Исправленные ложные отклонения"),
+                ("new_false_rejects", "Новые ложные отклонения"),
+                ("suggestion_rank_improved", "Ранг подсказки улучшился"),
+                ("suggestion_rank_degraded", "Ранг подсказки ухудшился"),
+                ("correct_suggestion_appeared", "Правильная подсказка появилась"),
+                ("correct_suggestion_disappeared", "Правильная подсказка исчезла"),
+            )
+            lines.extend(["| Изменение typo benchmark | Случаев |", "|---|---:|"])
+            lines.extend(f"| {label} | {int(benchmark_delta.get(key, 0)):,} |" for key, label in labels)
 
     lines.extend(
         [
@@ -628,6 +734,12 @@ def main() -> int:
     )
 
     dictionary_names = [name for name, _ in args.dictionary]
+    vocabulary_delta = summarize_vocabulary_delta(
+        misspelled[dictionary_names[0]], misspelled[dictionary_names[1]], frequencies
+    )
+    benchmark_delta = summarize_benchmark_delta(
+        benchmark_rows, dictionary_names[0], dictionary_names[1]
+    )
     annotated_summary = evaluate_annotated_corpora(
         annotated_corpora, annotated_misspelled, dictionary_names
     )
@@ -650,6 +762,8 @@ def main() -> int:
             "rejected_unique": {name: len(values) for name, values in misspelled.items()},
             "annotated": annotated_summary,
             "benchmark": benchmark,
+            "vocabulary_delta": vocabulary_delta,
+            "benchmark_delta": benchmark_delta,
         },
     )
     generate_report(
@@ -659,6 +773,8 @@ def main() -> int:
         corpus_frequencies,
         misspelled,
         benchmark,
+        vocabulary_delta,
+        benchmark_delta,
         annotated_summary,
         dictionary_files,
         hunspell_probe,

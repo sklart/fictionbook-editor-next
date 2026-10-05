@@ -90,6 +90,16 @@ foreach ($dictionaryName in @("de_DE", "en_US", "ru_RU", "uk_UA")) {
     if ($firstLine -ne [string]$entry.dicEntries) { throw "Count в dic не совпадает с sources.json: $dictionaryName" }
 }
 
+$ruProvenance = $manifest.ru_RU
+if ($ruProvenance.version -ne '1.0.9' -or $ruProvenance.upstreamTag -ne 'v1.0.9' -or
+    $ruProvenance.encoding -ne 'KOI8-R' -or [int]$ruProvenance.dicEntries -ne 575484 -or
+    $ruProvenance.releaseAsset -ne 'ru-spelling-dictionary-hunspell-1.0.9.zip' -or
+    $ruProvenance.releaseAssetSha256 -ne '146721AA90A7F8E1E6FB15BAAD17AAF90814CCCE78877F602642C27FA657C0C9' -or
+    $ruProvenance.affSha256 -ne 'AEBB6F2D4F80C38F3ED559B74AA6F178564CD98704F61970168F5436375F8448' -or
+    $ruProvenance.dicSha256 -ne 'A76C323B7342DE1A2C26F11713603604E4C9A7B7EF45631FAB2960F10450FB2D') {
+    throw 'Goudron ru_RU 1.0.9 release-asset provenance is incomplete or inconsistent.'
+}
+
 $spellerHeader = Read-SourceFile "src\fbe\Speller.h"
 $spellerSource = Read-SourceFile "src\fbe\Speller.cpp"
 $mainFrameSource = Read-SourceFile "src\fbe\mainfrm.h"
