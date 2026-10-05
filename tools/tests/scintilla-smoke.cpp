@@ -457,6 +457,67 @@ static bool VerifyZeroLengthSingleReplaceWrapGuard(HWND editor)
 	}
 	return true;
 }
+
+// Mirrors the reverse Source Replace -> Find -> wrap cycle.  The starting
+// position must be before the guard's first boundary, not before the end of
+// inserted replacement text, otherwise ^ and internal anchors are rediscovered.
+static bool VerifyZeroLengthSingleReplaceReverseWrapGuard(HWND editor)
+{
+	struct Case { const char* subject; const char* pattern; const char* replacement; const char* expected; int expectedAfterReplace; };
+	static const Case cases[] = {
+		{ "a\nb", "^", "X", "a\nXb", 0 },
+		{ "a\nb", "^", "", "a\nb", 0 },
+		{ "abc", "(?=b)", "", "abc", -1 },
+		{ "abc", "(?=b)", "X", "aXbc", -1 }
+	};
+	for (size_t index = 0; index < _countof(cases); ++index)
+	{
+		const Case& fixture = cases[index];
+		SendMessage(editor, SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(fixture.subject));
+		int end = static_cast<int>(SendMessage(editor, SCI_GETLENGTH, 0, 0));
+		SendMessage(editor, SCI_SETTARGETSTART, end, 0);
+		SendMessage(editor, SCI_SETTARGETEND, 0, 0);
+		SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+		if (SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern)) < 0 ||
+			SendMessage(editor, SCI_GETTARGETSTART, 0, 0) != SendMessage(editor, SCI_GETTARGETEND, 0, 0))
+			return false;
+		const int guardStart = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+		const int replacementLength = static_cast<int>(SendMessage(editor, SCI_REPLACETARGETRE,
+			std::strlen(fixture.replacement), reinterpret_cast<LPARAM>(fixture.replacement)));
+		end += replacementLength;
+		const int guardEnd = static_cast<int>(SendMessage(editor, SCI_GETTARGETEND, 0, 0));
+		const int guardFirst = min(guardStart, guardEnd), guardLast = max(guardStart, guardEnd);
+		const int resume = static_cast<int>(SendMessage(editor, SCI_POSITIONBEFORE, guardFirst, 0));
+		if (resume == guardFirst) return false;
+
+		auto findReverseSkippingGuard = [&](int rangeStart, int rangeEnd) -> int {
+			if (rangeStart == rangeEnd) return -1;
+			SendMessage(editor, SCI_SETTARGETSTART, rangeStart, 0);
+			SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
+			SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+			LRESULT position = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
+			while (position != -1)
+			{
+				const int hit = static_cast<int>(SendMessage(editor, SCI_GETTARGETSTART, 0, 0));
+				if (hit < guardFirst || hit > guardLast) return hit;
+				const int continuation = static_cast<int>(SendMessage(editor, SCI_POSITIONBEFORE, guardFirst, 0));
+				if (continuation == guardFirst || continuation <= rangeEnd) return -1;
+				SendMessage(editor, SCI_SETTARGETSTART, continuation, 0);
+				SendMessage(editor, SCI_SETTARGETEND, rangeEnd, 0);
+				SendMessage(editor, SCI_SETSEARCHFLAGS, SCFIND_REGEXP | SCFIND_CXX11REGEX, 0);
+				position = SendMessage(editor, SCI_SEARCHINTARGET, std::strlen(fixture.pattern), reinterpret_cast<LPARAM>(fixture.pattern));
+			}
+			return -1;
+		};
+
+		if (findReverseSkippingGuard(resume, 0) != fixture.expectedAfterReplace) return false;
+		if (findReverseSkippingGuard(end, resume) != -1) return false;
+		std::string text(static_cast<size_t>(end) + 8, '\0');
+		SendMessage(editor, SCI_GETTEXT, text.size(), reinterpret_cast<LPARAM>(&text[0]));
+		if (text.c_str() != std::string(fixture.expected)) return false;
+	}
+	return true;
+}
 static bool VerifyModernSourceFeatures(HWND editor)
 {
 	SendMessage(editor, SCI_SETCOMMANDEVENTS, FALSE, 0);
@@ -940,6 +1001,13 @@ int main(int argc, char* argv[])
 		FreeLibrary(lexilla);
 		FreeLibrary(scintilla);
 		return 31;
+	}
+	if (!VerifyZeroLengthSingleReplaceReverseWrapGuard(editor))
+	{
+		DestroyWindow(editor);
+		FreeLibrary(lexilla);
+		FreeLibrary(scintilla);
+		return 32;
 	}
 	if (!VerifyMinimalReplaceTarget(editor))
 	{

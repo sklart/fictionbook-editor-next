@@ -3827,11 +3827,12 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 	bool exhaustedZeroLengthPosition = false;
 	if (skipCurrentZeroLength)
 	{
-		const int nextPosition = rev ? ScintillaPositionBefore(src, p1) : ScintillaPositionAfter(src, p1);
+		const int guardBoundary = rev ? zeroLengthGuardFirst : zeroLengthGuardLast;
+		const int nextPosition = rev ? ScintillaPositionBefore(src, guardBoundary) : ScintillaPositionAfter(src, guardBoundary);
 		// SCI_POSITIONAFTER/BEFORE are document-aware (and therefore UTF-8-safe),
-		// but cannot advance beyond EOF/BOF. Do not search that same zero-width
-		// boundary again; the wrap pass below may still find a different hit.
-		exhaustedZeroLengthPosition = nextPosition == p1;
+		// but cannot advance beyond EOF/BOF. Start from the entire protected
+		// interval, not from the selection after replacement text was inserted.
+		exhaustedZeroLengthPosition = nextPosition == guardBoundary;
 		if (!exhaustedZeroLengthPosition)
 			p1 = nextPosition;
 	}
@@ -3849,7 +3850,36 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
     ::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
     // this sometimes hangs in reverse search :)
     int ret = -1;
-    if (!exhaustedZeroLengthPosition)
+	auto skipProtectedZeroLengthHits = [&](int rangeEnd) -> bool
+	{
+		while (ret != -1 && isProtectedZeroLengthHit())
+		{
+			// A replace may leave the old anchor at the same point (empty
+			// replacement) or move it across inserted text. Continue past the
+			// complete protected interval for both initial and wrap searches.
+			const int guardBoundary = rev ? zeroLengthGuardFirst : zeroLengthGuardLast;
+			const int continuation = rev ? ScintillaPositionBefore(src, guardBoundary) : ScintillaPositionAfter(src, guardBoundary);
+			if (continuation == guardBoundary || (!rev && continuation >= rangeEnd) || (rev && continuation <= rangeEnd))
+			{
+				ret = -1;
+				break;
+			}
+			::SendMessage(src, SCI_SETTARGETSTART, continuation, 0);
+			::SendMessage(src, SCI_SETTARGETEND, rangeEnd, 0);
+			::SendMessage(src, SCI_SETSEARCHFLAGS, flags, 0);
+			::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
+			ret = ::SendMessage(src, SCI_SEARCHINTARGET, len, (LPARAM)tmp.data());
+			if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
+			{
+				m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
+				m_last_search_error_is_regexp = true;
+				U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+				return false;
+			}
+		}
+		return true;
+	};
+    if (!exhaustedZeroLengthPosition && p1 != p2)
         ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
     if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
     {
@@ -3858,6 +3888,7 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
         U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
         return false;
     }
+	if (!skipProtectedZeroLengthHits(p2)) return false;
     if (ret==-1) 
 	{ // try wrap
 		if (p1!=p3) 
@@ -3874,32 +3905,7 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
                 U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
                 return false;
             }
-			while (ret != -1 && isProtectedZeroLengthHit())
-			{
-				// A replace may leave the old anchor at the same point (empty
-				// replacement) or move it across the inserted text. Continue the
-				// wrap search past its complete source-to-result interval instead of
-				// selecting that logical zero-length hit again.
-				const int hit = static_cast<int>(::SendMessage(src, SCI_GETTARGETSTART, 0, 0));
-				const int continuation = rev ? ScintillaPositionBefore(src, hit) : ScintillaPositionAfter(src, hit);
-				if (continuation == hit || (!rev && continuation >= p1) || (rev && continuation <= p1))
-				{
-					ret = -1;
-					break;
-				}
-				::SendMessage(src, SCI_SETTARGETSTART, rev ? p3 : continuation, 0);
-				::SendMessage(src, SCI_SETTARGETEND, rev ? continuation : p1, 0);
-				::SendMessage(src, SCI_SETSEARCHFLAGS, flags, 0);
-				::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
-				ret = ::SendMessage(src, SCI_SEARCHINTARGET, len, (LPARAM)tmp.data());
-				if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
-				{
-					m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-					m_last_search_error_is_regexp = true;
-					U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
-					return false;
-				}
-			}
+			if (!skipProtectedZeroLengthHits(p1)) return false;
 		}
 		if (ret==-1) 
 		{
