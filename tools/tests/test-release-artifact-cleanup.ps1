@@ -54,7 +54,17 @@ try {
     $preservedFile = Join-Path $nonEmptyDefaults 'operator-file.txt'
     Set-Content -LiteralPath $preservedFile -Value 'keep me' -NoNewline
 
-    Remove-ObsoleteReleaseArtifacts -OutputDirectory $nonEmptyOutput
+    # Непустой каталог намеренно сохраняется: предупреждение ожидаемо для
+    # оператора, но не должно засорять успешный вывод регрессионного теста.
+    # Проверки ниже подтверждают тот же контракт без ложного CI-warning.
+    $savedWarningPreference = $WarningPreference
+    try {
+        $WarningPreference = 'SilentlyContinue'
+        Remove-ObsoleteReleaseArtifacts -OutputDirectory $nonEmptyOutput
+    }
+    finally {
+        $WarningPreference = $savedWarningPreference
+    }
     if (Test-Path -LiteralPath (Join-Path $nonEmptyDefaults 'Words.xml')) {
         throw 'Legacy defaults\Words.xml was not removed from a non-empty directory.'
     }
