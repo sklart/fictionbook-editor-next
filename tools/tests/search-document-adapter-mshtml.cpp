@@ -159,7 +159,7 @@ static int VerifyEmptyParagraphRegexAnchors()
 }
 int wmain()
 {
-	if (FAILED(CoInitialize(NULL))) return 1;
+	if (FAILED(CoInitialize(NULL))) { fprintf(stderr, "FAIL: CoInitialize\n"); return 1; }
 	MSHTML::IHTMLDocument2Ptr document;
 	document.CreateInstance(L"htmlfile");
 	IPersistStreamInitPtr persist(document);
@@ -516,5 +516,7 @@ int wmain()
 	scopedPersist = NULL;
 	scopedDocument = NULL;
 	CoUninitialize();
+	if (result != 0)
+		fprintf(stderr, "FAIL: search-document-adapter checkpoint %d\n", result);
 	return result;
 }
