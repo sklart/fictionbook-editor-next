@@ -93,6 +93,9 @@ public:
 	bool IsModeSelectorVisible() const { return m_view_bar.IsWindowVisible() != FALSE; }
 	bool IsStructuralToolbarVisible() const { return m_rebar.IsWindowVisible() != FALSE; }
 	bool GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const;
+	// Must run after CCommandBarCtrl finishes rebuilding its native theme state.
+	void FinalizeViewBarTheme();
+	bool PrepareViewBarPopupThemeProbe();
 	void RefreshModeControls();
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)

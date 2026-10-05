@@ -189,10 +189,24 @@ void CMainFrame::RunPortableStateTestScenario()
 	if(navigationViewBarElementsRuntime)
 	{
 		m_document_tree.m_tree.RefreshLocalizedMenuCaptions();
-		CString text; int width = 0, measuredWidth = 0, padding = 0;
 		const CString expected = FbeLoadRuntimeString(IDS_DOCTREE_MENU_ELEMENTS);
-		const bool passed = m_document_tree.m_tree.GetViewBarElementProbe(text, width, measuredWidth, padding) && text == expected && width >= measuredWidth + padding;
-		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, width, measuredWidth, padding, passed ? "pass" : "fail");
+		CString text; int width = 0, measuredWidth = 0, padding = 0;
+		auto viewBarReady = [&]() { return m_document_tree.m_tree.GetViewBarElementProbe(text, width, measuredWidth, padding) && text == expected && width >= measuredWidth + padding; };
+		const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool lightBefore = viewBarReady();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool dark = ThemeManager::IsDark() && viewBarReady();
+		const bool popupPrepared = m_document_tree.m_tree.PrepareViewBarPopupThemeProbe();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool lightAfter = !ThemeManager::IsDark() && viewBarReady();
+		ThemeManager::SetSelectedTheme(originalTheme);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool passed = lightBefore && dark && popupPrepared && lightAfter;
+		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared=%d\nviewbar-light-after=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, lightBefore, dark, popupPrepared, lightAfter, width, measuredWidth, padding, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)

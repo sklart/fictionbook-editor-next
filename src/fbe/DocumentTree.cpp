@@ -44,16 +44,19 @@ bool ShowNativeDocumentTreeViewBarPopup(HWND commandBar, int item)
 	POINT point = { itemRect.left, itemRect.bottom };
 	::ClientToScreen(commandBar, &point);
 	const HWND owner = ::GetParent(commandBar);
-	const UINT command = ::TrackPopupMenuEx(popup,
-		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_RETURNCMD,
-		point.x, point.y, owner, NULL);
+	// Match the main command bar: let it prepare its native popup state before
+	// ThemeManager restores FBE-owned menu bitmaps and opens the menu.  Direct
+	// Direct native tracking skips that preparation and flashes a light popup first.
+	::SendMessage(commandBar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
+	const UINT command = ThemeManager::TrackPopupMenu(popup,
+		TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON, point.x, point.y, owner);
 	if(command != 0)
 		::SendMessage(owner, WM_COMMAND, MAKEWPARAM(command, 0), 0);
 	return true;
 }
 
 LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, WPARAM wParam,
-	LPARAM lParam, UINT_PTR, DWORD_PTR)
+	LPARAM lParam, UINT_PTR, DWORD_PTR reference)
 {
 	if(ThemeManager::IsDark() && !ThemeManager::IsHighContrast())
 	{
@@ -77,6 +80,8 @@ LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc(HWND window, UINT message, W
 		const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 		::SetWindowTheme(window, dark ? L"DarkMode_Explorer" : L"Explorer", NULL);
 		::SendMessage(window, WM_SETTINGCHANGE, 0, 0);
+		CTreeWithToolBar* const tree = reinterpret_cast<CTreeWithToolBar*>(reference);
+		if(tree != NULL) tree->FinalizeViewBarTheme();
 		::RedrawWindow(window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
 	}
 	return result;
@@ -194,7 +199,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	ApplyViewBarMetrics();
 	UpdateViewBarMode(false);
 	::SetWindowSubclass(m_view_bar, DocumentTreeViewBarWindowThemeProc,
-		kDocumentTreeViewBarWindowThemeSubclassId, 0);
+		kDocumentTreeViewBarWindowThemeSubclassId, reinterpret_cast<DWORD_PTR>(this));
 	::SetWindowSubclass(m_hWnd, DocumentTreeViewBarThemeProc, kDocumentTreeViewBarThemeSubclassId,
 		reinterpret_cast<DWORD_PTR>(static_cast<HWND>(m_view_bar)));
 	this->ModifyStyle(WS_POPUP, 0, 0);
@@ -495,6 +500,19 @@ void CTreeWithToolBar::ApplyViewBarMetrics()
 	EnsureViewBarElementTextWidth();
 }
 
+void CTreeWithToolBar::FinalizeViewBarTheme()
+{
+	if(!m_view_bar.IsWindow()) return;
+	wchar_t elements[MAX_LOAD_STRING + 1] = {};
+	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCTREE_MENU_ELEMENTS, elements, MAX_LOAD_STRING);
+	// SetWindowTheme/WM_SETTINGCHANGE may rebuild CCommandBarCtrl's buttons.
+	// Restore its localized caption before measuring the font selected by that
+	// freshly rebuilt native control.
+	RefreshViewBarElementText(elements);
+	EnsureViewBarElementTextWidth();
+	::RedrawWindow(m_view_bar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
+}
+
 void CTreeWithToolBar::RefreshViewBarElementText(LPCWSTR text)
 {
 	if(!m_view_bar.IsWindow() || text == NULL) return;
@@ -557,6 +575,19 @@ bool CTreeWithToolBar::GetViewBarElementProbe(CString& text, int& buttonWidth, i
 	buttonWidth = button.cx;
 	measuredTextWidth = extent.cx;
 	padding = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_view_bar));
+	return true;
+}
+
+bool CTreeWithToolBar::PrepareViewBarPopupThemeProbe()
+{
+	if(!m_view_bar.IsWindow()) return false;
+	const HMENU menu = reinterpret_cast<HMENU>(::SendMessage(m_view_bar, CBRM_GETMENU, 0, 0));
+	const HMENU popup = menu != NULL ? ::GetSubMenu(menu, 0) : NULL;
+	if(popup == NULL) return false;
+	// This is the non-modal preparation portion of ShowNativeDocumentTreeViewBarPopup.
+	// It lets the runtime test verify the active theme path without synthesizing
+	// input into a modal native menu loop.
+	::SendMessage(m_view_bar, WM_INITMENUPOPUP, reinterpret_cast<WPARAM>(popup), 0);
 	return true;
 }
 

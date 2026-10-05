@@ -31,5 +31,12 @@ if([string]::IsNullOrWhiteSpace($translations.'en-US')) { throw 'Отсутст�
 $longest = @($translations.psobject.Properties | ForEach-Object { [pscustomobject]@{ Language=$_.Name; Text=[string]$_.Value; Length=([string]$_.Value).Length } } | Sort-Object Length -Descending | Select-Object -First 1)
 if($longest[0].Length -le $translations.'en-US'.Length) { throw 'В каталоге не найден перевод, требующий расширенной ширины.' }
 if($source -notmatch 'RefreshViewBarElementText\(LPCWSTR text\)' -or $source -notmatch 'TBIF_TEXT \| TBIF_BYINDEX') { throw 'Локализация должна явно записывать новый текст первой кнопки.' }
+if($source -notmatch 'void CTreeWithToolBar::FinalizeViewBarTheme\(\)[\s\S]*?RefreshViewBarElementText\(elements\);[\s\S]*?EnsureViewBarElementTextWidth\(\);[\s\S]*?RedrawWindow\(m_view_bar') { throw 'После native theme processing нет явной нормализации текста, ширины и redraw view-bar.' }
+if($source -notmatch 'SetWindowTheme\(window, dark \? L"DarkMode_Explorer" : L"Explorer", NULL\);[\s\S]{0,300}WM_SETTINGCHANGE[\s\S]{0,300}FinalizeViewBarTheme\(\)') { throw 'View-bar должен нормализоваться только после SetWindowTheme и WM_SETTINGCHANGE.' }
+$popupStart = $source.IndexOf('bool ShowNativeDocumentTreeViewBarPopup')
+$popupEnd = $source.IndexOf('LRESULT CALLBACK DocumentTreeViewBarWindowThemeProc', $popupStart)
+if($popupStart -lt 0 -or $popupEnd -lt 0) { throw 'Не найден popup Элементы.' }
+$popup = $source.Substring($popupStart, $popupEnd - $popupStart)
+if([string]::IsNullOrWhiteSpace($popup) -or $popup -notmatch 'WM_INITMENUPOPUP' -or $popup -notmatch 'ThemeManager::TrackPopupMenu' -or $popup -match 'TrackPopupMenuEx') { throw 'Popup Элементы должен использовать подготовку command bar и ThemeManager::TrackPopupMenu.' }
 
 Write-Host "Document Tree Elements view-bar regression passed (longest=$($longest[0].Language): $($longest[0].Text))."
