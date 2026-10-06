@@ -403,6 +403,8 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration
 
+& (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mutation formatting -ParagraphCount 750 -VerifyCountIndependence
+
 if ($FullValidation) {
     Write-Host 'Running FULL GUI, production, stress and benchmark validation.'
 	& (Join-Path $repoRoot "tools\tests\test-fbe-split-undo-probe.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -KeepArtifacts
@@ -415,7 +417,9 @@ if ($FullValidation) {
     & (Join-Path $repoRoot "tools\tests\test-fbe-large-binary-production-roundtrip.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-many-binaries-production-stress.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-image-import-generated-id-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
-    & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+    & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mutation direct -VerifyCountIndependence
+    & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mutation script -VerifyCountIndependence
+    & (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-local-edit-performance.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mutation large-paragraph -VerifyCountIndependence
 	& (Join-Path $repoRoot "tools\tests\test-fbe-spellcheck-scroll-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 	& (Join-Path $repoRoot "tools\tests\test-fbe-clipboard-fallback-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
     & (Join-Path $repoRoot "tools\tests\test-fbe-idle-performance-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")

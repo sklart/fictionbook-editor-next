@@ -88,8 +88,13 @@ foreach ($test in @('test-fbe-table-toolbar-rendering.ps1', 'test-fbe-toolbar-al
     if ($position -le $tableContourStart -or $position -ge $tableContourEnd) { throw "$test must remain strictly inside the table contour." }
 }
 $spellcheckProductionTest = 'test-fbe-spellcheck-local-edit-performance.ps1'
-$spellcheckPosition = $verify.IndexOf($spellcheckProductionTest)
-if ($spellcheckPosition -le $fullContourStart -or $spellcheckPosition -ge $fullContourEnd -or (Get-OccurrenceCount $verify $spellcheckProductionTest) -ne 1) { throw 'Spellcheck local-edit production regression must be invoked exactly once strictly inside FULL.' }
+if ((Get-OccurrenceCount $verify $spellcheckProductionTest) -ne 4) { throw 'Spellcheck local-edit regression must retain one FAST formatting smoke and three FULL variants.' }
+$formattingSmoke = $verify.IndexOf('-Mutation formatting -ParagraphCount 750 -VerifyCountIndependence')
+if ($formattingSmoke -lt 0 -or $formattingSmoke -ge $fullContourStart) { throw 'Spellcheck formatting smoke must run in FAST before FULL.' }
+foreach ($mutation in @('direct', 'script', 'large-paragraph')) {
+    $position = $verify.IndexOf("-Mutation $mutation -VerifyCountIndependence")
+    if ($position -le $fullContourStart -or $position -ge $fullContourEnd) { throw "Spellcheck $mutation regression must run strictly inside FULL." }
+}
 $idlePerformanceTest = 'test-fbe-idle-performance-runtime.ps1'
 $idlePerformancePosition = $verify.IndexOf($idlePerformanceTest)
 if ($idlePerformancePosition -le $fullContourStart -or $idlePerformancePosition -ge $fullContourEnd -or (Get-OccurrenceCount $verify $idlePerformanceTest) -ne 1) { throw 'Idle performance runtime regression must be invoked exactly once strictly inside FULL.' }

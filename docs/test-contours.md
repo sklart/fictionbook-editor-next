@@ -10,7 +10,7 @@
 
 ## FULL
 
-`-FullValidation` добавляет настоящие GUI/production round-trip, huge binary и table fixtures, structural table matrix, toolbar rendering, performance, fault-injection, portable isolation и stress tests. В этом контуре выполняется `test-fbe-spellcheck-local-edit-performance.ps1`: реальный FBE редактирует последний абзац длинной section, а test-only diagnostic counter доказывает bounded work spellcheck. Также выполняется `test-fbe-idle-performance-runtime.ps1`: реальные small и medium FB2 проходят 1000 неизменных idle-циклов без повторных command, selection, toolbar или JS/COM обновлений.
+`-FullValidation` добавляет настоящие GUI/production round-trip, huge binary и table fixtures, structural table matrix, toolbar rendering, performance, fault-injection, portable isolation и stress tests. В этом контуре выполняется `test-fbe-spellcheck-local-edit-performance.ps1`: реальный FBE проверяет bounded work после direct `innerText`, форматирования, пользовательского JS и правки большого абзаца; счётчики доказывают независимость от числа абзацев. Также выполняется `test-fbe-idle-performance-runtime.ps1`: реальные small и medium FB2 проходят 1000 неизменных idle-циклов без повторных command, selection, toolbar или JS/COM обновлений.
 
 Локальный запуск: `pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation`.
 

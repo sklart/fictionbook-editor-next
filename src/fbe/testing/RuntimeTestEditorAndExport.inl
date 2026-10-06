@@ -1288,37 +1288,38 @@
 	}
 	if (IsFbeTestScenario(L"spellcheck-local-edit"))
 	{
+		wchar_t mutationValue[32] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPELLCHECK_MUTATION", mutationValue, _countof(mutationValue));
+		const CString mutation(mutationValue[0] ? mutationValue : L"direct");
+		const bool formatting = mutation == L"formatting", script = mutation == L"script", largeParagraph = mutation == L"large-paragraph";
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
 		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()) : MSHTML::IHTMLElementPtr());
-		if (!body || !paragraph || !m_Speller)
-		{
-			output.Close(); ::PostQuitMessage(1); return 0;
-		}
-		m_doc->m_body.SetFocus();
-		MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
+		if (!body || !paragraph || !m_Speller || (!formatting && !script && !largeParagraph && mutation != L"direct")) { output.Close(); ::PostQuitMessage(1); return 0; }
+		m_doc->m_body.SetFocus(); MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
 		if (!range) { output.Close(); ::PostQuitMessage(1); return 0; }
-		range->moveToElementText(paragraph);
-		range->collapse(VARIANT_TRUE);
+		range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE);
 		if (range->move(L"character", 1) != 1) { output.Close(); ::PostQuitMessage(1); return 0; }
-		range->select();
-		_bstr_t paragraphText(paragraph->innerText);
-		CString editedText(static_cast<const wchar_t*>(paragraphText));
-		editedText += L" localedit";
-		paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(editedText));
-		m_Speller->SetEnabled(true);
-		// Set the same settings gate used by OnEdChange, but do not trigger a
-		// viewport-wide highlight pass before the local-edit measurement.
-		_Settings.SetHighlightMisspells(true);
-		m_Speller->ResetTestDiagnostics();
-		BOOL handled = FALSE;
-		OnEdChange(0, 0, NULL, handled);
-		CStringA row;
-		row.Format("paragraph_count\t%ld\r\ncheck_element_calls\t%ld\r\nvisited_paragraphs\t%ld\r\n", paragraphs->length, m_Speller->GetTestCheckElementCalls(), m_Speller->GetTestVisitedParagraphs());
-		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close();
-		// The fixture is intentionally edited in memory only; terminate the
-		// unattended message loop without opening the normal dirty-document UI.
-		::PostQuitMessage(0); return 0;
+		range->select(); m_Speller->SetEnabled(true); _Settings.SetHighlightMisspells(true); m_Speller->ResetTestDiagnostics();
+		bool domChanged = false;
+		if (formatting)
+		{
+			_bstr_t beforeItalic(paragraph->innerHTML); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_ITALIC, 0), 0); _bstr_t afterItalic(paragraph->innerHTML); domChanged = wcscmp(static_cast<const wchar_t*>(beforeItalic), static_cast<const wchar_t*>(afterItalic)) != 0;
+		}
+		else if (script)
+		{
+			wchar_t tempDirectory[MAX_PATH] = {}; wchar_t scriptPath[MAX_PATH] = {};
+			const bool pathReady = ::GetTempPathW(_countof(tempDirectory), tempDirectory) > 0 && ::GetTempFileNameW(tempDirectory, L"fbs", 0, scriptPath) != 0;
+			const char source[] = "function Run(){var r=document.selection.createRange();var p=r.parentElement();while(p&&p.tagName!='P')p=p.parentElement();if(!p)throw new Error('paragraph');p.innerText=p.innerText+' scriptedit';}";
+			if (pathReady) { HANDLE scriptFile = ::CreateFileW(scriptPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); DWORD written = 0; const bool saved = scriptFile != INVALID_HANDLE_VALUE && ::WriteFile(scriptFile, source, static_cast<DWORD>(sizeof(source) - 1), &written, NULL) && written == sizeof(source) - 1; if (scriptFile != INVALID_HANDLE_VALUE) ::CloseHandle(scriptFile); if (saved) { FbeScriptDiagnostics::ScopedDialogSuppression suppressDialogs; m_doc->RunScript(scriptPath); const ULONGLONG deadline = ::GetTickCount64() + 2000; while (::GetTickCount64() < deadline) { _bstr_t current(paragraph->innerText); if (CString(static_cast<const wchar_t*>(current)).Find(L"scriptedit") >= 0) break; MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } ::Sleep(1); } } ::DeleteFileW(scriptPath); }
+			_bstr_t scriptText(paragraph->innerText); CString text(static_cast<const wchar_t*>(scriptText)); domChanged = text.Find(L"scriptedit") >= 0;
+		}
+		else
+		{
+			_bstr_t original(paragraph->innerText); CString changed(static_cast<const wchar_t*>(original)); changed += largeParagraph ? L" largeedit" : L" localedit"; paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(changed)); _bstr_t updated(paragraph->innerText); domChanged = CString(static_cast<const wchar_t*>(updated)).Find(largeParagraph ? L"largeedit" : L"localedit") >= 0;
+		}
+		BOOL handled = FALSE; OnEdChange(0, 0, NULL, handled);
+		CStringA row; row.Format("paragraph_count\t%ld\r\ncheck_element_calls\t%ld\r\nvisited_paragraphs\t%ld\r\ndom_changed\t%d\r\n", paragraphs->length, m_Speller->GetTestCheckElementCalls(), m_Speller->GetTestVisitedParagraphs(), domChanged ? 1 : 0);
+		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(domChanged ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"spellcheck-scroll"))
 	{
