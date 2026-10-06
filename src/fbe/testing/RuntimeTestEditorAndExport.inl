@@ -1303,7 +1303,7 @@
 		bool domChanged = false;
 		if (formatting)
 		{
-			_bstr_t beforeItalic(paragraph->innerHTML); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_ITALIC, 0), 0); _bstr_t afterItalic(paragraph->innerHTML); domChanged = wcscmp(static_cast<const wchar_t*>(beforeItalic), static_cast<const wchar_t*>(afterItalic)) != 0;
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_ITALIC, 0), 0); const ULONGLONG deadline = ::GetTickCount64() + 2000; while (::GetTickCount64() < deadline) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); if (upper.Find(L"<EM") >= 0) break; ::Sleep(1); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); domChanged = upper.Find(L"<EM") >= 0;
 		}
 		else if (script)
 		{
@@ -1317,7 +1317,7 @@
 		{
 			_bstr_t original(paragraph->innerText); CString changed(static_cast<const wchar_t*>(original)); changed += largeParagraph ? L" largeedit" : L" localedit"; paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(changed)); _bstr_t updated(paragraph->innerText); domChanged = CString(static_cast<const wchar_t*>(updated)).Find(largeParagraph ? L"largeedit" : L"localedit") >= 0;
 		}
-		BOOL handled = FALSE; OnEdChange(0, 0, NULL, handled);
+		if (!formatting && !script) { BOOL handled = FALSE; OnEdChange(0, 0, NULL, handled); }
 		CStringA row; row.Format("paragraph_count\t%ld\r\ncheck_element_calls\t%ld\r\nvisited_paragraphs\t%ld\r\ndom_changed\t%d\r\n", paragraphs->length, m_Speller->GetTestCheckElementCalls(), m_Speller->GetTestVisitedParagraphs(), domChanged ? 1 : 0);
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(domChanged ? 0 : 1); return 0;
 	}
