@@ -4445,6 +4445,96 @@
         "bg-BG": "Клавишни комбинации"
       }
     },
+    "fbe.hotkey.export.title": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Hotkeys",
+        "ru-RU": "Горячие клавиши",
+        "uk-UA": "Гарячі клавіші",
+        "de-DE": "Tastenkürzel",
+        "fr-FR": "Raccourcis clavier",
+        "es-ES": "Atajos de teclado",
+        "it-IT": "Tasti di scelta rapida",
+        "pl-PL": "Skróty klawiszowe",
+        "pt-PT": "Atalhos de teclado",
+        "nl-NL": "Sneltoetsen",
+        "cs-CZ": "Klávesové zkratky",
+        "bg-BG": "Клавишни комбинации"
+      }
+    },
+    "fbe.hotkey.key.space": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Space",
+        "ru-RU": "Пробел",
+        "uk-UA": "Пробіл",
+        "de-DE": "Leertaste",
+        "fr-FR": "Espace",
+        "es-ES": "Barra espaciadora",
+        "it-IT": "Barra spaziatrice",
+        "pl-PL": "Spacja",
+        "pt-PT": "Barra de espaço",
+        "nl-NL": "Spatiebalk",
+        "cs-CZ": "Mezerník",
+        "bg-BG": "Интервал"
+      }
+    },
+    "fbe.hotkey.key.backspace": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Backspace",
+        "ru-RU": "Backspace",
+        "uk-UA": "Backspace",
+        "de-DE": "Rücktaste",
+        "fr-FR": "Retour arrière",
+        "es-ES": "Retroceso",
+        "it-IT": "Backspace",
+        "pl-PL": "Backspace",
+        "pt-PT": "Backspace",
+        "nl-NL": "Backspace",
+        "cs-CZ": "Backspace",
+        "bg-BG": "Backspace"
+      }
+    },
+    "fbe.hotkey.key.delete": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Delete",
+        "ru-RU": "Delete",
+        "uk-UA": "Delete",
+        "de-DE": "Entf",
+        "fr-FR": "Suppr",
+        "es-ES": "Supr",
+        "it-IT": "Canc",
+        "pl-PL": "Delete",
+        "pt-PT": "Delete",
+        "nl-NL": "Delete",
+        "cs-CZ": "Delete",
+        "bg-BG": "Delete"
+      }
+    },
+    "fbe.hotkey.key.insert": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Insert",
+        "ru-RU": "Insert",
+        "uk-UA": "Insert",
+        "de-DE": "Einfg",
+        "fr-FR": "Inser",
+        "es-ES": "Insert",
+        "it-IT": "Ins",
+        "pl-PL": "Insert",
+        "pt-PT": "Insert",
+        "nl-NL": "Insert",
+        "cs-CZ": "Insert",
+        "bg-BG": "Insert"
+      }
+    },
     "fbe.hotkey.group.symbols": {
       "resourceId": "IDS_HOTKEY_GROUP_SYMBOLS",
       "component": "fbe.core",

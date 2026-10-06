@@ -1,4 +1,6 @@
 
+#include "../settings/hotkeys/HotkeyTextExport.h"
+
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.
 class CSplitUndoProbeParent : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
@@ -63,6 +65,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool malformedToolbarRead = IsFbeTestScenario(L"portable-toolbar-malformed-read");
 	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
 	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
+	const bool hotkeyExport = IsFbeTestScenario(L"hotkey-export-runtime");
 	const bool diagnosticCleanup = IsFbeTestScenario(L"portable-diagnostic-cleanup");
 	const bool scriptToolbarLifecycle = IsFbeTestScenario(L"script-toolbar-lifecycle-runtime");
 	const bool scriptToolbarLifecycleReload = IsFbeTestScenario(L"script-toolbar-lifecycle-reload-runtime");
@@ -78,7 +81,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -105,6 +108,45 @@ void CMainFrame::RunPortableStateTestScenario()
 		}
 		return NULL;
 	};
+	if(hotkeyExport)
+	{
+		wchar_t locale[LOCALE_NAME_MAX_LENGTH] = {};
+		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_HOTKEY_EXPORT_LOCALE", locale, _countof(locale));
+		const bool russian = ::CompareStringOrdinal(locale, -1, L"ru-RU", -1, TRUE) == CSTR_EQUAL;
+		_Settings.SetInterfaceLanguage(russian ? FBE_INTERFACE_LANGUAGE_RUSSIAN : FBE_INTERFACE_LANGUAGE_ENGLISH);
+		FbePublishRuntimeLocaleName(russian ? L"ru-RU" : L"en-US");
+		FbeResetRuntimeLocalization();
+		std::vector<CHotkeysGroup> groups(_Settings.m_hotkey_groups);
+		for(size_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex)
+			if(groups[groupIndex].m_reg_name == L"Scripts")
+			{
+				groups[groupIndex].m_hotkeys.push_back(CHotkey(L"runtime-export-script", L"Runtime script", FCONTROL, ID_LAST_SCRIPT, VK_F9));
+				break;
+			}
+		const CString text = FbeSettings::Hotkeys::BuildTextExport(groups);
+		const CStringA utf8Text(CW2A(text, CP_UTF8));
+		WritePortableStateTestText(diagnosticsDirectory + L"hotkey-export.txt", utf8Text);
+		const CString title = russian ? CString(L"Горячие клавиши") : CString(L"Hotkeys");
+		const CString edit = russian ? CString(L"Редактировать") : CString(L"Edit");
+		const CString merge = russian ? CString(L"Слить") : CString(L"Merge");
+		const CString space = russian ? CString(L"Пробел") : CString(L"Space");
+		const CString scripts = russian ? CString(L"Скрипты") : CString(L"Scripts");
+		const CString plugins = russian ? CString(L"Плагины") : CString(L"Plugins");
+		const bool header = text.Find(L"FictionBook Editor Next\r\n" + title + L"\r\n") == 0;
+		const bool localizedNames = text.Find(L"\r\n" + edit + L"\r\n") >= 0 && text.Find(merge + L"\tAlt+Delete\r\n") >= 0;
+		const bool scriptAndPluginGroups = text.Find(L"\r\n" + scripts + L"\r\n") >= 0 && text.Find(L"Runtime script\tCtrl+F9\r\n") >= 0 && text.Find(L"\r\n" + plugins + L"\r\n") >= 0;
+		const bool specialKeys = text.Find(space) >= 0 && text.Find(L"Backspace") >= 0 && text.Find(L"Delete") >= 0 && text.Find(L"Insert") >= 0 &&
+			text.Find(L"F2") >= 0 && text.Find(L"F7") >= 0 && text.Find(L"F8") >= 0;
+		const bool tabs = text.Find(L"\t") >= 0 && text.Find(L"    ") < 0;
+		const bool noEmptyGroups = text.Find(L"\r\n\r\n\r\n") < 0;
+		const bool passed = header && localizedNames && scriptAndPluginGroups && specialKeys && tabs && noEmptyGroups;
+		CStringA report;
+		report.Format("phase=hotkey-export\nlocale=%ls\nheader=%d\nlocalized-names=%d\nscripts-plugins=%d\nspecial-keys=%d\ntabs=%d\nno-empty-groups=%d\nresult=%s\n",
+			locale, header, localizedNames, scriptAndPluginGroups, specialKeys, tabs, noEmptyGroups, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+		PostMessage(WM_CLOSE);
+		return;
+	}
 	if(scriptLiveReloadRuntime)
 	{
 		::CreateDirectory(scriptsDirectory, NULL);

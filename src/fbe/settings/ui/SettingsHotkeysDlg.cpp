@@ -7,6 +7,7 @@
 #include "..\\..\\Settings.h"
 #include "..\\..\\res1.h"
 #include "..\\..\\RuntimeLocalization.h"
+#include "..\\hotkeys\\HotkeyTextExport.h"
 
 extern CSettings _Settings;
 
@@ -44,27 +45,6 @@ static CString GetHotkeyGroupDisplayName(const CHotkeysGroup& group)
 {
 	return group.m_name_resource_id ? FbeLoadRuntimeString(group.m_name_resource_id, group.m_name) : group.m_name;
 }
-
-static CString BuildHotkeysExportText(const std::vector<CHotkeysGroup>& groups)
-{
-	CString text(L"FictionBook Editor Next\r\nHotkeys\r\n");
-	for(size_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex)
-	{
-		const CHotkeysGroup& group = groups[groupIndex];
-		CString rows;
-		for(size_t hotkeyIndex = 0; hotkeyIndex < group.m_hotkeys.size(); ++hotkeyIndex)
-		{
-			const CHotkey& hotkey = group.m_hotkeys[hotkeyIndex];
-			if(hotkey.m_accel.key == 0) continue;
-			CString row(GetHotkeyDisplayName(hotkey));
-			row += L"\t" + U::AccelToString(hotkey.m_accel) + L"\r\n";
-			rows += row;
-		}
-		if(!rows.IsEmpty()) text += L"\r\n" + GetHotkeyGroupDisplayName(group) + L"\r\n" + rows;
-	}
-	return text;
-}
-
 static bool WriteUtf8TextFile(const CString& path, const CString& text)
 {
 	const int size = ::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), NULL, 0, NULL, NULL);
@@ -587,7 +567,7 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyExport(WORD, WORD, HWND, BOO
 	CFileDialog dialog(FALSE, L"txt", L"FBE-Next-Hotkeys.txt", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST,
 		filter, m_hWnd);
 	if(dialog.DoModal() != IDOK) return 0;
-	if(!WriteUtf8TextFile(dialog.m_szFileName, BuildHotkeysExportText(_Settings.m_hotkey_groups)))
+	if(!WriteUtf8TextFile(dialog.m_szFileName, FbeSettings::Hotkeys::BuildTextExport(_Settings.m_hotkey_groups)))
 		U::MessageBox(m_hWnd, L"Could not export hotkeys.", L"FictionBook Editor", MB_OK | MB_ICONERROR);
 	return 0;
 }

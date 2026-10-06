@@ -846,6 +846,18 @@ CString KeycodeToString(WORD keycode)
 	else return CString();
 }
 
+static CString KeycodeToDisplayString(WORD keycode)
+{
+	switch(keycode)
+	{
+	case VK_SPACE: return FbeLoadRuntimeStringByKey(L"fbe.hotkey.key.space", L"Space");
+	case VK_BACK: return FbeLoadRuntimeStringByKey(L"fbe.hotkey.key.backspace", L"Backspace");
+	case VK_DELETE: return FbeLoadRuntimeStringByKey(L"fbe.hotkey.key.delete", L"Delete");
+	case VK_INSERT: return FbeLoadRuntimeStringByKey(L"fbe.hotkey.key.insert", L"Insert");
+	default: return KeycodeToString(keycode);
+	}
+}
+
 CString AccelToString(ACCEL accel)
 {
 	CString temp;
@@ -856,11 +868,10 @@ CString AccelToString(ACCEL accel)
 	if(accel.fVirt & FSHIFT)
 		temp += "Shift+";
 
-	temp += KeycodeToString(accel.key);
+	temp += KeycodeToDisplayString(accel.key);
 
 	return temp;
 }
-
 WORD VKToFVirt(WORD virtkey)
 {
 	switch(virtkey)

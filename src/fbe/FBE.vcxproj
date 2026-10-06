@@ -402,6 +402,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClCompile Include="settings\SettingsStore.cpp" />
 	<ClCompile Include="settings\hotkeys\HotkeyStore.cpp" />
 	<ClCompile Include="settings\hotkeys\HotkeyDefaults.cpp" />
+    <ClCompile Include="settings\hotkeys\HotkeyTextExport.cpp" />
 	<ClCompile Include="settings\hotkeys\Hotkey.cpp" />
 	<ClCompile Include="settings\hotkeys\HotkeyGroup.cpp" />
 	<ClCompile Include="settings\words\WordsItem.cpp" />
@@ -605,6 +606,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="settings\SettingsStore.h" />
 	<ClInclude Include="settings\hotkeys\HotkeyStore.h" />
 	<ClInclude Include="settings\hotkeys\HotkeyDefaults.h" />
+    <ClInclude Include="settings\hotkeys\HotkeyTextExport.h" />
 	<ClInclude Include="settings\hotkeys\Hotkey.h" />
 	<ClInclude Include="settings\hotkeys\HotkeyGroup.h" />
 	<ClInclude Include="settings\words\WordsItem.h" />

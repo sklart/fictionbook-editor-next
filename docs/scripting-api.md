@@ -190,35 +190,56 @@ window.external.SetStatusBarText("Обработано: " + count);
 <a id="работа-с-исходным-xml-документа"></a>
 ### Работа с исходным XML документа
 
-`document` — DOM визуального Body/MSHTML. Для полного XML FB2 или FBD используйте
-`GetSourceText()`: он включает `description`, `body` и `binary`. При активном
-изменённом Source метод возвращает актуальный текст Source без переключения режима.
-Большие `binary` могут существенно увеличить размер строки.
-
-`ValidateSourceText(xml)` полностью проверяет кандидат штатным контуром и
-возвращает булево значение. `GetLastSourceDiagnostic()` возвращает JSON
-последней XML-операции с полями `valid`, `message`, `line`, `column`.
-`ApplySourceText(xml, action)` повторно проверяет XML, применяет его только
-при успехе и создаёт одну обычную операцию Undo/Redo с описанием `action`.
-Неверный XML не меняет документ.
+`document` — это DOM визуального Body, предоставляемый MSHTML. Он не является
+полным XML книги. Для работы со всем документом FB2 или FBD через Source API
+используйте `window.external`: получаемая строка включает `description`, все
+`body` и `binary`.
 
 ```js
+window.external.GetSourceText()
+window.external.ValidateSourceText(xml)
+window.external.GetLastSourceDiagnostic()
+window.external.ApplySourceText(xml, action)
+```
+
+`window.external.GetSourceText()` возвращает полный актуальный XML. Если
+пользователь оставил несохранённые изменения в режиме Source, метод читает
+именно этот текст и не переключает редактор в другой режим. Большие `binary`
+существенно увеличивают размер возвращаемой строки.
+
+Перед изменением вызывайте `window.external.ValidateSourceText(xml)`. Это
+штатная проверка полного FB2/FBD. Если XML невалиден, вызов
+`window.external.ApplySourceText(xml, action)` также отвергает его: документ
+не меняется. При успехе Apply создаёт одну стандартную операцию Undo/Redo с
+описанием `action`.
+
+`window.external.GetLastSourceDiagnostic()` возвращает JSON последней XML
+операции. Его структура: `valid` (boolean), `message` (string), `line`
+(number) и `column` (number). В JScript JSON можно разобрать через `eval`:
+
+```js
+function ReadSourceDiagnostic()
+{
+    return eval("(" + window.external.GetLastSourceDiagnostic() + ")");
+}
+
 function Run()
 {
     var xml = window.external.GetSourceText();
-    var modified = xml.replace("старый текст", "новый текст");
+    var changed = xml.replace("старый текст", "новый текст");
 
-    if (!window.external.ValidateSourceText(modified))
+    if (!window.external.ValidateSourceText(changed))
     {
-        var diagnostic = window.external.GetLastSourceDiagnostic();
-        window.external.MsgBox(diagnostic);
+        var diagnostic = ReadSourceDiagnostic();
+        window.external.MsgBox(
+            diagnostic.message + " (" + diagnostic.line + ":" + diagnostic.column + ")");
         return;
     }
 
-    window.external.ApplySourceText(modified, "Замена текста в XML");
+    // Apply повторно валидирует XML и добавляет одну обычную операцию Undo/Redo.
+    window.external.ApplySourceText(changed, "Замена текста в XML");
 }
 ```
-
 <a id="getdocumentfilepath"></a>
 ### `GetDocumentFilePath()`
 
