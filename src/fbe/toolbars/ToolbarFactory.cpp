@@ -71,13 +71,32 @@ HBITMAP ToolbarFactory::CreateScaledAlphaBitmap(HBITMAP source, int sourceSize, 
 	if(alpha == NULL || targetSize <= 0) return NULL;
 	if(targetSize == sourceSize) return alpha;
 	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = targetSize; info.bmiHeader.biHeight = -targetSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	DIBSECTION alphaInfo = {};
+	if(::GetObject(alpha, sizeof(alphaInfo), &alphaInfo) != sizeof(alphaInfo) || alphaInfo.dsBm.bmBits == NULL) { ::DeleteObject(alpha); return NULL; }
 	void* targetBits = NULL; HBITMAP scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &targetBits, NULL, 0);
-	HDC sourceDc = ::CreateCompatibleDC(NULL), targetDc = ::CreateCompatibleDC(NULL);
-	if(scaled == NULL || targetBits == NULL || sourceDc == NULL || targetDc == NULL) { if(scaled) ::DeleteObject(scaled); if(sourceDc) ::DeleteDC(sourceDc); if(targetDc) ::DeleteDC(targetDc); ::DeleteObject(alpha); return NULL; }
-	HGDIOBJ oldSource = ::SelectObject(sourceDc, alpha), oldTarget = ::SelectObject(targetDc, scaled);
-	::SetStretchBltMode(targetDc, HALFTONE); ::StretchBlt(targetDc, 0, 0, targetSize, targetSize, sourceDc, 0, 0, sourceSize, sourceSize, SRCCOPY);
-	::SelectObject(sourceDc, oldSource); ::SelectObject(targetDc, oldTarget); ::DeleteDC(sourceDc); ::DeleteDC(targetDc); ::DeleteObject(alpha);
-	DWORD* pixels = static_cast<DWORD*>(targetBits); for(int index = 0; index < targetSize * targetSize; ++index) pixels[index] = (pixels[index] & 0x00FFFFFF) == 0x00FF00FF ? 0 : (pixels[index] | 0xFF000000);
+	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
+	const DWORD* sourcePixels = static_cast<const DWORD*>(alphaInfo.dsBm.bmBits);
+	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
+	// Interpolate premultiplied ARGB. StretchBlt treats this DIB as ordinary RGB,
+	// losing alpha and turning the transparent magenta canvas into an opaque black halo.
+	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
+	{
+		const double sourceX = (static_cast<double>(x) + 0.5) * sourceSize / targetSize - 0.5;
+		const double sourceY = (static_cast<double>(y) + 0.5) * sourceSize / targetSize - 0.5;
+		const double clampedX = max(0.0, min(static_cast<double>(sourceSize - 1), sourceX));
+		const double clampedY = max(0.0, min(static_cast<double>(sourceSize - 1), sourceY));
+		const int left = static_cast<int>(floor(clampedX)), top = static_cast<int>(floor(clampedY));
+		const int right = min(sourceSize - 1, left + 1), bottom = min(sourceSize - 1, top + 1);
+		const double fx = clampedX - left, fy = clampedY - top;
+		const DWORD samples[] = { sourcePixels[top * sourceSize + left], sourcePixels[top * sourceSize + right], sourcePixels[bottom * sourceSize + left], sourcePixels[bottom * sourceSize + right] };
+		const double weights[] = { (1.0 - fx) * (1.0 - fy), fx * (1.0 - fy), (1.0 - fx) * fy, fx * fy };
+		double a = 0.0, r = 0.0, g = 0.0, b = 0.0;
+		for(int sample = 0; sample < 4; ++sample) { const double sampleAlpha = (samples[sample] >> 24) & 0xFF; a += sampleAlpha * weights[sample]; r += ((samples[sample] >> 16) & 0xFF) * sampleAlpha * weights[sample]; g += ((samples[sample] >> 8) & 0xFF) * sampleAlpha * weights[sample]; b += (samples[sample] & 0xFF) * sampleAlpha * weights[sample]; }
+		const int alphaValue = static_cast<int>(a + 0.5);
+		if(alphaValue == 0) targetPixels[y * targetSize + x] = 0;
+		else targetPixels[y * targetSize + x] = (static_cast<DWORD>(alphaValue) << 24) | (static_cast<DWORD>(r / a + 0.5) << 16) | (static_cast<DWORD>(g / a + 0.5) << 8) | static_cast<DWORD>(b / a + 0.5);
+	}
+	::DeleteObject(alpha);
 	return scaled;
 }
 int ToolbarFactory::AddBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)

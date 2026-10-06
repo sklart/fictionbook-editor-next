@@ -1377,7 +1377,29 @@
 		}
 		output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
-	if (IsFbeTestScenario(L"table-toolbar-rendering"))
+	if (IsFbeTestScenario(L"toolbar-alpha-scale"))
+	{
+		const int sourceSize = 24;
+		BITMAPINFO sourceInfo = {}; sourceInfo.bmiHeader.biSize = sizeof(sourceInfo.bmiHeader); sourceInfo.bmiHeader.biWidth = sourceSize; sourceInfo.bmiHeader.biHeight = -sourceSize; sourceInfo.bmiHeader.biPlanes = 1; sourceInfo.bmiHeader.biBitCount = 24;
+		void* sourceBits = NULL; HBITMAP source = ::CreateDIBSection(NULL, &sourceInfo, DIB_RGB_COLORS, &sourceBits, NULL, 0);
+		if(!source || !sourceBits) { if(source) ::DeleteObject(source); output.Close(); ::PostQuitMessage(1); return 0; }
+		const int sourceStride = ((sourceSize * 24 + 31) / 32) * 4;
+		for(int y = 0; y < sourceSize; ++y) for(int x = 0; x < sourceSize; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 0xFF; pixel[1] = 0x00; pixel[2] = 0xFF; }
+		for(int y = 7; y <= 16; ++y) for(int x = 7; x <= 16; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = static_cast<BYTE>(40 + x * 4); pixel[1] = static_cast<BYTE>(100 + y * 5); pixel[2] = 210; }
+		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
+		for(size_t index = 0; index < _countof(dpis); ++index)
+		{
+			const int targetSize = ToolbarFactory::CommandToolbarImageSize(dpis[index]); HBITMAP scaled = ToolbarFactory::CreateScaledAlphaBitmap(source, sourceSize, targetSize);
+			DIBSECTION scaledInfo = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(scaledInfo), &scaledInfo) == sizeof(scaledInfo) && scaledInfo.dsBm.bmBits != NULL && scaledInfo.dsBm.bmWidth == targetSize && abs(scaledInfo.dsBmih.biHeight) == targetSize;
+			long visible = 0, opaqueBlack = 0, magenta = 0; bool transparentCorners = ready;
+			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; } }
+			const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0;
+			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
+		}
+		::DeleteObject(source); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
+if (IsFbeTestScenario(L"table-toolbar-rendering"))
 	{
 		// This is deliberately a UI-level probe.  The toolbar state and the
 		// pixels it paints are recorded independently, so a disabled command is
@@ -1399,54 +1421,36 @@
 			}
 			return true;
 		};
-		auto selectElement = [&](const wchar_t* tag, long index) -> bool
+		auto selectRange = [&](const wchar_t* firstId, const wchar_t* lastId) -> bool
 		{
 			MSHTML::IHTMLElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLElementPtr());
-			MSHTML::IHTMLElementCollectionPtr elements(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(tag) : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr element(elements && elements->length > index ? elements->item(_variant_t(index), _variant_t()) : MSHTML::IHTMLElementPtr());
-			if (!element) return false;
+			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr first(document3 ? document3->getElementById(_bstr_t(firstId)) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr last(document3 ? document3->getElementById(_bstr_t(lastId)) : MSHTML::IHTMLElementPtr());
+			if (!body || !first || !last) return false;
 			m_doc->m_body.SetFocus();
-			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
-			if (!range) return false;
-			range->moveToElementText(element);
-			range->collapse(VARIANT_TRUE);
-			// Keep the test caret inside the target element rather than on its boundary.
-			if (range->move(L"character", 1) != 1) return false;
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange()), end(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			if(!range || !end) return false;
+			range->moveToElementText(first);
+			const bool expectTableContext = (bool)FbeTable::FindTableCell(first);
+			if(first != last) { range->collapse(VARIANT_TRUE); if(range->move(L"character", 1) != 1) return false; end->moveToElementText(last); end->collapse(VARIANT_FALSE); if(end->move(L"character", -1) != -1 || FAILED(range->setEndPoint(L"EndToEnd", end))) return false; }
+			else { range->collapse(VARIANT_TRUE); if(expectTableContext && range->move(L"character", 1) != 1) return false; }
 			range->select();
-
-			// MSHTML can publish the new selection asynchronously. Wait until
-			// SelectionStructTableCon observes the context required by this phase
-			// before the toolbar state is sampled.
-			const bool expectTableContext = _wcsicmp(tag, L"TD") == 0 || _wcsicmp(tag, L"TH") == 0;
 			const ULONGLONG deadline = ::GetTickCount64() + 1000;
 			for (;;)
 			{
 				const bool hasTableContext = (bool)m_doc->m_body.SelectionStructTableCon();
-				if (hasTableContext == expectTableContext)
-					return true;
-				if (::GetTickCount64() >= deadline)
-					return false;
-
-				MSG msg = {};
-				bool pumpedMessage = false;
-				while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-				{
-					if (msg.message == WM_QUIT)
-					{
-						::PostQuitMessage(static_cast<int>(msg.wParam));
-						return false;
-					}
-					::TranslateMessage(&msg);
-					::DispatchMessage(&msg);
-					pumpedMessage = true;
-				}
-				if (!pumpedMessage)
-					::Sleep(1);
+				if (hasTableContext == expectTableContext) return true;
+				if (::GetTickCount64() >= deadline) return false;
+				MSG msg = {}; bool pumpedMessage = false;
+				while (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) { if (msg.message == WM_QUIT) { ::PostQuitMessage(static_cast<int>(msg.wParam)); return false; } ::TranslateMessage(&msg); ::DispatchMessage(&msg); pumpedMessage = true; }
+				if (!pumpedMessage) ::Sleep(1);
 			}
-		};
-		auto updateTableCommands = [&]()
+		};		auto updateTableCommands = [&]()
 		{
-			RebuildSelectionContext();
+			InvalidateSelectionContext();
+			m_selection_context.tableCell = m_doc->m_body.SelectionStructTableCon();
+			m_selection_context.valid = true;
 			UpdateTableCommandState();
 			UIUpdateToolBar();
 			m_CmdToolbar.Invalidate(); m_CmdToolbar.UpdateWindow();
@@ -1484,27 +1488,47 @@
 				RECT rect = {}; const bool hasRect = m_CmdToolbar.GetItemRect(m_CmdToolbar.CommandToIndex(command), &rect) != FALSE;
 				const DWORD state = static_cast<DWORD>(m_CmdToolbar.SendMessage(TB_GETSTATE, command, 0));
 				const int image = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, command, 0));
-				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\r\n", phase, command, state,
+				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\t%d\r\n", phase, command, state,
 					(state & TBSTATE_ENABLED) != 0 ? 1 : 0, (state & TBSTATE_CHECKED) != 0 ? 1 : 0,
 					(state & TBSTATE_HIDDEN) != 0 ? 1 : 0, image, hasRect ? chromaPixels(rect) : -1,
-					imageListHasMask ? 1 : 0, hasRect ? imageBlackPixels(rect) : -1);
+					imageListHasMask ? 1 : 0, hasRect ? imageBlackPixels(rect) : -1, (UIGetState(command) & UPDUI_DISABLED) == 0 ? 1 : 0);
 				DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 			}
 			output.Flush();
 		};
-		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\timage_list_has_mask\timage_black_pixels\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto appendScaledBitmapPhases = [&]()
+		{
+			const UINT dpis[] = { 96, 120, 144, 168, 192 };
+			const HINSTANCE module = ATL::_AtlBaseModule.GetModuleInstance();
+			for(size_t dpiIndex = 0; dpiIndex < _countof(dpis); ++dpiIndex) for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
+			{
+				const int size = ToolbarFactory::CommandToolbarImageSize(dpis[dpiIndex]);
+				HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(kTableToolbarCommands[index].bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+				HBITMAP scaled = source ? ToolbarFactory::CreateScaledAlphaBitmap(source, 24, size) : NULL; if(source) ::DeleteObject(source);
+				DIBSECTION info = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(info), &info) == sizeof(info) && info.dsBm.bmBits != NULL && info.dsBm.bmWidth == size && abs(info.dsBmih.biHeight) == size;
+				long visible = 0, opaqueBlack = 0, magenta = 0; bool transparentCorners = ready;
+				if(ready) { const DWORD* pixels = static_cast<const DWORD*>(info.dsBm.bmBits); const int corners[] = { 0, size - 1, size * (size - 1), size * size - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < size * size; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; } }
+				const bool passed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0;
+				CStringA phase; phase.Format("scaled-%u", dpis[dpiIndex]); CStringA row; row.Format("%s\t%u\t%d\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\t%d\r\n", (LPCSTR)phase, kTableToolbarCommands[index].commandId, size, 1, magenta, passed ? 1 : 0, size, visible, transparentCorners ? 1 : 0, opaqueBlack, 1); DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled);
+			}
+			output.Flush();
+		};
+		CStringA header("phase\tcommand_id\ttb_state\tenabled\tchecked\thidden\timage_index\tchroma_pixels\timage_list_has_mask\timage_black_pixels\tui_enabled\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		appendScaledBitmapPhases();
 		if (!ensureTableToolbarCommands()) { output.Close(); ::PostQuitMessage(1); return 0; }
 		ShowView(BODY);
-		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("outside-1");
-		if (!selectElement(L"TD", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("inside-1");
-		if (!selectElement(L"TD", 1)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("inside-multi");
-		if (!selectElement(L"P", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("outside-2");
-		if (!selectElement(L"TH", 0)) { output.Close(); ::PostQuitMessage(1); return 0; }
-		updateTableCommands(); appendPhase("inside-2");
+		struct SelectionPhase { const wchar_t* first; const wchar_t* last; const char* phase; };
+		const SelectionPhase phases[] = {
+			{ L"outside", L"outside", "outside" }, { L"d0", L"d0", "td" }, { L"h0", L"h0", "th" },
+			{ L"d0", L"d1", "td-td" }, { L"h0", L"h1", "th-th" }, { L"h0", L"d0", "td-th" },
+			{ L"one1", L"one1", "one-by-one" }, { L"row0", L"row2", "one-by-n" },
+			{ L"col0", L"col2", "n-by-one" }, { L"d0", L"d1", "n-by-m" }
+		};
+		for(size_t phase = 0; phase < _countof(phases); ++phase)
+		{
+			if (!selectRange(phases[phase].first, phases[phase].last)) { output.Close(); ::PostQuitMessage(1); return 0; }
+			updateTableCommands(); appendPhase(phases[phase].phase);
+		}
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
 	if (IsFbeTestScenario(L"context-attribute-bars-runtime"))
