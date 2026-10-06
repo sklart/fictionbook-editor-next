@@ -157,12 +157,11 @@ Require $dialog 'applyMaximum' 'templates Apply width has a bounded maximum'
 Require $dialog 'PreviewHeightForCurrentSelection' 'templates preview height follows its content'
 Require $dialog 'DT_CALCRECT \| DT_WORDBREAK' 'templates preview measures wrapped localized text'
 Require $dialog 'lineHeight \* 4' 'templates preview is bounded to four lines'
-Require $dialog 'PresetPinMaskResource' 'templates pin selects an authored bitmap mask'
-Require $dialog 'GetDIBits' 'templates pin derives coverage from its bitmap mask'
-Require $dialog 'struct BitmapInfo1Bit' 'templates pin reserves a two-entry monochrome bitmap info'
-Require $dialog 'maskInfo.header.biBitCount = 1' 'templates pin uses a monochrome authored mask'
-Require $dialog 'maskBits\[' 'templates pin uses mask bits instead of RGB coverage'
-if($dialog -match 'DrawIconEx\(|GetIconInfo\(|maskPixels\[index\]') { throw 'Templates pin must not recover alpha from an ICO.' }
+if($dialog -match 'PresetPinMaskResource|GetDIBits|DrawFocusRect|DrawIconEx\(|GetIconInfo\(') { throw 'Templates pin must use the procedural flat thumbtack renderer.' }
+Require $dialog 'const int capWidth' 'templates pin has a symmetric cap'
+Require $dialog 'const int headWidth' 'templates pin has a symmetric thumbtack head'
+Require $dialog 'const int headHeight' 'templates pin has a compact head'
+Require $dialog 'const int needleHeight' 'templates pin has a needle'
 Require $dialog 'MakePresetPreviewValue\(preset->findText, 168\)' 'templates preview retains a useful clipped length'
 Require $rc 'IDC_FIND_PRESETS_PIN,"Button",BS_OWNERDRAW' 'templates pin uses an owner-drawn glyph rather than a text-only checkbox'
 Require $dialog 'SetSearchTemplatesPanelPinned' 'templates pin is persisted'
@@ -205,7 +204,7 @@ foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fb
 }
 foreach ($dialogBlock in @($find, $replace)) {
     Require $dialogBlock 'IDC_FIND_PRESETS_TREE,"SysTreeView32"[^\r\n]*,333,18,198,74' 'template tree has a readable multi-row height'
-    Require $dialogBlock 'IDC_FIND_PRESET_DESCRIPTION,333,96,198,34' 'template description has a readable multi-line height'
+    Require $dialogBlock 'EDITTEXT\s+IDC_FIND_PRESET_DESCRIPTION,333,96,198,34,ES_MULTILINE \| ES_READONLY \| ES_AUTOVSCROLL \| WS_VSCROLL' 'template description clips in a read-only multi-line control'
     Require $dialogBlock 'IDC_FIND_PRESET_SAVE,381,135,92,14' 'Russian Save current caption has room'
     Require $dialogBlock 'IDC_FIND_PRESET_RENAME,382,153,83,14' 'Russian Rename caption has room'
 }

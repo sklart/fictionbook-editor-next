@@ -156,28 +156,10 @@ void SelectAndFormat(HWND richEdit, int start, int end, const CHARFORMAT2& forma
     ::SendMessage(richEdit, EM_SETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph));
 }
 
-COLORREF HelpBlockBackground(MarkdownBlockKind kind)
-{
-    if (ThemeManager::IsHighContrast()) return ::GetSysColor(COLOR_WINDOW);
-    if (kind == MarkdownBlockKind::Code) return ThemeManager::IsDark() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
-    if (kind == MarkdownBlockKind::Table) return ThemeManager::IsDark() ? ThemeManager::PressedColor() : ThemeManager::ControlColor();
-    if (kind == MarkdownBlockKind::Note) return ThemeManager::IsDark() ? ThemeManager::ControlColor() : ThemeManager::HoverColor();
-    return ThemeManager::WindowColor();
-}
-
-COLORREF HelpTableHeaderBackground()
-{
-    if (ThemeManager::IsHighContrast()) return ::GetSysColor(COLOR_WINDOW);
-    return ThemeManager::HoverColor();
-}
-
-CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int pointSize, bool shaded = false, COLORREF background = 0)
+CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int pointSize)
 {
     CHARFORMAT2 format = {}; format.cbSize = sizeof(format); format.dwMask = CFM_BOLD | CFM_FACE | CFM_COLOR | CFM_SIZE;
     format.dwEffects = bold ? CFE_BOLD : 0; format.crTextColor = ThemeManager::TextColor();
-    format.dwMask |= CFM_BACKCOLOR;
-    if (shaded) { format.dwEffects &= ~CFE_AUTOBACKCOLOR; format.crBackColor = background; }
-    else { format.dwEffects |= CFE_AUTOBACKCOLOR; format.crBackColor = ThemeManager::WindowColor(); }
     HDC dc = richEdit ? ::GetDC(richEdit) : NULL;
     const int dpi = dc ? ::GetDeviceCaps(dc, LOGPIXELSY) : 96;
     if (dc) ::ReleaseDC(richEdit, dc);
@@ -189,7 +171,6 @@ CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int po
     else { HFONT font = UiMetrics::DialogFont(); LOGFONTW logFont = {}; if (font && ::GetObjectW(font, sizeof(logFont), &logFont)) ::lstrcpynW(format.szFaceName, logFont.lfFaceName, LF_FACESIZE); }
     return format;
 }
-
 CHARFORMAT2 MakeHyperlinkCharacterFormat()
 {
     CHARFORMAT2 format = {}; format.cbSize = sizeof(format);
@@ -304,14 +285,12 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
         const bool tableHeader = block.kind == MarkdownBlockKind::Table && (index == 0 || blocks[index - 1].kind != MarkdownBlockKind::Table);
         const bool bold = block.kind == MarkdownBlockKind::Title || block.kind == MarkdownBlockKind::Heading || tableHeader;
         const bool monospace = block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table;
-        const bool shaded = block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table || block.kind == MarkdownBlockKind::Note;
-        const COLORREF background = tableHeader ? HelpTableHeaderBackground() : HelpBlockBackground(block.kind);
-        const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block), shaded, background);
+        const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block));
         const PARAFORMAT2 paragraph = MakeParagraphFormat(block);
         SelectAndFormat(richEdit, first, (std::max)(first, last), format, paragraph);
         for (size_t span = 0; span < block.inlineCode.size(); ++span)
         {
-            CHARFORMAT2 code = MakeCharacterFormat(richEdit, false, true, 10, true, HelpBlockBackground(MarkdownBlockKind::Code));
+            CHARFORMAT2 code = MakeCharacterFormat(richEdit, false, true, 10);
             ::SendMessage(richEdit, EM_SETSEL, first + block.inlineCode[span].start, first + block.inlineCode[span].start + block.inlineCode[span].length);
             ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&code));
         }
@@ -411,7 +390,7 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         const bool sizes = formats && titleFormat.yHeight > heading2Format.yHeight && heading2Format.yHeight > bodyFormat.yHeight && heading3Format.yHeight >= bodyFormat.yHeight &&
             (heading2Format.yHeight != heading3Format.yHeight || heading2Paragraph.dySpaceBefore != heading3Paragraph.dySpaceBefore) && bodyFormat.yHeight >= 200 && inlineFormat.yHeight == bodyFormat.yHeight;
         const bool tabs = formats && tableParagraph.cTabCount >= 2;
-        const bool backgrounds = formats && (codeFormat.dwMask & CFM_BACKCOLOR) != 0 && (inlineFormat.dwMask & CFM_BACKCOLOR) != 0 && (tableFormat.dwMask & CFM_BACKCOLOR) != 0;
+        const bool automaticBackgrounds = formats && (codeFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (inlineFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (tableFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0;
         std::vector<MarkdownBlock> backgroundSequence;
         AddBlock(backgroundSequence, MarkdownBlockKind::Code, L"code");
         AddBlock(backgroundSequence, MarkdownBlockKind::Body, L"body-after-code");
@@ -423,7 +402,7 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         CString backgroundText; ReadRichEditText(richEdit, backgroundText);
         CHARFORMAT2 bodyAfterCode = {}, bodyAfterTable = {}, bodyAfterNote = {};
         const auto hasAutomaticBodyBackground = [](const CHARFORMAT2& format) -> bool {
-            return (format.dwMask & CFM_BACKCOLOR) != 0 && (format.dwEffects & CFE_AUTOBACKCOLOR) != 0;
+            return (format.dwEffects & CFE_AUTOBACKCOLOR) != 0;
         };
         const bool backgroundReset = formatAt(backgroundText.Find(L"body-after-code"), bodyAfterCode) &&
             formatAt(backgroundText.Find(L"body-after-table"), bodyAfterTable) &&
@@ -435,25 +414,24 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         AddBlock(shadedLinkBlocks, MarkdownBlockKind::Note, L"note https://note.invalid");
         RenderMarkdown(richEdit, shadedLinkBlocks);
         CString shadedLinkText; ReadRichEditText(richEdit, shadedLinkText);
-        const auto preservesShadedLinkFormat = [&](LPCWSTR prefix, LPCWSTR url, COLORREF background) -> bool {
+        const auto preservesParentLinkFormat = [&](LPCWSTR prefix, LPCWSTR url) -> bool {
             CHARFORMAT2 parent = {}, hyperlink = {};
             const int parentAt = shadedLinkText.Find(prefix), linkAt = shadedLinkText.Find(url);
             if (parentAt < 0 || linkAt < 0 || !formatAt(parentAt, parent) || !formatAt(linkAt, hyperlink)) return false;
             return (hyperlink.dwEffects & CFE_UNDERLINE) != 0 && hyperlink.crTextColor == ThemeManager::AccentColor() &&
-                (parent.dwEffects & CFE_AUTOBACKCOLOR) == 0 && (hyperlink.dwEffects & CFE_AUTOBACKCOLOR) == 0 &&
-                parent.crBackColor == background && hyperlink.crBackColor == background && parent.yHeight == hyperlink.yHeight &&
-                ::lstrcmpiW(parent.szFaceName, hyperlink.szFaceName) == 0 &&
+                (parent.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (hyperlink.dwEffects & CFE_AUTOBACKCOLOR) != 0 &&
+                parent.yHeight == hyperlink.yHeight && ::lstrcmpiW(parent.szFaceName, hyperlink.szFaceName) == 0 &&
                 (parent.dwEffects & CFE_BOLD) == (hyperlink.dwEffects & CFE_BOLD);
         };
-        const bool codeLinkPreserved = preservesShadedLinkFormat(L"code", L"https://code.invalid", HelpBlockBackground(MarkdownBlockKind::Code));
-        const bool tableLinkPreserved = preservesShadedLinkFormat(L"table", L"https://table.invalid", HelpTableHeaderBackground());
-        const bool noteLinkPreserved = preservesShadedLinkFormat(L"note", L"https://note.invalid", HelpBlockBackground(MarkdownBlockKind::Note));
+        const bool codeLinkPreserved = preservesParentLinkFormat(L"code", L"https://code.invalid");
+        const bool tableLinkPreserved = preservesParentLinkFormat(L"table", L"https://table.invalid");
+        const bool noteLinkPreserved = preservesParentLinkFormat(L"note", L"https://note.invalid");
         const bool shadedLinks = codeLinkPreserved && tableLinkPreserved && noteLinkPreserved;
         shadedLinkDetail = (codeLinkPreserved ? 1 : 0) | (tableLinkPreserved ? 2 : 0) | (noteLinkPreserved ? 4 : 0);
         const bool hangingIndent = formats && listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0;
         const bool link = formats && (linkFormat.dwEffects & CFE_UNDERLINE) != 0 && linkFormat.crTextColor == ThemeManager::AccentColor();
-        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (backgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0);
-        formatting = positions && textContract && formats && styles && faces && sizes && tabs && backgrounds && backgroundReset && shadedLinks && hangingIndent && link;
+        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (automaticBackgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0);
+        formatting = positions && textContract && formats && styles && faces && sizes && tabs && automaticBackgrounds && backgroundReset && shadedLinks && hangingIndent && link;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);

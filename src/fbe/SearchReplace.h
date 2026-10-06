@@ -198,7 +198,9 @@ public:
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_UPDATE), custom);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_RENAME), custom);
         ::EnableWindow(GetDlgItem(IDC_FIND_PRESET_DELETE), custom);
-        ::SetWindowText(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), PresetPreviewText(preset));
+        const HWND preview = GetDlgItem(IDC_FIND_PRESET_DESCRIPTION);
+        ::SetWindowText(preview, PresetPreviewText(preset));
+        ::InvalidateRect(preview, NULL, TRUE);
     }
 
     void RefreshPresetPanel(const CString& wantedId = CString(), bool selectUserRoot = false)
@@ -344,20 +346,17 @@ public:
         const int previewWidth = (std::max)(metrics.lineHeight * 8, static_cast<int>(client.right - client.left) - metrics.margin * 2);
         metrics.previewHeight = PreviewHeightForCurrentSelection(dialog, previewWidth, metrics.lineHeight);
         metrics.buttonHeight = (std::max)(metrics.lineHeight, UiMetrics::ScaleForDpi(14, UiMetrics::DpiForWindow(dialog)));
-        const int fixedHeight = metrics.lineHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
-        metrics.totalHeight = fixedHeight + metrics.treeHeight;
+        const int footerHeight = metrics.lineHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
+        metrics.totalHeight = footerHeight + metrics.previewHeight + metrics.treeHeight;
         if (availableHeight > 0 && metrics.totalHeight > availableHeight)
         {
-            // The footer is non-negotiable: first give the tree a scrollbar-sized
-            // minimum, then shrink the preview.  The final clamp is solely for
-            // an unusually small work area and still never hides an action row.
-            const int footerHeight = metrics.lineHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
+            // Reserve both action rows first. Preview yields before the tree;
+            // only an exceptionally small work area can reduce the tree further.
             const int minimumTree = (std::max)(metrics.lineHeight * 4, metrics.margin * 2);
-            metrics.treeHeight = (std::max)(minimumTree, (std::min)(metrics.treeHeight, availableHeight - footerHeight - metrics.previewHeight));
-            metrics.previewHeight = (std::max)(0, (std::min)(metrics.previewHeight, availableHeight - footerHeight - metrics.treeHeight));
-            if (footerHeight + metrics.treeHeight + metrics.previewHeight > availableHeight)
-                metrics.treeHeight = (std::max)(0, availableHeight - footerHeight - metrics.previewHeight);
-            metrics.totalHeight = metrics.lineHeight + metrics.treeHeight + metrics.previewHeight + metrics.buttonHeight * 2 + metrics.margin * 5;
+            const int contentHeight = (std::max)(0, availableHeight - footerHeight);
+            metrics.previewHeight = (std::min)(metrics.previewHeight, (std::max)(0, contentHeight - minimumTree));
+            metrics.treeHeight = (std::min)(metrics.treeHeight, (std::max)(0, contentHeight - metrics.previewHeight));
+            metrics.totalHeight = footerHeight + metrics.previewHeight + metrics.treeHeight;
         }
         return metrics;
     }
@@ -390,22 +389,27 @@ public:
         const int lineHeight = metrics.lineHeight;
         const int panelHeight = m_presetPanelHeight > 0 ? m_presetPanelHeight : metrics.totalHeight;
         const int panelTop = client.bottom - panelHeight + margin;
+        const int panelBottom = client.bottom - margin;
         const int width = client.right - client.left;
         const int contentWidth = (std::max)(0, width - margin * 2);
         const int treeTop = panelTop + lineHeight;
         const int pinSize = (std::min)(UiMetrics::ScaleForDpi(18, UiMetrics::DpiForWindow(dialog)), lineHeight);
+        const int row2 = panelBottom - metrics.buttonHeight;
+        const int buttonsTop = row2 - margin - metrics.buttonHeight;
+        const int descriptionBottom = buttonsTop - margin;
+        const int descriptionTop = (std::max)(treeTop, descriptionBottom - metrics.previewHeight);
+        const int treeBottom = (std::max)(treeTop, descriptionTop - margin);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_LABEL), NULL, margin, panelTop, (std::max)(0, contentWidth - pinSize - margin), lineHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_PIN), NULL, width - margin - pinSize, panelTop + (lineHeight - pinSize) / 2, pinSize, pinSize, SWP_NOZORDER | SWP_NOACTIVATE);
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_TREE), NULL, margin, treeTop, contentWidth, metrics.treeHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        const int descriptionTop = treeTop + metrics.treeHeight + margin;
-        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_DESCRIPTION), NULL, margin, descriptionTop, contentWidth, metrics.previewHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        const int buttonsTop = descriptionTop + metrics.previewHeight + margin;
+        ::SetWindowPos(GetDlgItem(IDC_FIND_PRESETS_TREE), NULL, margin, treeTop, contentWidth, treeBottom - treeTop, SWP_NOZORDER | SWP_NOACTIVATE);
+        const HWND preview = GetDlgItem(IDC_FIND_PRESET_DESCRIPTION);
+        ::SetWindowPos(preview, NULL, margin, descriptionTop, contentWidth, descriptionBottom - descriptionTop, SWP_NOZORDER | SWP_NOACTIVATE);
+        ::InvalidateRect(preview, NULL, TRUE);
         const int applyMinimum = (std::min)(contentWidth, UiMetrics::ScaleForDpi(48, UiMetrics::DpiForWindow(dialog)));
         const int applyMaximum = (std::max)(applyMinimum, (std::min)(contentWidth, UiMetrics::ScaleForDpi(128, UiMetrics::DpiForWindow(dialog))));
         const int applyWidth = LocalizedButtonWidth(GetDlgItem(IDC_FIND_PRESET_APPLY), L"fbe.search_preset.apply", L"Apply", applyMinimum, applyMaximum);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_APPLY), NULL, margin, buttonsTop, applyWidth, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_SAVE), NULL, margin + applyWidth + margin, buttonsTop, (std::max)(0, contentWidth - applyWidth - margin), metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        const int row2 = buttonsTop + metrics.buttonHeight + margin;
         const int row2Width = (std::max)(0, (contentWidth - margin * 2) / 3);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_UPDATE), NULL, margin, row2, row2Width, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         ::SetWindowPos(GetDlgItem(IDC_FIND_PRESET_RENAME), NULL, margin + row2Width + margin, row2, row2Width, metrics.buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -563,59 +567,32 @@ public:
         ::SetFocus(GetDlgItem(IDC_TEXT));
     }
 
-UINT PresetPinMaskResource(int size) const
-    {
-        if(size <= 16) return IDB_FIND_PRESETS_PIN_16;
-        if(size <= 20) return IDB_FIND_PRESETS_PIN_20;
-        if(size <= 24) return IDB_FIND_PRESETS_PIN_24;
-        return IDB_FIND_PRESETS_PIN_32;
-    }
-
-    static DWORD ColorRefToDibPixel(COLORREF color)
-    {
-        return 0xff000000 | (static_cast<DWORD>(GetRValue(color)) << 16) |
-            (static_cast<DWORD>(GetGValue(color)) << 8) | static_cast<DWORD>(GetBValue(color));
-    }
-
-    void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned, COLORREF surface) const
+    void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned, COLORREF) const
     {
         const UINT dpi = UiMetrics::DpiForWindow(DialogWindow());
         const int size = (std::min)(UiMetrics::ScaleForDpi(16, dpi), (std::min)(static_cast<int>(target.right - target.left - 2), static_cast<int>(target.bottom - target.top - 2)));
         if(size <= 0) return;
-        const HBITMAP mask = reinterpret_cast<HBITMAP>(::LoadImage(::GetModuleHandle(NULL), MAKEINTRESOURCE(PresetPinMaskResource(size)), IMAGE_BITMAP, size, size, LR_CREATEDIBSECTION));
-        if(mask == NULL) return;
-        const int maskStride = ((size + 31) / 32) * 4;
-        // A 1-bit DIB has two palette entries. BITMAPINFO only reserves one,
-        // so using it here lets GetDIBits overwrite stack storage.
-        struct BitmapInfo1Bit { BITMAPINFOHEADER header; RGBQUAD colors[2]; } maskInfo = {};
-        maskInfo.header.biSize = sizeof(maskInfo.header); maskInfo.header.biWidth = size;
-        maskInfo.header.biHeight = -size; maskInfo.header.biPlanes = 1; maskInfo.header.biBitCount = 1; maskInfo.header.biCompression = BI_RGB;
-        std::vector<BYTE> maskBits(static_cast<size_t>(maskStride) * size);
-        if(::GetDIBits(dc, mask, 0, size, &maskBits[0], reinterpret_cast<BITMAPINFO*>(&maskInfo), DIB_RGB_COLORS) == 0) { ::DeleteObject(mask); return; }
-        BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = size;
-        info.bmiHeader.biHeight = -size; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
-        void* bits = NULL; const HBITMAP bitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, NULL, 0);
-        const HDC memory = bitmap ? ::CreateCompatibleDC(dc) : NULL;
-        if(memory && bits)
-        {
-            const COLORREF tint = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
-                (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
-            DWORD* pixels = static_cast<DWORD*>(bits);
-            for(int y = 0; y < size; ++y)
-                for(int x = 0; x < size; ++x)
-                {
-                    const BYTE bit = static_cast<BYTE>(0x80 >> (x & 7));
-                    const bool covered = (maskBits[static_cast<size_t>(y) * maskStride + x / 8] & bit) != 0;
-                    pixels[y * size + x] = ColorRefToDibPixel(covered ? tint : surface);
-                }
-            const HGDIOBJ previous = ::SelectObject(memory, bitmap);
-            const int x = target.left + ((target.right - target.left) - size) / 2;
-            const int y = target.top + ((target.bottom - target.top) - size) / 2;
-            ::BitBlt(dc, x, y, size, size, memory, 0, 0, SRCCOPY);
-            ::SelectObject(memory, previous); ::DeleteDC(memory);
-        }
-        if(bitmap) ::DeleteObject(bitmap);
-        ::DeleteObject(mask);
+        const COLORREF tint = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
+            (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
+        const int stroke = (std::max)(1, size / 16);
+        const int capWidth = (std::max)(5, size * 8 / 16);
+        const int headWidth = (std::max)(capWidth + stroke * 2, size * 10 / 16);
+        const int capHeight = (std::max)(2, size * 2 / 16);
+        const int headHeight = (std::max)(4, size * 6 / 16);
+        const int needleHeight = (std::max)(3, size * 5 / 16);
+        const int glyphHeight = headHeight + needleHeight;
+        const int centerX = target.left + (target.right - target.left) / 2;
+        const int top = target.top + ((target.bottom - target.top) - glyphHeight) / 2;
+        const HBRUSH brush = ::CreateSolidBrush(tint);
+        HPEN pen = ::CreatePen(PS_SOLID, stroke, tint);
+        const POINT head[] = {
+            { centerX - capWidth / 2, top }, { centerX + capWidth / 2, top },
+            { centerX + capWidth / 2, top + capHeight }, { centerX + headWidth / 2, top + headHeight },
+            { centerX - headWidth / 2, top + headHeight }, { centerX - capWidth / 2, top + capHeight }
+        };
+        HGDIOBJ previousBrush = ::SelectObject(dc, brush); HGDIOBJ previous = ::SelectObject(dc, pen); ::Polygon(dc, head, _countof(head)); ::SelectObject(dc, previousBrush); ::DeleteObject(brush);
+        ::MoveToEx(dc, centerX, top + headHeight - 1, NULL); ::LineTo(dc, centerX, top + glyphHeight);
+        ::SelectObject(dc, previous); ::DeleteObject(pen);
     }
     static LRESULT CALLBACK PresetPinButtonSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
     {
@@ -668,10 +645,9 @@ UINT PresetPinMaskResource(int size) const
         const bool hot = (draw->itemState & ODS_HOTLIGHT) != 0 || m_presetPinHot;
         const bool pressed = (draw->itemState & ODS_SELECTED) != 0 || m_presetPinPressed;
         const COLORREF surface = highContrast ? ::GetSysColor(COLOR_BTNFACE) :
-            (pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : pinned ? ThemeManager::PressedColor() : ThemeManager::ControlColor());
+            (pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : ThemeManager::WindowColor());
         const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
         DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned, surface);
-        if (draw->itemState & ODS_FOCUS) ::DrawFocusRect(draw->hDC, &draw->rcItem);
         return TRUE;
     }
     LRESULT OnTogglePresets(WORD, WORD, HWND, BOOL&) { const bool collapse = m_templatesExpanded; SetPresetPanelVisible(!collapse); if (collapse && _Settings.SearchTemplatesPanelPinned()) _Settings.SetSearchTemplatesPanelPinned(false, true); return 0; }

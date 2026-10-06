@@ -11,11 +11,39 @@ extern CSettings _Settings;
 
 namespace
 {
+RECT DefaultHelpBounds(const RECT& work, const CSize& minimumSize)
+{
+    const int workWidth = static_cast<int>(work.right - work.left);
+    const int workHeight = static_cast<int>(work.bottom - work.top);
+    const int width = (std::min)(workWidth, (std::max)(static_cast<int>(minimumSize.cx), ::MulDiv(workWidth, 80, 100)));
+    const int height = (std::min)(workHeight, (std::max)(static_cast<int>(minimumSize.cy), ::MulDiv(workHeight, 80, 100)));
+    const int left = work.left + (workWidth - width) / 2;
+    const int top = work.top + (workHeight - height) / 2;
+    return { left, top, left + width, top + height };
+}
+
+RECT ClampHelpBounds(const RECT& work, const RECT& saved, const CSize& minimumSize)
+{
+    const int savedWidth = static_cast<int>(saved.right - saved.left);
+    const int savedHeight = static_cast<int>(saved.bottom - saved.top);
+    if (savedWidth < minimumSize.cx || savedHeight < minimumSize.cy) return {};
+    const int width = (std::min)(savedWidth, static_cast<int>(work.right - work.left));
+    const int height = (std::min)(savedHeight, static_cast<int>(work.bottom - work.top));
+    const int left = (std::max)(static_cast<int>(work.left), (std::min)(static_cast<int>(saved.left), static_cast<int>(work.right) - width));
+    const int top = (std::max)(static_cast<int>(work.top), (std::min)(static_cast<int>(saved.top), static_cast<int>(work.bottom) - height));
+    return { left, top, left + width, top + height };
+}
+
+bool IsWithinWorkArea(const RECT& bounds, const RECT& work)
+{
+    return bounds.left >= work.left && bounds.top >= work.top && bounds.right <= work.right && bounds.bottom <= work.bottom;
+}
+
 class RegexHelpDialog : public CDialogImpl<RegexHelpDialog>
 {
 public:
     enum { IDD = IDD_REGEX_HELP };
-    explicit RegexHelpDialog(FbeSearchPresets::SearchUiContext context) : m_context(context) {}
+    explicit RegexHelpDialog(FbeSearchPresets::SearchUiContext context, bool forceDefaultPlacement = false) : m_context(context), m_forceDefaultPlacement(forceDefaultPlacement) {}
 
     BEGIN_MSG_MAP(RegexHelpDialog)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -82,18 +110,23 @@ private:
     void RestoreSize()
     {
         WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement);
-        if (!_Settings.GetRegexHelpPlacement(placement)) return;
-        const int savedWidth = placement.rcNormalPosition.right - placement.rcNormalPosition.left;
-        const int savedHeight = placement.rcNormalPosition.bottom - placement.rcNormalPosition.top;
-        if (savedWidth < m_minimumSize.cx || savedHeight < m_minimumSize.cy) return;
+        if (m_forceDefaultPlacement || !_Settings.GetRegexHelpPlacement(placement))
+        {
+            const HWND owner = ::GetWindow(m_hWnd, GW_OWNER);
+            const HMONITOR monitor = ::MonitorFromWindow(owner ? owner : m_hWnd, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO info = {}; info.cbSize = sizeof(info);
+            if (monitor == NULL || !::GetMonitorInfo(monitor, &info)) return;
+            const RECT bounds = DefaultHelpBounds(info.rcWork, m_minimumSize);
+            SetWindowPos(NULL, bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top, SWP_NOZORDER | SWP_NOACTIVATE);
+            return;
+        }
+
         HMONITOR monitor = ::MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
         MONITORINFO info = {}; info.cbSize = sizeof(info);
         if (monitor == NULL || !::GetMonitorInfo(monitor, &info)) return;
-        const int width = (std::min)(savedWidth, static_cast<int>(info.rcWork.right - info.rcWork.left));
-        const int height = (std::min)(savedHeight, static_cast<int>(info.rcWork.bottom - info.rcWork.top));
-        const int left = (std::max)(static_cast<int>(info.rcWork.left), (std::min)(static_cast<int>(placement.rcNormalPosition.left), static_cast<int>(info.rcWork.right) - width));
-        const int top = (std::max)(static_cast<int>(info.rcWork.top), (std::min)(static_cast<int>(placement.rcNormalPosition.top), static_cast<int>(info.rcWork.bottom) - height));
-        SetWindowPos(NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        const RECT bounds = ClampHelpBounds(info.rcWork, placement.rcNormalPosition, m_minimumSize);
+        if (bounds.right <= bounds.left || bounds.bottom <= bounds.top) return;
+        SetWindowPos(NULL, bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top, SWP_NOZORDER | SWP_NOACTIVATE);
     }
     void SaveSize()
     {
@@ -121,6 +154,7 @@ private:
     int m_bottomMargin = 0;
     int m_gap = 0;
     bool m_layoutReady = false;
+    bool m_forceDefaultPlacement = false;
 };
 }
 
@@ -130,4 +164,66 @@ void ShowRegexHelpDialog(HWND owner, FbeSearchPresets::SearchUiContext context)
     RegexHelpDialog dialog(context);
     dialog.DoModal(owner);
     if (richEdit != NULL) ::FreeLibrary(richEdit);
+}
+bool RunRegexHelpPlacementRuntimeSmoke(HWND owner, CStringA& report)
+{
+    const HMONITOR monitor = ::MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO info = {}; info.cbSize = sizeof(info);
+    if (monitor == NULL || !::GetMonitorInfo(monitor, &info))
+    {
+        report = "monitor=0\r\nresult=fail\r\n";
+        return false;
+    }
+    const CSize minimumSize(300, 200);
+    const RECT defaultBounds = DefaultHelpBounds(info.rcWork, minimumSize);
+    const int workWidth = info.rcWork.right - info.rcWork.left;
+    const int workHeight = info.rcWork.bottom - info.rcWork.top;
+    const bool defaultLarge = IsWithinWorkArea(defaultBounds, info.rcWork) &&
+        defaultBounds.right - defaultBounds.left == (std::min)(workWidth, (std::max)(static_cast<int>(minimumSize.cx), ::MulDiv(workWidth, 80, 100))) &&
+        defaultBounds.bottom - defaultBounds.top == (std::min)(workHeight, (std::max)(static_cast<int>(minimumSize.cy), ::MulDiv(workHeight, 80, 100)));
+    const RECT saved = { info.rcWork.left + 20, info.rcWork.top + 30, info.rcWork.left + 620, info.rcWork.top + 530 };
+    const RECT restored = ClampHelpBounds(info.rcWork, saved, minimumSize);
+    const bool restore = ::EqualRect(&saved, &restored) != FALSE;
+    const RECT outside = { info.rcWork.right + 500, info.rcWork.bottom + 300, info.rcWork.right + 1100, info.rcWork.bottom + 800 };
+    const RECT clamped = ClampHelpBounds(info.rcWork, outside, minimumSize);
+    const bool clamp = IsWithinWorkArea(clamped, info.rcWork) && clamped.right - clamped.left == 600 && clamped.bottom - clamped.top == 500;
+    report.Format("default_large=%d\r\nsaved_restore=%d\r\noutside_clamp=%d\r\nresult=%s\r\n", defaultLarge ? 1 : 0, restore ? 1 : 0, clamp ? 1 : 0, defaultLarge && restore && clamp ? "pass" : "fail");
+    return defaultLarge && restore && clamp;
+}
+
+bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& report)
+{
+    if (artifactDirectory == NULL || *artifactDirectory == L'\0') { report = "artifacts=0\r\nresult=fail\r\n"; return false; }
+    auto capture = [&](HWND window, LPCWSTR name) -> bool
+    {
+        RECT rect = {}; if (!window || !::GetWindowRect(window, &rect)) return false;
+        const int width = rect.right - rect.left, height = rect.bottom - rect.top;
+        HDC source = width > 0 && height > 0 ? ::GetWindowDC(window) : NULL, memory = source ? ::CreateCompatibleDC(source) : NULL;
+        BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = height; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
+        void* pixels = NULL; HBITMAP bitmap = source ? ::CreateDIBSection(source, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL; HGDIOBJ previous = memory && bitmap ? ::SelectObject(memory, bitmap) : NULL;
+        const bool printed = previous && ::PrintWindow(window, memory, 0) != FALSE; bool saved = false;
+        if (printed)
+        {
+            BITMAPFILEHEADER header = {}; header.bfType = 0x4d42; header.bfOffBits = sizeof(header) + sizeof(info.bmiHeader); header.bfSize = header.bfOffBits + width * height * 4;
+            CString path = CString(artifactDirectory) + L"\\" + name; HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); DWORD written = 0;
+            if (file != INVALID_HANDLE_VALUE && ::WriteFile(file, &header, sizeof(header), &written, NULL) && written == sizeof(header) && ::WriteFile(file, &info.bmiHeader, sizeof(info.bmiHeader), &written, NULL) && written == sizeof(info.bmiHeader) && ::WriteFile(file, pixels, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4)) saved = true;
+            if (file != INVALID_HANDLE_VALUE) ::CloseHandle(file);
+        }
+        if (previous) ::SelectObject(memory, previous); if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (source) ::ReleaseDC(window, source);
+        return saved;
+    };
+    HMODULE richEdit = ::LoadLibraryW(L"Msftedit.dll");
+    RegexHelpDialog initial(FbeSearchPresets::SearchUiContext::Design, true);
+    HWND initialWindow = initial.Create(owner); if (initialWindow) { ::ShowWindow(initialWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(initialWindow); }
+    RECT initialBounds = {}; const bool defaultSize = initialWindow && ::GetWindowRect(initialWindow, &initialBounds) && capture(initialWindow, L"full-help-initial-design.bmp");
+    if (initialWindow) ::SetWindowPos(initialWindow, NULL, initialBounds.left + 12, initialBounds.top + 12, 720, 520, SWP_NOZORDER | SWP_NOACTIVATE);
+    WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement); const bool savedPlacement = initialWindow && ::GetWindowPlacement(initialWindow, &placement) != FALSE;
+    if (initialWindow) initial.DestroyWindow();
+    if (savedPlacement) _Settings.SetRegexHelpPlacement(placement, false);
+    RegexHelpDialog restored(FbeSearchPresets::SearchUiContext::Source);
+    HWND restoredWindow = savedPlacement ? restored.Create(owner) : NULL; if (restoredWindow) { ::ShowWindow(restoredWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(restoredWindow); }
+    RECT restoredBounds = {}; const bool restoredSize = restoredWindow && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top && capture(restoredWindow, L"full-help-restored-code.bmp");
+    if (restoredWindow) restored.DestroyWindow(); if (richEdit != NULL) ::FreeLibrary(richEdit);
+    report.Format("initial=%d\r\nrestored=%d\r\nresult=%s\r\n", defaultSize ? 1 : 0, restoredSize ? 1 : 0, defaultSize && restoredSize ? "pass" : "fail");
+    return defaultSize && restoredSize;
 }

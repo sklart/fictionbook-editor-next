@@ -889,8 +889,44 @@
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
 	}
-	if (IsFbeTestScenario(L"search-templates-open-runtime"))
+	if (IsFbeTestScenario(L"regex-help-placement-runtime"))
 	{
+		CStringA report;
+		const bool passed = RunRegexHelpPlacementRuntimeSmoke(m_hWnd, report);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}	if (IsFbeTestScenario(L"regex-help-visual-runtime"))
+	{
+		wchar_t artifactDirectory[MAX_PATH] = {}; const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
+		CStringA report; const bool passed = length > 0 && length < _countof(artifactDirectory) && RunRegexHelpVisualCapture(m_hWnd, artifactDirectory, report);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
+	}	if (IsFbeTestScenario(L"search-templates-open-runtime"))
+	{
+		wchar_t artifactDirectoryBuffer[MAX_PATH] = {};
+		const DWORD artifactDirectoryLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectoryBuffer, _countof(artifactDirectoryBuffer));
+		const CString artifactDirectory = artifactDirectoryLength > 0 && artifactDirectoryLength < _countof(artifactDirectoryBuffer) ? artifactDirectoryBuffer : L"";
+		auto captureWindow = [&](HWND window, LPCWSTR name) -> bool
+		{
+			if (artifactDirectory.IsEmpty()) return true;
+			RECT rect = {}; if (!window || !::GetWindowRect(window, &rect)) return false;
+			const int width = rect.right - rect.left, height = rect.bottom - rect.top;
+			if (width <= 0 || height <= 0) return false;
+			HDC source = ::GetWindowDC(window); HDC memory = source ? ::CreateCompatibleDC(source) : NULL;
+			BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = height; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
+			void* pixels = NULL; HBITMAP bitmap = source ? ::CreateDIBSection(source, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL;
+			HGDIOBJ old = memory && bitmap ? ::SelectObject(memory, bitmap) : NULL;
+			const bool captured = memory && bitmap && old && ::PrintWindow(window, memory, 0) != FALSE;
+			bool saved = false;
+			if (captured)
+			{
+				BITMAPFILEHEADER header = {}; header.bfType = 0x4d42; header.bfOffBits = sizeof(header) + sizeof(info.bmiHeader); header.bfSize = header.bfOffBits + width * height * 4;
+				CString path = artifactDirectory + L"\\" + name;
+				HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); DWORD written = 0; if (file != INVALID_HANDLE_VALUE && ::WriteFile(file, &header, sizeof(header), &written, NULL) && written == sizeof(header) && ::WriteFile(file, &info.bmiHeader, sizeof(info.bmiHeader), &written, NULL) && written == sizeof(info.bmiHeader) && ::WriteFile(file, pixels, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4)) saved = true; if (file != INVALID_HANDLE_VALUE) ::CloseHandle(file);
+			}
+			if (old) ::SelectObject(memory, old); if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (source) ::ReleaseDC(window, source);
+			return saved;
+		};
 		auto hasRoots = [](HWND tree) -> bool
 		{
 			HTREEITEM first = TreeView_GetRoot(tree), second = first ? TreeView_GetNextSibling(tree, first) : NULL;
@@ -979,7 +1015,7 @@
 			const COLORREF expectedColor = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) : (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
             const auto isDibColor = [](DWORD pixel, COLORREF color) -> bool {
                 const BYTE* bytes = reinterpret_cast<const BYTE*>(&pixel);
-                return bytes[0] == GetBValue(color) && bytes[1] == GetGValue(color) && bytes[2] == GetRValue(color) && bytes[3] == 0xff;
+                return bytes[0] == GetBValue(color) && bytes[1] == GetGValue(color) && bytes[2] == GetRValue(color);
             };
             const DWORD background = 0xff000000 | (static_cast<DWORD>(GetRValue(surface)) << 16) | (static_cast<DWORD>(GetGValue(surface)) << 8) | static_cast<DWORD>(GetBValue(surface));
             DWORD* values = static_cast<DWORD*>(pixels); for (int index = 0; index < 40 * 40; ++index) values[index] = background;
@@ -995,7 +1031,7 @@
             ::SelectObject(memory, previous); ::DeleteDC(memory); ::DeleteObject(bitmap); ::ReleaseDC(panel->DialogWindow(), screen); return probe;
 		};
 		struct PinControlProbe { COLORREF surface; bool drawn; };
-		auto drawPinControl = [](FRBase* panel) -> PinControlProbe
+		auto drawPinControl = [](FRBase* panel, UINT itemState = 0) -> PinControlProbe
 		{
 			PinControlProbe probe = {};
 			HWND pin = panel ? panel->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL; RECT rect = {};
@@ -1004,24 +1040,24 @@
 			BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = rect.right; info.bmiHeader.biHeight = -rect.bottom; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
 			void* pixels = NULL; HBITMAP bitmap = screen ? ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL;
 			if (!memory || !bitmap || !pixels) { if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (screen) ::ReleaseDC(pin, screen); return probe; }
-			HGDIOBJ old = ::SelectObject(memory, bitmap); DRAWITEMSTRUCT draw = {}; draw.CtlID = IDC_FIND_PRESETS_PIN; draw.hDC = memory; draw.rcItem = rect;
+			HGDIOBJ old = ::SelectObject(memory, bitmap); DRAWITEMSTRUCT draw = {}; draw.CtlID = IDC_FIND_PRESETS_PIN; draw.hDC = memory; draw.rcItem = rect; draw.itemState = itemState;
 			BOOL handled = FALSE; const LRESULT result = panel->OnDrawItem(WM_DRAWITEM, 0, reinterpret_cast<LPARAM>(&draw), handled);
 			const DWORD value = static_cast<DWORD*>(pixels)[0]; probe.surface = RGB(GetBValue(value), GetGValue(value), GetRValue(value)); probe.drawn = result != 0;
 			::SelectObject(memory, old); ::DeleteObject(bitmap); ::DeleteDC(memory); ::ReleaseDC(pin, screen); return probe;
 		};
-		auto verifyPins = [&](FRBase* panel) -> bool
+		auto verifyPins = [&](FRBase* panel, int& detail) -> bool
 		{
 			HWND pin = panel ? panel->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL; RECT before = {}, after = {};
-			if (!pin || !::GetWindowRect(pin, &before)) return false;
+			if (!pin || !::GetWindowRect(pin, &before)) { detail = 0; return false; }
 			const InterfaceTheme original = ThemeManager::GetSelectedTheme();
 			ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); const PinProbe lightOff = probePin(panel, false), lightOn = probePin(panel, true);
-			const PinControlProbe lightNormal = drawPinControl(panel);
+			const PinControlProbe lightNormal = drawPinControl(panel); const PinControlProbe lightFocus = drawPinControl(panel, ODS_FOCUS);
 			const COLORREF lightHoverSurface = ThemeManager::HoverColor(), lightPressedSurface = ThemeManager::PressedColor();
 			::SendMessage(pin, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); const PinControlProbe lightHover = drawPinControl(panel);
 			::SendMessage(pin, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 1)); const PinControlProbe lightPressed = drawPinControl(panel);
 			::SendMessage(pin, WM_CANCELMODE, 0, 0); ::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
 			ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); const PinProbe darkOff = probePin(panel, false), darkOn = probePin(panel, true);
-            const PinControlProbe darkNormal = drawPinControl(panel);
+            const PinControlProbe darkNormal = drawPinControl(panel); const PinControlProbe darkFocus = drawPinControl(panel, ODS_FOCUS);
             ::SendMessage(pin, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); const PinControlProbe darkHover = drawPinControl(panel);
             ::SendMessage(pin, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 1)); const PinControlProbe darkPressed = drawPinControl(panel);
             ::SendMessage(pin, WM_CANCELMODE, 0, 0); ::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
@@ -1029,9 +1065,12 @@
             ThemeManager::SetSelectedTheme(original);
             const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
             const bool exactTints = lightOff.exactColor && lightOn.exactColor && darkOff.exactColor && darkOn.exactColor;
-            return ::GetWindowRect(pin, &after) && ::EqualRect(&before, &after) && lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && exactTints &&
-                lightNormal.drawn && lightHover.drawn && lightPressed.drawn && darkNormal.drawn && darkHover.drawn && darkPressed.drawn && lightRestored.drawn &&
-                lightHover.surface == lightHoverSurface && lightPressed.surface == lightPressedSurface && darkHover.surface != darkNormal.surface && darkPressed.surface != darkNormal.surface;
+            const bool geometry = ::GetWindowRect(pin, &after) && ::EqualRect(&before, &after);
+            const bool glyphs = lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && exactTints;
+            const bool states = lightNormal.drawn && lightFocus.drawn && lightHover.drawn && lightPressed.drawn && darkNormal.drawn && darkFocus.drawn && darkHover.drawn && darkPressed.drawn && lightRestored.drawn;
+            const bool surfaces = lightFocus.surface == lightNormal.surface && darkFocus.surface == darkNormal.surface && lightHover.surface == lightHoverSurface && lightPressed.surface == lightPressedSurface && darkHover.surface != darkNormal.surface && darkPressed.surface != darkNormal.surface;
+            detail = (geometry ? 1 : 0) | (glyphs ? 2 : 0) | (states ? 4 : 0) | (surfaces ? 8 : 0);
+            return geometry && glyphs && states && surfaces;
 		};
 		auto verifyLongPreviewLayout = [](FRBase* panel, HWND tree) -> bool
 		{
@@ -1075,13 +1114,37 @@
 		m_doc->m_body.OnFind(0, ID_EDIT_FIND, m_doc->m_body, handled);
 		CFindDlgBase* find = m_doc->m_body.m_find_dlg; if (find) find->SetPresetPanelVisible(true);
 		HWND findTree = find ? find->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
-		const bool findOk = find && ::IsWindow(find->DialogWindow()) && findTree && hasRoots(findTree) && hasPreset(findTree) && verifyTreeContract(find, findTree) && preservesCategoryState(find, findTree) && verifyPins(find) && verifyLongPreviewLayout(find, findTree);
+				const bool findWindow = find && ::IsWindow(find->DialogWindow()) && findTree;
+		const bool findRoots = findWindow && hasRoots(findTree);
+		const bool findPresets = findRoots && hasPreset(findTree);
+		const bool findTreeContract = findPresets && verifyTreeContract(find, findTree);
+		const bool findCategories = findTreeContract && preservesCategoryState(find, findTree);
+		const bool findShortCapture = findCategories && captureWindow(find->DialogWindow(), L"templates-short.bmp");
+		HWND findPinControl = find ? find->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL;
+		if (findPinControl) { ::SendMessage(findPinControl, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		const bool findHoverCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-hover.bmp");
+		if (findPinControl) { ::SendMessage(findPinControl, WM_MOUSELEAVE, 0, 0); ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		const bool pinnedBeforeCapture = _Settings.SearchTemplatesPanelPinned();
+		_Settings.SetSearchTemplatesPanelPinned(true, false); if (findPinControl) { ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		const bool findPinnedCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-pinned.bmp");
+		_Settings.SetSearchTemplatesPanelPinned(pinnedBeforeCapture, false); if (findPinControl) { ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		int findPinDetail = 0; const bool findPin = findCategories && verifyPins(find, findPinDetail);
+		const bool findPreview = findPin && verifyLongPreviewLayout(find, findTree);
+		const bool findLongCapture = findPreview && captureWindow(find->DialogWindow(), L"templates-long-regexp.bmp");
+		const bool findOk = findPreview && findShortCapture && findHoverCapture && findPinnedCapture && findLongCapture;
 		m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
 		CReplaceDlgBase* replace = m_doc->m_body.m_replace_dlg; if (replace) replace->SetPresetPanelVisible(true);
 		HWND replaceTree = replace ? replace->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
-		const bool replaceOk = replace && ::IsWindow(replace->DialogWindow()) && replaceTree && hasRoots(replaceTree) && hasPreset(replaceTree) && verifyTreeContract(replace, replaceTree) && preservesCategoryState(replace, replaceTree) && verifyPins(replace) && verifyLongPreviewLayout(replace, replaceTree);
+		const bool replaceWindow = replace && ::IsWindow(replace->DialogWindow()) && replaceTree;
+		const bool replaceRoots = replaceWindow && hasRoots(replaceTree);
+		const bool replacePresets = replaceRoots && hasPreset(replaceTree);
+		const bool replaceTreeContract = replacePresets && verifyTreeContract(replace, replaceTree);
+		const bool replaceCategories = replaceTreeContract && preservesCategoryState(replace, replaceTree);
+		int replacePinDetail = 0; const bool replacePin = replaceCategories && verifyPins(replace, replacePinDetail);
+		const bool replacePreview = replacePin && verifyLongPreviewLayout(replace, replaceTree);
+		const bool replaceOk = replacePreview;
 		for (int pump = 0; pump < 8; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
-		CStringA report; report.Format("find=%d\r\nreplace=%d\r\n", findOk ? 1 : 0, replaceOk ? 1 : 0);
+		CStringA report; report.Format("find=%d\r\nreplace=%d\r\nfind_window=%d\r\nfind_roots=%d\r\nfind_presets=%d\r\nfind_tree=%d\r\nfind_categories=%d\r\nfind_pin=%d\r\nfind_preview=%d\r\nreplace_window=%d\r\nreplace_roots=%d\r\nreplace_presets=%d\r\nreplace_tree=%d\r\nreplace_categories=%d\r\nreplace_pin=%d\r\nreplace_preview=%d\r\nfind_pin_detail=%d\r\nreplace_pin_detail=%d\r\nartifacts=%d\r\n", findOk, replaceOk, findWindow, findRoots, findPresets, findTreeContract, findCategories, findPin, findPreview, replaceWindow, replaceRoots, replacePresets, replaceTreeContract, replaceCategories, replacePin, replacePreview, findPinDetail, replacePinDetail, findShortCapture && findHoverCapture && findPinnedCapture && findLongCapture);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		if (find) m_doc->m_body.CloseFindDialog(find); if (replace) m_doc->m_body.CloseFindDialog(replace);
 		::PostQuitMessage(findOk && replaceOk ? 0 : 1); return 0;
