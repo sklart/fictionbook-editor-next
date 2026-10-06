@@ -1298,12 +1298,14 @@
 		m_doc->m_body.SetFocus(); MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
 		if (!range) { output.Close(); ::PostQuitMessage(1); return 0; }
 		range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE);
-		if (range->move(L"character", 1) != 1) { output.Close(); ::PostQuitMessage(1); return 0; }
-		range->select(); m_Speller->SetEnabled(true); _Settings.SetHighlightMisspells(true); m_Speller->ResetTestDiagnostics();
+		bool nonEmptySelection = false;
+		if (formatting) { const long movedStart = range->moveStart(L"character", 1); const long movedEnd = range->moveEnd(L"character", 4); _bstr_t selected(range->text); nonEmptySelection = movedStart == 1 && movedEnd > 0 && selected.length() > 0; if (!nonEmptySelection) { output.Close(); ::PostQuitMessage(1); return 0; } }
+		else if (range->move(L"character", 1) != 1) { output.Close(); ::PostQuitMessage(1); return 0; }
+		range->select();; m_Speller->SetEnabled(true); _Settings.SetHighlightMisspells(true); m_Speller->ResetTestDiagnostics();
 		bool domChanged = false;
 		if (formatting)
 		{
-			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_ITALIC, 0), 0); const ULONGLONG deadline = ::GetTickCount64() + 2000; while (::GetTickCount64() < deadline) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); if (upper.Find(L"<EM") >= 0) break; ::Sleep(1); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); domChanged = upper.Find(L"<EM") >= 0;
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_ITALIC, 0), 0); const ULONGLONG deadline = ::GetTickCount64() + 2000; while (::GetTickCount64() < deadline) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); if (upper.Find(L"<EM") >= 0) break; ::Sleep(1); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); domChanged = nonEmptySelection && upper.Find(L"<EM") >= 0;
 		}
 		else if (script)
 		{
