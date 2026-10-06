@@ -96,9 +96,9 @@ HBITMAP ToolbarFactory::CreateScaledAlphaBitmap(HBITMAP source, int sourceSize, 
 		if(alphaValue == 0) targetPixels[y * targetSize + x] = 0;
 		else
 		{
-			const int red = max(0, min(alphaValue, static_cast<int>(r + 0.5)));
-			const int green = max(0, min(alphaValue, static_cast<int>(g + 0.5)));
-			const int blue = max(0, min(alphaValue, static_cast<int>(b + 0.5)));
+			const int red = max(0, min(alphaValue, static_cast<int>(r / 255.0 + 0.5)));
+			const int green = max(0, min(alphaValue, static_cast<int>(g / 255.0 + 0.5)));
+			const int blue = max(0, min(alphaValue, static_cast<int>(b / 255.0 + 0.5)));
 			targetPixels[y * targetSize + x] = (static_cast<DWORD>(alphaValue) << 24) | (static_cast<DWORD>(red) << 16) | (static_cast<DWORD>(green) << 8) | static_cast<DWORD>(blue);
 		}
 	}

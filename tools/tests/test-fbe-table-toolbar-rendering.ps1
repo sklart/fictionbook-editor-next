@@ -57,7 +57,7 @@ try {
     foreach($phase in $dpiSizes.Keys) {
         $scaled = @($rows | Where-Object phase -eq $phase)
         if($scaled.Count -ne 8) { throw "Expected eight scaled bitmaps for $phase." }
-        if(@($scaled | Where-Object { $_.image_index -ne $dpiSizes[$phase] -or $_.image_list_has_mask -ne 1 -or $_.chroma_pixels -le 0 -or $_.image_black_pixels -ne 0 -or $_.checked -ne 0 -or $_.hidden -ne 1 }).Count) { throw "$phase produced a transparent-background, magenta, or black-fringe artifact." }
+        if(@($scaled | Where-Object { $_.image_index -ne $dpiSizes[$phase] -or $_.image_list_has_mask -ne 1 -or $_.chroma_pixels -le 0 -or $_.image_black_pixels -ne 0 -or $_.color_pixels -le 0 -or $_.checked -ne 0 -or $_.hidden -ne 1 }).Count) { throw "$phase produced a transparent-background, magenta, or black-fringe artifact." }
     }    $passed = $true
     Write-Host 'FBE table toolbar state and rendering transitions passed.'
 } finally {
