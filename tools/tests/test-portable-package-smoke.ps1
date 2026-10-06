@@ -1,4 +1,4 @@
-﻿<# Exercises a materialised portable payload and, optionally, its ZIP. #>
+<# Exercises a materialised portable payload and, optionally, its ZIP. #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,
@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $package = (Resolve-Path -LiteralPath $PackageDirectory).Path
 & (Join-Path $root 'tools\build\verify-package-stage.ps1') -Kind Portable -StageDirectory $package
+if (Test-Path -LiteralPath (Join-Path $package 'Utilities\fb2recode')) { throw 'Portable payload contains retired Utilities\fb2recode.' }
 foreach ($name in @('Settings','Scripts','Dictionaries','Themes','Logs','Diagnostics','Recovery','Cache','Temp')) {
     if (-not (Test-Path -LiteralPath (Join-Path $package "Data\\$name") -PathType Container)) { throw "Portable payload misses Data\\$name." }
 }

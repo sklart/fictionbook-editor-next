@@ -25,11 +25,18 @@ try {
     & (Join-Path $repoRoot 'tools\build\build-provenance.ps1') -Action Write -Kind Runtime -Configuration $configuration -ProfileDirectory $editorRuntime -BatchDirectory $batch -ProvenanceDirectory $provenance
     & (Join-Path $repoRoot 'tools\build\stage-core.ps1') -Configuration $configuration -OutputDirectory $stage -EditorRuntimeDirectory $editorRuntime -BatchOutputDirectory $batch -ProvenanceDirectory $provenance
 
-    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'LICENSE', 'genres.librusec.txt', 'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt')) {
+    foreach ($relativePath in @('FBE.exe', 'FBV.exe', 'Plugins\ImportEPUB.dll', 'LICENSE', 'genres.librusec.txt', 'Resources\Words.xml', 'THIRD-PARTY-LICENSES\PCRE2.txt', 'Utilities\FB2CheckContentTypes\FB2CheckContentTypes.hta', 'Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $relativePath) -PathType Leaf)) {
             throw "Layout-driven Core stage omitted: $relativePath"
         }
     }
+    if (Test-Path -LiteralPath (Join-Path $stage 'Utilities\fb2recode')) { throw 'Core stage must not contain retired Utilities\fb2recode.' }
+    $portable = Join-Path $fixtureRoot 'portable'
+    & (Join-Path $repoRoot 'tools\build\package-portable.ps1') -CoreDirectory $stage -OutputDirectory $portable
+    foreach ($relativePath in @('Utilities\FB2CheckContentTypes\FB2CheckContentTypes.hta', 'Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta', 'portable.ini', 'Data\Settings\.keep')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $portable $relativePath))) { throw "Portable layout omitted: $relativePath" }
+    }
+    if (Test-Path -LiteralPath (Join-Path $portable 'Utilities\fb2recode')) { throw 'Portable stage must not contain retired Utilities\fb2recode.' }
     foreach ($legacyUserFile in @('Settings.xml', 'Hotkeys.xml', 'Words.xml')) {
         if (Test-Path -LiteralPath (Join-Path $stage $legacyUserFile) -PathType Leaf) {
             throw "Core stage must not contain mutable root user state: $legacyUserFile"
