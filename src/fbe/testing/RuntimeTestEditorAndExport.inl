@@ -1392,7 +1392,7 @@
 		{
 			const int targetSize = ToolbarFactory::CommandToolbarImageSize(dpis[index]); HBITMAP scaled = ToolbarFactory::CreateScaledAlphaBitmap(source, sourceSize, targetSize);
 			DIBSECTION scaledInfo = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(scaledInfo), &scaledInfo) == sizeof(scaledInfo) && scaledInfo.dsBm.bmBits != NULL && scaledInfo.dsBm.bmWidth == targetSize && abs(scaledInfo.dsBmih.biHeight) == targetSize;
-			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0, colorPixels = 0; bool transparentCorners = ready;
+			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
 			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; if(alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha)) ++invalidPremultiplied; } }
 			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity;
 			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
@@ -1488,10 +1488,10 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				RECT rect = {}; const bool hasRect = m_CmdToolbar.GetItemRect(m_CmdToolbar.CommandToIndex(command), &rect) != FALSE;
 				const DWORD state = static_cast<DWORD>(m_CmdToolbar.SendMessage(TB_GETSTATE, command, 0));
 				const int image = static_cast<int>(m_CmdToolbar.SendMessage(TB_GETBITMAP, command, 0));
-				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\t%d\r\n", phase, command, state,
+				CStringA row; row.Format("%s\t%u\t%lu\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\t%d\t%d\r\n", phase, command, state,
 					(state & TBSTATE_ENABLED) != 0 ? 1 : 0, (state & TBSTATE_CHECKED) != 0 ? 1 : 0,
 					(state & TBSTATE_HIDDEN) != 0 ? 1 : 0, image, hasRect ? chromaPixels(rect) : -1,
-					imageListHasMask ? 1 : 0, hasRect ? imageBlackPixels(rect) : -1, (UIGetState(command) & UPDUI_DISABLED) == 0 ? 1 : 0);
+					imageListHasMask ? 1 : 0, hasRect ? imageBlackPixels(rect) : -1, 0, (UIGetState(command) & UPDUI_DISABLED) == 0 ? 1 : 0);
 				DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
 			}
 			output.Flush();
