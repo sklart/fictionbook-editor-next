@@ -227,11 +227,6 @@
 #define IDS_CTXMENU_CUT                 255
 #define IDI_ICON1                       255
 #define IDI_OLDICON                     255
-#define IDI_FIND_PRESETS_PIN            267
-#define IDB_FIND_PRESETS_PIN_16         1300
-#define IDB_FIND_PRESETS_PIN_20         1301
-#define IDB_FIND_PRESETS_PIN_24         1302
-#define IDB_FIND_PRESETS_PIN_32         1303
 #define IDB_TABLE_INSERT_ROW_ABOVE       1204
 #define IDB_TABLE_INSERT_ROW_BELOW       1205
 #define IDB_TABLE_INSERT_COLUMN_LEFT     1206

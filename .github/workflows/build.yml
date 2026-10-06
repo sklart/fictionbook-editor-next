@@ -171,6 +171,7 @@ jobs:
           ./tools/tests/test-regex-help-markdown.ps1
           ./tools/tests/test-regex-help-formatting.ps1
           ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
+          ./tools/tests/test-regex-help-placement-runtime.ps1 -FbeExe ./out/Release/FBE.exe
       - name: Run filesystem backup regression
         shell: pwsh
         run: |

@@ -152,6 +152,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-regex-help-markdown.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-formatting.ps1")
 & (Join-Path $repoRoot "tools\tests\test-regex-help-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-regex-help-placement-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-find-results-pane-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-background-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-package-layout.ps1")

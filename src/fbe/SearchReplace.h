@@ -648,6 +648,18 @@ public:
             (pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : ThemeManager::WindowColor());
         const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
         DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned, surface);
+        if ((draw->itemState & ODS_FOCUS) != 0)
+        {
+            RECT focus = draw->rcItem;
+            const int focusInset = (std::max)(1, UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(DialogWindow())));
+            ::InflateRect(&focus, -focusInset, -focusInset);
+            if (focus.right > focus.left && focus.bottom > focus.top)
+            {
+                const HBRUSH focusBrush = ::CreateSolidBrush(ThemeManager::FocusColor());
+                ::FrameRect(draw->hDC, &focus, focusBrush);
+                ::DeleteObject(focusBrush);
+            }
+        }
         return TRUE;
     }
     LRESULT OnTogglePresets(WORD, WORD, HWND, BOOL&) { const bool collapse = m_templatesExpanded; SetPresetPanelVisible(!collapse); if (collapse && _Settings.SearchTemplatesPanelPinned()) _Settings.SetSearchTemplatesPanelPinned(false, true); return 0; }

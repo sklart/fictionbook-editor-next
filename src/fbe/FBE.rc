@@ -620,11 +620,6 @@ END
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\FBE2.ico"
 IDI_OLDICON             ICON                    "res\\FBE.ico"
-IDI_FIND_PRESETS_PIN    ICON                    "res\\icons\\lucide\\pin.ico"
-IDB_FIND_PRESETS_PIN_16 BITMAP                  "res\\icons\\lucide\\pin-mask-16.bmp"
-IDB_FIND_PRESETS_PIN_20 BITMAP                  "res\\icons\\lucide\\pin-mask-20.bmp"
-IDB_FIND_PRESETS_PIN_24 BITMAP                  "res\\icons\\lucide\\pin-mask-24.bmp"
-IDB_FIND_PRESETS_PIN_32 BITMAP                  "res\\icons\\lucide\\pin-mask-32.bmp"
 IDB_TABLE_INSERT_ROW_ABOVE BITMAP                  "res\\insert_row_above.bmp"
 IDB_TABLE_INSERT_ROW_BELOW BITMAP                  "res\\insert_row_below.bmp"
 IDB_TABLE_INSERT_COLUMN_LEFT BITMAP                "res\\insert_column_left.bmp"

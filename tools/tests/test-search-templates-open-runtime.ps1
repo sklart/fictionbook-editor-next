@@ -18,6 +18,6 @@ try {
     } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TEST_ARTIFACT_DIR=$oldArtifacts }
     $rows=@{}; Get-Content -LiteralPath $report | ForEach-Object { $kv=$_ -split "=",2; if($kv.Count -eq 2){ $rows[$kv[0]]=$kv[1] } }
     foreach($key in @("find","replace")){ if($rows[$key] -ne "1"){ throw "Templates runtime smoke failed: $key=$($rows[$key])" } }
-    if($ArtifactDirectory) { foreach($name in "templates-short.bmp","templates-long-regexp.bmp","pin-hover.bmp","pin-pinned.bmp") { if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory $name))) { throw "Templates screenshot missing: $name" } } }
+    if($ArtifactDirectory) { foreach($name in "templates-short.bmp","templates-long-regexp.bmp","templates-short-restored.bmp","pin-hover.bmp","pin-pinned.bmp","pin-focus-light.bmp","pin-focus-dark.bmp") { if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory $name))) { throw "Templates screenshot missing: $name" } } }
     Write-Host "Find/Replace Templates native runtime smoke passed."
 } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
