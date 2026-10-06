@@ -117,7 +117,7 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_tooltips.Add(GetDlgItem(IDC_BUTTON_DEFAULT), L"fbe.settings.tooltip.hotkeys.default", L"Restore the selected command's default shortcut.");
 	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_DELETE), L"fbe.settings.tooltip.hotkeys.delete", L"Remove the shortcut from the selected command.");
 	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_ASSIGN), L"fbe.settings.tooltip.hotkeys.assign", L"Assign the entered shortcut to the selected command.");
-	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_EXPORT), L"fbe.settings.tooltip.hotkeys.export", L"Export assigned shortcuts to a UTF-8 text file.");
+	m_tooltips.Add(GetDlgItem(IDC_BUTTON_HOTKEY_EXPORT), L"fbe.settings.tooltip.hotkeys.export", L"Export assigned shortcuts to HTML or UTF-8 text.");
 	m_tooltips.Add(m_changeKeyb, L"fbe.settings.tooltip.hotkeys.change_layout", L"Changes the keyboard layout when FictionBook Editor Next starts.");
 	m_tooltips.Add(m_keybLayout, L"fbe.settings.tooltip.hotkeys.layout", L"Keyboard layout used at startup when layout switching is enabled.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_CHANGE_TO), L"fbe.settings.tooltip.hotkeys.layout_disabled", L"Available after enabling Change layout on startup.");

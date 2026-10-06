@@ -1,4 +1,4 @@
-<# Exercises the production hotkey TXT formatter through a real portable FBE process. #>
+<# Exercises the production hotkey TXT/HTML formatter through a real portable FBE process. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [ValidateRange(30, 180)][int]$TimeoutSeconds = 90)
 
