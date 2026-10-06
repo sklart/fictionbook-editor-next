@@ -16,12 +16,15 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if ([string]::IsNullOrWhiteSpace($FbeExe)) { $FbeExe = Join-Path $repositoryRoot 'out\Release\FBE.exe' }
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$directory = Join-Path $repositoryRoot ('out\tests\fbe table failure ' + [guid]::NewGuid().ToString('N'))
+$temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) 'FBE-Next-table-failure-safety'
+$diagnosticsRoot = Join-Path ([IO.Path]::GetTempPath()) 'FBE-Next-diagnostics'
+$directory = Join-Path $temporaryRoot ([guid]::NewGuid().ToString('N'))
 $runtime = Join-Path $directory 'runtime'
 $fixture = Join-Path $directory 'table.fb2'
 $report = Join-Path $directory 'report.tsv'
 $portableIni = Join-Path $runtime 'portable.ini'
 $traceDirectories = @(Join-Path $runtime 'Data\Diagnostics')
+$passed = $false
 
 Add-Type @"
 using System;
@@ -91,11 +94,26 @@ try {
     foreach($code in @($faultCode, 'D224', 'D223', 'D226')) {
         if(-not (Select-String -LiteralPath $trace -SimpleMatch ("code=" + $code) -Quiet)) { throw "Trace не содержит ${code}: $trace" }
     }
+    $passed = $true
     Write-Host 'Table serialization failure safety passed.'
 }
 finally {
     Remove-Item Env:FBE_NEXT_TEST_MODE,Env:FBE_NEXT_FAULT_INJECT -ErrorAction SilentlyContinue
     if ($null -eq $previousTrace) { Remove-Item Env:FBE_NEXT_TRACE -ErrorAction SilentlyContinue } else { $env:FBE_NEXT_TRACE = $previousTrace }
-    # Keep this isolated directory for failed-run diagnostics; it never holds
-    # user state and is covered by /out/ in .gitignore.
+    if (Test-Path -LiteralPath $directory) {
+        if ($passed) {
+            Remove-Item -LiteralPath $directory -Recurse -Force
+        }
+        else {
+            New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
+            $failureDirectory = Join-Path $diagnosticsRoot ('table-failure-' + [IO.Path]::GetFileName($directory))
+            try {
+                Move-Item -LiteralPath $directory -Destination $failureDirectory -Force
+                Write-Warning "Диагностика неуспешного table safety test сохранена: $failureDirectory"
+            }
+            catch {
+                Write-Warning "Не удалось перенести диагностику из ${directory}: $_"
+            }
+        }
+    }
 }
