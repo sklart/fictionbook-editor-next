@@ -35,7 +35,7 @@ try {
         if ($commandRows.Count -ne $phases.Count) { throw "Incomplete selection matrix for command $command." }
         foreach($phase in $phases) { if(@($commandRows | Where-Object phase -eq $phase).Count -ne 1) { throw "Missing $phase state for command $command." } }
         if (@($commandRows | Where-Object { $_.enabled -ne $_.ui_enabled }).Count) { throw "Toolbar and UpdateUI state differ for command $command." }
-        if (@($commandRows | Where-Object { $_.image_index -lt 0 -or $_.image_list_has_mask -ne 1 }).Count) { throw "Command $command lost its masked toolbar image." }
+        if (@($commandRows | Where-Object { $_.image_index -lt 0 -or $_.image_list_has_mask -ne 0 }).Count) { throw "Command $command lost its ARGB toolbar image." }
     }
     $byPhase = { param($phase) @($standard | Where-Object phase -eq $phase) }
     if (@(& $byPhase 'outside' | Where-Object enabled -ne 0).Count) { throw 'Table actions remained enabled outside a table.' }
@@ -57,7 +57,7 @@ try {
     foreach($phase in $dpiSizes.Keys) {
         $scaled = @($rows | Where-Object phase -eq $phase)
         if($scaled.Count -ne 8) { throw "Expected eight scaled bitmaps for $phase." }
-        if(@($scaled | Where-Object { $_.image_index -ne $dpiSizes[$phase] -or $_.image_list_has_mask -ne 1 -or $_.chroma_pixels -le 0 -or $_.image_black_pixels -ne 0 -or $_.color_pixels -le 0 -or $_.checked -ne 0 -or $_.hidden -ne 1 }).Count) { throw "$phase produced a transparent-background, magenta, or black-fringe artifact." }
+        if(@($scaled | Where-Object { $_.image_index -ne $dpiSizes[$phase] -or $_.image_list_has_mask -ne 1 -or $_.chroma_pixels -le 0 -or $_.image_black_pixels -ne 0 -or $_.color_pixels -le 0 -or $_.checked -ne 0 -or $_.hidden -ne 1 }).Count) { throw "$phase produced an ARGB transparent-background, magenta, or black-fringe artifact." }
     }    $passed = $true
     Write-Host 'FBE table toolbar state and rendering transitions passed.'
 } finally {

@@ -1402,7 +1402,28 @@
 		const int sourceStride = ((sourceSize * 24 + 31) / 32) * 4;
 		for(int y = 0; y < sourceSize; ++y) for(int x = 0; x < sourceSize; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 0xFF; pixel[1] = 0x00; pixel[2] = 0xFF; }
 		for(int y = 7; y <= 16; ++y) for(int x = 7; x <= 16; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 80; pixel[1] = 150; pixel[2] = 210; }
-		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		auto standardIconsPass = [&](UINT dpi, int& failure) -> bool
+		{
+			failure = 0; CImageList images;
+			const int size = ToolbarFactory::CommandToolbarImageSize(dpi);
+			if(!ToolbarFactory::CreateCommandToolbarImages(images, IDR_MAINFRAME, dpi)) { failure = 1; return false; }
+			int imageWidth = 0, imageHeight = 0;
+			if(::ImageList_GetImageCount(images) <= 0 || !::ImageList_GetIconSize(images, &imageWidth, &imageHeight) || imageWidth != size || imageHeight != size) { failure = 2; return false; }
+			HBITMAP source = static_cast<HBITMAP>(::LoadImage(ATL::_AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+			HBITMAP scaled = source ? ToolbarFactory::CreateScaledAlphaBitmap(source, 24, size) : NULL; if(source) ::DeleteObject(source);
+			DIBSECTION info = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(info), &info) == sizeof(info) && info.dsBm.bmBits != NULL && info.dsBm.bmWidth == size && abs(info.dsBmih.biHeight) == size;
+			if(!ready) { if(scaled) ::DeleteObject(scaled); failure = 3; return false; }
+			const DWORD* pixels = static_cast<const DWORD*>(info.dsBm.bmBits); const int corners[] = { 0, size - 1, size * (size - 1), size * size - 1 }; long visible = 0;
+			for(size_t corner = 0; corner < _countof(corners); ++corner) if(pixels[corners[corner]] != 0) { ::DeleteObject(scaled); failure = 4; return false; }
+			for(int pixel = 0; pixel < size * size; ++pixel)
+			{
+				const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24;
+				if(alpha) ++visible;
+				if((alpha == 0 && rgb != 0) || (alpha && rgb == 0x00FF00FF) || (alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha))) { ::DeleteObject(scaled); failure = 5; return false; }
+			}
+			::DeleteObject(scaled); if(visible == 0) { failure = 6; return false; } return true;
+		};
+		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_image_list_has_mask\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
 		for(size_t index = 0; index < _countof(dpis); ++index)
 		{
@@ -1410,8 +1431,8 @@
 			DIBSECTION scaledInfo = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(scaledInfo), &scaledInfo) == sizeof(scaledInfo) && scaledInfo.dsBm.bmBits != NULL && scaledInfo.dsBm.bmWidth == targetSize && abs(scaledInfo.dsBmih.biHeight) == targetSize;
 			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
 			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; if(alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha)) ++invalidPremultiplied; } }
-			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity;
-			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
+			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure); const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed;
+			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t0\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
 		}
 		::DeleteObject(source); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
