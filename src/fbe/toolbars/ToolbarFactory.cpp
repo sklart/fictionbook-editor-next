@@ -6,7 +6,23 @@ namespace { struct ToolbarResourceData { WORD version; WORD width; WORD height; 
 bool ToolbarFactory::ImageListHasMaskPlane(HIMAGELIST imageList) { IMAGEINFO imageInfo = {}; return imageList != NULL && ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL; }
 void ToolbarFactory::SetDialogFontForToolbarRow(HWND window, bool includeChildren) { if(window == NULL) return; ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE); if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0); }
 void ToolbarFactory::AutoSizeToolbar(HWND window) { if(window != NULL) ::SendMessage(window, TB_AUTOSIZE, 0, 0); }
-HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId, DWORD style, UINT controlId) { HINSTANCE module = _Module.GetResourceInstance(); HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR); HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL; ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL; if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24) return NULL; ATL::CTempBuffer<TBBUTTON, _WTL_STACK_ALLOC_THRESHOLD> buttonsBuffer; TBBUTTON* buttons = buttonsBuffer.Allocate(toolbarData->itemCount); if(buttons == NULL) return NULL; int standardImageCount = 0; for(int index = 0; index < toolbarData->itemCount; ++index) { TBBUTTON& button = buttons[index]; ::ZeroMemory(&button, sizeof(button)); const WORD commandId = toolbarData->Items()[index]; if(commandId != 0) { button.iBitmap = standardImageCount++; button.idCommand = commandId; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON; } else { button.iBitmap = 8; button.fsStyle = BTNS_SEP; } } HWND window = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, style, 0, 0, 100, 100, parent, (HMENU)LongToHandle(controlId), module, NULL); if(window == NULL) return NULL; ::SendMessage(window, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0); if(!ownedImages.Create(24, 24, ILC_COLOR32 | ILC_MASK, standardImageCount + 8, 8)) { ::DestroyWindow(window); return NULL; } HIMAGELIST sourceImages = ::ImageList_LoadImage(module, MAKEINTRESOURCE(toolbarResourceId), 24, 1, CLR_DEFAULT, IMAGE_BITMAP, LR_CREATEDIBSECTION | LR_DEFAULTSIZE); const bool copied = sourceImages != NULL && ::ImageList_GetImageCount(sourceImages) >= standardImageCount && CopyToolbarImages(ownedImages, sourceImages, standardImageCount); if(sourceImages != NULL) ::ImageList_Destroy(sourceImages); if(!copied) { ownedImages.Destroy(); ::DestroyWindow(window); return NULL; } const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages)))); if(previousImages != NULL || ::SendMessage(window, TB_ADDBUTTONS, toolbarData->itemCount, reinterpret_cast<LPARAM>(buttons)) == FALSE) { ::SendMessage(window, TB_SETIMAGELIST, 0, 0); ownedImages.Destroy(); ::DestroyWindow(window); return NULL; } SetDialogFontForToolbarRow(window); ::SendMessage(window, TB_SETBITMAPSIZE, 0, MAKELONG(24, 24)); ::SendMessage(window, TB_SETBUTTONSIZE, 0, MAKELONG(toolbarData->width + 7, toolbarData->height + 7)); AutoSizeToolbar(window); StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar image list created; 24x24; ILC_COLOR32|ILC_MASK"); return window; }
+HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId, UINT dpi, DWORD style, UINT controlId)
+{
+	HINSTANCE module = _Module.GetResourceInstance(); HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
+	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
+	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
+	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24) return NULL;
+	ATL::CTempBuffer<TBBUTTON, _WTL_STACK_ALLOC_THRESHOLD> buttonsBuffer; TBBUTTON* buttons = buttonsBuffer.Allocate(toolbarData->itemCount); if(buttons == NULL) return NULL;
+	int standardImageCount = 0;
+	for(int index = 0; index < toolbarData->itemCount; ++index) { TBBUTTON& button = buttons[index]; ::ZeroMemory(&button, sizeof(button)); const WORD commandId = toolbarData->Items()[index]; if(commandId != 0) { button.iBitmap = standardImageCount++; button.idCommand = commandId; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON; } else { button.iBitmap = 8; button.fsStyle = BTNS_SEP; } }
+	HWND window = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, style, 0, 0, 100, 100, parent, (HMENU)LongToHandle(controlId), module, NULL); if(window == NULL) return NULL;
+	::SendMessage(window, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
+	if(!CreateCommandToolbarImages(ownedImages, toolbarResourceId, dpi)) { ::DestroyWindow(window); return NULL; }
+	const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages))));
+	if(previousImages != NULL || ::SendMessage(window, TB_ADDBUTTONS, toolbarData->itemCount, reinterpret_cast<LPARAM>(buttons)) == FALSE) { ::SendMessage(window, TB_SETIMAGELIST, 0, 0); ownedImages.Destroy(); ::DestroyWindow(window); return NULL; }
+	SetDialogFontForToolbarRow(window); ApplyCommandToolbarMetrics(window, toolbarResourceId, dpi);
+	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar image list created at current DPI; ILC_COLOR32|ILC_MASK"); return window;
+}
 HBITMAP ToolbarFactory::CreateAlphaBitmap(HBITMAP source, int width, int height)
 {
 	DIBSECTION sourceInfo = {};
@@ -49,6 +65,21 @@ HBITMAP ToolbarFactory::CreateAlphaBitmap(HBITMAP source, int width, int height)
 	return target;
 }
 
+HBITMAP ToolbarFactory::CreateScaledAlphaBitmap(HBITMAP source, int sourceSize, int targetSize)
+{
+	HBITMAP alpha = CreateAlphaBitmap(source, sourceSize, sourceSize);
+	if(alpha == NULL || targetSize <= 0) return NULL;
+	if(targetSize == sourceSize) return alpha;
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = targetSize; info.bmiHeader.biHeight = -targetSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	void* targetBits = NULL; HBITMAP scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &targetBits, NULL, 0);
+	HDC sourceDc = ::CreateCompatibleDC(NULL), targetDc = ::CreateCompatibleDC(NULL);
+	if(scaled == NULL || targetBits == NULL || sourceDc == NULL || targetDc == NULL) { if(scaled) ::DeleteObject(scaled); if(sourceDc) ::DeleteDC(sourceDc); if(targetDc) ::DeleteDC(targetDc); ::DeleteObject(alpha); return NULL; }
+	HGDIOBJ oldSource = ::SelectObject(sourceDc, alpha), oldTarget = ::SelectObject(targetDc, scaled);
+	::SetStretchBltMode(targetDc, HALFTONE); ::StretchBlt(targetDc, 0, 0, targetSize, targetSize, sourceDc, 0, 0, sourceSize, sourceSize, SRCCOPY);
+	::SelectObject(sourceDc, oldSource); ::SelectObject(targetDc, oldTarget); ::DeleteDC(sourceDc); ::DeleteDC(targetDc); ::DeleteObject(alpha);
+	DWORD* pixels = static_cast<DWORD*>(targetBits); for(int index = 0; index < targetSize * targetSize; ++index) pixels[index] = (pixels[index] & 0x00FFFFFF) == 0x00FF00FF ? 0 : (pixels[index] | 0xFF000000);
+	return scaled;
+}
 int ToolbarFactory::AddBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)
 {
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
@@ -101,19 +132,7 @@ int ToolbarFactory::AddBitmapFromModule(HIMAGELIST imageList, HINSTANCE module, 
 {
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL || imageList == NULL) return -1;
-	HBITMAP alpha = CreateAlphaBitmap(source, 24, 24);
-	::DeleteObject(source);
-	if(alpha == NULL) return -1;
-	HBITMAP scaled = alpha;
-	if(imageSize != 24)
-	{
-		BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = imageSize; info.bmiHeader.biHeight = -imageSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
-		void* ignored = NULL; scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &ignored, NULL, 0);
-		HDC sourceDc = ::CreateCompatibleDC(NULL), targetDc = ::CreateCompatibleDC(NULL);
-		if(scaled == NULL || sourceDc == NULL || targetDc == NULL) { if(scaled && scaled != alpha) ::DeleteObject(scaled); if(sourceDc) ::DeleteDC(sourceDc); if(targetDc) ::DeleteDC(targetDc); ::DeleteObject(alpha); return -1; }
-		HGDIOBJ oldSource = ::SelectObject(sourceDc, alpha), oldTarget = ::SelectObject(targetDc, scaled);
-		::SetStretchBltMode(targetDc, HALFTONE); ::StretchBlt(targetDc, 0, 0, imageSize, imageSize, sourceDc, 0, 0, 24, 24, SRCCOPY);
-		::SelectObject(sourceDc, oldSource); ::SelectObject(targetDc, oldTarget); ::DeleteDC(sourceDc); ::DeleteDC(targetDc); ::DeleteObject(alpha);
-	}
+	HBITMAP scaled = CreateScaledAlphaBitmap(source, 24, imageSize); ::DeleteObject(source);
+	if(scaled == NULL) return -1;
 	const int imageIndex = ::ImageList_Add(imageList, scaled, NULL); ::DeleteObject(scaled); return imageIndex;
 }

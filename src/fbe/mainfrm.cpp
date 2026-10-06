@@ -114,6 +114,7 @@ static_assert(SCRIPT_FOLDER_MENU_ID_BASE > ID_EDIT_INS_SYMBOL + 100, "Folder men
 static_assert(SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT < ID_NEXT_ITEM, "Folder menu IDs overlap regular commands");
 
 std::map<UINT, HBITMAP> g_ownedNativeMenuBitmaps;
+std::map<UINT, UINT> g_ownedNativeMenuBitmapResources;
 struct RebarThemeState
 {
 	LONG_PTR bandBorderBit;
@@ -186,14 +187,15 @@ LRESULT CALLBACK MainRebarThemeProc(HWND window, UINT message, WPARAM wParam, LP
 	return result;
 }
 
-void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT commandId)
+void RegisterOwnedNativeMenuBitmap(HINSTANCE module, UINT bitmapResourceId, UINT commandId, UINT dpi)
 {
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL) return;
-	HBITMAP bitmap = ToolbarFactory::CreateAlphaBitmap(source, 16, 16);
+	HBITMAP bitmap = ToolbarFactory::CreateScaledAlphaBitmap(source, 16, UiMetrics::ScaleForDpi(16, dpi ? dpi : 96));
 	::DeleteObject(source);
 	if(bitmap == NULL) return;
 	g_ownedNativeMenuBitmaps[commandId] = bitmap;
+	g_ownedNativeMenuBitmapResources[commandId] = bitmapResourceId;
 	ThemeManager::RegisterNativeMenuBitmap(commandId, bitmap);
 }
 
@@ -207,6 +209,13 @@ void ReleaseOwnedNativeMenuBitmaps()
 	g_ownedNativeMenuBitmaps.clear();
 }
 
+void RebuildOwnedNativeMenuBitmaps(HINSTANCE module, UINT dpi)
+{
+	const std::map<UINT, UINT> resources = g_ownedNativeMenuBitmapResources;
+	ReleaseOwnedNativeMenuBitmaps();
+	for(std::map<UINT, UINT>::const_iterator it = resources.begin(); it != resources.end(); ++it)
+		RegisterOwnedNativeMenuBitmap(module, it->second, it->first, dpi);
+}
 void ApplyMainRebarTheme(CReBarCtrl& rebar)
 {
 	if(!::IsWindow(rebar)) return;
@@ -3245,9 +3254,9 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		{ IDB_TABLE_MAKE_NORMAL_CELLS, ID_TABLE_MAKE_NORMAL_CELLS }
 	};
 	for(size_t index = 0; index < _countof(nativeTableMenuBitmaps); ++index)
-		RegisterOwnedNativeMenuBitmap(applicationModule, nativeTableMenuBitmaps[index].bitmap, nativeTableMenuBitmaps[index].command);
+		RegisterOwnedNativeMenuBitmap(applicationModule, nativeTableMenuBitmaps[index].bitmap, nativeTableMenuBitmaps[index].command, UiMetrics::DpiForWindow(m_hWnd));
 
-	m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME,
+	m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME, UiMetrics::DpiForWindow(m_hWnd),
 		ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
 	if (!m_CmdToolbar || !InitToolBar(m_CmdToolbar, IDR_MAINFRAME))
 	{
@@ -3265,7 +3274,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
   {
     const TableToolbarCommand& command = kTableToolbarCommands[index];
-		const int imageIndex = ToolbarFactory::AddBitmapFromModule(m_CmdToolbar, applicationModule, command.bitmapResourceId);
+		const int imageIndex = ToolbarFactory::AddBitmapFromModule(static_cast<HIMAGELIST>(m_commandToolbarImages), applicationModule, command.bitmapResourceId, ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd)));
     m_table_toolbar_image_indices[index] = imageIndex;
     if (imageIndex < 0) continue;
     TBBUTTON button = {};
@@ -3290,7 +3299,6 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
     info.iImage = m_table_toolbar_image_indices[index];
     m_CmdToolbar.SetButtonInfo(kTableToolbarCommands[index].commandId, &info);
   }
-	RebuildCommandToolbarImages(UiMetrics::DpiForWindow(m_hWnd));
   UIAddToolBar(m_CmdToolbar);
 
   m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
@@ -3991,6 +3999,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 
 	m_current_dpi = newDpi;
 	UiMetrics::UpdateForWindow(m_hWnd);
+	RebuildOwnedNativeMenuBitmaps(ATL::_AtlBaseModule.GetModuleInstance(), newDpi);
 	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
 	if (::IsWindow(m_CmdToolbar)) { RebuildCommandToolbarImages(newDpi); SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
 	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }

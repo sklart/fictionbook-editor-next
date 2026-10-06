@@ -44,21 +44,20 @@ if ($factory -notmatch '(?s)HBITMAP ToolbarFactory::CreateAlphaBitmap\(.*?biBitC
 foreach ($forbidden in @('connectedCanvas', 'edge-connected', 'pending.Enqueue', 'maximum =', 'minimum =')) {
 	if ($factory.Contains($forbidden)) { throw "Table toolbar alpha conversion must not use a brightness or flood-fill heuristic: $forbidden" }
 }
-if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?FindResource\(.*?RT_TOOLBAR.*?ownedImages\.Create\(24, 24, ILC_COLOR32 \| ILC_MASK.*?ImageList_LoadImage\(.*?CopyToolbarImages\(ownedImages, sourceImages, standardImageCount\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS') {
-    throw 'Command toolbar must create one application-owned ILC_COLOR32|ILC_MASK image list from the RT_TOOLBAR strip before adding buttons.'
+if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?UINT dpi.*?CreateCommandToolbarImages\(ownedImages, toolbarResourceId, dpi\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS.*?ApplyCommandToolbarMetrics\(window, toolbarResourceId, dpi\)') {
+    throw 'Command toolbar must install its current-DPI owned image list and geometry before adding buttons.'
 }
-if ($cpp -match 'EnsureToolbarImageListHasMask') {
 if ($factory -notmatch 'CommandToolbarImageSize' -or $factory -notmatch 'CreateCommandToolbarImages' -or $cpp -notmatch 'RebuildCommandToolbarImages\(newDpi\)') {
     throw 'Command toolbar must rebuild its owned DPI-aware image list on WM_DPICHANGED.'
 }
 if ($factory -match 'TB_SETBITMAPSIZE[^\r\n]*MAKELONG\(24, 24\)') { throw 'Runtime command-toolbar geometry must not be fixed to 24px.' }
-
-    throw 'Delayed command-toolbar image-list reconstruction must not remain.'
-}
-if ($header -notmatch 'CImageList\s+m_commandToolbarImages') {
+if ($cpp -match 'EnsureToolbarImageListHasMask') { throw 'Delayed command-toolbar image-list reconstruction must not remain.' }
+foreach ($required in @('CreateScaledAlphaBitmap(source, 16, UiMetrics::ScaleForDpi(16, dpi ? dpi : 96))', 'RebuildOwnedNativeMenuBitmaps', 'RebuildOwnedNativeMenuBitmaps(ATL::_AtlBaseModule.GetModuleInstance(), newDpi)')) {
+    if (-not $cpp.Contains($required)) { throw "Missing DPI-aware table menu bitmap contract: $required" }
+}if ($header -notmatch 'CImageList\s+m_commandToolbarImages') {
     throw 'CMainFrame must explicitly own the command toolbar image list.'
 }
-if ($cpp -notmatch '(?s)m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl\(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME.*?InitToolBar\(m_CmdToolbar, IDR_MAINFRAME\)') {
+if ($cpp -notmatch '(?s)m_CmdToolbar = ToolbarFactory::CreateCommandToolbarCtrl\(m_hWnd, m_commandToolbarImages, IDR_MAINFRAME, UiMetrics::DpiForWindow\(m_hWnd\).*?InitToolBar\(m_CmdToolbar, IDR_MAINFRAME\)') {
     throw 'The owned image list must be installed during command toolbar creation while InitToolBar retains customization metadata.'
 }
 if ($cpp -notmatch '(?s)LRESULT CMainFrame::OnDestroy\(.*?m_CmdToolbar\.SetImageList\(NULL\).*?m_commandToolbarImages\.Destroy\(\)') {

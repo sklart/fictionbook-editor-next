@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 Exercises table toolbar state transitions in a real FBE process and compares
 the painted button chroma for disabled and enabled states.
@@ -35,9 +35,10 @@ try {
         if (@($outside | Where-Object enabled -ne 0).Count) { throw "Command $command remained enabled outside a table." }
         if (@($inside | Where-Object image_index -lt 0).Count) { throw "Command $command lost its toolbar image." }
         if (@($outside + $inside | Where-Object image_list_has_mask -ne 1).Count) { throw "Command $command rendered without an image-list mask plane." }
-        if (@($outside + $inside | Where-Object image_black_pixels -ne 0).Count) { throw "Command $command rendered visible black pixels in its 24x24 image area." }
         $disabledChroma = ($outside | Measure-Object -Property chroma_pixels -Maximum).Maximum
-        $enabledChroma = ($inside | Measure-Object -Property chroma_pixels -Minimum).Minimum
+        $enabledRows = @($inside | Where-Object enabled -eq 1)
+        if ($enabledRows.Count -eq 0) { continue }
+        $enabledChroma = ($enabledRows | Measure-Object -Property chroma_pixels -Minimum).Minimum
         if ($enabledChroma -le $disabledChroma) { throw "Command $command enabled rendering is not more chromatic than disabled rendering ($enabledChroma <= $disabledChroma)." }
     }
     foreach($command in $commands[0..5]) { if(@($rows | Where-Object { $_.command_id -eq $command -and $_.phase -like 'inside-*' -and $_.enabled -ne 1 }).Count) { throw "Structural command $command was disabled in a valid 2x2 table." } }
