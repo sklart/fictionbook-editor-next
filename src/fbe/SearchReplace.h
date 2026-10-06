@@ -571,6 +571,12 @@ UINT PresetPinMaskResource(int size) const
         return IDB_FIND_PRESETS_PIN_32;
     }
 
+    static DWORD ColorRefToDibPixel(COLORREF color)
+    {
+        return 0xff000000 | (static_cast<DWORD>(GetRValue(color)) << 16) |
+            (static_cast<DWORD>(GetGValue(color)) << 8) | static_cast<DWORD>(GetBValue(color));
+    }
+
     void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned, COLORREF surface) const
     {
         const UINT dpi = UiMetrics::DpiForWindow(DialogWindow());
@@ -600,7 +606,7 @@ UINT PresetPinMaskResource(int size) const
                 {
                     const BYTE bit = static_cast<BYTE>(0x80 >> (x & 7));
                     const bool covered = (maskBits[static_cast<size_t>(y) * maskStride + x / 8] & bit) != 0;
-                    pixels[y * size + x] = 0xff000000 | (covered ? RGB(GetRValue(tint), GetGValue(tint), GetBValue(tint)) : RGB(GetRValue(surface), GetGValue(surface), GetBValue(surface)));
+                    pixels[y * size + x] = ColorRefToDibPixel(covered ? tint : surface);
                 }
             const HGDIOBJ previous = ::SelectObject(memory, bitmap);
             const int x = target.left + ((target.right - target.left) - size) / 2;

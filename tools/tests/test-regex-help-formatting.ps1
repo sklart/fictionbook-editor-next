@@ -4,10 +4,11 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $parser = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpMarkdown.cpp')
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
-foreach ($token in @('MarkdownBlockKind', 'headingLevel', 'ParseMarkdown', 'ParseInlineCode', 'ReadUtf8File', 'EM_EXLIMITTEXT', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'CFM_SIZE', 'CFM_BACKCOLOR', 'CFE_AUTOBACKCOLOR', 'CFM_UNDERLINE', 'CFE_UNDERLINE', 'yHeight', 'dwEffects = bold ? CFE_BOLD : 0', 'Consolas', 'PFM_SPACEAFTER', 'PFM_STARTINDENT', 'PFM_OFFSET', 'PFM_RIGHTINDENT', 'PFM_TABSTOPS', 'ThemeManager::AccentColor()', 'HelpBlockBackground', 'HelpTableHeaderBackground', 'PointSizeForBlock', 'RenderedBlockText', 'ExpectedRenderedText')) {
+foreach ($token in @('MarkdownBlockKind', 'headingLevel', 'ParseMarkdown', 'ParseInlineCode', 'ReadUtf8File', 'EM_EXLIMITTEXT', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'CFM_SIZE', 'CFM_BACKCOLOR', 'CFE_AUTOBACKCOLOR', 'CFM_UNDERLINE', 'CFE_UNDERLINE', 'yHeight', 'dwEffects = bold ? CFE_BOLD : 0', 'Consolas', 'PFM_SPACEAFTER', 'PFM_STARTINDENT', 'PFM_OFFSET', 'PFM_RIGHTINDENT', 'PFM_TABSTOPS', 'ThemeManager::AccentColor()', 'HelpBlockBackground', 'HelpTableHeaderBackground', 'PointSizeForBlock', 'RenderedBlockText', 'ExpectedRenderedText', 'MakeHyperlinkCharacterFormat', 'format.dwMask = CFM_UNDERLINE | CFM_COLOR', 'shadedLinkBlocks', 'preservesShadedLinkFormat')) {
     if ($parser -notmatch [regex]::Escape($token)) { throw "Missing Markdown formatting behavior: $token" }
 }
 if ($parser -match 'JoinHelpBlocks|starts\[|ClassifyHelpLine|section ==') { throw 'Markdown renderer retains position-based or joined-text formatting.' }
+if ($parser -match 'CHARFORMAT2 hyperlink = MakeCharacterFormat') { throw 'Hyperlinks must not overwrite the parent block format.' }
 if ($parser -match 'MulDiv\(title \? 11 : 9, 1440, dpi\)') { throw 'RichEdit help text must not divide its twip size by monitor DPI.' }
 $render = [regex]::Match($parser, 'void\s+RenderMarkdown\(HWND richEdit, const std::vector<MarkdownBlock>& blocks\)\s*\{[\s\S]*?\n\}').Value
 if ([string]::IsNullOrWhiteSpace($render)) { throw 'Unable to locate Full Regex Help renderer.' }

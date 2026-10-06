@@ -965,7 +965,7 @@
                 if (::IsWindowEnabled(panel->FRBase::GetDlgItem(actions[index]))) return false;
             return true;
         };
-        struct PinProbe { int foreground; int background; COLORREF tint; bool drawn; };
+        struct PinProbe { int foreground; int background; COLORREF tint; bool drawn; bool exactColor; };
 		auto probePin = [](FRBase* panel, bool pinned) -> PinProbe
 		{
 			PinProbe probe = {}; if (!panel) return probe;
@@ -976,17 +976,23 @@
 			HBITMAP bitmap = screen ? ::CreateDIBSection(screen, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL;
 			HDC memory = bitmap ? ::CreateCompatibleDC(screen) : NULL;
 			if (!screen || !bitmap || !memory || !pixels) { if (memory) ::DeleteDC(memory); if (bitmap) ::DeleteObject(bitmap); if (screen) ::ReleaseDC(panel->DialogWindow(), screen); return probe; }
-			const DWORD background = 0xff000000 | RGB(GetRValue(surface), GetGValue(surface), GetBValue(surface));
-			DWORD* values = static_cast<DWORD*>(pixels); for (int index = 0; index < 40 * 40; ++index) values[index] = background;
-			HGDIOBJ previous = ::SelectObject(memory, bitmap); RECT target = { 4, 4, 36, 36 };
-			panel->DrawPresetPinGlyph(memory, target, pinned, surface);
-			for (int index = 0; index < 40 * 40; ++index)
-			{
-				if (values[index] == background) ++probe.background;
-				else { ++probe.foreground; probe.tint = RGB(GetBValue(values[index]), GetGValue(values[index]), GetRValue(values[index])); }
-			}
-			probe.drawn = probe.foreground > 0 && probe.background > 0 && probe.foreground < 40 * 40 / 2;
-			::SelectObject(memory, previous); ::DeleteDC(memory); ::DeleteObject(bitmap); ::ReleaseDC(panel->DialogWindow(), screen); return probe;
+			const COLORREF expectedColor = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) : (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
+            const auto isDibColor = [](DWORD pixel, COLORREF color) -> bool {
+                const BYTE* bytes = reinterpret_cast<const BYTE*>(&pixel);
+                return bytes[0] == GetBValue(color) && bytes[1] == GetGValue(color) && bytes[2] == GetRValue(color) && bytes[3] == 0xff;
+            };
+            const DWORD background = 0xff000000 | (static_cast<DWORD>(GetRValue(surface)) << 16) | (static_cast<DWORD>(GetGValue(surface)) << 8) | static_cast<DWORD>(GetBValue(surface));
+            DWORD* values = static_cast<DWORD*>(pixels); for (int index = 0; index < 40 * 40; ++index) values[index] = background;
+            HGDIOBJ previous = ::SelectObject(memory, bitmap); RECT target = { 4, 4, 36, 36 };
+            panel->DrawPresetPinGlyph(memory, target, pinned, surface);
+            probe.exactColor = true;
+            for (int index = 0; index < 40 * 40; ++index)
+            {
+                if (isDibColor(values[index], surface)) ++probe.background;
+                else { ++probe.foreground; probe.exactColor = probe.exactColor && isDibColor(values[index], expectedColor); probe.tint = RGB(GetBValue(values[index]), GetGValue(values[index]), GetRValue(values[index])); }
+            }
+            probe.drawn = probe.foreground > 0 && probe.background > 0 && probe.foreground < 40 * 40 / 2;
+            ::SelectObject(memory, previous); ::DeleteDC(memory); ::DeleteObject(bitmap); ::ReleaseDC(panel->DialogWindow(), screen); return probe;
 		};
 		struct PinControlProbe { COLORREF surface; bool drawn; };
 		auto drawPinControl = [](FRBase* panel) -> PinControlProbe
@@ -1015,14 +1021,17 @@
 			::SendMessage(pin, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 1)); const PinControlProbe lightPressed = drawPinControl(panel);
 			::SendMessage(pin, WM_CANCELMODE, 0, 0); ::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
 			ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK); const PinProbe darkOff = probePin(panel, false), darkOn = probePin(panel, true);
-			const PinControlProbe darkNormal = drawPinControl(panel);
-			::SendMessage(pin, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); const PinControlProbe darkHover = drawPinControl(panel);
-			::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
-			ThemeManager::SetSelectedTheme(original);
-			const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
-			return ::GetWindowRect(pin, &after) && ::EqualRect(&before, &after) && lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints &&
-				lightNormal.drawn && lightHover.drawn && lightPressed.drawn && darkNormal.drawn && darkHover.drawn &&
-				lightHover.surface == lightHoverSurface && lightPressed.surface == lightPressedSurface && darkHover.surface != darkNormal.surface;
+            const PinControlProbe darkNormal = drawPinControl(panel);
+            ::SendMessage(pin, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); const PinControlProbe darkHover = drawPinControl(panel);
+            ::SendMessage(pin, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(1, 1)); const PinControlProbe darkPressed = drawPinControl(panel);
+            ::SendMessage(pin, WM_CANCELMODE, 0, 0); ::SendMessage(pin, WM_MOUSELEAVE, 0, 0);
+            ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); const PinControlProbe lightRestored = drawPinControl(panel);
+            ThemeManager::SetSelectedTheme(original);
+            const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
+            const bool exactTints = lightOff.exactColor && lightOn.exactColor && darkOff.exactColor && darkOn.exactColor;
+            return ::GetWindowRect(pin, &after) && ::EqualRect(&before, &after) && lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && exactTints &&
+                lightNormal.drawn && lightHover.drawn && lightPressed.drawn && darkNormal.drawn && darkHover.drawn && darkPressed.drawn && lightRestored.drawn &&
+                lightHover.surface == lightHoverSurface && lightPressed.surface == lightPressedSurface && darkHover.surface != darkNormal.surface && darkPressed.surface != darkNormal.surface;
 		};
 		auto verifyLongPreviewLayout = [](FRBase* panel, HWND tree) -> bool
 		{

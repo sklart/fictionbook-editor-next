@@ -3,7 +3,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $source = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'src\fbe\SearchReplace.h')
-foreach ($token in @('PresetPinMaskResource', 'LoadImage', 'IMAGE_BITMAP', 'GetDIBits', 'struct BitmapInfo1Bit', 'RGBQUAD colors[2]', 'maskInfo.header.biBitCount = 1', 'maskBits[', 'ThemeManager::AccentColor()', 'ThemeManager::SecondaryTextColor()')) {
+foreach ($token in @('PresetPinMaskResource', 'LoadImage', 'IMAGE_BITMAP', 'GetDIBits', 'struct BitmapInfo1Bit', 'RGBQUAD colors[2]', 'maskInfo.header.biBitCount = 1', 'maskBits[', 'ThemeManager::AccentColor()', 'ThemeManager::SecondaryTextColor()', 'ColorRefToDibPixel', 'static_cast<DWORD>(GetRValue(color)) << 16', 'static_cast<DWORD>(GetGValue(color)) << 8', 'ColorRefToDibPixel(covered ? tint : surface)')) {
     if ($source.IndexOf($token, [System.StringComparison]::Ordinal) -lt 0) { throw "Pin renderer misses $token." }
 }
 if ($source -match 'DrawIconEx\(|GetIconInfo\(|IMAGE_ICON|maskPixels\[index\]|0x00ffffff') { throw 'The retired ICO/RGB coverage path remains in the pin renderer.' }

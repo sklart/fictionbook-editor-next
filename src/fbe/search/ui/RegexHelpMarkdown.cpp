@@ -190,6 +190,17 @@ CHARFORMAT2 MakeCharacterFormat(HWND richEdit, bool bold, bool monospace, int po
     return format;
 }
 
+CHARFORMAT2 MakeHyperlinkCharacterFormat()
+{
+    CHARFORMAT2 format = {}; format.cbSize = sizeof(format);
+    // A hyperlink is an inline decoration. Keep the parent block's face, size,
+    // weight and background (Code/Table/Note) untouched.
+    format.dwMask = CFM_UNDERLINE | CFM_COLOR;
+    format.dwEffects = CFE_UNDERLINE;
+    format.crTextColor = ThemeManager::AccentColor();
+    return format;
+}
+
 PARAFORMAT2 MakeParagraphFormat(const MarkdownBlock& block)
 {
     PARAFORMAT2 paragraph = {}; paragraph.cbSize = sizeof(paragraph); paragraph.dwMask = PFM_SPACEAFTER;
@@ -307,8 +318,7 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
         for (int link = value.Find(L"http"); link >= 0; )
         {
             int end = link; while (end < value.GetLength() && value[end] != L' ' && value[end] != L')' && value[end] != L'\r' && value[end] != L'\n') ++end;
-            CHARFORMAT2 hyperlink = MakeCharacterFormat(richEdit, false, false, 10);
-            hyperlink.dwMask |= CFM_UNDERLINE | CFM_COLOR; hyperlink.dwEffects |= CFE_UNDERLINE; hyperlink.crTextColor = ThemeManager::AccentColor();
+            const CHARFORMAT2 hyperlink = MakeHyperlinkCharacterFormat();
             ::SendMessage(richEdit, EM_SETSEL, first + link, first + end);
             ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&hyperlink));
             link = value.Find(L"http", end);
@@ -353,7 +363,7 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     HMODULE richEditLibrary = ::LoadLibraryW(L"Msftedit.dll");
     HWND richEdit = richEditLibrary ? ::CreateWindowExW(0, MSFTEDIT_CLASS, L"", WS_POPUP | ES_MULTILINE, 0, 0, 16, 16, owner, NULL, NULL, NULL) : NULL;
     bool formatting = false, longDocuments = false;
-    int formattingDetail = 0;
+    int formattingDetail = 0, shadedLinkDetail = 0;
     int enDesignLength = 0, enSourceLength = 0, ruDesignLength = 0, ruSourceLength = 0;
     int enDesignExpectedLength = 0, enSourceExpectedLength = 0, ruDesignExpectedLength = 0, ruSourceExpectedLength = 0;
     if (richEdit)
@@ -419,16 +429,37 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             formatAt(backgroundText.Find(L"body-after-table"), bodyAfterTable) &&
             formatAt(backgroundText.Find(L"body-after-note"), bodyAfterNote) &&
             hasAutomaticBodyBackground(bodyAfterCode) && hasAutomaticBodyBackground(bodyAfterTable) && hasAutomaticBodyBackground(bodyAfterNote);
+        std::vector<MarkdownBlock> shadedLinkBlocks;
+        AddBlock(shadedLinkBlocks, MarkdownBlockKind::Code, L"code https://code.invalid");
+        AddBlock(shadedLinkBlocks, MarkdownBlockKind::Table, L"table https://table.invalid");
+        AddBlock(shadedLinkBlocks, MarkdownBlockKind::Note, L"note https://note.invalid");
+        RenderMarkdown(richEdit, shadedLinkBlocks);
+        CString shadedLinkText; ReadRichEditText(richEdit, shadedLinkText);
+        const auto preservesShadedLinkFormat = [&](LPCWSTR prefix, LPCWSTR url, COLORREF background) -> bool {
+            CHARFORMAT2 parent = {}, hyperlink = {};
+            const int parentAt = shadedLinkText.Find(prefix), linkAt = shadedLinkText.Find(url);
+            if (parentAt < 0 || linkAt < 0 || !formatAt(parentAt, parent) || !formatAt(linkAt, hyperlink)) return false;
+            return (hyperlink.dwEffects & CFE_UNDERLINE) != 0 && hyperlink.crTextColor == ThemeManager::AccentColor() &&
+                (parent.dwEffects & CFE_AUTOBACKCOLOR) == 0 && (hyperlink.dwEffects & CFE_AUTOBACKCOLOR) == 0 &&
+                parent.crBackColor == background && hyperlink.crBackColor == background && parent.yHeight == hyperlink.yHeight &&
+                ::lstrcmpiW(parent.szFaceName, hyperlink.szFaceName) == 0 &&
+                (parent.dwEffects & CFE_BOLD) == (hyperlink.dwEffects & CFE_BOLD);
+        };
+        const bool codeLinkPreserved = preservesShadedLinkFormat(L"code", L"https://code.invalid", HelpBlockBackground(MarkdownBlockKind::Code));
+        const bool tableLinkPreserved = preservesShadedLinkFormat(L"table", L"https://table.invalid", HelpTableHeaderBackground());
+        const bool noteLinkPreserved = preservesShadedLinkFormat(L"note", L"https://note.invalid", HelpBlockBackground(MarkdownBlockKind::Note));
+        const bool shadedLinks = codeLinkPreserved && tableLinkPreserved && noteLinkPreserved;
+        shadedLinkDetail = (codeLinkPreserved ? 1 : 0) | (tableLinkPreserved ? 2 : 0) | (noteLinkPreserved ? 4 : 0);
         const bool hangingIndent = formats && listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0;
         const bool link = formats && (linkFormat.dwEffects & CFE_UNDERLINE) != 0 && linkFormat.crTextColor == ThemeManager::AccentColor();
-        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (backgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0);
-        formatting = positions && textContract && formats && styles && faces && sizes && tabs && backgrounds && backgroundReset && hangingIndent && link;
+        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (backgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0);
+        formatting = positions && textContract && formats && styles && faces && sizes && tabs && backgrounds && backgroundReset && shadedLinks && hangingIndent && link;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
     const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && parser && formatting && longDocuments;
-    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\nparser=%d\nformat=%d\nformat_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
-        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, parser, formatting, formattingDetail, longDocuments,
+    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\nparser=%d\nformat=%d\nformat_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
+        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, parser, formatting, formattingDetail, shadedLinkDetail, longDocuments,
         enDesignLength, enDesignExpectedLength, enSourceLength, enSourceExpectedLength, ruDesignLength, ruDesignExpectedLength, ruSourceLength, ruSourceExpectedLength, passed ? "pass" : "fail");
     return passed;
 }
