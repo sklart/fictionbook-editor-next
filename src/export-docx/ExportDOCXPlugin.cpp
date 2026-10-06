@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "RuntimeLocalization.h"
 #include "..\\common\\ModernFileDialog.h"
+#include "..\\common\\fb2\\Fb2BinaryInspector.h"
 
 #include <vector>
 #include <string>
@@ -431,44 +432,10 @@ CString ExtFromContentType(const CStringW& ct) {
     if (l.Find(L"gif") >= 0) return L"gif";
     if (l.Find(L"bmp") >= 0) return L"bmp";
     if (l.Find(L"tiff") >= 0) return L"tif";
+    if (l.Find(L"webp") >= 0) return L"webp";
+    if (l.Find(L"svg") >= 0) return L"svg";
     return L"bin";
 }
-
-CStringW ContentTypeFromImageExtension(const CStringW& ext) {
-    CStringW l(ext); l.MakeLower();
-    if (l == L"png") return L"image/png";
-    if (l == L"jpg" || l == L"jpeg") return L"image/jpeg";
-    if (l == L"gif") return L"image/gif";
-    if (l == L"bmp") return L"image/bmp";
-    if (l == L"tif" || l == L"tiff") return L"image/tiff";
-    return L"application/octet-stream";
-}
-
-CString ExtFromImageSignature(const std::vector<BYTE>& bytes) {
-    if (bytes.size() >= 8 &&
-        bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 &&
-        bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A) {
-        return L"png";
-    }
-    if (bytes.size() >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) {
-        return L"jpg";
-    }
-    if (bytes.size() >= 6 &&
-        bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == '8' &&
-        (bytes[4] == '7' || bytes[4] == '9') && bytes[5] == 'a') {
-        return L"gif";
-    }
-    if (bytes.size() >= 2 && bytes[0] == 'B' && bytes[1] == 'M') {
-        return L"bmp";
-    }
-    if (bytes.size() >= 4 &&
-        ((bytes[0] == 'I' && bytes[1] == 'I' && bytes[2] == 0x2A && bytes[3] == 0x00) ||
-         (bytes[0] == 'M' && bytes[1] == 'M' && bytes[2] == 0x00 && bytes[3] == 0x2A))) {
-        return L"tif";
-    }
-    return L"bin";
-}
-
 CStringW CleanTextForDocx(CStringW s) {
     s.Replace(L"\r\n", L"\n");
     s.Replace(L"\r", L"\n");
@@ -495,34 +462,6 @@ CStringW CollapseSpaces(CStringW s) {
     }
     out.Trim();
     return out;
-}
-
-int Base64Value(wchar_t ch) {
-    if (ch >= L'A' && ch <= L'Z') return ch - L'A';
-    if (ch >= L'a' && ch <= L'z') return ch - L'a' + 26;
-    if (ch >= L'0' && ch <= L'9') return ch - L'0' + 52;
-    if (ch == L'+') return 62;
-    if (ch == L'/') return 63;
-    return -1;
-}
-
-bool DecodeBase64(const CStringW& input, std::vector<BYTE>& out) {
-    out.clear();
-    int val = 0;
-    int bits = -8;
-    for (int i = 0; i < input.GetLength(); ++i) {
-        wchar_t ch = input[i];
-        if (ch == L'=') break;
-        int d = Base64Value(ch);
-        if (d < 0) continue;
-        val = (val << 6) + d;
-        bits += 6;
-        if (bits >= 0) {
-            out.push_back(static_cast<BYTE>((val >> bits) & 0xFF));
-            bits -= 8;
-        }
-    }
-    return !out.empty();
 }
 
 struct RunFmt {
@@ -2535,27 +2474,22 @@ private:
         CComBSTR b64;
         bin->get_text(&b64);
 
-        ImagePart part;
-        part.fbId = fbId;
-        if (!DecodeBase64(CStringW(b64), part.bytes)) {
+        const FbeFb2Binary::Inspection inspection = FbeFb2Binary::InspectBinary(
+            static_cast<LPCWSTR>(ct), std::wstring(static_cast<const wchar_t*>(b64), b64.Length()));
+        if (inspection.status == FbeFb2Binary::BinaryStatus::InvalidBase64 ||
+            inspection.status == FbeFb2Binary::BinaryStatus::Empty) {
             CStringW warn;
             warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_IMAGE_BASE64_FAILED, L"Failed to decode base64 image binary id=\"%s\".")), static_cast<LPCWSTR>(fbId));
             AddValidationWarning(warn);
             return NULL;
         }
 
+        ImagePart part;
+        part.fbId = fbId;
+        part.bytes.assign(inspection.bytes.begin(), inspection.bytes.end());
+        if (!inspection.detectedMime.empty()) ct = inspection.detectedMime.c_str();
+        else if (!inspection.normalizedDeclaredMime.empty()) ct = inspection.normalizedDeclaredMime.c_str();
         CString ext = ExtFromContentType(ct);
-        if (ext.CompareNoCase(L"bin") == 0) {
-            // Many real-world FB2 files declare images as application/octet-stream.
-            // In that case identify the actual image type by magic bytes instead of
-            // producing a noisy warning for a perfectly usable JPEG/PNG/GIF/etc.
-            CString sigExt = ExtFromImageSignature(part.bytes);
-            if (sigExt.CompareNoCase(L"bin") != 0) {
-                ext = sigExt;
-                ct = ContentTypeFromImageExtension(CStringW(ext));
-            }
-        }
-
         if (ext.CompareNoCase(L"bin") == 0) {
             CStringW warn;
             warn.Format(static_cast<LPCWSTR>(LoadDocxString(IDS_DOCX_WARNING_IMAGE_UNKNOWN_CONTENT_TYPE, L"Unknown image content-type for binary id=\"%s\": %s.")), static_cast<LPCWSTR>(fbId), static_cast<LPCWSTR>(ct));
@@ -2951,6 +2885,9 @@ private:
                      L"<Default Extension=\"gif\" ContentType=\"image/gif\"/>"
                      L"<Default Extension=\"bmp\" ContentType=\"image/bmp\"/>"
                      L"<Default Extension=\"tif\" ContentType=\"image/tiff\"/>"
+                     L"<Default Extension=\"tiff\" ContentType=\"image/tiff\"/>"
+                     L"<Default Extension=\"webp\" ContentType=\"image/webp\"/>"
+                     L"<Default Extension=\"svg\" ContentType=\"image/svg+xml\"/>"
                      L"<Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\"/>"
                      L"<Override PartName=\"/docProps/app.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.extended-properties+xml\"/>"
                      L"<Override PartName=\"/docProps/custom.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.custom-properties+xml\"/>"

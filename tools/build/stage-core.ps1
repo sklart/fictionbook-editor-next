@@ -1,17 +1,18 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Configuration = 'Release',
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$EditorRuntimeDirectory = '',
     [string]$BatchOutputDirectory = '',
-    [string]$ProvenanceDirectory = ''
+    [string]$ProvenanceDirectory = '',
+    [string]$BuildOutputDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $PSScriptRoot 'PackageLayout.ps1')
 $layout = Get-FbePackageLayout -RepositoryRoot $repoRoot
-$buildOutput = Join-Path $repoRoot "out\$Configuration"
+$buildOutput = if ($BuildOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BuildOutputDirectory) } else { Join-Path $repoRoot "out\$Configuration" }
 $editorRuntime = if ($EditorRuntimeDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EditorRuntimeDirectory) } else { Join-Path $repoRoot 'runtime' }
 $batchOutput = if ($BatchOutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchOutputDirectory) } else { $buildOutput }
 $stage = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)

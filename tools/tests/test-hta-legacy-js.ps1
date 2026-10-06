@@ -2,7 +2,6 @@
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $paths = @(
-    'runtime\Utilities\FB2CheckContentTypes\FB2CheckContentTypes.hta',
     'runtime\Utilities\Save Sections As Separate Documents\SaveSectionsAsSeparateDocuments.hta'
 )
 foreach($relativePath in $paths) {

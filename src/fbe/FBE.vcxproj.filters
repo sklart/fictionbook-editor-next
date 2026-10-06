@@ -312,6 +312,9 @@
     <ClCompile Include="extras\ColorButton.cpp">
       <Filter>extras</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\fb2\Fb2BinaryInspector.cpp">
+      <Filter>Common\FB2</Filter>
+    </ClCompile>
     <ClCompile Include="..\common\fb2\Fb2CoverImage.cpp">
       <Filter>Common\FB2</Filter>
     </ClCompile>
@@ -563,6 +566,9 @@
     </ClInclude>
     <ClInclude Include="XMLSerializer\XMLSerializer.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\fb2\Fb2BinaryInspector.h">
+      <Filter>Common\FB2</Filter>
     </ClInclude>
     <ClInclude Include="..\common\fb2\Fb2CoverImage.h">
       <Filter>Common\FB2</Filter>

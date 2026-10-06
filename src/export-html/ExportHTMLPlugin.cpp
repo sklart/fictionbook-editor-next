@@ -285,6 +285,8 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		IXSLTemplatePtr	    tmpl(U::CreateTemplate());
 		CheckError(tmpl->putref_stylesheet(tdoc));
 
+		if ((fEmbeddedImages || fMIME) && FAILED(HtmlExportWriter::NormalizeBinaryMimeTypes(source))) return E_FAIL;
+
 		// * create processor
 		IXSLProcessorPtr	    proc;
 		CheckError(tmpl->createProcessor(&proc));

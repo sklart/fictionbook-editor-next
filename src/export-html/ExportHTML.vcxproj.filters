@@ -18,7 +18,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ExportHTML.cpp">
+    <ClCompile Include="..\common\fb2\Fb2BinaryInspector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>    <ClCompile Include="ExportHTML.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="StdAfx.cpp">
@@ -104,7 +106,9 @@
     <ClInclude Include="dllmain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HtmlExportOptionsDialog.h">
+    <ClInclude Include="..\common\fb2\Fb2BinaryInspector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>    <ClInclude Include="HtmlExportOptionsDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RuntimeLocalization.h">

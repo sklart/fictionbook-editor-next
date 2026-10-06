@@ -22,6 +22,9 @@ enum class Failure {
 	ShortImageWrite
 };
 
+// Applies detected content types to the exporter's private DOM only; the open document is never rewritten.
+HRESULT NormalizeBinaryMimeTypes(IXMLDOMDocument2* source);
+
 struct Callbacks {
 	std::function<void(Failure failure, const std::wstring& path, DWORD error)> reportFailure;
 	std::function<bool(const std::wstring& path)> confirmImageOverwrite;

@@ -94,17 +94,27 @@ int ExpectOpenFailure()
 	return FAILED(writer.Prepare()) && reported == 1 ? 0 : 1;
 }
 
-IXMLDOMDocument2Ptr CreateBinaryDocument(const std::wstring& id)
+IXMLDOMDocument2Ptr CreateBinaryDocument(const std::wstring& id, const std::wstring& contentType = L"application/octet-stream", const std::wstring& data = L"AA==")
 {
 	IXMLDOMDocument2Ptr document;
 	CheckError(document.CreateInstance(CLSID_DOMDocument60));
-	const std::wstring xml = L"<FictionBook xmlns='http://www.gribuser.ru/xml/fictionbook/2.0'><binary id='" + id + L"' content-type='application/octet-stream'>AA==</binary></FictionBook>";
+	const std::wstring xml = L"<FictionBook xmlns='http://www.gribuser.ru/xml/fictionbook/2.0'><binary id='" + id + L"' content-type='" + contentType + L"'>" + data + L"</binary></FictionBook>";
 	VARIANT_BOOL loaded = VARIANT_FALSE;
 	CheckError(document->loadXML(CComBSTR(xml.c_str()), &loaded));
 	if (loaded != VARIANT_TRUE) throw _com_error(E_FAIL);
 	CheckError(document->setProperty(CComBSTR(L"SelectionLanguage"), _variant_t(L"XPath")));
 	CheckError(document->setProperty(CComBSTR(L"SelectionNamespaces"), _variant_t(L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'")));
 	return document;
+}
+
+bool HasBinaryContentType(IXMLDOMDocument2* document, const wchar_t* expected)
+{
+	IXMLDOMNodePtr node;
+	if (FAILED(document->selectSingleNode(bstr_t(L"/fb:FictionBook/fb:binary"), &node)) || !node) return false;
+	IXMLDOMElementPtr element(node);
+	_variant_t actual;
+	return SUCCEEDED(element->getAttribute(bstr_t(L"content-type"), &actual)) &&
+		V_VT(&actual) == VT_BSTR && wcscmp(V_BSTR(&actual), expected) == 0;
 }
 
 int ExpectWriteFailureAndRollback(bool shortWrite)
@@ -283,6 +293,53 @@ int ExpectExternalImageWrite()
 	return failure;
 }
 
+int ExpectDetectedBinaryMimeTypes()
+{
+	const std::wstring png = L"iVBORw0KGgo=";
+	IXMLDOMDocument2Ptr normalized = CreateBinaryDocument(L"actual.png", L"image/jpeg", png);
+	if (FAILED(HtmlExportWriter::NormalizeBinaryMimeTypes(normalized)) || !HasBinaryContentType(normalized, L"image/png")) return 1;
+
+	const std::wstring mhtPath = TemporaryPath(L"detected-image.mht");
+	int reported = 0;
+	{
+		HtmlExportWriter::Options options;
+		options.targetPath = mhtPath;
+		options.mime = true;
+		HtmlExportWriter::Writer writer(options, Callbacks(reported));
+		if (FAILED(writer.Prepare())) return 1;
+		CComPtr<IStream> output;
+		if (FAILED(writer.GetTransformOutput(&output)) || WriteText(output, "mime-body") ||
+			FAILED(writer.WriteImages(normalized)) || FAILED(writer.Finalize())) return 1;
+		writer.Commit();
+	}
+	std::string mht;
+	if (reported != 0 || !ReadFileText(mhtPath, mht) || mht.find("Content-Type: image/png") == std::string::npos) {
+		::DeleteFile(mhtPath.c_str());
+		return 1;
+	}
+	::DeleteFile(mhtPath.c_str());
+
+	const std::wstring htmlPath = TemporaryPath(L"detected-image.html");
+	const std::wstring imagePath = htmlPath.substr(0, htmlPath.size() - 5) + L"_files\\actual.png";
+	IXMLDOMDocument2Ptr external = CreateBinaryDocument(L"actual.png", L"application/octet-stream", png);
+	{
+		HtmlExportWriter::Options options;
+		options.targetPath = htmlPath;
+		options.externalImages = true;
+		HtmlExportWriter::Writer writer(options, Callbacks(reported));
+		if (FAILED(writer.Prepare()) || FAILED(writer.WriteImages(external)) || FAILED(writer.Finalize())) return 1;
+		writer.Commit();
+	}
+	HANDLE image = ::CreateFile(imagePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	BYTE bytes[8] = {}; DWORD read = 0;
+	const bool imageOk = image != INVALID_HANDLE_VALUE && ::ReadFile(image, bytes, sizeof(bytes), &read, NULL) && read == sizeof(bytes) &&
+		bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G';
+	if (image != INVALID_HANDLE_VALUE) ::CloseHandle(image);
+	::DeleteFile(imagePath.c_str());
+	::RemoveDirectory((htmlPath.substr(0, htmlPath.size() - 5) + L"_files").c_str());
+	::DeleteFile(htmlPath.c_str());
+	return reported == 0 && imageOk ? 0 : 1;
+}
 int ExpectExistingSplitDocument()
 {
     const std::wstring target = TemporaryPath(L"split-target.html");
@@ -332,7 +389,7 @@ int main()
 	const int failures = ExpectNormalWrite() + ExpectOpenFailure() +
 		ExpectWriteFailureAndRollback(false) + ExpectWriteFailureAndRollback(true) + ExpectNoTargetHandleLeak() +
 		ExpectStandaloneWrite() + ExpectMimeFinalBoundary() + ExpectExternalImageWrite() +
-		ExpectExistingImage(false) + ExpectExistingImage(true) + ExpectUnsafeImageIdsRejected() + ExpectExistingSplitDocument() + ExpectRollback();
+		ExpectExistingImage(false) + ExpectExistingImage(true) + ExpectUnsafeImageIdsRejected() + ExpectDetectedBinaryMimeTypes() + ExpectExistingSplitDocument() + ExpectRollback();
 	::CoUninitialize();
 	if (failures != 0) std::cerr << "writer harness failures: " << failures << std::endl;
 	return failures == 0 ? 0 : 1;

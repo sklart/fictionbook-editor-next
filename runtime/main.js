@@ -136,7 +136,9 @@ function apiGetBinary(id)
 
 function IsImageBinaryType(type)
 {
- return String(type || "").toLowerCase().indexOf("image/")==0;
+ var normalized=String(type || "").toLowerCase().replace(/^\s+|\s+$/g,"");
+ if(normalized=="image/jpg" || normalized=="image/pjpeg") normalized="image/jpeg";
+ return normalized.indexOf("image/")==0;
 }
 
 function LocalizedBinaryMessage(key)
@@ -1744,7 +1746,8 @@ function FillImageList(list, bin_objects)
 
 		for(var j=0; j<bin_objects.length; j++)
 		{
-			var contentType=bin_objects[j].all.type.value;
+			var contentType=String(bin_objects[j].all.type.value || "").toLowerCase();
+			if(contentType=="image/jpg" || contentType=="image/pjpeg") contentType="image/jpeg";
 			var pic_id=bin_objects[j].all.id.value;
 			
 			//if(pic_id.toLowerCase().indexOf(".jpg")==-1 && pic_id.toLowerCase().indexOf(".png")==-1  && pic_id.toLowerCase().indexOf(".jpeg")==-1)

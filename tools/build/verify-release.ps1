@@ -294,7 +294,8 @@ foreach ($commandRouteOperation in @('insert-row-above','insert-row-below','dele
 $imageImportTestArguments = @{ Configuration = $Configuration }
 if ($PlatformToolset) { $imageImportTestArguments.PlatformToolset = $PlatformToolset }
 & (Join-Path $repoRoot "tools\tests\test-image-import-native.ps1") @imageImportTestArguments
-& (Join-Path $repoRoot "tools\tests\test-fb2-check-content-types-base64.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fb2-binary-inspector.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-fb2-binary-inspection-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-save-sections-safe-replacement.ps1")
 & (Join-Path $repoRoot "tools\tests\test-save-sections-split-behavior.ps1")
 & (Join-Path $repoRoot "tools\tests\test-hta-legacy-js.ps1")

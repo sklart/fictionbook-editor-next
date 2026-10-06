@@ -5,6 +5,7 @@
 #include "FbeEpubExport.h"
 #include "RuntimeLocalization.h"
 #include "..\\common\\ModernFileDialog.h"
+#include "..\\common\\fb2\\Fb2BinaryInspector.h"
 
 #include <Shlwapi.h>
 #include <Shellapi.h>
@@ -131,56 +132,18 @@ std::wstring StripFragmentPrefix(std::wstring id)
 
 bool HasExtension(const std::wstring& fileName);
 
-std::wstring NormalizeMimeType(std::wstring mime)
-{
-    std::transform(mime.begin(), mime.end(), mime.begin(), [](wchar_t ch) {
-        return static_cast<wchar_t>(std::towlower(ch));
-    });
-    if (mime == L"image/jpg" || mime == L"image/pjpeg") return L"image/jpeg";
-    return mime;
-}
-
 std::wstring ExtensionForMime(const std::wstring& mime)
 {
-    const std::wstring normalized = NormalizeMimeType(mime);
+    const std::wstring normalized = FbeFb2Binary::NormalizeMimeType(mime);
     if (normalized == L"image/jpeg") return L".jpg";
     if (normalized == L"image/png") return L".png";
     if (normalized == L"image/gif") return L".gif";
     if (normalized == L"image/svg+xml") return L".svg";
     if (normalized == L"image/webp") return L".webp";
+    if (normalized == L"image/bmp") return L".bmp";
+    if (normalized == L"image/tiff") return L".tif";
     return L".bin";
 }
-
-std::wstring DetectImageMimeType(const std::vector<std::uint8_t>& data)
-{
-    if (data.size() >= 8 &&
-        data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
-        data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A) {
-        return L"image/png";
-    }
-    if (data.size() >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF) {
-        return L"image/jpeg";
-    }
-    if (data.size() >= 6 &&
-        data[0] == 'G' && data[1] == 'I' && data[2] == 'F' && data[3] == '8' &&
-        (data[4] == '7' || data[4] == '9') && data[5] == 'a') {
-        return L"image/gif";
-    }
-    if (data.size() >= 12 &&
-        data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F' &&
-        data[8] == 'W' && data[9] == 'E' && data[10] == 'B' && data[11] == 'P') {
-        return L"image/webp";
-    }
-
-    const size_t probeLen = std::min<size_t>(data.size(), 512);
-    std::string probe(reinterpret_cast<const char*>(data.data()), reinterpret_cast<const char*>(data.data()) + probeLen);
-    std::transform(probe.begin(), probe.end(), probe.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-    if (probe.find("<svg") != std::string::npos) {
-        return L"image/svg+xml";
-    }
-    return {};
-}
-
 bool ExtensionMatchesMime(const std::wstring& fileName, const std::wstring& mime)
 {
     const std::wstring ext = ExtensionForMime(mime);
@@ -260,91 +223,14 @@ std::wstring IdFromIndex(const wchar_t* prefix, size_t index)
     return ss.str();
 }
 
-int Base64Value(wchar_t ch)
-{
-    if (ch >= L'A' && ch <= L'Z') return static_cast<int>(ch - L'A');
-    if (ch >= L'a' && ch <= L'z') return static_cast<int>(ch - L'a') + 26;
-    if (ch >= L'0' && ch <= L'9') return static_cast<int>(ch - L'0') + 52;
-    if (ch == L'+') return 62;
-    if (ch == L'/') return 63;
-    return -1;
-}
-
-bool IsXmlWhitespace(wchar_t ch)
-{
-    return ch == L' ' || ch == L'\t' || ch == L'\r' || ch == L'\n';
-}
-
-std::vector<std::uint8_t> DecodeBase64Text(const std::wstring& text)
-{
-    std::vector<std::uint8_t> out;
-    out.reserve(text.size() * 3 / 4);
-
-    int quartet[4] = {0, 0, 0, 0};
-    int count = 0;
-    bool seenPadding = false;
-
-    auto flush = [&]() -> bool {
-        if (count != 4) return false;
-        out.push_back(static_cast<std::uint8_t>((quartet[0] << 2) | (quartet[1] >> 4)));
-        if (quartet[2] >= 0) {
-            out.push_back(static_cast<std::uint8_t>(((quartet[1] & 0x0F) << 4) | (quartet[2] >> 2)));
-        }
-        if (quartet[3] >= 0) {
-            out.push_back(static_cast<std::uint8_t>(((quartet[2] & 0x03) << 6) | quartet[3]));
-        }
-        count = 0;
-        return true;
-    };
-
-    for (wchar_t ch : text) {
-        if (IsXmlWhitespace(ch)) continue;
-
-        if (ch == L'=') {
-            seenPadding = true;
-            quartet[count++] = -1;
-        } else {
-            if (seenPadding) {
-                // Non-padding character after '=' means the FB2 binary is malformed.
-                return {};
-            }
-            const int value = Base64Value(ch);
-            if (value < 0) return {};
-            quartet[count++] = value;
-        }
-
-        if (count == 4 && !flush()) return {};
-    }
-
-    // In strict base64 count must end at 0. Some real FB2 files omit trailing padding;
-    // handle that leniently instead of failing the whole book.
-    if (count == 2) {
-        out.push_back(static_cast<std::uint8_t>((quartet[0] << 2) | (quartet[1] >> 4)));
-    } else if (count == 3) {
-        out.push_back(static_cast<std::uint8_t>((quartet[0] << 2) | (quartet[1] >> 4)));
-        out.push_back(static_cast<std::uint8_t>(((quartet[1] & 0x0F) << 4) | (quartet[2] >> 2)));
-    } else if (count != 0) {
-        return {};
-    }
-
-    return out;
-}
-
 std::vector<std::uint8_t> BinaryDataFromNode(IXMLDOMNodePtr node)
 {
     if (node == nullptr) return {};
-
     CComBSTR text;
     CheckHR(node->get_text(&text));
-    const std::wstring base64 = BstrToWString(text);
-    if (NormalizeWhitespace(base64).empty()) return {};
-
-    // Decode in our own code instead of relying on MSXML dataType=bin.base64.
-    // On some real FB2 files MSXML can throw an opaque _com_error while decoding
-    // otherwise valid binary data, which stops batch conversion with ExitCode 100.
-    return DecodeBase64Text(base64);
+    const FbeFb2Binary::Inspection inspection = FbeFb2Binary::InspectBinary(L"", BstrToWString(text));
+    return inspection.status == FbeFb2Binary::BinaryStatus::InvalidBase64 || inspection.status == FbeFb2Binary::BinaryStatus::Empty ? std::vector<std::uint8_t>() : inspection.bytes;
 }
-
 struct ImageInfo {
     std::wstring fileName;   // EPUB image file name under images/.
     std::wstring resourceId; // OPF manifest id.
@@ -1759,13 +1645,13 @@ ImageMap AddResourcesFromBinaries(IXMLDOMDocument2Ptr doc, fbe::epub::EpubBook& 
         if (element == nullptr) continue;
 
         const std::wstring id = GetAttr(element, L"id");
-        std::wstring contentTypeW = NormalizeMimeType(GetAttr(element, L"content-type"));
+        std::wstring contentTypeW = FbeFb2Binary::NormalizeMimeType(GetAttr(element, L"content-type"));
         if (id.empty()) continue;
 
         auto data = BinaryDataFromNode(node);
         if (data.empty()) continue;
 
-        const std::wstring detectedType = DetectImageMimeType(data);
+        const std::wstring detectedType = FbeFb2Binary::DetectMimeType(data);
         if (!detectedType.empty()) {
             // Prefer the real binary signature over the declared FB2 content-type.
             contentTypeW = detectedType;

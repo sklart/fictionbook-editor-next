@@ -55,6 +55,7 @@
 #include "XmlDeclaration.h"
 #include "..\\common\\DeploymentContext.h"
 #include "..\\common\\RuntimeLocalizationCommon.h"
+#include "..\\common\\fb2\\Fb2BinaryInspector.h"
 #include "toolbars\\PortableToolbarStore.h"
 #include "toolbars\\ToolbarLayoutAdapter.h"
 #include "toolbars\\ToolbarFactory.h"
@@ -73,6 +74,59 @@ static const UINT RECOVERY_TYPING_DEBOUNCE_MS = 3 * 1000;
 static const UINT SCRIPT_TOOLBAR_BAND_ID_FIRST = 0x6000;
 static const UINT SCRIPT_TOOLBAR_BAND_ID_LAST = 0x6FFF;
 static SourceEditorConfig BuildSourceEditorConfig();
+static bool ValidateFb2BinarySemantics(FB::Doc* document, CString& error, CString& warning)
+{
+    error.Empty();
+    warning.Empty();
+    if (!document || document->GetDocumentFileType() != FictionBookFileType::Fb2) return true;
+    MSXML2::IXMLDOMDocument2Ptr dom = document->CreateDOM(document->m_encoding, false);
+    if (!dom) return true;
+    dom->setProperty(bstr_t(L"SelectionLanguage"), variant_t(L"XPath"));
+    dom->setProperty(bstr_t(L"SelectionNamespaces"), variant_t(L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'"));
+    MSXML2::IXMLDOMNodeListPtr binaries;
+    binaries = dom->selectNodes(bstr_t(L"/fb:FictionBook/fb:binary"));
+    if (!binaries) return true;
+    long count = 0;
+    count = binaries->length;
+    for (long index = 0; index < count; ++index) {
+        MSXML2::IXMLDOMNodePtr node;
+        MSXML2::IXMLDOMElementPtr element;
+        node = binaries->item[index];
+        if (!node || FAILED(node->QueryInterface(IID_PPV_ARGS(&element))) || !element) continue;
+        _variant_t id, mime;
+        id = element->getAttribute(bstr_t(L"id"));
+        mime = element->getAttribute(bstr_t(L"content-type"));
+        CComBSTR text;
+        if (FAILED(node->get_text(&text))) continue;
+        const std::wstring declared = V_VT(&mime) == VT_BSTR ? std::wstring(V_BSTR(&mime), ::SysStringLen(V_BSTR(&mime))) : std::wstring();
+        const FbeFb2Binary::Inspection inspection = FbeFb2Binary::InspectBinary(
+            declared, std::wstring(static_cast<const wchar_t*>(text), text.Length()));
+        const CString binaryId = V_VT(&id) == VT_BSTR ? CString(V_BSTR(&id)) : CString(L"?");
+        if (inspection.status == FbeFb2Binary::BinaryStatus::InvalidBase64 ||
+            inspection.status == FbeFb2Binary::BinaryStatus::Empty) {
+            error.Format(L"Binary '%s' has invalid content: %s.", static_cast<LPCWSTR>(binaryId), L"invalid or empty Base64");
+            return false;
+        }
+        if (inspection.status == FbeFb2Binary::BinaryStatus::MissingMime ||
+            inspection.status == FbeFb2Binary::BinaryStatus::MimeMismatch ||
+            inspection.status == FbeFb2Binary::BinaryStatus::MimeAlias ||
+            inspection.status == FbeFb2Binary::BinaryStatus::UnknownFormat) {
+            CString itemWarning;
+            if (inspection.status == FbeFb2Binary::BinaryStatus::MimeMismatch)
+                itemWarning.Format(L"binary '%s': declared MIME %s, actual %s.", static_cast<LPCWSTR>(binaryId), inspection.declaredMime.c_str(), inspection.detectedMime.c_str());
+            else if (inspection.status == FbeFb2Binary::BinaryStatus::MissingMime)
+                itemWarning.Format(L"binary '%s': content-type is missing.", static_cast<LPCWSTR>(binaryId));
+            else if (inspection.status == FbeFb2Binary::BinaryStatus::MimeAlias)
+                itemWarning.Format(L"binary '%s': MIME alias %s.", static_cast<LPCWSTR>(binaryId), inspection.declaredMime.c_str());
+            else
+                itemWarning.Format(L"binary '%s': format is unknown.", static_cast<LPCWSTR>(binaryId));
+            if (!warning.IsEmpty()) warning += L" ";
+            warning += itemWarning;
+        }
+    }
+    return true;
+}
+
 typedef FbeArchive::ResolvedDocument ResolvedOpenDocument;
 
 namespace
@@ -6147,9 +6201,17 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
   else
     fv=m_doc->Validate(line,col);						// ?? ?????? Body
   if (fv) {
-    ClearSourceValidationAnnotations();
-		SetValidationStatus(FBEStatusBar::ValidationStatus::Valid);
-    return 0;
+    CString binaryWarning;
+    if (!ValidateFb2BinarySemantics(m_doc, validationError, binaryWarning)) {
+      fv = false;
+      line = 1;
+      col = 1;
+    } else {
+      ClearSourceValidationAnnotations();
+      SetValidationStatus(FBEStatusBar::ValidationStatus::Valid);
+      if (!binaryWarning.IsEmpty()) m_status.SetPaneText(ID_PANE_VALIDATION, binaryWarning);
+      return 0;
+    }
   }
   if (!fv) {
 		SetValidationStatus(FBEStatusBar::ValidationStatus::Invalid);

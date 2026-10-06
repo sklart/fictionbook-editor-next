@@ -2,6 +2,7 @@
 #include "HtmlExportWriter.h"
 
 #include "utils.h"
+#include "..\\common\\fb2\\Fb2BinaryInspector.h"
 
 #include <vector>
 
@@ -24,6 +25,33 @@ private:
 
 namespace HtmlExportWriter {
 
+HRESULT NormalizeBinaryMimeTypes(IXMLDOMDocument2* source)
+{
+    if (source == NULL) return E_POINTER;
+    IXMLDOMNodeListPtr binaries;
+    HRESULT hr = source->selectNodes(bstr_t(L"/fb:FictionBook/fb:binary"), &binaries);
+    if (FAILED(hr) || !binaries) return hr;
+    long count = 0;
+    if (FAILED(hr = binaries->get_length(&count))) return hr;
+    for (long index = 0; index < count; ++index) {
+        IXMLDOMNodePtr node;
+        if (FAILED(binaries->get_item(index, &node)) || !node) continue;
+        IXMLDOMElementPtr element;
+        if (FAILED(node->QueryInterface(IID_PPV_ARGS(&element))) || !element) continue;
+        _variant_t declared;
+        if (FAILED(element->getAttribute(bstr_t(L"content-type"), &declared))) continue;
+        CComBSTR data;
+        if (FAILED(node->get_text(&data))) continue;
+        const std::wstring mime = V_VT(&declared) == VT_BSTR ? std::wstring(V_BSTR(&declared), ::SysStringLen(V_BSTR(&declared))) : std::wstring();
+        const FbeFb2Binary::Inspection inspection = FbeFb2Binary::InspectBinary(
+            mime, std::wstring(static_cast<const wchar_t*>(data), data.Length()));
+        if (!inspection.detectedMime.empty())
+            element->setAttribute(bstr_t(L"content-type"), _variant_t(inspection.detectedMime.c_str()));
+        else if (!inspection.normalizedDeclaredMime.empty())
+            element->setAttribute(bstr_t(L"content-type"), _variant_t(inspection.normalizedDeclaredMime.c_str()));
+    }
+    return S_OK;
+}
 Writer::Writer(const Options& options, const Callbacks& callbacks) :
 	m_options(options), m_callbacks(callbacks), m_target(INVALID_HANDLE_VALUE),
 	m_createdImagesDirectory(false), m_targetOpened(false), m_prepared(false), m_committed(false)
@@ -180,87 +208,82 @@ HRESULT Writer::WriteSplitDocument(const std::wstring& fileName, const std::wstr
 }
 HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
 {
-	if (source == NULL || (!m_options.externalImages && !m_options.mime)) return S_OK;
-	IXMLDOMNodeListPtr binaries;
-	HRESULT hr = source->selectNodes(bstr_t(L"/fb:FictionBook/fb:binary"), &binaries);
-	if (FAILED(hr)) return hr;
-	long count = 0;
-	if (FAILED(hr = binaries->get_length(&count))) return hr;
-	for (long index = 0; index < count; ++index) {
-		try {
-			IXMLDOMNodePtr node;
-			CheckError(binaries->get_item(index, &node));
-			IXMLDOMElementPtr element;
-			CheckError(node->QueryInterface(IID_PPV_ARGS(&element)));
-			_variant_t id, contentType;
-			CheckError(element->getAttribute(bstr_t(L"id"), &id));
-			CheckError(element->getAttribute(bstr_t(L"content-type"), &contentType));
-			if (V_VT(&id) != VT_BSTR || V_VT(&contentType) != VT_BSTR) continue;
+    if (source == NULL || (!m_options.externalImages && !m_options.mime)) return S_OK;
+    IXMLDOMNodeListPtr binaries;
+    HRESULT hr = source->selectNodes(bstr_t(L"/fb:FictionBook/fb:binary"), &binaries);
+    if (FAILED(hr)) return hr;
+    long count = 0;
+    if (FAILED(hr = binaries->get_length(&count))) return hr;
+    for (long index = 0; index < count; ++index) {
+        try {
+            IXMLDOMNodePtr node;
+            CheckError(binaries->get_item(index, &node));
+            IXMLDOMElementPtr element;
+            CheckError(node->QueryInterface(IID_PPV_ARGS(&element)));
+            _variant_t id, contentType;
+            CheckError(element->getAttribute(bstr_t(L"id"), &id));
+            CheckError(element->getAttribute(bstr_t(L"content-type"), &contentType));
+            if (V_VT(&id) != VT_BSTR) continue;
 
-			if (m_options.mime) {
-				CComBSTR data;
-				CheckError(node->get_text(&data));
-				std::vector<char> buffer(data.Length() + 1024);
-				const int headerLength = _snprintf_s(buffer.data(), 1024, _TRUNCATE,
-					"\r\n%s\r\nContent-Type: %S\r\nContent-Transfer-Encoding: base64\r\nContent-Location: %S\r\n\r\n",
-					m_mimeBoundary.c_str(), V_BSTR(&contentType), V_BSTR(&id));
-				if (headerLength < 0) return E_FAIL;
-				const DWORD dataLength = ::WideCharToMultiByte(CP_ACP, 0, data, data.Length(),
-					buffer.data() + headerLength, data.Length(), NULL, NULL);
-				if (data.Length() != 0 && dataLength == 0) return HRESULT_FROM_WIN32(::GetLastError());
-				hr = WriteTargetBytes(buffer.data(), static_cast<DWORD>(headerLength) + dataLength);
-				if (FAILED(hr)) return hr;
-				continue;
-			}
+            CComBSTR data;
+            CheckError(node->get_text(&data));
+            const std::wstring declared = V_VT(&contentType) == VT_BSTR
+                ? std::wstring(V_BSTR(&contentType), ::SysStringLen(V_BSTR(&contentType))) : std::wstring();
+            const std::wstring binaryText(static_cast<const wchar_t*>(data), data.Length());
 
-			CheckError(node->put_dataType(bstr_t(L"bin.base64")));
-			_variant_t data;
-			CheckError(node->get_nodeTypedValue(&data));
-			if (V_VT(&data) != (VT_ARRAY | VT_UI1) || ::SafeArrayGetDim(V_ARRAY(&data)) != 1) continue;
-			void* bytes = NULL;
-			if (FAILED(::SafeArrayAccessData(V_ARRAY(&data), &bytes))) continue;
-			const DWORD length = V_ARRAY(&data)->rgsabound[0].cElements;
-			std::wstring imagePath;
-			if (!HtmlExportWriterHelpers::BuildExternalImagePath(m_imagePaths, std::wstring(V_BSTR(&id)), imagePath)) {
-				::SafeArrayUnaccessData(V_ARRAY(&data));
-				continue;
-			}
-			HANDLE image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_NEW, 0, NULL);
-			bool created = image != INVALID_HANDLE_VALUE;
-			if (image == INVALID_HANDLE_VALUE && ::GetLastError() == ERROR_FILE_EXISTS) {
-				if (!m_callbacks.confirmImageOverwrite || !m_callbacks.confirmImageOverwrite(imagePath)) {
-					::SafeArrayUnaccessData(V_ARRAY(&data));
-					continue;
-				}
-				image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-			}
-			if (image == INVALID_HANDLE_VALUE) {
-				const DWORD error = ::GetLastError();
-				::SafeArrayUnaccessData(V_ARRAY(&data));
-				Report(Failure::OpenImage, imagePath, error);
-				continue;
-			}
-			ScopedHandle imageHandle(image);
-			DWORD written = 0;
-			const BOOL wrote = ::WriteFile(image, bytes, length, &written, NULL);
-			const DWORD error = ::GetLastError();
-			::SafeArrayUnaccessData(V_ARRAY(&data));
-			if (!wrote || written != length) {
-				Report(wrote ? Failure::ShortImageWrite : Failure::WriteImage, imagePath, error);
-				imageHandle.Reset();
-				::DeleteFile(imagePath.c_str());
-				continue;
-			}
-			if (created) m_createdImages.push_back(imagePath);
-		}
-		catch (const _com_error&) {
-			// A malformed individual binary remains non-fatal, as in the legacy writer.
-			continue;
-		}
-	}
-	return S_OK;
+            if (m_options.mime) {
+                // NormalizeBinaryMimeTypes prepared this private DOM before the XSL transform.
+                // Keep its existing base64 spelling in MHTML so no second bulk decode is needed.
+                const std::wstring mime = declared.empty() ? L"application/octet-stream" : declared;
+                std::vector<char> buffer(data.Length() + 1024);
+                const int headerLength = _snprintf_s(buffer.data(), 1024, _TRUNCATE,
+                    "\r\n%s\r\nContent-Type: %S\r\nContent-Transfer-Encoding: base64\r\nContent-Location: %S\r\n\r\n",
+                    m_mimeBoundary.c_str(), mime.c_str(), V_BSTR(&id));
+                if (headerLength < 0) return E_FAIL;
+                const DWORD dataLength = ::WideCharToMultiByte(CP_ACP, 0, data, data.Length(),
+                    buffer.data() + headerLength, data.Length(), NULL, NULL);
+                if (data.Length() != 0 && dataLength == 0) return HRESULT_FROM_WIN32(::GetLastError());
+                hr = WriteTargetBytes(buffer.data(), static_cast<DWORD>(headerLength) + dataLength);
+                if (FAILED(hr)) return hr;
+                continue;
+            }
+
+            const FbeFb2Binary::Inspection inspection = FbeFb2Binary::InspectBinary(declared, binaryText);
+            if (inspection.status == FbeFb2Binary::BinaryStatus::InvalidBase64 ||
+                inspection.status == FbeFb2Binary::BinaryStatus::Empty) continue;
+            std::wstring imagePath;
+            if (!HtmlExportWriterHelpers::BuildExternalImagePath(m_imagePaths,
+                std::wstring(V_BSTR(&id), ::SysStringLen(V_BSTR(&id))), imagePath)) continue;
+            HANDLE image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_NEW, 0, NULL);
+            bool created = image != INVALID_HANDLE_VALUE;
+            if (image == INVALID_HANDLE_VALUE && ::GetLastError() == ERROR_FILE_EXISTS) {
+                if (!m_callbacks.confirmImageOverwrite || !m_callbacks.confirmImageOverwrite(imagePath)) continue;
+                image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+            }
+            if (image == INVALID_HANDLE_VALUE) {
+                Report(Failure::OpenImage, imagePath, ::GetLastError());
+                continue;
+            }
+            ScopedHandle imageHandle(image);
+            DWORD written = 0;
+            const DWORD length = static_cast<DWORD>(inspection.bytes.size());
+            const BOOL wrote = ::WriteFile(image, inspection.bytes.data(), length, &written, NULL);
+            const DWORD error = ::GetLastError();
+            if (!wrote || written != length) {
+                Report(wrote ? Failure::ShortImageWrite : Failure::WriteImage, imagePath, error);
+                imageHandle.Reset();
+                ::DeleteFile(imagePath.c_str());
+                continue;
+            }
+            if (created) m_createdImages.push_back(imagePath);
+        }
+        catch (const _com_error&) {
+            // A malformed individual binary remains non-fatal, as in the legacy writer.
+            continue;
+        }
+    }
+    return S_OK;
 }
-
 HRESULT Writer::WriteMimeFinalBoundary()
 {
 	const std::string finalBoundary = "\r\n" + m_mimeBoundary + "\r\n";

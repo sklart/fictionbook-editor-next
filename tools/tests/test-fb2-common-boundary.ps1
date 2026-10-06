@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $commonDirectory = Join-Path $repoRoot 'src\common\fb2'
 $files = @(
+    'Fb2BinaryInspector.h', 'Fb2BinaryInspector.cpp',
     'Fb2Metadata.h', 'Fb2Metadata.cpp',
     'Fb2CoverImage.h', 'Fb2CoverImage.cpp',
     'Fb2CoverThumbnail.h', 'Fb2CoverThumbnail.cpp',
@@ -32,6 +33,26 @@ foreach ($name in 'Fb2Metadata', 'Fb2CoverImage', 'Fb2CoverThumbnail', 'Fb2Shell
     }
     if ($shellProject -notmatch [regex]::Escape("..\common\fb2\$name.cpp")) {
         throw "FBShell project does not compile the common FB2 source $name."
+    }
+}
+
+foreach ($project in @(
+    @{ Name = 'FBE'; Text = $fbeProject },
+    @{ Name = 'ExportEPUB'; Text = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\export-epub\ExportEPUB.vcxproj')) },
+    @{ Name = 'ExportDOCX'; Text = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\export-docx\ExportDOCX.vcxproj')) },
+    @{ Name = 'ExportHTML'; Text = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\export-html\ExportHTML.vcxproj')) }
+)) {
+    if ($project.Text -notmatch [regex]::Escape('..\common\fb2\Fb2BinaryInspector.cpp')) {
+        throw "$($project.Name) project does not compile the shared FB2 binary inspector."
+    }
+}
+
+foreach ($legacy in @(
+    'src\export-epub\ExportEPUBPlugin.cpp',
+    'src\export-docx\ExportDOCXPlugin.cpp'
+)) {
+    if ((Get-Content -Raw -LiteralPath (Join-Path $repoRoot $legacy)) -match 'ExtFromImageSignature|DecodeBase64Text|bool\s+DecodeBase64\(') {
+        throw "Legacy binary inspection implementation remains in $legacy."
     }
 }
 

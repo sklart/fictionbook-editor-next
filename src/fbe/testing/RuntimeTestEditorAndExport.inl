@@ -1,3 +1,22 @@
+	if (IsFbeTestScenario(L"fb2-binary-inspection-runtime"))
+	{
+		CComBSTR beforeXml;
+		MSXML2::IXMLDOMDocument2Ptr beforeDom(m_doc ? m_doc->CreateDOM(m_doc->m_encoding, false) : MSXML2::IXMLDOMDocument2Ptr());
+		const bool capturedBefore = beforeDom && SUCCEEDED(beforeDom->get_xml(&beforeXml));
+		CString error, warning;
+		const bool semantic = ValidateFb2BinarySemantics(m_doc, error, warning);
+		BOOL handled = FALSE;
+		OnFileValidate(0, ID_FILE_VALIDATE, NULL, handled);
+		CComBSTR afterXml;
+		MSXML2::IXMLDOMDocument2Ptr afterDom(m_doc ? m_doc->CreateDOM(m_doc->m_encoding, false) : MSXML2::IXMLDOMDocument2Ptr());
+		const bool unchanged = capturedBefore && afterDom && SUCCEEDED(afterDom->get_xml(&afterXml)) && wcscmp(beforeXml, afterXml) == 0;
+		const bool passed = semantic && !warning.IsEmpty() && unchanged && m_status_state.Validation() == FBEStatusBar::ValidationStatus::Valid;
+		CStringA report;
+		report.Format("semantic=%d\nwarning=%d\nunchanged=%d\nvalidation=%d\nresult=%s\n", semantic, !warning.IsEmpty(), unchanged,
+			m_status_state.Validation() == FBEStatusBar::ValidationStatus::Valid, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"xml-script-backend-runtime"))
 	{
 		CString original;
