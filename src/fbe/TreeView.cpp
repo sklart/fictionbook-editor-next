@@ -1262,11 +1262,6 @@ bool CTreeView::SetMultiSelection(UINT nFlags, CPoint point)
 			for(CTreeItem selected(GetRootItem(), this); !selected.IsNull(); selected = GetNextItem(selected))
 				if(GetItemState(selected, TVIS_SELECTED) & TVIS_SELECTED) selectedItems.push_back(selected);
 
-			// Get old selected (focus) item and state
-			HTREEITEM hItemOld = GetSelectedItem();
-			UINT uOldSelState  = hItemOld ?
-					GetItemState(hItemOld, TVIS_SELECTED) : 0;
-
 			// Select new item
 			if( GetSelectedItem() == hItem )
 			{
