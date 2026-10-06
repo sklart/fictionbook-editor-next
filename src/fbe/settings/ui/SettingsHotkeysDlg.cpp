@@ -7,7 +7,7 @@
 #include "..\\..\\Settings.h"
 #include "..\\..\\res1.h"
 #include "..\\..\\RuntimeLocalization.h"
-#include "..\\hotkeys\\HotkeyTextExport.h"
+#include "..\\hotkeys\\HotkeyExport.h"
 
 extern CSettings _Settings;
 
@@ -44,19 +44,6 @@ static CString GetHotkeyDisplayName(const CHotkey& hotkey)
 static CString GetHotkeyGroupDisplayName(const CHotkeysGroup& group)
 {
 	return group.m_name_resource_id ? FbeLoadRuntimeString(group.m_name_resource_id, group.m_name) : group.m_name;
-}
-static bool WriteUtf8TextFile(const CString& path, const CString& text)
-{
-	const int size = ::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), NULL, 0, NULL, NULL);
-	if(size == 0 && !text.IsEmpty()) return false;
-	std::vector<char> bytes(static_cast<size_t>(size));
-	if(size && !::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), &bytes[0], size, NULL, NULL)) return false;
-	HANDLE file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) return false;
-	const BYTE bom[] = { 0xEF, 0xBB, 0xBF }; DWORD written = 0;
-	const bool ok = ::WriteFile(file, bom, sizeof(bom), &written, NULL) != FALSE && written == sizeof(bom) &&
-		(size == 0 || (::WriteFile(file, &bytes[0], static_cast<DWORD>(bytes.size()), &written, NULL) != FALSE && written == bytes.size()));
-	::CloseHandle(file); return ok;
 }
 
 // CSettingsHotkeysDlg
@@ -563,12 +550,21 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyAssign(WORD /* unused: wNoti
 
 LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyExport(WORD, WORD, HWND, BOOL&)
 {
-	static const wchar_t filter[] = L"Text files (*.txt)\0*.txt\0\0";
-	CFileDialog dialog(FALSE, L"txt", L"FBE-Next-Hotkeys.txt", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST,
-		filter, m_hWnd);
+	const CString htmlFilterName(FbeLoadRuntimeStringByKey(L"fbe.hotkey.export.filter.html", L"HTML files (*.html)"));
+	const CString textFilterName(FbeLoadRuntimeStringByKey(L"fbe.hotkey.export.filter.text", L"Text files (*.txt)"));
+	std::vector<wchar_t> filter;
+	auto appendFilter = [&](const CString& name, LPCWSTR pattern) { filter.insert(filter.end(), name.GetString(), name.GetString() + name.GetLength()); filter.push_back(0); filter.insert(filter.end(), pattern, pattern + ::lstrlen(pattern)); filter.push_back(0); };
+	appendFilter(htmlFilterName, L"*.html"); appendFilter(textFilterName, L"*.txt"); filter.push_back(0);
+	CFileDialog dialog(FALSE, L"html", L"FBE-Next-Hotkeys.html", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST, &filter[0], m_hWnd);
 	if(dialog.DoModal() != IDOK) return 0;
-	if(!WriteUtf8TextFile(dialog.m_szFileName, FbeSettings::Hotkeys::BuildTextExport(_Settings.m_hotkey_groups)))
-		U::MessageBox(m_hWnd, L"Could not export hotkeys.", L"FictionBook Editor", MB_OK | MB_ICONERROR);
+	const bool html = dialog.m_ofn.nFilterIndex != 2;
+	CString path(dialog.m_szFileName); const int directorySeparator = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/')); const int extension = path.ReverseFind(L'.');
+	if(extension > directorySeparator) path = path.Left(extension);
+	path += html ? L".html" : L".txt";
+	const FbeSettings::Hotkeys::ExportData data(FbeSettings::Hotkeys::BuildExportData(_Settings.m_hotkey_groups));
+	const CString content = html ? FbeSettings::Hotkeys::BuildHtmlExport(data, _Settings.GetInterfaceLocaleName()) : FbeSettings::Hotkeys::BuildTextExport(data);
+	if(!FbeSettings::Hotkeys::WriteUtf8ExportFile(path, content))
+		U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.hotkey.export.error", L"Could not export hotkeys."), L"FictionBook Editor", MB_OK | MB_ICONERROR);
 	return 0;
 }
 

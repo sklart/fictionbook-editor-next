@@ -4463,7 +4463,41 @@
         "bg-BG": "Клавишни комбинации"
       }
     },
-    "fbe.hotkey.key.space": {
+    "fbe.hotkey.export.column.command": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Command", "ru-RU": "Команда", "uk-UA": "Команда", "de-DE": "Befehl", "fr-FR": "Commande", "es-ES": "Comando", "it-IT": "Comando", "pl-PL": "Polecenie", "pt-PT": "Comando", "nl-NL": "Opdracht", "cs-CZ": "Příkaz", "bg-BG": "Команда"
+      }
+    },
+    "fbe.hotkey.export.column.shortcut": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Shortcut", "ru-RU": "Горячая клавиша", "uk-UA": "Гаряча клавіша", "de-DE": "Tastenkürzel", "fr-FR": "Raccourci", "es-ES": "Atajo", "it-IT": "Scorciatoia", "pl-PL": "Skrót", "pt-PT": "Atalho", "nl-NL": "Sneltoets", "cs-CZ": "Klávesová zkratka", "bg-BG": "Клавишна комбинация"
+      }
+    },
+    "fbe.hotkey.export.filter.html": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "HTML files (*.html)", "ru-RU": "HTML-файлы (*.html)", "uk-UA": "HTML-файли (*.html)", "de-DE": "HTML-Dateien (*.html)", "fr-FR": "Fichiers HTML (*.html)", "es-ES": "Archivos HTML (*.html)", "it-IT": "File HTML (*.html)", "pl-PL": "Pliki HTML (*.html)", "pt-PT": "Ficheiros HTML (*.html)", "nl-NL": "HTML-bestanden (*.html)", "cs-CZ": "Soubory HTML (*.html)", "bg-BG": "HTML файлове (*.html)"
+      }
+    },
+    "fbe.hotkey.export.filter.text": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Text files (*.txt)", "ru-RU": "Текстовые файлы (*.txt)", "uk-UA": "Текстові файли (*.txt)", "de-DE": "Textdateien (*.txt)", "fr-FR": "Fichiers texte (*.txt)", "es-ES": "Archivos de texto (*.txt)", "it-IT": "File di testo (*.txt)", "pl-PL": "Pliki tekstowe (*.txt)", "pt-PT": "Ficheiros de texto (*.txt)", "nl-NL": "Tekstbestanden (*.txt)", "cs-CZ": "Textové soubory (*.txt)", "bg-BG": "Текстови файлове (*.txt)"
+      }
+    },
+    "fbe.hotkey.export.error": {
+      "component": "fbe.core",
+      "runtimeOnly": true,
+      "translations": {
+        "en-US": "Could not export hotkeys.", "ru-RU": "Не удалось экспортировать горячие клавиши.", "uk-UA": "Не вдалося експортувати гарячі клавіші.", "de-DE": "Tastenkürzel konnten nicht exportiert werden.", "fr-FR": "Impossible d’exporter les raccourcis.", "es-ES": "No se pudieron exportar los atajos.", "it-IT": "Impossibile esportare le scorciatoie.", "pl-PL": "Nie można wyeksportować skrótów.", "pt-PT": "Não foi possível exportar os atalhos.", "nl-NL": "Sneltoetsen konden niet worden geëxporteerd.", "cs-CZ": "Klávesové zkratky nelze exportovat.", "bg-BG": "Неуспешно експортиране на клавишните комбинации."
+      }
+    },    "fbe.hotkey.key.space": {
       "component": "fbe.core",
       "runtimeOnly": true,
       "translations": {

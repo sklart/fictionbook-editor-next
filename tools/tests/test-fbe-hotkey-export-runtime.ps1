@@ -20,10 +20,10 @@ try {
             $process=Start-Process -FilePath (Join-Path $root 'FBE.exe') -WorkingDirectory $root -ArgumentList @('--portable','-b',$report,$document) -PassThru
             if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "Hotkey export runtime timed out for $locale." }
             $text=if(Test-Path -LiteralPath $report){Get-Content -LiteralPath $report -Raw}else{''}
-            foreach($line in "locale=$locale",'header=1','localized-names=1','scripts-plugins=1','special-keys=1','tabs=1','no-empty-groups=1','result=pass') {
+            foreach($line in "locale=$locale",'header=1','localized-names=1','scripts-plugins=1','special-keys=1','tabs=1','no-empty-groups=1','html-structure=1','html-localized=1','html-escaping=1','same-data=1','result=pass') {
                 if($process.ExitCode -ne 0 -or $text -notmatch ('(?m)^' + [regex]::Escape($line) + '$')) { throw "Hotkey export runtime failed for ${locale}:`n$text" }
             }
         }
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_UI_LOCALE,$env:FBE_NEXT_TEST_HOTKEY_EXPORT_LOCALE=$savedMode,$savedScenario,$savedLocale,$savedExportLocale }
-    Write-Host 'FBE hotkey TXT export localization runtime passed.'
+    Write-Host 'FBE hotkey TXT and HTML export localization runtime passed.'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }

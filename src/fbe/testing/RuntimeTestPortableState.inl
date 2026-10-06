@@ -1,5 +1,5 @@
 
-#include "../settings/hotkeys/HotkeyTextExport.h"
+#include "../settings/hotkeys/HotkeyExport.h"
 
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.
@@ -120,13 +120,18 @@ void CMainFrame::RunPortableStateTestScenario()
 		for(size_t groupIndex = 0; groupIndex < groups.size(); ++groupIndex)
 			if(groups[groupIndex].m_reg_name == L"Scripts")
 			{
-				groups[groupIndex].m_hotkeys.push_back(CHotkey(L"runtime-export-script", L"Runtime script", FCONTROL, ID_LAST_SCRIPT, VK_F9));
+				groups[groupIndex].m_hotkeys.push_back(CHotkey(L"runtime-export-script", L"Test <Fix> & \"Normalize\"", FCONTROL, ID_LAST_SCRIPT, VK_F9));
+				groups[groupIndex].m_hotkeys.push_back(CHotkey(L"runtime-export-unassigned", L"Unassigned <ignore>", FCONTROL, ID_LAST_SCRIPT + 1, 0));
 				break;
 			}
-		const CString text = FbeSettings::Hotkeys::BuildTextExport(groups);
-		const CStringA utf8Text(CW2A(text, CP_UTF8));
-		WritePortableStateTestText(diagnosticsDirectory + L"hotkey-export.txt", utf8Text);
+		const FbeSettings::Hotkeys::ExportData data(FbeSettings::Hotkeys::BuildExportData(groups));
+		const CString text(FbeSettings::Hotkeys::BuildTextExport(data));
+		const CString html(FbeSettings::Hotkeys::BuildHtmlExport(data, russian ? L"ru-RU" : L"en-US"));
+		WritePortableStateTestText(diagnosticsDirectory + L"hotkey-export.txt", CStringA(CW2A(text, CP_UTF8)));
+		WritePortableStateTestText(diagnosticsDirectory + L"hotkey-export.html", CStringA(CW2A(html, CP_UTF8)));
 		const CString title = russian ? CString(L"Горячие клавиши") : CString(L"Hotkeys");
+		const CString command = russian ? CString(L"Команда") : CString(L"Command");
+		const CString shortcut = russian ? CString(L"Горячая клавиша") : CString(L"Shortcut");
 		const CString edit = russian ? CString(L"Редактировать") : CString(L"Edit");
 		const CString merge = russian ? CString(L"Слить") : CString(L"Merge");
 		const CString space = russian ? CString(L"Пробел") : CString(L"Space");
@@ -134,20 +139,22 @@ void CMainFrame::RunPortableStateTestScenario()
 		const CString plugins = russian ? CString(L"Плагины") : CString(L"Plugins");
 		const bool header = text.Find(L"FictionBook Editor Next\r\n" + title + L"\r\n") == 0;
 		const bool localizedNames = text.Find(L"\r\n" + edit + L"\r\n") >= 0 && text.Find(merge + L"\tAlt+Delete\r\n") >= 0;
-		const bool scriptAndPluginGroups = text.Find(L"\r\n" + scripts + L"\r\n") >= 0 && text.Find(L"Runtime script\tCtrl+F9\r\n") >= 0 && text.Find(L"\r\n" + plugins + L"\r\n") >= 0;
-		const bool specialKeys = text.Find(space) >= 0 && text.Find(L"Backspace") >= 0 && text.Find(L"Delete") >= 0 && text.Find(L"Insert") >= 0 &&
-			text.Find(L"F2") >= 0 && text.Find(L"F7") >= 0 && text.Find(L"F8") >= 0;
+		const bool scriptAndPluginGroups = text.Find(L"\r\n" + scripts + L"\r\n") >= 0 && text.Find(L"Test <Fix> & \"Normalize\"\tCtrl+F9\r\n") >= 0 && text.Find(L"\r\n" + plugins + L"\r\n") >= 0;
+		const bool specialKeys = text.Find(space) >= 0 && text.Find(L"Backspace") >= 0 && text.Find(L"Delete") >= 0 && text.Find(L"Insert") >= 0 && text.Find(L"F2") >= 0 && text.Find(L"F7") >= 0 && text.Find(L"F8") >= 0;
 		const bool tabs = text.Find(L"\t") >= 0 && text.Find(L"    ") < 0;
-		const bool noEmptyGroups = text.Find(L"\r\n\r\n\r\n") < 0;
-		const bool passed = header && localizedNames && scriptAndPluginGroups && specialKeys && tabs && noEmptyGroups;
+		const bool noEmptyGroups = text.Find(L"\r\n\r\n\r\n") < 0 && text.Find(L"Unassigned <ignore>") < 0;
+		const bool htmlStructure = html.Find(L"<!doctype html>\r\n<html lang=\"") == 0 && html.Find(L"<meta charset=\"utf-8\">") >= 0 && html.Find(L"<table>") >= 0 && html.Find(L"<thead><tr><th>" + command) >= 0 && html.Find(L"<th>" + shortcut + L"</th>") >= 0 && html.Find(L"</html>") >= 0;
+		const bool htmlLocalized = html.Find(L"<h2>" + title + L"</h2>") >= 0 && html.Find(L"<th colspan=\"2\">" + scripts + L"</th>") >= 0 && html.Find(L"<th colspan=\"2\">" + plugins + L"</th>") >= 0 && html.Find(space) >= 0;
+		const bool htmlEscaping = html.Find(L"Test &lt;Fix&gt; &amp; &quot;Normalize&quot;") >= 0 && html.Find(L"Unassigned &lt;ignore&gt;") < 0;
+		const bool sameData = data.size() > 0 && html.Find(L"<kbd>Ctrl+F9</kbd>") >= 0 && text.Find(L"Ctrl+F9") >= 0;
+		const bool passed = header && localizedNames && scriptAndPluginGroups && specialKeys && tabs && noEmptyGroups && htmlStructure && htmlLocalized && htmlEscaping && sameData;
 		CStringA report;
-		report.Format("phase=hotkey-export\nlocale=%ls\nheader=%d\nlocalized-names=%d\nscripts-plugins=%d\nspecial-keys=%d\ntabs=%d\nno-empty-groups=%d\nresult=%s\n",
-			locale, header, localizedNames, scriptAndPluginGroups, specialKeys, tabs, noEmptyGroups, passed ? "pass" : "fail");
+		report.Format("phase=hotkey-export\nlocale=%ls\nheader=%d\nlocalized-names=%d\nscripts-plugins=%d\nspecial-keys=%d\ntabs=%d\nno-empty-groups=%d\nhtml-structure=%d\nhtml-localized=%d\nhtml-escaping=%d\nsame-data=%d\nresult=%s\n",
+			locale, header, localizedNames, scriptAndPluginGroups, specialKeys, tabs, noEmptyGroups, htmlStructure, htmlLocalized, htmlEscaping, sameData, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);
 		return;
-	}
-	if(scriptLiveReloadRuntime)
+	}	if(scriptLiveReloadRuntime)
 	{
 		::CreateDirectory(scriptsDirectory, NULL);
 		const CString scriptPath = scriptsDirectory + L"live-reload.js";
