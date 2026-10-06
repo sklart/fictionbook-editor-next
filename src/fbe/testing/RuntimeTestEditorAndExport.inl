@@ -1465,31 +1465,49 @@
 		const int sourceStride = ((sourceSize * 24 + 31) / 32) * 4;
 		for(int y = 0; y < sourceSize; ++y) for(int x = 0; x < sourceSize; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 0xFF; pixel[1] = 0x00; pixel[2] = 0xFF; }
 		for(int y = 7; y <= 16; ++y) for(int x = 7; x <= 16; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 80; pixel[1] = 150; pixel[2] = 210; }
-		auto standardIconsPass = [&](UINT dpi, int& failure, long& intermediateAlpha) -> bool
+		auto standardIconsPass = [&](UINT dpi, int& failure, long& intermediateAlpha, int& silhouettePassed, int& imageListHasMask, int& thinLineWidth) -> bool
 		{
-			failure = 0; intermediateAlpha = 0; CImageList images;
+			failure = 0; intermediateAlpha = 0; silhouettePassed = 0; imageListHasMask = 0; thinLineWidth = 0; CImageList images;
 			const int size = ToolbarFactory::CommandToolbarImageSize(dpi);
 			if(!ToolbarFactory::CreateCommandToolbarImages(images, IDR_MAINFRAME, dpi)) { failure = 1; return false; }
 			int imageWidth = 0, imageHeight = 0;
-			if(::ImageList_GetImageCount(images) <= 0 || !::ImageList_GetIconSize(images, &imageWidth, &imageHeight) || imageWidth != size || imageHeight != size) { failure = 2; return false; }
+			imageListHasMask = ToolbarFactory::ImageListHasMaskPlane(images) ? 1 : 0;
+			if(::ImageList_GetImageCount(images) <= 0 || !::ImageList_GetIconSize(images, &imageWidth, &imageHeight) || imageWidth != size || imageHeight != size || imageListHasMask) { failure = 2; return false; }
 			HBITMAP source = static_cast<HBITMAP>(::LoadImage(ATL::_AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCE(IDR_MAINFRAME), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
-			HBITMAP scaled = source ? ToolbarFactory::CreateScaledPixelPreservingAlphaBitmap(source, 24, size) : NULL; if(source) ::DeleteObject(source);
-			DIBSECTION info = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(info), &info) == sizeof(info) && info.dsBm.bmBits != NULL && info.dsBm.bmWidth == size && abs(info.dsBmih.biHeight) == size;
-			if(!ready) { if(scaled) ::DeleteObject(scaled); failure = 3; return false; }
-			const DWORD* pixels = static_cast<const DWORD*>(info.dsBm.bmBits); const int corners[] = { 0, size - 1, size * (size - 1), size * size - 1 }; long visible = 0;
-			for(size_t corner = 0; corner < _countof(corners); ++corner) if(pixels[corners[corner]] != 0) { ::DeleteObject(scaled); failure = 4; return false; }
+			HBITMAP scaled = source ? ToolbarFactory::CreateScaledLegacyToolbarAlphaBitmap(source, 24, size) : NULL;
+			HBITMAP baseline = source ? ToolbarFactory::CreateScaledLegacyToolbarAlphaBitmap(source, 24, 24) : NULL; if(source) ::DeleteObject(source);
+			DIBSECTION info = {}, baselineInfo = {}; const bool ready = scaled && baseline && ::GetObject(scaled, sizeof(info), &info) == sizeof(info) && ::GetObject(baseline, sizeof(baselineInfo), &baselineInfo) == sizeof(baselineInfo) && info.dsBm.bmBits != NULL && baselineInfo.dsBm.bmBits != NULL && info.dsBm.bmWidth == size && abs(info.dsBmih.biHeight) == size;
+			if(!ready) { if(scaled) ::DeleteObject(scaled); if(baseline) ::DeleteObject(baseline); failure = 3; return false; }
+			const DWORD* pixels = static_cast<const DWORD*>(info.dsBm.bmBits); const DWORD* baselinePixels = static_cast<const DWORD*>(baselineInfo.dsBm.bmBits); const int corners[] = { 0, size - 1, size * (size - 1), size * size - 1 }; long visible = 0;
+			for(size_t corner = 0; corner < _countof(corners); ++corner) if(pixels[corners[corner]] != 0) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 4; return false; }
+			int sourceLeft = 24, sourceTop = 24, sourceRight = -1, sourceBottom = -1, targetLeft = size, targetTop = size, targetRight = -1, targetBottom = -1;
 			for(int pixel = 0; pixel < size * size; ++pixel)
 			{
 				const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24;
-				if(alpha) ++visible;
+				if(alpha) { ++visible; const int x = pixel % size, y = pixel / size; targetLeft = min(targetLeft, x); targetTop = min(targetTop, y); targetRight = max(targetRight, x); targetBottom = max(targetBottom, y); }
 				if(alpha > 0 && alpha < 0xFF) ++intermediateAlpha;
-				if((alpha == 0 && rgb != 0) || (alpha && rgb == 0x00FF00FF) || (alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha))) { ::DeleteObject(scaled); failure = 5; return false; }
+				if((alpha == 0 && rgb != 0) || (alpha && rgb == 0x00FF00FF)) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 5; return false; }
 			}
-			::DeleteObject(scaled); if(visible == 0) { failure = 6; return false; }
-			if(intermediateAlpha != 0) { failure = 7; return false; }
+			for(int pixel = 0; pixel < 24 * 24; ++pixel) if(baselinePixels[pixel] >> 24) { const int x = pixel % 24, y = pixel / 24; sourceLeft = min(sourceLeft, x); sourceTop = min(sourceTop, y); sourceRight = max(sourceRight, x); sourceBottom = max(sourceBottom, y); }
+			if(visible == 0 || sourceRight < sourceLeft) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 6; return false; }
+			if(intermediateAlpha != 0) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 7; return false; }
+			const int expectedLeft = sourceLeft * size / 24, expectedTop = sourceTop * size / 24;
+			const int expectedRight = ((sourceRight + 1) * size + 23) / 24 - 1, expectedBottom = ((sourceBottom + 1) * size + 23) / 24 - 1;
+			silhouettePassed = abs(targetLeft - expectedLeft) <= 1 && abs(targetTop - expectedTop) <= 1 && abs(targetRight - expectedRight) <= 1 && abs(targetBottom - expectedBottom) <= 1;
+			BITMAPINFO lineInfo = {}; lineInfo.bmiHeader.biSize = sizeof(lineInfo.bmiHeader); lineInfo.bmiHeader.biWidth = 24; lineInfo.bmiHeader.biHeight = -24; lineInfo.bmiHeader.biPlanes = 1; lineInfo.bmiHeader.biBitCount = 24;
+			void* lineBits = NULL; HBITMAP lineSource = ::CreateDIBSection(NULL, &lineInfo, DIB_RGB_COLORS, &lineBits, NULL, 0);
+			if(!lineSource || !lineBits) { if(lineSource) ::DeleteObject(lineSource); ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 8; return false; }
+			const int lineStride = ((24 * 24 + 31) / 32) * 4;
+			for(int y = 0; y < 24; ++y) for(int x = 0; x < 24; ++x) { BYTE* pixel = static_cast<BYTE*>(lineBits) + y * lineStride + x * 3; pixel[0] = 0xFF; pixel[1] = 0x00; pixel[2] = 0xFF; }
+			for(int y = 0; y < 24; ++y) { BYTE* pixel = static_cast<BYTE*>(lineBits) + y * lineStride + 12 * 3; pixel[0] = 80; pixel[1] = 150; pixel[2] = 210; }
+			HBITMAP lineScaled = ToolbarFactory::CreateScaledLegacyToolbarAlphaBitmap(lineSource, 24, size); ::DeleteObject(lineSource);
+			DIBSECTION lineScaledInfo = {}; if(!lineScaled || ::GetObject(lineScaled, sizeof(lineScaledInfo), &lineScaledInfo) != sizeof(lineScaledInfo) || lineScaledInfo.dsBm.bmBits == NULL) { if(lineScaled) ::DeleteObject(lineScaled); ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 8; return false; }
+			const DWORD* linePixels = static_cast<const DWORD*>(lineScaledInfo.dsBm.bmBits); for(int x = 0; x < size; ++x) if(linePixels[(size / 2) * size + x] >> 24) ++thinLineWidth;
+			const int maximumThinLineWidth = (size + 23) / 24;
+			::DeleteObject(lineScaled); ::DeleteObject(scaled); ::DeleteObject(baseline); if(!silhouettePassed || thinLineWidth == 0 || thinLineWidth > maximumThinLineWidth) { failure = 9; return false; }
 			return true;
 		};
-		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_image_list_has_mask\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tmax_color_error\tcolor_fidelity_passed\tstandard_icons_passed\tstandard_failure\tstandard_intermediate_alpha_pixels\tstandard_silhouette_passed\tstandard_thin_line_width\tstandard_image_list_has_mask\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
 		for(size_t index = 0; index < _countof(dpis); ++index)
 		{
@@ -1497,8 +1515,8 @@
 			DIBSECTION scaledInfo = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(scaledInfo), &scaledInfo) == sizeof(scaledInfo) && scaledInfo.dsBm.bmBits != NULL && scaledInfo.dsBm.bmWidth == targetSize && abs(scaledInfo.dsBmih.biHeight) == targetSize;
 			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
 			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; if(alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha)) ++invalidPremultiplied; } }
-			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0; long standardIntermediateAlpha = -1; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure, standardIntermediateAlpha); const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed;
-			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t0\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
+			const DWORD center = ready ? static_cast<const DWORD*>(scaledInfo.dsBm.bmBits)[(targetSize / 2) * targetSize + targetSize / 2] : 0; const int centerAlpha = center >> 24, centerRed = (center >> 16) & 0xFF, centerGreen = (center >> 8) & 0xFF, centerBlue = center & 0xFF; const int maxColorError = max(abs(centerRed - 210), max(abs(centerGreen - 150), abs(centerBlue - 80))); const bool colorFidelity = centerAlpha == 0xFF && maxColorError <= 2 && (center & 0x00FFFFFF) != 0x00FFFFFF; int standardFailure = 0, standardSilhouettePassed = 0, standardImageListHasMask = -1, standardThinLineWidth = -1; long standardIntermediateAlpha = -1; const bool standardIconsPassed = standardIconsPass(dpis[index], standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardImageListHasMask, standardThinLineWidth); const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0 && colorFidelity && standardIconsPassed && standardSilhouettePassed && standardImageListHasMask == 0;
+			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\t%d\t%d\t%d\t%ld\t%d\t%d\t%d\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, maxColorError, colorFidelity ? 1 : 0, standardIconsPassed ? 1 : 0, standardFailure, standardIntermediateAlpha, standardSilhouettePassed, standardThinLineWidth, standardImageListHasMask, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
 		}
 		::DeleteObject(source); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
