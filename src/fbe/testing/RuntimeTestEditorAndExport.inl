@@ -1386,16 +1386,16 @@
 		const int sourceStride = ((sourceSize * 24 + 31) / 32) * 4;
 		for(int y = 0; y < sourceSize; ++y) for(int x = 0; x < sourceSize; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 0xFF; pixel[1] = 0x00; pixel[2] = 0xFF; }
 		for(int y = 7; y <= 16; ++y) for(int x = 7; x <= 16; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = static_cast<BYTE>(40 + x * 4); pixel[1] = static_cast<BYTE>(100 + y * 5); pixel[2] = 210; }
-		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		CStringA header("dpi\tsize\ttransparent_corners\tvisible_pixels\topaque_black_pixels\tmagenta_pixels\tinvalid_premultiplied_pixels\tpassed\r\n"); DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		const UINT dpis[] = { 96, 120, 144, 168, 192 }; bool passed = true;
 		for(size_t index = 0; index < _countof(dpis); ++index)
 		{
 			const int targetSize = ToolbarFactory::CommandToolbarImageSize(dpis[index]); HBITMAP scaled = ToolbarFactory::CreateScaledAlphaBitmap(source, sourceSize, targetSize);
 			DIBSECTION scaledInfo = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(scaledInfo), &scaledInfo) == sizeof(scaledInfo) && scaledInfo.dsBm.bmBits != NULL && scaledInfo.dsBm.bmWidth == targetSize && abs(scaledInfo.dsBmih.biHeight) == targetSize;
-			long visible = 0, opaqueBlack = 0, magenta = 0; bool transparentCorners = ready;
-			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; } }
-			const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0;
-			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
+			long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
+			if(ready) { const DWORD* pixels = static_cast<const DWORD*>(scaledInfo.dsBm.bmBits); const int corners[] = { 0, targetSize - 1, targetSize * (targetSize - 1), targetSize * targetSize - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < targetSize * targetSize; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; if(alpha > 0 && alpha < 0xFF && (((rgb >> 16) & 0xFF) > alpha || ((rgb >> 8) & 0xFF) > alpha || (rgb & 0xFF) > alpha)) ++invalidPremultiplied; } }
+			const bool rowPassed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0;
+			CStringA row; row.Format("%u\t%d\t%d\t%ld\t%ld\t%ld\t%ld\t%d\r\n", dpis[index], targetSize, transparentCorners ? 1 : 0, visible, opaqueBlack, magenta, invalidPremultiplied, rowPassed ? 1 : 0); output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled); passed = passed && rowPassed;
 		}
 		::DeleteObject(source); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
@@ -1506,9 +1506,9 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 				HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(kTableToolbarCommands[index].bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 				HBITMAP scaled = source ? ToolbarFactory::CreateScaledAlphaBitmap(source, 24, size) : NULL; if(source) ::DeleteObject(source);
 				DIBSECTION info = {}; const bool ready = scaled && ::GetObject(scaled, sizeof(info), &info) == sizeof(info) && info.dsBm.bmBits != NULL && info.dsBm.bmWidth == size && abs(info.dsBmih.biHeight) == size;
-				long visible = 0, opaqueBlack = 0, magenta = 0; bool transparentCorners = ready;
+				long visible = 0, opaqueBlack = 0, magenta = 0, invalidPremultiplied = 0; bool transparentCorners = ready;
 				if(ready) { const DWORD* pixels = static_cast<const DWORD*>(info.dsBm.bmBits); const int corners[] = { 0, size - 1, size * (size - 1), size * size - 1 }; for(size_t corner = 0; corner < _countof(corners); ++corner) transparentCorners = transparentCorners && (pixels[corners[corner]] >> 24) == 0; for(int pixel = 0; pixel < size * size; ++pixel) { const DWORD value = pixels[pixel], rgb = value & 0x00FFFFFF, alpha = value >> 24; if(alpha) ++visible; if(alpha == 0xFF && rgb == 0) ++opaqueBlack; if(alpha && rgb == 0x00FF00FF) ++magenta; } }
-				const bool passed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0;
+				const bool passed = ready && transparentCorners && visible > 0 && opaqueBlack == 0 && magenta == 0 && invalidPremultiplied == 0;
 				CStringA phase; phase.Format("scaled-%u", dpis[dpiIndex]); CStringA row; row.Format("%s\t%u\t%d\t%d\t%d\t%d\t%d\t%ld\t%d\t%ld\t%d\r\n", (LPCSTR)phase, kTableToolbarCommands[index].commandId, size, 1, magenta, passed ? 1 : 0, size, visible, transparentCorners ? 1 : 0, opaqueBlack, 1); DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); if(scaled) ::DeleteObject(scaled);
 			}
 			output.Flush();
@@ -1522,7 +1522,7 @@ if (IsFbeTestScenario(L"table-toolbar-rendering"))
 			{ L"outside", L"outside", "outside" }, { L"d0", L"d0", "td" }, { L"h0", L"h0", "th" },
 			{ L"d0", L"d1", "td-td" }, { L"h0", L"h1", "th-th" }, { L"h0", L"d0", "td-th" },
 			{ L"one1", L"one1", "one-by-one" }, { L"row0", L"row2", "one-by-n" },
-			{ L"col0", L"col2", "n-by-one" }, { L"d0", L"d1", "n-by-m" }
+			{ L"col0", L"col2", "n-by-one" }, { L"h0", L"d1", "n-by-m" }
 		};
 		for(size_t phase = 0; phase < _countof(phases); ++phase)
 		{

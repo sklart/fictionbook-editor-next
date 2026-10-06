@@ -46,13 +46,13 @@ try {
     $deleteRow, $deleteColumn, $makeHeader, $makeNormal = $commands[2], $commands[5], $commands[6], $commands[7]
     foreach($phase in @('one-by-one','one-by-n')) { if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $deleteRow -and $_.enabled -ne 0 }).Count) { throw "$phase allowed deletion of its only row." } }
     foreach($phase in @('one-by-one','n-by-one')) { if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $deleteColumn -and $_.enabled -ne 0 }).Count) { throw "$phase allowed deletion of its only column." } }
-    foreach($phase in @('td','td-td','one-by-one','one-by-n','n-by-one','n-by-m')) {
+    foreach($phase in @('td','td-td','one-by-one','one-by-n','n-by-one')) {
         if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $makeHeader -and $_.enabled -ne 1 }).Count -or @(& $byPhase $phase | Where-Object { $_.command_id -eq $makeNormal -and $_.enabled -ne 0 }).Count) { throw "$phase must enable only Make Header." }
     }
     foreach($phase in @('th','th-th')) {
         if(@(& $byPhase $phase | Where-Object { $_.command_id -eq $makeHeader -and $_.enabled -ne 0 }).Count -or @(& $byPhase $phase | Where-Object { $_.command_id -eq $makeNormal -and $_.enabled -ne 1 }).Count) { throw "$phase must enable only Make Normal." }
     }
-    if(@(& $byPhase 'td-th' | Where-Object { ($_.command_id -eq $makeHeader -or $_.command_id -eq $makeNormal) -and $_.enabled -ne 1 }).Count) { throw 'Mixed TD+TH selection must enable both conversion commands.' }
+    if(@(& $byPhase 'td-th' | Where-Object { ($_.command_id -eq $makeHeader -or $_.command_id -eq $makeNormal) -and $_.enabled -ne 1 }).Count -or @(& $byPhase 'n-by-m' | Where-Object { ($_.command_id -eq $makeHeader -or $_.command_id -eq $makeNormal -or $_.command_id -eq $deleteRow -or $_.command_id -eq $deleteColumn) -and $_.enabled -ne 1 }).Count) { throw 'Mixed TD+TH selections, including rectangular N×M, must enable both conversions and both deletions.' }
     $dpiSizes = @{ 'scaled-96' = 24; 'scaled-120' = 30; 'scaled-144' = 36; 'scaled-168' = 42; 'scaled-192' = 48 }
     foreach($phase in $dpiSizes.Keys) {
         $scaled = @($rows | Where-Object phase -eq $phase)
