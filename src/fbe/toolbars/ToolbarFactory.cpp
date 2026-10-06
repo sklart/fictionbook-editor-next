@@ -79,6 +79,28 @@ HBITMAP ScaleAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
 	::DeleteObject(alpha);
 	return scaled;
 }
+
+HBITMAP ScaleAlphaBitmapNearest(HBITMAP alpha, int sourceSize, int targetSize)
+{
+	if(alpha == NULL || sourceSize <= 0 || targetSize <= 0) return NULL;
+	if(targetSize == sourceSize) return alpha;
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = targetSize; info.bmiHeader.biHeight = -targetSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	DIBSECTION alphaInfo = {};
+	if(::GetObject(alpha, sizeof(alphaInfo), &alphaInfo) != sizeof(alphaInfo) || alphaInfo.dsBm.bmBits == NULL || alphaInfo.dsBm.bmWidth != sourceSize || abs(alphaInfo.dsBmih.biHeight) != sourceSize) { ::DeleteObject(alpha); return NULL; }
+	void* targetBits = NULL; HBITMAP scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &targetBits, NULL, 0);
+	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
+	const DWORD* sourcePixels = static_cast<const DWORD*>(alphaInfo.dsBm.bmBits);
+	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
+	// Legacy Toolbar.bmp is pixel art: nearest-neighbor preserves its binary alpha contour.
+	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
+	{
+		const int sourceX = min(sourceSize - 1, static_cast<int>((static_cast<LONGLONG>(x) * sourceSize) / targetSize));
+		const int sourceY = min(sourceSize - 1, static_cast<int>((static_cast<LONGLONG>(y) * sourceSize) / targetSize));
+		targetPixels[y * targetSize + x] = sourcePixels[sourceY * sourceSize + sourceX];
+	}
+	::DeleteObject(alpha);
+	return scaled;
+}
 }
 
 bool ToolbarFactory::ImageListHasMaskPlane(HIMAGELIST imageList) { IMAGEINFO imageInfo = {}; return imageList != NULL && ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL; }
@@ -105,6 +127,7 @@ HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImag
 
 HBITMAP ToolbarFactory::CreateAlphaBitmap(HBITMAP source, int width, int height) { return width == height ? CreateAlphaBitmapCell(source, width, 0) : NULL; }
 HBITMAP ToolbarFactory::CreateScaledAlphaBitmap(HBITMAP source, int sourceSize, int targetSize) { return ScaleAlphaBitmap(CreateAlphaBitmap(source, sourceSize, sourceSize), sourceSize, targetSize); }
+HBITMAP ToolbarFactory::CreateScaledPixelPreservingAlphaBitmap(HBITMAP source, int sourceSize, int targetSize) { return ScaleAlphaBitmapNearest(CreateAlphaBitmap(source, sourceSize, sourceSize), sourceSize, targetSize); }
 
 int ToolbarFactory::AddBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module, UINT bitmapResourceId)
 {
@@ -133,7 +156,7 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 	for(int index = 0; index < standardImageCount; ++index)
 	{
 		HBITMAP alpha = CreateAlphaBitmapCell(source, 24, index);
-		HBITMAP scaled = ScaleAlphaBitmap(alpha, 24, imageSize);
+		HBITMAP scaled = ScaleAlphaBitmapNearest(alpha, 24, imageSize);
 		const int imageIndex = scaled != NULL ? ::ImageList_Add(static_cast<HIMAGELIST>(ownedImages), scaled, NULL) : -1;
 		if(scaled != NULL) ::DeleteObject(scaled);
 		if(imageIndex != index) { added = false; break; }

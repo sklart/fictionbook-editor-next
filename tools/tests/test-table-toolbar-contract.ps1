@@ -41,11 +41,16 @@ if ($menuBitmapHelper.Value -match 'm_clrMask') {
 if ($factory -notmatch '(?s)HBITMAP CreateAlphaBitmapCell\(.*?biBitCount = 32.*?bytesPerPixel.*?alpha == 0 \|\| \(blue == 0xFF && green == 0x00 && red == 0xFF\).*?return target;') {
 	throw 'Command and table toolbar bitmap conversion must create 32-bit alpha pixels using only the exact magenta transparency key.'
 }
-if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?LoadImage\(module, MAKEINTRESOURCE\(toolbarResourceId\), IMAGE_BITMAP.*?CreateAlphaBitmapCell\(source, 24, index\).*?ScaleAlphaBitmap\(alpha, 24, imageSize\).*?ImageList_Add\(') {
+if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?LoadImage\(module, MAKEINTRESOURCE\(toolbarResourceId\), IMAGE_BITMAP.*?CreateAlphaBitmapCell\(source, 24, index\).*?ScaleAlphaBitmapNearest\(alpha, 24, imageSize\).*?ImageList_Add\(') {
 	throw 'Standard command-toolbar images must be extracted from Toolbar.bmp and scaled through the shared ARGB pipeline.'
 }
 if ($factory -match 'ImageList_LoadImage|ImageList_GetIcon|ImageList_AddIcon|ILC_COLOR32 \| ILC_MASK') {
 	throw 'Command-toolbar ARGB images must not recompose a mask through the legacy image-list/icon path.'
+}
+if ($factory -notmatch '(?s)HBITMAP ScaleAlphaBitmapNearest\(.*?sourcePixels\[sourceY \* sourceSize \+ sourceX\].*?return scaled;' -or
+    $factory -notmatch 'CreateScaledPixelPreservingAlphaBitmap\(HBITMAP source, int sourceSize, int targetSize\).*?ScaleAlphaBitmapNearest' -or
+    $factory -notmatch 'HBITMAP ToolbarFactory::CreateScaledAlphaBitmap\(HBITMAP source, int sourceSize, int targetSize\) \{ return ScaleAlphaBitmap\(') {
+    throw 'Standard Toolbar.bmp icons must use the dedicated pixel-preserving scaler while table bitmaps retain the premultiplied ARGB scaler.'
 }
 foreach ($forbidden in @('connectedCanvas', 'edge-connected', 'pending.Enqueue', 'maximum =', 'minimum =')) {
 	if ($factory.Contains($forbidden)) { throw "Table toolbar alpha conversion must not use a brightness or flood-fill heuristic: $forbidden" }

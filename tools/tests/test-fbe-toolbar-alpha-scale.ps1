@@ -27,7 +27,7 @@ try {
     if($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) alpha-scale rows, got $($rows.Count)." }
     foreach($dpi in $expected.Keys) {
         $row = @($rows | Where-Object dpi -eq $dpi)
-        if($row.Count -ne 1 -or [int]$row[0].size -ne $expected[$dpi] -or [int]$row[0].transparent_corners -ne 1 -or [int]$row[0].visible_pixels -le 0 -or [int]$row[0].opaque_black_pixels -ne 0 -or [int]$row[0].magenta_pixels -ne 0 -or [int]$row[0].invalid_premultiplied_pixels -ne 0 -or [int]$row[0].max_color_error -gt 2 -or [int]$row[0].color_fidelity_passed -ne 1 -or [int]$row[0].standard_icons_passed -ne 1 -or [int]$row[0].standard_failure -ne 0 -or [int]$row[0].standard_image_list_has_mask -ne 0 -or [int]$row[0].passed -ne 1) { throw "ARGB alpha-scale contract failed at $dpi DPI." }
+        if($row.Count -ne 1 -or [int]$row[0].size -ne $expected[$dpi] -or [int]$row[0].transparent_corners -ne 1 -or [int]$row[0].visible_pixels -le 0 -or [int]$row[0].opaque_black_pixels -ne 0 -or [int]$row[0].magenta_pixels -ne 0 -or [int]$row[0].invalid_premultiplied_pixels -ne 0 -or [int]$row[0].max_color_error -gt 2 -or [int]$row[0].color_fidelity_passed -ne 1 -or [int]$row[0].standard_icons_passed -ne 1 -or [int]$row[0].standard_failure -ne 0 -or [int]$row[0].standard_intermediate_alpha_pixels -ne 0 -or [int]$row[0].standard_image_list_has_mask -ne 0 -or [int]$row[0].passed -ne 1) { throw "ARGB alpha-scale contract failed at $dpi DPI." }
     }
     $passed = $true
     Write-Host 'FBE toolbar ARGB scaling contract passed.'
