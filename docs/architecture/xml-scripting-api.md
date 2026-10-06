@@ -26,7 +26,7 @@ dirty/recovery/UI-состояние. Каждая внутренняя опер
 ```
 
 `GetLastSourceDiagnostic()` возвращает JSON с полями `valid`, `message`,
-`line` и `column`. Это оставляет `ValidateSourceText()` и
+`line` и `column`. Строковое поле `message` сериализуется как JSON: кавычка, обратный слеш, CR, LF и tab экранируются до передачи JScript. Это оставляет `ValidateSourceText()` и
 `ApplySourceText()` естественными булевыми вызовами JScript, при этом
 диагностика доступна без параметров-by-reference, которых нет в обычном
 сценарии JavaScript.

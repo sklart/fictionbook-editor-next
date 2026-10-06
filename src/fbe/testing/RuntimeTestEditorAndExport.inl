@@ -48,6 +48,10 @@
 			L"if(window.external.ValidateSourceText(xml+'<'))throw new Error('invalid accepted');"
 			L"var diagnostic=eval('('+window.external.GetLastSourceDiagnostic()+')');"
 			L"if(diagnostic.valid||!diagnostic.message||diagnostic.line<1)throw new Error('diagnostic');"
+			L"var diagnosticProbe='quote \" slash \\\\ carriage\\r\\nline\\ttab';"
+			L"if(window.external.ValidateSourceText('__FBE_XML_DIAGNOSTIC_ESCAPE_PROBE__'))throw new Error('diagnostic probe accepted');"
+			L"var escapedDiagnostic=eval('('+window.external.GetLastSourceDiagnostic()+')');"
+			L"if(escapedDiagnostic.valid||escapedDiagnostic.message!==diagnosticProbe||escapedDiagnostic.line!==7||escapedDiagnostic.column!==11)throw new Error('diagnostic escaping');"
 			L"if(!window.external.ValidateSourceText(xml))throw new Error('valid rejected');"
 			L"var changed=xml.replace('XML_API_BEFORE','XML_API_AFTER \\u0451\\u043b\\u043a\\u0430');"
 			L"if(!window.external.ApplySourceText(changed,'\\u041d\\u043e\\u0440\\u043c\\u0430\\u043b\\u0438\\u0437\\u0430\\u0446\\u0438\\u044f XML'))throw new Error(window.external.GetLastSourceDiagnostic());";
@@ -65,8 +69,8 @@
 		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
 		const bool passed = read && SUCCEEDED(scriptResult) && applied && dirty && undone && redone && treeReady;
 		CStringA report;
-		report.Format("get=%d\nvalidate=%d\ndiagnostic=%d\napply=%d\ndirty=%d\nundo=%d\nredo=%d\ntree=%d\nresult=%s\n",
-			read, SUCCEEDED(scriptResult), SUCCEEDED(scriptResult), applied, dirty, undone, redone, treeReady, passed ? "pass" : "fail");
+		report.Format("get=%d\nvalidate=%d\ndiagnostic=%d\ndiagnostic_escape=%d\napply=%d\ndirty=%d\nundo=%d\nredo=%d\ntree=%d\nresult=%s\n",
+			read, SUCCEEDED(scriptResult), SUCCEEDED(scriptResult), SUCCEEDED(scriptResult), applied, dirty, undone, redone, treeReady, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

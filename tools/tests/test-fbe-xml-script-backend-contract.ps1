@@ -54,4 +54,6 @@ foreach($escapeCase in @(
 Require $external 'WM_XML_SCRIPT_API' 'COM adapter must delegate XML work to the editor backend.'
 Require $runtime 'xml-script-com-runtime' 'A real JScript window.external runtime scenario is required.'
 Require $runtime 'GetLastSourceDiagnostic' 'Runtime scenario must parse the public diagnostic.'
+Require $runtime 'diagnosticProbe' 'Runtime scenario must verify escaping through JScript eval.'
+Require $runtime 'diagnostic escaping' 'Runtime scenario must reject incorrectly parsed escaped diagnostics.'
 Write-Host 'XML scripting backend and COM adapter contract passed.'

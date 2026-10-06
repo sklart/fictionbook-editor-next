@@ -27,7 +27,7 @@ try {
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE XML COM scenario failed: exit $($process.ExitCode)." }
     } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario }
     $result = @{}; foreach($line in Get-Content -LiteralPath $report) { $parts = $line -split '=', 2; if($parts.Count -eq 2) { $result[$parts[0]] = $parts[1] } }
-    foreach($key in @('get', 'validate', 'diagnostic', 'apply', 'dirty', 'undo', 'redo', 'tree')) { if($result[$key] -ne '1') { throw "XML COM runtime check failed: $key." } }
+    foreach($key in @('get', 'validate', 'diagnostic', 'diagnostic_escape', 'apply', 'dirty', 'undo', 'redo', 'tree')) { if($result[$key] -ne '1') { throw "XML COM runtime check failed: $key." } }
     if($result['result'] -ne 'pass') { throw 'XML COM runtime reported failure.' }
     Write-Host 'FBE XML scripting COM runtime passed.'
 } finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }

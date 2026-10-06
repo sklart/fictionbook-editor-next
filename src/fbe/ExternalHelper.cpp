@@ -373,6 +373,18 @@ HRESULT ExternalHelper::ValidateSourceText(BSTR text, BOOL* valid)
 	if(!valid) return E_POINTER;
 	*valid = FALSE;
 	CString candidate(text ? text : L"");
+	// Keep the JSON encoder covered by a deterministic message. MSXML parser
+	// messages vary by installed parser/localization and cannot reliably supply
+	// every JSON control character. This path exists only in the isolated
+	// window.external runtime scenario and is never reachable in normal FBE use.
+	if(IsFbeRuntimeTestScenario(L"xml-script-com-runtime") && candidate == L"__FBE_XML_DIAGNOSTIC_ESCAPE_PROBE__")
+	{
+		m_lastSourceDiagnostic = XmlScriptApiRequest(XmlScriptApiOperation::ValidateSourceText);
+		m_lastSourceDiagnostic.message = L"quote \" slash \\ carriage\r\nline\ttab";
+		m_lastSourceDiagnostic.line = 7;
+		m_lastSourceDiagnostic.column = 11;
+		return S_OK;
+	}
 	XmlScriptApiRequest request(XmlScriptApiOperation::ValidateSourceText); request.text = &candidate;
 	SendXmlScriptRequest(m_xmlScriptHost, request);
 	m_lastSourceDiagnostic = request;
