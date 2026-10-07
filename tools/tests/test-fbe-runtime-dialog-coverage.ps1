@@ -82,4 +82,32 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
 if (-not $bindingSource.Contains('FbeApplyRuntimeDialogLocalization')) {
     throw 'The generic runtime dialog binding is missing.'
 }
+
+# IDD_ADDIMAGE deliberately reuses IDCANCEL as the semantic "No" button.
+# It must retain that identity after WM_INITDIALOG, rather than inherit the
+# unrelated input-box Cancel caption from a later manual override.
+$addImageSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
+$addImageBlock = [regex]::Match($addImageSource, '(?s)class CAddImageDlg.*?\r?\n\s*};').Value
+if ([string]::IsNullOrEmpty($addImageBlock)) { throw 'CAddImageDlg definition is missing.' }
+foreach ($required in @(
+    'FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ADDIMAGE)',
+    'SetDlgItemText(m_hWnd, IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.no", L"No"))',
+    'COMMAND_ID_HANDLER(IDCANCEL, OnBtnClicked)',
+    'wID == IDYES ? true : false'
+)) {
+    if (-not $addImageBlock.Contains($required)) { throw "IDD_ADDIMAGE No-button runtime contract is missing: $required" }
+}
+if ($addImageBlock.Contains('fbe.dialog.idd_inputbox.cancel')) {
+    throw 'CAddImageDlg must not replace its No button with the input-box Cancel key.'
+}
+$addImageNo = $catalog.strings.'fbe.dialog.idd_addimage.no'
+if ($null -eq $addImageNo -or $addImageNo.resource -ne 'IDD_ADDIMAGE' -or $addImageNo.targetId -ne 'IDCANCEL') {
+    throw 'IDD_ADDIMAGE + IDCANCEL must be bound to fbe.dialog.idd_addimage.no.'
+}
+if ($addImageNo.translations.'ru-RU' -ne 'Нет' -or $addImageNo.translations.'en-US' -ne 'No') {
+    throw 'IDD_ADDIMAGE No translations are incorrect for ru-RU or en-US.'
+}
+foreach ($language in $catalog.targetLanguages) {
+    if ([string]::IsNullOrWhiteSpace($addImageNo.translations.$language)) { throw "IDD_ADDIMAGE No translation is missing: $language" }
+}
 Write-Host "Runtime dialog coverage verified: $(@($catalog.strings.PSObject.Properties).Count) catalog keys."
