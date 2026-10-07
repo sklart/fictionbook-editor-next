@@ -21,12 +21,21 @@ struct MarkdownBlock
     std::vector<MarkdownInlineCode> inlineCode;
 };
 
-// Reads Help/<locale>/regex-*.md on every call. It never writes help files.
-bool LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext context, LPCWSTR locale, std::vector<MarkdownBlock>& blocks, CString& sourcePath);
+struct MarkdownLoadMetrics
+{
+    ULONGLONG markdownReadMs = 0;
+    ULONGLONG parseMs = 0;
+    size_t blockCount = 0;
+    bool cacheHit = false;
+};
+
+// Reads Help/<locale>/regex-*.md directly. It never writes help files.
+bool LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext context, LPCWSTR locale, std::vector<MarkdownBlock>& blocks, CString& sourcePath, MarkdownLoadMetrics* metrics = NULL);
 // Parses the supported deterministic Markdown subset without file I/O.
 void ParseMarkdownText(const CString& text, std::vector<MarkdownBlock>& blocks);
-// Uses the current runtime locale and falls back to en-US.
-bool LoadMarkdown(FbeSearchPresets::SearchUiContext context, std::vector<MarkdownBlock>& blocks, CString& sourcePath);
+// Uses the current runtime locale, falls back to en-US, and caches parsed
+// Markdown by locale and Design/Source context for the process lifetime.
+bool LoadMarkdown(FbeSearchPresets::SearchUiContext context, std::vector<MarkdownBlock>& blocks, CString& sourcePath, MarkdownLoadMetrics* metrics = NULL);
 // Test-only callable smoke for parser, fallback and RichEdit character formatting.
 bool RunRuntimeSmoke(HWND owner, CStringA& report);
 bool RunMissingFilesRuntimeSmoke(HWND owner, CStringA& report);

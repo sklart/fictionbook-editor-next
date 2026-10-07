@@ -13,6 +13,17 @@ using FbeRegexHelp::MarkdownBlock;
 using FbeRegexHelp::MarkdownBlockKind;
 using FbeRegexHelp::MarkdownInlineCode;
 
+struct CachedMarkdown
+{
+    FbeSearchPresets::SearchUiContext context;
+    CString locale;
+    std::vector<MarkdownBlock> blocks;
+    CString sourcePath;
+    bool loaded;
+};
+
+std::vector<CachedMarkdown> g_markdownCache;
+
 bool ReadUtf8File(const CString& path, CString& text)
 {
     text.Empty();
@@ -128,7 +139,17 @@ void ParseMarkdown(const CString& source, std::vector<MarkdownBlock>& blocks)
         {
             flushParagraph();
             if (IsMarkdownTableSeparator(trimmed)) continue;
-            CString table = TrimMarkdownTableCell(trimmed); table.Replace(L"|", L"\t"); AddBlock(blocks, MarkdownBlockKind::Table, table); continue;
+            CString table = TrimMarkdownTableCell(trimmed);
+            const int separator = table.Find(L"|");
+            if (separator >= 0)
+            {
+                CString term = table.Left(separator); term.Trim();
+                CString description = table.Mid(separator + 1); description.Trim();
+        description.Replace(L"|", L" / ");
+        description.Trim();
+                table = term + L" \x2014 " + description;
+            }
+            AddBlock(blocks, MarkdownBlockKind::Table, table); continue;
         }
         if (!paragraph.IsEmpty()) paragraph += L" ";
         paragraph += trimmed;
@@ -189,16 +210,15 @@ PARAFORMAT2 MakeParagraphFormat(const MarkdownBlock& block)
     if (block.headingLevel == 2) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 180; }
     if (block.headingLevel == 3) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 100; }
     if (block.kind == MarkdownBlockKind::List) { paragraph.dwMask |= PFM_STARTINDENT | PFM_OFFSET; paragraph.dxStartIndent = 240; paragraph.dxOffset = -120; }
-    if (block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table)
+    if (block.kind == MarkdownBlockKind::Code)
     {
-        paragraph.dwMask |= PFM_STARTINDENT | PFM_RIGHTINDENT | PFM_TABSTOPS | PFM_SPACEBEFORE;
+        paragraph.dwMask |= PFM_STARTINDENT | PFM_RIGHTINDENT | PFM_SPACEBEFORE;
         paragraph.dxStartIndent = 140;
         paragraph.dxRightIndent = 140;
         paragraph.dySpaceBefore = 60;
         paragraph.dySpaceAfter = 60;
-        paragraph.cTabCount = 4;
-        paragraph.rgxTabs[0] = 720; paragraph.rgxTabs[1] = 1440; paragraph.rgxTabs[2] = 2160; paragraph.rgxTabs[3] = 2880;
     }
+    if (block.kind == MarkdownBlockKind::Table) { paragraph.dwMask |= PFM_STARTINDENT | PFM_SPACEBEFORE; paragraph.dxStartIndent = 140; paragraph.dySpaceBefore = 40; paragraph.dySpaceAfter = 40; }
     if (block.kind == MarkdownBlockKind::Note) { paragraph.dwMask |= PFM_STARTINDENT | PFM_SPACEBEFORE; paragraph.dxStartIndent = 140; paragraph.dySpaceBefore = 40; }
     return paragraph;
 }
@@ -244,24 +264,62 @@ bool ReadRichEditText(HWND richEdit, CString& text)
 
 namespace FbeRegexHelp
 {
-bool LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext context, LPCWSTR requestedLocale, std::vector<MarkdownBlock>& blocks, CString& sourcePath)
+bool LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext context, LPCWSTR requestedLocale, std::vector<MarkdownBlock>& blocks, CString& sourcePath, MarkdownLoadMetrics* metrics)
 {
+    if (metrics) *metrics = MarkdownLoadMetrics{};
     sourcePath.Empty(); blocks.clear();
     const CString fileName = HelpFileName(context);
     CString locale(requestedLocale ? requestedLocale : L"");
     CString markdown;
     const CString localized = HelpPathForLocale(locale, fileName);
-    if (ReadUtf8File(localized, markdown) && !markdown.IsEmpty()) { sourcePath = localized; ParseMarkdown(markdown, blocks); return !blocks.empty(); }
+    ULONGLONG started = ::GetTickCount64();
+    const bool localizedRead = ReadUtf8File(localized, markdown);
+    if (metrics) metrics->markdownReadMs += ::GetTickCount64() - started;
+    if (localizedRead && !markdown.IsEmpty())
+    {
+        sourcePath = localized; started = ::GetTickCount64(); ParseMarkdown(markdown, blocks);
+        if (metrics) { metrics->parseMs += ::GetTickCount64() - started; metrics->blockCount = blocks.size(); }
+        return !blocks.empty();
+    }
     const CString fallback = HelpPathForLocale(L"en-US", fileName);
-    if (ReadUtf8File(fallback, markdown) && !markdown.IsEmpty()) { sourcePath = fallback; ParseMarkdown(markdown, blocks); return !blocks.empty(); }
+    started = ::GetTickCount64();
+    const bool fallbackRead = ReadUtf8File(fallback, markdown);
+    if (metrics) metrics->markdownReadMs += ::GetTickCount64() - started;
+    if (fallbackRead && !markdown.IsEmpty())
+    {
+        sourcePath = fallback; started = ::GetTickCount64(); ParseMarkdown(markdown, blocks);
+        if (metrics) { metrics->parseMs += ::GetTickCount64() - started; metrics->blockCount = blocks.size(); }
+        return !blocks.empty();
+    }
     AddBlock(blocks, MarkdownBlockKind::Title, context == FbeSearchPresets::SearchUiContext::Source ? L"Source regular expression help" : L"Regular expression help");
     AddBlock(blocks, MarkdownBlockKind::Note, L"Help file was not found.");
+    if (metrics) metrics->blockCount = blocks.size();
     return false;
 }
 
-bool LoadMarkdown(FbeSearchPresets::SearchUiContext context, std::vector<MarkdownBlock>& blocks, CString& sourcePath)
+bool LoadMarkdown(FbeSearchPresets::SearchUiContext context, std::vector<MarkdownBlock>& blocks, CString& sourcePath, MarkdownLoadMetrics* metrics)
 {
-    return LoadMarkdownForLocale(context, FbeRuntimeLocalization::GetPreferredRuntimeLocaleName(), blocks, sourcePath);
+    const CString locale(FbeRuntimeLocalization::GetPreferredRuntimeLocaleName());
+    for (size_t index = 0; index < g_markdownCache.size(); ++index)
+    {
+        const CachedMarkdown& cached = g_markdownCache[index];
+        if (cached.context == context && cached.locale.CompareNoCase(locale) == 0)
+        {
+            blocks = cached.blocks;
+            sourcePath = cached.sourcePath;
+            if (metrics) { *metrics = MarkdownLoadMetrics{}; metrics->blockCount = blocks.size(); metrics->cacheHit = true; }
+            return cached.loaded;
+        }
+    }
+
+    CachedMarkdown cached = {};
+    cached.context = context;
+    cached.locale = locale;
+    cached.loaded = LoadMarkdownForLocale(context, locale, cached.blocks, cached.sourcePath, metrics);
+    blocks = cached.blocks;
+    sourcePath = cached.sourcePath;
+    g_markdownCache.push_back(cached);
+    return cached.loaded;
 }
 void ParseMarkdownText(const CString& text, std::vector<MarkdownBlock>& blocks)
 {
@@ -380,7 +438,8 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         const int titleAt = rendered.Find(L"Title"), heading2At = rendered.Find(L"Heading two"), heading3At = rendered.Find(L"Heading three"), bodyAt = rendered.Find(L"Body"),
             codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), tableDataAt = rendered.Find(L"\\d"), inlineAt = rendered.Find(L"inline"), afterTableAt = rendered.Find(L"Body after table"), linkAt = rendered.Find(L"https://example.invalid"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
         const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && tableDataAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && linkAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
-        const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax") >= 0 && rendered.Find(L"Meaning") >= 0 && rendered.Find(L"\t") >= 0;
+        const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax \x2014 Meaning") >= 0 &&
+            rendered.Find(L"\\d \x2014 digit") >= 0 && rendered.Find(L"\\w \x2014 word") >= 0;
         const bool formats = positions && formatAt(titleAt, titleFormat) && formatAt(heading2At, heading2Format) && formatAt(heading3At, heading3Format) && formatAt(bodyAt, bodyFormat) &&
             formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(tableDataAt, tableDataFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && formatAt(linkAt, linkFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
         const bool styles = formats && (titleFormat.dwEffects & CFE_BOLD) != 0 && (heading2Format.dwEffects & CFE_BOLD) != 0 && (heading3Format.dwEffects & CFE_BOLD) != 0 &&
@@ -389,7 +448,7 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         const bool faces = formats && ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0 && ::lstrcmpiW(tableFormat.szFaceName, L"Consolas") == 0 && ::lstrcmpiW(inlineFormat.szFaceName, L"Consolas") == 0;
         const bool sizes = formats && titleFormat.yHeight > heading2Format.yHeight && heading2Format.yHeight > bodyFormat.yHeight && heading3Format.yHeight >= bodyFormat.yHeight &&
             (heading2Format.yHeight != heading3Format.yHeight || heading2Paragraph.dySpaceBefore != heading3Paragraph.dySpaceBefore) && bodyFormat.yHeight >= 200 && inlineFormat.yHeight == bodyFormat.yHeight;
-        const bool tabs = formats && tableParagraph.cTabCount >= 2;
+        const bool tables = formats && tableParagraph.cTabCount == 0 && tableParagraph.dxStartIndent > 0;
         const bool automaticBackgrounds = formats && (codeFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (inlineFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (tableFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0;
         std::vector<MarkdownBlock> backgroundSequence;
         AddBlock(backgroundSequence, MarkdownBlockKind::Code, L"code");
@@ -430,8 +489,8 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         shadedLinkDetail = (codeLinkPreserved ? 1 : 0) | (tableLinkPreserved ? 2 : 0) | (noteLinkPreserved ? 4 : 0);
         const bool hangingIndent = formats && listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0;
         const bool link = formats && (linkFormat.dwEffects & CFE_UNDERLINE) != 0 && linkFormat.crTextColor == ThemeManager::AccentColor();
-        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tabs ? 64 : 0) | (automaticBackgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0);
-        formatting = positions && textContract && formats && styles && faces && sizes && tabs && automaticBackgrounds && backgroundReset && shadedLinks && hangingIndent && link;
+        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tables ? 64 : 0) | (automaticBackgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0);
+        formatting = positions && textContract && formats && styles && faces && sizes && tables && automaticBackgrounds && backgroundReset && shadedLinks && hangingIndent && link;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);

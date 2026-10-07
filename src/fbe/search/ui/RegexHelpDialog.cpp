@@ -11,6 +11,19 @@ extern CSettings _Settings;
 
 namespace
 {
+const UINT WM_REGEX_HELP_RENDER = WM_APP + 211;
+
+struct RegexHelpRenderMetrics
+{
+    ULONGLONG markdownReadMs = 0;
+    ULONGLONG parseMs = 0;
+    ULONGLONG renderMs = 0;
+    ULONGLONG dialogFirstVisibleMs = 0;
+    ULONGLONG totalReadyMs = 0;
+    size_t blockCount = 0;
+    bool deferred = false;
+};
+
 RECT DefaultHelpBounds(const RECT& work, const CSize& minimumSize)
 {
     const int workWidth = static_cast<int>(work.right - work.left);
@@ -44,9 +57,11 @@ class RegexHelpDialog : public CDialogImpl<RegexHelpDialog>
 public:
     enum { IDD = IDD_REGEX_HELP };
     explicit RegexHelpDialog(FbeSearchPresets::SearchUiContext context, bool forceDefaultPlacement = false) : m_context(context), m_forceDefaultPlacement(forceDefaultPlacement) {}
+    const RegexHelpRenderMetrics& Metrics() const { return m_metrics; }
 
     BEGIN_MSG_MAP(RegexHelpDialog)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        MESSAGE_HANDLER(WM_REGEX_HELP_RENDER, OnDeferredRender)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)
@@ -63,14 +78,37 @@ public:
         SetWindowText(FbeLoadRuntimeStringByKey(
             m_context == FbeSearchPresets::SearchUiContext::Design ? L"fbe.regex_help.design.caption" : L"fbe.regex_help.source.caption",
             m_context == FbeSearchPresets::SearchUiContext::Design ? L"Regular expression help — Design" : L"Regular expression help — Source"));
-        FbeRegexHelp::LoadMarkdown(m_context, m_blocks, m_sourcePath);
         ThemeManager::ApplyToWindow(m_hWnd);
-        ApplyThemeAndRender();
         CaptureLayoutMetrics();
         RestoreSize();
         LayoutControls();
+        const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
+        if (text)
+        {
+            ::SendMessage(text, EM_SETBKGNDCOLOR, 0, ThemeManager::WindowColor());
+            ::SetWindowTextW(text, L"Loading\x2026");
+        }
+        m_metrics.dialogFirstVisibleMs = ::GetTickCount64() - m_createdAt;
+        ::PostMessage(m_hWnd, WM_REGEX_HELP_RENDER, 0, 0);
         ::SetFocus(GetDlgItem(IDC_REGEX_HELP_CLOSE));
         return FALSE;
+    }
+
+    LRESULT OnDeferredRender(UINT, WPARAM, LPARAM, BOOL&)
+    {
+        if (m_rendered) return 0;
+        FbeRegexHelp::MarkdownLoadMetrics loadMetrics;
+        FbeRegexHelp::LoadMarkdown(m_context, m_blocks, m_sourcePath, &loadMetrics);
+        m_metrics.markdownReadMs = loadMetrics.markdownReadMs;
+        m_metrics.parseMs = loadMetrics.parseMs;
+        m_metrics.blockCount = loadMetrics.blockCount;
+        const ULONGLONG renderStarted = ::GetTickCount64();
+        ApplyThemeAndRender();
+        m_metrics.renderMs = ::GetTickCount64() - renderStarted;
+        m_metrics.totalReadyMs = ::GetTickCount64() - m_createdAt;
+        m_metrics.deferred = true;
+        m_rendered = true;
+        return 0;
     }
 
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&) { if (m_layoutReady) LayoutControls(); return 0; }
@@ -81,7 +119,14 @@ public:
         return 0;
     }
     LRESULT OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
-    LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&) { ThemeManager::ApplyToWindow(m_hWnd); ApplyThemeAndRender(); return 0; }
+    LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
+    {
+        ThemeManager::ApplyToWindow(m_hWnd);
+        const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
+        if (text) ::SendMessage(text, EM_SETBKGNDCOLOR, 0, ThemeManager::WindowColor());
+        if (m_rendered) ApplyThemeAndRender();
+        return 0;
+    }
     LRESULT OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
 
 private:
@@ -154,7 +199,10 @@ private:
     int m_bottomMargin = 0;
     int m_gap = 0;
     bool m_layoutReady = false;
+    bool m_rendered = false;
     bool m_forceDefaultPlacement = false;
+    ULONGLONG m_createdAt = ::GetTickCount64();
+    RegexHelpRenderMetrics m_metrics;
 };
 }
 
@@ -212,18 +260,57 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
         if (previous) ::SelectObject(memory, previous); if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (source) ::ReleaseDC(window, source);
         return saved;
     };
+    auto waitForDeferredRender = [&](HWND window) -> bool
+    {
+        const HWND text = window ? ::GetDlgItem(window, IDC_REGEX_HELP_TEXT) : NULL;
+        for (int attempt = 0; text && attempt < 80; ++attempt)
+        {
+            MSG message = {};
+            while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); }
+            CString value; const int length = ::GetWindowTextLengthW(text);
+            wchar_t* buffer = value.GetBuffer(length + 1);
+            ::GetWindowTextW(text, buffer, length + 1);
+            value.ReleaseBuffer();
+            if (value != L"Loading\x2026") return !value.IsEmpty();
+            ::Sleep(1);
+        }
+        return false;
+    };
+    auto scrollToLine = [&](HWND window, int line) -> bool
+    {
+        const HWND text = window ? ::GetDlgItem(window, IDC_REGEX_HELP_TEXT) : NULL;
+        if (!text) return false;
+        const int lineCount = static_cast<int>(::SendMessage(text, EM_GETLINECOUNT, 0, 0));
+        if (lineCount <= line) return false;
+        ::SendMessage(text, EM_LINESCROLL, 0, line);
+        return true;
+    };
     HMODULE richEdit = ::LoadLibraryW(L"Msftedit.dll");
     RegexHelpDialog initial(FbeSearchPresets::SearchUiContext::Design, true);
     HWND initialWindow = initial.Create(owner); if (initialWindow) { ::ShowWindow(initialWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(initialWindow); }
-    RECT initialBounds = {}; const bool defaultSize = initialWindow && ::GetWindowRect(initialWindow, &initialBounds) && capture(initialWindow, L"full-help-initial-design.bmp");
+    const bool initialRendered = waitForDeferredRender(initialWindow);
+    RECT initialBounds = {}; const bool defaultSize = initialRendered && ::GetWindowRect(initialWindow, &initialBounds) && capture(initialWindow, L"full-help-design-start.bmp");
+    const bool designTable = initialRendered && scrollToLine(initialWindow, 55) && capture(initialWindow, L"full-help-design-table.bmp");
+    const bool designCode = initialRendered && scrollToLine(initialWindow, 160) && capture(initialWindow, L"full-help-design-code.bmp");
+    const bool narrow = initialRendered && ::SetWindowPos(initialWindow, NULL, initialBounds.left, initialBounds.top, 430, 520, SWP_NOZORDER | SWP_NOACTIVATE) != FALSE && capture(initialWindow, L"full-help-design-narrow.bmp");
     if (initialWindow) ::SetWindowPos(initialWindow, NULL, initialBounds.left + 12, initialBounds.top + 12, 720, 520, SWP_NOZORDER | SWP_NOACTIVATE);
     WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement); const bool savedPlacement = initialWindow && ::GetWindowPlacement(initialWindow, &placement) != FALSE;
     if (initialWindow) initial.DestroyWindow();
     if (savedPlacement) _Settings.SetRegexHelpPlacement(placement, false);
     RegexHelpDialog restored(FbeSearchPresets::SearchUiContext::Source);
     HWND restoredWindow = savedPlacement ? restored.Create(owner) : NULL; if (restoredWindow) { ::ShowWindow(restoredWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(restoredWindow); }
-    RECT restoredBounds = {}; const bool restoredSize = restoredWindow && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top && capture(restoredWindow, L"full-help-restored-code.bmp");
+    const bool restoredRendered = waitForDeferredRender(restoredWindow);
+    RECT restoredBounds = {}; const bool restoredSize = restoredRendered && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top && capture(restoredWindow, L"full-help-code-start.bmp");
+    const bool codeTable = restoredRendered && scrollToLine(restoredWindow, 28) && capture(restoredWindow, L"full-help-code-table.bmp");
+    const RegexHelpRenderMetrics& designMetrics = initial.Metrics();
+    const RegexHelpRenderMetrics& codeMetrics = restored.Metrics();
+    const bool metrics = designMetrics.deferred && codeMetrics.deferred && designMetrics.blockCount > 0 && codeMetrics.blockCount > 0 &&
+        designMetrics.dialogFirstVisibleMs <= designMetrics.totalReadyMs && codeMetrics.dialogFirstVisibleMs <= codeMetrics.totalReadyMs;
     if (restoredWindow) restored.DestroyWindow(); if (richEdit != NULL) ::FreeLibrary(richEdit);
-    report.Format("initial=%d\r\nrestored=%d\r\nresult=%s\r\n", defaultSize ? 1 : 0, restoredSize ? 1 : 0, defaultSize && restoredSize ? "pass" : "fail");
-    return defaultSize && restoredSize;
+    const bool passed = defaultSize && designTable && designCode && narrow && restoredSize && codeTable && metrics;
+    report.Format("initial=%d\r\ndesign_table=%d\r\ndesign_code=%d\r\nnarrow=%d\r\nrestored=%d\r\ncode_table=%d\r\nmetrics=%d\r\ndesign_markdown_read_ms=%llu\r\ndesign_parse_ms=%llu\r\ndesign_render_ms=%llu\r\ndesign_dialog_first_visible_ms=%llu\r\ndesign_total_ready_ms=%llu\r\ndesign_block_count=%llu\r\ncode_markdown_read_ms=%llu\r\ncode_parse_ms=%llu\r\ncode_render_ms=%llu\r\ncode_dialog_first_visible_ms=%llu\r\ncode_total_ready_ms=%llu\r\ncode_block_count=%llu\r\nresult=%s\r\n",
+        defaultSize ? 1 : 0, designTable ? 1 : 0, designCode ? 1 : 0, narrow ? 1 : 0, restoredSize ? 1 : 0, codeTable ? 1 : 0, metrics ? 1 : 0,
+        static_cast<unsigned long long>(designMetrics.markdownReadMs), static_cast<unsigned long long>(designMetrics.parseMs), static_cast<unsigned long long>(designMetrics.renderMs), static_cast<unsigned long long>(designMetrics.dialogFirstVisibleMs), static_cast<unsigned long long>(designMetrics.totalReadyMs), static_cast<unsigned long long>(designMetrics.blockCount),
+        static_cast<unsigned long long>(codeMetrics.markdownReadMs), static_cast<unsigned long long>(codeMetrics.parseMs), static_cast<unsigned long long>(codeMetrics.renderMs), static_cast<unsigned long long>(codeMetrics.dialogFirstVisibleMs), static_cast<unsigned long long>(codeMetrics.totalReadyMs), static_cast<unsigned long long>(codeMetrics.blockCount), passed ? "pass" : "fail");
+    return passed;
 }

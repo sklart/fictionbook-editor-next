@@ -16,10 +16,14 @@ try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='regex-help-visual-runtime'; $env:FBE_NEXT_TEST_ARTIFACT_DIR=$ArtifactDirectory
         $process = Start-Process -FilePath $FbeExe -ArgumentList '-b',("`"$report`""),("`"$fixture`"") -PassThru
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Regex Help visual smoke timed out.' }
-        if ($process.ExitCode -ne 0) { throw "Regex Help visual smoke failed with exit code $($process.ExitCode)." }
+        if ($process.ExitCode -ne 0) { throw "Regex Help visual smoke failed with exit code $($process.ExitCode); report=$(if(Test-Path -LiteralPath $report){Get-Content -LiteralPath $report -Raw}else{'missing'})." }
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_ARTIFACT_DIR=$oldMode,$oldScenario,$oldArtifacts }
     $rows=@{}; Get-Content -LiteralPath $report | ForEach-Object { $pair=$_ -split '=',2; if($pair.Count -eq 2){$rows[$pair[0]]=$pair[1]} }
-    foreach($key in 'initial','restored') { if($rows[$key] -ne '1') { throw "Regex Help visual smoke failed: $key=$($rows[$key])" } }
-    foreach($name in 'full-help-initial-design.bmp','full-help-restored-code.bmp') { if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory $name))) { throw "Full Help screenshot missing: $name" } }
+    foreach($key in 'initial','design_table','design_code','narrow','restored','code_table','metrics') { if($rows[$key] -ne '1') { throw "Regex Help visual smoke failed: $key=$($rows[$key])" } }
+    foreach($context in 'design','code') {
+        foreach($key in 'markdown_read_ms','parse_ms','render_ms','dialog_first_visible_ms','total_ready_ms','block_count') { if($null -eq $rows["${context}_${key}"]) { throw "Regex Help visual metrics missing: ${context}_${key}" } }
+        if([UInt64]$rows["${context}_block_count"] -le 0 -or [UInt64]$rows["${context}_dialog_first_visible_ms"] -gt [UInt64]$rows["${context}_total_ready_ms"]) { throw "Regex Help deferred-render ordering failed for $context." }
+    }
+    foreach($name in 'full-help-design-start.bmp','full-help-design-table.bmp','full-help-design-code.bmp','full-help-design-narrow.bmp','full-help-code-start.bmp','full-help-code-table.bmp') { if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory $name))) { throw "Full Help screenshot missing: $name" } }
     Write-Host 'Regex Help visual placement and rendering smoke passed.'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
