@@ -198,11 +198,22 @@ foreach ($required in @(
     'fbe.scripts_toolbar_customize.unavailable_script', 'CurrentItems()[itemIndex].scriptUid',
     'if(unchanged) return 0;', 'MB_YESNO | MB_ICONWARNING',
     'const int logicalWidth', 'const int logicalHeight', 'UiMetrics::ScaleForDpi(logicalWidth, targetDpi)',
-    'MonitorFromWindow', 'MONITOR_DEFAULTTONEAREST', 'VK_RETURN', 'VK_DELETE', 'VK_UP', 'VK_DOWN', 'FocusSearch'
+    'MonitorFromWindow', 'MONITOR_DEFAULTTONEAREST', 'DpiForTargetMonitor', 'GetDpiForMonitor', 'VK_RETURN', 'VK_DELETE', 'VK_UP', 'VK_DOWN', 'FocusSearch', 'PreTranslateMessage'
 )) {
     if ($dialog.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Toolbar customize follow-up behavior is missing: $required"
     }
+}
+
+# Restore uses a 96-DPI logical size and resolves the DPI of the monitor that
+# will receive the dialog, so repeated 96 -> 192 -> 96 moves are reversible.
+foreach ($dpi in @(96, 192, 96)) {
+    $physical = [Math]::Round(560 * $dpi / 96.0)
+    $logical = [Math]::Round($physical * 96.0 / $dpi)
+    if ($logical -ne 560) { throw "Customize placement DPI round-trip failed at $dpi DPI." }
+}
+if ($dialogHeader -notmatch 'BOOL PreTranslateMessage\(MSG\* message\)' -or $dialog -notmatch "message->wParam == 'F'") {
+    throw 'Ctrl+F must be handled before the focused child control consumes it.'
 }
 
 Write-Host 'Scripts toolbar customization behavior contract passed.'

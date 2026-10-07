@@ -107,7 +107,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		std::vector<PortableToolbarItem> previous, actual, candidate;
 		const bool catalogReady = GetAvailableButtons(m_CmdToolbar, available);
 		if(catalogReady) for(int index = 0; index < available.GetSize(); ++index) catalog.push_back(available[index]);
-		ToolbarLayoutAdapter::Capture(m_CmdToolbar, previous);
+		const bool capturedPrevious = ToolbarLayoutAdapter::Capture(m_CmdToolbar, previous);
 		candidate = previous;
 		if(candidate.size() > 1) std::swap(candidate[0], candidate[1]);
 		else { PortableToolbarItem separator = {}; separator.separator = true; separator.width = 8; candidate.push_back(separator); }
@@ -119,14 +119,20 @@ void CMainFrame::RunPortableStateTestScenario()
 		};
 		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureBeforeDelete);
 		const bool deleteRejected = catalogReady && !ToolbarLayoutAdapter::Apply(m_CmdToolbar, candidate, catalog);
-		ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
-		const bool deleteRolledBack = same(previous, actual);
+		const bool capturedAfterDelete = ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
+		const bool deleteRolledBack = capturedAfterDelete && same(previous, actual);
 		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureBeforeAdd);
 		const bool addRejected = catalogReady && !ToolbarLayoutAdapter::Apply(m_CmdToolbar, candidate, catalog);
-		ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
-		const bool addRolledBack = same(previous, actual);
-		const bool passed = catalogReady && !previous.empty() && deleteRejected && deleteRolledBack && addRejected && addRolledBack;
-		CStringA report; report.Format("phase=toolbar-layout-adapter-transaction\ncatalog=%d\ndelete-rejected=%d\ndelete-rollback=%d\nadd-rejected=%d\nadd-rollback=%d\nresult=%s\n", catalogReady, deleteRejected, deleteRolledBack, addRejected, addRolledBack, passed ? "pass" : "fail");
+		const bool capturedAfterAdd = ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
+		const bool addRolledBack = capturedAfterAdd && same(previous, actual);
+		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureBeforeRollback);
+		const bool rollbackRejected = catalogReady && !ToolbarLayoutAdapter::Apply(m_CmdToolbar, candidate, catalog);
+		const bool capturedAfterRollbackFailure = ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
+		const bool rollbackFailureObserved = capturedAfterRollbackFailure && !same(previous, actual);
+		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureNone);
+		const bool rollbackRecovered = ToolbarLayoutAdapter::Apply(m_CmdToolbar, previous, catalog) && ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual) && same(previous, actual);
+		const bool passed = catalogReady && capturedPrevious && !previous.empty() && deleteRejected && deleteRolledBack && addRejected && addRolledBack && rollbackRejected && rollbackFailureObserved && rollbackRecovered;
+		CStringA report; report.Format("phase=toolbar-layout-adapter-transaction\ncatalog=%d\ndelete-rejected=%d\ndelete-rollback=%d\nadd-rejected=%d\nadd-rollback=%d\nrollback-rejected=%d\nrollback-failure-observed=%d\nrollback-recovered=%d\nresult=%s\n", catalogReady, deleteRejected, deleteRolledBack, addRejected, addRolledBack, rollbackRejected, rollbackFailureObserved, rollbackRecovered, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };

@@ -45,6 +45,8 @@ Must $runtime 'script-toolbar-runtime-size' 'Runtime regression checks compact d
 Must $runtime 'toolbar-layout-adapter-transaction' 'Runtime regression injects deterministic toolbar apply failures'
 Must $runtime 'TestFailureBeforeDelete' 'Runtime regression checks a failed delete before persistence'
 Must $runtime 'TestFailureBeforeAdd' 'Runtime regression checks rollback after a partial apply'
+Must $runtime 'TestFailureBeforeRollback' 'Runtime regression checks a rollback failure after a partial apply'
+Must $runtime 'rollback-recovered=' 'Runtime regression restores the test toolbar after rollback-failure coverage'
 Must $runtime 'add-rollback=' 'Runtime regression reports exact toolbar rollback'
 Must $runtime 'm_rebar\.GetRect\(band, &bandRect\)' 'Sizing regression measures both toolbar HWND and rebar band'
 Must $runtime 'stockHeight' 'Sizing regression compares against the stock Scripts toolbar at the same DPI'

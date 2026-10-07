@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ToolbarLayoutAdapter.h"
 #include "..\\UiMetrics.h"
+#include "..\\StartupTrace.h"
 
 namespace
 {
@@ -95,6 +96,9 @@ namespace
 			if(!rollback && ConsumeTestFailure(ToolbarLayoutAdapter::TestFailureBeforeDelete)) return false;
 			if(!target.DeleteButton(0)) return false;
 		}
+		// Exercise a rollback failure after the live toolbar has been changed.
+		// The test point remains armed for the following rollback call.
+		if(!rollback && g_testFailurePoint == ToolbarLayoutAdapter::TestFailureBeforeRollback) return false;
 		if(!buttons.empty())
 		{
 			if(!rollback && ConsumeTestFailure(ToolbarLayoutAdapter::TestFailureBeforeAdd)) return false;
@@ -114,12 +118,19 @@ bool ToolbarLayoutAdapter::Apply(HWND toolbar, const std::vector<PortableToolbar
 {
 	if(!::IsWindow(toolbar)) return false;
 	std::vector<PortableToolbarItem> previous;
-	if(!CaptureExact(toolbar, previous)) return false;
+	if(!CaptureExact(toolbar, previous)) {
+		StartupTrace::Error(L"toolbar", L"TB230", L"toolbar layout capture failed before apply");
+		return false;
+	}
 	const UINT dpi = UiMetrics::DpiForWindow(toolbar);
 	std::vector<TBBUTTON> target, original;
-	if(!BuildButtons(items, catalog, dpi, target) || !BuildButtons(previous, catalog, dpi, original)) return false;
+	if(!BuildButtons(items, catalog, dpi, target) || !BuildButtons(previous, catalog, dpi, original)) {
+		StartupTrace::Error(L"toolbar", L"TB231", L"toolbar layout could not be materialized before apply");
+		return false;
+	}
 	if(ReplaceChecked(toolbar, target, false)) return true;
-	if(!ReplaceChecked(toolbar, original, true)) ::OutputDebugString(L"ToolbarLayoutAdapter rollback failed.\n");
+	StartupTrace::Error(L"toolbar", L"TB232", L"toolbar layout apply failed");
+	if(!ReplaceChecked(toolbar, original, true)) StartupTrace::Error(L"toolbar", L"TB233", L"toolbar layout rollback failed");
 	return false;
 }
 

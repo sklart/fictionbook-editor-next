@@ -23,7 +23,7 @@ struct ScriptsToolbarTarget
 	std::vector<PortableToolbarItem> items;
 };
 
-class CScriptsToolbarCustomizeDlg : public CDialogImpl<CScriptsToolbarCustomizeDlg>
+class CScriptsToolbarCustomizeDlg : public CDialogImpl<CScriptsToolbarCustomizeDlg>, public CMessageFilter
 {
 public:
 	enum { IDD = IDD_SCRIPTS_TOOLBAR_CUSTOMIZE };
@@ -31,6 +31,7 @@ public:
 		const CSimpleArray<TBBUTTON>& defaults, CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
 		const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption);
 	~CScriptsToolbarCustomizeDlg();
+	BOOL PreTranslateMessage(MSG* message);
 
 	BEGIN_MSG_MAP(CScriptsToolbarCustomizeDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -78,6 +79,7 @@ private:
 	int m_dragInsert;
 	POINT m_dragStartPoint;
 	int m_dragScrollDirection;
+	bool m_messageFilterRegistered;
 	std::vector<int> m_dragRows;
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
@@ -131,4 +133,5 @@ private:
 	bool ToolbarContainsCommand(int command) const;
 	int SelectedAvailableCommand() const;
 	void SavePlacement();
+	void UnregisterMessageFilter();
 };

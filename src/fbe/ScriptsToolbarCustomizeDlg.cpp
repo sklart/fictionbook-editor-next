@@ -10,23 +10,55 @@ namespace
 {
 	const DWORD_PTR kSeparatorItem = static_cast<DWORD_PTR>(-1);
 	const wchar_t kSkipSystemDialogLocalizationProperty[] = L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION";
+
+	UINT DpiForTargetMonitor(HMONITOR monitor, UINT fallback)
+	{
+		typedef HRESULT (WINAPI* GetDpiForMonitorProc)(HMONITOR, int, UINT*, UINT*);
+		HMODULE shcore = ::LoadLibraryW(L"Shcore.dll");
+		if(shcore == NULL) return fallback;
+		GetDpiForMonitorProc getDpiForMonitor = reinterpret_cast<GetDpiForMonitorProc>(::GetProcAddress(shcore, "GetDpiForMonitor"));
+		UINT x = fallback, y = fallback;
+		const bool ok = getDpiForMonitor != NULL && SUCCEEDED(getDpiForMonitor(monitor, 0, &x, &y)) && x != 0;
+		::FreeLibrary(shcore);
+		return ok ? x : fallback;
+	}
 }
 
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
 	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
-	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragStartPoint{}, m_dragScrollDirection(0)
+	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragStartPoint{}, m_dragScrollDirection(0), m_messageFilterRegistered(false)
 {
 }
 
 CScriptsToolbarCustomizeDlg::~CScriptsToolbarCustomizeDlg()
 {
+	UnregisterMessageFilter();
 	if(m_dialogFont != NULL) ::DeleteObject(m_dialogFont);
+}
+
+BOOL CScriptsToolbarCustomizeDlg::PreTranslateMessage(MSG* message)
+{
+	if(message != NULL && message->message == WM_KEYDOWN && message->wParam == 'F' &&
+		(::GetKeyState(VK_CONTROL) & 0x8000)) {
+		FocusSearch();
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void CScriptsToolbarCustomizeDlg::UnregisterMessageFilter()
+{
+	if(!m_messageFilterRegistered) return;
+	CMessageLoop* loop = _Module.GetMessageLoop();
+	if(loop != NULL) loop->RemoveMessageFilter(this);
+	m_messageFilterRegistered = false;
 }
 
 LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	::SetProp(m_hWnd, kSkipSystemDialogLocalizationProperty, reinterpret_cast<HANDLE>(1));
+	if(CMessageLoop* loop = _Module.GetMessageLoop()) { loop->AddMessageFilter(this); m_messageFilterRegistered = true; }
 	UpdateMetrics();
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD);
 	if(!m_caption.IsEmpty()) SetWindowText(m_caption);
@@ -364,7 +396,7 @@ void CScriptsToolbarCustomizeDlg::RestorePlacement()
 	MONITORINFO info = {}; info.cbSize = sizeof(info);
 	if(monitor == NULL || !::GetMonitorInfo(monitor, &info)) { CenterWindow(GetParent()); return; }
 	const CSize logical = m_settings.GetScriptsToolbarCustomizeSize();
-	const UINT targetDpi = UiMetrics::DpiForWindow(m_hWnd);
+	const UINT targetDpi = DpiForTargetMonitor(monitor, UiMetrics::DpiForWindow(m_hWnd));
 	const CRect work(info.rcWork);
 	const int logicalWidth = (std::max)(1, static_cast<int>(logical.cx));
 	const int logicalHeight = (std::max)(1, static_cast<int>(logical.cy));
@@ -569,7 +601,7 @@ void CScriptsToolbarCustomizeDlg::FocusSearch()
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(22); return TRUE; }
-LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { UnregisterMessageFilter(); ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
@@ -577,4 +609,4 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, B
 	UpdateMetrics(); CRect client; GetClientRect(client); LayoutControls(client.Width(), client.Height());
 	return 0;
 }
-LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { UnregisterMessageFilter(); ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }

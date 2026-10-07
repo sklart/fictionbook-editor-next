@@ -2368,7 +2368,7 @@ void CMainFrame::ShowCommandToolbarCustomizeDialog()
 		return left.name.CompareNoCase(right.name) < 0;
 	});
 	ScriptsToolbarTarget target = {}; target.id = L"commands-main"; target.name = FbeLoadRuntimeStringByKey(L"fbe.toolbar_customize.main", L"Toolbar"); target.toolbar = m_CmdToolbar;
-	ToolbarLayoutAdapter::Capture(m_CmdToolbar, target.items);
+	if(!ToolbarLayoutAdapter::Capture(m_CmdToolbar, target.items)) return;
 	std::vector<ScriptsToolbarTarget> panels(1, target);
 	CScriptsToolbarCustomizeDlg dialog(m_CmdToolbar, commands, defaults, _Settings, panels,
 		[this](const CString&, const std::vector<PortableToolbarItem>& items) { return UpdateCommandToolbarItems(items); }, false,
@@ -2382,7 +2382,7 @@ bool CMainFrame::UpdateCommandToolbarItems(const std::vector<PortableToolbarItem
 	if(!PortableToolbarStore::Load(layout))
 	{
 		layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
-		ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts);
+		if(!ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts)) return false;
 		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
 			layout.scriptToolbars.push_back(m_scriptToolbars.Items()[index].definition);
 	}
@@ -2429,7 +2429,7 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) {
 		const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
 		ScriptsToolbarTarget target = {}; target.id = runtime.definition.id; target.name = runtime.definition.name; target.toolbar = runtime.window; target.items = runtime.definition.items;
-		if(target.items.empty() && runtime.window != NULL) ToolbarLayoutAdapter::Capture(runtime.window, target.items);
+		if(target.items.empty() && runtime.window != NULL && !ToolbarLayoutAdapter::Capture(runtime.window, target.items)) return;
 		for(size_t itemIndex = 0; itemIndex < target.items.size(); ++itemIndex) if(!target.items[itemIndex].separator && !target.items[itemIndex].scriptUid.IsEmpty())
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == target.items[itemIndex].scriptUid && script.commandId > 0) { target.items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
 		panels.push_back(target);
@@ -2543,7 +2543,7 @@ bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<P
 	PortableToolbarLayout layout;
 	if(!PortableToolbarStore::Load(layout)) {
 		layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
-		ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands);
+		if(!ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands)) return false;
 		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) layout.scriptToolbars.push_back(m_scriptToolbars.Items()[index].definition);
 	}
 	std::vector<PortableToolbarItem> persisted = items;
@@ -2703,7 +2703,7 @@ bool CMainFrame::ApplyToolbarQuickCustomizeItems(HWND toolbar, const std::vector
 	else if(ScriptToolbarRuntime* runtime = FindScriptToolbarRuntime(toolbar))
 		persisted = UpdateScriptToolbarItems(runtime->definition.id, items);
 	if(!persisted && !ToolbarLayoutAdapter::Apply(toolbar, previous, catalog))
-		::OutputDebugString(L"Toolbar quick-customization rollback failed.\n");
+		StartupTrace::Error(L"toolbar", L"TB234", L"toolbar quick-customization rollback failed");
 	return persisted;
 }
 
@@ -2717,7 +2717,7 @@ bool CMainFrame::CompleteToolbarQuickCustomize(HWND toolbar, POINT point)
 	if(::GetCapture() == toolbar) ::ReleaseCapture();
 
 	std::vector<PortableToolbarItem> items;
-	ToolbarLayoutAdapter::Capture(toolbar, items);
+	if(!ToolbarLayoutAdapter::Capture(toolbar, items)) return false;
 	if(source < 0 || static_cast<size_t>(source) >= items.size()) return false;
 	if(!dragging)
 	{
@@ -2898,8 +2898,14 @@ void CMainFrame::SavePortableToolbarLayout()
 	PortableToolbarLayout persisted;
 	if(PortableToolbarStore::Load(persisted)) layout.scriptToolbars = persisted.scriptToolbars;
 	layout.commandToolbarPresent = true; layout.scriptsToolbarPresent = true;
-	ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands);
-	ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts);
+	if(!ToolbarLayoutAdapter::Capture(m_CmdToolbar, layout.commands)) {
+		StartupTrace::Error(L"toolbar", L"TB235", L"command toolbar capture failed; portable layout was not saved");
+		return;
+	}
+	if(!ToolbarLayoutAdapter::Capture(m_ScriptsToolbar, layout.scripts)) {
+		StartupTrace::Error(L"toolbar", L"TB236", L"scripts toolbar capture failed; portable layout was not saved");
+		return;
+	}
 	for(size_t index = 0; index < layout.scripts.size(); ++index)
 	{
 		PortableToolbarItem& item = layout.scripts[index];
@@ -2917,7 +2923,11 @@ void CMainFrame::SavePortableToolbarLayout()
 	{
 		const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[toolbarIndex];
 		if(runtime.window == NULL || runtime.definition.id == L"scripts-main") continue;
-		std::vector<PortableToolbarItem> captured; ToolbarLayoutAdapter::Capture(runtime.window, captured);
+		std::vector<PortableToolbarItem> captured;
+		if(!ToolbarLayoutAdapter::Capture(runtime.window, captured)) {
+			StartupTrace::Error(L"toolbar", L"TB237", L"custom toolbar capture failed; portable layout was not saved");
+			return;
+		}
 		// A rebar child can be temporarily empty while its deferred toolbar
 		// layout is being materialized.  Its definition is the transactional
 		// source written by AddScriptToToolbar; do not erase a persisted UID
