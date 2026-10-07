@@ -125,6 +125,11 @@ jobs:
           if ('${{ steps.pcre2-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedPcre2 = $true }
           if ('${{ steps.image-stack-cache.outputs.cache-hit }}' -eq 'true') { $arguments.ReusePreparedImageStack = $true }
           ./tools/build/build.ps1 @arguments
+      - name: Run XML source theme v1 runtime regression
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-fbe-xml-source-theme-v1-runtime.ps1 -FbeExe ./out/Release/FBE.exe
       - name: Run ExportHTML writer ownership harness
         shell: pwsh
         run: |
