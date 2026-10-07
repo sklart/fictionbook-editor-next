@@ -18,6 +18,7 @@
 #include "..\\common\\ModernFileDialog.h"
 #include "settings\\ui\\SettingsDlg.h"
 #include "Settings.h"
+#include "XmlSourceThemes.h"
 #include "ThemeManager.h"
 #include "settings\\EditorBackgrounds.h"
 #include "utils.h"

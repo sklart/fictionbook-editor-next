@@ -95,6 +95,7 @@ struct XmlMatchedTagsState {
 	XmlMatchedTagsState() = default;
 	struct IndicatorRange { int indicator; int start; int end; };
 	vector<pair<int, int> > tagRanges;
+	vector<pair<int, int> > tagBackgroundRanges;
 	vector<pair<int, int> > attributeRanges;
 	vector<IndicatorRange> diagnosticRanges;
 	// Bumped only for SC_MOD_INSERTTEXT/SC_MOD_DELETETEXT.  UI notifications

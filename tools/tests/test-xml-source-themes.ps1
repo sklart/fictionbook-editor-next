@@ -95,8 +95,8 @@ foreach($requiredText in @('HasDocumentStyleConfigurationChanged', 'ApplyConfCha
 }
 
 foreach($requiredText in @(
-    "пользовательское правило конкретного тега",
-    "семантическая группа FB2",
+    "семантическая подсветка FB2-тегов",
+    "не реализована",
     "историческая светлая схема"
 )) {
     if($documentation -notlike "*$requiredText*") {
@@ -252,6 +252,9 @@ foreach($fixture in @('tools\tests\fb2-xml-comments-smoke.fb2', 'tools\tests\tes
         throw "Отсутствует проверочный материал XML-комментариев: $fixture"
     }
 }
+if(-not (Test-Path -LiteralPath (Join-Path $repoRoot 'tools\tests\test-fbe-xml-source-theme-v1-runtime.ps1'))) {
+    throw 'Missing runtime regression for .fbetheme v1 import/export.'
+}
 
 Write-Host "Формат .fbetheme и операции пользовательских тем прошли проверку."
 
@@ -331,3 +334,79 @@ if(!$deleteBlock.Success -or $deleteBlock.Value -notmatch 'const DWORD deleteErr
 $applyBlock = [regex]::Match($mainFrame, 'LRESULT CMainFrame::OnApplyXmlSourceTheme[\s\S]*?void CMainFrame::ApplyConfChanges')
 if(!$applyBlock.Success -or $applyBlock.Value -notmatch 'ApplyXmlSourceEditorChanges\(false\)' -or $applyBlock.Value -notmatch 'if\(saveSettings\)') { throw 'Active theme deletion must apply styles without a second Settings.xml save.' }
 if($settingsDialog -notmatch 'baseThemeId.CompareNoCase\(exportId\) == 0\) metadata.baseThemeId.Empty\(\)') { throw 'Theme export must remove baseThemeId self-references.' }
+
+# The v1 format distinguishes a token's runtime status from whether an older
+# theme may omit it.  Keep that classification, the fallback rules and the
+# source-editor consumers aligned with the public documentation.
+$controlCharacters = [regex]::Matches($documentation, '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]')
+if($controlCharacters.Count -ne 0) { throw 'Documentation contains forbidden control characters.' }
+foreach($requiredText in @(
+    'enum class ThemeTokenStatus { Active, Reserved, HiddenConditional }',
+    'XML_SRC_STYLE_LINE_NUMBER_ACTIVE:', 'XML_SRC_STYLE_XML_NAMESPACE:',
+    'ThemeTokenStatus::Reserved, true',
+    'XML_SRC_STYLE_XML_COMMENT:', 'ThemeTokenStatus::HiddenConditional, true',
+    'XML_SRC_STYLE_MATCHING_TAG_BACKGROUND:', 'XML_SRC_STYLE_MATCHING_TAG_BORDER:',
+    'XML_SRC_STYLE_XML_WARNING:', 'ThemeTokenStatus::Active, true',
+    'if(metadata.optionalForV1 && !colorPresent[i]) continue;'
+)) {
+    if($themeSource.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Theme role classification is missing: $requiredText"
+    }
+}
+if($themeSource -like '*reservedToken*') { throw 'Optional and reserved theme roles must not share the legacy reservedToken classification.' }
+
+foreach($requiredText in @(
+    'editor.matchingTag.background` | active',
+    'editor.matchingTag.border` | active',
+    'xml.warning` | active',
+    'editor.lineNumber.active` | reserved',
+    'xml.namespace` | reserved',
+    'xml.comment` | hidden/conditional',
+    'baseThemeId` является metadata происхождения темы',
+    'не создаёт каскадного наследования',
+    'MissingOpening` и `MissingClosing` используют её',
+    'editor.currentLine.background'
+)) {
+    if($documentation.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Documentation does not state the v1 role contract: $requiredText"
+    }
+}
+
+$highlighter = Read-ProjectFile 'src\fbe\XmlSourceTagHighlighter.cpp'
+$engineHeader = Read-ProjectFile 'src\fbe\EditorEngine.h'
+foreach($requiredText in @(
+    'EDITOR_INDICATOR_TAG_MATCH_BACKGROUND = 28',
+    'FillRange(EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, currentRange',
+    'FillRange(EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, matchingRange',
+    'tagBackgroundRanges'
+)) {
+    if($engineHeader.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0 -and
+       $highlighter.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Matching-tag background has no runtime indicator consumer: $requiredText"
+    }
+}
+foreach($requiredText in @(
+    'INDIC_FULLBOX', 'SourceEditorColorMatchingTagBackground',
+    'EDITOR_INDICATOR_TAG_MATCH_BACKGROUND', 'SourceEditorColorMatchingTagBorder',
+    'EDITOR_INDICATOR_XML_TAG_MISSING_OPENING', 'SourceEditorColorXmlWarning',
+    'EDITOR_INDICATOR_XML_TAG_MISMATCHED', 'SourceEditorColorXmlError',
+    'COLOR_HIGHLIGHT', 'COLOR_HIGHLIGHTTEXT'
+)) {
+    if($sourceEditor.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Source editor does not configure active XML theme role: $requiredText"
+    }
+}
+if($sourceEditor -like '*STYLE_BRACELIGHT*') { throw 'XML tag matching must not rely on the unrelated STYLE_BRACELIGHT path.' }
+
+# The parser writes every token on export.  A minimally valid v1 input that
+# omitted compatibility roles therefore normalizes to a complete UTF-8 theme
+# before a subsequent import, without using baseThemeId as inheritance.
+foreach($requiredText in @('for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)', 'content.AppendFormat(', 'kStyleTokenNames[i]')) {
+    if($themeSource.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Theme import/export normalization contract is missing: $requiredText"
+    }
+}
+if($settingsDialog.IndexOf('baseThemeId.CompareNoCase(exportId) == 0', [System.StringComparison]::Ordinal) -lt 0) {
+    throw 'Theme export must prevent a baseThemeId self-reference during normalization.'
+}
+Write-Host 'XML source theme v1 role classification and indicator contract passed.'

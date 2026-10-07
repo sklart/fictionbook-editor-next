@@ -1,6 +1,135 @@
 	CAtlFile output;
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
+	if (IsFbeTestScenario(L"xml-source-theme-v1-runtime"))
+	{
+		static const wchar_t* const tokenNames[XML_SRC_STYLE_TOKEN_COUNT] = {
+			L"editor.background", L"editor.foreground", L"editor.selection.background", L"editor.selection.foreground",
+			L"editor.currentLine.background", L"editor.caret", L"editor.lineNumber", L"editor.lineNumber.active",
+			L"editor.matchingTag.background", L"editor.matchingTag.border", L"xml.text", L"xml.tag.name",
+			L"xml.tag.delimiter", L"xml.attribute.name", L"xml.attribute.value", L"xml.namespace", L"xml.comment",
+			L"xml.entity", L"xml.cdata", L"xml.processingInstruction", L"xml.doctype", L"xml.error", L"xml.warning"
+		};
+		auto isOptional = [](int token) -> bool
+		{
+			return token == XML_SRC_STYLE_LINE_NUMBER_ACTIVE || token == XML_SRC_STYLE_MATCHING_TAG_BACKGROUND ||
+				token == XML_SRC_STYLE_MATCHING_TAG_BORDER || token == XML_SRC_STYLE_XML_NAMESPACE ||
+				token == XML_SRC_STYLE_XML_COMMENT || token == XML_SRC_STYLE_XML_WARNING;
+		};
+		auto makeTheme = [&](bool omitOptional, const wchar_t* omittedToken, const wchar_t* overriddenToken, const wchar_t* overriddenValue) -> CString
+		{
+			CString json(L"{\n  \"format\": \"FictionBookEditorNext.CodeTheme\",\n  \"formatVersion\": 1,\n  \"id\": \"xml-theme-v1-test\",\n  \"name\": \"Тема XML\",\n  \"isDark\": false,\n  \"baseThemeId\": \"fbe-light\",\n  \"author\": \"Тест\",\n  \"colors\": {\n");
+			bool first = true;
+			for (int token = 0; token < XML_SRC_STYLE_TOKEN_COUNT; ++token)
+			{
+				if ((omitOptional && isOptional(token)) || (omittedToken != NULL && wcscmp(tokenNames[token], omittedToken) == 0)) continue;
+				if (!first) json += L",\n";
+				first = false;
+				const bool overridden = overriddenToken != NULL && wcscmp(tokenNames[token], overriddenToken) == 0;
+				CString color;
+				color.Format(L"\"#%02X%02X%02X\"", 0x10 + token, 0x40 + token, 0x80 + token);
+				json.AppendFormat(L"    \"%s\": %s", tokenNames[token], overridden ? overriddenValue : static_cast<LPCWSTR>(color));
+			}
+			json += L"\n  }\n}\n";
+			return json;
+		};
+		auto writeUtf8 = [](const CString& path, const CString& text) -> bool
+		{
+			const int byteCount = ::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), NULL, 0, NULL, NULL);
+			if (byteCount <= 0) return false;
+			std::vector<char> bytes(static_cast<size_t>(byteCount));
+			if (::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), bytes.data(), byteCount, NULL, NULL) != byteCount) return false;
+			HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (file == INVALID_HANDLE_VALUE) return false;
+			DWORD written = 0;
+			const bool saved = ::WriteFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL) != FALSE && written == bytes.size();
+			::CloseHandle(file);
+			return saved;
+		};
+		const CString sourcePath = AU::_ARGS.source_memory_benchmark_path + L".source.fbetheme";
+		const CString exportedPath = AU::_ARGS.source_memory_benchmark_path + L".exported.fbetheme";
+		CString error;
+		XmlSourceThemeImport imported = {};
+		const bool sourceWritten = writeUtf8(sourcePath, makeTheme(true, NULL, NULL, NULL));
+		const bool importedMinimal = sourceWritten && XmlSourceThemes::LoadImportTheme(sourcePath, imported, error);
+		const bool fallbacks = importedMinimal &&
+			imported.colors[XML_SRC_STYLE_LINE_NUMBER_ACTIVE] == imported.colors[XML_SRC_STYLE_LINE_NUMBER] &&
+			imported.colors[XML_SRC_STYLE_MATCHING_TAG_BACKGROUND] == imported.colors[XML_SRC_STYLE_SELECTION_BACKGROUND] &&
+			imported.colors[XML_SRC_STYLE_MATCHING_TAG_BORDER] == imported.colors[XML_SRC_STYLE_XML_TAG_NAME] &&
+			imported.colors[XML_SRC_STYLE_XML_NAMESPACE] == imported.colors[XML_SRC_STYLE_XML_ATTRIBUTE_NAME] &&
+			imported.colors[XML_SRC_STYLE_XML_COMMENT] == imported.colors[XML_SRC_STYLE_XML_TEXT] &&
+			imported.colors[XML_SRC_STYLE_XML_WARNING] == imported.colors[XML_SRC_STYLE_XML_ERROR];
+		const wchar_t* const optionalTokens[] = {
+			L"editor.lineNumber.active", L"editor.matchingTag.background", L"editor.matchingTag.border",
+			L"xml.namespace", L"xml.comment", L"xml.warning"
+		};
+		bool optionalRolesAccepted = true;
+		for (size_t index = 0; index < _countof(optionalTokens); ++index)
+		{
+			XmlSourceThemeImport optionalImport = {};
+			optionalRolesAccepted = optionalRolesAccepted && writeUtf8(sourcePath, makeTheme(false, optionalTokens[index], NULL, NULL)) &&
+				XmlSourceThemes::LoadImportTheme(sourcePath, optionalImport, error);
+		}
+		const bool exported = importedMinimal && XmlSourceThemes::ExportThemeFile(imported.info.id, imported.info.name, imported.colors, exportedPath, error, &imported.metadata);
+		XmlSourceThemeImport roundTrip = {};
+		const bool reimported = exported && XmlSourceThemes::LoadImportTheme(exportedPath, roundTrip, error);
+		bool palettePreserved = reimported;
+		for (int token = 0; token < XML_SRC_STYLE_TOKEN_COUNT && palettePreserved; ++token)
+			palettePreserved = imported.colors[token] == roundTrip.colors[token];
+		const bool metadataPreserved = reimported && roundTrip.metadata.baseThemeId == L"fbe-light" && roundTrip.metadata.author == L"Тест";
+		const wchar_t* const invalidTokens[] = { L"xml.tag.name", L"editor.background" };
+		bool missingRequiredRejected = true;
+		for (size_t index = 0; index < _countof(invalidTokens); ++index)
+		{
+			XmlSourceThemeImport rejected = {};
+			missingRequiredRejected = missingRequiredRejected && writeUtf8(sourcePath, makeTheme(false, invalidTokens[index], NULL, NULL)) && !XmlSourceThemes::LoadImportTheme(sourcePath, rejected, error);
+		}
+		const wchar_t* const invalidValues[] = { L"\"#FFF\"", L"\"red\"", L"\"\"", L"123" };
+		bool invalidValuesRejected = true;
+		for (size_t index = 0; index < _countof(invalidValues); ++index)
+		{
+			XmlSourceThemeImport rejected = {};
+			invalidValuesRejected = invalidValuesRejected && writeUtf8(sourcePath, makeTheme(false, NULL, L"xml.tag.name", invalidValues[index])) && !XmlSourceThemes::LoadImportTheme(sourcePath, rejected, error);
+		}
+		const bool noSelfReference = reimported && roundTrip.metadata.baseThemeId.CompareNoCase(roundTrip.info.id) != 0;
+		HIGHCONTRAST highContrast = {};
+		highContrast.cbSize = sizeof(highContrast);
+		const bool highContrastEnabled = ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, 0) && (highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
+		const CString originalTheme = _Settings.GetXmlSrcThemeId();
+		auto applyThemeAndReadIndicators = [&](const wchar_t* id, COLORREF& background, COLORREF& border, COLORREF& errorColor, COLORREF& warning) -> bool
+		{
+			_Settings.SetXmlSrcThemeId(id, false);
+			ApplyXmlSourceEditorChanges(false);
+			background = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND));
+			border = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_TAG_MATCH));
+			errorColor = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_XML_TAG_MISMATCHED));
+			warning = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_XML_TAG_MISSING_OPENING));
+			return m_source.Send(SCI_INDICGETSTYLE, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND) == INDIC_FULLBOX &&
+				m_source.Send(SCI_INDICGETALPHA, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND) == 72 &&
+				m_source.Send(SCI_INDICGETSTYLE, EDITOR_INDICATOR_TAG_MATCH) == INDIC_ROUNDBOX;
+		};
+		COLORREF lightBackground = 0, lightBorder = 0, lightError = 0, lightWarning = 0;
+		COLORREF darkBackground = 0, darkBorder = 0, darkError = 0, darkWarning = 0;
+		const bool lightApplied = applyThemeAndReadIndicators(L"fbe-light", lightBackground, lightBorder, lightError, lightWarning);
+		const bool darkApplied = applyThemeAndReadIndicators(L"fbe-dark", darkBackground, darkBorder, darkError, darkWarning);
+		const bool themeSwitchApplied = lightApplied && darkApplied && (highContrastEnabled ||
+			(lightBackground != darkBackground && lightBorder != darkBorder && lightError != darkError && lightWarning != darkWarning));
+		const bool highContrastSystemColors = !highContrastEnabled ||
+			(darkBackground == ::GetSysColor(COLOR_HIGHLIGHT) && darkBorder == ::GetSysColor(COLOR_HIGHLIGHTTEXT) &&
+			darkError == ::GetSysColor(COLOR_HOTLIGHT) && darkWarning == ::GetSysColor(COLOR_HOTLIGHT));
+		_Settings.SetXmlSrcThemeId(originalTheme, false);
+		ApplyXmlSourceEditorChanges(false);
+		const bool passed = importedMinimal && fallbacks && optionalRolesAccepted && exported && reimported && palettePreserved && metadataPreserved && missingRequiredRejected && invalidValuesRejected && noSelfReference && themeSwitchApplied && highContrastSystemColors;
+		CStringA report;
+		report.Format("import=%d\nfallbacks=%d\noptional_roles=%d\nexport=%d\nreimport=%d\npalette=%d\nmetadata=%d\nmissing_required=%d\ninvalid_values=%d\nno_self_reference=%d\ntheme_switch=%d\nhigh_contrast_system_colors=%d\nresult=%s\n",
+			importedMinimal, fallbacks, optionalRolesAccepted, exported, reimported, palettePreserved, metadataPreserved, missingRequiredRejected, invalidValuesRejected, noSelfReference, themeSwitchApplied, highContrastSystemColors, passed ? "pass" : "fail");
+		DWORD written = 0;
+		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close();
+		::DeleteFileW(sourcePath); ::DeleteFileW(exportedPath);
+		::PostQuitMessage(passed ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"archive-open-runtime"))
 	{
 		const bool archiveSource = m_document_session.Location().IsArchive();

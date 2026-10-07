@@ -38,6 +38,27 @@ const wchar_t* const kStyleTokenNames[XML_SRC_STYLE_TOKEN_COUNT] = {
 	L"xml.error", L"xml.warning",
 };
 
+enum class ThemeTokenStatus { Active, Reserved, HiddenConditional };
+struct ThemeTokenMetadata { ThemeTokenStatus status; bool optionalForV1; };
+
+ThemeTokenMetadata GetThemeTokenMetadata(XmlSrcStyleToken token)
+{
+	switch(token)
+	{
+	case XML_SRC_STYLE_LINE_NUMBER_ACTIVE:
+	case XML_SRC_STYLE_XML_NAMESPACE:
+		return { ThemeTokenStatus::Reserved, true };
+	case XML_SRC_STYLE_XML_COMMENT:
+		return { ThemeTokenStatus::HiddenConditional, true };
+	case XML_SRC_STYLE_MATCHING_TAG_BACKGROUND:
+	case XML_SRC_STYLE_MATCHING_TAG_BORDER:
+	case XML_SRC_STYLE_XML_WARNING:
+		return { ThemeTokenStatus::Active, true };
+	default:
+		return { ThemeTokenStatus::Active, false };
+	}
+}
+
 int GetBuiltInThemeIndex(const CString& id)
 {
 	if(id.CompareNoCase(kThemeHistorical) == 0) return 0;
@@ -329,10 +350,8 @@ bool ParseThemeFile(const wchar_t* path, ThemeRecord& record, bool allowLegacyAn
 		colorPresent[i] = FbeRuntimeLocalization::JsonFindObjectMember(json, colorsStart, kStyleTokenNames[i], colorStart);
 		if(colorPresent[i] && FbeRuntimeLocalization::JsonParseString(json, colorStart, colorText) && ParseHexColor(colorText, record.colors[i]))
 			continue;
-		const bool reservedToken = i == XML_SRC_STYLE_LINE_NUMBER_ACTIVE || i == XML_SRC_STYLE_MATCHING_TAG_BACKGROUND ||
-			i == XML_SRC_STYLE_MATCHING_TAG_BORDER || i == XML_SRC_STYLE_XML_NAMESPACE || i == XML_SRC_STYLE_XML_COMMENT ||
-			i == XML_SRC_STYLE_XML_WARNING;
-		if(reservedToken && !colorPresent[i]) continue;
+		const ThemeTokenMetadata metadata = GetThemeTokenMetadata(static_cast<XmlSrcStyleToken>(i));
+		if(metadata.optionalForV1 && !colorPresent[i]) continue;
 		if(error) error->Format(ThemeString(L"fbe.theme.error.invalid_color", L"Invalid required color: %s."), kStyleTokenNames[i]);
 		return false;
 	}

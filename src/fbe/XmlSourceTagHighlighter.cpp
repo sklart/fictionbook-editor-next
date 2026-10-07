@@ -20,7 +20,9 @@ void XmlSourceTagHighlighter::ClearCurrentRanges()
 {
 	if (!_state) return;
 	const struct RangeGroup { int indicator; vector<pair<int, int> >* ranges; } groups[] = {
-		{ EDITOR_INDICATOR_TAG_MATCH, &_state->tagRanges }, { EDITOR_INDICATOR_TAG_ATTRIBUTE, &_state->attributeRanges }
+		{ EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, &_state->tagBackgroundRanges },
+		{ EDITOR_INDICATOR_TAG_MATCH, &_state->tagRanges },
+		{ EDITOR_INDICATOR_TAG_ATTRIBUTE, &_state->attributeRanges }
 	};
 	for (size_t group = 0; group < _countof(groups); ++group) {
 		_pEditView->execute(SCI_SETINDICATORCURRENT, groups[group].indicator);
@@ -63,8 +65,12 @@ bool XmlSourceTagHighlighter::UpdateHighlight(const XmlTagHighlightOptions& opti
 	#endif
 	const XmlTagMatchResult result = matcher.ResultAt(static_cast<XmlBytePosition>(caret));
 	if (!options.enabled || result.state != XmlTagMatchState::Matched) { _state->cachedCaret = caret; _state->cachedHighlightEnabled = options.enabled; _state->cachedHighlightMode = static_cast<int>(options.mode); _state->cachedHighlightAttributes = options.highlightAttributes; _state->cachedShowErrors = options.showErrors; _state->cachedMatch = false; return false; }
-	FillRange(EDITOR_INDICATOR_TAG_MATCH, options.mode == XmlTagHighlightMode::FullTag ? result.currentTagRange : result.currentNameRange, _state->tagRanges);
-	FillRange(EDITOR_INDICATOR_TAG_MATCH, options.mode == XmlTagHighlightMode::FullTag ? result.matchingTagRange : result.matchingNameRange, _state->tagRanges);
+	const XmlByteRange currentRange = options.mode == XmlTagHighlightMode::FullTag ? result.currentTagRange : result.currentNameRange;
+	const XmlByteRange matchingRange = options.mode == XmlTagHighlightMode::FullTag ? result.matchingTagRange : result.matchingNameRange;
+	FillRange(EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, currentRange, _state->tagBackgroundRanges);
+	FillRange(EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, matchingRange, _state->tagBackgroundRanges);
+	FillRange(EDITOR_INDICATOR_TAG_MATCH, currentRange, _state->tagRanges);
+	FillRange(EDITOR_INDICATOR_TAG_MATCH, matchingRange, _state->tagRanges);
 	if (options.highlightAttributes) for (const XmlByteRange& attribute : result.attributeRanges) FillRange(EDITOR_INDICATOR_TAG_ATTRIBUTE, attribute, _state->attributeRanges);
 	_state->cachedCaret = caret; _state->cachedHighlightEnabled = options.enabled; _state->cachedHighlightMode = static_cast<int>(options.mode); _state->cachedHighlightAttributes = options.highlightAttributes; _state->cachedShowErrors = options.showErrors; _state->cachedMatch = true; return true;
 }

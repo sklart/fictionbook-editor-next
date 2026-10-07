@@ -17,6 +17,11 @@ bool Check(bool value, const char* message)
 	return value;
 }
 
+bool HasIndicatorAt(HWND editor, int indicator, size_t position)
+{
+	return SendMessage(editor, SCI_INDICATORVALUEAT, static_cast<WPARAM>(indicator), static_cast<LPARAM>(position)) != 0;
+}
+
 struct CounterSnapshot {
 	unsigned long long documentReads;
 	unsigned long long matcherBuilds;
@@ -129,6 +134,11 @@ bool VerifyNavigation(HWND editor, XmlSourceTagHighlighter& highlighter, XmlMatc
 	const size_t closing = document.find("</ns:section>") + 2;
 	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(opening), 0);
 	if (!Check(highlighter.UpdateHighlight(options), "navigation fixture initial parse")) return false;
+	if (!Check(state.tagRanges.size() == 2 && state.tagBackgroundRanges.size() == 2,
+		"matching tags receive both border and background indicator ranges")) return false;
+	if (!Check(HasIndicatorAt(editor, EDITOR_INDICATOR_TAG_MATCH, opening) &&
+		HasIndicatorAt(editor, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, opening),
+		"matching tag indicators are filled at the opening tag")) return false;
 	const CounterSnapshot cached = Snapshot(state);
 	if (!Check(highlighter.GotoMatchingTag() && SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) == static_cast<LRESULT>(closing), "goto matching opening to closing")) return false;
 	if (!Check(highlighter.GotoMatchingTag() && SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) == static_cast<LRESULT>(opening), "goto matching closing to opening")) return false;
@@ -146,6 +156,10 @@ bool VerifyNavigation(HWND editor, XmlSourceTagHighlighter& highlighter, XmlMatc
 	noTagIndicators.enabled = false;
 	SendMessage(editor, SCI_GOTOPOS, static_cast<WPARAM>(opening), 0);
 	if (!Check(!highlighter.UpdateHighlight(noTagIndicators), "disabled matching only clears indicators")) return false;
+	if (!Check(state.tagRanges.empty() && state.tagBackgroundRanges.empty() &&
+		!HasIndicatorAt(editor, EDITOR_INDICATOR_TAG_MATCH, opening) &&
+		!HasIndicatorAt(editor, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND, opening),
+		"disabling matching clears both border and background indicators")) return false;
 	if (!Check(highlighter.GotoMatchingTag(), "goto matching remains available when tag indicators are disabled")) return false;
 	if (!Check(SameCounters(state, cached) && SendMessage(editor, SCI_CANUNDO, 0, 0) == 0,
 		"cached navigation does not read, rebuild or create undo entries")) return false;
@@ -169,6 +183,17 @@ bool VerifyNavigation(HWND editor, XmlSourceTagHighlighter& highlighter, XmlMatc
 	const CounterSnapshot invalidCached = Snapshot(state);
 	const std::vector<XmlTagMatchResult>& diagnostics = state.cachedMatcher->Diagnostics();
 	if (!Check(diagnostics.size() == 5, "wrong-tag fixture exposes every structural error")) return false;
+	if (!Check(state.diagnosticRanges.size() == diagnostics.size(), "every structural diagnostic receives an indicator")) return false;
+	for (size_t i = 0; i < diagnostics.size(); ++i) {
+		int expected = EDITOR_INDICATOR_XML_TAG_INVALID;
+		switch (diagnostics[i].state) {
+		case XmlTagMatchState::MissingOpening: expected = EDITOR_INDICATOR_XML_TAG_MISSING_OPENING; break;
+		case XmlTagMatchState::MissingClosing: expected = EDITOR_INDICATOR_XML_TAG_MISSING_CLOSING; break;
+		case XmlTagMatchState::Mismatched: expected = EDITOR_INDICATOR_XML_TAG_MISMATCHED; break;
+		default: break;
+		}
+		if (!Check(state.diagnosticRanges[i].indicator == expected, "diagnostic state selects the expected indicator")) return false;
+	}
 	for (size_t i = 1; i < diagnostics.size(); ++i) {
 		highlighter.GotoWrongTag();
 		if (!Check(SendMessage(editor, SCI_GETCURRENTPOS, 0, 0) == static_cast<LRESULT>(diagnostics[i].currentTagRange.start), "goto wrong tag follows every diagnostic in document order")) return false;

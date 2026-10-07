@@ -23,8 +23,10 @@
 `formatVersion: 1`; прежние файлы `.json` намеренно не загружаются. При импорте
 для вручную созданных русскоязычных файлов дополнительно принимается Windows-1251,
 после чего копия в пользовательском каталоге записывается заново в UTF-8. Обязательны
-строковые `id`, `name`, логическое `isDark` и все 23 цвета в объекте
-`colors`. Необязательные метаданные `baseThemeId`, `author`, `description`,
+строковые `id`, `name`, логическое `isDark` и цвета обязательных runtime-ролей в объекте
+`colors`; каждый цвет имеет строго формат `#RRGGBB`. Роли совместимости могут отсутствовать:
+при импорте им назначается документированный fallback, а экспорт записывает итоговую полную
+палитру. Необязательные метаданные `baseThemeId`, `author`, `description`,
 `source` и `license` сохраняются при импорте и повторном экспорте. Идентификатор содержит только строчные латинские буквы, цифры и
 дефисы. Неизвестные поля игнорируются.
 
@@ -44,7 +46,10 @@
 }
 ```
 
-При последующем расширении приоритет оформления остаётся определённым: пользовательское правило конкретного тега, пользовательское правило токена, семантическая группа FB2, базовая XML-роль и основной цвет текста. Текущая версия применяет базовые роли; дополнительные уровни не записываются в .fbetheme.
+`baseThemeId` является metadata происхождения темы: он читается, проверяется и сохраняется,
+но в `formatVersion: 1` не создаёт каскадного наследования отсутствующих цветов. Текущая
+версия применяет только базовые XML-роли; семантическая подсветка FB2-тегов (`section`,
+`title`, `p`, `cite`, `poem` и т. п.) не реализована и в формат темы не записывается.
 
 Полный перечень ролей: `editor.background`, `editor.foreground`,
 `editor.selection.background`, `editor.selection.foreground`,
@@ -54,6 +59,27 @@
 `xml.tag.delimiter`, `xml.attribute.name`, `xml.attribute.value`,
 `xml.namespace`, `xml.comment`, `xml.entity`, `xml.cdata`,
 `xml.processingInstruction`, `xml.doctype`, `xml.error`, `xml.warning`.
+
+### Обязательные и optional-роли v1
+
+Все active runtime-роли, кроме перечисленных ниже compatibility-ролей, обязательны:
+их отсутствие, нестроковое значение, пустая строка, `#FFF` или имя цвета вроде
+`red` делают импорт недействительным. Например, `xml.tag.name` и
+`editor.background` всегда должны быть заданы как `#RRGGBB`.
+
+Следующие ключи optional только для совместимости `.fbetheme v1`; если ключ
+присутствует, он всё равно обязан иметь формат `#RRGGBB`:
+
+- `editor.lineNumber.active` → `editor.lineNumber`;
+- `editor.matchingTag.background` → `editor.selection.background`;
+- `editor.matchingTag.border` → `xml.tag.name`;
+- `xml.namespace` → `xml.attribute.name`;
+- `xml.comment` → `xml.text`;
+- `xml.warning` → `xml.error`.
+
+После import → export такая частичная тема нормализуется в полную палитру v1;
+повторный импорт получает те же итоговые цвета, metadata и UTF-8. Это не
+превращает `baseThemeId` в inheritance и не допускает self-reference.
 
 ## Пользовательские темы
 
@@ -94,30 +120,50 @@ Lexilla распознаёт XML-комментарии и использует 
 регрессионного цикла: открытие FB2 с комментариями, переключение режимов,
 редактирование, сохранение и повторное открытие. Базовый XSD-фикстур `tools/tests/fb2-xml-comments-smoke.fb2` содержит комментарии в `description`, `body`, между `section`, между абзацами и после `body`; его проверяет `tools/tests/test-fb2-xml-comments.ps1`. Визуальный цикл намеренно не считается доказательством сохранности, пока не будет автоматизирован или пройден вручную для всех этапов.
 
-## Применение токенов
+## Роли и применение токенов
 
-Лексер XML Lexilla применяет в исходном редакторе xml.text, xml.tag.name,
-xml.tag.delimiter, xml.attribute.name, xml.attribute.value, xml.comment,
-xml.entity, xml.cdata, xml.processingInstruction, xml.doctype и xml.error.
-Роли editor.background, editor.foreground, выделения, каретки, номеров строк и
-текущей строки применяются напрямую к Scintilla. Роли парных тегов сохраняются в
-теме, но не назначаются редактору: FBE пока не использует безопасный отдельный
-механизм их применения. `editor.lineNumber.active` также сохраняется как
-зарезервированная роль, поскольку Scintilla не предоставляет отдельный стиль
-номера активной строки.
+xml.text, xml.tag.name, xml.tag.delimiter, xml.attribute.name, xml.attribute.value,
+xml.comment, xml.entity, xml.cdata, xml.processingInstruction, xml.doctype и xml.error
+применяются лексером Lexilla. Роли editor.background, editor.foreground, выделения,
+каретки, номеров строк и текущей строки применяются напрямую к Scintilla.
+
+Парные XML-теги подсвечиваются отдельными Scintilla indicators: это не изменяет текст
+и не подменяет XML-синтаксис. `editor.matchingTag.background` задаёт мягкую
+полупрозрачную заливку под текстом, а `editor.matchingTag.border` — контур поверх неё.
+Подсвечивается имя или весь тег согласно настройке, а при включённой опции — и область
+атрибутов. Смена темы переопределяет оба indicator-цвета в уже открытом редакторе.
+Отключение подсветки парных тегов удаляет оба эффекта.
+
+`editor.lineNumber.active` сохраняется как зарезервированная роль: отдельный стиль
+номера активной строки пока не реализован.
 xml.namespace не имеет отдельного стиля в используемом XML-лексере Lexilla:
 ключ сохраняется при импорте и экспорте, но пока является зарезервированным и не
-подменяется стилем имени атрибута. xml.warning также зарезервирован до появления
-отдельного диагностического стиля. Это позволяет расширить формат без потери
-данных и без фиктивного отображения токенов. Предпросмотр использует тот же resolver
+подменяется стилем имени атрибута. `xml.warning` — активная диагностическая роль:
+`MissingOpening` и `MissingClosing` используют её, а `Invalid` и `Mismatched` используют
+`xml.error`. Предпросмотр использует тот же resolver
 `XmlSrcStyleToken`, что и Scintilla: фон, разделители, имя тега, имя и значение
 атрибута, текст, сущность и processing instruction имеют отдельные роли. Перед
 рисованием он измеряет полные строки на текущем шрифте исходного кода и DPI,
 выбирая полный, компактный, минимальный или однострочный fallback-корректный
 XML-пример; если не помещается даже fallback, область остаётся пустой.
 Синтаксис не обрезается на правой границе. Подсветка текущей строки задаётся
-отдельной ролью ditor.currentLine.background через Scintilla и не зависит от
+отдельной ролью `editor.currentLine.background` через Scintilla и не зависит от
 переключателя XML-подсветки; в режиме высокой контрастности она отключается в
 пользу системных цветов. Поле номеров строк имеет ширину фактического текста
 номера (минимум четыре цифры) и пересчитывается только при переходе через
 границу разрядов.
+
+| Роль | Статус | Отсутствие в `.fbetheme v1` |
+|---|---|---|
+| `editor.background`, `editor.foreground`, `editor.selection.*`, `editor.currentLine.background`, `editor.caret`, `editor.lineNumber` | active | ошибка импорта |
+| `editor.lineNumber.active` | reserved | `editor.lineNumber` |
+| `editor.matchingTag.background` | active | `editor.selection.background` |
+| `editor.matchingTag.border` | active | `xml.tag.name` |
+| `xml.text`, `xml.tag.name`, `xml.tag.delimiter`, `xml.attribute.name`, `xml.attribute.value`, `xml.entity`, `xml.cdata`, `xml.processingInstruction`, `xml.doctype`, `xml.error` | active | ошибка импорта |
+| `xml.namespace` | reserved | `xml.attribute.name` |
+| `xml.comment` | hidden/conditional | `xml.text` |
+| `xml.warning` | active | `xml.error` |
+
+Здесь *optional* означает только совместимость импорта v1, а не отсутствие
+runtime-поведения и не статус reserved. `xml.comment` скрыт из UI по ограничению
+модели документа, описанному выше; роль остаётся доступной Lexilla.
