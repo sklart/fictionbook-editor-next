@@ -636,6 +636,7 @@ IDB_TABLE_TOOLBAR_INSERT_COLUMN_RIGHT BITMAP       "res\\table_toolbar_insert_co
 IDB_TABLE_TOOLBAR_DELETE_COLUMN BITMAP             "res\\table_toolbar_delete_column.bmp"
 IDB_TABLE_TOOLBAR_MAKE_HEADER_CELLS BITMAP         "res\\table_toolbar_make_header_cells.bmp"
 IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS BITMAP         "res\\table_toolbar_make_normal_cells.bmp"
+IDB_TOOLS_REFRESH_SCRIPTS BITMAP                   "res\\tools_refresh_scripts.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //

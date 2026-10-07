@@ -24,8 +24,30 @@ Require $runtime 'function LoadUserCommandScript\(path\)' 'Runtime no longer has
 Require $runtime 'replaceChild\(script,previous\)' 'Runtime must replace the previous userCmd node before each execution.'
 Require $runtime 'script\.id="userCmd"' 'Fresh script node must preserve the legacy userCmd id.'
 Require $runtime 'if\(!LoadUserCommandScript\(path\)\)\s*return;\s*Run\(\);' 'Run must use the fresh user-script loader.'
-Require $ids 'ID_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts command id is missing.'
+Require $ids 'ID_TOOLS_REFRESH_SCRIPTS\s+32901' 'Refresh Scripts command id must remain 32901.'
+Require $ids 'IDB_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts menu bitmap id is missing.'
 Require $resource 'MENUITEM "Refresh &scripts",\s+ID_TOOLS_REFRESH_SCRIPTS' 'Refresh Scripts menu item is missing.'
+Require $resource 'IDB_TOOLS_REFRESH_SCRIPTS\s+BITMAP\s+"res\\\\tools_refresh_scripts\.bmp"' 'Refresh Scripts bitmap resource is missing.'
+$refreshBitmapPath = Join-Path $root 'src\fbe\res\tools_refresh_scripts.bmp'
+if(-not (Test-Path -LiteralPath $refreshBitmapPath -PathType Leaf)) { throw 'Refresh Scripts bitmap file is missing.' }
+Add-Type -AssemblyName System.Drawing
+$refreshBitmap = [System.Drawing.Bitmap]::new($refreshBitmapPath)
+try {
+    if($refreshBitmap.Width -ne 16 -or $refreshBitmap.Height -ne 16 -or $refreshBitmap.GetPixel(0, 0).ToArgb() -ne [System.Drawing.Color]::Magenta.ToArgb()) {
+        throw 'Refresh Scripts bitmap must be a 16x16 BMP with a magenta transparency mask.'
+    }
+    $bluePixels = 0; $greenPixels = 0
+    for($y = 0; $y -lt $refreshBitmap.Height; ++$y) {
+        for($x = 0; $x -lt $refreshBitmap.Width; ++$x) {
+            $pixel = $refreshBitmap.GetPixel($x, $y)
+            if($pixel.B -gt $pixel.G -and $pixel.B -gt $pixel.R) { ++$bluePixels }
+            if($pixel.G -gt $pixel.R -and $pixel.G -gt $pixel.B) { ++$greenPixels }
+        }
+    }
+    if($bluePixels -eq 0 -or $greenPixels -eq 0) { throw 'Refresh Scripts bitmap must retain visible script-blue and refresh-green pixels.' }
+} finally { $refreshBitmap.Dispose() }
+Require $frame 'm_MenuBar\.LoadImages\(IDR_MAINFRAME_SMALL\);[\s\S]*?AddCommandBarBitmapFromModule\(m_MenuBar, applicationModule,\s*IDB_TOOLS_REFRESH_SCRIPTS, ID_TOOLS_REFRESH_SCRIPTS\)' 'Refresh Scripts command-bar bitmap is not registered after menu images load.'
+Require $frame 'RegisterOwnedNativeMenuBitmap\(applicationModule, IDB_TOOLS_REFRESH_SCRIPTS,\s*ID_TOOLS_REFRESH_SCRIPTS, UiMetrics::DpiForWindow\(m_hWnd\)\)' 'Refresh Scripts native menu bitmap is not DPI-aware.'
 Require $frameHeader 'COMMAND_ID_HANDLER\(ID_TOOLS_REFRESH_SCRIPTS, OnToolsRefreshScripts\)' 'Refresh Scripts command is not routed.'
 Require $frame 'LRESULT CMainFrame::OnToolsRefreshScripts[\s\S]*?InitializeScripts\(\)' 'Refresh Scripts must rebuild the script-owned UI.'
 Require $frame 'RefreshNavigationScriptTree\(\)' 'Script initialization must refresh the navigation tree.'

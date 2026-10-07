@@ -3283,6 +3283,10 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   m_MenuBar.LoadImages(IDR_MAINFRAME_SMALL);
   const HINSTANCE applicationModule = ATL::_AtlBaseModule.GetModuleInstance();
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_TOOLS_REFRESH_SCRIPTS, ID_TOOLS_REFRESH_SCRIPTS);
+  RegisterOwnedNativeMenuBitmap(applicationModule, IDB_TOOLS_REFRESH_SCRIPTS,
+    ID_TOOLS_REFRESH_SCRIPTS, UiMetrics::DpiForWindow(m_hWnd));
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_INSERT_ROW_ABOVE, ID_TABLE_INSERT_ROW_ABOVE);
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TABLE_INSERT_ROW_BELOW, ID_TABLE_INSERT_ROW_BELOW);

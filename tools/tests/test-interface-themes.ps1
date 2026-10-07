@@ -57,7 +57,7 @@ if($mainFrame -notlike '*OnPostCreate*' -or $mainFrame -notlike '*ThemeManager::
 foreach($required in @('WM_INITMENUPOPUP', 'native dark popup', 'CCommandBarCtrl::TrackPopupMenu', 'ThemeManager::TrackPopupMenu')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus do not retain command-bar icons: $required." }
 }
-foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
+foreach($required in @('RegisterNativeMenuBitmap', 'NativeMenuBitmap', 'RegisterOwnedNativeMenuBitmap', 'CreateScaledAlphaBitmap', 'IDB_TABLE_INSERT_ROW_ABOVE', 'IDB_TABLE_MAKE_NORMAL_CELLS', 'IDB_TOOLS_REFRESH_SCRIPTS', 'ApplyMainRebarTheme', 'RBS_BANDBORDERS', 'RBBS_CHILDEDGE', 'RBBIM_COLORS')) {
 	if($mainFrame -notlike "*$required*") { throw "Native dark menus or rebar bands do not apply the required dark path: $required." }
 }
 foreach($required in @('RBBS_NOGRIPPER', 'g_rebarBaseBandStyles.erase(window)', 'RB_DELETEBAND', 'MainRebarThemeProc', 'RB_GETRECT', 'THEME_COLOR_BORDER', 'StatusBarThemeProc', 'SB_GETPARTS', 'WM_GETFONT', 'UiMetrics::DialogFont()', 'GetTextMetrics', 'ScaleForDpi', 'SecondaryTextColor()', 'SBARS_SIZEGRIP', 'THEME_COLOR_SEPARATOR', 'SetDCPenColor', 'ThemeManager::SeparatorColor()')) {
