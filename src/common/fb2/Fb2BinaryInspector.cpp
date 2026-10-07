@@ -62,7 +62,7 @@ bool IsBmp(const std::vector<std::uint8_t>& bytes)
     const bool knownDibHeader = dibHeaderSize == 12 || dibHeaderSize == 40 || dibHeaderSize == 52 ||
         dibHeaderSize == 56 || dibHeaderSize == 108 || dibHeaderSize == 124;
     if (!knownDibHeader || bytes.size() < kFileHeaderSize + dibHeaderSize) return false;
-    return pixelOffset >= kFileHeaderSize + dibHeaderSize;
+    return pixelOffset >= kFileHeaderSize + dibHeaderSize && pixelOffset <= bytes.size();
 }
 }
 

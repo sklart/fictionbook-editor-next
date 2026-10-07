@@ -51,6 +51,9 @@ int main()
     std::vector<std::uint8_t> invalidBmpOffset = bmp;
     invalidBmpOffset[10] = 13;
     Check(FbeFb2Binary::DetectMimeType(invalidBmpOffset).empty(), "BMP invalid pixel offset");
+    std::vector<std::uint8_t> outOfRangeBmpOffset = bmp;
+    outOfRangeBmpOffset[10] = 64;
+    Check(FbeFb2Binary::DetectMimeType(outOfRangeBmpOffset).empty(), "BMP pixel offset beyond binary");
     std::vector<std::uint8_t> invalidBmpDib = bmp;
     invalidBmpDib[14] = 13;
     Check(FbeFb2Binary::DetectMimeType(invalidBmpDib).empty(), "BMP invalid DIB header");
