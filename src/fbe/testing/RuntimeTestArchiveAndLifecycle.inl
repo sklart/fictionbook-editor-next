@@ -46,6 +46,24 @@
 			::CloseHandle(file);
 			return saved;
 		};
+		auto readStrictUtf8 = [](const CString& path, CString& text) -> bool
+		{
+			HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (file == INVALID_HANDLE_VALUE) return false;
+			LARGE_INTEGER size = {};
+			const bool validSize = ::GetFileSizeEx(file, &size) != FALSE && size.QuadPart > 0 && size.QuadPart <= INT_MAX;
+			std::vector<char> bytes(validSize ? static_cast<size_t>(size.QuadPart) : 0);
+			DWORD read = 0;
+			const bool loaded = validSize && ::ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &read, NULL) != FALSE && read == bytes.size();
+			::CloseHandle(file);
+			if (!loaded) return false;
+			const int length = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(), static_cast<int>(bytes.size()), NULL, 0);
+			if (length <= 0) return false;
+			wchar_t* const buffer = text.GetBuffer(length);
+			const int decoded = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(), static_cast<int>(bytes.size()), buffer, length);
+			text.ReleaseBuffer(decoded > 0 ? decoded : 0);
+			return decoded == length;
+		};
 		const CString sourcePath = AU::_ARGS.source_memory_benchmark_path + L".source.fbetheme";
 		const CString exportedPath = AU::_ARGS.source_memory_benchmark_path + L".exported.fbetheme";
 		CString error;
@@ -71,8 +89,11 @@
 				XmlSourceThemes::LoadImportTheme(sourcePath, optionalImport, error);
 		}
 		const bool exported = importedMinimal && XmlSourceThemes::ExportThemeFile(imported.info.id, imported.info.name, imported.colors, exportedPath, error, &imported.metadata);
+		CString exportedText;
+		const bool utf8Export = exported && readStrictUtf8(exportedPath, exportedText) &&
+			exportedText.Find(L"\"Тема XML\"") >= 0 && exportedText.Find(L"\"Тест\"") >= 0;
 		XmlSourceThemeImport roundTrip = {};
-		const bool reimported = exported && XmlSourceThemes::LoadImportTheme(exportedPath, roundTrip, error);
+		const bool reimported = utf8Export && XmlSourceThemes::LoadImportTheme(exportedPath, roundTrip, error);
 		bool palettePreserved = reimported;
 		for (int token = 0; token < XML_SRC_STYLE_TOKEN_COUNT && palettePreserved; ++token)
 			palettePreserved = imported.colors[token] == roundTrip.colors[token];
@@ -104,9 +125,19 @@
 			border = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_TAG_MATCH));
 			errorColor = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_XML_TAG_MISMATCHED));
 			warning = static_cast<COLORREF>(m_source.Send(SCI_INDICGETFORE, EDITOR_INDICATOR_XML_TAG_MISSING_OPENING));
-			return m_source.Send(SCI_INDICGETSTYLE, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND) == INDIC_FULLBOX &&
+			DWORD expectedBackground = 0, expectedBorder = 0;
+			const bool expectedColors = highContrastEnabled ||
+				(XmlSourceThemes::GetThemeColor(id, XML_SRC_STYLE_MATCHING_TAG_BACKGROUND, expectedBackground) &&
+				 XmlSourceThemes::GetThemeColor(id, XML_SRC_STYLE_MATCHING_TAG_BORDER, expectedBorder));
+			if (highContrastEnabled) { expectedBackground = ::GetSysColor(COLOR_HIGHLIGHT); expectedBorder = ::GetSysColor(COLOR_HIGHLIGHTTEXT); }
+			return expectedColors && background == expectedBackground && border == expectedBorder &&
+				m_source.Send(SCI_INDICGETSTYLE, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND) == INDIC_FULLBOX &&
 				m_source.Send(SCI_INDICGETALPHA, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND) == 72 &&
-				m_source.Send(SCI_INDICGETSTYLE, EDITOR_INDICATOR_TAG_MATCH) == INDIC_ROUNDBOX;
+				m_source.Send(SCI_INDICGETUNDER, EDITOR_INDICATOR_TAG_MATCH_BACKGROUND) != 0 &&
+				m_source.Send(SCI_INDICGETSTYLE, EDITOR_INDICATOR_TAG_MATCH) == INDIC_ROUNDBOX &&
+				m_source.Send(SCI_INDICGETALPHA, EDITOR_INDICATOR_TAG_MATCH) == 0 &&
+				m_source.Send(SCI_INDICGETOUTLINEALPHA, EDITOR_INDICATOR_TAG_MATCH) == 255 &&
+				m_source.Send(SCI_INDICGETUNDER, EDITOR_INDICATOR_TAG_MATCH) == 0;
 		};
 		COLORREF lightBackground = 0, lightBorder = 0, lightError = 0, lightWarning = 0;
 		COLORREF darkBackground = 0, darkBorder = 0, darkError = 0, darkWarning = 0;
@@ -119,10 +150,10 @@
 			darkError == ::GetSysColor(COLOR_HOTLIGHT) && darkWarning == ::GetSysColor(COLOR_HOTLIGHT));
 		_Settings.SetXmlSrcThemeId(originalTheme, false);
 		ApplyXmlSourceEditorChanges(false);
-		const bool passed = importedMinimal && fallbacks && optionalRolesAccepted && exported && reimported && palettePreserved && metadataPreserved && missingRequiredRejected && invalidValuesRejected && noSelfReference && themeSwitchApplied && highContrastSystemColors;
+		const bool passed = importedMinimal && fallbacks && optionalRolesAccepted && exported && utf8Export && reimported && palettePreserved && metadataPreserved && missingRequiredRejected && invalidValuesRejected && noSelfReference && themeSwitchApplied && highContrastSystemColors;
 		CStringA report;
-		report.Format("import=%d\nfallbacks=%d\noptional_roles=%d\nexport=%d\nreimport=%d\npalette=%d\nmetadata=%d\nmissing_required=%d\ninvalid_values=%d\nno_self_reference=%d\ntheme_switch=%d\nhigh_contrast_system_colors=%d\nresult=%s\n",
-			importedMinimal, fallbacks, optionalRolesAccepted, exported, reimported, palettePreserved, metadataPreserved, missingRequiredRejected, invalidValuesRejected, noSelfReference, themeSwitchApplied, highContrastSystemColors, passed ? "pass" : "fail");
+		report.Format("import=%d\nfallbacks=%d\noptional_roles=%d\nexport=%d\nutf8_export=%d\nreimport=%d\npalette=%d\nmetadata=%d\nmissing_required=%d\ninvalid_values=%d\nno_self_reference=%d\ntheme_switch=%d\nhigh_contrast_system_colors=%d\nresult=%s\n",
+			importedMinimal, fallbacks, optionalRolesAccepted, exported, utf8Export, reimported, palettePreserved, metadataPreserved, missingRequiredRejected, invalidValuesRejected, noSelfReference, themeSwitchApplied, highContrastSystemColors, passed ? "pass" : "fail");
 		DWORD written = 0;
 		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close();

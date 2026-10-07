@@ -30,6 +30,7 @@ foreach ($id in @(
         'release.fbe-themed-message-runtime',
         'release.fbe-theme-application-runtime',
         'release.fbe-body-theme-runtime',
+		'release.fbe-xml-source-theme-v1-runtime',
         'release.settings-editor-page-runtime',
         'release.fbe-save-decision-runtime',
         'release.fbe-table-production-roundtrip.huge',

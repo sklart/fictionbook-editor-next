@@ -25,7 +25,7 @@ try {
         $parts = $line -split '=', 2
         if ($parts.Count -eq 2) { $values[$parts[0]] = $parts[1] }
     }
-    foreach ($key in @('import', 'fallbacks', 'optional_roles', 'export', 'reimport', 'palette', 'metadata', 'missing_required', 'invalid_values', 'no_self_reference', 'theme_switch', 'high_contrast_system_colors')) {
+    foreach ($key in @('import', 'fallbacks', 'optional_roles', 'export', 'utf8_export', 'reimport', 'palette', 'metadata', 'missing_required', 'invalid_values', 'no_self_reference', 'theme_switch', 'high_contrast_system_colors')) {
         if ($values[$key] -ne '1') { throw "XML source theme v1 runtime check failed: $key (value '$($values[$key])')." }
     }
     if ($values['result'] -ne 'pass') { throw "XML source theme v1 report did not pass: $($values | ConvertTo-Json -Compress)" }

@@ -226,6 +226,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-auto-url-detect.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-themes.ps1")
 & (Join-Path $repoRoot "tools\tests\test-xml-source-current-line.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-xml-source-theme-v1-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-filename-state.ps1")
 if ($runTables) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-toolbar-rendering.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")

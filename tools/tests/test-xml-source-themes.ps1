@@ -388,6 +388,7 @@ foreach($requiredText in @(
 foreach($requiredText in @(
     'INDIC_FULLBOX', 'SourceEditorColorMatchingTagBackground',
     'EDITOR_INDICATOR_TAG_MATCH_BACKGROUND', 'SourceEditorColorMatchingTagBorder',
+	'SCI_INDICSETOUTLINEALPHA',
     'EDITOR_INDICATOR_XML_TAG_MISSING_OPENING', 'SourceEditorColorXmlWarning',
     'EDITOR_INDICATOR_XML_TAG_MISMATCHED', 'SourceEditorColorXmlError',
     'COLOR_HIGHLIGHT', 'COLOR_HIGHLIGHTTEXT'
@@ -397,6 +398,9 @@ foreach($requiredText in @(
     }
 }
 if($sourceEditor -like '*STYLE_BRACELIGHT*') { throw 'XML tag matching must not rely on the unrelated STYLE_BRACELIGHT path.' }
+if($sourceEditor -notmatch 'SCI_INDICSETSTYLE, EDITOR_INDICATOR_TAG_MATCH, INDIC_ROUNDBOX\);\s*Send\(SCI_INDICSETALPHA, EDITOR_INDICATOR_TAG_MATCH, 0\);\s*Send\(SCI_INDICSETOUTLINEALPHA, EDITOR_INDICATOR_TAG_MATCH, 255\);\s*Send\(SCI_INDICSETUNDER, EDITOR_INDICATOR_TAG_MATCH, FALSE\)') {
+	throw 'Matching-tag border must be an opaque outline with a transparent interior.'
+}
 
 # The parser writes every token on export.  A minimally valid v1 input that
 # omitted compatibility roles therefore normalizes to a complete UTF-8 theme
