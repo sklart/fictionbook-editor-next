@@ -289,10 +289,11 @@ bool TryReadStream(IStream* stream, CoverImage& coverImage, size_t maximumDecode
     ATL::CString base64;
     const size_t maximumBase64Characters = ((maximumDecodedBytes + 2) / 3) * 4 + 8;
     auto getAttribute = [&](const wchar_t* expected) {
+        const size_t expectedLength = wcslen(expected);
         ATL::CString value;
         if (SUCCEEDED(reader->MoveToFirstAttribute())) {
             do { const wchar_t* name = nullptr; UINT nameLength = 0; reader->GetLocalName(&name, &nameLength);
-                if (wcslen(expected) == nameLength && wcsncmp(name, expected, nameLength) == 0) { const wchar_t* text = nullptr; UINT textLength = 0; reader->GetValue(&text, &textLength); value.SetString(text, textLength); break; }
+                if (expectedLength == nameLength && wcsncmp(name, expected, nameLength) == 0) { const wchar_t* text = nullptr; UINT textLength = 0; reader->GetValue(&text, &textLength); value.SetString(text, textLength); break; }
             } while (SUCCEEDED(reader->MoveToNextAttribute()));
             reader->MoveToElement();
         }

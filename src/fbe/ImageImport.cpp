@@ -189,7 +189,7 @@ SourceFormat Detect(const std::vector<BYTE>& b) {
 HRESULT ReadBytes(const CString& file, std::vector<BYTE>& data) {
 	CAtlFile f; HRESULT hr = f.Create(file, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING); if (FAILED(hr)) return hr;
 	ULONGLONG n=0; hr = f.GetSize(n); if (FAILED(hr)) return hr;
-	if (n > ULONG_MAX || n > kMaxSourceBytes) return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
+	if (n > kMaxSourceBytes) return HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE);
 	try { data.resize(static_cast<size_t>(n)); } catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 	DWORD read=0; if (n == 0) return S_OK;
 	hr = f.Read(data.data(), static_cast<DWORD>(n), read); return SUCCEEDED(hr) && read == n ? S_OK : FAILED(hr) ? hr : HRESULT_FROM_WIN32(ERROR_READ_FAULT);

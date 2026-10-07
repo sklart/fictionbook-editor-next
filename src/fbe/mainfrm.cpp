@@ -6836,7 +6836,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 			m_Speller = new CSpeller(U::GetProgDir()+L"Dict\\");
 			m_Speller->SetEnabled(false);
 		}
-		if (!m_Speller->Enabled())
+		if (m_doc && !m_Speller->Enabled())
 		{
 			m_Speller->SetFrame(m_hWnd);
 			m_Speller->AttachDocument(m_doc->m_body.Document());
@@ -6846,7 +6846,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	// don't use spellchecker
 	else if (m_Speller) m_Speller->SetEnabled(false);
 
-	if (m_Speller && m_Speller->Enabled())
+	if (m_doc && m_Speller && m_Speller->Enabled())
 	{
 		m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
 
@@ -6856,7 +6856,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	}
 
 	// added by SeNS: issue 17: process nbsp change
-	if (_Settings.GetOldNBSPChar().Compare (_Settings.GetNBSPChar()) != 0)
+	if (m_doc && _Settings.GetOldNBSPChar().Compare (_Settings.GetNBSPChar()) != 0)
 	{
 		int numChanges = 0;
 		// save caret position

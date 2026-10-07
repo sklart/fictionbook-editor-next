@@ -437,14 +437,7 @@ public:
 
 			err->GetSourcePosition(&ctx,&line,&column);
 
-			if (ei.bstrDescription)
-			{
-				FbeScriptDiagnostics::Show(m_frame->m_hWnd, ei, line, column);
-			}
-			else
-			{
-				FbeScriptDiagnostics::Show(m_frame->m_hWnd, ei, line, column);
-			}				
+			FbeScriptDiagnostics::Show(m_frame->m_hWnd, ei, line, column);
 			SysFreeString(ei.bstrSource);
 			SysFreeString(ei.bstrDescription);
 			SysFreeString(ei.bstrHelpFile);

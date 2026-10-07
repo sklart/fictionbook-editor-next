@@ -403,7 +403,7 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 
 	// Do not prime the OLEAUT cache with LoadRegTypeLib before checking the
 	// physical registration. This is essential for a portable repair.
-	LPOLESTR registeredPath = NULL;
+	BSTR registeredPath = NULL;
 	HRESULT result = ::QueryPathOfRegTypeLib(LIBID_FBELib, 1, 0, LOCALE_SYSTEM_DEFAULT, &registeredPath);
 	StartupTrace::HResult(L"typelib", L"TL120", result, L"QueryPathOfRegTypeLib before repair");
 	CComPtr<ITypeLib> directRegistered;
@@ -426,13 +426,13 @@ static HRESULT EnsureTypeLibraryRegisteredForCurrentUser()
 	if(registeredPath) { ::SysFreeString(registeredPath); registeredPath = NULL; }
 
 	CComPtr<ITypeLib> embedded;
-	result = ::LoadTypeLibEx((LPCOLESTR)(LPCTSTR)modulePath, REGKIND_NONE, &embedded);
+	result = ::LoadTypeLibEx(static_cast<LPCOLESTR>(static_cast<LPCTSTR>(modulePath)), REGKIND_NONE, &embedded);
 	StartupTrace::HResult(L"typelib", L"TL160", result, L"LoadTypeLibEx(current FBE.exe)");
 	if(FAILED(result)) return result;
 	result = ValidateExternalHelperTypeLibrary(embedded, L"embedded");
 	StartupTrace::HResult(L"typelib", L"TL170", result, L"embedded FBELib validation");
 	if(FAILED(result)) return result;
-	result = ::RegisterTypeLibForUser(embedded, (LPOLESTR)(LPCTSTR)modulePath, NULL);
+	result = ::RegisterTypeLibForUser(embedded, const_cast<LPOLESTR>(static_cast<LPCOLESTR>(static_cast<LPCTSTR>(modulePath))), NULL);
 	StartupTrace::HResult(L"typelib", L"TL180", result, L"RegisterTypeLibForUser");
 	if(FAILED(result)) return result;
 

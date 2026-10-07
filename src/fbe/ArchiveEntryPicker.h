@@ -7,7 +7,7 @@ class CArchiveEntryPicker : public CDialogImpl<CArchiveEntryPicker>
 {
 public:
 	enum { IDD = IDD_ARCHIVE_ENTRY };
-	explicit CArchiveEntryPicker(const std::vector<FbeArchive::Entry>& entries) : m_entries(entries), m_selected(-1) {}
+	explicit CArchiveEntryPicker(const std::vector<FbeArchive::Entry>& entries) : m_entries(entries), m_selected(-1), m_hasFolders(false) {}
 	int SelectedIndex() const { return m_selected; }
 	BEGIN_MSG_MAP(CArchiveEntryPicker)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)

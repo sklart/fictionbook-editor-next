@@ -575,7 +575,8 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 				const int decision = U::MessageBox(m_hWnd, conflict, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNOCANCEL | MB_ICONQUESTION);
 				if(decision != IDYES && decision != IDNO) { ++cancelled; continue; }
 				if(decision == IDYES) conflictMode = XmlSourceThemes::IMPORT_THEME_REPLACE_USER;
-			}			if(XmlSourceThemes::ImportThemeFile(parsedTheme, importedId, error, conflictMode))
+			}
+			if(XmlSourceThemes::ImportThemeFile(parsedTheme, importedId, error, conflictMode))
 			{
 				++imported;
 				lastImportedId = importedId;

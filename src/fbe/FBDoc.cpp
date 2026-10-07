@@ -535,6 +535,9 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	if (FAILED(hr))
 		return hr;
 
+	if (count < 0 || (count > 0 && params == NULL))
+		return E_INVALIDARG;
+
 	CString argumentTypes;
 	for (int index = 0; index < count; ++index)
 	{

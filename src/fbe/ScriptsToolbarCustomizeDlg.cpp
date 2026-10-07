@@ -15,7 +15,7 @@ namespace
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
 	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
-	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragScrollDirection(0)
+	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragStartPoint{}, m_dragScrollDirection(0)
 {
 }
 

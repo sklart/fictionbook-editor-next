@@ -76,7 +76,7 @@ public:
 public:
   DECLARE_WND_SUPERCLASS(_T("Tree"), CTreeViewCtrlEx::GetWndClassName())
 
-  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_current_item(NULL), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), m_hItemFirstSel(NULL), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
+  CTreeView() : m_last_lookup_item(0), m_main_window(0), m_drag(false), m_himlDrag(NULL), m_current_item(NULL), m_script_mode(false), m_tree_index_lookup_count(0), m_tree_linear_fallback_count(0), m_drop_item_nimage(0), m_hItemFirstSel(NULL), /*m_dragdrop_inserted_item(0),*/ m_insert_type(CTreeView::none), m_bodyED(NULL), m_sectionED(NULL), m_imageED(NULL), m_poemED(NULL){m_move_from.m_pTreeView = this;m_move_to.m_pTreeView = this;}
     
   BOOL PreTranslateMessage(MSG* pMsg);
   

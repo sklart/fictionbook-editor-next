@@ -4,7 +4,7 @@
 #include "..\\..\\UiMetrics.h"
 #include "..\\..\\ThemeManager.h"
 
-RegexQuickReferencePopup::RegexQuickReferencePopup() : m_messageLoop(NULL), m_monospaceFont(NULL), m_syntaxColumnWidth(0) {}
+RegexQuickReferencePopup::RegexQuickReferencePopup() : m_context(FbeSearchPresets::SearchUiContext::Design), m_mode(FbeSearchPresets::RegexQuickReferenceMode::Search), m_messageLoop(NULL), m_monospaceFont(NULL), m_syntaxColumnWidth(0) {}
 RegexQuickReferencePopup::~RegexQuickReferencePopup() { if (m_monospaceFont != NULL) ::DeleteObject(m_monospaceFont); }
 
 LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {

@@ -339,11 +339,12 @@ bool TryReadStream(IStream* stream, Metadata& metadata, ATL::CString* errorMessa
         }
     };
     auto getAttribute = [&](const wchar_t* name) {
+        const size_t nameLength = wcslen(name);
         ATL::CString value;
         if (SUCCEEDED(reader->MoveToFirstAttribute())) {
             do {
                 const wchar_t* localName = nullptr; UINT length = 0;
-                if (SUCCEEDED(reader->GetLocalName(&localName, &length)) && wcslen(name) == length && wcsncmp(localName, name, length) == 0) {
+                if (SUCCEEDED(reader->GetLocalName(&localName, &length)) && nameLength == length && wcsncmp(localName, name, length) == 0) {
                     const wchar_t* attrValue = nullptr; UINT attrLength = 0;
                     if (SUCCEEDED(reader->GetValue(&attrValue, &attrLength))) value.SetString(attrValue, attrLength);
                     break;
