@@ -106,6 +106,7 @@ if($tree -match 'ID_SCRIPT_BASE \+ 999') { throw 'Navigation code must use Scrip
 Must $settings 'DOCUMENT_TREE_SCRIPTS_KEY' 'settings schema persists navigation mode'
 Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
 Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select their own image list'
+Must $tree 'if\(m_script_mode\) SetImageList\(m_scriptImageList,TVSIL_NORMAL\);' 'scripts rebind the native image list after a visual refresh'
 Must $tree 'SetImageList\(m_ImageList,TVSIL_NORMAL\)' 'structure restores the legacy structural image list'
 Must $tree 'SetWindowTheme\(m_hWnd, L" ", L" "\)' 'scripts use native legacy plus/minus expanders instead of themed chevrons'
 Must $tree 'kScriptImageSize = 20' 'scripts-tree icons use the readable 20px visual size'

@@ -817,7 +817,15 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 {
 	const bool refreshImages = m_script_images.size() != items.size() || !ScriptVisualsMatch(m_script_visuals, visuals, items.size());
 	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
-	if(refreshImages) PrepareScriptImages();
+	if(refreshImages)
+	{
+		PrepareScriptImages();
+		// Recreating a CImageList changes its HIMAGELIST.  The native tree keeps
+		// the previous handle until it is explicitly rebound, so refreshes while
+		// Scripts mode is visible would otherwise leave item image indices backed
+		// by a destroyed list.
+		if(m_script_mode) SetImageList(m_scriptImageList,TVSIL_NORMAL);
+	}
 	if(m_script_mode) RebuildScriptTree();
 }
 
