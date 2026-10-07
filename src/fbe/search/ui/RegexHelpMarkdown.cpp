@@ -376,6 +376,13 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     const bool fallbackLoaded = LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext::Design, L"zz-ZZ", fallback, fallbackPath) && fallbackPath.Find(L"Help\\en-US\\regex-design.md") >= 0;
     const bool content = !enDesign.empty() && !enSource.empty() && !ruDesign.empty() && !ruSource.empty() &&
         enDesign[0].kind == MarkdownBlockKind::Title && enSource[0].kind == MarkdownBlockKind::Title;
+    std::vector<MarkdownBlock> cachedFirst, cachedSecond;
+    CString cachedFirstPath, cachedSecondPath;
+    MarkdownLoadMetrics firstLoad, secondLoad;
+    const bool cached = LoadMarkdown(FbeSearchPresets::SearchUiContext::Design, cachedFirst, cachedFirstPath, &firstLoad) &&
+        LoadMarkdown(FbeSearchPresets::SearchUiContext::Design, cachedSecond, cachedSecondPath, &secondLoad) &&
+        !cachedFirst.empty() && cachedFirst.size() == cachedSecond.size() && cachedFirstPath == cachedSecondPath &&
+        secondLoad.cacheHit && secondLoad.markdownReadMs == 0 && secondLoad.parseMs == 0;
     std::vector<MarkdownBlock> parsed, empty, malformed, unknown;
     ParseMarkdownText(L"# Title\n## Heading two\n### Heading three\nBody `inline` text\n- one\n- two\n```text\n   leading\ntrailing   \n\ttab\n\nlast\n```\n| Syntax | Meaning |\n| --- | --- |\n| \\d | digit |\n| \\w | word |\nBody after table https://example.invalid", parsed);
     ParseMarkdownText(L"", empty);
@@ -494,9 +501,9 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
-    const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && parser && formatting && longDocuments;
-    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\nparser=%d\nformat=%d\nformat_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
-        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, parser, formatting, formattingDetail, shadedLinkDetail, longDocuments,
+    const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && cached && parser && formatting && longDocuments;
+    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
+        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, shadedLinkDetail, longDocuments,
         enDesignLength, enDesignExpectedLength, enSourceLength, enSourceExpectedLength, ruDesignLength, ruDesignExpectedLength, ruSourceLength, ruSourceExpectedLength, passed ? "pass" : "fail");
     return passed;
 }
