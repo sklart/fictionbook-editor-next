@@ -91,26 +91,27 @@ HBITMAP ScaleLegacyToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetS
 	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
 	const DWORD* sourcePixels = static_cast<const DWORD*>(alphaInfo.dsBm.bmBits);
 	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
-	// Legacy Toolbar.bmp has a binary magenta key. Interpolate coverage and color,
-	// then threshold coverage so fractional DPI does not widen a one-pixel contour.
+	// Toolbar.bmp has a binary magenta key. Resample each destination pixel by
+	// source-area coverage rather than point sampling: that preserves a thin
+	// legacy silhouette at fractional DPI without a semi-transparent edge band.
 	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
 	{
-		const double sourceX = (static_cast<double>(x) + 0.5) * sourceSize / targetSize - 0.5;
-		const double sourceY = (static_cast<double>(y) + 0.5) * sourceSize / targetSize - 0.5;
-		const double clampedX = max(0.0, min(static_cast<double>(sourceSize - 1), sourceX));
-		const double clampedY = max(0.0, min(static_cast<double>(sourceSize - 1), sourceY));
-		const int left = static_cast<int>(floor(clampedX)), top = static_cast<int>(floor(clampedY));
-		const int right = min(sourceSize - 1, left + 1), bottom = min(sourceSize - 1, top + 1);
-		const double fx = clampedX - left, fy = clampedY - top;
-		const DWORD samples[] = { sourcePixels[top * sourceSize + left], sourcePixels[top * sourceSize + right], sourcePixels[bottom * sourceSize + left], sourcePixels[bottom * sourceSize + right] };
-		const double weights[] = { (1.0 - fx) * (1.0 - fy), fx * (1.0 - fy), (1.0 - fx) * fy, fx * fy };
+		const double left = static_cast<double>(x) * sourceSize / targetSize, right = static_cast<double>(x + 1) * sourceSize / targetSize;
+		const double top = static_cast<double>(y) * sourceSize / targetSize, bottom = static_cast<double>(y + 1) * sourceSize / targetSize;
+		const double area = (right - left) * (bottom - top);
 		double coverage = 0.0, red = 0.0, green = 0.0, blue = 0.0;
-		for(int sample = 0; sample < 4; ++sample)
+		for(int sourceY = static_cast<int>(floor(top)); sourceY <= static_cast<int>(ceil(bottom)) - 1; ++sourceY)
+		for(int sourceX = static_cast<int>(floor(left)); sourceX <= static_cast<int>(ceil(right)) - 1; ++sourceX)
 		{
-			coverage += ((samples[sample] >> 24) & 0xFF) * weights[sample];
-			red += ((samples[sample] >> 16) & 0xFF) * weights[sample];
-			green += ((samples[sample] >> 8) & 0xFF) * weights[sample];
-			blue += (samples[sample] & 0xFF) * weights[sample];
+			const double overlapX = max(0.0, min(right, static_cast<double>(sourceX + 1)) - max(left, static_cast<double>(sourceX)));
+			const double overlapY = max(0.0, min(bottom, static_cast<double>(sourceY + 1)) - max(top, static_cast<double>(sourceY)));
+			const double weight = overlapX * overlapY / area;
+			const DWORD sample = sourcePixels[sourceY * sourceSize + sourceX];
+			const double alpha = (sample >> 24) & 0xFF;
+			coverage += alpha * weight;
+			red += ((sample >> 16) & 0xFF) * weight;
+			green += ((sample >> 8) & 0xFF) * weight;
+			blue += (sample & 0xFF) * weight;
 		}
 		if(coverage < 127.5) { targetPixels[y * targetSize + x] = 0; continue; }
 		const int normalizedRed = max(0, min(255, static_cast<int>(red * 255.0 / coverage + 0.5)));

@@ -47,10 +47,10 @@ if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?
 if ($factory -match 'ImageList_LoadImage|ImageList_GetIcon|ImageList_AddIcon|ILC_COLOR32 \| ILC_MASK') {
 	throw 'Command-toolbar ARGB images must not recompose a mask through the legacy image-list/icon path.'
 }
-if ($factory -notmatch '(?s)HBITMAP ScaleLegacyToolbarAlphaBitmap\(.*?coverage < 127\.5.*?red \* 255\.0 / coverage.*?0xFF000000.*?return scaled;' -or
+if ($factory -notmatch '(?s)HBITMAP ScaleLegacyToolbarAlphaBitmap\(.*?source-area coverage.*?overlapX.*?overlapY.*?coverage < 127\.5.*?red \* 255\.0 / coverage.*?0xFF000000.*?return scaled;' -or
     $factory -notmatch 'CreateScaledLegacyToolbarAlphaBitmap\(HBITMAP source, int sourceSize, int targetSize\).*?ScaleLegacyToolbarAlphaBitmap' -or
     $factory -notmatch 'HBITMAP ToolbarFactory::CreateScaledAlphaBitmap\(HBITMAP source, int sourceSize, int targetSize\) \{ return ScaleAlphaBitmap\(') {
-    throw 'Standard Toolbar.bmp icons must use bilinear coverage with thresholded alpha while table bitmaps retain the premultiplied ARGB scaler.'
+    throw 'Standard Toolbar.bmp icons must use area coverage with thresholded alpha while table bitmaps retain the premultiplied ARGB scaler.'
 }
 if ($factory -match 'Nearest|CreateScaledPixelPreservingAlphaBitmap') { throw 'Nearest-neighbor scaling must not remain in the standard Toolbar.bmp path.' }
 foreach ($forbidden in @('connectedCanvas', 'edge-connected', 'pending.Enqueue', 'maximum =', 'minimum =')) {

@@ -1515,6 +1515,19 @@
 		const int sourceStride = ((sourceSize * 24 + 31) / 32) * 4;
 		for(int y = 0; y < sourceSize; ++y) for(int x = 0; x < sourceSize; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 0xFF; pixel[1] = 0x00; pixel[2] = 0xFF; }
 		for(int y = 7; y <= 16; ++y) for(int x = 7; x <= 16; ++x) { BYTE* pixel = static_cast<BYTE*>(sourceBits) + y * sourceStride + x * 3; pixel[0] = 80; pixel[1] = 150; pixel[2] = 210; }
+		wchar_t artifactDirectory[MAX_PATH] = {}; const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
+		auto saveStandardToolbarScreenshot = [&](HBITMAP bitmap, int size, UINT dpi) -> bool
+		{
+			if (artifactLength == 0 || artifactLength >= _countof(artifactDirectory)) return artifactLength == 0;
+			DIBSECTION info = {}; if (!bitmap || ::GetObject(bitmap, sizeof(info), &info) != sizeof(info) || !info.dsBm.bmBits) return false;
+			BITMAPINFOHEADER header = info.dsBmih; header.biSize = sizeof(header); header.biWidth = size; header.biHeight = -size; header.biPlanes = 1; header.biBitCount = 32; header.biCompression = BI_RGB;
+			BITMAPFILEHEADER fileHeader = {}; fileHeader.bfType = 0x4d42; fileHeader.bfOffBits = sizeof(fileHeader) + sizeof(header); fileHeader.bfSize = fileHeader.bfOffBits + size * size * 4;
+			CString path; path.Format(L"%s\\toolbar-standard-%u.bmp", artifactDirectory, dpi);
+			HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); DWORD written = 0;
+			const bool saved = file != INVALID_HANDLE_VALUE && ::WriteFile(file, &fileHeader, sizeof(fileHeader), &written, NULL) && written == sizeof(fileHeader) && ::WriteFile(file, &header, sizeof(header), &written, NULL) && written == sizeof(header) && ::WriteFile(file, info.dsBm.bmBits, size * size * 4, &written, NULL) && written == static_cast<DWORD>(size * size * 4);
+			if (file != INVALID_HANDLE_VALUE) ::CloseHandle(file);
+			return saved;
+		};
 		auto standardIconsPass = [&](UINT dpi, int& failure, long& intermediateAlpha, int& silhouettePassed, int& imageListHasMask, int& thinLineWidth) -> bool
 		{
 			failure = 0; intermediateAlpha = 0; silhouettePassed = 0; imageListHasMask = 0; thinLineWidth = 0; CImageList images;
@@ -1528,6 +1541,7 @@
 			HBITMAP baseline = source ? ToolbarFactory::CreateScaledLegacyToolbarAlphaBitmap(source, 24, 24) : NULL; if(source) ::DeleteObject(source);
 			DIBSECTION info = {}, baselineInfo = {}; const bool ready = scaled && baseline && ::GetObject(scaled, sizeof(info), &info) == sizeof(info) && ::GetObject(baseline, sizeof(baselineInfo), &baselineInfo) == sizeof(baselineInfo) && info.dsBm.bmBits != NULL && baselineInfo.dsBm.bmBits != NULL && info.dsBm.bmWidth == size && abs(info.dsBmih.biHeight) == size;
 			if(!ready) { if(scaled) ::DeleteObject(scaled); if(baseline) ::DeleteObject(baseline); failure = 3; return false; }
+			if ((dpi == 96 || dpi == 144 || dpi == 192) && !saveStandardToolbarScreenshot(scaled, size, dpi)) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 10; return false; }
 			const DWORD* pixels = static_cast<const DWORD*>(info.dsBm.bmBits); const DWORD* baselinePixels = static_cast<const DWORD*>(baselineInfo.dsBm.bmBits); const int corners[] = { 0, size - 1, size * (size - 1), size * size - 1 }; long visible = 0;
 			for(size_t corner = 0; corner < _countof(corners); ++corner) if(pixels[corners[corner]] != 0) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 4; return false; }
 			int sourceLeft = 24, sourceTop = 24, sourceRight = -1, sourceBottom = -1, targetLeft = size, targetTop = size, targetRight = -1, targetBottom = -1;

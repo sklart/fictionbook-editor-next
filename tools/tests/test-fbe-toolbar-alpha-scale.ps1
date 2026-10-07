@@ -3,7 +3,7 @@
 Runs the production ARGB scaler on a synthetic magenta-key bitmap at all command-toolbar DPIs.
 #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [switch]$KeepArtifacts)
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90, [switch]$KeepArtifacts, [string]$ArtifactDirectory)
 $ErrorActionPreference = 'Stop'
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
@@ -11,17 +11,18 @@ if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найд
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'toolbar-alpha-scale'
 $passed = $false
 try {
+    if($ArtifactDirectory) { $ArtifactDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArtifactDirectory); New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null }
     $fixture = Join-Path $isolation.Root 'alpha-scale.fb2'
     $report = Join-Path $isolation.Root 'alpha-scale.tsv'
     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>alpha</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>alpha-scale-test</id><version>1.0</version></document-info></description><body><section><p>alpha scale</p></section></body></FictionBook>'
     Set-Content -LiteralPath $fixture -Value $xml -Encoding utf8
-    $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
+    $oldMode, $oldScenario, $oldArtifacts = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_ARTIFACT_DIR
     try {
-        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'toolbar-alpha-scale'
+        $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'toolbar-alpha-scale'; $env:FBE_NEXT_TEST_ARTIFACT_DIR = $ArtifactDirectory
         $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('-b', $report, '--portable', $fixture) -PassThru
         $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'toolbar-alpha-scale' -Report $report -TimeoutSeconds $TimeoutSeconds
         if ($exitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE alpha-scale scenario failed: exit $exitCode." }
-    } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
+    } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TEST_ARTIFACT_DIR=$oldArtifacts }
     $rows = @(Import-Csv -LiteralPath $report -Delimiter "`t")
     $expected = @{ 96 = 24; 120 = 30; 144 = 36; 168 = 42; 192 = 48 }
     if($rows.Count -ne $expected.Count) { throw "Expected $($expected.Count) alpha-scale rows, got $($rows.Count)." }
@@ -29,6 +30,7 @@ try {
         $row = @($rows | Where-Object dpi -eq $dpi)
         if($row.Count -ne 1 -or [int]$row[0].size -ne $expected[$dpi] -or [int]$row[0].transparent_corners -ne 1 -or [int]$row[0].visible_pixels -le 0 -or [int]$row[0].opaque_black_pixels -ne 0 -or [int]$row[0].magenta_pixels -ne 0 -or [int]$row[0].invalid_premultiplied_pixels -ne 0 -or [int]$row[0].max_color_error -gt 2 -or [int]$row[0].color_fidelity_passed -ne 1 -or [int]$row[0].standard_icons_passed -ne 1 -or [int]$row[0].standard_failure -ne 0 -or [int]$row[0].standard_intermediate_alpha_pixels -ne 0 -or [int]$row[0].standard_silhouette_passed -ne 1 -or [int]$row[0].standard_thin_line_width -le 0 -or [int]$row[0].standard_thin_line_width -gt [math]::Ceiling($expected[$dpi] / 24.0) -or [int]$row[0].standard_image_list_has_mask -ne 0 -or [int]$row[0].passed -ne 1) { throw "ARGB alpha-scale contract failed at $dpi DPI." }
     }
+    if($ArtifactDirectory) { foreach($dpi in 96,144,192) { if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory "toolbar-standard-$dpi.bmp"))) { throw "Missing standard-toolbar screenshot for $dpi DPI." } } }
     $passed = $true
     Write-Host 'FBE toolbar ARGB scaling contract passed.'
 } finally {
