@@ -76,7 +76,7 @@ LRESULT CArchiveEntryPicker::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 		m_list.SetFocus();
 	}
 	RECT item = {};
-	const int rowHeight = m_list.GetItemCount() && m_list.GetItemRect(0, &item, LVIR_BOUNDS) ? item.bottom - item.top : 18;
+	const int rowHeight = (m_list.GetItemCount() != 0 && m_list.GetItemRect(0, &item, LVIR_BOUNDS)) ? item.bottom - item.top : 18;
 	const int visibleRows = min(max(static_cast<int>(m_entries.size()), 5), 10);
 	RECT client = {}, window = {}; GetClientRect(&client); GetWindowRect(&window);
 	const int listHeight = 24 + visibleRows * rowHeight + 4;
@@ -138,7 +138,7 @@ void CArchiveEntryPicker::LayoutColumns()
 	RECT client = {}; m_list.GetClientRect(&client);
 	int available = max(0, client.right - client.left);
 	RECT item = {};
-	const int itemHeight = m_list.GetItemCount() && m_list.GetItemRect(0, &item, LVIR_BOUNDS) ? item.bottom - item.top : 0;
+	const int itemHeight = (m_list.GetItemCount() != 0 && m_list.GetItemRect(0, &item, LVIR_BOUNDS)) ? item.bottom - item.top : 0;
 	RECT listClient = {}; m_list.GetClientRect(&listClient);
 	if (itemHeight > 0 && m_list.GetItemCount() * itemHeight > listClient.bottom - listClient.top - ScaleForWindow(m_hWnd, 24))
 		available = max(0, available - ::GetSystemMetrics(SM_CXVSCROLL));

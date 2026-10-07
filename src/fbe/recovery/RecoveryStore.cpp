@@ -38,8 +38,10 @@ bool RecoveryStore::WriteArchiveLocation(const DocumentLocation& location) const
 		static_cast<unsigned int>(location.documentType), location.containerLastWriteTime, location.containerFileSize,
 		static_cast<LPCWSTR>(location.storagePath), static_cast<LPCWSTR>(location.entryPath));
 	DWORD written = 0;
-	const bool ok = ::WriteFile(file, text.GetString(), text.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
-	::FlushFileBuffers(file); ::CloseHandle(file);
+	bool ok = ::WriteFile(file, text.GetString(), text.GetLength() * sizeof(wchar_t), &written, NULL) && written == static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
+	if (ok && !::FlushFileBuffers(file))
+		ok = false;
+	::CloseHandle(file);
 	if (ok && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
 	::DeleteFile(temporary); return false;
 }

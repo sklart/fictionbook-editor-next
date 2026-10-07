@@ -3,7 +3,7 @@
 
 namespace
 {
-const wchar_t* const kKeyPrefix = L"\x1Earchive\t";
+const wchar_t* const kKeyPrefix = L"\x1E" L"archive\t";
 
 bool IsSafeField(const CString& field) { return !field.IsEmpty() && field.FindOneOf(L"\t\r\n") < 0; }
 

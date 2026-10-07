@@ -48,7 +48,8 @@ bool WriteTextFile(const CString& path, const std::vector<CString>& lines)
 		ok = ::WriteFile(file, line.GetString(), line.GetLength() * sizeof(wchar_t), &written, NULL) &&
 			written == static_cast<DWORD>(line.GetLength() * sizeof(wchar_t));
 	}
-	::FlushFileBuffers(file);
+	if (ok && !::FlushFileBuffers(file))
+		ok = false;
 	::CloseHandle(file);
 	if (ok && ::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
 	::DeleteFile(temporary);

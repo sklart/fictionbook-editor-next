@@ -159,7 +159,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_fonts.SetCurSel(fontIndex);
 	const int fontSizes[] = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72 };
 	CString value;
-	value.Format(_T("%d"), _Settings.GetFontSize());
+	value.Format(_T("%lu"), static_cast<unsigned long>(_Settings.GetFontSize()));
 	m_fontSize.SetWindowText(value);
 	for(int i = 0; i < _countof(fontSizes); ++i) { value.Format(_T("%d"), fontSizes[i]); m_fontSize.AddString(value); }
 	m_nbspCharacter.AddString(L"\u25A1");

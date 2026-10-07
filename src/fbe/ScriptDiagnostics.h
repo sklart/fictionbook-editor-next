@@ -85,7 +85,7 @@ inline CString SourceContext(ULONG line, LONG column)
 	for (int i = 0; i < max(0, min(static_cast<int>(column), text.GetLength())); ++i)
 		marker += text[i] == L'\t' ? L"    " : L" ";
 	CString result;
-	result.Format(L"%d: %s\r\n    %s^", line + 1, static_cast<LPCWSTR>(text), static_cast<LPCWSTR>(marker));
+	result.Format(L"%lu: %s\r\n    %s^", static_cast<unsigned long>(line) + 1, static_cast<LPCWSTR>(text), static_cast<LPCWSTR>(marker));
 	return result;
 }
 

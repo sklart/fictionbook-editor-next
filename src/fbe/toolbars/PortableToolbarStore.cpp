@@ -12,7 +12,12 @@ bool WriteText(const CString& text)
 {
 	const CString directory(DeploymentContext::SettingsDirectory().c_str()); if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
 	const CString path = PortableToolbarsPath(), temporary = path + L".tmp"; HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); if(file == INVALID_HANDLE_VALUE) return false;
-	DWORD written = 0; const DWORD bytes = static_cast<DWORD>(text.GetLength() * sizeof(wchar_t)); const bool ok = ::WriteFile(file, text, bytes, &written, NULL) != FALSE && written == bytes; if(ok) ::FlushFileBuffers(file); ::CloseHandle(file);
+	DWORD written = 0;
+	const DWORD bytes = static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
+	bool ok = ::WriteFile(file, text, bytes, &written, NULL) != FALSE && written == bytes;
+	if (ok && !::FlushFileBuffers(file))
+		ok = false;
+	::CloseHandle(file);
 	if(!ok || !::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { ::DeleteFile(temporary); return false; } return true;
 }
 void AppendToolbar(CString& xml, const wchar_t* name, const std::vector<PortableToolbarItem>& items)

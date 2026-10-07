@@ -310,7 +310,6 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		rebarRect.top = clientRect.bottom - rebarHight;
 		
 		rebarRect.bottom = rebarRect.top + rebarHight;
-		treeRect.top = clientRect.top + viewBarHight;
 		treeRect.bottom = rebarRect.top;
 
 		viewBarRect.top = clientRect.top + UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(m_hWnd));

@@ -105,7 +105,12 @@ bool ScriptRegistry::Save() const
 	const CString directory(DeploymentContext::SettingsDirectory().c_str()); if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
 	CString xml(L"<Scripts version=\"1\">\r\n"); for(size_t i = 0; i < m_identities.size(); ++i) xml.AppendFormat(L"  <Script uid=\"%s\" path=\"%s\" fingerprint=\"%s\" />\r\n", static_cast<LPCWSTR>(Escape(m_identities[i].uid)), static_cast<LPCWSTR>(Escape(m_identities[i].relativePath)), static_cast<LPCWSTR>(Escape(m_identities[i].fingerprint))); xml += L"</Scripts>\r\n";
 	const CString path = FilePath(), temporary = path + L".tmp"; HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); if(file == INVALID_HANDLE_VALUE) return false;
-	DWORD written = 0; const DWORD bytes = static_cast<DWORD>(xml.GetLength() * sizeof(wchar_t)); const bool ok = ::WriteFile(file, xml, bytes, &written, NULL) != FALSE && written == bytes; if(ok) ::FlushFileBuffers(file); ::CloseHandle(file);
+	DWORD written = 0;
+	const DWORD bytes = static_cast<DWORD>(xml.GetLength() * sizeof(wchar_t));
+	bool ok = ::WriteFile(file, xml, bytes, &written, NULL) != FALSE && written == bytes;
+	if (ok && !::FlushFileBuffers(file))
+		ok = false;
+	::CloseHandle(file);
 	if(!ok || !::MoveFileEx(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) { ::DeleteFile(temporary); return false; } return true;
 }
 

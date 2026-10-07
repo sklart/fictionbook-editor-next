@@ -535,16 +535,21 @@ HRESULT Doc::InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CCom
 	if (FAILED(hr))
 		return hr;
 
-	if (count < 0 || (count > 0 && params == NULL))
+	if (count < 0)
 		return E_INVALIDARG;
 
 	CString argumentTypes;
-	for (int index = 0; index < count; ++index)
+	if (params)
 	{
-		if (!argumentTypes.IsEmpty())
-			argumentTypes += L",";
-		argumentTypes += VariantTypeName(params[index]);
+		for (int index = 0; index < count; ++index)
+		{
+			if (!argumentTypes.IsEmpty())
+				argumentTypes += L",";
+			argumentTypes += VariantTypeName(params[index]);
+		}
 	}
+	else if (count != 0)
+		return E_INVALIDARG;
 	trace.Format(L"Invoke: dispid=%ld; argument-types=[%s]", static_cast<long>(dispid),
 		(const wchar_t*)argumentTypes);
 	if (!quiet) StartupTrace::Event(L"script", L"C130", trace);

@@ -96,8 +96,9 @@ static bool WriteEditorBackgroundSettingsReport(const CString& path, const CStri
 	HANDLE file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (file == INVALID_HANDLE_VALUE) return false;
 	DWORD written = 0;
-	const bool ok = ::WriteFile(file, text, static_cast<DWORD>(text.GetLength()), &written, NULL) != FALSE && written == static_cast<DWORD>(text.GetLength());
-	if (ok) ::FlushFileBuffers(file);
+	bool ok = ::WriteFile(file, text, static_cast<DWORD>(text.GetLength()), &written, NULL) != FALSE && written == static_cast<DWORD>(text.GetLength());
+	if (ok && !::FlushFileBuffers(file))
+		ok = false;
 	::CloseHandle(file);
 	return ok;
 }
@@ -277,8 +278,8 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 	if (FAILED(result)) return result;
 	CString details;
 	details.Format(L"phase=%s; libid=%08lX; version=%u.%u; lcid=%lu; syskind=%u; typeinfo=%u", phase,
-		attributes->guid.Data1, attributes->wMajorVerNum, attributes->wMinorVerNum, attributes->lcid,
-		attributes->syskind, typeLibrary->GetTypeInfoCount());
+		attributes->guid.Data1, static_cast<unsigned int>(attributes->wMajorVerNum), static_cast<unsigned int>(attributes->wMinorVerNum), attributes->lcid,
+		static_cast<unsigned int>(attributes->syskind), static_cast<unsigned int>(typeLibrary->GetTypeInfoCount()));
 	StartupTrace::Event(L"typelib", L"TL131", details);
 	typeLibrary->ReleaseTLibAttr(attributes);
 
@@ -319,14 +320,18 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		CString& wrongSignatures = methods[index].core ? wrongCoreSignatures : wrongDiagnosticSignatures;
 		if (FAILED(methodResult))
 		{
-			if (!missing.IsEmpty()) missing += L","; missing += methods[index].name;
+			if (!missing.IsEmpty())
+				missing += L",";
+			missing += methods[index].name;
 			if (methods[index].core) StartupTrace::HResult(L"typelib", L"TL151", methodResult, method);
 			else { method += diagnosticMismatchIsWarning ? L"; diagnostic-bridge=degraded" : L"; diagnostic-registration=legacy; internal-bridge=embedded"; if (diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL152", method); else StartupTrace::Event(L"typelib", L"TL152", method); }
 			continue;
 		}
 		if (memberId != methods[index].dispid)
 		{
-			if (!wrongDispids.IsEmpty()) wrongDispids += L","; wrongDispids += methods[index].name;
+			if (!wrongDispids.IsEmpty())
+				wrongDispids += L",";
+			wrongDispids += methods[index].name;
 			if (methods[index].core) { method += L"; core-incompatible"; StartupTrace::Error(L"typelib", L"TL153", method); }
 			else { method += diagnosticMismatchIsWarning ? L"; diagnostic-bridge=degraded" : L"; diagnostic-registration=legacy; internal-bridge=embedded"; if (diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL154", method); else StartupTrace::Event(L"typelib", L"TL154", method); }
 			continue;
@@ -355,7 +360,9 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		CString actualSignature;
 		if (functionDescription)
 		{
-			actualSignature.Format(L"; actual-invkind=%u; actual-params=%u; actual-result-vt=%u; actual-result-flags=0x%X; actual-param-vt-flags=", functionDescription->invkind, functionDescription->cParams, functionDescription->elemdescFunc.tdesc.vt, functionDescription->elemdescFunc.paramdesc.wParamFlags);
+			actualSignature.Format(L"; actual-invkind=%u; actual-params=%u; actual-result-vt=%u; actual-result-flags=0x%X; actual-param-vt-flags=",
+				static_cast<unsigned int>(functionDescription->invkind), static_cast<unsigned int>(functionDescription->cParams),
+				static_cast<unsigned int>(functionDescription->elemdescFunc.tdesc.vt), static_cast<unsigned int>(functionDescription->elemdescFunc.paramdesc.wParamFlags));
 			for (UINT parameter = 0; parameter < static_cast<UINT>(functionDescription->cParams); ++parameter)
 			{
 				if (parameter) actualSignature += L",";
@@ -365,7 +372,9 @@ static HRESULT ValidateExternalHelperTypeLibrary(ITypeLib* typeLibrary, const wc
 		if (functionDescription) externalHelper->ReleaseFuncDesc(functionDescription);
 		if (!signatureMatches)
 		{
-			if (!wrongSignatures.IsEmpty()) wrongSignatures += L","; wrongSignatures += methods[index].name;
+			if (!wrongSignatures.IsEmpty())
+				wrongSignatures += L",";
+			wrongSignatures += methods[index].name;
 			method.AppendFormat(L"; signature-hr=0x%08lX; core-compatible=%d", static_cast<unsigned long>(functionResult), methods[index].core ? 0 : 1); method += actualSignature;
 			if (methods[index].core) StartupTrace::Error(L"typelib", L"TL160", method);
 			else { method += diagnosticMismatchIsWarning ? L"; diagnostic-bridge=degraded" : L"; diagnostic-registration=legacy; internal-bridge=embedded"; if (diagnosticMismatchIsWarning) StartupTrace::Warning(L"typelib", L"TL161", method); else StartupTrace::Event(L"typelib", L"TL161", method); }
