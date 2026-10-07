@@ -38,7 +38,22 @@ int main()
     CheckMime({ 'G', 'I', 'F', '8', '9', 'a' }, L"image/gif", "GIF89a");
     CheckMime({ 'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P' }, L"image/webp", "WebP");
     CheckMime({ '<', 's', 'v', 'g', ' ' }, L"image/svg+xml", "SVG");
-    CheckMime({ 'B', 'M' }, L"image/bmp", "BMP");
+    const std::vector<std::uint8_t> bmp = {
+        'B', 'M', 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0,
+        12, 0, 0, 0, 1, 0, 1, 0, 1, 0, 24, 0
+    };
+    CheckMime(bmp, L"image/bmp", "BMP");
+    Check(FbeFb2Binary::DetectMimeType({ 'B' }).empty(), "BMP short signature");
+    Check(FbeFb2Binary::DetectMimeType({ 'B', 'M' }).empty(), "BMP short header");
+    std::vector<std::uint8_t> truncatedBmp = bmp;
+    truncatedBmp.resize(17);
+    Check(FbeFb2Binary::DetectMimeType(truncatedBmp).empty(), "BMP incomplete DIB size");
+    std::vector<std::uint8_t> invalidBmpOffset = bmp;
+    invalidBmpOffset[10] = 13;
+    Check(FbeFb2Binary::DetectMimeType(invalidBmpOffset).empty(), "BMP invalid pixel offset");
+    std::vector<std::uint8_t> invalidBmpDib = bmp;
+    invalidBmpDib[14] = 13;
+    Check(FbeFb2Binary::DetectMimeType(invalidBmpDib).empty(), "BMP invalid DIB header");
     CheckMime({ 'I', 'I', 0x2A, 0 }, L"image/tiff", "TIFF");
     Check(FbeFb2Binary::DetectMimeType({ 1, 2, 3 }).empty(), "unknown");
 
@@ -46,6 +61,9 @@ int main()
     Check(FbeFb2Binary::InspectBinary(L"image/jpeg", jpeg).status == FbeFb2Binary::BinaryStatus::Ok, "jpeg ok");
     Check(FbeFb2Binary::InspectBinary(L"image/jpg", jpeg).status == FbeFb2Binary::BinaryStatus::MimeAlias, "jpg alias");
     Check(FbeFb2Binary::InspectBinary(L"image/pjpeg", jpeg).status == FbeFb2Binary::BinaryStatus::MimeAlias, "pjpeg alias");
+    Check(FbeFb2Binary::InspectBinary(L"IMAGE/JPEG", jpeg).status == FbeFb2Binary::BinaryStatus::Ok, "jpeg case normalization");
+    Check(FbeFb2Binary::InspectBinary(L" image/jpeg ", jpeg).status == FbeFb2Binary::BinaryStatus::Ok, "jpeg whitespace normalization");
+    Check(FbeFb2Binary::InspectBinary(L"image/jpeg ", jpeg).status == FbeFb2Binary::BinaryStatus::Ok, "jpeg trailing whitespace normalization");
     Check(FbeFb2Binary::InspectBinary(L"image/png", jpeg).status == FbeFb2Binary::BinaryStatus::MimeMismatch, "mismatch");
     Check(FbeFb2Binary::InspectBinary(L"", Base64({ 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })).status == FbeFb2Binary::BinaryStatus::MissingMime, "missing mime");
     const FbeFb2Binary::Inspection octet = FbeFb2Binary::InspectBinary(L"application/octet-stream", Base64({ 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }));
