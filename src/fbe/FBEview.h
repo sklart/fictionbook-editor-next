@@ -121,6 +121,11 @@ public:
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	{
+		// This is an editor dialog, not a system MessageBox.  Its IDCANCEL
+		// control is semantically the "No" choice, so the global CBT hook must
+		// not replace its localized caption with the generic Cancel string on
+		// activation.
+		::SetProp(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
 		FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ADDIMAGE);
 		::SetWindowText(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.caption", L"Image insertion"));
 		::SetDlgItemText(m_hWnd, IDYES, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.yes", L"Insert"));

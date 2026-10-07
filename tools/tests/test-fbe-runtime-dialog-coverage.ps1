@@ -7,6 +7,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 $bindingSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\RuntimeLocalization.cpp')
+$mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 
 # Each DIALOGEX must be connected to a concrete initialization path.  Generic
 # bindings are valid only when that dialog actually calls the generic helper;
@@ -90,6 +91,7 @@ $addImageSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FB
 $addImageBlock = [regex]::Match($addImageSource, '(?s)class CAddImageDlg.*?\r?\n\s*};').Value
 if ([string]::IsNullOrEmpty($addImageBlock)) { throw 'CAddImageDlg definition is missing.' }
 foreach ($required in @(
+    'SetProp(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1))',
     'FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_ADDIMAGE)',
     'SetDlgItemText(m_hWnd, IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.no", L"No"))',
     'COMMAND_ID_HANDLER(IDCANCEL, OnBtnClicked)',
@@ -99,6 +101,9 @@ foreach ($required in @(
 }
 if ($addImageBlock.Contains('fbe.dialog.idd_inputbox.cancel')) {
     throw 'CAddImageDlg must not replace its No button with the input-box Cancel key.'
+}
+if ($mainFrameSource -notmatch 'GetProp\(hChildWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION"\) == NULL') {
+    throw 'The system-dialog localization hook no longer honors the per-dialog skip property.'
 }
 $addImageNo = $catalog.strings.'fbe.dialog.idd_addimage.no'
 if ($null -eq $addImageNo -or $addImageNo.resource -ne 'IDD_ADDIMAGE' -or $addImageNo.targetId -ne 'IDCANCEL') {
