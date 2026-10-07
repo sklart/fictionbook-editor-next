@@ -49,6 +49,8 @@ try {
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $portableData 'Diagnostics')
     Reset-PortableLifecycleState
     Invoke-Lifecycle '--portable' 'script-toolbar-runtime-size' (Join-Path $portableData 'Diagnostics')
+    Reset-PortableLifecycleState
+    Invoke-Lifecycle '--portable' 'toolbar-layout-adapter-transaction' (Join-Path $portableData 'Diagnostics')
     if($IncludeInstalled) {
         # Test mode redirects the installed data directory without touching the
         # caller's LocalAppData profile.

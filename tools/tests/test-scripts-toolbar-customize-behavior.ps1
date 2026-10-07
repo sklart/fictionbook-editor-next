@@ -181,4 +181,28 @@ foreach ($language in $localization.targetLanguages) {
     if ([string]::IsNullOrWhiteSpace($separator.translations.$language)) { throw "Separator translation is missing for $language." }
 }
 
+foreach ($key in @(
+    'fbe.scripts_toolbar_customize.unavailable_script',
+    'fbe.scripts_toolbar_customize.reset_defaults_confirm',
+    'fbe.scripts_toolbar_customize.reset_clear_confirm'
+)) {
+    $entry = $localization.strings.$key
+    if ($null -eq $entry) { throw "Missing toolbar-customize localization: $key" }
+    foreach ($language in $localization.targetLanguages) {
+        if ([string]::IsNullOrWhiteSpace($entry.translations.$language)) { throw "Missing $language localization: $key" }
+    }
+}
+
+foreach ($required in @(
+    'std::stable_sort', 'DisplayName(i)', 'CompareNoCase', 'relativePath',
+    'fbe.scripts_toolbar_customize.unavailable_script', 'CurrentItems()[itemIndex].scriptUid',
+    'if(unchanged) return 0;', 'MB_YESNO | MB_ICONWARNING',
+    'const int logicalWidth', 'const int logicalHeight', 'UiMetrics::ScaleForDpi(logicalWidth, targetDpi)',
+    'MonitorFromWindow', 'MONITOR_DEFAULTTONEAREST', 'VK_RETURN', 'VK_DELETE', 'VK_UP', 'VK_DOWN', 'FocusSearch'
+)) {
+    if ($dialog.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Toolbar customize follow-up behavior is missing: $required"
+    }
+}
+
 Write-Host 'Scripts toolbar customization behavior contract passed.'

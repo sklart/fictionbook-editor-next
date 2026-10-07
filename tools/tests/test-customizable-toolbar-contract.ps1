@@ -13,6 +13,8 @@ $dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Scri
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.h')
 $mainFrameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $resource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
+$adapterHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarLayoutAdapter.h')
+$adapter = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\toolbars\ToolbarLayoutAdapter.cpp')
 
 foreach ($required in @(
     'if (!lpTbNotify || lpTbNotify->iItem < 0)',
@@ -117,6 +119,32 @@ foreach ($required in @(
 }
 if ($dialogSource.IndexOf('UiMetrics::UpdateForWindow(m_hWnd)', [StringComparison]::Ordinal) -ge 0) {
     throw 'Диалог не должен инвалидировать глобальные шрифты UiMetrics главного окна.'
+}
+
+foreach ($required in @(
+    'bool Apply(HWND toolbar', 'TestFailureBeforeDelete', 'TestFailureBeforeAdd', 'TestFailureBeforeRollback', 'SetTestFailurePointForTest'
+)) {
+    if ($adapterHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "ToolbarLayoutAdapter does not expose the checked transactional contract: $required"
+    }
+}
+foreach ($required in @(
+    'if(!::IsWindow(toolbar)) return false;', 'CaptureExact(toolbar, previous)', 'if(!target.DeleteButton(0)) return false;',
+    'if(!target.AddButtons', 'if(target.GetButtonCount() != static_cast<int>(expected.size())) return false;',
+    'actual.iBitmap != expected[index].iBitmap', 'if(!ReplaceChecked(toolbar, original, true))',
+    'UiMetrics::DpiForWindow(toolbar)', 'LogicalSeparatorWidth', 'PhysicalSeparatorWidth'
+)) {
+    if ($adapter.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "ToolbarLayoutAdapter misses transactional/DPI guard: $required"
+    }
+}
+if ($dialogSource.IndexOf('ReplaceToolbarButtons', [StringComparison]::Ordinal) -ge 0) {
+    throw 'Customize dialog must not retain a second unchecked PortableToolbarItem-to-HWND implementation.'
+}
+foreach ($required in @('ToolbarLayoutAdapter::Apply(m_toolbar, CurrentItems(), ToolbarCatalog())', 'separator.width = 8', 'DisplayName', 'CompareNoCase', 'unavailable_script', 'VK_DELETE', 'VK_RETURN', 'VK_UP', 'VK_DOWN', 'FocusSearch')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Customize dialog misses required checked/keyboard behavior: $required"
+    }
 }
 
 if ($mainFrameSource.IndexOf('m_CmdToolbar.Customize()', [StringComparison]::Ordinal) -ge 0 -or

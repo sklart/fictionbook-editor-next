@@ -2695,14 +2695,15 @@ bool CMainFrame::ApplyToolbarQuickCustomizeItems(HWND toolbar, const std::vector
 	std::vector<TBBUTTON> catalog(available.GetSize());
 	for(int index = 0; index < available.GetSize(); ++index) catalog[index] = available[index];
 	std::vector<PortableToolbarItem> previous;
-	ToolbarLayoutAdapter::Capture(toolbar, previous);
-	ToolbarLayoutAdapter::Apply(toolbar, items, catalog);
+	if(!ToolbarLayoutAdapter::Capture(toolbar, previous)) return false;
+	if(!ToolbarLayoutAdapter::Apply(toolbar, items, catalog)) return false;
 	bool persisted = false;
 	if(toolbar == m_CmdToolbar)
 		persisted = UpdateCommandToolbarItems(items);
 	else if(ScriptToolbarRuntime* runtime = FindScriptToolbarRuntime(toolbar))
 		persisted = UpdateScriptToolbarItems(runtime->definition.id, items);
-	if(!persisted) ToolbarLayoutAdapter::Apply(toolbar, previous, catalog);
+	if(!persisted && !ToolbarLayoutAdapter::Apply(toolbar, previous, catalog))
+		::OutputDebugString(L"Toolbar quick-customization rollback failed.\n");
 	return persisted;
 }
 
@@ -2842,7 +2843,8 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 	}
 	std::vector<TBBUTTON> catalogButtons(catalog.GetSize());
 	for(int index = 0; index < catalog.GetSize(); ++index) catalogButtons[index] = catalog[index];
-	ToolbarLayoutAdapter::Apply(target, saved, catalogButtons);
+	if(!ToolbarLayoutAdapter::Apply(target, saved, catalogButtons))
+		::OutputDebugString(L"Portable toolbar layout restore failed.\n");
 
 	if(scriptsToolbar && !layout.lastScript.IsEmpty())
 		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
@@ -3022,8 +3024,7 @@ bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 		}
 	std::vector<TBBUTTON> buttons(catalog.GetSize());
 	for(int index = 0; index < catalog.GetSize(); ++index) buttons[index] = catalog[index];
-	ToolbarLayoutAdapter::Apply(toolbar, items, buttons);
-	return true;
+	return ToolbarLayoutAdapter::Apply(toolbar, items, buttons);
 }
 
 UINT CMainFrame::AllocateScriptToolbarBandId() const
@@ -3210,7 +3211,10 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 		std::vector<PortableToolbarItem> items = runtime.definition.items;
 		for(size_t itemIndex = 0; itemIndex < items.size(); ++itemIndex) if(!items[itemIndex].separator && !items[itemIndex].scriptUid.IsEmpty())
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == items[itemIndex].scriptUid && script.commandId > 0) { items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
-		ToolbarLayoutAdapter::Apply(runtime.window, items, catalog);
+		if(!ToolbarLayoutAdapter::Apply(runtime.window, items, catalog)) {
+			DestroyScriptToolbarRuntimeControls();
+			return false;
+		}
 	}
 	if(!ReorderScriptToolbarRuntimeBands(definitions)) { DestroyScriptToolbarRuntimeControls(); return false; }
 	StartupTrace::Event(L"plugin", L"P120", L"scripts collected");

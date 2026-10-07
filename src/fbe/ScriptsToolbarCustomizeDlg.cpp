@@ -96,14 +96,37 @@ void CScriptsToolbarCustomizeDlg::PopulateAvailable(const std::vector<DWORD_PTR>
 		const int row = m_availableList.AddString(separator);
 		m_availableList.SetItemData(row, kSeparatorItem);
 	}
-	for(size_t i = 0; i < m_available.size(); ++i) {
+	std::vector<size_t> ordered;
+	for(size_t i = 0; i < m_available.size(); ++i) ordered.push_back(i);
+	std::stable_sort(ordered.begin(), ordered.end(), [this](size_t left, size_t right) {
+		const int byName = m_available[left].name.CompareNoCase(m_available[right].name);
+		return byName != 0 ? byName < 0 : m_available[left].relativePath.CompareNoCase(m_available[right].relativePath) < 0;
+	});
+	for(size_t orderedIndex = 0; orderedIndex < ordered.size(); ++orderedIndex) {
+		const size_t i = ordered[orderedIndex];
 		if(ToolbarContainsCommand(m_available[i].command)) continue;
 		CString name(m_available[i].name); CString path(m_available[i].relativePath); CString probe(name + L"\n" + path); probe.MakeLower();
 		if(!search.IsEmpty() && probe.Find(search) < 0) continue;
-		const int row = m_availableList.AddString(name); m_availableList.SetItemData(row, static_cast<DWORD_PTR>(i));
+		const int row = m_availableList.AddString(DisplayName(i)); m_availableList.SetItemData(row, static_cast<DWORD_PTR>(i));
 	}
 	RestoreSelection(m_availableList, saved, top);
 	if(redraw) { ::SendMessage(m_availableList, WM_SETREDRAW, TRUE, 0); m_availableList.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW); }
+}
+
+CString CScriptsToolbarCustomizeDlg::DisplayName(size_t availableIndex) const
+{
+	if(availableIndex >= m_available.size()) return CString();
+	const ScriptsToolbarCommand& item = m_available[availableIndex];
+	if(item.relativePath.IsEmpty()) return item.name;
+	int duplicates = 0;
+	for(size_t index = 0; index < m_available.size(); ++index)
+		if(m_available[index].name.CompareNoCase(item.name) == 0) ++duplicates;
+	if(duplicates < 2) return item.name;
+	CString shortPath(item.relativePath);
+	const int slash = (std::max)(shortPath.ReverseFind(L'\\'), shortPath.ReverseFind(L'/'));
+	if(slash > 0) shortPath = shortPath.Left(slash);
+	if(shortPath.IsEmpty()) shortPath = item.relativePath;
+	return item.name + L" — " + shortPath;
 }
 
 void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* selected, bool redraw)
@@ -119,7 +142,9 @@ void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* 
 		}
 		TBBUTTON button = {}; const bool known = CurrentItemButton(i, button);
 		CString name;
-		for(size_t j = 0; known && j < m_available.size(); ++j) if(m_available[j].command == button.idCommand) { name = m_available[j].name; break; }
+		for(size_t j = 0; known && j < m_available.size(); ++j) if(m_available[j].command == button.idCommand) { name = DisplayName(j); break; }
+		if(name.IsEmpty() && !items[i].scriptUid.IsEmpty()) name = FbeLoadRuntimeStringByKey(
+			L"fbe.scripts_toolbar_customize.unavailable_script", L"Unavailable script");
 		if(name.IsEmpty()) name.Format(FbeLoadRuntimeStringByKey(
 			L"fbe.scripts_toolbar_customize.unknown_command", L"Command %d"), items[i].command);
 		const int row = m_currentList.AddString(name); m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
@@ -172,6 +197,8 @@ LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHand
 		if(itemIndex < CurrentItems().size() && CurrentItems()[itemIndex].separator) m_toolTipText = FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---");
 		else if(CurrentItemButton(itemIndex, button)) for(size_t i = 0; i < m_available.size(); ++i)
 			if(m_available[i].command == button.idCommand) { m_toolTipText = m_available[i].name; if(!m_available[i].relativePath.IsEmpty()) m_toolTipText += L"\n" + m_available[i].relativePath; break; }
+		else if(itemIndex < CurrentItems().size() && !CurrentItems()[itemIndex].scriptUid.IsEmpty())
+			m_toolTipText.Format(L"%s\n%s", static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.unavailable_script", L"Unavailable script")), static_cast<LPCWSTR>(CurrentItems()[itemIndex].scriptUid));
 	}
 	if(m_toolTipText.IsEmpty()) { bHandled = FALSE; return 0; }
 	info->lpszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(m_toolTipText));
@@ -183,7 +210,7 @@ LRESULT CScriptsToolbarCustomizeDlg::OnAdd(WORD, WORD, HWND, BOOL&)
 	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<DWORD_PTR> currentSelection;
 	for(size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex) {
 		const DWORD_PTR item = m_availableList.GetItemData(rows[rowIndex]);
-		if(item == kSeparatorItem) { PortableToolbarItem separator = {}; separator.separator = true; separator.width = Scale(8); CurrentItems().push_back(separator); currentSelection.push_back(CurrentItems().size() - 1); continue; }
+		if(item == kSeparatorItem) { PortableToolbarItem separator = {}; separator.separator = true; separator.width = 8; CurrentItems().push_back(separator); currentSelection.push_back(CurrentItems().size() - 1); continue; }
 		if(item >= m_available.size() || ToolbarContainsCommand(m_available[item].command)) continue;
 		PortableToolbarItem command = {}; command.command = m_available[item].command;
 		CurrentItems().push_back(command); currentSelection.push_back(CurrentItems().size() - 1);
@@ -206,12 +233,6 @@ LRESULT CScriptsToolbarCustomizeDlg::OnRemove(WORD, WORD, HWND, BOOL&)
 	for(std::vector<int>::reverse_iterator it = rows.rbegin(); it != rows.rend(); ++it) CurrentItems().erase(CurrentItems().begin() + static_cast<int>(m_currentList.GetItemData(*it)));
 	if(CommitCurrentItems(previous)) { std::vector<DWORD_PTR> empty; RefreshLists(&availableSelection, &empty); UpdateButtonState(); } return 0;
 }
-bool CScriptsToolbarCustomizeDlg::ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons)
-{
-	CToolBarCtrl toolbar = m_toolbar; while(toolbar.GetButtonCount() > 0) toolbar.DeleteButton(0);
-	if(!buttons.empty()) toolbar.AddButtons(static_cast<int>(buttons.size()), const_cast<TBBUTTON*>(&buttons[0]));
-	toolbar.AutoSize(); return true;
-}
 int CScriptsToolbarCustomizeDlg::CurrentPanelIndex() const
 {
 	const int index = m_panelList.GetCurSel(); return index >= 0 && index < static_cast<int>(m_panels.size()) ? index : 0;
@@ -227,13 +248,24 @@ bool CScriptsToolbarCustomizeDlg::CurrentItemButton(size_t index, TBBUTTON& butt
 }
 bool CScriptsToolbarCustomizeDlg::ApplyCurrentItemsToRuntimeToolbar()
 {
-	const int panel = CurrentPanelIndex(); if(panel < 0 || panel >= static_cast<int>(m_panels.size()) || !::IsWindow(m_panels[panel].toolbar)) return true;
-	std::vector<TBBUTTON> buttons;
-	for(size_t index = 0; index < CurrentItems().size(); ++index) {
-		if(CurrentItems()[index].separator) { TBBUTTON separator = {}; separator.fsStyle = TBSTYLE_SEP; separator.iBitmap = CurrentItems()[index].width; buttons.push_back(separator); continue; }
-		TBBUTTON button = {}; if(CurrentItemButton(index, button)) buttons.push_back(button);
+	const int panel = CurrentPanelIndex();
+	if(panel < 0 || panel >= static_cast<int>(m_panels.size())) return false;
+	// A hidden script toolbar has no HWND projection.  Its definition is still
+	// editable and persistence is the transaction's first observable change.
+	if(!::IsWindow(m_panels[panel].toolbar)) return true;
+	m_toolbar = m_panels[panel].toolbar;
+	return ToolbarLayoutAdapter::Apply(m_toolbar, CurrentItems(), ToolbarCatalog());
+}
+
+std::vector<TBBUTTON> CScriptsToolbarCustomizeDlg::ToolbarCatalog() const
+{
+	std::vector<TBBUTTON> catalog;
+	for(size_t index = 0; index < m_available.size(); ++index) {
+		TBBUTTON button = m_available[index].button;
+		button.idCommand = m_available[index].command;
+		catalog.push_back(button);
 	}
-	m_toolbar = m_panels[panel].toolbar; return ReplaceToolbarButtons(buttons);
+	return catalog;
 }
 bool CScriptsToolbarCustomizeDlg::CommitCurrentItems(const std::vector<PortableToolbarItem>& previous)
 {
@@ -266,11 +298,21 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDown(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnReset(WORD, WORD, HWND, BOOL&)
 {
-	const std::vector<PortableToolbarItem> previous = CurrentItems(); CurrentItems().clear();
+	const std::vector<PortableToolbarItem> previous = CurrentItems(); std::vector<PortableToolbarItem> target;
 	// User-created panels intentionally reset to an empty definition.  Only the
 	// stable main panel owns the legacy IDR_SCRIPTS default (ID_LAST_SCRIPT).
 	if(m_panels[CurrentPanelIndex()].id == L"scripts-main" || m_panels[CurrentPanelIndex()].id == L"commands-main")
-		for(int index = 0; index < m_defaults.GetSize(); ++index) { PortableToolbarItem item = {}; item.separator = (m_defaults[index].fsStyle & TBSTYLE_SEP) != 0; item.command = m_defaults[index].idCommand; item.width = m_defaults[index].iBitmap; CurrentItems().push_back(item); }
+		for(int index = 0; index < m_defaults.GetSize(); ++index) { PortableToolbarItem item = {}; item.separator = (m_defaults[index].fsStyle & TBSTYLE_SEP) != 0; item.command = m_defaults[index].idCommand; item.width = item.separator ? 8 : 0; target.push_back(item); }
+	bool unchanged = target.size() == previous.size();
+	for(size_t index = 0; unchanged && index < target.size(); ++index)
+		unchanged = target[index].separator == previous[index].separator && target[index].command == previous[index].command &&
+			target[index].width == previous[index].width && target[index].relativePath == previous[index].relativePath && target[index].scriptUid == previous[index].scriptUid;
+	if(unchanged) return 0;
+	const bool clearUserPanel = m_panels[CurrentPanelIndex()].id != L"scripts-main" && m_panels[CurrentPanelIndex()].id != L"commands-main";
+	const CString prompt = FbeLoadRuntimeStringByKey(clearUserPanel ? L"fbe.scripts_toolbar_customize.reset_clear_confirm" : L"fbe.scripts_toolbar_customize.reset_defaults_confirm",
+		clearUserPanel ? L"Clear this toolbar?" : L"Restore the default toolbar buttons?");
+	if(U::MessageBox(m_hWnd, prompt, FbeLoadRuntimeStringByKey(L"fbe.script_toolbar_manager.caption", L"FictionBook Editor"), MB_YESNO | MB_ICONWARNING) != IDYES) return 0;
+	CurrentItems() = target;
 	if(CommitCurrentItems(previous)) { RefreshLists(); UpdateButtonState(); } return 0;
 }
 void CScriptsToolbarCustomizeDlg::LayoutControls(int width, int height)
@@ -312,27 +354,28 @@ LRESULT CScriptsToolbarCustomizeDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam
 void CScriptsToolbarCustomizeDlg::RestorePlacement()
 {
 	WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement);
+	HMONITOR monitor = NULL;
 	if(m_settings.GetScriptsToolbarCustomizePlacement(placement))
 	{
 		placement.showCmd = SW_SHOWNORMAL;
-		HMONITOR monitor = ::MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONULL);
-		MONITORINFO info = {}; info.cbSize = sizeof(info);
-		CRect rect(placement.rcNormalPosition);
-		if(monitor != NULL && ::GetMonitorInfo(monitor, &info) && rect.Width() > 0 && rect.Height() > 0)
-		{
-			const CRect work(info.rcWork);
-			const int width = min(rect.Width(), work.Width()), height = min(rect.Height(), work.Height());
-			rect.left = max(work.left, min(rect.left, work.right - width));
-			rect.top = max(work.top, min(rect.top, work.bottom - height));
-			rect.right = rect.left + width; rect.bottom = rect.top + height;
-			placement.rcNormalPosition = rect;
-			SetWindowPlacement(&placement);
-			return;
-		}
+		monitor = ::MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONULL);
 	}
+	if(monitor == NULL) monitor = ::MonitorFromWindow(GetParent() != NULL ? GetParent() : m_hWnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO info = {}; info.cbSize = sizeof(info);
+	if(monitor == NULL || !::GetMonitorInfo(monitor, &info)) { CenterWindow(GetParent()); return; }
 	const CSize logical = m_settings.GetScriptsToolbarCustomizeSize();
-	SetWindowPos(NULL, 0, 0, Scale(logical.cx), Scale(logical.cy), SWP_NOMOVE | SWP_NOZORDER);
-	CenterWindow(GetParent());
+	const UINT targetDpi = UiMetrics::DpiForWindow(m_hWnd);
+	const CRect work(info.rcWork);
+	const int logicalWidth = (std::max)(1, static_cast<int>(logical.cx));
+	const int logicalHeight = (std::max)(1, static_cast<int>(logical.cy));
+	const int width = (std::min)(UiMetrics::ScaleForDpi(logicalWidth, targetDpi), static_cast<int>(work.Width()));
+	const int height = (std::min)(UiMetrics::ScaleForDpi(logicalHeight, targetDpi), static_cast<int>(work.Height()));
+	int left = work.left + (work.Width() - width) / 2, top = work.top + (work.Height() - height) / 2;
+	if(placement.rcNormalPosition.right > placement.rcNormalPosition.left && placement.rcNormalPosition.bottom > placement.rcNormalPosition.top) {
+		left = (std::max)(work.left, (std::min)(placement.rcNormalPosition.left, work.right - width));
+		top = (std::max)(work.top, (std::min)(placement.rcNormalPosition.top, work.bottom - height));
+	}
+	SetWindowPos(NULL, left, top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 void CScriptsToolbarCustomizeDlg::SavePlacement()
 {
@@ -492,7 +535,10 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 		dialog->m_dragSource = -1;
 		break;
 	case WM_KEYDOWN:
+		if(wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000)) { dialog->FocusSearch(); return 0; }
 		if(wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); dialog->UpdateButtonState(); return 0; }
+		if((wParam == VK_UP || wParam == VK_DOWN) && (::GetKeyState(VK_CONTROL) & 0x8000)) { dialog->MoveSelectedButtons(wParam == VK_DOWN); dialog->UpdateButtonState(); return 0; }
+		if(wParam == VK_DELETE) { BOOL handled = FALSE; dialog->OnRemove(0, 0, window, handled); return 0; }
 		if(wParam == VK_ESCAPE && dialog->m_dragging) { POINT point = {}; dialog->FinishDrag(false, point); return 0; }
 		break;
 	case WM_TIMER:
@@ -510,8 +556,16 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::AvailableListSubclassProc(HWND win
 	CScriptsToolbarCustomizeDlg* dialog = reinterpret_cast<CScriptsToolbarCustomizeDlg*>(reference);
 	CListBox list(window);
 	if(dialog != NULL && (message == WM_LBUTTONDOWN || message == WM_SETFOCUS)) dialog->ActivateList(list);
+	if(message == WM_KEYDOWN && wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000) && dialog != NULL) { dialog->FocusSearch(); return 0; }
 	if(message == WM_KEYDOWN && wParam == 'A' && (::GetKeyState(VK_CONTROL) & 0x8000)) { ::SendMessage(window, LB_SETSEL, TRUE, -1); if(dialog != NULL) dialog->UpdateButtonState(); return 0; }
+	if(message == WM_KEYDOWN && wParam == VK_RETURN && dialog != NULL) { BOOL handled = FALSE; dialog->OnAdd(0, 0, window, handled); return 0; }
 	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
+void CScriptsToolbarCustomizeDlg::FocusSearch()
+{
+	HWND search = GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH);
+	::SetFocus(search); ::SendMessage(search, EM_SETSEL, 0, -1);
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(22); return TRUE; }

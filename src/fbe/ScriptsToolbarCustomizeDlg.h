@@ -2,6 +2,7 @@
 
 #include "resource.h"
 #include "toolbars\\PortableToolbarLayout.h"
+#include "toolbars\\ToolbarLayoutAdapter.h"
 
 #include <functional>
 
@@ -114,9 +115,11 @@ private:
 	std::vector<DWORD_PTR> GetSelectedItemData(const CListBox& list) const;
 	void RestoreSelection(CListBox& list, const std::vector<DWORD_PTR>& selection, int topIndex);
 	void ActivateList(CListBox& list);
-	bool ReplaceToolbarButtons(const std::vector<TBBUTTON>& buttons);
+	void FocusSearch();
 	bool CommitCurrentItems(const std::vector<PortableToolbarItem>& previous);
 	bool ApplyCurrentItemsToRuntimeToolbar();
+	std::vector<TBBUTTON> ToolbarCatalog() const;
+	CString DisplayName(size_t availableIndex) const;
 	std::vector<PortableToolbarItem>& CurrentItems();
 	const std::vector<PortableToolbarItem>& CurrentItems() const;
 	int CurrentPanelIndex() const;

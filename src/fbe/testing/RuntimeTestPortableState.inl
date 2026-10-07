@@ -73,6 +73,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptToolbarRollbackPersisted = IsFbeTestScenario(L"script-toolbar-rollback-persisted-runtime");
 	const bool scriptToolbarRollbackPartial = IsFbeTestScenario(L"script-toolbar-rollback-partial-runtime");
 	const bool scriptToolbarRuntimeSize = IsFbeTestScenario(L"script-toolbar-runtime-size");
+	const bool toolbarLayoutAdapterTransaction = IsFbeTestScenario(L"toolbar-layout-adapter-transaction");
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
 	const bool navigationViewBarElementsRuntime = IsFbeTestScenario(L"navigation-viewbar-elements-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
@@ -81,7 +82,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -93,11 +94,40 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !navigationScriptsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !navigationScriptsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
 		return;
+	}
+	if(toolbarLayoutAdapterTransaction)
+	{
+		TBBUTTONS available;
+		std::vector<TBBUTTON> catalog;
+		std::vector<PortableToolbarItem> previous, actual, candidate;
+		const bool catalogReady = GetAvailableButtons(m_CmdToolbar, available);
+		if(catalogReady) for(int index = 0; index < available.GetSize(); ++index) catalog.push_back(available[index]);
+		ToolbarLayoutAdapter::Capture(m_CmdToolbar, previous);
+		candidate = previous;
+		if(candidate.size() > 1) std::swap(candidate[0], candidate[1]);
+		else { PortableToolbarItem separator = {}; separator.separator = true; separator.width = 8; candidate.push_back(separator); }
+		auto same = [](const std::vector<PortableToolbarItem>& left, const std::vector<PortableToolbarItem>& right) {
+			if(left.size() != right.size()) return false;
+			for(size_t index = 0; index < left.size(); ++index)
+				if(left[index].separator != right[index].separator || left[index].command != right[index].command || left[index].width != right[index].width) return false;
+			return true;
+		};
+		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureBeforeDelete);
+		const bool deleteRejected = catalogReady && !ToolbarLayoutAdapter::Apply(m_CmdToolbar, candidate, catalog);
+		ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
+		const bool deleteRolledBack = same(previous, actual);
+		ToolbarLayoutAdapter::SetTestFailurePointForTest(ToolbarLayoutAdapter::TestFailureBeforeAdd);
+		const bool addRejected = catalogReady && !ToolbarLayoutAdapter::Apply(m_CmdToolbar, candidate, catalog);
+		ToolbarLayoutAdapter::Capture(m_CmdToolbar, actual);
+		const bool addRolledBack = same(previous, actual);
+		const bool passed = catalogReady && !previous.empty() && deleteRejected && deleteRolledBack && addRejected && addRolledBack;
+		CStringA report; report.Format("phase=toolbar-layout-adapter-transaction\ncatalog=%d\ndelete-rejected=%d\ndelete-rollback=%d\nadd-rejected=%d\nadd-rollback=%d\nresult=%s\n", catalogReady, deleteRejected, deleteRolledBack, addRejected, addRolledBack, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	auto currentDefinitions = [&]() { std::vector<ScriptToolbarDefinition> result; for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) result.push_back(m_scriptToolbars.Items()[index].definition); return result; };
 	auto mainHasDefault = [&]() { TBBUTTON button = {}; return m_ScriptsToolbar.GetButtonCount() > 0 && m_ScriptsToolbar.GetButton(0, &button) && button.idCommand == ID_LAST_SCRIPT; };
