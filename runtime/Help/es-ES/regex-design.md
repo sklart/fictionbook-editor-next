@@ -1607,9 +1607,3 @@ Traducción del manual ruso ampliado a partir de regex-design.md. Se redactaron 
 [D3] Compatibilidad PCRE2 y adaptador FBE Next, revisión d2257405d95b0328649acee64b38829b40a4314b.
 
 `https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
-
-[D4] GetReplStr, PrepareRegexReplacementText y operaciones de FBEview.cpp; SearchPresetCatalog.cpp y search-preset-design-fixtures.cpp de la misma revisión.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/src/fbe/FBEview.cpp`
-
-Sintaxis, capacidades de interfaz y acierto editorial son tres niveles. Las pruebas locales no garantizan cualquier compilación con cualquier libro. El README del archivo explica la validación.

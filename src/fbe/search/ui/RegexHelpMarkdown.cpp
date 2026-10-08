@@ -77,6 +77,23 @@ CString TrimMarkdownTableCell(const CString& value)
     return result;
 }
 
+std::vector<CString> SplitMarkdownTableRow(const CString& value)
+{
+    CString row(TrimMarkdownTableCell(value));
+    std::vector<CString> cells;
+    int start = 0;
+    while (start <= row.GetLength())
+    {
+        int end = row.Find(L'|', start);
+        if (end < 0) end = row.GetLength();
+        CString cell(row.Mid(start, end - start)); cell.Trim();
+        cells.push_back(cell);
+        if (end == row.GetLength()) break;
+        start = end + 1;
+    }
+    return cells;
+}
+
 bool IsMarkdownTableSeparator(const CString& line)
 {
     if (line.Find(L'|') < 0) return false;
@@ -90,10 +107,39 @@ void AddBlock(std::vector<MarkdownBlock>& blocks, MarkdownBlockKind kind, const 
     CString text(value);
     // Fenced code is literal content. In particular, its indentation, trailing
     // whitespace, tabs and empty lines are part of an example's meaning.
-    if (kind != MarkdownBlockKind::Code) text.Trim();
-    if (text.IsEmpty() && kind != MarkdownBlockKind::Code) return;
+    if (kind != MarkdownBlockKind::Code && kind != MarkdownBlockKind::Regex && kind != MarkdownBlockKind::Example) text.Trim();
+    if (text.IsEmpty() && kind != MarkdownBlockKind::Code && kind != MarkdownBlockKind::Regex && kind != MarkdownBlockKind::Example) return;
     MarkdownBlock block = {}; block.kind = kind; block.headingLevel = headingLevel; block.text = text;
     if (kind != MarkdownBlockKind::Code) ParseInlineCode(block.text, block.inlineCode);
+    blocks.push_back(block);
+}
+
+void AddTable(std::vector<MarkdownBlock>& blocks, const CString& header, const std::vector<CString>& lines)
+{
+    MarkdownBlock block = {}; block.kind = MarkdownBlockKind::Table;
+    block.table.headers = SplitMarkdownTableRow(header);
+    for (size_t index = 0; index < lines.size(); ++index)
+    {
+        std::vector<CString> row = SplitMarkdownTableRow(lines[index]);
+        if (row.size() == block.table.headers.size()) block.table.rows.push_back(row);
+    }
+    if (block.table.headers.empty()) return;
+    const auto appendRow = [&](const std::vector<CString>& row) {
+        if (!block.text.IsEmpty()) block.text += L"\n";
+        for (size_t column = 0; column < row.size(); ++column)
+        {
+            if (column) block.text += L" \x2014 ";
+            CString cell(row[column]);
+            std::vector<MarkdownInlineCode> spans;
+            ParseInlineCode(cell, spans);
+            const int cellStart = block.text.GetLength();
+            block.text += cell;
+            for (size_t span = 0; span < spans.size(); ++span)
+                block.inlineCode.push_back(MarkdownInlineCode{ cellStart + spans[span].start, spans[span].length });
+        }
+    };
+    appendRow(block.table.headers);
+    for (size_t index = 0; index < block.table.rows.size(); ++index) appendRow(block.table.rows[index]);
     blocks.push_back(block);
 }
 
@@ -101,6 +147,10 @@ void ParseMarkdown(const CString& source, std::vector<MarkdownBlock>& blocks)
 {
     blocks.clear();
     bool codeFence = false;
+    MarkdownBlockKind directiveKind = MarkdownBlockKind::Body;
+    MarkdownBlockKind codeFenceKind = MarkdownBlockKind::Code;
+    bool directiveFence = false;
+    bool directiveWarning = false;
     bool codeHasLine = false;
     CString code;
     CString paragraph;
@@ -119,42 +169,59 @@ void ParseMarkdown(const CString& source, std::vector<MarkdownBlock>& blocks)
     for (size_t index = 0; index < lines.size(); ++index)
     {
         const CString& line = lines[index];
+        CString trimmed(line); trimmed.Trim();
+        if (trimmed.Left(3) == L":::")
+        {
+            if (!directiveFence)
+            {
+                flushParagraph();
+                CString directive(trimmed.Mid(3)); directive.MakeLower(); directive.Trim();
+                if (directive == L"regex") { directiveKind = MarkdownBlockKind::Regex; directiveWarning = false; directiveFence = true; code.Empty(); codeHasLine = false; continue; }
+                if (directive == L"example") { directiveKind = MarkdownBlockKind::Example; directiveWarning = false; directiveFence = true; code.Empty(); codeHasLine = false; continue; }
+                if (directive == L"note" || directive == L"warning") { directiveKind = MarkdownBlockKind::Note; directiveWarning = directive == L"warning"; directiveFence = true; code.Empty(); codeHasLine = false; continue; }
+            }
+            else if (trimmed == L":::")
+            {
+                AddBlock(blocks, directiveKind, code);
+                if (directiveKind == MarkdownBlockKind::Note && !blocks.empty()) blocks.back().warning = directiveWarning;
+                code.Empty(); codeHasLine = false; directiveFence = false; continue;
+            }
+        }
+        if (directiveFence) { if (codeHasLine) code += L"\n"; code += line; codeHasLine = true; continue; }
         if (line.Left(3) == L"```")
         {
             flushParagraph();
-            if (codeFence) { AddBlock(blocks, MarkdownBlockKind::Code, code); code.Empty(); codeHasLine = false; }
+            if (codeFence) { AddBlock(blocks, codeFenceKind, code); code.Empty(); codeHasLine = false; }
+            else
+            {
+                CString fenceKind(trimmed.Mid(3)); fenceKind.MakeLower(); fenceKind.Trim();
+                codeFenceKind = fenceKind == L"regex" ? MarkdownBlockKind::Regex : fenceKind == L"example" ? MarkdownBlockKind::Example : MarkdownBlockKind::Code;
+            }
             codeFence = !codeFence;
             continue;
         }
         if (codeFence) { if (codeHasLine) code += L"\n"; code += line; codeHasLine = true; continue; }
-        CString trimmed(line); trimmed.Trim();
         if (trimmed.IsEmpty()) { flushParagraph(); continue; }
+        if (trimmed.Left(2) == L"> ") { flushParagraph(); AddBlock(blocks, MarkdownBlockKind::Note, trimmed.Mid(2)); continue; }
         int hashes = 0; while (hashes < trimmed.GetLength() && trimmed[hashes] == L'#') ++hashes;
         if (hashes > 0 && hashes <= 3 && hashes < trimmed.GetLength() && trimmed[hashes] == L' ')
         {
             flushParagraph(); AddBlock(blocks, hashes == 1 ? MarkdownBlockKind::Title : MarkdownBlockKind::Heading, trimmed.Mid(hashes + 1), hashes); continue;
         }
         if (trimmed.Left(2) == L"- ") { flushParagraph(); AddBlock(blocks, MarkdownBlockKind::List, trimmed.Mid(2)); continue; }
-        if (trimmed.Find(L'|') >= 0)
+        if (trimmed.Find(L'|') >= 0 && index + 1 < lines.size() && IsMarkdownTableSeparator(lines[index + 1]))
         {
             flushParagraph();
-            if (IsMarkdownTableSeparator(trimmed)) continue;
-            CString table = TrimMarkdownTableCell(trimmed);
-            const int separator = table.Find(L"|");
-            if (separator >= 0)
-            {
-                CString term = table.Left(separator); term.Trim();
-                CString description = table.Mid(separator + 1); description.Trim();
-        description.Replace(L"|", L" / ");
-        description.Trim();
-                table = term + L" \x2014 " + description;
-            }
-            AddBlock(blocks, MarkdownBlockKind::Table, table); continue;
+            std::vector<CString> rows;
+            index += 2;
+            while (index < lines.size() && lines[index].Find(L'|') >= 0 && !lines[index].Trim().IsEmpty()) { rows.push_back(lines[index]); ++index; }
+            --index;
+            AddTable(blocks, trimmed, rows); continue;
         }
         if (!paragraph.IsEmpty()) paragraph += L" ";
         paragraph += trimmed;
     }
-    if (codeFence) AddBlock(blocks, MarkdownBlockKind::Note, L"Malformed Markdown code block.");
+    if (codeFence || directiveFence) AddBlock(blocks, MarkdownBlockKind::Note, L"Malformed Markdown code block.");
     flushParagraph();
 }
 
@@ -210,7 +277,7 @@ PARAFORMAT2 MakeParagraphFormat(const MarkdownBlock& block)
     if (block.headingLevel == 2) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 180; }
     if (block.headingLevel == 3) { paragraph.dwMask |= PFM_SPACEBEFORE; paragraph.dySpaceBefore = 100; }
     if (block.kind == MarkdownBlockKind::List) { paragraph.dwMask |= PFM_STARTINDENT | PFM_OFFSET; paragraph.dxStartIndent = 240; paragraph.dxOffset = -120; }
-    if (block.kind == MarkdownBlockKind::Code)
+    if (block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Regex || block.kind == MarkdownBlockKind::Example)
     {
         paragraph.dwMask |= PFM_STARTINDENT | PFM_RIGHTINDENT | PFM_SPACEBEFORE;
         paragraph.dxStartIndent = 140;
@@ -219,7 +286,14 @@ PARAFORMAT2 MakeParagraphFormat(const MarkdownBlock& block)
         paragraph.dySpaceAfter = 60;
     }
     if (block.kind == MarkdownBlockKind::Table) { paragraph.dwMask |= PFM_STARTINDENT | PFM_SPACEBEFORE; paragraph.dxStartIndent = 140; paragraph.dySpaceBefore = 40; paragraph.dySpaceAfter = 40; }
-    if (block.kind == MarkdownBlockKind::Note) { paragraph.dwMask |= PFM_STARTINDENT | PFM_SPACEBEFORE; paragraph.dxStartIndent = 140; paragraph.dySpaceBefore = 40; }
+    if (block.kind == MarkdownBlockKind::Note)
+    {
+        paragraph.dwMask |= PFM_STARTINDENT | PFM_RIGHTINDENT | PFM_SPACEBEFORE;
+        paragraph.dxStartIndent = 360;
+        paragraph.dxRightIndent = 140;
+        paragraph.dySpaceBefore = 60;
+        paragraph.dySpaceAfter = 60;
+    }
     return paragraph;
 }
 
@@ -235,6 +309,7 @@ CString RenderedBlockText(const MarkdownBlock& block)
 {
     CString value(block.text);
     if (block.kind == MarkdownBlockKind::List) value = CString(L"\x2022 ") + value;
+    if (block.kind == MarkdownBlockKind::Note) value = CString(block.warning ? L"\x26A0 " : L"\x2139 ") + value;
     return value;
 }
 
@@ -357,24 +432,37 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
         const MarkdownBlock& block = blocks[index];
         const int first = ranges[index].first, last = ranges[index].last;
         CString value(RenderedBlockText(block));
-        const bool tableHeader = block.kind == MarkdownBlockKind::Table && (index == 0 || blocks[index - 1].kind != MarkdownBlockKind::Table);
-        const bool bold = block.kind == MarkdownBlockKind::Title || block.kind == MarkdownBlockKind::Heading || tableHeader;
-        const bool monospace = block.kind == MarkdownBlockKind::Code;
+        const bool bold = block.kind == MarkdownBlockKind::Title || block.kind == MarkdownBlockKind::Heading;
+        const bool monospace = block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Regex || block.kind == MarkdownBlockKind::Example;
         const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block));
         const PARAFORMAT2 paragraph = MakeParagraphFormat(block);
         SelectAndFormat(richEdit, first, (std::max)(first, last), format, paragraph);
         if(block.kind == MarkdownBlockKind::Table)
         {
-            const int separator = value.Find(L" \x2014 ");
-            if(separator > 0)
+            const int headerEnd = value.Find(L'\n');
+            const CHARFORMAT2 headerFormat = MakeCharacterFormat(richEdit, true, false, PointSizeForBlock(block));
+            ::SendMessage(richEdit, EM_SETSEL, first, first + (headerEnd < 0 ? value.GetLength() : headerEnd));
+            ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&headerFormat));
+            int rowStart = 0;
+            bool header = true;
+            while (rowStart < value.GetLength())
             {
-                const CHARFORMAT2 description = MakeCharacterFormat(richEdit, bold, false, PointSizeForBlock(block));
-                ::SendMessage(richEdit, EM_SETSEL, first + separator + 3, last);
-                ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&description));
-                CHARFORMAT2 term = {}; term.cbSize = sizeof(term); term.dwMask = CFM_FACE;
+                int rowEnd = value.Find(L'\n', rowStart); if (rowEnd < 0) rowEnd = value.GetLength();
+                const int separator = value.Find(L" \x2014 ", rowStart);
+                if (separator >= rowStart && separator < rowEnd)
+                {
+                    const CHARFORMAT2 description = MakeCharacterFormat(richEdit, header, false, PointSizeForBlock(block));
+                    ::SendMessage(richEdit, EM_SETSEL, first + separator + 3, first + rowEnd);
+                    ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&description));
+                }
+                CHARFORMAT2 term = {}; term.cbSize = sizeof(term); term.dwMask = CFM_FACE | CFM_BOLD;
+                term.dwEffects = header ? CFE_BOLD : 0;
                 ::lstrcpynW(term.szFaceName, L"Consolas", LF_FACESIZE);
-                ::SendMessage(richEdit, EM_SETSEL, first, first + separator);
+                const int termEnd = separator >= rowStart && separator < rowEnd ? separator : rowEnd;
+                ::SendMessage(richEdit, EM_SETSEL, first + rowStart, first + termEnd);
                 ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&term));
+                if (rowEnd == value.GetLength()) break;
+                rowStart = rowEnd + 1; header = false;
             }
         }
         for (size_t span = 0; span < block.inlineCode.size(); ++span)
@@ -415,11 +503,11 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         !cachedFirst.empty() && cachedFirst.size() == cachedSecond.size() && cachedFirstPath == cachedSecondPath &&
         secondLoad.cacheHit && secondLoad.markdownReadMs == 0 && secondLoad.parseMs == 0;
     std::vector<MarkdownBlock> parsed, empty, malformed, unknown;
-    ParseMarkdownText(L"# Title\n## Heading two\n### Heading three\nBody `inline` text\n- one\n- two\n```text\n   leading\ntrailing   \n\ttab\n\nlast\n```\n| Syntax | Meaning |\n| --- | --- |\n| \\d | digit |\n| \\w | word |\nBody after table https://example.invalid", parsed);
+    ParseMarkdownText(L"# Title\n## Heading two\n### Heading three\nBody `inline` text\n- one\n- two\n```text\n   leading\ntrailing   \n\ttab\n\nlast\n```\n:::regex\n\\d{2,4}\n:::\n:::example\n2026\n1234\n:::\n:::warning\nRegex is text based.\n:::\n:::note\nInformation is visible.\n:::\n| Syntax | Meaning |\n| --- | --- |\n| `\\d` | `digit` |\n| `\\w` | word |\nBody after table https://example.invalid", parsed);
     ParseMarkdownText(L"", empty);
     ParseMarkdownText(L"```regex\n[", malformed);
     ParseMarkdownText(L"> unknown extension", unknown);
-    bool hasTitle = false, hasHeading2 = false, hasHeading3 = false, hasBody = false, hasList = false, hasCode = false, hasTable = false, hasInlineCode = false, codeWhitespace = false;
+    bool hasTitle = false, hasHeading2 = false, hasHeading3 = false, hasBody = false, hasList = false, hasCode = false, hasRegex = false, hasExample = false, hasNote = false, hasInformation = false, hasWarning = false, hasTable = false, hasInlineCode = false, codeWhitespace = false, tableStructured = false, tableInlineCode = false;
     for (size_t index = 0; index < parsed.size(); ++index)
     {
         const MarkdownBlock& block = parsed[index];
@@ -429,17 +517,24 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         hasBody = hasBody || block.kind == MarkdownBlockKind::Body;
         hasList = hasList || block.kind == MarkdownBlockKind::List;
         hasCode = hasCode || block.kind == MarkdownBlockKind::Code;
+        hasRegex = hasRegex || (block.kind == MarkdownBlockKind::Regex && block.text == L"\\d{2,4}");
+        hasExample = hasExample || (block.kind == MarkdownBlockKind::Example && block.text == L"2026\n1234");
+        hasNote = hasNote || (block.kind == MarkdownBlockKind::Note && block.text == L"Regex is text based.");
+        hasInformation = hasInformation || (block.kind == MarkdownBlockKind::Note && !block.warning && block.text == L"Information is visible.");
+        hasWarning = hasWarning || (block.kind == MarkdownBlockKind::Note && block.warning);
         codeWhitespace = codeWhitespace || (block.kind == MarkdownBlockKind::Code && block.text == L"   leading\ntrailing   \n\ttab\n\nlast");
         hasTable = hasTable || block.kind == MarkdownBlockKind::Table;
+        tableStructured = tableStructured || (block.kind == MarkdownBlockKind::Table && block.table.headers.size() == 2 && block.table.rows.size() == 2);
+        tableInlineCode = tableInlineCode || (block.kind == MarkdownBlockKind::Table && !block.inlineCode.empty());
         hasInlineCode = hasInlineCode || !block.inlineCode.empty();
     }
-    const bool parser = hasTitle && hasHeading2 && hasHeading3 && hasBody && hasList && hasCode && hasTable && hasInlineCode && codeWhitespace &&
+    const bool parser = hasTitle && hasHeading2 && hasHeading3 && hasBody && hasList && hasCode && hasRegex && hasExample && hasNote && hasInformation && hasWarning && hasTable && tableStructured && tableInlineCode && hasInlineCode && codeWhitespace &&
         empty.empty() && malformed.size() == 1 && malformed[0].text == L"Malformed Markdown code block." && !unknown.empty();
     HMODULE richEditLibrary = ::LoadLibraryW(L"Msftedit.dll");
     HWND richEdit = richEditLibrary ? ::CreateWindowExW(0, MSFTEDIT_CLASS, L"", WS_POPUP | ES_MULTILINE, 0, 0, 16, 16, owner, NULL, NULL, NULL) : NULL;
     bool formatting = false, longDocuments = false;
     int facesDetail = 0;
-    int formattingDetail = 0, shadedLinkDetail = 0;
+    int formattingDetail = 0, shadedLinkDetail = 0, styleDetail = 0;
     int enDesignLength = 0, enSourceLength = 0, ruDesignLength = 0, ruSourceLength = 0;
     int enDesignExpectedLength = 0, enSourceExpectedLength = 0, ruDesignExpectedLength = 0, ruSourceExpectedLength = 0;
     bool enDesignTerminalNewlineOmitted = false, enSourceTerminalNewlineOmitted = false;
@@ -486,12 +581,13 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), tableDescriptionAt = rendered.Find(L"Meaning"), tableDataAt = rendered.Find(L"\\d"), inlineAt = rendered.Find(L"inline"), afterTableAt = rendered.Find(L"Body after table"), linkAt = rendered.Find(L"https://example.invalid"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
         const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && tableDescriptionAt >= 0 && tableDataAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && linkAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
         const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax \x2014 Meaning") >= 0 &&
-            rendered.Find(L"\\d \x2014 digit") >= 0 && rendered.Find(L"\\w \x2014 word") >= 0;
+            rendered.Find(L"\\d \x2014 digit") >= 0 && rendered.Find(L"\\w \x2014 word") >= 0 && rendered.Find(L"`\\d`") < 0;
         const bool formats = positions && formatAt(titleAt, titleFormat) && formatAt(heading2At, heading2Format) && formatAt(heading3At, heading3Format) && formatAt(bodyAt, bodyFormat) &&
             formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(tableDescriptionAt, tableDescriptionFormat) && formatAt(tableDataAt, tableDataFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && formatAt(linkAt, linkFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
-        const bool styles = formats && (titleFormat.dwEffects & CFE_BOLD) != 0 && (heading2Format.dwEffects & CFE_BOLD) != 0 && (heading3Format.dwEffects & CFE_BOLD) != 0 &&
-            (bodyFormat.dwEffects & CFE_BOLD) == 0 && (codeFormat.dwEffects & CFE_BOLD) == 0 && (inlineFormat.dwEffects & CFE_BOLD) == 0 && (afterTableFormat.dwEffects & CFE_BOLD) == 0 &&
-            (tableFormat.dwEffects & CFE_BOLD) != 0 && (tableDataFormat.dwEffects & CFE_BOLD) == 0;
+        styleDetail = ((titleFormat.dwEffects & CFE_BOLD) != 0 ? 1 : 0) | ((heading2Format.dwEffects & CFE_BOLD) != 0 ? 2 : 0) |
+            ((heading3Format.dwEffects & CFE_BOLD) != 0 ? 4 : 0) | ((bodyFormat.dwEffects & CFE_BOLD) == 0 ? 8 : 0) |
+            ((codeFormat.dwEffects & CFE_BOLD) == 0 ? 16 : 0) | ((inlineFormat.dwEffects & CFE_BOLD) == 0 ? 32 : 0) |
+            ((afterTableFormat.dwEffects & CFE_BOLD) == 0 ? 64 : 0);
         const bool codeFace = ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0;
         const bool inlineFace = ::lstrcmpiW(inlineFormat.szFaceName, L"Consolas") == 0;
         // Use a stand-alone table to query native RichEdit character offsets:
@@ -499,13 +595,17 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         // paragraph delimiter once. This keeps the term/description assertion
         // about the actual rendered characters rather than converted offsets.
         std::vector<MarkdownBlock> tableFontBlocks;
-        AddBlock(tableFontBlocks, MarkdownBlockKind::Table, L"Syntax \x2014 Meaning");
-        AddBlock(tableFontBlocks, MarkdownBlockKind::Body, L"ordinary description");
+        ParseMarkdownText(L"| Syntax | Meaning |\n| --- | --- |\n| \\d | digit |", tableFontBlocks);
         RenderMarkdown(richEdit, tableFontBlocks);
         CString tableFontText; ReadRichEditText(richEdit, tableFontText);
-        CHARFORMAT2 standaloneTerm = {}, standaloneDescription = {}, standaloneBody = {};
+        CHARFORMAT2 standaloneTerm = {}, standaloneDescription = {}, standaloneData = {};
         const bool tableTermFace = formatAt(tableFontText.Find(L"Syntax"), standaloneTerm) && ::lstrcmpiW(standaloneTerm.szFaceName, L"Consolas") == 0;
-        const bool tableDescriptionFace = formatAt(tableFontText.Find(L"Meaning"), standaloneDescription) && formatAt(tableFontText.Find(L"ordinary description"), standaloneBody) && ::lstrcmpiW(standaloneDescription.szFaceName, standaloneBody.szFaceName) == 0;
+        const bool tableDescriptionFace = formatAt(tableFontText.Find(L"Meaning"), standaloneDescription) && ::lstrcmpiW(standaloneDescription.szFaceName, standaloneTerm.szFaceName) != 0;
+        const bool tableHeaderBold = (standaloneTerm.dwEffects & CFE_BOLD) != 0 && (standaloneDescription.dwEffects & CFE_BOLD) != 0;
+        const bool tableDataNonBold = formatAt(tableFontText.Find(L"\\d"), standaloneData) && (standaloneData.dwEffects & CFE_BOLD) == 0;
+        styleDetail |= tableHeaderBold ? 128 : 0;
+        styleDetail |= tableDataNonBold ? 256 : 0;
+        const bool styles = formats && styleDetail == 511;
         facesDetail = (codeFace ? 1 : 0) | (tableTermFace ? 2 : 0) | (inlineFace ? 4 : 0) | (tableDescriptionFace ? 8 : 0);
         const bool faces = formats && codeFace && tableTermFace && inlineFace && tableDescriptionFace;
         const bool sizes = formats && titleFormat.yHeight > heading2Format.yHeight && heading2Format.yHeight > bodyFormat.yHeight && heading3Format.yHeight >= bodyFormat.yHeight &&
@@ -557,8 +657,8 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
     const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && cached && parser && formatting && longDocuments;
-    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_design_terminal_newline_omitted=%d\nen_source_length=%d\nen_source_expected_length=%d\nen_source_terminal_newline_omitted=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_design_terminal_newline_omitted=%d\nru_source_length=%d\nru_source_expected_length=%d\nru_source_terminal_newline_omitted=%d\nresult=%s\n",
-        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, facesDetail, shadedLinkDetail, longDocuments,
+    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nstyle_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_design_terminal_newline_omitted=%d\nen_source_length=%d\nen_source_expected_length=%d\nen_source_terminal_newline_omitted=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_design_terminal_newline_omitted=%d\nru_source_length=%d\nru_source_expected_length=%d\nru_source_terminal_newline_omitted=%d\nresult=%s\n",
+        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, styleDetail, facesDetail, shadedLinkDetail, longDocuments,
         enDesignLength, enDesignExpectedLength, enDesignTerminalNewlineOmitted, enSourceLength, enSourceExpectedLength, enSourceTerminalNewlineOmitted,
         ruDesignLength, ruDesignExpectedLength, ruDesignTerminalNewlineOmitted, ruSourceLength, ruSourceExpectedLength, ruSourceTerminalNewlineOmitted, passed ? "pass" : "fail");
     return passed;

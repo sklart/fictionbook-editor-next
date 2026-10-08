@@ -1,6 +1,8 @@
 # Справка по регулярным выражениям — Код
 
+:::note
 Полное руководство по поиску и замене в XML-исходнике книги FictionBook Editor Next.
+:::
 
 Редакция: 2 октября 2026 года. Режим «Дизайн» описан отдельно в regex-design.md. Рецепты этого документа относятся к режиму «Код»; переносить в него выражения PCRE2 без проверки нельзя.
 
@@ -1339,9 +1341,3 @@ l:href="#note1"
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] FBE Next того же среза: SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp и search-preset-source-scintilla-smoke.cpp. По ним проверялись профиль режима и связь с существующими редакторскими задачами.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Дополнительные рецепты предназначены для последующей проверки в целевой сборке FBE. Локальная проверка C++11 ECMAScript на контрольных строках не равна выполнению Windows Scintilla. Подробности проверки этой редакции указаны в README архива.

@@ -1607,9 +1607,3 @@ Deze handleiding bewerkt het aangeleverde regex-design.md met herschreven toelic
 [D3] FBE Next: PCRE2-compatibiliteit en adapter, revisie d2257405d95b0328649acee64b38829b40a4314b.
 
 `https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
-
-[D4] FBE Next: GetReplStr, PrepareRegexReplacementText en zoeken/vervangen in FBEview.cpp; SearchPresetCatalog.cpp en search-preset-design-fixtures.cpp uit dezelfde revisie.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/src/fbe/FBEview.cpp`
-
-Enginesyntaxis, interfacemogelijkheden en de juistheid van een redactionele keuze zijn verschillende niveaus. Lokale voorbeeldtests garanderen niet iedere FBE-build met ieder document. De teststatus staat in de README van het archief.

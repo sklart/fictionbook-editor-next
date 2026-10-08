@@ -1577,9 +1577,3 @@ Regex по тексту не видит DOM так, как его видит с�
 [D3] FBE Next: совместимость PCRE2 и особенности обвязки. Срез репозитория d2257405d95b0328649acee64b38829b40a4314b.
 
 `https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
-
-[D4] FBE Next: GetReplStr, PrepareRegexReplacementText и операции поиска/замены в FBEview.cpp; каталог встроенных сценариев SearchPresetCatalog.cpp и тесты search-preset-design-fixtures.cpp того же среза.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/src/fbe/FBEview.cpp`
-
-Синтаксис движка, возможности интерфейса и корректность редакторского решения — три разных уровня. Локальная проверка контрольных строк не является гарантией работы любой сборки FBE с любым документом. Статус выполненных проверок этой редакции находится в README архива.

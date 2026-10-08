@@ -1,6 +1,8 @@
 # Podręcznik wyrażeń regularnych — Kod
 
+:::note
 Uwaga do tłumaczenia: rosyjskie słowa i zdania w przykładach kontrolnych pozostawiono celowo bez zmian. Są to dane testowe: wyrażenia regularne, ciągi zastępujące, białe znaki i oczekiwane wyniki odpowiadają rosyjskiemu wydaniu wzorcowemu. Objaśnienia przetłumaczono; przykładów nie dostosowano automatycznie do polskich zasad typografii.
+:::
 
 Pełny przewodnik po wyszukiwaniu i zamianie w źródle XML książki w FictionBook Editor Next.
 
@@ -1370,9 +1372,3 @@ Podręcznik rozwija dostarczony regex-source.md. Zachowano układ silnik → sk�
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] Ta sama wersja FBE Next: SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp i search-preset-source-scintilla-smoke.cpp jako podstawa profilu i powiązania z zadaniami redakcyjnymi.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Dodatkowe przepisy należy sprawdzić w docelowej kompilacji FBE. Lokalny test C++11 ECMAScript nie jest wykonaniem Windows Scintilla. Szczegóły weryfikacji tej edycji znajdują się w README archiwum.

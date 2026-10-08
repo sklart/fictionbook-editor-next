@@ -1,6 +1,8 @@
 # Regular expression help — Source
 
+:::note
 Translation note: Russian words and sentences in control examples are intentionally retained. They are test data: the regular expressions, replacement strings, whitespace characters and expected results are identical to the Russian reference edition. The explanations are translated; the examples are not automatically adapted to English typography.
+:::
 
 A complete guide to searching and replacing in a book’s XML source in FictionBook Editor Next.
 
@@ -1370,9 +1372,3 @@ This translates the expanded guide based on the supplied regex-source.md. Its �
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] FBE Next in the same snapshot: SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp, and search-preset-source-scintilla-smoke.cpp. These establish the mode profile and its relationship to existing editing tasks.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Additional recipes are intended for subsequent verification in the target FBE build. Local C++11 ECMAScript checks on sample strings are not execution in Windows Scintilla. See the archive README for verification details.

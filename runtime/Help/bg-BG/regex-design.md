@@ -1607,9 +1607,3 @@ $1
 [D3] FBE Next: съвместимост PCRE2 и адаптер, ревизия d2257405d95b0328649acee64b38829b40a4314b.
 
 `https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
-
-[D4] FBE Next: GetReplStr, PrepareRegexReplacementText и търсене/замяна във FBEview.cpp; SearchPresetCatalog.cpp и search-preset-design-fixtures.cpp от същата ревизия.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/src/fbe/FBEview.cpp`
-
-Синтаксисът на двигателя, възможностите на интерфейса и правилността на редакторското решение са три различни нива. Локални тестове на примери не гарантират всяка FBE компилация с всеки документ. Състоянието на проверките е в README на архива.

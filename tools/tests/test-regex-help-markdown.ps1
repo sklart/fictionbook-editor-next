@@ -26,6 +26,10 @@ foreach ($locale in $locales) {
         if ([string]::IsNullOrWhiteSpace($text) -or $bytes.Length -lt 1024) { throw "$locale/$name is empty or unreasonably short" }
         foreach ($required in @('# ', '## ', '```')) { if (-not $text.Contains($required)) { throw "$locale/$name misses Markdown construct $required" } }
         if (([regex]::Matches($text, '(?m)^```')).Count % 2 -ne 0) { throw "$locale/$name has unbalanced fenced blocks" }
+        if ($name -eq 'regex-source.md') {
+            if ($text -notmatch '(?m)^:::note\r?$') { throw "$locale/$name must include a user-facing information note." }
+            if ($text -notmatch '(?m)^```regex\r?$') { throw "$locale/$name must mark regular-expression examples explicitly." }
+        }
         if ($locale -ne 'en-US') {
             $english = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes((Join-Path $root "runtime\Help\en-US\$name")))
             if ($text -ceq $english) { throw "$locale/$name must not be an English copy" }
@@ -55,6 +59,9 @@ $source = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'runtime
 foreach ($token in @('PCRE2', 'Unicode (UCP)', 'lookaround', 'Replacement', 'greedy', 'lazy', 'possessive')) { if ($design -notmatch [regex]::Escape($token)) { throw "Design Help misses $token" } }
 foreach ($token in @('Line-by-line', 'line boundar', 'MatchOnLines', '<empty-line[ \t]*/>[ \t]*<empty-line[ \t]*/>', 'C++11')) { if ($source -notmatch [regex]::Escape($token)) { throw "Source Help misses $token" } }
 if ($source -match '<empty-line/>\\s\*<empty-line/>|<empty-line/>.*\\r|<empty-line/>.*\\n') { throw 'The source empty-line example must remain single-line.' }
+foreach ($forbidden in @('search-preset-source-scintilla-smoke.cpp', 'search-preset-design-fixtures.cpp', 'archive README', 'README архива')) {
+    if (($design + "`n" + $source) -match [regex]::Escape($forbidden)) { throw "User Help must not expose internal verification detail: $forbidden" }
+}
 if ($readme -notmatch 'all 12 supported UI locales') { throw 'Help README must document complete localization coverage.' }
 $packageManifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'packaging\package-manifest.json') | ConvertFrom-Json
 $packageRequired = @($packageManifest.core.required)
@@ -64,6 +71,6 @@ foreach ($locale in $locales) {
         if ($packageRequired -cnotcontains $packagePath) { throw "Package manifest misses localized Markdown help: $packagePath" }
     }
 }
-foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Table', 'ParseInlineCode', 'ParseMarkdownText', 'RunRuntimeSmoke', 'HelpPathForLocale', 'EM_EXLIMITTEXT', 'Malformed Markdown code block.')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
+foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Regex', 'MarkdownBlockKind::Example', 'MarkdownBlockKind::Table', 'MarkdownTable', 'SplitMarkdownTableRow', 'ParseInlineCode', 'ParseMarkdownText', 'RunRuntimeSmoke', 'HelpPathForLocale', 'EM_EXLIMITTEXT', 'Malformed Markdown code block.')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
 if ($catalog.strings.PSObject.Properties.Name -contains 'fbe.regex_help.malformed_markdown') { throw 'Malformed Markdown diagnostic must remain the neutral built-in fallback until it is localized for every locale.' }
 Write-Host 'Regex Help Markdown localization and package contract passed.'

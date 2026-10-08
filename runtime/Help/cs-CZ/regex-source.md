@@ -1,6 +1,8 @@
 # Příručka regulárních výrazů — Kód
 
+:::note
 Poznámka k překladu: ruská slova a věty v kontrolních příkladech jsou záměrně ponechány beze změny. Jde o testovací data: regulární výrazy, nahrazovací řetězce, bílé znaky a očekávané výsledky odpovídají ruskému referenčnímu vydání. Vysvětlení jsou přeložena; příklady nejsou automaticky přizpůsobeny českým typografickým pravidlům.
+:::
 
 Úplná příručka hledání a nahrazování ve zdrojovém XML knihy v FictionBook Editor Next.
 
@@ -1370,9 +1372,3 @@ Příručka rozšiřuje dodaný regex-source.md. Zachovává postup modul → sy
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] Stejná revize FBE Next: SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp a search-preset-source-scintilla-smoke.cpp jako podklad profilu a návaznosti na redakční úkoly.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Další postupy vyžadují ověření v cílové sestavě FBE. Lokální C++11 ECMAScript test není spuštěním Windows Scintilla. Podrobnosti kontrol jsou v README archivu.

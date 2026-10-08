@@ -291,7 +291,9 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
     const bool initialRendered = waitForDeferredRender(initialWindow);
     RECT initialBounds = {}; const bool defaultSize = initialRendered && ::GetWindowRect(initialWindow, &initialBounds) && capture(initialWindow, L"full-help-design-start.bmp");
     const bool designTable = initialRendered && scrollToLine(initialWindow, 55) && capture(initialWindow, L"full-help-design-table.bmp");
+    const bool characterClasses = designTable && capture(initialWindow, L"full-help-design-character-classes.bmp");
     const bool designCode = initialRendered && scrollToLine(initialWindow, 160) && capture(initialWindow, L"full-help-design-code.bmp");
+    const bool quantifiers = designCode && capture(initialWindow, L"full-help-design-quantifiers.bmp");
     const bool narrow = initialRendered && ::SetWindowPos(initialWindow, NULL, initialBounds.left, initialBounds.top, 430, 520, SWP_NOZORDER | SWP_NOACTIVATE) != FALSE && capture(initialWindow, L"full-help-design-narrow.bmp");
     if (initialWindow) ::SetWindowPos(initialWindow, NULL, initialBounds.left + 12, initialBounds.top + 12, 720, 520, SWP_NOZORDER | SWP_NOACTIVATE);
     WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement); const bool savedPlacement = initialWindow && ::GetWindowPlacement(initialWindow, &placement) != FALSE;
@@ -301,15 +303,17 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
     HWND restoredWindow = savedPlacement ? restored.Create(owner) : NULL; if (restoredWindow) { ::ShowWindow(restoredWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(restoredWindow); }
     const bool restoredRendered = waitForDeferredRender(restoredWindow);
     RECT restoredBounds = {}; const bool restoredSize = restoredRendered && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top && capture(restoredWindow, L"full-help-code-start.bmp");
+    const bool regexExample = restoredSize && capture(restoredWindow, L"full-help-code-regex-example.bmp");
+    const bool note = restoredSize && capture(restoredWindow, L"full-help-code-note.bmp");
     const bool codeTable = restoredRendered && scrollToLine(restoredWindow, 28) && capture(restoredWindow, L"full-help-code-table.bmp");
     const RegexHelpRenderMetrics& designMetrics = initial.Metrics();
     const RegexHelpRenderMetrics& codeMetrics = restored.Metrics();
     const bool metrics = designMetrics.deferred && codeMetrics.deferred && designMetrics.blockCount > 0 && codeMetrics.blockCount > 0 &&
         designMetrics.dialogFirstVisibleMs <= designMetrics.totalReadyMs && codeMetrics.dialogFirstVisibleMs <= codeMetrics.totalReadyMs;
     if (restoredWindow) restored.DestroyWindow(); if (richEdit != NULL) ::FreeLibrary(richEdit);
-    const bool passed = defaultSize && designTable && designCode && narrow && restoredSize && codeTable && metrics;
-    report.Format("initial=%d\r\ndesign_table=%d\r\ndesign_code=%d\r\nnarrow=%d\r\nrestored=%d\r\ncode_table=%d\r\nmetrics=%d\r\ndesign_markdown_read_ms=%llu\r\ndesign_parse_ms=%llu\r\ndesign_render_ms=%llu\r\ndesign_dialog_first_visible_ms=%llu\r\ndesign_total_ready_ms=%llu\r\ndesign_block_count=%llu\r\ncode_markdown_read_ms=%llu\r\ncode_parse_ms=%llu\r\ncode_render_ms=%llu\r\ncode_dialog_first_visible_ms=%llu\r\ncode_total_ready_ms=%llu\r\ncode_block_count=%llu\r\nresult=%s\r\n",
-        defaultSize ? 1 : 0, designTable ? 1 : 0, designCode ? 1 : 0, narrow ? 1 : 0, restoredSize ? 1 : 0, codeTable ? 1 : 0, metrics ? 1 : 0,
+    const bool passed = defaultSize && designTable && characterClasses && designCode && quantifiers && narrow && restoredSize && regexExample && note && codeTable && metrics;
+    report.Format("initial=%d\r\ndesign_table=%d\r\ncharacter_classes=%d\r\ndesign_code=%d\r\nquantifiers=%d\r\nnarrow=%d\r\nrestored=%d\r\nregex_example=%d\r\nnote=%d\r\ncode_table=%d\r\nmetrics=%d\r\ndesign_markdown_read_ms=%llu\r\ndesign_parse_ms=%llu\r\ndesign_render_ms=%llu\r\ndesign_dialog_first_visible_ms=%llu\r\ndesign_total_ready_ms=%llu\r\ndesign_block_count=%llu\r\ncode_markdown_read_ms=%llu\r\ncode_parse_ms=%llu\r\ncode_render_ms=%llu\r\ncode_dialog_first_visible_ms=%llu\r\ncode_total_ready_ms=%llu\r\ncode_block_count=%llu\r\nresult=%s\r\n",
+        defaultSize ? 1 : 0, designTable ? 1 : 0, characterClasses ? 1 : 0, designCode ? 1 : 0, quantifiers ? 1 : 0, narrow ? 1 : 0, restoredSize ? 1 : 0, regexExample ? 1 : 0, note ? 1 : 0, codeTable ? 1 : 0, metrics ? 1 : 0,
         static_cast<unsigned long long>(designMetrics.markdownReadMs), static_cast<unsigned long long>(designMetrics.parseMs), static_cast<unsigned long long>(designMetrics.renderMs), static_cast<unsigned long long>(designMetrics.dialogFirstVisibleMs), static_cast<unsigned long long>(designMetrics.totalReadyMs), static_cast<unsigned long long>(designMetrics.blockCount),
         static_cast<unsigned long long>(codeMetrics.markdownReadMs), static_cast<unsigned long long>(codeMetrics.parseMs), static_cast<unsigned long long>(codeMetrics.renderMs), static_cast<unsigned long long>(codeMetrics.dialogFirstVisibleMs), static_cast<unsigned long long>(codeMetrics.totalReadyMs), static_cast<unsigned long long>(codeMetrics.blockCount), passed ? "pass" : "fail");
     return passed;

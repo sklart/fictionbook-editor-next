@@ -1,6 +1,8 @@
 # Hilfe zu regulären Ausdrücken — Quelltext
 
+:::note
 Hinweis zur Übersetzung: Russische Wörter und Sätze in den Kontrollbeispielen bleiben absichtlich unverändert. Sie sind Testdaten: Reguläre Ausdrücke, Ersetzungstexte, Leerraumzeichen und erwartete Ergebnisse entsprechen der russischen Referenzfassung. Die Erläuterungen sind übersetzt; die Beispiele werden nicht automatisch an deutsche typografische Regeln angepasst.
+:::
 
 Vollständiges Handbuch zum Suchen und Ersetzen im XML-Quelltext eines Buches in FictionBook Editor Next.
 
@@ -1370,9 +1372,3 @@ Dies übersetzt das erweiterte Handbuch zum bereitgestellten regex-source.md. Di
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp und search-preset-source-scintilla-smoke.cpp desselben FBE-Stands belegen Profil und vorhandene redaktionelle Aufgaben.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Zusätzliche Rezepte müssen im Zielbuild geprüft werden. Lokale C++11-ECMAScript-Kontrolltests sind keine Ausführung von Windows Scintilla. Details stehen in der Archiv-README.

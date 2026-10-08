@@ -12,7 +12,7 @@ try {
     $exitCode = $null
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='regex-help-runtime'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList '-b',("`"$report`""),("`"$fixture`"") -PassThru
+        $process = Start-Process -FilePath $FbeExe -ArgumentList '--portable','-b',("`"$report`""),("`"$fixture`"") -PassThru
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Regex Help runtime smoke timed out.' }
         $exitCode = $process.ExitCode
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO=$oldMode,$oldScenario }
@@ -39,7 +39,7 @@ try {
     Copy-Item -LiteralPath $fixture -Destination $missingFixture -Force
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='regex-help-missing-files-runtime'
-        $missingProcess = Start-Process -FilePath (Join-Path $missingApp 'FBE.exe') -ArgumentList '-b',("`"$missingReport`""),("`"$missingFixture`"") -PassThru
+        $missingProcess = Start-Process -FilePath (Join-Path $missingApp 'FBE.exe') -ArgumentList '--portable','-b',("`"$missingReport`""),("`"$missingFixture`"") -PassThru
         if (-not $missingProcess.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $missingProcess.Id -Force; throw 'Regex Help missing-files runtime smoke timed out.' }
         if ($missingProcess.ExitCode -ne 0) { throw "Regex Help missing-files runtime smoke failed with exit code $($missingProcess.ExitCode)." }
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO=$oldMode,$oldScenario }

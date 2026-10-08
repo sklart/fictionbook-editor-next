@@ -1,6 +1,8 @@
 # Guida alle espressioni regolari — Codice
 
+:::note
 Nota sulla traduzione: le parole e le frasi russe negli esempi di controllo sono mantenute intenzionalmente. Sono dati di prova: espressioni regolari, stringhe di sostituzione, spazi e risultati attesi corrispondono all’edizione russa di riferimento. Le spiegazioni sono tradotte; gli esempi non sono adattati automaticamente alle convenzioni tipografiche italiane.
+:::
 
 Guida completa alla ricerca e alla sostituzione nel sorgente XML di un libro in FictionBook Editor Next.
 
@@ -1370,9 +1372,3 @@ Questa guida amplia il regex-source.md dell’utente. Mantiene il percorso motor
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] Nella stessa revisione FBE Next: SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp e search-preset-source-scintilla-smoke.cpp, per il profilo di ricerca e il collegamento ai compiti editoriali esistenti.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Le ricette aggiuntive richiedono verifica nella build FBE di destinazione. Una prova locale C++11 ECMAScript sui campioni non equivale all’esecuzione di Windows Scintilla. I dettagli delle verifiche sono nel README dell’archivio.

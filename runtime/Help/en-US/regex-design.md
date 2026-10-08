@@ -1607,9 +1607,3 @@ This is a translation of the expanded Russian guide derived from the supplied re
 [D3] FBE Next: PCRE2 compatibility and wrapper details. Repository snapshot d2257405d95b0328649acee64b38829b40a4314b.
 
 `https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
-
-[D4] FBE Next: GetReplStr, PrepareRegexReplacementText, and search/replacement operations in FBEview.cpp; SearchPresetCatalog.cpp and search-preset-design-fixtures.cpp in the same snapshot.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/src/fbe/FBEview.cpp`
-
-Engine syntax, interface capabilities, and the correctness of an editorial decision are three different layers. Local tests of sample strings do not guarantee that every FBE build works with every document. The archive README records the verification status of this edition.

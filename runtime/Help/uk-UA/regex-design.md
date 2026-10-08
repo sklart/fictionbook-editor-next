@@ -1607,9 +1607,3 @@ $1
 [D3] Сумісність PCRE2 та обгортка FBE Next, зріз d2257405d95b0328649acee64b38829b40a4314b.
 
 `https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
-
-[D4] GetReplStr, PrepareRegexReplacementText і операції FBEview.cpp; SearchPresetCatalog.cpp і search-preset-design-fixtures.cpp того самого зрізу.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/src/fbe/FBEview.cpp`
-
-Синтаксис рушія, можливості інтерфейсу та редакторська правильність — три рівні. Локальні тести не гарантують роботу кожної збірки з кожним документом. Статус перевірок зазначено в README архіву.

@@ -1,6 +1,8 @@
 # Handleiding voor reguliere expressies — Code
 
+:::note
 Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.
+:::
 
 Een volledig overzicht van zoeken en vervangen in de XML-bron van boeken in FictionBook Editor Next.
 
@@ -1370,9 +1372,3 @@ Deze handleiding breidt het aangeleverde regex-source.md uit. De volgorde engine
 `https://www.w3.org/TR/xml/`
 
 `https://www.w3.org/TR/xml-names/`
-
-[S4] Dezelfde FBE Next-revisie: SearchPresetCatalog.cpp, mainfrm.cpp, FBEview.cpp en search-preset-source-scintilla-smoke.cpp als basis voor profiel en redactionele toepassingen.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/tools/tests/search-preset-source-scintilla-smoke.cpp`
-
-Aanvullende recepten moeten in de doelbuild van FBE worden gecontroleerd. Lokale C++11-ECMAScript-tests zijn geen uitvoering van Windows Scintilla. Details staan in de README van het archief.

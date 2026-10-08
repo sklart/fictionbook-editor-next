@@ -5,12 +5,20 @@
 
 namespace FbeRegexHelp
 {
-enum class MarkdownBlockKind { Title, Heading, Body, List, Code, Table, Note };
+enum class MarkdownBlockKind { Title, Heading, Body, List, Code, Regex, Table, Note, Example };
 
 struct MarkdownInlineCode
 {
     int start;
     int length;
+};
+
+// A table is semantic content, rather than a preformatted line with tab stops.
+// The renderer owns the responsive presentation of its columns.
+struct MarkdownTable
+{
+    std::vector<CString> headers;
+    std::vector<std::vector<CString> > rows;
 };
 
 struct MarkdownBlock
@@ -19,6 +27,8 @@ struct MarkdownBlock
     int headingLevel;
     CString text;
     std::vector<MarkdownInlineCode> inlineCode;
+    MarkdownTable table;
+    bool warning = false;
 };
 
 struct MarkdownLoadMetrics
