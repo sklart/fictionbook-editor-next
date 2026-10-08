@@ -591,6 +591,12 @@ LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* u
 		bHandled = TRUE;
 		return 0;
 	}
+	if(m_script_mode && wParam == 'F' && (GetKeyState(VK_CONTROL) & 0x8000) && ::IsWindow(m_script_search_window))
+	{
+		::SetFocus(m_script_search_window);
+		bHandled = TRUE;
+		return 0;
+	}
   if (wParam==VK_RETURN)
     ::PostMessage(m_main_window,WM_COMMAND,TreeCommandWParam(IDN_TREE_RETURN),(LPARAM)m_hWnd);
 
@@ -758,15 +764,29 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 	if(m_script_mode)
 	{
 		CPoint point = (CPoint)lParam;
-		if(point.x == -1 && point.y == -1) point = (CPoint)GetMessagePos();
-		CPoint client(point); ScreenToClient(&client);
-		CTreeItem item(HitTest(client, NULL), this);
+		CTreeItem item;
+		if(point.x == -1 && point.y == -1)
+		{
+			item = GetSelectedItem();
+			CRect selected;
+			if(item.IsNull() || !GetItemRect(item, &selected, TRUE)) return 0;
+			point = selected.CenterPoint(); ClientToScreen(&point);
+		}
+		else
+		{
+			CPoint client(point); ScreenToClient(&client);
+			item = CTreeItem(HitTest(client, NULL), this);
+		}
 		if(item.IsNull()) return 0;
 		SelectItem(item);
 		const ScriptDescriptor* script = SelectedScript();
 		if(script == NULL || script->isFolder) return 0;
 		CMenu menu; menu.CreatePopupMenu();
 		menu.AppendMenu(MF_STRING, NavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, NavigationPopupToggleFavorite,
+			FbeLoadRuntimeStringByKey(IsFavoriteScript(script->uid) ? L"fbe.document_tree.scripts.remove_favorite" : L"fbe.document_tree.scripts.add_favorite",
+				IsFavoriteScript(script->uid) ? L"★ Remove from favorites" : L"★ Add to favorites"));
 		CMenu toolbars; toolbars.CreatePopupMenu();
 		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
 			toolbars.AppendMenu(MF_STRING, NavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
@@ -815,8 +835,24 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 	const std::function<void(const CString&)>& openLocation,
 	const std::function<void(UINT)>& runScript)
 {
+	if(m_script_mode && m_script_filter.IsEmpty()) CaptureScriptExpansions();
+	LoadFavoriteScripts();
 	const bool refreshImages = m_script_images.size() != items.size() || !ScriptVisualsMatch(m_script_visuals, visuals, items.size());
 	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
+	bool rebound = false;
+	for(size_t favorite = 0; favorite < m_favorite_scripts.size(); ++favorite)
+	{
+		const ScriptDescriptor* match = NULL;
+		for(size_t index = 0; index < m_script_items.size(); ++index)
+			if(!m_script_items[index].isFolder && m_script_items[index].uid == m_favorite_scripts[favorite].first) { match = &m_script_items[index]; break; }
+		if(match == NULL && !m_favorite_scripts[favorite].second.IsEmpty())
+			for(size_t index = 0; index < m_script_items.size(); ++index)
+				if(!m_script_items[index].isFolder && !m_script_items[index].uid.IsEmpty() &&
+					m_script_items[index].relativePath.CompareNoCase(m_favorite_scripts[favorite].second) == 0) { match = &m_script_items[index]; break; }
+		if(match != NULL && (m_favorite_scripts[favorite].first != match->uid || m_favorite_scripts[favorite].second != match->relativePath))
+		{ m_favorite_scripts[favorite] = std::make_pair(match->uid, match->relativePath); rebound = true; }
+	}
+	if(rebound) SaveFavoriteScripts();
 	if(refreshImages)
 	{
 		PrepareScriptImages();
@@ -831,10 +867,35 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 
 void CTreeView::SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars) { m_script_toolbars = toolbars; }
 
+void CTreeView::SetScriptFilter(const CString& filter)
+{
+	CString normalized(filter); normalized.Trim();
+	if(normalized == m_script_filter) return;
+	if(m_script_filter.IsEmpty() && !normalized.IsEmpty() && m_script_mode) CaptureScriptExpansions();
+	m_script_filter = normalized;
+	if(m_script_mode) RebuildScriptTree();
+}
+
+bool CTreeView::IsFavoriteScript(const CString& uid) const
+{
+	for(size_t index = 0; index < m_favorite_scripts.size(); ++index)
+		if(m_favorite_scripts[index].first == uid) return true;
+	return false;
+}
+
+HTREEITEM CTreeView::FavoriteScriptTreeItem(const CString& uid) const
+{
+	if(m_favorite_group == NULL) return NULL;
+	for(std::map<HTREEITEM, size_t>::const_iterator item = m_script_nodes.begin(); item != m_script_nodes.end(); ++item)
+		if(item->second < m_script_items.size() && m_script_items[item->second].uid == uid && GetParentItem(item->first) == m_favorite_group) return item->first;
+	return NULL;
+}
+
 HTREEITEM CTreeView::FindScriptTreeItem(const CString& relativePath) const
 {
 	for(std::map<HTREEITEM, size_t>::const_iterator it = m_script_nodes.begin(); it != m_script_nodes.end(); ++it)
-		if(it->second < m_script_items.size() && m_script_items[it->second].relativePath == relativePath) return it->first;
+		if(it->second < m_script_items.size() && m_script_items[it->second].relativePath == relativePath &&
+			(m_favorite_group == NULL || GetParentItem(it->first) != m_favorite_group)) return it->first;
 	return NULL;
 }
 
@@ -878,6 +939,16 @@ bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 	const ScriptDescriptor* script = SelectedScript();
 	if(script == NULL || script->isFolder) return false;
 	if(command == NavigationPopupRunScript) { RunSelectedScript(); return true; }
+	if(command == NavigationPopupToggleFavorite)
+	{
+		if(script->uid.IsEmpty()) return false;
+		bool removed = false;
+		for(std::vector<std::pair<CString, CString> >::iterator item = m_favorite_scripts.begin(); item != m_favorite_scripts.end(); ++item)
+			if(item->first == script->uid) { m_favorite_scripts.erase(item); removed = true; break; }
+		if(!removed) m_favorite_scripts.push_back(std::make_pair(script->uid, script->relativePath));
+		SaveFavoriteScripts(); RebuildScriptTree();
+		return true;
+	}
 	if(command == NavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); return true; }
 	if(command >= NavigationPopupAddToolbarBase && command - NavigationPopupAddToolbarBase < m_script_toolbars.size())
 	{
@@ -920,10 +991,75 @@ void CTreeView::ApplyModeAppearance()
 void CTreeView::RebuildScriptTree()
 {
 	m_current_item = NULL;
-	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear();
+	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear(); m_favorite_group = NULL;
+	for(size_t favorite = 0; favorite < m_favorite_scripts.size(); ++favorite)
+		for(size_t index = 0; index < m_script_items.size(); ++index)
+		{
+			const ScriptDescriptor& script = m_script_items[index];
+			if(script.isFolder || script.uid != m_favorite_scripts[favorite].first || !ScriptMatchesFilter(script)) continue;
+			if(m_favorite_group == NULL) m_favorite_group = InsertItem(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.favorites", L"★ Favorites"), 0, 0, TVI_ROOT, TVI_FIRST);
+			const int image = index < m_script_images.size() ? m_script_images[index] : 0;
+			HTREEITEM item = InsertItem(script.name, image, image, m_favorite_group, TVI_LAST);
+			m_script_nodes[item] = index;
+			break;
+		}
+	if(m_favorite_group != NULL) Expand(m_favorite_group, TVE_EXPAND);
 	// The pane caption already identifies Scripts.  Keep catalog descriptors at
 	// TVI_ROOT so the tree does not add a redundant synthetic parent node.
 	BuildScriptChildren(TVI_ROOT, CString());
+}
+
+void CTreeView::CaptureScriptExpansions()
+{
+	m_expanded_script_paths.clear();
+	for(std::map<HTREEITEM, size_t>::const_iterator node = m_script_nodes.begin(); node != m_script_nodes.end(); ++node)
+		if(node->second < m_script_items.size() && m_script_items[node->second].isFolder && (GetItemState(node->first, TVIS_EXPANDED) & TVIS_EXPANDED))
+			m_expanded_script_paths.insert(m_script_items[node->second].relativePath);
+}
+
+bool CTreeView::ScriptMatchesFilter(const ScriptDescriptor& script) const
+{
+	if(m_script_filter.IsEmpty()) return true;
+	CString probe(script.name + L"\n" + script.relativePath); probe.MakeLower();
+	CString query(m_script_filter); query.MakeLower();
+	return probe.Find(query) >= 0;
+}
+
+bool CTreeView::ScriptOrDescendantMatches(const ScriptDescriptor& script) const
+{
+	if(!script.isFolder) return ScriptMatchesFilter(script);
+	for(size_t index = 0; index < m_script_items.size(); ++index)
+		if(m_script_items[index].parentId == script.id && ScriptOrDescendantMatches(m_script_items[index])) return true;
+	return false;
+}
+
+void CTreeView::LoadFavoriteScripts()
+{
+	if(m_favorites_loaded) return;
+	m_favorites_loaded = true;
+	CString saved(_Settings.GetFavoriteScripts());
+	int cursor = 0;
+	while(cursor < saved.GetLength())
+	{
+		const int end = saved.Find(L'\n', cursor);
+		CString row = saved.Mid(cursor, end < 0 ? saved.GetLength() - cursor : end - cursor);
+		row.TrimRight(L"\r"); cursor = end < 0 ? saved.GetLength() : end + 1;
+		const int tab = row.Find(L'\t');
+		if(tab != 36 || row.GetLength() > 4096) continue;
+		CString uid(row.Left(tab)), path(row.Mid(tab + 1));
+		bool valid = true;
+		for(int index = 0; index < uid.GetLength(); ++index)
+			if((index == 8 || index == 13 || index == 18 || index == 23) ? uid[index] != L'-' : !iswxdigit(uid[index])) { valid = false; break; }
+		if(valid && !IsFavoriteScript(uid)) m_favorite_scripts.push_back(std::make_pair(uid, path));
+	}
+}
+
+void CTreeView::SaveFavoriteScripts()
+{
+	CString saved;
+	for(size_t index = 0; index < m_favorite_scripts.size(); ++index)
+		saved += m_favorite_scripts[index].first + L"\t" + m_favorite_scripts[index].second + L"\n";
+	_Settings.SetFavoriteScripts(saved, true);
 }
 
 void CTreeView::PrepareScriptImages()
@@ -968,10 +1104,15 @@ void CTreeView::BuildScriptChildren(HTREEITEM parent, const CString& parentId)
 	{
 		const ScriptDescriptor& script = m_script_items[index];
 		if(script.parentId != parentId) continue;
+		if(!ScriptOrDescendantMatches(script)) continue;
 		const int image = index < m_script_images.size() ? m_script_images[index] : 0;
 		CTreeItem item = InsertItem(script.name, image, image, parent, TVI_LAST);
 		m_script_nodes[item] = index;
-		if(script.isFolder) BuildScriptChildren(item, script.id);
+		if(script.isFolder)
+		{
+			BuildScriptChildren(item, script.id);
+			if(m_script_filter.IsEmpty() ? m_expanded_script_paths.find(script.relativePath) != m_expanded_script_paths.end() : true) Expand(item, TVE_EXPAND);
+		}
 	}
 }
 

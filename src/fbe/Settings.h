@@ -215,6 +215,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	DWORD		m_find_results_pane_height;
 	CString		m_toolbars_settings;
 	CString		m_script_command_ids;
+	CString		m_favorite_scripts;
 	DWORD		m_scripts_toolbar_customize_width;
 	DWORD		m_scripts_toolbar_customize_height;
 
@@ -335,6 +336,7 @@ public:
 	DWORD	GetFindResultsPaneHeight()const;
 	CString GetToolbarsSettings()const;
 	CString GetScriptCommandIds()const;
+	CString GetFavoriteScripts() const;
 	CSize GetScriptsToolbarCustomizeSize() const;
 	bool GetScriptsToolbarCustomizePlacement(WINDOWPLACEMENT& wpl) const;
 	bool GetRegexHelpPlacement(WINDOWPLACEMENT& wpl) const;
@@ -421,6 +423,7 @@ public:
 	void	SetFindResultsPaneHeight(DWORD height, bool apply = false);
 	void	SetToolbarsSettings(CString& settings,  bool apply = false);
 	void	SetScriptCommandIds(const CString& ids, bool apply = false);
+	void SetFavoriteScripts(const CString& favorites, bool apply = false);
 	void SetScriptsToolbarCustomizeSize(const CSize& size, bool apply = false);
 	void SetScriptsToolbarCustomizePlacement(const WINDOWPLACEMENT& wpl, bool apply = false);
 	void SetRegexHelpPlacement(const WINDOWPLACEMENT& wpl, bool apply = false);

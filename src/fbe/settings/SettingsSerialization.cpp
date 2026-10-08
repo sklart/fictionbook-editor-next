@@ -91,6 +91,7 @@ const wchar_t SPLITTER_POS_KEY[]		= L"SplitterPos";
 const wchar_t FIND_RESULTS_PANE_HEIGHT_KEY[] = L"FindResultsPaneHeight";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
 const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
+const wchar_t FAVORITE_SCRIPTS_KEY[] = L"FavoriteScripts";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY[] = L"ScriptsToolbarCustomizeSize";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY[] = L"ScriptsToolbarCustomizePlacement";
 const wchar_t REGEX_HELP_PLACEMENT_KEY[] = L"RegexHelpPlacement";
@@ -171,6 +172,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(FIND_RESULTS_PANE_HEIGHT_KEY);
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
 	properties.push_back(SCRIPT_COMMAND_IDS_KEY);
+	properties.push_back(FAVORITE_SCRIPTS_KEY);
 	properties.push_back(SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY);
 	properties.push_back(RESTORE_FILE_POS_KEY);
 	properties.push_back(INTERFACE_LANG_KEY);
@@ -374,6 +376,7 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 		property = m_script_command_ids;
 		return true;
 	}
+	else if(sProperty == FAVORITE_SCRIPTS_KEY) { property = m_favorite_scripts; return true; }
 	else if(sProperty == SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY)
 	{
 		CString value; value.Format(L"%u;%u", m_scripts_toolbar_customize_width, m_scripts_toolbar_customize_height);
@@ -754,6 +757,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 		m_script_command_ids = sValue.GetStringValue();
 		return true;
 	}
+	else if(sProperty == FAVORITE_SCRIPTS_KEY) { m_favorite_scripts = sValue.GetStringValue(); return true; }
 	else if(sProperty == SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY)
 	{
 		unsigned int width = 0, height = 0;

@@ -105,6 +105,19 @@ Must $resource 'ID_DOCUMENT_TREE_MODE_SCRIPTS\s+57601' 'mode scripts resource ID
 if($documentTree -match '57872|57873') { throw 'Navigation mode commands must not use magic numbers.' }
 if($tree -match 'ID_SCRIPT_BASE \+ 999') { throw 'Navigation code must use ScriptCommandCount rather than a duplicated capacity.' }
 Must $settings 'DOCUMENT_TREE_SCRIPTS_KEY' 'settings schema persists navigation mode'
+Must $settings 'FAVORITE_SCRIPTS_KEY' 'favorites have a separate settings key'
+Must $settings 'property = m_favorite_scripts' 'favorite UIDs are serialized independently of command IDs'
+Must $tree 'm_script_items = items' 'search uses the existing catalog snapshot'
+Must $tree 'ScriptOrDescendantMatches\(script\)' 'filtered tree retains ancestors of matching scripts'
+Must $tree 'm_script_filter\.IsEmpty\(\) \? m_expanded_script_paths' 'clearing search restores ordinary folder expansion'
+Must $tree 'script\.name \+ L"\\n" \+ script\.relativePath' 'search covers names and paths including parent folders'
+Must $tree 'script\.uid != m_favorite_scripts\[favorite\]\.first' 'favorite nodes resolve by UID'
+Must $tree 'm_script_nodes\[item\] = index' 'favorite nodes reference existing descriptors'
+Must $tree 'NavigationPopupToggleFavorite' 'context menu can toggle favorites'
+Must $documentTree 'm_script_search\.ShowWindow\(scripts \? SW_SHOW : SW_HIDE\)' 'search exists only in Scripts mode'
+Must $documentTree 'UiMetrics::ScaleForDpi\(26, dpi\)' 'search layout follows window DPI'
+Must $frame '::IsChild\(m_document_tree, pMsg->hwnd\)' 'Ctrl+F is scoped to the navigation pane'
+if($tree -match 'ScriptCatalog\s+[a-zA-Z_]+\s*;|void CTreeView::SetScriptFilter[\s\S]*?InitializeScripts\(') { throw 'Filtering must reuse the loaded catalog without discovery.' }
 Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
 Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select their own image list'
 Must $tree 'if\(m_script_mode\) SetImageList\(m_scriptImageList,TVSIL_NORMAL\);' 'scripts rebind the native image list after a visual refresh'

@@ -6,6 +6,7 @@
 #include "ThemeManager.h"
 
 typedef CWinTraits<WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE> CTreeWithToolBarWinTraits;
+enum { NavigationScriptSearchControlId = 0x7e10 };
 
 class CTreeWithToolBar : public CFrameWindowImpl<CTreeWithToolBar, CWindow, CTreeWithToolBarWinTraits>
 {
@@ -20,6 +21,7 @@ private:
 	bool m_rebarThemeStateCaptured = false;
 
 	CCommandBarCtrl m_view_bar;
+	WTL::CEdit m_script_search;
 	CMenu m_st_menu;
 	CMenu m_script_menu;
 	HBITMAP m_structureMenuCheckedBitmap = NULL;
@@ -54,6 +56,7 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnThemeEraseBackground)
 		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
+		COMMAND_HANDLER(NavigationScriptSearchControlId, EN_CHANGE, OnScriptSearchChanged)
 		NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnToolbarCustomDraw)
 
 		COMMAND_ID_HANDLER(ID_DT_RIGHT_ONE, ForwardWMCommand)
@@ -78,6 +81,8 @@ public:
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeEraseBackground(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnScriptSearchChanged(WORD, WORD, HWND, BOOL&);
+	static LRESULT CALLBACK ScriptSearchSubclassProc(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
 	LRESULT OnToolbarCustomDraw(int, LPNMHDR, BOOL&);
 
 	LRESULT ForwardWMCommand(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
@@ -103,6 +108,8 @@ public:
 	void FinalizeViewBarTheme();
 	bool PrepareViewBarPopupThemeProbe();
 	void RefreshModeControls();
+	bool IsScriptSearchVisible() const { return m_script_search.IsWindowVisible() != FALSE; }
+	HWND ScriptSearchWindow() const { return m_script_search; }
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
 	{

@@ -76,6 +76,8 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool toolbarLayoutAdapterTransaction = IsFbeTestScenario(L"toolbar-layout-adapter-transaction");
 	const bool scriptsToolbarCustomizeCtrlF = IsFbeTestScenario(L"scripts-toolbar-customize-ctrl-f-runtime");
 	const bool navigationScriptsRuntime = IsFbeTestScenario(L"navigation-scripts-runtime");
+	const bool navigationSearchFavoritesRuntime = IsFbeTestScenario(L"navigation-search-favorites-runtime");
+	const bool navigationFavoritesReadRuntime = IsFbeTestScenario(L"navigation-favorites-read-runtime");
 	const bool navigationViewBarElementsRuntime = IsFbeTestScenario(L"navigation-viewbar-elements-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
 	const bool scriptLiveReloadRuntime = IsFbeTestScenario(L"script-live-reload-runtime");
@@ -83,7 +85,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationFavoritesReadRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -95,7 +97,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationFavoritesReadRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
@@ -366,6 +368,114 @@ void CMainFrame::RunPortableStateTestScenario()
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const bool passed = lightBefore && dark && popupPreparedDark && dpiCheckmarks && lightAfter && popupPreparedDarkAgain && darkAgainCheckmarks;
 		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared-dark=%d\nviewbar-light-after=%d\nviewbar-popup-prepared-dark-again=%d\nviewbar-checkmarks-light-before=%d\nviewbar-checkmarks-dark-after-popup=%d\nviewbar-checkmarks-light-after=%d\nviewbar-checkmarks-dark-again=%d\nviewbar-checkmarks-dpi-100-125-150-200=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nviewbar-height=%d\nviewbar-minimum-height=%d\nresult=%s\n", passed, lightBefore, dark, popupPreparedDark, lightAfter, popupPreparedDarkAgain, lightBeforeCheckmarks, darkCheckmarksAfterPopup, lightAfterCheckmarks, darkAgainCheckmarks, dpiCheckmarks, width, measuredWidth, padding, actualHeight, minimumHeight, passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(navigationFavoritesReadRuntime)
+	{
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		const bool initialized = InitializeScripts();
+		RefreshNavigationScriptTree();
+		if(!m_document_tree.m_tree.m_tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
+		CTreeView& tree = m_document_tree.m_tree.m_tree;
+		CString uid;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(m_scripts.Menu().Item(index).relativePath == L"02_чистка/dashrenamed.js") uid = m_scripts.Menu().Item(index).uid;
+		const bool persisted = initialized && !uid.IsEmpty() && tree.IsFavoriteScript(uid) && tree.FavoriteScriptTreeItem(uid) != NULL;
+		const bool malformedIgnored = tree.ScriptTreeNodeCount() == 8;
+		CStringA report; report.Format("phase=navigation-favorites-read\npersisted=%d\nmalformed-ignored=%d\nresult=%s\n", persisted, malformedIgnored, persisted && malformedIgnored ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(navigationSearchFavoritesRuntime)
+	{
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		_Settings.SetFavoriteScripts(CString(), true);
+		const bool initialized = InitializeScripts();
+		const bool dashFileAtStart = ::GetFileAttributes(scriptsDirectory + L"02_Чистка\\Dash.js") != INVALID_FILE_ATTRIBUTES;
+		const int catalogAtStart = m_scripts.Menu().Count();
+		RefreshNavigationScriptTree();
+		if(!m_document_tree.m_tree.m_tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
+		CTreeView& tree = m_document_tree.m_tree.m_tree;
+		const bool searchVisible = m_document_tree.m_tree.IsScriptSearchVisible() && ::IsWindow(m_document_tree.m_tree.ScriptSearchWindow());
+		HTREEITEM registerFolder = tree.FindScriptTreeItem(L"01_регистр");
+		if(registerFolder != NULL) tree.Expand(registerFolder, TVE_EXPAND);
+		const UINT discoveryBefore = m_scripts.DiscoveryCount();
+		::SetWindowText(m_document_tree.m_tree.ScriptSearchWindow(), L"CASE");
+		const bool caseInsensitive = tree.ScriptTreeNodeCount() == 2 && tree.FindScriptTreeItem(L"01_регистр/case.js") != NULL;
+		::SetWindowText(m_document_tree.m_tree.ScriptSearchWindow(), L"чистка");
+		const bool parentName = tree.ScriptTreeNodeCount() == 3 && tree.FindScriptTreeItem(L"02_чистка/cleanup.js") != NULL && tree.FindScriptTreeItem(L"02_чистка/dash.js") != NULL;
+		::SetWindowText(m_document_tree.m_tree.ScriptSearchWindow(), L"dash");
+		const CString filterAtSearch(tree.ScriptFilter());
+		const size_t filteredCount = tree.ScriptTreeNodeCount();
+		const bool filteredFolder = tree.FindScriptTreeItem(L"02_чистка") != NULL;
+		const bool filteredDash = tree.FindScriptTreeItem(L"02_чистка/dash.js") != NULL;
+		const bool filtered = tree.ScriptFilter() == L"dash" && tree.ScriptTreeNodeCount() == 2 &&
+			tree.FindScriptTreeItem(L"02_чистка") != NULL && tree.FindScriptTreeItem(L"02_чистка/dash.js") != NULL &&
+			tree.FindScriptTreeItem(L"01_регистр") == NULL && tree.FindScriptTreeItem(L"tables.js") == NULL &&
+			m_scripts.DiscoveryCount() == discoveryBefore;
+		HTREEITEM folder = tree.FindScriptTreeItem(L"02_чистка");
+		const bool expanded = folder != NULL && (tree.GetItemState(folder, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+		const CString addedPath = scriptsDirectory + L"02_Чистка\\DashExtra.js";
+		const bool addedFile = WritePortableStateTestText(addedPath, "function Run() { /* added */ }\n");
+		const bool addedReload = addedFile && InitializeScripts();
+		if(addedReload) RefreshNavigationScriptTree();
+		const bool liveAdded = addedReload && tree.ScriptFilter() == L"dash" && tree.ScriptTreeNodeCount() == 3 && tree.FindScriptTreeItem(L"02_чистка/dashextra.js") != NULL;
+		const bool deletedFile = addedFile && ::DeleteFile(addedPath) != FALSE;
+		const bool deletedReload = deletedFile && InitializeScripts();
+		if(deletedReload) RefreshNavigationScriptTree();
+		const bool liveRemoved = deletedReload && tree.ScriptTreeNodeCount() == 2 && tree.FindScriptTreeItem(L"02_чистка/dashextra.js") == NULL;
+		::SendMessage(m_document_tree.m_tree.ScriptSearchWindow(), WM_KEYDOWN, VK_ESCAPE, 0);
+		const size_t clearedCount = tree.ScriptTreeNodeCount();
+		registerFolder = tree.FindScriptTreeItem(L"01_регистр");
+		const bool cleared = tree.ScriptFilter().IsEmpty() && tree.ScriptTreeNodeCount() == 7 && tree.FindScriptTreeItem(L"tables.js") != NULL &&
+			registerFolder != NULL && (tree.GetItemState(registerFolder, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+		::SendMessage(m_document_tree.m_tree.ScriptSearchWindow(), WM_KEYDOWN, VK_ESCAPE, 0);
+		const bool escapeFocus = ::GetFocus() == tree.m_hWnd;
+		HTREEITEM dash = tree.FindScriptTreeItem(L"02_чистка/dash.js");
+		CString dashUid;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(m_scripts.Menu().Item(index).relativePath == L"02_чистка/dash.js") dashUid = m_scripts.Menu().Item(index).uid;
+		tree.SelectItem(dash);
+		const bool favorite = dash != NULL && !dashUid.IsEmpty() && tree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite) &&
+			tree.IsFavoriteScript(dashUid) && tree.FavoriteScriptTreeItem(dashUid) != NULL && _Settings.GetFavoriteScripts().Find(dashUid) >= 0;
+		const bool reloaded = InitializeScripts() && (RefreshNavigationScriptTree(), tree.FavoriteScriptTreeItem(dashUid) != NULL);
+		const CString oldPath = scriptsDirectory + L"02_Чистка\\Dash.js";
+		const CString renamedPath = scriptsDirectory + L"02_Чистка\\DashRenamed.js";
+		const bool moved = ::MoveFile(oldPath, renamedPath) != FALSE;
+		const bool renameReloaded = moved && InitializeScripts();
+		if(renameReloaded) RefreshNavigationScriptTree();
+		const bool renamed = renameReloaded && tree.IsFavoriteScript(dashUid) && tree.FavoriteScriptTreeItem(dashUid) != NULL &&
+			tree.FindScriptTreeItem(L"02_чистка/dashrenamed.js") != NULL;
+		const CString removedPath = diagnosticsDirectory + L"dash-removed.tmp";
+		const bool removedFile = moved && ::MoveFile(renamedPath, removedPath) != FALSE;
+		const bool removeReloaded = removedFile && InitializeScripts();
+		if(removeReloaded) RefreshNavigationScriptTree();
+		const bool removed = removeReloaded && tree.IsFavoriteScript(dashUid) && tree.FavoriteScriptTreeItem(dashUid) == NULL &&
+			tree.FindScriptTreeItem(L"02_чистка/dashrenamed.js") == NULL;
+		const bool restoredFile = removedFile && ::MoveFile(removedPath, renamedPath) != FALSE;
+		const bool restoreReloaded = restoredFile && InitializeScripts();
+		if(restoreReloaded) RefreshNavigationScriptTree();
+		const bool restored = restoreReloaded && tree.IsFavoriteScript(dashUid) && tree.FavoriteScriptTreeItem(dashUid) != NULL;
+		_Settings.SetFavoriteScripts(_Settings.GetFavoriteScripts() + L"broken favorite row\n", true);
+		const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool lightSearch = !ThemeManager::IsDark() && m_document_tree.m_tree.IsScriptSearchVisible();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool darkSearch = ThemeManager::IsDark() && m_document_tree.m_tree.IsScriptSearchVisible();
+		ThemeManager::SetSelectedTheme(originalTheme);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool themes = lightSearch && darkSearch;
+		CString catalogPaths;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index) catalogPaths += m_scripts.Menu().Item(index).relativePath + L";";
+		m_document_tree.m_tree.ToggleScriptMode();
+		const bool hidden = !m_document_tree.m_tree.IsScriptSearchVisible();
+		m_document_tree.m_tree.ToggleScriptMode();
+		const bool visibleAgain = m_document_tree.m_tree.IsScriptSearchVisible() && tree.FavoriteScriptTreeItem(dashUid) != NULL;
+		const bool dpi = UiMetrics::ScaleForDpi(26, 96) == 26 && UiMetrics::ScaleForDpi(26, 192) == 52;
+		const bool passed = initialized && searchVisible && caseInsensitive && parentName && filtered && expanded && liveAdded && liveRemoved && cleared && escapeFocus && favorite && reloaded && renamed && removed && restored && themes && hidden && visibleAgain && dpi;
+		CStringA report; report.Format("phase=navigation-search-favorites\nscripts-directory=%s\ncatalog-paths=%s\ndash-file-at-start=%d\ncatalog-at-start=%d\nsearch-visible=%d\ncase-insensitive=%d\nparent-name=%d\nescape-focus=%d\nfilter-at-search=%s\nfiltered-count=%u\nfiltered-folder=%d\nfiltered-dash=%d\ncleared-count=%u\ndash-uid=%s\nfiltered=%d\nexpanded=%d\nlive-added=%d\nlive-removed=%d\ncleared=%d\nfavorite=%d\nreload=%d\nrename=%d\nremove=%d\nrestore=%d\nthemes=%d\nmode-switch=%d\ndpi-metrics=%d\nresult=%s\n",
+			static_cast<LPCSTR>(CW2A(scriptsDirectory, CP_UTF8)), static_cast<LPCSTR>(CW2A(catalogPaths, CP_UTF8)), dashFileAtStart, catalogAtStart, searchVisible, caseInsensitive, parentName, escapeFocus, static_cast<LPCSTR>(CW2A(filterAtSearch, CP_UTF8)), static_cast<unsigned>(filteredCount), filteredFolder, filteredDash, static_cast<unsigned>(clearedCount), static_cast<LPCSTR>(CW2A(dashUid, CP_UTF8)), filtered, expanded, liveAdded, liveRemoved, cleared, favorite, reloaded, renamed, removed, restored, themes, hidden && visibleAgain, dpi, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)

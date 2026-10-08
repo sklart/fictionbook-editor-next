@@ -4,6 +4,7 @@
 #include "ElementDescMnr.h"
 #include "scripts\\ScriptUiController.h"
 #include <map>
+#include <set>
 #include <vector>
 #include <functional>
 
@@ -26,6 +27,7 @@ enum NavigationPopupCommand
 {
 	NavigationPopupRunScript = 1,
 	NavigationPopupOpenLocation = 2,
+	NavigationPopupToggleFavorite = 3,
 	NavigationPopupAddToolbarBase = 100
 };
 
@@ -51,6 +53,12 @@ protected:
 	std::vector<int> m_script_images;
 	std::vector<ScriptTreeToolbarTarget> m_script_toolbars;
 	std::map<HTREEITEM, size_t> m_script_nodes;
+	HTREEITEM m_favorite_group = NULL;
+	CString m_script_filter;
+	std::set<CString> m_expanded_script_paths;
+	std::vector<std::pair<CString, CString> > m_favorite_scripts;
+	bool m_favorites_loaded = false;
+	HWND m_script_search_window = NULL;
 	std::function<void(const CString&, const CString&)> m_add_script_to_toolbar;
 	std::function<void(const CString&)> m_open_script_location;
 	std::function<void(UINT)> m_run_script;
@@ -154,6 +162,11 @@ public:
 		const std::function<void(const CString&)>& openLocation,
 		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
+	void SetScriptFilter(const CString& filter);
+	const CString& ScriptFilter() const { return m_script_filter; }
+	void SetScriptSearchWindow(HWND window) { m_script_search_window = window; }
+	bool IsFavoriteScript(const CString& uid) const;
+	HTREEITEM FavoriteScriptTreeItem(const CString& uid) const;
 	void SetScriptMode(bool value);
 	// Scripts use legacy plus/minus expanders and roomier rows without changing
 	// the established document-structure tree appearance.
@@ -223,6 +236,11 @@ protected:
 	int AddScriptImage(HBITMAP bitmap);
 	int AddScriptIcon(HICON icon);
 	void BuildScriptChildren(HTREEITEM parent, const CString& parentId);
+	void CaptureScriptExpansions();
+	void LoadFavoriteScripts();
+	void SaveFavoriteScripts();
+	bool ScriptMatchesFilter(const ScriptDescriptor& script) const;
+	bool ScriptOrDescendantMatches(const ScriptDescriptor& script) const;
 	const ScriptDescriptor* SelectedScript();
 	void RunSelectedScript();
 

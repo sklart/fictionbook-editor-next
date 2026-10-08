@@ -1633,6 +1633,13 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 		m_editor_view_state.SetCtrlTabActive(false);
 	}
 	TraceMainFrameHotkey(pMsg);
+	if(pMsg->message == WM_KEYDOWN && pMsg->wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000) &&
+		m_document_tree.IsWindow() && ::IsChild(m_document_tree, pMsg->hwnd) &&
+		m_document_tree.m_tree.m_tree.IsScriptMode())
+	{
+		HWND search = m_document_tree.m_tree.ScriptSearchWindow();
+		if(::IsWindow(search)) { ::SetFocus(search); ::SendMessage(search, EM_SETSEL, 0, -1); return TRUE; }
+	}
 
 	// well, if we are doing an incremental search, then swallow WM_CHARS
 	if (m_incsearch && pMsg->hwnd != *this)

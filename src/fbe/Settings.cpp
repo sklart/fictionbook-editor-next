@@ -302,6 +302,10 @@ CString CSettings::GetScriptCommandIds()const
 {
 	return m_script_command_ids;
 }
+CString CSettings::GetFavoriteScripts() const
+{
+	return m_favorite_scripts;
+}
 
 CSize CSettings::GetScriptsToolbarCustomizeSize() const
 {
@@ -1102,6 +1106,11 @@ void CSettings::SetScriptCommandIds(const CString& ids, bool apply)
 	m_script_command_ids = ids;
 	if(apply)
 		Save();
+}
+void CSettings::SetFavoriteScripts(const CString& favorites, bool apply)
+{
+	m_favorite_scripts = favorites;
+	if(apply) Save();
 }
 
 void CSettings::SetScriptsToolbarCustomizeSize(const CSize& size, bool apply)

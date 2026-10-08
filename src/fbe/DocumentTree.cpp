@@ -218,6 +218,12 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
 
 	m_tree.Create(*this, rcDefault);
+	m_script_search.Create(*this, rcDefault, NULL, WS_CHILD | WS_TABSTOP | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE, NavigationScriptSearchControlId);
+	::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+	::SendMessage(m_script_search, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.search", L"Find script..."))));
+	::SetWindowSubclass(m_script_search, ScriptSearchSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
+	m_tree.SetScriptSearchWindow(m_script_search);
+	ThemeManager::ApplyToWindow(m_script_search);
 	m_tree.SetBkColor(ThemeManager::WindowColor());
 	m_tree.SetTextColor(ThemeManager::TextColor());
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
@@ -267,6 +273,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 LRESULT CTreeWithToolBar::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if(m_script_search.IsWindow()) ::RemoveWindowSubclass(m_script_search, ScriptSearchSubclassProc, 1);
 	ClearStructureMenuCheckmarks();
 	if(m_view_bar.IsWindow())
 		::RemoveWindowSubclass(m_view_bar, DocumentTreeViewBarWindowThemeProc, kDocumentTreeViewBarWindowThemeSubclassId);
@@ -315,6 +322,15 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		viewBarRect.top = clientRect.top + UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(m_hWnd));
 		viewBarRect.bottom = viewBarRect.top + viewBarHight;
 		treeRect.top = viewBarRect.bottom;
+		if(m_tree.IsScriptMode() && m_script_search.IsWindow())
+		{
+			const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+			const int margin = UiMetrics::ScaleForDpi(4, dpi);
+			const int height = UiMetrics::ScaleForDpi(26, dpi);
+			::MoveWindow(m_script_search, clientRect.left + margin, treeRect.top + margin,
+				(std::max)(1L, clientRect.right - clientRect.left - 2 * margin), height, TRUE);
+			treeRect.top += height + 2 * margin;
+		}
 	}
 
 	// ?????? ????? ????? ???????????? ??????. ??? ???? ???????? ???????? ??? ????.
@@ -345,6 +361,11 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	m_tree.SetBkColor(ThemeManager::WindowColor());
 	m_tree.SetTextColor(ThemeManager::TextColor());
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
+	if(m_script_search.IsWindow())
+	{
+		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+		ThemeManager::ApplyToWindow(m_script_search);
+	}
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	ApplyStructureMenuCheckmarks();
 	if(m_rebar.IsWindow())
@@ -767,10 +788,38 @@ void CTreeWithToolBar::UpdateViewBarMode(bool scripts)
 	// scripts popup is no longer part of either navigation mode.
 	m_view_bar.ShowWindow(scripts ? SW_HIDE : SW_SHOW);
 	m_rebar.ShowWindow(scripts ? SW_HIDE : SW_SHOW);
+	if(m_script_search.IsWindow()) m_script_search.ShowWindow(scripts ? SW_SHOW : SW_HIDE);
 	m_view_bar.HideButton(0, scripts ? TRUE : FALSE);
 	m_view_bar.HideButton(1, TRUE);
 	m_view_bar.Invalidate();
 	SendMessage(WM_SIZE);
+}
+
+LRESULT CTreeWithToolBar::OnScriptSearchChanged(WORD, WORD, HWND, BOOL&)
+{
+	CString filter; m_script_search.GetWindowText(filter);
+	m_tree.SetScriptFilter(filter);
+	return 0;
+}
+
+LRESULT CALLBACK CTreeWithToolBar::ScriptSearchSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data)
+{
+	CTreeWithToolBar* self = reinterpret_cast<CTreeWithToolBar*>(data);
+	if(message == WM_KEYDOWN && self != NULL)
+	{
+		if(wParam == VK_ESCAPE)
+		{
+			if(::GetWindowTextLength(window) > 0) ::SetWindowText(window, L"");
+			else self->m_tree.SetFocus();
+			return 0;
+		}
+		if(wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000))
+		{
+			::SendMessage(window, EM_SETSEL, 0, -1);
+			return 0;
+		}
+	}
+	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 
 void CTreeWithToolBar::RefreshModeControls()
