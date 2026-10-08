@@ -724,6 +724,9 @@
 		const DWORD malformedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MALFORMED_SOURCE_PATH", malformedPath, _countof(malformedPath));
 		FB::Doc* const original = m_doc;
 		const DocumentLocation originalLocation = m_document_session.Location();
+		// This scenario verifies malformed-source fallback, not an unrelated
+		// startup document Save prompt caused by MSHTML's transient dirty bit.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		const FILE_OP_STATUS result = malformedLength && malformedLength < _countof(malformedPath) ? LoadFile(malformedPath) : FAIL;
 		const bool sourceFallback = result == OK && m_doc == original && FB::Doc::m_active_doc == m_doc &&
 			m_bad_xml && m_bad_filename == malformedPath && m_editor_view_state.Current() == SOURCE &&
@@ -738,6 +741,9 @@
 	{
 		wchar_t malformedPath[MAX_PATH] = {};
 		const DWORD malformedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MALFORMED_SOURCE_PATH", malformedPath, _countof(malformedPath));
+		// The correction route starts by deliberately opening malformed input;
+		// keep the disposable startup document from presenting a Save prompt.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		const FILE_OP_STATUS loadResult = malformedLength && malformedLength < _countof(malformedPath) ? LoadFile(malformedPath) : FAIL;
 		const CStringA correctedSource("<?xml version=\"1.0\" encoding=\"utf-8\"?><FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description><title-info><genre>prose</genre><author><first-name>Runtime</first-name><last-name>Correction</last-name></author><book-title>Corrected</book-title><lang>en</lang></title-info><document-info><author><nickname>FBE Next</nickname></author><program-used>FBE Next</program-used><date value=\"2026-09-14\">14 September 2026</date><id>malformed-correction-test</id><version>1.0</version></document-info></description><body><section><p>CORRECTED_MALFORMED_SOURCE</p></section></body></FictionBook>");
 		if (loadResult == OK && m_bad_xml)
