@@ -475,9 +475,15 @@
 		const CString longPath(readEnvironmentPath(L"FBE_NEXT_TEST_DOCUMENT_PATH_LONG"));
 		const PathApiValues untitled(readExternal());
 		const bool unsaved = untitled.pathCalled && untitled.nameCalled && untitled.directoryCalled && untitled.path.IsEmpty() && untitled.name.IsEmpty() && untitled.directory.IsEmpty();
+		// This verifies the document-path API, not the disposable startup
+		// document's transient MSHTML dirty bit.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		const bool opened = !first.IsEmpty() && LoadFile(first) == OK && matches(readExternal(), first);
 		const bool savedAs = opened && !saveAs.IsEmpty() && SaveFile(true) == OK && matches(readExternal(), saveAs);
 		const PathApiValues beforeSecond(readExternal());
+		// Saving establishes the document state, but MSHTML may complete an
+		// asynchronous form-state notification before the next test-only open.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		const bool otherOpened = savedAs && !second.IsEmpty() && LoadFile(second) == OK && matches(readExternal(), second) && beforeSecond.path != second;
 		const CString currentFilename(m_doc->m_filename); const bool currentNameValid = m_doc->m_namevalid;
 		m_doc->m_filename = unc; m_doc->m_namevalid = true;
@@ -494,6 +500,11 @@
 		CStringA report;
 		report.Format("unsaved=%d\nopened=%d\nsave_as=%d\nother_opened=%d\nunicode=%d\nunc=%d\nlong_path=%d\nlong_calls=%d\nlong_actual_length=%d\nlong_expected_length=%d\nlong_full=%d\nlong_name=%d\nlong_directory=%d\nresult=%s\n", unsaved, opened, savedAs, otherOpened, unicode, uncPath, longDocumentPath, longValues.pathCalled && longValues.nameCalled && longValues.directoryCalled, longValues.path.GetLength(), longPath.GetLength(), longValues.path == longPath, longValues.name == longName, longValues.directory == longDirectory, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		// Loading the disposable fixture can leave MSHTML transiently dirty while
+		// it finishes initialization.  The scenario is complete at this point;
+		// suppress only its exit-time Save prompt so the runtime host can quit.
+		m_doc->MarkSavePoint();
+		if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"reference-navigation-runtime"))
