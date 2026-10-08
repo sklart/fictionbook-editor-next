@@ -164,6 +164,7 @@
     <ClCompile Include="navigation\LinkDomNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
 	<ClCompile Include="navigation\ReferenceNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Fb2QualityChecker.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="archive\ArchiveReader.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ArchiveDocumentResolver.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="archive\ui\ArchiveOpenCoordinator.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -407,6 +408,7 @@
 	<ClInclude Include="navigation\LinkNavigationState.h"><Filter>Header Files\Navigation</Filter></ClInclude>
 	<ClInclude Include="navigation\ReferenceNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
     <ClInclude Include="FindResultsPane.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Fb2QualityChecker.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="GLLogo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -684,6 +686,9 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="res\FBE2.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Fb2Quality.ico">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="res\insert_column_left.bmp">

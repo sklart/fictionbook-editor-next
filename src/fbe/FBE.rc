@@ -496,6 +496,18 @@ BEGIN
     LTEXT           "",IDC_FIND_RESULTS_STATUS,7,162,316,10
 END
 
+IDD_FB2_QUALITY_RESULTS DIALOGEX 0, 0, 550, 310
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Расширенная проверка FB2"
+FONT 9, "MS Shell Dlg 2"
+BEGIN
+    LTEXT           "",IDC_FB2_QUALITY_SUMMARY,8,9,534,16
+    CONTROL         "",IDC_FB2_QUALITY_LIST,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SINGLESEL | WS_BORDER | WS_TABSTOP,8,30,534,250
+    PUSHBUTTON      "Перейти",IDC_FB2_QUALITY_GOTO,317,287,70,16
+    PUSHBUTTON      "Сохранить отчёт",IDC_FB2_QUALITY_SAVE,390,287,92,16
+    DEFPUSHBUTTON   "Закрыть",IDCANCEL,485,287,57,16
+END
+
 IDD_ARCHIVE_ENTRY DIALOGEX 0, 0, 430, 250
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Select a book from the archive"
@@ -619,6 +631,7 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\FBE2.ico"
+IDI_FB2_QUALITY         ICON                    "res\\Fb2Quality.ico"
 IDI_OLDICON             ICON                    "res\\FBE.ico"
 IDB_TABLE_INSERT_ROW_ABOVE BITMAP                  "res\\insert_row_above.bmp"
 IDB_TABLE_INSERT_ROW_BELOW BITMAP                  "res\\insert_row_below.bmp"
@@ -852,6 +865,7 @@ BEGIN
         MENUITEM "&Save",                       ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
         MENUITEM "&Validate",                   ID_FILE_VALIDATE
+        MENUITEM "FB2 &Quality Check",           ID_FILE_QUALITY_CHECK
         MENUITEM SEPARATOR
         POPUP "&Import"
         BEGIN
@@ -1100,6 +1114,7 @@ BEGIN
     ID_EDIT_INS_IMAGE       "Insert an image at cursor\nInsert image"
     ID_EDIT_INS_INLINEIMAGE "Insert an inline image at cursor\nInsert inline image"
     ID_FILE_VALIDATE        "Validate current document against FictionBook schema\nValidate"
+    ID_FILE_QUALITY_CHECK   "Analyze links, binaries, structure and metadata\nFB2 Quality Check"
     ID_EDIT_ADD_EPIGRAPH    "Add epigraph to selected object\nAdd epigraph"
     ID_EDIT_ADD_IMAGE       "Add an image to the selected object\nAdd image"
     ID_EDIT_ADD_ANN         "Add annotation to the selected obejct\nAdd annotation"

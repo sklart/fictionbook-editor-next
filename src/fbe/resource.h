@@ -21,6 +21,7 @@
 #define IDN_ED_TEXT                     110
 #define IDS_HOTKEY_EDIT_ADD_ANNOTATION  110
 #define IDR_EXTRAICONS                  111
+#define IDI_FB2_QUALITY                 299
 #define IDS_HOTKEY_EDIT_ADD_BODY        111
 #define IDS_HOTKEY_EDIT_ADD_EPIGRAPH    112
 #define IDS_HOTKEY_EDIT_ADD_IMAGE       113
@@ -209,6 +210,7 @@
 #define IDD_SETTINGS_ADVANCED           261
 #define IDD_SETTINGS_IMAGES             262
 #define IDD_FIND_RESULTS                263
+#define IDD_FB2_QUALITY_RESULTS         268
 #define IDD_SCRIPTS_TOOLBAR_CUSTOMIZE   264
 #define IDD_SCRIPT_TOOLBAR_MANAGER      266
 #define IDD_REGEX_HELP                  267
@@ -667,6 +669,7 @@
 #define ID_EDIT_INS_IMAGE               32820
 #define ID_EDIT_INS_INLINEIMAGE         32821
 #define ID_FILE_VALIDATE                32822
+#define ID_FILE_QUALITY_CHECK           32823
 #define ID_EDIT_ADD_EPIGRAPH            32824
 #define ID_EDIT_ADD_IMAGE               32827
 #define ID_EDIT_ADD_ANN                 32829
@@ -796,6 +799,10 @@
 #define IDC_REGEX_QUICK_FULL_HELP       1666
 #define IDC_REGEX_HELP_CLOSE            1667
 #define IDC_FIND_PRESETS_PIN           1668
+#define IDC_FB2_QUALITY_SUMMARY        1690
+#define IDC_FB2_QUALITY_LIST           1691
+#define IDC_FB2_QUALITY_GOTO           1692
+#define IDC_FB2_QUALITY_SAVE           1693
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST 33033
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST  57599
 #define ID_DOCUMENT_TREE_MODE_STRUCTURE       57600
@@ -812,7 +819,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        269
 #define _APS_NEXT_COMMAND_VALUE         57603
-#define _APS_NEXT_CONTROL_VALUE         1670
+#define _APS_NEXT_CONTROL_VALUE         1694
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

@@ -26,6 +26,7 @@
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
 #include "FictionBookFileType.h"
+#include "Fb2QualityChecker.h"
 #include "SearchReplace.h"
 #include "search\ui\RegexHelpMarkdown.h"
 #include "document\\ArchiveRecentDocuments.h"
@@ -615,6 +616,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_FILE_SAVE, L"fbe.menu.idr_mainframe.file.save" },
 	{ ID_FILE_SAVE_AS, L"fbe.menu.idr_mainframe.file.save_as" },
 	{ ID_FILE_VALIDATE, L"fbe.menu.idr_mainframe.file.validate" },
+	{ ID_FILE_QUALITY_CHECK, L"fbe.menu.idr_mainframe.file.quality_check" },
 	{ ID_FILE_RESTART, L"fbe.menu.idr_mainframe.file.restart" },
 	{ ID_APP_EXIT, L"fbe.menu.idr_mainframe.file.exit" },
 	{ ID_EDIT_UNDO, L"fbe.menu.idr_mainframe.edit.undo" },
@@ -1793,9 +1795,11 @@ BOOL CMainFrame::OnIdle()
 	// command-update path until its MSHTML document is available.
 	if (!m_doc || !m_doc->m_body.HasDoc())
 	{
+		UIEnable(ID_FILE_QUALITY_CHECK, false);
 		if (profileIdle) g_idleProfile.Finish(idleStarted);
 		return false;
 	}
+	UIEnable(ID_FILE_QUALITY_CHECK, m_doc->GetDocumentFileType() == FictionBookFileType::Fb2);
 
 	const ULONGLONG fileCheckStarted = profileIdle ? ::GetTickCount64() : 0;
 	if(CheckFileTimeStampIfDue())
@@ -3317,6 +3321,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   SetMenu(NULL);
   // load command bar images
   m_MenuBar.LoadImages(IDR_MAINFRAME_SMALL);
+	if (HICON qualityIcon = ::LoadIconW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDI_FB2_QUALITY)))
+		m_MenuBar.AddIcon(qualityIcon, ID_FILE_QUALITY_CHECK);
   const HINSTANCE applicationModule = ATL::_AtlBaseModule.GetModuleInstance();
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TOOLS_REFRESH_SCRIPTS, ID_TOOLS_REFRESH_SCRIPTS);
@@ -6267,6 +6273,41 @@ LRESULT CMainFrame::OnFileValidate(WORD, WORD, HWND, BOOL&) {
     SourceGoTo(line, col);
   }
   return 0;
+}
+
+LRESULT CMainFrame::OnFileQualityCheck(WORD, WORD, HWND, BOOL&)
+{
+	if (!m_doc || m_doc->GetDocumentFileType() != FictionBookFileType::Fb2) return 0;
+	CString snapshot;
+	if (IsSourceActive()) {
+		if (!m_xml_script_backend.GetSourceText(snapshot)) snapshot.Empty();
+	} else {
+		MSXML2::IXMLDOMDocument2Ptr document = m_doc->CreateDOMForAnalysis();
+		if (document) snapshot = static_cast<const wchar_t*>(_bstr_t(document->xml));
+	}
+	if (snapshot.IsEmpty()) {
+		::MessageBoxW(m_hWnd, L"Не удалось получить XML текущего документа.", L"Расширенная проверка FB2", MB_ICONERROR);
+		return 0;
+	}
+	const Fb2Quality::Report report = Fb2Quality::Check(snapshot);
+	const CString locator = Fb2Quality::ShowReport(m_hWnd, report);
+	if (!locator.IsEmpty()) {
+		ShowView(SOURCE);
+		if (locator.Left(5) == L"line:") {
+			SourceGoTo(_wtoi(locator.Mid(5)), 0);
+			return 0;
+		}
+		CString source;
+		if (m_xml_script_backend.GetSourceText(source)) {
+			const int offset = source.Find(locator);
+			if (offset >= 0) {
+				int line = 1, column = 1;
+				for (int i = 0; i < offset; ++i) { if (source[i] == L'\n') { ++line; column = 1; } else ++column; }
+				SourceGoTo(line, column - 1);
+			}
+		}
+	}
+	return 0;
 }
 
 void  CMainFrame::SciModified(const SCNotification& scn) {

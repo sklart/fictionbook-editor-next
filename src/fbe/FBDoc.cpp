@@ -1462,7 +1462,7 @@ static void EnsureMinimalFb2Body(MSXML2::IXMLDOMDocument2Ptr doc)
 }
 
 static void GetBodies(MSHTML::IHTMLElementPtr body,
-	MSXML2::IXMLDOMDocument2 *doc, FictionBookFileType targetType)
+	MSXML2::IXMLDOMDocument2 *doc, FictionBookFileType targetType, bool normalizeVisualDom)
 {
   MSHTML::IHTMLElementCollectionPtr children(body->children);
   long			      c_len=children->length;
@@ -1481,7 +1481,7 @@ static void GetBodies(MSHTML::IHTMLElementPtr body,
 	  const bool pristineSynthetic = synthetic && IsPristineSyntheticFbdBody(div);
 	  if (targetType == FictionBookFileType::Fbd && pristineSynthetic)
 		continue;
-	  if (synthetic && !pristineSynthetic)
+	  if (synthetic && !pristineSynthetic && normalizeVisualDom)
 		div->removeAttribute(L"fbdsynthetic", 0);
       MSXML2::IXMLDOMElementPtr	xb(ProcessDiv(div,doc,1));
       _bstr_t	  bn(AU::GetAttrB(div,L"fbname"));
@@ -1646,7 +1646,7 @@ static bool ReportFbdStructureValidationFailure(HWND frame, const CString& messa
 }
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
-	FictionBookFileType targetType) {
+	FictionBookFileType targetType, bool normalizeVisualDom) {
 	// GetBinaries converts every editor base64data value to bytes. MSXML formats
 	// the resulting bin.base64 text, so saving removes only that whitespace in
 	// place instead of converting every binary through MSXML a second time.
@@ -1756,14 +1756,16 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   markTableSerializationPhase(L"native-before-normalize-complete");
 
   // normalize body first
-  _EDMnr.CleanUpAll();
-  markTableSerializationPhase(L"normalize-start");
-  m_editor.Normalize(m_editor.Document()->body);
-  markTableSerializationPhase(L"normalize-complete");
+  if (normalizeVisualDom) {
+    _EDMnr.CleanUpAll();
+    markTableSerializationPhase(L"normalize-start");
+    m_editor.Normalize(m_editor.Document()->body);
+    markTableSerializationPhase(L"normalize-complete");
+  }
 
   // Source/Body switches are part of the normal editor transaction. This
   // fault point models only the destructive Save serialization path.
-  if (m_save_transaction_active && GetDiagnosticFaultInjection() == L"drop-row-after-normalize")
+  if (normalizeVisualDom && m_save_transaction_active && GetDiagnosticFaultInjection() == L"drop-row-after-normalize")
   {
     MSHTML::IHTMLElementCollectionPtr rows(MSHTML::IHTMLElement2Ptr(m_editor.Document()->body)->getElementsByTagName(L"TR"));
     MSHTML::IHTMLElementPtr row(rows && rows->length ? rows->item(_variant_t(0L), _variant_t()) : 0);
@@ -1774,7 +1776,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     }
   }
 
-  if (m_save_transaction_active && GetDiagnosticFaultInjection() == L"change-colspan-after-normalize")
+  if (normalizeVisualDom && m_save_transaction_active && GetDiagnosticFaultInjection() == L"change-colspan-after-normalize")
   {
     MSHTML::IHTMLElementCollectionPtr cells(MSHTML::IHTMLElement2Ptr(m_editor.Document()->body)->getElementsByTagName(L"TD"));
     MSHTML::IHTMLElementPtr cell(cells && cells->length ? cells->item(_variant_t(0L), _variant_t()) : 0);
@@ -1856,8 +1858,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
-	GetBodies(fbw_body, ndoc, targetType);
-	if (targetType == FictionBookFileType::Fb2)
+	GetBodies(fbw_body, ndoc, targetType, normalizeVisualDom);
+	if (targetType == FictionBookFileType::Fb2 && normalizeVisualDom)
 		EnsureMinimalFb2Body(ndoc);
   markTableSerializationPhase(L"get-bodies-complete");
 
@@ -1912,6 +1914,12 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	}
 
 	return NULL;
+}
+
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMForAnalysis()
+{
+	try { return CreateDOMImp(m_encoding, false, m_file_type, false); }
+	catch (const _com_error&) { return NULL; }
 }
 
 static void CommitRecoveryFile(const CString& temporaryFile, const CString& destinationFile)

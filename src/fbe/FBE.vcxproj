@@ -379,6 +379,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClCompile Include="table\TableGrid.cpp" />
     <ClCompile Include="table\TableStructuralEditor.cpp" />
     <ClCompile Include="FindResultsPane.cpp" />
+    <ClCompile Include="Fb2QualityChecker.cpp" />
     <ClCompile Include="GLLogo.cpp" />
     <ClCompile Include="ImageImport.cpp" />
     <ClCompile Include="image\ImageDocumentInserter.cpp" />
@@ -625,6 +626,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="settings\ui\SettingsHotkeysDlg.h" />
     <ClInclude Include="settings\ui\SettingsWordsDlg.h" />
     <ClInclude Include="Speller.h" />
+    <ClInclude Include="Fb2QualityChecker.h" />
     <ClInclude Include="SpellText.h" />
     <ClInclude Include="CustomDictionaryIO.h" />
     <ClInclude Include="Splitter.h" />
@@ -680,6 +682,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <None Include="res\FBE2.svg" />
     <None Include="res\FBE.ico" />
     <None Include="res\FBE2.ico" />
+    <None Include="res\Fb2Quality.ico" />
     <None Include="res\insert_column_left.bmp" />
     <None Include="res\insert_column_right.bmp" />
     <None Include="res\delete_row.bmp" />

@@ -1,3 +1,25 @@
+	if (IsFbeTestScenario(L"fb2-quality-checker-runtime"))
+	{
+		const bool dirtyBefore = m_doc && m_doc->DocChanged();
+		const CString bodyBefore = m_doc ? CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) : CString();
+		MSXML2::IXMLDOMDocument2Ptr snapshot = m_doc ? m_doc->CreateDOMForAnalysis() : MSXML2::IXMLDOMDocument2Ptr();
+		const CString bodyAfter = m_doc ? CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) : CString();
+		const bool unchanged = snapshot && bodyBefore == bodyAfter && dirtyBefore == m_doc->DocChanged();
+		const CString sample = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><book-title>Test</book-title></title-info></description><body><section><p/><p><a type="note" l:href="#missing-note">note</a></p><image l:href="#missing-image"/></section></body><binary id="unused-image" content-type="image/png">AQID</binary></FictionBook>)";
+		const Fb2Quality::Report result = Fb2Quality::Check(sample);
+		const CString formatted = Fb2Quality::FormatReport(result);
+		const bool links = formatted.Find(L"Ссылка на примечание #missing-note не найдена") >= 0;
+		const bool binaries = formatted.Find(L"Binary missing-image отсутствует") >= 0 && formatted.Find(L"Binary unused-image не используется") >= 0;
+		const bool metadata = formatted.Find(L"Не указан язык документа") >= 0;
+		const bool empty = formatted.Find(L"Подозрительный пустой элемент p") >= 0;
+		const bool malformed = Fb2Quality::Check(L"<FictionBook>").ErrorCount() == 1;
+		const bool passed = unchanged && links && binaries && metadata && empty && malformed;
+		CStringA report;
+		report.Format("unchanged=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nresult=%s\n",
+			unchanged, links, binaries, metadata, empty, malformed, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"fb2-binary-inspection-runtime"))
 	{
 		CComBSTR beforeXml;

@@ -128,6 +128,24 @@
         "bg-BG": "&Провери"
       }
     },
+    "fbe.menu.idr_mainframe.file.quality_check": {
+      "kind": "MENUITEM",
+      "targetId": "ID_FILE_QUALITY_CHECK",
+      "translations": {
+        "en-US": "FB2 &Quality Check",
+        "ru-RU": "&Расширенная проверка FB2",
+        "uk-UA": "&Розширена перевірка FB2",
+        "de-DE": "&Erweiterte FB2-Prüfung",
+        "fr-FR": "&Vérification avancée FB2",
+        "es-ES": "&Comprobación avanzada de FB2",
+        "it-IT": "&Controllo avanzato FB2",
+        "pl-PL": "&Rozszerzona kontrola FB2",
+        "pt-PT": "&Verificação avançada de FB2",
+        "nl-NL": "&Uitgebreide FB2-controle",
+        "cs-CZ": "&Rozšířená kontrola FB2",
+        "bg-BG": "&Разширена проверка на FB2"
+      }
+    },
     "fbe.menu.idr_mainframe.popup.import": {
       "kind": "POPUP",
       "targetId": "",

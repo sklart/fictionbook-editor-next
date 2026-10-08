@@ -57,6 +57,7 @@ public:
   //bool	  LoadFromDOM(HWND hWndParent,MSXML2::IXMLDOMDocument2 *dom);
   bool	  LoadFromHTML(HWND hWndParent,const CString& filename, IStream* rawSource = NULL);
   MSXML2::IXMLDOMDocument2Ptr CreateDOM(const CString& encoding, bool compactBinaries = true);
+  MSXML2::IXMLDOMDocument2Ptr CreateDOMForAnalysis();
   HRESULT InvokeFunc(LPCOLESTR FuncName, CComVariant *params, int count, CComVariant &vtResult, bool quiet = false);
   void	  ShowDescription(bool Show);
   void	  RunScript(LPCOLESTR filePath);
@@ -171,7 +172,7 @@ private:
   bool	  SaveToFile(const CString& filename,bool fValidateOnly=false,int *errline=NULL,int *errcol=NULL,
                    bool reportAccessDenied=true);
   MSXML2::IXMLDOMDocument2Ptr CreateDOMImp(const CString& encoding, bool compactBinaries,
-                                           FictionBookFileType targetType);
+                                           FictionBookFileType targetType, bool normalizeVisualDom = true);
 
   // loading support
 	void	  TransformXML(MSXML2::IXSLTemplatePtr tp,MSXML2::IXMLDOMDocument2Ptr doc,
