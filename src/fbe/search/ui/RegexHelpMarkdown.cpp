@@ -442,22 +442,30 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     int formattingDetail = 0, shadedLinkDetail = 0;
     int enDesignLength = 0, enSourceLength = 0, ruDesignLength = 0, ruSourceLength = 0;
     int enDesignExpectedLength = 0, enSourceExpectedLength = 0, ruDesignExpectedLength = 0, ruSourceExpectedLength = 0;
+    bool enDesignTerminalNewlineOmitted = false, enSourceTerminalNewlineOmitted = false;
+    bool ruDesignTerminalNewlineOmitted = false, ruSourceTerminalNewlineOmitted = false;
     if (richEdit)
     {
-        const auto renderFullDocument = [richEdit](const std::vector<MarkdownBlock>& blocks, int& length, int& expectedLength) -> bool {
+        const auto renderFullDocument = [richEdit](const std::vector<MarkdownBlock>& blocks, int& length, int& expectedLength,
+            bool& terminalNewlineOmitted) -> bool {
             RenderMarkdown(richEdit, blocks);
             CString rendered;
             if (!ReadRichEditText(richEdit, rendered)) return false;
             const CString expected = ExpectedRenderedText(blocks);
             length = rendered.GetLength();
             expectedLength = expected.GetLength();
+            // Msftedit versions differ only in whether GetWindowText exposes
+            // the LF of the final paragraph delimiter. Accept that single
+            // terminal representation, while retaining an exact comparison
+            // for every preceding rendered character.
+            terminalNewlineOmitted = length + 1 == expectedLength && expected.Left(length) == rendered && expected[length] == L'\n';
             const CString& lastMeaningful = blocks.back().text;
-            return length > 32767 && length == expectedLength && rendered == expected && rendered.Find(lastMeaningful) >= 0;
+            return length > 32767 && (rendered == expected || terminalNewlineOmitted) && rendered.Find(lastMeaningful) >= 0;
         };
-        const bool enDesignComplete = renderFullDocument(enDesign, enDesignLength, enDesignExpectedLength);
-        const bool enSourceComplete = renderFullDocument(enSource, enSourceLength, enSourceExpectedLength);
-        const bool ruDesignComplete = renderFullDocument(ruDesign, ruDesignLength, ruDesignExpectedLength);
-        const bool ruSourceComplete = renderFullDocument(ruSource, ruSourceLength, ruSourceExpectedLength);
+        const bool enDesignComplete = renderFullDocument(enDesign, enDesignLength, enDesignExpectedLength, enDesignTerminalNewlineOmitted);
+        const bool enSourceComplete = renderFullDocument(enSource, enSourceLength, enSourceExpectedLength, enSourceTerminalNewlineOmitted);
+        const bool ruDesignComplete = renderFullDocument(ruDesign, ruDesignLength, ruDesignExpectedLength, ruDesignTerminalNewlineOmitted);
+        const bool ruSourceComplete = renderFullDocument(ruSource, ruSourceLength, ruSourceExpectedLength, ruSourceTerminalNewlineOmitted);
         longDocuments = enDesignComplete && enSourceComplete && ruDesignComplete && ruSourceComplete;
 
         RenderMarkdown(richEdit, parsed);
@@ -549,9 +557,10 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
     const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && cached && parser && formatting && longDocuments;
-    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
+    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_design_terminal_newline_omitted=%d\nen_source_length=%d\nen_source_expected_length=%d\nen_source_terminal_newline_omitted=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_design_terminal_newline_omitted=%d\nru_source_length=%d\nru_source_expected_length=%d\nru_source_terminal_newline_omitted=%d\nresult=%s\n",
         designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, facesDetail, shadedLinkDetail, longDocuments,
-        enDesignLength, enDesignExpectedLength, enSourceLength, enSourceExpectedLength, ruDesignLength, ruDesignExpectedLength, ruSourceLength, ruSourceExpectedLength, passed ? "pass" : "fail");
+        enDesignLength, enDesignExpectedLength, enDesignTerminalNewlineOmitted, enSourceLength, enSourceExpectedLength, enSourceTerminalNewlineOmitted,
+        ruDesignLength, ruDesignExpectedLength, ruDesignTerminalNewlineOmitted, ruSourceLength, ruSourceExpectedLength, ruSourceTerminalNewlineOmitted, passed ? "pass" : "fail");
     return passed;
 }
 

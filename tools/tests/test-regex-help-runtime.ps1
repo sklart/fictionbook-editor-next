@@ -19,7 +19,14 @@ try {
     $rows=@{}; Get-Content -LiteralPath $report | ForEach-Object { $pair=$_ -split '=',2; if($pair.Count -eq 2){$rows[$pair[0]]=$pair[1]} }
     foreach($key in 'design','source','ru_design','ru_source','fallback','content','cache','parser','format','long'){if($rows[$key] -ne '1'){throw "Regex Help runtime smoke failed: $key=$($rows[$key]); report=$($rows | Out-String)"}}
     foreach($key in 'en_design_length','en_source_length','ru_design_length','ru_source_length'){if([int]$rows[$key] -le 32767){throw "Regex Help runtime smoke did not render full document: $key=$($rows[$key])"}}
-    foreach($locale in 'en_design','en_source','ru_design','ru_source') { if($rows["${locale}_length"] -ne $rows["${locale}_expected_length"]) { throw "Regex Help render length contract failed: $locale actual=$($rows["${locale}_length"]) expected=$($rows["${locale}_expected_length"])" } }
+    foreach($locale in 'en_design','en_source','ru_design','ru_source') {
+        $actual = [int]$rows["${locale}_length"]
+        $expected = [int]$rows["${locale}_expected_length"]
+        $terminalNewlineOmitted = $rows["${locale}_terminal_newline_omitted"] -eq '1'
+        if($actual -ne $expected -and -not ($terminalNewlineOmitted -and $actual + 1 -eq $expected)) {
+            throw "Regex Help render length contract failed: $locale actual=$actual expected=$expected terminal_newline_omitted=$terminalNewlineOmitted"
+        }
+    }
     if($exitCode -ne 0){throw "Regex Help runtime smoke failed with exit code $exitCode; report=$($rows | Out-String)"}
     if($rows['result'] -ne 'pass'){throw "Regex Help runtime smoke result=$($rows['result']); report=$($rows | Out-String)"}
     Write-Host "Rendered lengths: en design=$($rows['en_design_length']), en source=$($rows['en_source_length']), ru design=$($rows['ru_design_length']), ru source=$($rows['ru_source_length'])"
