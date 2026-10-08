@@ -13,6 +13,7 @@ $settingsSerialization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src
 $dialog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.cpp')
 $dialogHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ScriptsToolbarCustomizeDlg.h')
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+$runtime = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\testing\RuntimeTestPortableState.inl')
 $settingsHeader = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.h')
 $localization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 
@@ -214,6 +215,11 @@ foreach ($dpi in @(96, 192, 96)) {
 }
 if ($dialogHeader -notmatch 'BOOL PreTranslateMessage\(MSG\* message\)' -or $dialog -notmatch "message->wParam == 'F'") {
     throw 'Ctrl+F must be handled before the focused child control consumes it.'
+}
+foreach($required in @('scripts-toolbar-customize-ctrl-f-runtime', 'WM_TIMER', 'IDC_SCRIPTS_TOOLBAR_RESET', 'IDC_SCRIPTS_TOOLBAR_PANEL', 'IDCANCEL', 'IDC_SCRIPTS_TOOLBAR_ADD', 'IDC_SCRIPTS_TOOLBAR_REMOVE', 'EM_GETSEL', 'message-filter-unregistered', 'ShowScriptsToolbarCustomizeDialog(m_ScriptsToolbar)')) {
+    if($dialog.IndexOf($required, [StringComparison]::Ordinal) -lt 0 -and $dialogHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0 -and $runtime.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Ctrl+F runtime smoke contract is missing: $required"
+    }
 }
 
 Write-Host 'Scripts toolbar customization behavior contract passed.'

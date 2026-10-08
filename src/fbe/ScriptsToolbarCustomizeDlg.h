@@ -38,6 +38,7 @@ public:
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
 		MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)
+		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_DRAWITEM, OnDrawItem)
 		MESSAGE_HANDLER(WM_MEASUREITEM, OnMeasureItem)
@@ -80,12 +81,16 @@ private:
 	POINT m_dragStartPoint;
 	int m_dragScrollDirection;
 	bool m_messageFilterRegistered;
+	bool m_ctrlFSmoke;
+	int m_ctrlFSmokePhase;
+	bool m_ctrlFSmokeDefaultInvoked;
 	std::vector<int> m_dragRows;
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnWindowClose(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDrawItem(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnMeasureItem(UINT, WPARAM, LPARAM, BOOL&);
@@ -134,4 +139,13 @@ private:
 	int SelectedAvailableCommand() const;
 	void SavePlacement();
 	void UnregisterMessageFilter();
+	void RunCtrlFSmokePhase();
 };
+
+// Internal runtime-test hand-off.  The dialog itself drives the modal smoke so
+// the test observes the same CMessageFilter path as an interactive user.
+namespace ScriptsToolbarCustomizeRuntimeTest
+{
+	void ResetCtrlFSmoke();
+	CStringA CtrlFSmokeReport();
+}

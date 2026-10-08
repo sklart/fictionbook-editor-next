@@ -4,12 +4,26 @@
 #include "RuntimeLocalization.h"
 #include "ThemeManager.h"
 #include "UiMetrics.h"
+#include "testing\\RuntimeTestScenarioMode.h"
 #include "utils.h"
 
 namespace
 {
 	const DWORD_PTR kSeparatorItem = static_cast<DWORD_PTR>(-1);
 	const wchar_t kSkipSystemDialogLocalizationProperty[] = L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION";
+	const UINT_PTR kCtrlFSmokeTimer = 0x5346;
+
+	struct CtrlFSmokeState
+	{
+		int testedControls = 0;
+		int handledCtrlF = 0;
+		int focusedSearch = 0;
+		int selectedSearch = 0;
+		int dialogSurvived = 0;
+		int defaultInvoked = 0;
+		int filterUnregistered = 0;
+		bool active = false;
+	} g_ctrlFSmoke;
 
 	UINT DpiForTargetMonitor(HMONITOR monitor, UINT fallback)
 	{
@@ -27,7 +41,7 @@ namespace
 CScriptsToolbarCustomizeDlg::CScriptsToolbarCustomizeDlg(HWND toolbar,
 	const std::vector<ScriptsToolbarCommand>& available, const CSimpleArray<TBBUTTON>& defaults,
 	CSettings& settings, const std::vector<ScriptsToolbarTarget>& panels,
-	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragStartPoint{}, m_dragScrollDirection(0), m_messageFilterRegistered(false)
+	const std::function<bool(const CString&, const std::vector<PortableToolbarItem>&)>& saveItems, bool showPanelSelector, const CString& caption) : m_toolbar(toolbar), m_available(available), m_defaults(defaults), m_settings(settings), m_panels(panels), m_saveItems(saveItems), m_showPanelSelector(showPanelSelector), m_caption(caption), m_scriptImages(NULL), m_dialogFont(NULL), m_dpi(96), m_dragging(false), m_dragSource(-1), m_dragInsert(-1), m_dragStartPoint{}, m_dragScrollDirection(0), m_messageFilterRegistered(false), m_ctrlFSmoke(false), m_ctrlFSmokePhase(0), m_ctrlFSmokeDefaultInvoked(false)
 {
 }
 
@@ -88,6 +102,8 @@ LRESULT CScriptsToolbarCustomizeDlg::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	GetClientRect(client); LayoutControls(client.Width(), client.Height());
 	RefreshLists();
 	UpdateButtonState();
+	m_ctrlFSmoke = RuntimeTests::IsScenario(L"scripts-toolbar-customize-ctrl-f-runtime");
+	if(m_ctrlFSmoke) ::SetTimer(m_hWnd, kCtrlFSmokeTimer, 1, NULL);
 	return TRUE;
 }
 
@@ -601,7 +617,7 @@ void CScriptsToolbarCustomizeDlg::FocusSearch()
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(22); return TRUE; }
-LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { UnregisterMessageFilter(); ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { if(m_ctrlFSmoke) { ::KillTimer(m_hWnd, kCtrlFSmokeTimer); g_ctrlFSmoke.defaultInvoked = m_ctrlFSmokeDefaultInvoked ? 1 : 0; } UnregisterMessageFilter(); if(m_ctrlFSmoke) g_ctrlFSmoke.filterUnregistered = !m_messageFilterRegistered ? 1 : 0; ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
@@ -609,4 +625,72 @@ LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, B
 	UpdateMetrics(); CRect client; GetClientRect(client); LayoutControls(client.Width(), client.Height());
 	return 0;
 }
-LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { UnregisterMessageFilter(); ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
+LRESULT CScriptsToolbarCustomizeDlg::OnClose(WORD, WORD, HWND, BOOL&) { if(m_ctrlFSmoke) m_ctrlFSmokeDefaultInvoked = true; UnregisterMessageFilter(); ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
+
+LRESULT CScriptsToolbarCustomizeDlg::OnTimer(UINT, WPARAM timer, LPARAM, BOOL&)
+{
+	if(!m_ctrlFSmoke || timer != kCtrlFSmokeTimer) return 0;
+	RunCtrlFSmokePhase();
+	return 0;
+}
+
+void CScriptsToolbarCustomizeDlg::RunCtrlFSmokePhase()
+{
+	const UINT controls[] = { IDC_SCRIPTS_TOOLBAR_RESET, IDC_SCRIPTS_TOOLBAR_PANEL, IDCANCEL, IDC_SCRIPTS_TOOLBAR_ADD, IDC_SCRIPTS_TOOLBAR_REMOVE };
+	const int controlCount = _countof(controls);
+	if((m_ctrlFSmokePhase & 1) == 0)
+	{
+		const int controlIndex = m_ctrlFSmokePhase / 2;
+		if(controlIndex >= controlCount) { ::PostMessage(m_hWnd, WM_CLOSE, 0, 0); return; }
+		HWND control = GetDlgItem(controls[controlIndex]);
+		if(control == NULL || !::IsWindowEnabled(control)) { m_ctrlFSmokePhase += 2; return; }
+		HWND search = GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH);
+		::SetWindowText(search, L"Ctrl+F smoke");
+		::SetFocus(control);
+		BYTE keyboardState[256] = {}, ctrlFState[256] = {};
+		::GetKeyboardState(keyboardState);
+		memcpy(ctrlFState, keyboardState, sizeof(ctrlFState));
+		ctrlFState[VK_CONTROL] |= 0x80;
+		::SetKeyboardState(ctrlFState);
+		MSG message = {}; message.hwnd = control; message.message = WM_KEYDOWN; message.wParam = 'F';
+		CMessageLoop* loop = _Module.GetMessageLoop();
+		if(loop != NULL && loop->PreTranslateMessage(&message)) ++g_ctrlFSmoke.handledCtrlF;
+		::SetKeyboardState(keyboardState);
+		++m_ctrlFSmokePhase;
+		return;
+	}
+
+	HWND search = GetDlgItem(IDC_SCRIPTS_TOOLBAR_SEARCH);
+	DWORD first = 0, last = 0;
+	::SendMessage(search, EM_GETSEL, reinterpret_cast<WPARAM>(&first), reinterpret_cast<LPARAM>(&last));
+	const int length = ::GetWindowTextLength(search);
+	++g_ctrlFSmoke.testedControls;
+	if(::GetFocus() == search) ++g_ctrlFSmoke.focusedSearch;
+	if(first == 0 && last == static_cast<DWORD>(length) && length > 0) ++g_ctrlFSmoke.selectedSearch;
+	if(::IsWindow(m_hWnd)) ++g_ctrlFSmoke.dialogSurvived;
+	++m_ctrlFSmokePhase;
+}
+
+namespace ScriptsToolbarCustomizeRuntimeTest
+{
+	void ResetCtrlFSmoke()
+	{
+		g_ctrlFSmoke = CtrlFSmokeState();
+		g_ctrlFSmoke.active = true;
+	}
+
+	CStringA CtrlFSmokeReport()
+	{
+		const bool passed = g_ctrlFSmoke.active && g_ctrlFSmoke.testedControls >= 3 &&
+			g_ctrlFSmoke.handledCtrlF == g_ctrlFSmoke.testedControls &&
+			g_ctrlFSmoke.focusedSearch == g_ctrlFSmoke.testedControls &&
+			g_ctrlFSmoke.selectedSearch == g_ctrlFSmoke.testedControls &&
+			g_ctrlFSmoke.dialogSurvived == g_ctrlFSmoke.testedControls &&
+			g_ctrlFSmoke.defaultInvoked == 0 && g_ctrlFSmoke.filterUnregistered != 0;
+		CStringA report;
+		report.Format("phase=scripts-toolbar-customize-ctrl-f\ncontrols=%d\nctrl-f-handled=%d\nfocus-search=%d\nsearch-selection=%d\ndialog-survived=%d\ndefault-invoked=%d\nmessage-filter-unregistered=%d\nresult=%s\n",
+			g_ctrlFSmoke.testedControls, g_ctrlFSmoke.handledCtrlF, g_ctrlFSmoke.focusedSearch, g_ctrlFSmoke.selectedSearch,
+			g_ctrlFSmoke.dialogSurvived, g_ctrlFSmoke.defaultInvoked, g_ctrlFSmoke.filterUnregistered, passed ? "pass" : "fail");
+		return report;
+	}
+}
