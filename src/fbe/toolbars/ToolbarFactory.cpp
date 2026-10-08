@@ -91,33 +91,22 @@ HBITMAP ScaleLegacyToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetS
 	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
 	const DWORD* sourcePixels = static_cast<const DWORD*>(alphaInfo.dsBm.bmBits);
 	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
-	// Toolbar.bmp has a binary magenta key. Resample each destination pixel by
-	// source-area coverage rather than point sampling: that preserves a thin
-	// legacy silhouette at fractional DPI without a semi-transparent edge band.
-	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
+	::ZeroMemory(targetPixels, static_cast<size_t>(targetSize) * targetSize * sizeof(DWORD));
+	// Toolbar.bmp was drawn for a binary magenta key. At fractional DPI retain
+	// its original 24px glyph, centred in the larger button; this is the same
+	// crisp geometry users saw before per-monitor scaling was introduced.
+	if(targetSize < sourceSize * 2)
 	{
-		const double left = static_cast<double>(x) * sourceSize / targetSize, right = static_cast<double>(x + 1) * sourceSize / targetSize;
-		const double top = static_cast<double>(y) * sourceSize / targetSize, bottom = static_cast<double>(y + 1) * sourceSize / targetSize;
-		const double area = (right - left) * (bottom - top);
-		double coverage = 0.0, red = 0.0, green = 0.0, blue = 0.0;
-		for(int sourceY = static_cast<int>(floor(top)); sourceY <= static_cast<int>(ceil(bottom)) - 1; ++sourceY)
-		for(int sourceX = static_cast<int>(floor(left)); sourceX <= static_cast<int>(ceil(right)) - 1; ++sourceX)
-		{
-			const double overlapX = max(0.0, min(right, static_cast<double>(sourceX + 1)) - max(left, static_cast<double>(sourceX)));
-			const double overlapY = max(0.0, min(bottom, static_cast<double>(sourceY + 1)) - max(top, static_cast<double>(sourceY)));
-			const double weight = overlapX * overlapY / area;
-			const DWORD sample = sourcePixels[sourceY * sourceSize + sourceX];
-			const double alpha = (sample >> 24) & 0xFF;
-			coverage += alpha * weight;
-			red += ((sample >> 16) & 0xFF) * weight;
-			green += ((sample >> 8) & 0xFF) * weight;
-			blue += (sample & 0xFF) * weight;
-		}
-		if(coverage < 127.5) { targetPixels[y * targetSize + x] = 0; continue; }
-		const int normalizedRed = max(0, min(255, static_cast<int>(red * 255.0 / coverage + 0.5)));
-		const int normalizedGreen = max(0, min(255, static_cast<int>(green * 255.0 / coverage + 0.5)));
-		const int normalizedBlue = max(0, min(255, static_cast<int>(blue * 255.0 / coverage + 0.5)));
-		targetPixels[y * targetSize + x] = 0xFF000000 | (static_cast<DWORD>(normalizedRed) << 16) | (static_cast<DWORD>(normalizedGreen) << 8) | static_cast<DWORD>(normalizedBlue);
+		const int offset = (targetSize - sourceSize) / 2;
+		for(int y = 0; y < sourceSize; ++y) for(int x = 0; x < sourceSize; ++x)
+			targetPixels[(y + offset) * targetSize + x + offset] = sourcePixels[y * sourceSize + x];
+	}
+	else
+	{
+		// The 200% path is an exact integer enlargement. It intentionally keeps
+		// alpha binary instead of inventing a broad semi-transparent edge band.
+		for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
+			targetPixels[y * targetSize + x] = sourcePixels[(y * sourceSize) / targetSize * sourceSize + (x * sourceSize) / targetSize];
 	}
 	::DeleteObject(alpha);
 	return scaled;

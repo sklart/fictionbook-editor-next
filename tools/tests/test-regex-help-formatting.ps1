@@ -7,6 +7,8 @@ $dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\Rege
 foreach ($token in @('MarkdownBlockKind', 'headingLevel', 'ParseMarkdown', 'ParseInlineCode', 'ReadUtf8File', 'EM_EXLIMITTEXT', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'CFM_SIZE', 'CFM_UNDERLINE', 'CFE_UNDERLINE', 'Consolas', 'PFM_SPACEAFTER', 'PFM_STARTINDENT', 'PFM_OFFSET', 'PFM_RIGHTINDENT', 'ThemeManager::AccentColor()', 'PointSizeForBlock', 'RenderedBlockText', 'ExpectedRenderedText', 'MakeHyperlinkCharacterFormat', 'format.dwMask = CFM_UNDERLINE | CFM_COLOR', 'preservesParentLinkFormat')) {
     if ($parser -notmatch [regex]::Escape($token)) { throw "Missing Markdown formatting behavior: $token" }
 }
+if ($parser -match '(?s)void RenderMarkdown\(.*?WM_GETTEXTLENGTH') { throw 'Full Help renderer must not derive formatting ranges from total text length.' }
+if ($parser -notmatch '(?s)void RenderMarkdown\(.*?EM_EXGETSEL.*?EM_REPLACESEL.*?EM_EXGETSEL.*?const int last = range\.cpMax.*?EM_REPLACESEL.*?L"\\r"') { throw 'Full Help must format exact CHARRANGE text and append the paragraph delimiter separately.' }
 if ($parser -match 'HelpBlockBackground|HelpTableHeaderBackground|CFM_BACKCOLOR|crBackColor') { throw 'Full Help must not create character-level background fragments.' }
 if ($parser -match 'CHARFORMAT2 hyperlink = MakeCharacterFormat') { throw 'Hyperlinks must not overwrite parent formatting.' }
 if ($parser -match 'MulDiv\(title \? 11 : 9, 1440, dpi\)') { throw 'RichEdit help text must not divide twip size by monitor DPI.' }
@@ -19,5 +21,8 @@ foreach($required in @('::GetWindow(m_hWnd, GW_OWNER)', '::MonitorFromWindow(own
 }
 foreach($required in @('WM_REGEX_HELP_RENDER = WM_APP + 211', '::PostMessage(m_hWnd, WM_REGEX_HELP_RENDER, 0, 0)', 'SetWindowTextW(text, L"Loading\x2026")', 'LRESULT OnDeferredRender', 'm_rendered', 'g_markdownCache', 'metrics->cacheHit = true')) {
     if(($dialog + $parser) -notmatch [regex]::Escape($required)) { throw "Full Help deferred rendering/cache contract is missing: $required" }
+}
+foreach($required in @('tableDescriptionFormat', 'tableDescriptionAt', 'standaloneDescription.szFaceName, standaloneBody.szFaceName) == 0')) {
+    if ($parser -notmatch [regex]::Escape($required)) { throw "Table terms must use Consolas while descriptions retain the UI font: $required" }
 }
 Write-Host 'Regex Help formatting and placement contract passed.'

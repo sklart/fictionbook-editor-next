@@ -332,20 +332,51 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
     // before any text is inserted, rather than relying on a control default.
     ::SendMessage(richEdit, EM_EXLIMITTEXT, 0, 2 * 1024 * 1024);
     ::SetWindowTextW(richEdit, L"");
+    struct RenderedRange { int first; int last; };
+    std::vector<RenderedRange> ranges;
+    ranges.reserve(blocks.size());
+    // Insert all plain text first. Formatting a completed document avoids
+    // inheriting a previous block's character attributes at its delimiter.
     for (size_t index = 0; index < blocks.size(); ++index)
     {
         const MarkdownBlock& block = blocks[index];
-        const int first = static_cast<int>(::SendMessage(richEdit, WM_GETTEXTLENGTH, 0, 0));
-        CString value(RenderedBlockText(block)); value += L"\r\n";
+        CHARRANGE range = {};
+        ::SendMessage(richEdit, EM_EXGETSEL, 0, reinterpret_cast<LPARAM>(&range));
+        const int first = range.cpMin;
+        CString value(RenderedBlockText(block));
         ::SendMessage(richEdit, EM_SETSEL, first, first);
         ::SendMessage(richEdit, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(value)));
-        const int last = static_cast<int>(::SendMessage(richEdit, WM_GETTEXTLENGTH, 0, 0)) - 2;
+        ::SendMessage(richEdit, EM_EXGETSEL, 0, reinterpret_cast<LPARAM>(&range));
+        const int last = range.cpMax;
+        ranges.push_back(RenderedRange{ first, last });
+        ::SendMessage(richEdit, EM_SETSEL, last, last);
+        ::SendMessage(richEdit, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(L"\r"));
+    }
+    for (size_t index = 0; index < blocks.size(); ++index)
+    {
+        const MarkdownBlock& block = blocks[index];
+        const int first = ranges[index].first, last = ranges[index].last;
+        CString value(RenderedBlockText(block));
         const bool tableHeader = block.kind == MarkdownBlockKind::Table && (index == 0 || blocks[index - 1].kind != MarkdownBlockKind::Table);
         const bool bold = block.kind == MarkdownBlockKind::Title || block.kind == MarkdownBlockKind::Heading || tableHeader;
-        const bool monospace = block.kind == MarkdownBlockKind::Code || block.kind == MarkdownBlockKind::Table;
+        const bool monospace = block.kind == MarkdownBlockKind::Code;
         const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block));
         const PARAFORMAT2 paragraph = MakeParagraphFormat(block);
         SelectAndFormat(richEdit, first, (std::max)(first, last), format, paragraph);
+        if(block.kind == MarkdownBlockKind::Table)
+        {
+            const int separator = value.Find(L" \x2014 ");
+            if(separator > 0)
+            {
+                const CHARFORMAT2 description = MakeCharacterFormat(richEdit, bold, false, PointSizeForBlock(block));
+                ::SendMessage(richEdit, EM_SETSEL, first + separator + 3, last);
+                ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&description));
+                CHARFORMAT2 term = {}; term.cbSize = sizeof(term); term.dwMask = CFM_FACE;
+                ::lstrcpynW(term.szFaceName, L"Consolas", LF_FACESIZE);
+                ::SendMessage(richEdit, EM_SETSEL, first, first + separator);
+                ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&term));
+            }
+        }
         for (size_t span = 0; span < block.inlineCode.size(); ++span)
         {
             CHARFORMAT2 code = MakeCharacterFormat(richEdit, false, true, 10);
@@ -407,6 +438,7 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     HMODULE richEditLibrary = ::LoadLibraryW(L"Msftedit.dll");
     HWND richEdit = richEditLibrary ? ::CreateWindowExW(0, MSFTEDIT_CLASS, L"", WS_POPUP | ES_MULTILINE, 0, 0, 16, 16, owner, NULL, NULL, NULL) : NULL;
     bool formatting = false, longDocuments = false;
+    int facesDetail = 0;
     int formattingDetail = 0, shadedLinkDetail = 0;
     int enDesignLength = 0, enSourceLength = 0, ruDesignLength = 0, ruSourceLength = 0;
     int enDesignExpectedLength = 0, enSourceExpectedLength = 0, ruDesignExpectedLength = 0, ruSourceExpectedLength = 0;
@@ -440,19 +472,34 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             return ::SendMessage(richEdit, EM_GETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph)) != 0;
         };
         CString rendered; ReadRichEditText(richEdit, rendered);
-        CHARFORMAT2 titleFormat = {}, heading2Format = {}, heading3Format = {}, bodyFormat = {}, codeFormat = {}, tableFormat = {}, tableDataFormat = {}, inlineFormat = {}, afterTableFormat = {}, linkFormat = {};
+        CHARFORMAT2 titleFormat = {}, heading2Format = {}, heading3Format = {}, bodyFormat = {}, codeFormat = {}, tableFormat = {}, tableDescriptionFormat = {}, tableDataFormat = {}, inlineFormat = {}, afterTableFormat = {}, linkFormat = {};
         PARAFORMAT2 heading2Paragraph = {}, heading3Paragraph = {}, tableParagraph = {}, listParagraph = {};
         const int titleAt = rendered.Find(L"Title"), heading2At = rendered.Find(L"Heading two"), heading3At = rendered.Find(L"Heading three"), bodyAt = rendered.Find(L"Body"),
-            codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), tableDataAt = rendered.Find(L"\\d"), inlineAt = rendered.Find(L"inline"), afterTableAt = rendered.Find(L"Body after table"), linkAt = rendered.Find(L"https://example.invalid"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
-        const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && tableDataAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && linkAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
+            codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), tableDescriptionAt = rendered.Find(L"Meaning"), tableDataAt = rendered.Find(L"\\d"), inlineAt = rendered.Find(L"inline"), afterTableAt = rendered.Find(L"Body after table"), linkAt = rendered.Find(L"https://example.invalid"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
+        const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && tableDescriptionAt >= 0 && tableDataAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && linkAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
         const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax \x2014 Meaning") >= 0 &&
             rendered.Find(L"\\d \x2014 digit") >= 0 && rendered.Find(L"\\w \x2014 word") >= 0;
         const bool formats = positions && formatAt(titleAt, titleFormat) && formatAt(heading2At, heading2Format) && formatAt(heading3At, heading3Format) && formatAt(bodyAt, bodyFormat) &&
-            formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(tableDataAt, tableDataFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && formatAt(linkAt, linkFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
+            formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(tableDescriptionAt, tableDescriptionFormat) && formatAt(tableDataAt, tableDataFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && formatAt(linkAt, linkFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
         const bool styles = formats && (titleFormat.dwEffects & CFE_BOLD) != 0 && (heading2Format.dwEffects & CFE_BOLD) != 0 && (heading3Format.dwEffects & CFE_BOLD) != 0 &&
             (bodyFormat.dwEffects & CFE_BOLD) == 0 && (codeFormat.dwEffects & CFE_BOLD) == 0 && (inlineFormat.dwEffects & CFE_BOLD) == 0 && (afterTableFormat.dwEffects & CFE_BOLD) == 0 &&
             (tableFormat.dwEffects & CFE_BOLD) != 0 && (tableDataFormat.dwEffects & CFE_BOLD) == 0;
-        const bool faces = formats && ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0 && ::lstrcmpiW(tableFormat.szFaceName, L"Consolas") == 0 && ::lstrcmpiW(inlineFormat.szFaceName, L"Consolas") == 0;
+        const bool codeFace = ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0;
+        const bool inlineFace = ::lstrcmpiW(inlineFormat.szFaceName, L"Consolas") == 0;
+        // Use a stand-alone table to query native RichEdit character offsets:
+        // GetWindowText expands CR to CR/LF, while EM_SETSEL positions count a
+        // paragraph delimiter once. This keeps the term/description assertion
+        // about the actual rendered characters rather than converted offsets.
+        std::vector<MarkdownBlock> tableFontBlocks;
+        AddBlock(tableFontBlocks, MarkdownBlockKind::Table, L"Syntax \x2014 Meaning");
+        AddBlock(tableFontBlocks, MarkdownBlockKind::Body, L"ordinary description");
+        RenderMarkdown(richEdit, tableFontBlocks);
+        CString tableFontText; ReadRichEditText(richEdit, tableFontText);
+        CHARFORMAT2 standaloneTerm = {}, standaloneDescription = {}, standaloneBody = {};
+        const bool tableTermFace = formatAt(tableFontText.Find(L"Syntax"), standaloneTerm) && ::lstrcmpiW(standaloneTerm.szFaceName, L"Consolas") == 0;
+        const bool tableDescriptionFace = formatAt(tableFontText.Find(L"Meaning"), standaloneDescription) && formatAt(tableFontText.Find(L"ordinary description"), standaloneBody) && ::lstrcmpiW(standaloneDescription.szFaceName, standaloneBody.szFaceName) == 0;
+        facesDetail = (codeFace ? 1 : 0) | (tableTermFace ? 2 : 0) | (inlineFace ? 4 : 0) | (tableDescriptionFace ? 8 : 0);
+        const bool faces = formats && codeFace && tableTermFace && inlineFace && tableDescriptionFace;
         const bool sizes = formats && titleFormat.yHeight > heading2Format.yHeight && heading2Format.yHeight > bodyFormat.yHeight && heading3Format.yHeight >= bodyFormat.yHeight &&
             (heading2Format.yHeight != heading3Format.yHeight || heading2Paragraph.dySpaceBefore != heading3Paragraph.dySpaceBefore) && bodyFormat.yHeight >= 200 && inlineFormat.yHeight == bodyFormat.yHeight;
         const bool tables = formats && tableParagraph.cTabCount == 0 && tableParagraph.dxStartIndent > 0;
@@ -502,8 +549,8 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
     const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && cached && parser && formatting && longDocuments;
-    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
-        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, shadedLinkDetail, longDocuments,
+    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_source_length=%d\nen_source_expected_length=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_source_length=%d\nru_source_expected_length=%d\nresult=%s\n",
+        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, facesDetail, shadedLinkDetail, longDocuments,
         enDesignLength, enDesignExpectedLength, enSourceLength, enSourceExpectedLength, ruDesignLength, ruDesignExpectedLength, ruSourceLength, ruSourceExpectedLength, passed ? "pass" : "fail");
     return passed;
 }

@@ -95,7 +95,7 @@ public:
 	void ToggleScriptMode() { SetScriptMode(!m_tree.IsScriptMode()); }
 	bool IsModeSelectorVisible() const { return m_view_bar.IsWindowVisible() != FALSE; }
 	bool IsStructuralToolbarVisible() const { return m_rebar.IsWindowVisible() != FALSE; }
-	bool GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const;
+	bool GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding, int& actualHeight, int& minimumHeight) const;
 	bool GetStructureMenuCheckmarkProbe(bool expectCustomBitmaps) const;
 	bool VerifyStructureMenuCheckmarkDpiBitmaps() const;
 	void ApplyStructureMenuCheckmarks();
@@ -146,7 +146,7 @@ private:
 	void FillViewBar();
 	void ApplyViewBarMetrics();
 	void RefreshViewBarElementText(LPCWSTR text);
-	void EnsureViewBarElementTextWidth();
+	void EnsureViewBarElementMetrics();
 	void EnsureStructureMenuCheckmarkBitmaps();
 	void ClearStructureMenuCheckmarks();
 	void UpdateViewBarMode(bool scripts);

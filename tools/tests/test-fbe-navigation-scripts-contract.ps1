@@ -77,7 +77,7 @@ Must $documentTreeHeader 'IsStructuralToolbarVisible' 'runtime test can verify s
 Must $documentTree 'm_tree\.RefreshModeControls\(\)' 'startup synchronizes the visible selector with the persisted mode'
 Must $documentTree 'UiMetrics::ScaleForDpi\(28, UiMetrics::DpiForWindow\(m_hWnd\)\)' 'mode selector has a DPI-aware initial height'
 Must $documentTree 'm_view_bar\.AutoSize\(\)' 'mode selector measures its text with the menu font'
-Must $documentTree 'EnsureViewBarElementTextWidth' 'Elements selector measures localized label width separately from command-bar autosize'
+Must $documentTree 'EnsureViewBarElementMetrics' 'Elements selector normalizes its localized width and DPI height after command-bar autosize'
 Must $documentTree 'GetTextExtentPoint32W' 'Elements selector uses the active font metrics'
 Must $documentTree 'TBIF_TEXT \| TBIF_SIZE \| TBIF_BYINDEX' 'Elements selector applies measured width to its first button'
 Must $documentTree 'UiMetrics::ScaleForDpi\(16, UiMetrics::DpiForWindow\(m_view_bar\)\)' 'Elements selector scales text padding for DPI'

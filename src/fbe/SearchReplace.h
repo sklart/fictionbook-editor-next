@@ -297,7 +297,24 @@ public:
         if(previous) ::SelectObject(dc, previous);
         if(dc) ::ReleaseDC(dialog, dc);
         const int measured = (std::max)(lineHeight * 2, static_cast<int>(bounds.bottom - bounds.top));
-        return (std::min)(lineHeight * 4, measured);
+        if(measured <= lineHeight * 2) return measured;
+        // A real long expression needs five to six complete EDIT-font rows;
+        // short previews still release that space again when selected later.
+        return (std::min)(lineHeight * 6, (std::max)(lineHeight * 5, measured));
+    }
+
+    int CompactControlsBottom() const
+    {
+        const HWND dialog = DialogWindow(); if(!dialog) return 0;
+        const int controls[] = { IDC_FIND_TEMPLATES, IDC_FIND_STATUS, IDC_FIND_FROM_START, IDCANCEL };
+        int bottom = 0;
+        for(size_t index = 0; index < _countof(controls); ++index)
+        {
+            HWND control = const_cast<FRBase*>(this)->GetDlgItem(controls[index]); if(!control) continue;
+            RECT rect = {}; ::GetWindowRect(control, &rect); ::MapWindowPoints(NULL, dialog, reinterpret_cast<POINT*>(&rect), 2);
+            bottom = (std::max)(bottom, static_cast<int>(rect.bottom));
+        }
+        return bottom;
     }
 
     int LocalizedButtonWidth(HWND button, LPCWSTR key, LPCWSTR fallback, int minimum, int maximum) const
@@ -328,6 +345,47 @@ public:
     {
         return tree ? VisiblePresetTreeRowsFrom(tree, TreeView_GetRoot(tree)) : 0;
     }
+
+    void ExpandDialogForAvailableWidth()
+    {
+        const HWND dialog = DialogWindow();
+        if(!dialog) return;
+        // The resource's 326 DLU is the compatibility minimum.  On an
+        // ordinary desktop use a 370 DLU compact layout, giving the editable
+        // fields and the templates preview room without stretching buttons.
+        RECT minimumUnits = { 0, 0, 326, 0 }, preferredUnits = { 0, 0, 370, 0 };
+        ::MapDialogRect(dialog, &minimumUnits); ::MapDialogRect(dialog, &preferredUnits);
+        RECT window = {}; if(!::GetWindowRect(dialog, &window)) return;
+        const HMONITOR monitor = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO info = {}; info.cbSize = sizeof(info);
+        const int currentWidth = static_cast<int>(window.right - window.left);
+        const int workWidth = monitor && ::GetMonitorInfo(monitor, &info) ? static_cast<int>(info.rcWork.right - info.rcWork.left) : currentWidth;
+        const int preferredWidth = currentWidth + static_cast<int>(preferredUnits.right - minimumUnits.right);
+        const int width = (std::max)(currentWidth, (std::min)(preferredWidth, workWidth));
+        if(width == currentWidth) return;
+        RECT oldClient = {}; ::GetClientRect(dialog, &oldClient);
+        int left = window.left;
+        if(monitor && ::GetMonitorInfo(monitor, &info)) left = (std::max)(static_cast<int>(info.rcWork.left), (std::min)(left, static_cast<int>(info.rcWork.right) - width));
+        ::SetWindowPos(dialog, NULL, left, static_cast<int>(window.top), width, static_cast<int>(window.bottom - window.top), SWP_NOZORDER | SWP_NOACTIVATE);
+        RECT client = {}; ::GetClientRect(dialog, &client);
+        const int extra = client.right - oldClient.right;
+        if(extra <= 0) return;
+        const int fixedButtons[] = { ID_FIND_NEXT, IDC_REPLACE_ONE, IDC_REPLACE_ALL, IDC_FIND_ALL, IDCANCEL, IDC_FIND_TEMPLATES };
+        for(size_t index = 0; index < _countof(fixedButtons); ++index)
+        {
+            HWND button = GetDlgItem(fixedButtons[index]); if(!button) continue;
+            RECT rect = {}; ::GetWindowRect(button, &rect); ::MapWindowPoints(NULL, dialog, reinterpret_cast<POINT*>(&rect), 2);
+            ::SetWindowPos(button, NULL, rect.left + extra, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        const int widened[] = { IDC_TEXT, IDC_REPLACE, IDC_FIND_STATUS };
+        for(size_t index = 0; index < _countof(widened); ++index)
+        {
+            HWND control = GetDlgItem(widened[index]); if(!control) continue;
+            RECT rect = {}; ::GetWindowRect(control, &rect); ::MapWindowPoints(NULL, dialog, reinterpret_cast<POINT*>(&rect), 2);
+            ::SetWindowPos(control, NULL, rect.left, rect.top, rect.right - rect.left + extra, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+    }
+
     PresetPanelMetrics GetPresetPanelMetrics(int availableHeight = 0) const
     {
         RECT marginUnits = { 0, 0, 6, 6 };
@@ -388,7 +446,7 @@ public:
         const int margin = metrics.margin;
         const int lineHeight = metrics.lineHeight;
         const int panelHeight = m_presetPanelHeight > 0 ? m_presetPanelHeight : metrics.totalHeight;
-        const int panelTop = client.bottom - panelHeight + margin;
+        const int panelTop = (std::max)(CompactControlsBottom() + margin, static_cast<int>(client.bottom) - panelHeight + margin);
         const int panelBottom = client.bottom - margin;
         const int width = client.right - client.left;
         const int contentWidth = (std::max)(0, width - margin * 2);
@@ -956,6 +1014,7 @@ public:
 		m_text = GetDlgItem(IDC_TEXT);
 
 		// Set fields
+		ExpandDialogForAvailableWidth();
 		PutData();
 		UpdateUnicodeControl();        SetPresetPanelVisible(_Settings.SearchTemplatesPanelPinned());
         SetRuntimeText(IDC_FIND_REGEX_HELP, L"fbe.search_preset.regex_help", L"?");

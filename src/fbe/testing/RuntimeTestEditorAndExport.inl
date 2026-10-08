@@ -1568,8 +1568,11 @@
 			for(int pixel = 0; pixel < 24 * 24; ++pixel) if(baselinePixels[pixel] >> 24) { const int x = pixel % 24, y = pixel / 24; sourceLeft = min(sourceLeft, x); sourceTop = min(sourceTop, y); sourceRight = max(sourceRight, x); sourceBottom = max(sourceBottom, y); }
 			if(visible == 0 || sourceRight < sourceLeft) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 6; return false; }
 			if(intermediateAlpha != 0) { ::DeleteObject(scaled); ::DeleteObject(baseline); failure = 7; return false; }
-			const int expectedLeft = sourceLeft * size / 24, expectedTop = sourceTop * size / 24;
-			const int expectedRight = ((sourceRight + 1) * size + 23) / 24 - 1, expectedBottom = ((sourceBottom + 1) * size + 23) / 24 - 1;
+			const bool fractionalDpi = size < 48;
+			const int expectedLeft = fractionalDpi ? sourceLeft + (size - 24) / 2 : sourceLeft * size / 24;
+			const int expectedTop = fractionalDpi ? sourceTop + (size - 24) / 2 : sourceTop * size / 24;
+			const int expectedRight = fractionalDpi ? sourceRight + (size - 24) / 2 : ((sourceRight + 1) * size + 23) / 24 - 1;
+			const int expectedBottom = fractionalDpi ? sourceBottom + (size - 24) / 2 : ((sourceBottom + 1) * size + 23) / 24 - 1;
 			silhouettePassed = abs(targetLeft - expectedLeft) <= 1 && abs(targetTop - expectedTop) <= 1 && abs(targetRight - expectedRight) <= 1 && abs(targetBottom - expectedBottom) <= 1;
 			BITMAPINFO lineInfo = {}; lineInfo.bmiHeader.biSize = sizeof(lineInfo.bmiHeader); lineInfo.bmiHeader.biWidth = 24; lineInfo.bmiHeader.biHeight = -24; lineInfo.bmiHeader.biPlanes = 1; lineInfo.bmiHeader.biBitCount = 24;
 			void* lineBits = NULL; HBITMAP lineSource = ::CreateDIBSection(NULL, &lineInfo, DIB_RGB_COLORS, &lineBits, NULL, 0);

@@ -26,8 +26,8 @@ if($bytes.Length -lt 8 -or $masterBytes.Length -lt 8 -or [Convert]::ToHexString(
 foreach($markup in @("href='#undefined'><IMG src='fbw-internal:#undefined'", 'var imageId=id=="" ? "undefined"')) {
     if(-not $runtime.Contains($markup)) { throw "Нарушена семантика пустой картинки: $markup" }
 }
-foreach($required in @('EnsureViewBarElementTextWidth', 'GetTextExtentPoint32W', 'TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX', 'const LRESULT result = ::SendMessage', "result == -1 || text[0] == L'\0'", 'desiredWidth = extent.cx + UiMetrics::ScaleForDpi(16')) {
+foreach($required in @('EnsureViewBarElementMetrics', 'GetTextExtentPoint32W', 'TB_GETBUTTONSIZE', 'TB_SETBUTTONSIZE', 'TBIF_TEXT | TBIF_SIZE | TBIF_BYINDEX', 'const LRESULT result = ::SendMessage', "result == -1 || text[0] == L'\0'", 'desiredWidth = extent.cx + UiMetrics::ScaleForDpi(16')) {
     if(-not $tree.Contains($required)) { throw "Панель структуры не измеряет подпись Элементы по реальным метрикам: $required" }
 }
-if($tree -notmatch 'RefreshLocalizedMenuCaptions\(\)[\s\S]*?EnsureViewBarElementTextWidth\(\);') { throw 'Панель структуры не пересчитывает ширину после локализации.' }
+if($tree -notmatch 'RefreshLocalizedMenuCaptions\(\)[\s\S]*?EnsureViewBarElementMetrics\(\);') { throw 'Панель структуры не пересчитывает размеры после локализации.' }
 Write-Host 'Empty image placeholder resource and undefined round-trip contract passed.'

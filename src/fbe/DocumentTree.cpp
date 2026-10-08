@@ -282,7 +282,7 @@ LRESULT CTreeWithToolBar::OnClose(UINT /* unused: uMsg */, WPARAM /* unused: wPa
 
 LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {
-	EnsureViewBarElementTextWidth();
+	EnsureViewBarElementMetrics();
 	RECT clientRect = {0, 0, 0, 0};
 	RECT rebarRect = {0, 0, 0, 0};
 	RECT treeRect = {0, 0, 0, 0};
@@ -603,7 +603,7 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 		RefreshViewBarElementText(elsMenuItem);
 		m_view_bar.Invalidate();
 	}
-	EnsureViewBarElementTextWidth();
+	EnsureViewBarElementMetrics();
 }
 
 void CTreeWithToolBar::ApplyViewBarMetrics()
@@ -611,7 +611,7 @@ void CTreeWithToolBar::ApplyViewBarMetrics()
 	if(!m_view_bar.IsWindow()) return;
 	::SendMessage(m_view_bar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
 	m_view_bar.AutoSize();
-	EnsureViewBarElementTextWidth();
+	EnsureViewBarElementMetrics();
 }
 
 void CTreeWithToolBar::FinalizeViewBarTheme()
@@ -623,7 +623,7 @@ void CTreeWithToolBar::FinalizeViewBarTheme()
 	// Restore its localized caption before measuring the font selected by that
 	// freshly rebuilt native control.
 	RefreshViewBarElementText(elements);
-	EnsureViewBarElementTextWidth();
+	EnsureViewBarElementMetrics();
 	::RedrawWindow(m_view_bar, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
 }
 
@@ -638,9 +638,19 @@ void CTreeWithToolBar::RefreshViewBarElementText(LPCWSTR text)
 	::SendMessage(m_view_bar, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&writeButton));
 }
 
-void CTreeWithToolBar::EnsureViewBarElementTextWidth()
+void CTreeWithToolBar::EnsureViewBarElementMetrics()
 {
 	if(!m_view_bar.IsWindow()) return;
+	const UINT dpi = UiMetrics::DpiForWindow(m_view_bar);
+	const int minimumHeight = UiMetrics::ScaleForDpi(28, dpi);
+	const LRESULT currentButtonSize = ::SendMessage(m_view_bar, TB_GETBUTTONSIZE, 0, 0);
+	const int currentButtonWidth = LOWORD(currentButtonSize);
+	const int currentButtonHeight = HIWORD(currentButtonSize);
+	if(currentButtonHeight < minimumHeight)
+	{
+		::SendMessage(m_view_bar, TB_SETBUTTONSIZE, 0, MAKELONG((std::max)(1, currentButtonWidth), minimumHeight));
+		m_view_bar.AutoSize();
+	}
 	wchar_t text[MAX_LOAD_STRING + 1] = {};
 	TBBUTTONINFOW readButton = {};
 	readButton.cbSize = sizeof(readButton);
@@ -655,7 +665,7 @@ void CTreeWithToolBar::EnsureViewBarElementTextWidth()
 	SIZE extent = {}; ::GetTextExtentPoint32W(dc, text, static_cast<int>(wcslen(text)), &extent);
 	if(oldFont != NULL) ::SelectObject(dc, oldFont);
 	::ReleaseDC(m_view_bar, dc);
-	const int desiredWidth = extent.cx + UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_view_bar));
+	const int desiredWidth = extent.cx + UiMetrics::ScaleForDpi(16, dpi);
 	if(readButton.cx == desiredWidth) return;
 	// Keep the write mask deliberately separate from the read mask. Passing
 	// TBIF_TEXT with a null pszText clears the CommandBar caption on some
@@ -667,9 +677,9 @@ void CTreeWithToolBar::EnsureViewBarElementTextWidth()
 	::SendMessage(m_view_bar, TB_SETBUTTONINFOW, 0, reinterpret_cast<LPARAM>(&writeButton));
 }
 
-bool CTreeWithToolBar::GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding) const
+bool CTreeWithToolBar::GetViewBarElementProbe(CString& text, int& buttonWidth, int& measuredTextWidth, int& padding, int& actualHeight, int& minimumHeight) const
 {
-	text.Empty(); buttonWidth = 0; measuredTextWidth = 0; padding = 0;
+	text.Empty(); buttonWidth = 0; measuredTextWidth = 0; padding = 0; actualHeight = 0; minimumHeight = 0;
 	if(!m_view_bar.IsWindow()) return false;
 	wchar_t buffer[MAX_LOAD_STRING + 1] = {};
 	TBBUTTONINFOW button = {};
@@ -688,7 +698,12 @@ bool CTreeWithToolBar::GetViewBarElementProbe(CString& text, int& buttonWidth, i
 	text = buffer;
 	buttonWidth = button.cx;
 	measuredTextWidth = extent.cx;
-	padding = UiMetrics::ScaleForDpi(16, UiMetrics::DpiForWindow(m_view_bar));
+	const UINT dpi = UiMetrics::DpiForWindow(m_view_bar);
+	padding = UiMetrics::ScaleForDpi(16, dpi);
+	minimumHeight = UiMetrics::ScaleForDpi(28, dpi);
+	RECT rect = {};
+	if(!::GetWindowRect(m_view_bar, &rect)) return false;
+	actualHeight = rect.bottom - rect.top;
 	return true;
 }
 

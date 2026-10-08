@@ -333,8 +333,8 @@ void CMainFrame::RunPortableStateTestScenario()
 	{
 		m_document_tree.m_tree.RefreshLocalizedMenuCaptions();
 		const CString expected = FbeLoadRuntimeString(IDS_DOCTREE_MENU_ELEMENTS);
-		CString text; int width = 0, measuredWidth = 0, padding = 0;
-		auto viewBarReady = [&]() { return m_document_tree.m_tree.GetViewBarElementProbe(text, width, measuredWidth, padding) && text == expected && width >= measuredWidth + padding; };
+		CString text; int width = 0, measuredWidth = 0, padding = 0, actualHeight = 0, minimumHeight = 0;
+		auto viewBarReady = [&]() { return m_document_tree.m_tree.GetViewBarElementProbe(text, width, measuredWidth, padding, actualHeight, minimumHeight) && text == expected && width >= measuredWidth + padding && actualHeight >= minimumHeight; };
 		const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
@@ -357,7 +357,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		ThemeManager::SetSelectedTheme(originalTheme);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		const bool passed = lightBefore && dark && popupPreparedDark && dpiCheckmarks && lightAfter && popupPreparedDarkAgain && darkAgainCheckmarks;
-		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared-dark=%d\nviewbar-light-after=%d\nviewbar-popup-prepared-dark-again=%d\nviewbar-checkmarks-light-before=%d\nviewbar-checkmarks-dark-after-popup=%d\nviewbar-checkmarks-light-after=%d\nviewbar-checkmarks-dark-again=%d\nviewbar-checkmarks-dpi-100-125-150-200=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nresult=%s\n", passed, lightBefore, dark, popupPreparedDark, lightAfter, popupPreparedDarkAgain, lightBeforeCheckmarks, darkCheckmarksAfterPopup, lightAfterCheckmarks, darkAgainCheckmarks, dpiCheckmarks, width, measuredWidth, padding, passed ? "pass" : "fail");
+		CStringA report; report.Format("phase=navigation-viewbar-elements\nviewbar-elements=%d\nviewbar-light-before=%d\nviewbar-dark=%d\nviewbar-popup-prepared-dark=%d\nviewbar-light-after=%d\nviewbar-popup-prepared-dark-again=%d\nviewbar-checkmarks-light-before=%d\nviewbar-checkmarks-dark-after-popup=%d\nviewbar-checkmarks-light-after=%d\nviewbar-checkmarks-dark-again=%d\nviewbar-checkmarks-dpi-100-125-150-200=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nviewbar-height=%d\nviewbar-minimum-height=%d\nresult=%s\n", passed, lightBefore, dark, popupPreparedDark, lightAfter, popupPreparedDarkAgain, lightBeforeCheckmarks, darkCheckmarksAfterPopup, lightAfterCheckmarks, darkAgainCheckmarks, dpiCheckmarks, width, measuredWidth, padding, actualHeight, minimumHeight, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)
@@ -375,10 +375,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		else if(_Settings.DocumentTreeScripts()) { m_document_tree.m_tree.ToggleScriptMode(); m_document_tree.m_tree.ToggleScriptMode(); }
 		RECT title = {}, modeButton = {}, closeButton = {}; int initialImage = -1; UINT initialCommand = 0;
 		const bool modeButtonReady = !tree.IsScriptMode() && !_Settings.DocumentTreeScripts() && m_document_tree.m_tree.IsModeSelectorVisible() && m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(title, modeButton, closeButton, initialImage, initialCommand) && initialImage == 0 && initialCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS;
-		CString viewBarText; int viewBarWidth = 0, viewBarMeasuredWidth = 0, viewBarPadding = 0;
+		CString viewBarText; int viewBarWidth = 0, viewBarMeasuredWidth = 0, viewBarPadding = 0, viewBarHeight = 0, viewBarMinimumHeight = 0;
 		const CString expectedViewBarText = FbeLoadRuntimeString(IDS_DOCTREE_MENU_ELEMENTS);
-		const bool viewBarElements = m_document_tree.m_tree.GetViewBarElementProbe(viewBarText, viewBarWidth, viewBarMeasuredWidth, viewBarPadding) &&
-			viewBarText == expectedViewBarText && viewBarWidth >= viewBarMeasuredWidth + viewBarPadding;
+		const bool viewBarElements = m_document_tree.m_tree.GetViewBarElementProbe(viewBarText, viewBarWidth, viewBarMeasuredWidth, viewBarPadding, viewBarHeight, viewBarMinimumHeight) &&
+			viewBarText == expectedViewBarText && viewBarWidth >= viewBarMeasuredWidth + viewBarPadding && viewBarHeight >= viewBarMinimumHeight;
 		m_document_tree.m_tree.ToggleScriptMode();
 		RECT scriptsTitle = {}, scriptsButton = {}, scriptsClose = {}; int scriptsImage = -1; UINT scriptsCommand = 0;
 		const bool switchedScripts = tree.IsScriptMode() && _Settings.DocumentTreeScripts() && !m_document_tree.m_tree.IsModeSelectorVisible() && !m_document_tree.m_tree.IsStructuralToolbarVisible() && m_document_tree.GetModeButtonProbe(scriptsTitle, scriptsButton, scriptsClose, scriptsImage, scriptsCommand) && scriptsImage == 1 && scriptsCommand == ID_DOCUMENT_TREE_MODE_STRUCTURE;
