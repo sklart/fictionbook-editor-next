@@ -260,8 +260,10 @@ CString RegexQuickReferencePopup::CategoryCaption(FbeSearchPresets::RegexQuickRe
 }
 
 BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
-    const bool leftList = message->hwnd == m_left.m_hWnd;
-    const bool rightList = message->hwnd == m_right.m_hWnd;
+    const HWND leftListWindow = ::GetDlgItem(m_hWnd, IDC_REGEX_QUICK_LEFT);
+    const HWND rightListWindow = ::GetDlgItem(m_hWnd, IDC_REGEX_QUICK_RIGHT);
+    const bool leftList = message->hwnd == leftListWindow;
+    const bool rightList = message->hwnd == rightListWindow;
     if(message->message == WM_LBUTTONUP && (leftList || rightList)) {
         POINT point = { GET_X_LPARAM(message->lParam), GET_Y_LPARAM(message->lParam) };
         ActivateAtPoint(message->hwnd, point);
@@ -297,20 +299,24 @@ int RegexQuickReferencePopup::FirstEntryRow(const std::vector<int>& rows) const 
 
 void RegexQuickReferencePopup::ClearOtherSelection(HWND listWindow)
 {
-    if(listWindow == m_left) m_right.SetCurSel(-1); else if(listWindow == m_right) m_left.SetCurSel(-1);
+    const HWND leftList = ::GetDlgItem(m_hWnd, IDC_REGEX_QUICK_LEFT);
+    const HWND rightList = ::GetDlgItem(m_hWnd, IDC_REGEX_QUICK_RIGHT);
+    if (listWindow == leftList) ::SendMessage(rightList, LB_SETCURSEL, -1, 0);
+    else if (listWindow == rightList) ::SendMessage(leftList, LB_SETCURSEL, -1, 0);
 }
 
 bool RegexQuickReferencePopup::UpdateHoverSelection(HWND listWindow, POINT point)
 {
-    if (listWindow != m_left.m_hWnd && listWindow != m_right.m_hWnd) return false;
-    const bool rightList = listWindow == m_right.m_hWnd;
+    const HWND leftList = ::GetDlgItem(m_hWnd, IDC_REGEX_QUICK_LEFT);
+    const HWND rightListWindow = ::GetDlgItem(m_hWnd, IDC_REGEX_QUICK_RIGHT);
+    if (listWindow != leftList && listWindow != rightListWindow) return false;
+    const bool rightList = listWindow == rightListWindow;
     const std::vector<int>& rows = rightList ? m_rightRows : m_leftRows;
-    CListBox& list = rightList ? m_right : m_left;
     const LRESULT item = ::SendMessage(listWindow, LB_ITEMFROMPOINT, 0, MAKELPARAM(point.x, point.y));
     const int row = LOWORD(item);
     if(HIWORD(item) != 0 || row < 0 || static_cast<size_t>(row) >= rows.size() || rows[row] < 0) return false;
-    if (list.GetCurSel() != row && list.SetCurSel(row) == LB_ERR) return false;
-    if (list.GetCurSel() != row) return false;
+    if (::SendMessage(listWindow, LB_GETCURSEL, 0, 0) != row && ::SendMessage(listWindow, LB_SETCURSEL, row, 0) == LB_ERR) return false;
+    if (::SendMessage(listWindow, LB_GETCURSEL, 0, 0) != row) return false;
     ClearOtherSelection(listWindow);
     return true;
 }
