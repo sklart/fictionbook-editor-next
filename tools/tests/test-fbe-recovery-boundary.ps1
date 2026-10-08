@@ -22,6 +22,7 @@ foreach($forbidden in @('MessageBox', 'SetTimer', 'KillTimer', 'FB::Doc')) {
 }
 $restore = [regex]::Match($frame, 'void CMainFrame::TryRestoreRecovery[\s\S]*?(?=LRESULT CMainFrame::OnSettingChange)').Value
 if(-not $restore -or $restore -notmatch 'm_recovery\.CommitRestoredIdentity') { throw 'TryRestoreRecovery must delegate recovered identity to RecoveryController.' }
+if($restore -notmatch 'm_doc->MarkSavePoint\(\)' -or $restore.IndexOf('m_doc->MarkSavePoint()') -gt $restore.IndexOf('LoadFile(candidate.snapshotPath)')) { throw 'TryRestoreRecovery must clear the disposable startup document before loading recovery.' }
 if($restore -match 'm_document_session\.RestoreArchive') { throw 'TryRestoreRecovery retained archive session identity mutation.' }
 $save = [regex]::Match($frame, 'bool CMainFrame::SaveRecoveryNow[\s\S]*?(?=void CMainFrame::TryRestoreRecovery)').Value
 if(-not $save -or $save -notmatch 'FbeRecovery::SnapshotRequest' -or $save -notmatch 'm_recovery\.Save') { throw 'SaveRecoveryNow must adapt editor state into SnapshotRequest.' }

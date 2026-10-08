@@ -3973,6 +3973,11 @@ void CMainFrame::TryRestoreRecovery()
 	if (!RuntimeTests::IsScenario(L"archive-recovery-verify") && !RuntimeTests::IsScenario(L"archive-recovery-external-verify") && !RuntimeTests::IsScenario(L"normal-recovery-verify") && U::MessageBox(MB_YESNO | MB_ICONQUESTION, IDS_RECOVERY_CAPTION, IDS_RECOVERY_MSG) != IDYES)
 		return;
 
+	// Recovery replaces the startup document before it is ever shown to the
+	// user.  MSHTML can report that disposable document dirty while it finishes
+	// initialization; it must not turn recovery into a Save prompt.
+	if (m_doc) m_doc->MarkSavePoint();
+	if (IsSourceActive()) m_source.SendMessage(SCI_SETSAVEPOINT);
 	if (LoadFile(candidate.snapshotPath) == OK)
 	{
 		m_recovery.CommitRestoredIdentity(*m_doc, m_document_session, candidate);
