@@ -1519,6 +1519,10 @@
 				imageA.GetString(), cssUrlA.GetString(), repeatA.GetString(), positionA.GetString(), sizeA.GetString(), attachmentA.GetString(), m_doc->DocChanged() ? 1 : 0);
 			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush();
 		};
+		// The command-line fixture has completed its initial MSHTML load before
+		// this scenario runs.  Establish that loaded document as the baseline so
+		// every following assertion measures only the UI-only background change.
+		m_doc->MarkSavePoint();
 		_Settings.SetEditorBackgroundKind(L"none"); _Settings.SetEditorBackgroundId(CString()); _Settings.SetEditorBackgroundCustomPath(CString()); _Settings.SetEditorBackgroundLayout(L"tile");
 		StartupTrace::AppendTestStartupBreadcrumb("none-start"); m_doc->ApplyConfChanges(); appendBackgroundPhase("none"); StartupTrace::AppendTestStartupBreadcrumb("none-complete");
 		_Settings.SetEditorBackgroundKind(L"builtin"); _Settings.SetEditorBackgroundId(L"01_clean_white"); _Settings.SetEditorBackgroundLayout(L"tile");
