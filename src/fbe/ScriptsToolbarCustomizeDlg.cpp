@@ -479,13 +479,31 @@ void CScriptsToolbarCustomizeDlg::DrawListItem(const DRAWITEMSTRUCT& item)
 	dc.SetBkMode(TRANSPARENT);
 	const int textLength = static_cast<int>(::SendMessage(item.hwndItem, LB_GETTEXTLEN, item.itemID, 0));
 	CString text; LPWSTR textBuffer = text.GetBuffer(textLength); ::SendMessage(item.hwndItem, LB_GETTEXT, item.itemID, reinterpret_cast<LPARAM>(textBuffer)); text.ReleaseBuffer();
-	int left = rect.left + Scale(7);
 	const DWORD_PTR data = ::SendMessage(item.hwndItem, LB_GETITEMDATA, item.itemID, 0);
+	const bool separator = (available && data == kSeparatorItem) ||
+		(!available && data < CurrentItems().size() && CurrentItems()[static_cast<size_t>(data)].separator);
 	TBBUTTON button = {}; bool drawIcon = false;
 	if(available && data != kSeparatorItem && data < m_available.size()) { button = m_available[data].button; drawIcon = button.iBitmap >= 0; }
 	if(!available && CurrentItemButton(static_cast<size_t>(data), button)) drawIcon = button.iBitmap >= 0;
-	if(drawIcon && m_scriptImages) { ImageList_Draw(m_scriptImages, button.iBitmap, item.hDC, left, rect.top + (rect.Height() - Scale(16)) / 2, ILD_TRANSPARENT); left += Scale(20); }
-	rect.left = left; dc.DrawText(text, -1, rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+	const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);
+	int iconArea = Scale(20);
+	if(drawIcon && m_scriptImages != NULL && !separator)
+	{
+		int iconWidth = 0, iconHeight = 0;
+		if(::ImageList_GetIconSize(m_scriptImages, &iconWidth, &iconHeight))
+		{
+			// Preserve native image-list pixels: small legacy images gain breathing
+			// room from the row, instead of being aggressively stretched.
+			iconArea = (std::max)(iconArea, iconWidth);
+			const int iconX = rect.left + leftPadding + (iconArea - iconWidth) / 2;
+			const int iconY = rect.top + (rect.Height() - iconHeight) / 2;
+			ImageList_Draw(m_scriptImages, button.iBitmap, item.hDC, iconX, iconY, ILD_TRANSPARENT);
+		}
+	}
+	rect.left += leftPadding;
+	rect.right -= rightPadding;
+	if(!separator) rect.left += iconArea + iconGap;
+	dc.DrawText(text, -1, rect, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX | (separator ? DT_CENTER : 0));
 	DrawDragIndicator(item);
 	::RestoreDC(item.hDC, savedDc);
 }
@@ -616,7 +634,7 @@ void CScriptsToolbarCustomizeDlg::FocusSearch()
 	::SetFocus(search); ::SendMessage(search, EM_SETSEL, 0, -1);
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
-LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(22); return TRUE; }
+LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(28); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { if(m_ctrlFSmoke) { ::KillTimer(m_hWnd, kCtrlFSmokeTimer); g_ctrlFSmoke.defaultInvoked = m_ctrlFSmokeDefaultInvoked ? 1 : 0; } UnregisterMessageFilter(); if(m_ctrlFSmoke) g_ctrlFSmoke.filterUnregistered = !m_messageFilterRegistered ? 1 : 0; ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
 {

@@ -216,6 +216,20 @@ foreach ($dpi in @(96, 192, 96)) {
 if ($dialogHeader -notmatch 'BOOL PreTranslateMessage\(MSG\* message\)' -or $dialog -notmatch "message->wParam == 'F'") {
     throw 'Ctrl+F must be handled before the focused child control consumes it.'
 }
+foreach($required in @('ImageList_GetIconSize', 'const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);', 'int iconArea = Scale(20);', 'rect.top + (rect.Height() - iconHeight) / 2', 'DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS', 'separator ? DT_CENTER : 0', 'itemHeight = Scale(28)')) {
+    if($dialog.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Owner-draw list layout regression guard is missing: $required"
+    }
+}
+if($dialog.IndexOf('rect.top + (rect.Height() - Scale(16)) / 2', [StringComparison]::Ordinal) -ge 0) {
+    throw 'Owner-draw list icons must use the actual image-list height, not a fixed 16 px value.'
+}
+foreach($dpi in @(96, 120, 144, 192)) {
+    $rowHeight = [Math]::Round(28 * $dpi / 96.0)
+    $iconArea = [Math]::Round(20 * $dpi / 96.0)
+    $padding = [Math]::Round(8 * $dpi / 96.0)
+    if($rowHeight -lt $iconArea -or $padding -lt 8) { throw "Owner-draw list DPI geometry is invalid at $dpi DPI." }
+}
 foreach($required in @('scripts-toolbar-customize-ctrl-f-runtime', 'WM_TIMER', 'IDC_SCRIPTS_TOOLBAR_RESET', 'IDC_SCRIPTS_TOOLBAR_PANEL', 'IDCANCEL', 'IDC_SCRIPTS_TOOLBAR_ADD', 'IDC_SCRIPTS_TOOLBAR_REMOVE', 'EM_GETSEL', 'message-filter-unregistered', 'ShowScriptsToolbarCustomizeDialog(m_ScriptsToolbar)')) {
     if($dialog.IndexOf($required, [StringComparison]::Ordinal) -lt 0 -and $dialogHeader.IndexOf($required, [StringComparison]::Ordinal) -lt 0 -and $runtime.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
         throw "Ctrl+F runtime smoke contract is missing: $required"

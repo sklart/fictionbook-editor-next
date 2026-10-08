@@ -92,6 +92,14 @@ foreach ($required in @('ThemeManager::ApplyToWindow(m_hWnd)', 'ThemeManager::Co
         throw "Настройка панели скриптов не использует dark-aware palette: $required"
     }
 }
+foreach ($required in @('ImageList_GetIconSize', 'const int leftPadding = Scale(8), iconGap = Scale(8), rightPadding = Scale(8);', 'int iconArea = Scale(20);', 'rect.top + (rect.Height() - iconHeight) / 2', 'itemHeight = Scale(28)', 'DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS', 'separator ? DT_CENTER : 0')) {
+    if ($dialogSource.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+        throw "Customize owner-draw DPI/layout contract is missing: $required"
+    }
+}
+if ($dialogSource.IndexOf('rect.top + (rect.Height() - Scale(16)) / 2', [StringComparison]::Ordinal) -ge 0) {
+    throw 'Customize owner-draw list must not vertically center icons with a fixed 16 px size.'
+}
 foreach ($required in @('const bool themed = ThemeManager::IsDark() && !ThemeManager::IsHighContrast()',
     'themed ? (selected ? ThemeManager::SelectionBackgroundColor() : ThemeManager::ControlColor())',
     'themed ? (disabled ? ThemeManager::DisabledTextColor()')) {
