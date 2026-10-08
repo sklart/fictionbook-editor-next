@@ -769,6 +769,9 @@
 		wchar_t openedPath[MAX_PATH] = {};
 		const DWORD openedLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SUCCESSFUL_OPEN_PATH", openedPath, _countof(openedPath));
 		FB::Doc* const original = m_doc;
+		// This scenario validates a successful open, not the Save prompt for
+		// the disposable startup document created by the test harness.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		const FILE_OP_STATUS result = openedLength && openedLength < _countof(openedPath) ? LoadFile(openedPath) : FAIL;
 		const bool opened = result == OK && m_doc != original && FB::Doc::m_active_doc == m_doc &&
 			m_document_session.Location().storagePath == openedPath && m_doc->m_filename == openedPath && m_doc->m_body.Document() != NULL;
