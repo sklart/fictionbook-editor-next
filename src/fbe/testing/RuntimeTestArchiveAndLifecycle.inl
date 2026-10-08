@@ -639,6 +639,11 @@
 		const DocumentLocation originalLocation = m_document_session.Location();
 		CString mruBefore;
 		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index) mruBefore.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[index].szDocName));
+		// This probe verifies that a failed open preserves the current document;
+		// it is not a Save-prompt scenario.  A freshly initialized MSHTML body
+		// may report a transient modification, which would otherwise block the
+		// unattended attempt before the missing path is evaluated.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		const FILE_OP_STATUS result = failedLength && failedLength < _countof(failedPath) ? LoadFile(failedPath) : FAIL;
 		CString mruAfter;
 		for (int index = 0; index < m_recentDocuments.List().m_arrDocs.GetSize(); ++index) mruAfter.AppendFormat(L"%d:%s\n", index, static_cast<LPCWSTR>(m_recentDocuments.List().m_arrDocs[index].szDocName));
