@@ -87,9 +87,10 @@ Assert-Contains $wordsDialog 'IDC_STATIC_WORDS_NEW_WORD,18,162,65,9' 'Words new-
 Assert-Contains $wordsDialog 'IDC_EDIT_NEW,86,160,130,14' 'Words input must follow its label on the same row.'
 Assert-Contains $wordsDialog 'IDC_BUTTON_ADD,222,160,60,14' 'Words Add button must share the new-word row.'
 Assert-Contains $wordsDialog 'IDC_CHECK_SELALL,"Button".*?,19,142,70,10' 'Words Select all checkbox must fit its localized caption.'
-Assert-Contains $hotkeysDialog 'IDD_HOTKEYS DIALOGEX 0, 0, 300, 275' 'Hotkeys page must use the Settings content width.'
+Assert-Contains $hotkeysDialog 'IDD_HOTKEYS DIALOGEX 0, 0, 300, 292' 'Hotkeys page must use the Settings content width and fit the export action.'
 Assert-Contains $hotkeysDialog 'IDC_LIST_HOTKEYS,99,21,194,88' 'Hotkeys command list must use the available page width.'
 Assert-Contains $hotkeysDialog 'IDC_KEYB_LAYOUT,92,245,194,30' 'Keyboard-layout combo must use the available page width.'
+Assert-Contains $hotkeysDialog 'IDC_BUTTON_HOTKEY_EXPORT,227,270,59,14' 'Hotkeys export action must remain inside the Settings content area.'
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {
     Assert-Contains $generalDialog $control "General control missing from IDD_SETTINGS_GENERAL: $control"
 }
