@@ -46,9 +46,10 @@ namespace
 		return true;
 	}
 
-	bool BuildButtons(const std::vector<PortableToolbarItem>& items, const std::vector<TBBUTTON>& catalog, UINT dpi, std::vector<TBBUTTON>& buttons)
+	bool BuildButtons(const std::vector<PortableToolbarItem>& items, const std::vector<TBBUTTON>& catalog, UINT dpi, std::vector<TBBUTTON>& buttons, int* missingCommand = NULL)
 	{
 		buttons.clear();
+		if(missingCommand != NULL) *missingCommand = 0;
 		for(size_t index = 0; index < items.size(); ++index)
 		{
 			const PortableToolbarItem& item = items[index];
@@ -65,7 +66,10 @@ namespace
 				if(catalog[buttonIndex].idCommand == item.command) { buttons.push_back(catalog[buttonIndex]); found = true; break; }
 			// Missing Script UIDs are deliberately retained in the persisted layout,
 			// but cannot be rendered until the script is available again.
-			if(!found && item.scriptUid.IsEmpty() && item.command != 0) return false;
+			if(!found && item.scriptUid.IsEmpty() && item.command != 0) {
+				if(missingCommand != NULL) *missingCommand = item.command;
+				return false;
+			}
 		}
 		return true;
 	}
@@ -124,8 +128,13 @@ bool ToolbarLayoutAdapter::Apply(HWND toolbar, const std::vector<PortableToolbar
 	}
 	const UINT dpi = UiMetrics::DpiForWindow(toolbar);
 	std::vector<TBBUTTON> target, original;
-	if(!BuildButtons(items, catalog, dpi, target) || !BuildButtons(previous, catalog, dpi, original)) {
-		StartupTrace::Error(L"toolbar", L"TB231", L"toolbar layout could not be materialized before apply");
+	int missingTargetCommand = 0, missingOriginalCommand = 0;
+	const bool targetBuilt = BuildButtons(items, catalog, dpi, target, &missingTargetCommand);
+	const bool originalBuilt = BuildButtons(previous, catalog, dpi, original, &missingOriginalCommand);
+	if(!targetBuilt || !originalBuilt) {
+		CString message;
+		message.Format(L"toolbar layout could not be materialized before apply; target-built=%d; original-built=%d; target-missing-command=%d; original-missing-command=%d", targetBuilt, originalBuilt, missingTargetCommand, missingOriginalCommand);
+		StartupTrace::Error(L"toolbar", L"TB231", message);
 		return false;
 	}
 	if(ReplaceChecked(toolbar, target, false)) return true;

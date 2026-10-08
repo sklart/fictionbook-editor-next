@@ -2452,12 +2452,18 @@ void CMainFrame::ShowScriptToolbarManagerDialog()
 bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current)
 {
 	PortableToolbarStore::Snapshot snapshot;
-	if(!PortableToolbarStore::CaptureSnapshot(snapshot)) return false;
+	if(!PortableToolbarStore::CaptureSnapshot(snapshot)) {
+		StartupTrace::Error(L"toolbar", L"TB240", L"script toolbar layout snapshot capture failed");
+		return false;
+	}
 	PortableToolbarLayout before; const bool hadPersistentState = PortableToolbarStore::Load(before);
 	const bool hadPersistedMainDefinition = hadPersistentState && before.scriptsToolbarPresent;
 	PortableToolbarLayout layout = before;
 	layout.scriptToolbars = current; layout.scriptsToolbarPresent = true;
-	if(!PortableToolbarStore::Save(layout)) return false;
+	if(!PortableToolbarStore::Save(layout)) {
+		StartupTrace::Error(L"toolbar", L"TB241", L"script toolbar layout save failed");
+		return false;
+	}
 	const ULONGLONG started = ::GetTickCount64();
 	if(ApplyScriptToolbarRuntimeDelta(previous, current))
 	{
@@ -2471,6 +2477,7 @@ bool CMainFrame::ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDe
 	const bool persistenceRestored = PortableToolbarStore::RestoreSnapshot(snapshot);
 	const bool runtimeRestored = ApplyScriptToolbarRuntimeDelta(current, previous);
 	if(!runtimeRestored) InitializeScriptsFromDefinitions(previous, hadPersistedMainDefinition);
+	StartupTrace::Error(L"toolbar", L"TB242", L"script toolbar runtime delta failed and was rolled back");
 	CString message; message.Format(L"script toolbar runtime delta rolled back in %llu ms", ::GetTickCount64() - started);
 	StartupTrace::Event(L"plugin", L"P105", message);
 	if(!persistenceRestored) StartupTrace::Event(L"plugin", L"P105", L"script toolbar persistence rollback failed; runtime restored from memory");
@@ -3020,7 +3027,22 @@ bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 		bool present = false;
 		for(int button = 0; button < catalog.GetSize(); ++button)
 			if(catalog[button].idCommand == static_cast<int>(command)) { present = true; break; }
-		if(!present) { AddTbButton(runtime.window, script.name, command, TBSTATE_ENABLED, m_scripts.Menu().VisualAt(index).icon); if(!GetAvailableButtons(runtime.window, catalog)) return false; }
+		if(!present)
+		{
+			const FbeScripts::VisualResource& visual = m_scripts.Menu().VisualAt(index);
+			if(visual.icon != NULL)
+				AddTbButton(runtime.window, script.name, command, TBSTATE_ENABLED, visual.icon);
+			else
+			{
+				TBBUTTON button = {};
+				button.iBitmap = I_IMAGENONE;
+				button.idCommand = command;
+				button.fsState = TBSTATE_ENABLED;
+				button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
+				if(!AddToolbarButton(runtime.window, button, script.name)) return false;
+			}
+			if(!GetAvailableButtons(runtime.window, catalog)) return false;
+		}
 	}
 	std::vector<PortableToolbarItem> items = runtime.definition.items;
 	for(size_t item = 0; item < items.size(); ++item)
