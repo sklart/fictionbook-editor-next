@@ -269,7 +269,9 @@ BOOL RegexQuickReferencePopup::PreTranslateMessage(MSG* message) {
         POINT point = { GET_X_LPARAM(message->lParam), GET_Y_LPARAM(message->lParam) };
         UpdateHoverSelection(message->hwnd, point);
         TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, message->hwnd, 0 }; ::TrackMouseEvent(&tracking);
-        return FALSE;
+        // Hover is fully handled above. Letting the native list box process
+        // the same move afterward can clear the selection on some desktops.
+        return TRUE;
     }
     if(message->message == WM_LBUTTONDOWN || message->message == WM_RBUTTONDOWN || message->message == WM_MBUTTONDOWN || message->message == WM_NCLBUTTONDOWN) {
         if(message->hwnd != m_hWnd && !::IsChild(m_hWnd, message->hwnd)) DestroyWindow();
