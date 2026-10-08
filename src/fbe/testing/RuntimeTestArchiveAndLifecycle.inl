@@ -785,6 +785,9 @@
 	if (IsFbeTestScenario(L"new-document-runtime"))
 	{
 		FB::Doc* const original = m_doc;
+		// New-document lifecycle is tested independently from the startup
+		// document's unsaved-changes prompt.
+		m_doc->MarkSavePoint(); m_source.SendMessage(SCI_SETSAVEPOINT);
 		BOOL handled = FALSE;
 		OnFileNew(0, ID_FILE_NEW, NULL, handled);
 		const bool created = m_doc != original && FB::Doc::m_active_doc == m_doc &&
