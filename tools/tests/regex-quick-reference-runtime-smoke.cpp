@@ -130,7 +130,11 @@ void DispatchSyntheticPointerMessage(RegexQuickReferencePopup& popup, CMessageLo
     input.lParam = MAKELPARAM(point.x, point.y);
     if (!popup.PreTranslateMessage(&input))
         ::SendMessage(target, message, 0, input.lParam);
-    DispatchUntilIdle(messageLoop);
+    // Hover selection is applied synchronously by the popup's message filter.
+    // Do not drain unrelated post-creation focus notifications here: on a
+    // headless desktop they can race this synthetic pointer assertion.
+    if (message != WM_MOUSEMOVE)
+        DispatchUntilIdle(messageLoop);
 }
 
 int FailCheckpoint(int checkpoint, const char* message)
