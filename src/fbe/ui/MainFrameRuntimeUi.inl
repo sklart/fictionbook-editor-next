@@ -55,13 +55,16 @@ LRESULT CMainFrame::OnRuntimeToolTipTextA(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 	}
 
 	const CString text = GetRuntimeToolbarToolTipText(static_cast<UINT>(idCtrl));
-	if (text.IsEmpty())
+	if (text.IsEmpty() && !IsScriptToolbarCommandId(static_cast<UINT>(idCtrl)))
 	{
 		bHandled = FALSE;
 		return 0;
 	}
 
-	::WideCharToMultiByte(CP_ACP, 0, text, -1, pDispInfo->szText, _countof(pDispInfo->szText), NULL, NULL);
+	m_runtimeToolbarToolTipA = CW2A(text, CP_ACP);
+	pDispInfo->szText[0] = '\0';
+	pDispInfo->lpszText = const_cast<LPSTR>(m_runtimeToolbarToolTipA.GetString());
+	bHandled = TRUE;
 	return 0;
 }
 
@@ -75,13 +78,16 @@ LRESULT CMainFrame::OnRuntimeToolTipTextW(int idCtrl, LPNMHDR pnmh, BOOL& bHandl
 	}
 
 	const CString text = GetRuntimeToolbarToolTipText(static_cast<UINT>(idCtrl));
-	if (text.IsEmpty())
+	if (text.IsEmpty() && !IsScriptToolbarCommandId(static_cast<UINT>(idCtrl)))
 	{
 		bHandled = FALSE;
 		return 0;
 	}
 
-	ATL::Checked::wcsncpy_s(pDispInfo->szText, _countof(pDispInfo->szText), text, _TRUNCATE);
+	m_runtimeToolbarToolTipW = text;
+	pDispInfo->szText[0] = L'\0';
+	pDispInfo->lpszText = const_cast<LPWSTR>(m_runtimeToolbarToolTipW.GetString());
+	bHandled = TRUE;
 	return 0;
 }
 

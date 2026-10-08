@@ -699,8 +699,24 @@ static LPCWSTR FindRuntimeMainFrameMenuCommandKey(UINT commandId)
 	return NULL;
 }
 
-static CString GetRuntimeToolbarToolTipText(UINT commandId)
+static bool IsScriptToolbarCommandId(UINT commandId)
 {
+	return commandId >= ID_SCRIPT_BASE && commandId <= ID_SCRIPT_BASE + FbeScripts::ScriptCommandCount;
+}
+
+CString CMainFrame::GetRuntimeToolbarToolTipText(UINT commandId) const
+{
+	if (IsScriptToolbarCommandId(commandId))
+	{
+		const int scriptCommandId = static_cast<int>(commandId - ID_SCRIPT_BASE);
+		for (int index = 0; index < m_scripts.Menu().Count(); ++index)
+		{
+			const ScriptDescriptor& script = m_scripts.Menu().Item(index);
+			if (!script.isFolder && script.commandId == scriptCommandId)
+				return script.name;
+		}
+		return CString();
+	}
 	for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
 		const TableToolbarCommand& command = kTableToolbarCommands[index];

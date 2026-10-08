@@ -1,3 +1,51 @@
+	if (IsFbeTestScenario(L"script-toolbar-tooltips-runtime"))
+	{
+		m_scripts.Menu().Clear();
+		ScriptDescriptor first = {};
+		first.name = L"Проверка сносок";
+		first.relativePath = L"portable.ini";
+		first.commandId = 1;
+		m_scripts.Menu().Add(first, FbeScripts::VisualResource());
+		ScriptDescriptor second = {};
+		second.name = L"Исправить кавычки";
+		second.relativePath = L"Scripts/test.js";
+		second.commandId = 2;
+		m_scripts.Menu().Add(second, FbeScripts::VisualResource());
+		ScriptDescriptor longScript = {};
+		for (int i = 0; i < 24; ++i) longScript.name += L"Длинное название скрипта ";
+		longScript.relativePath = L"portable.ini/another.js";
+		longScript.commandId = 3;
+		m_scripts.Menu().Add(longScript, FbeScripts::VisualResource());
+		bool unicode = true, ansi = true, noFallback = true, noPath = true;
+		const int commandIds[] = { 1, 2, 3, 4, 0, FbeScripts::ScriptCommandCount };
+		const CString expected[] = { first.name, second.name, longScript.name, CString(), CString(), CString() };
+		for (int i = 0; i < _countof(commandIds); ++i)
+		{
+			const int id = ID_SCRIPT_BASE + commandIds[i];
+			NMTTDISPINFOW wideInfo = {};
+			wideInfo.szText[0] = L'X';
+			BOOL wideHandled = FALSE;
+			OnRuntimeToolTipTextW(id, &wideInfo.hdr, wideHandled);
+			const CString wideText = wideInfo.lpszText ? CString(wideInfo.lpszText) : CString();
+			unicode = unicode && wideHandled && wideText == expected[i] && wideInfo.szText[0] == L'\0';
+			NMTTDISPINFOA ansiInfo = {};
+			ansiInfo.szText[0] = 'X';
+			BOOL ansiHandled = FALSE;
+			OnRuntimeToolTipTextA(id, &ansiInfo.hdr, ansiHandled);
+			const CStringA ansiText = ansiInfo.lpszText ? CStringA(ansiInfo.lpszText) : CStringA();
+			const CStringA expectedAnsi(CW2A(expected[i], CP_ACP));
+			ansi = ansi && ansiHandled && ansiText == expectedAnsi && ansiInfo.szText[0] == '\0';
+			noPath = noPath && wideText.Find(L"portable.ini") < 0 && wideText.Find(L"Scripts/") < 0 && ansiText.Find("portable.ini") < 0;
+			if (i >= 3) noFallback = noFallback && wideHandled && ansiHandled && wideText.IsEmpty() && ansiText.IsEmpty();
+		}
+		const bool longName = longScript.name.GetLength() > 80 && GetRuntimeToolbarToolTipText(ID_SCRIPT_BASE + 3) == longScript.name;
+		const bool passed = unicode && ansi && noFallback && noPath && longName;
+		CStringA report;
+		report.Format("unicode=%d\nansi=%d\nmissing=%d\nno-path=%d\nlong-name=%d\nresult=%s\n",
+			unicode, ansi, noFallback, noPath, longName, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"fb2-quality-checker-runtime"))
 	{
 		const bool dirtyBefore = m_doc && m_doc->DocChanged();

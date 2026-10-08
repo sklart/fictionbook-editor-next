@@ -258,6 +258,9 @@ public:
 	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);
 	void RefreshScriptToolbarViewMenu();
 	void InitScriptHotkey(ScriptDescriptor&);
+	CString GetRuntimeToolbarToolTipText(UINT commandId) const;
+	CString m_runtimeToolbarToolTipW;
+	CStringA m_runtimeToolbarToolTipA;
 
   // contruction/destruction
   CMainFrame() : m_doc(0), m_document_session(), m_last_tree_update(0), m_last_external_file_check(0), m_external_file_check_started(false), m_clipboard_listener_registered(false), m_clipboard_has_bitmap(false), m_last_clipboard_fallback_check(0), m_clipboard_fallback_check_started(false), m_ui_dirty(UiDirtyAll), m_last_sci_ovr(true), m_last_ie_ovr(true),
