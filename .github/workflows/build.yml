@@ -152,6 +152,11 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-script-toolbar-lifecycle-runtime.ps1 -FbeExe out/Release/FBE.exe -IncludeInstalled
+      - name: Run script toolbar tooltip runtime regression
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-script-toolbar-tooltips-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Run navigation scripts runtime regression
         shell: pwsh
         run: |

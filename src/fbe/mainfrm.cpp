@@ -3288,7 +3288,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 void CMainFrame::InitializeBundledPlugins()
 {
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-	m_plugins.Initialize(::GetSubMenu(file, 6), ::GetSubMenu(file, 7),
+	m_plugins.Initialize(::GetSubMenu(file, 7), ::GetSubMenu(file, 8),
 		[](const PluginDescriptor& plugin) { return FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu); },
 		[this](const PluginDescriptor& plugin, UINT command, const CString& menu) {
 			CString hotkeyText(menu); hotkeyText.Remove(L'&');
@@ -3303,7 +3303,7 @@ void CMainFrame::InitializeBundledPlugins()
 void CMainFrame::InitializeRecentDocumentsMenu()
 {
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-	HMENU sub = ::GetSubMenu(file, 9);
+	HMENU sub = ::GetSubMenu(file, 10);
 	m_recentDocuments.List().SetMenuHandle(sub);
 	RefreshMruEmptyStateText(m_recentDocuments.List());
 	m_recentDocuments.List().SetMaxEntries(m_recentDocuments.List().m_nMaxEntries_Max - 1);
