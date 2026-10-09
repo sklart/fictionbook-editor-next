@@ -215,15 +215,53 @@ bool ImageMimeMismatch(const CString& declared, const Base64Result& data)
 	return supported && normalized.CompareNoCase(detected) != 0;
 }
 
+CString RuleMessage(const wchar_t* code, const CString& fallback, const CString& parameter = CString())
+{
+	CString suffix(code);
+	if (suffix.Left(2) == L"Q-") suffix = suffix.Mid(2);
+	suffix.MakeLower();
+	CString key = L"fbe.quality.rule." + suffix;
+	const CString pattern = FbeLoadRuntimeStringByKey(key, fallback);
+	if (pattern.Find(L"%s") < 0) return pattern;
+	CString result;
+	result.Format(pattern, parameter.GetString());
+	return result;
+}
+
+Category CategoryForCode(const CString& code)
+{
+	if (code.Find(L"Q-LINK-") == 0) return Category::Links;
+	if (code.Find(L"Q-NOTE-") == 0) return Category::Notes;
+	if (code.Find(L"Q-IMAGE-") == 0 || code.Find(L"Q-BINARY-") == 0) return Category::Images;
+	if (code.Find(L"Q-STRUCTURE-") == 0) return Category::Structure;
+	if (code.Find(L"Q-METADATA-") == 0) return Category::Metadata;
+	return Category::Xml;
+}
+
+void FillIssueHelp(Issue& issue)
+{
+	const wchar_t* suffix = L"xml";
+	const wchar_t* detail = L"The XML document could not be analyzed reliably.";
+	const wchar_t* action = L"Correct the XML syntax and run the check again.";
+	switch (issue.category) {
+	case Category::Links: suffix = L"links"; detail = L"An internal reference is missing, invalid, or ambiguous."; action = L"Use a unique existing target ID in the link."; break;
+	case Category::Notes: suffix = L"notes"; detail = L"A note reference or the links between notes need attention."; action = L"Point to a note section and remove circular note references."; break;
+	case Category::Images: suffix = L"images"; detail = L"The referenced image data or its declaration needs attention."; action = L"Check the binary ID, Base64 data, and content-type."; break;
+	case Category::Structure: suffix = L"structure"; detail = L"A structural element is missing or has no meaningful content."; action = L"Add the required element or meaningful content."; break;
+	case Category::Metadata: suffix = L"metadata"; detail = L"A book metadata field is missing or has a suspicious value."; action = L"Review title-info and correct the named field."; break;
+	default: break;
+	}
+	issue.details = FbeLoadRuntimeStringByKey(CString(L"fbe.quality.detail.") + suffix, detail);
+	issue.recommendation = FbeLoadRuntimeStringByKey(CString(L"fbe.quality.action.") + suffix, action);
+}
+
 void Add(Report& report, Severity severity, const CString& message, const wchar_t* code)
 {
 	Issue issue = { severity, message };
 	issue.code = code;
-	if (issue.code.Find(L"Q-LINK-") == 0) issue.category = Category::Links;
-	else if (issue.code.Find(L"Q-NOTE-") == 0) issue.category = Category::Notes;
-	else if (issue.code.Find(L"Q-IMAGE-") == 0 || issue.code.Find(L"Q-BINARY-") == 0) issue.category = Category::Images;
-	else if (issue.code.Find(L"Q-STRUCTURE-") == 0) issue.category = Category::Structure;
-	else if (issue.code.Find(L"Q-METADATA-") == 0) issue.category = Category::Metadata;
+	if (issue.code != L"Q-XML-PARSE") issue.message = RuleMessage(code, message);
+	issue.category = CategoryForCode(issue.code);
+	FillIssueHelp(issue);
 	report.issues.push_back(issue);
 }
 
@@ -341,11 +379,9 @@ struct Scan {
 	{
 		Issue issue = { severity, message };
 		issue.code = code;
-		if (issue.code.Find(L"Q-LINK-") == 0) issue.category = Category::Links;
-		else if (issue.code.Find(L"Q-NOTE-") == 0) issue.category = Category::Notes;
-		else if (issue.code.Find(L"Q-IMAGE-") == 0 || issue.code.Find(L"Q-BINARY-") == 0) issue.category = Category::Images;
-		else if (issue.code.Find(L"Q-STRUCTURE-") == 0) issue.category = Category::Structure;
-		else if (issue.code.Find(L"Q-METADATA-") == 0) issue.category = Category::Metadata;
+		issue.message = RuleMessage(code, message, attributeValue);
+		issue.category = CategoryForCode(issue.code);
+		FillIssueHelp(issue);
 		issue.elementPath = path;
 		issue.attributeName = attributeName;
 		issue.attributeValue = attributeValue;
@@ -385,7 +421,7 @@ struct Scan {
 				if (!ids.insert(std::wstring(id.GetString())).second) {
 					duplicateIds.insert(std::wstring(id.GetString()));
 					if (name != L"binary" || binaries.find(std::wstring(id.GetString())) == binaries.end()) {
-						CString message; message.Format(L"Повторяется идентификатор %s", id.GetString());
+						CString message; message.Format(L"Duplicate identifier %s", id.GetString());
 						AddAt(Severity::Error, L"Q-LINK-DUPLICATE-ID", message, path, L"id", id);
 					}
 				}
@@ -407,12 +443,12 @@ struct Scan {
 				if (name == L"book-title") {
 					bookTitle = true;
 					if (report.title.IsEmpty()) report.title = content;
-					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Не указано название книги", path);
+					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Book title is missing", path);
 				}
 				if (name == L"lang") {
 					language = true;
-					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Не указан язык документа", path);
-					else if (!PlausibleLanguageCode(content)) AddAt(Severity::Warning, L"Q-METADATA-INVALID-LANG", L"Подозрительный код языка документа", path);
+					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Document language is missing", path);
+					else if (!PlausibleLanguageCode(content)) AddAt(Severity::Warning, L"Q-METADATA-INVALID-LANG", L"Suspicious document language code", path);
 				}
 			}
 			if (inTitleInfo && name == L"author") {
@@ -428,34 +464,34 @@ struct Scan {
 					value.Trim();
 					if (!value.IsEmpty()) { named = true; break; }
 				}
-				if (!named) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-AUTHOR", L"Пустые сведения об авторе", path);
+				if (!named) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-AUTHOR", L"Author information is empty", path);
 			}
 			if (inTitleInfo && name == L"sequence") {
 				CString sequenceName = Attribute(node, L"name");
 				sequenceName.Trim();
-				if (sequenceName.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-SEQUENCE", L"Не указано название серии", path, L"name");
+				if (sequenceName.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-SEQUENCE", L"Series name is missing", path, L"name");
 				MSXML2::IXMLDOMElementPtr element(node);
 				if (element->getAttributeNode(L"number")) {
 					const CString number = Attribute(node, L"number");
-					if (!IntegerSyntax(number)) AddAt(Severity::Warning, L"Q-METADATA-SEQUENCE-NUMBER", L"Некорректный номер серии", path, L"number", number);
+					if (!IntegerSyntax(number)) AddAt(Severity::Warning, L"Q-METADATA-SEQUENCE-NUMBER", L"Invalid series number", path, L"number", number);
 				}
 			}
 			if (name == L"binary") {
-				if (id.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-ID", L"У binary не указан id", path, L"id");
+				if (id.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-ID", L"Binary has no ID", path, L"id");
 				else {
 					if (!binaries.insert(std::wstring(id.GetString())).second)
-						AddAt(Severity::Error, L"Q-BINARY-DUPLICATE-ID", L"Повторяется binary id " + id, path, L"id", id);
+						AddAt(Severity::Error, L"Q-BINARY-DUPLICATE-ID", L"Duplicate binary ID " + id, path, L"id", id);
 					binaryPaths.emplace(std::wstring(id.GetString()), path);
 				}
 				const CString contentType = Attribute(node, L"content-type");
-				if (contentType.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-MIME", L"У binary не указан content-type", path, L"content-type");
+				if (contentType.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-MIME", L"Binary has no content-type", path, L"content-type");
 				else if (contentType.Find(L'/') <= 0 || contentType.Right(1) == L"/")
-					AddAt(Severity::Error, L"Q-BINARY-INVALID-MIME", L"Некорректный content-type у binary", path, L"content-type", contentType);
+					AddAt(Severity::Error, L"Q-BINARY-INVALID-MIME", L"Invalid binary content-type", path, L"content-type", contentType);
 				const Base64Result base64 = CheckBase64(node);
-				if (!base64.hasData) AddAt(Severity::Error, L"Q-BINARY-EMPTY", L"Пустое содержимое binary", path);
-				else if (!base64.valid) AddAt(Severity::Error, L"Q-BINARY-INVALID-BASE64", L"Некорректные данные Base64 в binary", path);
+				if (!base64.hasData) AddAt(Severity::Error, L"Q-BINARY-EMPTY", L"Binary content is empty", path);
+				else if (!base64.valid) AddAt(Severity::Error, L"Q-BINARY-INVALID-BASE64", L"Invalid Base64 data in binary", path);
 				else if (ImageMimeMismatch(contentType, base64))
-					AddAt(Severity::Error, L"Q-BINARY-MIME-MISMATCH", L"Формат данных binary не соответствует content-type", path, L"content-type", contentType);
+					AddAt(Severity::Error, L"Q-BINARY-MIME-MISMATCH", L"Binary format does not match content-type", path, L"content-type", contentType);
 			}
 			if (name == L"a" || name == L"image") {
 				const HrefAttribute href = XLinkHref(node);
@@ -465,22 +501,22 @@ struct Scan {
 						links.push_back({ href.value.Mid(1), href.value, href.name, sourceNoteId, path, note, name == L"image" });
 						if (name == L"image") usedBinaries.insert(std::wstring(href.value.Mid(1).GetString()));
 					} else AddAt(Severity::Error, name == L"image" ? L"Q-IMAGE-INVALID-HREF" : L"Q-LINK-INVALID-HREF",
-						L"Некорректная внутренняя ссылка", path, href.name, href.value);
+						L"Invalid internal link", path, href.name, href.value);
 				} else if (name == L"image")
-					AddAt(Severity::Error, L"Q-IMAGE-NONLOCAL", L"У изображения отсутствует внутренняя ссылка на binary", path, href.name, href.value);
+					AddAt(Severity::Error, L"Q-IMAGE-NONLOCAL", L"Image must link to an internal binary", path, href.name, href.value);
 				else if (note)
-					AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Ссылка на примечание должна быть внутренней", path, href.name, href.value);
+					AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Note link must be internal", path, href.name, href.value);
 			}
 			if ((name == L"p" || name == L"subtitle" || name == L"title" || name == L"cite") && !MeaningfulContent(node)) {
 				const CString parentName = node->parentNode ? Name(node->parentNode) : CString();
 				if (name != L"p" || (parentName != L"title" && parentName != L"cite")) {
 					const wchar_t* code = name == L"p" ? L"Q-STRUCTURE-EMPTY-P" : name == L"subtitle" ? L"Q-STRUCTURE-EMPTY-SUBTITLE" :
 						name == L"title" ? L"Q-STRUCTURE-EMPTY-TITLE" : L"Q-STRUCTURE-EMPTY-CITE";
-					AddAt(Severity::Warning, code, L"Подозрительный пустой элемент " + name, path);
+					AddAt(Severity::Warning, code, L"Suspicious empty element " + name, path);
 				}
 			}
 			if (name == L"section" && !HasDirectChild(node, L"section") && !MeaningfulContent(node))
-				AddAt(Severity::Warning, L"Q-STRUCTURE-EMPTY-SECTION", L"Пустой раздел section", path);
+				AddAt(Severity::Warning, L"Q-STRUCTURE-EMPTY-SECTION", L"Empty section", path);
 			MSXML2::IXMLDOMNodeListPtr children = node->childNodes;
 			int elementIndex = 0;
 			for (long i = 0; i < children->length; ++i) {
@@ -554,43 +590,43 @@ struct Scan {
 			const auto target = positions.find(std::wstring(link.href.GetString()));
 			if (source == positions.end() || target == positions.end()) continue;
 			if (source->second == target->second)
-				AddAt(Severity::Warning, L"Q-NOTE-SELF-REFERENCE", L"Примечание ссылается на себя", link.path, link.attributeName, link.sourceValue);
+				AddAt(Severity::Warning, L"Q-NOTE-SELF-REFERENCE", L"Note refers to itself", link.path, link.attributeName, link.sourceValue);
 			else if (component[source->second] == component[target->second] && sizes[component[source->second]] > 1)
-				AddAt(Severity::Warning, L"Q-NOTE-CYCLE", L"Цикл ссылок между примечаниями", link.path, link.attributeName, link.sourceValue);
+				AddAt(Severity::Warning, L"Q-NOTE-CYCLE", L"Cycle between notes", link.path, link.attributeName, link.sourceValue);
 		}
 	}
 
 	Report Finish()
 	{
 		const std::vector<int> rootPath{ 0 };
-		if (!description) AddAt(Severity::Error, L"Q-STRUCTURE-DESCRIPTION", L"Отсутствует description", rootPath);
-		if (!body) AddAt(Severity::Error, L"Q-STRUCTURE-BODY", L"Отсутствует body", rootPath);
-		else if (!bodySection) AddAt(Severity::Error, L"Q-STRUCTURE-BODY-SECTION", L"В основном body нет разделов section", bodyPath.empty() ? rootPath : bodyPath);
-		if (!titleInfo) AddAt(Severity::Error, L"Q-METADATA-TITLE-INFO", L"Отсутствует title-info", descriptionPath.empty() ? rootPath : descriptionPath);
+		if (!description) AddAt(Severity::Error, L"Q-STRUCTURE-DESCRIPTION", L"Missing description element", rootPath);
+		if (!body) AddAt(Severity::Error, L"Q-STRUCTURE-BODY", L"Missing body element", rootPath);
+		else if (!bodySection) AddAt(Severity::Error, L"Q-STRUCTURE-BODY-SECTION", L"Main body has no section", bodyPath.empty() ? rootPath : bodyPath);
+		if (!titleInfo) AddAt(Severity::Error, L"Q-METADATA-TITLE-INFO", L"Missing title-info", descriptionPath.empty() ? rootPath : descriptionPath);
 		const std::vector<int>& metadataPath = titleInfoPath.empty() ? (descriptionPath.empty() ? rootPath : descriptionPath) : titleInfoPath;
-		if (!bookTitle) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Не указано название книги", metadataPath);
-		if (!language) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Не указан язык документа", metadataPath);
-		if (!author) AddAt(Severity::Warning, L"Q-METADATA-AUTHOR", L"Не указан автор", metadataPath);
+		if (!bookTitle) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Book title is missing", metadataPath);
+		if (!language) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Document language is missing", metadataPath);
+		if (!author) AddAt(Severity::Warning, L"Q-METADATA-AUTHOR", L"Author is missing", metadataPath);
 		for (const Link& link : links) {
 			const std::wstring target(link.href.GetString());
 			if (link.note && noteIds.find(target) == noteIds.end()) {
 				const bool missing = ids.find(target) == ids.end();
 				CString message;
-				message.Format(missing ? L"Ссылка на примечание #%s не найдена" : L"Ссылка на примечание #%s ведёт не в раздел примечаний",
+				message.Format(missing ? L"Note target #%s was not found" : L"Note link #%s points outside a notes section",
 					link.href.GetString());
 				AddAt(Severity::Error, missing ? L"Q-NOTE-MISSING" : L"Q-NOTE-WRONG-TARGET",
 					message, link.path, link.attributeName, link.sourceValue);
 			} else if (!link.image && ids.find(target) == ids.end()) {
-				CString message; message.Format(L"Ссылка #%s не найдена", link.href.GetString());
+				CString message; message.Format(L"Link target #%s was not found", link.href.GetString());
 				AddAt(Severity::Error, L"Q-LINK-MISSING", message, link.path, link.attributeName, link.sourceValue);
 			} else if (link.image && binaries.find(target) == binaries.end()) {
-				CString message; message.Format(L"Binary %s отсутствует", link.href.GetString());
+				CString message; message.Format(L"Image binary #%s is missing", link.href.GetString());
 				AddAt(Severity::Error, L"Q-IMAGE-MISSING-BINARY", message, link.path, link.attributeName, link.sourceValue);
 			}
 		}
 		AddNoteCycles();
 		for (const std::wstring& id : binaries) if (usedBinaries.find(id) == usedBinaries.end()) {
-			CString message; message.Format(L"Binary %s не используется", id.c_str());
+			CString message; message.Format(L"Binary %s is not used", id.c_str());
 			AddAt(Severity::Warning, L"Q-BINARY-UNUSED", message, binaryPaths[id], L"id", id.c_str());
 		}
 		if (!index.valid) for (Issue& issue : report.issues) issue.start = issue.end = -1;
@@ -611,6 +647,13 @@ CString IssueCategoryText(const Issue& issue)
 	default: break;
 	}
 	return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
+CString IssueSeverityText(Severity severity)
+{
+	if (severity == Severity::Error) return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.error", L"Error");
+	if (severity == Severity::Warning) return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.warning", L"Warning");
+	return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.info", L"Information");
 }
 
 bool SaveUtf8Report(const CString& path, const CString& content, bool bom, DWORD& error)
@@ -710,9 +753,7 @@ private:
 		}
 	}
 	static CString SeverityText(Severity severity) {
-		if (severity == Severity::Error) return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.error", L"Error");
-		if (severity == Severity::Warning) return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.warning", L"Warning");
-		return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.info", L"Information");
+		return IssueSeverityText(severity);
 	}
 	static CString CategoryText(const Issue& issue) {
 		return IssueCategoryText(issue);
@@ -915,14 +956,15 @@ Report Check(const CString& xml)
 		checked.wDay, checked.wHour, checked.wMinute, checked.wSecond);
 	try {
 	MSXML2::IXMLDOMDocument2Ptr document;
-	if (FAILED(document.CreateInstance(L"Msxml2.DOMDocument.6.0"))) { Add(report, Severity::Error, L"Не удалось создать XML-анализатор.", L"Q-XML-ANALYZER"); return report; }
+	if (FAILED(document.CreateInstance(L"Msxml2.DOMDocument.6.0"))) { Add(report, Severity::Error, L"Unable to create XML analyzer", L"Q-XML-ANALYZER"); return report; }
 	document->async = VARIANT_FALSE;
 	document->validateOnParse = VARIANT_FALSE;
 	document->resolveExternals = VARIANT_FALSE;
 	document->setProperty(L"ProhibitDTD", _variant_t(VARIANT_TRUE));
 	if (document->loadXML(_bstr_t(xml)) == VARIANT_FALSE) {
 		MSXML2::IXMLDOMParseErrorPtr error = document->parseError;
-		CString message; message.Format(L"Некорректный XML, строка %ld: %s", error->line, static_cast<const wchar_t*>(_bstr_t(error->reason)));
+		CString message; message.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.rule.xml-parse", L"Invalid XML at line %ld: %s"),
+			error->line, static_cast<const wchar_t*>(_bstr_t(error->reason)));
 		Add(report, Severity::Error, message, L"Q-XML-PARSE");
 		Issue& issue = report.issues.back();
 		int line = 1;
@@ -940,9 +982,9 @@ Report Check(const CString& xml)
 		return report;
 	}
 	Node root = document->documentElement;
-	if (!root || Name(root) != L"FictionBook") { Add(report, Severity::Error, L"Корневой элемент должен быть FictionBook.", L"Q-XML-ROOT"); return report; }
+	if (!root || Name(root) != L"FictionBook") { Add(report, Severity::Error, L"Root element must be FictionBook", L"Q-XML-ROOT"); return report; }
 	if (CString(static_cast<const wchar_t*>(_bstr_t(root->namespaceURI))) != L"http://www.gribuser.ru/xml/fictionbook/2.0")
-		Add(report, Severity::Error, L"Неверное пространство имён FictionBook.", L"Q-XML-NAMESPACE");
+		Add(report, Severity::Error, L"Incorrect FictionBook namespace", L"Q-XML-NAMESPACE");
 	Scan scan(xml); scan.Visit(root, false, false, { 0 });
 	Report findings = scan.Finish();
 	report.issues.insert(report.issues.end(), findings.issues.begin(), findings.issues.end());
@@ -950,7 +992,7 @@ Report Check(const CString& xml)
 	PopulateLocations(report, xml);
 	return report;
 	} catch (const _com_error&) {
-		Add(report, Severity::Error, L"Не удалось завершить анализ XML.", L"Q-XML-ANALYSIS");
+		Add(report, Severity::Error, L"Unable to complete XML analysis", L"Q-XML-ANALYSIS");
 		return report;
 	}
 }
@@ -965,7 +1007,7 @@ CString FormatReport(const Report& report)
 		report.ErrorCount(), report.WarningCount(), report.InfoCount());
 	text += summary + L"\r\n\r\n";
 	for (const Issue& issue : report.issues) {
-		text += L"[" + issue.code + L"] [" + IssueCategoryText(issue) + L"] " + issue.message;
+		text += L"[" + IssueSeverityText(issue.severity) + L"] [" + issue.code + L"] [" + IssueCategoryText(issue) + L"] " + issue.message;
 		if (issue.line > 0) { CString location; location.Format(L" (%d:%d)", issue.line, issue.column); text += location; }
 		text += L"\r\n";
 		if (!issue.details.IsEmpty()) text += issue.details + L"\r\n";
@@ -1013,10 +1055,7 @@ CString FormatHtmlReport(const Report& report)
 		html += L"</tr></thead><tbody>";
 		for (const Issue& issue : report.issues) {
 			if (issue.category != category) continue;
-			const wchar_t* severityKey = issue.severity == Severity::Error ? L"fbe.quality.severity.error" :
-				issue.severity == Severity::Warning ? L"fbe.quality.severity.warning" : L"fbe.quality.severity.info";
-			const wchar_t* severityFallback = issue.severity == Severity::Error ? L"Error" : issue.severity == Severity::Warning ? L"Warning" : L"Information";
-			html += L"<tr><td>" + escape(FbeLoadRuntimeStringByKey(severityKey, severityFallback)) + L"</td><td>" + escape(issue.code) + L"</td><td>" + escape(issue.message);
+			html += L"<tr><td>" + escape(IssueSeverityText(issue.severity)) + L"</td><td>" + escape(issue.code) + L"</td><td>" + escape(issue.message);
 			if (!issue.details.IsEmpty()) html += L"<p>" + escape(issue.details) + L"</p>";
 			if (!issue.recommendation.IsEmpty()) html += L"<p>" + escape(issue.recommendation) + L"</p>";
 			CString location; if (issue.line > 0) location.Format(L"%d:%d", issue.line, issue.column);
