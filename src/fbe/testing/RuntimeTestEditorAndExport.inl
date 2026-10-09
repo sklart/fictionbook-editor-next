@@ -97,7 +97,8 @@
 			for (const auto& issue : result.issues) if (issue.code == code) return true;
 			return false;
 		};
-		const bool dialogLayout = Fb2Quality::ProbeResultsDialogLayout(m_hWnd, result);
+		CString dialogProbe;
+		const bool dialogLayout = Fb2Quality::ProbeResultsDialogLayout(m_hWnd, result, &dialogProbe);
 		Fb2Quality::Report exportProbe(result);
 		exportProbe.title = L"<Demo & Co>";
 		const CString exportText = Fb2Quality::FormatReport(exportProbe);
@@ -271,12 +272,13 @@
 		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument &&
 			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && dialogLayout && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
 			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, largeDocument, largeMs,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
-			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, dialogLayout, diagnosticPresentation, passed ? "pass" : "fail");
+			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, dialogLayout,
+			static_cast<LPCWSTR>(dialogProbe), diagnosticPresentation, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

@@ -1085,11 +1085,11 @@ int ShowReport(HWND parent, const Report& report)
 	return dialog.selected;
 }
 
-bool ProbeResultsDialogLayout(HWND parent, const Report& report)
+bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagnostics)
 {
 	ResultsDialog dialog(report);
 	HWND window = dialog.Create(parent);
-	if (!window) return false;
+	if (!window) { if (diagnostics) *diagnostics = L"dialog-create-failed"; return false; }
 	const HWND list = ::GetDlgItem(window, IDC_FB2_QUALITY_LIST);
 	const HWND details = ::GetDlgItem(window, IDC_FB2_QUALITY_DETAILS);
 	const HWND button = ::GetDlgItem(window, IDC_FB2_QUALITY_SAVE);
@@ -1105,10 +1105,12 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report)
 	::GetWindowRect(details, &afterDetails);
 	::GetWindowRect(button, &afterButton);
 	const HWND header = reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0));
-	const bool geometry = afterList.right - afterList.left >= beforeList.right - beforeList.left + 100 &&
-		afterList.bottom - afterList.top >= beforeList.bottom - beforeList.top + 70 &&
-		afterDetails.top > afterList.bottom && afterButton.top > afterDetails.bottom &&
-		afterButton.top >= beforeButton.top + 70 && header && ::SendMessageW(header, HDM_GETITEMCOUNT, 0, 0) == 5;
+	const bool widthGrew = afterList.right - afterList.left >= beforeList.right - beforeList.left + 100;
+	const bool heightGrew = afterList.bottom - afterList.top >= beforeList.bottom - beforeList.top + 70;
+	const bool separated = afterDetails.top > afterList.bottom && afterButton.top > afterDetails.bottom;
+	const bool buttonMoved = afterButton.top >= beforeButton.top + 70;
+	const int columns = header ? static_cast<int>(::SendMessageW(header, HDM_GETITEMCOUNT, 0, 0)) : -1;
+	const bool geometry = widthGrew && heightGrew && separated && buttonMoved && columns == 5;
 	NMLISTVIEW click = {};
 	click.hdr.hwndFrom = list;
 	click.hdr.idFrom = IDC_FB2_QUALITY_LIST;
@@ -1123,6 +1125,8 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report)
 	const bool sortedReverse = ::SendMessageW(list, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&first)) != 0 &&
 		static_cast<size_t>(first.lParam) < report.issues.size() && report.issues[first.lParam].severity == Severity::Warning;
 	dialog.DestroyWindow();
+	if (diagnostics) diagnostics->Format(L"width=%d height=%d separated=%d button=%d columns=%d ascending=%d descending=%d",
+		widthGrew, heightGrew, separated, buttonMoved, columns, sortedFirst, sortedReverse);
 	return geometry && sortedFirst && sortedReverse;
 }
 

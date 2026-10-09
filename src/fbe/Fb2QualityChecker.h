@@ -34,6 +34,6 @@ Report Check(const CString& xml);
 CString FormatReport(const Report& report);
 CString FormatHtmlReport(const Report& report);
 int ShowReport(HWND parent, const Report& report);
-bool ProbeResultsDialogLayout(HWND parent, const Report& report);
+bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagnostics = nullptr);
 bool ResolveSourceRange(const Issue& issue, const CString& currentSource, SourceRange& range);
 }
