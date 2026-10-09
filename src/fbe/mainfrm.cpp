@@ -6315,7 +6315,8 @@ LRESULT CMainFrame::OnFileQualityCheck(WORD, WORD, HWND, BOOL&)
 		::MessageBoxW(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"), MB_ICONERROR);
 		return 0;
 	}
-	const Fb2Quality::Report report = Fb2Quality::Check(snapshot);
+	Fb2Quality::Report report;
+	if (!Fb2Quality::AnalyzeWithProgress(m_hWnd, snapshot, report)) return 0;
 	const int selectedIssue = Fb2Quality::ShowReport(m_hWnd, report);
 	if (selectedIssue >= 0 && static_cast<size_t>(selectedIssue) < report.issues.size()) {
 		ShowView(SOURCE);

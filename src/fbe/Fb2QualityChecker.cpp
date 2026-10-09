@@ -2,6 +2,7 @@
 #include "Fb2QualityChecker.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
+#include "ThemeManager.h"
 #include "UiMetrics.h"
 #include "utils/utils.h"
 #include "../version.h"
@@ -10,11 +11,19 @@
 #include <map>
 #include <set>
 #include <string>
+#include <thread>
 #include <utility>
 
 namespace Fb2Quality {
 namespace {
 using Node = MSXML2::IXMLDOMNodePtr;
+
+struct AnalysisCancelled {};
+
+void CheckCancellation(const std::atomic_bool* requested)
+{
+	if (requested && requested->load(std::memory_order_relaxed)) throw AnalysisCancelled();
+}
 
 CString Name(const Node& node)
 {
@@ -151,7 +160,7 @@ CString DetectImageMime(const Base64Result& data)
 	return CString();
 }
 
-Base64Result CheckBase64(const Node& binary)
+Base64Result CheckBase64(const Node& binary, const std::atomic_bool* cancelRequested)
 {
 	Base64Result result;
 	int quartet = 0;
@@ -166,6 +175,7 @@ Base64Result CheckBase64(const Node& binary)
 		MSXML2::IXMLDOMCharacterDataPtr characters(child);
 		const long length = characters->length;
 		for (long offset = 0; offset < length; offset += 4096) {
+			CheckCancellation(cancelRequested);
 			const long count = length - offset < 4096 ? length - offset : 4096;
 			const _bstr_t chunk = characters->substringData(offset, count);
 			const wchar_t* text = static_cast<const wchar_t*>(chunk);
@@ -265,10 +275,13 @@ void Add(Report& report, Severity severity, const CString& message, const wchar_
 	report.issues.push_back(issue);
 }
 
-void PopulateLocations(Report& report, const CString& xml)
+void PopulateLocations(Report& report, const CString& xml, const std::atomic_bool* cancelRequested = nullptr)
 {
 	std::vector<int> starts{ 0 };
-	for (int i = 0; i < xml.GetLength(); ++i) if (xml[i] == L'\n') starts.push_back(i + 1);
+	for (int i = 0; i < xml.GetLength(); ++i) {
+		if ((i & 4095) == 0) CheckCancellation(cancelRequested);
+		if (xml[i] == L'\n') starts.push_back(i + 1);
+	}
 	for (Issue& issue : report.issues) {
 		if (issue.start < 0 || issue.start >= xml.GetLength()) continue;
 		const auto line = std::upper_bound(starts.begin(), starts.end(), issue.start);
@@ -284,15 +297,17 @@ struct SourceIndexer {
 	struct AttributeSpan { CString name; int start; int end; };
 	struct TagSpan { int start = -1; int end = -1; std::vector<AttributeSpan> attributes; };
 	const CString& xml;
+	const std::atomic_bool* cancelRequested;
 	int cursor = 0;
 	bool valid = true;
-	explicit SourceIndexer(const CString& source) : xml(source) {}
+	explicit SourceIndexer(const CString& source, const std::atomic_bool* requested) : xml(source), cancelRequested(requested) {}
 
 	bool Next(const CString& expectedName, TagSpan& span)
 	{
 		if (!valid) return false;
 		const int length = xml.GetLength();
 		while (cursor < length) {
+			CheckCancellation(cancelRequested);
 			const int open = xml.Find(L'<', cursor);
 			if (open < 0 || open + 1 >= length) break;
 			const wchar_t kind = xml[open + 1];
@@ -353,6 +368,7 @@ struct SourceIndexer {
 struct Scan {
 	Report report;
 	SourceIndexer index;
+	const std::atomic_bool* cancelRequested;
 	std::map<std::vector<int>, SourceIndexer::TagSpan> spans;
 	std::set<std::wstring> ids;
 	std::set<std::wstring> duplicateIds;
@@ -372,7 +388,7 @@ struct Scan {
 	std::vector<int> descriptionPath;
 	std::vector<int> bodyPath;
 	std::vector<int> titleInfoPath;
-	explicit Scan(const CString& xml) : index(xml) {}
+	explicit Scan(const CString& xml, const std::atomic_bool* requested) : index(xml, requested), cancelRequested(requested) {}
 
 	void AddAt(Severity severity, const wchar_t* code, const CString& message,
 		const std::vector<int>& path, const CString& attributeName = CString(), const CString& attributeValue = CString(),
@@ -406,6 +422,7 @@ struct Scan {
 		std::vector<Frame> pending;
 		pending.push_back({ root, initialNotes, initialTitleInfo, false, CString(), rootPath });
 		while (!pending.empty()) {
+			CheckCancellation(cancelRequested);
 			Frame frame(std::move(pending.back()));
 			pending.pop_back();
 			const Node& node = frame.node;
@@ -498,7 +515,7 @@ struct Scan {
 				if (contentType.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-MIME", L"Binary has no content-type", path, L"content-type");
 				else if (contentType.Find(L'/') <= 0 || contentType.Right(1) == L"/")
 					AddAt(Severity::Error, L"Q-BINARY-INVALID-MIME", L"Invalid binary content-type", path, L"content-type", contentType);
-				const Base64Result base64 = CheckBase64(node);
+				const Base64Result base64 = CheckBase64(node, cancelRequested);
 				if (!base64.hasData) AddAt(Severity::Error, L"Q-BINARY-EMPTY", L"Binary content is empty", path);
 				else if (!base64.valid) AddAt(Severity::Error, L"Q-BINARY-INVALID-BASE64", L"Invalid Base64 data in binary", path);
 				else if (ImageMimeMismatch(contentType, base64))
@@ -546,6 +563,7 @@ struct Scan {
 
 	void AddNoteCycles()
 	{
+		CheckCancellation(cancelRequested);
 		std::map<std::wstring, int> positions;
 		for (const std::wstring& id : noteIds) {
 			if (duplicateIds.find(id) == duplicateIds.end())
@@ -564,6 +582,7 @@ struct Scan {
 		std::vector<bool> visited(count, false);
 		std::vector<int> order;
 		for (size_t i = 0; i < count; ++i) {
+			CheckCancellation(cancelRequested);
 			if (visited[i]) continue;
 			std::vector<std::pair<int, bool>> pending{ { static_cast<int>(i), false } };
 			while (!pending.empty()) {
@@ -578,6 +597,7 @@ struct Scan {
 		}
 		std::vector<int> component(count, -1), sizes;
 		for (auto it = order.rbegin(); it != order.rend(); ++it) {
+			CheckCancellation(cancelRequested);
 			if (component[*it] >= 0) continue;
 			const int group = static_cast<int>(sizes.size());
 			int size = 0;
@@ -608,6 +628,7 @@ struct Scan {
 
 	Report Finish()
 	{
+		CheckCancellation(cancelRequested);
 		const std::vector<int> rootPath{ 0 };
 		if (!description) AddAt(Severity::Error, L"Q-STRUCTURE-DESCRIPTION", L"Missing description element", rootPath);
 		if (!body) AddAt(Severity::Error, L"Q-STRUCTURE-BODY", L"Missing body element", rootPath);
@@ -618,6 +639,7 @@ struct Scan {
 		if (!language) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Document language is missing", metadataPath);
 		if (!author) AddAt(Severity::Warning, L"Q-METADATA-AUTHOR", L"Author is missing", metadataPath);
 		for (const Link& link : links) {
+			CheckCancellation(cancelRequested);
 			const std::wstring target(link.href.GetString());
 			if (link.note && noteIds.find(target) == noteIds.end()) {
 				const bool missing = ids.find(target) == ids.end();
@@ -636,6 +658,7 @@ struct Scan {
 		}
 		AddNoteCycles();
 		for (const std::wstring& id : binaries) if (usedBinaries.find(id) == usedBinaries.end()) {
+			CheckCancellation(cancelRequested);
 			CString message; message.Format(L"Binary %s is not used", id.c_str());
 			AddAt(Severity::Warning, L"Q-BINARY-UNUSED", message, binaryPaths[id], L"id", id.c_str());
 		}
@@ -952,19 +975,117 @@ private:
 	}
 	LRESULT OnClose(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
 };
+
+struct AnalysisProgressState {
+	const CString& xml;
+	Report report;
+	std::atomic_bool cancelRequested{ false };
+	std::atomic_bool finished{ false };
+	std::thread worker;
+	CString cancellingText;
+	bool startFailed = false;
+	bool cancelledByUser = false;
+	bool simulateCancel = false;
+};
+
+HRESULT CALLBACK AnalysisProgressCallback(HWND window, UINT notification, WPARAM button, LPARAM, LONG_PTR reference)
+{
+	AnalysisProgressState* state = reinterpret_cast<AnalysisProgressState*>(reference);
+	if (notification == TDN_CREATED) {
+		::SendMessageW(window, TDM_SET_PROGRESS_BAR_MARQUEE, TRUE, 0);
+		if (state->simulateCancel) ::PostMessageW(window, TDM_CLICK_BUTTON, IDCANCEL, 0);
+		try {
+			state->worker = std::thread([state, window]() {
+				const HRESULT initialized = ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+				try {
+					if (SUCCEEDED(initialized)) state->report = Check(state->xml, &state->cancelRequested);
+					else state->startFailed = true;
+				} catch (...) { state->startFailed = true; }
+				if (SUCCEEDED(initialized)) ::CoUninitialize();
+				state->finished.store(true, std::memory_order_release);
+				::PostMessageW(window, TDM_CLICK_BUTTON, IDCANCEL, 0);
+			});
+		} catch (...) {
+			state->startFailed = true;
+			state->finished.store(true, std::memory_order_release);
+			::PostMessageW(window, TDM_CLICK_BUTTON, IDCANCEL, 0);
+		}
+	} else if (notification == TDN_BUTTON_CLICKED && button == IDCANCEL) {
+		if (state->simulateCancel || !state->finished.load(std::memory_order_acquire)) {
+			state->cancelledByUser = true;
+			state->cancelRequested.store(true, std::memory_order_relaxed);
+			if (!state->finished.load(std::memory_order_acquire)) {
+				::SendMessageW(window, TDM_SET_ELEMENT_TEXT, TDE_CONTENT,
+					reinterpret_cast<LPARAM>(state->cancellingText.GetString()));
+				return S_FALSE;
+			}
+		}
+	}
+	return S_OK;
+}
 }
 
 int Report::ErrorCount() const { int result = 0; for (const Issue& issue : issues) if (issue.severity == Severity::Error) ++result; return result; }
 int Report::WarningCount() const { int result = 0; for (const Issue& issue : issues) if (issue.severity == Severity::Warning) ++result; return result; }
 int Report::InfoCount() const { int result = 0; for (const Issue& issue : issues) if (issue.severity == Severity::Info) ++result; return result; }
 
-Report Check(const CString& xml)
+bool AnalyzeWithProgressImpl(HWND parent, const CString& xml, Report& report, bool simulateCancel)
+{
+	const CString title = FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check");
+	const CString progress = FbeLoadRuntimeStringByKey(L"fbe.quality.analysis.progress", L"Analyzing the current document...");
+	const CString cancel = FbeLoadRuntimeStringByKey(L"fbe.quality.analysis.cancel", L"Cancel");
+	AnalysisProgressState state{ xml };
+	state.simulateCancel = simulateCancel;
+	state.cancellingText = FbeLoadRuntimeStringByKey(L"fbe.quality.analysis.cancelling", L"Cancelling analysis...");
+	TASKDIALOG_BUTTON button = { IDCANCEL, cancel };
+	TASKDIALOGCONFIG config = { sizeof(config) };
+	config.hwndParent = parent;
+	config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_SHOW_MARQUEE_PROGRESS_BAR;
+	config.pszWindowTitle = title;
+	config.pszContent = progress;
+	config.cButtons = 1;
+	config.pButtons = &button;
+	config.pfCallback = AnalysisProgressCallback;
+	config.lpCallbackData = reinterpret_cast<LONG_PTR>(&state);
+	int selected = IDCANCEL;
+	const HRESULT result = ThemeManager::TaskDialogIndirect(config, &selected, NULL, NULL);
+	if (state.worker.joinable()) state.worker.join();
+	if (FAILED(result)) {
+		report = Check(xml);
+		return !report.cancelled;
+	}
+	if (state.cancelledByUser || state.report.cancelled) {
+		report = Report();
+		report.cancelled = true;
+		return false;
+	}
+	if (state.startFailed) {
+		report = Check(xml);
+		return !report.cancelled;
+	}
+	report = std::move(state.report);
+	return true;
+}
+
+bool AnalyzeWithProgress(HWND parent, const CString& xml, Report& report)
+{
+	return AnalyzeWithProgressImpl(parent, xml, report, false);
+}
+
+bool ProbeAnalysisCancellation(HWND parent, const CString& xml)
+{
+	Report report;
+	return !AnalyzeWithProgressImpl(parent, xml, report, true) && report.cancelled && report.issues.empty();
+}
+
+Report Check(const CString& xml, const std::atomic_bool* cancelRequested)
 {
 	Report report;
 	SYSTEMTIME checked = {}; ::GetLocalTime(&checked);
 	report.checkedAt.Format(L"%04u-%02u-%02u %02u:%02u:%02u", checked.wYear, checked.wMonth,
 		checked.wDay, checked.wHour, checked.wMinute, checked.wSecond);
 	try {
+	CheckCancellation(cancelRequested);
 	MSXML2::IXMLDOMDocument2Ptr document;
 	if (FAILED(document.CreateInstance(L"Msxml2.DOMDocument.6.0"))) { Add(report, Severity::Error, L"Unable to create XML analyzer", L"Q-XML-ANALYZER"); return report; }
 	document->async = VARIANT_FALSE;
@@ -972,6 +1093,7 @@ Report Check(const CString& xml)
 	document->resolveExternals = VARIANT_FALSE;
 	document->setProperty(L"ProhibitDTD", _variant_t(VARIANT_TRUE));
 	if (document->loadXML(_bstr_t(xml)) == VARIANT_FALSE) {
+		CheckCancellation(cancelRequested);
 		MSXML2::IXMLDOMParseErrorPtr error = document->parseError;
 		CString message; message.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.rule.xml-parse", L"Invalid XML at line %ld: %s"),
 			error->line, static_cast<const wchar_t*>(_bstr_t(error->reason)));
@@ -988,19 +1110,24 @@ Report Check(const CString& xml)
 		if (issue.start == xml.GetLength() && !xml.IsEmpty()) --issue.start;
 		if (issue.start >= 0 && issue.start < xml.GetLength()) issue.end = issue.start + 1;
 		else issue.start = issue.end = -1;
-		PopulateLocations(report, xml);
+		PopulateLocations(report, xml, cancelRequested);
 		return report;
 	}
+	CheckCancellation(cancelRequested);
 	Node root = document->documentElement;
 	if (!root || Name(root) != L"FictionBook") { Add(report, Severity::Error, L"Root element must be FictionBook", L"Q-XML-ROOT"); return report; }
 	if (CString(static_cast<const wchar_t*>(_bstr_t(root->namespaceURI))) != L"http://www.gribuser.ru/xml/fictionbook/2.0")
 		Add(report, Severity::Error, L"Incorrect FictionBook namespace", L"Q-XML-NAMESPACE");
-	Scan scan(xml); scan.Visit(root, false, false, { 0 });
+	Scan scan(xml, cancelRequested); scan.Visit(root, false, false, { 0 });
 	Report findings = scan.Finish();
 	report.issues.insert(report.issues.end(), findings.issues.begin(), findings.issues.end());
 	report.title = findings.title;
-	PopulateLocations(report, xml);
+	PopulateLocations(report, xml, cancelRequested);
 	return report;
+	} catch (const AnalysisCancelled&) {
+		report.issues.clear();
+		report.cancelled = true;
+		return report;
 	} catch (const _com_error&) {
 		Add(report, Severity::Error, L"Unable to complete XML analysis", L"Q-XML-ANALYSIS");
 		return report;

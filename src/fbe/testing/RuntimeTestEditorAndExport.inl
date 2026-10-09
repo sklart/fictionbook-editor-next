@@ -93,6 +93,9 @@
 			::GetFileAttributesW(savedPath) != INVALID_FILE_ATTRIBUTES;
 		const CString sample = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><book-title>Test</book-title></title-info></description><body><section><p/><p><a type="note" l:href="#missing-note">note</a></p><image l:href="#missing-image"/></section></body><binary id="unused-image" content-type="image/png">AQID</binary></FictionBook>)";
 		const Fb2Quality::Report result = Fb2Quality::Check(sample);
+		Fb2Quality::Report progressReport;
+		const bool progressCompletion = Fb2Quality::AnalyzeWithProgress(m_hWnd, sample, progressReport) &&
+			!progressReport.cancelled && progressReport.issues.size() == result.issues.size();
 		const auto hasRule = [&result](const wchar_t* code) {
 			for (const auto& issue : result.issues) if (issue.code == code) return true;
 			return false;
@@ -189,6 +192,16 @@
 		const Fb2Quality::Report largeReport = Fb2Quality::Check(largeXml);
 		const ULONGLONG largeMs = ::GetTickCount64() - largeStart;
 		const bool largeDocument = largeReport.issues.empty() && largeMs < 15000;
+		std::atomic_bool cancelRequested{ true };
+		const Fb2Quality::Report cancelledReport = Fb2Quality::Check(largeXml, &cancelRequested);
+		const CString bodyAtCancel(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML)));
+		const bool dirtyAtCancel = m_doc->DocChanged();
+		const bool unsafeAtCancel = m_doc->IsSerializationUnsafe();
+		const bool progressCancelled = Fb2Quality::ProbeAnalysisCancellation(m_hWnd, largeXml);
+		const bool cancellation = cancelledReport.cancelled && cancelledReport.issues.empty() &&
+			progressCancelled &&
+			bodyAtCancel == CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) &&
+			dirtyAtCancel == m_doc->DocChanged() && unsafeAtCancel == m_doc->IsSerializationUnsafe();
 		const CString navigationXml = LR"(<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><body><section><p>)"
 			L"\xD83D\xDE42" LR"(<!-- <a l:href="#false-comment"/> --><![CDATA[<image/>]]><?test fake="<image/>"?></p><p data=">" id="duplicate">one</p><p id="duplicate">two</p><p><a l:href="#missing-ref">one</a></p><p><a l:href="#missing-ref">two</a></p><image/></section></body></FictionBook>)";
 		const Fb2Quality::Report navigationReport = Fb2Quality::Check(navigationXml);
@@ -269,12 +282,12 @@
 				}
 			}
 		}
-		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument &&
+		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument && cancellation && progressCompletion &&
 			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && dialogLayout && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, largeDocument, largeMs,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, largeDocument, largeMs, cancellation, cancelledReport.cancelled, progressCancelled, progressCompletion,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, dialogLayout,

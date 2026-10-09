@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atlstr.h>
+#include <atomic>
 #include <vector>
 
 namespace Fb2Quality {
@@ -26,11 +27,14 @@ struct Report {
 	std::vector<Issue> issues;
 	CString title;
 	CString checkedAt;
+	bool cancelled = false;
 	int ErrorCount() const;
 	int WarningCount() const;
 	int InfoCount() const;
 };
-Report Check(const CString& xml);
+Report Check(const CString& xml, const std::atomic_bool* cancelRequested = nullptr);
+bool AnalyzeWithProgress(HWND parent, const CString& xml, Report& report);
+bool ProbeAnalysisCancellation(HWND parent, const CString& xml);
 CString FormatReport(const Report& report);
 CString FormatHtmlReport(const Report& report);
 int ShowReport(HWND parent, const Report& report);
