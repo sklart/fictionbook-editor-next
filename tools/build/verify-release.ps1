@@ -202,6 +202,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-script-toolbar-lifecycle-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-script-toolbar-tooltips-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-navigation-scripts-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fb2-quality-checker-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-startup-validation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 }
 

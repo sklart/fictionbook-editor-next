@@ -163,6 +163,11 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-fbe-navigation-scripts-runtime.ps1 -FbeExe out/Release/FBE.exe
           ./tools/tests/test-fbe-script-startup-validation-runtime.ps1 -FbeExe out/Release/FBE.exe
+      - name: Run FB2 quality checker runtime regression
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/tests/test-fb2-quality-checker-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Run keyboard layout C++ regression
         shell: pwsh
         run: |
