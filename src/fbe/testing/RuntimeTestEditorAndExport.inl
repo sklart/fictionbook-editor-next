@@ -122,6 +122,23 @@
 			countBinaryRule(L"Q-BINARY-EMPTY") == 1 && countBinaryRule(L"Q-BINARY-DUPLICATE-ID") == 1 &&
 			countBinaryRule(L"Q-LINK-DUPLICATE-ID") == 0 && countBinaryRule(L"Q-BINARY-MISSING-MIME") == 1 &&
 			countBinaryRule(L"Q-BINARY-INVALID-MIME") == 1 && countBinaryRule(L"Q-BINARY-MIME-MISMATCH") == 1;
+		const CString structureXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:xlink="http://www.w3.org/1999/xlink"><description><title-info><book-title> </book-title><lang>ru_RU</lang><author><nickname> </nickname></author><sequence name=" " number="2a"/></title-info></description><body><section><title><p> </p></title><p>&#32;&#10;</p><subtitle> </subtitle><cite><p> </p></cite><p><image xlink:href="#img"/></p></section><section xml:space="preserve"><p> </p></section><section/></body><binary id="img" content-type="image/png">AQID</binary></FictionBook>)";
+		const Fb2Quality::Report structureReport = Fb2Quality::Check(structureXml);
+		const auto countStructureRule = [&structureReport](const wchar_t* code) {
+			int count = 0;
+			for (const auto& issue : structureReport.issues) if (issue.code == code) ++count;
+			return count;
+		};
+		const bool structureRules = countStructureRule(L"Q-STRUCTURE-EMPTY-P") == 1 &&
+			countStructureRule(L"Q-STRUCTURE-EMPTY-TITLE") == 1 && countStructureRule(L"Q-STRUCTURE-EMPTY-SUBTITLE") == 1 &&
+			countStructureRule(L"Q-STRUCTURE-EMPTY-CITE") == 1 && countStructureRule(L"Q-STRUCTURE-EMPTY-SECTION") == 1 &&
+			countStructureRule(L"Q-METADATA-BOOK-TITLE") == 1 && countStructureRule(L"Q-METADATA-INVALID-LANG") == 1 &&
+			countStructureRule(L"Q-METADATA-EMPTY-AUTHOR") == 1 && countStructureRule(L"Q-METADATA-EMPTY-SEQUENCE") == 1 &&
+			countStructureRule(L"Q-METADATA-SEQUENCE-NUMBER") == 1;
+		const CString validMetadata = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Valid</book-title><lang>en-US</lang><author><nickname>Writer</nickname></author><sequence name="Series" number="-1"/></title-info></description><body><section><p>Text</p></section></body></FictionBook>)";
+		const Fb2Quality::Report validMetadataReport = Fb2Quality::Check(validMetadata);
+		bool validMetadataAccepted = true;
+		for (const auto& issue : validMetadataReport.issues) if (issue.code.Left(11) == L"Q-METADATA-") validMetadataAccepted = false;
 		const CString navigationXml = LR"(<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><body><section><p>)"
 			L"\xD83D\xDE42" LR"(<!-- <a l:href="#false-comment"/> --><![CDATA[<image/>]]><?test fake="<image/>"?></p><p data=">" id="duplicate">one</p><p id="duplicate">two</p><p><a l:href="#missing-ref">one</a></p><p><a l:href="#missing-ref">two</a></p><image/></section></body></FictionBook>)";
 		const Fb2Quality::Report navigationReport = Fb2Quality::Check(navigationXml);
@@ -199,12 +216,12 @@
 				}
 			}
 		}
-		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && binaryRules &&
+		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && binaryRules && structureRules && validMetadataAccepted &&
 			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nbinary_rules=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nbinary_rules=%d\nstructure_rules=%d\nvalid_metadata=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, binaryRules,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, binaryRules, structureRules, validMetadataAccepted,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, passed ? "pass" : "fail");

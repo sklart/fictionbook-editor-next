@@ -25,6 +25,69 @@ CString Attribute(const Node& node, const wchar_t* name)
 	return value.vt == VT_NULL || value.vt == VT_EMPTY ? CString() : CString(static_cast<const wchar_t*>(_bstr_t(value)));
 }
 
+bool HasDescendant(const Node& node, const wchar_t* wanted)
+{
+	std::vector<Node> pending;
+	MSXML2::IXMLDOMNodeListPtr children = node->childNodes;
+	for (long i = 0; i < children->length; ++i) pending.push_back(children->item[i]);
+	while (!pending.empty()) {
+		Node current = pending.back();
+		pending.pop_back();
+		if (current->nodeType != MSXML2::NODE_ELEMENT) continue;
+		if (Name(current) == wanted) return true;
+		MSXML2::IXMLDOMNodeListPtr descendants = current->childNodes;
+		for (long i = 0; i < descendants->length; ++i) pending.push_back(descendants->item[i]);
+	}
+	return false;
+}
+
+bool HasDirectChild(const Node& node, const wchar_t* wanted)
+{
+	MSXML2::IXMLDOMNodeListPtr children = node->childNodes;
+	for (long i = 0; i < children->length; ++i) {
+		Node child = children->item[i];
+		if (child->nodeType == MSXML2::NODE_ELEMENT && Name(child) == wanted) return true;
+	}
+	return false;
+}
+
+bool MeaningfulContent(const Node& node)
+{
+	CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
+	if (!content.IsEmpty()) {
+		for (Node current = node; current; current = current->parentNode) {
+			if (current->nodeType != MSXML2::NODE_ELEMENT) break;
+			const CString space = Attribute(current, L"xml:space");
+			if (space.CompareNoCase(L"preserve") == 0) return true;
+			if (space.CompareNoCase(L"default") == 0) break;
+		}
+	}
+	content.Trim();
+	return !content.IsEmpty() || HasDescendant(node, L"image");
+}
+
+bool PlausibleLanguageCode(const CString& value)
+{
+	if (value.IsEmpty() || value.GetLength() > 255 || value[0] == L'-' || value[value.GetLength() - 1] == L'-') return false;
+	wchar_t previous = 0;
+	for (int i = 0; i < value.GetLength(); ++i) {
+		const wchar_t c = value[i];
+		if (!((c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') || (c >= L'0' && c <= L'9') || c == L'-') ||
+			(c == L'-' && previous == L'-')) return false;
+		previous = c;
+	}
+	return true;
+}
+
+bool IntegerSyntax(const CString& value)
+{
+	if (value.IsEmpty()) return false;
+	int i = value[0] == L'+' || value[0] == L'-' ? 1 : 0;
+	if (i == value.GetLength()) return false;
+	for (; i < value.GetLength(); ++i) if (value[i] < L'0' || value[i] > L'9') return false;
+	return true;
+}
+
 struct HrefAttribute { CString name; CString value; bool present = false; };
 
 HrefAttribute XLinkHref(const Node& node)
@@ -298,10 +361,41 @@ struct Scan {
 		if (inTitleInfo && (name == L"book-title" || name == L"lang")) {
 			CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
 			content.Trim();
-			if (name == L"book-title" && !content.IsEmpty()) bookTitle = true;
-			if (name == L"lang" && !content.IsEmpty()) language = true;
+			if (name == L"book-title") {
+				bookTitle = true;
+				if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Не указано название книги", path);
+			}
+			if (name == L"lang") {
+				language = true;
+				if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Не указан язык документа", path);
+				else if (!PlausibleLanguageCode(content)) AddAt(Severity::Warning, L"Q-METADATA-INVALID-LANG", L"Подозрительный код языка документа", path);
+			}
 		}
-		if (inTitleInfo && name == L"author") author = true;
+		if (inTitleInfo && name == L"author") {
+			author = true;
+			bool named = false;
+			MSXML2::IXMLDOMNodeListPtr fields = node->childNodes;
+			for (long i = 0; i < fields->length; ++i) {
+				Node field = fields->item[i];
+				if (field->nodeType != MSXML2::NODE_ELEMENT) continue;
+				const CString fieldName = Name(field);
+				if (fieldName != L"nickname" && fieldName != L"first-name" && fieldName != L"middle-name" && fieldName != L"last-name") continue;
+				CString value(static_cast<const wchar_t*>(_bstr_t(field->text)));
+				value.Trim();
+				if (!value.IsEmpty()) { named = true; break; }
+			}
+			if (!named) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-AUTHOR", L"Пустые сведения об авторе", path);
+		}
+		if (inTitleInfo && name == L"sequence") {
+			CString sequenceName = Attribute(node, L"name");
+			sequenceName.Trim();
+			if (sequenceName.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-SEQUENCE", L"Не указано название серии", path, L"name");
+			MSXML2::IXMLDOMElementPtr element(node);
+			if (element->getAttributeNode(L"number")) {
+				const CString number = Attribute(node, L"number");
+				if (!IntegerSyntax(number)) AddAt(Severity::Warning, L"Q-METADATA-SEQUENCE-NUMBER", L"Некорректный номер серии", path, L"number", number);
+			}
+		}
 		if (name == L"binary") {
 			if (id.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-ID", L"У binary не указан id", path, L"id");
 			else {
@@ -333,12 +427,16 @@ struct Scan {
 			else if (note)
 				AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Ссылка на примечание должна быть внутренней", path, href.name, href.value);
 		}
-		if (name == L"p" || name == L"subtitle") {
-			CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
-			content.Trim();
-			if (content.IsEmpty() && node->childNodes->length == 0)
-				AddAt(Severity::Warning, L"Q-STRUCTURE-EMPTY", L"Подозрительный пустой элемент " + name, path);
+		if ((name == L"p" || name == L"subtitle" || name == L"title" || name == L"cite") && !MeaningfulContent(node)) {
+			const CString parentName = node->parentNode ? Name(node->parentNode) : CString();
+			if (name != L"p" || (parentName != L"title" && parentName != L"cite")) {
+				const wchar_t* code = name == L"p" ? L"Q-STRUCTURE-EMPTY-P" : name == L"subtitle" ? L"Q-STRUCTURE-EMPTY-SUBTITLE" :
+					name == L"title" ? L"Q-STRUCTURE-EMPTY-TITLE" : L"Q-STRUCTURE-EMPTY-CITE";
+				AddAt(Severity::Warning, code, L"Подозрительный пустой элемент " + name, path);
+			}
 		}
+		if (name == L"section" && !HasDirectChild(node, L"section") && !MeaningfulContent(node))
+			AddAt(Severity::Warning, L"Q-STRUCTURE-EMPTY-SECTION", L"Пустой раздел section", path);
 		MSXML2::IXMLDOMNodeListPtr children = node->childNodes;
 		int elementIndex = 0;
 		for (long i = 0; i < children->length; ++i) {
