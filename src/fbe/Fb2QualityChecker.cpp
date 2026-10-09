@@ -936,7 +936,7 @@ private:
 		return 0;
 	}
 	LRESULT OnSave(WORD, WORD, HWND, BOOL&) {
-		wchar_t path[MAX_PATH] = L"fb2-quality-report.txt";
+		wchar_t path[MAX_PATH] = L"fb2-quality-report";
 		OPENFILENAMEW file = {}; file.lStructSize = sizeof(file); file.hwndOwner = m_hWnd;
 		std::wstring filter;
 		const auto addFilter = [&filter](const CString& label, const wchar_t* pattern) {
