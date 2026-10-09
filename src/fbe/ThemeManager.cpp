@@ -3,6 +3,7 @@
 #include "RuntimeLocalization.h"
 #include "resource.h"
 #include "UiMetrics.h"
+#include "../common/ModernFileDialog.h"
 #include <map>
 #include <array>
 #include <set>
@@ -19,6 +20,7 @@ HBRUSH g_controlBrush = NULL;
 HBRUSH g_brushes[THEME_COLOR_COUNT] = {};
 std::map<UINT, HBITMAP> g_nativeMenuBitmaps;
 const wchar_t kAppliedThemeGenerationProperty[] = L"FBE.AppliedThemeGeneration";
+const wchar_t kNativeFileDialogProperty[] = L"FBE.NativeFileDialog";
 const UINT kApplyNewThemeChild = WM_APP + 0x147;
 DWORD g_paletteGeneration = 1;
 ThemeManager::ApplyDiagnostics g_applyDiagnostics = {};
@@ -608,7 +610,14 @@ LRESULT CALLBACK ThemeCbtHookProc(int code, WPARAM wParam, LPARAM lParam)
 	if(code == HCBT_ACTIVATE && wParam != 0)
 	{
 		HWND window = reinterpret_cast<HWND>(wParam);
-		if(::GetPropW(window, kAppliedThemeGenerationProperty) != AppliedThemeGeneration())
+		wchar_t className[32] = {};
+		const bool shellDialog = ModernFileDialog::IsShowingOnCurrentThread() &&
+			window != ModernFileDialog::CurrentOwnerOnThread() &&
+			::GetPropW(window, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION") == NULL &&
+			::GetClassNameW(window, className, _countof(className)) && wcscmp(className, L"#32770") == 0;
+		if(shellDialog)
+			::SetPropW(window, kNativeFileDialogProperty, reinterpret_cast<HANDLE>(1));
+		else if(::GetPropW(window, kAppliedThemeGenerationProperty) != AppliedThemeGeneration())
 			ThemeManager::ApplyToWindow(window);
 	}
 	return ::CallNextHookEx(g_themeCbtHook, code, wParam, lParam);
@@ -1268,6 +1277,10 @@ HBRUSH ControlBrush() { if(!g_controlBrush) RebuildBrushes(); return g_controlBr
 void ApplyToWindow(HWND window)
 {
 	if(!::IsWindow(window)) return;
+	// A native file dialog may also be visited by a thread-wide theme refresh.
+	// Its children must retain the Shell's own theme and paint handlers.
+	for(HWND parent = window; parent != NULL; parent = ::GetParent(parent))
+		if(::GetPropW(parent, kNativeFileDialogProperty) != NULL) return;
 	ApplyWindowSurface(window);
 	// EnumChildWindows already visits every descendant. Its callback must not
 	// recursively enumerate again; state set on each HWND also suppresses any

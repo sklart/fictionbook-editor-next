@@ -107,6 +107,117 @@
 		};
 		CString dialogProbe;
 		const bool dialogLayout = Fb2Quality::ProbeResultsDialogLayout(m_hWnd, result, &dialogProbe);
+		wchar_t qualityArtifactDirectory[MAX_PATH] = {};
+		const DWORD qualityArtifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", qualityArtifactDirectory, _countof(qualityArtifactDirectory));
+		CString dialogVisualProbe;
+		const bool dialogVisual = qualityArtifactLength > 0 && qualityArtifactLength < _countof(qualityArtifactDirectory) &&
+			Fb2Quality::ProbeResultsDialogVisual(m_hWnd, result,
+				CString(qualityArtifactDirectory) + L"\\quality-results-after.bmp", &dialogVisualProbe);
+		Fb2Quality::Report cleanVisualReport;
+		const bool emptyDialogVisual = qualityArtifactLength > 0 && qualityArtifactLength < _countof(qualityArtifactDirectory) &&
+			Fb2Quality::ProbeResultsDialogVisual(m_hWnd, cleanVisualReport,
+				CString(qualityArtifactDirectory) + L"\\quality-results-empty-after.bmp");
+		auto captureNativeWindow = [](HWND window, const CString& destination) -> bool {
+		RECT bounds = {}; ::GetWindowRect(window, &bounds);
+		const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
+		if(width < 100 || height < 20) return false;
+		BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = -height;
+		info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+		void* bits = NULL; HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+		HDC memory = bitmap ? ::CreateCompatibleDC(NULL) : NULL;
+		HGDIOBJ previous = memory ? ::SelectObject(memory, bitmap) : NULL;
+		bool saved = false;
+		if(bits && previous && ::PrintWindow(window, memory, 0)) {
+			BITMAPFILEHEADER file = {}; file.bfType = 0x4d42; file.bfOffBits = sizeof(file) + sizeof(BITMAPINFOHEADER);
+			file.bfSize = file.bfOffBits + width * height * 4;
+			HANDLE output = ::CreateFileW(destination, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(output != INVALID_HANDLE_VALUE) {
+				DWORD written = 0;
+				saved = ::WriteFile(output, &file, sizeof(file), &written, NULL) && written == sizeof(file) &&
+					::WriteFile(output, &info.bmiHeader, sizeof(info.bmiHeader), &written, NULL) && written == sizeof(info.bmiHeader) &&
+					::WriteFile(output, bits, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4);
+				::CloseHandle(output);
+			}
+		}
+		if(previous) ::SelectObject(memory, previous);
+		if(memory) ::DeleteDC(memory);
+		if(bitmap) ::DeleteObject(bitmap);
+		return saved;
+		};
+		auto probeNativeDialog = [&](const wchar_t* name, const std::function<void()>& showDialog) -> bool {
+		if(!qualityArtifactLength || qualityArtifactLength >= _countof(qualityArtifactDirectory)) return false;
+		const DWORD uiThread = ::GetCurrentThreadId();
+		const CString destination = CString(qualityArtifactDirectory) + L"\\" + name + L"-after.bmp";
+		std::atomic_bool found{ false }, native{ false }, captured{ false };
+		std::thread observer([&]() {
+			HWND dialog = NULL;
+			for(int attempt = 0; attempt < 100 && !dialog; ++attempt) {
+				struct Search { HWND result; } search = { NULL };
+				::EnumThreadWindows(uiThread, [](HWND candidate, LPARAM state) -> BOOL {
+					Search* search = reinterpret_cast<Search*>(state);
+					wchar_t className[32] = {};
+					if(::GetClassNameW(candidate, className, _countof(className)) &&
+						wcscmp(className, L"#32770") == 0 && ::IsWindowVisible(candidate) &&
+						::GetPropW(candidate, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION") == NULL) { search->result = candidate; return FALSE; }
+					return TRUE;
+				}, reinterpret_cast<LPARAM>(&search));
+				dialog = search.result;
+				if(!dialog) ::Sleep(50);
+			}
+			if(dialog) {
+				found = true;
+				::Sleep(300);
+				native = ::GetPropW(dialog, L"FBE.NativeFileDialog") != NULL &&
+					::GetPropW(dialog, L"FBE.AppliedThemeGeneration") == NULL;
+				captured = captureNativeWindow(dialog, destination);
+				::PostMessageW(dialog, WM_CLOSE, 0, 0);
+			}
+		});
+		showDialog();
+		observer.join();
+		return found && native && captured;
+		};
+		const bool openDialogVisual = probeNativeDialog(L"file-open", [&]() { DocumentFileDialogs::ShowOpen(m_hWnd); });
+		DocumentFileDialogs::SaveRequest saveRequest;
+		saveRequest.initialFileName = L"quality-probe.fb2";
+		saveRequest.selectedEncoding = L"windows-1251";
+		saveRequest.encodingList = L"windows-1251,utf-8";
+		const bool saveDialogVisual = probeNativeDialog(L"file-save", [&]() { DocumentFileDialogs::ShowSave(m_hWnd, saveRequest); });
+		saveRequest.initialFileName = L"quality-probe.fbd";
+		const bool saveFbdDialogVisual = probeNativeDialog(L"file-save-fbd", [&]() { DocumentFileDialogs::ShowSave(m_hWnd, saveRequest); });
+		const bool reportSaveDialogVisual = probeNativeDialog(L"report-save", [&]() { Fb2Quality::ProbeReportSaveDialog(m_hWnd, result); });
+		const bool reportSaveHtmlDialogVisual = probeNativeDialog(L"report-save-html", [&]() { Fb2Quality::ProbeReportSaveDialog(m_hWnd, result, true); });
+		TBBUTTONS qualityAvailable, qualityDefaults;
+		const bool qualityCatalogRead = GetAvailableButtons(m_CmdToolbar, qualityAvailable) &&
+			GetDefaultButtons(m_CmdToolbar, qualityDefaults);
+		bool qualityAvailableFound = false, qualityDefaultAdjacent = false;
+		for(int index = 0; qualityCatalogRead && index < qualityAvailable.GetSize(); ++index)
+			if(qualityAvailable[index].idCommand == ID_FILE_QUALITY_CHECK) qualityAvailableFound = true;
+		for(int index = 0; qualityCatalogRead && index + 1 < qualityDefaults.GetSize(); ++index)
+			if(qualityDefaults[index].idCommand == ID_FILE_VALIDATE &&
+				qualityDefaults[index + 1].idCommand == ID_FILE_QUALITY_CHECK) qualityDefaultAdjacent = true;
+		const bool qualityToolbar = qualityCatalogRead && qualityAvailableFound && qualityDefaultAdjacent &&
+			!GetRuntimeToolbarToolTipText(ID_FILE_QUALITY_CHECK).IsEmpty();
+		const bool qualityToolbarVisual = captureNativeWindow(m_CmdToolbar,
+			CString(qualityArtifactDirectory) + L"\\quality-toolbar-after.bmp");
+		HMENU fileMenu = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
+		const int recentMenuPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
+		int exportMenuPosition = -1, importMenuPosition = -1;
+		for(int position = recentMenuPosition - 1; position >= 0; --position)
+			if(::GetSubMenu(fileMenu, position) != NULL) {
+				if(exportMenuPosition < 0) exportMenuPosition = position;
+				else { importMenuPosition = position; break; }
+			}
+		auto menuCaption = [&](int position) -> CString {
+			wchar_t caption[256] = {};
+			if(position >= 0) ::GetMenuStringW(fileMenu, position, caption, _countof(caption), MF_BYPOSITION);
+			return CString(caption);
+		};
+		const bool fileMenuLocalized = recentMenuPosition >= 0 && importMenuPosition >= 0 && exportMenuPosition >= 0 &&
+			menuCaption(importMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.import") &&
+			menuCaption(exportMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.export") &&
+			menuCaption(recentMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.recent_documents");
 		Fb2Quality::Report exportProbe(result);
 		exportProbe.title = L"<Demo & Co>";
 		const CString exportText = Fb2Quality::FormatReport(exportProbe);
@@ -148,10 +259,21 @@
 			!Fb2Quality::SaveReport(exportProbe, blockedDestination, false, reportError) && reportError != ERROR_SUCCESS &&
 			(::GetFileAttributesW(blockedDestination) & FILE_ATTRIBUTE_DIRECTORY) != 0;
 		WIN32_FIND_DATAW temporaryFile = {};
-		const HANDLE temporarySearch = ::FindFirstFileW(reportDirectory + L"\\fqr*.tmp", &temporaryFile);
+		const HANDLE temporarySearch = ::FindFirstFileW(reportDirectory + L"\\.fbe-report-*.tmp", &temporaryFile);
 		const bool noPartialFile = temporarySearch == INVALID_HANDLE_VALUE;
 		if (temporarySearch != INVALID_HANDLE_VALUE) ::FindClose(temporarySearch);
-		const bool reportSaveFailure = missingDirectoryRejected && blockedDestinationRejected && noPartialFile;
+		CString longDirectory(reportDirectory + L"\\");
+		for(int index = 0; index < 210; ++index) longDirectory += L'x';
+		const CString extendedDirectory = CString(L"\\\\?\\") + longDirectory;
+		const CString longReportPath = longDirectory + L"\\отчёт.html";
+		const CString extendedLongReportPath = CString(L"\\\\?\\") + longReportPath;
+		const bool longDirectoryReady = ::CreateDirectoryW(extendedDirectory, NULL) != FALSE;
+		const bool longReportSaved = longDirectoryReady && longReportPath.GetLength() >= MAX_PATH &&
+			Fb2Quality::SaveReport(exportProbe, longReportPath, true, reportError) &&
+			::GetFileAttributesW(extendedLongReportPath) != INVALID_FILE_ATTRIBUTES;
+		if(longReportSaved) ::DeleteFileW(extendedLongReportPath);
+		if(longDirectoryReady) ::RemoveDirectoryW(extendedDirectory);
+		const bool reportSaveFailure = missingDirectoryRejected && blockedDestinationRejected && noPartialFile && longReportSaved;
 		const bool links = hasRule(L"Q-NOTE-MISSING");
 		const bool binaries = hasRule(L"Q-IMAGE-MISSING-BINARY") && hasRule(L"Q-BINARY-UNUSED");
 		const bool metadata = hasRule(L"Q-METADATA-LANGUAGE");
@@ -328,15 +450,15 @@
 			}
 		}
 		const bool passed = unchanged && snapshotCurrent && snapshotNoteAccepted && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && validImagePlacements && largeDocument && cancellation && progressCompletion &&
-			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && diagnosticPresentation && nestingRules;
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && dialogVisual && emptyDialogVisual && openDialogVisual && saveDialogVisual && saveFbdDialogVisual && reportSaveDialogVisual && reportSaveHtmlDialogVisual && qualityToolbar && qualityToolbarVisual && fileMenuLocalized && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nsnapshot_note_href=%d\nsnapshot_note_accepted=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nsnapshot_note_href=%d\nsnapshot_note_accepted=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndialog_visual=%d\ndialog_visual_probe=%S\nempty_dialog_visual=%d\nopen_dialog_visual=%d\nsave_dialog_visual=%d\nsave_fbd_dialog_visual=%d\nreport_save_dialog_visual=%d\nreport_save_html_dialog_visual=%d\nquality_toolbar=%d\nquality_toolbar_visual=%d\nfile_menu_localized=%d\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
 			static_cast<LPCWSTR>(analysisError), snapshotCurrent, snapshotNoteHref, snapshotNoteAccepted, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, validImagePlacements, largeDocument, largeMs, cancellation, cancelledReport.cancelled, progressCancelled, progressCompletion,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, reportFiles, reportSaveFailure, dialogLayout,
-			static_cast<LPCWSTR>(dialogProbe), diagnosticPresentation, passed ? "pass" : "fail");
+			static_cast<LPCWSTR>(dialogProbe), dialogVisual, static_cast<LPCWSTR>(dialogVisualProbe), emptyDialogVisual, openDialogVisual, saveDialogVisual, saveFbdDialogVisual, reportSaveDialogVisual, reportSaveHtmlDialogVisual, qualityToolbar, qualityToolbarVisual, fileMenuLocalized, diagnosticPresentation, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

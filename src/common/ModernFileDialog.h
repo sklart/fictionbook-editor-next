@@ -11,6 +11,19 @@
 namespace ModernFileDialog {
 enum class Outcome { Accepted, Cancelled, Failed };
 
+inline unsigned& ShowDepth() {
+    static thread_local unsigned depth = 0;
+    return depth;
+}
+inline HWND& ShowOwner() {
+    static thread_local HWND owner = NULL;
+    return owner;
+}
+// The Shell owns the windows created by IFileDialog::Show. Thread-wide UI
+// hooks can use this scope to leave the native dialog untouched.
+inline bool IsShowingOnCurrentThread() { return ShowDepth() != 0; }
+inline HWND CurrentOwnerOnThread() { return ShowOwner(); }
+
 struct Request {
     bool save = false, allowMultiSelect = false, fileMustExist = false, pathMustExist = false, overwritePrompt = false;
     std::wstring title, okButtonLabel, fileNameLabel, defaultExtension;
@@ -72,6 +85,11 @@ inline Result Show(HWND owner, const Request& request) {
     }
     DWORD cookie = 0;
     if (request.events && FAILED(hr = dialog->Advise(request.events, &cookie))) { result.error = hr; return result; }
+    struct ShowingScope {
+        HWND previousOwner;
+        explicit ShowingScope(HWND owner) : previousOwner(ShowOwner()) { ++ShowDepth(); ShowOwner() = owner; }
+        ~ShowingScope() { ShowOwner() = previousOwner; --ShowDepth(); }
+    } showing(owner);
     hr = dialog->Show(owner); if (cookie) dialog->Unadvise(cookie);
     if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) { result.outcome = Outcome::Cancelled; result.error = hr; return result; }
     if (FAILED(hr)) { result.error = hr; return result; }

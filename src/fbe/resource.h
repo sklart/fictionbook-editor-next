@@ -805,6 +805,7 @@
 #define IDC_FB2_QUALITY_SAVE           1693
 #define IDC_FB2_QUALITY_DETAILS        1694
 #define IDC_FB2_QUALITY_COPY           1695
+#define IDC_FB2_QUALITY_EMPTY          1696
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST 33033
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST  57599
 #define ID_DOCUMENT_TREE_MODE_STRUCTURE       57600
@@ -821,7 +822,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        269
 #define _APS_NEXT_COMMAND_VALUE         57603
-#define _APS_NEXT_CONTROL_VALUE         1696
+#define _APS_NEXT_CONTROL_VALUE         1697
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

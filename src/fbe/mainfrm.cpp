@@ -1024,12 +1024,19 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	HMENU fileMenu = ::GetSubMenu(menu, 0);
 	if(fileMenu != NULL)
 	{
-		SetRuntimeMenuItemTextByPosition(fileMenu, 6, L"fbe.menu.idr_mainframe.popup.import");
-		SetRuntimeMenuItemTextByPosition(fileMenu, 7, L"fbe.menu.idr_mainframe.popup.export");
-		SetRuntimeMenuItemTextByPosition(fileMenu, 9, L"fbe.menu.idr_mainframe.popup.recent_documents");
+		const int recentPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
+		int exportPosition = -1, importPosition = -1;
+		for(int position = recentPosition - 1; position >= 0; --position)
+			if(::GetSubMenu(fileMenu, position) != NULL) {
+				if(exportPosition < 0) exportPosition = position;
+				else { importPosition = position; break; }
+			}
+		if(importPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, importPosition, L"fbe.menu.idr_mainframe.popup.import");
+		if(exportPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, exportPosition, L"fbe.menu.idr_mainframe.popup.export");
+		if(recentPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, recentPosition, L"fbe.menu.idr_mainframe.popup.recent_documents");
 
-		HMENU importMenu = ::GetSubMenu(fileMenu, 6);
-		HMENU exportMenu = ::GetSubMenu(fileMenu, 7);
+		HMENU importMenu = importPosition >= 0 ? ::GetSubMenu(fileMenu, importPosition) : NULL;
+		HMENU exportMenu = exportPosition >= 0 ? ::GetSubMenu(fileMenu, exportPosition) : NULL;
 		if(importMenu != NULL && ::GetMenuItemID(importMenu, 0) == IDCANCEL)
 			SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
 		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)
@@ -1234,7 +1241,8 @@ LRESULT CALLBACK CBTProc(INT nCode, WPARAM wParam, LPARAM lParam)
 	{
 		// set window handles
 		hChildWnd  = (HWND)wParam;
-		if (activatedWnd != (HWND)wParam && ::GetProp(hChildWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION") == NULL)
+		if (activatedWnd != (HWND)wParam && !ModernFileDialog::IsShowingOnCurrentThread() &&
+			::GetProp(hChildWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION") == NULL)
 		{
 			activatedWnd = hChildWnd;
 
@@ -2388,6 +2396,8 @@ void CMainFrame::ShowCommandToolbarCustomizeDialog()
 		if(button.idCommand == 0 || (button.fsStyle & TBSTYLE_SEP)) continue;
 		CString text;
 		if(!GetButtonText(button, text)) continue;
+		const CString localized = GetRuntimeToolbarToolTipText(button.idCommand);
+		if(!localized.IsEmpty()) text = localized;
 		ScriptsToolbarCommand command = {}; command.command = button.idCommand; command.name = text; command.button = button;
 		commands.push_back(command);
 	}
@@ -3329,7 +3339,8 @@ void CMainFrame::InitializeBundledPlugins()
 void CMainFrame::InitializeRecentDocumentsMenu()
 {
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-	HMENU sub = ::GetSubMenu(file, 10);
+	const int recentPosition = FindTopLevelMenuPositionByCommand(file, ID_FILE_MRU_FIRST);
+	HMENU sub = recentPosition >= 0 ? ::GetSubMenu(file, recentPosition) : NULL;
 	m_recentDocuments.List().SetMenuHandle(sub);
 	RefreshMruEmptyStateText(m_recentDocuments.List());
 	m_recentDocuments.List().SetMaxEntries(m_recentDocuments.List().m_nMaxEntries_Max - 1);
@@ -3417,6 +3428,30 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		return -1;
 	}
 	m_CmdToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
+	const int qualityImageSize = ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd));
+	HICON qualityToolbarIcon = static_cast<HICON>(::LoadImageW(applicationModule, MAKEINTRESOURCEW(IDI_FB2_QUALITY),
+		IMAGE_ICON, qualityImageSize, qualityImageSize, LR_DEFAULTCOLOR));
+	const int qualityImageIndex = qualityToolbarIcon ? ::ImageList_AddIcon(m_commandToolbarImages, qualityToolbarIcon) : -1;
+	if(qualityToolbarIcon) ::DestroyIcon(qualityToolbarIcon);
+	if(qualityImageIndex < 0) return -1;
+	TBBUTTON qualityButton = {};
+	qualityButton.iBitmap = qualityImageIndex;
+	qualityButton.idCommand = ID_FILE_QUALITY_CHECK;
+	qualityButton.fsState = TBSTATE_ENABLED;
+	qualityButton.fsStyle = TBSTYLE_BUTTON;
+	if(!AddToolbarButton(m_CmdToolbar, qualityButton,
+		StripMenuMnemonics(FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.file.quality_check", L"FB2 Quality Check")))) return -1;
+	const int validateIndex = m_CmdToolbar.CommandToIndex(ID_FILE_VALIDATE);
+	if(validateIndex >= 0) m_CmdToolbar.InsertButton(validateIndex + 1, &qualityButton);
+	const int defaultIndex = m_aDefaultButtons.FindKey(m_CmdToolbar);
+	if(defaultIndex >= 0) {
+		TBBUTTONS previous = m_aDefaultButtons.GetValueAt(defaultIndex), extended;
+		for(int index = 0; index < previous.GetSize(); ++index) {
+			extended.Add(previous[index]);
+			if(previous[index].idCommand == ID_FILE_VALIDATE) extended.Add(qualityButton);
+		}
+		m_aDefaultButtons.GetValueAt(defaultIndex) = extended;
+	}
 	for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
     m_table_toolbar_image_indices[index] = -1;
@@ -4107,6 +4142,11 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_MAINFRAME, dpi)) return false;
 	const HINSTANCE module = ATL::_AtlBaseModule.GetModuleInstance();
 	const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
+	HICON qualityIcon = static_cast<HICON>(::LoadImageW(module, MAKEINTRESOURCEW(IDI_FB2_QUALITY),
+		IMAGE_ICON, imageSize, imageSize, LR_DEFAULTCOLOR));
+	const int qualityImage = qualityIcon ? ::ImageList_AddIcon(replacement, qualityIcon) : -1;
+	if(qualityIcon) ::DestroyIcon(qualityIcon);
+	if(qualityImage < 0) return false;
 	int imageIndices[8] = {};
 	for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
@@ -4119,6 +4159,8 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 	if(replaced != oldImages) { m_CmdToolbar.SetImageList(oldImages); ::ImageList_Destroy(newImages); m_commandToolbarImages.Attach(oldImages); return false; }
 	m_commandToolbarImages.Attach(newImages);
 	if(oldImages) ::ImageList_Destroy(oldImages);
+	TBBUTTONINFO qualityInfo = {}; qualityInfo.cbSize = sizeof(qualityInfo); qualityInfo.dwMask = TBIF_IMAGE; qualityInfo.iImage = qualityImage;
+	m_CmdToolbar.SetButtonInfo(ID_FILE_QUALITY_CHECK, &qualityInfo);
 	for(size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
 		m_table_toolbar_image_indices[index] = imageIndices[index];

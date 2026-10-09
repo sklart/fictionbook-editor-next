@@ -4,6 +4,7 @@
 #include "RuntimeLocalization.h"
 #include "ThemeManager.h"
 #include "UiMetrics.h"
+#include "../common/ModernFileDialog.h"
 #include "utils/utils.h"
 #include "../version.h"
 #include <algorithm>
@@ -698,12 +699,34 @@ bool SaveUtf8Report(const CString& path, const CString& content, bool bom, DWORD
 	if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, content, content.GetLength(), bytes.data(), length, NULL, NULL) != length) {
 		error = ::GetLastError(); return false;
 	}
+	const auto extendedPath = [](const CString& value) -> CString {
+		if(value.GetLength() < MAX_PATH || value.Left(4) == L"\\\\?\\") return value;
+		CString absolute(value);
+		if(value.Left(2) != L"\\\\" && (value.GetLength() < 2 || value[1] != L':')) {
+			const DWORD needed = ::GetFullPathNameW(value, 0, NULL, NULL);
+			if(needed == 0) return value;
+			std::vector<wchar_t> buffer(static_cast<size_t>(needed) + 1);
+			if(::GetFullPathNameW(value, static_cast<DWORD>(buffer.size()), buffer.data(), NULL) == 0) return value;
+			absolute = buffer.data();
+		}
+		if(absolute.Left(2) == L"\\\\") return CString(L"\\\\?\\UNC\\") + absolute.Mid(2);
+		return CString(L"\\\\?\\") + absolute;
+	};
+	const CString destination = extendedPath(path);
 	const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
 	const CString directory = slash >= 0 ? path.Left(slash + 1) : CString(L".\\");
-	wchar_t temporary[MAX_PATH] = {};
-	if (!::GetTempFileNameW(directory, L"fqr", 0, temporary)) { error = ::GetLastError(); return false; }
-	HANDLE output = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (output == INVALID_HANDLE_VALUE) { error = ::GetLastError(); ::DeleteFileW(temporary); return false; }
+	static std::atomic<unsigned> nextTemporary{ 0 };
+	CString temporary;
+	HANDLE output = INVALID_HANDLE_VALUE;
+	for(int attempt = 0; attempt < 16; ++attempt) {
+		CString name;
+		name.Format(L".fbe-report-%08lx-%08lx-%08x.tmp", ::GetCurrentProcessId(), ::GetTickCount(), ++nextTemporary);
+		temporary = extendedPath(directory + name);
+		output = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		if(output != INVALID_HANDLE_VALUE) break;
+		if(::GetLastError() != ERROR_FILE_EXISTS) { error = ::GetLastError(); return false; }
+	}
+	if(output == INVALID_HANDLE_VALUE) { error = ERROR_FILE_EXISTS; return false; }
 	DWORD written = 0;
 	const char marker[] = "\xEF\xBB\xBF";
 	const bool ok = (!bom || (::WriteFile(output, marker, 3, &written, NULL) && written == 3)) &&
@@ -711,16 +734,45 @@ bool SaveUtf8Report(const CString& path, const CString& content, bool bom, DWORD
 		::FlushFileBuffers(output);
 	if (!ok) { error = ::GetLastError(); if (error == ERROR_SUCCESS) error = ERROR_WRITE_FAULT; }
 	::CloseHandle(output);
-	if (ok && ::MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
+	if (ok && ::MoveFileExW(temporary, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
 	if (ok) error = ::GetLastError();
 	::DeleteFileW(temporary);
 	return false;
 }
 
+class ReportSaveEvents : public IFileDialogEvents {
+    std::atomic<ULONG> m_references{ 1 };
+public:
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** object) override {
+		if (!object) return E_POINTER;
+		*object = NULL;
+		if (iid == IID_IUnknown || iid == IID_IFileDialogEvents) { *object = static_cast<IFileDialogEvents*>(this); AddRef(); return S_OK; }
+		return E_NOINTERFACE;
+	}
+	ULONG STDMETHODCALLTYPE AddRef() override { return ++m_references; }
+	ULONG STDMETHODCALLTYPE Release() override { return --m_references; }
+	HRESULT STDMETHODCALLTYPE OnFileOk(IFileDialog*) override { return S_OK; }
+	HRESULT STDMETHODCALLTYPE OnFolderChanging(IFileDialog*, IShellItem*) override { return S_OK; }
+	HRESULT STDMETHODCALLTYPE OnFolderChange(IFileDialog*) override { return S_OK; }
+	HRESULT STDMETHODCALLTYPE OnSelectionChange(IFileDialog*) override { return S_OK; }
+	HRESULT STDMETHODCALLTYPE OnShareViolation(IFileDialog*, IShellItem*, FDE_SHAREVIOLATION_RESPONSE* response) override {
+		if (response) *response = FDESVR_DEFAULT;
+		return S_OK;
+	}
+	HRESULT STDMETHODCALLTYPE OnTypeChange(IFileDialog* dialog) override {
+		UINT index = 1;
+		return SUCCEEDED(dialog->GetFileTypeIndex(&index)) ? dialog->SetDefaultExtension(index == 2 ? L"html" : L"txt") : S_OK;
+	}
+	HRESULT STDMETHODCALLTYPE OnOverwrite(IFileDialog*, IShellItem*, FDE_OVERWRITE_RESPONSE* response) override {
+		if (response) *response = FDEOR_DEFAULT;
+		return S_OK;
+	}
+};
+
 class ResultsDialog : public CDialogImpl<ResultsDialog> {
 public:
 	enum { IDD = IDD_FB2_QUALITY_RESULTS };
-	explicit ResultsDialog(const Report& report) : m_report(report) {}
+	explicit ResultsDialog(const Report& report, UINT initialSaveFilter = 1) : m_report(report), m_initialSaveFilter(initialSaveFilter) {}
 	int selected = -1;
 	BEGIN_MSG_MAP(ResultsDialog)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
@@ -739,9 +791,67 @@ public:
 	END_MSG_MAP()
 private:
 	const Report& m_report;
+	UINT m_initialSaveFilter = 1;
 	int m_sortColumn = -1;
 	bool m_sortDescending = false;
 	HFONT m_font = NULL;
+	HWND m_emptyMessage = NULL;
+	UINT m_columnDpi = 96;
+	void FitInitialColumns() {
+		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		RECT client = {}; list.GetClientRect(&client);
+		HDC dc = ::GetDC(list);
+		HFONT font = reinterpret_cast<HFONT>(::SendMessageW(list, WM_GETFONT, 0, 0));
+		HFONT previous = dc && font ? reinterpret_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+		const auto textWidth = [dc](const CString& value) -> int {
+			SIZE size = {};
+			if(dc) ::GetTextExtentPoint32W(dc, value, value.GetLength(), &size);
+			return size.cx;
+		};
+		int typeWidth = textWidth(FbeLoadRuntimeStringByKey(L"fbe.quality.column.type", L"Type"));
+		for(Severity severity : { Severity::Error, Severity::Warning, Severity::Info })
+			typeWidth = max(typeWidth, textWidth(SeverityText(severity)));
+		int codeWidth = textWidth(FbeLoadRuntimeStringByKey(L"fbe.quality.column.code", L"Code"));
+		int categoryWidth = textWidth(FbeLoadRuntimeStringByKey(L"fbe.quality.column.category", L"Category"));
+		for(const Issue& issue : m_report.issues) {
+			codeWidth = max(codeWidth, textWidth(issue.code));
+			categoryWidth = max(categoryWidth, textWidth(CategoryText(issue)));
+		}
+		const int locationWidth = textWidth(FbeLoadRuntimeStringByKey(L"fbe.quality.column.location", L"Location"));
+		if(previous) ::SelectObject(dc, previous);
+		if(dc) ::ReleaseDC(list, dc);
+		const int padding = UiMetrics::ScaleForDpi(24, m_columnDpi);
+		const int type = max(UiMetrics::ScaleForDpi(90, m_columnDpi), min(typeWidth + padding, UiMetrics::ScaleForDpi(190, m_columnDpi)));
+		const int code = max(UiMetrics::ScaleForDpi(170, m_columnDpi), min(codeWidth + padding, UiMetrics::ScaleForDpi(260, m_columnDpi)));
+		const int category = max(UiMetrics::ScaleForDpi(100, m_columnDpi), min(categoryWidth + padding, UiMetrics::ScaleForDpi(170, m_columnDpi)));
+		const int location = max(UiMetrics::ScaleForDpi(90, m_columnDpi), min(locationWidth + padding, UiMetrics::ScaleForDpi(150, m_columnDpi)));
+		const int description = max(UiMetrics::ScaleForDpi(330, m_columnDpi),
+			client.right - type - code - category - location - UiMetrics::ScaleForDpi(20, m_columnDpi));
+		list.SetColumnWidth(0, type); list.SetColumnWidth(1, code); list.SetColumnWidth(2, category);
+		list.SetColumnWidth(3, description); list.SetColumnWidth(4, location);
+	}
+	void ButtonWidths(int (&widths)[4]) const {
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
+		HDC dc = ::GetDC(m_hWnd);
+		HFONT oldFont = dc ? reinterpret_cast<HFONT>(::SelectObject(dc, m_font ? m_font : reinterpret_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT)))) : NULL;
+		for (int i = 0; i < 4; ++i) {
+			wchar_t label[256] = {};
+			::GetWindowTextW(GetDlgItem(ids[i]), label, _countof(label));
+			SIZE textSize = {};
+			if (dc) ::GetTextExtentPoint32W(dc, label, static_cast<int>(wcslen(label)), &textSize);
+			widths[i] = max(UiMetrics::ScaleForDpi(62, dpi), textSize.cx + UiMetrics::ScaleForDpi(28, dpi));
+		}
+		if (dc) { ::SelectObject(dc, oldFont); ::ReleaseDC(m_hWnd, dc); }
+	}
+	int MinimumWindowWidth() const {
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		int widths[4]; ButtonWidths(widths);
+		RECT window = {}, client = {}; ::GetWindowRect(m_hWnd, &window); ::GetClientRect(m_hWnd, &client);
+		const int nonClient = window.right - window.left - (client.right - client.left);
+		return max(UiMetrics::ScaleForDpi(550, dpi), widths[0] + widths[1] + widths[2] + widths[3] +
+			UiMetrics::ScaleForDpi(3 * 5 + 2 * 8, dpi) + nonClient);
+	}
 	void ApplyDpiFont(UINT dpi) {
 		HFONT font = UiMetrics::CreateDialogFontForDpi(dpi);
 		if (!font) return;
@@ -765,7 +875,7 @@ private:
 		MONITORINFO monitor = { sizeof(monitor) };
 		if (!::GetMonitorInfoW(::MonitorFromRect(&wanted, MONITOR_DEFAULTTONEAREST), &monitor)) return;
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		const int minimumWidth = UiMetrics::ScaleForDpi(550, dpi);
+		const int minimumWidth = MinimumWindowWidth();
 		const int minimumHeight = UiMetrics::ScaleForDpi(310, dpi);
 		width = min(max(width, minimumWidth), monitor.rcWork.right - monitor.rcWork.left);
 		height = min(max(height, minimumHeight), monitor.rcWork.bottom - monitor.rcWork.top);
@@ -802,13 +912,15 @@ private:
 		const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(5, dpi);
 		const int summaryHeight = UiMetrics::ScaleForDpi(19, dpi), detailsHeight = UiMetrics::ScaleForDpi(69, dpi);
 		const int buttonHeight = UiMetrics::ScaleForDpi(25, dpi);
-		const int buttonWidths[] = { 72, 62, 112, 70 };
+		int buttonWidths[4]; ButtonWidths(buttonWidths);
 		const int width = max(0, client.right - 2 * margin);
 		const int buttonY = client.bottom - margin - buttonHeight;
 		const int detailsY = buttonY - gap - detailsHeight;
 		const int listY = margin + summaryHeight + gap;
 		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_SUMMARY), NULL, margin, margin, width, summaryHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_LIST), NULL, margin, listY, width, max(0, detailsY - gap - listY), SWP_NOZORDER | SWP_NOACTIVATE);
+		if (m_emptyMessage) ::SetWindowPos(m_emptyMessage, HWND_TOP, margin + gap, listY + UiMetrics::ScaleForDpi(32, dpi),
+			max(0, width - 2 * gap), UiMetrics::ScaleForDpi(30, dpi), SWP_NOACTIVATE);
 		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_DETAILS), NULL, margin, detailsY, width, detailsHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
 		int x = client.right - margin;
@@ -819,6 +931,7 @@ private:
 		}
 	}
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&) {
+		::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
 		ApplyDpiFont(UiMetrics::DpiForWindow(m_hWnd));
 		SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"));
 		SetDlgItemText(IDC_FB2_QUALITY_GOTO, FbeLoadRuntimeStringByKey(L"fbe.quality.goto", L"Go to"));
@@ -828,8 +941,10 @@ private:
 		CString summary; summary.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.summary", L"Errors: %d     Warnings: %d     Information: %d"), m_report.ErrorCount(), m_report.WarningCount(), m_report.InfoCount());
 		SetDlgItemText(IDC_FB2_QUALITY_SUMMARY, summary);
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
-		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		list.ModifyStyle(0, WS_CLIPSIBLINGS);
+		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		m_columnDpi = dpi;
 		list.InsertColumn(0, FbeLoadRuntimeStringByKey(L"fbe.quality.column.type", L"Type"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(90, dpi));
 		list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.quality.column.code", L"Code"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(170, dpi));
 		list.InsertColumn(2, FbeLoadRuntimeStringByKey(L"fbe.quality.column.category", L"Category"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(100, dpi));
@@ -845,26 +960,39 @@ private:
 			list.SetItemText(row, 4, LocationText(issue));
 		}
 		if (!m_report.issues.empty()) list.SelectItem(0);
+		else {
+			m_emptyMessage = ::CreateWindowExW(0, L"STATIC",
+				FbeLoadRuntimeStringByKey(L"fbe.quality.report.clean", L"No issues found."),
+				WS_CHILD | WS_VISIBLE | SS_CENTER, 0, 0, 0, 0, m_hWnd,
+				reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_FB2_QUALITY_EMPTY)), _Module.GetResourceInstance(), NULL);
+			if (m_emptyMessage && m_font) ::SendMessageW(m_emptyMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), FALSE);
+		}
 		UpdateGoTo();
 		RestoreGeometry();
 		Layout();
+		FitInitialColumns();
 		return TRUE;
 	}
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&) { Layout(); return 0; }
-	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { SaveGeometry(); return 0; }
+	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { SaveGeometry(); ::RemovePropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION"); return 0; }
 	LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_font) { ::DeleteObject(m_font); m_font = NULL; } return 0; }
 	LRESULT OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&) {
 		const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
 		SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left,
 			suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
 		ApplyDpiFont(LOWORD(wParam));
+		if (m_emptyMessage && m_font) ::SendMessageW(m_emptyMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
+		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		for(int column = 0; column < 5; ++column)
+			list.SetColumnWidth(column, ::MulDiv(list.GetColumnWidth(column), LOWORD(wParam), m_columnDpi));
+		m_columnDpi = LOWORD(wParam);
 		Layout();
 		return 0;
 	}
 	LRESULT OnMinMax(UINT, WPARAM, LPARAM parameter, BOOL&) {
 		MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(parameter);
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		info->ptMinTrackSize.x = UiMetrics::ScaleForDpi(550, dpi);
+		info->ptMinTrackSize.x = MinimumWindowWidth();
 		info->ptMinTrackSize.y = UiMetrics::ScaleForDpi(310, dpi);
 		return 0;
 	}
@@ -936,31 +1064,25 @@ private:
 		return 0;
 	}
 	LRESULT OnSave(WORD, WORD, HWND, BOOL&) {
-		wchar_t path[MAX_PATH] = L"fb2-quality-report";
-		OPENFILENAMEW file = {}; file.lStructSize = sizeof(file); file.hwndOwner = m_hWnd;
-		std::wstring filter;
-		const auto addFilter = [&filter](const CString& label, const wchar_t* pattern) {
-			filter.append(label.GetString()); filter.push_back(L'\0'); filter.append(pattern); filter.push_back(L'\0');
-		};
-		addFilter(FbeLoadRuntimeStringByKey(L"fbe.quality.filter.text", L"Text report (*.txt)"), L"*.txt");
-		addFilter(FbeLoadRuntimeStringByKey(L"fbe.quality.filter.html", L"HTML report (*.html)"), L"*.html");
-		filter.push_back(L'\0');
-		file.lpstrFilter = filter.c_str();
-		file.lpstrFile = path; file.nMaxFile = _countof(path); file.nFilterIndex = 1;
-		const CString dialogTitle = FbeLoadRuntimeStringByKey(L"fbe.quality.save", L"Save report");
-		file.lpstrTitle = dialogTitle;
-		file.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
-		if (!::GetSaveFileNameW(&file)) return 0;
-		CString destination(path);
-		const int slash = max(destination.ReverseFind(L'\\'), destination.ReverseFind(L'/'));
-		if (destination.Mid(slash + 1).Find(L'.') < 0) {
-			destination += file.nFilterIndex == 2 ? L".html" : L".txt";
-			if (::GetFileAttributesW(destination) != INVALID_FILE_ATTRIBUTES) {
-				const CString question = FbeLoadRuntimeStringByKey(L"fbe.quality.save.overwrite", L"This report already exists. Replace it?");
-				if (::MessageBoxW(m_hWnd, question, FbeLoadRuntimeStringByKey(L"fbe.quality.save", L"Save report"), MB_YESNO | MB_ICONQUESTION) != IDYES) return 0;
-			}
-		}
-		const bool html = file.nFilterIndex == 2;
+		const CString textLabel = FbeLoadRuntimeStringByKey(L"fbe.quality.filter.text", L"Text report (*.txt)");
+		const CString htmlLabel = FbeLoadRuntimeStringByKey(L"fbe.quality.filter.html", L"HTML report (*.html)");
+		const COMDLG_FILTERSPEC filters[] = { { textLabel, L"*.txt" }, { htmlLabel, L"*.html" } };
+		ReportSaveEvents events;
+		ModernFileDialog::Request request;
+		request.save = true;
+		request.pathMustExist = true;
+		request.overwritePrompt = true;
+		request.title = FbeLoadRuntimeStringByKey(L"fbe.quality.save", L"Save report").GetString();
+		request.initialFileName = L"fb2-quality-report";
+		request.defaultExtension = m_initialSaveFilter == 2 ? L"html" : L"txt";
+		request.filters = filters;
+		request.filterCount = _countof(filters);
+		request.filterIndex = m_initialSaveFilter;
+		request.events = &events;
+		const ModernFileDialog::Result chosen = ModernFileDialog::Show(m_hWnd, request);
+		if (chosen.outcome != ModernFileDialog::Outcome::Accepted) return 0;
+		const CString destination(chosen.paths.front().c_str());
+		const bool html = chosen.filterIndex == 2;
 		DWORD error = ERROR_SUCCESS;
 		if (!SaveReport(m_report, destination, html, error)) {
 			CString message; message.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.save.error", L"Unable to save report (Windows error %lu)."), error);
@@ -1226,6 +1348,10 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 	const HWND details = ::GetDlgItem(window, IDC_FB2_QUALITY_DETAILS);
 	const HWND button = ::GetDlgItem(window, IDC_FB2_QUALITY_SAVE);
 	RECT beforeWindow = {}, beforeList = {}, beforeDetails = {}, beforeButton = {};
+	RECT initialWindow = {};
+	::GetWindowRect(window, &initialWindow);
+	::SetWindowPos(window, NULL, 0, 0, initialWindow.right - initialWindow.left + 200,
+		initialWindow.bottom - initialWindow.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	::GetWindowRect(window, &beforeWindow);
 	::GetWindowRect(list, &beforeList);
 	::GetWindowRect(details, &beforeDetails);
@@ -1244,7 +1370,31 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 	const bool separated = afterDetails.top > afterList.bottom && afterButton.top > afterDetails.bottom;
 	const bool buttonMoved = afterButton.top >= beforeButton.top + 70;
 	const int columns = header ? static_cast<int>(::SendMessageW(header, HDM_GETITEMCOUNT, 0, 0)) : -1;
-	const bool geometry = widthChanged && heightGrew && separated && buttonMoved && columns == 5;
+	const DWORD listStyles = static_cast<DWORD>(::SendMessageW(list, LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0));
+	const bool cleanListStyle = (listStyles & LVS_EX_GRIDLINES) == 0 && (listStyles & LVS_EX_DOUBLEBUFFER) != 0;
+	RECT buttonRects[4] = {};
+	const int buttonIds[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
+	bool buttonsFit = true;
+	for(int index = 0; index < 4; ++index) {
+		const HWND control = ::GetDlgItem(window, buttonIds[index]);
+		::GetWindowRect(control, &buttonRects[index]);
+		wchar_t label[256] = {};
+		::GetWindowTextW(control, label, _countof(label));
+		HDC dc = ::GetDC(control);
+		HFONT font = reinterpret_cast<HFONT>(::SendMessageW(control, WM_GETFONT, 0, 0));
+		HFONT old = dc && font ? reinterpret_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+		SIZE measured = {};
+		if(dc) ::GetTextExtentPoint32W(dc, label, static_cast<int>(wcslen(label)), &measured);
+		if(dc && old) ::SelectObject(dc, old);
+		if(dc) ::ReleaseDC(control, dc);
+		buttonsFit = buttonsFit && buttonRects[index].right - buttonRects[index].left >= measured.cx + 8;
+		if(index > 0) buttonsFit = buttonsFit && buttonRects[index - 1].right < buttonRects[index].left;
+	}
+	wchar_t closeText[256] = {};
+	::GetWindowTextW(::GetDlgItem(window, IDCANCEL), closeText, _countof(closeText));
+	const bool closeCorrect = CString(closeText) == FbeLoadRuntimeStringByKey(L"fbe.quality.close", L"Close");
+	const bool geometry = widthChanged && heightGrew && separated && buttonMoved && columns == 5 &&
+		cleanListStyle && buttonsFit && closeCorrect;
 	NMLISTVIEW click = {};
 	click.hdr.hwndFrom = list;
 	click.hdr.idFrom = IDC_FB2_QUALITY_LIST;
@@ -1259,9 +1409,82 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 	const bool sortedReverse = ::SendMessageW(list, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&first)) != 0 &&
 		static_cast<size_t>(first.lParam) < report.issues.size() && report.issues[first.lParam].severity == Severity::Warning;
 	dialog.DestroyWindow();
-	if (diagnostics) diagnostics->Format(L"width=%d height=%d separated=%d button=%d columns=%d ascending=%d descending=%d",
-		widthChanged, heightGrew, separated, buttonMoved, columns, sortedFirst, sortedReverse);
-	return geometry && sortedFirst && sortedReverse;
+	Report cleanReport;
+	ResultsDialog cleanDialog(cleanReport);
+	const HWND cleanWindow = cleanDialog.Create(parent);
+	const HWND emptyMessage = cleanWindow ? ::GetDlgItem(cleanWindow, IDC_FB2_QUALITY_EMPTY) : NULL;
+	wchar_t emptyText[256] = {};
+	if(emptyMessage) ::GetWindowTextW(emptyMessage, emptyText, _countof(emptyText));
+	const bool cleanMessage = emptyMessage && CString(emptyText) == FbeLoadRuntimeStringByKey(L"fbe.quality.report.clean", L"No issues found.");
+	if(cleanWindow) cleanDialog.DestroyWindow();
+	if (diagnostics) diagnostics->Format(L"width=%d height=%d separated=%d button=%d columns=%d styles=%d labels=%d close=%d empty=%d ascending=%d descending=%d",
+		widthChanged, heightGrew, separated, buttonMoved, columns, cleanListStyle, buttonsFit, closeCorrect, cleanMessage, sortedFirst, sortedReverse);
+	return geometry && cleanMessage && sortedFirst && sortedReverse;
+}
+
+bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& screenshotPath, CString* diagnostics)
+{
+	ResultsDialog dialog(report);
+	const HWND window = dialog.Create(parent);
+	if(!window) { if(diagnostics) *diagnostics = L"dialog-create-failed"; return false; }
+	::ShowWindow(window, SW_SHOWNOACTIVATE);
+	::UpdateWindow(window);
+	const HWND list = ::GetDlgItem(window, IDC_FB2_QUALITY_LIST);
+	int initialWidths[5] = {};
+	for(int column = 0; column < 5; ++column)
+		initialWidths[column] = static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0));
+	for(int iteration = 0; iteration < 10; ++iteration) {
+		const int column = iteration % 5;
+		const int width = UiMetrics::ScaleForDpi(85 + (iteration % 3) * 45, UiMetrics::DpiForWindow(window));
+		::SendMessageW(list, LVM_SETCOLUMNWIDTH, column, width);
+	}
+	for(int column = 0; column < 5; ++column)
+		::SendMessageW(list, LVM_SETCOLUMNWIDTH, column, initialWidths[column]);
+	::RedrawWindow(list, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+	if(HWND empty = ::GetDlgItem(window, IDC_FB2_QUALITY_EMPTY))
+		::RedrawWindow(empty, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+	RECT bounds = {}; ::GetWindowRect(window, &bounds);
+	const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = -height;
+	info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	void* bits = NULL;
+	HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+	HDC memory = bitmap ? ::CreateCompatibleDC(NULL) : NULL;
+	HGDIOBJ previous = memory ? ::SelectObject(memory, bitmap) : NULL;
+	const bool captured = bits && memory && previous && ::PrintWindow(window, memory, 0) != FALSE;
+	bool saved = false;
+	if(captured) {
+		BITMAPFILEHEADER file = {}; file.bfType = 0x4d42;
+		file.bfOffBits = sizeof(file) + sizeof(BITMAPINFOHEADER);
+		file.bfSize = file.bfOffBits + width * height * 4;
+		HANDLE output = ::CreateFileW(screenshotPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if(output != INVALID_HANDLE_VALUE) {
+			DWORD written = 0;
+			saved = ::WriteFile(output, &file, sizeof(file), &written, NULL) && written == sizeof(file) &&
+				::WriteFile(output, &info.bmiHeader, sizeof(info.bmiHeader), &written, NULL) && written == sizeof(info.bmiHeader) &&
+				::WriteFile(output, bits, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4);
+			::CloseHandle(output);
+		}
+	}
+	if(previous) ::SelectObject(memory, previous);
+	if(memory) ::DeleteDC(memory);
+	if(bitmap) ::DeleteObject(bitmap);
+	dialog.DestroyWindow();
+	if(diagnostics) diagnostics->Format(L"captured=%d saved=%d width=%d height=%d drags=10", captured, saved, width, height);
+	return captured && saved;
+}
+
+bool ProbeReportSaveDialog(HWND parent, const Report& report, bool htmlFilter)
+{
+	ResultsDialog dialog(report, htmlFilter ? 2 : 1);
+	const HWND window = dialog.Create(parent);
+	if(!window) return false;
+	::ShowWindow(window, SW_SHOWNOACTIVATE);
+	::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDC_FB2_QUALITY_SAVE, BN_CLICKED),
+		reinterpret_cast<LPARAM>(::GetDlgItem(window, IDC_FB2_QUALITY_SAVE)));
+	dialog.DestroyWindow();
+	return true;
 }
 
 bool ResolveSourceRange(const Issue& issue, const CString& currentSource, SourceRange& range)

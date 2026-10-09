@@ -44,7 +44,7 @@ Assert-StructurallyInvalidFbd 'wrong_namespace.fbd' 'wrong namespace'
 Assert-StructurallyInvalidFbd 'missing_description.fbd' 'missing description'
 Assert-StructurallyInvalidFbd 'duplicate_description.fbd' 'duplicate description'
 if($fileDialogs -notmatch '\*\.fb2;\*\.fbd') { throw 'Open dialog does not expose both FictionBook extensions.' }
-if($fileDialogs -notmatch 'FictionBook Description \(\*\.fbd\)') { throw 'Save As does not expose the separate FBD type.' }
+if($fileDialogs -notmatch 'fbe\.file_filter\.fbd' -or $fileDialogs -notmatch '\{fbd, L"\*\.fbd"\}') { throw 'Save As does not expose the localized separate FBD type.' }
 if($fileDialogs -notmatch 'request\.filterIndex\s*=\s*IsFbdFile\(input\.initialFileName\)\s*\?\s*2\s*:\s*1' -or
 	$fileDialogs -notmatch 'dialogResult\.filterIndex\s*==\s*2\s*\?\s*FictionBookFileType::Fbd') { throw 'Save As filter selection does not control the target type.' }
 if($xsl -notmatch 'class="body" fbdsynthetic="1"') { throw 'Body-less FBD visual placeholder is not marked synthetic.' }

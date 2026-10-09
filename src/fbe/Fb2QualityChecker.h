@@ -40,5 +40,7 @@ CString FormatHtmlReport(const Report& report);
 bool SaveReport(const Report& report, const CString& path, bool html, DWORD& error);
 int ShowReport(HWND parent, const Report& report);
 bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagnostics = nullptr);
+bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& screenshotPath, CString* diagnostics = nullptr);
+bool ProbeReportSaveDialog(HWND parent, const Report& report, bool htmlFilter = false);
 bool ResolveSourceRange(const Issue& issue, const CString& currentSource, SourceRange& range);
 }

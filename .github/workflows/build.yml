@@ -167,7 +167,15 @@ jobs:
         shell: pwsh
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
-          ./tools/tests/test-fb2-quality-checker-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-fb2-quality-checker-runtime.ps1 -FbeExe out/Release/FBE.exe -ArtifactDirectory ./out/tests/fb2-quality-ui
+      - name: Upload FB2 quality checker visual capture
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fb2-quality-ui-${{ github.sha }}
+          path: out/tests/fb2-quality-ui/**
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Run keyboard layout C++ regression
         shell: pwsh
         run: |

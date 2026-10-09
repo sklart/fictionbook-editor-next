@@ -35,6 +35,9 @@ $consumers = @{
     IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\settings\ui\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
     IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\settings\ui\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
     IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\settings\ui\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
+    IFileOpenDialog = @{ File = 'src\fbe\document\ui\DocumentFileDialogs.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
+    IFileSaveDialog = @{ File = 'src\fbe\document\ui\DocumentFileDialogs.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
+    IFileDialog = @{ File = 'src\fbe\document\ui\DocumentFileDialogs.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     'runtime/main.js' = @{ File = 'runtime\main.js'; Invocation = 'GetLocalizedString' }
     IDS_REPL_ALL_CAPT = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
     IDS_REPL_DONE_MSG = @{ File = 'src\fbe\FBEview.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
@@ -83,8 +86,13 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
         ($key -like 'fbe.quality.detail.*' -or $key -like 'fbe.quality.action.*') -and
         $consumerText.Contains('L"' + $key.Substring(0, $key.LastIndexOf('.') + 1) + '"') -and
         $consumerText.Contains('suffix = L"' + $key.Substring($key.LastIndexOf('.') + 1) + '"')
+    # Keep the translated legacy prompt; IFileSaveDialog now owns the visible
+    # overwrite confirmation in the user's Windows UI language.
+    $nativeOverwritePrompt = $key -eq 'fbe.quality.save.overwrite' -and
+        $consumerText.Contains('request.overwritePrompt = true') -and
+        $consumerText.Contains('FDEOR_DEFAULT')
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
-        -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $consumerText.Contains($key)) {
+        -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
