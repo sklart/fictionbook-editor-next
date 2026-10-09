@@ -231,7 +231,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_tree.ApplyModeAppearance();
 	m_rebar = CFrameWindowImplBase<>::CreateSimpleReBarCtrl(*this, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CS_HREDRAW);
 	m_toolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_toolbar_images, IDR_DOCUMENT_TREE,
-		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_WRAPABLE);
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_WRAPABLE, ATL_IDW_TOOLBAR, 16);
 	if(!m_toolbar.IsWindow()) return -1;
 	CFrameWindowImplBase<>::AddSimpleReBarBandCtrl(m_rebar, m_toolbar);
 	if(m_rebar.IsWindow())
@@ -881,19 +881,19 @@ void CTreeWithToolBar::UpdateDpiMetrics(UINT dpi)
 	if(m_toolbar.IsWindow())
 	{
 		CImageList images;
-		if(ToolbarFactory::CreateCommandToolbarImages(images, IDR_DOCUMENT_TREE, dpi))
+		if(ToolbarFactory::CreateCommandToolbarImages(images, IDR_DOCUMENT_TREE, dpi, 16))
 		{
 			m_toolbar.SetImageList(images);
 			m_toolbar_images.Destroy();
 			m_toolbar_images.Attach(images.Detach());
 			ToolbarFactory::SetDialogFontForToolbarRow(m_toolbar);
-			ToolbarFactory::ApplyCommandToolbarMetrics(m_toolbar, IDR_DOCUMENT_TREE, dpi);
+			ToolbarFactory::ApplyCommandToolbarMetrics(m_toolbar, IDR_DOCUMENT_TREE, dpi, 16);
 			if(m_rebar.IsWindow())
 			{
 				RECT toolbarRect = {}; m_toolbar.GetWindowRect(&toolbarRect);
 				REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_CHILDSIZE;
 				band.cyMinChild = toolbarRect.bottom - toolbarRect.top;
-				band.cxMinChild = ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi);
+				band.cxMinChild = ToolbarFactory::CompactToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi);
 				m_rebar.SetBandInfo(0, &band);
 				m_rebar.SendMessage(WM_SIZE);
 			}

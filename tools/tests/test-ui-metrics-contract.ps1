@@ -28,7 +28,7 @@ Require $toolbarFactory 'CommandToolbarImageSize' 'DPI-aware command-toolbar ima
 Require $toolbarFactory 'ScaleForDpi\(24, dpi' '24px logical command-toolbar image base'
 foreach($dpi in 96,120,144,168,192) { if([Math]::Round(24 * $dpi / 96) -notin 24,30,36,42,48) { throw "Unexpected toolbar size for DPI $dpi" } }
 Require $toolbarFactory 'TB_SETBITMAPSIZE[^\r\n]*imageSize' 'DPI-aware command-toolbar bitmap geometry'
-Require $toolbarFactory 'TB_SETBUTTONSIZE[^\r\n]*ScaleForDpi\(toolbarData->width \+ 7' 'DPI-aware command-toolbar button geometry'
+Require $toolbarFactory 'TB_SETBUTTONSIZE[^\r\n]*ScaleForDpi\(baseImageSize \+ 7' 'DPI-aware command-toolbar button geometry'
 Require $toolbarFactory 'AutoSizeToolbar\(toolbar\)' 'command-toolbar autosize'
 Require $mainFrame 'm_MenuBar\.AttachMenu\(GetMenu\(\)\);[\s\S]{0,600}UiMetrics::MenuFont\(\)' 'menu font applied after AttachMenu'
 Require $contextBars 'SetDialogFontForToolbarRow\(m_linksBar\)' 'links row receives DialogFont'

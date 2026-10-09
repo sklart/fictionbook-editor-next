@@ -7,8 +7,9 @@ struct ScriptToolbarRuntime
 {
 	ScriptToolbarDefinition definition;
 	HWND window;
+	HIMAGELIST images;
 	UINT rebarBandId;
-	ScriptToolbarRuntime() : window(NULL), rebarBandId(0) {}
+	ScriptToolbarRuntime() : window(NULL), images(NULL), rebarBandId(0) {}
 };
 
 class ScriptToolbarRuntimeCollection

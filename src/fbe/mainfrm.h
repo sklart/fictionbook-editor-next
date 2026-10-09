@@ -164,6 +164,7 @@ public:
 	CImageList		m_commandToolbarImages;	// application-owned command toolbar image list
 	int			m_table_toolbar_image_indices[8];
 	CToolBarCtrl	m_ScriptsToolbar;	// commands toolbar
+	HIMAGELIST		m_scriptsToolbarImages;
 	ScriptToolbarRuntimeCollection m_scriptToolbars;
 	ScriptToolbarManager m_scriptToolbarManager;
 	int			m_scriptsToolbarBaseImageCount;
@@ -273,7 +274,7 @@ public:
     m_restore_pos_cmdline(false), m_incsearch(0), m_is_fail(false),
     m_sci_find_dlg(0), m_sci_replace_dlg(0),
 	 m_scripts(ID_EDIT_INS_SYMBOL + 101, 999), m_testFailNextInitializeScripts(false), m_testFailAfterCustomToolbarCreates(0),
-	    m_bad_xml(false), m_selBandID(-1), m_selToolbar(NULL), m_quickToolbarWindow(NULL), m_quickToolbarSourceIndex(-1), m_quickToolbarStart{}, m_quickToolbarSourceSeparator(false), m_quickToolbarDragging(false), m_scriptsToolbarBaseImageCount(0)
+	    m_bad_xml(false), m_selBandID(-1), m_selToolbar(NULL), m_quickToolbarWindow(NULL), m_quickToolbarSourceIndex(-1), m_quickToolbarStart{}, m_quickToolbarSourceSeparator(false), m_quickToolbarDragging(false), m_scriptsToolbarImages(NULL), m_scriptsToolbarBaseImageCount(0)
 	// added by SeNS
 	{
 		strINS[0] = L'\0';
@@ -365,7 +366,7 @@ public:
 	void InitializeRecentDocumentsMenu();
 	void RegisterPluginHotkey(CString guid, UINT cmd, CString name);
 
-  void AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand = 0, const BYTE bState = 0, const HICON icon = 0);
+	void AddTbButton(HWND hWnd, const TCHAR *text, int idCommand, BYTE state, const CString& scriptPath, HICON icon, HBITMAP bitmap);
 
 
   // ui updating
@@ -384,6 +385,8 @@ public:
 	DWORD BuildBodyCommandState(CFBEView& view);
 	void UpdateTableCommandState();
 	bool RebuildCommandToolbarImages(UINT dpi);
+	bool RebuildScriptToolbarImages(HWND toolbar, HIMAGELIST& ownedImages, UINT dpi);
+	bool UpdateScriptToolbarDpiMetrics(UINT dpi);
 
 	// source<->html exchange
 	bool SourceToHTML();

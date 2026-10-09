@@ -41,7 +41,7 @@ if ($menuBitmapHelper.Value -match 'm_clrMask') {
 if ($factory -notmatch '(?s)HBITMAP CreateAlphaBitmapCell\(.*?biBitCount = 32.*?bytesPerPixel.*?alpha == 0 \|\| \(blue == 0xFF && green == 0x00 && red == 0xFF\).*?return target;') {
 	throw 'Command and table toolbar bitmap conversion must create 32-bit alpha pixels using only the exact magenta transparency key.'
 }
-if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?LoadImage\(module, MAKEINTRESOURCE\(toolbarResourceId\), IMAGE_BITMAP.*?CreateAlphaBitmapCell\(source, 24, index\).*?ScaleLegacyToolbarAlphaBitmap\(alpha, 24, imageSize\).*?ImageList_Add\(') {
+if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?LoadImage\(module, MAKEINTRESOURCE\(toolbarResourceId\), IMAGE_BITMAP.*?CreateAlphaBitmapCell\(source, sourceSize, index\).*?sourceSize == 24 && baseImageSize == 24.*?ScaleLegacyToolbarAlphaBitmap\(alpha, sourceSize, imageSize\).*?ImageList_Add\(') {
 	throw 'Standard command-toolbar images must be extracted from Toolbar.bmp and scaled through the shared ARGB pipeline.'
 }
 if ($factory -match 'ImageList_LoadImage|ImageList_GetIcon|ImageList_AddIcon|ILC_COLOR32 \| ILC_MASK') {
@@ -55,7 +55,7 @@ if ($factory -notmatch '(?s)HBITMAP ScaleLegacyToolbarAlphaBitmap\(.*?targetSize
 foreach ($forbidden in @('connectedCanvas', 'edge-connected', 'pending.Enqueue', 'maximum =', 'minimum =')) {
 	if ($factory.Contains($forbidden)) { throw "Table toolbar alpha conversion must not use a brightness or flood-fill heuristic: $forbidden" }
 }
-if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?UINT dpi.*?CreateCommandToolbarImages\(ownedImages, toolbarResourceId, dpi\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS.*?ApplyCommandToolbarMetrics\(window, toolbarResourceId, dpi\)') {
+if ($factory -notmatch '(?s)HWND ToolbarFactory::CreateCommandToolbarCtrl\(.*?UINT dpi.*?CreateCommandToolbarImages\(ownedImages, toolbarResourceId, dpi, baseImageSize\).*?TB_SETIMAGELIST.*?TB_ADDBUTTONS.*?ApplyCommandToolbarMetrics\(window, toolbarResourceId, dpi, baseImageSize\)') {
     throw 'Command toolbar must install its current-DPI owned image list and geometry before adding buttons.'
 }
 if ($factory -notmatch 'CommandToolbarImageSize' -or $factory -notmatch 'CreateCommandToolbarImages' -or $cpp -notmatch 'RebuildCommandToolbarImages\(newDpi\)') {

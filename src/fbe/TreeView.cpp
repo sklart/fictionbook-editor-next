@@ -21,6 +21,9 @@ static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKEL
 namespace
 {
 const int kFavoriteScriptImageIndex = 1;
+const int kScriptImageSize = 20;
+const int kScriptItemHeight = 24;
+const int kScriptIndent = 20;
 
 HBITMAP CreateScriptTreeGlyphBitmap(bool favorite, int size)
 {
@@ -519,7 +522,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   
   // "OnInitialUpdate"
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
-	  m_script_image_size = ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd));
+	  m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, UiMetrics::DpiForWindow(m_hWnd));
 	  m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,16,8);
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
@@ -1041,9 +1044,8 @@ void CTreeView::ApplyModeAppearance()
 		// square plus/minus expanders, independently of Explorer chevrons.
 		::SetWindowTheme(m_hWnd, L" ", L" ");
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
-		SetItemHeight(imageSize + UiMetrics::ScaleForDpi(8, dpi));
-		SetIndent(imageSize + UiMetrics::ScaleForDpi(2, dpi));
+		SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi));
+		SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi));
 	}
 	else
 	{
@@ -1057,7 +1059,7 @@ void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
 {
 	if(!IsWindow()) return;
 	if(dpi == 0) dpi = UiMetrics::DpiForWindow(m_hWnd);
-	const int size = ToolbarFactory::CommandToolbarImageSize(dpi);
+	const int size = UiMetrics::ScaleForDpi(kScriptImageSize, dpi);
 	if(size != m_script_image_size)
 	{
 		PrepareScriptImages(dpi);
@@ -1065,8 +1067,8 @@ void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
 	}
 	if(m_script_mode)
 	{
-		SetItemHeight(size + UiMetrics::ScaleForDpi(8, dpi));
-		SetIndent(size + UiMetrics::ScaleForDpi(2, dpi));
+		SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi));
+		SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi));
 	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
@@ -1156,9 +1158,8 @@ void CTreeView::SaveFavoriteScripts()
 
 void CTreeView::PrepareScriptImages(UINT dpi)
 {
-	// Script sidecars do not share the legacy structural strip. Rebuild this
-	// image list at the same DPI scale as the main command toolbar.
-	m_script_image_size = ToolbarFactory::CommandToolbarImageSize(dpi ? dpi : UiMetrics::DpiForWindow(m_hWnd));
+	// Preserve the compact tree geometry while rebuilding sidecars at its DPI.
+	m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, dpi ? dpi : UiMetrics::DpiForWindow(m_hWnd));
 	m_scriptImageList.Destroy();
 	m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+2,8);
 	HBITMAP fallback = CreateScriptTreeGlyphBitmap(false, m_script_image_size);

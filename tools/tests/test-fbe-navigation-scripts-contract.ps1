@@ -129,7 +129,7 @@ Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select thei
 Must $tree 'if\(m_script_mode\) SetImageList\(m_scriptImageList,TVSIL_NORMAL\);' 'scripts rebind the native image list after a visual refresh'
 Must $tree 'SetImageList\(m_ImageList,TVSIL_NORMAL\)' 'structure restores the legacy structural image list'
 Must $tree 'SetWindowTheme\(m_hWnd, L" ", L" "\)' 'scripts use native legacy plus/minus expanders instead of themed chevrons'
-Must $tree 'ToolbarFactory::CommandToolbarImageSize\(dpi\)' 'scripts-tree icons follow the shared command-toolbar DPI metric'
+Must $tree 'UiMetrics::ScaleForDpi\(kScriptImageSize, dpi' 'scripts-tree icons retain compact DPI metrics'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'navigation-scripts-runtime' 'runtime scenario exercises the native navigation tree'
 Must (Text 'tools\build\verify-release.ps1') 'test-fbe-navigation-scripts-runtime\.ps1' 'release gate runs navigation runtime regression'
 Must (Text '.github\workflows\build.yml') 'test-fbe-navigation-scripts-runtime\.ps1' 'CI runs navigation runtime regression'

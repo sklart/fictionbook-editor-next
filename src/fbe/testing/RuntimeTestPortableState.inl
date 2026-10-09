@@ -290,9 +290,14 @@ void CMainFrame::RunPortableStateTestScenario()
 	{
 		::CreateDirectory(scriptsDirectory, NULL);
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
-		if(!InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		const bool fixtureWritten = WritePortableStateTestText(scriptsDirectory + L"RuntimeSize.js", "function Run() {}\n");
+		if(!fixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		CString scriptUid; UINT scriptCommand = 0;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RuntimeSize.js") == 0)
+			{ scriptUid = m_scripts.Menu().Item(index).uid; scriptCommand = ID_SCRIPT_BASE + m_scripts.Menu().Item(index).commandId; break; }
 		std::vector<ScriptToolbarDefinition> previous = currentDefinitions(), definitions = previous;
-		for(int index = 1; index <= 8; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-size-%d", index); item.name.Format(L"Runtime size %d", index); item.visible = true; definitions.push_back(item); }
+		for(int index = 1; index <= 8; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-size-%d", index); item.name.Format(L"Runtime size %d", index); item.visible = true; if(index == 1 && !scriptUid.IsEmpty()) { PortableToolbarItem button = {}; button.scriptUid = scriptUid; item.items.push_back(button); } definitions.push_back(item); }
 		RECT stockRect = {}; ::GetWindowRect(m_ScriptsToolbar, &stockRect);
 		const int stockHeight = stockRect.bottom - stockRect.top;
 		auto oneRow = [&]() {
@@ -330,8 +335,92 @@ void CMainFrame::RunPortableStateTestScenario()
 		const UINT bandAfter = runtimeBandId(L"runtime-size-2");
 		const int duplicateIds = duplicateBandIds();
 		const bool restarted = showOneRow && duplicateIds == 0 && InitializeScripts() && oneRow();
-		const bool passed = created && added && hiddenOk && shown && showOneRow && bandBefore != 0 && bandAfter != 0 && duplicateIds == 0 && restarted;
-		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-result=%d\nshow-result=%d\nshow-one-row=%d\nband-before=%u\nband-after=%u\nduplicate-band-ids=%d\nhide-show=%d\nrestart=%d\nresult=%s\n", created, added, hiddenOk, shown, showOneRow, bandBefore, bandAfter, duplicateIds, hiddenOk && shown, restarted, passed ? "pass" : "fail");
+		CStringA matrixDetails;
+		auto metrics = [&](HWND window, UINT dpi, bool requireVisibleScript) {
+			if(!::IsWindow(window)) return false;
+			const HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_GETIMAGELIST, 0, 0));
+			int width = 0, height = 0; const int expected = ToolbarFactory::CommandToolbarImageSize(dpi);
+			const bool imageSizeRead = images != NULL && ::ImageList_GetIconSize(images, &width, &height) != FALSE;
+			const LRESULT buttonSize = ::SendMessage(window, TB_GETBUTTONSIZE, 0, 0);
+			RECT bounds = {}; ::GetWindowRect(window, &bounds);
+			TBBUTTONS catalog; const bool available = GetAvailableButtons(window, catalog);
+			bool scriptImage = false;
+			for(int index = 0; available && index < catalog.GetSize(); ++index)
+				if(catalog[index].idCommand == static_cast<int>(scriptCommand))
+					scriptImage = catalog[index].iBitmap >= m_scriptsToolbarBaseImageCount && catalog[index].iBitmap < ::ImageList_GetImageCount(images);
+			// Measure the painted glyph, not only the ImageList cell. The source
+			// has transparent corners but its painted area must grow with DPI.
+			HDC screen = ::GetDC(NULL);
+			HDC memory = screen != NULL ? ::CreateCompatibleDC(screen) : NULL;
+			HBITMAP bitmap = memory != NULL ? ::CreateCompatibleBitmap(screen, expected, expected) : NULL;
+			bool graphicScaled = false;
+			if(bitmap != NULL)
+			{
+				HGDIOBJ oldBitmap = ::SelectObject(memory, bitmap);
+				RECT cell = { 0, 0, expected, expected };
+				HBRUSH background = ::CreateSolidBrush(RGB(0, 0, 0));
+				::FillRect(memory, &cell, background); ::DeleteObject(background);
+				if(::ImageList_Draw(images, 0, memory, 0, 0, ILD_TRANSPARENT))
+				{
+					int left = expected, top = expected, right = -1, bottom = -1;
+					for(int y = 0; y < expected; ++y) for(int x = 0; x < expected; ++x)
+						if(::GetPixel(memory, x, y) != RGB(0, 0, 0))
+						{ left = (std::min)(left, x); top = (std::min)(top, y); right = (std::max)(right, x); bottom = (std::max)(bottom, y); }
+					graphicScaled = right - left + 1 >= expected * 3 / 4 && bottom - top + 1 >= expected * 3 / 4;
+				}
+				::SelectObject(memory, oldBitmap); ::DeleteObject(bitmap);
+			}
+			if(memory != NULL) ::DeleteDC(memory);
+			if(screen != NULL) ::ReleaseDC(NULL, screen);
+			const bool visibleScript = !requireVisibleScript || ::SendMessage(window, TB_COMMANDTOINDEX, scriptCommand, 0) >= 0;
+			matrixDetails.AppendFormat("metric-%u=%dx%d,button:%dx%d,toolbar:%d,catalog:%d,script-image:%d,visible:%d,graphic:%d\n",
+				dpi, width, height, LOWORD(buttonSize), HIWORD(buttonSize), bounds.bottom - bounds.top, available, scriptImage, visibleScript, graphicScaled);
+			return imageSizeRead && width == expected && height == expected &&
+				LOWORD(buttonSize) >= UiMetrics::ScaleForDpi(31, dpi) && HIWORD(buttonSize) >= UiMetrics::ScaleForDpi(31, dpi) &&
+				bounds.bottom - bounds.top >= HIWORD(buttonSize) && scriptImage && visibleScript && graphicScaled;
+		};
+		const UINT dpis[] = { 96, 120, 144, 168, 192 };
+		bool dpiMatrix = restarted && scriptCommand != 0 && !scriptUid.IsEmpty();
+		HIMAGELIST previousMainImages = m_scriptsToolbarImages;
+		std::vector<HIMAGELIST> previousCustomImages;
+		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+			previousCustomImages.push_back(m_scriptToolbars.Items()[index].images);
+		for(UINT dpi : dpis)
+		{
+			const bool refreshed = UpdateScriptToolbarDpiMetrics(dpi);
+			bool customMetrics = true, bandMetrics = true, mainBand = false;
+			for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+			{
+				const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+				if(runtime.definition.id.Left(13) != L"runtime-size-") continue;
+				customMetrics = customMetrics && runtime.images != previousCustomImages[index] &&
+					runtime.images == reinterpret_cast<HIMAGELIST>(::SendMessage(runtime.window, TB_GETIMAGELIST, 0, 0)) &&
+					metrics(runtime.window, dpi, runtime.definition.id == L"runtime-size-1");
+				previousCustomImages[index] = runtime.images;
+				const int band = m_rebar.IdToIndex(runtime.rebarBandId); RECT toolbarRect = {}, bandRect = {};
+				bandMetrics = bandMetrics && band >= 0 && ::GetWindowRect(runtime.window, &toolbarRect) && m_rebar.GetRect(band, &bandRect) &&
+					abs((toolbarRect.bottom - toolbarRect.top) - (bandRect.bottom - bandRect.top)) <= ::GetSystemMetrics(SM_CYEDGE) * 2;
+			}
+			for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
+			{
+				REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD;
+				if(!m_rebar.GetBandInfo(band, &info) || info.hwndChild != m_ScriptsToolbar) continue;
+				RECT toolbarRect = {}, bandRect = {};
+				mainBand = ::GetWindowRect(m_ScriptsToolbar, &toolbarRect) && m_rebar.GetRect(band, &bandRect) &&
+					abs((toolbarRect.bottom - toolbarRect.top) - (bandRect.bottom - bandRect.top)) <= ::GetSystemMetrics(SM_CYEDGE) * 2;
+				break;
+			}
+			const bool mainImagesChanged = m_scriptsToolbarImages != previousMainImages;
+			const bool mainMetrics = metrics(m_ScriptsToolbar, dpi, false);
+			matrixDetails.AppendFormat("dpi-%u=refresh:%d,main-images:%d,main-metrics:%d,custom-metrics:%d,custom-bands:%d,main-band:%d\n",
+				dpi, refreshed, mainImagesChanged, mainMetrics, customMetrics, bandMetrics, mainBand);
+			dpiMatrix = dpiMatrix && refreshed && mainImagesChanged && mainMetrics && customMetrics && bandMetrics && mainBand;
+			previousMainImages = m_scriptsToolbarImages;
+		}
+		const bool restoredDpi = UpdateScriptToolbarDpiMetrics(UiMetrics::DpiForWindow(m_hWnd));
+		const bool passed = created && added && hiddenOk && shown && showOneRow && bandBefore != 0 && bandAfter != 0 && duplicateIds == 0 && restarted && dpiMatrix && restoredDpi;
+		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-result=%d\nshow-result=%d\nshow-one-row=%d\nband-before=%u\nband-after=%u\nduplicate-band-ids=%d\nhide-show=%d\nrestart=%d\nscript-command=%u\ndpi-matrix=%d\ndpi-restored=%d\nresult=%s\n", created, added, hiddenOk, shown, showOneRow, bandBefore, bandAfter, duplicateIds, hiddenOk && shown, restarted, scriptCommand, dpiMatrix, restoredDpi, passed ? "pass" : "fail");
+		report += matrixDetails;
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsReloadRuntime)
@@ -685,10 +774,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool visualMapping = tree.ScriptTreeImage(root) >= 0 && tree.ScriptTreeImage(folderA) >= 0 && tree.ScriptTreeImage(child) >= 0 && tree.ScriptTreeImage(folderB) >= 0 && tree.ScriptTreeImage(deep) >= 0 && tree.ScriptImageList() != tree.StructuralImageList();
 		int scriptImageSize = 0, scriptItemHeight = 0, scriptIndent = 0; bool legacyExpanders = false;
 		const UINT scriptDpi = UiMetrics::DpiForWindow(tree.m_hWnd);
-		const int expectedImageSize = ToolbarFactory::CommandToolbarImageSize(scriptDpi);
+		const int expectedImageSize = UiMetrics::ScaleForDpi(20, scriptDpi);
 		const bool scriptMetrics = tree.GetScriptTreeMetrics(scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders) &&
-			scriptImageSize == expectedImageSize && scriptItemHeight >= expectedImageSize + UiMetrics::ScaleForDpi(8, scriptDpi) &&
-			scriptIndent >= expectedImageSize && legacyExpanders;
+			scriptImageSize == expectedImageSize && scriptItemHeight == UiMetrics::ScaleForDpi(24, scriptDpi) &&
+			scriptIndent == UiMetrics::ScaleForDpi(20, scriptDpi) && legacyExpanders;
 		const HWND bottomToolbar = m_document_tree.m_tree.BottomToolbarWindow();
 		const UINT bottomCommands[] = { ID_DT_RIGHT_ONE, ID_DT_RIGHT_SMART, ID_DT_LEFT, ID_DT_MERGE, ID_DT_DELETE };
 		bool bottomCommandsPreserved = ::SendMessage(bottomToolbar, TB_BUTTONCOUNT, 0, 0) == _countof(bottomCommands) &&
@@ -699,6 +788,12 @@ void CMainFrame::RunPortableStateTestScenario()
 			bottomCommandsPreserved = bottomCommandsPreserved && ::SendMessage(bottomToolbar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&item)) &&
 				item.idCommand == static_cast<int>(bottomCommands[index]);
 		}
+		int bottomImageWidth = 0, bottomImageHeight = 0;
+		const HIMAGELIST bottomImages = reinterpret_cast<HIMAGELIST>(::SendMessage(bottomToolbar, TB_GETIMAGELIST, 0, 0));
+		const LRESULT bottomButtonSize = ::SendMessage(bottomToolbar, TB_GETBUTTONSIZE, 0, 0);
+		const bool bottomCompact = bottomImages != NULL && ::ImageList_GetIconSize(bottomImages, &bottomImageWidth, &bottomImageHeight) &&
+			bottomImageWidth == ToolbarFactory::CompactToolbarImageSize(scriptDpi) && bottomImageHeight == bottomImageWidth &&
+			HIWORD(bottomButtonSize) < UiMetrics::ScaleForDpi(31, scriptDpi);
 		bool dpiMatrix = true, dpiIconAlpha = true, narrowToolbar = true;
 		int narrowRowsObserved = 0, narrowMaxRight = 0, narrowWidthObserved = 0, toolbarWidthObserved = 0, wrapFlagsObserved = 0;
 		const UINT panelDpis[] = { 96, 120, 144, 168, 192 };
@@ -710,18 +805,20 @@ void CMainFrame::RunPortableStateTestScenario()
 			narrowMaxRight = 0; wrapFlagsObserved = 0;
 			m_document_tree.m_tree.UpdateDpiMetrics(dpi);
 			int image = 0, row = 0, indent = 0; bool expanders = false;
-			const int expected = ToolbarFactory::CommandToolbarImageSize(dpi);
+		const int expected = UiMetrics::ScaleForDpi(20, dpi);
+		const int compact = ToolbarFactory::CompactToolbarImageSize(dpi);
 			int toolbarImageWidth = 0, toolbarImageHeight = 0;
 			const HWND toolbar = m_document_tree.m_tree.BottomToolbarWindow();
 			const HIMAGELIST toolbarImages = reinterpret_cast<HIMAGELIST>(::SendMessage(toolbar, TB_GETIMAGELIST, 0, 0));
 			const LRESULT buttonSize = ::SendMessage(toolbar, TB_GETBUTTONSIZE, 0, 0);
 			RECT search = {}; ::GetWindowRect(m_document_tree.m_tree.ScriptSearchWindow(), &search);
 			dpiMatrix = dpiMatrix && tree.GetScriptTreeMetrics(image, row, indent, expanders) &&
-				image == expected && row >= expected + UiMetrics::ScaleForDpi(8, dpi) && indent >= expected &&
+				image == expected && row == UiMetrics::ScaleForDpi(24, dpi) && indent == expected &&
 				::ImageList_GetIconSize(toolbarImages, &toolbarImageWidth, &toolbarImageHeight) &&
-				toolbarImageWidth == expected && toolbarImageHeight == expected &&
-				LOWORD(buttonSize) >= expected + UiMetrics::ScaleForDpi(7, dpi) &&
-				HIWORD(buttonSize) >= expected + UiMetrics::ScaleForDpi(7, dpi) &&
+				toolbarImageWidth == compact && toolbarImageHeight == compact &&
+				LOWORD(buttonSize) >= compact + UiMetrics::ScaleForDpi(7, dpi) &&
+				HIWORD(buttonSize) >= compact + UiMetrics::ScaleForDpi(7, dpi) &&
+				HIWORD(buttonSize) < ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi) &&
 				search.bottom - search.top == UiMetrics::ScaleForDpi(30, dpi);
 			for(COLORREF background : { RGB(255, 255, 255), RGB(32, 32, 32) })
 			{
@@ -823,9 +920,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool structuralDragWorks = structuralNode != NULL && !structuralDragHandled && tree.IsStructuralDragActive(); tree.SetScriptMode(true);
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
-		CStringA report; const bool passed = initialized && modeButtonReady && viewBarElements && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && bottomCommandsPreserved && dpiMatrix && dpiIconAlpha && narrowToolbar && unorderedHierarchy && refreshedImageListBound && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && bitmapOnlyChild && uidPersisted && targetLive && structuralDragWorks;
+		CStringA report; const bool passed = initialized && modeButtonReady && viewBarElements && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && bottomCommandsPreserved && bottomCompact && dpiMatrix && dpiIconAlpha && narrowToolbar && unorderedHierarchy && refreshedImageListBound && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && bitmapOnlyChild && uidPersisted && targetLive && structuralDragWorks;
 		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nhierarchy=%d\nvisual-mapping=%d\nscript-image-size=%d\nscript-item-height=%d\nscript-indent=%d\nscript-legacy-expanders=%d\nscript-metrics=%d\ndpi-matrix=%d\nnarrow-toolbar=%d\nunordered-hierarchy=%d\nrefreshed-image-list-bound=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nbitmap-only-script=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, viewBarElements, viewBarWidth, viewBarMeasuredWidth, viewBarPadding, hierarchy, visualMapping, scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders, scriptMetrics, dpiMatrix, narrowToolbar, unorderedHierarchy, refreshedImageListBound, imagesStable, IsSourceActive(), childCommand, bitmapOnlyChild, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
-		report.AppendFormat("bottom-commands-preserved=%d\ndpi-icon-alpha=%d\nvisible-narrow-toolbar=%d\nnarrow-rows=%d\nnarrow-max-right=%d\nnarrow-width=%d\ntoolbar-width=%d\nwrap-flags=%d\n", bottomCommandsPreserved, dpiIconAlpha, visibleNarrowToolbar, narrowRowsObserved, narrowMaxRight, narrowWidthObserved, toolbarWidthObserved, wrapFlagsObserved);
+		report.AppendFormat("bottom-commands-preserved=%d\nbottom-compact=%d\ndpi-icon-alpha=%d\nvisible-narrow-toolbar=%d\nnarrow-rows=%d\nnarrow-max-right=%d\nnarrow-width=%d\ntoolbar-width=%d\nwrap-flags=%d\n", bottomCommandsPreserved, bottomCompact, dpiIconAlpha, visibleNarrowToolbar, narrowRowsObserved, narrowMaxRight, narrowWidthObserved, toolbarWidthObserved, wrapFlagsObserved);
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)

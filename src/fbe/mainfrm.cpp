@@ -68,6 +68,7 @@
 #include <algorithm>
 #include <map>
 #include <psapi.h>
+#include <commoncontrols.h>
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
@@ -2359,23 +2360,80 @@ BOOL CMainFrame::OnIdle()
 	return FALSE;
 }
 
-void CMainFrame::AddTbButton(HWND hWnd, const TCHAR *text, const int idCommand, const BYTE bState, const HICON icon)
+namespace
 {
-    CToolBarCtrl tb = hWnd;
-	int iImage = I_IMAGENONE;
-	BYTE bStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
-	if (icon)
+int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fallbackIcon, HBITMAP bitmap, int targetSize)
+{
+	if(images == NULL || targetSize <= 0) return -1;
+	CString iconPath(scriptPath);
+	if(iconPath.Right(3).CompareNoCase(L".js") == 0) iconPath.Delete(iconPath.GetLength() - 3, 3);
+	iconPath += L".ico";
+	HICON source = static_cast<HICON>(::LoadImageW(NULL, iconPath, IMAGE_ICON, targetSize, targetSize, LR_LOADFROMFILE));
+	if(source != NULL)
 	{
-		CImageList iList = tb.GetImageList();
-		if (iList) iImage = iList.AddIcon(icon);
+		const int index = ::ImageList_AddIcon(images, source);
+		::DestroyIcon(source);
+		return index;
 	}
-
-	tb.AddButton(idCommand, bStyle, bState, iImage, text, 0);
-	// custom added command
-	if (icon)
+	if(bitmap != NULL)
 	{
-		int idx = tb.CommandToIndex(idCommand);
-		TBBUTTON tbButton;
+		BITMAP info = {};
+		if(::GetObject(bitmap, sizeof(info), &info) == sizeof(info) && info.bmWidth == info.bmHeight && info.bmWidth > 0)
+		{
+			HBITMAP scaled = ToolbarFactory::CreateScaledAlphaBitmap(bitmap, info.bmWidth, targetSize);
+			const int index = scaled != NULL ? ::ImageList_Add(images, scaled, NULL) : -1;
+			if(scaled != NULL) ::DeleteObject(scaled);
+			if(index >= 0) return index;
+		}
+	}
+	SHFILEINFOW fileInfo = {};
+	if(::SHGetFileInfoW(L"script.js", FILE_ATTRIBUTE_NORMAL, &fileInfo, sizeof(fileInfo), SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES))
+	{
+		IImageList* shellImages = NULL;
+		if(SUCCEEDED(::SHGetImageList(targetSize > 32 ? SHIL_EXTRALARGE : SHIL_LARGE, IID_IImageList, reinterpret_cast<void**>(&shellImages))))
+		{
+			HICON shellIcon = NULL;
+			const HRESULT result = shellImages->GetIcon(fileInfo.iIcon, ILD_TRANSPARENT, &shellIcon);
+			shellImages->Release();
+			if(SUCCEEDED(result) && shellIcon != NULL)
+			{
+				HICON normalized = static_cast<HICON>(::CopyImage(shellIcon, IMAGE_ICON, targetSize, targetSize, 0));
+				::DestroyIcon(shellIcon);
+				const int index = normalized != NULL ? ::ImageList_AddIcon(images, normalized) : -1;
+				if(normalized != NULL) ::DestroyIcon(normalized);
+				if(index >= 0) return index;
+			}
+		}
+	}
+	if(fallbackIcon == NULL) return -1;
+	HICON normalized = static_cast<HICON>(::CopyImage(fallbackIcon, IMAGE_ICON, targetSize, targetSize, 0));
+	const int index = normalized != NULL ? ::ImageList_AddIcon(images, normalized) : -1;
+	if(normalized != NULL) ::DestroyIcon(normalized);
+	return index;
+}
+}
+
+void CMainFrame::AddTbButton(HWND hWnd, const TCHAR *text, int idCommand, BYTE state, const CString& scriptPath, HICON icon, HBITMAP bitmap)
+{
+	CToolBarCtrl tb = hWnd;
+	int width = 0, height = 0;
+	const HIMAGELIST images = tb.GetImageList();
+	const int iImage = images != NULL && ::ImageList_GetIconSize(images, &width, &height)
+		? AddScriptToolbarImage(images, scriptPath, icon, bitmap, width) : -1;
+	const BYTE style = BTNS_BUTTON | BTNS_AUTOSIZE;
+	if(iImage < 0)
+	{
+		TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = idCommand;
+		button.fsState = state; button.fsStyle = style;
+		AddToolbarButton(tb, button, text);
+		return;
+	}
+	tb.AddButton(idCommand, style, state, iImage, text, 0);
+	// custom added command
+	int idx = tb.CommandToIndex(idCommand);
+	if(idx >= 0)
+	{
+		TBBUTTON tbButton = {};
 		tb.GetButton(idx, &tbButton);
 		AddToolbarButton(tb,tbButton, text);
 		// move button to unassigned
@@ -3070,8 +3128,9 @@ void CMainFrame::DestroyScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 		UIRemoveToolBar(runtime.window);
 		const int catalog = m_aButtons.FindKey(runtime.window); if(catalog >= 0) m_aButtons.RemoveAt(catalog);
 		const int defaults = m_aDefaultButtons.FindKey(runtime.window); if(defaults >= 0) m_aDefaultButtons.RemoveAt(defaults);
-		if(::IsWindow(runtime.window)) { ::RemoveWindowSubclass(runtime.window, ToolbarCustomizeSubclassProc, runtime.rebarBandId); ::DestroyWindow(runtime.window); }
+		if(::IsWindow(runtime.window)) { ::RemoveWindowSubclass(runtime.window, ToolbarCustomizeSubclassProc, runtime.rebarBandId); ::SendMessage(runtime.window, TB_SETIMAGELIST, 0, 0); ::DestroyWindow(runtime.window); }
 	}
+	if(runtime.images != NULL) { ::ImageList_Destroy(runtime.images); runtime.images = NULL; }
 	runtime.window = NULL;
 	runtime.rebarBandId = 0;
 }
@@ -3093,17 +3152,7 @@ bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 		if(!present)
 		{
 			const FbeScripts::VisualResource& visual = m_scripts.Menu().VisualAt(index);
-			if(visual.icon != NULL)
-				AddTbButton(runtime.window, script.name, command, TBSTATE_ENABLED, visual.icon);
-			else
-			{
-				TBBUTTON button = {};
-				button.iBitmap = I_IMAGENONE;
-				button.idCommand = command;
-				button.fsState = TBSTATE_ENABLED;
-				button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE;
-				if(!AddToolbarButton(runtime.window, button, script.name)) return false;
-			}
+			AddTbButton(runtime.window, script.name, command, TBSTATE_ENABLED, script.path, visual.icon, visual.bitmap);
 			if(!GetAvailableButtons(runtime.window, catalog)) return false;
 		}
 	}
@@ -3144,8 +3193,11 @@ bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 {
 	if(runtime.definition.id == L"scripts-main" || !runtime.definition.visible) return runtime.window != NULL;
 	if(runtime.window != NULL && ::IsWindow(runtime.window)) return PopulateScriptToolbarRuntime(runtime);
-	runtime.window = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+	CImageList images;
+	runtime.window = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, images, IDR_SCRIPTS,
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
 	if(runtime.window == NULL) return false;
+	runtime.images = images.Detach();
 	SetDialogFontForToolbarRow(runtime.window);
 	CToolBarCtrl toolbar = runtime.window;
 	toolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
@@ -3284,8 +3336,7 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 			return runtime.Started() && SUCCEEDED(ScriptLoad(path)) && ScriptFindFunc(L"Run");
 		},
 		[this](const ScriptDescriptor& script, const FbeScripts::VisualResource& visual, UINT command) {
-			if(!script.isFolder && visual.icon != NULL) AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, visual.icon);
-			if(!script.isFolder) { TBBUTTONS catalog; bool available = GetAvailableButtons(m_ScriptsToolbar, catalog); for(int index = 0; available && index < catalog.GetSize(); ++index) if(catalog[index].idCommand == static_cast<int>(command)) available = false; if(available) { TBBUTTON button = {}; button.iBitmap = I_IMAGENONE; button.idCommand = command; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON | BTNS_AUTOSIZE; AddToolbarButton(m_ScriptsToolbar, button, script.name); } }
+			if(!script.isFolder) AddTbButton(m_ScriptsToolbar, script.name, command, TBSTATE_ENABLED, script.path, visual.icon, visual.bitmap);
 			if(visual.bitmap != NULL) m_MenuBar.AddBitmap(visual.bitmap, command); else if(visual.icon != NULL) m_MenuBar.AddIcon(visual.icon, command);
 			ThemeManager::RegisterNativeMenuBitmap(command, visual.NativeMenuBitmap());
 		},
@@ -3486,7 +3537,11 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   }
   UIAddToolBar(m_CmdToolbar);
 
-  m_ScriptsToolbar = CreateSimpleToolBarCtrl(m_hWnd, IDR_SCRIPTS, FALSE,  ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+	CImageList scriptsImages;
+	m_ScriptsToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, scriptsImages, IDR_SCRIPTS,
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+	if(!m_ScriptsToolbar) return -1;
+	m_scriptsToolbarImages = scriptsImages.Detach();
 	SetDialogFontForToolbarRow(m_ScriptsToolbar);
   m_ScriptsToolbar.SetExtendedStyle(TBSTYLE_EX_MIXEDBUTTONS);
   InitToolBar(m_ScriptsToolbar, IDR_SCRIPTS);
@@ -3852,6 +3907,15 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 	m_contextAttributeBars.Destroy();
 	if (::IsWindow(m_CmdToolbar)) m_CmdToolbar.SetImageList(NULL);
 	m_commandToolbarImages.Destroy();
+	if (::IsWindow(m_ScriptsToolbar)) m_ScriptsToolbar.SetImageList(NULL);
+	if(m_scriptsToolbarImages != NULL) { ::ImageList_Destroy(m_scriptsToolbarImages); m_scriptsToolbarImages = NULL; }
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+		if(runtime.definition.id == L"scripts-main") continue;
+		if(::IsWindow(runtime.window)) ::SendMessage(runtime.window, TB_SETIMAGELIST, 0, 0);
+		if(runtime.images != NULL) { ::ImageList_Destroy(runtime.images); runtime.images = NULL; }
+	}
 	UiMetrics::Shutdown();
 	// WTL's default CFrameWindowImpl handler posts WM_QUIT with code 1 for
 	// every top-level window.  A normal editor close, including a successful
@@ -4171,6 +4235,83 @@ bool CMainFrame::RebuildCommandToolbarImages(UINT dpi)
 	return true;
 }
 
+bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages, UINT dpi)
+{
+	if(!::IsWindow(window)) return false;
+	CImageList replacement;
+	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_SCRIPTS, dpi)) return false;
+	const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
+	std::vector<std::pair<UINT, int> > imageIndices;
+	for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
+	{
+		const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex);
+		if(script.isFolder || script.commandId < 1) continue;
+		const FbeScripts::VisualResource& visual = m_scripts.Menu().VisualAt(scriptIndex);
+		const int image = AddScriptToolbarImage(replacement, script.path, visual.icon, visual.bitmap, imageSize);
+		imageIndices.push_back(std::make_pair(ID_SCRIPT_BASE + script.commandId, image));
+	}
+	CToolBarCtrl toolbar = window;
+	const HIMAGELIST nextImages = replacement.Detach();
+	const HIMAGELIST previousImages = toolbar.SetImageList(nextImages);
+	if(previousImages != ownedImages)
+	{
+		toolbar.SetImageList(previousImages);
+		::ImageList_Destroy(nextImages);
+		return false;
+	}
+	ownedImages = nextImages;
+	if(previousImages != NULL) ::ImageList_Destroy(previousImages);
+	TBBUTTONS catalog;
+	if(GetAvailableButtons(window, catalog))
+	{
+		for(int button = 0; button < catalog.GetSize(); ++button)
+			for(size_t script = 0; script < imageIndices.size(); ++script)
+				if(catalog[button].idCommand == static_cast<int>(imageIndices[script].first)) catalog[button].iBitmap = imageIndices[script].second;
+		m_aButtons.SetAt(window, catalog);
+	}
+	for(size_t script = 0; script < imageIndices.size(); ++script)
+	{
+		TBBUTTONINFO button = {}; button.cbSize = sizeof(button); button.dwMask = TBIF_IMAGE; button.iImage = imageIndices[script].second;
+		toolbar.SetButtonInfo(imageIndices[script].first, &button);
+	}
+	ToolbarFactory::SetDialogFontForToolbarRow(window);
+	ToolbarFactory::ApplyCommandToolbarMetrics(window, IDR_SCRIPTS, dpi);
+	return true;
+}
+
+bool CMainFrame::UpdateScriptToolbarDpiMetrics(UINT dpi)
+{
+	if(!RebuildScriptToolbarImages(m_ScriptsToolbar, m_scriptsToolbarImages, dpi)) return false;
+	bool updated = true;
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+		if(runtime.definition.id == L"scripts-main" || !::IsWindow(runtime.window)) continue;
+		updated = RebuildScriptToolbarImages(runtime.window, runtime.images, dpi) && updated;
+	}
+	if(!::IsWindow(m_rebar)) return updated;
+	for(int band = 0; band < static_cast<int>(m_rebar.GetBandCount()); ++band)
+	{
+		REBARBANDINFO info = {}; info.cbSize = sizeof(info); info.fMask = RBBIM_CHILD;
+		if(!m_rebar.GetBandInfo(band, &info) || info.hwndChild != m_ScriptsToolbar) continue;
+		RECT bounds = {}; ::GetWindowRect(m_ScriptsToolbar, &bounds);
+		const LRESULT buttonSize = ::SendMessage(m_ScriptsToolbar, TB_GETBUTTONSIZE, 0, 0);
+		const int height = (std::max)(static_cast<int>(bounds.bottom - bounds.top), static_cast<int>(HIWORD(buttonSize)));
+		info.fMask = RBBIM_CHILDSIZE;
+		info.cyMinChild = info.cyChild = info.cyMaxChild = height;
+		updated = m_rebar.SetBandInfo(band, &info) != FALSE && updated;
+		break;
+	}
+	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
+	{
+		ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
+		if(runtime.definition.id != L"scripts-main" && ::IsWindow(runtime.window))
+			updated = NormalizeScriptToolbarRuntimeBand(runtime) && updated;
+	}
+	m_rebar.SendMessage(WM_SIZE);
+	return updated;
+}
+
 LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 {
 	const UINT newDpi = HIWORD(wParam);
@@ -4203,7 +4344,7 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 	RebuildOwnedNativeMenuBitmaps(ATL::_AtlBaseModule.GetModuleInstance(), newDpi);
 	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
 	if (::IsWindow(m_CmdToolbar)) { RebuildCommandToolbarImages(newDpi); SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }
-	if (::IsWindow(m_ScriptsToolbar)) { SetDialogFontForToolbarRow(m_ScriptsToolbar); AutoSizeToolbar(m_ScriptsToolbar); }
+	if (::IsWindow(m_ScriptsToolbar)) UpdateScriptToolbarDpiMetrics(newDpi);
 	m_contextAttributeBars.UpdateMetrics();
 	if (::IsWindow(m_rebar)) m_contextAttributeBars.NormalizeRebarBands(m_rebar);
 	if (::IsWindow(m_hWndStatusBar)) m_status.SetFont(UiMetrics::DialogFont());

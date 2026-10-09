@@ -25,6 +25,14 @@ HBITMAP CreateAlphaBitmapCell(HBITMAP source, int cellSize, int cellIndex)
 	const BYTE* sourceBits = static_cast<const BYTE*>(sourceInfo.dsBm.bmBits);
 	DWORD* pixels = static_cast<DWORD*>(targetBits);
 	const bool sourceBottomUp = sourceInfo.dsBmih.biHeight > 0;
+	bool hasSourceAlpha = false;
+	if(sourceInfo.dsBm.bmBitsPixel == 32)
+		for(int y = 0; y < cellSize && !hasSourceAlpha; ++y)
+		{
+			const BYTE* row = sourceBits + (sourceBottomUp ? cellSize - 1 - y : y) * sourceInfo.dsBm.bmWidthBytes + cellIndex * cellSize * 4;
+			for(int x = 0; x < cellSize; ++x)
+				if(row[x * 4 + 3] != 0) { hasSourceAlpha = true; break; }
+		}
 	for(int y = 0; y < cellSize; ++y)
 	{
 		const int sourceY = sourceBottomUp ? cellSize - 1 - y : y;
@@ -33,7 +41,7 @@ HBITMAP CreateAlphaBitmapCell(HBITMAP source, int cellSize, int cellIndex)
 		for(int x = 0; x < cellSize; ++x)
 		{
 			const BYTE blue = row[x * bytesPerPixel], green = row[x * bytesPerPixel + 1], red = row[x * bytesPerPixel + 2];
-			const BYTE alpha = bytesPerPixel == 4 ? row[x * bytesPerPixel + 3] : 0xFF;
+			const BYTE alpha = hasSourceAlpha ? row[x * bytesPerPixel + 3] : 0xFF;
 			if(alpha == 0 || (blue == 0xFF && green == 0x00 && red == 0xFF)) pixels[y * cellSize + x] = 0;
 			else
 			{
@@ -117,21 +125,22 @@ bool ToolbarFactory::ImageListHasMaskPlane(HIMAGELIST imageList) { IMAGEINFO ima
 void ToolbarFactory::SetDialogFontForToolbarRow(HWND window, bool includeChildren) { if(window == NULL) return; ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE); if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0); }
 void ToolbarFactory::AutoSizeToolbar(HWND window) { if(window != NULL) ::SendMessage(window, TB_AUTOSIZE, 0, 0); }
 
-HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId, UINT dpi, DWORD style, UINT controlId)
+HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId, UINT dpi, DWORD style, UINT controlId, int baseImageSize)
 {
 	HINSTANCE module = _Module.GetResourceInstance(); HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
 	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
 	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
-	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24) return NULL;
+	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != toolbarData->height ||
+		(toolbarData->width != 16 && toolbarData->width != 24)) return NULL;
 	ATL::CTempBuffer<TBBUTTON, _WTL_STACK_ALLOC_THRESHOLD> buttonsBuffer; TBBUTTON* buttons = buttonsBuffer.Allocate(toolbarData->itemCount); if(buttons == NULL) return NULL;
 	int standardImageCount = 0;
 	for(int index = 0; index < toolbarData->itemCount; ++index) { TBBUTTON& button = buttons[index]; ::ZeroMemory(&button, sizeof(button)); const WORD commandId = toolbarData->Items()[index]; if(commandId != 0) { button.iBitmap = standardImageCount++; button.idCommand = commandId; button.fsState = TBSTATE_ENABLED; button.fsStyle = BTNS_BUTTON; } else { button.iBitmap = 8; button.fsStyle = BTNS_SEP; } }
 	HWND window = ::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, style, 0, 0, 100, 100, parent, (HMENU)LongToHandle(controlId), module, NULL); if(window == NULL) return NULL;
 	::SendMessage(window, TB_BUTTONSTRUCTSIZE, sizeof(TBBUTTON), 0);
-	if(!CreateCommandToolbarImages(ownedImages, toolbarResourceId, dpi)) { ::DestroyWindow(window); return NULL; }
+	if(!CreateCommandToolbarImages(ownedImages, toolbarResourceId, dpi, baseImageSize)) { ::DestroyWindow(window); return NULL; }
 	const HIMAGELIST previousImages = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(static_cast<HIMAGELIST>(ownedImages))));
 	if(previousImages != NULL || ::SendMessage(window, TB_ADDBUTTONS, toolbarData->itemCount, reinterpret_cast<LPARAM>(buttons)) == FALSE) { ::SendMessage(window, TB_SETIMAGELIST, 0, 0); ownedImages.Destroy(); ::DestroyWindow(window); return NULL; }
-	SetDialogFontForToolbarRow(window); ApplyCommandToolbarMetrics(window, toolbarResourceId, dpi);
+	SetDialogFontForToolbarRow(window); ApplyCommandToolbarMetrics(window, toolbarResourceId, dpi, baseImageSize);
 	StartupTrace::Event(L"toolbar", L"TB210", L"command-toolbar ARGB image list created at current DPI without mask composition"); return window;
 }
 
@@ -149,24 +158,29 @@ int ToolbarFactory::AddBitmapFromModule(CToolBarCtrl& toolbar, HINSTANCE module,
 }
 
 int ToolbarFactory::CommandToolbarImageSize(UINT dpi) { return UiMetrics::ScaleForDpi(24, dpi ? dpi : 96); }
+int ToolbarFactory::CompactToolbarImageSize(UINT dpi) { return UiMetrics::ScaleForDpi(16, dpi ? dpi : 96); }
 
-bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT toolbarResourceId, UINT dpi)
+bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT toolbarResourceId, UINT dpi, int baseImageSize)
 {
 	HINSTANCE module = _Module.GetResourceInstance(); HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
 	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
 	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
-	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != 24 || toolbarData->height != 24) return false;
+	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != toolbarData->height ||
+		(toolbarData->width != 16 && toolbarData->width != 24) || (baseImageSize != 16 && baseImageSize != 24)) return false;
 	int standardImageCount = 0;
 	for(int index = 0; index < toolbarData->itemCount; ++index) if(toolbarData->Items()[index] != 0) ++standardImageCount;
-	const int imageSize = CommandToolbarImageSize(dpi);
+	const int sourceSize = toolbarData->width;
+	const int imageSize = UiMetrics::ScaleForDpi(baseImageSize, dpi ? dpi : 96);
 	if(!ownedImages.Create(imageSize, imageSize, ILC_COLOR32, standardImageCount + 8, 8)) return false;
 	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(toolbarResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL) { ownedImages.Destroy(); return false; }
 	bool added = true;
 	for(int index = 0; index < standardImageCount; ++index)
 	{
-		HBITMAP alpha = CreateAlphaBitmapCell(source, 24, index);
-		HBITMAP scaled = ScaleLegacyToolbarAlphaBitmap(alpha, 24, imageSize);
+		HBITMAP alpha = CreateAlphaBitmapCell(source, sourceSize, index);
+		HBITMAP scaled = sourceSize == 24 && baseImageSize == 24
+			? ScaleLegacyToolbarAlphaBitmap(alpha, sourceSize, imageSize)
+			: ScaleAlphaBitmap(alpha, sourceSize, imageSize);
 		const int imageIndex = scaled != NULL ? ::ImageList_Add(static_cast<HIMAGELIST>(ownedImages), scaled, NULL) : -1;
 		if(scaled != NULL) ::DeleteObject(scaled);
 		if(imageIndex != index) { added = false; break; }
@@ -176,15 +190,15 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 	return true;
 }
 
-void ToolbarFactory::ApplyCommandToolbarMetrics(HWND toolbar, UINT toolbarResourceId, UINT dpi)
+void ToolbarFactory::ApplyCommandToolbarMetrics(HWND toolbar, UINT toolbarResourceId, UINT dpi, int baseImageSize)
 {
 	HINSTANCE module = _Module.GetResourceInstance(); HRSRC resource = ::FindResource(module, MAKEINTRESOURCE(toolbarResourceId), RT_TOOLBAR);
 	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
 	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
 	if(toolbar == NULL || toolbarData == NULL) return;
-	const int imageSize = CommandToolbarImageSize(dpi);
+	const int imageSize = UiMetrics::ScaleForDpi(baseImageSize, dpi ? dpi : 96);
 	::SendMessage(toolbar, TB_SETBITMAPSIZE, 0, MAKELONG(imageSize, imageSize));
-	::SendMessage(toolbar, TB_SETBUTTONSIZE, 0, MAKELONG(UiMetrics::ScaleForDpi(toolbarData->width + 7, dpi), UiMetrics::ScaleForDpi(toolbarData->height + 7, dpi)));
+	::SendMessage(toolbar, TB_SETBUTTONSIZE, 0, MAKELONG(UiMetrics::ScaleForDpi(baseImageSize + 7, dpi), UiMetrics::ScaleForDpi(baseImageSize + 7, dpi)));
 	AutoSizeToolbar(toolbar);
 }
 

@@ -15,6 +15,7 @@ function Invoke-Lifecycle([string]$Mode, [string]$Scenario, [string]$ReportDirec
         $report = Join-Path $ReportDirectory 'portable-state-report.txt'
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
         if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^result=pass$') { throw "$Mode $Scenario failed:`n$text" }
+		if($Scenario -eq 'script-toolbar-runtime-size' -and ($text -notmatch '(?m)^dpi-matrix=1$' -or $text -notmatch '(?m)^dpi-restored=1$')) { throw "$Mode Scripts toolbar DPI metrics failed:`n$text" }
     } finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario }
 }
 
