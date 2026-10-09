@@ -352,8 +352,11 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
     RegexHelpDialog initial(FbeSearchPresets::SearchUiContext::Design, true);
     HWND initialWindow = initial.Create(owner); if (initialWindow) { ::ShowWindow(initialWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(initialWindow); }
     const bool initialRendered = waitForDeferredRender(initialWindow);
-    RECT initialBounds = {}; const bool defaultSize = initialRendered && ::GetWindowRect(initialWindow, &initialBounds) && capture(initialWindow, L"full-help-design-start.bmp");
-    int designTableLine = -1, characterClassesLine = -1, designCodeLine = -1, quantifiersLine = -1, warningLine = -1, codeExampleLine = -1, codeNoteLine = -1, codeTableLine = -1, visibleLine = -1;
+    int designStartLine = -1, codeStartLine = -1, visibleLine = -1;
+    RECT initialBounds = {}; const bool defaultSize = initialRendered && ::GetWindowRect(initialWindow, &initialBounds) &&
+        scrollToMarker(initialWindow, L"Regular expression help \x2014 Design", designStartLine, visibleLine) &&
+        capture(initialWindow, L"full-help-design-start.bmp");
+    int designTableLine = -1, characterClassesLine = -1, designCodeLine = -1, quantifiersLine = -1, warningLine = -1, codeExampleLine = -1, codeNoteLine = -1, codeTableLine = -1;
     const bool designTableLocated = initialRendered && scrollToMarker(initialWindow, L"4.3. Useful properties", designTableLine, visibleLine);
     const bool designTable = designTableLocated && capture(initialWindow, L"full-help-design-table.bmp");
     const bool characterClasses = initialRendered && scrollToMarker(initialWindow, L"7. Character classes and ranges", characterClassesLine, visibleLine) && capture(initialWindow, L"full-help-design-character-classes.bmp");
@@ -370,7 +373,9 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
     RegexHelpDialog restored(FbeSearchPresets::SearchUiContext::Source);
     HWND restoredWindow = savedPlacement ? restored.Create(owner) : NULL; if (restoredWindow) { ::ShowWindow(restoredWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(restoredWindow); }
     const bool restoredRendered = waitForDeferredRender(restoredWindow);
-    RECT restoredBounds = {}; const bool restoredSize = restoredRendered && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top && capture(restoredWindow, L"full-help-code-start.bmp");
+    RECT restoredBounds = {}; const bool restoredSize = restoredRendered && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top &&
+        scrollToMarker(restoredWindow, L"Regular expression help \x2014 Source", codeStartLine, visibleLine) &&
+        capture(restoredWindow, L"full-help-code-start.bmp");
     const bool regexExample = restoredRendered && scrollToMarker(restoredWindow, L"Find: <p>[ \\t]*</p>", codeExampleLine, visibleLine) && capture(restoredWindow, L"full-help-code-regex-example.bmp");
     const bool note = restoredRendered && scrollToMarker(restoredWindow, L"Regex examines XML source text", codeNoteLine, visibleLine) && capture(restoredWindow, L"full-help-code-note.bmp");
     const bool codeTable = restoredRendered && scrollToMarker(restoredWindow, L"3.1. Main differences from Design", codeTableLine, visibleLine) && capture(restoredWindow, L"full-help-code-table.bmp");
