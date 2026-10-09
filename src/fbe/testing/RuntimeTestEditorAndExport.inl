@@ -99,11 +99,92 @@
 		const bool metadata = formatted.Find(L"Не указан язык документа") >= 0;
 		const bool empty = formatted.Find(L"Подозрительный пустой элемент p") >= 0;
 		const bool malformed = Fb2Quality::Check(L"<FictionBook>").ErrorCount() == 1;
-		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed;
+		const CString navigationXml = LR"(<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><body><section><p>)"
+			L"\xD83D\xDE42" LR"(<!-- <a l:href="#false-comment"/> --><![CDATA[<image/>]]><?test fake="<image/>"?></p><p data=">" id="duplicate">one</p><p id="duplicate">two</p><p><a l:href="#missing-ref">one</a></p><p><a l:href="#missing-ref">two</a></p><image/></section></body></FictionBook>)";
+		const Fb2Quality::Report navigationReport = Fb2Quality::Check(navigationXml);
+		std::vector<const Fb2Quality::Issue*> missingLinks;
+		const Fb2Quality::Issue* duplicateId = nullptr;
+		const Fb2Quality::Issue* missingImageHref = nullptr;
+		for (const auto& issue : navigationReport.issues) {
+			if (issue.code == L"Q-LINK-MISSING") missingLinks.push_back(&issue);
+			if (issue.code == L"Q-LINK-DUPLICATE-ID") duplicateId = &issue;
+			if (issue.code == L"Q-IMAGE-NONLOCAL") missingImageHref = &issue;
+		}
+		Fb2Quality::SourceRange firstLink, secondLink, idRange, imageRange;
+		const bool exactLinks = missingLinks.size() == 2 &&
+			Fb2Quality::ResolveSourceRange(*missingLinks[0], navigationXml, firstLink) &&
+			Fb2Quality::ResolveSourceRange(*missingLinks[1], navigationXml, secondLink) &&
+			firstLink.start < secondLink.start &&
+			navigationXml.Mid(firstLink.start, firstLink.end - firstLink.start) == L"l:href=\"#missing-ref\"" &&
+			navigationXml.Mid(secondLink.start, secondLink.end - secondLink.start) == L"l:href=\"#missing-ref\"";
+		const bool exactId = duplicateId && Fb2Quality::ResolveSourceRange(*duplicateId, navigationXml, idRange) &&
+			navigationXml.Mid(idRange.start, idRange.end - idRange.start) == L"id=\"duplicate\"" &&
+			idRange.start > navigationXml.Find(L"id=\"duplicate\"");
+		const bool missingAttribute = missingImageHref && Fb2Quality::ResolveSourceRange(*missingImageHref, navigationXml, imageRange) &&
+			navigationXml.Mid(imageRange.start, imageRange.end - imageRange.start) == L"<image/>";
+		CString changedNavigationXml(navigationXml);
+		changedNavigationXml.Replace(L"#missing-ref", L"#duplicate");
+		Fb2Quality::SourceRange staleRange;
+		const bool noStaleJump = missingLinks.size() == 2 && !Fb2Quality::ResolveSourceRange(*missingLinks[1], changedNavigationXml, staleRange);
+		const Fb2Quality::Report malformedEndReport = Fb2Quality::Check(L"<FictionBook>");
+		Fb2Quality::SourceRange endRange;
+		const bool malformedEnd = malformedEndReport.issues.size() == 1 &&
+			Fb2Quality::ResolveSourceRange(malformedEndReport.issues[0], L"<FictionBook>", endRange) && endRange.end == 13;
+		const bool unicodeOffset = exactLinks && navigationXml.Find(L"\xD83D\xDE42") >= 0 &&
+			::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, navigationXml, secondLink.start, NULL, 0, NULL, NULL) > secondLink.start;
+		bool bodyToSource = false;
+		if (snapshot) {
+			const Fb2Quality::Report bodyReport = Fb2Quality::Check(snapshotXml);
+			for (const auto& issue : bodyReport.issues) {
+				if (issue.code != L"Q-BINARY-UNUSED") continue;
+				ShowView(SOURCE);
+				CString liveSource;
+				Fb2Quality::SourceRange sourceRange;
+				bodyToSource = m_xml_script_backend.GetSourceText(liveSource) &&
+					Fb2Quality::ResolveSourceRange(issue, liveSource, sourceRange) &&
+					liveSource.Mid(sourceRange.start, sourceRange.end - sourceRange.start) == L"id=\"quality-image\"";
+				if (bodyToSource) {
+					const int startByte = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, liveSource, sourceRange.start, NULL, 0, NULL, NULL);
+					const int endByte = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, liveSource, sourceRange.end, NULL, 0, NULL, NULL);
+					const int totalBytes = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, liveSource, liveSource.GetLength(), NULL, 0, NULL, NULL);
+					bodyToSource = endByte > startByte && totalBytes == m_source.SendMessage(SCI_GETLENGTH);
+					if (bodyToSource) {
+						m_source.SendMessage(SCI_SETSEL, startByte, endByte);
+						std::vector<char> selection(static_cast<size_t>(endByte - startByte + 1));
+						m_source.SendMessage(SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(selection.data()));
+						bodyToSource = CStringA(selection.data()) == "id=\"quality-image\"";
+					}
+				}
+				break;
+			}
+		}
+		bool unicodeSelection = false;
+		if (unicodeOffset && IsSourceActive()) {
+			const int sourceBytes = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, navigationXml, navigationXml.GetLength(), NULL, 0, NULL, NULL);
+			std::vector<char> sourceUtf8(static_cast<size_t>(sourceBytes + 1));
+			if (sourceBytes > 0 && ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, navigationXml, navigationXml.GetLength(), sourceUtf8.data(), sourceBytes, NULL, NULL) == sourceBytes) {
+				sourceUtf8[static_cast<size_t>(sourceBytes)] = '\0';
+				m_source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(sourceUtf8.data()));
+				const int startByte = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, navigationXml, secondLink.start, NULL, 0, NULL, NULL);
+				const int endByte = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, navigationXml, secondLink.end, NULL, 0, NULL, NULL);
+				if (m_source.SendMessage(SCI_GETLENGTH) == sourceBytes && endByte > startByte) {
+					m_source.SendMessage(SCI_SETSEL, startByte, endByte);
+					std::vector<char> selection(static_cast<size_t>(endByte - startByte + 1));
+					m_source.SendMessage(SCI_GETSELTEXT, 0, reinterpret_cast<LPARAM>(selection.data()));
+					unicodeSelection = CStringA(selection.data()) == "l:href=\"#missing-ref\"" &&
+						m_source.SendMessage(SCI_GETSELECTIONSTART) == startByte;
+				}
+			}
+		}
+		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed &&
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, passed ? "pass" : "fail");
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed,
+			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
+			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
+			unicodeOffset, bodyToSource, unicodeSelection, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

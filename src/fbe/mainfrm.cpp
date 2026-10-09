@@ -6316,22 +6316,24 @@ LRESULT CMainFrame::OnFileQualityCheck(WORD, WORD, HWND, BOOL&)
 		return 0;
 	}
 	const Fb2Quality::Report report = Fb2Quality::Check(snapshot);
-	const CString locator = Fb2Quality::ShowReport(m_hWnd, report);
-	if (!locator.IsEmpty()) {
+	const int selectedIssue = Fb2Quality::ShowReport(m_hWnd, report);
+	if (selectedIssue >= 0 && static_cast<size_t>(selectedIssue) < report.issues.size()) {
 		ShowView(SOURCE);
-		if (locator.Left(5) == L"line:") {
-			SourceGoTo(_wtoi(locator.Mid(5)), 0);
-			return 0;
-		}
 		CString source;
-		if (m_xml_script_backend.GetSourceText(source)) {
-			const int offset = source.Find(locator);
-			if (offset >= 0) {
-				int line = 1, column = 1;
-				for (int i = 0; i < offset; ++i) { if (source[i] == L'\n') { ++line; column = 1; } else ++column; }
-				SourceGoTo(line, column - 1);
+		Fb2Quality::SourceRange range;
+		if (m_xml_script_backend.GetSourceText(source) &&
+			Fb2Quality::ResolveSourceRange(report.issues[selectedIssue], source, range) &&
+			m_source.SendMessage(SCI_GETCODEPAGE) == SC_CP_UTF8) {
+			const int start = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, source, range.start, NULL, 0, NULL, NULL);
+			const int end = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, source, range.end, NULL, 0, NULL, NULL);
+			const int sourceBytes = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, source, source.GetLength(), NULL, 0, NULL, NULL);
+			if (start >= 0 && end > start && sourceBytes == m_source.SendMessage(SCI_GETLENGTH)) {
+				m_source.SendMessage(SCI_SETSEL, start, end);
+				m_source.SendMessage(SCI_SCROLLCARET);
+				return 0;
 			}
 		}
+		::MessageBoxW(m_hWnd, L"Не удалось точно определить расположение проблемы в текущем XML.", L"Расширенная проверка FB2", MB_ICONINFORMATION);
 	}
 	return 0;
 }
