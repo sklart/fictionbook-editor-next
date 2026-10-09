@@ -6302,14 +6302,17 @@ LRESULT CMainFrame::OnFileQualityCheck(WORD, WORD, HWND, BOOL&)
 {
 	if (!m_doc || m_doc->GetDocumentFileType() != FictionBookFileType::Fb2) return 0;
 	CString snapshot;
+	CString snapshotError;
 	if (IsSourceActive()) {
 		if (!m_xml_script_backend.GetSourceText(snapshot)) snapshot.Empty();
 	} else {
-		MSXML2::IXMLDOMDocument2Ptr document = m_doc->CreateDOMForAnalysis();
+		MSXML2::IXMLDOMDocument2Ptr document = m_doc->CreateDOMForAnalysis(&snapshotError);
 		if (document) snapshot = static_cast<const wchar_t*>(_bstr_t(document->xml));
 	}
 	if (snapshot.IsEmpty()) {
-		::MessageBoxW(m_hWnd, L"Не удалось получить XML текущего документа.", L"Расширенная проверка FB2", MB_ICONERROR);
+		CString message(L"Не удалось получить XML текущего документа.");
+		if (!snapshotError.IsEmpty()) { message += L"\n\n"; message += snapshotError; }
+		::MessageBoxW(m_hWnd, message, L"Расширенная проверка FB2", MB_ICONERROR);
 		return 0;
 	}
 	const Fb2Quality::Report report = Fb2Quality::Check(snapshot);

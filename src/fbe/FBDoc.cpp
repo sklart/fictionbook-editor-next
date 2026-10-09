@@ -145,7 +145,8 @@ static CString GetDiagnosticFaultInjection()
 		L"api-load-return-false", L"api-load-exception", L"api-load-private-exception", L"first-set-external",
 		L"second-set-external", L"optional-diagnostic-api-missing", L"navigate-error",
 		L"document-complete-timeout", L"controlled-load-failure+css-restore-failure",
-		L"drop-row-after-normalize", L"change-colspan-after-normalize"
+		L"drop-row-after-normalize", L"change-colspan-after-normalize",
+		L"drop-serialized-row-during-analysis"
 	};
 	for (UINT index = 0; index < _countof(allowed); ++index)
 		if (point.CompareNoCase(allowed[index]) == 0)
@@ -1646,7 +1647,8 @@ static bool ReportFbdStructureValidationFailure(HWND frame, const CString& messa
 }
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
-	FictionBookFileType targetType, bool normalizeVisualDom) {
+	FictionBookFileType targetType, bool normalizeVisualDom, bool analysisSnapshot,
+	CString* analysisError) {
 	// GetBinaries converts every editor base64data value to bytes. MSXML formats
 	// the resulting bin.base64 text, so saving removes only that whitespace in
 	// place instead of converting every binary through MSXML a second time.
@@ -1793,7 +1795,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   markTableSerializationPhase(L"native-after-normalize-complete");
   if (!tablesBeforeNormalize.Equals(tablesAfterNormalize))
   {
-    m_serialization_unsafe = true;
+    if (!analysisSnapshot) m_serialization_unsafe = true;
+    if (analysisError) *analysisError = L"D224: native table structure changed while creating the analysis snapshot.";
     StartupTrace::HResult(L"document", L"D224", E_FAIL, L"native table lost during Normalize");
     _com_issue_error(E_FAIL);
   }
@@ -1854,7 +1857,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     args[1]=ann.GetInterfacePtr();
   args[2]=ndoc.GetInterfacePtr();
 
-  CheckError(body.InvokeN(L"GetDesc",&args[0],3));
+  CheckError(body.InvokeN(analysisSnapshot ? L"GetDescForAnalysis" : L"GetDesc",&args[0],3));
 
   // fetch body elements
   markTableSerializationPhase(L"get-bodies-start");
@@ -1862,14 +1865,20 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 	if (targetType == FictionBookFileType::Fb2 && normalizeVisualDom)
 		EnsureMinimalFb2Body(ndoc);
   markTableSerializationPhase(L"get-bodies-complete");
+	if (analysisSnapshot && GetDiagnosticFaultInjection() == L"drop-serialized-row-during-analysis")
+	{
+		MSXML2::IXMLDOMNodePtr row(ndoc->selectSingleNode(L"/fb:FictionBook/fb:body//fb:table/fb:tr"));
+		if (row && row->parentNode) row->parentNode->removeChild(row);
+	}
 
   markTableSerializationPhase(L"serialized-snapshot-start");
   const TableSnapshot serializedTables = SnapshotSerializedTables(ndoc);
   markTableSerializationPhase(L"serialized-snapshot-complete");
   if (!tablesAfterNormalize.Equals(serializedTables))
   {
-    m_serialization_unsafe = true;
+    if (!analysisSnapshot) m_serialization_unsafe = true;
 	CString difference(L"native table lost during CreateDOM; "); difference += tablesAfterNormalize.Difference(serializedTables);
+	if (analysisError) *analysisError = CString(L"D225: ") + difference;
     StartupTrace::HResult(L"document", L"D225", E_FAIL, difference);
     _com_issue_error(E_FAIL);
   }
@@ -1916,10 +1925,15 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOM(const CString& encoding, bool compact
 	return NULL;
 }
 
-MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMForAnalysis()
+MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMForAnalysis(CString* errorMessage)
 {
-	try { return CreateDOMImp(m_encoding, false, m_file_type, false); }
-	catch (const _com_error&) { return NULL; }
+	if (errorMessage) errorMessage->Empty();
+	try { return CreateDOMImp(m_encoding, false, m_file_type, false, true, errorMessage); }
+	catch (const _com_error& error)
+	{
+		if (errorMessage && errorMessage->IsEmpty()) errorMessage->Format(L"XML snapshot failed (HRESULT 0x%08lX).", static_cast<unsigned long>(error.Error()));
+		return NULL;
+	}
 }
 
 static void CommitRecoveryFile(const CString& temporaryFile, const CString& destinationFile)

@@ -16,19 +16,23 @@ try {
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
   <description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>Quality smoke</book-title><lang>en</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><id>quality-smoke</id><version>1.0</version></document-info></description>
-  <body><section><p>Unchanged editor document.</p></section></body>
+  <body><section><p id="quality-para">Unchanged editor document.</p><table id="quality-table"><tr><td>one</td><td>two</td></tr></table></section></body>
+  <binary id="quality-image" content-type="image/png">AQID</binary>
 </FictionBook>
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
-    $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
+    $fixtureHash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
+    $oldMode, $oldScenario, $oldTrace = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'fb2-quality-checker-runtime'
+        $env:FBE_NEXT_TRACE = '1'
         $process = Start-Process -FilePath $FbeExe -ArgumentList '-b',("`"$report`""),("`"$fixture`"") -PassThru
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FB2 quality runtime timed out.' }
         if ($process.ExitCode -ne 0) { $detail = if (Test-Path $report) { Get-Content $report -Raw } else { '<report missing>' }; throw "FB2 quality runtime failed: $($process.ExitCode); $detail" }
-    } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
+    } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE = $oldMode, $oldScenario, $oldTrace }
     $rows = @{}
     Get-Content -LiteralPath $report | ForEach-Object { $pair = $_ -split '=', 2; if ($pair.Count -eq 2) { $rows[$pair[0]] = $pair[1] } }
-    foreach ($key in 'unchanged', 'links', 'binaries', 'metadata', 'empty', 'malformed') {
+    if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash) { throw 'FB2 quality runtime changed the original fixture.' }
+    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed') {
         if ($rows[$key] -ne '1') { throw "FB2 quality runtime: $key=$($rows[$key])" }
     }
     if ($rows['result'] -ne 'pass') { throw "FB2 quality runtime result=$($rows['result'])" }

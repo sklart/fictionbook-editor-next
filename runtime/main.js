@@ -2203,6 +2203,23 @@ function IsEmpty(ii)
   return true;
 }
 
+var fbeAnalysisSnapshot = false;
+var fbeAnalysisMarkup = null;
+
+function ReadLanguageValue(id)
+{
+ if(!fbeAnalysisSnapshot) return document.all[id].value;
+ // Reading a live SELECT value makes MSHTML add an implicit selected attribute.
+ // Parse only the detached description markup for a read-only analysis snapshot.
+ var pattern=new RegExp("<SELECT\\b[^>]*\\bid=(?:\\\""+id+"\\\"|'"+id+"'|"+id+")(?:\\s|>)[\\s\\S]*?</SELECT>","i");
+ var match=pattern.exec(fbeAnalysisMarkup);
+ if(!match) return "";
+ var detached=document.createElement("DIV");
+ detached.innerHTML=match[0];
+ var select=detached.getElementsByTagName("SELECT")[0];
+ return select ? select.value : "";
+}
+
 function MakeTitleInfo(doc,desc,ann,indent)
 {
  var ti=doc.createNode(1,"title-info",fbNS);
@@ -2258,8 +2275,8 @@ function MakeTitleInfo(doc,desc,ann,indent)
    Indent(ti,indent+1); ti.appendChild(cp);
  }
 
- MakeText(ti,"lang",document.all.tiLang.value,false,indent+1);
- MakeText(ti,"src-lang",document.all.tiSrcLang.value,false,indent+1);
+ MakeText(ti,"lang",ReadLanguageValue("tiLang"),false,indent+1);
+ MakeText(ti,"src-lang",ReadLanguageValue("tiSrcLang"),false,indent+1);
 
  // translator
  list=document.all.tiTrans.getElementsByTagName("DIV");
@@ -2373,8 +2390,8 @@ function IsSTBFieldTextExist(sti,desc,doc) {
     exist=true;
 
   // lang
-  exist=IsTextExist(document.all.stiLang.value) || exist;
-  exist=IsTextExist(document.all.stiSrcLang.value) || exist;
+  exist=IsTextExist(ReadLanguageValue("stiLang")) || exist;
+  exist=IsTextExist(ReadLanguageValue("stiSrcLang")) || exist;
 
   // translator
   list=document.all.stiTrans.getElementsByTagName("DIV");
@@ -2439,8 +2456,8 @@ function MakeSourceTitleInfo(doc,desc,ann,indent)
 			sti.appendChild(cp);
 		}
 
-		MakeText(sti,"lang",document.all.stiLang.value,false,indent+1);
-		MakeText(sti,"src-lang",document.all.stiSrcLang.value,false,indent+1);
+		MakeText(sti,"lang",ReadLanguageValue("stiLang"),false,indent+1);
+		MakeText(sti,"src-lang",ReadLanguageValue("stiSrcLang"),false,indent+1);
 
 		// translator
 		list=document.all.stiTrans.getElementsByTagName("DIV");
@@ -2554,6 +2571,14 @@ function GetDesc(doc,ann,hist)
  MakePubInfo(doc,desc,2);
  MakeCustInfo(doc,desc,2);
  Indent(desc,1);
+}
+
+function GetDescForAnalysis(doc,ann,hist)
+{
+ fbeAnalysisSnapshot=true;
+ fbeAnalysisMarkup=document.getElementById("fbw_desc").outerHTML;
+ try { GetDesc(doc,ann,hist); }
+ finally { fbeAnalysisMarkup=null; fbeAnalysisSnapshot=false; }
 }
 
 function GetBinaries(doc)

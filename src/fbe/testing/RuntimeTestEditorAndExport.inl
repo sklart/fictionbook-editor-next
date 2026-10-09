@@ -48,11 +48,49 @@
 	}
 	if (IsFbeTestScenario(L"fb2-quality-checker-runtime"))
 	{
+		MSHTML::IHTMLElementPtr paragraph(m_doc ? m_doc->m_body.Document()->all->item(L"quality-para") : MSHTML::IHTMLElementPtr());
+		if (paragraph) paragraph->innerText = L"Unsaved editor text";
+		MSHTML::IHTMLSelectElementPtr language(m_doc ? m_doc->m_body.Document()->all->item(L"tiLang") : MSHTML::IHTMLSelectElementPtr());
+		if (language) language->value = L"ru";
 		const bool dirtyBefore = m_doc && m_doc->DocChanged();
+		const bool unsafeBefore = m_doc && m_doc->IsSerializationUnsafe();
+		IServiceProviderPtr undoService(m_doc ? m_doc->m_body.Document() : MSHTML::IHTMLDocument2Ptr());
+		CComPtr<IOleUndoManager> undoManager;
+		if (undoService) undoService->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&undoManager));
+		const auto undoDescription = [&undoManager](bool redo) -> CString {
+			BSTR description = NULL;
+			const HRESULT hr = undoManager ? (redo ? undoManager->GetLastRedoDescription(&description) : undoManager->GetLastUndoDescription(&description)) : E_NOINTERFACE;
+			CString value; value.Format(L"%08lX:%s", static_cast<unsigned long>(hr), description ? description : L"");
+			if (description) ::SysFreeString(description);
+			return value;
+		};
+		const CString undoBefore(undoDescription(false)), redoBefore(undoDescription(true));
 		const CString bodyBefore = m_doc ? CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) : CString();
 		MSXML2::IXMLDOMDocument2Ptr snapshot = m_doc ? m_doc->CreateDOMForAnalysis() : MSXML2::IXMLDOMDocument2Ptr();
+		const CString snapshotXml = snapshot ? CString(static_cast<const wchar_t*>(_bstr_t(snapshot->xml))) : CString();
 		const CString bodyAfter = m_doc ? CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) : CString();
-		const bool unchanged = snapshot && bodyBefore == bodyAfter && dirtyBefore == m_doc->DocChanged();
+		const bool bodyPreserved = bodyBefore == bodyAfter;
+		const bool dirtyPreserved = dirtyBefore == m_doc->DocChanged();
+		const bool safetyPreserved = unsafeBefore == m_doc->IsSerializationUnsafe();
+		const bool undoPreserved = undoManager && undoBefore == undoDescription(false) && redoBefore == undoDescription(true);
+		const bool unchanged = snapshot && bodyPreserved && dirtyPreserved && safetyPreserved && undoPreserved;
+		const bool snapshotCurrent = paragraph && dirtyBefore && bodyBefore.Find(L"Unsaved editor text") >= 0 && snapshotXml.Find(L"Unsaved editor text") >= 0 &&
+			snapshotXml.Find(L"<lang>ru</lang>") >= 0 && snapshotXml.Find(L"quality-table") >= 0 && snapshotXml.Find(L"quality-image") >= 0;
+		wchar_t priorFault[64] = {};
+		const DWORD priorFaultLength = ::GetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT", priorFault, _countof(priorFault));
+		::SetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT", L"drop-serialized-row-during-analysis");
+		CString analysisError;
+		MSXML2::IXMLDOMDocument2Ptr rejected = m_doc ? m_doc->CreateDOMForAnalysis(&analysisError) : MSXML2::IXMLDOMDocument2Ptr();
+		::SetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT", priorFaultLength > 0 && priorFaultLength < _countof(priorFault) ? priorFault : NULL);
+		MSXML2::IXMLDOMDocument2Ptr afterFailure = m_doc ? m_doc->CreateDOMForAnalysis() : MSXML2::IXMLDOMDocument2Ptr();
+		const bool binaryTablePreserved = afterFailure && snapshotXml == CString(static_cast<const wchar_t*>(_bstr_t(afterFailure->xml)));
+		const bool failedSnapshotIsolated = !rejected && analysisError.Find(L"D225") >= 0 &&
+			bodyBefore == CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) &&
+			dirtyBefore == m_doc->DocChanged() && unsafeBefore == m_doc->IsSerializationUnsafe() &&
+			undoBefore == undoDescription(false) && redoBefore == undoDescription(true) && binaryTablePreserved;
+		const CString savedPath = AU::_ARGS.source_memory_benchmark_path + L".saved.fb2";
+		const bool subsequentSave = failedSnapshotIsolated && m_doc->Save(savedPath) &&
+			::GetFileAttributesW(savedPath) != INVALID_FILE_ATTRIBUTES;
 		const CString sample = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><book-title>Test</book-title></title-info></description><body><section><p/><p><a type="note" l:href="#missing-note">note</a></p><image l:href="#missing-image"/></section></body><binary id="unused-image" content-type="image/png">AQID</binary></FictionBook>)";
 		const Fb2Quality::Report result = Fb2Quality::Check(sample);
 		const CString formatted = Fb2Quality::FormatReport(result);
@@ -61,10 +99,11 @@
 		const bool metadata = formatted.Find(L"Не указан язык документа") >= 0;
 		const bool empty = formatted.Find(L"Подозрительный пустой элемент p") >= 0;
 		const bool malformed = Fb2Quality::Check(L"<FictionBook>").ErrorCount() == 1;
-		const bool passed = unchanged && links && binaries && metadata && empty && malformed;
+		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed;
 		CStringA report;
-		report.Format("unchanged=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nresult=%s\n",
-			unchanged, links, binaries, metadata, empty, malformed, passed ? "pass" : "fail");
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nresult=%s\n",
+			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
