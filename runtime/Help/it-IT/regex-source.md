@@ -12,6 +12,10 @@ Edizione: 2 ottobre 2026. Design è descritto in regex-design.md. Le ricette qui
 
 Codice mostra tag XML, attributi, riferimenti, entità e testo del libro. È adatto all’analisi di FB2: elementi vuoti, tag HTML importati, collegamenti segnaposto, attributi inattesi e residui tecnici di conversione.
 
+:::note
+La regex esamina il testo XML, non un albero DOM analizzato. Verificare la struttura con uno strumento XML.
+:::
+
 Per la revisione delle parole è spesso più comodo Design. Nel sorgente XML una corrispondenza può trovarsi in un attributo, commento, CDATA, nome di file o dati binari oltre che nel testo del libro. Considerarlo prima di sostituire.
 
 «Solo ricerca e verifica» restituisce candidati, non prove di XML o testo errati. Anche una pulizia di spazi può modificare contenuto significativo: non esistono sostituzioni universalmente sicure su qualsiasi XML.
@@ -27,6 +31,13 @@ Per un semplice paragrafo vuoto:
 ```
 
 Trova `<p></p>` e `<p>   </p>` sulla stessa riga fisica, non `<p>Текст</p>`. Non sostituire automaticamente il risultato con niente o `<empty-line/>`: possono avere funzioni strutturali differenti.
+
+:::example
+Trova: <p>[ \t]*</p>
+Input: <p>   </p>
+Corrispondenza: <p>   </p>
+Atteso: Esaminare questo paragrafo prima di modificare l’XML.
+:::
 
 Copiare soltanto il modello, senza `/.../g`, virgolette C++ o barre inverse raddoppiate del JSON.
 
@@ -53,6 +64,10 @@ Il testo Unicode non è vietato, ma non sono disponibili UCP e proprietà PCRE2.
 ## 4. Ricerca riga per riga: il limite principale
 
 Nel percorso Scintilla usato da FBE, `MatchOnLines` applica il modello separatamente al contenuto di ogni riga fisica. Una riga può essere lunghissima; il suo adattamento alla larghezza della finestra non crea altre righe fisiche. [S2]
+
+:::warning
+Nella ricerca attuale la regex in Codice non può attraversare righe fisiche; nessun modello le unisce.
+:::
 
 Confrontare:
 

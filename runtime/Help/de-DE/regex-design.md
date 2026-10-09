@@ -30,7 +30,24 @@ Für mehrere Leerzeichen geben Sie ein:
 
 In `Он   пришёл` wird die Lücke aus drei Leerzeichen gefunden. Geben Sie als Ersetzung ein gewöhnliches Leerzeichen ein. Ersetzen Sie zunächst einen Treffer, kontrollieren Sie `Он пришёл` und erwägen Sie erst danach „Alle ersetzen“.
 
+:::example
+Suchen: [ \t]{2,}
+Eingabe: Он   пришёл
+Treffer: drei Leerzeichen zwischen Wörtern
+:::
+
+:::example
+Suchen: [ \t]{2,}
+Eingabe: Он   пришёл
+Ersetzen durch: ein Leerzeichen
+Erwartet: Он пришёл
+:::
+
 Bei vielen Treffern sollten Sie zuerst die Ergebnisliste ansehen und ein oder zwei typische Fälle korrigieren. Prüfen Sie nach einer Sammeloperation Text, Kursiv- und Fettschrift, Anmerkungen und Absatzgrenzen. Machen Sie ein unerwartetes Ergebnis rückgängig, bevor Sie weitere Änderungen beginnen.
+
+:::warning
+Alle ersetzen kann beabsichtigte Abstände und Formatierung ändern. Prüfen Sie eine Ersetzung und sichern Sie eine Arbeitskopie.
+:::
 
 „Anwenden“ im Vorlagenbereich übernimmt Ausdruck und Optionen in den Suchdialog. Es ist keine Aufforderung, alle Fundstellen bedingungslos zu korrigieren. Suche und Ersetzung werden mit den entsprechenden Dialogbefehlen ausgeführt.
 
@@ -39,6 +56,10 @@ Bei vielen Treffern sollten Sie zuerst die Ergebnisliste ansehen und ein oder zw
 Hier wird PCRE2-16 verwendet; Text und Muster werden als UTF-16 übergeben, UTF ist stets aktiviert. FBE erstellt die durchsuchbare Textdarstellung und führt Ersetzungen unter Berücksichtigung der Buchstruktur separat aus. Die PCRE2-Dokumentation erklärt daher Treffer, definiert aber nicht sämtliche FBE-Aktionen. Technische Grundlagen: D1–D4.
 
 Durchsucht wird eine Textdarstellung des Buches, nicht das wörtliche XML-Markup der Datei. `<strong>` ist kein Suchmuster für Fettschrift in Design. XML-Tags werden im Quelltextmodus gesucht; strukturelle Änderungen erfolgen mit Editorfunktionen oder spezialisierten Skripten.
+
+:::note
+Design Regex durchsucht Text, keinen DOM-Baum. Prüfen Sie Elemente und Attribute im Quelltext oder mit einem Strukturwerkzeug.
+:::
 
 Ein Zeilenumbruch aufgrund der Fensterbreite ist kein Zeilenwechselzeichen. Absätze, echte Umbrüche und visueller Umbruch dürfen nicht verwechselt werden. FBE verwendet mehrzeilige Anker in der Suchdarstellung, damit deren Zeilengrenzen Absatzgrenzen abbilden. Absatzübergreifende Treffer und absatzübergreifende Ersetzungen sind nicht dasselbe: Letztere werden in der betrachteten Implementierung abgewiesen.
 
@@ -312,6 +333,14 @@ Lookaround prüft Kontext, der nicht zum gesamten Treffer gehört. So kann nur d
 ```
 
 Bei `№ 125` wird nur `125` gefunden. Hier steht genau ein gewöhnliches Leerzeichen.
+
+:::example
+Suchen: (?<=№ )([0-9]+)
+Eingabe: № 125
+Gesamter Treffer: 125
+Gruppe 1: 125
+Erwartete Ersetzung mit [$1]: № [125]
+:::
 
 Prüfung rechts:
 

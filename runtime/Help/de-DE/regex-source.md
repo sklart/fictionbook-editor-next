@@ -12,6 +12,10 @@ Stand: 2. Oktober 2026. Design wird in regex-design.md beschrieben. Diese Rezept
 
 Hier sind XML-Tags, Attribute, Links, Entitäten und Buchtext sichtbar. Der Modus eignet sich zur FB2-Prüfung: leere Elemente, importierte HTML-Tags, Platzhalterlinks, unerwartete Attribute und technische Konvertierungsreste.
 
+:::note
+Regex prüft XML-Text, keinen geparsten DOM-Baum. Prüfen Sie Strukturbeziehungen mit einem XML-Werkzeug.
+:::
+
 Für literarisches Korrekturlesen gewöhnlicher Wörter ist Design oft bequemer. Im XML kann ein Treffer auch in Attributen, Kommentaren, CDATA, Dateinamen oder Binärdaten liegen. Das ist vor jeder Ersetzung zu berücksichtigen.
 
 „Nur suchen und prüfen“ liefert Kandidaten und beweist keinen XML- oder Textfehler. Selbst einfache Leerzeichenersetzungen können bedeutenden Inhalt ändern; über beliebiges XML gibt es keine universell sichere Ersetzung.
@@ -27,6 +31,13 @@ Für einen einfachen leeren Absatz:
 ```
 
 Gefunden werden `<p></p>` und `<p>   </p>` auf einer physischen Zeile, nicht `<p>Текст</p>`. Ersetzen Sie das Element nicht automatisch durch nichts oder `<empty-line/>`: Absatz und Leerzeilenelement können unterschiedliche strukturelle Aufgaben haben.
+
+:::example
+Suchen: <p>[ \t]*</p>
+Eingabe: <p>   </p>
+Treffer: <p>   </p>
+Erwartet: Prüfen Sie diesen Absatz, bevor Sie XML ändern.
+:::
 
 Fügen Sie nur das Muster ein. JavaScript `/.../g`, C++-Stringanführungszeichen und doppelte JSON-Backslashes sind unnötig.
 
@@ -53,6 +64,10 @@ Unicode im XML ist nicht verboten, doch UCP und PCRE2-Eigenschaften fehlen. Zeic
 ## 4. Zeilenweise Suche: die wichtigste Einschränkung
 
 Im verwendeten Scintilla-Pfad gleicht `MatchOnLines` den Ausdruck separat mit jeder physischen Zeile ab. Eine Zeile kann sehr lang sein; visueller Fensterumbruch erzeugt keine neue physische Zeile. [S2]
+
+:::warning
+Im aktuellen Suchpfad kann Source Regex keine physischen Zeilen übergreifen; kein Muster verbindet sie.
+:::
 
 Beispiel:
 

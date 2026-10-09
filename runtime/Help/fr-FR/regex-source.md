@@ -12,6 +12,10 @@ Guide complet de recherche et de remplacement dans le XML d’un livre avec Fict
 
 Le mode Code expose balises XML, attributs, liens, entités et texte. Il convient à l’audit FB2 : éléments vides, balises HTML importées, liens de substitution, attributs inattendus et restes techniques de conversion.
 
+:::note
+La regex examine le texte XML, pas un arbre DOM analysé. Vérifiez les relations structurelles avec un outil XML.
+:::
+
 Pour relire des mots ordinaires, Design est souvent plus commode. En XML, un résultat peut aussi se trouver dans un attribut, un commentaire, une CDATA, un nom de fichier ou des données binaires. Tenez-en compte avant remplacement.
 
 « Rechercher et vérifier uniquement » fournit des candidats, pas la preuve d’une erreur. Même remplacer des espaces peut modifier du contenu significatif ; aucun remplacement global sur du XML quelconque n’est universellement sûr.
@@ -27,6 +31,13 @@ Paragraphe simple vide :
 ```
 
 Trouve `<p></p>` et `<p>   </p>` sur une ligne physique, pas `<p>Текст</p>`. Ne supprimez pas automatiquement le résultat et ne le changez pas en `<empty-line/>` : leurs fonctions structurelles peuvent différer.
+
+:::example
+Rechercher: <p>[ \t]*</p>
+Entrée: <p>   </p>
+Correspondance: <p>   </p>
+Attendu: Examinez ce paragraphe avant de modifier le XML.
+:::
 
 Collez seulement le motif, sans `/.../g`, guillemets de chaîne C++ ni doubles barres de JSON.
 
@@ -53,6 +64,10 @@ Unicode n’est pas interdit, mais UCP et les propriétés PCRE2 sont absents. L
 ## 4. Recherche ligne par ligne : limite essentielle
 
 `MatchOnLines` confronte le motif au contenu de chaque ligne physique séparément. Une ligne peut être longue ; son retour visuel dans la fenêtre n’en crée pas une autre. [S2]
+
+:::warning
+Dans la recherche actuelle, une regex en Code ne peut franchir les lignes physiques ; aucun motif ne les fusionne.
+:::
 
 Exemple :
 

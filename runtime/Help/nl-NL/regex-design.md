@@ -30,7 +30,24 @@ Zoek meerdere spaties met:
 
 In `Он   пришёл` wordt de tussenruimte van drie spaties gevonden. Zet één gewone spatie in het vervangingsveld. Voer eerst één vervanging uit, controleer `Он пришёл` en overweeg pas daarna Alles vervangen.
 
+:::example
+Zoeken: [ \t]{2,}
+Invoer: Он   пришёл
+Overeenkomst: drie spaties tussen woorden
+:::
+
+:::example
+Zoeken: [ \t]{2,}
+Invoer: Он   пришёл
+Vervangen door: één spatie
+Verwacht: Он пришёл
+:::
+
 Bekijk bij veel treffers eerst de resultaten en corrigeer één of twee representatieve gevallen. Controleer na een bulkbewerking tekst, cursief, vet, voetnoten en alineagrenzen. Maak een onverwacht resultaat ongedaan voordat u verder bewerkt.
+
+:::warning
+Alles vervangen kan bedoelde spaties en opmaak wijzigen. Controleer één vervanging en bewaar een werkkopie.
+:::
 
 Toepassen in het sjabloonpaneel zet de expressie en opties in het zoekvenster. Het is geen opdracht om alle treffers zonder meer te corrigeren. Zoeken en vervangen hebben hun eigen opdrachten in het dialoogvenster.
 
@@ -39,6 +56,10 @@ Toepassen in het sjabloonpaneel zet de expressie en opties in het zoekvenster. H
 Deze modus gebruikt PCRE2-16 met patronen en tekst in UTF-16; UTF staat altijd aan. FBE bouwt de doorzoekbare tekst afzonderlijk op en voert vervanging uit met inachtneming van de boekstructuur. PCRE2-documentatie verklaart de overeenkomsten, niet alle handelingen van FBE. Technische bronnen staan bij D1–D4.
 
 Het zoekobject is een tekstweergave van het boek, niet de letterlijke XML. `<strong>` is geen manier om vette tekst in Ontwerp te vinden. Zoek XML-tags in Code; voer structurele wijzigingen uit met editorfuncties of gespecialiseerde scripts.
+
+:::note
+Regex in Ontwerp ziet doorzoekbare tekst, geen DOM-boom. Controleer elementen en attributen in Broncode of met een structureel hulpmiddel.
+:::
 
 Een lange regel die visueel wordt omgebroken bevat daardoor nog geen regeleindeteken. Alinea’s, echte onderbrekingen en visuele terugloop zijn verschillende dingen. FBE gebruikt meerregelige ankers in de zoekweergave om begin en einde van tekstregels aan alineagrenzen te koppelen. Een overeenkomst over alineagrenzen en zo’n overeenkomst vervangen zijn niet hetzelfde: de onderzochte implementatie weigert vervanging tussen alinea’s.
 
@@ -312,6 +333,14 @@ Lookaround controleert context die niet in de volledige overeenkomst wordt opgen
 ```
 
 Bij `№ 125` wordt alleen `125` gevonden. De spatie is gewoon en enkelvoudig.
+
+:::example
+Zoeken: (?<=№ )([0-9]+)
+Invoer: № 125
+Volledige overeenkomst: 125
+Groep 1: 125
+Verwachte vervanging met [$1]: № [125]
+:::
 
 Controle rechts:
 

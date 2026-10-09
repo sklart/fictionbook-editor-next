@@ -11,10 +11,10 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-regex-help-visual-' + [guid]:
 New-Item -ItemType Directory -Path $root | Out-Null
 $captureDirectory = Join-Path $root 'screens'
 New-Item -ItemType Directory -Path $captureDirectory | Out-Null
+$fixture = Join-Path $root 'help.fb2'; $report = Join-Path $root 'report.txt'
 $isolation = $null; $passed = $false
 try {
     $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'RegexHelpVisualData'
-    $fixture = Join-Path $root 'help.fb2'; $report = Join-Path $root 'report.txt'
     '<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>Help</book-title><lang>en</lang></title-info><document-info><id>regex-help-visual</id><version>1.0</version></document-info></description><body><section><p>Help visual smoke.</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
     $oldMode,$oldScenario,$oldArtifacts=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TEST_ARTIFACT_DIR
     try {
@@ -44,4 +44,14 @@ try {
     Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory 'full-help-visual-report.txt') -Force
     Write-Host 'Regex Help visual placement and rendering smoke passed.'
     $passed = $true
-} finally { if ($isolation) { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }; if ($passed) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue } else { Write-Host "Visual smoke failure artifacts: $root" } }
+} finally {
+    # Preserve partial captures even when navigation or a screenshot assertion fails.
+    Get-ChildItem -LiteralPath $captureDirectory -Filter '*.bmp' -File -ErrorAction SilentlyContinue |
+        Copy-Item -Destination $ArtifactDirectory -Force
+    if (Test-Path -LiteralPath $report) {
+        Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory 'full-help-visual-report.txt') -Force
+    }
+    if ($isolation) { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
+    if ($passed) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    else { Write-Host "Visual smoke failure artifacts: $root" }
+}

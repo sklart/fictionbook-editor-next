@@ -12,6 +12,10 @@ Wydanie: 2 października 2026 r. Tryb Projekt opisano w regex-design.md. Przepis
 
 Kod pokazuje tagi, atrybuty, odsyłacze, encje i tekst książki. Nadaje się do audytu FB2: pustych elementów, importowanych tagów HTML, odsyłaczy zastępczych, nietypowych atrybutów i pozostałości po konwersji.
 
+:::note
+Regex bada tekst XML, nie przeanalizowane drzewo DOM. Strukturę sprawdzaj narzędziem XML.
+:::
+
 Do korekty zwykłych słów często wygodniejszy jest Projekt. W XML dopasowanie może wystąpić nie tylko w książce, lecz także w atrybucie, komentarzu, CDATA, nazwie pliku lub danych binarnych. Uwzględnij to przed zamianą.
 
 „Tylko wyszukiwanie i weryfikacja” oznacza listę kandydatów, nie dowód błędnego XML lub tekstu. Nawet zamiana spacji może naruszyć znaczący tekst. Nie ma tu uniwersalnie bezpiecznych zamian w dowolnym XML.
@@ -27,6 +31,13 @@ Prosty pusty akapit:
 ```
 
 Znajduje `<p></p>` i `<p>   </p>` w jednym fizycznym wierszu, nie `<p>Текст</p>`. Nie zamieniaj automatycznie na pusty tekst albo `<empty-line/>`: mogą mieć różne role strukturalne.
+
+:::example
+Znajdź: <p>[ \t]*</p>
+Wejście: <p>   </p>
+Dopasowanie: <p>   </p>
+Oczekiwane: Sprawdź ten akapit przed zmianą XML.
+:::
 
 Wklej tylko wzorzec, bez `/.../g`, cudzysłowów C++ i podwojonych ukośników z JSON.
 
@@ -53,6 +64,10 @@ Unicode w XML jest dozwolone, lecz nie ma oddzielnego UCP i właściwości PCRE2
 ## 4. Wyszukiwanie wiersz po wierszu: najważniejszy limit
 
 W ścieżce Scintilla używanej przez FBE, `MatchOnLines` dopasowuje wzorzec do każdego fizycznego wiersza oddzielnie. Wiersz może być bardzo długi; zawinięcie na ekranie nie tworzy nowego fizycznego wiersza. [S2]
+
+:::warning
+W bieżącym wyszukiwaniu regex w Kodzie nie przechodzi przez fizyczne wiersze; żaden wzorzec ich nie połączy.
+:::
 
 Porównaj:
 

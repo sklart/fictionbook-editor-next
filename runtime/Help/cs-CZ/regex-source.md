@@ -12,6 +12,10 @@ Vydání: 2. října 2026. Návrh popisuje regex-design.md. Zdejší postupy pat
 
 Kód ukazuje XML značky, atributy, odkazy, entity a text knihy. Hodí se pro audit FB2: prázdné prvky, importované HTML, provizorní odkazy, neobvyklé atributy a zbytky konverze.
 
+:::note
+Regex zkoumá text XML, ne parsovaný strom DOM. Strukturu ověřte nástrojem pro XML.
+:::
+
 Pro obyčejnou jazykovou korekturu bývá pohodlnější Návrh. Shoda ve zdrojovém XML může být v atributu, komentáři, CDATA, názvu souboru nebo binárním obsahu, nejen v knižním textu. Myslete na to před nahrazením.
 
 „Pouze vyhledání a kontrola“ poskytuje kandidáty, ne důkaz chyby XML či textu. Dokonce mezery mohou být významové; neexistuje univerzálně bezpečná náhrada v libovolném XML.
@@ -27,6 +31,13 @@ Jednoduchý prázdný odstavec:
 ```
 
 Najde `<p></p>` a `<p>   </p>` na jednom fyzickém řádku, nikoli `<p>Текст</p>`. Automaticky nemažte ani nepřevádějte na `<empty-line/>`: jejich strukturální role se může lišit.
+
+:::example
+Najít: <p>[ \t]*</p>
+Vstup: <p>   </p>
+Shoda: <p>   </p>
+Očekáváno: Před změnou XML tento odstavec zkontrolujte.
+:::
 
 Kopírujte jen vzor, bez `/.../g`, uvozovek řetězce C++ a zdvojení lomítek z JSON.
 
@@ -53,6 +64,10 @@ Unicode text není zakázán, ale UCP a vlastnosti PCRE2 nejsou k dispozici. Tř
 ## 4. Hledání po řádcích: zásadní omezení
 
 Ve Scintilla cestě FBE funkce `MatchOnLines` zpracovává vzor na každém fyzickém řádku zvlášť. Řádek může být velmi dlouhý; jeho zalomení na obrazovce není nový fyzický řádek. [S2]
+
+:::warning
+Regex ve Zdrojovém režimu nemůže v současné cestě hledat přes fyzické řádky; vzor je nespojí.
+:::
 
 Porovnejte:
 

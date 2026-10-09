@@ -30,7 +30,24 @@ Několik mezer najdete takto:
 
 V textu `Он   пришёл` se najde úsek tří mezer. Do náhrady zadejte jednu obyčejnou mezeru. Nejprve nahraďte jedinou shodu, ověřte `Он пришёл` a teprve potom zvažte Nahradit vše.
 
+:::example
+Najít: [ \t]{2,}
+Vstup: Он   пришёл
+Shoda: tři mezery mezi slovy
+:::
+
+:::example
+Najít: [ \t]{2,}
+Vstup: Он   пришёл
+Nahradit: jedna mezera
+Očekáváno: Он пришёл
+:::
+
 Při velkém počtu výsledků si je nejprve prohlédněte a opravte jeden či dva typické případy. Po hromadné změně zkontrolujte text, kurzivu, tučné písmo, poznámky a hranice odstavců. Neočekávaný výsledek vraťte zpět před dalšími úpravami.
+
+:::warning
+Nahradit vše může změnit záměrné mezery i formátování. Ověřte jednu náhradu a uložte pracovní kopii.
+:::
 
 Použít v panelu šablon přenese výraz a nastavení do dialogu. Neznamená bezpodmínečně opravit všechny shody. Hledání a nahrazování se spouštějí příslušnými tlačítky zvlášť.
 
@@ -39,6 +56,10 @@ Použít v panelu šablon přenese výraz a nastavení do dialogu. Neznamená be
 Režim používá PCRE2-16 s textem i vzory v UTF-16; UTF je vždy zapnuté. FBE samostatně sestavuje hledaný text a provádí náhrady s ohledem na strukturu knihy. Dokumentace PCRE2 proto vysvětluje shody, nikoli všechny operace aplikace. Technické zdroje jsou D1–D4.
 
 Prohledává se textová reprezentace knihy, ne doslovné XML. `<strong>` není způsob hledání tučného písma v Návrhu. XML značky hledejte v Kódu; strukturální změny patří nástrojům editoru nebo specializovaným skriptům.
+
+:::note
+Regex v Návrhu vidí prohledávaný text, ne strom DOM. Prvky a atributy kontrolujte v Kódu nebo strukturálním nástroji.
+:::
 
 Vizuální zalomení dlouhého řádku nevkládá znak konce řádku. Odstavce, skutečná přerušení a zalamování podle šířky jsou odlišné. FBE používá víceřádkové kotvy reprezentace hledání pro hranice odstavců. Nalezení shody přes odstavce a její nahrazení však nejsou totéž: zkoumaná implementace náhrady mezi odstavci odmítá.
 
@@ -312,6 +333,14 @@ Lookaround kontroluje kontext, který se nezahrne do celé shody. Můžete vybra
 ```
 
 Na `№ 125` najde pouze `125`. Požaduje přesně jednu obyčejnou mezeru.
+
+:::example
+Najít: (?<=№ )([0-9]+)
+Vstup: № 125
+Celá shoda: 125
+Skupina 1: 125
+Očekávaná náhrada pomocí [$1]: № [125]
+:::
 
 Kontrola napravo:
 

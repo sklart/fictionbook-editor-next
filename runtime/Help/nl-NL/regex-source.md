@@ -12,6 +12,10 @@ Editie: 2 oktober 2026. Ontwerp wordt beschreven in regex-design.md. Deze recept
 
 Code toont XML-tags, attributen, verwijzingen, entiteiten en boektekst. Het is geschikt voor FB2-controle: lege elementen, geïmporteerde HTML-tags, tijdelijke verwijzingen, onverwachte attributen en technische conversieresten.
 
+:::note
+Regex onderzoekt XML-tekst, geen geparseerde DOM-boom. Controleer structuur met een XML-hulpmiddel.
+:::
+
 Voor gewone tekstcorrectie is Ontwerp vaak handiger. In XML kan een treffer ook in een attribuut, commentaar, CDATA, bestandsnaam of binaire inhoud zitten. Houd daar rekening mee vóór vervanging.
 
 “Alleen zoeken en controleren” geeft kandidaten, geen bewijs dat XML of tekst fout is. Zelfs spaties kunnen inhoudelijk van belang zijn. Geen vervanging is universeel veilig voor willekeurige XML.
@@ -27,6 +31,13 @@ Eenvoudige lege alinea:
 ```
 
 Vindt `<p></p>` en `<p>   </p>` op één fysieke regel, niet `<p>Текст</p>`. Vervang niet automatisch door niets of `<empty-line/>`; de structurele functie kan verschillen.
+
+:::example
+Zoeken: <p>[ \t]*</p>
+Invoer: <p>   </p>
+Overeenkomst: <p>   </p>
+Verwacht: Controleer deze alinea voordat u de XML wijzigt.
+:::
 
 Plak uitsluitend het patroon, zonder `/.../g`, C++-stringtekens en dubbele JSON-backslashes.
 
@@ -53,6 +64,10 @@ Unicode-tekst is toegestaan, maar er zijn geen UCP- of PCRE2-eigenschappen. Teke
 ## 4. Regelgewijs zoeken: de belangrijkste beperking
 
 In het gebruikte Scintilla-pad past `MatchOnLines` het patroon afzonderlijk op elke fysieke regel toe. Een regel kan zeer lang zijn; visueel afbreken aan de vensterrand schept geen nieuwe fysieke regel. [S2]
+
+:::warning
+In het huidige zoekpad kan regex in Broncode geen fysieke regels overschrijden; geen patroon voegt ze samen.
+:::
 
 Vergelijk:
 

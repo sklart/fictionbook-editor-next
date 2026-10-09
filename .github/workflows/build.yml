@@ -187,6 +187,15 @@ jobs:
           ./tools/tests/test-regex-help-formatting.ps1
           ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
           ./tools/tests/test-regex-help-placement-runtime.ps1 -FbeExe ./out/Release/FBE.exe
+          ./tools/tests/test-regex-help-visual-runtime.ps1 -FbeExe ./out/Release/FBE.exe -ArtifactDirectory ./out/tests/full-regex-help-visual
+      - name: Upload Full Regex Help visual smoke captures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-regex-help-visual-${{ github.sha }}
+          path: out/tests/full-regex-help-visual/**
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Run filesystem backup regression
         shell: pwsh
         run: |

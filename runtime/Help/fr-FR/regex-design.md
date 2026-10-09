@@ -30,7 +30,24 @@ Pour rechercher plusieurs espaces :
 
 Dans `Он   пришёл`, la correspondance est l’intervalle de trois espaces. Saisissez une espace ordinaire dans le champ de remplacement. Remplacez une seule occurrence, vérifiez `Он пришёл`, puis envisagez seulement Remplacer tout.
 
+:::example
+Rechercher: [ \t]{2,}
+Entrée: Он   пришёл
+Correspondance: trois espaces entre les mots
+:::
+
+:::example
+Rechercher: [ \t]{2,}
+Entrée: Он   пришёл
+Remplacer par: un espace
+Attendu: Он пришёл
+:::
+
 En présence de nombreux résultats, inspectez-les d’abord et corrigez un ou deux cas représentatifs. Après une opération globale, vérifiez texte, italique, gras, notes et limites de paragraphes. Annulez un résultat inattendu avant une nouvelle série de modifications.
+
+:::warning
+Tout remplacer peut modifier des espaces et une mise en forme voulus. Vérifiez une substitution et conservez une copie de travail.
+:::
 
 Appliquer dans le panneau Modèles transfère l’expression et les options vers le dialogue. Ce n’est pas une commande de correction inconditionnelle de tous les résultats. Utilisez ensuite les commandes de recherche ou de remplacement du dialogue.
 
@@ -39,6 +56,10 @@ Appliquer dans le panneau Modèles transfère l’expression et les options vers
 Ce mode utilise PCRE2-16, avec texte et motifs en UTF-16 ; UTF est toujours activé. FBE construit séparément le texte interrogeable puis effectue les remplacements en tenant compte de la structure du livre. La documentation PCRE2 explique donc les correspondances, mais pas toutes les opérations de FBE. Voir D1–D4.
 
 La recherche porte sur une représentation textuelle du livre, pas sur le balisage XML littéral. `<strong>` ne permet pas de rechercher le texte en gras dans Design. Recherchez les balises en mode Code et utilisez les fonctions structurelles ou des scripts spécialisés pour les transformations.
+
+:::note
+En mode Design, la regex voit le texte de recherche, pas l’arbre DOM. Vérifiez éléments et attributs en mode Code ou avec un outil structurel.
+:::
 
 Le retour visuel dû à la largeur de la fenêtre n’est pas un caractère de fin de ligne. Il faut distinguer paragraphes, sauts réels et retour visuel. FBE utilise des ancres multiligne dans sa représentation de recherche afin de refléter les limites des paragraphes. Trouver une correspondance entre paragraphes et la remplacer sont deux opérations différentes : l’implémentation étudiée refuse les remplacements interparagraphes.
 
@@ -312,6 +333,14 @@ Une assertion lookaround vérifie un contexte qui n’entre pas dans la correspo
 ```
 
 Sur `№ 125`, seul `125` est trouvé. L’espace est ici exactement une espace ordinaire.
+
+:::example
+Rechercher: (?<=№ )([0-9]+)
+Entrée: № 125
+Correspondance complète: 125
+Groupe 1: 125
+Remplacement attendu avec [$1]: № [125]
+:::
 
 Test à droite :
 

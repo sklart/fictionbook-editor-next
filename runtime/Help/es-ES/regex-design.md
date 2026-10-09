@@ -30,7 +30,24 @@ Para espacios repetidos:
 
 En `Он   пришёл` encuentra el intervalo de tres espacios. Introduzca un espacio normal como reemplazo. Cambie una sola coincidencia, compruebe `Он пришёл` y solo entonces valore Reemplazar todo.
 
+:::example
+Buscar: [ \t]{2,}
+Entrada: Он   пришёл
+Coincidencia: tres espacios entre palabras
+:::
+
+:::example
+Buscar: [ \t]{2,}
+Entrada: Он   пришёл
+Sustituir por: un espacio
+Esperado: Он пришёл
+:::
+
 Con muchos resultados, inspecciónelos primero y corrija uno o dos casos representativos. Después de una operación masiva, revise texto, cursiva, negrita, notas y límites de párrafos. Deshaga un resultado inesperado antes de iniciar otra serie de cambios.
+
+:::warning
+Sustituir todo puede cambiar espacios y formato intencionados. Compruebe una sustitución y guarde una copia de trabajo.
+:::
 
 Aplicar en Plantillas transfiere expresión y opciones al diálogo. No significa corregir automáticamente todos los resultados. La búsqueda o el reemplazo se ejecutan con sus comandos correspondientes.
 
@@ -39,6 +56,10 @@ Aplicar en Plantillas transfiere expresión y opciones al diálogo. No significa
 Se utiliza PCRE2-16 con texto y patrones en UTF-16; UTF está siempre activado. FBE construye por separado el texto consultable y realiza los reemplazos teniendo en cuenta la estructura del libro. La documentación PCRE2 explica las coincidencias, pero no todas las operaciones de FBE. Véanse D1–D4.
 
 Se busca en una representación textual del libro, no en el XML literal. `<strong>` no permite buscar negritas en Diseño. Para etiquetas use Código; para transformaciones estructurales, funciones del editor o scripts especializados.
+
+:::note
+La regex de Diseño ve el texto de búsqueda, no el árbol DOM. Revise elementos y atributos en Código o con una herramienta estructural.
+:::
 
 El ajuste visual de una línea al ancho de la ventana no es un salto de línea. Distinga párrafos, saltos reales y ajuste visual. FBE emplea anclas multilínea en su representación para reflejar límites de párrafos. Encontrar texto entre párrafos y reemplazarlo son operaciones distintas: la implementación considerada rechaza reemplazos entre párrafos.
 
@@ -312,6 +333,14 @@ Las aserciones examinan contexto sin incluirlo en la coincidencia completa. Así
 ```
 
 En `№ 125` encuentra solo `125`. El espacio es exactamente uno normal.
+
+:::example
+Buscar: (?<=№ )([0-9]+)
+Entrada: № 125
+Coincidencia completa: 125
+Grupo 1: 125
+Sustitución esperada con [$1]: № [125]
+:::
 
 Comprobación a la derecha:
 

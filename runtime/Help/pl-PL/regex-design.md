@@ -30,7 +30,24 @@ Wyszukiwanie kilku spacji:
 
 W tekście `Он   пришёл` zostanie znaleziony odstęp z trzech spacji. W polu zamiany umieść jedną zwykłą spację. Najpierw wykonaj pojedynczą zamianę, sprawdź `Он пришёл`, a dopiero potem rozważ Zamień wszystko.
 
+:::example
+Znajdź: [ \t]{2,}
+Wejście: Он   пришёл
+Dopasowanie: trzy spacje między słowami
+:::
+
+:::example
+Znajdź: [ \t]{2,}
+Wejście: Он   пришёл
+Zamień na: jedna spacja
+Oczekiwane: Он пришёл
+:::
+
 Przy wielu dopasowaniach najpierw przejrzyj wyniki i popraw jeden lub dwa reprezentatywne przypadki. Po operacji zbiorczej sprawdź tekst, kursywę, pogrubienie, przypisy i granice akapitów. Nieoczekiwany rezultat cofnij przed następną serią zmian.
+
+:::warning
+Zamień wszystko może zmienić zamierzone odstępy i formatowanie. Sprawdź jedną zamianę i zapisz kopię roboczą.
+:::
 
 Przycisk Zastosuj w panelu szablonów przenosi wyrażenie i opcje do okna wyszukiwania. Nie jest poleceniem bezwarunkowego poprawienia wszystkich miejsc. Wyszukiwanie i zamiana mają osobne polecenia w oknie.
 
@@ -39,6 +56,10 @@ Przycisk Zastosuj w panelu szablonów przenosi wyrażenie i opcje do okna wyszuk
 Tryb używa PCRE2-16, przekazując tekst i wzorce jako UTF-16; UTF jest stale włączone. FBE osobno buduje tekst do przeszukania, a osobno wykonuje zamianę z uwzględnieniem struktury książki. Dokumentacja PCRE2 wyjaśnia więc dopasowanie, lecz nie wszystkie działania FBE. Podstawy techniczne podano w źródłach D1–D4.
 
 Przeszukiwana jest tekstowa reprezentacja książki, nie dosłowny XML pliku. `<strong>` nie jest sposobem na znalezienie pogrubienia w Projekcie. Tagi wyszukuje się w Kodzie, a przekształcenia strukturalne wykonuje narzędziami edytora lub specjalnymi skryptami.
+
+:::note
+Regex w Projekcie widzi tekst wyszukiwania, nie drzewo DOM. Elementy i atrybuty sprawdzaj w Kodzie lub narzędziem strukturalnym.
+:::
 
 Zawijanie długiego wiersza na ekranie nie tworzy znaku końca wiersza. Akapity, rzeczywiste podziały i zawijanie wizualne to różne pojęcia. FBE stosuje wielowierszowe kotwice w reprezentacji wyszukiwania, aby początki i końce wierszy tekstowych odzwierciedlały granice akapitów. Dopasowanie przez granicę akapitu nie oznacza możliwości takiej zamiany: badana implementacja odrzuca zamiany między akapitami.
 
@@ -312,6 +333,14 @@ Lookaround sprawdza kontekst, nie włączając go do pełnego dopasowania. Możn
 ```
 
 Na `№ 125` znajduje tylko `125`. Wymagana jest dokładnie jedna zwykła spacja.
+
+:::example
+Znajdź: (?<=№ )([0-9]+)
+Wejście: № 125
+Pełne dopasowanie: 125
+Grupa 1: 125
+Oczekiwana zamiana przez [$1]: № [125]
+:::
 
 Warunek po prawej:
 

@@ -587,8 +587,20 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         }
         return examples >= minimumExamples && notes >= 1 && warnings >= 1;
     };
-    const bool productionBlocks = hasProductionBlocks(enDesign, 3) && hasProductionBlocks(ruDesign, 3) &&
-        hasProductionBlocks(enSource, 1) && hasProductionBlocks(ruSource, 1);
+    bool productionBlocks = true;
+    for (LPCWSTR locale : { L"bg-BG", L"cs-CZ", L"de-DE", L"en-US", L"es-ES", L"fr-FR",
+             L"it-IT", L"nl-NL", L"pl-PL", L"pt-PT", L"ru-RU", L"uk-UA" })
+    {
+        std::vector<MarkdownBlock> localizedDesign, localizedSource;
+        CString localizedDesignPath, localizedSourcePath;
+        const CString localePath = CString(L"Help\\") + locale + L"\\";
+        productionBlocks = LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext::Design, locale,
+                localizedDesign, localizedDesignPath) &&
+            LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext::Source, locale,
+                localizedSource, localizedSourcePath) &&
+            localizedDesignPath.Find(localePath) >= 0 && localizedSourcePath.Find(localePath) >= 0 &&
+            hasProductionBlocks(localizedDesign, 3) && hasProductionBlocks(localizedSource, 1) && productionBlocks;
+    }
     std::vector<MarkdownBlock> cachedFirst, cachedSecond;
     CString cachedFirstPath, cachedSecondPath;
     MarkdownLoadMetrics firstLoad, secondLoad;

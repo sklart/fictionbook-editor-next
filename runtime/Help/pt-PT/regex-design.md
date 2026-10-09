@@ -30,7 +30,24 @@ Para encontrar vários espaços:
 
 Em `Он   пришёл`, o resultado é o intervalo de três espaços. Coloque um espaço normal na substituição. Execute primeiro uma única substituição, confirme `Он пришёл` e só depois considere Substituir tudo.
 
+:::example
+Procurar: [ \t]{2,}
+Entrada: Он   пришёл
+Correspondência: três espaços entre palavras
+:::
+
+:::example
+Procurar: [ \t]{2,}
+Entrada: Он   пришёл
+Substituir por: um espaço
+Esperado: Он пришёл
+:::
+
 Perante muitos resultados, examine-os primeiro e corrija um ou dois casos representativos. Depois de uma operação global, verifique texto, itálico, negrito, notas e limites de parágrafos. Se o resultado for inesperado, anule antes de começar outra série de alterações.
+
+:::warning
+Substituir tudo pode alterar espaços e formatação intencionais. Verifique uma substituição e guarde uma cópia de trabalho.
+:::
 
 Aplicar, no painel de modelos, transfere a expressão e as opções para a janela de pesquisa. Não significa corrigir incondicionalmente todos os resultados. A pesquisa e a substituição são executadas pelos respetivos comandos da janela.
 
@@ -39,6 +56,10 @@ Aplicar, no painel de modelos, transfere a expressão e as opções para a janel
 Este modo usa PCRE2-16, com texto e padrões em UTF-16; UTF está sempre ativo. O FBE constrói separadamente o texto de pesquisa e executa a substituição considerando a estrutura do livro. A documentação PCRE2 explica as correspondências, mas não determina todas as ações do FBE. A base técnica encontra-se em D1–D4.
 
 A pesquisa incide na representação textual do livro, não na marcação XML literal. `<strong>` não permite procurar negrito em Design. As etiquetas XML procuram-se em Código; as transformações estruturais usam ferramentas do editor ou scripts especializados.
+
+:::note
+Em Design, a regex vê o texto pesquisável, não a árvore DOM. Verifique elementos e atributos em Código ou com uma ferramenta estrutural.
+:::
 
 A mudança visual de linha de um texto comprido não é um carácter de fim de linha. Parágrafos, quebras reais e ajuste à largura são diferentes. O FBE usa âncoras multilinha na representação de pesquisa para refletir os limites de parágrafos. Encontrar uma correspondência entre parágrafos não equivale a poder substituí-la: a implementação considerada rejeita substituições entre parágrafos.
 
@@ -312,6 +333,14 @@ Lookaround verifica texto vizinho que não entra na correspondência completa. A
 ```
 
 Em `№ 125`, encontra apenas `125`. O espaço é normal e único.
+
+:::example
+Procurar: (?<=№ )([0-9]+)
+Entrada: № 125
+Correspondência completa: 125
+Grupo 1: 125
+Substituição esperada com [$1]: № [125]
+:::
 
 Condição à direita:
 

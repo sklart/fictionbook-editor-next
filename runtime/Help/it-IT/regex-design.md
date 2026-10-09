@@ -30,7 +30,24 @@ Per trovare più spazi consecutivi:
 
 Nel testo `Он   пришёл` viene trovato l’intervallo di tre spazi. Inserire un solo spazio ordinario nel campo della sostituzione. Eseguire prima una sostituzione, verificare il risultato `Он пришёл` e solo dopo valutare Sostituisci tutto.
 
+:::example
+Trova: [ \t]{2,}
+Input: Он   пришёл
+Corrispondenza: tre spazi tra le parole
+:::
+
+:::example
+Trova: [ \t]{2,}
+Input: Он   пришёл
+Sostituisci con: uno spazio
+Atteso: Он пришёл
+:::
+
 Con molte corrispondenze, esaminare prima i risultati e correggere uno o due casi rappresentativi. Dopo un’operazione globale controllare testo, corsivo, grassetto, note e confini dei paragrafi. Se il risultato è inatteso, annullare prima di iniziare altre modifiche.
+
+:::warning
+Sostituisci tutto può modificare spazi e formattazione intenzionali. Verificare una sostituzione e salvare una copia di lavoro.
+:::
 
 Il pulsante Applica nel pannello Modelli trasferisce espressione e opzioni nella finestra di ricerca. Non è un ordine di correggere automaticamente tutte le corrispondenze. Ricerca e sostituzione si avviano con i rispettivi comandi della finestra.
 
@@ -39,6 +56,10 @@ Il pulsante Applica nel pannello Modelli trasferisce espressione e opzioni nella
 Questa modalità usa PCRE2-16 con testo e modelli in UTF-16; UTF è sempre attivo. FBE costruisce separatamente il testo da cercare e applica le sostituzioni tenendo conto della struttura del libro. La documentazione PCRE2 spiega quindi il riconoscimento delle corrispondenze, non ogni comportamento dell’applicazione. Le fonti tecniche sono D1–D4.
 
 La ricerca riguarda una rappresentazione testuale del libro, non il suo XML letterale. Cercare `<strong>` non permette di trovare il grassetto in Design. I tag XML si cercano in Codice; le trasformazioni strutturali richiedono strumenti dell’editor o script dedicati.
+
+:::note
+In Design la regex vede il testo ricercabile, non l’albero DOM. Esaminare elementi e attributi in Codice o con uno strumento strutturale.
+:::
 
 L’andata a capo visiva di una riga lunga non è un carattere di fine riga. Paragrafi, interruzioni reali e adattamento alla larghezza non vanno confusi. FBE usa la modalità multilinea per le ancore della rappresentazione di ricerca, così che inizi e fini delle righe testuali riflettano i confini dei paragrafi. Trovare testo attraverso più paragrafi e sostituirlo sono operazioni diverse: l’implementazione esaminata rifiuta le sostituzioni tra paragrafi.
 
@@ -312,6 +333,14 @@ Un lookaround verifica il contesto senza includerlo nella corrispondenza complet
 ```
 
 Su `№ 125` si trova solo `125`; lo spazio richiesto è ordinario e singolo.
+
+:::example
+Trova: (?<=№ )([0-9]+)
+Input: № 125
+Corrispondenza completa: 125
+Gruppo 1: 125
+Sostituzione attesa con [$1]: № [125]
+:::
 
 Controllo a destra:
 

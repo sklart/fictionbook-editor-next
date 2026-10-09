@@ -26,6 +26,19 @@ foreach ($locale in $locales) {
         if ([string]::IsNullOrWhiteSpace($text) -or $bytes.Length -lt 1024) { throw "$locale/$name is empty or unreasonably short" }
         foreach ($required in @('# ', '## ', '```')) { if (-not $text.Contains($required)) { throw "$locale/$name misses Markdown construct $required" } }
         if (([regex]::Matches($text, '(?m)^```')).Count % 2 -ne 0) { throw "$locale/$name has unbalanced fenced blocks" }
+        $specialBlocks = @([regex]::Matches($text, '(?m)^:::(example|note|warning)\r?$') | ForEach-Object { $_.Groups[1].Value })
+        $expectedBlocks = if ($name -eq 'regex-design.md') { @('example', 'example', 'warning', 'note', 'example') } else { @('note', 'note', 'example', 'warning') }
+        if (($specialBlocks -join ',') -cne ($expectedBlocks -join ',')) { throw "$locale/$name special-block sequence differs from the reference: $($specialBlocks -join ',')" }
+        if (([regex]::Matches($text, '(?m)^:::\r?$')).Count -ne $specialBlocks.Count) { throw "$locale/$name has unbalanced special blocks" }
+        $examples = @([regex]::Matches($text, '(?ms)^:::example\r?\n(.*?)^:::\r?$') | ForEach-Object { $_.Groups[1].Value })
+        if ($name -eq 'regex-design.md') {
+            $controls = @(@('[ \t]{2,}', 'Он   пришёл'), @('[ \t]{2,}', 'Он   пришёл', 'Он пришёл'), @('(?<=№ )([0-9]+)', '№ 125', '№ [125]'))
+        } else { $controls = @(, @('<p>[ \t]*</p>', '<p>   </p>')) }
+        for ($index = 0; $index -lt $controls.Count; ++$index) {
+            foreach ($control in $controls[$index]) {
+                if (-not $examples[$index].Contains($control)) { throw "$locale/$name example #$($index + 1) changed control text: $control" }
+            }
+        }
         if ($name -eq 'regex-source.md') {
             if ($text -notmatch '(?m)^:::note\r?$') { throw "$locale/$name must include a user-facing information note." }
             if ($text -notmatch '(?m)^```regex\r?$') { throw "$locale/$name must mark regular-expression examples explicitly." }

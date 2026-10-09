@@ -12,6 +12,10 @@ Edición: 2 de octubre de 2026. Diseño se describe en regex-design.md. Estas re
 
 Aquí se ven etiquetas XML, atributos, enlaces, entidades y texto. Es apropiado para auditar FB2: elementos vacíos, HTML importado, enlaces de sustitución, atributos extraños y restos de conversión.
 
+:::note
+La regex examina texto XML, no un árbol DOM analizado. Valide la estructura con una herramienta XML.
+:::
+
 Para corregir palabras suele convenir Diseño. En XML una coincidencia puede estar en atributos, comentarios, CDATA, nombres de archivo o datos binarios. Considérelo antes de reemplazar.
 
 «Solo buscar y revisar» ofrece candidatos, no prueba errores. Hasta cambiar espacios puede alterar contenido significativo; ningún reemplazo sobre XML arbitrario es universalmente seguro.
@@ -27,6 +31,13 @@ Párrafo simple vacío:
 ```
 
 Encuentra `<p></p>` y `<p>   </p>` en una línea física, no `<p>Текст</p>`. No elimine automáticamente ni cambie por `<empty-line/>`: sus funciones estructurales pueden ser diferentes.
+
+:::example
+Buscar: <p>[ \t]*</p>
+Entrada: <p>   </p>
+Coincidencia: <p>   </p>
+Esperado: Revise este párrafo antes de cambiar el XML.
+:::
 
 Pegue solo el patrón, sin `/.../g`, comillas C++ ni duplicación de barras JSON.
 
@@ -53,6 +64,10 @@ Unicode no está prohibido, pero no hay UCP ni propiedades PCRE2. Las clases dep
 ## 4. Búsqueda línea por línea: limitación esencial
 
 `MatchOnLines` aplica el patrón por separado al contenido de cada línea física. Una línea puede ser enorme; ajustarla al ancho de ventana no crea otra. [S2]
+
+:::warning
+En la búsqueda actual, la regex de Código no puede cruzar líneas físicas; ningún patrón las une.
+:::
 
 Por ejemplo:
 

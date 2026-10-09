@@ -12,6 +12,10 @@ Edição: 2 de outubro de 2026. O modo Design é tratado em regex-design.md. As 
 
 Código mostra etiquetas XML, atributos, referências, entidades e texto. É adequado à análise de FB2: elementos vazios, HTML importado, referências provisórias, atributos inesperados e resíduos técnicos da conversão.
 
+:::note
+A regex examina texto XML, não uma árvore DOM analisada. Valide relações estruturais com uma ferramenta XML.
+:::
+
 Para revisão de palavras, Design é muitas vezes mais cómodo. Uma correspondência no XML pode estar num atributo, comentário, CDATA, nome de ficheiro ou dados binários, e não apenas no texto do livro. Considere isto antes de substituir.
 
 «Apenas pesquisa e verificação» fornece candidatos, não prova erros no XML ou no texto. Mesmo espaços podem ser significativos; não há substituições universalmente seguras sobre XML arbitrário.
@@ -27,6 +31,13 @@ Um parágrafo simples vazio:
 ```
 
 Encontra `<p></p>` e `<p>   </p>` numa linha física, não `<p>Текст</p>`. Não substitua automaticamente por vazio ou `<empty-line/>`: as funções estruturais podem diferir.
+
+:::example
+Procurar: <p>[ \t]*</p>
+Entrada: <p>   </p>
+Correspondência: <p>   </p>
+Esperado: Verifique este parágrafo antes de alterar o XML.
+:::
 
 Introduza só o padrão, sem `/.../g`, aspas C++ nem barras duplicadas de JSON.
 
@@ -53,6 +64,10 @@ Unicode não é proibido, mas não existem UCP e propriedades PCRE2. As classes 
 ## 4. Pesquisa linha a linha: a limitação principal
 
 No percurso Scintilla usado pelo FBE, `MatchOnLines` aplica o padrão separadamente ao conteúdo de cada linha física. Uma linha pode ser muito comprida; o ajuste à largura da janela não cria outra linha física. [S2]
+
+:::warning
+Na pesquisa atual, a regex em Código não atravessa linhas físicas; nenhum padrão as une.
+:::
 
 Compare:
 
