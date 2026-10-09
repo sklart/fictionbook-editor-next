@@ -23,6 +23,7 @@ $consumers = @{
     IDD_FIND = @{ File = 'src\fbe\SearchReplace.h'; AdditionalFiles = @('src\fbe\FBEview.cpp', 'src\fbe\search\SearchPresetCatalog.cpp', 'src\fbe\search\RegexQuickReference.h', 'src\fbe\search\ui\RegexQuickReferencePopup.cpp'); Invocation = 'SetRuntimeDialogTitle' }
     IDD_REPLACE = @{ File = 'src\fbe\SearchReplace.h'; Invocation = 'SetRuntimeDialogTitle' }
     IDD_FIND_RESULTS = @{ File = 'src\fbe\FindResultsPane.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
+    IDD_FB2_QUALITY_RESULTS = @{ File = 'src\fbe\Fb2QualityChecker.cpp'; AdditionalFiles = @('src\fbe\mainfrm.cpp'); Invocation = 'FbeLoadRuntimeStringByKey' }
     IDD_REGEX_HELP = @{ File = 'src\fbe\search\ui\RegexHelpDialog.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_REGEX_HELP\)' }
     IDD_SCRIPTS_TOOLBAR_CUSTOMIZE = @{ File = 'src\fbe\ScriptsToolbarCustomizeDlg.cpp'; AdditionalFiles = @('src\fbe\mainfrm.cpp'); Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD\)' }
     IDD_SCRIPT_TOOLBAR_MANAGER = @{ File = 'src\fbe\ScriptToolbarManagerDlg.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD\)' }
@@ -75,7 +76,15 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     # Search preset labels are generated from their stable IDs by SearchPresetCatalog.
     $dynamicSearchPresetKey = $value.resource -eq 'IDD_FIND' -and $key -like 'fbe.search_preset.*' -and
         $consumerText.Contains('StableBuiltInLocalizationKey') -and $consumerText.Contains('FbeLoadRuntimeStringByKey')
-    if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and -not $consumerText.Contains($key)) {
+    $dynamicQualityRuleKey = $value.resource -eq 'IDD_FB2_QUALITY_RESULTS' -and $key -like 'fbe.quality.rule.*' -and
+        $consumerText.Contains('L"fbe.quality.rule." + suffix') -and
+        $consumerText.Contains('L"Q-' + $key.Substring('fbe.quality.rule.'.Length).ToUpperInvariant() + '"')
+    $dynamicQualityHelpKey = $value.resource -eq 'IDD_FB2_QUALITY_RESULTS' -and
+        ($key -like 'fbe.quality.detail.*' -or $key -like 'fbe.quality.action.*') -and
+        $consumerText.Contains('L"' + $key.Substring(0, $key.LastIndexOf('.') + 1) + '"') -and
+        $consumerText.Contains('suffix = L"' + $key.Substring($key.LastIndexOf('.') + 1) + '"')
+    if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
+        -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }

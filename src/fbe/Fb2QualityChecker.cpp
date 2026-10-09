@@ -1098,19 +1098,21 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 	::GetWindowRect(list, &beforeList);
 	::GetWindowRect(details, &beforeDetails);
 	::GetWindowRect(button, &beforeButton);
-	::SetWindowPos(window, NULL, 0, 0, beforeWindow.right - beforeWindow.left + 150,
+	::SetWindowPos(window, NULL, 0, 0, beforeWindow.right - beforeWindow.left - 100,
 		beforeWindow.bottom - beforeWindow.top + 100, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-	RECT afterList = {}, afterDetails = {}, afterButton = {};
+	RECT afterWindow = {}, afterList = {}, afterDetails = {}, afterButton = {};
+	::GetWindowRect(window, &afterWindow);
 	::GetWindowRect(list, &afterList);
 	::GetWindowRect(details, &afterDetails);
 	::GetWindowRect(button, &afterButton);
 	const HWND header = reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0));
-	const bool widthGrew = afterList.right - afterList.left >= beforeList.right - beforeList.left + 100;
+	const bool widthChanged = afterWindow.right - afterWindow.left <= beforeWindow.right - beforeWindow.left - 70 &&
+		afterList.right - afterList.left <= beforeList.right - beforeList.left - 70;
 	const bool heightGrew = afterList.bottom - afterList.top >= beforeList.bottom - beforeList.top + 70;
 	const bool separated = afterDetails.top > afterList.bottom && afterButton.top > afterDetails.bottom;
 	const bool buttonMoved = afterButton.top >= beforeButton.top + 70;
 	const int columns = header ? static_cast<int>(::SendMessageW(header, HDM_GETITEMCOUNT, 0, 0)) : -1;
-	const bool geometry = widthGrew && heightGrew && separated && buttonMoved && columns == 5;
+	const bool geometry = widthChanged && heightGrew && separated && buttonMoved && columns == 5;
 	NMLISTVIEW click = {};
 	click.hdr.hwndFrom = list;
 	click.hdr.idFrom = IDC_FB2_QUALITY_LIST;
@@ -1126,7 +1128,7 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 		static_cast<size_t>(first.lParam) < report.issues.size() && report.issues[first.lParam].severity == Severity::Warning;
 	dialog.DestroyWindow();
 	if (diagnostics) diagnostics->Format(L"width=%d height=%d separated=%d button=%d columns=%d ascending=%d descending=%d",
-		widthGrew, heightGrew, separated, buttonMoved, columns, sortedFirst, sortedReverse);
+		widthChanged, heightGrew, separated, buttonMoved, columns, sortedFirst, sortedReverse);
 	return geometry && sortedFirst && sortedReverse;
 }
 
