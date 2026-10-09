@@ -190,6 +190,7 @@ public:
 	int ScriptTreeImage(HTREEITEM item) const;
 	int FavoriteImageIndex() const { return m_favorite_image; }
 	HTREEITEM FavoriteGroupItem() const { return m_favorite_group; }
+	void RefreshLocalizedScriptGroup();
 	std::vector<const ScriptDescriptor*> SelectedScripts() const;
 	void SelectScriptContextItem(HTREEITEM item);
 	bool SelectedScriptsAreAllFavorites() const;

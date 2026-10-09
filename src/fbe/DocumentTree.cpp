@@ -1018,6 +1018,10 @@ void CDocumentTree::RefreshLocalizedTitle()
 	this->SetTitle(m_title);
 	this->SetWindowText(m_title);
 	m_tree.RefreshLocalizedMenuCaptions();
+	if(::IsWindow(m_tree.ScriptSearchWindow()))
+		::SendMessage(m_tree.ScriptSearchWindow(), EM_SETCUEBANNER, TRUE,
+			reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.search", L"Find script..."))));
+	m_tree.m_tree.RefreshLocalizedScriptGroup();
 	RefreshModeButton();
 }
 

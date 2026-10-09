@@ -575,6 +575,39 @@ void CMainFrame::RunPortableStateTestScenario()
 		tree.SelectItem(dash);
 		const bool favorite = dash != NULL && !dashUid.IsEmpty() && tree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite) &&
 			tree.IsFavoriteScript(dashUid) && tree.FavoriteScriptTreeItem(dashUid) != NULL && _Settings.GetFavoriteScripts().Find(dashUid) >= 0;
+		::SetWindowText(m_document_tree.m_tree.ScriptSearchWindow(), L"dash");
+		HTREEITEM localizedFolder = tree.FindScriptTreeItem(L"02_чистка");
+		HTREEITEM localizedDash = tree.FindScriptTreeItem(L"02_чистка/dash.js");
+		if(localizedFolder != NULL) tree.Expand(localizedFolder, TVE_EXPAND);
+		if(localizedDash != NULL) tree.SelectItem(localizedDash);
+		const HTREEITEM localizedGroup = tree.FavoriteGroupItem();
+		const size_t localizedNodeCount = tree.ScriptTreeNodeCount();
+		const UINT localizedDiscoveryCount = m_scripts.DiscoveryCount();
+		const CString localizedFavorites(_Settings.GetFavoriteScripts());
+		const DWORD originalLanguage = _Settings.GetInterfaceLanguageID();
+		auto checkLocalizedScripts = [&](DWORD language, LPCWSTR locale, LPCWSTR cue, LPCWSTR groupText) {
+			_Settings.SetInterfaceLanguage(language);
+			FbePublishRuntimeLocaleName(locale); FbeResetRuntimeLocalization(); RefreshLocalizedMainFrameUi();
+			wchar_t actualCue[128] = {}, actualGroup[128] = {}, searchText[128] = {};
+			const HWND search = m_document_tree.m_tree.ScriptSearchWindow();
+			const bool cueRead = ::SendMessage(search, EM_GETCUEBANNER, reinterpret_cast<WPARAM>(actualCue), _countof(actualCue)) != FALSE;
+			::GetWindowText(search, searchText, _countof(searchText));
+			if(localizedGroup != NULL) tree.GetItemText(localizedGroup, actualGroup, _countof(actualGroup));
+			return cueRead && wcscmp(actualCue, cue) == 0 && wcscmp(actualGroup, groupText) == 0 &&
+				wcscmp(searchText, L"dash") == 0 && tree.ScriptFilter() == L"dash" &&
+				tree.FavoriteGroupItem() == localizedGroup && tree.ScriptTreeNodeCount() == localizedNodeCount &&
+				tree.FindScriptTreeItem(L"02_чистка") == localizedFolder && tree.FindScriptTreeItem(L"02_чистка/dash.js") == localizedDash &&
+				tree.GetSelectedItem() == localizedDash && (tree.GetItemState(localizedFolder, TVIS_EXPANDED) & TVIS_EXPANDED) != 0 &&
+				tree.IsFavoriteScript(dashUid) && _Settings.GetFavoriteScripts() == localizedFavorites &&
+				m_scripts.DiscoveryCount() == localizedDiscoveryCount;
+		};
+		const bool localizationReady = favorite && localizedGroup != NULL && localizedFolder != NULL && localizedDash != NULL;
+		const bool localizedRussian = localizationReady && checkLocalizedScripts(FBE_INTERFACE_LANGUAGE_RUSSIAN, L"ru-RU", L"Найти скрипт...", L"Избранное");
+		const bool localizedEnglish = localizationReady && checkLocalizedScripts(FBE_INTERFACE_LANGUAGE_ENGLISH, L"en-US", L"Find script...", L"Favorites");
+		const bool localizedRussianAgain = localizationReady && checkLocalizedScripts(FBE_INTERFACE_LANGUAGE_RUSSIAN, L"ru-RU", L"Найти скрипт...", L"Избранное");
+		const bool localizedWithoutRebuild = localizedRussian && localizedEnglish && localizedRussianAgain;
+		_Settings.SetInterfaceLanguage(originalLanguage);
+		FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName()); FbeResetRuntimeLocalization(); RefreshLocalizedMainFrameUi();
 		const bool reloaded = InitializeScripts() && (RefreshNavigationScriptTree(), tree.FavoriteScriptTreeItem(dashUid) != NULL);
 		const CString oldPath = scriptsDirectory + L"02_Чистка\\Dash.js";
 		const CString renamedPath = scriptsDirectory + L"02_Чистка\\DashRenamed.js";
@@ -611,9 +644,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		m_document_tree.m_tree.ToggleScriptMode();
 		const bool visibleAgain = m_document_tree.m_tree.IsScriptSearchVisible() && tree.FavoriteScriptTreeItem(dashUid) != NULL;
 		const bool dpi = UiMetrics::ScaleForDpi(26, 96) == 26 && UiMetrics::ScaleForDpi(26, 192) == 52;
-		const bool passed = initialized && searchVisible && caseInsensitive && folderNameExcluded && filtered && expanded && liveAdded && liveRemoved && cleared && escapeFocus && favorite && reloaded && renamed && removed && restored && themes && hidden && visibleAgain && dpi;
-		CStringA report; report.Format("phase=navigation-search-favorites\nscripts-directory=%s\ncatalog-paths=%s\ndash-file-at-start=%d\ncatalog-at-start=%d\nsearch-visible=%d\ncase-insensitive=%d\nfolder-name-excluded=%d\nescape-focus=%d\nfilter-at-search=%s\nfiltered-count=%u\nfiltered-folder=%d\nfiltered-dash=%d\ncleared-count=%u\ndash-uid=%s\nfiltered=%d\nexpanded=%d\nlive-added=%d\nlive-removed=%d\ncleared=%d\nfavorite=%d\nreload=%d\nrename=%d\nremove=%d\nrestore=%d\nthemes=%d\nmode-switch=%d\ndpi-metrics=%d\nresult=%s\n",
-			static_cast<LPCSTR>(CW2A(scriptsDirectory, CP_UTF8)), static_cast<LPCSTR>(CW2A(catalogPaths, CP_UTF8)), dashFileAtStart, catalogAtStart, searchVisible, caseInsensitive, folderNameExcluded, escapeFocus, static_cast<LPCSTR>(CW2A(filterAtSearch, CP_UTF8)), static_cast<unsigned>(filteredCount), filteredFolder, filteredDash, static_cast<unsigned>(clearedCount), static_cast<LPCSTR>(CW2A(dashUid, CP_UTF8)), filtered, expanded, liveAdded, liveRemoved, cleared, favorite, reloaded, renamed, removed, restored, themes, hidden && visibleAgain, dpi, passed ? "pass" : "fail");
+		const bool passed = initialized && searchVisible && caseInsensitive && folderNameExcluded && filtered && expanded && liveAdded && liveRemoved && cleared && escapeFocus && favorite && localizedWithoutRebuild && reloaded && renamed && removed && restored && themes && hidden && visibleAgain && dpi;
+		CStringA report; report.Format("phase=navigation-search-favorites\nscripts-directory=%s\ncatalog-paths=%s\ndash-file-at-start=%d\ncatalog-at-start=%d\nsearch-visible=%d\ncase-insensitive=%d\nfolder-name-excluded=%d\nescape-focus=%d\nfilter-at-search=%s\nfiltered-count=%u\nfiltered-folder=%d\nfiltered-dash=%d\ncleared-count=%u\ndash-uid=%s\nfiltered=%d\nexpanded=%d\nlive-added=%d\nlive-removed=%d\ncleared=%d\nfavorite=%d\nlocale-ru=%d\nlocale-en=%d\nlocale-ru-again=%d\nlocale-preserved=%d\nreload=%d\nrename=%d\nremove=%d\nrestore=%d\nthemes=%d\nmode-switch=%d\ndpi-metrics=%d\nresult=%s\n",
+			static_cast<LPCSTR>(CW2A(scriptsDirectory, CP_UTF8)), static_cast<LPCSTR>(CW2A(catalogPaths, CP_UTF8)), dashFileAtStart, catalogAtStart, searchVisible, caseInsensitive, folderNameExcluded, escapeFocus, static_cast<LPCSTR>(CW2A(filterAtSearch, CP_UTF8)), static_cast<unsigned>(filteredCount), filteredFolder, filteredDash, static_cast<unsigned>(clearedCount), static_cast<LPCSTR>(CW2A(dashUid, CP_UTF8)), filtered, expanded, liveAdded, liveRemoved, cleared, favorite, localizedRussian, localizedEnglish, localizedRussianAgain, localizedWithoutRebuild, reloaded, renamed, removed, restored, themes, hidden && visibleAgain, dpi, passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(navigationScriptsRuntime)

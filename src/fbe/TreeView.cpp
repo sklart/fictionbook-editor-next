@@ -1092,6 +1092,12 @@ void CTreeView::RebuildScriptTree()
 	BuildScriptChildren(TVI_ROOT, CString());
 }
 
+void CTreeView::RefreshLocalizedScriptGroup()
+{
+	if(m_script_mode && m_favorite_group != NULL)
+		SetItemText(m_favorite_group, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.favorites", L"Favorites"));
+}
+
 void CTreeView::CaptureScriptExpansions()
 {
 	m_expanded_script_paths.clear();
