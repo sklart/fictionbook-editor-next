@@ -6310,9 +6310,9 @@ LRESULT CMainFrame::OnFileQualityCheck(WORD, WORD, HWND, BOOL&)
 		if (document) snapshot = static_cast<const wchar_t*>(_bstr_t(document->xml));
 	}
 	if (snapshot.IsEmpty()) {
-		CString message(L"Не удалось получить XML текущего документа.");
+		CString message(FbeLoadRuntimeStringByKey(L"fbe.quality.snapshot.failed", L"Unable to read the current document XML."));
 		if (!snapshotError.IsEmpty()) { message += L"\n\n"; message += snapshotError; }
-		::MessageBoxW(m_hWnd, message, L"Расширенная проверка FB2", MB_ICONERROR);
+		::MessageBoxW(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"), MB_ICONERROR);
 		return 0;
 	}
 	const Fb2Quality::Report report = Fb2Quality::Check(snapshot);
@@ -6333,7 +6333,8 @@ LRESULT CMainFrame::OnFileQualityCheck(WORD, WORD, HWND, BOOL&)
 				return 0;
 			}
 		}
-		::MessageBoxW(m_hWnd, L"Не удалось точно определить расположение проблемы в текущем XML.", L"Расширенная проверка FB2", MB_ICONINFORMATION);
+		::MessageBoxW(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.quality.goto.unavailable", L"Unable to locate this issue reliably in the current XML."),
+			FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"), MB_ICONINFORMATION);
 	}
 	return 0;
 }

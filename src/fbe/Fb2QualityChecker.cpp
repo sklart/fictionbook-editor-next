@@ -650,7 +650,9 @@ public:
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnMinMax)
+		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
 		COMMAND_ID_HANDLER(IDC_FB2_QUALITY_GOTO, OnGoTo)
 		COMMAND_ID_HANDLER(IDC_FB2_QUALITY_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDC_FB2_QUALITY_SAVE, OnSave)
@@ -663,6 +665,17 @@ private:
 	const Report& m_report;
 	int m_sortColumn = -1;
 	bool m_sortDescending = false;
+	HFONT m_font = NULL;
+	void ApplyDpiFont(UINT dpi) {
+		HFONT font = UiMetrics::CreateDialogFontForDpi(dpi);
+		if (!font) return;
+		::SendMessageW(m_hWnd, WM_SETFONT, reinterpret_cast<WPARAM>(font), FALSE);
+		const int ids[] = { IDC_FB2_QUALITY_SUMMARY, IDC_FB2_QUALITY_LIST, IDC_FB2_QUALITY_DETAILS,
+			IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
+		for (int id : ids) ::SendMessageW(GetDlgItem(id), WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+		if (m_font) ::DeleteObject(m_font);
+		m_font = font;
+	}
 	CString GeometryPath() const { return U::GetSettingsDir() + L"QualityChecker.ini"; }
 	void RestoreGeometry() {
 		const CString path = GeometryPath();
@@ -732,6 +745,7 @@ private:
 		}
 	}
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&) {
+		ApplyDpiFont(UiMetrics::DpiForWindow(m_hWnd));
 		SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"));
 		SetDlgItemText(IDC_FB2_QUALITY_GOTO, FbeLoadRuntimeStringByKey(L"fbe.quality.goto", L"Go to"));
 		SetDlgItemText(IDC_FB2_QUALITY_COPY, FbeLoadRuntimeStringByKey(L"fbe.quality.copy", L"Copy"));
@@ -764,6 +778,15 @@ private:
 	}
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&) { Layout(); return 0; }
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { SaveGeometry(); return 0; }
+	LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_font) { ::DeleteObject(m_font); m_font = NULL; } return 0; }
+	LRESULT OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&) {
+		const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
+		SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left,
+			suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
+		ApplyDpiFont(LOWORD(wParam));
+		Layout();
+		return 0;
+	}
 	LRESULT OnMinMax(UINT, WPARAM, LPARAM parameter, BOOL&) {
 		MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(parameter);
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
@@ -1011,6 +1034,47 @@ int ShowReport(HWND parent, const Report& report)
 	ResultsDialog dialog(report);
 	dialog.DoModal(parent);
 	return dialog.selected;
+}
+
+bool ProbeResultsDialogLayout(HWND parent, const Report& report)
+{
+	ResultsDialog dialog(report);
+	HWND window = dialog.Create(parent);
+	if (!window) return false;
+	const HWND list = ::GetDlgItem(window, IDC_FB2_QUALITY_LIST);
+	const HWND details = ::GetDlgItem(window, IDC_FB2_QUALITY_DETAILS);
+	const HWND button = ::GetDlgItem(window, IDC_FB2_QUALITY_SAVE);
+	RECT beforeWindow = {}, beforeList = {}, beforeDetails = {}, beforeButton = {};
+	::GetWindowRect(window, &beforeWindow);
+	::GetWindowRect(list, &beforeList);
+	::GetWindowRect(details, &beforeDetails);
+	::GetWindowRect(button, &beforeButton);
+	::SetWindowPos(window, NULL, 0, 0, beforeWindow.right - beforeWindow.left + 150,
+		beforeWindow.bottom - beforeWindow.top + 100, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	RECT afterList = {}, afterDetails = {}, afterButton = {};
+	::GetWindowRect(list, &afterList);
+	::GetWindowRect(details, &afterDetails);
+	::GetWindowRect(button, &afterButton);
+	const HWND header = reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0));
+	const bool geometry = afterList.right - afterList.left >= beforeList.right - beforeList.left + 100 &&
+		afterList.bottom - afterList.top >= beforeList.bottom - beforeList.top + 70 &&
+		afterDetails.top > afterList.bottom && afterButton.top > afterDetails.bottom &&
+		afterButton.top >= beforeButton.top + 70 && header && ::SendMessageW(header, HDM_GETITEMCOUNT, 0, 0) == 5;
+	NMLISTVIEW click = {};
+	click.hdr.hwndFrom = list;
+	click.hdr.idFrom = IDC_FB2_QUALITY_LIST;
+	click.hdr.code = LVN_COLUMNCLICK;
+	click.iSubItem = 0;
+	::SendMessageW(window, WM_NOTIFY, click.hdr.idFrom, reinterpret_cast<LPARAM>(&click));
+	LVITEMW first = {}; first.mask = LVIF_PARAM; first.iItem = 0;
+	const bool sortedFirst = ::SendMessageW(list, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&first)) != 0 &&
+		static_cast<size_t>(first.lParam) < report.issues.size() && report.issues[first.lParam].severity == Severity::Error;
+	::SendMessageW(window, WM_NOTIFY, click.hdr.idFrom, reinterpret_cast<LPARAM>(&click));
+	first = {}; first.mask = LVIF_PARAM; first.iItem = 0;
+	const bool sortedReverse = ::SendMessageW(list, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&first)) != 0 &&
+		static_cast<size_t>(first.lParam) < report.issues.size() && report.issues[first.lParam].severity == Severity::Warning;
+	dialog.DestroyWindow();
+	return geometry && sortedFirst && sortedReverse;
 }
 
 bool ResolveSourceRange(const Issue& issue, const CString& currentSource, SourceRange& range)

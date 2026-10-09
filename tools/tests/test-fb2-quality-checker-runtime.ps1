@@ -21,18 +21,19 @@ try {
 </FictionBook>
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
     $fixtureHash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
-    $oldMode, $oldScenario, $oldTrace = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE
+    $oldMode, $oldScenario, $oldTrace, $oldSettings = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'fb2-quality-checker-runtime'
+        $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $root
         $env:FBE_NEXT_TRACE = '1'
         $process = Start-Process -FilePath $FbeExe -ArgumentList '-b',("`"$report`""),("`"$fixture`"") -PassThru
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FB2 quality runtime timed out.' }
         if ($process.ExitCode -ne 0) { $detail = if (Test-Path $report) { Get-Content $report -Raw } else { '<report missing>' }; throw "FB2 quality runtime failed: $($process.ExitCode); $detail" }
-    } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE = $oldMode, $oldScenario, $oldTrace }
+    } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TRACE, $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $oldMode, $oldScenario, $oldTrace, $oldSettings }
     $rows = @{}
     Get-Content -LiteralPath $report | ForEach-Object { $pair = $_ -split '=', 2; if ($pair.Count -eq 2) { $rows[$pair[0]] = $pair[1] } }
     if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash) { throw 'FB2 quality runtime changed the original fixture.' }
-    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'valid_metadata', 'large_document', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection', 'locations', 'report_formats') {
+    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'valid_metadata', 'large_document', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection', 'locations', 'report_formats', 'dialog_layout') {
         if ($rows[$key] -ne '1') { throw "FB2 quality runtime: $key=$($rows[$key])" }
     }
     if ($rows['result'] -ne 'pass') { throw "FB2 quality runtime result=$($rows['result'])" }
