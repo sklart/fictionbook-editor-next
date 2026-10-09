@@ -121,7 +121,7 @@ Must $tree 'script\.uid != m_favorite_scripts\[favorite\]\.first' 'favorite node
 Must $tree 'm_script_nodes\[item\] = index' 'favorite nodes reference existing descriptors'
 Must $tree 'NavigationPopupToggleFavorite' 'context menu can toggle favorites'
 Must $documentTree 'm_script_search\.ShowWindow\(scripts \? SW_SHOW : SW_HIDE\)' 'search exists only in Scripts mode'
-Must $documentTree 'UiMetrics::ScaleForDpi\(26, dpi\)' 'search layout follows window DPI'
+Must $documentTree 'ToolbarFactory::CommandToolbarImageSize\(dpi\) \+ UiMetrics::ScaleForDpi\(6, dpi\)' 'search height follows the shared toolbar DPI metric'
 Must $frame '::IsChild\(m_document_tree, pMsg->hwnd\)' 'Ctrl+F is scoped to the navigation pane'
 if($tree -match 'ScriptCatalog\s+[a-zA-Z_]+\s*;|void CTreeView::SetScriptFilter[\s\S]*?InitializeScripts\(') { throw 'Filtering must reuse the loaded catalog without discovery.' }
 Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
@@ -129,7 +129,7 @@ Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select thei
 Must $tree 'if\(m_script_mode\) SetImageList\(m_scriptImageList,TVSIL_NORMAL\);' 'scripts rebind the native image list after a visual refresh'
 Must $tree 'SetImageList\(m_ImageList,TVSIL_NORMAL\)' 'structure restores the legacy structural image list'
 Must $tree 'SetWindowTheme\(m_hWnd, L" ", L" "\)' 'scripts use native legacy plus/minus expanders instead of themed chevrons'
-Must $tree 'kScriptImageSize = 20' 'scripts-tree icons use the readable 20px visual size'
+Must $tree 'ToolbarFactory::CommandToolbarImageSize\(dpi\)' 'scripts-tree icons follow the shared command-toolbar DPI metric'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'navigation-scripts-runtime' 'runtime scenario exercises the native navigation tree'
 Must (Text 'tools\build\verify-release.ps1') 'test-fbe-navigation-scripts-runtime\.ps1' 'release gate runs navigation runtime regression'
 Must (Text '.github\workflows\build.yml') 'test-fbe-navigation-scripts-runtime\.ps1' 'CI runs navigation runtime regression'

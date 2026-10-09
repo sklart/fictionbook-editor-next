@@ -12,10 +12,12 @@ class CTreeWithToolBar : public CFrameWindowImpl<CTreeWithToolBar, CWindow, CTre
 {
 private:
 	WTL::CToolBarCtrl m_toolbar;
+	CImageList m_toolbar_images;
 	WTL::CToolBarCtrl m_element_browser_tb;
 	WTL::CReBarCtrl m_rebar;
 	int m_toolbarOrientation;
 	int m_maxTbwidth;
+	UINT m_layout_dpi = 0;
 	LONG_PTR m_rebarBaseStyle = 0;
 	UINT m_rebarBandBaseStyle = 0;
 	bool m_rebarThemeStateCaptured = false;
@@ -108,8 +110,10 @@ public:
 	void FinalizeViewBarTheme();
 	bool PrepareViewBarPopupThemeProbe();
 	void RefreshModeControls();
+	void UpdateDpiMetrics(UINT dpi = 0);
 	bool IsScriptSearchVisible() const { return m_script_search.IsWindowVisible() != FALSE; }
 	HWND ScriptSearchWindow() const { return m_script_search; }
+	HWND BottomToolbarWindow() const { return m_toolbar; }
 
 	LRESULT OnToolTipText(int idCtrl, LPNMHDR pnmh, BOOL& /*bHandled*/)
 	{

@@ -51,6 +51,7 @@ protected:
 	std::vector<ScriptDescriptor> m_script_items;
 	std::vector<ScriptTreeVisual> m_script_visuals;
 	std::vector<int> m_script_images;
+	int m_script_image_size = 0;
 	int m_favorite_image = -1;
 	std::vector<ScriptTreeToolbarTarget> m_script_toolbars;
 	std::map<HTREEITEM, size_t> m_script_nodes;
@@ -176,6 +177,7 @@ public:
 	// Scripts use legacy plus/minus expanders and roomier rows without changing
 	// the established document-structure tree appearance.
 	void ApplyModeAppearance();
+	void UpdateScriptDpiMetrics(UINT dpi = 0);
 	bool IsScriptMode() const { return m_script_mode; }
 	// Runtime regression probes: expose the rendered navigation state without
 	// giving callers ownership of the native tree or its image list.
@@ -246,7 +248,7 @@ protected:
   bool MoveLeftWithAllNext(HTREEITEM hitem);
   void FillEDMnr();
 	void RebuildScriptTree();
-	void PrepareScriptImages();
+	void PrepareScriptImages(UINT dpi = 0);
 	int AddScriptImage(HBITMAP bitmap);
 	int AddScriptIcon(HICON icon);
 	void BuildScriptChildren(HTREEITEM parent, const CString& parentId);

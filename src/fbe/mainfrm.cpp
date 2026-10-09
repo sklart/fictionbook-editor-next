@@ -4064,6 +4064,8 @@ LRESULT CMainFrame::OnSettingChange(UINT, WPARAM, LPARAM, BOOL&)
 	}
 	if (m_document_tree.IsWindow())
 	{
+		if (m_document_tree.m_tree.IsWindow())
+			m_document_tree.m_tree.UpdateDpiMetrics();
 		if (m_document_tree.m_tree.m_tree.IsWindow())
 			m_document_tree.m_tree.m_tree.SetBkColor(ThemeManager::WindowColor());
 	}
@@ -4154,6 +4156,8 @@ LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 
 	m_current_dpi = newDpi;
 	UiMetrics::UpdateForWindow(m_hWnd);
+	if(m_document_tree.IsWindow() && m_document_tree.m_tree.IsWindow())
+		m_document_tree.m_tree.UpdateDpiMetrics(newDpi);
 	RebuildOwnedNativeMenuBitmaps(ATL::_AtlBaseModule.GetModuleInstance(), newDpi);
 	if (::IsWindow(m_MenuBar)) { ::SendMessage(m_MenuBar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE); m_MenuBar.AutoSize(); }
 	if (::IsWindow(m_CmdToolbar)) { RebuildCommandToolbarImages(newDpi); SetDialogFontForToolbarRow(m_CmdToolbar); AutoSizeToolbar(m_CmdToolbar); }

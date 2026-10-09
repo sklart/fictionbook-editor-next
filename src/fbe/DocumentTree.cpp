@@ -214,6 +214,7 @@ BOOL CTreeWithToolBar::ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags) thr
 LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	m_toolbarOrientation = CTreeWithToolBar::bottom;
+	m_layout_dpi = UiMetrics::DpiForWindow(m_hWnd);
 
 	LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
 
@@ -229,7 +230,9 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
 	m_tree.ApplyModeAppearance();
 	m_rebar = CFrameWindowImplBase<>::CreateSimpleReBarCtrl(*this, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CS_HREDRAW);
-	m_toolbar = CFrameWindowImplBase<>::CreateSimpleToolBarCtrl(*this, IDR_DOCUMENT_TREE, FALSE, ATL_SIMPLE_TOOLBAR_PANE_STYLE);
+	m_toolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_toolbar_images, IDR_DOCUMENT_TREE,
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_WRAPABLE);
+	if(!m_toolbar.IsWindow()) return -1;
 	CFrameWindowImplBase<>::AddSimpleReBarBandCtrl(m_rebar, m_toolbar);
 	if(m_rebar.IsWindow())
 	{
@@ -273,6 +276,8 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 LRESULT CTreeWithToolBar::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if(m_toolbar.IsWindow()) m_toolbar.SetImageList(NULL);
+	m_toolbar_images.Destroy();
 	if(m_script_search.IsWindow()) ::RemoveWindowSubclass(m_script_search, ScriptSearchSubclassProc, 1);
 	ClearStructureMenuCheckmarks();
 	if(m_view_bar.IsWindow())
@@ -296,6 +301,47 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 	RECT viewBarRect = {0, 0, 0, 0};
 	
 	this->GetClientRect(&clientRect);
+	if(m_toolbar.IsWindow() && m_rebar.IsWindow())
+	{
+		const LRESULT button = m_toolbar.SendMessage(TB_GETBUTTONSIZE);
+		RECT firstButton = {};
+		m_toolbar.SendMessage(TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&firstButton));
+		const int buttonWidth = (std::max)(1, static_cast<int>((std::max)(firstButton.right - firstButton.left, static_cast<LONG>(LOWORD(button)))));
+		RECT currentRebar = {}; m_rebar.GetWindowRect(&currentRebar);
+		REBARBANDINFO widthBand = {}; widthBand.cbSize = sizeof(widthBand); widthBand.fMask = RBBIM_SIZE | RBBIM_CHILDSIZE;
+		widthBand.cx = (std::max)(buttonWidth, static_cast<int>(clientRect.right - clientRect.left));
+		widthBand.cxMinChild = buttonWidth;
+		widthBand.cyMinChild = currentRebar.bottom - currentRebar.top;
+		m_rebar.SetBandInfo(0, &widthBand);
+		m_rebar.SetWindowPos(NULL, 0, 0, clientRect.right - clientRect.left,
+			currentRebar.bottom - currentRebar.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		const int count = m_toolbar.GetButtonCount();
+		const int columns = (std::max)(1, static_cast<int>((clientRect.right - clientRect.left) / buttonWidth));
+		bool wrapChanged = false;
+		for(int index = 0; index < count; ++index)
+		{
+			TBBUTTON buttonInfo = {};
+			if(!m_toolbar.GetButton(index, &buttonInfo)) continue;
+			const BYTE desired = static_cast<BYTE>((buttonInfo.fsState & ~TBSTATE_WRAP) |
+				((index + 1) % columns == 0 && index + 1 < count ? TBSTATE_WRAP : 0));
+			if(desired != buttonInfo.fsState)
+			{
+				m_toolbar.SendMessage(TB_SETSTATE, buttonInfo.idCommand, MAKELONG(desired, 0));
+				wrapChanged = true;
+			}
+		}
+		if(wrapChanged)
+		{
+			RECT toolbarBounds = {};
+			m_toolbar.AutoSize();
+			m_toolbar.GetWindowRect(&toolbarBounds);
+			REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_CHILDSIZE;
+			band.cxMinChild = buttonWidth;
+			band.cyMinChild = toolbarBounds.bottom - toolbarBounds.top;
+			m_rebar.SetBandInfo(0, &band);
+			m_rebar.SendMessage(WM_SIZE);
+		}
+	}
 	::GetWindowRect(m_toolbar, &rebarRect);
 	::GetWindowRect(m_view_bar, &viewBarRect);
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
@@ -319,14 +365,14 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		rebarRect.bottom = rebarRect.top + rebarHight;
 		treeRect.bottom = rebarRect.top;
 
-		viewBarRect.top = clientRect.top + UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(m_hWnd));
+		viewBarRect.top = clientRect.top + UiMetrics::ScaleForDpi(2, m_layout_dpi);
 		viewBarRect.bottom = viewBarRect.top + viewBarHight;
 		treeRect.top = viewBarRect.bottom;
 		if(m_tree.IsScriptMode() && m_script_search.IsWindow())
 		{
-			const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+			const UINT dpi = m_layout_dpi;
 			const int margin = UiMetrics::ScaleForDpi(4, dpi);
-			const int height = UiMetrics::ScaleForDpi(26, dpi);
+			const int height = ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(6, dpi);
 			::MoveWindow(m_script_search, clientRect.left + margin, treeRect.top + margin,
 				(std::max)(1L, clientRect.right - clientRect.left - 2 * margin), height, TRUE);
 			treeRect.top += height + 2 * margin;
@@ -825,6 +871,38 @@ LRESULT CALLBACK CTreeWithToolBar::ScriptSearchSubclassProc(HWND window, UINT me
 void CTreeWithToolBar::RefreshModeControls()
 {
 	UpdateViewBarMode(m_tree.IsScriptMode());
+}
+
+void CTreeWithToolBar::UpdateDpiMetrics(UINT dpi)
+{
+	if(!IsWindow()) return;
+	if(dpi == 0) dpi = UiMetrics::DpiForWindow(m_hWnd);
+	m_layout_dpi = dpi;
+	if(m_toolbar.IsWindow())
+	{
+		CImageList images;
+		if(ToolbarFactory::CreateCommandToolbarImages(images, IDR_DOCUMENT_TREE, dpi))
+		{
+			m_toolbar.SetImageList(images);
+			m_toolbar_images.Destroy();
+			m_toolbar_images.Attach(images.Detach());
+			ToolbarFactory::SetDialogFontForToolbarRow(m_toolbar);
+			ToolbarFactory::ApplyCommandToolbarMetrics(m_toolbar, IDR_DOCUMENT_TREE, dpi);
+			if(m_rebar.IsWindow())
+			{
+				RECT toolbarRect = {}; m_toolbar.GetWindowRect(&toolbarRect);
+				REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_CHILDSIZE;
+				band.cyMinChild = toolbarRect.bottom - toolbarRect.top;
+				band.cxMinChild = ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi);
+				m_rebar.SetBandInfo(0, &band);
+				m_rebar.SendMessage(WM_SIZE);
+			}
+		}
+	}
+	if(m_script_search.IsWindow())
+		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+	m_tree.UpdateScriptDpiMetrics(dpi);
+	SendMessage(WM_SIZE);
 }
 LRESULT CTreeWithToolBar::OnMenuCommand(WORD, WORD wID, HWND, BOOL&)
 {

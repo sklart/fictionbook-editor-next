@@ -651,7 +651,98 @@ void CMainFrame::RunPortableStateTestScenario()
 			tree.HasScriptTreeParent(L"foldera/child.js", L"foldera") && tree.HasScriptTreeParent(L"foldera/folderb/deep.js", L"foldera/folderb") && tree.ScriptTreeNodeCount() == 5;
 		const bool visualMapping = tree.ScriptTreeImage(root) >= 0 && tree.ScriptTreeImage(folderA) >= 0 && tree.ScriptTreeImage(child) >= 0 && tree.ScriptTreeImage(folderB) >= 0 && tree.ScriptTreeImage(deep) >= 0 && tree.ScriptImageList() != tree.StructuralImageList();
 		int scriptImageSize = 0, scriptItemHeight = 0, scriptIndent = 0; bool legacyExpanders = false;
-		const bool scriptMetrics = tree.GetScriptTreeMetrics(scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders) && scriptImageSize == 20 && legacyExpanders;
+		const UINT scriptDpi = UiMetrics::DpiForWindow(tree.m_hWnd);
+		const int expectedImageSize = ToolbarFactory::CommandToolbarImageSize(scriptDpi);
+		const bool scriptMetrics = tree.GetScriptTreeMetrics(scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders) &&
+			scriptImageSize == expectedImageSize && scriptItemHeight >= expectedImageSize + UiMetrics::ScaleForDpi(8, scriptDpi) &&
+			scriptIndent >= expectedImageSize && legacyExpanders;
+		const HWND bottomToolbar = m_document_tree.m_tree.BottomToolbarWindow();
+		const UINT bottomCommands[] = { ID_DT_RIGHT_ONE, ID_DT_RIGHT_SMART, ID_DT_LEFT, ID_DT_MERGE, ID_DT_DELETE };
+		bool bottomCommandsPreserved = ::SendMessage(bottomToolbar, TB_BUTTONCOUNT, 0, 0) == _countof(bottomCommands) &&
+			::SendMessage(bottomToolbar, TB_GETTOOLTIPS, 0, 0) != 0;
+		for(size_t index = 0; index < _countof(bottomCommands); ++index)
+		{
+			TBBUTTON item = {};
+			bottomCommandsPreserved = bottomCommandsPreserved && ::SendMessage(bottomToolbar, TB_GETBUTTON, index, reinterpret_cast<LPARAM>(&item)) &&
+				item.idCommand == static_cast<int>(bottomCommands[index]);
+		}
+		bool dpiMatrix = true, dpiIconAlpha = true, narrowToolbar = true;
+		int narrowRowsObserved = 0, narrowMaxRight = 0, narrowWidthObserved = 0, toolbarWidthObserved = 0, wrapFlagsObserved = 0;
+		const UINT panelDpis[] = { 96, 120, 144, 168, 192 };
+		RECT originalPanel = {}; ::GetWindowRect(m_document_tree.m_tree, &originalPanel);
+		const int panelHeight = originalPanel.bottom - originalPanel.top;
+		const int panelWidth = originalPanel.right - originalPanel.left;
+		for(UINT dpi : panelDpis)
+		{
+			narrowMaxRight = 0; wrapFlagsObserved = 0;
+			m_document_tree.m_tree.UpdateDpiMetrics(dpi);
+			int image = 0, row = 0, indent = 0; bool expanders = false;
+			const int expected = ToolbarFactory::CommandToolbarImageSize(dpi);
+			int toolbarImageWidth = 0, toolbarImageHeight = 0;
+			const HWND toolbar = m_document_tree.m_tree.BottomToolbarWindow();
+			const HIMAGELIST toolbarImages = reinterpret_cast<HIMAGELIST>(::SendMessage(toolbar, TB_GETIMAGELIST, 0, 0));
+			const LRESULT buttonSize = ::SendMessage(toolbar, TB_GETBUTTONSIZE, 0, 0);
+			RECT search = {}; ::GetWindowRect(m_document_tree.m_tree.ScriptSearchWindow(), &search);
+			dpiMatrix = dpiMatrix && tree.GetScriptTreeMetrics(image, row, indent, expanders) &&
+				image == expected && row >= expected + UiMetrics::ScaleForDpi(8, dpi) && indent >= expected &&
+				::ImageList_GetIconSize(toolbarImages, &toolbarImageWidth, &toolbarImageHeight) &&
+				toolbarImageWidth == expected && toolbarImageHeight == expected &&
+				LOWORD(buttonSize) >= expected + UiMetrics::ScaleForDpi(7, dpi) &&
+				HIWORD(buttonSize) >= expected + UiMetrics::ScaleForDpi(7, dpi) &&
+				search.bottom - search.top == UiMetrics::ScaleForDpi(30, dpi);
+			for(COLORREF background : { RGB(255, 255, 255), RGB(32, 32, 32) })
+			{
+				BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader);
+				info.bmiHeader.biWidth = expected; info.bmiHeader.biHeight = -expected;
+				info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+				HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, NULL, NULL, 0);
+				HDC dc = bitmap != NULL ? ::CreateCompatibleDC(NULL) : NULL;
+				if(dc == NULL) { if(bitmap != NULL) ::DeleteObject(bitmap); dpiIconAlpha = false; continue; }
+				HGDIOBJ previous = ::SelectObject(dc, bitmap);
+				RECT bounds = { 0, 0, expected, expected };
+				HBRUSH fill = ::CreateSolidBrush(background); ::FillRect(dc, &bounds, fill); ::DeleteObject(fill);
+				const bool drawn = ::ImageList_Draw(tree.ScriptImageList(), tree.FavoriteImageIndex(), dc, 0, 0, ILD_TRANSPARENT) != FALSE;
+				dpiIconAlpha = dpiIconAlpha && drawn && ::GetPixel(dc, expected / 2, expected / 2) != background &&
+					::GetPixel(dc, 0, 0) == background;
+				::SelectObject(dc, previous); ::DeleteDC(dc); ::DeleteObject(bitmap);
+			}
+			const int narrowWidth = static_cast<int>(LOWORD(buttonSize)) * 2 + UiMetrics::ScaleForDpi(2, dpi);
+			::SetWindowPos(m_document_tree.m_tree, NULL, 0, 0, narrowWidth, panelHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+			const int buttonCount = static_cast<int>(::SendMessage(toolbar, TB_BUTTONCOUNT, 0, 0));
+			const int rows = static_cast<int>(::SendMessage(toolbar, TB_GETROWS, 0, 0));
+			narrowRowsObserved = rows; narrowWidthObserved = narrowWidth;
+			RECT toolbarBounds = {}; ::GetWindowRect(toolbar, &toolbarBounds); toolbarWidthObserved = toolbarBounds.right - toolbarBounds.left;
+			for(int first = 0; first < buttonCount; ++first)
+			{
+				RECT firstRect = {}; ::SendMessage(toolbar, TB_GETITEMRECT, first, reinterpret_cast<LPARAM>(&firstRect));
+				TBBUTTON current = {}; ::SendMessage(toolbar, TB_GETBUTTON, first, reinterpret_cast<LPARAM>(&current));
+				if(current.fsState & TBSTATE_WRAP) wrapFlagsObserved |= 1 << first;
+				narrowMaxRight = (std::max)(narrowMaxRight, static_cast<int>(firstRect.right));
+				narrowToolbar = narrowToolbar && firstRect.left >= 0 && firstRect.right <= narrowWidth && firstRect.bottom > firstRect.top;
+				for(int second = first + 1; second < buttonCount; ++second)
+				{
+					RECT secondRect = {}; ::SendMessage(toolbar, TB_GETITEMRECT, second, reinterpret_cast<LPARAM>(&secondRect));
+					RECT overlap = {};
+					narrowToolbar = narrowToolbar && !::IntersectRect(&overlap, &firstRect, &secondRect);
+				}
+			}
+			narrowToolbar = narrowToolbar && rows >= 3;
+			::SetWindowPos(m_document_tree.m_tree, NULL, 0, 0, panelWidth, panelHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+		m_document_tree.m_tree.UpdateDpiMetrics(scriptDpi);
+		m_document_tree.m_tree.ToggleScriptMode();
+		const LRESULT visibleButtonSize = ::SendMessage(bottomToolbar, TB_GETBUTTONSIZE, 0, 0);
+		const int visibleNarrowWidth = static_cast<int>(LOWORD(visibleButtonSize)) * 2 + UiMetrics::ScaleForDpi(2, scriptDpi);
+		::SetWindowPos(m_document_tree.m_tree, NULL, 0, 0, visibleNarrowWidth, panelHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		RECT visibleToolbar = {}, visiblePanel = {};
+		::GetWindowRect(bottomToolbar, &visibleToolbar);
+		::GetWindowRect(m_document_tree.m_tree, &visiblePanel);
+		const bool visibleNarrowToolbar = m_document_tree.m_tree.IsStructuralToolbarVisible() &&
+			::SendMessage(bottomToolbar, TB_GETROWS, 0, 0) >= 3 &&
+			visibleToolbar.right <= visiblePanel.right && visibleToolbar.bottom <= visiblePanel.bottom;
+		narrowToolbar = narrowToolbar && visibleNarrowToolbar;
+		::SetWindowPos(m_document_tree.m_tree, NULL, 0, 0, panelWidth, panelHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		m_document_tree.m_tree.ToggleScriptMode();
 		std::vector<ScriptDescriptor> reverseCatalog = m_scripts.Menu().Items(); std::vector<ScriptTreeVisual> reverseVisuals;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; reverseVisuals.push_back(visual); }
 		std::reverse(reverseCatalog.begin(), reverseCatalog.end()); std::reverse(reverseVisuals.begin(), reverseVisuals.end());
@@ -699,8 +790,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool structuralDragWorks = structuralNode != NULL && !structuralDragHandled && tree.IsStructuralDragActive(); tree.SetScriptMode(true);
 		// Startup closes this probe before MSHTML has dispatched the script body;
 		// command routing itself is covered by the direct tree handler contract.
-		CStringA report; const bool passed = initialized && modeButtonReady && viewBarElements && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && unorderedHierarchy && refreshedImageListBound && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && bitmapOnlyChild && uidPersisted && targetLive && structuralDragWorks;
-		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nhierarchy=%d\nvisual-mapping=%d\nscript-image-size=%d\nscript-item-height=%d\nscript-indent=%d\nscript-legacy-expanders=%d\nscript-metrics=%d\nunordered-hierarchy=%d\nrefreshed-image-list-bound=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nbitmap-only-script=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, viewBarElements, viewBarWidth, viewBarMeasuredWidth, viewBarPadding, hierarchy, visualMapping, scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders, scriptMetrics, unorderedHierarchy, refreshedImageListBound, imagesStable, IsSourceActive(), childCommand, bitmapOnlyChild, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
+		CStringA report; const bool passed = initialized && modeButtonReady && viewBarElements && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && bottomCommandsPreserved && dpiMatrix && dpiIconAlpha && narrowToolbar && unorderedHierarchy && refreshedImageListBound && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && bitmapOnlyChild && uidPersisted && targetLive && structuralDragWorks;
+		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nhierarchy=%d\nvisual-mapping=%d\nscript-image-size=%d\nscript-item-height=%d\nscript-indent=%d\nscript-legacy-expanders=%d\nscript-metrics=%d\ndpi-matrix=%d\nnarrow-toolbar=%d\nunordered-hierarchy=%d\nrefreshed-image-list-bound=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nbitmap-only-script=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, viewBarElements, viewBarWidth, viewBarMeasuredWidth, viewBarPadding, hierarchy, visualMapping, scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders, scriptMetrics, dpiMatrix, narrowToolbar, unorderedHierarchy, refreshedImageListBound, imagesStable, IsSourceActive(), childCommand, bitmapOnlyChild, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
+		report.AppendFormat("bottom-commands-preserved=%d\ndpi-icon-alpha=%d\nvisible-narrow-toolbar=%d\nnarrow-rows=%d\nnarrow-max-right=%d\nnarrow-width=%d\ntoolbar-width=%d\nwrap-flags=%d\n", bottomCommandsPreserved, dpiIconAlpha, visibleNarrowToolbar, narrowRowsObserved, narrowMaxRight, narrowWidthObserved, toolbarWidthObserved, wrapFlagsObserved);
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)

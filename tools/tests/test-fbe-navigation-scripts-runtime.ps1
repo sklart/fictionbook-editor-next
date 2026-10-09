@@ -33,7 +33,7 @@ try {
 		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
 		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts runtime test timed out.' }
 		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
-		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^script-image-size=20$' -or $text -notmatch '(?m)^script-legacy-expanders=1$' -or $text -notmatch '(?m)^script-metrics=1$' -or $text -notmatch '(?m)^refreshed-image-list-bound=1$' -or $text -notmatch '(?m)^viewbar-elements=1$' -or $text -notmatch '(?m)^bitmap-only-script=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts runtime failed:`n$text" }
+		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^script-image-size=\d+$' -or $text -notmatch '(?m)^script-legacy-expanders=1$' -or $text -notmatch '(?m)^script-metrics=1$' -or $text -notmatch '(?m)^bottom-commands-preserved=1$' -or $text -notmatch '(?m)^dpi-matrix=1$' -or $text -notmatch '(?m)^dpi-icon-alpha=1$' -or $text -notmatch '(?m)^visible-narrow-toolbar=1$' -or $text -notmatch '(?m)^narrow-toolbar=1$' -or $text -notmatch '(?m)^refreshed-image-list-bound=1$' -or $text -notmatch '(?m)^viewbar-elements=1$' -or $text -notmatch '(?m)^bitmap-only-script=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts runtime failed:`n$text" }
 		foreach($locale in 'ru-RU','en-US','es-ES') {
 			$env:FBE_NEXT_TEST_SCENARIO = 'navigation-viewbar-elements-runtime'; $env:FBE_NEXT_UI_LOCALE = $locale
 			$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru

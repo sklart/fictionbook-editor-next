@@ -11,6 +11,8 @@
 #include "RuntimeLocalization.h"
 #include "UiMetrics.h"
 #include "ThemeManager.h"
+#include "toolbars/ToolbarFactory.h"
+#include <commoncontrols.h>
 
 extern CElementDescMnr _EDMnr;
 
@@ -18,17 +20,14 @@ static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKEL
 
 namespace
 {
-const int kScriptImageSize = 20;
 const int kFavoriteScriptImageIndex = 1;
-const int kScriptItemHeight = 24;
-const int kScriptIndent = 20;
 
-HBITMAP CreateScriptTreeGlyphBitmap(bool favorite)
+HBITMAP CreateScriptTreeGlyphBitmap(bool favorite, int size)
 {
 	BITMAPINFO info = {};
 	info.bmiHeader.biSize = sizeof(info.bmiHeader);
-	info.bmiHeader.biWidth = kScriptImageSize;
-	info.bmiHeader.biHeight = -kScriptImageSize;
+	info.bmiHeader.biWidth = size;
+	info.bmiHeader.biHeight = -size;
 	info.bmiHeader.biPlanes = 1;
 	info.bmiHeader.biBitCount = 32;
 	void* bits = NULL;
@@ -36,7 +35,10 @@ HBITMAP CreateScriptTreeGlyphBitmap(bool favorite)
 	HDC dc = bitmap != NULL ? ::CreateCompatibleDC(NULL) : NULL;
 	if(dc == NULL) { if(bitmap != NULL) ::DeleteObject(bitmap); return NULL; }
 	HGDIOBJ oldBitmap = ::SelectObject(dc, bitmap);
-	RECT canvas = { 0, 0, kScriptImageSize, kScriptImageSize };
+	::SetMapMode(dc, MM_ANISOTROPIC);
+	::SetWindowExtEx(dc, 20, 20, NULL);
+	::SetViewportExtEx(dc, size, size, NULL);
+	RECT canvas = { 0, 0, 20, 20 };
 	HBRUSH transparent = ::CreateSolidBrush(RGB(255, 0, 255));
 	::FillRect(dc, &canvas, transparent);
 	::DeleteObject(transparent);
@@ -64,7 +66,7 @@ HBITMAP CreateScriptTreeGlyphBitmap(bool favorite)
 	::SelectObject(dc, oldBitmap);
 	::DeleteDC(dc);
 	DWORD* pixels = static_cast<DWORD*>(bits);
-	for(int index = 0; index < kScriptImageSize * kScriptImageSize; ++index)
+	for(int index = 0; index < size * size; ++index)
 		if((pixels[index] & 0x00ffffffu) != RGB(255, 0, 255)) pixels[index] |= 0xff000000u;
 	return bitmap;
 }
@@ -517,7 +519,8 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   
   // "OnInitialUpdate"
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
-	  m_scriptImageList.Create(kScriptImageSize,kScriptImageSize,ILC_COLOR32|ILC_MASK,16,8);
+	  m_script_image_size = ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd));
+	  m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,16,8);
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
   SetScrollTime(1);
@@ -1038,8 +1041,9 @@ void CTreeView::ApplyModeAppearance()
 		// square plus/minus expanders, independently of Explorer chevrons.
 		::SetWindowTheme(m_hWnd, L" ", L" ");
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi));
-		SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi));
+		const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
+		SetItemHeight(imageSize + UiMetrics::ScaleForDpi(8, dpi));
+		SetIndent(imageSize + UiMetrics::ScaleForDpi(2, dpi));
 	}
 	else
 	{
@@ -1047,6 +1051,24 @@ void CTreeView::ApplyModeAppearance()
 		SetItemHeight(-1);
 	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
+}
+
+void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
+{
+	if(!IsWindow()) return;
+	if(dpi == 0) dpi = UiMetrics::DpiForWindow(m_hWnd);
+	const int size = ToolbarFactory::CommandToolbarImageSize(dpi);
+	if(size != m_script_image_size)
+	{
+		PrepareScriptImages(dpi);
+		if(m_script_mode) SetImageList(m_scriptImageList, TVSIL_NORMAL);
+	}
+	if(m_script_mode)
+	{
+		SetItemHeight(size + UiMetrics::ScaleForDpi(8, dpi));
+		SetIndent(size + UiMetrics::ScaleForDpi(2, dpi));
+	}
+	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
 
 void CTreeView::RebuildScriptTree()
@@ -1126,16 +1148,16 @@ void CTreeView::SaveFavoriteScripts()
 	_Settings.SetFavoriteScripts(saved, true);
 }
 
-void CTreeView::PrepareScriptImages()
+void CTreeView::PrepareScriptImages(UINT dpi)
 {
-	// Script sidecars do not share the legacy structural strip: it has a
-	// different cell height and mask format.  Recreate this 20x20 alpha list
-	// only when the catalog visuals actually changed.
+	// Script sidecars do not share the legacy structural strip. Rebuild this
+	// image list at the same DPI scale as the main command toolbar.
+	m_script_image_size = ToolbarFactory::CommandToolbarImageSize(dpi ? dpi : UiMetrics::DpiForWindow(m_hWnd));
 	m_scriptImageList.Destroy();
-	m_scriptImageList.Create(kScriptImageSize,kScriptImageSize,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+2,8);
-	HBITMAP fallback = CreateScriptTreeGlyphBitmap(false);
+	m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+2,8);
+	HBITMAP fallback = CreateScriptTreeGlyphBitmap(false, m_script_image_size);
 	if(fallback != NULL) { AddScriptImage(fallback); ::DeleteObject(fallback); }
-	HBITMAP favorite = CreateScriptTreeGlyphBitmap(true);
+	HBITMAP favorite = CreateScriptTreeGlyphBitmap(true, m_script_image_size);
 	m_favorite_image = favorite != NULL ? AddScriptImage(favorite) : -1;
 	if(m_favorite_image != kFavoriteScriptImageIndex) m_favorite_image = -1;
 	if(favorite != NULL) ::DeleteObject(favorite);
@@ -1143,8 +1165,47 @@ void CTreeView::PrepareScriptImages()
 	for(size_t index = 0; index < m_script_items.size() && index < m_script_visuals.size(); ++index)
 	{
 		const ScriptTreeVisual& visual = m_script_visuals[index];
-		if(visual.icon != NULL) m_script_images[index] = AddScriptIcon(visual.icon);
-		else if(visual.bitmap != NULL) m_script_images[index] = AddScriptImage(visual.bitmap);
+		const ScriptDescriptor& script = m_script_items[index];
+		CString sidecar(script.path);
+		while(!sidecar.IsEmpty() && (sidecar[sidecar.GetLength() - 1] == L'\\' || sidecar[sidecar.GetLength() - 1] == L'/'))
+			sidecar.Delete(sidecar.GetLength() - 1);
+		if(!script.isFolder && sidecar.GetLength() >= 3) sidecar.Delete(sidecar.GetLength() - 3, 3);
+		sidecar += L".ico";
+		if(visual.bitmap != NULL)
+		{
+			BITMAP sourceSize = {};
+			HICON largerSource = NULL;
+			if(::GetObject(visual.bitmap, sizeof(sourceSize), &sourceSize) == sizeof(sourceSize) &&
+				(sourceSize.bmWidth < m_script_image_size || sourceSize.bmHeight < m_script_image_size) &&
+				::GetFileAttributes(sidecar) != INVALID_FILE_ATTRIBUTES)
+				largerSource = static_cast<HICON>(::LoadImage(NULL, sidecar, IMAGE_ICON, m_script_image_size, m_script_image_size, LR_LOADFROMFILE));
+			m_script_images[index] = largerSource != NULL ? AddScriptIcon(largerSource) : AddScriptImage(visual.bitmap);
+			if(largerSource != NULL) ::DestroyIcon(largerSource);
+		}
+		else if(visual.icon != NULL)
+		{
+			HICON source = NULL;
+			if(::GetFileAttributes(sidecar) != INVALID_FILE_ATTRIBUTES)
+				source = static_cast<HICON>(::LoadImage(NULL, sidecar, IMAGE_ICON, m_script_image_size, m_script_image_size, LR_LOADFROMFILE));
+			if(source == NULL && ::GetFileAttributes(script.path) != INVALID_FILE_ATTRIBUTES)
+			{
+				SHFILEINFOW shell = {};
+				const DWORD attributes = script.isFolder ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+				if(::SHGetFileInfoW(script.isFolder ? L"folder" : L"script.js", attributes, &shell, sizeof(shell),
+					SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES))
+				{
+					IImageList* images = NULL;
+					const int kind = m_script_image_size > 32 ? SHIL_EXTRALARGE : SHIL_LARGE;
+					if(SUCCEEDED(::SHGetImageList(kind, IID_IImageList, reinterpret_cast<void**>(&images))))
+					{
+						images->GetIcon(shell.iIcon, ILD_TRANSPARENT, &source);
+						images->Release();
+					}
+				}
+			}
+			m_script_images[index] = AddScriptIcon(source != NULL ? source : visual.icon);
+			if(source != NULL) ::DestroyIcon(source);
+		}
 		if(m_script_images[index] < 0) m_script_images[index] = 0;
 	}
 }
@@ -1152,8 +1213,44 @@ void CTreeView::PrepareScriptImages()
 int CTreeView::AddScriptImage(HBITMAP bitmap)
 {
 	if(bitmap == NULL) return -1;
-	HBITMAP normalized = static_cast<HBITMAP>(::CopyImage(bitmap, IMAGE_BITMAP, kScriptImageSize, kScriptImageSize, LR_CREATEDIBSECTION));
-	if(normalized == NULL) return -1;
+	BITMAP source = {};
+	if(::GetObject(bitmap, sizeof(source), &source) != sizeof(source) || source.bmWidth <= 0 || source.bmHeight <= 0 ||
+		source.bmWidth > 8192 || source.bmHeight > 8192) return -1;
+	if(source.bmWidth == m_script_image_size && source.bmHeight == m_script_image_size)
+		return m_scriptImageList.Add(bitmap, RGB(255, 0, 255));
+	// Keep small bitmap sidecars at their native resolution. Upscaling a 16px
+	// drawing to the tree's DPI cell produces an indistinct icon.
+	const int width = (std::min)(static_cast<int>(source.bmWidth), m_script_image_size);
+	const int height = (std::min)(static_cast<int>(source.bmHeight), m_script_image_size);
+	BITMAPINFO sourceInfo = {}; sourceInfo.bmiHeader.biSize = sizeof(sourceInfo.bmiHeader);
+	sourceInfo.bmiHeader.biWidth = source.bmWidth; sourceInfo.bmiHeader.biHeight = -source.bmHeight;
+	sourceInfo.bmiHeader.biPlanes = 1; sourceInfo.bmiHeader.biBitCount = 32; sourceInfo.bmiHeader.biCompression = BI_RGB;
+	std::vector<DWORD> sourcePixels(static_cast<size_t>(source.bmWidth) * source.bmHeight);
+	HDC screen = ::GetDC(NULL);
+	const int lines = screen != NULL ? ::GetDIBits(screen, bitmap, 0, source.bmHeight,
+		sourcePixels.data(), &sourceInfo, DIB_RGB_COLORS) : 0;
+	if(screen != NULL) ::ReleaseDC(NULL, screen);
+	if(lines != source.bmHeight) return -1;
+	bool hasAlpha = false;
+	for(size_t index = 0; index < sourcePixels.size(); ++index)
+		if((sourcePixels[index] & 0xff000000u) != 0) { hasAlpha = true; break; }
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader);
+	info.bmiHeader.biWidth = m_script_image_size; info.bmiHeader.biHeight = -m_script_image_size;
+	info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	void* pixels = NULL;
+	HBITMAP normalized = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &pixels, NULL, 0);
+	if(normalized == NULL || pixels == NULL) { if(normalized != NULL) ::DeleteObject(normalized); return -1; }
+	DWORD* imagePixels = static_cast<DWORD*>(pixels);
+	for(int index = 0; index < m_script_image_size * m_script_image_size; ++index)
+		imagePixels[index] = RGB(255, 0, 255);
+	for(int y = 0; y < height; ++y) for(int x = 0; x < width; ++x)
+	{
+		const DWORD pixel = sourcePixels[static_cast<size_t>(y * source.bmHeight / height) * source.bmWidth +
+			static_cast<size_t>(x * source.bmWidth / width)];
+		if((pixel & 0x00ffffffu) == RGB(255, 0, 255)) continue;
+		imagePixels[(y + (m_script_image_size - height) / 2) * m_script_image_size + x + (m_script_image_size - width) / 2] =
+			hasAlpha ? pixel : pixel | 0xff000000u;
+	}
 	const int image = m_scriptImageList.Add(normalized, RGB(255,0,255));
 	::DeleteObject(normalized);
 	return image;
@@ -1162,7 +1259,7 @@ int CTreeView::AddScriptImage(HBITMAP bitmap)
 int CTreeView::AddScriptIcon(HICON icon)
 {
 	if(icon == NULL) return -1;
-	HICON normalized = static_cast<HICON>(::CopyImage(icon, IMAGE_ICON, kScriptImageSize, kScriptImageSize, 0));
+	HICON normalized = static_cast<HICON>(::CopyImage(icon, IMAGE_ICON, m_script_image_size, m_script_image_size, 0));
 	if(normalized == NULL) return -1;
 	const int image = m_scriptImageList.AddIcon(normalized);
 	::DestroyIcon(normalized);
