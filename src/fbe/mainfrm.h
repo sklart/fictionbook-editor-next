@@ -253,6 +253,7 @@ public:
 	bool ApplyScriptToolbarDefinitions(const std::vector<ScriptToolbarDefinition>& previous, const std::vector<ScriptToolbarDefinition>& current);
 	bool UpdateScriptToolbarItems(const CString& id, const std::vector<PortableToolbarItem>& items);
 	bool AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId);
+	bool AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId);
 	void RefreshNavigationScriptTree();
 	void RefreshNavigationScriptToolbarTargets();
 	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);

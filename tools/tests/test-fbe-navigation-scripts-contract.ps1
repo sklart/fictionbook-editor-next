@@ -42,7 +42,13 @@ foreach($handler in @('OnCut', 'OnPaste', 'OnDelete', 'OnRight', 'OnLeft', 'OnMe
     if($handlerStart -lt 0 -or $tree.IndexOf('if(m_script_mode) return 0;', $handlerStart) -lt 0) { throw "Missing navigation scripts contract: script mode blocks $handler" }
 }
 Must $frame 'bool CMainFrame::AddScriptToToolbar' 'toolbar add has a transactional owner'
-Must $frame 'item\.scriptUid = scriptUid' 'toolbar persistence stores script UID'
+Must $frame 'bool CMainFrame::AddScriptsToToolbar' 'multi-selection has one toolbar transaction'
+Must $frame 'item\.scriptUid = script\.uid' 'toolbar persistence stores script UID'
+if($frame -match 'bool CMainFrame::AddScriptsToToolbar[\s\S]*?\n\}') {
+    if(([regex]::Matches($Matches[0], 'ApplyScriptToolbarDefinitions\(previous, current\)')).Count -ne 1 -or $Matches[0] -match 'PortableToolbarStore::Save') {
+        throw 'Multi-selection toolbar add must apply one transactional definition change.'
+    }
+}
 Must $frame 'ApplyScriptToolbarDefinitions\(previous, current\)' 'toolbar add uses existing persistence and runtime delta'
 Must $frame 'if\(captured\.empty\(\) && !runtime\.definition\.items\.empty\(\)\) captured = runtime\.definition\.items;' 'shutdown cannot erase a custom toolbar UID after an empty native capture'
 if($frame -match 'bool CMainFrame::AddScriptToToolbar[\s\S]*?\n\}') { if($Matches[0] -match 'InitializeScripts\(') { throw 'Navigation toolbar add must not reinitialize scripts.' } }
@@ -96,7 +102,7 @@ Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'scriptsImage == 1 &&
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'structureImage == 0 && structureCommand == ID_DOCUMENT_TREE_MODE_SCRIPTS' 'returning to structure restores the scripts target image and command'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'The fixture scripts deliberately have no UI body' 'runtime probe does not execute fixture scripts during shutdown'
 Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'commandTargets\.push_back\(target\)' 'runtime probe preserves live script-toolbar targets'
-Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'AddScriptToToolbar\(uid, id\)' 'runtime probe preserves production toolbar insertion'
+Must (Text 'src\fbe\testing\RuntimeTestPortableState.inl') 'AddScriptsToToolbar\(uids, id\)' 'runtime probe preserves production toolbar insertion'
 Must $documentTree 'SetModeChangedHandler' 'mode click updates the pane title'
 Must $documentTree 'FbeLoadRuntimeStringByKey\(m_tree\.m_tree\.IsScriptMode\(\)' 'pane title follows the active localized mode'
 if($documentTree -match 'm_navigation_menu|fbe\.document_tree\.mode\.caption') { throw 'Navigation mode must no longer be hidden behind a View popup.' }
@@ -110,7 +116,7 @@ Must $settings 'property = m_favorite_scripts' 'favorite UIDs are serialized ind
 Must $tree 'm_script_items = items' 'search uses the existing catalog snapshot'
 Must $tree 'ScriptOrDescendantMatches\(script\)' 'filtered tree retains ancestors of matching scripts'
 Must $tree 'm_script_filter\.IsEmpty\(\) \? m_expanded_script_paths' 'clearing search restores ordinary folder expansion'
-Must $tree 'script\.name \+ L"\\n" \+ script\.relativePath' 'search covers names and paths including parent folders'
+Must $tree 'script\.name \+ L"\\n" \+ fileName' 'search covers script display names and file names'
 Must $tree 'script\.uid != m_favorite_scripts\[favorite\]\.first' 'favorite nodes resolve by UID'
 Must $tree 'm_script_nodes\[item\] = index' 'favorite nodes reference existing descriptors'
 Must $tree 'NavigationPopupToggleFavorite' 'context menu can toggle favorites'

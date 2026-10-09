@@ -58,6 +58,7 @@ try {
 		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Script catalogue refresh runtime test timed out.' }
 		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
 		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=script-catalog-refresh$' -or $text -notmatch '(?m)^contents=1$' -or $text -notmatch '(?m)^added=1$' -or $text -notmatch '(?m)^removed=1$' -or $text -notmatch '(?m)^renamed=1$' -or $text -notmatch '(?m)^icon=1$' -or $text -notmatch '(?m)^uid=1$' -or $text -notmatch '(?m)^tree=1$' -or $text -notmatch '(?m)^document=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Script catalogue refresh runtime failed:`n$text" }
+		if((Split-Path -Parent ([IO.Path]::GetFullPath($scripts))) -ne $dataDirectory) { throw 'Unsafe scripts fixture directory.' }
 		Remove-Item -LiteralPath $scripts -Recurse -Force
 		New-Item -ItemType Directory -Path (Join-Path $scripts '01_Регистр'),(Join-Path $scripts '02_Чистка') -Force | Out-Null
 		$scriptIndex = 0
@@ -69,12 +70,24 @@ try {
 		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
 		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation search and favorites runtime test timed out.' }
 		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
-		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-search-favorites$' -or $text -notmatch '(?m)^case-insensitive=1$' -or $text -notmatch '(?m)^parent-name=1$' -or $text -notmatch '(?m)^escape-focus=1$' -or $text -notmatch '(?m)^filtered=1$' -or $text -notmatch '(?m)^expanded=1$' -or $text -notmatch '(?m)^live-added=1$' -or $text -notmatch '(?m)^live-removed=1$' -or $text -notmatch '(?m)^cleared=1$' -or $text -notmatch '(?m)^favorite=1$' -or $text -notmatch '(?m)^reload=1$' -or $text -notmatch '(?m)^rename=1$' -or $text -notmatch '(?m)^remove=1$' -or $text -notmatch '(?m)^restore=1$' -or $text -notmatch '(?m)^themes=1$' -or $text -notmatch '(?m)^mode-switch=1$' -or $text -notmatch '(?m)^dpi-metrics=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation search and favorites runtime failed:`n$text" }
+		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-search-favorites$' -or $text -notmatch '(?m)^case-insensitive=1$' -or $text -notmatch '(?m)^folder-name-excluded=1$' -or $text -notmatch '(?m)^escape-focus=1$' -or $text -notmatch '(?m)^filtered=1$' -or $text -notmatch '(?m)^expanded=1$' -or $text -notmatch '(?m)^live-added=1$' -or $text -notmatch '(?m)^live-removed=1$' -or $text -notmatch '(?m)^cleared=1$' -or $text -notmatch '(?m)^favorite=1$' -or $text -notmatch '(?m)^reload=1$' -or $text -notmatch '(?m)^rename=1$' -or $text -notmatch '(?m)^remove=1$' -or $text -notmatch '(?m)^restore=1$' -or $text -notmatch '(?m)^themes=1$' -or $text -notmatch '(?m)^mode-switch=1$' -or $text -notmatch '(?m)^dpi-metrics=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation search and favorites runtime failed:`n$text" }
 		$env:FBE_NEXT_TEST_SCENARIO = 'navigation-favorites-read-runtime'
 		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
 		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation favorites persistence runtime test timed out.' }
 		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
 		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-favorites-read$' -or $text -notmatch '(?m)^persisted=1$' -or $text -notmatch '(?m)^malformed-ignored=1$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation favorites persistence runtime failed:`n$text" }
+		Remove-Item -LiteralPath $scripts -Recurse -Force
+		New-Item -ItemType Directory -Path (Join-Path $scripts 'Иллюстрации') -Force | Out-Null
+		foreach($path in @('A.js', 'B.js', 'C.js', 'Иллюстрации\Move image.js', 'Иллюстрации\Captions.js')) {
+			[IO.File]::WriteAllText((Join-Path $scripts $path), "function Run() {}`r`n", [Text.UTF8Encoding]::new($false))
+		}
+		$env:FBE_NEXT_TEST_SCENARIO = 'navigation-scripts-multiselect-runtime'
+		$process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
+		if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'Navigation scripts multiselect runtime test timed out.' }
+		$text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+		$required = @('folder-name-excluded','filename-match','three-selected','right-click-preserves','keyboard-context-preserves','unsafe-disabled','favorites-added','mixed-favorite-add','dedicated-image','icon-light-dark','virtual-nodes-excluded','duplicate-representation','invalid-rejected','toolbar-order','no-duplicates','toolbar-persisted','remove-action','favorites-removed')
+		if($process.ExitCode -ne 0 -or $text -notmatch '(?m)^phase=navigation-scripts-multiselect$' -or $text -notmatch '(?m)^result=pass$') { throw "Navigation scripts multiselect runtime failed:`n$text" }
+		foreach($key in $required) { if($text -notmatch "(?m)^$key=1$") { throw "Navigation scripts multiselect runtime failed ($key):`n$text" } }
 	} finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario; $env:FBE_NEXT_UI_LOCALE = $savedLocale }
     Write-Host 'Navigation scripts runtime regression passed.'
 } finally {

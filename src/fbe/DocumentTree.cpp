@@ -900,7 +900,7 @@ void CTreeWithToolBar::SetScriptMode(bool scripts)
 }
 
 void CTreeWithToolBar::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
-	const std::function<void(const CString&, const CString&)>& addToToolbar,
+	const std::function<bool(const std::vector<CString>&, const CString&)>& addToToolbar,
 	const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript)
 {
 	m_tree.SetScriptCatalog(items, visuals, toolbars, addToToolbar, openLocation, runScript);
@@ -1150,7 +1150,7 @@ void CDocumentTree::HighlightItemAtPos(MSHTML::IHTMLElement *p)
 }
 
 void CDocumentTree::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
-	const std::function<void(const CString&, const CString&)>& addToToolbar,
+	const std::function<bool(const std::vector<CString>&, const CString&)>& addToToolbar,
 	const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript)
 {
 	m_tree.SetScriptCatalog(items, visuals, toolbars, addToToolbar, openLocation, runScript);

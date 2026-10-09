@@ -2593,22 +2593,48 @@ bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<P
 
 bool CMainFrame::AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId)
 {
-	if(scriptUid.IsEmpty()) return false;
-	const ScriptDescriptor* script = NULL;
-	for(int index = 0; index < m_scripts.Menu().Count(); ++index)
-		if(!m_scripts.Menu().Item(index).isFolder && m_scripts.Menu().Item(index).uid == scriptUid) { script = &m_scripts.Menu().Item(index); break; }
-	if(script == NULL) return false;
+	return AddScriptsToToolbar(std::vector<CString>(1, scriptUid), toolbarId);
+}
+
+bool CMainFrame::AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId)
+{
+	if(scriptUids.empty()) return false;
+	std::vector<const ScriptDescriptor*> scripts;
+	for(size_t uid = 0; uid < scriptUids.size(); ++uid)
+	{
+		if(scriptUids[uid].IsEmpty()) return false;
+		bool duplicate = false;
+		for(size_t previous = 0; previous < scripts.size(); ++previous)
+			if(scripts[previous]->uid == scriptUids[uid]) { duplicate = true; break; }
+		if(duplicate) continue;
+		const ScriptDescriptor* script = NULL;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(!m_scripts.Menu().Item(index).isFolder && m_scripts.Menu().Item(index).uid == scriptUids[uid]) { script = &m_scripts.Menu().Item(index); break; }
+		if(script == NULL) return false;
+		scripts.push_back(script);
+	}
 	std::vector<ScriptToolbarDefinition> previous, current;
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) previous.push_back(m_scriptToolbars.Items()[index].definition);
 	current = previous;
 	for(size_t index = 0; index < current.size(); ++index)
 		if(current[index].id == toolbarId)
 		{
-			for(size_t item = 0; item < current[index].items.size(); ++item)
-				if(!current[index].items[item].separator && current[index].items[item].scriptUid == scriptUid) return true;
-			PortableToolbarItem item = {}; item.separator = false; item.command = 0; item.width = 0; item.relativePath = script->relativePath; item.scriptUid = scriptUid;
-			current[index].items.push_back(item);
-			return ApplyScriptToolbarDefinitions(previous, current);
+			bool changed = false;
+			for(size_t scriptIndex = 0; scriptIndex < scripts.size(); ++scriptIndex)
+			{
+				const ScriptDescriptor& script = *scripts[scriptIndex];
+				bool present = false;
+				for(size_t item = 0; item < current[index].items.size(); ++item)
+					if(!current[index].items[item].separator &&
+						(current[index].items[item].scriptUid == script.uid ||
+						(!current[index].items[item].relativePath.IsEmpty() && current[index].items[item].relativePath.CompareNoCase(script.relativePath) == 0)))
+						{ present = true; break; }
+				if(present) continue;
+				PortableToolbarItem item = {}; item.separator = false; item.command = 0; item.width = 0; item.relativePath = script.relativePath; item.scriptUid = script.uid;
+				current[index].items.push_back(item);
+				changed = true;
+			}
+			return !changed || ApplyScriptToolbarDefinitions(previous, current);
 		}
 	return false;
 }
@@ -2622,7 +2648,7 @@ void CMainFrame::RefreshNavigationScriptTree()
 	}
 	for(int index = 0; index < m_scripts.Menu().Count(); ++index) { ScriptTreeVisual visual; visual.icon = m_scripts.Menu().VisualAt(index).icon; visual.bitmap = m_scripts.Menu().VisualAt(index).bitmap; visuals.push_back(visual); }
 	m_document_tree.SetScriptCatalog(m_scripts.Menu().Items(), visuals, toolbars,
-		[this](const CString& uid, const CString& id) { AddScriptToToolbar(uid, id); },
+		[this](const std::vector<CString>& uids, const CString& id) { return AddScriptsToToolbar(uids, id); },
 		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); },
 		[this](UINT commandId) { BOOL handled = FALSE; OnToolsScript(0, static_cast<WORD>(ID_SCRIPT_BASE + commandId), NULL, handled); });
 }

@@ -19,8 +19,55 @@ static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKEL
 namespace
 {
 const int kScriptImageSize = 20;
+const int kFavoriteScriptImageIndex = 1;
 const int kScriptItemHeight = 24;
 const int kScriptIndent = 20;
+
+HBITMAP CreateScriptTreeGlyphBitmap(bool favorite)
+{
+	BITMAPINFO info = {};
+	info.bmiHeader.biSize = sizeof(info.bmiHeader);
+	info.bmiHeader.biWidth = kScriptImageSize;
+	info.bmiHeader.biHeight = -kScriptImageSize;
+	info.bmiHeader.biPlanes = 1;
+	info.bmiHeader.biBitCount = 32;
+	void* bits = NULL;
+	HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+	HDC dc = bitmap != NULL ? ::CreateCompatibleDC(NULL) : NULL;
+	if(dc == NULL) { if(bitmap != NULL) ::DeleteObject(bitmap); return NULL; }
+	HGDIOBJ oldBitmap = ::SelectObject(dc, bitmap);
+	RECT canvas = { 0, 0, kScriptImageSize, kScriptImageSize };
+	HBRUSH transparent = ::CreateSolidBrush(RGB(255, 0, 255));
+	::FillRect(dc, &canvas, transparent);
+	::DeleteObject(transparent);
+	HPEN outline = ::CreatePen(PS_SOLID, 1, RGB(67, 53, 32));
+	HBRUSH fill = ::CreateSolidBrush(favorite ? RGB(255, 199, 54) : RGB(245, 245, 245));
+	HGDIOBJ oldPen = ::SelectObject(dc, outline);
+	HGDIOBJ oldBrush = ::SelectObject(dc, fill);
+	if(favorite)
+	{
+		const POINT star[] = { { 10, 2 }, { 12, 7 }, { 18, 7 }, { 14, 11 }, { 16, 17 },
+			{ 10, 14 }, { 4, 17 }, { 6, 11 }, { 2, 7 }, { 8, 7 } };
+		::Polygon(dc, star, _countof(star));
+	}
+	else
+	{
+		::Rectangle(dc, 4, 2, 16, 18);
+		::MoveToEx(dc, 7, 7, NULL); ::LineTo(dc, 13, 7);
+		::MoveToEx(dc, 7, 10, NULL); ::LineTo(dc, 13, 10);
+		::MoveToEx(dc, 7, 13, NULL); ::LineTo(dc, 12, 13);
+	}
+	::SelectObject(dc, oldBrush);
+	::SelectObject(dc, oldPen);
+	::DeleteObject(fill);
+	::DeleteObject(outline);
+	::SelectObject(dc, oldBitmap);
+	::DeleteDC(dc);
+	DWORD* pixels = static_cast<DWORD*>(bits);
+	for(int index = 0; index < kScriptImageSize * kScriptImageSize; ++index)
+		if((pixels[index] & 0x00ffffffu) != RGB(255, 0, 255)) pixels[index] |= 0xff000000u;
+	return bitmap;
+}
 }
 
 namespace
@@ -735,13 +782,13 @@ LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 	return 0;	
 }
 
-LRESULT CTreeView::OnRClick(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
+LRESULT CTreeView::OnRClick(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled)
 {
 	if(m_script_mode)
 	{
 		UINT flags = 0; CTreeItem item(HitTest(CPoint(LOWORD(lParam), HIWORD(lParam)), &flags), this);
-		if(!item.IsNull()) SelectItem(item);
-		SendMessage(WM_CONTEXTMENU, reinterpret_cast<WPARAM>(m_hWnd), GetMessagePos());
+		if(!item.IsNull() && (flags & TVHT_ONITEM)) SelectScriptContextItem(item);
+		bHandled = TRUE;
 		return 0;
 	}
 	if(m_drag)
@@ -755,7 +802,7 @@ LRESULT CTreeView::OnRClick(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOO
 		ClearSelection();
 		SelectItem(htItem);
 	}
-	SendMessage(WM_CONTEXTMENU, (WPARAM) m_hWnd, GetMessagePos());	
+	bHandled = FALSE;
     return 0;
  }
 
@@ -778,15 +825,22 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 			item = CTreeItem(HitTest(client, NULL), this);
 		}
 		if(item.IsNull()) return 0;
-		SelectItem(item);
-		const ScriptDescriptor* script = SelectedScript();
-		if(script == NULL || script->isFolder) return 0;
+		SelectScriptContextItem(item);
+		const std::map<HTREEITEM, size_t>::const_iterator target = m_script_nodes.find(item);
+		if(target == m_script_nodes.end() || target->second >= m_script_items.size() || m_script_items[target->second].isFolder) return 0;
+		const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
+		if(scripts.empty()) return 0;
+		++m_script_popup_invocations;
+		const bool multiple = scripts.size() > 1;
+		const bool allFavorites = SelectedScriptsAreAllFavorites();
+		m_script_popup_run_enabled = !multiple;
+		m_script_popup_open_enabled = !multiple;
 		CMenu menu; menu.CreatePopupMenu();
-		menu.AppendMenu(MF_STRING, NavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
+		menu.AppendMenu(MF_STRING | (multiple ? MF_GRAYED : 0), NavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, NavigationPopupToggleFavorite,
-			FbeLoadRuntimeStringByKey(IsFavoriteScript(script->uid) ? L"fbe.document_tree.scripts.remove_favorite" : L"fbe.document_tree.scripts.add_favorite",
-				IsFavoriteScript(script->uid) ? L"★ Remove from favorites" : L"★ Add to favorites"));
+		m_script_popup_favorite_label = FbeLoadRuntimeStringByKey(allFavorites ? L"fbe.document_tree.scripts.remove_favorite" : L"fbe.document_tree.scripts.add_favorite",
+			allFavorites ? L"★ Remove from favorites" : L"★ Add to favorites");
+		menu.AppendMenu(MF_STRING, NavigationPopupToggleFavorite, m_script_popup_favorite_label);
 		CMenu toolbars; toolbars.CreatePopupMenu();
 		for(size_t index = 0; index < m_script_toolbars.size(); ++index)
 			toolbars.AppendMenu(MF_STRING, NavigationPopupAddToolbarBase + static_cast<UINT>(index), m_script_toolbars[index].name);
@@ -794,7 +848,7 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 		menu.AppendMenu(MF_SEPARATOR);
 		menu.AppendMenu(MF_POPUP | MF_STRING, reinterpret_cast<UINT_PTR>(static_cast<HMENU>(toolbars)), FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.add_to_toolbar", L"Add to toolbar >"));
 		menu.AppendMenu(MF_SEPARATOR);
-		menu.AppendMenu(MF_STRING, NavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
+		menu.AppendMenu(MF_STRING | (multiple ? MF_GRAYED : 0), NavigationPopupOpenLocation, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.open_location", L"Open file location"));
 		const UINT command = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, point.x, point.y, m_hWnd);
 		ExecuteScriptPopupCommand(command);
 		return 1;
@@ -831,14 +885,14 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 }
 
 void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
-	const std::function<void(const CString&, const CString&)>& addToToolbar,
+	const std::function<bool(const std::vector<CString>&, const CString&)>& addToToolbar,
 	const std::function<void(const CString&)>& openLocation,
 	const std::function<void(UINT)>& runScript)
 {
 	if(m_script_mode && m_script_filter.IsEmpty()) CaptureScriptExpansions();
 	LoadFavoriteScripts();
 	const bool refreshImages = m_script_images.size() != items.size() || !ScriptVisualsMatch(m_script_visuals, visuals, items.size());
-	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_script_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
+	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_scripts_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
 	bool rebound = false;
 	for(size_t favorite = 0; favorite < m_favorite_scripts.size(); ++favorite)
 	{
@@ -936,24 +990,31 @@ bool CTreeView::GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& inden
 
 bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 {
-	const ScriptDescriptor* script = SelectedScript();
-	if(script == NULL || script->isFolder) return false;
-	if(command == NavigationPopupRunScript) { RunSelectedScript(); return true; }
+	const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
+	if(scripts.empty()) return false;
+	if(command == NavigationPopupRunScript) { if(scripts.size() != 1) return false; RunSelectedScript(); return true; }
 	if(command == NavigationPopupToggleFavorite)
 	{
-		if(script->uid.IsEmpty()) return false;
-		bool removed = false;
-		for(std::vector<std::pair<CString, CString> >::iterator item = m_favorite_scripts.begin(); item != m_favorite_scripts.end(); ++item)
-			if(item->first == script->uid) { m_favorite_scripts.erase(item); removed = true; break; }
-		if(!removed) m_favorite_scripts.push_back(std::make_pair(script->uid, script->relativePath));
+		const bool remove = SelectedScriptsAreAllFavorites();
+		for(size_t index = 0; index < scripts.size(); ++index)
+		{
+			const ScriptDescriptor* script = scripts[index];
+			if(remove)
+			{
+				for(std::vector<std::pair<CString, CString> >::iterator item = m_favorite_scripts.begin(); item != m_favorite_scripts.end(); ++item)
+					if(item->first == script->uid) { m_favorite_scripts.erase(item); break; }
+			}
+			else if(!IsFavoriteScript(script->uid)) m_favorite_scripts.push_back(std::make_pair(script->uid, script->relativePath));
+		}
 		SaveFavoriteScripts(); RebuildScriptTree();
 		return true;
 	}
-	if(command == NavigationPopupOpenLocation) { if(m_open_script_location) m_open_script_location(script->path); return true; }
+	if(command == NavigationPopupOpenLocation) { if(scripts.size() != 1) return false; if(m_open_script_location) m_open_script_location(scripts[0]->path); return true; }
 	if(command >= NavigationPopupAddToolbarBase && command - NavigationPopupAddToolbarBase < m_script_toolbars.size())
 	{
-		if(m_add_script_to_toolbar) m_add_script_to_toolbar(script->uid, m_script_toolbars[command - NavigationPopupAddToolbarBase].id);
-		return true;
+		std::vector<CString> uids;
+		for(size_t index = 0; index < scripts.size(); ++index) uids.push_back(scripts[index]->uid);
+		return m_add_scripts_to_toolbar && m_add_scripts_to_toolbar(uids, m_script_toolbars[command - NavigationPopupAddToolbarBase].id);
 	}
 	return false;
 }
@@ -997,7 +1058,7 @@ void CTreeView::RebuildScriptTree()
 		{
 			const ScriptDescriptor& script = m_script_items[index];
 			if(script.isFolder || script.uid != m_favorite_scripts[favorite].first || !ScriptMatchesFilter(script)) continue;
-			if(m_favorite_group == NULL) m_favorite_group = InsertItem(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.favorites", L"★ Favorites"), 0, 0, TVI_ROOT, TVI_FIRST);
+			if(m_favorite_group == NULL) m_favorite_group = InsertItem(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.favorites", L"Favorites"), m_favorite_image, m_favorite_image, TVI_ROOT, TVI_FIRST);
 			const int image = index < m_script_images.size() ? m_script_images[index] : 0;
 			HTREEITEM item = InsertItem(script.name, image, image, m_favorite_group, TVI_LAST);
 			m_script_nodes[item] = index;
@@ -1020,7 +1081,10 @@ void CTreeView::CaptureScriptExpansions()
 bool CTreeView::ScriptMatchesFilter(const ScriptDescriptor& script) const
 {
 	if(m_script_filter.IsEmpty()) return true;
-	CString probe(script.name + L"\n" + script.relativePath); probe.MakeLower();
+	if(script.isFolder) return false;
+	const int slash = script.relativePath.ReverseFind(L'/');
+	const CString fileName = script.relativePath.Mid(slash + 1);
+	CString probe(script.name + L"\n" + fileName); probe.MakeLower();
 	CString query(m_script_filter); query.MakeLower();
 	return probe.Find(query) >= 0;
 }
@@ -1068,13 +1132,20 @@ void CTreeView::PrepareScriptImages()
 	// different cell height and mask format.  Recreate this 20x20 alpha list
 	// only when the catalog visuals actually changed.
 	m_scriptImageList.Destroy();
-	m_scriptImageList.Create(kScriptImageSize,kScriptImageSize,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+1,8);
+	m_scriptImageList.Create(kScriptImageSize,kScriptImageSize,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+2,8);
+	HBITMAP fallback = CreateScriptTreeGlyphBitmap(false);
+	if(fallback != NULL) { AddScriptImage(fallback); ::DeleteObject(fallback); }
+	HBITMAP favorite = CreateScriptTreeGlyphBitmap(true);
+	m_favorite_image = favorite != NULL ? AddScriptImage(favorite) : -1;
+	if(m_favorite_image != kFavoriteScriptImageIndex) m_favorite_image = -1;
+	if(favorite != NULL) ::DeleteObject(favorite);
 	m_script_images.assign(m_script_items.size(), 0);
 	for(size_t index = 0; index < m_script_items.size() && index < m_script_visuals.size(); ++index)
 	{
 		const ScriptTreeVisual& visual = m_script_visuals[index];
 		if(visual.icon != NULL) m_script_images[index] = AddScriptIcon(visual.icon);
 		else if(visual.bitmap != NULL) m_script_images[index] = AddScriptImage(visual.bitmap);
+		if(m_script_images[index] < 0) m_script_images[index] = 0;
 	}
 }
 
@@ -1122,11 +1193,50 @@ const ScriptDescriptor* CTreeView::SelectedScript()
 	return found == m_script_nodes.end() || found->second >= m_script_items.size() ? NULL : &m_script_items[found->second];
 }
 
+std::vector<const ScriptDescriptor*> CTreeView::SelectedScripts() const
+{
+	std::vector<const ScriptDescriptor*> scripts;
+	std::set<CString> seen;
+	std::function<void(HTREEITEM)> visit = [&](HTREEITEM item) {
+		for(; item != NULL; item = TreeView_GetNextSibling(m_hWnd, item))
+		{
+			const std::map<HTREEITEM, size_t>::const_iterator found = m_script_nodes.find(item);
+			if((GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED) && found != m_script_nodes.end() && found->second < m_script_items.size())
+			{
+				const ScriptDescriptor& script = m_script_items[found->second];
+				if(!script.isFolder && script.commandId > 0 && !script.uid.IsEmpty() && seen.insert(script.uid).second) scripts.push_back(&script);
+			}
+			visit(TreeView_GetChild(m_hWnd, item));
+		}
+	};
+	visit(TreeView_GetRoot(m_hWnd));
+	return scripts;
+}
+
+void CTreeView::SelectScriptContextItem(HTREEITEM item)
+{
+	if(item == NULL || (GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED)) return;
+	ClearSelection();
+	SelectItem(item);
+}
+
+bool CTreeView::SelectedScriptsAreAllFavorites() const
+{
+	const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
+	if(scripts.empty()) return false;
+	for(size_t index = 0; index < scripts.size(); ++index)
+		if(!IsFavoriteScript(scripts[index]->uid)) return false;
+	return true;
+}
+
 void CTreeView::RunSelectedScript()
 {
-	const ScriptDescriptor* script = SelectedScript();
-	if(script != NULL && !script->isFolder && script->commandId > 0)
+	const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
+	if(scripts.size() == 1)
+	{
+		const ScriptDescriptor* script = scripts[0];
 		m_run_script ? m_run_script(script->commandId) : ::SendMessage(m_main_window, WM_COMMAND, MAKEWPARAM(ID_SCRIPT_BASE + script->commandId, 0), 0);
+	}
 }
 
 

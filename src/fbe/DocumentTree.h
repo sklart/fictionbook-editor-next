@@ -93,7 +93,7 @@ public:
 	LRESULT OnShowDocumentStructure(WORD, WORD, HWND, BOOL&);
 	LRESULT OnShowScripts(WORD, WORD, HWND, BOOL&);
 	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
-		const std::function<void(const CString&, const CString&)>& addToToolbar,
+		const std::function<bool(const std::vector<CString>&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	void SetModeChangedHandler(const std::function<void()>& handler) { m_modeChanged = handler; }
@@ -182,7 +182,7 @@ public:
 	void HighlightItemAtPos(MSHTML::IHTMLElement *p);
 	CTreeItem GetSelectedItem();
 	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
-		const std::function<void(const CString&, const CString&)>& addToToolbar,
+		const std::function<bool(const std::vector<CString>&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation, const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
 	bool GetModeButtonProbe(RECT& title, RECT& button, RECT& close, int& image, UINT& command) const;

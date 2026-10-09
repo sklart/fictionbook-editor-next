@@ -51,6 +51,7 @@ protected:
 	std::vector<ScriptDescriptor> m_script_items;
 	std::vector<ScriptTreeVisual> m_script_visuals;
 	std::vector<int> m_script_images;
+	int m_favorite_image = -1;
 	std::vector<ScriptTreeToolbarTarget> m_script_toolbars;
 	std::map<HTREEITEM, size_t> m_script_nodes;
 	HTREEITEM m_favorite_group = NULL;
@@ -58,8 +59,12 @@ protected:
 	std::set<CString> m_expanded_script_paths;
 	std::vector<std::pair<CString, CString> > m_favorite_scripts;
 	bool m_favorites_loaded = false;
+	UINT m_script_popup_invocations = 0;
+	CString m_script_popup_favorite_label;
+	bool m_script_popup_run_enabled = false;
+	bool m_script_popup_open_enabled = false;
 	HWND m_script_search_window = NULL;
-	std::function<void(const CString&, const CString&)> m_add_script_to_toolbar;
+	std::function<bool(const std::vector<CString>&, const CString&)> m_add_scripts_to_toolbar;
 	std::function<void(const CString&)> m_open_script_location;
 	std::function<void(UINT)> m_run_script;
   std::map<long, HTREEITEM>	m_source_index;
@@ -158,7 +163,7 @@ public:
   void HighlightItemAtPos(MSHTML::IHTMLElement *p);
   void SetMainwindow(HWND hwnd){m_main_window = hwnd;}
 	void SetScriptCatalog(const std::vector<ScriptDescriptor>& items, const std::vector<ScriptTreeVisual>& visuals, const std::vector<ScriptTreeToolbarTarget>& toolbars,
-		const std::function<void(const CString&, const CString&)>& addToToolbar,
+		const std::function<bool(const std::vector<CString>&, const CString&)>& addToToolbar,
 		const std::function<void(const CString&)>& openLocation,
 		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
@@ -181,6 +186,15 @@ public:
 	HIMAGELIST StructuralImageList() const { return m_ImageList; }
 	HIMAGELIST ScriptImageList() const { return m_scriptImageList; }
 	int ScriptTreeImage(HTREEITEM item) const;
+	int FavoriteImageIndex() const { return m_favorite_image; }
+	HTREEITEM FavoriteGroupItem() const { return m_favorite_group; }
+	std::vector<const ScriptDescriptor*> SelectedScripts() const;
+	void SelectScriptContextItem(HTREEITEM item);
+	bool SelectedScriptsAreAllFavorites() const;
+	UINT ScriptPopupInvocations() const { return m_script_popup_invocations; }
+	const CString& ScriptPopupFavoriteLabel() const { return m_script_popup_favorite_label; }
+	bool ScriptPopupRunEnabled() const { return m_script_popup_run_enabled; }
+	bool ScriptPopupOpenEnabled() const { return m_script_popup_open_enabled; }
 	bool GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& indent, bool& legacyExpanders) const;
 	bool IsStructuralDragActive() const { return m_drag; }
 	HTREEITEM CurrentStructureItem() const { return m_current_item; }
