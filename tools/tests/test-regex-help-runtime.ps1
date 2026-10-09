@@ -17,7 +17,7 @@ try {
         $exitCode = $process.ExitCode
     } finally { $env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO=$oldMode,$oldScenario }
     $rows=@{}; Get-Content -LiteralPath $report | ForEach-Object { $pair=$_ -split '=',2; if($pair.Count -eq 2){$rows[$pair[0]]=$pair[1]} }
-    foreach($key in 'design','source','ru_design','ru_source','fallback','content','cache','parser','format','long'){if($rows[$key] -ne '1'){throw "Regex Help runtime smoke failed: $key=$($rows[$key]); report=$($rows | Out-String)"}}
+    foreach($key in 'design','source','ru_design','ru_source','fallback','content','production_blocks','cache','parser','format','long'){if($rows[$key] -ne '1'){throw "Regex Help runtime smoke failed: $key=$($rows[$key]); report=$($rows | Out-String)"}}
     foreach($key in 'en_design_length','en_source_length','ru_design_length','ru_source_length'){if([int]$rows[$key] -le 32767){throw "Regex Help runtime smoke did not render full document: $key=$($rows[$key])"}}
     foreach($locale in 'en_design','en_source','ru_design','ru_source') {
         $actual = [int]$rows["${locale}_length"]

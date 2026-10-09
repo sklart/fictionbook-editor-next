@@ -12,6 +12,10 @@ Revision: October 2, 2026. Design mode is covered separately in regex-design.md.
 
 Source exposes XML tags, attributes, links, entities, and the book’s text. It is suitable for auditing FB2: finding empty elements, imported HTML tags, placeholder links, unexpected attributes, and technical conversion remnants.
 
+:::note
+Regex examines XML source text, not a parsed DOM tree. Validate structural relationships with an XML-aware tool.
+:::
+
 Design is often more convenient for literary proofreading of ordinary words. In XML source, a match may occur not only in the book’s text but also in an attribute, comment, CDATA section, filename, or binary data. Account for this before replacement.
 
 “Find and review only” means that a rule returns candidates to inspect. It does not prove that the XML or text is wrong. Even a simple whitespace replacement can change meaningful content; no replacement over arbitrary XML is universally safe here.
@@ -27,6 +31,13 @@ For example, to find a simple empty paragraph:
 ```
 
 This finds `<p></p>` and `<p>   </p>` on one physical source line. It does not find `<p>Текст</p>`. Do not automatically replace the matched element with nothing or with `<empty-line/>`: a paragraph and a blank-line element may serve different structural purposes.
+
+:::example
+Find: <p>[ \t]*</p>
+Input: <p>   </p>
+Match: <p>   </p>
+Expected: inspect this paragraph before changing the XML
+:::
 
 Paste only the pattern into the field. JavaScript `/.../g` delimiters, C++ string quotes, and doubled JSON backslashes are unnecessary.
 
@@ -53,6 +64,10 @@ Unicode text in XML is not forbidden, but there is no separate UCP mode or PCRE2
 ## 4. Line-by-line matching: the key limitation
 
 In FBE’s Scintilla path, `MatchOnLines` matches an expression separately against the content of each physical line. A line can be very long; wrapping it to the window width does not create a new physical line. [S2]
+
+:::warning
+Source regex cannot match across physical lines in the current search path. No pattern can make the engine see two lines as one subject.
+:::
 
 For example:
 

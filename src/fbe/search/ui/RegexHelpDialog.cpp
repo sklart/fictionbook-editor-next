@@ -12,6 +12,7 @@ extern CSettings _Settings;
 namespace
 {
 const UINT WM_REGEX_HELP_RENDER = WM_APP + 211;
+const UINT_PTR kHelpResizeTimer = 211;
 
 struct RegexHelpRenderMetrics
 {
@@ -63,6 +64,8 @@ public:
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         MESSAGE_HANDLER(WM_REGEX_HELP_RENDER, OnDeferredRender)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
+        MESSAGE_HANDLER(WM_TIMER, OnTimer)
+        MESSAGE_HANDLER(WM_EXITSIZEMOVE, OnExitSizeMove)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)
         MESSAGE_HANDLER(WM_THEMECHANGED, OnThemeChanged)
@@ -108,10 +111,27 @@ public:
         m_metrics.totalReadyMs = ::GetTickCount64() - m_createdAt;
         m_metrics.deferred = true;
         m_rendered = true;
+        m_renderedTextWidth = CurrentTextWidth();
         return 0;
     }
 
-    LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&) { if (m_layoutReady) LayoutControls(); return 0; }
+    LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&)
+    {
+        if (m_layoutReady) LayoutControls();
+        if (m_rendered && CurrentTextWidth() != m_renderedTextWidth) ::SetTimer(m_hWnd, kHelpResizeTimer, 180, NULL);
+        return 0;
+    }
+    LRESULT OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
+    {
+        if (timerId == kHelpResizeTimer) { ::KillTimer(m_hWnd, kHelpResizeTimer); RefreshForWidth(); }
+        return 0;
+    }
+    LRESULT OnExitSizeMove(UINT, WPARAM, LPARAM, BOOL&)
+    {
+        ::KillTimer(m_hWnd, kHelpResizeTimer);
+        RefreshForWidth();
+        return 0;
+    }
     LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
     {
         MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(lParam);
@@ -130,6 +150,21 @@ public:
     LRESULT OnClose(WORD, WORD, HWND, BOOL&) { SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE); return 0; }
 
 private:
+    int CurrentTextWidth() const
+    {
+        RECT area = {}; const HWND text = ::GetDlgItem(m_hWnd, IDC_REGEX_HELP_TEXT);
+        return text && ::GetClientRect(text, &area) ? area.right - area.left : 0;
+    }
+    void RefreshForWidth()
+    {
+        const int width = CurrentTextWidth();
+        if (!m_rendered || width <= 0 || width == m_renderedTextWidth) return;
+        const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
+        const int oldFirstLine = static_cast<int>(::SendMessage(text, EM_GETFIRSTVISIBLELINE, 0, 0));
+        ApplyThemeAndRender();
+        ::SendMessage(text, EM_LINESCROLL, 0, oldFirstLine);
+        m_renderedTextWidth = width;
+    }
     void ApplyThemeAndRender()
     {
         const HWND text = GetDlgItem(IDC_REGEX_HELP_TEXT);
@@ -200,6 +235,7 @@ private:
     int m_gap = 0;
     bool m_layoutReady = false;
     bool m_rendered = false;
+    int m_renderedTextWidth = 0;
     bool m_forceDefaultPlacement = false;
     ULONGLONG m_createdAt = ::GetTickCount64();
     RegexHelpRenderMetrics m_metrics;
@@ -242,19 +278,29 @@ bool RunRegexHelpPlacementRuntimeSmoke(HWND owner, CStringA& report)
 bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& report)
 {
     if (artifactDirectory == NULL || *artifactDirectory == L'\0') { report = "artifacts=0\r\nresult=fail\r\n"; return false; }
+    int captureDetail = 0; DWORD captureFileError = 0;
     auto capture = [&](HWND window, LPCWSTR name) -> bool
     {
         RECT rect = {}; if (!window || !::GetWindowRect(window, &rect)) return false;
+        captureDetail |= 1;
         const int width = rect.right - rect.left, height = rect.bottom - rect.top;
         HDC source = width > 0 && height > 0 ? ::GetWindowDC(window) : NULL, memory = source ? ::CreateCompatibleDC(source) : NULL;
+        if (source) captureDetail |= 2;
+        if (memory) captureDetail |= 4;
         BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = width; info.bmiHeader.biHeight = height; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
         void* pixels = NULL; HBITMAP bitmap = source ? ::CreateDIBSection(source, &info, DIB_RGB_COLORS, &pixels, NULL, 0) : NULL; HGDIOBJ previous = memory && bitmap ? ::SelectObject(memory, bitmap) : NULL;
-        const bool printed = previous && ::PrintWindow(window, memory, 0) != FALSE; bool saved = false;
+        if (bitmap) captureDetail |= 8;
+        if (previous) captureDetail |= 16;
+        const bool printed = previous && (::PrintWindow(window, memory, 0) != FALSE || ::BitBlt(memory, 0, 0, width, height, source, 0, 0, SRCCOPY) != FALSE); bool saved = false;
+        if (printed) captureDetail |= 32;
         if (printed)
         {
             BITMAPFILEHEADER header = {}; header.bfType = 0x4d42; header.bfOffBits = sizeof(header) + sizeof(info.bmiHeader); header.bfSize = header.bfOffBits + width * height * 4;
             CString path = CString(artifactDirectory) + L"\\" + name; HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); DWORD written = 0;
+            if (file == INVALID_HANDLE_VALUE) captureFileError = ::GetLastError();
             if (file != INVALID_HANDLE_VALUE && ::WriteFile(file, &header, sizeof(header), &written, NULL) && written == sizeof(header) && ::WriteFile(file, &info.bmiHeader, sizeof(info.bmiHeader), &written, NULL) && written == sizeof(info.bmiHeader) && ::WriteFile(file, pixels, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4)) saved = true;
+            if (file != INVALID_HANDLE_VALUE) captureDetail |= 64;
+            if (saved) captureDetail |= 128;
             if (file != INVALID_HANDLE_VALUE) ::CloseHandle(file);
         }
         if (previous) ::SelectObject(memory, previous); if (bitmap) ::DeleteObject(bitmap); if (memory) ::DeleteDC(memory); if (source) ::ReleaseDC(window, source);
@@ -276,25 +322,47 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
         }
         return false;
     };
-    auto scrollToLine = [&](HWND window, int line) -> bool
+    auto scrollToMarker = [&](HWND window, LPCWSTR marker, int& markerLine, int& visibleLine) -> bool
     {
         const HWND text = window ? ::GetDlgItem(window, IDC_REGEX_HELP_TEXT) : NULL;
-        if (!text) return false;
-        const int lineCount = static_cast<int>(::SendMessage(text, EM_GETLINECOUNT, 0, 0));
-        if (lineCount <= line) return false;
-        ::SendMessage(text, EM_LINESCROLL, 0, line);
-        return true;
+        if (!text || !marker || !*marker) return false;
+        const int length = ::GetWindowTextLengthW(text);
+        CString rendered;
+        wchar_t* buffer = rendered.GetBuffer(length + 1);
+        ::GetWindowTextW(text, buffer, length + 1);
+        rendered.ReleaseBuffer();
+        const int markerOffset = rendered.Find(marker);
+        if (markerOffset < 0) return false;
+        // GetWindowText expands RichEdit's CR paragraph marks to CR/LF.
+        int position = markerOffset;
+        for (int index = 0; index < markerOffset; ++index) if (rendered[index] == L'\n') --position;
+        markerLine = static_cast<int>(::SendMessage(text, EM_LINEFROMCHAR, position, 0));
+        const int firstVisible = static_cast<int>(::SendMessage(text, EM_GETFIRSTVISIBLELINE, 0, 0));
+        const int target = (std::max)(0, markerLine - 2);
+        ::SendMessage(text, EM_LINESCROLL, 0, target - firstVisible);
+        ::UpdateWindow(text);
+        visibleLine = static_cast<int>(::SendMessage(text, EM_GETFIRSTVISIBLELINE, 0, 0));
+        return markerLine >= visibleLine && visibleLine >= (std::max)(0, target - 1);
     };
     HMODULE richEdit = ::LoadLibraryW(L"Msftedit.dll");
+    // Use one known reviewed document so marker assertions are independent of
+    // the editor's persisted interface language on the test machine.
+    FbePublishRuntimeLocaleName(L"en-US");
+    FbeResetRuntimeLocalization();
     RegexHelpDialog initial(FbeSearchPresets::SearchUiContext::Design, true);
     HWND initialWindow = initial.Create(owner); if (initialWindow) { ::ShowWindow(initialWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(initialWindow); }
     const bool initialRendered = waitForDeferredRender(initialWindow);
     RECT initialBounds = {}; const bool defaultSize = initialRendered && ::GetWindowRect(initialWindow, &initialBounds) && capture(initialWindow, L"full-help-design-start.bmp");
-    const bool designTable = initialRendered && scrollToLine(initialWindow, 55) && capture(initialWindow, L"full-help-design-table.bmp");
-    const bool characterClasses = designTable && capture(initialWindow, L"full-help-design-character-classes.bmp");
-    const bool designCode = initialRendered && scrollToLine(initialWindow, 160) && capture(initialWindow, L"full-help-design-code.bmp");
-    const bool quantifiers = designCode && capture(initialWindow, L"full-help-design-quantifiers.bmp");
-    const bool narrow = initialRendered && ::SetWindowPos(initialWindow, NULL, initialBounds.left, initialBounds.top, 430, 520, SWP_NOZORDER | SWP_NOACTIVATE) != FALSE && capture(initialWindow, L"full-help-design-narrow.bmp");
+    int designTableLine = -1, characterClassesLine = -1, designCodeLine = -1, quantifiersLine = -1, warningLine = -1, codeExampleLine = -1, codeNoteLine = -1, codeTableLine = -1, visibleLine = -1;
+    const bool designTableLocated = initialRendered && scrollToMarker(initialWindow, L"4.3. Useful properties", designTableLine, visibleLine);
+    const bool designTable = designTableLocated && capture(initialWindow, L"full-help-design-table.bmp");
+    const bool characterClasses = initialRendered && scrollToMarker(initialWindow, L"7. Character classes and ranges", characterClassesLine, visibleLine) && capture(initialWindow, L"full-help-design-character-classes.bmp");
+    const bool designCode = initialRendered && scrollToMarker(initialWindow, L"Find: (?<=№ )([0-9]+)", designCodeLine, visibleLine) && capture(initialWindow, L"full-help-design-code.bmp");
+    const bool quantifiers = initialRendered && scrollToMarker(initialWindow, L"9. Quantifiers: repetition and backtracking", quantifiersLine, visibleLine) && capture(initialWindow, L"full-help-design-quantifiers.bmp");
+    const bool warning = initialRendered && scrollToMarker(initialWindow, L"Replace All can change intentional spacing", warningLine, visibleLine) && capture(initialWindow, L"full-help-design-warning.bmp");
+    const bool narrowed = initialRendered && ::SetWindowPos(initialWindow, NULL, initialBounds.left, initialBounds.top, 430, 520, SWP_NOZORDER | SWP_NOACTIVATE) != FALSE;
+    if (narrowed) ::SendMessage(initialWindow, WM_EXITSIZEMOVE, 0, 0);
+    const bool narrow = narrowed && scrollToMarker(initialWindow, L"4.3. Useful properties", designTableLine, visibleLine) && capture(initialWindow, L"full-help-design-narrow.bmp");
     if (initialWindow) ::SetWindowPos(initialWindow, NULL, initialBounds.left + 12, initialBounds.top + 12, 720, 520, SWP_NOZORDER | SWP_NOACTIVATE);
     WINDOWPLACEMENT placement = {}; placement.length = sizeof(placement); const bool savedPlacement = initialWindow && ::GetWindowPlacement(initialWindow, &placement) != FALSE;
     if (initialWindow) initial.DestroyWindow();
@@ -303,18 +371,21 @@ bool RunRegexHelpVisualCapture(HWND owner, LPCWSTR artifactDirectory, CStringA& 
     HWND restoredWindow = savedPlacement ? restored.Create(owner) : NULL; if (restoredWindow) { ::ShowWindow(restoredWindow, SW_SHOWNOACTIVATE); ::UpdateWindow(restoredWindow); }
     const bool restoredRendered = waitForDeferredRender(restoredWindow);
     RECT restoredBounds = {}; const bool restoredSize = restoredRendered && ::GetWindowRect(restoredWindow, &restoredBounds) && restoredBounds.right - restoredBounds.left == placement.rcNormalPosition.right - placement.rcNormalPosition.left && restoredBounds.bottom - restoredBounds.top == placement.rcNormalPosition.bottom - placement.rcNormalPosition.top && capture(restoredWindow, L"full-help-code-start.bmp");
-    const bool regexExample = restoredSize && capture(restoredWindow, L"full-help-code-regex-example.bmp");
-    const bool note = restoredSize && capture(restoredWindow, L"full-help-code-note.bmp");
-    const bool codeTable = restoredRendered && scrollToLine(restoredWindow, 28) && capture(restoredWindow, L"full-help-code-table.bmp");
+    const bool regexExample = restoredRendered && scrollToMarker(restoredWindow, L"Find: <p>[ \\t]*</p>", codeExampleLine, visibleLine) && capture(restoredWindow, L"full-help-code-regex-example.bmp");
+    const bool note = restoredRendered && scrollToMarker(restoredWindow, L"Regex examines XML source text", codeNoteLine, visibleLine) && capture(restoredWindow, L"full-help-code-note.bmp");
+    const bool codeTable = restoredRendered && scrollToMarker(restoredWindow, L"3.1. Main differences from Design", codeTableLine, visibleLine) && capture(restoredWindow, L"full-help-code-table.bmp");
     const RegexHelpRenderMetrics& designMetrics = initial.Metrics();
     const RegexHelpRenderMetrics& codeMetrics = restored.Metrics();
     const bool metrics = designMetrics.deferred && codeMetrics.deferred && designMetrics.blockCount > 0 && codeMetrics.blockCount > 0 &&
         designMetrics.dialogFirstVisibleMs <= designMetrics.totalReadyMs && codeMetrics.dialogFirstVisibleMs <= codeMetrics.totalReadyMs;
     if (restoredWindow) restored.DestroyWindow(); if (richEdit != NULL) ::FreeLibrary(richEdit);
-    const bool passed = defaultSize && designTable && characterClasses && designCode && quantifiers && narrow && restoredSize && regexExample && note && codeTable && metrics;
-    report.Format("initial=%d\r\ndesign_table=%d\r\ncharacter_classes=%d\r\ndesign_code=%d\r\nquantifiers=%d\r\nnarrow=%d\r\nrestored=%d\r\nregex_example=%d\r\nnote=%d\r\ncode_table=%d\r\nmetrics=%d\r\ndesign_markdown_read_ms=%llu\r\ndesign_parse_ms=%llu\r\ndesign_render_ms=%llu\r\ndesign_dialog_first_visible_ms=%llu\r\ndesign_total_ready_ms=%llu\r\ndesign_block_count=%llu\r\ncode_markdown_read_ms=%llu\r\ncode_parse_ms=%llu\r\ncode_render_ms=%llu\r\ncode_dialog_first_visible_ms=%llu\r\ncode_total_ready_ms=%llu\r\ncode_block_count=%llu\r\nresult=%s\r\n",
-        defaultSize ? 1 : 0, designTable ? 1 : 0, characterClasses ? 1 : 0, designCode ? 1 : 0, quantifiers ? 1 : 0, narrow ? 1 : 0, restoredSize ? 1 : 0, regexExample ? 1 : 0, note ? 1 : 0, codeTable ? 1 : 0, metrics ? 1 : 0,
+    const bool distinctDesign = designTableLine >= 0 && characterClassesLine > designTableLine && quantifiersLine > characterClassesLine && designCodeLine > quantifiersLine && warningLine < designTableLine;
+    const bool distinctCode = codeNoteLine >= 0 && codeExampleLine > codeNoteLine && codeTableLine > codeExampleLine;
+    const bool passed = defaultSize && designTable && characterClasses && designCode && quantifiers && warning && narrow && restoredSize && regexExample && note && codeTable && distinctDesign && distinctCode && metrics;
+    report.Format("initial=%d\r\ndesign_table=%d\r\ncharacter_classes=%d\r\ndesign_code=%d\r\nquantifiers=%d\r\nwarning=%d\r\nnarrow=%d\r\nrestored=%d\r\nregex_example=%d\r\nnote=%d\r\ncode_table=%d\r\ndistinct_design=%d\r\ndistinct_code=%d\r\ndesign_table_located=%d\r\ncapture_detail=%d\r\ndesign_table_line=%d\r\ncharacter_classes_line=%d\r\nquantifiers_line=%d\r\ndesign_code_line=%d\r\nwarning_line=%d\r\ncode_note_line=%d\r\ncode_example_line=%d\r\ncode_table_line=%d\r\nmetrics=%d\r\ndesign_markdown_read_ms=%llu\r\ndesign_parse_ms=%llu\r\ndesign_render_ms=%llu\r\ndesign_dialog_first_visible_ms=%llu\r\ndesign_total_ready_ms=%llu\r\ndesign_block_count=%llu\r\ncode_markdown_read_ms=%llu\r\ncode_parse_ms=%llu\r\ncode_render_ms=%llu\r\ncode_dialog_first_visible_ms=%llu\r\ncode_total_ready_ms=%llu\r\ncode_block_count=%llu\r\nresult=%s\r\n",
+        defaultSize ? 1 : 0, designTable ? 1 : 0, characterClasses ? 1 : 0, designCode ? 1 : 0, quantifiers ? 1 : 0, warning ? 1 : 0, narrow ? 1 : 0, restoredSize ? 1 : 0, regexExample ? 1 : 0, note ? 1 : 0, codeTable ? 1 : 0, distinctDesign ? 1 : 0, distinctCode ? 1 : 0, designTableLocated ? 1 : 0, captureDetail, designTableLine, characterClassesLine, quantifiersLine, designCodeLine, warningLine, codeNoteLine, codeExampleLine, codeTableLine, metrics ? 1 : 0,
         static_cast<unsigned long long>(designMetrics.markdownReadMs), static_cast<unsigned long long>(designMetrics.parseMs), static_cast<unsigned long long>(designMetrics.renderMs), static_cast<unsigned long long>(designMetrics.dialogFirstVisibleMs), static_cast<unsigned long long>(designMetrics.totalReadyMs), static_cast<unsigned long long>(designMetrics.blockCount),
         static_cast<unsigned long long>(codeMetrics.markdownReadMs), static_cast<unsigned long long>(codeMetrics.parseMs), static_cast<unsigned long long>(codeMetrics.renderMs), static_cast<unsigned long long>(codeMetrics.dialogFirstVisibleMs), static_cast<unsigned long long>(codeMetrics.totalReadyMs), static_cast<unsigned long long>(codeMetrics.blockCount), passed ? "pass" : "fail");
+    CStringA captureError; captureError.Format("capture_file_error=%lu\r\n", static_cast<unsigned long>(captureFileError)); report += captureError;
     return passed;
 }

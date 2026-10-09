@@ -128,7 +128,7 @@ void AddTable(std::vector<MarkdownBlock>& blocks, const CString& header, const s
         if (!block.text.IsEmpty()) block.text += L"\n";
         for (size_t column = 0; column < row.size(); ++column)
         {
-            if (column) block.text += L" \x2014 ";
+            if (column) block.text += L"\t";
             CString cell(row[column]);
             std::vector<MarkdownInlineCode> spans;
             ParseInlineCode(cell, spans);
@@ -323,6 +323,7 @@ CString ExpectedRenderedText(const std::vector<MarkdownBlock>& blocks)
         value.Replace(L"\n", L"\r\n");
         expected += value;
         expected += L"\r\n";
+        if (blocks[index].kind == MarkdownBlockKind::Table) expected += L"\r\n\r\n";
     }
     return expected;
 }
@@ -333,7 +334,111 @@ bool ReadRichEditText(HWND richEdit, CString& text)
     wchar_t* buffer = text.GetBuffer(length + 1);
     const int copied = ::GetWindowTextW(richEdit, buffer, length + 1);
     text.ReleaseBuffer(copied);
-    return copied == length;
+    // Native RichEdit table row/cell delimiters count differently in
+    // WM_GETTEXTLENGTH and GetWindowText. The copied visible text is valid.
+    return copied >= 0;
+}
+
+void AppendRtfText(CStringA& rtf, const CString& text)
+{
+    for (int index = 0; index < text.GetLength(); ++index)
+    {
+        const wchar_t ch = text[index];
+        if (ch == L'\\' || ch == L'{' || ch == L'}') { rtf += '\\'; rtf += static_cast<char>(ch); }
+        else if (ch == L'\n') rtf += "\\line ";
+        else if (ch == L'\t') rtf += "\\tab ";
+        else if (ch >= 32 && ch < 127) rtf += static_cast<char>(ch);
+        else if (ch >= 32) rtf.AppendFormat("\\u%d?", static_cast<int>(static_cast<short>(ch)));
+    }
+}
+
+void AppendRtfCellText(CStringA& rtf, const CString& raw, bool firstColumn)
+{
+    CString text(raw);
+    std::vector<MarkdownInlineCode> codeSpans;
+    ParseInlineCode(text, codeSpans);
+    bool inCode = false, inLink = false;
+    for (int index = 0; index < text.GetLength(); ++index)
+    {
+        bool code = false;
+        for (size_t span = 0; span < codeSpans.size(); ++span)
+            if (index >= codeSpans[span].start && index < codeSpans[span].start + codeSpans[span].length) { code = true; break; }
+        if (code != inCode) { rtf += code || firstColumn ? "\\f1 " : "\\f0 "; inCode = code; }
+        const bool startsLink = text.Mid(index, 4).CompareNoCase(L"http") == 0;
+        if (!inLink && startsLink) { rtf += "\\ul\\cf2 "; inLink = true; }
+        if (inLink && (text[index] == L' ' || text[index] == L')' || text[index] == L'\n'))
+        {
+            rtf += "\\ulnone\\cf1 "; inLink = false;
+        }
+        AppendRtfText(rtf, text.Mid(index, 1));
+    }
+    if (inLink) rtf += "\\ulnone\\cf1 ";
+}
+
+CStringA BuildTableRtf(HWND richEdit, const MarkdownBlock& block)
+{
+    const size_t columnCount = block.table.headers.size();
+    RECT area = {};
+    ::SendMessage(richEdit, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&area));
+    if (area.right <= area.left) ::GetClientRect(richEdit, &area);
+    HDC dc = ::GetDC(richEdit);
+    const int dpi = dc ? ::GetDeviceCaps(dc, LOGPIXELSX) : 96;
+    if (dc) ::ReleaseDC(richEdit, dc);
+    const int widthPixels = (std::max)(120, static_cast<int>(area.right - area.left - 16));
+    const int width = (std::max)(900, ::MulDiv(widthPixels, 1440, dpi));
+    const int firstWidth = columnCount == 3 ? width * 26 / 100 : width * 32 / 100;
+    std::vector<int> edges(columnCount);
+    for (size_t column = 0; column < columnCount; ++column)
+        edges[column] = column == 0 ? firstWidth : firstWidth + (width - firstWidth) * static_cast<int>(column) / static_cast<int>(columnCount - 1);
+
+    LOGFONTW logFont = {};
+    HFONT uiFont = UiMetrics::DialogFont();
+    const CString face(uiFont && ::GetObjectW(uiFont, sizeof(logFont), &logFont) ? logFont.lfFaceName : L"Segoe UI");
+    const COLORREF ink = ThemeManager::TextColor(), accent = ThemeManager::AccentColor();
+    CStringA rtf("{\\rtf1\\ansi\\ansicpg1252\\uc1\\deff0{\\fonttbl{\\f0\\fnil ");
+    AppendRtfText(rtf, face);
+    rtf += ";}{\\f1\\fmodern Consolas;}}";
+    rtf.AppendFormat("{\\colortbl;\\red%d\\green%d\\blue%d;\\red%d\\green%d\\blue%d;\\red%d\\green%d\\blue%d;}",
+        GetRValue(ink), GetGValue(ink), GetBValue(ink), GetRValue(accent), GetGValue(accent), GetBValue(accent),
+        160, 160, 160);
+    for (size_t rowIndex = 0; rowIndex <= block.table.rows.size(); ++rowIndex)
+    {
+        const std::vector<CString>& row = rowIndex == 0 ? block.table.headers : block.table.rows[rowIndex - 1];
+        rtf += "\\trowd\\trgaph80\\trleft0";
+        for (size_t column = 0; column < columnCount; ++column)
+            rtf.AppendFormat("\\clbrdrt\\brdrs\\brdrw6\\brdrcf3\\clbrdrl\\brdrs\\brdrw6\\brdrcf3\\clbrdrb\\brdrs\\brdrw6\\brdrcf3\\clbrdrr\\brdrs\\brdrw6\\brdrcf3\\cellx%d", edges[column]);
+        for (size_t column = 0; column < columnCount; ++column)
+        {
+            rtf.AppendFormat("\\pard\\intbl\\cf1\\f%d\\fs20%s ", column == 0 ? 1 : 0, rowIndex == 0 ? "\\b" : "\\b0");
+            AppendRtfCellText(rtf, row[column], column == 0);
+            rtf += "\\cell ";
+        }
+        rtf += "\\row ";
+    }
+    rtf += "\\pard\\par}";
+    return rtf;
+}
+
+struct TableRtfInput { const char* data; size_t length; size_t offset; };
+DWORD CALLBACK ReadTableRtf(DWORD_PTR cookie, LPBYTE buffer, LONG requested, LONG* copied)
+{
+    TableRtfInput& input = *reinterpret_cast<TableRtfInput*>(cookie);
+    const size_t count = (std::min)(static_cast<size_t>(requested), input.length - input.offset);
+    if (count) memcpy(buffer, input.data + input.offset, count);
+    input.offset += count;
+    *copied = static_cast<LONG>(count);
+    return 0;
+}
+
+bool ReplaceTableWithRtf(HWND richEdit, const MarkdownBlock& block, int first, int last)
+{
+    if (block.table.headers.size() < 2 || block.table.headers.size() > 3) return false;
+    CStringA rtf = BuildTableRtf(richEdit, block);
+    TableRtfInput input = { rtf.GetString(), static_cast<size_t>(rtf.GetLength()), 0 };
+    EDITSTREAM stream = { reinterpret_cast<DWORD_PTR>(&input), 0, ReadTableRtf };
+    ::SendMessage(richEdit, EM_SETSEL, first, last);
+    ::SendMessage(richEdit, EM_STREAMIN, SF_RTF | SFF_SELECTION, reinterpret_cast<LPARAM>(&stream));
+    return stream.dwError == 0 && input.offset == input.length;
 }
 }
 
@@ -437,34 +542,7 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
         const CHARFORMAT2 format = MakeCharacterFormat(richEdit, bold, monospace, PointSizeForBlock(block));
         const PARAFORMAT2 paragraph = MakeParagraphFormat(block);
         SelectAndFormat(richEdit, first, (std::max)(first, last), format, paragraph);
-        if(block.kind == MarkdownBlockKind::Table)
-        {
-            const int headerEnd = value.Find(L'\n');
-            const CHARFORMAT2 headerFormat = MakeCharacterFormat(richEdit, true, false, PointSizeForBlock(block));
-            ::SendMessage(richEdit, EM_SETSEL, first, first + (headerEnd < 0 ? value.GetLength() : headerEnd));
-            ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&headerFormat));
-            int rowStart = 0;
-            bool header = true;
-            while (rowStart < value.GetLength())
-            {
-                int rowEnd = value.Find(L'\n', rowStart); if (rowEnd < 0) rowEnd = value.GetLength();
-                const int separator = value.Find(L" \x2014 ", rowStart);
-                if (separator >= rowStart && separator < rowEnd)
-                {
-                    const CHARFORMAT2 description = MakeCharacterFormat(richEdit, header, false, PointSizeForBlock(block));
-                    ::SendMessage(richEdit, EM_SETSEL, first + separator + 3, first + rowEnd);
-                    ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&description));
-                }
-                CHARFORMAT2 term = {}; term.cbSize = sizeof(term); term.dwMask = CFM_FACE | CFM_BOLD;
-                term.dwEffects = header ? CFE_BOLD : 0;
-                ::lstrcpynW(term.szFaceName, L"Consolas", LF_FACESIZE);
-                const int termEnd = separator >= rowStart && separator < rowEnd ? separator : rowEnd;
-                ::SendMessage(richEdit, EM_SETSEL, first + rowStart, first + termEnd);
-                ::SendMessage(richEdit, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&term));
-                if (rowEnd == value.GetLength()) break;
-                rowStart = rowEnd + 1; header = false;
-            }
-        }
+        if (block.kind == MarkdownBlockKind::Table) continue;
         for (size_t span = 0; span < block.inlineCode.size(); ++span)
         {
             CHARFORMAT2 code = MakeCharacterFormat(richEdit, false, true, 10);
@@ -480,6 +558,11 @@ void RenderMarkdown(HWND richEdit, const std::vector<MarkdownBlock>& blocks)
             link = value.Find(L"http", end);
         }
     }
+    // Work backwards so the native table delimiters do not invalidate the
+    // plain-text ranges of earlier blocks. RichEdit owns the cell wrapping.
+    for (size_t index = blocks.size(); index > 0; --index)
+        if (blocks[index - 1].kind == MarkdownBlockKind::Table)
+            ReplaceTableWithRtf(richEdit, blocks[index - 1], ranges[index - 1].first, ranges[index - 1].last);
     ::SendMessage(richEdit, EM_SETSEL, 0, 0);
     ::SendMessage(richEdit, EM_SCROLLCARET, 0, 0);
 }
@@ -495,6 +578,17 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
     const bool fallbackLoaded = LoadMarkdownForLocale(FbeSearchPresets::SearchUiContext::Design, L"zz-ZZ", fallback, fallbackPath) && fallbackPath.Find(L"Help\\en-US\\regex-design.md") >= 0;
     const bool content = !enDesign.empty() && !enSource.empty() && !ruDesign.empty() && !ruSource.empty() &&
         enDesign[0].kind == MarkdownBlockKind::Title && enSource[0].kind == MarkdownBlockKind::Title;
+    const auto hasProductionBlocks = [](const std::vector<MarkdownBlock>& blocks, size_t minimumExamples) {
+        size_t examples = 0, notes = 0, warnings = 0;
+        for (const MarkdownBlock& block : blocks)
+        {
+            if (block.kind == MarkdownBlockKind::Example) ++examples;
+            if (block.kind == MarkdownBlockKind::Note) block.warning ? ++warnings : ++notes;
+        }
+        return examples >= minimumExamples && notes >= 1 && warnings >= 1;
+    };
+    const bool productionBlocks = hasProductionBlocks(enDesign, 3) && hasProductionBlocks(ruDesign, 3) &&
+        hasProductionBlocks(enSource, 1) && hasProductionBlocks(ruSource, 1);
     std::vector<MarkdownBlock> cachedFirst, cachedSecond;
     CString cachedFirstPath, cachedSecondPath;
     MarkdownLoadMetrics firstLoad, secondLoad;
@@ -574,21 +668,28 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             ::SendMessage(richEdit, EM_SETSEL, position, position);
             return ::SendMessage(richEdit, EM_GETPARAFORMAT, 0, reinterpret_cast<LPARAM>(&paragraph)) != 0;
         };
+        const auto findNative = [richEdit](LPCWSTR needle) -> int {
+            FINDTEXTEXW match = {};
+            match.chrg.cpMax = -1;
+            match.lpstrText = const_cast<LPWSTR>(needle);
+            return static_cast<int>(::SendMessage(richEdit, EM_FINDTEXTEXW, FR_DOWN, reinterpret_cast<LPARAM>(&match)));
+        };
         CString rendered; ReadRichEditText(richEdit, rendered);
-        CHARFORMAT2 titleFormat = {}, heading2Format = {}, heading3Format = {}, bodyFormat = {}, codeFormat = {}, tableFormat = {}, tableDescriptionFormat = {}, tableDataFormat = {}, inlineFormat = {}, afterTableFormat = {}, linkFormat = {};
-        PARAFORMAT2 heading2Paragraph = {}, heading3Paragraph = {}, tableParagraph = {}, listParagraph = {};
-        const int titleAt = rendered.Find(L"Title"), heading2At = rendered.Find(L"Heading two"), heading3At = rendered.Find(L"Heading three"), bodyAt = rendered.Find(L"Body"),
-            codeAt = rendered.Find(L"   leading"), tableAt = rendered.Find(L"Syntax"), tableDescriptionAt = rendered.Find(L"Meaning"), tableDataAt = rendered.Find(L"\\d"), inlineAt = rendered.Find(L"inline"), afterTableAt = rendered.Find(L"Body after table"), linkAt = rendered.Find(L"https://example.invalid"), firstBullet = rendered.Find(L"\x2022 one"), secondBullet = rendered.Find(L"\x2022 two");
-        const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && tableAt >= 0 && tableDescriptionAt >= 0 && tableDataAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && linkAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
-        const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax \x2014 Meaning") >= 0 &&
-            rendered.Find(L"\\d \x2014 digit") >= 0 && rendered.Find(L"\\w \x2014 word") >= 0 && rendered.Find(L"`\\d`") < 0;
+        CHARFORMAT2 titleFormat = {}, heading2Format = {}, heading3Format = {}, bodyFormat = {}, codeFormat = {}, regexFormat = {}, exampleFormat = {}, noteFormat = {}, warningFormat = {}, tableFormat = {}, tableDescriptionFormat = {}, tableDataFormat = {}, inlineFormat = {}, afterTableFormat = {}, linkFormat = {};
+        PARAFORMAT2 heading2Paragraph = {}, heading3Paragraph = {}, exampleParagraph = {}, noteParagraph = {}, warningParagraph = {}, tableParagraph = {}, listParagraph = {};
+        const int titleAt = findNative(L"Title"), heading2At = findNative(L"Heading two"), heading3At = findNative(L"Heading three"), bodyAt = findNative(L"Body"),
+            codeAt = findNative(L"   leading"), regexAt = findNative(L"\\d{2,4}"), exampleAt = findNative(L"2026"), noteAt = findNative(L"Information is visible."), warningAt = findNative(L"Regex is text based."), tableAt = findNative(L"Syntax"), tableDescriptionAt = findNative(L"Meaning"), tableDataAt = findNative(L"\\d"), inlineAt = findNative(L"inline"), afterTableAt = findNative(L"Body after table"), linkAt = findNative(L"https://example.invalid"), firstBullet = findNative(L"\x2022 one"), secondBullet = findNative(L"\x2022 two");
+        const bool positions = titleAt >= 0 && heading2At >= 0 && heading3At >= 0 && bodyAt >= 0 && codeAt >= 0 && regexAt >= 0 && exampleAt >= 0 && noteAt >= 0 && warningAt >= 0 && tableAt >= 0 && tableDescriptionAt >= 0 && tableDataAt >= 0 && inlineAt >= 0 && afterTableAt >= 0 && linkAt >= 0 && firstBullet >= 0 && secondBullet > firstBullet;
+        const bool textContract = rendered.Find(L"| --- | --- |") < 0 && rendered.Find(L"Syntax\tMeaning") >= 0 &&
+            rendered.Find(L"\\d\tdigit") >= 0 && rendered.Find(L"\\w\tword") >= 0 && rendered.Find(L"`\\d`") < 0;
         const bool formats = positions && formatAt(titleAt, titleFormat) && formatAt(heading2At, heading2Format) && formatAt(heading3At, heading3Format) && formatAt(bodyAt, bodyFormat) &&
-            formatAt(codeAt, codeFormat) && formatAt(tableAt, tableFormat) && formatAt(tableDescriptionAt, tableDescriptionFormat) && formatAt(tableDataAt, tableDataFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && formatAt(linkAt, linkFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
+            formatAt(codeAt, codeFormat) && formatAt(regexAt, regexFormat) && formatAt(exampleAt, exampleFormat) && formatAt(noteAt, noteFormat) && formatAt(warningAt, warningFormat) && formatAt(tableAt, tableFormat) && formatAt(tableDescriptionAt, tableDescriptionFormat) && formatAt(tableDataAt, tableDataFormat) && formatAt(inlineAt, inlineFormat) && formatAt(afterTableAt, afterTableFormat) && formatAt(linkAt, linkFormat) && paragraphAt(heading2At, heading2Paragraph) && paragraphAt(heading3At, heading3Paragraph) && paragraphAt(exampleAt, exampleParagraph) && paragraphAt(noteAt, noteParagraph) && paragraphAt(warningAt, warningParagraph) && paragraphAt(tableAt, tableParagraph) && paragraphAt(firstBullet, listParagraph);
         styleDetail = ((titleFormat.dwEffects & CFE_BOLD) != 0 ? 1 : 0) | ((heading2Format.dwEffects & CFE_BOLD) != 0 ? 2 : 0) |
             ((heading3Format.dwEffects & CFE_BOLD) != 0 ? 4 : 0) | ((bodyFormat.dwEffects & CFE_BOLD) == 0 ? 8 : 0) |
             ((codeFormat.dwEffects & CFE_BOLD) == 0 ? 16 : 0) | ((inlineFormat.dwEffects & CFE_BOLD) == 0 ? 32 : 0) |
             ((afterTableFormat.dwEffects & CFE_BOLD) == 0 ? 64 : 0);
-        const bool codeFace = ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0;
+        const bool codeFace = ::lstrcmpiW(codeFormat.szFaceName, L"Consolas") == 0 &&
+            ::lstrcmpiW(regexFormat.szFaceName, L"Consolas") == 0;
         const bool inlineFace = ::lstrcmpiW(inlineFormat.szFaceName, L"Consolas") == 0;
         // Use a stand-alone table to query native RichEdit character offsets:
         // GetWindowText expands CR to CR/LF, while EM_SETSEL positions count a
@@ -597,12 +698,22 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         std::vector<MarkdownBlock> tableFontBlocks;
         ParseMarkdownText(L"| Syntax | Meaning |\n| --- | --- |\n| \\d | digit |", tableFontBlocks);
         RenderMarkdown(richEdit, tableFontBlocks);
-        CString tableFontText; ReadRichEditText(richEdit, tableFontText);
         CHARFORMAT2 standaloneTerm = {}, standaloneDescription = {}, standaloneData = {};
-        const bool tableTermFace = formatAt(tableFontText.Find(L"Syntax"), standaloneTerm) && ::lstrcmpiW(standaloneTerm.szFaceName, L"Consolas") == 0;
-        const bool tableDescriptionFace = formatAt(tableFontText.Find(L"Meaning"), standaloneDescription) && ::lstrcmpiW(standaloneDescription.szFaceName, standaloneTerm.szFaceName) != 0;
+        const bool tableTermFace = formatAt(findNative(L"Syntax"), standaloneTerm) && ::lstrcmpiW(standaloneTerm.szFaceName, L"Consolas") == 0;
+        const bool tableDescriptionFace = formatAt(findNative(L"Meaning"), standaloneDescription) && ::lstrcmpiW(standaloneDescription.szFaceName, standaloneTerm.szFaceName) != 0;
         const bool tableHeaderBold = (standaloneTerm.dwEffects & CFE_BOLD) != 0 && (standaloneDescription.dwEffects & CFE_BOLD) != 0;
-        const bool tableDataNonBold = formatAt(tableFontText.Find(L"\\d"), standaloneData) && (standaloneData.dwEffects & CFE_BOLD) == 0;
+        const bool tableDataNonBold = formatAt(findNative(L"\\d"), standaloneData) && (standaloneData.dwEffects & CFE_BOLD) == 0;
+        std::vector<MarkdownBlock> threeColumnBlocks;
+        ParseMarkdownText(L"| Term | Meaning | Example |\n| --- | --- | --- |\n| \\w | word character | letters and digits |", threeColumnBlocks);
+        RenderMarkdown(richEdit, threeColumnBlocks);
+        CString threeColumnText; ReadRichEditText(richEdit, threeColumnText);
+        CHARFORMAT2 thirdColumnFormat = {};
+        const bool threeColumns = threeColumnBlocks.size() == 1 && threeColumnBlocks[0].table.headers.size() == 3 &&
+            threeColumnText.Find(L"Term\tMeaning\tExample") >= 0 &&
+            threeColumnText.Find(L"\\w\tword character\tletters and digits") >= 0 &&
+            formatAt(findNative(L"Example"), thirdColumnFormat) &&
+            ::lstrcmpiW(thirdColumnFormat.szFaceName, standaloneDescription.szFaceName) == 0 &&
+            (thirdColumnFormat.dwEffects & CFE_BOLD) != 0;
         styleDetail |= tableHeaderBold ? 128 : 0;
         styleDetail |= tableDataNonBold ? 256 : 0;
         const bool styles = formats && styleDetail == 511;
@@ -610,7 +721,12 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         const bool faces = formats && codeFace && tableTermFace && inlineFace && tableDescriptionFace;
         const bool sizes = formats && titleFormat.yHeight > heading2Format.yHeight && heading2Format.yHeight > bodyFormat.yHeight && heading3Format.yHeight >= bodyFormat.yHeight &&
             (heading2Format.yHeight != heading3Format.yHeight || heading2Paragraph.dySpaceBefore != heading3Paragraph.dySpaceBefore) && bodyFormat.yHeight >= 200 && inlineFormat.yHeight == bodyFormat.yHeight;
-        const bool tables = formats && tableParagraph.cTabCount == 0 && tableParagraph.dxStartIndent > 0;
+        const bool tables = formats && tableParagraph.cTabCount == 0 && textContract && threeColumns;
+        const bool specialBlocks = formats && ::lstrcmpiW(exampleFormat.szFaceName, L"Consolas") == 0 &&
+            (exampleFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && exampleParagraph.dxStartIndent > 0 &&
+            noteParagraph.dxStartIndent > exampleParagraph.dxStartIndent && warningParagraph.dxStartIndent == noteParagraph.dxStartIndent &&
+            (noteFormat.dwEffects & CFE_BOLD) == 0 && (warningFormat.dwEffects & CFE_BOLD) == 0 &&
+            rendered.Find(L"\x2139 Information is visible.") >= 0 && rendered.Find(L"\x26A0 Regex is text based.") >= 0;
         const bool automaticBackgrounds = formats && (codeFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (inlineFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (tableFormat.dwEffects & CFE_AUTOBACKCOLOR) != 0;
         std::vector<MarkdownBlock> backgroundSequence;
         AddBlock(backgroundSequence, MarkdownBlockKind::Code, L"code");
@@ -631,13 +747,14 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
             hasAutomaticBodyBackground(bodyAfterCode) && hasAutomaticBodyBackground(bodyAfterTable) && hasAutomaticBodyBackground(bodyAfterNote);
         std::vector<MarkdownBlock> shadedLinkBlocks;
         AddBlock(shadedLinkBlocks, MarkdownBlockKind::Code, L"code https://code.invalid");
-        AddBlock(shadedLinkBlocks, MarkdownBlockKind::Table, L"table https://table.invalid");
+        std::vector<MarkdownBlock> linkedTable;
+        ParseMarkdownText(L"| Name | URL |\n| --- | --- |\n| row | table https://table.invalid |", linkedTable);
+        shadedLinkBlocks.insert(shadedLinkBlocks.end(), linkedTable.begin(), linkedTable.end());
         AddBlock(shadedLinkBlocks, MarkdownBlockKind::Note, L"note https://note.invalid");
         RenderMarkdown(richEdit, shadedLinkBlocks);
-        CString shadedLinkText; ReadRichEditText(richEdit, shadedLinkText);
         const auto preservesParentLinkFormat = [&](LPCWSTR prefix, LPCWSTR url) -> bool {
             CHARFORMAT2 parent = {}, hyperlink = {};
-            const int parentAt = shadedLinkText.Find(prefix), linkAt = shadedLinkText.Find(url);
+            const int parentAt = findNative(prefix), linkAt = findNative(url);
             if (parentAt < 0 || linkAt < 0 || !formatAt(parentAt, parent) || !formatAt(linkAt, hyperlink)) return false;
             return (hyperlink.dwEffects & CFE_UNDERLINE) != 0 && hyperlink.crTextColor == ThemeManager::AccentColor() &&
                 (parent.dwEffects & CFE_AUTOBACKCOLOR) != 0 && (hyperlink.dwEffects & CFE_AUTOBACKCOLOR) != 0 &&
@@ -651,14 +768,14 @@ bool RunRuntimeSmoke(HWND owner, CStringA& report)
         shadedLinkDetail = (codeLinkPreserved ? 1 : 0) | (tableLinkPreserved ? 2 : 0) | (noteLinkPreserved ? 4 : 0);
         const bool hangingIndent = formats && listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0;
         const bool link = formats && (linkFormat.dwEffects & CFE_UNDERLINE) != 0 && linkFormat.crTextColor == ThemeManager::AccentColor();
-        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tables ? 64 : 0) | (automaticBackgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0);
-        formatting = positions && textContract && formats && styles && faces && sizes && tables && automaticBackgrounds && backgroundReset && shadedLinks && hangingIndent && link;
+        formattingDetail = (positions ? 1 : 0) | (textContract ? 2 : 0) | (formats ? 4 : 0) | (styles ? 8 : 0) | (faces ? 16 : 0) | (sizes ? 32 : 0) | (tables ? 64 : 0) | (automaticBackgrounds ? 128 : 0) | (hangingIndent ? 256 : 0) | (link ? 512 : 0) | (backgroundReset ? 1024 : 0) | (shadedLinks ? 2048 : 0) | (specialBlocks ? 4096 : 0);
+        formatting = positions && textContract && formats && styles && faces && sizes && tables && specialBlocks && automaticBackgrounds && backgroundReset && shadedLinks && hangingIndent && link;
         ::DestroyWindow(richEdit);
     }
     if (richEditLibrary) ::FreeLibrary(richEditLibrary);
-    const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && cached && parser && formatting && longDocuments;
-    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nstyle_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_design_terminal_newline_omitted=%d\nen_source_length=%d\nen_source_expected_length=%d\nen_source_terminal_newline_omitted=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_design_terminal_newline_omitted=%d\nru_source_length=%d\nru_source_expected_length=%d\nru_source_terminal_newline_omitted=%d\nresult=%s\n",
-        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, cached, parser, formatting, formattingDetail, styleDetail, facesDetail, shadedLinkDetail, longDocuments,
+    const bool passed = designLoaded && sourceLoaded && ruDesignLoaded && ruSourceLoaded && fallbackLoaded && content && productionBlocks && cached && parser && formatting && longDocuments;
+    report.Format("design=%d\nsource=%d\nru_design=%d\nru_source=%d\nfallback=%d\ncontent=%d\nproduction_blocks=%d\ncache=%d\nparser=%d\nformat=%d\nformat_detail=%d\nstyle_detail=%d\nfaces_detail=%d\nshaded_link_detail=%d\nlong=%d\nen_design_length=%d\nen_design_expected_length=%d\nen_design_terminal_newline_omitted=%d\nen_source_length=%d\nen_source_expected_length=%d\nen_source_terminal_newline_omitted=%d\nru_design_length=%d\nru_design_expected_length=%d\nru_design_terminal_newline_omitted=%d\nru_source_length=%d\nru_source_expected_length=%d\nru_source_terminal_newline_omitted=%d\nresult=%s\n",
+        designLoaded, sourceLoaded, ruDesignLoaded, ruSourceLoaded, fallbackLoaded, content, productionBlocks, cached, parser, formatting, formattingDetail, styleDetail, facesDetail, shadedLinkDetail, longDocuments,
         enDesignLength, enDesignExpectedLength, enDesignTerminalNewlineOmitted, enSourceLength, enSourceExpectedLength, enSourceTerminalNewlineOmitted,
         ruDesignLength, ruDesignExpectedLength, ruDesignTerminalNewlineOmitted, ruSourceLength, ruSourceExpectedLength, ruSourceTerminalNewlineOmitted, passed ? "pass" : "fail");
     return passed;

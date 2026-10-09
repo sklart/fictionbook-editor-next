@@ -28,9 +28,28 @@ To find repeated spaces, enter:
 [ \t]{2,}
 ```
 
-In `Он   пришёл`, this finds the three-space gap. Put one ordinary space in the replacement field. Replace a single occurrence first, check that the result is `Он пришёл`, and only then consider Replace All.
+In `Он   пришёл`, this finds the three-space gap.
+
+:::example
+Find: [ \t]{2,}
+Input: Он   пришёл
+Match: three spaces between the words
+:::
+
+Put one ordinary space in the replacement field. Replace a single occurrence first, check that the result is `Он пришёл`, and only then consider Replace All.
+
+:::example
+Find: [ \t]{2,}
+Input: Он   пришёл
+Replace with: one space
+Expected: Он пришёл
+:::
 
 When there are many matches, first inspect the search results and correct one or two representative cases. After a bulk operation, check the text, italics, bold formatting, notes, and paragraph boundaries. If the result is unexpected, undo it before starting another round of edits.
+
+:::warning
+Replace All can change intentional spacing or formatting in many places. Test one replacement, inspect the result, and keep a working copy before applying it to the whole book.
+:::
 
 Apply in the Templates panel transfers the expression and its settings to the search dialog. It should not be understood as an instruction to fix every match unconditionally. Use the appropriate dialog commands to perform the search or replacement.
 
@@ -39,6 +58,10 @@ Apply in the Templates panel transfers the expression and its settings to the se
 This mode uses PCRE2-16, passing text and patterns as UTF-16; UTF mode is always enabled. FBE separately builds searchable text from the document and separately performs replacements with regard to the book’s structure. PCRE2 documentation therefore explains matching, but does not define every FBE operation. See technical sources D1–D4.
 
 The search works on a textual representation of the book, not the file’s literal XML markup. Searching for `<strong>` is not a way to find bold text in Design. Search for XML tags in Source mode, and use editor commands or specialized scripts for structural transformations.
+
+:::note
+Design regex sees searchable text, not the DOM tree. To inspect actual elements or attributes, switch to Source or use a structural tool.
+:::
 
 A long line wrapping to the window width is not a newline character. Paragraphs, actual breaks, and visual wrapping must not be confused. FBE uses multiline mode for anchors in its searchable representation so that textual line boundaries reflect paragraph boundaries. Matching across paragraphs and replacing across paragraphs are different operations: the implementation considered here rejects cross-paragraph replacement.
 
@@ -312,6 +335,14 @@ Lookaround checks context without including it in the whole match. For example, 
 ```
 
 On `№ 125`, only `125` is found. The space here is exactly one ordinary space.
+
+:::example
+Find: (?<=№ )([0-9]+)
+Input: № 125
+Whole match: 125
+Group 1: 125
+Expected replacement with [$1]: № [125]
+:::
 
 A test to the right:
 
