@@ -1153,7 +1153,16 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
 	SetHref(xinl,doc,AU::GetAttrB(einl,L"href"));
 
   if (fA) {
-    SetHref(xinl,doc,AU::GetAttrB(einl,L"href"));
+    const _bstr_t rawHref(AU::GetAttrB(einl,L"href"));
+    CString href(static_cast<const wchar_t*>(rawHref));
+    // MSHTML expands a local fragment on an anchor to file:///.../main.html#id.
+    // Save normalizes it in FixupLinks, but an analysis snapshot must not edit
+    // the visual DOM. Normalize only the serialized value here as well.
+    if (href.Left(7).CompareNoCase(L"file://") == 0) {
+      const int fragment = href.Find(L'#');
+      if (fragment >= 0) href = href.Mid(fragment);
+    }
+    SetHref(xinl,doc,_bstr_t(href));
     if (U::scmp(cls,L"note")==0)
       SetAttr(xinl,L"type",FBNS,cls,doc);
   }

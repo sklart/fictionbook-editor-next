@@ -14,9 +14,10 @@ try {
     $report = Join-Path $root 'report.txt'
 @'
 <?xml version="1.0" encoding="utf-8"?>
-<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
   <description><title-info><genre>prose</genre><author><first-name>Test</first-name><last-name>Author</last-name></author><book-title>Quality smoke</book-title><lang>en</lang></title-info><document-info><author><first-name>Test</first-name><last-name>Author</last-name></author><id>quality-smoke</id><version>1.0</version></document-info></description>
-  <body><section><p id="quality-para">Unchanged editor document.</p><table id="quality-table"><tr><td>one</td><td>two</td></tr></table></section></body>
+  <body><section><p id="quality-para">Unchanged editor document.</p><p>See <a l:href="#quality-note" type="note">Note</a>.</p><table id="quality-table"><tr><td>one</td><td>two</td></tr></table></section></body>
+  <body name="notes"><section id="quality-note"><p>Note text.</p></section></body>
   <binary id="quality-image" content-type="image/png">AQID</binary>
 </FictionBook>
 '@ | Set-Content -LiteralPath $fixture -Encoding utf8
@@ -33,7 +34,7 @@ try {
     $rows = @{}
     Get-Content -LiteralPath $report | ForEach-Object { $pair = $_ -split '=', 2; if ($pair.Count -eq 2) { $rows[$pair[0]] = $pair[1] } }
     if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash) { throw 'FB2 quality runtime changed the original fixture.' }
-    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'nesting_rules', 'valid_metadata', 'valid_image_placements', 'large_document', 'cancellation', 'progress_completion', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection', 'locations', 'report_formats', 'report_files', 'report_save_failure', 'dialog_layout', 'diagnostic_presentation') {
+    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'snapshot_note_href', 'snapshot_note_accepted', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'nesting_rules', 'valid_metadata', 'valid_image_placements', 'large_document', 'cancellation', 'progress_completion', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection', 'locations', 'report_formats', 'report_files', 'report_save_failure', 'dialog_layout', 'diagnostic_presentation') {
         if ($rows[$key] -ne '1') { throw "FB2 quality runtime: $key=$($rows[$key])" }
     }
     if ($rows['result'] -ne 'pass') { throw "FB2 quality runtime result=$($rows['result'])" }

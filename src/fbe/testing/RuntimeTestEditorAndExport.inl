@@ -76,6 +76,11 @@
 		const bool unchanged = snapshot && bodyPreserved && dirtyPreserved && safetyPreserved && undoPreserved;
 		const bool snapshotCurrent = paragraph && dirtyBefore && bodyBefore.Find(L"Unsaved editor text") >= 0 && snapshotXml.Find(L"Unsaved editor text") >= 0 &&
 			snapshotXml.Find(L"<lang>ru</lang>") >= 0 && snapshotXml.Find(L"quality-table") >= 0 && snapshotXml.Find(L"quality-image") >= 0;
+		const bool snapshotNoteHref = snapshotXml.Find(L"l:href=\"#quality-note\"") >= 0;
+		const Fb2Quality::Report snapshotReport = Fb2Quality::Check(snapshotXml);
+		bool snapshotNoteAccepted = snapshotNoteHref;
+		for (const auto& issue : snapshotReport.issues)
+			if (issue.code == L"Q-NOTE-NONLOCAL" || issue.code == L"Q-NOTE-MISSING") snapshotNoteAccepted = false;
 		wchar_t priorFault[64] = {};
 		const DWORD priorFaultLength = ::GetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT", priorFault, _countof(priorFault));
 		::SetEnvironmentVariableW(L"FBE_NEXT_FAULT_INJECT", L"drop-serialized-row-during-analysis");
@@ -322,12 +327,12 @@
 				}
 			}
 		}
-		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && validImagePlacements && largeDocument && cancellation && progressCompletion &&
+		const bool passed = unchanged && snapshotCurrent && snapshotNoteAccepted && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && validImagePlacements && largeDocument && cancellation && progressCompletion &&
 			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nsnapshot_note_href=%d\nsnapshot_note_accepted=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, validImagePlacements, largeDocument, largeMs, cancellation, cancelledReport.cancelled, progressCancelled, progressCompletion,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, snapshotNoteHref, snapshotNoteAccepted, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, validImagePlacements, largeDocument, largeMs, cancellation, cancelledReport.cancelled, progressCancelled, progressCompletion,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, reportFiles, reportSaveFailure, dialogLayout,
