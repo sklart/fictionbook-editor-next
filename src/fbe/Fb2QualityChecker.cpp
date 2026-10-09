@@ -162,7 +162,7 @@ Base64Result CheckBase64(const Node& binary)
 	for (long i = 0; i < children->length; ++i) {
 		Node child = children->item[i];
 		if (child->nodeType == MSXML2::NODE_COMMENT || child->nodeType == MSXML2::NODE_PROCESSING_INSTRUCTION) continue;
-		if (child->nodeType != MSXML2::NODE_TEXT && child->nodeType != MSXML2::NODE_CDATA_SECTION) return { result.hasData, false };
+		if (child->nodeType != MSXML2::NODE_TEXT && child->nodeType != MSXML2::NODE_CDATA_SECTION) return { true, false };
 		MSXML2::IXMLDOMCharacterDataPtr characters(child);
 		const long length = characters->length;
 		for (long offset = 0; offset < length; offset += 4096) {
@@ -375,11 +375,12 @@ struct Scan {
 	explicit Scan(const CString& xml) : index(xml) {}
 
 	void AddAt(Severity severity, const wchar_t* code, const CString& message,
-		const std::vector<int>& path, const CString& attributeName = CString(), const CString& attributeValue = CString())
+		const std::vector<int>& path, const CString& attributeName = CString(), const CString& attributeValue = CString(),
+		const CString& messageParameter = CString())
 	{
 		Issue issue = { severity, message };
 		issue.code = code;
-		issue.message = RuleMessage(code, message, attributeValue);
+		issue.message = RuleMessage(code, message, messageParameter.IsEmpty() ? attributeValue : messageParameter);
 		issue.category = CategoryForCode(issue.code);
 		FillIssueHelp(issue);
 		issue.elementPath = path;
@@ -401,21 +402,28 @@ struct Scan {
 
 	void Visit(const Node& root, bool initialNotes, bool initialTitleInfo, const std::vector<int>& rootPath)
 	{
-		struct Frame { Node node; bool inNotes; bool inTitleInfo; CString sourceNoteId; std::vector<int> path; };
+		struct Frame { Node node; bool inNotes; bool inTitleInfo; bool inMainBody; CString sourceNoteId; std::vector<int> path; };
 		std::vector<Frame> pending;
-		pending.push_back({ root, initialNotes, initialTitleInfo, CString(), rootPath });
+		pending.push_back({ root, initialNotes, initialTitleInfo, false, CString(), rootPath });
 		while (!pending.empty()) {
 			Frame frame(std::move(pending.back()));
 			pending.pop_back();
 			const Node& node = frame.node;
 			bool inNotes = frame.inNotes;
 			bool inTitleInfo = frame.inTitleInfo;
+			bool inMainBody = frame.inMainBody;
 			CString sourceNoteId(frame.sourceNoteId);
 			const std::vector<int>& path = frame.path;
 			if (node->nodeType != MSXML2::NODE_ELEMENT) continue;
 			SourceIndexer::TagSpan span;
 			if (index.Next(CString(static_cast<const wchar_t*>(_bstr_t(node->nodeName))), span)) spans[path] = span;
 			const CString name = Name(node);
+			const CString parentName = node->parentNode ? Name(node->parentNode) : CString();
+			if ((name == L"section" && parentName != L"body" && parentName != L"section") ||
+				(name == L"binary" && parentName != L"FictionBook") ||
+				(name == L"body" && parentName != L"FictionBook"))
+				AddAt(Severity::Error, L"Q-STRUCTURE-NESTING", L"Element is in an invalid position", path,
+					CString(), CString(), name);
 			const CString id = Attribute(node, L"id");
 			if (!id.IsEmpty()) {
 				if (!ids.insert(std::wstring(id.GetString())).second) {
@@ -429,13 +437,16 @@ struct Scan {
 			}
 			if (name == L"description") { description = true; if (descriptionPath.empty()) descriptionPath = path; }
 			if (name == L"body") {
+				inMainBody = !body;
 				body = true;
 				const CString bodyName = Attribute(node, L"name");
 				inNotes = bodyName.CompareNoCase(L"notes") == 0 || bodyName.CompareNoCase(L"comments") == 0;
 				sourceNoteId.Empty();
-				if (!inNotes && bodyPath.empty()) bodyPath = path;
+				if (inMainBody) bodyPath = path;
+				else if (bodyName.IsEmpty())
+					AddAt(Severity::Info, L"Q-STRUCTURE-UNNAMED-AUX-BODY", L"Additional body has no name", path);
 			}
-			if (name == L"section" && !inNotes) bodySection = true;
+			if (name == L"section" && inMainBody) bodySection = true;
 			if (name == L"title-info") { titleInfo = true; inTitleInfo = true; if (titleInfoPath.empty()) titleInfoPath = path; }
 			if (inTitleInfo && (name == L"book-title" || name == L"lang")) {
 				CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
@@ -508,7 +519,6 @@ struct Scan {
 					AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Note link must be internal", path, href.name, href.value);
 			}
 			if ((name == L"p" || name == L"subtitle" || name == L"title" || name == L"cite") && !MeaningfulContent(node)) {
-				const CString parentName = node->parentNode ? Name(node->parentNode) : CString();
 				if (name != L"p" || (parentName != L"title" && parentName != L"cite")) {
 					const wchar_t* code = name == L"p" ? L"Q-STRUCTURE-EMPTY-P" : name == L"subtitle" ? L"Q-STRUCTURE-EMPTY-SUBTITLE" :
 						name == L"title" ? L"Q-STRUCTURE-EMPTY-TITLE" : L"Q-STRUCTURE-EMPTY-CITE";
@@ -528,7 +538,7 @@ struct Scan {
 				if (child->nodeType == MSXML2::NODE_ELEMENT) {
 					std::vector<int> childPath(path);
 					childPath.push_back(--elementIndex);
-					pending.push_back({ child, inNotes, inTitleInfo, sourceNoteId, std::move(childPath) });
+					pending.push_back({ child, inNotes, inTitleInfo, inMainBody, sourceNoteId, std::move(childPath) });
 				}
 			}
 		}

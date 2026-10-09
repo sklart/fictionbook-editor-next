@@ -137,14 +137,14 @@
 		const bool noteGraph = noteCycles == 2 && noteSelf == 1 && noteErrors == 0;
 		CString binaryRulesXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><body><section><p>Binary rules</p></section></body><binary id="long" content-type="image/png">)";
 		binaryRulesXml += CString(L'A', 4096);
-		binaryRulesXml += LR"(</binary><binary id="bad-padding" content-type="image/png">A===</binary><binary id="bad-character" content-type="image/png">A?ID</binary><binary id="short" content-type="image/png">AAA</binary><binary id="empty" content-type="image/png">&#32;&#10;&#9;</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="missing-mime">AQID</binary><binary id="bad-mime" content-type="garbage">AQID</binary><binary id="entity" content-type="image/png">AQ&#73;D</binary><binary id="cdata" content-type="image/png">AQ<![CDATA[I]]>D</binary><binary id="jpeg-as-png" content-type="image/png">/9j/2Q==</binary><binary id="png" content-type="image/png">iVBORw0KGgo=</binary></FictionBook>)";
+		binaryRulesXml += LR"(</binary><binary id="bad-padding" content-type="image/png">A===</binary><binary id="bad-character" content-type="image/png">A?ID</binary><binary id="short" content-type="image/png">AAA</binary><binary id="nested-child" content-type="image/png"><p>bad</p></binary><binary id="empty" content-type="image/png">&#32;&#10;&#9;</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="missing-mime">AQID</binary><binary id="bad-mime" content-type="garbage">AQID</binary><binary id="entity" content-type="image/png">AQ&#73;D</binary><binary id="cdata" content-type="image/png">AQ<![CDATA[I]]>D</binary><binary id="jpeg-as-png" content-type="image/png">/9j/2Q==</binary><binary id="png" content-type="image/png">iVBORw0KGgo=</binary></FictionBook>)";
 		const Fb2Quality::Report binaryRulesReport = Fb2Quality::Check(binaryRulesXml);
 		const auto countBinaryRule = [&binaryRulesReport](const wchar_t* code) {
 			int count = 0;
 			for (const auto& issue : binaryRulesReport.issues) if (issue.code == code) ++count;
 			return count;
 		};
-		const bool binaryRules = countBinaryRule(L"Q-BINARY-INVALID-BASE64") == 3 &&
+		const bool binaryRules = countBinaryRule(L"Q-BINARY-INVALID-BASE64") == 4 &&
 			countBinaryRule(L"Q-BINARY-EMPTY") == 1 && countBinaryRule(L"Q-BINARY-DUPLICATE-ID") == 1 &&
 			countBinaryRule(L"Q-LINK-DUPLICATE-ID") == 0 && countBinaryRule(L"Q-BINARY-MISSING-MIME") == 1 &&
 			countBinaryRule(L"Q-BINARY-INVALID-MIME") == 1 && countBinaryRule(L"Q-BINARY-MIME-MISMATCH") == 1;
@@ -161,6 +161,15 @@
 			countStructureRule(L"Q-METADATA-BOOK-TITLE") == 1 && countStructureRule(L"Q-METADATA-INVALID-LANG") == 1 &&
 			countStructureRule(L"Q-METADATA-EMPTY-AUTHOR") == 1 && countStructureRule(L"Q-METADATA-EMPTY-SEQUENCE") == 1 &&
 			countStructureRule(L"Q-METADATA-SEQUENCE-NUMBER") == 1;
+		const CString nestingXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Nested</book-title><lang>en</lang><author><nickname>Writer</nickname></author></title-info><section><p>wrong</p></section></description><body><title><p>Main</p></title></body><body><section><p>Auxiliary</p><binary id="nested" content-type="image/png">AQID</binary></section></body></FictionBook>)";
+		const Fb2Quality::Report nestingReport = Fb2Quality::Check(nestingXml);
+		int nestingCount = 0, missingMainSection = 0, unnamedBody = 0;
+		for (const auto& issue : nestingReport.issues) {
+			if (issue.code == L"Q-STRUCTURE-NESTING") ++nestingCount;
+			if (issue.code == L"Q-STRUCTURE-BODY-SECTION") ++missingMainSection;
+			if (issue.code == L"Q-STRUCTURE-UNNAMED-AUX-BODY") ++unnamedBody;
+		}
+		const bool nestingRules = nestingCount == 2 && missingMainSection == 1 && unnamedBody == 1 && nestingReport.InfoCount() == 1;
 		const CString validMetadata = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Valid</book-title><lang>en-US</lang><author><nickname>Writer</nickname></author><sequence name="Series" number="-1"/></title-info></description><body><section><p>Text</p></section></body></FictionBook>)";
 		const Fb2Quality::Report validMetadataReport = Fb2Quality::Check(validMetadata);
 		bool validMetadataAccepted = true;
@@ -260,11 +269,11 @@
 			}
 		}
 		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument &&
-			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && dialogLayout && diagnosticPresentation;
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && dialogLayout && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, validMetadataAccepted, largeDocument, largeMs,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, largeDocument, largeMs,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, dialogLayout, diagnosticPresentation, passed ? "pass" : "fail");
