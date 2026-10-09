@@ -962,7 +962,7 @@ private:
 		}
 		const bool html = file.nFilterIndex == 2;
 		DWORD error = ERROR_SUCCESS;
-		if (!SaveUtf8Report(destination, html ? FormatHtmlReport(m_report) : FormatReport(m_report), !html, error)) {
+		if (!SaveReport(m_report, destination, html, error)) {
 			CString message; message.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.save.error", L"Unable to save report (Windows error %lu)."), error);
 			LPWSTR reason = NULL;
 			if (::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -1203,6 +1203,11 @@ CString FormatHtmlReport(const Report& report)
 	if (report.issues.empty()) html += L"<p>" + escape(FbeLoadRuntimeStringByKey(L"fbe.quality.report.clean", L"No issues found.")) + L"</p>";
 	html += L"</body></html>";
 	return html;
+}
+
+bool SaveReport(const Report& report, const CString& path, bool html, DWORD& error)
+{
+	return SaveUtf8Report(path, html ? FormatHtmlReport(report) : FormatReport(report), !html, error);
 }
 
 int ShowReport(HWND parent, const Report& report)

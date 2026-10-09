@@ -110,6 +110,43 @@
 			exportText.Find(FBE_VERSION_WSTRING) >= 0 && exportHtml.Find(L"&lt;Demo &amp; Co&gt;") >= 0 &&
 			exportHtml.Find(L"<Demo & Co>") < 0 && exportHtml.Find(L"Q-NOTE-MISSING") >= 0 &&
 			exportHtml.Find(L"<table>") >= 0;
+		const auto savedAsUtf8 = [](const CString& path, const CString& expected, bool bom) {
+			HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (file == INVALID_HANDLE_VALUE) return false;
+			LARGE_INTEGER size = {};
+			const bool sized = ::GetFileSizeEx(file, &size) && size.QuadPart > 0 && size.QuadPart <= INT_MAX;
+			std::vector<char> bytes(sized ? static_cast<size_t>(size.QuadPart) : 0);
+			DWORD read = 0;
+			const bool loaded = sized && ::ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &read, NULL) && read == bytes.size();
+			::CloseHandle(file);
+			if (!loaded) return false;
+			const int offset = bom ? 3 : 0;
+			if (bom && (bytes.size() < 3 || bytes[0] != static_cast<char>(0xEF) ||
+				bytes[1] != static_cast<char>(0xBB) || bytes[2] != static_cast<char>(0xBF))) return false;
+			const CStringA expectedUtf8(CW2A(expected, CP_UTF8));
+			return bytes.size() == static_cast<size_t>(offset + expectedUtf8.GetLength()) &&
+				CStringA(bytes.data() + offset, expectedUtf8.GetLength()) == expectedUtf8;
+		};
+		const CString textReportPath = AU::_ARGS.source_memory_benchmark_path + L".quality.txt";
+		const CString htmlReportPath = AU::_ARGS.source_memory_benchmark_path + L".quality.html";
+		DWORD reportError = ERROR_SUCCESS;
+		const bool reportFiles = Fb2Quality::SaveReport(exportProbe, textReportPath, false, reportError) &&
+			Fb2Quality::SaveReport(exportProbe, htmlReportPath, true, reportError) &&
+			savedAsUtf8(textReportPath, exportText, true) && savedAsUtf8(htmlReportPath, exportHtml, false);
+		const CString missingReportPath = AU::_ARGS.source_memory_benchmark_path + L".missing\\report.txt";
+		const bool missingDirectoryRejected = !Fb2Quality::SaveReport(exportProbe, missingReportPath, false, reportError) &&
+			reportError != ERROR_SUCCESS && ::GetFileAttributesW(missingReportPath) == INVALID_FILE_ATTRIBUTES;
+		const CString reportDirectory = AU::_ARGS.source_memory_benchmark_path + L".reports";
+		const CString blockedDestination = reportDirectory + L"\\blocked";
+		const bool directoriesReady = ::CreateDirectoryW(reportDirectory, NULL) && ::CreateDirectoryW(blockedDestination, NULL);
+		const bool blockedDestinationRejected = directoriesReady &&
+			!Fb2Quality::SaveReport(exportProbe, blockedDestination, false, reportError) && reportError != ERROR_SUCCESS &&
+			(::GetFileAttributesW(blockedDestination) & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		WIN32_FIND_DATAW temporaryFile = {};
+		const HANDLE temporarySearch = ::FindFirstFileW(reportDirectory + L"\\fqr*.tmp", &temporaryFile);
+		const bool noPartialFile = temporarySearch == INVALID_HANDLE_VALUE;
+		if (temporarySearch != INVALID_HANDLE_VALUE) ::FindClose(temporarySearch);
+		const bool reportSaveFailure = missingDirectoryRejected && blockedDestinationRejected && noPartialFile;
 		const bool links = hasRule(L"Q-NOTE-MISSING");
 		const bool binaries = hasRule(L"Q-IMAGE-MISSING-BINARY") && hasRule(L"Q-BINARY-UNUSED");
 		const bool metadata = hasRule(L"Q-METADATA-LANGUAGE");
@@ -283,14 +320,14 @@
 			}
 		}
 		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument && cancellation && progressCompletion &&
-			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && dialogLayout && diagnosticPresentation && nestingRules;
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
 			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, largeDocument, largeMs, cancellation, cancelledReport.cancelled, progressCancelled, progressCompletion,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
-			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, dialogLayout,
+			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, reportFiles, reportSaveFailure, dialogLayout,
 			static_cast<LPCWSTR>(dialogProbe), diagnosticPresentation, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;

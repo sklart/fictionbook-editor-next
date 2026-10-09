@@ -37,6 +37,7 @@ bool AnalyzeWithProgress(HWND parent, const CString& xml, Report& report);
 bool ProbeAnalysisCancellation(HWND parent, const CString& xml);
 CString FormatReport(const Report& report);
 CString FormatHtmlReport(const Report& report);
+bool SaveReport(const Report& report, const CString& path, bool html, DWORD& error);
 int ShowReport(HWND parent, const Report& report);
 bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagnostics = nullptr);
 bool ResolveSourceRange(const Issue& issue, const CString& currentSource, SourceRange& range);
