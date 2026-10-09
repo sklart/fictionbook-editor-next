@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 
 namespace Fb2Quality {
 namespace {
@@ -294,11 +295,12 @@ struct Scan {
 	SourceIndexer index;
 	std::map<std::vector<int>, SourceIndexer::TagSpan> spans;
 	std::set<std::wstring> ids;
+	std::set<std::wstring> duplicateIds;
 	std::set<std::wstring> binaries;
 	std::set<std::wstring> usedBinaries;
 	std::set<std::wstring> noteIds;
 	std::map<std::wstring, std::vector<int>> binaryPaths;
-	struct Link { CString href; CString sourceValue; CString attributeName; std::vector<int> path; bool note; bool image; };
+	struct Link { CString href; CString sourceValue; CString attributeName; CString sourceNoteId; std::vector<int> path; bool note; bool image; };
 	std::vector<Link> links;
 	bool description = false;
 	bool body = false;
@@ -334,118 +336,199 @@ struct Scan {
 		report.issues.push_back(issue);
 	}
 
-	void Visit(const Node& node, bool inNotes, bool inTitleInfo, const std::vector<int>& path)
+	void Visit(const Node& root, bool initialNotes, bool initialTitleInfo, const std::vector<int>& rootPath)
 	{
-		if (node->nodeType != MSXML2::NODE_ELEMENT) return;
-		SourceIndexer::TagSpan span;
-		if (index.Next(CString(static_cast<const wchar_t*>(_bstr_t(node->nodeName))), span)) spans[path] = span;
-		const CString name = Name(node);
-		const CString id = Attribute(node, L"id");
-		if (!id.IsEmpty()) {
-			if (!ids.insert(std::wstring(id.GetString())).second &&
-				(name != L"binary" || binaries.find(std::wstring(id.GetString())) == binaries.end())) {
-				CString message; message.Format(L"Повторяется идентификатор %s", id.GetString());
-				AddAt(Severity::Error, L"Q-LINK-DUPLICATE-ID", message, path, L"id", id);
+		struct Frame { Node node; bool inNotes; bool inTitleInfo; CString sourceNoteId; std::vector<int> path; };
+		std::vector<Frame> pending;
+		pending.push_back({ root, initialNotes, initialTitleInfo, CString(), rootPath });
+		while (!pending.empty()) {
+			Frame frame(std::move(pending.back()));
+			pending.pop_back();
+			const Node& node = frame.node;
+			bool inNotes = frame.inNotes;
+			bool inTitleInfo = frame.inTitleInfo;
+			CString sourceNoteId(frame.sourceNoteId);
+			const std::vector<int>& path = frame.path;
+			if (node->nodeType != MSXML2::NODE_ELEMENT) continue;
+			SourceIndexer::TagSpan span;
+			if (index.Next(CString(static_cast<const wchar_t*>(_bstr_t(node->nodeName))), span)) spans[path] = span;
+			const CString name = Name(node);
+			const CString id = Attribute(node, L"id");
+			if (!id.IsEmpty()) {
+				if (!ids.insert(std::wstring(id.GetString())).second) {
+					duplicateIds.insert(std::wstring(id.GetString()));
+					if (name != L"binary" || binaries.find(std::wstring(id.GetString())) == binaries.end()) {
+						CString message; message.Format(L"Повторяется идентификатор %s", id.GetString());
+						AddAt(Severity::Error, L"Q-LINK-DUPLICATE-ID", message, path, L"id", id);
+					}
+				}
+				if (inNotes && name == L"section") { noteIds.insert(std::wstring(id.GetString())); sourceNoteId = id; }
 			}
-			if (inNotes && name == L"section") noteIds.insert(std::wstring(id.GetString()));
-		}
-		if (name == L"description") { description = true; if (descriptionPath.empty()) descriptionPath = path; }
-		if (name == L"body") {
-			body = true;
-			const CString bodyName = Attribute(node, L"name");
-			inNotes = bodyName.CompareNoCase(L"notes") == 0 || bodyName.CompareNoCase(L"comments") == 0;
-			if (!inNotes && bodyPath.empty()) bodyPath = path;
-		}
-		if (name == L"section" && !inNotes) bodySection = true;
-		if (name == L"title-info") { titleInfo = true; inTitleInfo = true; if (titleInfoPath.empty()) titleInfoPath = path; }
-		if (inTitleInfo && (name == L"book-title" || name == L"lang")) {
-			CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
-			content.Trim();
-			if (name == L"book-title") {
-				bookTitle = true;
-				if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Не указано название книги", path);
+			if (name == L"description") { description = true; if (descriptionPath.empty()) descriptionPath = path; }
+			if (name == L"body") {
+				body = true;
+				const CString bodyName = Attribute(node, L"name");
+				inNotes = bodyName.CompareNoCase(L"notes") == 0 || bodyName.CompareNoCase(L"comments") == 0;
+				sourceNoteId.Empty();
+				if (!inNotes && bodyPath.empty()) bodyPath = path;
 			}
-			if (name == L"lang") {
-				language = true;
-				if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Не указан язык документа", path);
-				else if (!PlausibleLanguageCode(content)) AddAt(Severity::Warning, L"Q-METADATA-INVALID-LANG", L"Подозрительный код языка документа", path);
+			if (name == L"section" && !inNotes) bodySection = true;
+			if (name == L"title-info") { titleInfo = true; inTitleInfo = true; if (titleInfoPath.empty()) titleInfoPath = path; }
+			if (inTitleInfo && (name == L"book-title" || name == L"lang")) {
+				CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
+				content.Trim();
+				if (name == L"book-title") {
+					bookTitle = true;
+					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Не указано название книги", path);
+				}
+				if (name == L"lang") {
+					language = true;
+					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-LANGUAGE", L"Не указан язык документа", path);
+					else if (!PlausibleLanguageCode(content)) AddAt(Severity::Warning, L"Q-METADATA-INVALID-LANG", L"Подозрительный код языка документа", path);
+				}
+			}
+			if (inTitleInfo && name == L"author") {
+				author = true;
+				bool named = false;
+				MSXML2::IXMLDOMNodeListPtr fields = node->childNodes;
+				for (long i = 0; i < fields->length; ++i) {
+					Node field = fields->item[i];
+					if (field->nodeType != MSXML2::NODE_ELEMENT) continue;
+					const CString fieldName = Name(field);
+					if (fieldName != L"nickname" && fieldName != L"first-name" && fieldName != L"middle-name" && fieldName != L"last-name") continue;
+					CString value(static_cast<const wchar_t*>(_bstr_t(field->text)));
+					value.Trim();
+					if (!value.IsEmpty()) { named = true; break; }
+				}
+				if (!named) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-AUTHOR", L"Пустые сведения об авторе", path);
+			}
+			if (inTitleInfo && name == L"sequence") {
+				CString sequenceName = Attribute(node, L"name");
+				sequenceName.Trim();
+				if (sequenceName.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-SEQUENCE", L"Не указано название серии", path, L"name");
+				MSXML2::IXMLDOMElementPtr element(node);
+				if (element->getAttributeNode(L"number")) {
+					const CString number = Attribute(node, L"number");
+					if (!IntegerSyntax(number)) AddAt(Severity::Warning, L"Q-METADATA-SEQUENCE-NUMBER", L"Некорректный номер серии", path, L"number", number);
+				}
+			}
+			if (name == L"binary") {
+				if (id.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-ID", L"У binary не указан id", path, L"id");
+				else {
+					if (!binaries.insert(std::wstring(id.GetString())).second)
+						AddAt(Severity::Error, L"Q-BINARY-DUPLICATE-ID", L"Повторяется binary id " + id, path, L"id", id);
+					binaryPaths.emplace(std::wstring(id.GetString()), path);
+				}
+				const CString contentType = Attribute(node, L"content-type");
+				if (contentType.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-MIME", L"У binary не указан content-type", path, L"content-type");
+				else if (contentType.Find(L'/') <= 0 || contentType.Right(1) == L"/")
+					AddAt(Severity::Error, L"Q-BINARY-INVALID-MIME", L"Некорректный content-type у binary", path, L"content-type", contentType);
+				const Base64Result base64 = CheckBase64(node);
+				if (!base64.hasData) AddAt(Severity::Error, L"Q-BINARY-EMPTY", L"Пустое содержимое binary", path);
+				else if (!base64.valid) AddAt(Severity::Error, L"Q-BINARY-INVALID-BASE64", L"Некорректные данные Base64 в binary", path);
+				else if (ImageMimeMismatch(contentType, base64))
+					AddAt(Severity::Error, L"Q-BINARY-MIME-MISMATCH", L"Формат данных binary не соответствует content-type", path, L"content-type", contentType);
+			}
+			if (name == L"a" || name == L"image") {
+				const HrefAttribute href = XLinkHref(node);
+				const bool note = name == L"a" && Attribute(node, L"type").CompareNoCase(L"note") == 0;
+				if (href.present && !href.value.IsEmpty() && href.value[0] == L'#') {
+					if (ValidLocalHref(href.value)) {
+						links.push_back({ href.value.Mid(1), href.value, href.name, sourceNoteId, path, note, name == L"image" });
+						if (name == L"image") usedBinaries.insert(std::wstring(href.value.Mid(1).GetString()));
+					} else AddAt(Severity::Error, name == L"image" ? L"Q-IMAGE-INVALID-HREF" : L"Q-LINK-INVALID-HREF",
+						L"Некорректная внутренняя ссылка", path, href.name, href.value);
+				} else if (name == L"image")
+					AddAt(Severity::Error, L"Q-IMAGE-NONLOCAL", L"У изображения отсутствует внутренняя ссылка на binary", path, href.name, href.value);
+				else if (note)
+					AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Ссылка на примечание должна быть внутренней", path, href.name, href.value);
+			}
+			if ((name == L"p" || name == L"subtitle" || name == L"title" || name == L"cite") && !MeaningfulContent(node)) {
+				const CString parentName = node->parentNode ? Name(node->parentNode) : CString();
+				if (name != L"p" || (parentName != L"title" && parentName != L"cite")) {
+					const wchar_t* code = name == L"p" ? L"Q-STRUCTURE-EMPTY-P" : name == L"subtitle" ? L"Q-STRUCTURE-EMPTY-SUBTITLE" :
+						name == L"title" ? L"Q-STRUCTURE-EMPTY-TITLE" : L"Q-STRUCTURE-EMPTY-CITE";
+					AddAt(Severity::Warning, code, L"Подозрительный пустой элемент " + name, path);
+				}
+			}
+			if (name == L"section" && !HasDirectChild(node, L"section") && !MeaningfulContent(node))
+				AddAt(Severity::Warning, L"Q-STRUCTURE-EMPTY-SECTION", L"Пустой раздел section", path);
+			MSXML2::IXMLDOMNodeListPtr children = node->childNodes;
+			int elementIndex = 0;
+			for (long i = 0; i < children->length; ++i) {
+				Node child = children->item[i];
+				if (child->nodeType == MSXML2::NODE_ELEMENT) ++elementIndex;
+			}
+			for (long i = children->length; i > 0; --i) {
+				Node child = children->item[i - 1];
+				if (child->nodeType == MSXML2::NODE_ELEMENT) {
+					std::vector<int> childPath(path);
+					childPath.push_back(--elementIndex);
+					pending.push_back({ child, inNotes, inTitleInfo, sourceNoteId, std::move(childPath) });
+				}
 			}
 		}
-		if (inTitleInfo && name == L"author") {
-			author = true;
-			bool named = false;
-			MSXML2::IXMLDOMNodeListPtr fields = node->childNodes;
-			for (long i = 0; i < fields->length; ++i) {
-				Node field = fields->item[i];
-				if (field->nodeType != MSXML2::NODE_ELEMENT) continue;
-				const CString fieldName = Name(field);
-				if (fieldName != L"nickname" && fieldName != L"first-name" && fieldName != L"middle-name" && fieldName != L"last-name") continue;
-				CString value(static_cast<const wchar_t*>(_bstr_t(field->text)));
-				value.Trim();
-				if (!value.IsEmpty()) { named = true; break; }
-			}
-			if (!named) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-AUTHOR", L"Пустые сведения об авторе", path);
+	}
+
+	void AddNoteCycles()
+	{
+		std::map<std::wstring, int> positions;
+		for (const std::wstring& id : noteIds) {
+			if (duplicateIds.find(id) == duplicateIds.end())
+				positions.emplace(id, static_cast<int>(positions.size()));
 		}
-		if (inTitleInfo && name == L"sequence") {
-			CString sequenceName = Attribute(node, L"name");
-			sequenceName.Trim();
-			if (sequenceName.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-EMPTY-SEQUENCE", L"Не указано название серии", path, L"name");
-			MSXML2::IXMLDOMElementPtr element(node);
-			if (element->getAttributeNode(L"number")) {
-				const CString number = Attribute(node, L"number");
-				if (!IntegerSyntax(number)) AddAt(Severity::Warning, L"Q-METADATA-SEQUENCE-NUMBER", L"Некорректный номер серии", path, L"number", number);
-			}
+		const size_t count = positions.size();
+		std::vector<std::vector<int>> edges(count), reverse(count);
+		for (const Link& link : links) {
+			if (!link.note || link.sourceNoteId.IsEmpty()) continue;
+			const auto source = positions.find(std::wstring(link.sourceNoteId.GetString()));
+			const auto target = positions.find(std::wstring(link.href.GetString()));
+			if (source == positions.end() || target == positions.end()) continue;
+			edges[source->second].push_back(target->second);
+			reverse[target->second].push_back(source->second);
 		}
-		if (name == L"binary") {
-			if (id.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-ID", L"У binary не указан id", path, L"id");
-			else {
-				if (!binaries.insert(std::wstring(id.GetString())).second)
-					AddAt(Severity::Error, L"Q-BINARY-DUPLICATE-ID", L"Повторяется binary id " + id, path, L"id", id);
-				binaryPaths.emplace(std::wstring(id.GetString()), path);
-			}
-			const CString contentType = Attribute(node, L"content-type");
-			if (contentType.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-MIME", L"У binary не указан content-type", path, L"content-type");
-			else if (contentType.Find(L'/') <= 0 || contentType.Right(1) == L"/")
-				AddAt(Severity::Error, L"Q-BINARY-INVALID-MIME", L"Некорректный content-type у binary", path, L"content-type", contentType);
-			const Base64Result base64 = CheckBase64(node);
-			if (!base64.hasData) AddAt(Severity::Error, L"Q-BINARY-EMPTY", L"Пустое содержимое binary", path);
-			else if (!base64.valid) AddAt(Severity::Error, L"Q-BINARY-INVALID-BASE64", L"Некорректные данные Base64 в binary", path);
-			else if (ImageMimeMismatch(contentType, base64))
-				AddAt(Severity::Error, L"Q-BINARY-MIME-MISMATCH", L"Формат данных binary не соответствует content-type", path, L"content-type", contentType);
-		}
-		if (name == L"a" || name == L"image") {
-			const HrefAttribute href = XLinkHref(node);
-			const bool note = name == L"a" && Attribute(node, L"type").CompareNoCase(L"note") == 0;
-			if (href.present && !href.value.IsEmpty() && href.value[0] == L'#') {
-				if (ValidLocalHref(href.value)) {
-					links.push_back({ href.value.Mid(1), href.value, href.name, path, note, name == L"image" });
-					if (name == L"image") usedBinaries.insert(std::wstring(href.value.Mid(1).GetString()));
-				} else AddAt(Severity::Error, name == L"image" ? L"Q-IMAGE-INVALID-HREF" : L"Q-LINK-INVALID-HREF",
-					L"Некорректная внутренняя ссылка", path, href.name, href.value);
-			} else if (name == L"image")
-				AddAt(Severity::Error, L"Q-IMAGE-NONLOCAL", L"У изображения отсутствует внутренняя ссылка на binary", path, href.name, href.value);
-			else if (note)
-				AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Ссылка на примечание должна быть внутренней", path, href.name, href.value);
-		}
-		if ((name == L"p" || name == L"subtitle" || name == L"title" || name == L"cite") && !MeaningfulContent(node)) {
-			const CString parentName = node->parentNode ? Name(node->parentNode) : CString();
-			if (name != L"p" || (parentName != L"title" && parentName != L"cite")) {
-				const wchar_t* code = name == L"p" ? L"Q-STRUCTURE-EMPTY-P" : name == L"subtitle" ? L"Q-STRUCTURE-EMPTY-SUBTITLE" :
-					name == L"title" ? L"Q-STRUCTURE-EMPTY-TITLE" : L"Q-STRUCTURE-EMPTY-CITE";
-				AddAt(Severity::Warning, code, L"Подозрительный пустой элемент " + name, path);
+		std::vector<bool> visited(count, false);
+		std::vector<int> order;
+		for (size_t i = 0; i < count; ++i) {
+			if (visited[i]) continue;
+			std::vector<std::pair<int, bool>> pending{ { static_cast<int>(i), false } };
+			while (!pending.empty()) {
+				const auto current = pending.back();
+				pending.pop_back();
+				if (current.second) { order.push_back(current.first); continue; }
+				if (visited[current.first]) continue;
+				visited[current.first] = true;
+				pending.push_back({ current.first, true });
+				for (int target : edges[current.first]) if (!visited[target]) pending.push_back({ target, false });
 			}
 		}
-		if (name == L"section" && !HasDirectChild(node, L"section") && !MeaningfulContent(node))
-			AddAt(Severity::Warning, L"Q-STRUCTURE-EMPTY-SECTION", L"Пустой раздел section", path);
-		MSXML2::IXMLDOMNodeListPtr children = node->childNodes;
-		int elementIndex = 0;
-		for (long i = 0; i < children->length; ++i) {
-			Node child = children->item[i];
-			if (child->nodeType == MSXML2::NODE_ELEMENT) {
-				std::vector<int> childPath(path);
-				childPath.push_back(elementIndex++);
-				Visit(child, inNotes, inTitleInfo, childPath);
+		std::vector<int> component(count, -1), sizes;
+		for (auto it = order.rbegin(); it != order.rend(); ++it) {
+			if (component[*it] >= 0) continue;
+			const int group = static_cast<int>(sizes.size());
+			int size = 0;
+			std::vector<int> pending{ *it };
+			component[*it] = group;
+			while (!pending.empty()) {
+				const int current = pending.back();
+				pending.pop_back();
+				++size;
+				for (int source : reverse[current]) if (component[source] < 0) {
+					component[source] = group;
+					pending.push_back(source);
+				}
 			}
+			sizes.push_back(size);
+		}
+		for (const Link& link : links) {
+			if (!link.note || link.sourceNoteId.IsEmpty()) continue;
+			const auto source = positions.find(std::wstring(link.sourceNoteId.GetString()));
+			const auto target = positions.find(std::wstring(link.href.GetString()));
+			if (source == positions.end() || target == positions.end()) continue;
+			if (source->second == target->second)
+				AddAt(Severity::Warning, L"Q-NOTE-SELF-REFERENCE", L"Примечание ссылается на себя", link.path, link.attributeName, link.sourceValue);
+			else if (component[source->second] == component[target->second] && sizes[component[source->second]] > 1)
+				AddAt(Severity::Warning, L"Q-NOTE-CYCLE", L"Цикл ссылок между примечаниями", link.path, link.attributeName, link.sourceValue);
 		}
 	}
 
@@ -477,6 +560,7 @@ struct Scan {
 				AddAt(Severity::Error, L"Q-IMAGE-MISSING-BINARY", message, link.path, link.attributeName, link.sourceValue);
 			}
 		}
+		AddNoteCycles();
 		for (const std::wstring& id : binaries) if (usedBinaries.find(id) == usedBinaries.end()) {
 			CString message; message.Format(L"Binary %s не используется", id.c_str());
 			AddAt(Severity::Warning, L"Q-BINARY-UNUSED", message, binaryPaths[id], L"id", id.c_str());

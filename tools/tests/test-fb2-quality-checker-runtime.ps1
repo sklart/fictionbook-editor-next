@@ -32,7 +32,7 @@ try {
     $rows = @{}
     Get-Content -LiteralPath $report | ForEach-Object { $pair = $_ -split '=', 2; if ($pair.Count -eq 2) { $rows[$pair[0]] = $pair[1] } }
     if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash) { throw 'FB2 quality runtime changed the original fixture.' }
-    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'binary_rules', 'structure_rules', 'valid_metadata', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection') {
+    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'valid_metadata', 'large_document', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection') {
         if ($rows[$key] -ne '1') { throw "FB2 quality runtime: $key=$($rows[$key])" }
     }
     if ($rows['result'] -ne 'pass') { throw "FB2 quality runtime result=$($rows['result'])" }

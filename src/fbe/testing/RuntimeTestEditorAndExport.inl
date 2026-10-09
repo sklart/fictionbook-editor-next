@@ -109,6 +109,15 @@
 		const bool xlinkRules = countRule(L"Q-LINK-MISSING") == 1 && countRule(L"Q-LINK-INVALID-HREF") == 1 &&
 			countRule(L"Q-NOTE-WRONG-TARGET") == 1 && countRule(L"Q-NOTE-NONLOCAL") == 1 &&
 			countRule(L"Q-NOTE-MISSING") == 0 && countRule(L"Q-IMAGE-NONLOCAL") == 1;
+		const CString noteCyclesXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:xlink="http://www.w3.org/1999/xlink"><body><section><p><a type="note" xlink:href="#n1">note</a></p></section></body><body name="notes"><section id="n1"><p><a type="note" xlink:href="#n2">next</a></p></section><section id="n2"><p><a type="note" xlink:href="#n1">back</a></p></section><section id="n3"><p><a type="note" xlink:href="#n3">self</a></p></section><section id="n4"><p><a type="note" xlink:href="#n2">one-way</a></p></section></body></FictionBook>)";
+		const Fb2Quality::Report noteCyclesReport = Fb2Quality::Check(noteCyclesXml);
+		int noteCycles = 0, noteSelf = 0, noteErrors = 0;
+		for (const auto& issue : noteCyclesReport.issues) {
+			if (issue.code == L"Q-NOTE-CYCLE") ++noteCycles;
+			if (issue.code == L"Q-NOTE-SELF-REFERENCE") ++noteSelf;
+			if (issue.code == L"Q-NOTE-MISSING" || issue.code == L"Q-NOTE-WRONG-TARGET") ++noteErrors;
+		}
+		const bool noteGraph = noteCycles == 2 && noteSelf == 1 && noteErrors == 0;
 		CString binaryRulesXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><body><section><p>Binary rules</p></section></body><binary id="long" content-type="image/png">)";
 		binaryRulesXml += CString(L'A', 4096);
 		binaryRulesXml += LR"(</binary><binary id="bad-padding" content-type="image/png">A===</binary><binary id="bad-character" content-type="image/png">A?ID</binary><binary id="short" content-type="image/png">AAA</binary><binary id="empty" content-type="image/png">&#32;&#10;&#9;</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="missing-mime">AQID</binary><binary id="bad-mime" content-type="garbage">AQID</binary><binary id="entity" content-type="image/png">AQ&#73;D</binary><binary id="cdata" content-type="image/png">AQ<![CDATA[I]]>D</binary><binary id="jpeg-as-png" content-type="image/png">/9j/2Q==</binary><binary id="png" content-type="image/png">iVBORw0KGgo=</binary></FictionBook>)";
@@ -139,6 +148,20 @@
 		const Fb2Quality::Report validMetadataReport = Fb2Quality::Check(validMetadata);
 		bool validMetadataAccepted = true;
 		for (const auto& issue : validMetadataReport.issues) if (issue.code.Left(11) == L"Q-METADATA-") validMetadataAccepted = false;
+		CString largeXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:xlink="http://www.w3.org/1999/xlink"><description><title-info><book-title>Large</book-title><lang>en</lang><author><nickname>Tester</nickname></author></title-info></description><body>)";
+		for (int i = 0; i < 500; ++i) {
+			CString section;
+			section.Format(L"<section id=\"section-%d\"><p><a xlink:href=\"#section-%d\">link</a></p><image xlink:href=\"#shared-image\"/></section>", i, i);
+			largeXml += section;
+		}
+		for (int i = 0; i < 128; ++i) largeXml += L"<section>";
+		largeXml += L"<p>deep content</p>";
+		for (int i = 0; i < 128; ++i) largeXml += L"</section>";
+		largeXml += L"</body><binary id=\"shared-image\" content-type=\"image/png\">AQID</binary></FictionBook>";
+		const ULONGLONG largeStart = ::GetTickCount64();
+		const Fb2Quality::Report largeReport = Fb2Quality::Check(largeXml);
+		const ULONGLONG largeMs = ::GetTickCount64() - largeStart;
+		const bool largeDocument = largeReport.issues.empty() && largeMs < 15000;
 		const CString navigationXml = LR"(<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><body><section><p>)"
 			L"\xD83D\xDE42" LR"(<!-- <a l:href="#false-comment"/> --><![CDATA[<image/>]]><?test fake="<image/>"?></p><p data=">" id="duplicate">one</p><p id="duplicate">two</p><p><a l:href="#missing-ref">one</a></p><p><a l:href="#missing-ref">two</a></p><image/></section></body></FictionBook>)";
 		const Fb2Quality::Report navigationReport = Fb2Quality::Check(navigationXml);
@@ -216,12 +239,12 @@
 				}
 			}
 		}
-		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && binaryRules && structureRules && validMetadataAccepted &&
+		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument &&
 			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nbinary_rules=%d\nstructure_rules=%d\nvalid_metadata=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, binaryRules, structureRules, validMetadataAccepted,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, validMetadataAccepted, largeDocument, largeMs,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, passed ? "pass" : "fail");
