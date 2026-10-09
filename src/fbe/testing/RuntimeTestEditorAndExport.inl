@@ -99,6 +99,29 @@
 		const bool metadata = formatted.Find(L"Не указан язык документа") >= 0;
 		const bool empty = formatted.Find(L"Подозрительный пустой элемент p") >= 0;
 		const bool malformed = Fb2Quality::Check(L"<FictionBook>").ErrorCount() == 1;
+		const CString linkRulesXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:z="http://www.w3.org/1999/xlink" xmlns:other="urn:other"><description><title-info><book-title>Links</book-title><lang>en</lang><author><nickname>Tester</nickname></author></title-info></description><body><section id="main-section"><p><a z:href="https://example.org">external</a><a z:href="#missing">missing</a><a z:href="#bad id">invalid</a><a href="#wrong-namespace">ignored</a><a type="note" z:href="#comment-one">comment</a><a type="note" z:href="#main-section">wrong target</a><a type="note" z:href="https://example.org">external note</a><image other:href="#ignored"/></p></section></body><body name="comments"><section id="comment-one"><p>Comment</p></section></body></FictionBook>)";
+		const Fb2Quality::Report linkRules = Fb2Quality::Check(linkRulesXml);
+		const auto countRule = [&linkRules](const wchar_t* code) {
+			int count = 0;
+			for (const auto& issue : linkRules.issues) if (issue.code == code) ++count;
+			return count;
+		};
+		const bool xlinkRules = countRule(L"Q-LINK-MISSING") == 1 && countRule(L"Q-LINK-INVALID-HREF") == 1 &&
+			countRule(L"Q-NOTE-WRONG-TARGET") == 1 && countRule(L"Q-NOTE-NONLOCAL") == 1 &&
+			countRule(L"Q-NOTE-MISSING") == 0 && countRule(L"Q-IMAGE-NONLOCAL") == 1;
+		CString binaryRulesXml = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><body><section><p>Binary rules</p></section></body><binary id="long" content-type="image/png">)";
+		binaryRulesXml += CString(L'A', 4096);
+		binaryRulesXml += LR"(</binary><binary id="bad-padding" content-type="image/png">A===</binary><binary id="bad-character" content-type="image/png">A?ID</binary><binary id="short" content-type="image/png">AAA</binary><binary id="empty" content-type="image/png">&#32;&#10;&#9;</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="duplicate" content-type="image/png">AQID</binary><binary id="missing-mime">AQID</binary><binary id="bad-mime" content-type="garbage">AQID</binary><binary id="entity" content-type="image/png">AQ&#73;D</binary><binary id="cdata" content-type="image/png">AQ<![CDATA[I]]>D</binary><binary id="jpeg-as-png" content-type="image/png">/9j/2Q==</binary><binary id="png" content-type="image/png">iVBORw0KGgo=</binary></FictionBook>)";
+		const Fb2Quality::Report binaryRulesReport = Fb2Quality::Check(binaryRulesXml);
+		const auto countBinaryRule = [&binaryRulesReport](const wchar_t* code) {
+			int count = 0;
+			for (const auto& issue : binaryRulesReport.issues) if (issue.code == code) ++count;
+			return count;
+		};
+		const bool binaryRules = countBinaryRule(L"Q-BINARY-INVALID-BASE64") == 3 &&
+			countBinaryRule(L"Q-BINARY-EMPTY") == 1 && countBinaryRule(L"Q-BINARY-DUPLICATE-ID") == 1 &&
+			countBinaryRule(L"Q-LINK-DUPLICATE-ID") == 0 && countBinaryRule(L"Q-BINARY-MISSING-MIME") == 1 &&
+			countBinaryRule(L"Q-BINARY-INVALID-MIME") == 1 && countBinaryRule(L"Q-BINARY-MIME-MISMATCH") == 1;
 		const CString navigationXml = LR"(<?xml version="1.0"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><body><section><p>)"
 			L"\xD83D\xDE42" LR"(<!-- <a l:href="#false-comment"/> --><![CDATA[<image/>]]><?test fake="<image/>"?></p><p data=">" id="duplicate">one</p><p id="duplicate">two</p><p><a l:href="#missing-ref">one</a></p><p><a l:href="#missing-ref">two</a></p><image/></section></body></FictionBook>)";
 		const Fb2Quality::Report navigationReport = Fb2Quality::Check(navigationXml);
@@ -176,12 +199,12 @@
 				}
 			}
 		}
-		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed &&
+		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && binaryRules &&
 			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nbinary_rules=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
-			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed,
+			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, binaryRules,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, passed ? "pass" : "fail");

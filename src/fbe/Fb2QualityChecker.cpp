@@ -25,15 +25,125 @@ CString Attribute(const Node& node, const wchar_t* name)
 	return value.vt == VT_NULL || value.vt == VT_EMPTY ? CString() : CString(static_cast<const wchar_t*>(_bstr_t(value)));
 }
 
-CString Href(const Node& node)
+struct HrefAttribute { CString name; CString value; bool present = false; };
+
+HrefAttribute XLinkHref(const Node& node)
 {
 	MSXML2::IXMLDOMNamedNodeMapPtr attributes = node->attributes;
-	if (!attributes) return CString();
+	if (!attributes) return HrefAttribute();
 	for (long i = 0; i < attributes->length; ++i) {
 		Node attribute = attributes->item[i];
-		if (Name(attribute) == L"href") return CString(static_cast<const wchar_t*>(_bstr_t(attribute->text)));
+		if (Name(attribute) == L"href" &&
+			CString(static_cast<const wchar_t*>(_bstr_t(attribute->namespaceURI))) == L"http://www.w3.org/1999/xlink")
+			return { CString(static_cast<const wchar_t*>(_bstr_t(attribute->nodeName))),
+				CString(static_cast<const wchar_t*>(_bstr_t(attribute->text))), true };
 	}
+	return HrefAttribute();
+}
+
+bool ValidLocalHref(const CString& href)
+{
+	if (href.GetLength() < 2 || href[0] != L'#') return false;
+	for (int i = 1; i < href.GetLength(); ++i)
+		if (iswspace(href[i]) || href[i] == L'#') return false;
+	return true;
+}
+
+struct Base64Result {
+	bool hasData = false;
+	bool valid = true;
+	unsigned char prefix[16] = {};
+	int prefixLength = 0;
+};
+
+void AppendDecodedPrefix(Base64Result& result, const int sextets[4], int padding)
+{
+	if (result.prefixLength == static_cast<int>(_countof(result.prefix))) return;
+	const unsigned char bytes[3] = {
+		static_cast<unsigned char>((sextets[0] << 2) | (sextets[1] >> 4)),
+		static_cast<unsigned char>((sextets[1] << 4) | (sextets[2] >> 2)),
+		static_cast<unsigned char>((sextets[2] << 6) | sextets[3])
+	};
+	for (int i = 0; i < 3 - padding && result.prefixLength < static_cast<int>(_countof(result.prefix)); ++i)
+		result.prefix[result.prefixLength++] = bytes[i];
+}
+
+CString DetectImageMime(const Base64Result& data)
+{
+	const unsigned char* p = data.prefix;
+	if (data.prefixLength >= 8 && p[0] == 0x89 && p[1] == 'P' && p[2] == 'N' && p[3] == 'G' &&
+		p[4] == 0x0D && p[5] == 0x0A && p[6] == 0x1A && p[7] == 0x0A) return L"image/png";
+	if (data.prefixLength >= 3 && p[0] == 0xFF && p[1] == 0xD8 && p[2] == 0xFF) return L"image/jpeg";
+	if (data.prefixLength >= 6 && p[0] == 'G' && p[1] == 'I' && p[2] == 'F' && p[3] == '8' &&
+		(p[4] == '7' || p[4] == '9') && p[5] == 'a') return L"image/gif";
+	if (data.prefixLength >= 12 && p[0] == 'R' && p[1] == 'I' && p[2] == 'F' && p[3] == 'F' &&
+		p[8] == 'W' && p[9] == 'E' && p[10] == 'B' && p[11] == 'P') return L"image/webp";
+	if (data.prefixLength >= 2 && p[0] == 'B' && p[1] == 'M') return L"image/bmp";
 	return CString();
+}
+
+Base64Result CheckBase64(const Node& binary)
+{
+	Base64Result result;
+	int quartet = 0;
+	int padding = 0;
+	int sextets[4] = {};
+	bool finished = false;
+	MSXML2::IXMLDOMNodeListPtr children = binary->childNodes;
+	for (long i = 0; i < children->length; ++i) {
+		Node child = children->item[i];
+		if (child->nodeType == MSXML2::NODE_COMMENT || child->nodeType == MSXML2::NODE_PROCESSING_INSTRUCTION) continue;
+		if (child->nodeType != MSXML2::NODE_TEXT && child->nodeType != MSXML2::NODE_CDATA_SECTION) return { result.hasData, false };
+		MSXML2::IXMLDOMCharacterDataPtr characters(child);
+		const long length = characters->length;
+		for (long offset = 0; offset < length; offset += 4096) {
+			const long count = length - offset < 4096 ? length - offset : 4096;
+			const _bstr_t chunk = characters->substringData(offset, count);
+			const wchar_t* text = static_cast<const wchar_t*>(chunk);
+			for (unsigned int j = 0; j < chunk.length(); ++j) {
+				const wchar_t c = text[j];
+				if (c == L' ' || c == L'\t' || c == L'\r' || c == L'\n') continue;
+				result.hasData = true;
+				if (finished) return { true, false };
+				if (c == L'=') {
+					if (quartet < 2 || padding == 2) return { true, false };
+					sextets[quartet] = 0;
+					++padding;
+				} else {
+					if (padding || !((c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') ||
+						(c >= L'0' && c <= L'9') || c == L'+' || c == L'/')) return { true, false };
+					sextets[quartet] = c >= L'A' && c <= L'Z' ? c - L'A' :
+						c >= L'a' && c <= L'z' ? c - L'a' + 26 :
+						c >= L'0' && c <= L'9' ? c - L'0' + 52 : c == L'+' ? 62 : 63;
+				}
+				if (++quartet == 4) {
+				AppendDecodedPrefix(result, sextets, padding);
+					finished = padding != 0;
+					quartet = 0;
+					padding = 0;
+				}
+			}
+		}
+	}
+	result.valid = quartet == 0;
+	return result;
+}
+
+bool ImageMimeMismatch(const CString& declared, const Base64Result& data)
+{
+	if (!data.valid) return false;
+	CString normalized(declared);
+	const int parameters = normalized.Find(L';');
+	if (parameters >= 0) normalized = normalized.Left(parameters);
+	normalized.Trim();
+	if (normalized.CompareNoCase(L"image/jpg") == 0) normalized = L"image/jpeg";
+	if (normalized.CompareNoCase(L"image/x-ms-bmp") == 0) normalized = L"image/bmp";
+	const CString detected = DetectImageMime(data);
+	if (detected.IsEmpty()) return false;
+	const bool supported = normalized.CompareNoCase(L"image/png") == 0 || normalized.CompareNoCase(L"image/jpeg") == 0 ||
+		normalized.CompareNoCase(L"image/gif") == 0 || normalized.CompareNoCase(L"image/webp") == 0 ||
+		normalized.CompareNoCase(L"image/bmp") == 0;
+	return supported && normalized.CompareNoCase(detected) != 0;
 }
 
 void Add(Report& report, Severity severity, const CString& message, const wchar_t* code)
@@ -169,7 +279,8 @@ struct Scan {
 		const CString name = Name(node);
 		const CString id = Attribute(node, L"id");
 		if (!id.IsEmpty()) {
-			if (!ids.insert(std::wstring(id.GetString())).second) {
+			if (!ids.insert(std::wstring(id.GetString())).second &&
+				(name != L"binary" || binaries.find(std::wstring(id.GetString())) == binaries.end())) {
 				CString message; message.Format(L"Повторяется идентификатор %s", id.GetString());
 				AddAt(Severity::Error, L"Q-LINK-DUPLICATE-ID", message, path, L"id", id);
 			}
@@ -178,7 +289,8 @@ struct Scan {
 		if (name == L"description") { description = true; if (descriptionPath.empty()) descriptionPath = path; }
 		if (name == L"body") {
 			body = true;
-			inNotes = Attribute(node, L"name").CompareNoCase(L"notes") == 0;
+			const CString bodyName = Attribute(node, L"name");
+			inNotes = bodyName.CompareNoCase(L"notes") == 0 || bodyName.CompareNoCase(L"comments") == 0;
 			if (!inNotes && bodyPath.empty()) bodyPath = path;
 		}
 		if (name == L"section" && !inNotes) bodySection = true;
@@ -193,22 +305,33 @@ struct Scan {
 		if (name == L"binary") {
 			if (id.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-ID", L"У binary не указан id", path, L"id");
 			else {
-				binaries.insert(std::wstring(id.GetString()));
+				if (!binaries.insert(std::wstring(id.GetString())).second)
+					AddAt(Severity::Error, L"Q-BINARY-DUPLICATE-ID", L"Повторяется binary id " + id, path, L"id", id);
 				binaryPaths.emplace(std::wstring(id.GetString()), path);
 			}
+			const CString contentType = Attribute(node, L"content-type");
+			if (contentType.IsEmpty()) AddAt(Severity::Error, L"Q-BINARY-MISSING-MIME", L"У binary не указан content-type", path, L"content-type");
+			else if (contentType.Find(L'/') <= 0 || contentType.Right(1) == L"/")
+				AddAt(Severity::Error, L"Q-BINARY-INVALID-MIME", L"Некорректный content-type у binary", path, L"content-type", contentType);
+			const Base64Result base64 = CheckBase64(node);
+			if (!base64.hasData) AddAt(Severity::Error, L"Q-BINARY-EMPTY", L"Пустое содержимое binary", path);
+			else if (!base64.valid) AddAt(Severity::Error, L"Q-BINARY-INVALID-BASE64", L"Некорректные данные Base64 в binary", path);
+			else if (ImageMimeMismatch(contentType, base64))
+				AddAt(Severity::Error, L"Q-BINARY-MIME-MISMATCH", L"Формат данных binary не соответствует content-type", path, L"content-type", contentType);
 		}
 		if (name == L"a" || name == L"image") {
-			CString href = Href(node);
-			CString hrefName;
-			MSXML2::IXMLDOMNamedNodeMapPtr attributes = node->attributes;
-			for (long i = 0; attributes && i < attributes->length; ++i) {
-				Node attribute = attributes->item[i];
-				if (Name(attribute) == L"href") { hrefName = static_cast<const wchar_t*>(_bstr_t(attribute->nodeName)); break; }
-			}
-			if (!href.IsEmpty() && href[0] == L'#') {
-				links.push_back({ href.Mid(1), href, hrefName, path, name == L"a" && Attribute(node, L"type").CompareNoCase(L"note") == 0, name == L"image" });
-				if (name == L"image") usedBinaries.insert(std::wstring(href.Mid(1).GetString()));
-			} else if (name == L"image") AddAt(Severity::Error, L"Q-IMAGE-NONLOCAL", L"У изображения отсутствует внутренняя ссылка на binary", path, hrefName, href);
+			const HrefAttribute href = XLinkHref(node);
+			const bool note = name == L"a" && Attribute(node, L"type").CompareNoCase(L"note") == 0;
+			if (href.present && !href.value.IsEmpty() && href.value[0] == L'#') {
+				if (ValidLocalHref(href.value)) {
+					links.push_back({ href.value.Mid(1), href.value, href.name, path, note, name == L"image" });
+					if (name == L"image") usedBinaries.insert(std::wstring(href.value.Mid(1).GetString()));
+				} else AddAt(Severity::Error, name == L"image" ? L"Q-IMAGE-INVALID-HREF" : L"Q-LINK-INVALID-HREF",
+					L"Некорректная внутренняя ссылка", path, href.name, href.value);
+			} else if (name == L"image")
+				AddAt(Severity::Error, L"Q-IMAGE-NONLOCAL", L"У изображения отсутствует внутренняя ссылка на binary", path, href.name, href.value);
+			else if (note)
+				AddAt(Severity::Error, L"Q-NOTE-NONLOCAL", L"Ссылка на примечание должна быть внутренней", path, href.name, href.value);
 		}
 		if (name == L"p" || name == L"subtitle") {
 			CString content(static_cast<const wchar_t*>(_bstr_t(node->text)));
@@ -242,8 +365,12 @@ struct Scan {
 		for (const Link& link : links) {
 			const std::wstring target(link.href.GetString());
 			if (link.note && noteIds.find(target) == noteIds.end()) {
-				CString message; message.Format(L"Ссылка на примечание #%s не найдена", link.href.GetString());
-				AddAt(Severity::Error, L"Q-NOTE-MISSING", message, link.path, link.attributeName, link.sourceValue);
+				const bool missing = ids.find(target) == ids.end();
+				CString message;
+				message.Format(missing ? L"Ссылка на примечание #%s не найдена" : L"Ссылка на примечание #%s ведёт не в раздел примечаний",
+					link.href.GetString());
+				AddAt(Severity::Error, missing ? L"Q-NOTE-MISSING" : L"Q-NOTE-WRONG-TARGET",
+					message, link.path, link.attributeName, link.sourceValue);
 			} else if (!link.image && ids.find(target) == ids.end()) {
 				CString message; message.Format(L"Ссылка #%s не найдена", link.href.GetString());
 				AddAt(Severity::Error, L"Q-LINK-MISSING", message, link.path, link.attributeName, link.sourceValue);
