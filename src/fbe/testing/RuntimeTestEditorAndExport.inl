@@ -94,6 +94,14 @@
 		const CString sample = LR"(<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><book-title>Test</book-title></title-info></description><body><section><p/><p><a type="note" l:href="#missing-note">note</a></p><image l:href="#missing-image"/></section></body><binary id="unused-image" content-type="image/png">AQID</binary></FictionBook>)";
 		const Fb2Quality::Report result = Fb2Quality::Check(sample);
 		const CString formatted = Fb2Quality::FormatReport(result);
+		Fb2Quality::Report exportProbe(result);
+		exportProbe.title = L"<Demo & Co>";
+		const CString exportText = Fb2Quality::FormatReport(exportProbe);
+		const CString exportHtml = Fb2Quality::FormatHtmlReport(exportProbe);
+		const bool reportFormats = exportText.Find(L"<Demo & Co>") >= 0 && exportText.Find(L"Q-NOTE-MISSING") >= 0 &&
+			exportText.Find(FBE_VERSION_WSTRING) >= 0 && exportHtml.Find(L"&lt;Demo &amp; Co&gt;") >= 0 &&
+			exportHtml.Find(L"<Demo & Co>") < 0 && exportHtml.Find(L"Q-NOTE-MISSING") >= 0 &&
+			exportHtml.Find(L"<table>") >= 0;
 		const bool links = formatted.Find(L"Ссылка на примечание #missing-note не найдена") >= 0;
 		const bool binaries = formatted.Find(L"Binary missing-image отсутствует") >= 0 && formatted.Find(L"Binary unused-image не используется") >= 0;
 		const bool metadata = formatted.Find(L"Не указан язык документа") >= 0;
@@ -195,6 +203,9 @@
 			Fb2Quality::ResolveSourceRange(malformedEndReport.issues[0], L"<FictionBook>", endRange) && endRange.end == 13;
 		const bool unicodeOffset = exactLinks && navigationXml.Find(L"\xD83D\xDE42") >= 0 &&
 			::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, navigationXml, secondLink.start, NULL, 0, NULL, NULL) > secondLink.start;
+		const bool locations = missingLinks.size() == 2 && missingLinks[0]->line == 1 &&
+			missingLinks[0]->column > 1 && missingLinks[1]->column > missingLinks[0]->column &&
+			missingLinks[0]->category == Fb2Quality::Category::Links;
 		bool bodyToSource = false;
 		if (snapshot) {
 			const Fb2Quality::Report bodyReport = Fb2Quality::Check(snapshotXml);
@@ -240,14 +251,14 @@
 			}
 		}
 		const bool passed = unchanged && snapshotCurrent && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && largeDocument &&
-			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection;
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nvalid_metadata=%d\nlarge_document=%d\nlarge_ms=%llu\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
 			static_cast<LPCWSTR>(analysisError), snapshotCurrent, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, validMetadataAccepted, largeDocument, largeMs,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
-			unicodeOffset, bodyToSource, unicodeSelection, passed ? "pass" : "fail");
+			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

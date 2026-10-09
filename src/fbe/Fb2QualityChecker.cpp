@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "Fb2QualityChecker.h"
 #include "resource.h"
+#include "RuntimeLocalization.h"
+#include "UiMetrics.h"
+#include "utils/utils.h"
+#include "../version.h"
+#include <algorithm>
 #include <cwctype>
 #include <map>
 #include <set>
@@ -214,7 +219,24 @@ void Add(Report& report, Severity severity, const CString& message, const wchar_
 {
 	Issue issue = { severity, message };
 	issue.code = code;
+	if (issue.code.Find(L"Q-LINK-") == 0) issue.category = Category::Links;
+	else if (issue.code.Find(L"Q-NOTE-") == 0) issue.category = Category::Notes;
+	else if (issue.code.Find(L"Q-IMAGE-") == 0 || issue.code.Find(L"Q-BINARY-") == 0) issue.category = Category::Images;
+	else if (issue.code.Find(L"Q-STRUCTURE-") == 0) issue.category = Category::Structure;
+	else if (issue.code.Find(L"Q-METADATA-") == 0) issue.category = Category::Metadata;
 	report.issues.push_back(issue);
+}
+
+void PopulateLocations(Report& report, const CString& xml)
+{
+	std::vector<int> starts{ 0 };
+	for (int i = 0; i < xml.GetLength(); ++i) if (xml[i] == L'\n') starts.push_back(i + 1);
+	for (Issue& issue : report.issues) {
+		if (issue.start < 0 || issue.start >= xml.GetLength()) continue;
+		const auto line = std::upper_bound(starts.begin(), starts.end(), issue.start);
+		issue.line = static_cast<int>(line - starts.begin());
+		issue.column = issue.start - *(line - 1) + 1;
+	}
 }
 
 // MSXML validates the XML and supplies the semantic DOM, but does not retain source
@@ -319,6 +341,11 @@ struct Scan {
 	{
 		Issue issue = { severity, message };
 		issue.code = code;
+		if (issue.code.Find(L"Q-LINK-") == 0) issue.category = Category::Links;
+		else if (issue.code.Find(L"Q-NOTE-") == 0) issue.category = Category::Notes;
+		else if (issue.code.Find(L"Q-IMAGE-") == 0 || issue.code.Find(L"Q-BINARY-") == 0) issue.category = Category::Images;
+		else if (issue.code.Find(L"Q-STRUCTURE-") == 0) issue.category = Category::Structure;
+		else if (issue.code.Find(L"Q-METADATA-") == 0) issue.category = Category::Metadata;
 		issue.elementPath = path;
 		issue.attributeName = attributeName;
 		issue.attributeValue = attributeValue;
@@ -379,6 +406,7 @@ struct Scan {
 				content.Trim();
 				if (name == L"book-title") {
 					bookTitle = true;
+					if (report.title.IsEmpty()) report.title = content;
 					if (content.IsEmpty()) AddAt(Severity::Warning, L"Q-METADATA-BOOK-TITLE", L"Не указано название книги", path);
 				}
 				if (name == L"lang") {
@@ -570,6 +598,49 @@ struct Scan {
 	}
 };
 
+CString IssueCategoryText(const Issue& issue)
+{
+	const wchar_t* key = L"fbe.quality.category.xml";
+	const wchar_t* fallback = L"XML";
+	switch (issue.category) {
+	case Category::Links: key = L"fbe.quality.category.links"; fallback = L"Links"; break;
+	case Category::Notes: key = L"fbe.quality.category.notes"; fallback = L"Notes"; break;
+	case Category::Images: key = L"fbe.quality.category.images"; fallback = L"Images"; break;
+	case Category::Structure: key = L"fbe.quality.category.structure"; fallback = L"Structure"; break;
+	case Category::Metadata: key = L"fbe.quality.category.metadata"; fallback = L"Metadata"; break;
+	default: break;
+	}
+	return FbeLoadRuntimeStringByKey(key, fallback);
+}
+
+bool SaveUtf8Report(const CString& path, const CString& content, bool bom, DWORD& error)
+{
+	error = ERROR_SUCCESS;
+	const int length = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, content, content.GetLength(), NULL, 0, NULL, NULL);
+	if (length <= 0) { error = ::GetLastError(); return false; }
+	std::vector<char> bytes(static_cast<size_t>(length));
+	if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, content, content.GetLength(), bytes.data(), length, NULL, NULL) != length) {
+		error = ::GetLastError(); return false;
+	}
+	const int slash = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
+	const CString directory = slash >= 0 ? path.Left(slash + 1) : CString(L".\\");
+	wchar_t temporary[MAX_PATH] = {};
+	if (!::GetTempFileNameW(directory, L"fqr", 0, temporary)) { error = ::GetLastError(); return false; }
+	HANDLE output = ::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (output == INVALID_HANDLE_VALUE) { error = ::GetLastError(); ::DeleteFileW(temporary); return false; }
+	DWORD written = 0;
+	const char marker[] = "\xEF\xBB\xBF";
+	const bool ok = (!bom || (::WriteFile(output, marker, 3, &written, NULL) && written == 3)) &&
+		::WriteFile(output, bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL) && written == bytes.size() &&
+		::FlushFileBuffers(output);
+	if (!ok) { error = ::GetLastError(); if (error == ERROR_SUCCESS) error = ERROR_WRITE_FAULT; }
+	::CloseHandle(output);
+	if (ok && ::MoveFileExW(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
+	if (ok) error = ::GetLastError();
+	::DeleteFileW(temporary);
+	return false;
+}
+
 class ResultsDialog : public CDialogImpl<ResultsDialog> {
 public:
 	enum { IDD = IDD_FB2_QUALITY_RESULTS };
@@ -577,63 +648,232 @@ public:
 	int selected = -1;
 	BEGIN_MSG_MAP(ResultsDialog)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnMinMax)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		COMMAND_ID_HANDLER(IDC_FB2_QUALITY_GOTO, OnGoTo)
+		COMMAND_ID_HANDLER(IDC_FB2_QUALITY_COPY, OnCopy)
 		COMMAND_ID_HANDLER(IDC_FB2_QUALITY_SAVE, OnSave)
 		COMMAND_ID_HANDLER(IDCANCEL, OnClose)
 		NOTIFY_HANDLER(IDC_FB2_QUALITY_LIST, NM_DBLCLK, OnActivate)
 		NOTIFY_HANDLER(IDC_FB2_QUALITY_LIST, LVN_ITEMCHANGED, OnSelectionChanged)
+		NOTIFY_HANDLER(IDC_FB2_QUALITY_LIST, LVN_COLUMNCLICK, OnColumnClick)
 	END_MSG_MAP()
 private:
 	const Report& m_report;
+	int m_sortColumn = -1;
+	bool m_sortDescending = false;
+	CString GeometryPath() const { return U::GetSettingsDir() + L"QualityChecker.ini"; }
+	void RestoreGeometry() {
+		const CString path = GeometryPath();
+		int width = ::GetPrivateProfileIntW(L"Results", L"Width", 0, path);
+		int height = ::GetPrivateProfileIntW(L"Results", L"Height", 0, path);
+		if (width <= 0 || height <= 0) return;
+		RECT current = {}; GetWindowRect(&current);
+		const int left = ::GetPrivateProfileIntW(L"Results", L"Left", current.left, path);
+		const int top = ::GetPrivateProfileIntW(L"Results", L"Top", current.top, path);
+		RECT wanted = { left, top, left + width, top + height };
+		MONITORINFO monitor = { sizeof(monitor) };
+		if (!::GetMonitorInfoW(::MonitorFromRect(&wanted, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const int minimumWidth = UiMetrics::ScaleForDpi(550, dpi);
+		const int minimumHeight = UiMetrics::ScaleForDpi(310, dpi);
+		width = min(max(width, minimumWidth), monitor.rcWork.right - monitor.rcWork.left);
+		height = min(max(height, minimumHeight), monitor.rcWork.bottom - monitor.rcWork.top);
+		const int x = min(max(left, monitor.rcWork.left), monitor.rcWork.right - width);
+		const int y = min(max(top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+		SetWindowPos(NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+	void SaveGeometry() {
+		RECT rect = {}; GetWindowRect(&rect);
+		const CString path = GeometryPath();
+		const struct { LPCWSTR key; int value; } fields[] = {
+			{ L"Left", rect.left }, { L"Top", rect.top },
+			{ L"Width", rect.right - rect.left }, { L"Height", rect.bottom - rect.top }
+		};
+		for (const auto& field : fields) {
+			CString value; value.Format(L"%d", field.value);
+			::WritePrivateProfileStringW(L"Results", field.key, value, path);
+		}
+	}
+	static CString SeverityText(Severity severity) {
+		if (severity == Severity::Error) return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.error", L"Error");
+		if (severity == Severity::Warning) return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.warning", L"Warning");
+		return FbeLoadRuntimeStringByKey(L"fbe.quality.severity.info", L"Information");
+	}
+	static CString CategoryText(const Issue& issue) {
+		return IssueCategoryText(issue);
+	}
+	CString LocationText(const Issue& issue) const {
+		if (issue.line < 0) return FbeLoadRuntimeStringByKey(L"fbe.quality.location.unknown", L"Unknown");
+		CString value; value.Format(L"%d:%d", issue.line, issue.column); return value;
+	}
+	void Layout() {
+		if (!GetDlgItem(IDC_FB2_QUALITY_LIST)) return;
+		RECT client = {}; GetClientRect(&client);
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(5, dpi);
+		const int summaryHeight = UiMetrics::ScaleForDpi(19, dpi), detailsHeight = UiMetrics::ScaleForDpi(69, dpi);
+		const int buttonHeight = UiMetrics::ScaleForDpi(25, dpi);
+		const int buttonWidths[] = { 72, 62, 112, 70 };
+		const int width = max(0, client.right - 2 * margin);
+		const int buttonY = client.bottom - margin - buttonHeight;
+		const int detailsY = buttonY - gap - detailsHeight;
+		const int listY = margin + summaryHeight + gap;
+		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_SUMMARY), NULL, margin, margin, width, summaryHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_LIST), NULL, margin, listY, width, max(0, detailsY - gap - listY), SWP_NOZORDER | SWP_NOACTIVATE);
+		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_DETAILS), NULL, margin, detailsY, width, detailsHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
+		int x = client.right - margin;
+		for (int i = 3; i >= 0; --i) {
+			x -= UiMetrics::ScaleForDpi(buttonWidths[i], dpi);
+			::SetWindowPos(GetDlgItem(ids[i]), NULL, x, buttonY, UiMetrics::ScaleForDpi(buttonWidths[i], dpi), buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+			x -= gap;
+		}
+	}
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&) {
-		CString summary; summary.Format(L"Ошибки: %d     Предупреждения: %d", m_report.ErrorCount(), m_report.WarningCount());
+		SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"));
+		SetDlgItemText(IDC_FB2_QUALITY_GOTO, FbeLoadRuntimeStringByKey(L"fbe.quality.goto", L"Go to"));
+		SetDlgItemText(IDC_FB2_QUALITY_COPY, FbeLoadRuntimeStringByKey(L"fbe.quality.copy", L"Copy"));
+		SetDlgItemText(IDC_FB2_QUALITY_SAVE, FbeLoadRuntimeStringByKey(L"fbe.quality.save", L"Save report"));
+		SetDlgItemText(IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.quality.close", L"Close"));
+		CString summary; summary.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.summary", L"Errors: %d     Warnings: %d     Information: %d"), m_report.ErrorCount(), m_report.WarningCount(), m_report.InfoCount());
 		SetDlgItemText(IDC_FB2_QUALITY_SUMMARY, summary);
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
-		list.InsertColumn(0, L"Тип", LVCFMT_LEFT, 100);
-		list.InsertColumn(1, L"Проблема", LVCFMT_LEFT, 410);
+		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		list.InsertColumn(0, FbeLoadRuntimeStringByKey(L"fbe.quality.column.type", L"Type"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(90, dpi));
+		list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.quality.column.code", L"Code"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(170, dpi));
+		list.InsertColumn(2, FbeLoadRuntimeStringByKey(L"fbe.quality.column.category", L"Category"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(100, dpi));
+		list.InsertColumn(3, FbeLoadRuntimeStringByKey(L"fbe.quality.column.description", L"Description"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(330, dpi));
+		list.InsertColumn(4, FbeLoadRuntimeStringByKey(L"fbe.quality.column.location", L"Location"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(90, dpi));
 		for (size_t i = 0; i < m_report.issues.size(); ++i) {
 			const Issue& issue = m_report.issues[i];
-			list.InsertItem(static_cast<int>(i), issue.severity == Severity::Error ? L"Ошибка" : L"Предупреждение");
-			list.SetItemText(static_cast<int>(i), 1, issue.message);
+			const int row = list.InsertItem(static_cast<int>(i), SeverityText(issue.severity));
+			list.SetItemData(row, static_cast<DWORD_PTR>(i));
+			list.SetItemText(row, 1, issue.code);
+			list.SetItemText(row, 2, CategoryText(issue));
+			list.SetItemText(row, 3, issue.message);
+			list.SetItemText(row, 4, LocationText(issue));
 		}
 		if (!m_report.issues.empty()) list.SelectItem(0);
 		UpdateGoTo();
+		RestoreGeometry();
+		Layout();
 		return TRUE;
+	}
+	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&) { Layout(); return 0; }
+	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { SaveGeometry(); return 0; }
+	LRESULT OnMinMax(UINT, WPARAM, LPARAM parameter, BOOL&) {
+		MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(parameter);
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		info->ptMinTrackSize.x = UiMetrics::ScaleForDpi(550, dpi);
+		info->ptMinTrackSize.y = UiMetrics::ScaleForDpi(310, dpi);
+		return 0;
 	}
 	void UpdateGoTo() {
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
-		const int index = list.GetNextItem(-1, LVNI_SELECTED);
+		const int row = list.GetNextItem(-1, LVNI_SELECTED);
+		const int index = row >= 0 ? static_cast<int>(list.GetItemData(row)) : -1;
 		const bool available = index >= 0 && static_cast<size_t>(index) < m_report.issues.size() && m_report.issues[index].start >= 0;
 		::EnableWindow(GetDlgItem(IDC_FB2_QUALITY_GOTO), available ? TRUE : FALSE);
+		::EnableWindow(GetDlgItem(IDC_FB2_QUALITY_COPY), index >= 0 ? TRUE : FALSE);
+		CString details;
+		if (index >= 0 && static_cast<size_t>(index) < m_report.issues.size()) {
+			const Issue& issue = m_report.issues[index];
+			details = issue.message;
+			if (!issue.details.IsEmpty()) details += L"\r\n" + issue.details;
+			if (!issue.recommendation.IsEmpty()) details += L"\r\n" + issue.recommendation;
+		}
+		SetDlgItemText(IDC_FB2_QUALITY_DETAILS, details);
 	}
 	LRESULT OnSelectionChanged(int, LPNMHDR, BOOL&) { UpdateGoTo(); return 0; }
+	static int CALLBACK CompareRows(LPARAM left, LPARAM right, LPARAM context) {
+		const ResultsDialog* dialog = reinterpret_cast<const ResultsDialog*>(context);
+		const Issue& a = dialog->m_report.issues[static_cast<size_t>(left)];
+		const Issue& b = dialog->m_report.issues[static_cast<size_t>(right)];
+		int result = 0;
+		if (dialog->m_sortColumn == 0) result = static_cast<int>(a.severity) - static_cast<int>(b.severity);
+		else if (dialog->m_sortColumn == 2) result = CategoryText(a).CompareNoCase(CategoryText(b));
+		else if (dialog->m_sortColumn == 4) result = a.start == b.start ? 0 : a.start < b.start ? -1 : 1;
+		if (result == 0) result = left == right ? 0 : left < right ? -1 : 1;
+		return dialog->m_sortDescending ? -result : result;
+	}
+	LRESULT OnColumnClick(int, LPNMHDR header, BOOL&) {
+		const int column = reinterpret_cast<NMLISTVIEW*>(header)->iSubItem;
+		if (column != 0 && column != 2 && column != 4) return 0;
+		m_sortDescending = m_sortColumn == column && !m_sortDescending;
+		m_sortColumn = column;
+		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		list.SortItems(CompareRows, reinterpret_cast<LPARAM>(this));
+		return 0;
+	}
 	LRESULT OnGoTo(WORD, WORD, HWND, BOOL&) {
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
-		const int index = list.GetNextItem(-1, LVNI_SELECTED);
+		const int row = list.GetNextItem(-1, LVNI_SELECTED);
+		const int index = row >= 0 ? static_cast<int>(list.GetItemData(row)) : -1;
 		if (index >= 0 && static_cast<size_t>(index) < m_report.issues.size()) selected = index;
 		if (selected >= 0) EndDialog(IDOK);
 		return 0;
 	}
 	LRESULT OnActivate(int, LPNMHDR, BOOL& handled) { BOOL ignored = FALSE; handled = TRUE; return OnGoTo(0, 0, NULL, ignored); }
+	LRESULT OnCopy(WORD, WORD, HWND, BOOL&) {
+		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		const int row = list.GetNextItem(-1, LVNI_SELECTED);
+		if (row < 0) return 0;
+		const Issue& issue = m_report.issues[static_cast<size_t>(list.GetItemData(row))];
+		CString text = issue.code + L": " + issue.message;
+		if (!issue.details.IsEmpty()) text += L"\r\n" + issue.details;
+		if (!issue.recommendation.IsEmpty()) text += L"\r\n" + issue.recommendation;
+		const SIZE_T bytes = static_cast<SIZE_T>(text.GetLength() + 1) * sizeof(wchar_t);
+		HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE, bytes);
+		if (!memory) return 0;
+		void* target = ::GlobalLock(memory);
+		if (!target) { ::GlobalFree(memory); return 0; }
+		memcpy(target, text.GetString(), bytes);
+		::GlobalUnlock(memory);
+		if (!::OpenClipboard(m_hWnd)) { ::GlobalFree(memory); return 0; }
+		::EmptyClipboard();
+		if (!::SetClipboardData(CF_UNICODETEXT, memory)) ::GlobalFree(memory);
+		::CloseClipboard();
+		return 0;
+	}
 	LRESULT OnSave(WORD, WORD, HWND, BOOL&) {
 		wchar_t path[MAX_PATH] = L"fb2-quality-report.txt";
 		OPENFILENAMEW file = {}; file.lStructSize = sizeof(file); file.hwndOwner = m_hWnd;
-		file.lpstrFilter = L"Текстовый отчёт (*.txt)\0*.txt\0Все файлы (*.*)\0*.*\0";
-		file.lpstrFile = path; file.nMaxFile = _countof(path); file.lpstrDefExt = L"txt";
+		std::wstring filter;
+		const auto addFilter = [&filter](const CString& label, const wchar_t* pattern) {
+			filter.append(label.GetString()); filter.push_back(L'\0'); filter.append(pattern); filter.push_back(L'\0');
+		};
+		addFilter(FbeLoadRuntimeStringByKey(L"fbe.quality.filter.text", L"Text report (*.txt)"), L"*.txt");
+		addFilter(FbeLoadRuntimeStringByKey(L"fbe.quality.filter.html", L"HTML report (*.html)"), L"*.html");
+		filter.push_back(L'\0');
+		file.lpstrFilter = filter.c_str();
+		file.lpstrFile = path; file.nMaxFile = _countof(path); file.nFilterIndex = 1;
+		const CString dialogTitle = FbeLoadRuntimeStringByKey(L"fbe.quality.save", L"Save report");
+		file.lpstrTitle = dialogTitle;
 		file.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
 		if (!::GetSaveFileNameW(&file)) return 0;
-		const CString report = FormatReport(m_report);
-		const int size = ::WideCharToMultiByte(CP_UTF8, 0, report, report.GetLength(), NULL, 0, NULL, NULL);
-		if (size <= 0) return 0;
-		std::vector<char> bytes(static_cast<size_t>(size));
-		::WideCharToMultiByte(CP_UTF8, 0, report, report.GetLength(), bytes.data(), size, NULL, NULL);
-		HANDLE output = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (output == INVALID_HANDLE_VALUE) { ::MessageBoxW(m_hWnd, L"Не удалось сохранить отчёт.", L"Расширенная проверка FB2", MB_ICONERROR); return 0; }
-		DWORD written = 0; const char bom[] = "\xEF\xBB\xBF";
-		const BOOL ok = ::WriteFile(output, bom, 3, &written, NULL) && written == 3 &&
-			::WriteFile(output, bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL) && written == bytes.size();
-		::CloseHandle(output);
-		if (!ok) ::MessageBoxW(m_hWnd, L"Не удалось полностью сохранить отчёт.", L"Расширенная проверка FB2", MB_ICONERROR);
+		CString destination(path);
+		const int slash = max(destination.ReverseFind(L'\\'), destination.ReverseFind(L'/'));
+		if (destination.Mid(slash + 1).Find(L'.') < 0) {
+			destination += file.nFilterIndex == 2 ? L".html" : L".txt";
+			if (::GetFileAttributesW(destination) != INVALID_FILE_ATTRIBUTES) {
+				const CString question = FbeLoadRuntimeStringByKey(L"fbe.quality.save.overwrite", L"This report already exists. Replace it?");
+				if (::MessageBoxW(m_hWnd, question, FbeLoadRuntimeStringByKey(L"fbe.quality.save", L"Save report"), MB_YESNO | MB_ICONQUESTION) != IDYES) return 0;
+			}
+		}
+		const bool html = file.nFilterIndex == 2;
+		DWORD error = ERROR_SUCCESS;
+		if (!SaveUtf8Report(destination, html ? FormatHtmlReport(m_report) : FormatReport(m_report), !html, error)) {
+			CString message; message.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.save.error", L"Unable to save report (Windows error %lu)."), error);
+			LPWSTR reason = NULL;
+			if (::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL, error, 0, reinterpret_cast<LPWSTR>(&reason), 0, NULL) && reason) {
+				message += L"\r\n"; message += reason; ::LocalFree(reason);
+			}
+			::MessageBoxW(m_hWnd, message, FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"), MB_ICONERROR);
+		}
 		return 0;
 	}
 	LRESULT OnClose(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
@@ -642,10 +882,14 @@ private:
 
 int Report::ErrorCount() const { int result = 0; for (const Issue& issue : issues) if (issue.severity == Severity::Error) ++result; return result; }
 int Report::WarningCount() const { int result = 0; for (const Issue& issue : issues) if (issue.severity == Severity::Warning) ++result; return result; }
+int Report::InfoCount() const { int result = 0; for (const Issue& issue : issues) if (issue.severity == Severity::Info) ++result; return result; }
 
 Report Check(const CString& xml)
 {
 	Report report;
+	SYSTEMTIME checked = {}; ::GetLocalTime(&checked);
+	report.checkedAt.Format(L"%04u-%02u-%02u %02u:%02u:%02u", checked.wYear, checked.wMonth,
+		checked.wDay, checked.wHour, checked.wMinute, checked.wSecond);
 	try {
 	MSXML2::IXMLDOMDocument2Ptr document;
 	if (FAILED(document.CreateInstance(L"Msxml2.DOMDocument.6.0"))) { Add(report, Severity::Error, L"Не удалось создать XML-анализатор.", L"Q-XML-ANALYZER"); return report; }
@@ -669,6 +913,7 @@ Report Check(const CString& xml)
 		if (issue.start == xml.GetLength() && !xml.IsEmpty()) --issue.start;
 		if (issue.start >= 0 && issue.start < xml.GetLength()) issue.end = issue.start + 1;
 		else issue.start = issue.end = -1;
+		PopulateLocations(report, xml);
 		return report;
 	}
 	Node root = document->documentElement;
@@ -678,6 +923,8 @@ Report Check(const CString& xml)
 	Scan scan(xml); scan.Visit(root, false, false, { 0 });
 	Report findings = scan.Finish();
 	report.issues.insert(report.issues.end(), findings.issues.begin(), findings.issues.end());
+	report.title = findings.title;
+	PopulateLocations(report, xml);
 	return report;
 	} catch (const _com_error&) {
 		Add(report, Severity::Error, L"Не удалось завершить анализ XML.", L"Q-XML-ANALYSIS");
@@ -687,10 +934,76 @@ Report Check(const CString& xml)
 
 CString FormatReport(const Report& report)
 {
-	CString text; text.Format(L"Расширенная проверка FB2\r\nОшибки: %d\r\nПредупреждения: %d\r\n\r\n", report.ErrorCount(), report.WarningCount());
-	for (const Issue& issue : report.issues) { text += issue.severity == Severity::Error ? L"[Ошибка] " : L"[Предупреждение] "; text += issue.message + L"\r\n"; }
-	if (report.issues.empty()) text += L"Проблем не обнаружено.\r\n";
+	CString text = FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check") + L"\r\n";
+	text += FbeLoadRuntimeStringByKey(L"fbe.quality.report.document", L"Document") + L": " + report.title + L"\r\n";
+	text += FbeLoadRuntimeStringByKey(L"fbe.quality.report.checked", L"Checked") + L": " + report.checkedAt + L"\r\n";
+	text += FbeLoadRuntimeStringByKey(L"fbe.quality.report.version", L"FBE Next version") + L": " FBE_VERSION_WSTRING L"\r\n";
+	CString summary; summary.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.summary", L"Errors: %d     Warnings: %d     Information: %d"),
+		report.ErrorCount(), report.WarningCount(), report.InfoCount());
+	text += summary + L"\r\n\r\n";
+	for (const Issue& issue : report.issues) {
+		text += L"[" + issue.code + L"] [" + IssueCategoryText(issue) + L"] " + issue.message;
+		if (issue.line > 0) { CString location; location.Format(L" (%d:%d)", issue.line, issue.column); text += location; }
+		text += L"\r\n";
+		if (!issue.details.IsEmpty()) text += issue.details + L"\r\n";
+		if (!issue.recommendation.IsEmpty()) text += issue.recommendation + L"\r\n";
+	}
+	if (report.issues.empty()) text += FbeLoadRuntimeStringByKey(L"fbe.quality.report.clean", L"No issues found.") + L"\r\n";
 	return text;
+}
+
+CString FormatHtmlReport(const Report& report)
+{
+	const auto escape = [](const CString& value) {
+		CString result;
+		for (int i = 0; i < value.GetLength(); ++i) {
+			switch (value[i]) {
+			case L'&': result += L"&amp;"; break;
+			case L'<': result += L"&lt;"; break;
+			case L'>': result += L"&gt;"; break;
+			case L'"': result += L"&quot;"; break;
+			case L'\'': result += L"&#39;"; break;
+			default: result += value[i]; break;
+			}
+		}
+		return result;
+	};
+	CString html = L"<!doctype html><html><head><meta charset=\"utf-8\"><title>";
+	html += escape(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"));
+	html += L"</title><style>body{font:16px system-ui,sans-serif;max-width:1000px;margin:2em auto;padding:0 1em;color:#222;background:#fff}table{border-collapse:collapse;width:100%;margin-bottom:2em}th,td{border:1px solid #aaa;padding:.4em;text-align:left;vertical-align:top}th{background:#eee}tr:nth-child(even){background:#f7f7f7}@media(prefers-color-scheme:dark){body{color:#eee;background:#202020}th{background:#333}tr:nth-child(even){background:#292929}}</style></head><body><h1>";
+	html += escape(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check")) + L"</h1><p>";
+	html += escape(FbeLoadRuntimeStringByKey(L"fbe.quality.report.document", L"Document")) + L": " + escape(report.title) + L"<br>";
+	html += escape(FbeLoadRuntimeStringByKey(L"fbe.quality.report.checked", L"Checked")) + L": " + escape(report.checkedAt) + L"<br>";
+	html += escape(FbeLoadRuntimeStringByKey(L"fbe.quality.report.version", L"FBE Next version")) + L": " FBE_VERSION_WSTRING L"</p><p>";
+	CString summary; summary.Format(FbeLoadRuntimeStringByKey(L"fbe.quality.summary", L"Errors: %d     Warnings: %d     Information: %d"),
+		report.ErrorCount(), report.WarningCount(), report.InfoCount());
+	html += escape(summary) + L"</p>";
+	const Category categories[] = { Category::Xml, Category::Links, Category::Images, Category::Notes, Category::Structure, Category::Metadata };
+	for (Category category : categories) {
+		const Issue* first = nullptr;
+		for (const Issue& issue : report.issues) if (issue.category == category) { first = &issue; break; }
+		if (!first) continue;
+		html += L"<h2>" + escape(IssueCategoryText(*first)) + L"</h2><table><thead><tr>";
+		const wchar_t* columns[] = { L"fbe.quality.column.type", L"fbe.quality.column.code", L"fbe.quality.column.description", L"fbe.quality.column.location" };
+		const wchar_t* fallbacks[] = { L"Type", L"Code", L"Description", L"Location" };
+		for (int i = 0; i < 4; ++i) html += L"<th>" + escape(FbeLoadRuntimeStringByKey(columns[i], fallbacks[i])) + L"</th>";
+		html += L"</tr></thead><tbody>";
+		for (const Issue& issue : report.issues) {
+			if (issue.category != category) continue;
+			const wchar_t* severityKey = issue.severity == Severity::Error ? L"fbe.quality.severity.error" :
+				issue.severity == Severity::Warning ? L"fbe.quality.severity.warning" : L"fbe.quality.severity.info";
+			const wchar_t* severityFallback = issue.severity == Severity::Error ? L"Error" : issue.severity == Severity::Warning ? L"Warning" : L"Information";
+			html += L"<tr><td>" + escape(FbeLoadRuntimeStringByKey(severityKey, severityFallback)) + L"</td><td>" + escape(issue.code) + L"</td><td>" + escape(issue.message);
+			if (!issue.details.IsEmpty()) html += L"<p>" + escape(issue.details) + L"</p>";
+			if (!issue.recommendation.IsEmpty()) html += L"<p>" + escape(issue.recommendation) + L"</p>";
+			CString location; if (issue.line > 0) location.Format(L"%d:%d", issue.line, issue.column);
+			html += L"</td><td>" + escape(location) + L"</td></tr>";
+		}
+		html += L"</tbody></table>";
+	}
+	if (report.issues.empty()) html += L"<p>" + escape(FbeLoadRuntimeStringByKey(L"fbe.quality.report.clean", L"No issues found.")) + L"</p>";
+	html += L"</body></html>";
+	return html;
 }
 
 int ShowReport(HWND parent, const Report& report)
