@@ -218,6 +218,23 @@
 			menuCaption(importMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.import") &&
 			menuCaption(exportMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.export") &&
 			menuCaption(recentMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.recent_documents");
+		bool shiftedPluginMenus = false;
+		if(importMenuPosition >= 0 && exportMenuPosition >= 0) {
+			const HMENU originalImport = ::GetSubMenu(fileMenu, importMenuPosition);
+			const HMENU originalExport = ::GetSubMenu(fileMenu, exportMenuPosition);
+			const HMENU inserted = ::CreatePopupMenu();
+			if(inserted) {
+				if(::InsertMenuW(fileMenu, importMenuPosition, MF_BYPOSITION | MF_POPUP,
+					reinterpret_cast<UINT_PTR>(inserted), L"Extra menu")) {
+					const FilePluginMenus shifted = FindFilePluginMenus(fileMenu);
+					shiftedPluginMenus = shifted.importPosition >= 0 && shifted.exportPosition >= 0 &&
+						::GetSubMenu(fileMenu, shifted.importPosition) == originalImport &&
+						::GetSubMenu(fileMenu, shifted.exportPosition) == originalExport;
+					::RemoveMenu(fileMenu, importMenuPosition, MF_BYPOSITION);
+				}
+				::DestroyMenu(inserted);
+			}
+		}
 		Fb2Quality::Report exportProbe(result);
 		exportProbe.title = L"<Demo & Co>";
 		const CString exportText = Fb2Quality::FormatReport(exportProbe);
@@ -450,7 +467,7 @@
 			}
 		}
 		const bool passed = unchanged && snapshotCurrent && snapshotNoteAccepted && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && validImagePlacements && largeDocument && cancellation && progressCompletion &&
-			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && dialogVisual && emptyDialogVisual && openDialogVisual && saveDialogVisual && saveFbdDialogVisual && reportSaveDialogVisual && reportSaveHtmlDialogVisual && qualityToolbar && qualityToolbarVisual && fileMenuLocalized && diagnosticPresentation && nestingRules;
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && dialogVisual && emptyDialogVisual && openDialogVisual && saveDialogVisual && saveFbdDialogVisual && reportSaveDialogVisual && reportSaveHtmlDialogVisual && qualityToolbar && qualityToolbarVisual && fileMenuLocalized && shiftedPluginMenus && diagnosticPresentation && nestingRules;
 		CStringA report;
 		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nsnapshot_note_href=%d\nsnapshot_note_accepted=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndialog_visual=%d\ndialog_visual_probe=%S\nempty_dialog_visual=%d\nopen_dialog_visual=%d\nsave_dialog_visual=%d\nsave_fbd_dialog_visual=%d\nreport_save_dialog_visual=%d\nreport_save_html_dialog_visual=%d\nquality_toolbar=%d\nquality_toolbar_visual=%d\nfile_menu_localized=%d\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,

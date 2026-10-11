@@ -995,6 +995,24 @@ static int FindTopLevelScriptsMenuPosition(HMENU menu)
 	return -1;
 }
 
+struct FilePluginMenus {
+	int importPosition = -1;
+	int exportPosition = -1;
+	int recentPosition = -1;
+};
+
+static FilePluginMenus FindFilePluginMenus(HMENU fileMenu)
+{
+	FilePluginMenus result;
+	result.recentPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
+	for(int position = result.recentPosition - 1; position >= 0; --position)
+		if(::GetSubMenu(fileMenu, position) != NULL) {
+			if(result.exportPosition < 0) result.exportPosition = position;
+			else { result.importPosition = position; break; }
+		}
+	return result;
+}
+
 static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 {
 	if(menu == NULL)
@@ -1025,19 +1043,13 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	HMENU fileMenu = ::GetSubMenu(menu, 0);
 	if(fileMenu != NULL)
 	{
-		const int recentPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
-		int exportPosition = -1, importPosition = -1;
-		for(int position = recentPosition - 1; position >= 0; --position)
-			if(::GetSubMenu(fileMenu, position) != NULL) {
-				if(exportPosition < 0) exportPosition = position;
-				else { importPosition = position; break; }
-			}
-		if(importPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, importPosition, L"fbe.menu.idr_mainframe.popup.import");
-		if(exportPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, exportPosition, L"fbe.menu.idr_mainframe.popup.export");
-		if(recentPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, recentPosition, L"fbe.menu.idr_mainframe.popup.recent_documents");
+		const FilePluginMenus menus = FindFilePluginMenus(fileMenu);
+		if(menus.importPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, menus.importPosition, L"fbe.menu.idr_mainframe.popup.import");
+		if(menus.exportPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, menus.exportPosition, L"fbe.menu.idr_mainframe.popup.export");
+		if(menus.recentPosition >= 0) SetRuntimeMenuItemTextByPosition(fileMenu, menus.recentPosition, L"fbe.menu.idr_mainframe.popup.recent_documents");
 
-		HMENU importMenu = importPosition >= 0 ? ::GetSubMenu(fileMenu, importPosition) : NULL;
-		HMENU exportMenu = exportPosition >= 0 ? ::GetSubMenu(fileMenu, exportPosition) : NULL;
+		HMENU importMenu = menus.importPosition >= 0 ? ::GetSubMenu(fileMenu, menus.importPosition) : NULL;
+		HMENU exportMenu = menus.exportPosition >= 0 ? ::GetSubMenu(fileMenu, menus.exportPosition) : NULL;
 		if(importMenu != NULL && ::GetMenuItemID(importMenu, 0) == IDCANCEL)
 			SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
 		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)
@@ -3375,7 +3387,9 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 void CMainFrame::InitializeBundledPlugins()
 {
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-	m_plugins.Initialize(::GetSubMenu(file, 7), ::GetSubMenu(file, 8),
+	const FilePluginMenus menus = FindFilePluginMenus(file);
+	m_plugins.Initialize(menus.importPosition >= 0 ? ::GetSubMenu(file, menus.importPosition) : NULL,
+		menus.exportPosition >= 0 ? ::GetSubMenu(file, menus.exportPosition) : NULL,
 		[](const PluginDescriptor& plugin) { return FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu); },
 		[this](const PluginDescriptor& plugin, UINT command, const CString& menu) {
 			CString hotkeyText(menu); hotkeyText.Remove(L'&');

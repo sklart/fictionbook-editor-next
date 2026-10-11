@@ -788,6 +788,7 @@ public:
 		NOTIFY_HANDLER(IDC_FB2_QUALITY_LIST, NM_DBLCLK, OnActivate)
 		NOTIFY_HANDLER(IDC_FB2_QUALITY_LIST, LVN_ITEMCHANGED, OnSelectionChanged)
 		NOTIFY_HANDLER(IDC_FB2_QUALITY_LIST, LVN_COLUMNCLICK, OnColumnClick)
+		MESSAGE_HANDLER(WM_NOTIFY, OnNotify)
 	END_MSG_MAP()
 private:
 	const Report& m_report;
@@ -925,8 +926,8 @@ private:
 		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
 		int x = client.right - margin;
 		for (int i = 3; i >= 0; --i) {
-			x -= UiMetrics::ScaleForDpi(buttonWidths[i], dpi);
-			::SetWindowPos(GetDlgItem(ids[i]), NULL, x, buttonY, UiMetrics::ScaleForDpi(buttonWidths[i], dpi), buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+			x -= buttonWidths[i];
+			::SetWindowPos(GetDlgItem(ids[i]), NULL, x, buttonY, buttonWidths[i], buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 			x -= gap;
 		}
 	}
@@ -1013,6 +1014,17 @@ private:
 		SetDlgItemText(IDC_FB2_QUALITY_DETAILS, details);
 	}
 	LRESULT OnSelectionChanged(int, LPNMHDR, BOOL&) { UpdateGoTo(); return 0; }
+	LRESULT OnNotify(UINT, WPARAM, LPARAM parameter, BOOL& handled) {
+		const NMHDR* notification = reinterpret_cast<const NMHDR*>(parameter);
+		const HWND list = GetDlgItem(IDC_FB2_QUALITY_LIST);
+		const HWND header = list ? reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0)) : NULL;
+		if (notification && notification->hwndFrom == header &&
+			(notification->code == HDN_TRACKW || notification->code == HDN_ENDTRACKW ||
+				notification->code == HDN_TRACKA || notification->code == HDN_ENDTRACKA))
+			::InvalidateRect(list, NULL, TRUE);
+		handled = FALSE;
+		return 0;
+	}
 	static int CALLBACK CompareRows(LPARAM left, LPARAM right, LPARAM context) {
 		const ResultsDialog* dialog = reinterpret_cast<const ResultsDialog*>(context);
 		const Issue& a = dialog->m_report.issues[static_cast<size_t>(left)];
@@ -1430,19 +1442,24 @@ bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& 
 	::ShowWindow(window, SW_SHOWNOACTIVATE);
 	::UpdateWindow(window);
 	const HWND list = ::GetDlgItem(window, IDC_FB2_QUALITY_LIST);
-	int initialWidths[5] = {};
-	for(int column = 0; column < 5; ++column)
-		initialWidths[column] = static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0));
-	for(int iteration = 0; iteration < 10; ++iteration) {
-		const int column = iteration % 5;
-		const int width = UiMetrics::ScaleForDpi(85 + (iteration % 3) * 45, UiMetrics::DpiForWindow(window));
-		::SendMessageW(list, LVM_SETCOLUMNWIDTH, column, width);
+	const HWND header = reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0));
+	bool dragged = header != NULL;
+	for(int column = 0; column < 2 && dragged; ++column) {
+		RECT item = {};
+		dragged = ::SendMessageW(header, HDM_GETITEMRECT, column, reinterpret_cast<LPARAM>(&item)) != 0;
+		if(!dragged) break;
+		const int before = static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0));
+		const int edge = item.right - 1, y = (item.top + item.bottom) / 2;
+		::SendMessageW(header, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(edge, y));
+		::SendMessageW(header, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(edge + 24, y));
+		::SendMessageW(header, WM_LBUTTONUP, 0, MAKELPARAM(edge + 24, y));
+		dragged = static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0)) != before;
 	}
-	for(int column = 0; column < 5; ++column)
-		::SendMessageW(list, LVM_SETCOLUMNWIDTH, column, initialWidths[column]);
-	::RedrawWindow(list, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-	if(HWND empty = ::GetDlgItem(window, IDC_FB2_QUALITY_EMPTY))
-		::RedrawWindow(empty, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+	MSG message = {};
+	while(::PeekMessageW(&message, window, WM_PAINT, WM_PAINT, PM_REMOVE)) {
+		::TranslateMessage(&message);
+		::DispatchMessageW(&message);
+	}
 	RECT bounds = {}; ::GetWindowRect(window, &bounds);
 	const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
 	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -1471,8 +1488,8 @@ bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& 
 	if(memory) ::DeleteDC(memory);
 	if(bitmap) ::DeleteObject(bitmap);
 	dialog.DestroyWindow();
-	if(diagnostics) diagnostics->Format(L"captured=%d saved=%d width=%d height=%d drags=10", captured, saved, width, height);
-	return captured && saved;
+	if(diagnostics) diagnostics->Format(L"captured=%d saved=%d width=%d height=%d dragged=%d", captured, saved, width, height, dragged);
+	return captured && saved && dragged;
 }
 
 bool ProbeReportSaveDialog(HWND parent, const Report& report, bool htmlFilter)
