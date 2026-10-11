@@ -3142,8 +3142,14 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
             MONITORINFO monitor = { sizeof(monitor) };
             if (GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
                 RECT minimum = { 0, 0, MulDiv(280, ctx->dpi, 96), MulDiv(250, ctx->dpi, 96) };
-                AdjustWindowRectEx(&minimum, static_cast<DWORD>(GetWindowLongW(hwnd, GWL_STYLE)),
-                    FALSE, static_cast<DWORD>(GetWindowLongW(hwnd, GWL_EXSTYLE)));
+                using AdjustForDpiProc = BOOL (WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
+                const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+                const auto adjustForDpi = user32 ? reinterpret_cast<AdjustForDpiProc>(
+                    GetProcAddress(user32, "AdjustWindowRectExForDpi")) : nullptr;
+                const DWORD style = static_cast<DWORD>(GetWindowLongW(hwnd, GWL_STYLE));
+                const DWORD exStyle = static_cast<DWORD>(GetWindowLongW(hwnd, GWL_EXSTYLE));
+                if (!adjustForDpi || !adjustForDpi(&minimum, style, FALSE, exStyle, ctx->dpi))
+                    AdjustWindowRectEx(&minimum, style, FALSE, exStyle);
                 bounds->ptMinTrackSize.x = MinLayoutInt(minimum.right - minimum.left,
                     monitor.rcWork.right - monitor.rcWork.left);
                 bounds->ptMinTrackSize.y = MinLayoutInt(minimum.bottom - minimum.top,
