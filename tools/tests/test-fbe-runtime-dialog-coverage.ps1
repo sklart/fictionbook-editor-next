@@ -104,7 +104,7 @@ if (-not $bindingSource.Contains('FbeApplyRuntimeDialogLocalization')) {
 # It must retain that identity after WM_INITDIALOG, rather than inherit the
 # unrelated input-box Cancel caption from a later manual override.
 $addImageSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.h')
-$addImageBlock = [regex]::Match($addImageSource, '(?s)class CAddImageDlg.*?\r?\n\s*};').Value
+$addImageBlock = [regex]::Match($addImageSource, '(?s)class CAddImageDlg.*?(?=template<class T, int chgID>)').Value
 if ([string]::IsNullOrEmpty($addImageBlock)) { throw 'CAddImageDlg definition is missing.' }
 foreach ($required in @(
     'SetProp(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1))',

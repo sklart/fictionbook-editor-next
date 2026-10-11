@@ -28,6 +28,107 @@ extern CSettings _Settings;
 
 class CTableDlg : public CDialogImpl<CTableDlg>,
 	public CWinDataExchange<CTableDlg> {
+    void FitLocalizedLayout()
+    {
+        const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+        const int gap = UiMetrics::ScaleForDpi(6, dpi);
+        const int padding = UiMetrics::ScaleForDpi(12, dpi);
+        auto bounds = [this](int id) {
+            CRect rect;
+            ::GetWindowRect(GetDlgItem(id), &rect);
+            ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&rect), 2);
+            return rect;
+        };
+        auto place = [this](int id, const CRect& rect) {
+            ::SetWindowPos(GetDlgItem(id), NULL, rect.left, rect.top, rect.Width(), rect.Height(),
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        };
+        auto textHeight = [this](int id, int width) {
+            HWND control = GetDlgItem(id);
+            const int length = ::GetWindowTextLengthW(control);
+            CString caption;
+            ::GetWindowTextW(control, caption.GetBuffer(length + 1), length + 1);
+            caption.ReleaseBuffer();
+            HDC dc = ::GetDC(control);
+            if(!dc) return 0;
+            HFONT font = reinterpret_cast<HFONT>(::SendMessage(control, WM_GETFONT, 0, 0));
+            HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+            RECT text = { 0, 0, max(1, width), 0 };
+            ::DrawTextW(dc, caption, caption.GetLength(), &text, DT_CALCRECT | DT_WORDBREAK);
+            TEXTMETRIC metrics = {};
+            ::GetTextMetricsW(dc, &metrics);
+            int height = static_cast<int>(text.bottom - text.top);
+            // BS_MULTILINE reserves additional horizontal space for the check
+            // glyph; its rendered text can wrap after DrawText's estimate.
+            if(id == IDC_CHECK_TABLE_TITLE) height = max(height, 2 * metrics.tmHeight);
+            if(previous) ::SelectObject(dc, previous);
+            ::ReleaseDC(control, dc);
+            return height;
+        };
+        auto textWidth = [this](int id) {
+            HWND control = GetDlgItem(id);
+            const int length = ::GetWindowTextLengthW(control);
+            CString caption;
+            ::GetWindowTextW(control, caption.GetBuffer(length + 1), length + 1);
+            caption.ReleaseBuffer();
+            HDC dc = ::GetDC(control);
+            if(!dc) return 0;
+            HFONT font = reinterpret_cast<HFONT>(::SendMessage(control, WM_GETFONT, 0, 0));
+            HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+            SIZE text = {};
+            ::GetTextExtentPoint32W(dc, caption, caption.GetLength(), &text);
+            if(previous) ::SelectObject(dc, previous);
+            ::ReleaseDC(control, dc);
+            return static_cast<int>(text.cx);
+        };
+
+        CRect header = bounds(IDC_CHECK_TABLE_TITLE);
+        const int glyphWidth = UiMetrics::ScaleForDpi(40, dpi);
+        header.bottom = header.top + max(header.Height(),
+            textHeight(IDC_CHECK_TABLE_TITLE, header.Width() - glyphWidth) + padding);
+        place(IDC_CHECK_TABLE_TITLE, header);
+
+        CRect rows = bounds(IDC_TABLE_ROWS_LABEL);
+        rows.top = max(rows.top, header.bottom + gap);
+        rows.bottom = rows.top + max(rows.Height(), textHeight(IDC_TABLE_ROWS_LABEL, rows.Width()) + padding);
+        place(IDC_TABLE_ROWS_LABEL, rows);
+        CRect rowEdit = bounds(IDC_EDIT_TABLE_ROWS), rowSpin = bounds(IDC_SPIN_TABLE_ROWS);
+        rowEdit.OffsetRect(0, rows.top + (rows.Height() - rowEdit.Height()) / 2 - rowEdit.top);
+        rowSpin.OffsetRect(0, rowEdit.top - rowSpin.top);
+        place(IDC_EDIT_TABLE_ROWS, rowEdit);
+        place(IDC_SPIN_TABLE_ROWS, rowSpin);
+
+        CRect columns = bounds(IDC_TABLE_COLUMNS_LABEL);
+        columns.top = max(columns.top, rows.bottom + gap);
+        columns.bottom = columns.top + max(columns.Height(), textHeight(IDC_TABLE_COLUMNS_LABEL, columns.Width()) + padding);
+        place(IDC_TABLE_COLUMNS_LABEL, columns);
+        CRect columnEdit = bounds(IDC_EDIT_TABLE_COLUMNS), columnSpin = bounds(IDC_SPIN_TABLE_COLUMNS);
+        columnEdit.OffsetRect(0, columns.top + (columns.Height() - columnEdit.Height()) / 2 - columnEdit.top);
+        columnSpin.OffsetRect(0, columnEdit.top - columnSpin.top);
+        place(IDC_EDIT_TABLE_COLUMNS, columnEdit);
+        place(IDC_SPIN_TABLE_COLUMNS, columnSpin);
+
+        RECT client = {}, window = {};
+        ::GetClientRect(m_hWnd, &client);
+        ::GetWindowRect(m_hWnd, &window);
+        CRect ok = bounds(IDOK), cancel = bounds(IDCANCEL);
+        const int buttonRightMargin = client.right - max(ok.right, cancel.right);
+        const int buttonPadding = UiMetrics::ScaleForDpi(8, dpi);
+        const int buttonWidth = max(max(max(ok.Width(), cancel.Width()),
+            UiMetrics::ScaleForDpi(80, dpi)),
+            max(textWidth(IDOK), textWidth(IDCANCEL)) + 2 * buttonPadding);
+        ok.right = ok.left + buttonWidth;
+        cancel.right = cancel.left + buttonWidth;
+        place(IDOK, ok);
+        place(IDCANCEL, cancel);
+        const int requiredWidth = max(client.right, ok.right + buttonRightMargin);
+        const int requiredHeight = columns.bottom + gap;
+        if(requiredWidth > client.right || requiredHeight > client.bottom)
+            ::SetWindowPos(m_hWnd, NULL, 0, 0,
+                window.right - window.left + requiredWidth - client.right,
+                window.bottom - window.top + max(0, requiredHeight - client.bottom),
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
 public:
 	enum { IDD = IDD_TABLE };
 
@@ -56,6 +157,9 @@ public:
 
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
 		FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TABLE);
+		::SetDlgItemText(m_hWnd, IDCANCEL,
+			FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_table.cancel", L"Cancel"));
+		FitLocalizedLayout();
 		m_nRows = 1;
 		m_nColumns = 2;
 		m_bTitle = true;

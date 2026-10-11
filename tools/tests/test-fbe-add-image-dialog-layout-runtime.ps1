@@ -1,4 +1,4 @@
-<# Opens the real Add Image prompt in four representative UI locales. #>
+<# Opens the real Add Image and Table dialogs in four representative UI locales. #>
 [CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
@@ -34,6 +34,22 @@ public static class AddImageLayoutWindow {
       }
       found=h;
       return false;
+    },IntPtr.Zero);
+    return found;
+  }
+  public static IntPtr FindTable(int processId) {
+    IntPtr found=IntPtr.Zero;
+    EnumWindows((h,d)=>{
+      uint owner;
+      GetWindowThreadProcessId(h,out owner);
+      var name=new StringBuilder(128);
+      GetClassName(h,name,name.Capacity);
+      if(owner==(uint)processId && name.ToString()=="#32770" &&
+         GetDlgItem(h,1038)!=IntPtr.Zero && GetDlgItem(h,1600)!=IntPtr.Zero && IsWindowVisible(h)) {
+        found=h;
+        return false;
+      }
+      return true;
     },IntPtr.Zero);
     return found;
   }
@@ -93,7 +109,46 @@ try {
             $overlaps = @($audit.issues | Where-Object { $_.kind -eq 'possible-overlap' -and -not $_.ignored -and $handles -contains $_.hwnd })
             if ($overlaps.Count) { throw "$locale Add Image controls overlap." }
             Write-Host "$locale Add Image dialog fits."
-            [void][AddImageLayoutWindow]::PostMessage($dialog, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+            # Choosing the clear-image action closes this prompt without opening
+            # the subsequent system file picker, so the table command can run.
+            [void][AddImageLayoutWindow]::PostMessage($dialog, 0x0111, [IntPtr]6, [IntPtr]::Zero)
+            [void][AddImageLayoutWindow]::PostMessage($frame, 0x0111, [IntPtr]32853, [IntPtr]::Zero)
+            $table = [IntPtr]::Zero
+            for ($attempt = 0; $attempt -lt 60 -and $table -eq [IntPtr]::Zero; ++$attempt) {
+                Start-Sleep -Milliseconds 100
+                $table = [AddImageLayoutWindow]::FindTable($process.Id)
+            }
+            if ($table -eq [IntPtr]::Zero) { throw "$locale Table dialog missing." }
+            $tableReport = Join-Path $PSScriptRoot "..\..\out\tests\table-layout-$locale.json"
+            & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $tableReport | Out-Null
+            $tableAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $tableReport | ConvertFrom-Json
+            $tableHandle = '0x' + $table.ToInt64().ToString('X')
+            foreach ($item in @(
+                @{ Id = 1600; Key = 'fbe.dialog.idd_table.rows_label' },
+                @{ Id = 1601; Key = 'fbe.dialog.idd_table.columns_label' },
+                @{ Id = 1038; Key = 'fbe.dialog.idd_table.header_row' })) {
+                $control = @($tableAudit.controls | Where-Object { $_.Parent -eq $tableHandle -and $_.Id -eq $item.Id })
+                $expected = $catalog.strings.($item.Key).translations.$locale
+                if ($control.Count -ne 1 -or $control[0].Text -ne $expected -or $control[0].TextMayClip) {
+                    throw "$locale Table control $($item.Id) is missing, untranslated, or clips text."
+                }
+            }
+            foreach ($id in 1, 2) {
+                $control = @($tableAudit.controls | Where-Object { $_.Parent -eq $tableHandle -and $_.Id -eq $id })
+                if ($control.Count -ne 1 -or $control[0].TextMayClip) { throw "$locale Table button $id clips text." }
+            }
+            $tableHandles = @($tableAudit.controls | Where-Object Parent -eq $tableHandle | ForEach-Object Hwnd)
+            $tableOverlaps = @($tableAudit.issues | Where-Object { $_.kind -eq 'possible-overlap' -and -not $_.ignored -and $tableHandles -contains $_.hwnd })
+            if ($tableOverlaps.Count) { throw "$locale Table controls overlap." }
+            $dialogBounds = @($tableAudit.controls | Where-Object Hwnd -eq $tableHandle)[0].Bounds
+            foreach ($child in $tableAudit.controls | Where-Object Parent -eq $tableHandle) {
+                if ($child.Bounds.Left -lt $dialogBounds.Left -or $child.Bounds.Top -lt $dialogBounds.Top -or
+                    $child.Bounds.Right -gt $dialogBounds.Right -or $child.Bounds.Bottom -gt $dialogBounds.Bottom) {
+                    throw "$locale Table control $($child.Id) extends beyond the dialog."
+                }
+            }
+            Write-Host "$locale Table dialog fits."
+            [void][AddImageLayoutWindow]::PostMessage($table, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
             [void][AddImageLayoutWindow]::PostMessage($frame, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
             [void]$process.WaitForExit(1000)
         }
@@ -102,7 +157,7 @@ try {
         }
     }
     $passed = $true
-    Write-Host 'Add Image localized layout passed for ru/en/de/uk.'
+    Write-Host 'Add Image and Table localized layout passed for ru/en/de/uk.'
 }
 finally {
     for ($attempt = 0; $attempt -lt 5; ++$attempt) {
