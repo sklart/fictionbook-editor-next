@@ -1,4 +1,4 @@
-<# Audits localized General and Hotkeys controls in an isolated, visible FBE dialog. #>
+<# Audits localized General and Hotkeys controls plus every other Settings page in Russian. #>
 [CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
@@ -28,6 +28,8 @@ public static class SettingsGeneralLayoutWindow
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, out Rect rect);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int metric);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
     public static IntPtr Find(int processId, bool settings)
     {
@@ -54,8 +56,12 @@ public static class SettingsGeneralLayoutWindow
     }
     public static void SelectHotkeys(IntPtr settings)
     {
+        SelectPage(settings, 5);
+    }
+    public static void SelectPage(IntPtr settings, int index)
+    {
         var navigation = GetDlgItem(settings, 1625);
-        SendMessage(navigation, 0x0186, (IntPtr)5, IntPtr.Zero); // LB_SETCURSEL
+        SendMessage(navigation, 0x0186, (IntPtr)index, IntPtr.Zero); // LB_SETCURSEL
         SendMessage(settings, 0x0111, (IntPtr)(1625 | (1 << 16)), navigation); // LBN_SELCHANGE
     }
     public static void Close(IntPtr window) { PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); }
@@ -178,6 +184,44 @@ try {
                 }
             }
             Write-Host "$locale Hotkeys labels and action buttons fit."
+            if ($locale -eq 'ru-RU') {
+                $wideRect = New-Object SettingsGeneralLayoutWindow+Rect
+                [void][SettingsGeneralLayoutWindow]::GetWindowRect($settings, [ref]$wideRect)
+                $wideWidth = [Math]::Min(900, [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - 40)
+                $wideLeft = [Math]::Max(20, [Math]::Min($wideRect.Left,
+                    [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - $wideWidth - 20))
+                [void][SettingsGeneralLayoutWindow]::SetWindowPos($settings, [IntPtr]::Zero,
+                    $wideLeft, $wideRect.Top, $wideWidth, ($wideRect.Bottom - $wideRect.Top), 0x14)
+                foreach ($pageIndex in 1, 2, 3, 4, 6, 7) {
+                    [SettingsGeneralLayoutWindow]::SelectPage($settings, $pageIndex)
+                    Start-Sleep -Milliseconds 100
+                    $pageReport = Join-Path $PSScriptRoot "..\..\out\tests\settings-page-$pageIndex-$locale.json"
+                    & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $pageReport | Out-Null
+                    $pageAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $pageReport | ConvertFrom-Json
+                    $rect = New-Object SettingsGeneralLayoutWindow+Rect
+                    [void][SettingsGeneralLayoutWindow]::GetWindowRect($settings, [ref]$rect)
+                    $bitmap = New-Object Drawing.Bitmap(($rect.Right - $rect.Left), ($rect.Bottom - $rect.Top))
+                    $graphics = [Drawing.Graphics]::FromImage($bitmap)
+                    try {
+                        $dc = $graphics.GetHdc()
+                        try { [void][SettingsGeneralLayoutWindow]::PrintWindow($settings, $dc, 0) }
+                        finally { $graphics.ReleaseHdc($dc) }
+                        $bitmap.Save((Join-Path $PSScriptRoot "..\..\out\tests\settings-page-$pageIndex-ru-RU.bmp"))
+                    }
+                    finally { $graphics.Dispose(); $bitmap.Dispose() }
+                    $pageHandles = @($pageAudit.controls | Where-Object Dialog -eq $dialog | ForEach-Object Hwnd)
+                    $findings = @($pageAudit.issues | Where-Object { -not $_.ignored -and $pageHandles -contains $_.hwnd })
+                    if ($findings.Count) {
+                        $details = @($findings | ForEach-Object {
+                            $finding = $_
+                            $control = @($pageAudit.controls | Where-Object Hwnd -eq $finding.hwnd)[0]
+                            "$($control.Id): $($control.Text) [$($finding.kind)]"
+                        }) -join '; '
+                        throw "$locale Settings page $pageIndex has layout findings: $details"
+                    }
+                    Write-Host "$locale Settings page $pageIndex fits."
+                }
+            }
             [SettingsGeneralLayoutWindow]::Close($settings)
             [SettingsGeneralLayoutWindow]::Close($frame)
             [void]$process.WaitForExit(5000)
@@ -186,7 +230,7 @@ try {
             if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
         }
     }
-    Write-Host 'Settings General and Hotkeys localized layout passed for ru/en/de/uk/es/bg.'
+    Write-Host 'Settings General and Hotkeys fit in ru/en/de/uk/es/bg; all other pages fit in ru-RU.'
 }
 finally {
     for ($cleanupAttempt = 0; $cleanupAttempt -lt 20; ++$cleanupAttempt) {
