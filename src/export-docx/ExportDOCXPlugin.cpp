@@ -915,6 +915,8 @@ private:
     DocxExportSettings m_original;
     HWND m_hToolTip;
     std::vector<CString> m_tooltipText;
+    struct DisabledTooltipArea { HWND control; UINT_PTR id; };
+    std::vector<DisabledTooltipArea> m_disabledTooltipAreas;
     struct ControlLayout { HWND window; CRect initial; int id; };
     std::vector<ControlLayout> m_controls;
     CSize m_initialClient = CSize(0, 0);
@@ -1041,6 +1043,7 @@ private:
             ::SetWindowPos(GetDlgItem(IDCANCEL), HWND_TOP, 0, 0, 0, 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }
+        RefreshDisabledTooltipAreas();
     }
 
     void SetDlgItemRuntimeText(int controlId, LPCWSTR key) {
@@ -1446,6 +1449,7 @@ private:
         ShowIds(page1, _countof(page1), tab == 1);
         ShowIds(page2, _countof(page2), tab == 2);
         ShowIds(page3, _countof(page3), tab == 3);
+        RefreshDisabledTooltipAreas();
     }
 
     void ApplySettingsToControls() {
@@ -1600,6 +1604,7 @@ private:
         AddTooltipString(IDC_TITLE_INCLUDE_FB2_INFO, IDS_TOOLTIP_TITLE_INCLUDE_FB2_INFO);
         AddTooltipString(IDC_NOTES_MODE, IDS_TOOLTIP_NOTES_MODE);
         AddTooltipString(IDC_ADD_TOC, IDS_TOOLTIP_ADD_TOC);
+        AddTooltipString(IDC_LBL_TOC_DEPTH, IDS_TOOLTIP_TOC_DEPTH);
         AddTooltipString(IDC_TOC_DEPTH, IDS_TOOLTIP_TOC_DEPTH);
         AddTooltipString(IDC_CREATE_BOOKMARKS, IDS_TOOLTIP_CREATE_BOOKMARKS);
         AddTooltipString(IDC_EXPORT_HYPERLINKS, IDS_TOOLTIP_EXPORT_HYPERLINKS);
@@ -1649,6 +1654,55 @@ private:
         ti.uId = reinterpret_cast<UINT_PTR>(h);
         ti.lpszText = const_cast<LPWSTR>(text);
         ::SendMessage(m_hToolTip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&ti));
+        if (!MayBeDisabled(id)) return;
+        TOOLINFO area = { 0 };
+        area.cbSize = sizeof(area);
+        area.uFlags = TTF_SUBCLASS;
+        area.hwnd = m_hWnd;
+        area.uId = id;
+        if (::IsWindowVisible(h)) {
+            ::GetWindowRect(h, &area.rect);
+            ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&area.rect), 2);
+        }
+        area.lpszText = const_cast<LPWSTR>(text);
+        if (::SendMessage(m_hToolTip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&area))) {
+            m_disabledTooltipAreas.push_back({ h, id });
+            RefreshDisabledTooltipAreas();
+        }
+    }
+
+    static bool MayBeDisabled(UINT id) {
+        switch (id) {
+        case IDC_EXPORT_COVER: case IDC_LIMIT_IMAGE_WIDTH: case IDC_IMAGE_MAX_WIDTH_CM:
+        case IDC_FONT_NAME: case IDC_FONT_SIZE:
+        case IDC_TITLE_INCLUDE_ANNOTATION: case IDC_TITLE_INCLUDE_GENRES:
+        case IDC_TITLE_INCLUDE_SERIES: case IDC_TITLE_INCLUDE_FB2_INFO:
+        case IDC_LBL_TOC_DEPTH: case IDC_TOC_DEPTH: case IDC_NO_TITLE_PAGE_NUMBER:
+        case IDC_RESTART_PAGE_NUMBERING:
+            return true;
+        default: return false;
+        }
+    }
+
+    void RefreshDisabledTooltipAreas() {
+        if (!m_hToolTip) return;
+        for (const DisabledTooltipArea& area : m_disabledTooltipAreas) {
+            TOOLINFO info = { 0 };
+            info.cbSize = sizeof(info);
+            info.hwnd = m_hWnd;
+            info.uId = area.id;
+            if (::IsWindowVisible(area.control)) {
+                ::GetWindowRect(area.control, &info.rect);
+                ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&info.rect), 2);
+                RECT viewport = {};
+                ::GetClientRect(m_hWnd, &viewport);
+                if (m_initialDpi)
+                    viewport.bottom -= ::MulDiv(m_footerHeight, m_layoutDpi, m_initialDpi);
+                if (!::IntersectRect(&info.rect, &info.rect, &viewport))
+                    ::SetRectEmpty(&info.rect);
+            }
+            ::SendMessage(m_hToolTip, TTM_NEWTOOLRECT, 0, reinterpret_cast<LPARAM>(&info));
+        }
     }
 };
 
