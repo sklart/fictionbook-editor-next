@@ -28,11 +28,14 @@ using System.Runtime.InteropServices;
 public static class SettingsGeneralLayoutWindow
 {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
     public delegate bool Callback(IntPtr window, IntPtr data);
     [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback, IntPtr data);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll")] static extern IntPtr ChildWindowFromPointEx(IntPtr parent, Point point, uint flags);
+    [DllImport("user32.dll")] static extern int MapWindowPoints(IntPtr from, IntPtr to, ref Point point, uint count);
     [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr window);
     [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
@@ -43,6 +46,14 @@ public static class SettingsGeneralLayoutWindow
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] public static extern int GetSystemMetrics(int metric);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
+    public static bool FooterButtonIsTopmost(IntPtr dialog, int id) {
+        IntPtr button = GetDlgItem(dialog, id);
+        Rect bounds;
+        if (button == IntPtr.Zero || !GetWindowRect(button, out bounds)) return false;
+        var center = new Point { X = (bounds.Left + bounds.Right) / 2, Y = (bounds.Top + bounds.Bottom) / 2 };
+        MapWindowPoints(IntPtr.Zero, dialog, ref center, 1);
+        return ChildWindowFromPointEx(dialog, center, 1) == button; // CWP_SKIPINVISIBLE
+    }
     public static IntPtr Find(int processId, bool settings)
     {
         IntPtr found = IntPtr.Zero;
@@ -136,6 +147,11 @@ try {
             $report = Join-Path $ArtifactDirectory "settings-general-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $report | Out-Null
             $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $report | ConvertFrom-Json
+            foreach ($id in 1, 2) {
+                if (-not [SettingsGeneralLayoutWindow]::FooterButtonIsTopmost($settings, $id)) {
+                    throw "$locale Settings footer button $id is covered by another child window."
+                }
+            }
             if ($locale -eq 'ru-RU') {
                 Add-Type -AssemblyName System.Drawing
                 $rect = New-Object SettingsGeneralLayoutWindow+Rect
