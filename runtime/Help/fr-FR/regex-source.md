@@ -232,7 +232,7 @@ Renommer un `id` à une seule occurrence peut laisser les références anciennes
 
 ## 10. Lire les recettes XML
 
-XML respecte la casse : `<p>` et `<P>` diffèrent. L’ordre des attributs ne change pas leur sens, les valeurs peuvent être entre guillemets simples ou doubles et des espaces entourer l’égalité. Les exemples couvrent les cas usuels tant que la règle reste raisonnable. [S3]
+XML respecte la casse : `<p>` et `<P>` diffèrent. L’ordre des attributs ne change pas leur sens, les valeurs peuvent être entre guillemets simples ou doubles et des espaces entourer l’égalité. Les exemples couvrent les cas usuels tant que la règle reste raisonnable. [S2]
 
 `l:` et `xlink:` sont des préfixes XLink fréquents en FB2. Le sens dépend de `xmlns`, pas du préfixe en soi. Les recettes limitées à ces formes ne couvrent pas tous les préfixes : adaptez-les après vérification de la déclaration.
 
@@ -1374,4 +1374,4 @@ Validez FB2, enregistrez et rouvrez après les modifications importantes. Contr�
 
 [S1] [Documentation officielle Scintilla, Searching : mode C++11, options et SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 et Namespaces in XML : noms, attributs, entités et espaces de noms.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 et Namespaces in XML : noms, attributs, entités et espaces de noms.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

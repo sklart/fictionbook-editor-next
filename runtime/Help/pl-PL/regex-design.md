@@ -53,7 +53,7 @@ Przycisk Zastosuj w panelu szablonów przenosi wyrażenie i opcje do okna wyszuk
 
 ## 3. Silnik i granice trybu Projekt
 
-Tryb używa PCRE2-16, przekazując tekst i wzorce jako UTF-16; UTF jest stale włączone. FBE osobno buduje tekst do przeszukania, a osobno wykonuje zamianę z uwzględnieniem struktury książki. Dokumentacja PCRE2 wyjaśnia więc dopasowanie, lecz nie wszystkie działania FBE. Podstawy techniczne podano w źródłach D1–D4.
+Tryb używa PCRE2-16, przekazując tekst i wzorce jako UTF-16; UTF jest stale włączone. FBE osobno buduje tekst do przeszukania, a osobno wykonuje zamianę z uwzględnieniem struktury książki. Dokumentacja PCRE2 wyjaśnia więc dopasowanie, lecz nie wszystkie działania FBE. Podstawy techniczne podano w źródłach D1–D2.
 
 Przeszukiwana jest tekstowa reprezentacja książki, nie dosłowny XML pliku. `<strong>` nie jest sposobem na znalezienie pogrubienia w Projekcie. Tagi wyszukuje się w Kodzie, a przekształcenia strukturalne wykonuje narzędziami edytora lub specjalnymi skryptami.
 

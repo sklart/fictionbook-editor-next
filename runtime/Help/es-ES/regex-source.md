@@ -232,7 +232,7 @@ Renombrar un `id` solo en un sitio puede dejar referencias antiguas. Use el coma
 
 ## 10. Cómo interpretar las recetas XML
 
-XML distingue caja: `<p>` y `<P>` no son lo mismo. El orden de atributos no define el significado; valores pueden usar comillas simples o dobles y espacios alrededor de igual. Las recetas cubren variantes habituales sin complicación excesiva. [S3]
+XML distingue caja: `<p>` y `<P>` no son lo mismo. El orden de atributos no define el significado; valores pueden usar comillas simples o dobles y espacios alrededor de igual. Las recetas cubren variantes habituales sin complicación excesiva. [S2]
 
 `l:` y `xlink:` son prefijos habituales de XLink en FB2. El significado lo establece `xmlns`, no el prefijo por sí solo. Otros prefijos requieren adaptar la regla y revisar la declaración.
 
@@ -1374,4 +1374,4 @@ Valide FB2, guarde y reabra después de cambios importantes. Compruebe Código �
 
 [S1] [Documentación Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

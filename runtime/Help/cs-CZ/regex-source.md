@@ -232,7 +232,7 @@ Změna `id` na jediném místě může zanechat odkazy na starou hodnotu. U souv
 
 ## 10. Jak číst XML postupy
 
-XML rozlišuje velikost: `<p>` a `<P>` jsou jiné názvy. Pořadí atributů neurčuje význam; hodnoty mohou být v jednoduchých nebo dvojitých uvozovkách a kolem `=` jsou přípustné mezery. Příklady pokrývají běžné varianty, pokud to nepřiměřeně nezkomplikuje vzor. [S3]
+XML rozlišuje velikost: `<p>` a `<P>` jsou jiné názvy. Pořadí atributů neurčuje význam; hodnoty mohou být v jednoduchých nebo dvojitých uvozovkách a kolem `=` jsou přípustné mezery. Příklady pokrývají běžné varianty, pokud to nepřiměřeně nezkomplikuje vzor. [S2]
 
 `l:` a `xlink:` jsou běžné prefixy XLink FB2. Význam určuje deklarace `xmlns`, nikoli samotný název prefixu. Vzor s těmito dvěma názvy nepozná automaticky jiný; upravte jej podle deklarace.
 
@@ -1374,4 +1374,4 @@ Validujte FB2, uložte a po významných změnách znovu otevřete. Ověřte př
 
 [S1] [Oficiální dokumentace Scintilla, Searching: C++11 režim, vyhledávací volby a SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 a Namespaces in XML: názvy, atributy, entity a jmenné prostory.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 a Namespaces in XML: názvy, atributy, entity a jmenné prostory.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

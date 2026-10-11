@@ -232,7 +232,7 @@ Een `id` maar op één plaats wijzigen kan verwijzingen naar de oude waarde acht
 
 ## 10. XML-recepten lezen
 
-XML is hoofdlettergevoelig: `<p>` en `<P>` zijn andere namen. Attribuutvolgorde bepaalt hun betekenis niet. Waarden mogen enkele of dubbele quotes hebben en spaties rond `=` zijn toegestaan. De recepten behandelen gangbare vormen voor zover dat niet buitensporig ingewikkeld wordt. [S3]
+XML is hoofdlettergevoelig: `<p>` en `<P>` zijn andere namen. Attribuutvolgorde bepaalt hun betekenis niet. Waarden mogen enkele of dubbele quotes hebben en spaties rond `=` zijn toegestaan. De recepten behandelen gangbare vormen voor zover dat niet buitensporig ingewikkeld wordt. [S2]
 
 `l:` en `xlink:` zijn gangbare XLink-prefixen in FB2. De betekenis komt van `xmlns`, niet de prefixnaam zelf. Een recept dat die twee noemt garandeert geen andere prefix; pas het aan na controle van de declaratie.
 
@@ -1374,4 +1374,4 @@ Valideer FB2, sla op en heropen na belangrijke wijzigingen. Controleer Code ↔ 
 
 [S1] [Officiële Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

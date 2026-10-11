@@ -4,14 +4,14 @@
 <body><nav aria-label="Другой режим"><strong>Код</strong><a href="regex-design.html">Дизайн</a></nav><main>
 <h1 id="top">Справка по регулярным выражениям — Код</h1>
 <aside class="note" id="note-1"><strong>Примечание</strong><p>Полное руководство по поиску и замене в XML-исходнике книги FictionBook Editor Next.</p></aside>
-<p>Режим &#171;Дизайн&#187; описан отдельно в regex-design.md. Рецепты этого документа относятся к режиму &#171;Код&#187;; переносить в него выражения PCRE2 без проверки нельзя.</p>
-<h2 id="section-1">1. Для чего нужен поиск в режиме &#171;Код&#187;</h2>
-<p>В &#171;Коде&#187; видны XML-теги, атрибуты, ссылки, сущности и текст книги. Это подходящий режим для аудита FB2: поиска пустых элементов, импортных HTML-тегов, ссылок-заглушек, неожиданных атрибутов и технических остатков конвертации.</p>
+<p>Режим «Дизайн» описан отдельно в regex-design.md. Рецепты этого документа относятся к режиму «Код»; переносить в него выражения PCRE2 без проверки нельзя.</p>
+<h2 id="section-1">1. Для чего нужен поиск в режиме «Код»</h2>
+<p>В «Коде» видны XML-теги, атрибуты, ссылки, сущности и текст книги. Это подходящий режим для аудита FB2: поиска пустых элементов, импортных HTML-тегов, ссылок-заглушек, неожиданных атрибутов и технических остатков конвертации.</p>
 <aside class="note" id="note-2"><strong>Примечание</strong><p>Regex проверяет текст XML-исходника, а не разобранное дерево DOM. Структурные связи проверяйте инструментом, понимающим XML.</p></aside>
-<p>Для литературной вычитки обычных слов часто удобнее &#171;Дизайн&#187;. В XML-исходнике выражение может найти совпадение не только в тексте книги, но и в атрибуте, комментарии, CDATA, имени файла или двоичных данных. Это необходимо учитывать до замены.</p>
-<p>Статус &#171;Только поиск и проверка&#187; означает, что правило выдаёт кандидатов для просмотра. Оно не доказывает ошибочность XML или текста. Даже простая замена пробелов может изменить значимое содержимое; универсально безопасных замен по всему произвольному XML здесь нет.</p>
+<p>Для литературной вычитки обычных слов часто удобнее «Дизайн». В XML-исходнике выражение может найти совпадение не только в тексте книги, но и в атрибуте, комментарии, CDATA, имени файла или двоичных данных. Это необходимо учитывать до замены.</p>
+<p>Статус «Только поиск и проверка» означает, что правило выдаёт кандидатов для просмотра. Оно не доказывает ошибочность XML или текста. Даже простая замена пробелов может изменить значимое содержимое; универсально безопасных замен по всему произвольному XML здесь нет.</p>
 <h2 id="section-2">2. Быстрый старт</h2>
-<p>Сохраните копию книги, перейдите в &#171;Код&#187;, откройте &#171;Найти&#187; и включите &#171;Регулярное выражение&#187;. Для XML-примеров ниже обычно включено &#171;Учитывать регистр&#187;, а &#171;Только слово целиком&#187; выключено. Границы тегов и атрибутов заданы самим шаблоном.</p>
+<p>Сохраните копию книги, перейдите в «Код», откройте «Найти» и включите «Регулярное выражение». Для XML-примеров ниже обычно включено «Учитывать регистр», а «Только слово целиком» выключено. Границы тегов и атрибутов заданы самим шаблоном.</p>
 <p>Например, для пустого простого абзаца:</p>
 <pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
 <p>Находит <code>&lt;p&gt;&lt;/p&gt;</code> и <code>&lt;p&gt;   &lt;/p&gt;</code> на одной физической строке исходника. Не находит <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Не заменяйте найденный элемент автоматически на пустую строку или <code>&lt;empty-line/&gt;</code>: у абзаца и пустой строки могут быть разные структурные назначения.</p>
@@ -24,7 +24,7 @@
 <p>FBE использует Scintilla с <code>SCFIND_REGEXP</code> и <code>SCFIND_CXX11REGEX</code>: регулярные выражения C++ с грамматикой ECMAScript, а не PCRE2 или полный набор возможностей современного JavaScript. [S1]</p>
 <p>У Scintilla существует также старый базовый механизм regex с иными соглашениями. Старые примеры с экранированными скобками для создания групп не следует смешивать с C++11-режимом FBE: здесь <code>(слово)</code> — захват, а <code>\(слово\)</code> — буквальные круглые скобки.</p>
 <p>Unicode-текст в XML не запрещён, но отдельного UCP и свойств PCRE2 здесь нет. Классы символов зависят от реализации стандартной библиотеки; нельзя считать <code>\w</code> эквивалентом всех букв любого языка. Для предсказуемого поиска ASCII используйте явные классы, например <code>[A-Za-z0-9_]</code>. Для русского текста можно написать <code>[А-Яа-яЁё]</code>, помня, что это не весь кириллический алфавит.</p>
-<h3 id="section-3-1">3.1. Главное отличие от &#171;Дизайна&#187;</h3>
+<h3 id="section-3-1">3.1. Главное отличие от «Дизайна»</h3>
 <div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Свойство</th><th scope="col">Дизайн</th><th scope="col">Код</th></tr></thead><tbody>
 <tr><td>Объект поиска</td><td>Текстовое представление книги</td><td>XML-исходник</td></tr>
 <tr><td>Движок</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
@@ -43,8 +43,8 @@
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
 <p>Для XML эти записи могут описывать одинаковое соседство элементов. Для текущего regex-поиска FBE они различаются: первое соседство доступно одному совпадению, второе пересекает границу строк и недоступно.</p>
-<p>Добавление <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> или класса &#171;любой символ&#187; не снимает это ограничение. Движок не получает обе строки как один проверяемый фрагмент. Изменение такого поведения потребовало бы правки программного пути поиска, а не только другого выражения.</p>
-<p>С другой стороны, построчное сопоставление не запрещает заменой вставить перевод строки. Это отдельная операция; её пример приведён в K28. Не смешивайте &#171;найти через границу строки&#187; и &#171;вставить границу строки после найденного текста&#187;.</p>
+<p>Добавление <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> или класса «любой символ» не снимает это ограничение. Движок не получает обе строки как один проверяемый фрагмент. Изменение такого поведения потребовало бы правки программного пути поиска, а не только другого выражения.</p>
+<p>С другой стороны, построчное сопоставление не запрещает заменой вставить перевод строки. Это отдельная операция; её пример приведён в K28. Не смешивайте «найти через границу строки» и «вставить границу строки после найденного текста».</p>
 <h3 id="section-4-1">4.1. Как работать с многострочным XML</h3>
 <p>Для поиска атрибута, который вынесен на отдельную строку, часто достаточно искать сам атрибут, не включая весь открывающий тег. Для проверки отношений между несколькими строками используйте структурные средства FBE, валидатор, подходящий скрипт или отдельный XML-инструмент.</p>
 <p>Не удаляйте все переводы строк из всей книги ради одного regex: это может затронуть текст, комментарии, CDATA и читаемость исходника. Сначала определите, действительно ли задача требует многострочного сопоставления.</p>
@@ -59,7 +59,7 @@
 <tr><td>Число в квадратных скобках</td><td><code>\[[0-9]+\]</code></td></tr>
 <tr><td>Обратный слеш</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p>Точка <code>.</code> обозначает один символ в доступном фрагменте строки, а не буквальную точку. В UTF-8-документе фактическая работа с символами определяется адаптером Scintilla и стандартной библиотекой; не стройте проверку длины emoji на предположении &#171;одна точка всегда равна одному видимому знаку&#187;.</p>
+<p>Точка <code>.</code> обозначает один символ в доступном фрагменте строки, а не буквальную точку. В UTF-8-документе фактическая работа с символами определяется адаптером Scintilla и стандартной библиотекой; не стройте проверку длины emoji на предположении «одна точка всегда равна одному видимому знаку».</p>
 <p>Обозначения <code>\r</code> и <code>\n</code> являются синтаксисом символов CR/LF, но в текущем построчном поиске не обеспечивают совпадение между строками. Для пробелов и табуляции используйте <code>[ \t]</code>.</p>
 <p>Обрамление PCRE2 <code>\Q...\E</code> в этом режиме не является переносимым способом экранировать текст. Нужные специальные символы экранируйте по отдельности.</p>
 <h2 id="section-6">6. Классы, диапазоны и границы слова</h2>
@@ -101,8 +101,8 @@
 <p>Она требует одинаковое имя в обеих позициях. Это не проверка произвольной вложенности XML.</p>
 <p>Положительная проверка вперёд <code>(?=...)</code> и отрицательная <code>(?!...)</code> полезны, когда нужно проверить следующий символ, не включив его в совпадение. Например, после имени тега можно требовать допустимую границу, чтобы <code>&lt;a</code> не совпало с началом <code>&lt;author&gt;</code>.</p>
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
-<p>При необходимости проверить слева используйте захват контекста и возврат группы в замену: lookbehind здесь недоступен. Не копируйте выражения с <code>(?&lt;=...)</code> из документа для &#171;Дизайна&#187;.</p>
-<h2 id="section-9">9. Замена в режиме &#171;Код&#187;</h2>
+<p>При необходимости проверить слева используйте захват контекста и возврат группы в замену: lookbehind здесь недоступен. Не копируйте выражения с <code>(?&lt;=...)</code> из документа для «Дизайна».</p>
+<h2 id="section-9">9. Замена в режиме «Код»</h2>
 <p>FBE использует <code>SCI_REPLACETARGETRE</code>: совпадение уже найдено, а Scintilla разворачивает строку замены по своим правилам. Это не <code>std::regex_replace</code> с обычным для него <code>$1</code> и не грамматика Design-замены FBE. [S1]</p>
 <h3 id="section-9-1">9.1. Ссылки на захваты</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">В поле замены</th><th scope="col">Значение</th></tr></thead><tbody>
@@ -124,16 +124,16 @@
 <p>Пустое поле замены удаляет найденный диапазон. Удаление пустого тега, атрибута или ссылки способно нарушить документ, даже если выражение успешно нашло фрагмент. Рецепты по структуре ниже преимущественно диагностические.</p>
 <p>Перестановка или переименование <code>id</code> только в одном месте может оставить ссылки на старое значение. Для связанных объектов используйте штатную функцию переименования идентификатора, а не независимые массовые текстовые замены.</p>
 <h2 id="section-10">10. Как читать XML-рецепты</h2>
-<p>XML чувствителен к регистру. <code>&lt;p&gt;</code> и <code>&lt;P&gt;</code> — разные имена. Порядок атрибутов не задаёт их смысл, значение может быть заключено в одинарные или двойные кавычки, вокруг знака равенства допустимы пробелы. Примеры учитывают обычные варианты там, где это не делает правило чрезмерно сложным. [S3]</p>
+<p>XML чувствителен к регистру. <code>&lt;p&gt;</code> и <code>&lt;P&gt;</code> — разные имена. Порядок атрибутов не задаёт их смысл, значение может быть заключено в одинарные или двойные кавычки, вокруг знака равенства допустимы пробелы. Примеры учитывают обычные варианты там, где это не делает правило чрезмерно сложным. [S2]</p>
 <p>Префиксы <code>l:</code> и <code>xlink:</code> — распространённые записи пространства имён XLink в FB2. Сам префикс не является смыслом: его определяет объявление <code>xmlns</code>. Рецепты, перечисляющие эти два варианта, не гарантируют поиск произвольного другого префикса. При его наличии адаптируйте правило и проверьте объявление пространства имён.</p>
 <p>Многие примеры используют <code>[^&gt;]*</code> как приближение содержимого открывающего тега. Это удобно для обычного FB2, но символ <code>&gt;</code> может законно находиться внутри значения атрибута. Комментарии и CDATA также могут содержать текст, похожий на разметку. Поэтому такие рецепты предназначены для просмотра кандидатов, а не для полной XML-валидации или слепой перестройки документа.</p>
-<p>Пример &#171;пустой элемент&#187; не всегда означает ошибку схемы. Пример &#171;числовая сущность&#187; не означает повреждённый символ. Заглушка, нестандартное имя или внешняя ссылка тоже могут иметь законное назначение.</p>
+<p>Пример «пустой элемент» не всегда означает ошибку схемы. Пример «числовая сущность» не означает повреждённый символ. Заглушка, нестандартное имя или внешняя ссылка тоже могут иметь законное назначение.</p>
 <h2 id="section-11">11. Практические рецепты FB2/XML</h2>
 <p>По умолчанию каждый пример требует, чтобы участвующие части находились в одной физической строке. Если шаблон ищет целый открывающий тег, все проверяемые атрибуты также должны попасть в эту строку. У рецептов, ищущих только атрибут, такого требования ко всему тегу нет.</p>
 <h3 id="heading-1">K01. Пробелы в конце физической строки</h3>
 <p>Найти хвост из обычных пробелов и табуляции.</p>
 <p>Действие: Замена после проверки.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -141,7 +141,7 @@
 <p>Тот же контрольный текст с видимыми обозначениями:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
 <p>Здесь ␠ означает обычный пробел, [TAB] — табуляцию, [NBSP] — U+00A0, [NNBSP] — U+202F, [ZWSP] — U+200B. Это поясняющая запись; обозначения не вставляются в книгу.</p>
-<p>Заменить: оставить поле совершенно пустым. Слово &#171;пусто&#187; вводить не нужно.</p>
+<p>Заменить: оставить поле совершенно пустым. Слово «пусто» вводить не нужно.</p>
 <p>Результат замены:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
 <p>Контрпример, который не должен находиться:</p>
@@ -150,7 +150,7 @@
 <h3 id="heading-2">K02. Очистить строку только из пробелов</h3>
 <p>Удалить пробельные символы в пустой по содержимому строке.</p>
 <p>Действие: Замена после проверки.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -160,7 +160,7 @@
 <pre><code>␠␠␠[TAB]
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Здесь ␠ означает обычный пробел, [TAB] — табуляцию, [NBSP] — U+00A0, [NNBSP] — U+202F, [ZWSP] — U+200B. Это поясняющая запись; обозначения не вставляются в книгу.</p>
-<p>Заменить: оставить поле совершенно пустым. Слово &#171;пусто&#187; вводить не нужно.</p>
+<p>Заменить: оставить поле совершенно пустым. Слово «пусто» вводить не нужно.</p>
 <p>Результат замены:</p>
 <pre><code>
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
@@ -170,7 +170,7 @@
 <h3 id="heading-3">K03. Пробел перед закрытием пустого элемента</h3>
 <p>Найти обычный промежуток непосредственно перед /&gt;.</p>
 <p>Действие: Замена после проверки.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -185,7 +185,7 @@
 <h3 id="heading-4">K04. Пустой простой абзац</h3>
 <p>Проверить пару p без текстового содержимого.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -198,7 +198,7 @@
 <h3 id="heading-5">K05. Два empty-line на одной строке</h3>
 <p>Найти соседние пустые строки FB2, записанные на одной физической строке исходника.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -212,7 +212,7 @@
 <h3 id="heading-6">K06. Пустые важные метаданные</h3>
 <p>Проверить несколько простых полей метаданных без содержимого.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -225,7 +225,7 @@
 <h3 id="heading-7">K07. Пустое inline-форматирование</h3>
 <p>Найти пустые парные элементы начертания.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -238,7 +238,7 @@
 <h3 id="heading-8">K08. Одинаковое форматирование вложено в себя</h3>
 <p>Отличить повторное strong/strong от допустимого сочетания strong/emphasis.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -251,7 +251,7 @@
 <h3 id="heading-9">K09. Возможные HTML-теги после импорта</h3>
 <p>Найти распространённые HTML-имена, требующие проверки в FB2.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -265,7 +265,7 @@
 <h3 id="heading-10">K10. Тег в верхнем регистре</h3>
 <p>Найти обычные полностью прописные имена тегов.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -279,7 +279,7 @@
 <h3 id="heading-11">K11. HTML-сущность NBSP</h3>
 <p>Найти буквальную запись &amp;nbsp; в исходном файле.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -292,7 +292,7 @@
 <h3 id="heading-12">K12. Числовые ссылки на символы</h3>
 <p>Найти десятичную или шестнадцатеричную форму записи символа.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -306,7 +306,7 @@
 <h3 id="heading-13">K13. Пустой id</h3>
 <p>Найти ненаполненный обычный атрибут id с любым из двух видов кавычек.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -319,7 +319,7 @@
 <h3 id="heading-14">K14. Перечень значений id</h3>
 <p>Найти заполненные обычные id для аудита именования.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -332,7 +332,7 @@
 <h3 id="heading-15">K15. Внешние HTTP(S)-ссылки</h3>
 <p>Найти href с распространённым префиксом XLink и внешним адресом.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -345,7 +345,7 @@
 <h3 id="heading-16">K16. Локальные ссылки file://</h3>
 <p>Найти привязку к локальному файлу, которая может не работать у читателя.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -358,7 +358,7 @@
 <h3 id="heading-17">K17. Пустая цель ссылки</h3>
 <p>Найти обычную пустую XLink-ссылку.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -371,7 +371,7 @@
 <h3 id="heading-18">K18. Цель #undefined</h3>
 <p>Найти буквальную ссылку-заглушку.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -384,7 +384,7 @@
 <h3 id="heading-19">K19. Ссылки с префиксом bookmark</h3>
 <p>Найти характерные bookmark-цели конвертера, а не все внутренние ссылки.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -397,7 +397,7 @@
 <h3 id="heading-20">K20. Возвратные ссылки Word/FBD</h3>
 <p>Найти распространённые _ftnref и _ednref в целях ссылок.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -410,7 +410,7 @@
 <h3 id="heading-21">K21. Ссылки-сноски независимо от порядка атрибутов</h3>
 <p>Найти открывающий тег a с type=note и внутренним XLink-href в любой последовательности.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -423,7 +423,7 @@
 <h3 id="heading-22">K22. Возможные числовые маркеры сносок</h3>
 <p>Найти число в квадратных, фигурных или круглых скобках.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -438,7 +438,7 @@
 <h3 id="heading-23">K23. Забытые значения Your/Name</h3>
 <p>Проверить типичные англоязычные заглушки имени в метаданных.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -451,7 +451,7 @@
 <h3 id="heading-24">K24. Непривязанная иллюстрация #undefined</h3>
 <p>Найти image, ссылающийся на типичную заглушку.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -464,7 +464,7 @@
 <h3 id="heading-25">K25. Декларация windows-1251</h3>
 <p>Найти указание старой кодировки в XML-декларации.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -477,7 +477,7 @@
 <h3 id="heading-26">K26. Амперсанд без известной стандартной сущности</h3>
 <p>Найти &amp; перед последовательностью, не похожей на одну из стандартных форм ссылки на символ.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -490,7 +490,7 @@
 <h3 id="heading-27">K27. Обычные внутренние ссылки</h3>
 <p>Найти локальную цель #id, не смешивая эту задачу с поиском bookmark.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -503,7 +503,7 @@
 <h3 id="heading-28">K28. Разнести два empty-line после однострочного поиска</h3>
 <p>Демонстрация различия между ограничением поиска и возможностью вставки перевода строки в замену.</p>
 <p>Действие: Одиночная контролируемая замена.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
 <p>Контрольный исходный текст:</p>
@@ -520,7 +520,7 @@
 <h3 id="heading-29">K29. Двойные пробелы в простом XML-тексте</h3>
 <p>Найти текстовый промежуток между тегами с несколькими обычными пробелами.</p>
 <p>Действие: Только поиск и проверка.</p>
-<p>&#171;Регулярное выражение&#187; — включено; &#171;Только слово целиком&#187; — выключено. &#171;Учитывать регистр&#187; — включено.</p>
+<p>«Регулярное выражение» — включено; «Только слово целиком» — выключено. «Учитывать регистр» — включено.</p>
 <p>Найти:</p>
 <pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
 <p>Контрольный исходный текст:</p>
@@ -529,7 +529,7 @@
 <pre><code>&gt;one  two&lt;</code></pre>
 <p>Контрпример, который не должен находиться:</p>
 <pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
-<p>Ограничения и замечания: Совпадение включает угловые разделители и весь простой фрагмент. Для исправления слов обычно удобнее &#171;Дизайн&#187;. Не заменяйте весь найденный XML-фрагмент одним пробелом.</p>
+<p>Ограничения и замечания: Совпадение включает угловые разделители и весь простой фрагмент. Для исправления слов обычно удобнее «Дизайн». Не заменяйте весь найденный XML-фрагмент одним пробелом.</p>
 <h2 id="section-12">12. Почему regex не заменяет XML-проверку</h2>
 <p>Выражение может доказать, что участок текста похож на нужную последовательность символов. Оно не доказывает корректность документа целиком: правильную вложенность всех элементов, соответствие схеме FB2, объявление пространства имён, уникальность ID и существование всех целей ссылок.</p>
 <p>Например, два одинаковых <code>id</code> на разных физических строках нельзя надёжно выявить текущим построчным regex одним сравнением. Похожая проблема возникает при поиске ссылки, цель которой отсутствует в другой части книги. Для таких задач нужны штатная проверка FBE и анализ структуры документа.</p>
@@ -537,34 +537,34 @@
 <p>При замене тега сохранение парности, атрибутов и содержимого — обязанность операции. Замена только открывающего <code>&lt;strong&gt;</code> на другой тег оставляет закрывающий тег прежним. Выражение с обратной ссылкой в примере не делает любую дальнейшую замену структурно безопасной.</p>
 <h2 id="section-13">13. Частые ошибки</h2>
 <h3 id="section-13-1">13.1. Находятся строчные теги вместо прописных</h3>
-<p>Включите &#171;Учитывать регистр&#187;. Для XML это не косметическая опция. Если <code>[A-Z]</code> применяется в регистронезависимом режиме, смысл проверки прописных тегов теряется.</p>
+<p>Включите «Учитывать регистр». Для XML это не косметическая опция. Если <code>[A-Z]</code> применяется в регистронезависимом режиме, смысл проверки прописных тегов теряется.</p>
 <h3 id="section-13-2">13.2. В замене появился буквальный $1</h3>
 <p>Используйте <code>\1</code>. Source-замена FBE идёт через Scintilla, а не через форматирование JavaScript или стандартный <code>$1</code> в другом API.</p>
 <h3 id="section-13-3">13.3. Выражение с \p, \K или lookbehind не работает</h3>
-<p>Это конструкции из другого профиля. Перейдите в &#171;Дизайн&#187; для текстовой задачи либо перепишите XML-рецепт средствами Source: явные классы, захват контекста, незахватывающие группы и проверки вперёд.</p>
+<p>Это конструкции из другого профиля. Перейдите в «Дизайн» для текстовой задачи либо перепишите XML-рецепт средствами Source: явные классы, захват контекста, незахватывающие группы и проверки вперёд.</p>
 <h3 id="section-13-4">13.4. Два соседних тега не находятся</h3>
 <p>Проверьте физический перевод строки, пробел перед <code>/&gt;</code>, одинарные кавычки, дополнительные атрибуты и префикс пространства имён. Буквальное соседство в отформатированном исходнике не равно соседству в дереве XML.</p>
 <h3 id="section-13-5">13.5. Ссылка-сноска не находится при другом порядке атрибутов</h3>
-<p>Простая запись &#171;сначала type, затем href&#187; зависит от порядка атрибутов. В K21 обе характеристики проверяются отдельными lookahead. Если тег разбит на строки, текущий поиск всего тега всё равно не справится; ищите атрибут или используйте структуру документа.</p>
+<p>Простая запись «сначала type, затем href» зависит от порядка атрибутов. В K21 обе характеристики проверяются отдельными lookahead. Если тег разбит на строки, текущий поиск всего тега всё равно не справится; ищите атрибут или используйте структуру документа.</p>
 <h3 id="section-13-6">13.6. Проверка вложенности объявляет strong/emphasis ошибкой</h3>
 <p>Разные допустимые стили могут быть вложены друг в друга. Для проверки повторения одного и того же имени требуется обратная ссылка, как в K08, а не две независимые группы с одинаковым списком альтернатив.</p>
-<h3 id="section-13-7">13.7. &#171;Bookmark&#187; находит все сноски</h3>
+<h3 id="section-13-7">13.7. «Bookmark» находит все сноски</h3>
 <p>Внутренняя ссылка с <code>#</code> ещё не является bookmark-артефактом. Разделяйте общий аудит внутренних ссылок K27 и специфический префикс bookmark в K19.</p>
 <h3 id="section-13-8">13.8. Замена стала портить видимый текст</h3>
-<p>В &#171;Коде&#187; пробелы, знаки и фрагменты могут быть внутри обычного текстового содержимого, атрибута, комментария или двоичных данных. Отмените изменение и сузьте область или шаблон. Название встроенного сценария &#171;безопасная замена&#187; не отменяет контекст XML.</p>
+<p>В «Коде» пробелы, знаки и фрагменты могут быть внутри обычного текстового содержимого, атрибута, комментария или двоичных данных. Отмените изменение и сузьте область или шаблон. Название встроенного сценария «безопасная замена» не отменяет контекст XML.</p>
 <h2 id="section-14">14. Ограничения профиля Source</h2>
 <p>В данном режиме не используйте UCP, классы свойств PCRE2, lookbehind, именованные группы в стиле современного JavaScript/PCRE2, атомарные группы, possessive-квантификаторы, branch reset, подпрограммы, PCRE2 verbs, <code>\K</code>, <code>\G</code> и команды начертания Design-замены.</p>
 <p>Не используйте PCRE2 inline-опции как замену флажкам диалога Source. Не ожидайте, что возможности браузерного JavaScript последних версий автоматически появились в C++11-реализации ECMAScript.</p>
 <p>Построчная обработка через MatchOnLines сохраняется независимо от того, какую последовательность разрыва строки вы записали в шаблоне. Успешная локальная компиляция другим regex-движком не является подтверждением совместимости с FBE.</p>
-<p>Для Unicode-слов и сложной книжной вычитки используйте &#171;Дизайн&#187;. Для XML-структуры используйте возможности XML/FB2, а не пытайтесь компенсировать ограничения одним неограниченным <code>.*</code>.</p>
+<p>Для Unicode-слов и сложной книжной вычитки используйте «Дизайн». Для XML-структуры используйте возможности XML/FB2, а не пытайтесь компенсировать ограничения одним неограниченным <code>.*</code>.</p>
 <h2 id="section-15">15. Производительность и длинные XML-строки</h2>
 <p>Короткое выражение не обязательно быстрое. Несколько неограниченных повторов и длинные конкурирующие альтернативы могут тормозить на строках большого размера. Особый риск — единственная огромная строка, содержащая весь документ или большое binary-содержимое.</p>
-<p>По возможности начинайте с конкретного имени тега/атрибута, а вместо общего &#171;любые символы&#187; используйте ограниченный класс. При диагностике не ищите сразу всё, что может быть ошибкой: отдельные рецепты удобнее проверять и отменять.</p>
+<p>По возможности начинайте с конкретного имени тега/атрибута, а вместо общего «любые символы» используйте ограниченный класс. При диагностике не ищите сразу всё, что может быть ошибкой: отдельные рецепты удобнее проверять и отменять.</p>
 <p>Не преобразуйте все XML-строки в одну для обхода ограничения MatchOnLines. Это меняет документ и не гарантирует приемлемое время поиска.</p>
 <h2 id="section-16">16. Проверка после замены</h2>
 <p>Сравните ожидаемый и фактический найденный диапазон. Для записи с группой проверьте, что сохранены кавычки, префиксы, угловые скобки и закрывающие теги. Убедитесь, что изменение не затронуло комментарии, CDATA или binary.</p>
-<p>Запустите проверку FB2, сохраните книгу и, для существенных изменений, откройте её повторно. Проверьте переход &#171;Код ↔ Дизайн&#187;, работу сносок, иллюстрации и видимый текст. При переименовании идентификатора проверяются как сам объект, так и все связанные ссылки.</p>
+<p>Запустите проверку FB2, сохраните книгу и, для существенных изменений, откройте её повторно. Проверьте переход «Код ↔ Дизайн», работу сносок, иллюстрации и видимый текст. При переименовании идентификатора проверяются как сам объект, так и все связанные ссылки.</p>
 <h2 id="section-17">17. Источники и границы применимости</h2>
 <p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Официальная документация Scintilla, раздел Searching: режим C++11, флаги поиска и SCI_REPLACETARGETRE.</a></p>
-<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 и Namespaces in XML: имена, атрибуты, сущности и пространства имён.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
+<p>[S2] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 и Namespaces in XML: имена, атрибуты, сущности и пространства имён.</a> · <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

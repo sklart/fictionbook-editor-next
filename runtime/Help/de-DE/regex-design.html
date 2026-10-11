@@ -1,54 +1,54 @@
 <!doctype html>
 <html lang="de-DE">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hilfe zu regul&#228;ren Ausdr&#252;cken — Design</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hilfe zu regulären Ausdrücken — Design</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Anderer Modus"><strong>Design</strong><a href="regex-source.html">Quelltext</a></nav><main>
-<h1 id="top">Hilfe zu regul&#228;ren Ausdr&#252;cken — Design</h1>
-<p>Russische W&#246;rter in den Beispielen bleiben unver&#228;ndert; pr&#252;fen Sie sprachabh&#228;ngige Regeln vor der Anwendung auf deutschen Text.</p>
-<p>Vollst&#228;ndiges Handbuch zum Suchen, Ersetzen und Korrekturlesen von B&#252;chern in FictionBook Editor Next.</p>
-<p>Der Quelltextmodus wird in regex-source.md beschrieben. „Muster“ bezeichnet hier einen regul&#228;ren Ausdruck; eine „integrierte Vorlage“ ist ein gespeicherter Ausdruck samt Einstellungen im Vorlagenbereich.</p>
+<h1 id="top">Hilfe zu regulären Ausdrücken — Design</h1>
+<p>Russische Wörter in den Beispielen bleiben unverändert; prüfen Sie sprachabhängige Regeln vor der Anwendung auf deutschen Text.</p>
+<p>Vollständiges Handbuch zum Suchen, Ersetzen und Korrekturlesen von Büchern in FictionBook Editor Next.</p>
+<p>Der Quelltextmodus wird in regex-source.md beschrieben. „Muster“ bezeichnet hier einen regulären Ausdruck; eine „integrierte Vorlage“ ist ein gespeicherter Ausdruck samt Einstellungen im Vorlagenbereich.</p>
 <h2 id="section-1">1. So verwenden Sie dieses Handbuch</h2>
-<p>Ein regul&#228;rer Ausdruck beschreibt eine Suchregel statt einer einzigen genauen Zeichenfolge. Beispielsweise findet <code>[0-9]+</code> eine beliebig lange Ziffernfolge, w&#228;hrend <code>[ \t]{2,}</code> mindestens zwei gew&#246;hnliche Leerzeichen oder Tabulatoren findet. Der Treffer und der Text, durch den er ersetzt werden soll, sind unterschiedliche Dinge.</p>
-<p>Abschnitt 2 f&#252;hrt zum ersten praktischen Ergebnis. Die Abschnitte 3–15 erkl&#228;ren die Syntax, Abschnitt 16 die besondere Ersetzungsgrammatik von FBE. Abschnitt 17 enth&#228;lt fertige Rezepte f&#252;r die Buchbearbeitung mit Einstellungen, Kontrolltexten und Warnungen. Abschlie&#223;end folgen Fehlerdiagnose, Leistungshinweise und Quellen.</p>
-<p>In das Suchfeld geh&#246;rt nur der Ausdruck. Die W&#246;rter „Suchen“ und „Ersetzen“, Bezeichnungen wie U+0020 und Markdown-Backticks sind kein Teil des Musters. JavaScript-Begrenzer <code>/.../g</code>, Anf&#252;hrungszeichen eines C++-Stringliterals und aus JSON &#252;bernommene doppelte Backslashes sind nicht erforderlich.</p>
-<p>Die Kontrollk&#228;stchen sind wichtig. Ein Treffer ohne Beachtung der Gro&#223;-/Kleinschreibung muss bei eingeschalteter Beachtung nicht wieder auftreten. Die angegebenen Einstellungen geh&#246;ren zum Rezept und sind keine unverbindliche Gestaltung.</p>
-<p>„Nur suchen und pr&#252;fen“ kennzeichnet ein diagnostisches Rezept. Die Fundstelle kann korrekt sein: eine absichtliche Wiederholung, ein fremdsprachiger Name, ein Zitat, eine &#220;berschrift oder gewollte Typografie. Auch „Nach Pr&#252;fung ersetzen“ bedeutet nicht, dass die &#196;nderung f&#252;r jedes Buch sicher ist.</p>
+<p>Ein regulärer Ausdruck beschreibt eine Suchregel statt einer einzigen genauen Zeichenfolge. Beispielsweise findet <code>[0-9]+</code> eine beliebig lange Ziffernfolge, während <code>[ \t]{2,}</code> mindestens zwei gewöhnliche Leerzeichen oder Tabulatoren findet. Der Treffer und der Text, durch den er ersetzt werden soll, sind unterschiedliche Dinge.</p>
+<p>Abschnitt 2 führt zum ersten praktischen Ergebnis. Die Abschnitte 3–15 erklären die Syntax, Abschnitt 16 die besondere Ersetzungsgrammatik von FBE. Abschnitt 17 enthält fertige Rezepte für die Buchbearbeitung mit Einstellungen, Kontrolltexten und Warnungen. Abschließend folgen Fehlerdiagnose, Leistungshinweise und Quellen.</p>
+<p>In das Suchfeld gehört nur der Ausdruck. Die Wörter „Suchen“ und „Ersetzen“, Bezeichnungen wie U+0020 und Markdown-Backticks sind kein Teil des Musters. JavaScript-Begrenzer <code>/.../g</code>, Anführungszeichen eines C++-Stringliterals und aus JSON übernommene doppelte Backslashes sind nicht erforderlich.</p>
+<p>Die Kontrollkästchen sind wichtig. Ein Treffer ohne Beachtung der Groß-/Kleinschreibung muss bei eingeschalteter Beachtung nicht wieder auftreten. Die angegebenen Einstellungen gehören zum Rezept und sind keine unverbindliche Gestaltung.</p>
+<p>„Nur suchen und prüfen“ kennzeichnet ein diagnostisches Rezept. Die Fundstelle kann korrekt sein: eine absichtliche Wiederholung, ein fremdsprachiger Name, ein Zitat, eine Überschrift oder gewollte Typografie. Auch „Nach Prüfung ersetzen“ bedeutet nicht, dass die Änderung für jedes Buch sicher ist.</p>
 <h2 id="section-2">2. Erste Suche und sichere Ersetzung</h2>
-<p>Speichern Sie eine Arbeitskopie des Buches. Wechseln Sie zu Design, &#246;ffnen Sie Suchen oder Ersetzen und aktivieren Sie regul&#228;re Ausdr&#252;cke. Schalten Sie f&#252;r erste Versuche „Nur ganze W&#246;rter“ aus: Grenzen sollten zun&#228;chst im Ausdruck selbst angegeben werden. Pr&#252;fen Sie Suchbereich und Richtung.</p>
-<p>F&#252;r mehrere Leerzeichen geben Sie ein:</p>
+<p>Speichern Sie eine Arbeitskopie des Buches. Wechseln Sie zu Design, öffnen Sie Suchen oder Ersetzen und aktivieren Sie reguläre Ausdrücke. Schalten Sie für erste Versuche „Nur ganze Wörter“ aus: Grenzen sollten zunächst im Ausdruck selbst angegeben werden. Prüfen Sie Suchbereich und Richtung.</p>
+<p>Für mehrere Leerzeichen geben Sie ein:</p>
 <pre class="regex" id="regex-1"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
-<p>In <code>Он   пришёл</code> wird die L&#252;cke aus drei Leerzeichen gefunden. Geben Sie als Ersetzung ein gew&#246;hnliches Leerzeichen ein. Ersetzen Sie zun&#228;chst einen Treffer, kontrollieren Sie <code>Он пришёл</code> und erw&#228;gen Sie erst danach „Alle ersetzen“.</p>
+<p>In <code>Он   пришёл</code> wird die Lücke aus drei Leerzeichen gefunden. Geben Sie als Ersetzung ein gewöhnliches Leerzeichen ein. Ersetzen Sie zunächst einen Treffer, kontrollieren Sie <code>Он пришёл</code> und erwägen Sie erst danach „Alle ersetzen“.</p>
 <section class="example" id="example-1"><strong>Beispiel</strong><pre><code>Suchen: [ \t]{2,}
 Eingabe: Он   пришёл
-Treffer: drei Leerzeichen zwischen W&#246;rtern</code></pre></section>
+Treffer: drei Leerzeichen zwischen Wörtern</code></pre></section>
 <section class="example" id="example-2"><strong>Beispiel</strong><pre><code>Suchen: [ \t]{2,}
 Eingabe: Он   пришёл
 Ersetzen durch: ein Leerzeichen
 Erwartet: Он пришёл</code></pre></section>
-<p>Bei vielen Treffern sollten Sie zuerst die Ergebnisliste ansehen und ein oder zwei typische F&#228;lle korrigieren. Pr&#252;fen Sie nach einer Sammeloperation Text, Kursiv- und Fettschrift, Anmerkungen und Absatzgrenzen. Machen Sie ein unerwartetes Ergebnis r&#252;ckg&#228;ngig, bevor Sie weitere &#196;nderungen beginnen.</p>
-<aside class="warning" id="warning-1"><strong>Warnung</strong><p>Alle ersetzen kann beabsichtigte Abst&#228;nde und Formatierung &#228;ndern. Pr&#252;fen Sie eine Ersetzung und sichern Sie eine Arbeitskopie.</p></aside>
-<p>„Anwenden“ im Vorlagenbereich &#252;bernimmt Ausdruck und Optionen in den Suchdialog. Es ist keine Aufforderung, alle Fundstellen bedingungslos zu korrigieren. Suche und Ersetzung werden mit den entsprechenden Dialogbefehlen ausgef&#252;hrt.</p>
+<p>Bei vielen Treffern sollten Sie zuerst die Ergebnisliste ansehen und ein oder zwei typische Fälle korrigieren. Prüfen Sie nach einer Sammeloperation Text, Kursiv- und Fettschrift, Anmerkungen und Absatzgrenzen. Machen Sie ein unerwartetes Ergebnis rückgängig, bevor Sie weitere Änderungen beginnen.</p>
+<aside class="warning" id="warning-1"><strong>Warnung</strong><p>Alle ersetzen kann beabsichtigte Abstände und Formatierung ändern. Prüfen Sie eine Ersetzung und sichern Sie eine Arbeitskopie.</p></aside>
+<p>„Anwenden“ im Vorlagenbereich übernimmt Ausdruck und Optionen in den Suchdialog. Es ist keine Aufforderung, alle Fundstellen bedingungslos zu korrigieren. Suche und Ersetzung werden mit den entsprechenden Dialogbefehlen ausgeführt.</p>
 <h2 id="section-3">3. Such-Engine und Grenzen des Design-Modus</h2>
-<p>Hier wird PCRE2-16 verwendet; Text und Muster werden als UTF-16 &#252;bergeben, UTF ist stets aktiviert. FBE erstellt die durchsuchbare Textdarstellung und f&#252;hrt Ersetzungen unter Ber&#252;cksichtigung der Buchstruktur separat aus. Die PCRE2-Dokumentation erkl&#228;rt daher Treffer, definiert aber nicht s&#228;mtliche FBE-Aktionen. Technische Grundlagen: D1–D4.</p>
-<p>Durchsucht wird eine Textdarstellung des Buches, nicht das w&#246;rtliche XML-Markup der Datei. <code>&lt;strong&gt;</code> ist kein Suchmuster f&#252;r Fettschrift in Design. XML-Tags werden im Quelltextmodus gesucht; strukturelle &#196;nderungen erfolgen mit Editorfunktionen oder spezialisierten Skripten.</p>
-<aside class="note" id="note-1"><strong>Hinweis</strong><p>Design Regex durchsucht Text, keinen DOM-Baum. Pr&#252;fen Sie Elemente und Attribute im Quelltext oder mit einem Strukturwerkzeug.</p></aside>
-<p>Ein Zeilenumbruch aufgrund der Fensterbreite ist kein Zeilenwechselzeichen. Abs&#228;tze, echte Umbr&#252;che und visueller Umbruch d&#252;rfen nicht verwechselt werden. FBE verwendet mehrzeilige Anker in der Suchdarstellung, damit deren Zeilengrenzen Absatzgrenzen abbilden. Absatz&#252;bergreifende Treffer und absatz&#252;bergreifende Ersetzungen sind nicht dasselbe: Letztere werden in der betrachteten Implementierung abgewiesen.</p>
-<p><code>\A</code> und <code>\z</code> beziehen sich auf Anfang und Ende des an die Engine &#252;bergebenen Suchobjekts. Sie sind nicht automatisch Anfang und Ende der gesamten FB2-Datei: Suchbereich und das von FBE gebildete Fragment sind entscheidend.</p>
-<h2 id="section-4">4. Unicode: UTF, UCP und Gro&#223;-/Kleinschreibung</h2>
+<p>Hier wird PCRE2-16 verwendet; Text und Muster werden als UTF-16 übergeben, UTF ist stets aktiviert. FBE erstellt die durchsuchbare Textdarstellung und führt Ersetzungen unter Berücksichtigung der Buchstruktur separat aus. Die PCRE2-Dokumentation erklärt daher Treffer, definiert aber nicht sämtliche FBE-Aktionen. Technische Grundlagen: D1–D2.</p>
+<p>Durchsucht wird eine Textdarstellung des Buches, nicht das wörtliche XML-Markup der Datei. <code>&lt;strong&gt;</code> ist kein Suchmuster für Fettschrift in Design. XML-Tags werden im Quelltextmodus gesucht; strukturelle Änderungen erfolgen mit Editorfunktionen oder spezialisierten Skripten.</p>
+<aside class="note" id="note-1"><strong>Hinweis</strong><p>Design Regex durchsucht Text, keinen DOM-Baum. Prüfen Sie Elemente und Attribute im Quelltext oder mit einem Strukturwerkzeug.</p></aside>
+<p>Ein Zeilenumbruch aufgrund der Fensterbreite ist kein Zeilenwechselzeichen. Absätze, echte Umbrüche und visueller Umbruch dürfen nicht verwechselt werden. FBE verwendet mehrzeilige Anker in der Suchdarstellung, damit deren Zeilengrenzen Absatzgrenzen abbilden. Absatzübergreifende Treffer und absatzübergreifende Ersetzungen sind nicht dasselbe: Letztere werden in der betrachteten Implementierung abgewiesen.</p>
+<p><code>\A</code> und <code>\z</code> beziehen sich auf Anfang und Ende des an die Engine übergebenen Suchobjekts. Sie sind nicht automatisch Anfang und Ende der gesamten FB2-Datei: Suchbereich und das von FBE gebildete Fragment sind entscheidend.</p>
+<h2 id="section-4">4. Unicode: UTF, UCP und Groß-/Kleinschreibung</h2>
 <h3 id="section-4-1">4.1. Wirkung von UTF</h3>
-<p>UTF erm&#246;glicht der Engine die Verarbeitung von Unicode-Zeichen einschlie&#223;lich Kyrillisch. Es transliteriert nicht, korrigiert keine Texterkennung, wandelt <code>ё</code> nicht in <code>е</code> um und vereinheitlicht kanonisch gleichwertige Buchstabendarstellungen nicht automatisch.</p>
-<p>Ein akzentuierter Buchstabe kann als einzelnes Zeichen oder als Buchstabe mit anschlie&#223;endem kombinierendem Zeichen gespeichert sein. Beide sehen &#228;hnlich aus, k&#246;nnen bei zeichenweiser Suche aber unterschiedlich reagieren. PCRE2 f&#252;hrt keine NFC/NFD-Normalisierung durch. Bei Diakritika kann die Klasse <code>\p{M}</code> erforderlich sein.</p>
+<p>UTF ermöglicht der Engine die Verarbeitung von Unicode-Zeichen einschließlich Kyrillisch. Es transliteriert nicht, korrigiert keine Texterkennung, wandelt <code>ё</code> nicht in <code>е</code> um und vereinheitlicht kanonisch gleichwertige Buchstabendarstellungen nicht automatisch.</p>
+<p>Ein akzentuierter Buchstabe kann als einzelnes Zeichen oder als Buchstabe mit anschließendem kombinierendem Zeichen gespeichert sein. Beide sehen ähnlich aus, können bei zeichenweiser Suche aber unterschiedlich reagieren. PCRE2 führt keine NFC/NFD-Normalisierung durch. Bei Diakritika kann die Klasse <code>\p{M}</code> erforderlich sein.</p>
 <h3 id="section-4-2">4.2. Wirkung von UCP</h3>
-<p>„Unicode (UCP)“ ver&#228;ndert die Kurzklassen, vor allem <code>\w</code>, <code>\d</code> und <code>\s</code>, sowie die davon abh&#228;ngigen Grenzen <code>\b</code> und <code>\B</code>. Es ist nicht der Schalter, der kyrillischen Text erst erm&#246;glicht.</p>
-<p>Explizite Unicode-Eigenschaften wie <code>\p{L}</code>, <code>\p{N}</code> und <code>\P{...}</code> sind in einem Unicode-PCRE2-Build auch ohne UCP verf&#252;gbar. Enth&#228;lt ein Ausdruck zugleich <code>\p{L}</code> und <code>\b</code>, sollte UCP normalerweise eingeschaltet sein, damit Buchstaben und Wortgrenzen zusammenpassen.</p>
+<p>„Unicode (UCP)“ verändert die Kurzklassen, vor allem <code>\w</code>, <code>\d</code> und <code>\s</code>, sowie die davon abhängigen Grenzen <code>\b</code> und <code>\B</code>. Es ist nicht der Schalter, der kyrillischen Text erst ermöglicht.</p>
+<p>Explizite Unicode-Eigenschaften wie <code>\p{L}</code>, <code>\p{N}</code> und <code>\P{...}</code> sind in einem Unicode-PCRE2-Build auch ohne UCP verfügbar. Enthält ein Ausdruck zugleich <code>\p{L}</code> und <code>\b</code>, sollte UCP normalerweise eingeschaltet sein, damit Buchstaben und Wortgrenzen zusammenpassen.</p>
 <p>Vergleichen Sie die Suche nach einem russischen Wort:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
 <p>Mit UCP richten sich Grenzen nach der Unicode-Wortklasse. Ohne UCP darf auf Kyrillisch nicht das gleiche Verhalten von <code>\b</code> wie bei lateinischem ASCII-Text erwartet werden. Ein fehlender Treffer beweist hier nicht, dass das Wort fehlt.</p>
-<p>Wenn ausdr&#252;cklich ASCII-Ziffern ben&#246;tigt werden, verwenden Sie <code>[0-9]</code> statt <code>\d</code>: Mit UCP kann Letzteres auch Dezimalziffern anderer Schriftsysteme erfassen.</p>
-<h3 id="section-4-3">4.3. N&#252;tzliche Eigenschaften</h3>
+<p>Wenn ausdrücklich ASCII-Ziffern benötigt werden, verwenden Sie <code>[0-9]</code> statt <code>\d</code>: Mit UCP kann Letzteres auch Dezimalziffern anderer Schriftsysteme erfassen.</p>
+<h3 id="section-4-3">4.3. Nützliche Eigenschaften</h3>
 <div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Ausdruck</th><th scope="col">Gesuchtes Zeichen</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\p{L}</code></td><td>Unicode-Buchstabe</td></tr>
-<tr><td class="syntax"><code>\p{Lu}</code></td><td>Gro&#223;buchstabe bei beachteter Gro&#223;-/Kleinschreibung</td></tr>
-<tr><td class="syntax"><code>\p{Ll}</code></td><td>Kleinbuchstabe bei beachteter Gro&#223;-/Kleinschreibung</td></tr>
+<tr><td class="syntax"><code>\p{Lu}</code></td><td>Großbuchstabe bei beachteter Groß-/Kleinschreibung</td></tr>
+<tr><td class="syntax"><code>\p{Ll}</code></td><td>Kleinbuchstabe bei beachteter Groß-/Kleinschreibung</td></tr>
 <tr><td class="syntax"><code>\p{M}</code></td><td>Kombinierendes Zeichen</td></tr>
 <tr><td class="syntax"><code>\p{N}</code></td><td>Numerisches Zeichen; weiter gefasst als Dezimalziffer</td></tr>
 <tr><td class="syntax"><code>\p{Nd}</code></td><td>Dezimalziffer</td></tr>
@@ -56,263 +56,263 @@ Erwartet: Он пришёл</code></pre></section>
 <tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>Zeichen der kyrillischen Schrift</td></tr>
 <tr><td class="syntax"><code>\P{L}</code></td><td>Zeichen, das kein Buchstabe ist</td></tr>
 </tbody></table></div>
-<p>F&#252;r eine Buchstabenfolge einschlie&#223;lich kombinierender Akzente:</p>
+<p>Für eine Buchstabenfolge einschließlich kombinierender Akzente:</p>
 <pre class="regex" id="regex-3"><code><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span></code></pre>
-<p>Das ist noch keine universelle sprachwissenschaftliche Wortdefinition: Bindestriche und Apostrophe fehlen. F&#252;gen Sie sie nur bewusst hinzu.</p>
-<h3 id="section-4-4">4.4. Gro&#223;-/Kleinschreibung ist eine eigene Einstellung</h3>
-<p>Beachten Sie die Gro&#223;-/Kleinschreibung bei Auff&#228;lligkeiten wie <code>строчнаяПрописная</code>, Initialen und Mustern mit <code>\p{Lu}</code> oder <code>\p{Ll}</code>. Eine Suche ohne diese Unterscheidung kann den Sinn der Regel aufheben. UCP ersetzt dieses Kontrollk&#228;stchen nicht.</p>
-<p>Gro&#223;-/Kleinschreibung innerhalb eines Ausdrucks vor&#252;bergehend ignorieren:</p>
+<p>Das ist noch keine universelle sprachwissenschaftliche Wortdefinition: Bindestriche und Apostrophe fehlen. Fügen Sie sie nur bewusst hinzu.</p>
+<h3 id="section-4-4">4.4. Groß-/Kleinschreibung ist eine eigene Einstellung</h3>
+<p>Beachten Sie die Groß-/Kleinschreibung bei Auffälligkeiten wie <code>строчнаяПрописная</code>, Initialen und Mustern mit <code>\p{Lu}</code> oder <code>\p{Ll}</code>. Eine Suche ohne diese Unterscheidung kann den Sinn der Regel aufheben. UCP ersetzt dieses Kontrollkästchen nicht.</p>
+<p>Groß-/Kleinschreibung innerhalb eines Ausdrucks vorübergehend ignorieren:</p>
 <pre class="regex" id="regex-4"><code><span class="rx-group">(?</span>i<span class="rx-group">)</span>глава</code></pre>
 <p>Auf eine Gruppe begrenzt:</p>
 <pre class="regex" id="regex-5"><code><span class="rx-group">(?</span>i:глава<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
 <h2 id="section-5">5. Literale Zeichen und Maskierung</h2>
-<p>Buchstaben und die meisten Zeichen stehen f&#252;r sich selbst. Au&#223;erhalb einer Zeichenklasse haben unter anderem Punkt, Klammern, Stern, Plus, Fragezeichen, geschweifte Klammern, Anker und Backslash besondere Bedeutung.</p>
-<p>F&#252;r die w&#246;rtliche Suche nach einem Metazeichen stellen Sie einen Backslash davor:</p>
+<p>Buchstaben und die meisten Zeichen stehen für sich selbst. Außerhalb einer Zeichenklasse haben unter anderem Punkt, Klammern, Stern, Plus, Fragezeichen, geschweifte Klammern, Anker und Backslash besondere Bedeutung.</p>
+<p>Für die wörtliche Suche nach einem Metazeichen stellen Sie einen Backslash davor:</p>
 <div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Gesuchter Text</th><th scope="col">Ausdruck</th></tr></thead><tbody>
 <tr><td>Punkt</td><td><code>\.</code></td></tr>
 <tr><td>Fragezeichen</td><td><code>\?</code></td></tr>
 <tr><td>Pluszeichen</td><td><code>\+</code></td></tr>
 <tr><td>Stern</td><td><code>\*</code></td></tr>
-<tr><td>&#214;ffnende runde Klammer</td><td><code>\(</code></td></tr>
-<tr><td>Schlie&#223;ende runde Klammer</td><td><code>\)</code></td></tr>
+<tr><td>Öffnende runde Klammer</td><td><code>\(</code></td></tr>
+<tr><td>Schließende runde Klammer</td><td><code>\)</code></td></tr>
 <tr><td>Zahl in eckigen Klammern</td><td><code>\[[0-9]+\]</code></td></tr>
 <tr><td>Backslash selbst</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p><code>(123)</code> findet die Ziffern <code>123</code> und speichert sie in einer Gruppe; Klammern im Text werden nicht verlangt. F&#252;r die Zeichenfolge <code>(123)</code> m&#252;ssen die runden Klammern maskiert werden.</p>
-<p>Ein l&#228;ngeres Literal kann in einem PCRE2-Muster zwischen <code>\Q</code> und <code>\E</code> stehen:</p>
+<p><code>(123)</code> findet die Ziffern <code>123</code> und speichert sie in einer Gruppe; Klammern im Text werden nicht verlangt. Für die Zeichenfolge <code>(123)</code> müssen die runden Klammern maskiert werden.</p>
+<p>Ein längeres Literal kann in einem PCRE2-Muster zwischen <code>\Q</code> und <code>\E</code> stehen:</p>
 <pre class="regex" id="regex-6"><code><span class="rx-escape">\Q</span>Цена <span class="rx-group">(</span>руб.<span class="rx-group">)</span> <span class="rx-quantifier">+</span> доставка<span class="rx-escape">\E</span></code></pre>
-<p>Im Ersetzungsfeld von FBE haben dieselben Folgen eine andere Bedeutung. &#220;bertragen Sie Maskierungsregeln der Suche nicht automatisch auf die Ersetzung.</p>
+<p>Im Ersetzungsfeld von FBE haben dieselben Folgen eine andere Bedeutung. Übertragen Sie Maskierungsregeln der Suche nicht automatisch auf die Ersetzung.</p>
 <h2 id="section-6">6. Leerzeichen, Tabulatoren und unsichtbare Zeichen</h2>
 <div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Ausdruck</th><th scope="col">Bedeutung bei PCRE2-Suche</th></tr></thead><tbody>
-<tr><td class="syntax"><code>[ ]</code></td><td>Nur gew&#246;hnliches Leerzeichen U+0020</td></tr>
-<tr><td class="syntax"><code>[ \t]</code></td><td>Gew&#246;hnliches Leerzeichen oder Tabulator</td></tr>
+<tr><td class="syntax"><code>[ ]</code></td><td>Nur gewöhnliches Leerzeichen U+0020</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Gewöhnliches Leerzeichen oder Tabulator</td></tr>
 <tr><td class="syntax"><code>\t</code></td><td>Tabulator U+0009</td></tr>
-<tr><td class="syntax"><code>\x{00A0}</code></td><td>Gesch&#252;tztes Leerzeichen</td></tr>
-<tr><td class="syntax"><code>\x{202F}</code></td><td>Schmales gesch&#252;tztes Leerzeichen</td></tr>
-<tr><td class="syntax"><code>\h</code></td><td>Horizontales Leerraumzeichen einschlie&#223;lich verschiedener Unicode-Leerzeichen</td></tr>
-<tr><td class="syntax"><code>\s</code></td><td>Leerraumzeichen, m&#246;glicherweise einschlie&#223;lich Zeilenwechseln</td></tr>
-<tr><td class="syntax"><code>\r</code></td><td>Wagenr&#252;cklauf CR</td></tr>
+<tr><td class="syntax"><code>\x{00A0}</code></td><td>Geschütztes Leerzeichen</td></tr>
+<tr><td class="syntax"><code>\x{202F}</code></td><td>Schmales geschütztes Leerzeichen</td></tr>
+<tr><td class="syntax"><code>\h</code></td><td>Horizontales Leerraumzeichen einschließlich verschiedener Unicode-Leerzeichen</td></tr>
+<tr><td class="syntax"><code>\s</code></td><td>Leerraumzeichen, möglicherweise einschließlich Zeilenwechseln</td></tr>
+<tr><td class="syntax"><code>\r</code></td><td>Wagenrücklauf CR</td></tr>
 <tr><td class="syntax"><code>\n</code></td><td>Zeilenvorschub LF</td></tr>
 <tr><td class="syntax"><code>\R</code></td><td>Unicode-Zeilenwechselsequenz</td></tr>
 <tr><td class="syntax"><code>\x{00AD}</code></td><td>Bedingter Trennstrich</td></tr>
 <tr><td class="syntax"><code>\x{200B}</code></td><td>Leerzeichen ohne Breite</td></tr>
 <tr><td class="syntax"><code>\x{FEFF}</code></td><td>FEFF innerhalb des Textes</td></tr>
 </tbody></table></div>
-<p>F&#252;r gew&#246;hnliche Wortzwischenr&#228;ume w&#228;hlen Sie <code>[ \t]</code> statt <code>\s</code>. Die zweite Klasse ist weiter und kann Absatzgrenzen sowie gesch&#252;tzte Leerzeichen erfassen. Auch <code>\h</code> eignet sich zur Diagnose, ist aber f&#252;r eine nicht n&#228;her bestimmte typografische Ersetzung zu breit.</p>
-<p>Ein gesch&#252;tztes Leerzeichen h&#228;lt Teile zusammen: Nummernzeichen und Zahl, Initialen und Nachname oder Zahl und Einheit. Alle gesch&#252;tzten Leerzeichen durch normale zu ersetzen kann den Satz verschlechtern. FBE besitzt au&#223;erdem eine NBSP-Zeicheneinstellung; Rezepte mit U+00A0 sind mit Buch und Build abzugleichen.</p>
-<p>U+200C und U+200D k&#246;nnen f&#252;r Schriften und zusammengesetzte Emoji erforderlich sein. L&#246;schen Sie nicht pauschal s&#228;mtliche „unsichtbaren“ Zeichen. Eine Fundstelle ist nicht automatisch ein Fehler.</p>
+<p>Für gewöhnliche Wortzwischenräume wählen Sie <code>[ \t]</code> statt <code>\s</code>. Die zweite Klasse ist weiter und kann Absatzgrenzen sowie geschützte Leerzeichen erfassen. Auch <code>\h</code> eignet sich zur Diagnose, ist aber für eine nicht näher bestimmte typografische Ersetzung zu breit.</p>
+<p>Ein geschütztes Leerzeichen hält Teile zusammen: Nummernzeichen und Zahl, Initialen und Nachname oder Zahl und Einheit. Alle geschützten Leerzeichen durch normale zu ersetzen kann den Satz verschlechtern. FBE besitzt außerdem eine NBSP-Zeicheneinstellung; Rezepte mit U+00A0 sind mit Buch und Build abzugleichen.</p>
+<p>U+200C und U+200D können für Schriften und zusammengesetzte Emoji erforderlich sein. Löschen Sie nicht pauschal sämtliche „unsichtbaren“ Zeichen. Eine Fundstelle ist nicht automatisch ein Fehler.</p>
 <h2 id="section-7">7. Zeichenklassen und Bereiche</h2>
-<p>Eine Klasse in eckigen Klammern verbraucht ein Zeichen aus ihrer Menge. <code>[abc]</code> bedeutet einen von drei Buchstaben, nicht das Wort <code>abc</code>. F&#252;r einen oder mehrere erg&#228;nzen Sie einen Quantifizierer: <code>[abc]+</code>.</p>
-<p><code>[^abc]</code> verbraucht ein Zeichen au&#223;erhalb der Menge. Es pr&#252;ft nicht, dass „vor dem Text kein abc steht“. F&#252;r solche Kontextpr&#252;fungen dienen Lookaround-Konstruktionen.</p>
-<p>In einer Klasse verlieren Punkt und die meisten Klammern ihre Sonderbedeutung. Ein Bindestrich kann einen Bereich bilden; als Literal geh&#246;rt er an Anfang oder Ende oder wird maskiert. Eine schlie&#223;ende eckige Klammer l&#228;sst sich als <code>\]</code> angeben.</p>
+<p>Eine Klasse in eckigen Klammern verbraucht ein Zeichen aus ihrer Menge. <code>[abc]</code> bedeutet einen von drei Buchstaben, nicht das Wort <code>abc</code>. Für einen oder mehrere ergänzen Sie einen Quantifizierer: <code>[abc]+</code>.</p>
+<p><code>[^abc]</code> verbraucht ein Zeichen außerhalb der Menge. Es prüft nicht, dass „vor dem Text kein abc steht“. Für solche Kontextprüfungen dienen Lookaround-Konstruktionen.</p>
+<p>In einer Klasse verlieren Punkt und die meisten Klammern ihre Sonderbedeutung. Ein Bindestrich kann einen Bereich bilden; als Literal gehört er an Anfang oder Ende oder wird maskiert. Eine schließende eckige Klammer lässt sich als <code>\]</code> angeben.</p>
 <pre class="regex" id="regex-7"><code><span class="rx-class">[А-Яа-яЁё-]</span><span class="rx-quantifier">+</span></code></pre>
 <p>Das Beispiel erlaubt russische Buchstaben und einen Bindestrich, aber nicht die gesamte kyrillische Schrift. Ukrainische, belarussische und andere Buchstaben erfordern eine weitere Menge oder Unicode-Eigenschaft.</p>
-<p>Innerhalb eckiger Klammern ist <code>\b</code> keine Wortgrenze. Wortgrenzen geh&#246;ren nicht in gew&#246;hnliche Zeichenmengen.</p>
+<p>Innerhalb eckiger Klammern ist <code>\b</code> keine Wortgrenze. Wortgrenzen gehören nicht in gewöhnliche Zeichenmengen.</p>
 <h2 id="section-8">8. Anker, Grenzen und leere Treffer</h2>
-<p>Ein Anker pr&#252;ft eine Position, ohne Buchstaben oder Leerzeichen zu verbrauchen. Daher k&#246;nnen <code>^</code>, <code>$</code> oder <code>\b</code> allein einen Treffer der L&#228;nge null ergeben, der nicht wie eine gew&#246;hnliche Textmarkierung aussieht.</p>
+<p>Ein Anker prüft eine Position, ohne Buchstaben oder Leerzeichen zu verbrauchen. Daher können <code>^</code>, <code>$</code> oder <code>\b</code> allein einen Treffer der Länge null ergeben, der nicht wie eine gewöhnliche Textmarkierung aussieht.</p>
 <div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Anker</th><th scope="col">Bedeutung</th></tr></thead><tbody>
 <tr><td class="syntax"><code>^</code></td><td>Zeilenanfang bei multiline, sonst Anfang des Suchobjekts</td></tr>
-<tr><td class="syntax"><code>$</code></td><td>Zeilenende bei multiline; abschlie&#223;ende Zeilenwechsel sind modusabh&#228;ngig</td></tr>
-<tr><td class="syntax"><code>\A</code></td><td>Ausschlie&#223;lich Anfang des Suchobjekts</td></tr>
+<tr><td class="syntax"><code>$</code></td><td>Zeilenende bei multiline; abschließende Zeilenwechsel sind modusabhängig</td></tr>
+<tr><td class="syntax"><code>\A</code></td><td>Ausschließlich Anfang des Suchobjekts</td></tr>
 <tr><td class="syntax"><code>\z</code></td><td>Striktes Ende des Suchobjekts</td></tr>
 <tr><td class="syntax"><code>\Z</code></td><td>Ende des Suchobjekts oder Position vor dem letzten Zeilenwechsel</td></tr>
 <tr><td class="syntax"><code>\b</code></td><td>Grenze zwischen Wortzeichen und Nichtwortzeichen</td></tr>
 <tr><td class="syntax"><code>\B</code></td><td>Position, die keine Wortgrenze ist</td></tr>
 <tr><td class="syntax"><code>\G</code></td><td>Startposition des aktuellen Abgleichaufrufs</td></tr>
 </tbody></table></div>
-<p><code>\G</code> merkt sich nicht selbstst&#228;ndig den vorherigen Treffer. Es ist an den vom Programm &#252;bergebenen Startoffset gebunden. Bei aufeinanderfolgenden Aufrufen kann das das Ende des vorherigen Treffers sein; in FBE ist dies aber keine universelle Methode zum Durchlaufen eines Buches. Verwenden Sie bei gew&#246;hnlicher Korrektur klarere Grenzen. [D1]</p>
-<p>F&#252;r ein vollst&#228;ndiges Wort statt eines Teilworts verwenden Sie Grenzen oder Pr&#252;fungen benachbarter Buchstaben. Mit UCP:</p>
+<p><code>\G</code> merkt sich nicht selbstständig den vorherigen Treffer. Es ist an den vom Programm übergebenen Startoffset gebunden. Bei aufeinanderfolgenden Aufrufen kann das das Ende des vorherigen Treffers sein; in FBE ist dies aber keine universelle Methode zum Durchlaufen eines Buches. Verwenden Sie bei gewöhnlicher Korrektur klarere Grenzen. [D1]</p>
+<p>Für ein vollständiges Wort statt eines Teilworts verwenden Sie Grenzen oder Prüfungen benachbarter Buchstaben. Mit UCP:</p>
 <pre class="regex" id="regex-8"><code><span class="rx-anchor">\b</span>том<span class="rx-anchor">\b</span></code></pre>
-<p>Das findet nicht den Anfang von <code>томик</code>. Bindestriche und Apostrophe k&#246;nnen W&#246;rter aus Sicht der Engine jedoch anders trennen als aus redaktioneller Sicht.</p>
-<p>Seien Sie bei leeren Treffern und „Alle ersetzen“ besonders vorsichtig: Text wird an Positionen eingef&#252;gt statt sichtbare Zeichen zu ersetzen. Beginnen Sie mit Mustern mit nichtleerem Ergebnis.</p>
-<h2 id="section-9">9. Quantifizierer: Wiederholung und R&#252;ckverfolgung</h2>
+<p>Das findet nicht den Anfang von <code>томик</code>. Bindestriche und Apostrophe können Wörter aus Sicht der Engine jedoch anders trennen als aus redaktioneller Sicht.</p>
+<p>Seien Sie bei leeren Treffern und „Alle ersetzen“ besonders vorsichtig: Text wird an Positionen eingefügt statt sichtbare Zeichen zu ersetzen. Beginnen Sie mit Mustern mit nichtleerem Ergebnis.</p>
+<h2 id="section-9">9. Quantifizierer: Wiederholung und Rückverfolgung</h2>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Schreibweise</th><th scope="col">Wiederholungen des vorherigen Elements</th></tr></thead><tbody>
 <tr><td class="syntax"><code>?</code></td><td>Null oder eins</td></tr>
 <tr><td class="syntax"><code>*</code></td><td>Null oder mehr</td></tr>
 <tr><td class="syntax"><code>+</code></td><td>Eins oder mehr</td></tr>
 <tr><td class="syntax"><code>{3}</code></td><td>Genau drei</td></tr>
 <tr><td class="syntax"><code>{3,}</code></td><td>Mindestens drei</td></tr>
-<tr><td class="syntax"><code>{2,5}</code></td><td>Zwei bis f&#252;nf</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Zwei bis fünf</td></tr>
 </tbody></table></div>
 <p>Ein Quantifizierer bezieht sich auf das vorherige Zeichen, die Klasse oder Gruppe. <code>аб+</code> wiederholt nur <code>б</code>; <code>(?:аб)+</code> wiederholt das Buchstabenpaar.</p>
 <h3 id="section-9-1">9.1. Gierige Suche</h3>
 <p>Ausgangstext:</p>
-<pre><code>&#171;первый&#187; и &#171;второй&#187;</code></pre>
+<pre><code>«первый» и «второй»</code></pre>
 <p>Muster:</p>
-<pre class="regex" id="regex-9"><code>&#171;.<span class="rx-quantifier">*</span>&#187;</code></pre>
-<p>Punkt und Stern nehmen zun&#228;chst m&#246;glichst viel Text auf. Falls erforderlich, geht die Engine zur&#252;ck, damit der Rest des Musters passt. Hier umfasst der Treffer beide Anf&#252;hrungszeichenpaare.</p>
+<pre class="regex" id="regex-9"><code>«.<span class="rx-quantifier">*</span>»</code></pre>
+<p>Punkt und Stern nehmen zunächst möglichst viel Text auf. Falls erforderlich, geht die Engine zurück, damit der Rest des Musters passt. Hier umfasst der Treffer beide Anführungszeichenpaare.</p>
 <h3 id="section-9-2">9.2. Nichtgierige Suche</h3>
-<pre class="regex" id="regex-10"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>&#187;</code></pre>
-<p>Zun&#228;chst werden m&#246;glichst wenige Zeichen versucht; bei Bedarf wird der Treffer erweitert. Nacheinander werden hier <code>&#171;первый&#187;</code> und <code>&#171;второй&#187;</code> gefunden.</p>
-<p>F&#252;r ein einfaches Anf&#252;hrungszeichenpaar ist eine explizite Begrenzung oft verst&#228;ndlicher:</p>
-<pre class="regex" id="regex-11"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;</code></pre>
-<p>Dies analysiert keine verschachtelten Zitate. Diese ben&#246;tigen eine gesonderte redaktionelle Pr&#252;fung.</p>
+<pre class="regex" id="regex-10"><code>«.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>»</code></pre>
+<p>Zunächst werden möglichst wenige Zeichen versucht; bei Bedarf wird der Treffer erweitert. Nacheinander werden hier <code>«первый»</code> und <code>«второй»</code> gefunden.</p>
+<p>Für ein einfaches Anführungszeichenpaar ist eine explizite Begrenzung oft verständlicher:</p>
+<pre class="regex" id="regex-11"><code>«<span class="rx-class">[^»\r\n]</span><span class="rx-quantifier">*</span>»</code></pre>
+<p>Dies analysiert keine verschachtelten Zitate. Diese benötigen eine gesonderte redaktionelle Prüfung.</p>
 <h3 id="section-9-3">9.3. Possessive Quantifizierer</h3>
-<pre class="regex" id="regex-12"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
-<p>Dies bedeutet nicht „noch korrektere Anf&#252;hrungszeichen“. <code>.*+</code> verbraucht auch das schlie&#223;ende Zeichen und gibt es nicht zur&#252;ck. Das verbleibende <code>&#187;</code> im Muster kann deshalb nicht mehr passen; im Beispiel gibt es keinen Treffer.</p>
-<p>Eine Variante, die das schlie&#223;ende Zeichen ausschlie&#223;t, kann sinnvoll sein:</p>
-<pre class="regex" id="regex-13"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
-<p>Possessive Quantifizierer und atomare Gruppen steuern Backtracking. Sie sind keine universelle Beschleunigung f&#252;r jedes Muster.</p>
-<h2 id="section-10">10. Gruppen und R&#252;ckverweise</h2>
-<p>Runde Klammern speichern einen Trefferteil. Nummeriert wird ab 1 nach den &#246;ffnenden erfassenden Klammern von links nach rechts; Verschachtelung &#228;ndert diese Reihenfolge nicht.</p>
+<pre class="regex" id="regex-12"><code>«.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>»</code></pre>
+<p>Dies bedeutet nicht „noch korrektere Anführungszeichen“. <code>.*+</code> verbraucht auch das schließende Zeichen und gibt es nicht zurück. Das verbleibende <code>»</code> im Muster kann deshalb nicht mehr passen; im Beispiel gibt es keinen Treffer.</p>
+<p>Eine Variante, die das schließende Zeichen ausschließt, kann sinnvoll sein:</p>
+<pre class="regex" id="regex-13"><code>«<span class="rx-class">[^»\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>»</code></pre>
+<p>Possessive Quantifizierer und atomare Gruppen steuern Backtracking. Sie sind keine universelle Beschleunigung für jedes Muster.</p>
+<h2 id="section-10">10. Gruppen und Rückverweise</h2>
+<p>Runde Klammern speichern einen Trefferteil. Nummeriert wird ab 1 nach den öffnenden erfassenden Klammern von links nach rechts; Verschachtelung ändert diese Reihenfolge nicht.</p>
 <pre class="regex" id="regex-14"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
-<p>Bei <code>02.10.2026</code> enthalten die Gruppen <code>02</code>, <code>10</code> und <code>2026</code>. Gepr&#252;ft wird die Schreibform, nicht die kalendarische G&#252;ltigkeit.</p>
-<p>Eine nicht erfassende Gruppe <code>(?:...)</code> fasst Teile zusammen, ohne eine Nummer zu beanspruchen. Das hilft bei komplexen Rezepten, deren Ersetzungen verl&#228;ssliche <code>$1</code> und <code>$2</code> ben&#246;tigen.</p>
+<p>Bei <code>02.10.2026</code> enthalten die Gruppen <code>02</code>, <code>10</code> und <code>2026</code>. Geprüft wird die Schreibform, nicht die kalendarische Gültigkeit.</p>
+<p>Eine nicht erfassende Gruppe <code>(?:...)</code> fasst Teile zusammen, ohne eine Nummer zu beanspruchen. Das hilft bei komplexen Rezepten, deren Ersetzungen verlässliche <code>$1</code> und <code>$2</code> benötigen.</p>
 <p>Benannte Gruppen verbessern die Lesbarkeit:</p>
 <pre class="regex" id="regex-15"><code><span class="rx-group">(?&lt;</span>word&gt;<span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-escape">\k</span>&lt;word&gt;</code></pre>
-<p>Ein R&#252;ckverweis sucht denselben erfassten Text. Ein sp&#228;ter erl&#228;uterter Unterprogrammaufruf wiederholt dagegen eine Regel und kann anderen Text finden. Das sind unterschiedliche Mechanismen.</p>
-<p>F&#252;r Wortwiederholungen in B&#252;chern sind zus&#228;tzlich Grenzen, Gro&#223;-/Kleinschreibung und passende Zwischenr&#228;ume n&#246;tig; unten steht ein fertiges Rezept. Ein R&#252;ckverweis ohne Grenzen kann einen Teil eines l&#228;ngeren Wortes finden.</p>
-<p>Benannte Gruppen in der Suche erlauben nicht automatisch benannte Ersetzungen in FBE. Verwenden Sie dort die best&#228;tigten numerischen Verweise.</p>
+<p>Ein Rückverweis sucht denselben erfassten Text. Ein später erläuterter Unterprogrammaufruf wiederholt dagegen eine Regel und kann anderen Text finden. Das sind unterschiedliche Mechanismen.</p>
+<p>Für Wortwiederholungen in Büchern sind zusätzlich Grenzen, Groß-/Kleinschreibung und passende Zwischenräume nötig; unten steht ein fertiges Rezept. Ein Rückverweis ohne Grenzen kann einen Teil eines längeren Wortes finden.</p>
+<p>Benannte Gruppen in der Suche erlauben nicht automatisch benannte Ersetzungen in FBE. Verwenden Sie dort die bestätigten numerischen Verweise.</p>
 <h2 id="section-11">11. Alternativen und atomare Gruppen</h2>
-<p>Der senkrechte Strich w&#228;hlt zwischen Zweigen:</p>
+<p>Der senkrechte Strich wählt zwischen Zweigen:</p>
 <pre class="regex" id="regex-16"><code><span class="rx-group">(?:</span>глава<span class="rx-alternation">|</span>часть<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
 <p>Die Gruppierung ist wichtig. Ohne sie kann sich ein gemeinsamer rechter Teil nur auf den letzten Zweig beziehen. Alternativen werden in Schreibreihenfolge versucht; lange und kurze Formen sollten bewusst angeordnet werden.</p>
-<p>Eine atomare Gruppe verhindert die R&#252;ckkehr in eine bereits erfolgreich abgeglichene Gruppe:</p>
+<p>Eine atomare Gruppe verhindert die Rückkehr in eine bereits erfolgreich abgeglichene Gruppe:</p>
 <pre class="regex" id="regex-17"><code><span class="rx-group">(?</span>&gt;а<span class="rx-alternation">|</span>аб<span class="rx-group">)</span>в</code></pre>
-<p>Bei <code>абв</code> w&#228;hlt der erste Zweig zun&#228;chst <code>а</code>. Danach ist die R&#252;ckkehr zu <code>аб</code> verboten; es gibt keinen Treffer. Ohne Atomarit&#228;t kann er gefunden werden. Dies ist ein Lehrbeispiel: Erg&#228;nzen Sie Atomarit&#228;t nicht ungepr&#252;ft.</p>
-<h2 id="section-12">12. Pr&#252;fung benachbarten Textes: Lookaround</h2>
-<p>Lookaround pr&#252;ft Kontext, der nicht zum gesamten Treffer geh&#246;rt. So kann nur die Nummer markiert werden, w&#228;hrend das vorangestellte Zeichen erhalten bleibt.</p>
+<p>Bei <code>абв</code> wählt der erste Zweig zunächst <code>а</code>. Danach ist die Rückkehr zu <code>аб</code> verboten; es gibt keinen Treffer. Ohne Atomarität kann er gefunden werden. Dies ist ein Lehrbeispiel: Ergänzen Sie Atomarität nicht ungeprüft.</p>
+<h2 id="section-12">12. Prüfung benachbarten Textes: Lookaround</h2>
+<p>Lookaround prüft Kontext, der nicht zum gesamten Treffer gehört. So kann nur die Nummer markiert werden, während das vorangestellte Zeichen erhalten bleibt.</p>
 <pre class="regex" id="regex-18"><code><span class="rx-group">(?&lt;=</span>№ <span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
-<p>Bei <code>№ 125</code> wird nur <code>125</code> gefunden. Hier steht genau ein gew&#246;hnliches Leerzeichen.</p>
+<p>Bei <code>№ 125</code> wird nur <code>125</code> gefunden. Hier steht genau ein gewöhnliches Leerzeichen.</p>
 <section class="example" id="example-3"><strong>Beispiel</strong><pre><code>Suchen: (?&lt;=№ )([0-9]+)
 Eingabe: № 125
 Gesamter Treffer: 125
 Gruppe 1: 125
 Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
-<p>Pr&#252;fung rechts:</p>
+<p>Prüfung rechts:</p>
 <pre class="regex" id="regex-19"><code><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?=</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>руб<span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
 <p>Bei <code>125 руб.</code> wird die Zahl gefunden, aber nicht <code>руб.</code>.</p>
 <p>Negative Vorausschau:</p>
 <pre class="regex" id="regex-20"><code><span class="rx-anchor">\b</span>глава<span class="rx-anchor">\b</span><span class="rx-group">(?!</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
-<p>Mit UCP wird das Wort „глава“ gefunden, wenn danach keine &#252;bliche Nummerierung mit Leerzeichen folgt. Dies ist ein Beispiel zur Kontextauswahl, keine automatische Korrekturregel.</p>
+<p>Mit UCP wird das Wort „глава“ gefunden, wenn danach keine übliche Nummerierung mit Leerzeichen folgt. Dies ist ein Beispiel zur Kontextauswahl, keine automatische Korrekturregel.</p>
 <p>Lookbehind wird <code>(?&lt;=...)</code>, negatives Lookbehind <code>(?&lt;!...)</code> geschrieben. Lookahead ist <code>(?=...)</code>, negatives Lookahead <code>(?!...)</code>.</p>
-<p>Lookbehind unterliegt L&#228;ngenbeschr&#228;nkungen. Modernes PCRE2 erlaubt bestimmte begrenzte variable L&#228;ngen, aber keine beliebige unbeschr&#228;nkte Wiederholung. Verwenden Sie f&#252;r portable Rezepte kurzen festen Kontext oder Erfassung/<code>\K</code>; verlassen Sie sich nicht auf <code>.*</code> im Lookbehind.</p>
+<p>Lookbehind unterliegt Längenbeschränkungen. Modernes PCRE2 erlaubt bestimmte begrenzte variable Längen, aber keine beliebige unbeschränkte Wiederholung. Verwenden Sie für portable Rezepte kurzen festen Kontext oder Erfassung/<code>\K</code>; verlassen Sie sich nicht auf <code>.*</code> im Lookbehind.</p>
 <h2 id="section-13">13. Inline-Optionen</h2>
 <div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Option</th><th scope="col">Wirkung</th></tr></thead><tbody>
-<tr><td class="syntax"><code>(?i)</code></td><td>Gro&#223;-/Kleinschreibung ignorieren</td></tr>
-<tr><td class="syntax"><code>(?-i)</code></td><td>Gro&#223;-/Kleinschreibung beachten</td></tr>
+<tr><td class="syntax"><code>(?i)</code></td><td>Groß-/Kleinschreibung ignorieren</td></tr>
+<tr><td class="syntax"><code>(?-i)</code></td><td>Groß-/Kleinschreibung beachten</td></tr>
 <tr><td class="syntax"><code>(?m)</code></td><td>Mehrzeilige Anfangs- und Endanker</td></tr>
 <tr><td class="syntax"><code>(?-m)</code></td><td>Mehrzeilige Anker ausschalten</td></tr>
 <tr><td class="syntax"><code>(?s)</code></td><td>Punkt darf Zeilenwechsel erfassen</td></tr>
-<tr><td class="syntax"><code>(?-s)</code></td><td>&#220;bliches Punktverhalten wiederherstellen</td></tr>
+<tr><td class="syntax"><code>(?-s)</code></td><td>Übliches Punktverhalten wiederherstellen</td></tr>
 <tr><td class="syntax"><code>(?x)</code></td><td>Unwesentliche Leerzeichen und Kommentare im Muster ignorieren</td></tr>
 </tbody></table></div>
-<p><code>(?m)</code> l&#228;sst den Punkt nicht &#252;ber Zeilen hinweg suchen. <code>(?s)</code> erlaubt FBE keine absatz&#252;bergreifende Ersetzung. Es sind zwei Suchoptionen und eine gesonderte Programmbeschr&#228;nkung.</p>
-<p>Im erweiterten Modus sind Leerzeichen im Ausdruck m&#246;glicherweise nicht mehr w&#246;rtlich. F&#252;r ein erforderliches Leerzeichen verwenden Sie <code>[ ]</code>; <code>#</code> kann au&#223;erhalb einer Klasse einen Kommentar beginnen. Mehrzeilig gestaltete Muster sind in Dokumentationen n&#252;tzlich, doch die folgenden Rezepte passen einzeilig in das Suchfeld.</p>
+<p><code>(?m)</code> lässt den Punkt nicht über Zeilen hinweg suchen. <code>(?s)</code> erlaubt FBE keine absatzübergreifende Ersetzung. Es sind zwei Suchoptionen und eine gesonderte Programmbeschränkung.</p>
+<p>Im erweiterten Modus sind Leerzeichen im Ausdruck möglicherweise nicht mehr wörtlich. Für ein erforderliches Leerzeichen verwenden Sie <code>[ ]</code>; <code>#</code> kann außerhalb einer Klasse einen Kommentar beginnen. Mehrzeilig gestaltete Muster sind in Dokumentationen nützlich, doch die folgenden Rezepte passen einzeilig in das Suchfeld.</p>
 <h2 id="section-14">14. Erweiterte PCRE2-Funktionen</h2>
-<p>F&#252;r die meisten Korrekturen ist dieser Abschnitt nicht erforderlich. Er erkl&#228;rt Konstruktionen, die in fremden Mustern vorkommen k&#246;nnen. Syntaxunterst&#252;tzung bedeutet nicht, dass jedes entsprechende Muster bequem oder sicher auf ein ganzes Buch angewendet werden kann.</p>
-<h3 id="section-14-1">14.1. Trefferanfang zur&#252;cksetzen</h3>
+<p>Für die meisten Korrekturen ist dieser Abschnitt nicht erforderlich. Er erklärt Konstruktionen, die in fremden Mustern vorkommen können. Syntaxunterstützung bedeutet nicht, dass jedes entsprechende Muster bequem oder sicher auf ein ganzes Buch angewendet werden kann.</p>
+<h3 id="section-14-1">14.1. Trefferanfang zurücksetzen</h3>
 <pre class="regex" id="regex-21"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\K</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
-<p>Bei <code>№ 125</code> wird das Pr&#228;fix gepr&#252;ft, als Treffer aber nur <code>125</code> gemeldet. Das ist n&#252;tzlich, wenn die Zahl statt des Zeichens ge&#228;ndert werden soll. <code>\K</code> innerhalb von Lookaround ben&#246;tigt gesonderte Pr&#252;fung; PCRE2 beschr&#228;nkt diese Kombination.</p>
+<p>Bei <code>№ 125</code> wird das Präfix geprüft, als Treffer aber nur <code>125</code> gemeldet. Das ist nützlich, wenn die Zahl statt des Zeichens geändert werden soll. <code>\K</code> innerhalb von Lookaround benötigt gesonderte Prüfung; PCRE2 beschränkt diese Kombination.</p>
 <h3 id="section-14-2">14.2. Bedingung anhand einer beteiligten Gruppe</h3>
 <pre class="regex" id="regex-22"><code><span class="rx-anchor">^</span><span class="rx-group">(</span><span class="rx-escape">\(</span><span class="rx-group">)</span><span class="rx-quantifier">?</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">(?</span><span class="rx-group">(</span>1<span class="rx-group">)</span><span class="rx-escape">\)</span><span class="rx-group">)</span><span class="rx-anchor">$</span></code></pre>
-<p>Erlaubt sind <code>12</code> oder <code>(12)</code>, nicht aber das ungeschlossene <code>(12</code>. Die Bedingung pr&#252;ft, ob Gruppe 1 beteiligt war. Verwenden Sie dieses Suchbeispiel nicht ungepr&#252;ft f&#252;r Ersetzungen mit optionalen Gruppen; die FBE-Umh&#252;llung ist zu ber&#252;cksichtigen.</p>
+<p>Erlaubt sind <code>12</code> oder <code>(12)</code>, nicht aber das ungeschlossene <code>(12</code>. Die Bedingung prüft, ob Gruppe 1 beteiligt war. Verwenden Sie dieses Suchbeispiel nicht ungeprüft für Ersetzungen mit optionalen Gruppen; die FBE-Umhüllung ist zu berücksichtigen.</p>
 <h3 id="section-14-3">14.3. Gemeinsame Gruppennummern in Alternativen</h3>
 <pre class="regex" id="regex-23"><code><span class="rx-group">(?</span><span class="rx-alternation">|</span>глава <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-alternation">|</span>часть <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">)</span></code></pre>
-<p>In beiden Zweigen landet die Nummer in Gruppe 1. Das ist Branch Reset. F&#252;r einfache F&#228;lle ist eine nicht erfassende Gruppe mit einem gemeinsamen Capture meist verst&#228;ndlicher.</p>
+<p>In beiden Zweigen landet die Nummer in Gruppe 1. Das ist Branch Reset. Für einfache Fälle ist eine nicht erfassende Gruppe mit einem gemeinsamen Capture meist verständlicher.</p>
 <h3 id="section-14-4">14.4. Unterprogrammaufruf</h3>
 <pre class="regex" id="regex-24"><code><span class="rx-group">(?&lt;</span>pair&gt;<span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span>-<span class="rx-group">(?</span>&amp;pair<span class="rx-group">)</span></code></pre>
-<p>Bei <code>12-34</code> erf&#252;llen beide Teile dieselbe Regel „zwei Ziffern“, obwohl ihre Werte verschieden sind. Ein R&#252;ckverweis <code>\k&lt;pair&gt;</code> w&#252;rde erneut <code>12</code> verlangen.</p>
-<p>Rekursive Unterprogramme k&#246;nnen einige verschachtelte Strukturen beschreiben, ersetzen aber nicht den XML-Parser von FBE. Verwenden Sie f&#252;r <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, Anmerkungen und Tabellen strukturelle Funktionen.</p>
-<h3 id="section-14-5">14.5. Fragmente &#252;berspringen</h3>
-<pre class="regex" id="regex-25"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
-<p>Mit UCP wird das Wort au&#223;erhalb einfacher russischer Anf&#252;hrungszeichenpaare gesucht. Der erste Zweig markiert ein Zitat zum &#220;berspringen, der zweite sucht das Wort. Verschachtelte oder ungeschlossene Zitate werden nicht analysiert; verlassen Sie sich bei Massen&#228;nderungen nicht bedingungslos darauf.</p>
-<h2 id="section-15">15. Was ein regul&#228;rer Ausdruck nicht entscheiden kann</h2>
-<p>„Gro&#223;buchstabe nach Kleinbuchstabe“, „kein Satzzeichen am Absatzende“ und „Wortwiederholung“ sind formale Hinweise, keine redaktionellen Entscheidungen. Regex wei&#223; nicht, ob <code>да да</code> ein Tippfehler, eine absichtliche Replik, ein Gedichtbestandteil oder eine &#220;berschrift ist.</p>
-<p>F&#252;gen Sie nicht automatisch Punkte hinzu, verbinden Sie nicht alle klein beginnenden Abs&#228;tze, ersetzen Sie nicht s&#228;mtliche lateinischen durch kyrillische Buchstaben und nicht jeden Bindestrich durch einen Gedankenstrich. Komplexe Operationen ben&#246;tigen Kontext und manchmal mehrere DOM-Schritte. Die FBE-Skripte f&#252;r Bereinigung, zusammengeklebte W&#246;rter und Anmerkungen bearbeiten solche Aufgaben.</p>
+<p>Bei <code>12-34</code> erfüllen beide Teile dieselbe Regel „zwei Ziffern“, obwohl ihre Werte verschieden sind. Ein Rückverweis <code>\k&lt;pair&gt;</code> würde erneut <code>12</code> verlangen.</p>
+<p>Rekursive Unterprogramme können einige verschachtelte Strukturen beschreiben, ersetzen aber nicht den XML-Parser von FBE. Verwenden Sie für <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, Anmerkungen und Tabellen strukturelle Funktionen.</p>
+<h3 id="section-14-5">14.5. Fragmente überspringen</h3>
+<pre class="regex" id="regex-25"><code>«<span class="rx-class">[^»\r\n]</span><span class="rx-quantifier">*</span>»<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
+<p>Mit UCP wird das Wort außerhalb einfacher russischer Anführungszeichenpaare gesucht. Der erste Zweig markiert ein Zitat zum Überspringen, der zweite sucht das Wort. Verschachtelte oder ungeschlossene Zitate werden nicht analysiert; verlassen Sie sich bei Massenänderungen nicht bedingungslos darauf.</p>
+<h2 id="section-15">15. Was ein regulärer Ausdruck nicht entscheiden kann</h2>
+<p>„Großbuchstabe nach Kleinbuchstabe“, „kein Satzzeichen am Absatzende“ und „Wortwiederholung“ sind formale Hinweise, keine redaktionellen Entscheidungen. Regex weiß nicht, ob <code>да да</code> ein Tippfehler, eine absichtliche Replik, ein Gedichtbestandteil oder eine Überschrift ist.</p>
+<p>Fügen Sie nicht automatisch Punkte hinzu, verbinden Sie nicht alle klein beginnenden Absätze, ersetzen Sie nicht sämtliche lateinischen durch kyrillische Buchstaben und nicht jeden Bindestrich durch einen Gedankenstrich. Komplexe Operationen benötigen Kontext und manchmal mehrere DOM-Schritte. Die FBE-Skripte für Bereinigung, zusammengeklebte Wörter und Anmerkungen bearbeiten solche Aufgaben.</p>
 <h2 id="section-16">16. Ersetzungsgrammatik von FBE</h2>
-<p>PCRE2 sucht, FBE interpretiert die Ersetzungszeichenfolge. Beispiele aus JavaScript, Python, .NET, PCRE2 substitute oder anderen Editoren d&#252;rfen deshalb nicht ungepr&#252;ft &#252;bernommen werden.</p>
+<p>PCRE2 sucht, FBE interpretiert die Ersetzungszeichenfolge. Beispiele aus JavaScript, Python, .NET, PCRE2 substitute oder anderen Editoren dürfen deshalb nicht ungeprüft übernommen werden.</p>
 <h3 id="section-16-1">16.1. Treffer und Gruppen</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">Im Ersetzungsfeld</th><th scope="col">Bedeutung</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> oder <code>\0</code></td><td>Gesamter Treffer</td></tr>
 <tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>Gruppe mit der entsprechenden Nummer</td></tr>
 <tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Alternative Schreibweise einer numerischen Gruppe</td></tr>
-<tr><td class="syntax"><code>$+</code> oder <code>\+</code></td><td>Letzte von der Trefferumh&#252;llung zur&#252;ckgegebene Gruppe</td></tr>
+<tr><td class="syntax"><code>$+</code> oder <code>\+</code></td><td>Letzte von der Trefferumhüllung zurückgegebene Gruppe</td></tr>
 </tbody></table></div>
-<p>„FBE ersetzt nur Gruppen 1–9“ ist zu ungenau: Gew&#246;hnlicher Text und der gesamte Treffer k&#246;nnen ebenfalls eingef&#252;gt werden. Beschr&#228;nkt ist der direkte numerische Gruppenzugriff, nicht die Gruppenzahl von PCRE2.</p>
-<p>Verwenden Sie <code>$10</code> nicht als Verweis auf Gruppe 10. Benannte Ersetzungen wie <code>${name}</code> geh&#246;ren nicht zur best&#228;tigten FBE-Grammatik. Halten Sie ben&#246;tigte Captures unter den ersten neun und machen Sie Hilfsgruppen nicht erfassend.</p>
-<p>Optionale und leere Gruppen verlangen einen eigenen Versuch: FBE besitzt eine SubMatches-Umh&#252;llung. Neue Sammelersetzungen sollten nicht von Feinheiten &#252;bersprungener Gruppen oder „letzter Gruppe“ abh&#228;ngen; verwenden Sie explizite notwendige Captures.</p>
+<p>„FBE ersetzt nur Gruppen 1–9“ ist zu ungenau: Gewöhnlicher Text und der gesamte Treffer können ebenfalls eingefügt werden. Beschränkt ist der direkte numerische Gruppenzugriff, nicht die Gruppenzahl von PCRE2.</p>
+<p>Verwenden Sie <code>$10</code> nicht als Verweis auf Gruppe 10. Benannte Ersetzungen wie <code>${name}</code> gehören nicht zur bestätigten FBE-Grammatik. Halten Sie benötigte Captures unter den ersten neun und machen Sie Hilfsgruppen nicht erfassend.</p>
+<p>Optionale und leere Gruppen verlangen einen eigenen Versuch: FBE besitzt eine SubMatches-Umhüllung. Neue Sammelersetzungen sollten nicht von Feinheiten übersprungener Gruppen oder „letzter Gruppe“ abhängen; verwenden Sie explizite notwendige Captures.</p>
 <h3 id="section-16-2">16.2. Gruppen umordnen</h3>
 <p>Suchen:</p>
 <pre class="regex" id="regex-26"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
 <p>Ersetzen durch:</p>
 <pre><code>$3-$2-$1</code></pre>
-<p>Aus <code>02.10.2026</code> wird <code>2026-10-02</code>. Dies veranschaulicht die Umordnung und empfiehlt nicht, s&#228;mtliche Datumsangaben im Buch umzuformatieren.</p>
-<h3 id="section-16-3">16.3. Gro&#223;-/Kleinschreibung &#228;ndern</h3>
+<p>Aus <code>02.10.2026</code> wird <code>2026-10-02</code>. Dies veranschaulicht die Umordnung und empfiehlt nicht, sämtliche Datumsangaben im Buch umzuformatieren.</p>
+<h3 id="section-16-3">16.3. Groß-/Kleinschreibung ändern</h3>
 <div class="table-wrap" id="table-8"><table><thead><tr><th scope="col">Befehl</th><th scope="col">Wirkung</th></tr></thead><tbody>
-<tr><td class="syntax"><code>\U</code></td><td>Eingef&#252;gtes Fragment in Gro&#223;buchstaben umwandeln</td></tr>
+<tr><td class="syntax"><code>\U</code></td><td>Eingefügtes Fragment in Großbuchstaben umwandeln</td></tr>
 <tr><td class="syntax"><code>\L</code></td><td>In Kleinbuchstaben umwandeln</td></tr>
-<tr><td class="syntax"><code>\T</code></td><td>Ersten Buchstaben gro&#223;, &#252;brige klein schreiben</td></tr>
-<tr><td class="syntax"><code>\Q</code></td><td>Aktive Schreibungs-/Formatbefehle f&#252;r das folgende Fragment zur&#252;cksetzen</td></tr>
+<tr><td class="syntax"><code>\T</code></td><td>Ersten Buchstaben groß, übrige klein schreiben</td></tr>
+<tr><td class="syntax"><code>\Q</code></td><td>Aktive Schreibungs-/Formatbefehle für das folgende Fragment zurücksetzen</td></tr>
 </tbody></table></div>
 <p>Suchen:</p>
 <pre class="regex" id="regex-27"><code><span class="rx-group">(</span>иван<span class="rx-group">)</span></code></pre>
 <p>Ersetzen durch:</p>
 <pre><code>\T$1\Q</code></pre>
-<p>Kontrollergebnis: <code>Иван</code>. <code>\T</code> ist keine sprachlich umfassende Gro&#223;schreibung jedes Wortes; aus dem gemeinsamen Fragment <code>иван иванов</code> wird nicht zwangsl&#228;ufig <code>Иван Иванов</code>.</p>
-<p>&#220;berlagern Sie <code>\U</code> und <code>\L</code> nicht ohne Zur&#252;cksetzen. Trennen Sie Abschnitte mit <code>\Q</code> und pr&#252;fen Sie Kyrillisch und Diakritika. Die Schreibweise &#228;ndert FBE, nicht ein Unicode-Normalisierer von PCRE2.</p>
+<p>Kontrollergebnis: <code>Иван</code>. <code>\T</code> ist keine sprachlich umfassende Großschreibung jedes Wortes; aus dem gemeinsamen Fragment <code>иван иванов</code> wird nicht zwangsläufig <code>Иван Иванов</code>.</p>
+<p>Überlagern Sie <code>\U</code> und <code>\L</code> nicht ohne Zurücksetzen. Trennen Sie Abschnitte mit <code>\Q</code> und prüfen Sie Kyrillisch und Diakritika. Die Schreibweise ändert FBE, nicht ein Unicode-Normalisierer von PCRE2.</p>
 <h3 id="section-16-4">16.4. Fett- und Kursivschrift</h3>
-<p><code>\S</code> aktiviert Fettschrift f&#252;r das eingef&#252;gte Fragment, <code>\E</code> Kursivschrift. <code>\Q</code> beendet die aktiven Befehle f&#252;r nachfolgend eingef&#252;gten Text.</p>
+<p><code>\S</code> aktiviert Fettschrift für das eingefügte Fragment, <code>\E</code> Kursivschrift. <code>\Q</code> beendet die aktiven Befehle für nachfolgend eingefügten Text.</p>
 <pre><code>\S$1\Q</code></pre>
-<p>Die Ersetzung formatiert Gruppe 1. Sie sucht keine bereits vorhandene Fettschrift und entfernt nicht s&#228;mtliche bestehende Buchformatierung. Pr&#252;fen Sie erst ein Fragment und die R&#252;ckg&#228;ngig-Funktion.</p>
+<p>Die Ersetzung formatiert Gruppe 1. Sie sucht keine bereits vorhandene Fettschrift und entfernt nicht sämtliche bestehende Buchformatierung. Prüfen Sie erst ein Fragment und die Rückgängig-Funktion.</p>
 <h3 id="section-16-5">16.5. Unterschiedliche Bedeutungen in Suche und Ersetzung</h3>
-<p>In der Suche bedeutet <code>\S</code> ein Nichtleerraumzeichen, in FBE-Ersetzungen Fettschrift. In der Suche maskiert <code>\Q...\E</code> ein Literal; in der Ersetzung setzt <code>\Q</code> Befehle zur&#252;ck und <code>\E</code> aktiviert Kursivschrift.</p>
-<p>Geben Sie <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> oder <code>$$</code> nicht in eine Design-Ersetzung ein und erwarten das Verhalten eines anderen Editors. Sie geh&#246;ren nicht zur oben beschriebenen Literalgrammatik; unbekannte Steuerfolgen k&#246;nnen entfallen. F&#252;r NBSP verwenden Sie das echte Zeichen, zur Erhaltung eines Sonderzeichens eine erfasste Gruppe oder eine gepr&#252;fte gew&#246;hnliche Ersetzung.</p>
-<p>Ein leeres Ersetzungsfeld l&#246;scht den Treffer. Ein Feld mit einem Leerzeichen ersetzt ihn durch ein Leerzeichen. Erl&#228;uterungen wie <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> und <code>U+00A0</code> werden nicht w&#246;rtlich eingegeben.</p>
+<p>In der Suche bedeutet <code>\S</code> ein Nichtleerraumzeichen, in FBE-Ersetzungen Fettschrift. In der Suche maskiert <code>\Q...\E</code> ein Literal; in der Ersetzung setzt <code>\Q</code> Befehle zurück und <code>\E</code> aktiviert Kursivschrift.</p>
+<p>Geben Sie <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> oder <code>$$</code> nicht in eine Design-Ersetzung ein und erwarten das Verhalten eines anderen Editors. Sie gehören nicht zur oben beschriebenen Literalgrammatik; unbekannte Steuerfolgen können entfallen. Für NBSP verwenden Sie das echte Zeichen, zur Erhaltung eines Sonderzeichens eine erfasste Gruppe oder eine geprüfte gewöhnliche Ersetzung.</p>
+<p>Ein leeres Ersetzungsfeld löscht den Treffer. Ein Feld mit einem Leerzeichen ersetzt ihn durch ein Leerzeichen. Erläuterungen wie <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> und <code>U+00A0</code> werden nicht wörtlich eingegeben.</p>
 <h2 id="section-17">17. Praktische Rezepte zur Bearbeitung und Korrektur</h2>
-<p>Die Beispiele sind eigenst&#228;ndige Szenarien; ihre Namen m&#252;ssen nicht genau dem integrierten Katalog entsprechen. Ersetzungsrezepte werden zun&#228;chst an einem Treffer erprobt. Echte Leerzeichen und Tabulatoren bleiben in den Kontrollbl&#246;cken erhalten. Gegenbeispiele zeigen mindestens eine Anwendungsgrenze, ersetzen aber keine Pr&#252;fung des gesamten Buches.</p>
-<h3 id="heading-1">D01. Mehrere gew&#246;hnliche Leerzeichen zusammenfassen</h3>
-<p>Gew&#246;hnliche Zwischenr&#228;ume vereinheitlichen, ohne ein einzelnes NBSP zu ver&#228;ndern.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Die Beispiele sind eigenständige Szenarien; ihre Namen müssen nicht genau dem integrierten Katalog entsprechen. Ersetzungsrezepte werden zunächst an einem Treffer erprobt. Echte Leerzeichen und Tabulatoren bleiben in den Kontrollblöcken erhalten. Gegenbeispiele zeigen mindestens eine Anwendungsgrenze, ersetzen aber keine Prüfung des gesamten Buches.</p>
+<h3 id="heading-1">D01. Mehrere gewöhnliche Leerzeichen zusammenfassen</h3>
+<p>Gewöhnliche Zwischenräume vereinheitlichen, ohne ein einzelnes NBSP zu verändern.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-28"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>Он   пришёл.</code></pre>
-<p>Ersetzen durch: ein gew&#246;hnliches Leerzeichen U+0020. Gemeint ist ein Zeichen, nicht das Wort „Leerzeichen“.</p>
+<p>Ersetzen durch: ein gewöhnliches Leerzeichen U+0020. Gemeint ist ein Zeichen, nicht das Wort „Leerzeichen“.</p>
 <p>Ergebnis der Ersetzung:</p>
 <pre><code>Он пришёл.</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он пришёл.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: In Gedichten, Tabellen und simulierten Einz&#252;gen k&#246;nnen mehrere Leerzeichen beabsichtigt sein. Pr&#252;fen Sie den Suchbereich; dies &#228;ndert keine Absatzformatierung.</p>
+<p>Einschränkungen und Hinweise: In Gedichten, Tabellen und simulierten Einzügen können mehrere Leerzeichen beabsichtigt sein. Prüfen Sie den Suchbereich; dies ändert keine Absatzformatierung.</p>
 <h3 id="heading-2">D02. Leerzeichen am Absatzanfang</h3>
-<p>Manuellen Einzug vor gew&#246;hnlichem Text entfernen.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Manuellen Einzug vor gewöhnlichem Text entfernen.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-29"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>   Начало абзаца.</code></pre>
 <p>Derselbe Kontrolltext mit sichtbaren Zeichen:</p>
 <pre><code>␠␠␠Начало␠абзаца.</code></pre>
-<p>Dabei steht ␠ f&#252;r ein gew&#246;hnliches Leerzeichen, [TAB] f&#252;r einen Tabulator, [NBSP] f&#252;r U+00A0, [NNBSP] f&#252;r U+202F und [ZWSP] f&#252;r U+200B. Dies ist eine erl&#228;uternde Darstellung; die Bezeichnungen werden nicht in das Buch eingef&#252;gt.</p>
-<p>Ersetzen durch: das Feld vollst&#228;ndig leer lassen. Nicht das Wort „leer“ eingeben.</p>
+<p>Dabei steht ␠ für ein gewöhnliches Leerzeichen, [TAB] für einen Tabulator, [NBSP] für U+00A0, [NNBSP] für U+202F und [ZWSP] für U+200B. Dies ist eine erläuternde Darstellung; die Bezeichnungen werden nicht in das Buch eingefügt.</p>
+<p>Ersetzen durch: das Feld vollständig leer lassen. Nicht das Wort „leer“ eingeben.</p>
 <p>Ergebnis der Ersetzung:</p>
 <pre><code>Начало абзаца.</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Начало абзаца.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: In Gedichten und k&#252;nstlerischem Satz k&#246;nnen manuelle Einz&#252;ge sinnvoll sein. Der Anker bezeichnet eine Textzeile, nicht den visuellen Fensterumbruch.</p>
+<p>Einschränkungen und Hinweise: In Gedichten und künstlerischem Satz können manuelle Einzüge sinnvoll sein. Der Anker bezeichnet eine Textzeile, nicht den visuellen Fensterumbruch.</p>
 <h3 id="heading-3">D03. Leerzeichen am Absatzende</h3>
-<p>Nachgestellte gew&#246;hnliche Leerzeichen oder Tabulatoren entfernen.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Nachgestellte gewöhnliche Leerzeichen oder Tabulatoren entfernen.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-30"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>Конец абзаца.</code></pre>
 <p>Derselbe Kontrolltext mit sichtbaren Zeichen:</p>
 <pre><code>Конец␠абзаца.␠␠␠</code></pre>
-<p>Dabei steht ␠ f&#252;r ein gew&#246;hnliches Leerzeichen, [TAB] f&#252;r einen Tabulator, [NBSP] f&#252;r U+00A0, [NNBSP] f&#252;r U+202F und [ZWSP] f&#252;r U+200B. Dies ist eine erl&#228;uternde Darstellung; die Bezeichnungen werden nicht in das Buch eingef&#252;gt.</p>
-<p>Ersetzen durch: das Feld vollst&#228;ndig leer lassen. Nicht das Wort „leer“ eingeben.</p>
+<p>Dabei steht ␠ für ein gewöhnliches Leerzeichen, [TAB] für einen Tabulator, [NBSP] für U+00A0, [NNBSP] für U+202F und [ZWSP] für U+200B. Dies ist eine erläuternde Darstellung; die Bezeichnungen werden nicht in das Buch eingefügt.</p>
+<p>Ersetzen durch: das Feld vollständig leer lassen. Nicht das Wort „leer“ eingeben.</p>
 <p>Ergebnis der Ersetzung:</p>
 <pre><code>Конец абзаца.</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Конец абзаца.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: NBSP ist bewusst ausgeschlossen. Verwenden Sie f&#252;r Sonderleerzeichen eigene Diagnosen.</p>
+<p>Einschränkungen und Hinweise: NBSP ist bewusst ausgeschlossen. Verwenden Sie für Sonderleerzeichen eigene Diagnosen.</p>
 <h3 id="heading-4">D04. Leerzeichen vor Komma und anderen Satzzeichen</h3>
 <p>Das Satzzeichen erhalten und den Zwischenraum davor entfernen.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-31"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[,;:!?]</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
@@ -323,41 +323,41 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Слово, другое!</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Слово, другое!</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Die Regel gilt f&#252;r gew&#246;hnlichen russischen Text. Franz&#246;sische Typografie erlaubt vor einigen Zeichen besondere Leerzeichen; dort darf das Rezept nicht unangepasst verwendet werden.</p>
-<h3 id="heading-5">D05. Leerzeichen nach einem &#246;ffnenden Zeichen</h3>
-<p>Gew&#246;hnliche Leerzeichen nach Klammern oder russischen &#246;ffnenden Anf&#252;hrungszeichen entfernen.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: Die Regel gilt für gewöhnlichen russischen Text. Französische Typografie erlaubt vor einigen Zeichen besondere Leerzeichen; dort darf das Rezept nicht unangepasst verwendet werden.</p>
+<h3 id="heading-5">D05. Leerzeichen nach einem öffnenden Zeichen</h3>
+<p>Gewöhnliche Leerzeichen nach Klammern oder russischen öffnenden Anführungszeichen entfernen.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
-<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[&#171;„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[«„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
 <p>Kontrolltext:</p>
-<pre><code>&#171; слово&#187; ( пример)</code></pre>
+<pre><code>« слово» ( пример)</code></pre>
 <p>Ersetzen durch:</p>
 <pre><code>$1</code></pre>
 <p>Ergebnis der Ersetzung:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
+<pre><code>«слово» (пример)</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Leerzeichen in Formeln und Beispielen bleiben unber&#252;hrt, sofern sie nicht direkt einem aufgef&#252;hrten Zeichen folgen. Der Kontext ist dennoch zu pr&#252;fen.</p>
-<h3 id="heading-6">D06. Leerzeichen vor einem schlie&#223;enden Zeichen</h3>
-<p>Gew&#246;hnliche Leerzeichen vor Klammern oder schlie&#223;enden Anf&#252;hrungszeichen entfernen.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<pre><code>«слово» (пример)</code></pre>
+<p>Einschränkungen und Hinweise: Leerzeichen in Formeln und Beispielen bleiben unberührt, sofern sie nicht direkt einem aufgeführten Zeichen folgen. Der Kontext ist dennoch zu prüfen.</p>
+<h3 id="heading-6">D06. Leerzeichen vor einem schließenden Zeichen</h3>
+<p>Gewöhnliche Leerzeichen vor Klammern oder schließenden Anführungszeichen entfernen.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
-<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>&#187;”]<span class="rx-group">)</span></code></pre>
+<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>»”]<span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
-<pre><code>&#171;слово &#187; (пример )</code></pre>
+<pre><code>«слово » (пример )</code></pre>
 <p>Ersetzen durch:</p>
 <pre><code>$1</code></pre>
 <p>Ergebnis der Ersetzung:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
+<pre><code>«слово» (пример)</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Kein allgemeiner Normalisierer f&#252;r alle Anf&#252;hrungszeichen- und mathematischen Klammerkonventionen.</p>
+<pre><code>«слово» (пример)</code></pre>
+<p>Einschränkungen und Hinweise: Kein allgemeiner Normalisierer für alle Anführungszeichen- und mathematischen Klammerkonventionen.</p>
 <h3 id="heading-7">D07. Genau drei Punkte als Auslassungszeichen</h3>
-<p>Drei aufeinanderfolgende Punkte umwandeln, l&#228;ngere Folgen aber nicht.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Drei aufeinanderfolgende Punkte umwandeln, längere Folgen aber nicht.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-34"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-quantifier">{3}</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
@@ -368,11 +368,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Он подумал… и ответил.</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Содержание.....12</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Beachten Sie die redaktionellen Vorgaben. Vier Punkte und F&#252;llpunkte im Inhaltsverzeichnis werden absichtlich nicht ge&#228;ndert.</p>
+<p>Einschränkungen und Hinweise: Beachten Sie die redaktionellen Vorgaben. Vier Punkte und Füllpunkte im Inhaltsverzeichnis werden absichtlich nicht geändert.</p>
 <h3 id="heading-8">D08. Auseinandergezogene Auslassungspunkte</h3>
-<p>Drei durch gew&#246;hnliche Leerzeichen getrennte Punkte zusammenfassen.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Drei durch gewöhnliche Leerzeichen getrennte Punkte zusammenfassen.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-35"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
@@ -383,41 +383,41 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Он подумал… и ответил.</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Слово. Другое.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Erfasst auch drei unmittelbar benachbarte Punkte. Nicht f&#252;r F&#252;llpunktzeilen oder speziell geregelte Auslassungen in Zitaten verwenden.</p>
-<h3 id="heading-9">D09. Gesch&#252;tztes Leerzeichen nach №</h3>
+<p>Einschränkungen und Hinweise: Erfasst auch drei unmittelbar benachbarte Punkte. Nicht für Füllpunktzeilen oder speziell geregelte Auslassungen in Zitaten verwenden.</p>
+<h3 id="heading-9">D09. Geschütztes Leerzeichen nach №</h3>
 <p>Nummernzeichen und folgende Zahl zusammenhalten.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-36"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>№ 125</code></pre>
 <p>Ersetzen durch:</p>
-<pre><code>№&#160;$1</code></pre>
+<pre><code>№ $1</code></pre>
 <p>Ergebnis der Ersetzung:</p>
-<pre><code>№&#160;125</code></pre>
+<pre><code>№ 125</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>№125</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Zwischen № und $1 steht ein echtes U+00A0. Nicht durch die sichtbare Folge \x{00A0} ersetzen. Ein fehlendes Leerzeichen wird nicht eingef&#252;gt.</p>
-<h3 id="heading-10">D10. Gesch&#252;tztes Leerzeichen nach &#167;</h3>
+<p>Einschränkungen und Hinweise: Zwischen № und $1 steht ein echtes U+00A0. Nicht durch die sichtbare Folge \x{00A0} ersetzen. Ein fehlendes Leerzeichen wird nicht eingefügt.</p>
+<h3 id="heading-10">D10. Geschütztes Leerzeichen nach §</h3>
 <p>Paragrafenzeichen und Nummer verbinden.</p>
-<p>Aktion: nach Pr&#252;fung ersetzen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nach Prüfung ersetzen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
-<pre class="regex" id="regex-37"><code>&#167;<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<pre class="regex" id="regex-37"><code>§<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
-<pre><code>&#167; 12</code></pre>
+<pre><code>§ 12</code></pre>
 <p>Ersetzen durch:</p>
-<pre><code>&#167;&#160;$1</code></pre>
+<pre><code>§ $1</code></pre>
 <p>Ergebnis der Ersetzung:</p>
-<pre><code>&#167;&#160;12</code></pre>
+<pre><code>§ 12</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
-<pre><code>&#167;12</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Zwischen &#167; und $1 steht ein echtes NBSP. Bei komplexer Nummerierung pr&#252;fen, ob das richtige Fragment gefunden wurde.</p>
-<h3 id="heading-11">D11. M&#246;gliche unmittelbare Wortwiederholung</h3>
-<p>Wiederholungen &#252;ber horizontale Zwischenr&#228;ume finden, ohne Abs&#228;tze zu &#252;berqueren.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — aus.</p>
+<pre><code>§12</code></pre>
+<p>Einschränkungen und Hinweise: Zwischen § und $1 steht ein echtes NBSP. Bei komplexer Nummerierung prüfen, ob das richtige Fragment gefunden wurde.</p>
+<h3 id="heading-11">D11. Mögliche unmittelbare Wortwiederholung</h3>
+<p>Wiederholungen über horizontale Zwischenräume finden, ohne Absätze zu überqueren.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — aus.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-38"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">+</span><span class="rx-escape">\1</span><span class="rx-anchor">\b</span></code></pre>
 <p>Kontrolltext:</p>
@@ -426,11 +426,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Это это</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Это уже было.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: „Да да“ und &#228;hnliche Wiederholungen k&#246;nnen beabsichtigt sein. Nicht automatisch die zweite Instanz l&#246;schen; erst zwischen L&#246;schen, Komma und unver&#228;ndertem Text entscheiden. Apostroph- und Bindestrichw&#246;rter sind nicht vollst&#228;ndig abgedeckt.</p>
+<p>Einschränkungen und Hinweise: „Да да“ und ähnliche Wiederholungen können beabsichtigt sein. Nicht automatisch die zweite Instanz löschen; erst zwischen Löschen, Komma und unverändertem Text entscheiden. Apostroph- und Bindestrichwörter sind nicht vollständig abgedeckt.</p>
 <h3 id="heading-12">D12. Lateinisch und Kyrillisch innerhalb eines Wortes</h3>
-<p>OCR-Mischung innerhalb eines zusammenh&#228;ngenden Wortes finden, nicht jede zweisprachige Zeile.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>OCR-Mischung innerhalb eines zusammenhängenden Wortes finden, nicht jede zweisprachige Zeile.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-39"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Latin}</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Cyrillic}</span><span class="rx-group">)</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
@@ -439,11 +439,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Тeст</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он прочитал Latin.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: In Тeст ist e lateinisch. Ein rein lateinisches Wort neben einem russischen gilt nicht als gemischt. Formeln, Produktnamen und gewollte Schrifteffekte k&#246;nnen g&#252;ltige Treffer ergeben. Keine Transliteration.</p>
-<h3 id="heading-13">D13. Kleinbuchstabe direkt vor Gro&#223;buchstabe</h3>
-<p>M&#246;gliche zusammengeklebte W&#246;rter oder Schreibungsfehler finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: In Тeст ist e lateinisch. Ein rein lateinisches Wort neben einem russischen gilt nicht als gemischt. Formeln, Produktnamen und gewollte Schrifteffekte können gültige Treffer ergeben. Keine Transliteration.</p>
+<h3 id="heading-13">D13. Kleinbuchstabe direkt vor Großbuchstabe</h3>
+<p>Mögliche zusammengeklebte Wörter oder Schreibungsfehler finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-40"><code><span class="rx-escape">\p{Ll}</span><span class="rx-escape">\p{Lu}</span></code></pre>
 <p>Kontrolltext:</p>
@@ -452,11 +452,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>лИ</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он вышел из дома.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Gro&#223;-/Kleinschreibung unbedingt beachten. Marken und Namen wie McDonald k&#246;nnen korrekt sein. Gefunden wird der &#220;bergang, nicht automatisch eine rekonstruierte Wortgrenze.</p>
+<p>Einschränkungen und Hinweise: Groß-/Kleinschreibung unbedingt beachten. Marken und Namen wie McDonald können korrekt sein. Gefunden wird der Übergang, nicht automatisch eine rekonstruierte Wortgrenze.</p>
 <h3 id="heading-14">D14. Ziffer zwischen Buchstaben</h3>
 <p>Typische OCR-Verwechslung eines Buchstabens mit einer Ziffer finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-41"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Kontrolltext:</p>
@@ -465,11 +465,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>сл0во</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>В главе 10 текст.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: H2O und andere Formeln k&#246;nnen korrekt sein. Nicht jedes 0 in о oder jedes 3 in з umwandeln.</p>
+<p>Einschränkungen und Hinweise: H2O und andere Formeln können korrekt sein. Nicht jedes 0 in о oder jedes 3 in з umwandeln.</p>
 <h3 id="heading-15">D15. Satzzeichen innerhalb einer Buchstabenfolge</h3>
-<p>Ein Zeichen pr&#252;fen, an das beidseitig direkt Buchstaben grenzen.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Ein Zeichen prüfen, an das beidseitig direkt Buchstaben grenzen.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-42"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[.,;:!?]</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Kontrolltext:</p>
@@ -478,11 +478,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Он,сказал</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он, сказав слово, ушёл.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Abk&#252;rzungen, Adressen und Domains k&#246;nnen ebenfalls passen. F&#252;r reine Kommapr&#252;fung die Klasse auf [,] begrenzen. Nicht in alle Treffer automatisch Leerzeichen einsetzen.</p>
+<p>Einschränkungen und Hinweise: Abkürzungen, Adressen und Domains können ebenfalls passen. Für reine Kommaprüfung die Klasse auf [,] begrenzen. Nicht in alle Treffer automatisch Leerzeichen einsetzen.</p>
 <h3 id="heading-16">D16. Absatz beginnt klein</h3>
-<p>M&#246;glichen &#252;berfl&#252;ssigen Absatzumbruch finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Möglichen überflüssigen Absatzumbruch finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-43"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Ll}</span></code></pre>
 <p>Kontrolltext:</p>
@@ -491,50 +491,50 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>п</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Начало предложения.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Gedichte, Bildunterschriften, Listen und Zitate beginnen oft berechtigt klein. Das Muster verbindet keine Abs&#228;tze und kennt den Nachbarkontext nicht.</p>
-<h3 id="heading-17">D17. Kein Schlusszeichen vor schlie&#223;enden Anf&#252;hrungszeichen</h3>
-<p>Ein Buchstaben- oder Ziffernende finden, auf das nur schlie&#223;ende Zeichen und Leerraum folgen.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: Gedichte, Bildunterschriften, Listen und Zitate beginnen oft berechtigt klein. Das Muster verbindet keine Absätze und kennt den Nachbarkontext nicht.</p>
+<h3 id="heading-17">D17. Kein Schlusszeichen vor schließenden Anführungszeichen</h3>
+<p>Ein Buchstaben- oder Ziffernende finden, auf das nur schließende Zeichen und Leerraum folgen.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
-<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[&#187;”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
+<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[»”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
 <p>Kontrolltext:</p>
-<pre><code>&#171;Он пришёл&#187;</code></pre>
+<pre><code>«Он пришёл»</code></pre>
 <p>Erwarteter Treffer:</p>
-<pre><code>л&#187;</code></pre>
+<pre><code>л»</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
-<pre><code>&#171;Он пришёл!&#187;</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: &#220;berschriften und Beschriftungen brauchen oft keinen Punkt. Anmerkungsverweise nach einem korrekten Schlusszeichen k&#246;nnen falsch anschlagen. Anders als die Pr&#252;fung nur des letzten &#187; wird &#171;Он пришёл!&#187; nicht beanstandet.</p>
+<pre><code>«Он пришёл!»</code></pre>
+<p>Einschränkungen und Hinweise: Überschriften und Beschriftungen brauchen oft keinen Punkt. Anmerkungsverweise nach einem korrekten Schlusszeichen können falsch anschlagen. Anders als die Prüfung nur des letzten » wird «Он пришёл!» nicht beanstandet.</p>
 <h3 id="heading-18">D18. Kleinbuchstabe nach Satzende</h3>
 <p>Wahrscheinlichen Schreibungsfehler nach Punkt, Frage- oder Ausrufezeichen finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
-<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[«„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>Он пришёл. потом ушёл.</code></pre>
 <p>Erwarteter Treffer:</p>
 <pre><code>. п</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он пришёл. Потом ушёл.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Abk&#252;rzungspunkte und autorielle Auslassungspunkte beenden nicht immer einen Satz. Daher nur Kandidaten zur Pr&#252;fung.</p>
-<h3 id="heading-19">D19. M&#246;glicherweise fehlender Punkt</h3>
-<p>&#220;bergang von kleinem Wortende zu gro&#223; beginnendem Wort &#252;ber ein Leerzeichen finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: Abkürzungspunkte und autorielle Auslassungspunkte beenden nicht immer einen Satz. Daher nur Kandidaten zur Prüfung.</p>
+<h3 id="heading-19">D19. Möglicherweise fehlender Punkt</h3>
+<p>Übergang von kleinem Wortende zu groß beginnendem Wort über ein Leerzeichen finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
-<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[&#187;”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[»”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[«„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>Он пришёл Потом ушёл.</code></pre>
 <p>Erwarteter Treffer:</p>
 <pre><code>л Потом</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он пришёл потом ушёл.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Namen und Titel innerhalb eines Satzes liefern viele g&#252;ltige Treffer. Das Rezept entscheidet nicht, ob Punkt, Komma oder nichts erforderlich ist.</p>
-<h3 id="heading-20">D20. Gerade Anf&#252;hrungszeichenpaare</h3>
-<p>Ein einfaches Fragment in geraden doppelten Anf&#252;hrungszeichen auf einer Zeile finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: Namen und Titel innerhalb eines Satzes liefern viele gültige Treffer. Das Rezept entscheidet nicht, ob Punkt, Komma oder nichts erforderlich ist.</p>
+<h3 id="heading-20">D20. Gerade Anführungszeichenpaare</h3>
+<p>Ein einfaches Fragment in geraden doppelten Anführungszeichen auf einer Zeile finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-47"><code>&quot;<span class="rx-group">(</span><span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>&quot;</code></pre>
 <p>Kontrolltext:</p>
@@ -542,12 +542,12 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <p>Erwarteter Treffer:</p>
 <pre><code>&quot;да&quot;</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
-<pre><code>Он сказал &#171;да&#187;.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Verschachtelung, Zollzeichen, Code und das gew&#228;hlte Anf&#252;hrungszeichensystem pr&#252;fen. &#171;$1&#187; ist nur in ausgew&#228;hltem Kontext eine geeignete Ersetzung, keine universelle Typografie.</p>
+<pre><code>Он сказал «да».</code></pre>
+<p>Einschränkungen und Hinweise: Verschachtelung, Zollzeichen, Code und das gewählte Anführungszeichensystem prüfen. «$1» ist nur in ausgewähltem Kontext eine geeignete Ersetzung, keine universelle Typografie.</p>
 <h3 id="heading-21">D21. Bindestrich oder Geviertstrich zwischen Zahlen</h3>
-<p>M&#246;glichen Zahlenbereich zur redaktionellen Pr&#252;fung finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Möglichen Zahlenbereich zur redaktionellen Prüfung finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-48"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[-—]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
@@ -556,11 +556,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>12 - 15</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Страницы 12–15.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Auch 2026-10-02, negative Zahlen oder Subtraktion k&#246;nnen passen. Nicht automatisch in Bereiche umwandeln. – ist Halbgeviertstrich, — Geviertstrich, - Bindestrich.</p>
+<p>Einschränkungen und Hinweise: Auch 2026-10-02, negative Zahlen oder Subtraktion können passen. Nicht automatisch in Bereiche umwandeln. – ist Halbgeviertstrich, — Geviertstrich, - Bindestrich.</p>
 <h3 id="heading-22">D22. Zwei Initialen vor dem Nachnamen</h3>
-<p>Einfache Schreibweise mit zwei Initialen zur Abstandspr&#252;fung finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einfache Schreibweise mit zwei Initialen zur Abstandsprüfung finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-49"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-anchor">\b</span></code></pre>
 <p>Kontrolltext:</p>
@@ -569,11 +569,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>И.О. Иванов</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Иванов Иван</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Nicht alle zusammengesetzten Namen und Diakritika erfasst. Nach Pr&#252;fung kann $1., NBSP, $2., NBSP, $3 verwendet werden; echte gesch&#252;tzte Leerzeichen einf&#252;gen, nicht deren Namen.</p>
+<p>Einschränkungen und Hinweise: Nicht alle zusammengesetzten Namen und Diakritika erfasst. Nach Prüfung kann $1., NBSP, $2., NBSP, $3 verwendet werden; echte geschützte Leerzeichen einfügen, nicht deren Namen.</p>
 <h3 id="heading-23">D23. Nachname vor zwei Initialen</h3>
 <p>Die umgekehrte Namensreihenfolge finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-50"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span></code></pre>
 <p>Kontrolltext:</p>
@@ -582,43 +582,43 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Иванов И.О.</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Иванов Иван</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Formatpr&#252;fung, keine Identifizierung einer Person. Zusammengesetzte Namen, Partikeln und drei Initialen ben&#246;tigen eine eigene Regel.</p>
-<h3 id="heading-24">D24. Unsichtbare Zeichen pr&#252;fen</h3>
+<p>Einschränkungen und Hinweise: Formatprüfung, keine Identifizierung einer Person. Zusammengesetzte Namen, Partikeln und drei Initialen benötigen eine eigene Regel.</p>
+<h3 id="heading-24">D24. Unsichtbare Zeichen prüfen</h3>
 <p>Bedingten Trennstrich, Zero Width Space oder FEFF im Text finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-51"><code><span class="rx-class">[\x{00AD}\x{200B}\x{FEFF}]</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>сло​во</code></pre>
 <p>Derselbe Kontrolltext mit sichtbaren Zeichen:</p>
 <pre><code>сло[ZWSP]во</code></pre>
-<p>Dabei steht ␠ f&#252;r ein gew&#246;hnliches Leerzeichen, [TAB] f&#252;r einen Tabulator, [NBSP] f&#252;r U+00A0, [NNBSP] f&#252;r U+202F und [ZWSP] f&#252;r U+200B. Dies ist eine erl&#228;uternde Darstellung; die Bezeichnungen werden nicht in das Buch eingef&#252;gt.</p>
+<p>Dabei steht ␠ für ein gewöhnliches Leerzeichen, [TAB] für einen Tabulator, [NBSP] für U+00A0, [NNBSP] für U+202F und [ZWSP] für U+200B. Dies ist eine erläuternde Darstellung; die Bezeichnungen werden nicht in das Buch eingefügt.</p>
 <p>Erwarteter Treffer:</p>
 <pre><code>​</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>слово</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Der Treffer ist unsichtbar: Zwischen о und в steht U+200B. Erst nach Kl&#228;rung des Zwecks einf&#252;gen oder l&#246;schen. Datei-BOM und FEFF im Text sind verschiedene F&#228;lle.</p>
-<h3 id="heading-25">D25. Ungew&#246;hnliche Unicode-Leerzeichen</h3>
+<p>Einschränkungen und Hinweise: Der Treffer ist unsichtbar: Zwischen о und в steht U+200B. Erst nach Klärung des Zwecks einfügen oder löschen. Datei-BOM und FEFF im Text sind verschiedene Fälle.</p>
+<h3 id="heading-25">D25. Ungewöhnliche Unicode-Leerzeichen</h3>
 <p>Schmale, breite und andere Sonderleerzeichen finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-52"><code><span class="rx-class">[\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]</span></code></pre>
 <p>Kontrolltext:</p>
 <pre><code>10 000</code></pre>
 <p>Derselbe Kontrolltext mit sichtbaren Zeichen:</p>
 <pre><code>10[NNBSP]000</code></pre>
-<p>Dabei steht ␠ f&#252;r ein gew&#246;hnliches Leerzeichen, [TAB] f&#252;r einen Tabulator, [NBSP] f&#252;r U+00A0, [NNBSP] f&#252;r U+202F und [ZWSP] f&#252;r U+200B. Dies ist eine erl&#228;uternde Darstellung; die Bezeichnungen werden nicht in das Buch eingef&#252;gt.</p>
+<p>Dabei steht ␠ für ein gewöhnliches Leerzeichen, [TAB] für einen Tabulator, [NBSP] für U+00A0, [NNBSP] für U+202F und [ZWSP] für U+200B. Dies ist eine erläuternde Darstellung; die Bezeichnungen werden nicht in das Buch eingefügt.</p>
 <p>Erwarteter Treffer:</p>
 <pre><code> </code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>10 000</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Ein schmales gesch&#252;tztes Leerzeichen zwischen Zifferngruppen kann v&#246;llig richtig sein. Das Rezept deckt Uneinheitlichkeit auf, erkl&#228;rt nicht alle solchen Zeichen zum Fehler.</p>
+<p>Einschränkungen und Hinweise: Ein schmales geschütztes Leerzeichen zwischen Zifferngruppen kann völlig richtig sein. Das Rezept deckt Uneinheitlichkeit auf, erklärt nicht alle solchen Zeichen zum Fehler.</p>
 <h3 id="heading-26">D26. Wiederholte Frage- und Ausrufezeichen</h3>
 <p>Expressive oder versehentlich doppelte Satzzeichen finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-53"><code><span class="rx-class">[!?]</span><span class="rx-quantifier">{2,}</span></code></pre>
 <p>Kontrolltext:</p>
@@ -628,11 +628,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 !!!</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Что? Правда!</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: ?! und autorielle Wiederholungen k&#246;nnen gewollt sein. Vorgesehen ist Pr&#252;fung, nicht K&#252;rzung jeder Folge auf ein Zeichen.</p>
-<h3 id="heading-27">D27. Kyrillisches Х neben r&#246;mischen Zahlenzeichen</h3>
-<p>Russisches Х in ansonsten lateinischer r&#246;mischer Nummerierung finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — f&#252;r diesen Ausdruck nicht erforderlich. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: ?! und autorielle Wiederholungen können gewollt sein. Vorgesehen ist Prüfung, nicht Kürzung jeder Folge auf ein Zeichen.</p>
+<h3 id="heading-27">D27. Kyrillisches Х neben römischen Zahlenzeichen</h3>
+<p>Russisches Х in ansonsten lateinischer römischer Nummerierung finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — für diesen Ausdruck nicht erforderlich. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-54"><code><span class="rx-group">(?&lt;=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span>Х<span class="rx-alternation">|</span>Х<span class="rx-group">(?=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span></code></pre>
 <p>Kontrolltext:</p>
@@ -641,11 +641,11 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>Х</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Глава IX</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Х ist kyrillisch, X lateinisch. Gro&#223;-/Kleinschreibung und Kontext pr&#252;fen; der gesamte r&#246;mische Zahlenwert wird nicht validiert.</p>
-<h3 id="heading-28">D28. Mehrere Gro&#223;buchstaben vor Kleinbuchstaben</h3>
-<p>M&#246;glichen OCR-Schreibungsfehler am Wortanfang finden.</p>
-<p>Aktion: nur suchen und pr&#252;fen.</p>
-<p>„Regul&#228;rer Ausdruck“ — ein; „Nur ganze W&#246;rter“ — aus. „Unicode (UCP)“ — ein. „Gro&#223;-/Kleinschreibung beachten“ — ein.</p>
+<p>Einschränkungen und Hinweise: Х ist kyrillisch, X lateinisch. Groß-/Kleinschreibung und Kontext prüfen; der gesamte römische Zahlenwert wird nicht validiert.</p>
+<h3 id="heading-28">D28. Mehrere Großbuchstaben vor Kleinbuchstaben</h3>
+<p>Möglichen OCR-Schreibungsfehler am Wortanfang finden.</p>
+<p>Aktion: nur suchen und prüfen.</p>
+<p>„Regulärer Ausdruck“ — ein; „Nur ganze Wörter“ — aus. „Unicode (UCP)“ — ein. „Groß-/Kleinschreibung beachten“ — ein.</p>
 <p>Suchen:</p>
 <pre class="regex" id="regex-55"><code><span class="rx-escape">\p{Lu}</span><span class="rx-quantifier">{2,}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Kontrolltext:</p>
@@ -654,31 +654,31 @@ Erwartete Ersetzung mit [$1]: № [125]</code></pre></section>
 <pre><code>ПРИвет</code></pre>
 <p>Gegenbeispiel, das nicht gefunden werden darf:</p>
 <pre><code>Он сказал Привет.</code></pre>
-<p>Einschr&#228;nkungen und Hinweise: Namen, Abk&#252;rzungen mit Endungen und lateinische K&#252;rzel k&#246;nnen korrekt sein. Keine globale Schreibungs&#228;nderung ohne Pr&#252;fung.</p>
-<h2 id="section-18">18. H&#228;ufige Fehler und Diagnose</h2>
+<p>Einschränkungen und Hinweise: Namen, Abkürzungen mit Endungen und lateinische Kürzel können korrekt sein. Keine globale Schreibungsänderung ohne Prüfung.</p>
+<h2 id="section-18">18. Häufige Fehler und Diagnose</h2>
 <h3 id="section-18-1">18.1. Text ist sichtbar, aber es gibt keinen Treffer</h3>
-<p>Pr&#252;fen Sie Design-Modus, Regex-K&#228;stchen, Gro&#223;-/Kleinschreibung, Bereich, Richtung und tats&#228;chliche Zeichen. Lateinisches <code>a</code> und kyrillisches <code>а</code> sehen &#228;hnlich aus, sind aber verschieden. NBSP ist kein gew&#246;hnliches Leerzeichen; typografische und gerade Anf&#252;hrungszeichen sind nicht gleich.</p>
-<p>Pr&#252;fen Sie UCP f&#252;r russische Wortgrenzen und die Schreibungsoption f&#252;r Gro&#223;-/Kleinbuchstabenmuster. Kombinieren Sie „Nur ganze W&#246;rter“ nicht unn&#246;tig mit eigenen komplexen Grenzen.</p>
-<h3 id="section-18-2">18.2. Ein zu gro&#223;es Fragment wird gefunden</h3>
-<p>Verd&#228;chtig sind zun&#228;chst gieriges Punkt-Stern oder eine zu breite negative Klasse. Ersetzen Sie „beliebiger Text“ durch eine explizite erlaubte Menge und begrenzen Sie L&#228;nge und Grenzen. Pr&#252;fen Sie dotall.</p>
-<h3 id="section-18-3">18.3. Leerraum erfasst Abs&#228;tze</h3>
-<p>Verwenden Sie <code>\s+</code> nicht als Synonym f&#252;r Leerzeichen. Beginnen Sie f&#252;r Wortzwischenr&#228;ume mit <code>[ \t]+</code> und erg&#228;nzen Sie NBSP nur bei Bedarf.</p>
+<p>Prüfen Sie Design-Modus, Regex-Kästchen, Groß-/Kleinschreibung, Bereich, Richtung und tatsächliche Zeichen. Lateinisches <code>a</code> und kyrillisches <code>а</code> sehen ähnlich aus, sind aber verschieden. NBSP ist kein gewöhnliches Leerzeichen; typografische und gerade Anführungszeichen sind nicht gleich.</p>
+<p>Prüfen Sie UCP für russische Wortgrenzen und die Schreibungsoption für Groß-/Kleinbuchstabenmuster. Kombinieren Sie „Nur ganze Wörter“ nicht unnötig mit eigenen komplexen Grenzen.</p>
+<h3 id="section-18-2">18.2. Ein zu großes Fragment wird gefunden</h3>
+<p>Verdächtig sind zunächst gieriges Punkt-Stern oder eine zu breite negative Klasse. Ersetzen Sie „beliebiger Text“ durch eine explizite erlaubte Menge und begrenzen Sie Länge und Grenzen. Prüfen Sie dotall.</p>
+<h3 id="section-18-3">18.3. Leerraum erfasst Absätze</h3>
+<p>Verwenden Sie <code>\s+</code> nicht als Synonym für Leerzeichen. Beginnen Sie für Wortzwischenräume mit <code>[ \t]+</code> und ergänzen Sie NBSP nur bei Bedarf.</p>
 <h3 id="section-18-4">18.4. Ziffern erscheinen, Backslashes verschwinden oder Gruppennamen funktionieren nicht</h3>
-<p>Vergleichen Sie die FBE-Ersetzungsgrammatik in Abschnitt 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> und <code>\x{...}</code> folgen nicht automatisch den Suchregeln oder denen anderer Editoren. Der Capture muss tats&#228;chlich vorhanden sein und darf nicht blo&#223; optional in einem anderen Zweig vorkommen.</p>
+<p>Vergleichen Sie die FBE-Ersetzungsgrammatik in Abschnitt 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> und <code>\x{...}</code> folgen nicht automatisch den Suchregeln oder denen anderer Editoren. Der Capture muss tatsächlich vorhanden sein und darf nicht bloß optional in einem anderen Zweig vorkommen.</p>
 <h3 id="section-18-5">18.5. Gemischte Alphabete in einem normalen zweisprachigen Satz</h3>
 <p>D12 verlangt kyrillische und lateinische Zeichen innerhalb desselben Wortes. Die zweisprachige Zeile <code>Он прочитал Latin.</code> gilt daher nicht als OCR-Fehler.</p>
-<h3 id="section-18-6">18.6. „Fehlender Punkt“ schl&#228;gt bei korrektem Zitat an</h3>
-<p>Nur das letzte Zeichen zu pr&#252;fen reicht nicht: Auf <code>!</code> kann <code>&#187;</code> folgen. D17 ber&#252;cksichtigt schlie&#223;ende Anf&#252;hrungszeichen und Klammern; &#220;berschriften und Anmerkungen bleiben dennoch pr&#252;fbed&#252;rftig.</p>
+<h3 id="section-18-6">18.6. „Fehlender Punkt“ schlägt bei korrektem Zitat an</h3>
+<p>Nur das letzte Zeichen zu prüfen reicht nicht: Auf <code>!</code> kann <code>»</code> folgen. D17 berücksichtigt schließende Anführungszeichen und Klammern; Überschriften und Anmerkungen bleiben dennoch prüfbedürftig.</p>
 <h3 id="section-18-7">18.7. Die gesuchte Struktur wird nicht gefunden</h3>
-<p>Ein Textregex sieht das DOM nicht wie ein strukturelles Skript. Tagsuche, Verschachtelungspr&#252;fung, fehlende ID-Ziele und Verschieben von Anmerkungen sind eigene Aufgaben. Der n&#228;chste richtige Schritt kann Quelltextmodus, FB2-Validator oder Skript sein statt eines noch komplizierteren Ausdrucks.</p>
-<h2 id="section-19">19. Leistung und gro&#223;e B&#252;cher</h2>
-<p>Beginnen Sie eng: mit einem bestimmten Zeichen, einer Klasse, einem Wort oder Absatzanfang. Vermeiden Sie mehrfach verschachtelte unbegrenzte Wiederholungen und konkurrierende „beliebiger Text“-Teile. Bei erfolgloser Suche k&#246;nnen sie sehr viele M&#246;glichkeiten durchlaufen.</p>
-<p>Nichtgierigkeit ist kein Allheilmittel gegen langsame Muster: Auch sie probiert Alternativen. H&#228;ufig helfen expliziter Trennzeichenausschluss, L&#228;ngenbegrenzung und kleinerer Suchbereich.</p>
-<p>Starten Sie w&#228;hrend einer langwierigen Suche nicht weitere Ersetzungen. Vereinfachen und pr&#252;fen Sie den Ausdruck zuerst an kurzem Kontrolltext. Ein PCRE2-Ressourcenfehler bedeutet nicht „keine Treffer“.</p>
-<p>F&#252;r mehrstufige Bearbeitung mit Nachbarabs&#228;tzen und Tags ist ein Skript oft verst&#228;ndlicher und sicherer. Fassen Sie nicht s&#228;mtliche Korrekturregeln in einer riesigen Alternative zusammen; einzelne Regeln erkl&#228;ren jeden Treffer besser.</p>
+<p>Ein Textregex sieht das DOM nicht wie ein strukturelles Skript. Tagsuche, Verschachtelungsprüfung, fehlende ID-Ziele und Verschieben von Anmerkungen sind eigene Aufgaben. Der nächste richtige Schritt kann Quelltextmodus, FB2-Validator oder Skript sein statt eines noch komplizierteren Ausdrucks.</p>
+<h2 id="section-19">19. Leistung und große Bücher</h2>
+<p>Beginnen Sie eng: mit einem bestimmten Zeichen, einer Klasse, einem Wort oder Absatzanfang. Vermeiden Sie mehrfach verschachtelte unbegrenzte Wiederholungen und konkurrierende „beliebiger Text“-Teile. Bei erfolgloser Suche können sie sehr viele Möglichkeiten durchlaufen.</p>
+<p>Nichtgierigkeit ist kein Allheilmittel gegen langsame Muster: Auch sie probiert Alternativen. Häufig helfen expliziter Trennzeichenausschluss, Längenbegrenzung und kleinerer Suchbereich.</p>
+<p>Starten Sie während einer langwierigen Suche nicht weitere Ersetzungen. Vereinfachen und prüfen Sie den Ausdruck zuerst an kurzem Kontrolltext. Ein PCRE2-Ressourcenfehler bedeutet nicht „keine Treffer“.</p>
+<p>Für mehrstufige Bearbeitung mit Nachbarabsätzen und Tags ist ein Skript oft verständlicher und sicherer. Fassen Sie nicht sämtliche Korrekturregeln in einer riesigen Alternative zusammen; einzelne Regeln erklären jeden Treffer besser.</p>
 <h2 id="section-20">20. Kontrolle vor dem Speichern</h2>
-<p>Sehen Sie Anfang, Mitte und Ende des bearbeiteten Bereichs durch. Pr&#252;fen Sie mehrere Treffer jeder Art, insbesondere Zitate, Zahlenbereiche, Initialen, Anmerkungen und erhaltene Formatierung. Wichtige NBSP d&#252;rfen nicht verschwunden und Abs&#228;tze nicht unerwartet ver&#228;ndert sein.</p>
-<p>F&#252;hren Sie nach strukturell empfindlichen &#196;nderungen die FBE-Dokumentpr&#252;fung aus. Speichern Sie, &#246;ffnen Sie bei Bedarf erneut und vergleichen Sie. Erfolgreiche Regex-Suche ersetzt weder FB2-Validierung noch Korrekturlesen.</p>
+<p>Sehen Sie Anfang, Mitte und Ende des bearbeiteten Bereichs durch. Prüfen Sie mehrere Treffer jeder Art, insbesondere Zitate, Zahlenbereiche, Initialen, Anmerkungen und erhaltene Formatierung. Wichtige NBSP dürfen nicht verschwunden und Absätze nicht unerwartet verändert sein.</p>
+<p>Führen Sie nach strukturell empfindlichen Änderungen die FBE-Dokumentprüfung aus. Speichern Sie, öffnen Sie bei Bedarf erneut und vergleichen Sie. Erfolgreiche Regex-Suche ersetzt weder FB2-Validierung noch Korrekturlesen.</p>
 <h2 id="section-21">21. Quellen und Geltungsbereich</h2>
 <p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Offizielle PCRE2-Syntaxdokumentation: Anker, Gruppen, Unicode-Eigenschaften, Backtracking und Optionen.</a></p>
 <p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Offizielle Unicode-Dokumentation von PCRE2.</a></p>

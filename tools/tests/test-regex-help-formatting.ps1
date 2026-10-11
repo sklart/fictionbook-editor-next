@@ -13,7 +13,7 @@ if($resource.Contains('IDD_REGEX_HELP')) { throw 'Native Full Help dialog remain
 foreach($token in @('ShellExecuteExW','GetPreferredRuntimeLocaleName','regex-design.html','regex-source.html','L"en-US"','fbe.regex_help.open_failed')) {
     if(-not $launcher.Contains($token)) { throw "HTML Help launcher misses $token" }
 }
-foreach($token in @('HtmlEncode','<table>','<thead>','<tbody>','class=`"regex`"','class=`"example`"','class=`"note`"','class=`"warning`"')) {
+foreach($token in @('function Encode','&amp;','&lt;','&gt;','&quot;','&#39;','<table>','<thead>','<tbody>','class=`"regex`"','class=`"example`"','class=`"note`"','class=`"warning`"')) {
     if(-not $generator.Contains($token)) { throw "HTML Help generator misses $token" }
 }
 Write-Host 'Regex Help HTML migration contract passed.'

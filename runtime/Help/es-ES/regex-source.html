@@ -1,110 +1,110 @@
 <!doctype html>
 <html lang="es-ES">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ayuda de expresiones regulares — C&#243;digo</title><link rel="stylesheet" href="../regex-help.css"></head>
-<body><nav aria-label="Otro modo"><strong>C&#243;digo</strong><a href="regex-design.html">Dise&#241;o</a></nav><main>
-<h1 id="top">Ayuda de expresiones regulares — C&#243;digo</h1>
-<aside class="note" id="note-1"><strong>Nota</strong><p>Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al espa&#241;ol.</p></aside>
-<p>Gu&#237;a completa de b&#250;squeda y reemplazo en el XML de un libro en FictionBook Editor Next.</p>
-<p>Dise&#241;o se describe en regex-design.md. Estas recetas son para C&#243;digo; no copie patrones PCRE2 sin comprobarlos.</p>
-<h2 id="section-1">1. Para qu&#233; sirve buscar en C&#243;digo</h2>
-<p>Aqu&#237; se ven etiquetas XML, atributos, enlaces, entidades y texto. Es apropiado para auditar FB2: elementos vac&#237;os, HTML importado, enlaces de sustituci&#243;n, atributos extra&#241;os y restos de conversi&#243;n.</p>
-<aside class="note" id="note-2"><strong>Nota</strong><p>La regex examina texto XML, no un &#225;rbol DOM analizado. Valide la estructura con una herramienta XML.</p></aside>
-<p>Para corregir palabras suele convenir Dise&#241;o. En XML una coincidencia puede estar en atributos, comentarios, CDATA, nombres de archivo o datos binarios. Consid&#233;relo antes de reemplazar.</p>
-<p>&#171;Solo buscar y revisar&#187; ofrece candidatos, no prueba errores. Hasta cambiar espacios puede alterar contenido significativo; ning&#250;n reemplazo sobre XML arbitrario es universalmente seguro.</p>
-<h2 id="section-2">2. Inicio r&#225;pido</h2>
-<p>Guarde copia, cambie a C&#243;digo, abra Buscar y active regex. Los ejemplos XML distinguen normalmente la caja y desactivan Solo palabras completas. Los l&#237;mites los define el patr&#243;n.</p>
-<p>P&#225;rrafo simple vac&#237;o:</p>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ayuda de expresiones regulares — Código</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Otro modo"><strong>Código</strong><a href="regex-design.html">Diseño</a></nav><main>
+<h1 id="top">Ayuda de expresiones regulares — Código</h1>
+<aside class="note" id="note-1"><strong>Nota</strong><p>Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al español.</p></aside>
+<p>Guía completa de búsqueda y reemplazo en el XML de un libro en FictionBook Editor Next.</p>
+<p>Diseño se describe en regex-design.md. Estas recetas son para Código; no copie patrones PCRE2 sin comprobarlos.</p>
+<h2 id="section-1">1. Para qué sirve buscar en Código</h2>
+<p>Aquí se ven etiquetas XML, atributos, enlaces, entidades y texto. Es apropiado para auditar FB2: elementos vacíos, HTML importado, enlaces de sustitución, atributos extraños y restos de conversión.</p>
+<aside class="note" id="note-2"><strong>Nota</strong><p>La regex examina texto XML, no un árbol DOM analizado. Valide la estructura con una herramienta XML.</p></aside>
+<p>Para corregir palabras suele convenir Diseño. En XML una coincidencia puede estar en atributos, comentarios, CDATA, nombres de archivo o datos binarios. Considérelo antes de reemplazar.</p>
+<p>«Solo buscar y revisar» ofrece candidatos, no prueba errores. Hasta cambiar espacios puede alterar contenido significativo; ningún reemplazo sobre XML arbitrario es universalmente seguro.</p>
+<h2 id="section-2">2. Inicio rápido</h2>
+<p>Guarde copia, cambie a Código, abra Buscar y active regex. Los ejemplos XML distinguen normalmente la caja y desactivan Solo palabras completas. Los límites los define el patrón.</p>
+<p>Párrafo simple vacío:</p>
 <pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
-<p>Encuentra <code>&lt;p&gt;&lt;/p&gt;</code> y <code>&lt;p&gt;   &lt;/p&gt;</code> en una l&#237;nea f&#237;sica, no <code>&lt;p&gt;Текст&lt;/p&gt;</code>. No elimine autom&#225;ticamente ni cambie por <code>&lt;empty-line/&gt;</code>: sus funciones estructurales pueden ser diferentes.</p>
+<p>Encuentra <code>&lt;p&gt;&lt;/p&gt;</code> y <code>&lt;p&gt;   &lt;/p&gt;</code> en una línea física, no <code>&lt;p&gt;Текст&lt;/p&gt;</code>. No elimine automáticamente ni cambie por <code>&lt;empty-line/&gt;</code>: sus funciones estructurales pueden ser diferentes.</p>
 <section class="example" id="example-1"><strong>Ejemplo</strong><pre><code>Buscar: &lt;p&gt;[ \t]*&lt;/p&gt;
 Entrada: &lt;p&gt;   &lt;/p&gt;
 Coincidencia: &lt;p&gt;   &lt;/p&gt;
-Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></section>
-<p>Pegue solo el patr&#243;n, sin <code>/.../g</code>, comillas C++ ni duplicaci&#243;n de barras JSON.</p>
+Esperado: Revise este párrafo antes de cambiar el XML.</code></pre></section>
+<p>Pegue solo el patrón, sin <code>/.../g</code>, comillas C++ ni duplicación de barras JSON.</p>
 <h2 id="section-3">3. Motor: Scintilla, no PCRE2</h2>
-<p>FBE usa Scintilla con <code>SCFIND_REGEXP</code> y <code>SCFIND_CXX11REGEX</code>: expresiones regulares C++ con gram&#225;tica ECMAScript, no PCRE2 ni todas las funciones de JavaScript moderno. [S1]</p>
-<p>Tambi&#233;n existe un modo b&#225;sico antiguo con otras reglas. No mezcle sus grupos con par&#233;ntesis escapados con C++11: <code>(слово)</code> captura y <code>\(слово\)</code> busca par&#233;ntesis literales.</p>
-<p>Unicode no est&#225; prohibido, pero no hay UCP ni propiedades PCRE2. Las clases dependen de la biblioteca est&#225;ndar; <code>\w</code> no significa todas las letras de todos los idiomas. Use <code>[A-Za-z0-9_]</code> para ASCII previsible. <code>[А-Яа-яЁё]</code> cubre ruso, no todo cir&#237;lico.</p>
-<h3 id="section-3-1">3.1. Diferencias principales frente a Dise&#241;o</h3>
-<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Propiedad</th><th scope="col">Dise&#241;o</th><th scope="col">C&#243;digo</th></tr></thead><tbody>
-<tr><td>Sujeto</td><td>Representaci&#243;n textual del libro</td><td>XML</td></tr>
+<p>FBE usa Scintilla con <code>SCFIND_REGEXP</code> y <code>SCFIND_CXX11REGEX</code>: expresiones regulares C++ con gramática ECMAScript, no PCRE2 ni todas las funciones de JavaScript moderno. [S1]</p>
+<p>También existe un modo básico antiguo con otras reglas. No mezcle sus grupos con paréntesis escapados con C++11: <code>(слово)</code> captura y <code>\(слово\)</code> busca paréntesis literales.</p>
+<p>Unicode no está prohibido, pero no hay UCP ni propiedades PCRE2. Las clases dependen de la biblioteca estándar; <code>\w</code> no significa todas las letras de todos los idiomas. Use <code>[A-Za-z0-9_]</code> para ASCII previsible. <code>[А-Яа-яЁё]</code> cubre ruso, no todo cirílico.</p>
+<h3 id="section-3-1">3.1. Diferencias principales frente a Diseño</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Propiedad</th><th scope="col">Diseño</th><th scope="col">Código</th></tr></thead><tbody>
+<tr><td>Sujeto</td><td>Representación textual del libro</td><td>XML</td></tr>
 <tr><td>Motor</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
 <tr><td>UCP y propiedades Unicode</td><td>Disponibles en PCRE2</td><td>No admitidas como sintaxis PCRE2</td></tr>
 <tr><td>Lookbehind</td><td>Con restricciones PCRE2</td><td>No admitido</td></tr>
 <tr><td>Primera captura en reemplazo</td><td><code>$1</code> o <code>\1</code></td><td><code>\1</code></td></tr>
 <tr><td>Formato en reemplazo</td><td>Comandos FBE</td><td>Solo texto XML</td></tr>
-<tr><td>B&#250;squeda entre l&#237;neas f&#237;sicas</td><td>Depende del sujeto; reemplazo entre p&#225;rrafos limitado</td><td>No en el camino actual</td></tr>
+<tr><td>Búsqueda entre líneas físicas</td><td>Depende del sujeto; reemplazo entre párrafos limitado</td><td>No en el camino actual</td></tr>
 </tbody></table></div>
-<h2 id="section-4">4. B&#250;squeda l&#237;nea por l&#237;nea: limitaci&#243;n esencial</h2>
-<p><code>MatchOnLines</code> aplica el patr&#243;n por separado al contenido de cada l&#237;nea f&#237;sica. Una l&#237;nea puede ser enorme; ajustarla al ancho de ventana no crea otra.</p>
-<aside class="warning" id="warning-1"><strong>Advertencia</strong><p>En la b&#250;squeda actual, la regex de C&#243;digo no puede cruzar l&#237;neas f&#237;sicas; ning&#250;n patr&#243;n las une.</p></aside>
+<h2 id="section-4">4. Búsqueda línea por línea: limitación esencial</h2>
+<p><code>MatchOnLines</code> aplica el patrón por separado al contenido de cada línea física. Una línea puede ser enorme; ajustarla al ancho de ventana no crea otra.</p>
+<aside class="warning" id="warning-1"><strong>Advertencia</strong><p>En la búsqueda actual, la regex de Código no puede cruzar líneas físicas; ningún patrón las une.</p></aside>
 <p>Por ejemplo:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
 <p>y:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Pueden representar la misma vecindad XML, pero la b&#250;squeda solo puede tomar el primer par en una coincidencia; el segundo cruza una frontera.</p>
-<p>A&#241;adir <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> o una clase de todo car&#225;cter no evita la restricci&#243;n. El motor no recibe ambas l&#237;neas juntas. Requiere cambiar la implementaci&#243;n, no solo el patr&#243;n.</p>
-<p>Un reemplazo s&#237; puede insertar un salto. Es otra operaci&#243;n, ilustrada en K28. Distinga buscar entre l&#237;neas de insertar una frontera despu&#233;s de una coincidencia.</p>
-<h3 id="section-4-1">4.1. Trabajar con XML multil&#237;nea</h3>
-<p>Si un atributo est&#225; en una l&#237;nea propia, b&#250;squelo sin toda la etiqueta. Relaciones entre varias l&#237;neas requieren herramientas de estructura, validador, script o analizador XML.</p>
-<p>No elimine todos los saltos para satisfacer una regex: puede cambiar texto, comentarios, CDATA y legibilidad. Decida primero si necesita realmente coincidencia multil&#237;nea.</p>
+<p>Pueden representar la misma vecindad XML, pero la búsqueda solo puede tomar el primer par en una coincidencia; el segundo cruza una frontera.</p>
+<p>Añadir <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> o una clase de todo carácter no evita la restricción. El motor no recibe ambas líneas juntas. Requiere cambiar la implementación, no solo el patrón.</p>
+<p>Un reemplazo sí puede insertar un salto. Es otra operación, ilustrada en K28. Distinga buscar entre líneas de insertar una frontera después de una coincidencia.</p>
+<h3 id="section-4-1">4.1. Trabajar con XML multilínea</h3>
+<p>Si un atributo está en una línea propia, búsquelo sin toda la etiqueta. Relaciones entre varias líneas requieren herramientas de estructura, validador, script o analizador XML.</p>
+<p>No elimine todos los saltos para satisfacer una regex: puede cambiar texto, comentarios, CDATA y legibilidad. Decida primero si necesita realmente coincidencia multilínea.</p>
 <h2 id="section-5">5. Caracteres y escape</h2>
-<p>Un car&#225;cter normal coincide consigo mismo. Para un metacar&#225;cter literal, use barra inversa.</p>
-<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Texto</th><th scope="col">Expresi&#243;n</th></tr></thead><tbody>
+<p>Un carácter normal coincide consigo mismo. Para un metacarácter literal, use barra inversa.</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Texto</th><th scope="col">Expresión</th></tr></thead><tbody>
 <tr><td>Punto</td><td><code>\.</code></td></tr>
-<tr><td>M&#225;s</td><td><code>\+</code></td></tr>
-<tr><td>Interrogaci&#243;n</td><td><code>\?</code></td></tr>
+<tr><td>Más</td><td><code>\+</code></td></tr>
+<tr><td>Interrogación</td><td><code>\?</code></td></tr>
 <tr><td>Asterisco</td><td><code>\*</code></td></tr>
-<tr><td>Par&#233;ntesis</td><td><code>\(</code> o <code>\)</code></td></tr>
-<tr><td>N&#250;mero entre corchetes</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Paréntesis</td><td><code>\(</code> o <code>\)</code></td></tr>
+<tr><td>Número entre corchetes</td><td><code>\[[0-9]+\]</code></td></tr>
 <tr><td>Barra inversa</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p><code>.</code> es un car&#225;cter disponible de la l&#237;nea, no punto literal. En UTF-8 intervienen adaptador Scintilla y biblioteca; no mida emoji suponiendo un punto por s&#237;mbolo visible.</p>
-<p><code>\r</code> y <code>\n</code> denotan CR/LF, pero no permiten atravesar l&#237;neas en esta b&#250;squeda. Para espacios y tabulaciones use <code>[ \t]</code>.</p>
-<p><code>\Q...\E</code> de PCRE2 no es un escape literal portable aqu&#237;. Escape cada metacar&#225;cter por separado.</p>
-<h2 id="section-6">6. Clases, rangos y l&#237;mites de palabra</h2>
-<p><code>[abc]</code> encuentra un car&#225;cter del conjunto, <code>[a-z]</code> de un rango, <code>[^abc]</code> fuera. Puede seguir una repetici&#243;n: <code>[0-9]+</code>.</p>
-<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Clase</th><th scope="col">Sentido pr&#225;ctico</th></tr></thead><tbody>
+<p><code>.</code> es un carácter disponible de la línea, no punto literal. En UTF-8 intervienen adaptador Scintilla y biblioteca; no mida emoji suponiendo un punto por símbolo visible.</p>
+<p><code>\r</code> y <code>\n</code> denotan CR/LF, pero no permiten atravesar líneas en esta búsqueda. Para espacios y tabulaciones use <code>[ \t]</code>.</p>
+<p><code>\Q...\E</code> de PCRE2 no es un escape literal portable aquí. Escape cada metacarácter por separado.</p>
+<h2 id="section-6">6. Clases, rangos y límites de palabra</h2>
+<p><code>[abc]</code> encuentra un carácter del conjunto, <code>[a-z]</code> de un rango, <code>[^abc]</code> fuera. Puede seguir una repetición: <code>[0-9]+</code>.</p>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Clase</th><th scope="col">Sentido práctico</th></tr></thead><tbody>
 <tr><td class="syntax"><code>[0-9]</code></td><td>Cifra ASCII</td></tr>
 <tr><td class="syntax"><code>[A-Za-z]</code></td><td>Letra latina ASCII</td></tr>
-<tr><td class="syntax"><code>[ \t]</code></td><td>Espacio normal o tabulaci&#243;n</td></tr>
-<tr><td class="syntax"><code>[^&lt;]</code></td><td>Car&#225;cter disponible salvo &lt;</td></tr>
-<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Car&#225;cter que no sea ninguna comilla recta</td></tr>
-<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Clase de cifras de la implementaci&#243;n y negaci&#243;n</td></tr>
-<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Espaciado y negaci&#243;n</td></tr>
-<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Clase de palabra y negaci&#243;n</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Espacio normal o tabulación</td></tr>
+<tr><td class="syntax"><code>[^&lt;]</code></td><td>Carácter disponible salvo &lt;</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Carácter que no sea ninguna comilla recta</td></tr>
+<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Clase de cifras de la implementación y negación</td></tr>
+<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Espaciado y negación</td></tr>
+<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Clase de palabra y negación</td></tr>
 </tbody></table></div>
-<p>Las clases negativas no entienden XML. <code>[^&lt;]*</code> sirve para texto simple entre etiquetas, no an&#225;lisis completo de entidades, comentarios y CDATA.</p>
-<p><code>\b</code> es frontera de palabra, <code>\B</code> su contrario. En atributos puede ser insuficiente: <code>id</code> puede seguir a dos puntos de otro nombre. Compruebe separadores v&#225;lidos: inicio de l&#237;nea, espacio o tabulaci&#243;n.</p>
-<h2 id="section-7">7. Anclas y repetici&#243;n</h2>
-<p><code>^</code> y <code>$</code> indican fronteras f&#237;sicas de l&#237;nea en este camino. Para una l&#237;nea solo de blancos:</p>
+<p>Las clases negativas no entienden XML. <code>[^&lt;]*</code> sirve para texto simple entre etiquetas, no análisis completo de entidades, comentarios y CDATA.</p>
+<p><code>\b</code> es frontera de palabra, <code>\B</code> su contrario. En atributos puede ser insuficiente: <code>id</code> puede seguir a dos puntos de otro nombre. Compruebe separadores válidos: inicio de línea, espacio o tabulación.</p>
+<h2 id="section-7">7. Anclas y repetición</h2>
+<p><code>^</code> y <code>$</code> indican fronteras físicas de línea en este camino. Para una línea solo de blancos:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
-<p>Borrar el resultado deja la l&#237;nea vac&#237;a: su terminaci&#243;n no formaba parte del rango.</p>
+<p>Borrar el resultado deja la línea vacía: su terminación no formaba parte del rango.</p>
 <div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Cuantificador</th><th scope="col">Repeticiones</th></tr></thead><tbody>
 <tr><td class="syntax"><code>?</code></td><td>Cero o una</td></tr>
-<tr><td class="syntax"><code>*</code></td><td>Cero o m&#225;s</td></tr>
-<tr><td class="syntax"><code>+</code></td><td>Una o m&#225;s</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Cero o más</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Una o más</td></tr>
 <tr><td class="syntax"><code>{3}</code></td><td>Exactamente tres</td></tr>
 <tr><td class="syntax"><code>{3,}</code></td><td>Al menos tres</td></tr>
 <tr><td class="syntax"><code>{2,5}</code></td><td>Dos a cinco</td></tr>
 </tbody></table></div>
-<p>C++11 admite variantes no codiciosas <code>*?</code>, <code>+?</code>. Para atributos suele ser m&#225;s claro excluir la comilla delimitadora:</p>
+<p>C++11 admite variantes no codiciosas <code>*?</code>, <code>+?</code>. Para atributos suele ser más claro excluir la comilla delimitadora:</p>
 <pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
 <p>Es para comillas dobles; las simples requieren otra rama.</p>
-<p>No copie cuantificadores posesivos, grupos at&#243;micos ni opciones integradas de PCRE2.</p>
+<p>No copie cuantificadores posesivos, grupos atómicos ni opciones integradas de PCRE2.</p>
 <h2 id="section-8">8. Grupos, alternativas y lookahead</h2>
-<p><code>( ... )</code> captura un fragmento; <code>(?: ... )</code> agrupa sin n&#250;mero.</p>
+<p><code>( ... )</code> captura un fragmento; <code>(?: ... )</code> agrupa sin número.</p>
 <p>Varias etiquetas:</p>
 <pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
-<p>Una referencia num&#233;rica enlaza nombres de apertura y cierre en un fragmento sencillo de una l&#237;nea:</p>
+<p>Una referencia numérica enlaza nombres de apertura y cierre en un fragmento sencillo de una línea:</p>
 <pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
-<p>Exige el mismo nombre, pero no valida anidaci&#243;n XML arbitraria.</p>
-<p>Lookahead positivo <code>(?=...)</code> y negativo <code>(?!...)</code> comprueban la derecha sin consumirla. Un l&#237;mite tras el nombre evita que <code>&lt;a</code> coincida al inicio de <code>&lt;author&gt;</code>.</p>
+<p>Exige el mismo nombre, pero no valida anidación XML arbitraria.</p>
+<p>Lookahead positivo <code>(?=...)</code> y negativo <code>(?!...)</code> comprueban la derecha sin consumirla. Un límite tras el nombre evita que <code>&lt;a</code> coincida al inicio de <code>&lt;author&gt;</code>.</p>
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
-<p>Para contexto izquierdo, capture y restaure en el reemplazo; no hay lookbehind. No copie <code>(?&lt;=...)</code> desde Dise&#241;o.</p>
-<h2 id="section-9">9. Reemplazo en C&#243;digo</h2>
-<p>Con <code>SCI_REPLACETARGETRE</code>, Scintilla expande la cadena despu&#233;s de encontrar la coincidencia. No es <code>std::regex_replace</code> con <code>$1</code> ni la gram&#225;tica Dise&#241;o. [S1]</p>
+<p>Para contexto izquierdo, capture y restaure en el reemplazo; no hay lookbehind. No copie <code>(?&lt;=...)</code> desde Diseño.</p>
+<h2 id="section-9">9. Reemplazo en Código</h2>
+<p>Con <code>SCI_REPLACETARGETRE</code>, Scintilla expande la cadena después de encontrar la coincidencia. No es <code>std::regex_replace</code> con <code>$1</code> ni la gramática Diseño. [S1]</p>
 <h3 id="section-9-1">9.1. Referencias a capturas</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Reemplazo</th><th scope="col">Significado</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>Coincidencia completa</td></tr>
@@ -115,43 +115,43 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre class="regex" id="regex-7"><code><span class="rx-escape">\(</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-escape">\)</span></code></pre>
 <p>Reemplazar por:</p>
 <pre><code>[\1]</code></pre>
-<p><code>(12)</code> se convierte en <code>[12]</code>. Solo tiene sentido editorial en contexto seleccionado: no todo n&#250;mero entre par&#233;ntesis es una nota.</p>
-<p>Un d&#243;lar literal no debe duplicarse por convenciones de otro sistema. La barra inversa s&#237; es un car&#225;cter de control.</p>
+<p><code>(12)</code> se convierte en <code>[12]</code>. Solo tiene sentido editorial en contexto seleccionado: no todo número entre paréntesis es una nota.</p>
+<p>Un dólar literal no debe duplicarse por convenciones de otro sistema. La barra inversa sí es un carácter de control.</p>
 <h3 id="section-9-2">9.2. Caracteres de control en reemplazo</h3>
-<p>Scintilla interpreta <code>\t</code>, <code>\n</code>, <code>\r</code> y <code>\\</code> en el reemplazo como tabulaci&#243;n, LF, CR y barra inversa literal. Esto no permite buscar entre l&#237;neas f&#237;sicas.</p>
-<p>Use <code>\r\n</code> para CRLF y <code>\n</code> para LF seg&#250;n el documento. Evite terminaciones mezcladas involuntariamente.</p>
-<p><code>\x{00A0}</code> no inserta aqu&#237; Unicode: use NBSP real. Las &#243;rdenes Dise&#241;o <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> no controlan caja ni formato.</p>
+<p>Scintilla interpreta <code>\t</code>, <code>\n</code>, <code>\r</code> y <code>\\</code> en el reemplazo como tabulación, LF, CR y barra inversa literal. Esto no permite buscar entre líneas físicas.</p>
+<p>Use <code>\r\n</code> para CRLF y <code>\n</code> para LF según el documento. Evite terminaciones mezcladas involuntariamente.</p>
+<p><code>\x{00A0}</code> no inserta aquí Unicode: use NBSP real. Las órdenes Diseño <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> no controlan caja ni formato.</p>
 <h3 id="section-9-3">9.3. Borrar y conservar XML</h3>
-<p>Un reemplazo vac&#237;o elimina el rango. Borrar etiqueta, atributo o enlace vac&#237;o puede da&#241;ar el documento pese a encontrarlo correctamente. Las recetas estructurales son sobre todo diagn&#243;sticas.</p>
+<p>Un reemplazo vacío elimina el rango. Borrar etiqueta, atributo o enlace vacío puede dañar el documento pese a encontrarlo correctamente. Las recetas estructurales son sobre todo diagnósticas.</p>
 <p>Renombrar un <code>id</code> solo en un sitio puede dejar referencias antiguas. Use el comando de renombrado FBE para objetos vinculados, no sustituciones textuales independientes.</p>
-<h2 id="section-10">10. C&#243;mo interpretar las recetas XML</h2>
-<p>XML distingue caja: <code>&lt;p&gt;</code> y <code>&lt;P&gt;</code> no son lo mismo. El orden de atributos no define el significado; valores pueden usar comillas simples o dobles y espacios alrededor de igual. Las recetas cubren variantes habituales sin complicaci&#243;n excesiva. [S3]</p>
-<p><code>l:</code> y <code>xlink:</code> son prefijos habituales de XLink en FB2. El significado lo establece <code>xmlns</code>, no el prefijo por s&#237; solo. Otros prefijos requieren adaptar la regla y revisar la declaraci&#243;n.</p>
-<p>Muchos ejemplos aproximan la etiqueta con <code>[^&gt;]*</code>. Es pr&#225;ctico, pero <code>&gt;</code> puede estar legalmente dentro de atributos. Comentarios y CDATA pueden imitar marcado. Por tanto, son candidatos de revisi&#243;n, no validaci&#243;n completa ni reestructuraci&#243;n ciega.</p>
-<p>Un elemento vac&#237;o no siempre viola el esquema; una entidad num&#233;rica no es un car&#225;cter corrupto. Nombres extra&#241;os, placeholders y enlaces externos pueden tener una finalidad leg&#237;tima.</p>
-<h2 id="section-11">11. Recetas pr&#225;cticas FB2/XML</h2>
-<p>Salvo indicaci&#243;n contraria, los componentes deben estar en una l&#237;nea f&#237;sica. Si se busca la etiqueta completa, todos los atributos examinados deben compartir esa l&#237;nea. Buscar solo un atributo no exige que toda la etiqueta sea monol&#237;nea.</p>
-<h3 id="heading-1">K01. Espacios al final de una l&#237;nea f&#237;sica</h3>
+<h2 id="section-10">10. Cómo interpretar las recetas XML</h2>
+<p>XML distingue caja: <code>&lt;p&gt;</code> y <code>&lt;P&gt;</code> no son lo mismo. El orden de atributos no define el significado; valores pueden usar comillas simples o dobles y espacios alrededor de igual. Las recetas cubren variantes habituales sin complicación excesiva. [S2]</p>
+<p><code>l:</code> y <code>xlink:</code> son prefijos habituales de XLink en FB2. El significado lo establece <code>xmlns</code>, no el prefijo por sí solo. Otros prefijos requieren adaptar la regla y revisar la declaración.</p>
+<p>Muchos ejemplos aproximan la etiqueta con <code>[^&gt;]*</code>. Es práctico, pero <code>&gt;</code> puede estar legalmente dentro de atributos. Comentarios y CDATA pueden imitar marcado. Por tanto, son candidatos de revisión, no validación completa ni reestructuración ciega.</p>
+<p>Un elemento vacío no siempre viola el esquema; una entidad numérica no es un carácter corrupto. Nombres extraños, placeholders y enlaces externos pueden tener una finalidad legítima.</p>
+<h2 id="section-11">11. Recetas prácticas FB2/XML</h2>
+<p>Salvo indicación contraria, los componentes deben estar en una línea física. Si se busca la etiqueta completa, todos los atributos examinados deben compartir esa línea. Buscar solo un atributo no exige que toda la etiqueta sea monolínea.</p>
+<h3 id="heading-1">K01. Espacios al final de una línea física</h3>
 <p>Encontrar espacios normales y tabulaciones finales.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
 <p>El mismo texto de prueba con los espacios visibles:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
-<p>Aqu&#237; ␠ representa un espacio normal; [TAB], una tabulaci&#243;n; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representaci&#243;n explicativa: no introduzca estas etiquetas en el libro.</p>
-<p>Reemplazar por: dejar el campo completamente vac&#237;o. No escribir la palabra &#171;vac&#237;o&#187;.</p>
+<p>Aquí ␠ representa un espacio normal; [TAB], una tabulación; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representación explicativa: no introduzca estas etiquetas en el libro.</p>
+<p>Reemplazar por: dejar el campo completamente vacío. No escribir la palabra «vacío».</p>
 <p>Resultado del reemplazo:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: No elimina terminaci&#243;n. En contenido mixto, CDATA y zonas sensibles a blancos, pueden ser texto. Limpiar todas las l&#237;neas no es incondicionalmente seguro.</p>
-<h3 id="heading-2">K02. Vaciar una l&#237;nea de blancos</h3>
-<p>Quitar blancos de una l&#237;nea sin m&#225;s contenido.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: No elimina terminación. En contenido mixto, CDATA y zonas sensibles a blancos, pueden ser texto. Limpiar todas las líneas no es incondicionalmente seguro.</p>
+<h3 id="heading-2">K02. Vaciar una línea de blancos</h3>
+<p>Quitar blancos de una línea sin más contenido.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -160,18 +160,18 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>El mismo texto de prueba con los espacios visibles:</p>
 <pre><code>␠␠␠[TAB]
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Aqu&#237; ␠ representa un espacio normal; [TAB], una tabulaci&#243;n; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representaci&#243;n explicativa: no introduzca estas etiquetas en el libro.</p>
-<p>Reemplazar por: dejar el campo completamente vac&#237;o. No escribir la palabra &#171;vac&#237;o&#187;.</p>
+<p>Aquí ␠ representa un espacio normal; [TAB], una tabulación; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representación explicativa: no introduzca estas etiquetas en el libro.</p>
+<p>Reemplazar por: dejar el campo completamente vacío. No escribir la palabra «vacío».</p>
 <p>Resultado del reemplazo:</p>
 <pre><code>
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: Permanece vac&#237;a: LF/CRLF no pertenec&#237;an a la coincidencia. No elimina todas las l&#237;neas f&#237;sicas vac&#237;as.</p>
-<h3 id="heading-3">K03. Espacio antes del cierre vac&#237;o</h3>
+<p>Limitaciones y observaciones: Permanece vacía: LF/CRLF no pertenecían a la coincidencia. No elimina todas las líneas físicas vacías.</p>
+<h3 id="heading-3">K03. Espacio antes del cierre vacío</h3>
 <p>Encontrar hueco normal inmediatamente antes de /&gt;.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -182,11 +182,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;empty-line/&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;empty-line/&gt;</code></pre>
-<p>Limitaciones y observaciones: XML admite ambas formas. Es cosm&#233;tico, no correcci&#243;n obligatoria. La secuencia tambi&#233;n puede aparecer en comentarios o texto; revisar reemplazo global.</p>
-<h3 id="heading-4">K04. P&#225;rrafo simple vac&#237;o</h3>
+<p>Limitaciones y observaciones: XML admite ambas formas. Es cosmético, no corrección obligatoria. La secuencia también puede aparecer en comentarios o texto; revisar reemplazo global.</p>
+<h3 id="heading-4">K04. Párrafo simple vacío</h3>
 <p>Examinar pareja p sin contenido textual.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -195,11 +195,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: No cubre atributos, saltos, entidad NBSP o etiqueta anidada. Un p vac&#237;o y empty-line no son autom&#225;ticamente equivalentes.</p>
-<h3 id="heading-5">K05. Dos empty-line en una l&#237;nea</h3>
-<p>Encontrar elementos FB2 de l&#237;nea vac&#237;a contiguos en una l&#237;nea fuente f&#237;sica.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: No cubre atributos, saltos, entidad NBSP o etiqueta anidada. Un p vacío y empty-line no son automáticamente equivalentes.</p>
+<h3 id="heading-5">K05. Dos empty-line en una línea</h3>
+<p>Encontrar elementos FB2 de línea vacía contiguos en una línea fuente física.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -209,11 +209,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Limitaciones y observaciones: Solo espacios normales y tabulaciones entre ellos. Excluye deliberadamente saltos. Dos l&#237;neas vac&#237;as pueden separar escenas.</p>
-<h3 id="heading-6">K06. Metadatos importantes vac&#237;os</h3>
+<p>Limitaciones y observaciones: Solo espacios normales y tabulaciones entre ellos. Excluye deliberadamente saltos. Dos líneas vacías pueden separar escenas.</p>
+<h3 id="heading-6">K06. Metadatos importantes vacíos</h3>
 <p>Examinar varios campos sencillos sin contenido.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -223,10 +223,10 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
 <p>Limitaciones y observaciones: No todos son obligatorios siempre. Regex no valida esquema, padre ni exactitud de valores llenos.</p>
-<h3 id="heading-7">K07. Formato inline vac&#237;o</h3>
-<p>Encontrar elementos de formato emparejados y vac&#237;os.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<h3 id="heading-7">K07. Formato inline vacío</h3>
+<p>Encontrar elementos de formato emparejados y vacíos.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -235,11 +235,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
-<p>Limitaciones y observaciones: NBSP, atributos y anidaci&#243;n necesitan otra condici&#243;n. Verifique el papel estructural antes de borrar.</p>
-<h3 id="heading-8">K08. Formato id&#233;ntico anidado en s&#237; mismo</h3>
-<p>Distinguir strong/strong de strong/emphasis v&#225;lido.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: NBSP, atributos y anidación necesitan otra condición. Verifique el papel estructural antes de borrar.</p>
+<h3 id="heading-8">K08. Formato idéntico anidado en sí mismo</h3>
+<p>Distinguir strong/strong de strong/emphasis válido.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -249,10 +249,10 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
 <p>Limitaciones y observaciones: El segundo nombre referencia al primero, no se elige independientemente. El resultado no incluye el elemento completo ni se destina a borrarlo entero.</p>
-<h3 id="heading-9">K09. Posibles etiquetas HTML de importaci&#243;n</h3>
+<h3 id="heading-9">K09. Posibles etiquetas HTML de importación</h3>
 <p>Encontrar nombres HTML comunes que revisar en FB2.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -263,10 +263,10 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
 <p>Limitaciones y observaciones: Comentarios y CDATA pueden coincidir. No convierta b en strong e i en emphasis globalmente sin revisar contenido y atributos.</p>
-<h3 id="heading-10">K10. Etiqueta en may&#250;sculas</h3>
-<p>Encontrar nombres corrientes totalmente en may&#250;sculas.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<h3 id="heading-10">K10. Etiqueta en mayúsculas</h3>
+<p>Encontrar nombres corrientes totalmente en mayúsculas.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -276,11 +276,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 &lt;/P&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: Debe distinguir la caja, o coincidir&#225; p normal. No enumera todos los nombres XML Unicode v&#225;lidos ni comprueba espacios de nombres.</p>
+<p>Limitaciones y observaciones: Debe distinguir la caja, o coincidirá p normal. No enumera todos los nombres XML Unicode válidos ni comprueba espacios de nombres.</p>
 <h3 id="heading-11">K11. Entidad HTML NBSP</h3>
 <p>Encontrar &amp;nbsp; literal en la fuente.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
 <p>Texto de prueba original:</p>
@@ -289,11 +289,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&amp;nbsp;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: Sin declaraci&#243;n no es una de las cinco entidades XML predefinidas. Revise DTD y comentarios. No decodifique todas las entidades globalmente.</p>
-<h3 id="heading-12">K12. Referencias num&#233;ricas de caracteres</h3>
-<p>Encontrar notaci&#243;n decimal o hexadecimal.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Sin declaración no es una de las cinco entidades XML predefinidas. Revise DTD y comentarios. No decodifique todas las entidades globalmente.</p>
+<h3 id="heading-12">K12. Referencias numéricas de caracteres</h3>
+<p>Encontrar notación decimal o hexadecimal.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
 <p>Texto de prueba original:</p>
@@ -303,11 +303,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 &amp;#xA0;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: Ambas pueden ser correctas. Solo se comprueba forma, no c&#243;digo v&#225;lido. Decodificar &amp;lt; como &lt; literal puede da&#241;ar XML.</p>
-<h3 id="heading-13">K13. id vac&#237;o</h3>
-<p>Encontrar un id ordinario vac&#237;o con ambos tipos de comillas.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Ambas pueden ser correctas. Solo se comprueba forma, no código válido. Decodificar &amp;lt; como &lt; literal puede dañar XML.</p>
+<h3 id="heading-13">K13. id vacío</h3>
+<p>Encontrar un id ordinario vacío con ambos tipos de comillas.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -319,8 +319,8 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Limitaciones y observaciones: El espacio anterior forma parte del resultado. No incluye xml:id. Crear IDs exige unicidad y referencias, no comprobadas por regex.</p>
 <h3 id="heading-14">K14. Enumerar valores id</h3>
 <p>Encontrar ids ordinarios llenos para revisar nombres.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -331,9 +331,9 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
 <p>Limitaciones y observaciones: Una lista no demuestra unicidad o validez. Use renombrado FBE en objetos enlazados.</p>
 <h3 id="heading-15">K15. Enlaces externos HTTP(S)</h3>
-<p>Encontrar href con prefijo XLink habitual y direcci&#243;n externa.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Encontrar href con prefijo XLink habitual y dirección externa.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -342,11 +342,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: Busca el atributo, no toda URL. Cubre l y xlink; otros prefijos por separado. No verifica disponibilidad de la direcci&#243;n.</p>
+<p>Limitaciones y observaciones: Busca el atributo, no toda URL. Cubre l y xlink; otros prefijos por separado. No verifica disponibilidad de la dirección.</p>
 <h3 id="heading-16">K16. Enlaces locales file://</h3>
-<p>Encontrar un archivo local que quiz&#225; no funcione para el lector.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Encontrar un archivo local que quizá no funcione para el lector.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -355,11 +355,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: No abra direcciones desconocidas autom&#225;ticamente. No decide si integrar archivo, cambiar enlace o borrarlo.</p>
-<h3 id="heading-17">K17. Destino vac&#237;o</h3>
-<p>Encontrar una referencia XLink vac&#237;a.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: No abra direcciones desconocidas automáticamente. No decide si integrar archivo, cambiar enlace o borrarlo.</p>
+<h3 id="heading-17">K17. Destino vacío</h3>
+<p>Encontrar una referencia XLink vacía.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -368,11 +368,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code> l:href=&quot;&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: Texto de enlace vac&#237;o y href ausente son otros casos separados.</p>
+<p>Limitaciones y observaciones: Texto de enlace vacío y href ausente son otros casos separados.</p>
 <h3 id="heading-18">K18. Destino #undefined</h3>
 <p>Encontrar destino placeholder literal.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -381,11 +381,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: Compruebe el objeto real. undefined no es ilegal como nombre XML; suele indicar vinculaci&#243;n incompleta.</p>
+<p>Limitaciones y observaciones: Compruebe el objeto real. undefined no es ilegal como nombre XML; suele indicar vinculación incompleta.</p>
 <h3 id="heading-19">K19. Enlaces con prefijo bookmark</h3>
 <p>Encontrar destinos bookmark de convertidores, no cualquier enlace interno.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -394,11 +394,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: href=&quot;#...&quot; encuentra todos los internos y no a&#237;sla bookmark. Un bookmark no prueba inutilidad; revisar antes de borrar.</p>
+<p>Limitaciones y observaciones: href=&quot;#...&quot; encuentra todos los internos y no aísla bookmark. Un bookmark no prueba inutilidad; revisar antes de borrar.</p>
 <h3 id="heading-20">K20. Retornos Word/FBD</h3>
 <p>Encontrar _ftnref y _ednref en destinos.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -407,11 +407,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: Un retorno puede ser necesario para navegaci&#243;n. No borrarlo solo por origen del nombre.</p>
+<p>Limitaciones y observaciones: Un retorno puede ser necesario para navegación. No borrarlo solo por origen del nombre.</p>
 <h3 id="heading-21">K21. Notas sin depender del orden de atributos</h3>
 <p>Encontrar apertura a con type=note y href XLink interno en cualquier orden.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -420,11 +420,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: Tambi&#233;n permite xlink y comillas simples. Los atributos examinados deben estar en una l&#237;nea. Valores con &gt;, comentarios y XML especial requieren parser. No verifica existencia de nota destino.</p>
-<h3 id="heading-22">K22. Posibles marcadores num&#233;ricos de nota</h3>
-<p>Encontrar cifras entre corchetes, llaves o par&#233;ntesis.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: También permite xlink y comillas simples. Los atributos examinados deben estar en una línea. Valores con &gt;, comentarios y XML especial requieren parser. No verifica existencia de nota destino.</p>
+<h3 id="heading-22">K22. Posibles marcadores numéricos de nota</h3>
+<p>Encontrar cifras entre corchetes, llaves o paréntesis.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -435,11 +435,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 (4)</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: Pueden ser bibliograf&#237;a, f&#243;rmulas, aclaraciones o texto. No crea notas ni comprueba unicidad.</p>
+<p>Limitaciones y observaciones: Pueden ser bibliografía, fórmulas, aclaraciones o texto. No crea notas ni comprueba unicidad.</p>
 <h3 id="heading-23">K23. Your/Name olvidados</h3>
 <p>Comprobar placeholders ingleses habituales de nombres.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -448,11 +448,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
-<p>Limitaciones y observaciones: Revise autor/creador y nombre real. No sustituya autom&#225;ticamente con datos de otra edici&#243;n.</p>
-<h3 id="heading-24">K24. Ilustraci&#243;n no vinculada #undefined</h3>
-<p>Encontrar image dirigido al placeholder com&#250;n.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Revise autor/creador y nombre real. No sustituya automáticamente con datos de otra edición.</p>
+<h3 id="heading-24">K24. Ilustración no vinculada #undefined</h3>
+<p>Encontrar image dirigido al placeholder común.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -461,11 +461,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
-<p>Limitaciones y observaciones: FB2 suele usar XLink-href, no HTML-src. Verifique binary por separado. Imagen ausente y referencia err&#243;nea son causas distintas.</p>
-<h3 id="heading-25">K25. Declaraci&#243;n windows-1251</h3>
-<p>Encontrar codificaci&#243;n antigua en declaraci&#243;n XML.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: FB2 suele usar XLink-href, no HTML-src. Verifique binary por separado. Imagen ausente y referencia errónea son causas distintas.</p>
+<h3 id="heading-25">K25. Declaración windows-1251</h3>
+<p>Encontrar codificación antigua en declaración XML.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -474,11 +474,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
-<p>Limitaciones y observaciones: No es error en s&#237;. Cambiar windows-1251 por utf-8 no recodifica bytes. Use guardado/conversi&#243;n consistente con declaraci&#243;n.</p>
-<h3 id="heading-26">K26. Ampersand sin entidad est&#225;ndar reconocida</h3>
-<p>Encontrar &amp; ante una secuencia no parecida a una referencia est&#225;ndar.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: No es error en sí. Cambiar windows-1251 por utf-8 no recodifica bytes. Use guardado/conversión consistente con declaración.</p>
+<h3 id="heading-26">K26. Ampersand sin entidad estándar reconocida</h3>
+<p>Encontrar &amp; ante una secuencia no parecida a una referencia estándar.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -487,11 +487,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&amp;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: &amp; se permite en CDATA/comentarios y DTD puede definir m&#225;s entidades. Es filtro, no validador. &amp; → &amp;amp; sin contexto puede duplicar escape.</p>
+<p>Limitaciones y observaciones: &amp; se permite en CDATA/comentarios y DTD puede definir más entidades. Es filtro, no validador. &amp; → &amp;amp; sin contexto puede duplicar escape.</p>
 <h3 id="heading-27">K27. Enlaces internos ordinarios</h3>
 <p>Encontrar destino #id local aparte de bookmark.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -500,11 +500,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>l:href=&quot;#note1&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Limitaciones y observaciones: Muestra la notaci&#243;n, no prueba un &#250;nico destino existente. Referencias rotas o duplicadas necesitan an&#225;lisis global.</p>
-<h3 id="heading-28">K28. Separar dos empty-line tras b&#250;squeda monol&#237;nea</h3>
-<p>Demostrar diferencia entre l&#237;mite de b&#250;squeda e inserci&#243;n de salto al reemplazar.</p>
-<p>Acci&#243;n: realizar un &#250;nico reemplazo controlado.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Muestra la notación, no prueba un único destino existente. Referencias rotas o duplicadas necesitan análisis global.</p>
+<h3 id="heading-28">K28. Separar dos empty-line tras búsqueda monolínea</h3>
+<p>Demostrar diferencia entre límite de búsqueda e inserción de salto al reemplazar.</p>
+<p>Acción: realizar un único reemplazo controlado.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -517,11 +517,11 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Limitaciones y observaciones: Scintilla convierte las secuencias en CRLF. Para documento LF use \1\n\2. No es formateador XML universal ni activa b&#250;squeda multil&#237;nea.</p>
+<p>Limitaciones y observaciones: Scintilla convierte las secuencias en CRLF. Para documento LF use \1\n\2. No es formateador XML universal ni activa búsqueda multilínea.</p>
 <h3 id="heading-29">K29. Espacios dobles en texto XML sencillo</h3>
 <p>Encontrar fragmento entre etiquetas con varios espacios normales.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
 <p>Texto de prueba original:</p>
@@ -530,42 +530,42 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre><code>&gt;one  two&lt;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
-<p>Limitaciones y observaciones: Incluye delimitadores angulares y todo el fragmento. Las palabras se corrigen m&#225;s c&#243;modamente en Dise&#241;o. No reemplace el resultado completo por un espacio.</p>
-<h2 id="section-12">12. Por qu&#233; regex no sustituye la validaci&#243;n XML</h2>
-<p>Una expresi&#243;n prueba semejanza local de caracteres, no correcci&#243;n de todo el documento. Anidaci&#243;n, esquema FB2, declaraciones de espacios de nombres, IDs &#250;nicos y destinos de enlaces exigen controles separados.</p>
-<p>Dos <code>id</code> iguales en l&#237;neas distintas no se detectan fiablemente mediante una comparaci&#243;n del camino monol&#237;nea. Igual ocurre con un destino ausente en otra parte del libro. Use validaci&#243;n y estructura FBE.</p>
-<p>No decodifique todas las entidades: <code>&amp;lt;</code>, <code>&amp;amp;</code> suelen evitar que el texto se interprete como marcado. No borre todo lo parecido a HTML dentro de CDATA, comentarios o citas de c&#243;digo.</p>
-<p>La operaci&#243;n debe preservar parejas, atributos y contenido. Cambiar solo <code>&lt;strong&gt;</code> mantiene el cierre viejo. Una referencia en un ejemplo no vuelve segura cualquier modificaci&#243;n posterior.</p>
+<p>Limitaciones y observaciones: Incluye delimitadores angulares y todo el fragmento. Las palabras se corrigen más cómodamente en Diseño. No reemplace el resultado completo por un espacio.</p>
+<h2 id="section-12">12. Por qué regex no sustituye la validación XML</h2>
+<p>Una expresión prueba semejanza local de caracteres, no corrección de todo el documento. Anidación, esquema FB2, declaraciones de espacios de nombres, IDs únicos y destinos de enlaces exigen controles separados.</p>
+<p>Dos <code>id</code> iguales en líneas distintas no se detectan fiablemente mediante una comparación del camino monolínea. Igual ocurre con un destino ausente en otra parte del libro. Use validación y estructura FBE.</p>
+<p>No decodifique todas las entidades: <code>&amp;lt;</code>, <code>&amp;amp;</code> suelen evitar que el texto se interprete como marcado. No borre todo lo parecido a HTML dentro de CDATA, comentarios o citas de código.</p>
+<p>La operación debe preservar parejas, atributos y contenido. Cambiar solo <code>&lt;strong&gt;</code> mantiene el cierre viejo. Una referencia en un ejemplo no vuelve segura cualquier modificación posterior.</p>
 <h2 id="section-13">13. Errores comunes</h2>
-<h3 id="section-13-1">13.1. Se encuentran min&#250;sculas en vez de may&#250;sculas</h3>
-<p>Active la distinci&#243;n de caja. En XML no es cosm&#233;tica. <code>[A-Z]</code> insensible anula la comprobaci&#243;n buscada.</p>
+<h3 id="section-13-1">13.1. Se encuentran minúsculas en vez de mayúsculas</h3>
+<p>Active la distinción de caja. En XML no es cosmética. <code>[A-Z]</code> insensible anula la comprobación buscada.</p>
 <h3 id="section-13-2">13.2. Aparece $1 literalmente</h3>
 <p>Use <code>\1</code>. El reemplazo Fuente pasa por Scintilla, no JavaScript ni un API con <code>$1</code>.</p>
 <h3 id="section-13-3">13.3. Fallan \p, \K o lookbehind</h3>
-<p>Pertenecen a otro perfil. Para texto use Dise&#241;o; para XML, reescriba con clases expl&#237;citas, contexto capturado, grupos no capturantes y lookahead.</p>
+<p>Pertenecen a otro perfil. Para texto use Diseño; para XML, reescriba con clases explícitas, contexto capturado, grupos no capturantes y lookahead.</p>
 <h3 id="section-13-4">13.4. No aparecen etiquetas vecinas</h3>
-<p>Revise salto f&#237;sico, espacio ante <code>/&gt;</code>, comillas simples, atributos y prefijos. Vecindad textual y del &#225;rbol XML son distintas.</p>
+<p>Revise salto físico, espacio ante <code>/&gt;</code>, comillas simples, atributos y prefijos. Vecindad textual y del árbol XML son distintas.</p>
 <h3 id="section-13-5">13.5. La nota no aparece cuando se reordenan atributos</h3>
-<p>&#171;type luego href&#187; depende del orden. K21 usa lookaheads independientes. Una etiqueta multil&#237;nea a&#250;n no puede encontrarse entera; busque el atributo o la estructura.</p>
-<h3 id="section-13-6">13.6. strong/emphasis se marca como anidaci&#243;n err&#243;nea</h3>
-<p>Estilos v&#225;lidos distintos pueden anidarse. Para el mismo nombre se necesita referencia como K08, no alternativas independientes.</p>
-<h3 id="section-13-7">13.7. &#171;Bookmark&#187; encuentra todas las notas</h3>
-<p>Un interno <code>#</code> no es autom&#225;ticamente bookmark residual. Separe auditor&#237;a general K27 y prefijo espec&#237;fico K19.</p>
-<h3 id="section-13-8">13.8. Se da&#241;a texto visible</h3>
-<p>En C&#243;digo se puede coincidir en texto, atributos, comentarios o binary. Deshaga y acote patr&#243;n o &#225;mbito. El nombre &#171;reemplazo seguro&#187; no elimina el contexto XML.</p>
+<p>«type luego href» depende del orden. K21 usa lookaheads independientes. Una etiqueta multilínea aún no puede encontrarse entera; busque el atributo o la estructura.</p>
+<h3 id="section-13-6">13.6. strong/emphasis se marca como anidación errónea</h3>
+<p>Estilos válidos distintos pueden anidarse. Para el mismo nombre se necesita referencia como K08, no alternativas independientes.</p>
+<h3 id="section-13-7">13.7. «Bookmark» encuentra todas las notas</h3>
+<p>Un interno <code>#</code> no es automáticamente bookmark residual. Separe auditoría general K27 y prefijo específico K19.</p>
+<h3 id="section-13-8">13.8. Se daña texto visible</h3>
+<p>En Código se puede coincidir en texto, atributos, comentarios o binary. Deshaga y acote patrón o ámbito. El nombre «reemplazo seguro» no elimina el contexto XML.</p>
 <h2 id="section-14">14. Limitaciones del perfil Source</h2>
-<p>No use UCP, propiedades PCRE2, lookbehind, grupos nombrados de JavaScript moderno/PCRE2, grupos at&#243;micos, posesivos, branch reset, subrutinas, verbos PCRE2, <code>\K</code>, <code>\G</code> ni comandos de formato Dise&#241;o.</p>
-<p>Las opciones PCRE2 internas no sustituyen las casillas. Funciones recientes de navegadores no aparecen autom&#225;ticamente en C++11 ECMAScript.</p>
-<p>MatchOnLines mantiene la b&#250;squeda por l&#237;neas, sea cual sea la terminaci&#243;n escrita en el patr&#243;n. Compilar en otro motor no demuestra compatibilidad FBE.</p>
-<p>Para palabras Unicode y correcci&#243;n compleja use Dise&#241;o; para estructura, XML/FB2, no un <code>.*</code> ilimitado como compensaci&#243;n.</p>
-<h2 id="section-15">15. Rendimiento y l&#237;neas XML largas</h2>
-<p>Una expresi&#243;n corta no siempre es r&#225;pida. Repeticiones ilimitadas y alternativas pueden ralentizar l&#237;neas grandes, especialmente todo el documento o binary en una sola l&#237;nea.</p>
-<p>Empiece con nombre concreto de etiqueta/atributo y clase limitada. Diagn&#243;sticos separados son m&#225;s f&#225;ciles de revisar y deshacer que buscar todos los fallos a la vez.</p>
+<p>No use UCP, propiedades PCRE2, lookbehind, grupos nombrados de JavaScript moderno/PCRE2, grupos atómicos, posesivos, branch reset, subrutinas, verbos PCRE2, <code>\K</code>, <code>\G</code> ni comandos de formato Diseño.</p>
+<p>Las opciones PCRE2 internas no sustituyen las casillas. Funciones recientes de navegadores no aparecen automáticamente en C++11 ECMAScript.</p>
+<p>MatchOnLines mantiene la búsqueda por líneas, sea cual sea la terminación escrita en el patrón. Compilar en otro motor no demuestra compatibilidad FBE.</p>
+<p>Para palabras Unicode y corrección compleja use Diseño; para estructura, XML/FB2, no un <code>.*</code> ilimitado como compensación.</p>
+<h2 id="section-15">15. Rendimiento y líneas XML largas</h2>
+<p>Una expresión corta no siempre es rápida. Repeticiones ilimitadas y alternativas pueden ralentizar líneas grandes, especialmente todo el documento o binary en una sola línea.</p>
+<p>Empiece con nombre concreto de etiqueta/atributo y clase limitada. Diagnósticos separados son más fáciles de revisar y deshacer que buscar todos los fallos a la vez.</p>
 <p>No aplane XML para evitar MatchOnLines: cambia el documento sin garantizar velocidad.</p>
 <h2 id="section-16">16. Comprobaciones posteriores</h2>
-<p>Compare rango previsto y real. Con capturas, revise comillas, prefijos, &#225;ngulos y cierres. Evite afectar comentarios, CDATA y binary.</p>
-<p>Valide FB2, guarde y reabra despu&#233;s de cambios importantes. Compruebe C&#243;digo ↔ Dise&#241;o, notas, im&#225;genes y texto. Un ID renombrado exige revisar objeto y referencias.</p>
+<p>Compare rango previsto y real. Con capturas, revise comillas, prefijos, ángulos y cierres. Evite afectar comentarios, CDATA y binary.</p>
+<p>Valide FB2, guarde y reabra después de cambios importantes. Compruebe Código ↔ Diseño, notas, imágenes y texto. Un ID renombrado exige revisar objeto y referencias.</p>
 <h2 id="section-17">17. Fuentes y alcance</h2>
-<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Documentaci&#243;n Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.</a></p>
-<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Documentación Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.</a></p>
+<p>[S2] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.</a> · <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

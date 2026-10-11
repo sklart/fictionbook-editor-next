@@ -232,7 +232,7 @@ Mudar um `id` isoladamente pode deixar referências para o valor antigo. Para ob
 
 ## 10. Como interpretar as receitas XML
 
-XML distingue a caixa: `<p>` e `<P>` são nomes diferentes. A ordem dos atributos não lhes determina o sentido; os valores podem usar aspas simples ou duplas e há espaços admissíveis em torno de `=`. As receitas cobrem variantes comuns quando isso não torna o padrão excessivamente complexo. [S3]
+XML distingue a caixa: `<p>` e `<P>` são nomes diferentes. A ordem dos atributos não lhes determina o sentido; os valores podem usar aspas simples ou duplas e há espaços admissíveis em torno de `=`. As receitas cobrem variantes comuns quando isso não torna o padrão excessivamente complexo. [S2]
 
 `l:` e `xlink:` são prefixos XLink comuns em FB2. O significado resulta de `xmlns`, não do nome do prefixo. Uma receita que enumera estes dois não garante outro: adapte-a após verificar a declaração.
 
@@ -1374,4 +1374,4 @@ Valide FB2, guarde e reabra após mudanças significativas. Verifique a passagem
 
 [S1] [Documentação oficial Scintilla, Searching: modo C++11, opções de pesquisa e SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 e Namespaces in XML: nomes, atributos, entidades e espaços de nomes.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 e Namespaces in XML: nomes, atributos, entidades e espaços de nomes.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

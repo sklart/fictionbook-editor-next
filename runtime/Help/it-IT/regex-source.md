@@ -232,7 +232,7 @@ Rinominare un `id` solo in una posizione può lasciare riferimenti al vecchio va
 
 ## 10. Come leggere le ricette XML
 
-XML distingue il caso: `<p>` e `<P>` sono nomi diversi. L’ordine degli attributi non ne determina il significato; i valori possono usare virgolette singole o doppie e sono ammessi spazi attorno a `=`. Le ricette includono le varianti comuni quando non rendono il modello eccessivamente complesso. [S3]
+XML distingue il caso: `<p>` e `<P>` sono nomi diversi. L’ordine degli attributi non ne determina il significato; i valori possono usare virgolette singole o doppie e sono ammessi spazi attorno a `=`. Le ricette includono le varianti comuni quando non rendono il modello eccessivamente complesso. [S2]
 
 `l:` e `xlink:` sono prefissi XLink comuni in FB2. Il significato viene dalla dichiarazione `xmlns`, non dal prefisso stesso. Un modello che elenca questi due nomi non garantisce il riconoscimento di un terzo: adattarlo verificando la dichiarazione.
 
@@ -1374,4 +1374,4 @@ Convalidare FB2, salvare e riaprire dopo modifiche importanti. Controllare passa
 
 [S1] [Documentazione ufficiale Scintilla, sezione Searching: modalità C++11, opzioni di ricerca e SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 e Namespaces in XML: nomi, attributi, entità e spazi dei nomi.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 e Namespaces in XML: nomi, attributi, entità e spazi dei nomi.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

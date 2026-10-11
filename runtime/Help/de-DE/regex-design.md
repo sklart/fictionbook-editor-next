@@ -53,7 +53,7 @@ Alle ersetzen kann beabsichtigte Abstände und Formatierung ändern. Prüfen Sie
 
 ## 3. Such-Engine und Grenzen des Design-Modus
 
-Hier wird PCRE2-16 verwendet; Text und Muster werden als UTF-16 übergeben, UTF ist stets aktiviert. FBE erstellt die durchsuchbare Textdarstellung und führt Ersetzungen unter Berücksichtigung der Buchstruktur separat aus. Die PCRE2-Dokumentation erklärt daher Treffer, definiert aber nicht sämtliche FBE-Aktionen. Technische Grundlagen: D1–D4.
+Hier wird PCRE2-16 verwendet; Text und Muster werden als UTF-16 übergeben, UTF ist stets aktiviert. FBE erstellt die durchsuchbare Textdarstellung und führt Ersetzungen unter Berücksichtigung der Buchstruktur separat aus. Die PCRE2-Dokumentation erklärt daher Treffer, definiert aber nicht sämtliche FBE-Aktionen. Technische Grundlagen: D1–D2.
 
 Durchsucht wird eine Textdarstellung des Buches, nicht das wörtliche XML-Markup der Datei. `<strong>` ist kein Suchmuster für Fettschrift in Design. XML-Tags werden im Quelltextmodus gesucht; strukturelle Änderungen erfolgen mit Editorfunktionen oder spezialisierten Skripten.
 

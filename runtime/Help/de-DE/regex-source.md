@@ -232,7 +232,7 @@ Ein `id` nur an einer Stelle umzuordnen oder umzubenennen kann alte Referenzen h
 
 ## 10. XML-Rezepte richtig lesen
 
-XML unterscheidet Groß- und Kleinschreibung. `<p>` und `<P>` sind verschiedene Namen. Attributreihenfolge bestimmt nicht deren Bedeutung; Werte dürfen einfach oder doppelt zitiert sein, um das Gleichheitszeichen sind Leerzeichen erlaubt. Die Beispiele berücksichtigen übliche Formen, solange das Muster nicht übermäßig kompliziert wird. [S3]
+XML unterscheidet Groß- und Kleinschreibung. `<p>` und `<P>` sind verschiedene Namen. Attributreihenfolge bestimmt nicht deren Bedeutung; Werte dürfen einfach oder doppelt zitiert sein, um das Gleichheitszeichen sind Leerzeichen erlaubt. Die Beispiele berücksichtigen übliche Formen, solange das Muster nicht übermäßig kompliziert wird. [S2]
 
 `l:` und `xlink:` sind verbreitete XLink-Präfixe in FB2. Entscheidend ist die `xmlns`-Deklaration, nicht das Präfix selbst. Regeln mit diesen beiden Formen erfassen nicht automatisch alle anderen Präfixe. Passen Sie die Regel bei Bedarf an und prüfen Sie die Deklaration.
 
@@ -1374,4 +1374,4 @@ FB2 prüfen, speichern und nach wesentlichen Änderungen erneut öffnen. Quellte
 
 [S1] [Offizielle Scintilla-Dokumentation, Searching: C++11-Modus, Suchflags und SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 und Namespaces in XML: Namen, Attribute, Entitäten und Namensräume.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 und Namespaces in XML: Namen, Attribute, Entitäten und Namensräume.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

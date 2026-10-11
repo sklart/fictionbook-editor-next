@@ -53,7 +53,7 @@ Il pulsante Applica nel pannello Modelli trasferisce espressione e opzioni nella
 
 ## 3. Motore e confini della modalità Design
 
-Questa modalità usa PCRE2-16 con testo e modelli in UTF-16; UTF è sempre attivo. FBE costruisce separatamente il testo da cercare e applica le sostituzioni tenendo conto della struttura del libro. La documentazione PCRE2 spiega quindi il riconoscimento delle corrispondenze, non ogni comportamento dell’applicazione. Le fonti tecniche sono D1–D4.
+Questa modalità usa PCRE2-16 con testo e modelli in UTF-16; UTF è sempre attivo. FBE costruisce separatamente il testo da cercare e applica le sostituzioni tenendo conto della struttura del libro. La documentazione PCRE2 spiega quindi il riconoscimento delle corrispondenze, non ogni comportamento dell’applicazione. Le fonti tecniche sono D1–D2.
 
 La ricerca riguarda una rappresentazione testuale del libro, non il suo XML letterale. Cercare `<strong>` non permette di trovare il grassetto in Design. I tag XML si cercano in Codice; le trasformazioni strutturali richiedono strumenti dell’editor o script dedicati.
 

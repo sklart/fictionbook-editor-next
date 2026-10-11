@@ -14,7 +14,8 @@ foreach($token in @('max-width: 1050px','prefers-color-scheme: dark','@media pri
 }
 foreach($fallback in @('background: #ffffff; background: var(--page)', 'color: #20232a; color: var(--text)',
     'border: 1px solid #c8d0da; border: 1px solid var(--line)', 'background: #e8edf4; background: var(--head)',
-    'color: #0758a7; color: var(--link)', 'padding: 10px 20px; padding: 10px max(')) {
+    'color: #0758a7; color: var(--link)', 'padding: 10px 20px; padding: 10px max(',
+    'word-wrap: break-word; overflow-wrap: anywhere')) {
     if(-not $css.Contains($fallback)) { throw "HTML CSS lacks legacy fallback: $fallback" }
 }
 if($css -match '(?i)@import|url\(\s*https?://') { throw 'HTML CSS has a network dependency.' }
@@ -28,8 +29,16 @@ foreach($locale in $locales) {
     foreach($mode in 'design','source') {
         $markdown = Get-Content -LiteralPath (Join-Path $help "$locale\regex-$mode.md") -Raw -Encoding UTF8
         $html = Get-Content -LiteralPath (Join-Path $help "$locale\regex-$mode.html") -Raw -Encoding UTF8
+        $sourceIds = @([regex]::Matches($markdown, '(?m)^\[([DS]\d+)\] ') | ForEach-Object { $_.Groups[1].Value })
+        $expectedIds = if($mode -eq 'design') { @('D1','D2') } else { @('S1','S2') }
+        if(($sourceIds -join ',') -cne ($expectedIds -join ',') -or
+            $markdown.Contains('D1–D4') -or $markdown.Contains('[S3]') -or
+            $html.Contains('D1–D4') -or $html.Contains('[S3]')) {
+            throw "$locale/$mode has missing or stale source references"
+        }
         $heading = ([regex]::Match($markdown, '(?m)^# (.+)$')).Groups[1].Value
-        if(-not $heading -or -not $html.Contains("<title>$([Net.WebUtility]::HtmlEncode($heading))</title>")) {
+        $titleMatch = [regex]::Match($html, '<title>(.*?)</title>')
+        if(-not $heading -or -not $titleMatch.Success -or [Net.WebUtility]::HtmlDecode($titleMatch.Groups[1].Value) -cne $heading) {
             throw "$locale/$mode has an incomplete browser title"
         }
         if($html -notmatch "<html lang=`"$locale`">" -or $html -notmatch '<h1 id="top">') { throw "$locale/$mode lacks document language or H1" }

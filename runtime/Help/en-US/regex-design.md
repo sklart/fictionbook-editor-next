@@ -55,7 +55,7 @@ Apply in the Templates panel transfers the expression and its settings to the se
 
 ## 3. The engine and the boundaries of Design mode
 
-This mode uses PCRE2-16, passing text and patterns as UTF-16; UTF mode is always enabled. FBE separately builds searchable text from the document and separately performs replacements with regard to the book’s structure. PCRE2 documentation therefore explains matching, but does not define every FBE operation. See technical sources D1–D4.
+This mode uses PCRE2-16, passing text and patterns as UTF-16; UTF mode is always enabled. FBE separately builds searchable text from the document and separately performs replacements with regard to the book’s structure. PCRE2 documentation therefore explains matching, but does not define every FBE operation. See technical sources D1–D2.
 
 The search works on a textual representation of the book, not the file’s literal XML markup. Searching for `<strong>` is not a way to find bold text in Design. Search for XML tags in Source mode, and use editor commands or specialized scripts for structural transformations.
 

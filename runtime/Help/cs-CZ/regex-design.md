@@ -53,7 +53,7 @@ Použít v panelu šablon přenese výraz a nastavení do dialogu. Neznamená be
 
 ## 3. Modul a hranice režimu Návrh
 
-Režim používá PCRE2-16 s textem i vzory v UTF-16; UTF je vždy zapnuté. FBE samostatně sestavuje hledaný text a provádí náhrady s ohledem na strukturu knihy. Dokumentace PCRE2 proto vysvětluje shody, nikoli všechny operace aplikace. Technické zdroje jsou D1–D4.
+Režim používá PCRE2-16 s textem i vzory v UTF-16; UTF je vždy zapnuté. FBE samostatně sestavuje hledaný text a provádí náhrady s ohledem na strukturu knihy. Dokumentace PCRE2 proto vysvětluje shody, nikoli všechny operace aplikace. Technické zdroje jsou D1–D2.
 
 Prohledává se textová reprezentace knihy, ne doslovné XML. `<strong>` není způsob hledání tučného písma v Návrhu. XML značky hledejte v Kódu; strukturální změny patří nástrojům editoru nebo specializovaným skriptům.
 

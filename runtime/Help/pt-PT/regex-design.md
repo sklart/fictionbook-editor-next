@@ -53,7 +53,7 @@ Aplicar, no painel de modelos, transfere a expressão e as opções para a janel
 
 ## 3. Motor e limites do modo Design
 
-Este modo usa PCRE2-16, com texto e padrões em UTF-16; UTF está sempre ativo. O FBE constrói separadamente o texto de pesquisa e executa a substituição considerando a estrutura do livro. A documentação PCRE2 explica as correspondências, mas não determina todas as ações do FBE. A base técnica encontra-se em D1–D4.
+Este modo usa PCRE2-16, com texto e padrões em UTF-16; UTF está sempre ativo. O FBE constrói separadamente o texto de pesquisa e executa a substituição considerando a estrutura do livro. A documentação PCRE2 explica as correspondências, mas não determina todas as ações do FBE. A base técnica encontra-se em D1–D2.
 
 A pesquisa incide na representação textual do livro, não na marcação XML literal. `<strong>` não permite procurar negrito em Design. As etiquetas XML procuram-se em Código; as transformações estruturais usam ferramentas do editor ou scripts especializados.
 

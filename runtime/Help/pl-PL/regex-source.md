@@ -232,7 +232,7 @@ Zmiana `id` tylko w jednym miejscu może pozostawić odsyłacze do starej warto�
 
 ## 10. Czytanie przepisów XML
 
-XML uwzględnia wielkość liter: `<p>` i `<P>` to inne nazwy. Kolejność atrybutów nie określa ich sensu; wartości mogą mieć pojedyncze lub podwójne cudzysłowy, a wokół `=` dozwolone są spacje. Przykłady obejmują typowe warianty, jeżeli nie komplikuje to nadmiernie wzorca. [S3]
+XML uwzględnia wielkość liter: `<p>` i `<P>` to inne nazwy. Kolejność atrybutów nie określa ich sensu; wartości mogą mieć pojedyncze lub podwójne cudzysłowy, a wokół `=` dozwolone są spacje. Przykłady obejmują typowe warianty, jeżeli nie komplikuje to nadmiernie wzorca. [S2]
 
 `l:` i `xlink:` są częstymi prefiksami XLink w FB2. Znaczenie nadaje deklaracja `xmlns`, nie sama nazwa prefiksu. Przepis wymieniający te dwa warianty nie gwarantuje obsługi innego; dostosuj go po sprawdzeniu deklaracji.
 
@@ -1374,4 +1374,4 @@ Uruchom walidację FB2, zapisz i po istotnych zmianach otwórz ponownie. Sprawd�
 
 [S1] [Oficjalna dokumentacja Scintilla, Searching: tryb C++11, opcje wyszukiwania i SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 i Namespaces in XML: nazwy, atrybuty, encje i przestrzenie nazw.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 i Namespaces in XML: nazwy, atrybuty, encje i przestrzenie nazw.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

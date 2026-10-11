@@ -1,19 +1,19 @@
 <!doctype html>
 <html lang="es-ES">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ayuda de expresiones regulares — Dise&#241;o</title><link rel="stylesheet" href="../regex-help.css"></head>
-<body><nav aria-label="Otro modo"><strong>Dise&#241;o</strong><a href="regex-source.html">C&#243;digo</a></nav><main>
-<h1 id="top">Ayuda de expresiones regulares — Dise&#241;o</h1>
-<p>Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al espa&#241;ol.</p>
-<p>Gu&#237;a completa para buscar, reemplazar y corregir libros en FictionBook Editor Next.</p>
-<p>El modo C&#243;digo se explica en regex-source.md. &#171;Patr&#243;n&#187; significa aqu&#237; una expresi&#243;n regular; una &#171;plantilla integrada&#187; es una expresi&#243;n guardada junto con sus opciones en el panel Plantillas.</p>
-<h2 id="section-1">1. C&#243;mo utilizar esta gu&#237;a</h2>
-<p>Una expresi&#243;n regular describe una regla de b&#250;squeda, no una sola cadena exacta. Por ejemplo, <code>[0-9]+</code> encuentra una secuencia de cifras de longitud variable, mientras que <code>[ \t]{2,}</code> encuentra dos o m&#225;s espacios normales o tabulaciones. La coincidencia y el texto que la reemplaza son elementos distintos.</p>
-<p>La secci&#243;n 2 proporciona un primer resultado pr&#225;ctico. Las secciones 3–15 explican la sintaxis; la 16, la gram&#225;tica especial de reemplazo de FBE. La 17 re&#250;ne recetas para libros con opciones, textos de prueba y advertencias. Al final figuran diagn&#243;stico, rendimiento y fuentes.</p>
-<p>Copie &#250;nicamente la expresi&#243;n en Buscar. Las palabras &#171;Buscar&#187; y &#171;Reemplazar&#187;, las etiquetas como U+0020 y los acentos graves de Markdown no forman parte del patr&#243;n. No a&#241;ada delimitadores JavaScript <code>/.../g</code>, comillas de una cadena C++ ni barras inversas duplicadas de JSON.</p>
-<p>Las casillas importan. Una coincidencia sin distinci&#243;n de may&#250;sculas puede desaparecer al activarla. Los ajustes forman parte de la receta; no son una presentaci&#243;n opcional.</p>
-<p>&#171;Solo buscar y revisar&#187; identifica un diagn&#243;stico. El resultado puede ser correcto: una repetici&#243;n deliberada, un nombre extranjero, una cita, un t&#237;tulo o tipograf&#237;a intencionada. &#171;Reemplazar despu&#233;s de revisar&#187; tampoco garantiza seguridad para cualquier libro.</p>
-<h2 id="section-2">2. Primera b&#250;squeda y reemplazo prudente</h2>
-<p>Guarde una copia de trabajo. Cambie a Dise&#241;o, abra Buscar o Reemplazar y active Expresi&#243;n regular. En los primeros ensayos desactive Solo palabras completas: es preferible definir los l&#237;mites en el propio patr&#243;n. Compruebe &#225;mbito y direcci&#243;n.</p>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ayuda de expresiones regulares — Diseño</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Otro modo"><strong>Diseño</strong><a href="regex-source.html">Código</a></nav><main>
+<h1 id="top">Ayuda de expresiones regulares — Diseño</h1>
+<p>Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al español.</p>
+<p>Guía completa para buscar, reemplazar y corregir libros en FictionBook Editor Next.</p>
+<p>El modo Código se explica en regex-source.md. «Patrón» significa aquí una expresión regular; una «plantilla integrada» es una expresión guardada junto con sus opciones en el panel Plantillas.</p>
+<h2 id="section-1">1. Cómo utilizar esta guía</h2>
+<p>Una expresión regular describe una regla de búsqueda, no una sola cadena exacta. Por ejemplo, <code>[0-9]+</code> encuentra una secuencia de cifras de longitud variable, mientras que <code>[ \t]{2,}</code> encuentra dos o más espacios normales o tabulaciones. La coincidencia y el texto que la reemplaza son elementos distintos.</p>
+<p>La sección 2 proporciona un primer resultado práctico. Las secciones 3–15 explican la sintaxis; la 16, la gramática especial de reemplazo de FBE. La 17 reúne recetas para libros con opciones, textos de prueba y advertencias. Al final figuran diagnóstico, rendimiento y fuentes.</p>
+<p>Copie únicamente la expresión en Buscar. Las palabras «Buscar» y «Reemplazar», las etiquetas como U+0020 y los acentos graves de Markdown no forman parte del patrón. No añada delimitadores JavaScript <code>/.../g</code>, comillas de una cadena C++ ni barras inversas duplicadas de JSON.</p>
+<p>Las casillas importan. Una coincidencia sin distinción de mayúsculas puede desaparecer al activarla. Los ajustes forman parte de la receta; no son una presentación opcional.</p>
+<p>«Solo buscar y revisar» identifica un diagnóstico. El resultado puede ser correcto: una repetición deliberada, un nombre extranjero, una cita, un título o tipografía intencionada. «Reemplazar después de revisar» tampoco garantiza seguridad para cualquier libro.</p>
+<h2 id="section-2">2. Primera búsqueda y reemplazo prudente</h2>
+<p>Guarde una copia de trabajo. Cambie a Diseño, abra Buscar o Reemplazar y active Expresión regular. En los primeros ensayos desactive Solo palabras completas: es preferible definir los límites en el propio patrón. Compruebe ámbito y dirección.</p>
 <p>Para espacios repetidos:</p>
 <pre class="regex" id="regex-1"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
 <p>En <code>Он   пришёл</code> encuentra el intervalo de tres espacios. Introduzca un espacio normal como reemplazo. Cambie una sola coincidencia, compruebe <code>Он пришёл</code> y solo entonces valore Reemplazar todo.</p>
@@ -24,295 +24,295 @@ Coincidencia: tres espacios entre palabras</code></pre></section>
 Entrada: Он   пришёл
 Sustituir por: un espacio
 Esperado: Он пришёл</code></pre></section>
-<p>Con muchos resultados, inspecci&#243;nelos primero y corrija uno o dos casos representativos. Despu&#233;s de una operaci&#243;n masiva, revise texto, cursiva, negrita, notas y l&#237;mites de p&#225;rrafos. Deshaga un resultado inesperado antes de iniciar otra serie de cambios.</p>
-<aside class="warning" id="warning-1"><strong>Advertencia</strong><p>Sustituir todo puede cambiar espacios y formato intencionados. Compruebe una sustituci&#243;n y guarde una copia de trabajo.</p></aside>
-<p>Aplicar en Plantillas transfiere expresi&#243;n y opciones al di&#225;logo. No significa corregir autom&#225;ticamente todos los resultados. La b&#250;squeda o el reemplazo se ejecutan con sus comandos correspondientes.</p>
-<h2 id="section-3">3. Motor y l&#237;mites del modo Dise&#241;o</h2>
-<p>Se utiliza PCRE2-16 con texto y patrones en UTF-16; UTF est&#225; siempre activado. FBE construye por separado el texto consultable y realiza los reemplazos teniendo en cuenta la estructura del libro. La documentaci&#243;n PCRE2 explica las coincidencias, pero no todas las operaciones de FBE. V&#233;anse D1–D4.</p>
-<p>Se busca en una representaci&#243;n textual del libro, no en el XML literal. <code>&lt;strong&gt;</code> no permite buscar negritas en Dise&#241;o. Para etiquetas use C&#243;digo; para transformaciones estructurales, funciones del editor o scripts especializados.</p>
-<aside class="note" id="note-1"><strong>Nota</strong><p>La regex de Dise&#241;o ve el texto de b&#250;squeda, no el &#225;rbol DOM. Revise elementos y atributos en C&#243;digo o con una herramienta estructural.</p></aside>
-<p>El ajuste visual de una l&#237;nea al ancho de la ventana no es un salto de l&#237;nea. Distinga p&#225;rrafos, saltos reales y ajuste visual. FBE emplea anclas multil&#237;nea en su representaci&#243;n para reflejar l&#237;mites de p&#225;rrafos. Encontrar texto entre p&#225;rrafos y reemplazarlo son operaciones distintas: la implementaci&#243;n considerada rechaza reemplazos entre p&#225;rrafos.</p>
-<p><code>\A</code> y <code>\z</code> se refieren al principio y final del sujeto entregado al motor. No equivalen autom&#225;ticamente al principio y final de todo el FB2: influyen el &#225;mbito y el fragmento creado por FBE.</p>
-<h2 id="section-4">4. Unicode: UTF, UCP y may&#250;sculas</h2>
-<h3 id="section-4-1">4.1. Qu&#233; hace UTF</h3>
-<p>UTF permite procesar Unicode, incluido el cir&#237;lico. No translitera, no corrige OCR, no convierte <code>ё</code> en <code>е</code> ni unifica autom&#225;ticamente representaciones can&#243;nicamente equivalentes.</p>
-<p>Una letra acentuada puede almacenarse como un car&#225;cter o como letra seguida de marca combinante. Aunque se parezcan, la b&#250;squeda car&#225;cter a car&#225;cter puede diferir. PCRE2 no normaliza NFC/NFD por usted. Para diacr&#237;ticos puede necesitarse <code>\p{M}</code>.</p>
-<h3 id="section-4-2">4.2. Qu&#233; hace UCP</h3>
-<p>Unicode (UCP) cambia las clases abreviadas, especialmente <code>\w</code>, <code>\d</code>, <code>\s</code>, y sus l&#237;mites dependientes <code>\b</code>, <code>\B</code>. No es el interruptor que habilita el cir&#237;lico en s&#237;.</p>
-<p>Las propiedades expl&#237;citas <code>\p{L}</code>, <code>\p{N}</code>, <code>\P{...}</code> funcionan en una compilaci&#243;n Unicode de PCRE2 incluso sin UCP. No obstante, un patr&#243;n que combine <code>\p{L}</code> y <code>\b</code> deber&#237;a normalmente activar UCP para que letras y l&#237;mites concuerden.</p>
-<p>Compare la b&#250;squeda de una palabra rusa:</p>
+<p>Con muchos resultados, inspecciónelos primero y corrija uno o dos casos representativos. Después de una operación masiva, revise texto, cursiva, negrita, notas y límites de párrafos. Deshaga un resultado inesperado antes de iniciar otra serie de cambios.</p>
+<aside class="warning" id="warning-1"><strong>Advertencia</strong><p>Sustituir todo puede cambiar espacios y formato intencionados. Compruebe una sustitución y guarde una copia de trabajo.</p></aside>
+<p>Aplicar en Plantillas transfiere expresión y opciones al diálogo. No significa corregir automáticamente todos los resultados. La búsqueda o el reemplazo se ejecutan con sus comandos correspondientes.</p>
+<h2 id="section-3">3. Motor y límites del modo Diseño</h2>
+<p>Se utiliza PCRE2-16 con texto y patrones en UTF-16; UTF está siempre activado. FBE construye por separado el texto consultable y realiza los reemplazos teniendo en cuenta la estructura del libro. La documentación PCRE2 explica las coincidencias, pero no todas las operaciones de FBE. Véanse D1–D2.</p>
+<p>Se busca en una representación textual del libro, no en el XML literal. <code>&lt;strong&gt;</code> no permite buscar negritas en Diseño. Para etiquetas use Código; para transformaciones estructurales, funciones del editor o scripts especializados.</p>
+<aside class="note" id="note-1"><strong>Nota</strong><p>La regex de Diseño ve el texto de búsqueda, no el árbol DOM. Revise elementos y atributos en Código o con una herramienta estructural.</p></aside>
+<p>El ajuste visual de una línea al ancho de la ventana no es un salto de línea. Distinga párrafos, saltos reales y ajuste visual. FBE emplea anclas multilínea en su representación para reflejar límites de párrafos. Encontrar texto entre párrafos y reemplazarlo son operaciones distintas: la implementación considerada rechaza reemplazos entre párrafos.</p>
+<p><code>\A</code> y <code>\z</code> se refieren al principio y final del sujeto entregado al motor. No equivalen automáticamente al principio y final de todo el FB2: influyen el ámbito y el fragmento creado por FBE.</p>
+<h2 id="section-4">4. Unicode: UTF, UCP y mayúsculas</h2>
+<h3 id="section-4-1">4.1. Qué hace UTF</h3>
+<p>UTF permite procesar Unicode, incluido el cirílico. No translitera, no corrige OCR, no convierte <code>ё</code> en <code>е</code> ni unifica automáticamente representaciones canónicamente equivalentes.</p>
+<p>Una letra acentuada puede almacenarse como un carácter o como letra seguida de marca combinante. Aunque se parezcan, la búsqueda carácter a carácter puede diferir. PCRE2 no normaliza NFC/NFD por usted. Para diacríticos puede necesitarse <code>\p{M}</code>.</p>
+<h3 id="section-4-2">4.2. Qué hace UCP</h3>
+<p>Unicode (UCP) cambia las clases abreviadas, especialmente <code>\w</code>, <code>\d</code>, <code>\s</code>, y sus límites dependientes <code>\b</code>, <code>\B</code>. No es el interruptor que habilita el cirílico en sí.</p>
+<p>Las propiedades explícitas <code>\p{L}</code>, <code>\p{N}</code>, <code>\P{...}</code> funcionan en una compilación Unicode de PCRE2 incluso sin UCP. No obstante, un patrón que combine <code>\p{L}</code> y <code>\b</code> debería normalmente activar UCP para que letras y límites concuerden.</p>
+<p>Compare la búsqueda de una palabra rusa:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
-<p>Con UCP, los l&#237;mites siguen la clase Unicode de palabra. Sin UCP, no espere que <code>\b</code> se comporte en cir&#237;lico igual que en ASCII latino. No obtener un resultado no demuestra que la palabra falte.</p>
-<p>Si necesita solo cifras ASCII, use <code>[0-9]</code> en vez de <code>\d</code>: UCP puede ampliar esta &#250;ltima a cifras decimales de otras escrituras.</p>
-<h3 id="section-4-3">4.3. Propiedades &#250;tiles</h3>
-<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Expresi&#243;n</th><th scope="col">Qu&#233; encuentra</th></tr></thead><tbody>
+<p>Con UCP, los límites siguen la clase Unicode de palabra. Sin UCP, no espere que <code>\b</code> se comporte en cirílico igual que en ASCII latino. No obtener un resultado no demuestra que la palabra falte.</p>
+<p>Si necesita solo cifras ASCII, use <code>[0-9]</code> en vez de <code>\d</code>: UCP puede ampliar esta última a cifras decimales de otras escrituras.</p>
+<h3 id="section-4-3">4.3. Propiedades útiles</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Expresión</th><th scope="col">Qué encuentra</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\p{L}</code></td><td>Letra Unicode</td></tr>
-<tr><td class="syntax"><code>\p{Lu}</code></td><td>Letra may&#250;scula en b&#250;squeda sensible a la caja</td></tr>
-<tr><td class="syntax"><code>\p{Ll}</code></td><td>Letra min&#250;scula en b&#250;squeda sensible a la caja</td></tr>
+<tr><td class="syntax"><code>\p{Lu}</code></td><td>Letra mayúscula en búsqueda sensible a la caja</td></tr>
+<tr><td class="syntax"><code>\p{Ll}</code></td><td>Letra minúscula en búsqueda sensible a la caja</td></tr>
 <tr><td class="syntax"><code>\p{M}</code></td><td>Marca combinante</td></tr>
-<tr><td class="syntax"><code>\p{N}</code></td><td>Car&#225;cter num&#233;rico, concepto m&#225;s amplio que cifra decimal</td></tr>
+<tr><td class="syntax"><code>\p{N}</code></td><td>Carácter numérico, concepto más amplio que cifra decimal</td></tr>
 <tr><td class="syntax"><code>\p{Nd}</code></td><td>Cifra decimal</td></tr>
-<tr><td class="syntax"><code>\p{Latin}</code></td><td>Car&#225;cter de escritura latina</td></tr>
-<tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>Car&#225;cter de escritura cir&#237;lica</td></tr>
-<tr><td class="syntax"><code>\P{L}</code></td><td>Car&#225;cter que no es una letra</td></tr>
+<tr><td class="syntax"><code>\p{Latin}</code></td><td>Carácter de escritura latina</td></tr>
+<tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>Carácter de escritura cirílica</td></tr>
+<tr><td class="syntax"><code>\P{L}</code></td><td>Carácter que no es una letra</td></tr>
 </tbody></table></div>
 <p>Para letras con acentos combinantes:</p>
 <pre class="regex" id="regex-3"><code><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span></code></pre>
-<p>No es una definici&#243;n ling&#252;&#237;stica universal de palabra: no incluye guiones ni ap&#243;strofos. A&#241;&#225;dalos deliberadamente.</p>
-<h3 id="section-4-4">4.4. La caja es una opci&#243;n distinta</h3>
-<p>Distinga may&#250;sculas al buscar anomal&#237;as como <code>строчнаяПрописная</code>, iniciales o patrones con <code>\p{Lu}</code>/<code>\p{Ll}</code>. Ignorarlas puede anular el prop&#243;sito de la regla. UCP no sustituye esta casilla.</p>
+<p>No es una definición lingüística universal de palabra: no incluye guiones ni apóstrofos. Añádalos deliberadamente.</p>
+<h3 id="section-4-4">4.4. La caja es una opción distinta</h3>
+<p>Distinga mayúsculas al buscar anomalías como <code>строчнаяПрописная</code>, iniciales o patrones con <code>\p{Lu}</code>/<code>\p{Ll}</code>. Ignorarlas puede anular el propósito de la regla. UCP no sustituye esta casilla.</p>
 <p>Ignorar temporalmente la caja:</p>
 <pre class="regex" id="regex-4"><code><span class="rx-group">(?</span>i<span class="rx-group">)</span>глава</code></pre>
 <p>Limitar el efecto a un grupo:</p>
 <pre class="regex" id="regex-5"><code><span class="rx-group">(?</span>i:глава<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
 <h2 id="section-5">5. Caracteres literales y escape</h2>
-<p>Las letras y la mayor&#237;a de signos coinciden consigo mismos. Fuera de una clase, punto, par&#233;ntesis, corchetes, asterisco, m&#225;s, interrogaci&#243;n, llaves, anclas y barra inversa pueden tener funci&#243;n especial.</p>
-<p>Para un metacar&#225;cter literal, anteponga una barra inversa:</p>
-<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Texto buscado</th><th scope="col">Expresi&#243;n</th></tr></thead><tbody>
+<p>Las letras y la mayoría de signos coinciden consigo mismos. Fuera de una clase, punto, paréntesis, corchetes, asterisco, más, interrogación, llaves, anclas y barra inversa pueden tener función especial.</p>
+<p>Para un metacarácter literal, anteponga una barra inversa:</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Texto buscado</th><th scope="col">Expresión</th></tr></thead><tbody>
 <tr><td>Punto</td><td><code>\.</code></td></tr>
-<tr><td>Interrogaci&#243;n</td><td><code>\?</code></td></tr>
-<tr><td>Signo m&#225;s</td><td><code>\+</code></td></tr>
+<tr><td>Interrogación</td><td><code>\?</code></td></tr>
+<tr><td>Signo más</td><td><code>\+</code></td></tr>
 <tr><td>Asterisco</td><td><code>\*</code></td></tr>
-<tr><td>Par&#233;ntesis de apertura</td><td><code>\(</code></td></tr>
-<tr><td>Par&#233;ntesis de cierre</td><td><code>\)</code></td></tr>
-<tr><td>N&#250;mero entre corchetes</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Paréntesis de apertura</td><td><code>\(</code></td></tr>
+<tr><td>Paréntesis de cierre</td><td><code>\)</code></td></tr>
+<tr><td>Número entre corchetes</td><td><code>\[[0-9]+\]</code></td></tr>
 <tr><td>Barra inversa literal</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p><code>(123)</code> encuentra los d&#237;gitos <code>123</code> y los captura; no exige par&#233;ntesis en el texto. Para encontrar <code>(123)</code> escape los par&#233;ntesis.</p>
+<p><code>(123)</code> encuentra los dígitos <code>123</code> y los captura; no exige paréntesis en el texto. Para encontrar <code>(123)</code> escape los paréntesis.</p>
 <p>Un fragmento literal largo puede encerrarse entre <code>\Q</code> y <code>\E</code> en PCRE2:</p>
 <pre class="regex" id="regex-6"><code><span class="rx-escape">\Q</span>Цена <span class="rx-group">(</span>руб.<span class="rx-group">)</span> <span class="rx-quantifier">+</span> доставка<span class="rx-escape">\E</span></code></pre>
-<p>Las mismas secuencias significan otra cosa en el reemplazo de FBE. No transfiera autom&#225;ticamente reglas de escape entre campos.</p>
+<p>Las mismas secuencias significan otra cosa en el reemplazo de FBE. No transfiera automáticamente reglas de escape entre campos.</p>
 <h2 id="section-6">6. Espacios, tabulaciones y caracteres invisibles</h2>
-<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Expresi&#243;n</th><th scope="col">Significado en b&#250;squeda PCRE2</th></tr></thead><tbody>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Expresión</th><th scope="col">Significado en búsqueda PCRE2</th></tr></thead><tbody>
 <tr><td class="syntax"><code>[ ]</code></td><td>Solo espacio normal U+0020</td></tr>
-<tr><td class="syntax"><code>[ \t]</code></td><td>Espacio normal o tabulaci&#243;n</td></tr>
-<tr><td class="syntax"><code>\t</code></td><td>Tabulaci&#243;n U+0009</td></tr>
-<tr><td class="syntax"><code>\x{00A0}</code></td><td>Espacio de no separaci&#243;n</td></tr>
-<tr><td class="syntax"><code>\x{202F}</code></td><td>Espacio estrecho de no separaci&#243;n</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Espacio normal o tabulación</td></tr>
+<tr><td class="syntax"><code>\t</code></td><td>Tabulación U+0009</td></tr>
+<tr><td class="syntax"><code>\x{00A0}</code></td><td>Espacio de no separación</td></tr>
+<tr><td class="syntax"><code>\x{202F}</code></td><td>Espacio estrecho de no separación</td></tr>
 <tr><td class="syntax"><code>\h</code></td><td>Espaciado horizontal, incluidos varios espacios Unicode</td></tr>
-<tr><td class="syntax"><code>\s</code></td><td>Espaciado que puede incluir saltos de l&#237;nea</td></tr>
+<tr><td class="syntax"><code>\s</code></td><td>Espaciado que puede incluir saltos de línea</td></tr>
 <tr><td class="syntax"><code>\r</code></td><td>Retorno de carro CR</td></tr>
-<tr><td class="syntax"><code>\n</code></td><td>Salto de l&#237;nea LF</td></tr>
-<tr><td class="syntax"><code>\R</code></td><td>Secuencia de salto de l&#237;nea Unicode</td></tr>
+<tr><td class="syntax"><code>\n</code></td><td>Salto de línea LF</td></tr>
+<tr><td class="syntax"><code>\R</code></td><td>Secuencia de salto de línea Unicode</td></tr>
 <tr><td class="syntax"><code>\x{00AD}</code></td><td>Guion discrecional</td></tr>
 <tr><td class="syntax"><code>\x{200B}</code></td><td>Espacio de anchura cero</td></tr>
 <tr><td class="syntax"><code>\x{FEFF}</code></td><td>FEFF dentro del texto</td></tr>
 </tbody></table></div>
-<p>Para limpiar huecos ordinarios entre palabras prefiera <code>[ \t]</code> a <code>\s</code>. La segunda clase puede incluir p&#225;rrafos y espacios inseparables. <code>\h</code> tambi&#233;n sirve para diagnosticar, pero resulta demasiado amplio para un reemplazo tipogr&#225;fico sin especificar.</p>
-<p>Un espacio inseparable une signo y n&#250;mero, iniciales y apellido, o n&#250;mero y unidad. Cambiarlos todos por espacios normales puede empeorar la composici&#243;n. FBE permite configurar el car&#225;cter NBSP; compruebe las recetas U+00A0 con el libro y la versi&#243;n usada.</p>
-<p>U+200C y U+200D pueden ser necesarios en determinadas escrituras y emoji compuestos. No borre indiscriminadamente todos los caracteres &#171;invisibles&#187;. Detectar no implica error.</p>
+<p>Para limpiar huecos ordinarios entre palabras prefiera <code>[ \t]</code> a <code>\s</code>. La segunda clase puede incluir párrafos y espacios inseparables. <code>\h</code> también sirve para diagnosticar, pero resulta demasiado amplio para un reemplazo tipográfico sin especificar.</p>
+<p>Un espacio inseparable une signo y número, iniciales y apellido, o número y unidad. Cambiarlos todos por espacios normales puede empeorar la composición. FBE permite configurar el carácter NBSP; compruebe las recetas U+00A0 con el libro y la versión usada.</p>
+<p>U+200C y U+200D pueden ser necesarios en determinadas escrituras y emoji compuestos. No borre indiscriminadamente todos los caracteres «invisibles». Detectar no implica error.</p>
 <h2 id="section-7">7. Clases y rangos</h2>
-<p>Una clase entre corchetes consume un car&#225;cter del conjunto. <code>[abc]</code> significa una de tres letras, no la palabra <code>abc</code>. Para una o m&#225;s, a&#241;ada un cuantificador: <code>[abc]+</code>.</p>
-<p><code>[^abc]</code> consume un car&#225;cter ajeno al conjunto. No comprueba que &#171;abc no preceda al texto&#187;. Para contexto utilice aserciones lookaround.</p>
-<p>Dentro de una clase, punto y la mayor&#237;a de par&#233;ntesis pierden su funci&#243;n especial. El guion puede definir un rango; para uno literal, sit&#250;elo al principio o final o esc&#225;pelo. <code>\]</code> permite incluir el corchete de cierre.</p>
+<p>Una clase entre corchetes consume un carácter del conjunto. <code>[abc]</code> significa una de tres letras, no la palabra <code>abc</code>. Para una o más, añada un cuantificador: <code>[abc]+</code>.</p>
+<p><code>[^abc]</code> consume un carácter ajeno al conjunto. No comprueba que «abc no preceda al texto». Para contexto utilice aserciones lookaround.</p>
+<p>Dentro de una clase, punto y la mayoría de paréntesis pierden su función especial. El guion puede definir un rango; para uno literal, sitúelo al principio o final o escápelo. <code>\]</code> permite incluir el corchete de cierre.</p>
 <pre class="regex" id="regex-7"><code><span class="rx-class">[А-Яа-яЁё-]</span><span class="rx-quantifier">+</span></code></pre>
-<p>Admite letras rusas y guion, no todo el cir&#237;lico. Las letras ucranianas, bielorrusas y otras requieren una clase m&#225;s amplia o una propiedad Unicode.</p>
-<p>Dentro de corchetes, <code>\b</code> no es un l&#237;mite de palabra. No ponga l&#237;mites de palabra en conjuntos ordinarios de caracteres.</p>
-<h2 id="section-8">8. Anclas, l&#237;mites y coincidencias vac&#237;as</h2>
-<p>Un ancla verifica una posici&#243;n sin consumir letra ni espacio. <code>^</code>, <code>$</code> o <code>\b</code> por s&#237; solos pueden producir una coincidencia de longitud cero, que no se muestra como selecci&#243;n textual normal.</p>
+<p>Admite letras rusas y guion, no todo el cirílico. Las letras ucranianas, bielorrusas y otras requieren una clase más amplia o una propiedad Unicode.</p>
+<p>Dentro de corchetes, <code>\b</code> no es un límite de palabra. No ponga límites de palabra en conjuntos ordinarios de caracteres.</p>
+<h2 id="section-8">8. Anclas, límites y coincidencias vacías</h2>
+<p>Un ancla verifica una posición sin consumir letra ni espacio. <code>^</code>, <code>$</code> o <code>\b</code> por sí solos pueden producir una coincidencia de longitud cero, que no se muestra como selección textual normal.</p>
 <div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Ancla</th><th scope="col">Significado</th></tr></thead><tbody>
-<tr><td class="syntax"><code>^</code></td><td>Inicio de l&#237;nea con multil&#237;nea; en otro caso, inicio del sujeto</td></tr>
-<tr><td class="syntax"><code>$</code></td><td>Fin de l&#237;nea con multil&#237;nea; la &#250;ltima terminaci&#243;n depende del modo</td></tr>
+<tr><td class="syntax"><code>^</code></td><td>Inicio de línea con multilínea; en otro caso, inicio del sujeto</td></tr>
+<tr><td class="syntax"><code>$</code></td><td>Fin de línea con multilínea; la última terminación depende del modo</td></tr>
 <tr><td class="syntax"><code>\A</code></td><td>Solo inicio del sujeto</td></tr>
 <tr><td class="syntax"><code>\z</code></td><td>Fin estricto del sujeto</td></tr>
-<tr><td class="syntax"><code>\Z</code></td><td>Fin del sujeto o posici&#243;n anterior a su &#250;ltimo salto</td></tr>
-<tr><td class="syntax"><code>\b</code></td><td>L&#237;mite entre car&#225;cter de palabra y car&#225;cter ajeno</td></tr>
-<tr><td class="syntax"><code>\B</code></td><td>Posici&#243;n que no es l&#237;mite de palabra</td></tr>
-<tr><td class="syntax"><code>\G</code></td><td>Posici&#243;n inicial de la llamada actual de coincidencia</td></tr>
+<tr><td class="syntax"><code>\Z</code></td><td>Fin del sujeto o posición anterior a su último salto</td></tr>
+<tr><td class="syntax"><code>\b</code></td><td>Límite entre carácter de palabra y carácter ajeno</td></tr>
+<tr><td class="syntax"><code>\B</code></td><td>Posición que no es límite de palabra</td></tr>
+<tr><td class="syntax"><code>\G</code></td><td>Posición inicial de la llamada actual de coincidencia</td></tr>
 </tbody></table></div>
-<p><code>\G</code> no recuerda por s&#237; solo la coincidencia anterior. Depende del desplazamiento inicial suministrado por la aplicaci&#243;n. En llamadas sucesivas puede ser el final anterior, pero no es un m&#233;todo universal de recorrer un libro en FBE. Use l&#237;mites expl&#237;citos para correcci&#243;n corriente. [D1]</p>
-<p>Para una palabra y no un fragmento de otra m&#225;s larga, use l&#237;mites o pruebas de letras vecinas. Con UCP:</p>
+<p><code>\G</code> no recuerda por sí solo la coincidencia anterior. Depende del desplazamiento inicial suministrado por la aplicación. En llamadas sucesivas puede ser el final anterior, pero no es un método universal de recorrer un libro en FBE. Use límites explícitos para corrección corriente. [D1]</p>
+<p>Para una palabra y no un fragmento de otra más larga, use límites o pruebas de letras vecinas. Con UCP:</p>
 <pre class="regex" id="regex-8"><code><span class="rx-anchor">\b</span>том<span class="rx-anchor">\b</span></code></pre>
-<p>No coincide con el principio de <code>томик</code>. Guiones y ap&#243;strofos pueden separar palabras de manera distinta para motor y corrector.</p>
-<p>Sea especialmente prudente con coincidencias vac&#237;as y Reemplazar todo: se inserta texto en posiciones en lugar de sustituir caracteres visibles. Empiece por coincidencias no vac&#237;as.</p>
-<h2 id="section-9">9. Cuantificadores: repetici&#243;n y retroceso</h2>
+<p>No coincide con el principio de <code>томик</code>. Guiones y apóstrofos pueden separar palabras de manera distinta para motor y corrector.</p>
+<p>Sea especialmente prudente con coincidencias vacías y Reemplazar todo: se inserta texto en posiciones en lugar de sustituir caracteres visibles. Empiece por coincidencias no vacías.</p>
+<h2 id="section-9">9. Cuantificadores: repetición y retroceso</h2>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Forma</th><th scope="col">Repeticiones del elemento previo</th></tr></thead><tbody>
 <tr><td class="syntax"><code>?</code></td><td>Cero o una</td></tr>
-<tr><td class="syntax"><code>*</code></td><td>Cero o m&#225;s</td></tr>
-<tr><td class="syntax"><code>+</code></td><td>Una o m&#225;s</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Cero o más</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Una o más</td></tr>
 <tr><td class="syntax"><code>{3}</code></td><td>Exactamente tres</td></tr>
 <tr><td class="syntax"><code>{3,}</code></td><td>Al menos tres</td></tr>
 <tr><td class="syntax"><code>{2,5}</code></td><td>Entre dos y cinco</td></tr>
 </tbody></table></div>
-<p>El cuantificador afecta al car&#225;cter, clase o grupo previo. <code>аб+</code> repite solo <code>б</code>; <code>(?:аб)+</code> repite las dos letras.</p>
-<h3 id="section-9-1">9.1. B&#250;squeda codiciosa</h3>
+<p>El cuantificador afecta al carácter, clase o grupo previo. <code>аб+</code> repite solo <code>б</code>; <code>(?:аб)+</code> repite las dos letras.</p>
+<h3 id="section-9-1">9.1. Búsqueda codiciosa</h3>
 <p>Entrada:</p>
-<pre><code>&#171;первый&#187; и &#171;второй&#187;</code></pre>
-<p>Patr&#243;n:</p>
-<pre class="regex" id="regex-9"><code>&#171;.<span class="rx-quantifier">*</span>&#187;</code></pre>
-<p>Punto-asterisco toma primero todo lo posible; el motor retrocede si es necesario para satisfacer el resto. Aqu&#237; el resultado abarca las dos parejas de comillas.</p>
-<h3 id="section-9-2">9.2. B&#250;squeda no codiciosa</h3>
-<pre class="regex" id="regex-10"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>&#187;</code></pre>
-<p>Empieza con el m&#237;nimo, pero tambi&#233;n ampl&#237;a el resultado cuando hace falta. Las b&#250;squedas sucesivas encuentran <code>&#171;первый&#187;</code> y <code>&#171;второй&#187;</code>.</p>
-<p>Para una pareja sencilla suele ser m&#225;s claro excluir expresamente el cierre:</p>
-<pre class="regex" id="regex-11"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;</code></pre>
-<p>No analiza comillas anidadas, que necesitan revisi&#243;n editorial separada.</p>
+<pre><code>«первый» и «второй»</code></pre>
+<p>Patrón:</p>
+<pre class="regex" id="regex-9"><code>«.<span class="rx-quantifier">*</span>»</code></pre>
+<p>Punto-asterisco toma primero todo lo posible; el motor retrocede si es necesario para satisfacer el resto. Aquí el resultado abarca las dos parejas de comillas.</p>
+<h3 id="section-9-2">9.2. Búsqueda no codiciosa</h3>
+<pre class="regex" id="regex-10"><code>«.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>»</code></pre>
+<p>Empieza con el mínimo, pero también amplía el resultado cuando hace falta. Las búsquedas sucesivas encuentran <code>«первый»</code> y <code>«второй»</code>.</p>
+<p>Para una pareja sencilla suele ser más claro excluir expresamente el cierre:</p>
+<pre class="regex" id="regex-11"><code>«<span class="rx-class">[^»\r\n]</span><span class="rx-quantifier">*</span>»</code></pre>
+<p>No analiza comillas anidadas, que necesitan revisión editorial separada.</p>
 <h3 id="section-9-3">9.3. Cuantificadores posesivos</h3>
-<pre class="regex" id="regex-12"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
-<p>No significa &#171;comillas a&#250;n m&#225;s correctas&#187;. <code>.*+</code> absorbe el cierre y se niega a devolverlo; el <code>&#187;</code> restante ya no puede coincidir. No hay resultado en el ejemplo.</p>
+<pre class="regex" id="regex-12"><code>«.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>»</code></pre>
+<p>No significa «comillas aún más correctas». <code>.*+</code> absorbe el cierre y se niega a devolverlo; el <code>»</code> restante ya no puede coincidir. No hay resultado en el ejemplo.</p>
 <p>Una variante que excluye el cierre puede servir:</p>
-<pre class="regex" id="regex-13"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
-<p>Cuantificadores posesivos y grupos at&#243;micos controlan el retroceso, no aceleran universalmente cualquier patr&#243;n.</p>
+<pre class="regex" id="regex-13"><code>«<span class="rx-class">[^»\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>»</code></pre>
+<p>Cuantificadores posesivos y grupos atómicos controlan el retroceso, no aceleran universalmente cualquier patrón.</p>
 <h2 id="section-10">10. Grupos y referencias posteriores</h2>
-<p>Los par&#233;ntesis capturan fragmentos. Se numeran desde 1 por orden de par&#233;ntesis capturantes de apertura de izquierda a derecha; anidarlos no cambia ese orden.</p>
+<p>Los paréntesis capturan fragmentos. Se numeran desde 1 por orden de paréntesis capturantes de apertura de izquierda a derecha; anidarlos no cambia ese orden.</p>
 <pre class="regex" id="regex-14"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
 <p>En <code>02.10.2026</code>, los grupos contienen <code>02</code>, <code>10</code>, <code>2026</code>. Se valida la forma, no la fecha del calendario.</p>
-<p>Un grupo no capturante <code>(?:...)</code> agrupa sin consumir n&#250;mero. Ayuda a mantener <code>$1</code> y <code>$2</code> previsibles en reemplazos complejos.</p>
+<p>Un grupo no capturante <code>(?:...)</code> agrupa sin consumir número. Ayuda a mantener <code>$1</code> y <code>$2</code> previsibles en reemplazos complejos.</p>
 <p>Los grupos con nombre mejoran la lectura:</p>
 <pre class="regex" id="regex-15"><code><span class="rx-group">(?&lt;</span>word&gt;<span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-escape">\k</span>&lt;word&gt;</code></pre>
-<p>Una referencia busca el mismo texto capturado. Una llamada a subrutina, explicada despu&#233;s, repite una regla y puede encontrar otro texto. Son mecanismos distintos.</p>
-<p>Para palabras repetidas en libros, a&#241;ada l&#237;mites, opciones de caja y espacios adecuados; abajo hay una receta. Sin l&#237;mites, la referencia puede coincidir con parte de una palabra mayor.</p>
-<p>Los grupos con nombre en b&#250;squeda no habilitan autom&#225;ticamente reemplazos por nombre en FBE. Use las referencias num&#233;ricas confirmadas.</p>
-<h2 id="section-11">11. Alternativas y grupos at&#243;micos</h2>
+<p>Una referencia busca el mismo texto capturado. Una llamada a subrutina, explicada después, repite una regla y puede encontrar otro texto. Son mecanismos distintos.</p>
+<p>Para palabras repetidas en libros, añada límites, opciones de caja y espacios adecuados; abajo hay una receta. Sin límites, la referencia puede coincidir con parte de una palabra mayor.</p>
+<p>Los grupos con nombre en búsqueda no habilitan automáticamente reemplazos por nombre en FBE. Use las referencias numéricas confirmadas.</p>
+<h2 id="section-11">11. Alternativas y grupos atómicos</h2>
 <p>La barra vertical elige entre ramas:</p>
 <pre class="regex" id="regex-16"><code><span class="rx-group">(?:</span>глава<span class="rx-alternation">|</span>часть<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
-<p>La agrupaci&#243;n importa. Sin ella, el sufijo com&#250;n podr&#237;a afectar solo a la &#250;ltima rama. Las alternativas se prueban en el orden escrito; coloque conscientemente formas largas y cortas.</p>
-<p>Un grupo at&#243;mico impide volver al interior de un grupo que ya coincidi&#243;:</p>
+<p>La agrupación importa. Sin ella, el sufijo común podría afectar solo a la última rama. Las alternativas se prueban en el orden escrito; coloque conscientemente formas largas y cortas.</p>
+<p>Un grupo atómico impide volver al interior de un grupo que ya coincidió:</p>
 <pre class="regex" id="regex-17"><code><span class="rx-group">(?</span>&gt;а<span class="rx-alternation">|</span>аб<span class="rx-group">)</span>в</code></pre>
-<p>Con <code>абв</code>, la primera rama elige <code>а</code>; despu&#233;s no puede volver para elegir <code>аб</code>, por lo que falla. La versi&#243;n no at&#243;mica puede encontrarlo. Es un ejemplo did&#225;ctico, no una recomendaci&#243;n de a&#241;adir atomicidad sin pruebas.</p>
+<p>Con <code>абв</code>, la primera rama elige <code>а</code>; después no puede volver para elegir <code>аб</code>, por lo que falla. La versión no atómica puede encontrarlo. Es un ejemplo didáctico, no una recomendación de añadir atomicidad sin pruebas.</p>
 <h2 id="section-12">12. Comprobar el contexto: lookaround</h2>
-<p>Las aserciones examinan contexto sin incluirlo en la coincidencia completa. As&#237; se puede seleccionar solo un n&#250;mero y conservar su signo anterior.</p>
+<p>Las aserciones examinan contexto sin incluirlo en la coincidencia completa. Así se puede seleccionar solo un número y conservar su signo anterior.</p>
 <pre class="regex" id="regex-18"><code><span class="rx-group">(?&lt;=</span>№ <span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
 <p>En <code>№ 125</code> encuentra solo <code>125</code>. El espacio es exactamente uno normal.</p>
 <section class="example" id="example-3"><strong>Ejemplo</strong><pre><code>Buscar: (?&lt;=№ )([0-9]+)
 Entrada: № 125
 Coincidencia completa: 125
 Grupo 1: 125
-Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
-<p>Comprobaci&#243;n a la derecha:</p>
+Sustitución esperada con [$1]: № [125]</code></pre></section>
+<p>Comprobación a la derecha:</p>
 <pre class="regex" id="regex-19"><code><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?=</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>руб<span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
-<p>En <code>125 руб.</code> coincide el n&#250;mero, no <code>руб.</code>.</p>
-<p>Aserci&#243;n negativa hacia delante:</p>
+<p>En <code>125 руб.</code> coincide el número, no <code>руб.</code>.</p>
+<p>Aserción negativa hacia delante:</p>
 <pre class="regex" id="regex-20"><code><span class="rx-anchor">\b</span>глава<span class="rx-anchor">\b</span><span class="rx-group">(?!</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
-<p>Con UCP encuentra &#171;глава&#187; si no le sigue numeraci&#243;n ordinaria tras un espacio. Ilustra selecci&#243;n contextual, no correcci&#243;n autom&#225;tica.</p>
+<p>Con UCP encuentra «глава» si no le sigue numeración ordinaria tras un espacio. Ilustra selección contextual, no corrección automática.</p>
 <p>Lookbehind es <code>(?&lt;=...)</code>, su negativo <code>(?&lt;!...)</code>. Lookahead es <code>(?=...)</code>, su negativo <code>(?!...)</code>.</p>
-<p>Lookbehind limita la longitud. PCRE2 moderno admite algunas longitudes variables acotadas, no repetici&#243;n ilimitada arbitraria. Para recetas portables, use contexto corto fijo o captura/<code>\K</code>; no dependa de <code>.*</code> dentro de lookbehind.</p>
-<h2 id="section-13">13. Opciones dentro del patr&#243;n</h2>
-<div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Opci&#243;n</th><th scope="col">Efecto</th></tr></thead><tbody>
-<tr><td class="syntax"><code>(?i)</code></td><td>Ignorar may&#250;sculas y min&#250;sculas</td></tr>
+<p>Lookbehind limita la longitud. PCRE2 moderno admite algunas longitudes variables acotadas, no repetición ilimitada arbitraria. Para recetas portables, use contexto corto fijo o captura/<code>\K</code>; no dependa de <code>.*</code> dentro de lookbehind.</p>
+<h2 id="section-13">13. Opciones dentro del patrón</h2>
+<div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Opción</th><th scope="col">Efecto</th></tr></thead><tbody>
+<tr><td class="syntax"><code>(?i)</code></td><td>Ignorar mayúsculas y minúsculas</td></tr>
 <tr><td class="syntax"><code>(?-i)</code></td><td>Distinguirlas</td></tr>
-<tr><td class="syntax"><code>(?m)</code></td><td>Anclas de principio/final multil&#237;nea</td></tr>
-<tr><td class="syntax"><code>(?-m)</code></td><td>Desactivar anclas multil&#237;nea</td></tr>
-<tr><td class="syntax"><code>(?s)</code></td><td>Permitir que el punto incluya salto de l&#237;nea</td></tr>
+<tr><td class="syntax"><code>(?m)</code></td><td>Anclas de principio/final multilínea</td></tr>
+<tr><td class="syntax"><code>(?-m)</code></td><td>Desactivar anclas multilínea</td></tr>
+<tr><td class="syntax"><code>(?s)</code></td><td>Permitir que el punto incluya salto de línea</td></tr>
 <tr><td class="syntax"><code>(?-s)</code></td><td>Restaurar el comportamiento normal del punto</td></tr>
-<tr><td class="syntax"><code>(?x)</code></td><td>Ignorar espacios insignificantes y comentarios del patr&#243;n</td></tr>
+<tr><td class="syntax"><code>(?x)</code></td><td>Ignorar espacios insignificantes y comentarios del patrón</td></tr>
 </tbody></table></div>
-<p><code>(?m)</code> no hace que el punto cruce l&#237;neas. <code>(?s)</code> no permite reemplazos entre p&#225;rrafos en FBE. Son dos opciones del motor y una limitaci&#243;n separada de la aplicaci&#243;n.</p>
-<p>En modo extendido, los espacios del patr&#243;n pueden dejar de ser literales. Use <code>[ ]</code> para un espacio requerido; <code>#</code> fuera de una clase puede iniciar comentario. Los patrones multil&#237;nea son &#250;tiles en documentos, pero las recetas siguientes ocupan una l&#237;nea para el campo del editor.</p>
+<p><code>(?m)</code> no hace que el punto cruce líneas. <code>(?s)</code> no permite reemplazos entre párrafos en FBE. Son dos opciones del motor y una limitación separada de la aplicación.</p>
+<p>En modo extendido, los espacios del patrón pueden dejar de ser literales. Use <code>[ ]</code> para un espacio requerido; <code>#</code> fuera de una clase puede iniciar comentario. Los patrones multilínea son útiles en documentos, pero las recetas siguientes ocupan una línea para el campo del editor.</p>
 <h2 id="section-14">14. Funciones avanzadas de PCRE2</h2>
-<p>La mayor&#237;a de correcciones no requieren esta secci&#243;n. Explica construcciones de patrones ajenos. Que el motor admita una funci&#243;n no garantiza que todo patr&#243;n correspondiente sea c&#243;modo o seguro sobre el libro entero.</p>
+<p>La mayoría de correcciones no requieren esta sección. Explica construcciones de patrones ajenos. Que el motor admita una función no garantiza que todo patrón correspondiente sea cómodo o seguro sobre el libro entero.</p>
 <h3 id="section-14-1">14.1. Reiniciar el comienzo de la coincidencia</h3>
 <pre class="regex" id="regex-21"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\K</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
-<p>En <code>№ 125</code> comprueba el prefijo, pero devuelve solo <code>125</code>. Sirve para cambiar el n&#250;mero y no el signo. No use <code>\K</code> dentro de aserciones sin comprobarlo: PCRE2 restringe esa combinaci&#243;n.</p>
-<h3 id="section-14-2">14.2. Condici&#243;n seg&#250;n participaci&#243;n de un grupo</h3>
+<p>En <code>№ 125</code> comprueba el prefijo, pero devuelve solo <code>125</code>. Sirve para cambiar el número y no el signo. No use <code>\K</code> dentro de aserciones sin comprobarlo: PCRE2 restringe esa combinación.</p>
+<h3 id="section-14-2">14.2. Condición según participación de un grupo</h3>
 <pre class="regex" id="regex-22"><code><span class="rx-anchor">^</span><span class="rx-group">(</span><span class="rx-escape">\(</span><span class="rx-group">)</span><span class="rx-quantifier">?</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">(?</span><span class="rx-group">(</span>1<span class="rx-group">)</span><span class="rx-escape">\)</span><span class="rx-group">)</span><span class="rx-anchor">$</span></code></pre>
-<p>Acepta <code>12</code> o <code>(12)</code>, no <code>(12</code> sin cierre. La condici&#243;n consulta si particip&#243; el grupo 1. No convierta este ejemplo en reemplazo dependiente de grupos opcionales sin comprobar el adaptador de FBE.</p>
-<h3 id="section-14-3">14.3. Numeraci&#243;n compartida en alternativas</h3>
+<p>Acepta <code>12</code> o <code>(12)</code>, no <code>(12</code> sin cierre. La condición consulta si participó el grupo 1. No convierta este ejemplo en reemplazo dependiente de grupos opcionales sin comprobar el adaptador de FBE.</p>
+<h3 id="section-14-3">14.3. Numeración compartida en alternativas</h3>
 <pre class="regex" id="regex-23"><code><span class="rx-group">(?</span><span class="rx-alternation">|</span>глава <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-alternation">|</span>часть <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">)</span></code></pre>
-<p>El n&#250;mero ocupa el grupo 1 en ambas ramas: branch reset. En casos simples, un grupo no capturante con una captura com&#250;n suele ser m&#225;s claro.</p>
+<p>El número ocupa el grupo 1 en ambas ramas: branch reset. En casos simples, un grupo no capturante con una captura común suele ser más claro.</p>
 <h3 id="section-14-4">14.4. Llamada a subrutina</h3>
 <pre class="regex" id="regex-24"><code><span class="rx-group">(?&lt;</span>pair&gt;<span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span>-<span class="rx-group">(?</span>&amp;pair<span class="rx-group">)</span></code></pre>
-<p>En <code>12-34</code> ambas partes cumplen &#171;dos d&#237;gitos&#187;, aunque sean distintas. <code>\k&lt;pair&gt;</code> exigir&#237;a repetir <code>12</code>.</p>
+<p>En <code>12-34</code> ambas partes cumplen «dos dígitos», aunque sean distintas. <code>\k&lt;pair&gt;</code> exigiría repetir <code>12</code>.</p>
 <p>Las subrutinas recursivas describen algunas estructuras anidadas, pero no reemplazan el analizador XML. Use herramientas estructurales para <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, notas y tablas.</p>
 <h3 id="section-14-5">14.5. Omitir fragmentos</h3>
-<pre class="regex" id="regex-25"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
-<p>Con UCP busca la palabra fuera de pares sencillos de comillas rusas. La primera rama marca el texto citado para omitirlo; la segunda busca. No analiza comillas anidadas o sin cerrar, as&#237; que no es infalible en cambios globales.</p>
-<h2 id="section-15">15. Lo que una expresi&#243;n no puede decidir</h2>
-<p>&#171;May&#250;scula despu&#233;s de min&#250;scula&#187;, &#171;sin puntuaci&#243;n final&#187; y &#171;palabra repetida&#187; son se&#241;ales formales, no decisiones editoriales. Regex ignora si <code>да да</code> es una errata, di&#225;logo intencionado, verso o t&#237;tulo.</p>
-<p>No a&#241;ada puntos autom&#225;ticamente, no una todos los p&#225;rrafos que empiezan en min&#250;scula, no sustituya todas las letras latinas por cir&#237;licas ni todos los guiones por rayas. Las operaciones complejas exigen contexto y, a veces, varios pasos DOM. Los scripts FBE de limpieza, palabras pegadas y notas se destinan a ello.</p>
-<h2 id="section-16">16. Gram&#225;tica de reemplazo de FBE</h2>
+<pre class="regex" id="regex-25"><code>«<span class="rx-class">[^»\r\n]</span><span class="rx-quantifier">*</span>»<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
+<p>Con UCP busca la palabra fuera de pares sencillos de comillas rusas. La primera rama marca el texto citado para omitirlo; la segunda busca. No analiza comillas anidadas o sin cerrar, así que no es infalible en cambios globales.</p>
+<h2 id="section-15">15. Lo que una expresión no puede decidir</h2>
+<p>«Mayúscula después de minúscula», «sin puntuación final» y «palabra repetida» son señales formales, no decisiones editoriales. Regex ignora si <code>да да</code> es una errata, diálogo intencionado, verso o título.</p>
+<p>No añada puntos automáticamente, no una todos los párrafos que empiezan en minúscula, no sustituya todas las letras latinas por cirílicas ni todos los guiones por rayas. Las operaciones complejas exigen contexto y, a veces, varios pasos DOM. Los scripts FBE de limpieza, palabras pegadas y notas se destinan a ello.</p>
+<h2 id="section-16">16. Gramática de reemplazo de FBE</h2>
 <p>PCRE2 busca, pero FBE analiza la cadena de reemplazo. Compruebe antes de reutilizar ejemplos de JavaScript, Python, .NET, PCRE2 substitute u otros editores.</p>
 <h3 id="section-16-1">16.1. Coincidencia y grupos</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">En el reemplazo</th><th scope="col">Significado</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> o <code>\0</code></td><td>Coincidencia completa</td></tr>
-<tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>Grupo del n&#250;mero correspondiente</td></tr>
-<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Otra forma de referencia num&#233;rica</td></tr>
-<tr><td class="syntax"><code>$+</code> o <code>\+</code></td><td>&#218;ltimo grupo devuelto por el adaptador</td></tr>
+<tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>Grupo del número correspondiente</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Otra forma de referencia numérica</td></tr>
+<tr><td class="syntax"><code>$+</code> o <code>\+</code></td><td>Último grupo devuelto por el adaptador</td></tr>
 </tbody></table></div>
-<p>&#171;FBE solo reemplaza grupos 1–9&#187; necesita matiz: tambi&#233;n se insertan texto normal y coincidencia completa. Est&#225; limitado el acceso num&#233;rico directo, no la cantidad de grupos de PCRE2.</p>
-<p>No use <code>$10</code> para el grupo 10. <code>${name}</code> no pertenece a la gram&#225;tica confirmada. Mantenga las capturas necesarias entre las nueve primeras y convierta las auxiliares en no capturantes.</p>
-<p>Los grupos opcionales y vac&#237;os requieren un ensayo espec&#237;fico: FBE tiene un adaptador SubMatches. En nuevos reemplazos masivos, evite depender de sutilezas de grupos ausentes o del &#171;&#250;ltimo grupo&#187;; use capturas obligatorias expl&#237;citas.</p>
+<p>«FBE solo reemplaza grupos 1–9» necesita matiz: también se insertan texto normal y coincidencia completa. Está limitado el acceso numérico directo, no la cantidad de grupos de PCRE2.</p>
+<p>No use <code>$10</code> para el grupo 10. <code>${name}</code> no pertenece a la gramática confirmada. Mantenga las capturas necesarias entre las nueve primeras y convierta las auxiliares en no capturantes.</p>
+<p>Los grupos opcionales y vacíos requieren un ensayo específico: FBE tiene un adaptador SubMatches. En nuevos reemplazos masivos, evite depender de sutilezas de grupos ausentes o del «último grupo»; use capturas obligatorias explícitas.</p>
 <h3 id="section-16-2">16.2. Reordenar grupos</h3>
 <p>Buscar:</p>
 <pre class="regex" id="regex-26"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
 <p>Reemplazar por:</p>
 <pre><code>$3-$2-$1</code></pre>
-<p><code>02.10.2026</code> pasa a <code>2026-10-02</code>. Es una demostraci&#243;n, no una recomendaci&#243;n de reformatear todas las fechas.</p>
-<h3 id="section-16-3">16.3. Cambiar may&#250;sculas y min&#250;sculas</h3>
+<p><code>02.10.2026</code> pasa a <code>2026-10-02</code>. Es una demostración, no una recomendación de reformatear todas las fechas.</p>
+<h3 id="section-16-3">16.3. Cambiar mayúsculas y minúsculas</h3>
 <div class="table-wrap" id="table-8"><table><thead><tr><th scope="col">Orden</th><th scope="col">Efecto</th></tr></thead><tbody>
-<tr><td class="syntax"><code>\U</code></td><td>Convertir el fragmento insertado a may&#250;sculas</td></tr>
-<tr><td class="syntax"><code>\L</code></td><td>Convertirlo a min&#250;sculas</td></tr>
-<tr><td class="syntax"><code>\T</code></td><td>Primera letra may&#250;scula y resto min&#250;scula</td></tr>
-<tr><td class="syntax"><code>\Q</code></td><td>Reiniciar &#243;rdenes activas de caja/formato para la parte siguiente</td></tr>
+<tr><td class="syntax"><code>\U</code></td><td>Convertir el fragmento insertado a mayúsculas</td></tr>
+<tr><td class="syntax"><code>\L</code></td><td>Convertirlo a minúsculas</td></tr>
+<tr><td class="syntax"><code>\T</code></td><td>Primera letra mayúscula y resto minúscula</td></tr>
+<tr><td class="syntax"><code>\Q</code></td><td>Reiniciar órdenes activas de caja/formato para la parte siguiente</td></tr>
 </tbody></table></div>
 <p>Buscar:</p>
 <pre class="regex" id="regex-27"><code><span class="rx-group">(</span>иван<span class="rx-group">)</span></code></pre>
 <p>Reemplazar por:</p>
 <pre><code>\T$1\Q</code></pre>
-<p>Resultado: <code>Иван</code>. <code>\T</code> no capitaliza ling&#252;&#237;sticamente cada palabra: el fragmento <code>иван иванов</code> no tiene por qu&#233; convertirse en <code>Иван Иванов</code>.</p>
-<p>No superponga <code>\U</code> y <code>\L</code> sin reiniciar. Separe segmentos con <code>\Q</code> y revise cir&#237;lico y diacr&#237;ticos. La caja la transforma FBE, no un normalizador Unicode de PCRE2.</p>
+<p>Resultado: <code>Иван</code>. <code>\T</code> no capitaliza lingüísticamente cada palabra: el fragmento <code>иван иванов</code> no tiene por qué convertirse en <code>Иван Иванов</code>.</p>
+<p>No superponga <code>\U</code> y <code>\L</code> sin reiniciar. Separe segmentos con <code>\Q</code> y revise cirílico y diacríticos. La caja la transforma FBE, no un normalizador Unicode de PCRE2.</p>
 <h3 id="section-16-4">16.4. Negrita y cursiva</h3>
-<p><code>\S</code> activa negrita para el fragmento insertado; <code>\E</code>, cursiva. <code>\Q</code> termina los comandos activos para el texto insertado a continuaci&#243;n.</p>
+<p><code>\S</code> activa negrita para el fragmento insertado; <code>\E</code>, cursiva. <code>\Q</code> termina los comandos activos para el texto insertado a continuación.</p>
 <pre><code>\S$1\Q</code></pre>
-<p>Formatea el grupo 1. No busca negrita existente ni elimina toda la maquetaci&#243;n del libro. Pruebe un fragmento y Deshacer.</p>
-<h3 id="section-16-5">16.5. Significados distintos en b&#250;squeda y reemplazo</h3>
-<p>En b&#250;squeda, <code>\S</code> es un car&#225;cter no blanco; en reemplazo FBE, negrita. En b&#250;squeda, <code>\Q...\E</code> protege un literal; al reemplazar, <code>\Q</code> reinicia &#243;rdenes y <code>\E</code> activa cursiva.</p>
-<p>No introduzca <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> o <code>$$</code> en reemplazo Dise&#241;o esperando reglas ajenas. No forman parte de la gram&#225;tica literal descrita; una secuencia desconocida puede descartarse. Para NBSP, use el car&#225;cter real; para conservar un signo especial, capture y restit&#250;yalo o use reemplazo ordinario comprobado.</p>
-<p>Un campo vac&#237;o elimina el resultado; un campo con un espacio reemplaza por un espacio. No escriba literalmente <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> ni <code>U+00A0</code>.</p>
-<h2 id="section-17">17. Recetas pr&#225;cticas de edici&#243;n y correcci&#243;n</h2>
-<p>Son escenarios independientes; los nombres no tienen por qu&#233; coincidir exactamente con el cat&#225;logo integrado. Pruebe los reemplazos sobre una ocurrencia. Los espacios y tabulaciones reales permanecen en los bloques de prueba. Los contraejemplos ilustran al menos un l&#237;mite, no sustituyen la revisi&#243;n del libro completo.</p>
+<p>Formatea el grupo 1. No busca negrita existente ni elimina toda la maquetación del libro. Pruebe un fragmento y Deshacer.</p>
+<h3 id="section-16-5">16.5. Significados distintos en búsqueda y reemplazo</h3>
+<p>En búsqueda, <code>\S</code> es un carácter no blanco; en reemplazo FBE, negrita. En búsqueda, <code>\Q...\E</code> protege un literal; al reemplazar, <code>\Q</code> reinicia órdenes y <code>\E</code> activa cursiva.</p>
+<p>No introduzca <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> o <code>$$</code> en reemplazo Diseño esperando reglas ajenas. No forman parte de la gramática literal descrita; una secuencia desconocida puede descartarse. Para NBSP, use el carácter real; para conservar un signo especial, capture y restitúyalo o use reemplazo ordinario comprobado.</p>
+<p>Un campo vacío elimina el resultado; un campo con un espacio reemplaza por un espacio. No escriba literalmente <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> ni <code>U+00A0</code>.</p>
+<h2 id="section-17">17. Recetas prácticas de edición y corrección</h2>
+<p>Son escenarios independientes; los nombres no tienen por qué coincidir exactamente con el catálogo integrado. Pruebe los reemplazos sobre una ocurrencia. Los espacios y tabulaciones reales permanecen en los bloques de prueba. Los contraejemplos ilustran al menos un límite, no sustituyen la revisión del libro completo.</p>
 <h3 id="heading-1">D01. Varios espacios normales en uno</h3>
 <p>Normalizar huecos ordinarios sin tocar una NBSP aislada.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-28"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>Он   пришёл.</code></pre>
-<p>Reemplazar por: un espacio normal U+0020. Es un car&#225;cter, no la palabra &#171;espacio&#187;.</p>
+<p>Reemplazar por: un espacio normal U+0020. Es un carácter, no la palabra «espacio».</p>
 <p>Resultado del reemplazo:</p>
 <pre><code>Он пришёл.</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он пришёл.</code></pre>
-<p>Limitaciones y observaciones: Varios espacios pueden ser deliberados en versos, tablas o sangr&#237;as simuladas. Revise el &#225;mbito; no es una reestructuraci&#243;n de sangr&#237;as de p&#225;rrafo.</p>
-<h3 id="heading-2">D02. Espacios al principio del p&#225;rrafo</h3>
-<p>Eliminar sangr&#237;a manual antes de texto corriente.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Varios espacios pueden ser deliberados en versos, tablas o sangrías simuladas. Revise el ámbito; no es una reestructuración de sangrías de párrafo.</p>
+<h3 id="heading-2">D02. Espacios al principio del párrafo</h3>
+<p>Eliminar sangría manual antes de texto corriente.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-29"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>   Начало абзаца.</code></pre>
 <p>El mismo texto de prueba con los espacios visibles:</p>
 <pre><code>␠␠␠Начало␠абзаца.</code></pre>
-<p>Aqu&#237; ␠ representa un espacio normal; [TAB], una tabulaci&#243;n; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representaci&#243;n explicativa: no introduzca estas etiquetas en el libro.</p>
-<p>Reemplazar por: dejar el campo completamente vac&#237;o. No escribir la palabra &#171;vac&#237;o&#187;.</p>
+<p>Aquí ␠ representa un espacio normal; [TAB], una tabulación; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representación explicativa: no introduzca estas etiquetas en el libro.</p>
+<p>Reemplazar por: dejar el campo completamente vacío. No escribir la palabra «vacío».</p>
 <p>Resultado del reemplazo:</p>
 <pre><code>Начало абзаца.</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Начало абзаца.</code></pre>
-<p>Limitaciones y observaciones: La sangr&#237;a manual puede ser significativa en poes&#237;a o composici&#243;n art&#237;stica. El ancla indica una l&#237;nea textual, no el ajuste visual de ventana.</p>
-<h3 id="heading-3">D03. Espacios al final del p&#225;rrafo</h3>
+<p>Limitaciones y observaciones: La sangría manual puede ser significativa en poesía o composición artística. El ancla indica una línea textual, no el ajuste visual de ventana.</p>
+<h3 id="heading-3">D03. Espacios al final del párrafo</h3>
 <p>Eliminar la cola de espacios normales o tabulaciones.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-30"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>Конец абзаца.</code></pre>
 <p>El mismo texto de prueba con los espacios visibles:</p>
 <pre><code>Конец␠абзаца.␠␠␠</code></pre>
-<p>Aqu&#237; ␠ representa un espacio normal; [TAB], una tabulaci&#243;n; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representaci&#243;n explicativa: no introduzca estas etiquetas en el libro.</p>
-<p>Reemplazar por: dejar el campo completamente vac&#237;o. No escribir la palabra &#171;vac&#237;o&#187;.</p>
+<p>Aquí ␠ representa un espacio normal; [TAB], una tabulación; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representación explicativa: no introduzca estas etiquetas en el libro.</p>
+<p>Reemplazar por: dejar el campo completamente vacío. No escribir la palabra «vacío».</p>
 <p>Resultado del reemplazo:</p>
 <pre><code>Конец абзаца.</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Конец абзаца.</code></pre>
 <p>Limitaciones y observaciones: NBSP queda excluida deliberadamente. Diagnostique los espacios especiales aparte.</p>
-<h3 id="heading-4">D04. Espacio antes de coma u otra puntuaci&#243;n</h3>
+<h3 id="heading-4">D04. Espacio antes de coma u otra puntuación</h3>
 <p>Conservar el signo y quitar el hueco precedente.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-31"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[,;:!?]</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -323,41 +323,41 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Слово, другое!</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Слово, другое!</code></pre>
-<p>Limitaciones y observaciones: Pensado para texto ruso ordinario. La tipograf&#237;a francesa permite espacios especiales antes de ciertos signos; adapte antes de aplicarlo a esos libros.</p>
+<p>Limitaciones y observaciones: Pensado para texto ruso ordinario. La tipografía francesa permite espacios especiales antes de ciertos signos; adapte antes de aplicarlo a esos libros.</p>
 <h3 id="heading-5">D05. Espacio tras un signo de apertura</h3>
-<p>Eliminar espacios tras un par&#233;ntesis, corchete o comilla rusa de apertura.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Eliminar espacios tras un paréntesis, corchete o comilla rusa de apertura.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
-<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[&#171;„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[«„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
 <p>Texto de prueba original:</p>
-<pre><code>&#171; слово&#187; ( пример)</code></pre>
+<pre><code>« слово» ( пример)</code></pre>
 <p>Reemplazar por:</p>
 <pre><code>$1</code></pre>
 <p>Resultado del reemplazo:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
+<pre><code>«слово» (пример)</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
-<p>Limitaciones y observaciones: Solo afecta a espacios en f&#243;rmulas o ejemplos si siguen inmediatamente a un signo listado. Revise siempre el contexto.</p>
+<pre><code>«слово» (пример)</code></pre>
+<p>Limitaciones y observaciones: Solo afecta a espacios en fórmulas o ejemplos si siguen inmediatamente a un signo listado. Revise siempre el contexto.</p>
 <h3 id="heading-6">D06. Espacio ante un signo de cierre</h3>
-<p>Eliminar espacios normales antes de par&#233;ntesis, corchete o comilla de cierre.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Eliminar espacios normales antes de paréntesis, corchete o comilla de cierre.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
-<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>&#187;”]<span class="rx-group">)</span></code></pre>
+<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>»”]<span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
-<pre><code>&#171;слово &#187; (пример )</code></pre>
+<pre><code>«слово » (пример )</code></pre>
 <p>Reemplazar por:</p>
 <pre><code>$1</code></pre>
 <p>Resultado del reemplazo:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
+<pre><code>«слово» (пример)</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
-<pre><code>&#171;слово&#187; (пример)</code></pre>
-<p>Limitaciones y observaciones: No normaliza todas las convenciones de comillas ni de par&#233;ntesis matem&#225;ticos.</p>
+<pre><code>«слово» (пример)</code></pre>
+<p>Limitaciones y observaciones: No normaliza todas las convenciones de comillas ni de paréntesis matemáticos.</p>
 <h3 id="heading-7">D07. Tres puntos exactos en puntos suspensivos</h3>
 <p>Convertir tres puntos consecutivos sin tocar una secuencia mayor.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-34"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-quantifier">{3}</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -368,11 +368,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Он подумал… и ответил.</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Содержание.....12</code></pre>
-<p>Limitaciones y observaciones: Revise el criterio editorial. Cuatro puntos y puntos de gu&#237;a del &#237;ndice se dejan intactos.</p>
+<p>Limitaciones y observaciones: Revise el criterio editorial. Cuatro puntos y puntos de guía del índice se dejan intactos.</p>
 <h3 id="heading-8">D08. Puntos suspensivos separados</h3>
 <p>Unir tres puntos separados por espacios normales.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-35"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -383,41 +383,41 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Он подумал… и ответил.</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Слово. Другое.</code></pre>
-<p>Limitaciones y observaciones: Tambi&#233;n encuentra tres puntos contiguos. No usar en l&#237;neas de gu&#237;a ni omisiones de citas con convenciones especiales.</p>
-<h3 id="heading-9">D09. Espacio inseparable despu&#233;s de №</h3>
-<p>Mantener unido el signo al n&#250;mero siguiente.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: También encuentra tres puntos contiguos. No usar en líneas de guía ni omisiones de citas con convenciones especiales.</p>
+<h3 id="heading-9">D09. Espacio inseparable después de №</h3>
+<p>Mantener unido el signo al número siguiente.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-36"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>№ 125</code></pre>
 <p>Reemplazar por:</p>
-<pre><code>№&#160;$1</code></pre>
+<pre><code>№ $1</code></pre>
 <p>Resultado del reemplazo:</p>
-<pre><code>№&#160;125</code></pre>
+<pre><code>№ 125</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>№125</code></pre>
-<p>Limitaciones y observaciones: El reemplazo lleva un U+00A0 real entre № y $1. No sustituirlo por la notaci&#243;n \x{00A0}. No inserta un espacio ausente.</p>
-<h3 id="heading-10">D10. Espacio inseparable despu&#233;s de &#167;</h3>
-<p>Unir el signo de secci&#243;n con el n&#250;mero.</p>
-<p>Acci&#243;n: reemplazar despu&#233;s de revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: El reemplazo lleva un U+00A0 real entre № y $1. No sustituirlo por la notación \x{00A0}. No inserta un espacio ausente.</p>
+<h3 id="heading-10">D10. Espacio inseparable después de §</h3>
+<p>Unir el signo de sección con el número.</p>
+<p>Acción: reemplazar después de revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
-<pre class="regex" id="regex-37"><code>&#167;<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<pre class="regex" id="regex-37"><code>§<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
-<pre><code>&#167; 12</code></pre>
+<pre><code>§ 12</code></pre>
 <p>Reemplazar por:</p>
-<pre><code>&#167;&#160;$1</code></pre>
+<pre><code>§ $1</code></pre>
 <p>Resultado del reemplazo:</p>
-<pre><code>&#167;&#160;12</code></pre>
+<pre><code>§ 12</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
-<pre><code>&#167;12</code></pre>
-<p>Limitaciones y observaciones: Entre &#167; y $1 hay NBSP real. Con numeraci&#243;n compleja, verifique el fragmento encontrado.</p>
+<pre><code>§12</code></pre>
+<p>Limitaciones y observaciones: Entre § y $1 hay NBSP real. Con numeración compleja, verifique el fragmento encontrado.</p>
 <h3 id="heading-11">D11. Posible palabra adyacente repetida</h3>
-<p>Encontrar repetici&#243;n entre espacios horizontales sin cruzar p&#225;rrafos.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: desactivado.</p>
+<p>Encontrar repetición entre espacios horizontales sin cruzar párrafos.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: desactivado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-38"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">+</span><span class="rx-escape">\1</span><span class="rx-anchor">\b</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -426,11 +426,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Это это</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Это уже было.</code></pre>
-<p>Limitaciones y observaciones: &#171;Да да&#187; y otras repeticiones pueden ser voluntarias. Antes de borrar la segunda, decida entre supresi&#243;n, coma o ninguna modificaci&#243;n. No cubre totalmente ap&#243;strofos y guiones.</p>
-<h3 id="heading-12">D12. Lat&#237;n y cir&#237;lico dentro de una palabra</h3>
-<p>Detectar mezcla OCR en una palabra continua, no cualquier l&#237;nea biling&#252;e.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: «Да да» y otras repeticiones pueden ser voluntarias. Antes de borrar la segunda, decida entre supresión, coma o ninguna modificación. No cubre totalmente apóstrofos y guiones.</p>
+<h3 id="heading-12">D12. Latín y cirílico dentro de una palabra</h3>
+<p>Detectar mezcla OCR en una palabra continua, no cualquier línea bilingüe.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-39"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Latin}</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Cyrillic}</span><span class="rx-group">)</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -439,11 +439,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Тeст</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он прочитал Latin.</code></pre>
-<p>Limitaciones y observaciones: En Тeст, e es latina. Una palabra totalmente latina junto a una rusa no se marca como mixta. F&#243;rmulas, marcas y efectos tipogr&#225;ficos pueden ser leg&#237;timos. No translitera.</p>
-<h3 id="heading-13">D13. Min&#250;scula seguida inmediatamente de may&#250;scula</h3>
+<p>Limitaciones y observaciones: En Тeст, e es latina. Una palabra totalmente latina junto a una rusa no se marca como mixta. Fórmulas, marcas y efectos tipográficos pueden ser legítimos. No translitera.</p>
+<h3 id="heading-13">D13. Minúscula seguida inmediatamente de mayúscula</h3>
 <p>Detectar posibles palabras pegadas o error de caja.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-40"><code><span class="rx-escape">\p{Ll}</span><span class="rx-escape">\p{Lu}</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -452,11 +452,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>лИ</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он вышел из дома.</code></pre>
-<p>Limitaciones y observaciones: Debe distinguir la caja. Nombres como McDonald pueden ser correctos. Indica una transici&#243;n, no reconstruye autom&#225;ticamente la separaci&#243;n.</p>
-<h3 id="heading-14">D14. D&#237;gito entre letras</h3>
-<p>Encontrar una sustituci&#243;n OCR habitual de letra por d&#237;gito.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Debe distinguir la caja. Nombres como McDonald pueden ser correctos. Indica una transición, no reconstruye automáticamente la separación.</p>
+<h3 id="heading-14">D14. Dígito entre letras</h3>
+<p>Encontrar una sustitución OCR habitual de letra por dígito.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-41"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -465,11 +465,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>сл0во</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>В главе 10 текст.</code></pre>
-<p>Limitaciones y observaciones: H2O y otras f&#243;rmulas son v&#225;lidas. No cambie todos los 0 por о ni los 3 por з.</p>
-<h3 id="heading-15">D15. Puntuaci&#243;n dentro de letras</h3>
+<p>Limitaciones y observaciones: H2O y otras fórmulas son válidas. No cambie todos los 0 por о ni los 3 por з.</p>
+<h3 id="heading-15">D15. Puntuación dentro de letras</h3>
 <p>Examinar un signo con letras inmediatamente a ambos lados.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-42"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[.,;:!?]</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -478,11 +478,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Он,сказал</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он, сказав слово, ушёл.</code></pre>
-<p>Limitaciones y observaciones: Tambi&#233;n coinciden abreviaturas, direcciones y dominios. Para solo comas, use [,]. No inserte espacios en todos los resultados de golpe.</p>
-<h3 id="heading-16">D16. P&#225;rrafo iniciado en min&#250;scula</h3>
-<p>Detectar un posible salto de p&#225;rrafo superfluo.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: También coinciden abreviaturas, direcciones y dominios. Para solo comas, use [,]. No inserte espacios en todos los resultados de golpe.</p>
+<h3 id="heading-16">D16. Párrafo iniciado en minúscula</h3>
+<p>Detectar un posible salto de párrafo superfluo.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-43"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Ll}</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -491,50 +491,50 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>п</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Начало предложения.</code></pre>
-<p>Limitaciones y observaciones: Versos, leyendas, listas y citas pueden empezar en min&#250;scula. No une p&#225;rrafos ni comprende sus vecinos.</p>
-<h3 id="heading-17">D17. Sin puntuaci&#243;n final antes de cierres</h3>
+<p>Limitaciones y observaciones: Versos, leyendas, listas y citas pueden empezar en minúscula. No une párrafos ni comprende sus vecinos.</p>
+<h3 id="heading-17">D17. Sin puntuación final antes de cierres</h3>
 <p>Detectar final de letra o cifra seguido solo de signos de cierre y espacios.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
-<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[&#187;”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
+<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[»”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
 <p>Texto de prueba original:</p>
-<pre><code>&#171;Он пришёл&#187;</code></pre>
+<pre><code>«Он пришёл»</code></pre>
 <p>Coincidencia esperada:</p>
-<pre><code>л&#187;</code></pre>
+<pre><code>л»</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
-<pre><code>&#171;Он пришёл!&#187;</code></pre>
-<p>Limitaciones y observaciones: T&#237;tulos y leyendas no suelen necesitar punto. Una referencia de nota tras puntuaci&#243;n correcta puede dar falso positivo. No marca &#171;Он пришёл!&#187;, a diferencia de comprobar solo el &#250;ltimo &#187;.</p>
-<h3 id="heading-18">D18. Min&#250;scula despu&#233;s de final de oraci&#243;n</h3>
-<p>Detectar un probable error de caja despu&#233;s de punto, interrogaci&#243;n o exclamaci&#243;n.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<pre><code>«Он пришёл!»</code></pre>
+<p>Limitaciones y observaciones: Títulos y leyendas no suelen necesitar punto. Una referencia de nota tras puntuación correcta puede dar falso positivo. No marca «Он пришёл!», a diferencia de comprobar solo el último ».</p>
+<h3 id="heading-18">D18. Minúscula después de final de oración</h3>
+<p>Detectar un probable error de caja después de punto, interrogación o exclamación.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
-<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[«„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>Он пришёл. потом ушёл.</code></pre>
 <p>Coincidencia esperada:</p>
 <pre><code>. п</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он пришёл. Потом ушёл.</code></pre>
-<p>Limitaciones y observaciones: Los puntos abreviativos y suspensiones del autor no siempre terminan la oraci&#243;n. Son candidatos a revisi&#243;n.</p>
+<p>Limitaciones y observaciones: Los puntos abreviativos y suspensiones del autor no siempre terminan la oración. Son candidatos a revisión.</p>
 <h3 id="heading-19">D19. Posible punto omitido</h3>
-<p>Encontrar paso de terminaci&#243;n min&#250;scula a palabra capitalizada tras un espacio.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Encontrar paso de terminación minúscula a palabra capitalizada tras un espacio.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
-<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[&#187;”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[»”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[«„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>Он пришёл Потом ушёл.</code></pre>
 <p>Coincidencia esperada:</p>
 <pre><code>л Потом</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он пришёл потом ушёл.</code></pre>
-<p>Limitaciones y observaciones: Nombres y t&#237;tulos dentro de oraci&#243;n producir&#225;n muchos resultados v&#225;lidos. No decide si hace falta punto, coma o nada.</p>
+<p>Limitaciones y observaciones: Nombres y títulos dentro de oración producirán muchos resultados válidos. No decide si hace falta punto, coma o nada.</p>
 <h3 id="heading-20">D20. Parejas de comillas rectas</h3>
-<p>Encontrar un fragmento sencillo entre comillas dobles rectas en una l&#237;nea.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Encontrar un fragmento sencillo entre comillas dobles rectas en una línea.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-47"><code>&quot;<span class="rx-group">(</span><span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>&quot;</code></pre>
 <p>Texto de prueba original:</p>
@@ -542,12 +542,12 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <p>Coincidencia esperada:</p>
 <pre><code>&quot;да&quot;</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
-<pre><code>Он сказал &#171;да&#187;.</code></pre>
-<p>Limitaciones y observaciones: Revise anidaci&#243;n, pulgadas, c&#243;digo y estilo elegido. &#171;$1&#187; solo conviene en contexto seleccionado; no es tipograf&#237;a universal.</p>
-<h3 id="heading-21">D21. Guion o raya entre n&#250;meros</h3>
-<p>Encontrar un posible intervalo para decisi&#243;n editorial.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<pre><code>Он сказал «да».</code></pre>
+<p>Limitaciones y observaciones: Revise anidación, pulgadas, código y estilo elegido. «$1» solo conviene en contexto seleccionado; no es tipografía universal.</p>
+<h3 id="heading-21">D21. Guion o raya entre números</h3>
+<p>Encontrar un posible intervalo para decisión editorial.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-48"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[-—]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -556,11 +556,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>12 - 15</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Страницы 12–15.</code></pre>
-<p>Limitaciones y observaciones: Tambi&#233;n pueden coincidir 2026-10-02, n&#250;meros negativos y restas. No convierta autom&#225;ticamente en intervalos. – es semirraya, — raya, - guion.</p>
+<p>Limitaciones y observaciones: También pueden coincidir 2026-10-02, números negativos y restas. No convierta automáticamente en intervalos. – es semirraya, — raya, - guion.</p>
 <h3 id="heading-22">D22. Dos iniciales antes del apellido</h3>
 <p>Encontrar una forma sencilla de dos iniciales para revisar espacios.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-49"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-anchor">\b</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -569,11 +569,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>И.О. Иванов</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Иванов Иван</code></pre>
-<p>Limitaciones y observaciones: No cubre todos los apellidos compuestos ni diacr&#237;ticos. Tras revisar, puede usar $1., NBSP, $2., NBSP, $3; introduzca espacios inseparables reales.</p>
+<p>Limitaciones y observaciones: No cubre todos los apellidos compuestos ni diacríticos. Tras revisar, puede usar $1., NBSP, $2., NBSP, $3; introduzca espacios inseparables reales.</p>
 <h3 id="heading-23">D23. Apellido antes de dos iniciales</h3>
 <p>Encontrar el orden inverso del nombre.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-50"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -582,43 +582,43 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Иванов И.О.</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Иванов Иван</code></pre>
-<p>Limitaciones y observaciones: Comprueba forma, no identidad. Apellidos compuestos, part&#237;culas y tres iniciales requieren otra regla.</p>
+<p>Limitaciones y observaciones: Comprueba forma, no identidad. Apellidos compuestos, partículas y tres iniciales requieren otra regla.</p>
 <h3 id="heading-24">D24. Caracteres invisibles para revisar</h3>
 <p>Encontrar guion discrecional, espacio de anchura cero o FEFF.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-51"><code><span class="rx-class">[\x{00AD}\x{200B}\x{FEFF}]</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>сло​во</code></pre>
 <p>El mismo texto de prueba con los espacios visibles:</p>
 <pre><code>сло[ZWSP]во</code></pre>
-<p>Aqu&#237; ␠ representa un espacio normal; [TAB], una tabulaci&#243;n; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representaci&#243;n explicativa: no introduzca estas etiquetas en el libro.</p>
+<p>Aquí ␠ representa un espacio normal; [TAB], una tabulación; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representación explicativa: no introduzca estas etiquetas en el libro.</p>
 <p>Coincidencia esperada:</p>
 <pre><code>​</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>слово</code></pre>
-<p>Limitaciones y observaciones: El resultado no se ve: U+200B est&#225; entre о y в. Inserte o borre solo tras averiguar su funci&#243;n. BOM del archivo y FEFF textual son casos diferentes.</p>
+<p>Limitaciones y observaciones: El resultado no se ve: U+200B está entre о y в. Inserte o borre solo tras averiguar su función. BOM del archivo y FEFF textual son casos diferentes.</p>
 <h3 id="heading-25">D25. Espacios Unicode inusuales</h3>
 <p>Encontrar espacios estrechos, anchos y especiales.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-52"><code><span class="rx-class">[\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]</span></code></pre>
 <p>Texto de prueba original:</p>
 <pre><code>10 000</code></pre>
 <p>El mismo texto de prueba con los espacios visibles:</p>
 <pre><code>10[NNBSP]000</code></pre>
-<p>Aqu&#237; ␠ representa un espacio normal; [TAB], una tabulaci&#243;n; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representaci&#243;n explicativa: no introduzca estas etiquetas en el libro.</p>
+<p>Aquí ␠ representa un espacio normal; [TAB], una tabulación; [NBSP], U+00A0; [NNBSP], U+202F; y [ZWSP], U+200B. Es una representación explicativa: no introduzca estas etiquetas en el libro.</p>
 <p>Coincidencia esperada:</p>
 <pre><code> </code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>10 000</code></pre>
-<p>Limitaciones y observaciones: Un espacio estrecho inseparable entre cifras puede ser correcto. Detecta incoherencia, no declara err&#243;neo todo car&#225;cter especial.</p>
+<p>Limitaciones y observaciones: Un espacio estrecho inseparable entre cifras puede ser correcto. Detecta incoherencia, no declara erróneo todo carácter especial.</p>
 <h3 id="heading-26">D26. Interrogaciones y exclamaciones repetidas</h3>
-<p>Localizar puntuaci&#243;n expresiva o duplicaci&#243;n accidental.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Localizar puntuación expresiva o duplicación accidental.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-53"><code><span class="rx-class">[!?]</span><span class="rx-quantifier">{2,}</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -628,11 +628,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 !!!</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Что? Правда!</code></pre>
-<p>Limitaciones y observaciones: ?! y repeticiones del autor pueden ser intencionadas. La acci&#243;n es revisar, no reducir toda secuencia a un signo.</p>
-<h3 id="heading-27">D27. Х cir&#237;lica junto a numerales romanos</h3>
-<p>Encontrar Х rusa en una notaci&#243;n con caracteres romanos latinos.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: no necesario para esta expresi&#243;n. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: ?! y repeticiones del autor pueden ser intencionadas. La acción es revisar, no reducir toda secuencia a un signo.</p>
+<h3 id="heading-27">D27. Х cirílica junto a numerales romanos</h3>
+<p>Encontrar Х rusa en una notación con caracteres romanos latinos.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: no necesario para esta expresión. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-54"><code><span class="rx-group">(?&lt;=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span>Х<span class="rx-alternation">|</span>Х<span class="rx-group">(?=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -641,11 +641,11 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>Х</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Глава IX</code></pre>
-<p>Limitaciones y observaciones: Х es cir&#237;lica; X, latina. Revise caja y contexto. No valida todo el n&#250;mero romano.</p>
-<h3 id="heading-28">D28. Varias may&#250;sculas antes de min&#250;sculas</h3>
-<p>Detectar posible anomal&#237;a OCR de caja al inicio de palabra.</p>
-<p>Acci&#243;n: solo buscar y revisar.</p>
-<p>&#171;Expresi&#243;n regular&#187;: activada; &#171;Solo palabras completas&#187;: desactivada. &#171;Unicode (UCP)&#187;: activado. &#171;Distinguir may&#250;sculas y min&#250;sculas&#187;: activado.</p>
+<p>Limitaciones y observaciones: Х es cirílica; X, latina. Revise caja y contexto. No valida todo el número romano.</p>
+<h3 id="heading-28">D28. Varias mayúsculas antes de minúsculas</h3>
+<p>Detectar posible anomalía OCR de caja al inicio de palabra.</p>
+<p>Acción: solo buscar y revisar.</p>
+<p>«Expresión regular»: activada; «Solo palabras completas»: desactivada. «Unicode (UCP)»: activado. «Distinguir mayúsculas y minúsculas»: activado.</p>
 <p>Buscar:</p>
 <pre class="regex" id="regex-55"><code><span class="rx-escape">\p{Lu}</span><span class="rx-quantifier">{2,}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
 <p>Texto de prueba original:</p>
@@ -654,32 +654,32 @@ Sustituci&#243;n esperada con [$1]: № [125]</code></pre></section>
 <pre><code>ПРИвет</code></pre>
 <p>Contraejemplo que no debe coincidir:</p>
 <pre><code>Он сказал Привет.</code></pre>
-<p>Limitaciones y observaciones: Nombres, siglas con sufijos y abreviaturas latinas pueden ser v&#225;lidos. No cambie la caja globalmente sin revisar.</p>
-<h2 id="section-18">18. Problemas frecuentes y diagn&#243;stico</h2>
+<p>Limitaciones y observaciones: Nombres, siglas con sufijos y abreviaturas latinas pueden ser válidos. No cambie la caja globalmente sin revisar.</p>
+<h2 id="section-18">18. Problemas frecuentes y diagnóstico</h2>
 <h3 id="section-18-1">18.1. El texto se ve, pero no se encuentra</h3>
-<p>Compruebe Dise&#241;o, regex, caja, &#225;mbito, direcci&#243;n y caracteres reales. <code>a</code> latina y <code>а</code> cir&#237;lica se parecen, pero difieren. NBSP no es espacio normal y las comillas tipogr&#225;ficas no son rectas.</p>
-<p>Para l&#237;mites rusos revise UCP; para patrones de may&#250;sculas, la caja. No combine Solo palabras completas con l&#237;mites propios complejos sin necesidad.</p>
+<p>Compruebe Diseño, regex, caja, ámbito, dirección y caracteres reales. <code>a</code> latina y <code>а</code> cirílica se parecen, pero difieren. NBSP no es espacio normal y las comillas tipográficas no son rectas.</p>
+<p>Para límites rusos revise UCP; para patrones de mayúsculas, la caja. No combine Solo palabras completas con límites propios complejos sin necesidad.</p>
 <h3 id="section-18-2">18.2. Se encuentra demasiado texto</h3>
-<p>Sospeche del punto-asterisco codicioso o de una clase negativa amplia. Sustituya &#171;cualquier texto&#187; por un conjunto permitido, limite longitud y fronteras y compruebe dotall.</p>
-<h3 id="section-18-3">18.3. Los espacios cruzan p&#225;rrafos</h3>
-<p>No use <code>\s+</code> como sin&#243;nimo de espacio normal. Empiece por <code>[ \t]+</code> entre palabras y a&#241;ada NBSP por separado si hace falta.</p>
+<p>Sospeche del punto-asterisco codicioso o de una clase negativa amplia. Sustituya «cualquier texto» por un conjunto permitido, limite longitud y fronteras y compruebe dotall.</p>
+<h3 id="section-18-3">18.3. Los espacios cruzan párrafos</h3>
+<p>No use <code>\s+</code> como sinónimo de espacio normal. Empiece por <code>[ \t]+</code> entre palabras y añada NBSP por separado si hace falta.</p>
 <h3 id="section-18-4">18.4. Se insertan cifras, se pierden barras o falla un grupo nombrado</h3>
-<p>Revise la secci&#243;n 16. <code>${name}</code>, <code>$10</code>, <code>\n</code>, <code>\x{...}</code> no se interpretan seg&#250;n reglas de b&#250;squeda u otro editor. La captura requerida debe existir y no ser solo opcional en otra rama.</p>
-<h3 id="section-18-5">18.5. &#171;Alfabetos mezclados&#187; encuentra frases biling&#252;es normales</h3>
-<p>D12 exige cir&#237;lico y lat&#237;n en la misma palabra. La l&#237;nea biling&#252;e <code>Он прочитал Latin.</code> no se marca como error OCR.</p>
-<h3 id="section-18-6">18.6. &#171;Falta un punto&#187; marca una cita correcta</h3>
-<p>El &#250;ltimo car&#225;cter no basta: <code>&#187;</code> puede seguir a <code>!</code>. D17 considera cierres, aunque t&#237;tulos y notas siguen necesitando revisi&#243;n.</p>
+<p>Revise la sección 16. <code>${name}</code>, <code>$10</code>, <code>\n</code>, <code>\x{...}</code> no se interpretan según reglas de búsqueda u otro editor. La captura requerida debe existir y no ser solo opcional en otra rama.</p>
+<h3 id="section-18-5">18.5. «Alfabetos mezclados» encuentra frases bilingües normales</h3>
+<p>D12 exige cirílico y latín en la misma palabra. La línea bilingüe <code>Он прочитал Latin.</code> no se marca como error OCR.</p>
+<h3 id="section-18-6">18.6. «Falta un punto» marca una cita correcta</h3>
+<p>El último carácter no basta: <code>»</code> puede seguir a <code>!</code>. D17 considera cierres, aunque títulos y notas siguen necesitando revisión.</p>
 <h3 id="section-18-7">18.7. No se encuentra una estructura</h3>
-<p>Un regex textual no ve el DOM como un script. Etiquetas, anidaci&#243;n, IDs ausentes y movimiento de notas son tareas distintas. Quiz&#225; corresponda usar C&#243;digo, validador o script, no un patr&#243;n a&#250;n m&#225;s complejo.</p>
+<p>Un regex textual no ve el DOM como un script. Etiquetas, anidación, IDs ausentes y movimiento de notas son tareas distintas. Quizá corresponda usar Código, validador o script, no un patrón aún más complejo.</p>
 <h2 id="section-19">19. Rendimiento y libros grandes</h2>
-<p>Empiece por una condici&#243;n concreta: signo, clase, palabra o inicio de p&#225;rrafo. Evite repeticiones ilimitadas anidadas y varios fragmentos competidores de &#171;texto cualquiera&#187;. Un fallo puede explorar much&#237;simas alternativas.</p>
-<p>No codicioso no equivale a r&#225;pido: tambi&#233;n explora posibilidades. Excluir delimitadores, acotar longitud y reducir &#225;mbito suelen ayudar m&#225;s.</p>
-<p>Si la b&#250;squeda tarda, no superponga otros reemplazos. Simplifique y pruebe en texto corto. Un error de l&#237;mite de recursos PCRE2 no significa &#171;sin resultados&#187;.</p>
-<p>Para procesos con p&#225;rrafos vecinos y etiquetas, un script puede ser m&#225;s claro y seguro. No mezcle todas las reglas en una alternativa enorme; las reglas separadas explican cada hallazgo.</p>
+<p>Empiece por una condición concreta: signo, clase, palabra o inicio de párrafo. Evite repeticiones ilimitadas anidadas y varios fragmentos competidores de «texto cualquiera». Un fallo puede explorar muchísimas alternativas.</p>
+<p>No codicioso no equivale a rápido: también explora posibilidades. Excluir delimitadores, acotar longitud y reducir ámbito suelen ayudar más.</p>
+<p>Si la búsqueda tarda, no superponga otros reemplazos. Simplifique y pruebe en texto corto. Un error de límite de recursos PCRE2 no significa «sin resultados».</p>
+<p>Para procesos con párrafos vecinos y etiquetas, un script puede ser más claro y seguro. No mezcle todas las reglas en una alternativa enorme; las reglas separadas explican cada hallazgo.</p>
 <h2 id="section-20">20. Verificaciones antes de guardar</h2>
-<p>Inspeccione principio, centro y final del fragmento editado. Revise varios resultados de cada tipo, especialmente citas, intervalos, iniciales, notas y formato. Aseg&#250;rese de conservar NBSP significativas y l&#237;mites de p&#225;rrafos.</p>
-<p>Tras cambios estructurales delicados, valide con FBE. Guarde, vuelva a abrir si procede y compare. Una b&#250;squeda exitosa no sustituye validaci&#243;n FB2 ni correcci&#243;n editorial.</p>
+<p>Inspeccione principio, centro y final del fragmento editado. Revise varios resultados de cada tipo, especialmente citas, intervalos, iniciales, notas y formato. Asegúrese de conservar NBSP significativas y límites de párrafos.</p>
+<p>Tras cambios estructurales delicados, valide con FBE. Guarde, vuelva a abrir si procede y compare. Una búsqueda exitosa no sustituye validación FB2 ni corrección editorial.</p>
 <h2 id="section-21">21. Fuentes y alcance</h2>
 <p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Sintaxis oficial PCRE2: anclas, grupos, propiedades Unicode, retroceso y opciones.</a></p>
-<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Documentaci&#243;n oficial Unicode de PCRE2.</a></p>
+<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Documentación oficial Unicode de PCRE2.</a></p>
 </main></body></html>

@@ -232,7 +232,7 @@ Reordering or renaming an `id` in only one location may leave references pointin
 
 ## 10. How to read the XML recipes
 
-XML is case-sensitive. `<p>` and `<P>` are different names. Attribute order does not define their meaning, values may use single or double quotes, and spaces are allowed around the equals sign. Examples cover common variants where doing so does not make a rule excessively complex. [S3]
+XML is case-sensitive. `<p>` and `<P>` are different names. Attribute order does not define their meaning, values may use single or double quotes, and spaces are allowed around the equals sign. Examples cover common variants where doing so does not make a rule excessively complex. [S2]
 
 `l:` and `xlink:` are common prefixes for the XLink namespace in FB2. A prefix is not itself the meaning; its `xmlns` declaration determines that. Recipes listing these two forms do not guarantee support for every other prefix. Adapt the rule and check the namespace declaration when another form is present.
 
@@ -1374,4 +1374,4 @@ Run FB2 validation, save the book, and reopen it after significant changes. Chec
 
 [S1] [Official Scintilla documentation, Searching: C++11 mode, search flags, and SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S3] [W3C XML 1.0 and Namespaces in XML: names, attributes, entities, and namespaces.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)
+[S2] [W3C XML 1.0 and Namespaces in XML: names, attributes, entities, and namespaces.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

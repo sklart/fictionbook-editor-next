@@ -53,7 +53,7 @@ Toepassen in het sjabloonpaneel zet de expressie en opties in het zoekvenster. H
 
 ## 3. Engine en grenzen van de modus Ontwerp
 
-Deze modus gebruikt PCRE2-16 met patronen en tekst in UTF-16; UTF staat altijd aan. FBE bouwt de doorzoekbare tekst afzonderlijk op en voert vervanging uit met inachtneming van de boekstructuur. PCRE2-documentatie verklaart de overeenkomsten, niet alle handelingen van FBE. Technische bronnen staan bij D1–D4.
+Deze modus gebruikt PCRE2-16 met patronen en tekst in UTF-16; UTF staat altijd aan. FBE bouwt de doorzoekbare tekst afzonderlijk op en voert vervanging uit met inachtneming van de boekstructuur. PCRE2-documentatie verklaart de overeenkomsten, niet alle handelingen van FBE. Technische bronnen staan bij D1–D2.
 
 Het zoekobject is een tekstweergave van het boek, niet de letterlijke XML. `<strong>` is geen manier om vette tekst in Ontwerp te vinden. Zoek XML-tags in Code; voer structurele wijzigingen uit met editorfuncties of gespecialiseerde scripts.
 

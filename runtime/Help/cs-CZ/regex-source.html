@@ -1,571 +1,571 @@
 <!doctype html>
 <html lang="cs-CZ">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — K&#243;d</title><link rel="stylesheet" href="../regex-help.css"></head>
-<body><nav aria-label="Jin&#253; režim"><strong>Zdrojov&#253; k&#243;d</strong><a href="regex-design.html">N&#225;vrh</a></nav><main>
-<h1 id="top">Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — K&#243;d</h1>
-<aside class="note" id="note-1"><strong>Pozn&#225;mka</strong><p>Rusk&#225; slova v př&#237;kladech zůst&#225;vaj&#237; beze změny; pravidla z&#225;visl&#225; na jazyce před použit&#237;m na česk&#253; text zkontrolujte.</p></aside>
-<p>&#218;pln&#225; př&#237;ručka hled&#225;n&#237; a nahrazov&#225;n&#237; ve zdrojov&#233;m XML knihy v FictionBook Editor Next.</p>
-<p>N&#225;vrh popisuje regex-design.md. Zdejš&#237; postupy patř&#237; K&#243;du; vzory PCRE2 nepřen&#225;šejte bez ověřen&#237;.</p>
-<h2 id="section-1">1. K čemu slouž&#237; hled&#225;n&#237; v K&#243;du</h2>
-<p>K&#243;d ukazuje XML značky, atributy, odkazy, entity a text knihy. Hod&#237; se pro audit FB2: pr&#225;zdn&#233; prvky, importovan&#233; HTML, provizorn&#237; odkazy, neobvykl&#233; atributy a zbytky konverze.</p>
-<aside class="note" id="note-2"><strong>Pozn&#225;mka</strong><p>Regex zkoum&#225; text XML, ne parsovan&#253; strom DOM. Strukturu ověřte n&#225;strojem pro XML.</p></aside>
-<p>Pro obyčejnou jazykovou korekturu b&#253;v&#225; pohodlnějš&#237; N&#225;vrh. Shoda ve zdrojov&#233;m XML může b&#253;t v atributu, koment&#225;ři, CDATA, n&#225;zvu souboru nebo bin&#225;rn&#237;m obsahu, nejen v knižn&#237;m textu. Myslete na to před nahrazen&#237;m.</p>
-<p>„Pouze vyhled&#225;n&#237; a kontrola“ poskytuje kandid&#225;ty, ne důkaz chyby XML či textu. Dokonce mezery mohou b&#253;t v&#253;znamov&#233;; neexistuje univerz&#225;lně bezpečn&#225; n&#225;hrada v libovoln&#233;m XML.</p>
-<h2 id="section-2">2. Rychl&#253; zač&#225;tek</h2>
-<p>Uložte kopii, přejděte do K&#243;du, otevřete Naj&#237;t a zapněte Regul&#225;rn&#237; v&#253;raz. XML uk&#225;zky běžně rozlišuj&#237; velikost p&#237;smen a vyp&#237;naj&#237; Pouze cel&#225; slova. Hranice značek a atributů určuje vzor.</p>
-<p>Jednoduch&#253; pr&#225;zdn&#253; odstavec:</p>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Příručka regulárních výrazů — Kód</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Jiný režim"><strong>Zdrojový kód</strong><a href="regex-design.html">Návrh</a></nav><main>
+<h1 id="top">Příručka regulárních výrazů — Kód</h1>
+<aside class="note" id="note-1"><strong>Poznámka</strong><p>Ruská slova v příkladech zůstávají beze změny; pravidla závislá na jazyce před použitím na český text zkontrolujte.</p></aside>
+<p>Úplná příručka hledání a nahrazování ve zdrojovém XML knihy v FictionBook Editor Next.</p>
+<p>Návrh popisuje regex-design.md. Zdejší postupy patří Kódu; vzory PCRE2 nepřenášejte bez ověření.</p>
+<h2 id="section-1">1. K čemu slouží hledání v Kódu</h2>
+<p>Kód ukazuje XML značky, atributy, odkazy, entity a text knihy. Hodí se pro audit FB2: prázdné prvky, importované HTML, provizorní odkazy, neobvyklé atributy a zbytky konverze.</p>
+<aside class="note" id="note-2"><strong>Poznámka</strong><p>Regex zkoumá text XML, ne parsovaný strom DOM. Strukturu ověřte nástrojem pro XML.</p></aside>
+<p>Pro obyčejnou jazykovou korekturu bývá pohodlnější Návrh. Shoda ve zdrojovém XML může být v atributu, komentáři, CDATA, názvu souboru nebo binárním obsahu, nejen v knižním textu. Myslete na to před nahrazením.</p>
+<p>„Pouze vyhledání a kontrola“ poskytuje kandidáty, ne důkaz chyby XML či textu. Dokonce mezery mohou být významové; neexistuje univerzálně bezpečná náhrada v libovolném XML.</p>
+<h2 id="section-2">2. Rychlý začátek</h2>
+<p>Uložte kopii, přejděte do Kódu, otevřete Najít a zapněte Regulární výraz. XML ukázky běžně rozlišují velikost písmen a vypínají Pouze celá slova. Hranice značek a atributů určuje vzor.</p>
+<p>Jednoduchý prázdný odstavec:</p>
 <pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
-<p>Najde <code>&lt;p&gt;&lt;/p&gt;</code> a <code>&lt;p&gt;   &lt;/p&gt;</code> na jednom fyzick&#233;m ř&#225;dku, nikoli <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Automaticky nemažte ani nepřev&#225;dějte na <code>&lt;empty-line/&gt;</code>: jejich struktur&#225;ln&#237; role se může lišit.</p>
-<section class="example" id="example-1"><strong>Př&#237;klad</strong><pre><code>Naj&#237;t: &lt;p&gt;[ \t]*&lt;/p&gt;
+<p>Najde <code>&lt;p&gt;&lt;/p&gt;</code> a <code>&lt;p&gt;   &lt;/p&gt;</code> na jednom fyzickém řádku, nikoli <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Automaticky nemažte ani nepřevádějte na <code>&lt;empty-line/&gt;</code>: jejich strukturální role se může lišit.</p>
+<section class="example" id="example-1"><strong>Příklad</strong><pre><code>Najít: &lt;p&gt;[ \t]*&lt;/p&gt;
 Vstup: &lt;p&gt;   &lt;/p&gt;
 Shoda: &lt;p&gt;   &lt;/p&gt;
-Oček&#225;v&#225;no: Před změnou XML tento odstavec zkontrolujte.</code></pre></section>
-<p>Kop&#237;rujte jen vzor, bez <code>/.../g</code>, uvozovek řetězce C++ a zdvojen&#237; lom&#237;tek z JSON.</p>
+Očekáváno: Před změnou XML tento odstavec zkontrolujte.</code></pre></section>
+<p>Kopírujte jen vzor, bez <code>/.../g</code>, uvozovek řetězce C++ a zdvojení lomítek z JSON.</p>
 <h2 id="section-3">3. Modul: Scintilla, ne PCRE2</h2>
-<p>FBE použ&#237;v&#225; Scintillu s <code>SCFIND_REGEXP</code> a <code>SCFIND_CXX11REGEX</code>: regul&#225;rn&#237; v&#253;razy C++ s gramatikou ECMAScript, nikoli PCRE2 ani všechny funkce modern&#237;ho JavaScriptu. [S1]</p>
-<p>Scintilla m&#225; i starš&#237; z&#225;kladn&#237; modul s odlišn&#253;mi pravidly. Nezaměňujte star&#233; zachycovac&#237; z&#225;vorky s escape za režim C++11 FBE: <code>(слово)</code> zachycuje, <code>\(слово\)</code> vyžaduje skutečn&#233; z&#225;vorky.</p>
-<p>Unicode text nen&#237; zak&#225;z&#225;n, ale UCP a vlastnosti PCRE2 nejsou k dispozici. Tř&#237;dy z&#225;visej&#237; na standardn&#237; knihovně; <code>\w</code> neznamen&#225; všechna p&#237;smena libovoln&#233;ho jazyka. Pro předv&#237;dateln&#233; ASCII použ&#237;vejte <code>[A-Za-z0-9_]</code>, pro ruštinu <code>[А-Яа-яЁё]</code>, kter&#233; nezahrnuje celou cyrilici.</p>
-<h3 id="section-3-1">3.1. Hlavn&#237; rozd&#237;ly proti N&#225;vrhu</h3>
-<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Vlastnost</th><th scope="col">N&#225;vrh</th><th scope="col">K&#243;d</th></tr></thead><tbody>
-<tr><td>Hledan&#253; objekt</td><td>Textov&#225; reprezentace knihy</td><td>Zdrojov&#233; XML</td></tr>
+<p>FBE používá Scintillu s <code>SCFIND_REGEXP</code> a <code>SCFIND_CXX11REGEX</code>: regulární výrazy C++ s gramatikou ECMAScript, nikoli PCRE2 ani všechny funkce moderního JavaScriptu. [S1]</p>
+<p>Scintilla má i starší základní modul s odlišnými pravidly. Nezaměňujte staré zachycovací závorky s escape za režim C++11 FBE: <code>(слово)</code> zachycuje, <code>\(слово\)</code> vyžaduje skutečné závorky.</p>
+<p>Unicode text není zakázán, ale UCP a vlastnosti PCRE2 nejsou k dispozici. Třídy závisejí na standardní knihovně; <code>\w</code> neznamená všechna písmena libovolného jazyka. Pro předvídatelné ASCII používejte <code>[A-Za-z0-9_]</code>, pro ruštinu <code>[А-Яа-яЁё]</code>, které nezahrnuje celou cyrilici.</p>
+<h3 id="section-3-1">3.1. Hlavní rozdíly proti Návrhu</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Vlastnost</th><th scope="col">Návrh</th><th scope="col">Kód</th></tr></thead><tbody>
+<tr><td>Hledaný objekt</td><td>Textová reprezentace knihy</td><td>Zdrojové XML</td></tr>
 <tr><td>Modul</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
-<tr><td>UCP a Unicode vlastnosti</td><td>Dostupn&#233; v profilu PCRE2</td><td>Bez syntaxe vlastnost&#237; PCRE2</td></tr>
-<tr><td>Lookbehind</td><td>Dostupn&#253; s omezen&#237;mi PCRE2</td><td>Nepodporov&#225;n</td></tr>
-<tr><td>Prvn&#237; skupina v n&#225;hradě</td><td><code>$1</code> či <code>\1</code></td><td><code>\1</code></td></tr>
-<tr><td>Form&#225;tov&#225;n&#237; n&#225;hrady</td><td>Př&#237;kazy FBE</td><td>Jen XML text</td></tr>
-<tr><td>Přesah fyzick&#233;ho ř&#225;dku</td><td>Z&#225;vis&#237; na reprezentaci; n&#225;hrady mezi odstavci omezen&#233;</td><td>V současn&#233; cestě nepodporov&#225;n</td></tr>
+<tr><td>UCP a Unicode vlastnosti</td><td>Dostupné v profilu PCRE2</td><td>Bez syntaxe vlastností PCRE2</td></tr>
+<tr><td>Lookbehind</td><td>Dostupný s omezeními PCRE2</td><td>Nepodporován</td></tr>
+<tr><td>První skupina v náhradě</td><td><code>$1</code> či <code>\1</code></td><td><code>\1</code></td></tr>
+<tr><td>Formátování náhrady</td><td>Příkazy FBE</td><td>Jen XML text</td></tr>
+<tr><td>Přesah fyzického řádku</td><td>Závisí na reprezentaci; náhrady mezi odstavci omezené</td><td>V současné cestě nepodporován</td></tr>
 </tbody></table></div>
-<h2 id="section-4">4. Hled&#225;n&#237; po ř&#225;dc&#237;ch: z&#225;sadn&#237; omezen&#237;</h2>
-<p>Ve Scintilla cestě FBE funkce <code>MatchOnLines</code> zpracov&#225;v&#225; vzor na každ&#233;m fyzick&#233;m ř&#225;dku zvl&#225;šť. Ř&#225;dek může b&#253;t velmi dlouh&#253;; jeho zalomen&#237; na obrazovce nen&#237; nov&#253; fyzick&#253; ř&#225;dek.</p>
-<aside class="warning" id="warning-1"><strong>Varov&#225;n&#237;</strong><p>Regex ve Zdrojov&#233;m režimu nemůže v současn&#233; cestě hledat přes fyzick&#233; ř&#225;dky; vzor je nespoj&#237;.</p></aside>
+<h2 id="section-4">4. Hledání po řádcích: zásadní omezení</h2>
+<p>Ve Scintilla cestě FBE funkce <code>MatchOnLines</code> zpracovává vzor na každém fyzickém řádku zvlášť. Řádek může být velmi dlouhý; jeho zalomení na obrazovce není nový fyzický řádek.</p>
+<aside class="warning" id="warning-1"><strong>Varování</strong><p>Regex ve Zdrojovém režimu nemůže v současné cestě hledat přes fyzické řádky; vzor je nespojí.</p></aside>
 <p>Porovnejte:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
 <p>s:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Z hlediska XML může j&#237;t o totožn&#233; sousedstv&#237;. Pro současn&#233; FBE regex lze prvn&#237; variantu naj&#237;t jednou shodou, druh&#225; však překroč&#237; hranici ř&#225;dku.</p>
-<p>Přid&#225;n&#237; <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> nebo tř&#237;dy „jak&#253;koli znak“ omezen&#237; neodstran&#237;. Modul nedost&#225;v&#225; oba ř&#225;dky jako jednu vstupn&#237; č&#225;st. Nutn&#225; by byla změna vyhled&#225;vac&#237; cesty programu.</p>
-<p>Hled&#225;n&#237; po ř&#225;dc&#237;ch nebr&#225;n&#237; vložen&#237; konce ř&#225;dku n&#225;hradou. Jde o jinou operaci, uk&#225;zanou v K28. Rozlišujte nalezen&#237; přes hranici a vložen&#237; hranice do v&#253;sledku.</p>
-<h3 id="section-4-1">4.1. Pr&#225;ce s v&#237;ceř&#225;dkov&#253;m XML</h3>
-<p>Atribut na vlastn&#237;m ř&#225;dku lze často naj&#237;t samostatně, bez cel&#233; otev&#237;rac&#237; značky. Pro vztahy mezi ř&#225;dky použijte struktur&#225;ln&#237; n&#225;stroje FBE, valid&#225;tor, skript nebo n&#225;stroj XML.</p>
-<p>Nemažte všechny konce ř&#225;dků kvůli jedin&#233;mu vzoru. Mohlo by se změnit zněn&#237;, koment&#225;ře, CDATA a čitelnost. Nejdř&#237;ve zjistěte, zda skutečně potřebujete v&#237;ceř&#225;dkovou shodu.</p>
-<h2 id="section-5">5. Znaky a escapov&#225;n&#237;</h2>
-<p>Obyčejn&#253; znak znamen&#225; s&#225;m sebe. Metaznak hledan&#253; doslovně začněte zpětn&#253;m lom&#237;tkem.</p>
-<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Hledan&#253; text</th><th scope="col">V&#253;raz</th></tr></thead><tbody>
+<p>Z hlediska XML může jít o totožné sousedství. Pro současné FBE regex lze první variantu najít jednou shodou, druhá však překročí hranici řádku.</p>
+<p>Přidání <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> nebo třídy „jakýkoli znak“ omezení neodstraní. Modul nedostává oba řádky jako jednu vstupní část. Nutná by byla změna vyhledávací cesty programu.</p>
+<p>Hledání po řádcích nebrání vložení konce řádku náhradou. Jde o jinou operaci, ukázanou v K28. Rozlišujte nalezení přes hranici a vložení hranice do výsledku.</p>
+<h3 id="section-4-1">4.1. Práce s víceřádkovým XML</h3>
+<p>Atribut na vlastním řádku lze často najít samostatně, bez celé otevírací značky. Pro vztahy mezi řádky použijte strukturální nástroje FBE, validátor, skript nebo nástroj XML.</p>
+<p>Nemažte všechny konce řádků kvůli jedinému vzoru. Mohlo by se změnit znění, komentáře, CDATA a čitelnost. Nejdříve zjistěte, zda skutečně potřebujete víceřádkovou shodu.</p>
+<h2 id="section-5">5. Znaky a escapování</h2>
+<p>Obyčejný znak znamená sám sebe. Metaznak hledaný doslovně začněte zpětným lomítkem.</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Hledaný text</th><th scope="col">Výraz</th></tr></thead><tbody>
 <tr><td>Tečka</td><td><code>\.</code></td></tr>
 <tr><td>Plus</td><td><code>\+</code></td></tr>
-<tr><td>Otazn&#237;k</td><td><code>\?</code></td></tr>
+<tr><td>Otazník</td><td><code>\?</code></td></tr>
 <tr><td>Hvězdička</td><td><code>\*</code></td></tr>
-<tr><td>Kulat&#225; z&#225;vorka</td><td><code>\(</code> nebo <code>\)</code></td></tr>
-<tr><td>Č&#237;slo v hranat&#253;ch z&#225;vork&#225;ch</td><td><code>\[[0-9]+\]</code></td></tr>
-<tr><td>Zpětn&#233; lom&#237;tko</td><td><code>\\</code></td></tr>
+<tr><td>Kulatá závorka</td><td><code>\(</code> nebo <code>\)</code></td></tr>
+<tr><td>Číslo v hranatých závorkách</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Zpětné lomítko</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p><code>.</code> znamen&#225; jeden znak dostupn&#233;ho &#250;seku, ne doslovnou tečku. V UTF-8 z&#225;lež&#237; skutečn&#233; zpracov&#225;n&#237; na adapt&#233;ru Scintilla a standardn&#237; knihovně. Neměřte emoji podle představy „jedna tečka = jeden viditeln&#253; znak“.</p>
-<p><code>\r</code> a <code>\n</code> zapisuj&#237; CR/LF, ale hled&#225;n&#237; přes ř&#225;dky t&#237;m nezapnete. Pro mezery a tabul&#225;tory použijte <code>[ \t]</code>.</p>
-<p>PCRE2 <code>\Q...\E</code> zde nen&#237; přenositeln&#233; označen&#237; doslovn&#233;ho &#250;seku. Escapujte jednotliv&#233; metaznaky.</p>
-<h2 id="section-6">6. Tř&#237;dy, rozsahy a hranice slov</h2>
-<p><code>[abc]</code> vybere jeden znak sady, <code>[a-z]</code> znak rozsahu a <code>[^abc]</code> znak mimo sadu. Opakov&#225;n&#237; lze přidat za tř&#237;du: <code>[0-9]+</code>.</p>
-<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Tř&#237;da</th><th scope="col">Praktick&#253; v&#253;znam</th></tr></thead><tbody>
-<tr><td class="syntax"><code>[0-9]</code></td><td>ASCII č&#237;slice</td></tr>
-<tr><td class="syntax"><code>[A-Za-z]</code></td><td>ASCII latinsk&#233; p&#237;smeno</td></tr>
-<tr><td class="syntax"><code>[ \t]</code></td><td>Obyčejn&#225; mezera nebo tabul&#225;tor</td></tr>
-<tr><td class="syntax"><code>[^&lt;]</code></td><td>Dostupn&#253; znak jin&#253; než &lt;</td></tr>
-<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Znak jin&#253; než oba typy rovn&#253;ch uvozovek</td></tr>
-<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Tř&#237;da č&#237;slic a jej&#237; doplněk podle implementace</td></tr>
-<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>B&#237;l&#253; znak a jeho doplněk</td></tr>
-<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Slovn&#237; znak a jeho doplněk</td></tr>
+<p><code>.</code> znamená jeden znak dostupného úseku, ne doslovnou tečku. V UTF-8 záleží skutečné zpracování na adaptéru Scintilla a standardní knihovně. Neměřte emoji podle představy „jedna tečka = jeden viditelný znak“.</p>
+<p><code>\r</code> a <code>\n</code> zapisují CR/LF, ale hledání přes řádky tím nezapnete. Pro mezery a tabulátory použijte <code>[ \t]</code>.</p>
+<p>PCRE2 <code>\Q...\E</code> zde není přenositelné označení doslovného úseku. Escapujte jednotlivé metaznaky.</p>
+<h2 id="section-6">6. Třídy, rozsahy a hranice slov</h2>
+<p><code>[abc]</code> vybere jeden znak sady, <code>[a-z]</code> znak rozsahu a <code>[^abc]</code> znak mimo sadu. Opakování lze přidat za třídu: <code>[0-9]+</code>.</p>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Třída</th><th scope="col">Praktický význam</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[0-9]</code></td><td>ASCII číslice</td></tr>
+<tr><td class="syntax"><code>[A-Za-z]</code></td><td>ASCII latinské písmeno</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Obyčejná mezera nebo tabulátor</td></tr>
+<tr><td class="syntax"><code>[^&lt;]</code></td><td>Dostupný znak jiný než &lt;</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Znak jiný než oba typy rovných uvozovek</td></tr>
+<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Třída číslic a její doplněk podle implementace</td></tr>
+<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Bílý znak a jeho doplněk</td></tr>
+<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Slovní znak a jeho doplněk</td></tr>
 </tbody></table></div>
-<p>Negovan&#225; tř&#237;da nerozum&#237; XML. <code>[^&lt;]*</code> je užitečn&#233; pro jednoduch&#253; obsah mezi značkami, ne &#250;pln&#253; parser entit, koment&#225;řů a CDATA.</p>
-<p><code>\b</code> znamen&#225; hranici slova a <code>\B</code> jej&#237; nepř&#237;tomnost. U atributů to nestač&#237;: <code>id</code> může b&#253;t za dvojtečkou v jin&#233;m n&#225;zvu. Vhodnějš&#237; je v&#253;slovn&#253; oddělovač atributu — zač&#225;tek ř&#225;dku, mezera nebo tabul&#225;tor.</p>
-<h2 id="section-7">7. Kotvy a opakov&#225;n&#237;</h2>
-<p><code>^</code> a <code>$</code> označuj&#237; zač&#225;tek a konec fyzick&#233;ho ř&#225;dku současn&#233; cesty. Pro ř&#225;dek z vodorovn&#253;ch mezer:</p>
+<p>Negovaná třída nerozumí XML. <code>[^&lt;]*</code> je užitečné pro jednoduchý obsah mezi značkami, ne úplný parser entit, komentářů a CDATA.</p>
+<p><code>\b</code> znamená hranici slova a <code>\B</code> její nepřítomnost. U atributů to nestačí: <code>id</code> může být za dvojtečkou v jiném názvu. Vhodnější je výslovný oddělovač atributu — začátek řádku, mezera nebo tabulátor.</p>
+<h2 id="section-7">7. Kotvy a opakování</h2>
+<p><code>^</code> a <code>$</code> označují začátek a konec fyzického řádku současné cesty. Pro řádek z vodorovných mezer:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
-<p>Smaz&#225;n&#237; shody neodstran&#237; samotn&#253; ř&#225;dek: jeho konec nebyl souč&#225;st&#237; v&#253;sledku.</p>
-<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kvantifik&#225;tor</th><th scope="col">Počet opakov&#225;n&#237;</th></tr></thead><tbody>
+<p>Smazání shody neodstraní samotný řádek: jeho konec nebyl součástí výsledku.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kvantifikátor</th><th scope="col">Počet opakování</th></tr></thead><tbody>
 <tr><td class="syntax"><code>?</code></td><td>Nula či jedno</td></tr>
-<tr><td class="syntax"><code>*</code></td><td>Nula či v&#237;ce</td></tr>
-<tr><td class="syntax"><code>+</code></td><td>Jedno či v&#237;ce</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Nula či více</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Jedno či více</td></tr>
 <tr><td class="syntax"><code>{3}</code></td><td>Přesně tři</td></tr>
 <tr><td class="syntax"><code>{3,}</code></td><td>Alespoň tři</td></tr>
 <tr><td class="syntax"><code>{2,5}</code></td><td>Dvě až pět</td></tr>
 </tbody></table></div>
-<p>C++11 dovoluje l&#237;n&#233; formy jako <code>*?</code> a <code>+?</code>. U XML atributu je často přehlednějš&#237; vyloučit uzav&#237;rac&#237; uvozovku:</p>
+<p>C++11 dovoluje líné formy jako <code>*?</code> a <code>+?</code>. U XML atributu je často přehlednější vyloučit uzavírací uvozovku:</p>
 <pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
-<p>To plat&#237; pro dvojit&#233; uvozovky; jednoduch&#233; potřebuj&#237; odpov&#237;daj&#237;c&#237; větev.</p>
-<p>Nepřen&#225;šejte přivlastňovac&#237; kvantifik&#225;tory, atomick&#233; skupiny ani inline volby PCRE2.</p>
+<p>To platí pro dvojité uvozovky; jednoduché potřebují odpovídající větev.</p>
+<p>Nepřenášejte přivlastňovací kvantifikátory, atomické skupiny ani inline volby PCRE2.</p>
 <h2 id="section-8">8. Skupiny, alternativa a lookahead</h2>
-<p><code>( ... )</code> zachyt&#237; text pro odkazy a n&#225;hradu. <code>(?: ... )</code> seskupuje bez č&#237;sla.</p>
-<p>V&#253;běr značek:</p>
+<p><code>( ... )</code> zachytí text pro odkazy a náhradu. <code>(?: ... )</code> seskupuje bez čísla.</p>
+<p>Výběr značek:</p>
 <pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
-<p>Č&#237;seln&#253; odkaz může sv&#225;zat otev&#237;rac&#237; a zav&#237;rac&#237; n&#225;zvy jednoduch&#233;ho jednoř&#225;dkov&#233;ho &#250;seku:</p>
+<p>Číselný odkaz může svázat otevírací a zavírací názvy jednoduchého jednořádkového úseku:</p>
 <pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
-<p>Vyžaduje shodn&#253; n&#225;zev, neověřuje libovoln&#233; XML vnořen&#237;.</p>
-<p><code>(?=...)</code> a <code>(?!...)</code> ověřuj&#237; n&#225;sleduj&#237;c&#237; text bez jeho zahrnut&#237;. Hranice za n&#225;zvem zabr&#225;n&#237; tomu, aby <code>&lt;a</code> znamenalo i zač&#225;tek <code>&lt;author&gt;</code>:</p>
+<p>Vyžaduje shodný název, neověřuje libovolné XML vnoření.</p>
+<p><code>(?=...)</code> a <code>(?!...)</code> ověřují následující text bez jeho zahrnutí. Hranice za názvem zabrání tomu, aby <code>&lt;a</code> znamenalo i začátek <code>&lt;author&gt;</code>:</p>
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
-<p>Lev&#253; kontext zachyťte a vraťte v n&#225;hradě: lookbehind nen&#237; dostupn&#253;. <code>(?&lt;=...)</code> z N&#225;vrhu sem nekop&#237;rujte.</p>
-<h2 id="section-9">9. Nahrazov&#225;n&#237; v K&#243;du</h2>
-<p>FBE použ&#237;v&#225; <code>SCI_REPLACETARGETRE</code>: shoda již existuje a Scintilla rozv&#237;j&#237; n&#225;hradu. Nejde o <code>std::regex_replace</code> s <code>$1</code> ani o gramatiku n&#225;hrad Design. [S1]</p>
+<p>Levý kontext zachyťte a vraťte v náhradě: lookbehind není dostupný. <code>(?&lt;=...)</code> z Návrhu sem nekopírujte.</p>
+<h2 id="section-9">9. Nahrazování v Kódu</h2>
+<p>FBE používá <code>SCI_REPLACETARGETRE</code>: shoda již existuje a Scintilla rozvíjí náhradu. Nejde o <code>std::regex_replace</code> s <code>$1</code> ani o gramatiku náhrad Design. [S1]</p>
 <h3 id="section-9-1">9.1. Odkazy na skupiny</h3>
-<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">V poli n&#225;hrady</th><th scope="col">V&#253;znam</th></tr></thead><tbody>
-<tr><td class="syntax"><code>\0</code></td><td>Cel&#225; shoda</td></tr>
-<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Obsah př&#237;slušn&#253;ch skupin</td></tr>
-<tr><td class="syntax"><code>$1</code></td><td>Nen&#237; odkazem na skupinu t&#233;to cesty</td></tr>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">V poli náhrady</th><th scope="col">Význam</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\0</code></td><td>Celá shoda</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Obsah příslušných skupin</td></tr>
+<tr><td class="syntax"><code>$1</code></td><td>Není odkazem na skupinu této cesty</td></tr>
 </tbody></table></div>
-<p>Naj&#237;t:</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-7"><code><span class="rx-escape">\(</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-escape">\)</span></code></pre>
 <p>Nahradit za:</p>
 <pre><code>[\1]</code></pre>
-<p><code>(12)</code> se změn&#237; na <code>[12]</code>. Smysl to m&#225; jen ve zvolen&#233;m kontextu: č&#237;slo v kulat&#253;ch z&#225;vork&#225;ch nemus&#237; b&#253;t pozn&#225;mkou.</p>
-<p>Dolar ve Source nen&#237; třeba zdvojovat podle pravidel ciz&#237;ho syst&#233;mu. Zpětn&#233; lom&#237;tko naopak zůst&#225;v&#225; ř&#237;dic&#237;m znakem.</p>
-<h3 id="section-9-2">9.2. Ř&#237;dic&#237; znaky v n&#225;hradě</h3>
-<p>Scintilla interpretuje <code>\t</code>, <code>\n</code>, <code>\r</code> a <code>\\</code> jako tabul&#225;tor, LF, CR a doslovn&#233; zpětn&#233; lom&#237;tko. To neumožňuje hled&#225;n&#237; přes fyzick&#233; ř&#225;dky.</p>
-<p>Pro CRLF použijte <code>\r\n</code>, pro LF <code>\n</code>, podle dokumentu. Nevytv&#225;řejte omylem sm&#237;šen&#233; konce ř&#225;dků.</p>
-<p>PCRE2 z&#225;pis <code>\x{00A0}</code> nevlož&#237; Unicode znak; pro NBSP je nutn&#253; skutečn&#253; znak. <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> z N&#225;vrhu zde neř&#237;d&#237; velikost ani form&#225;tov&#225;n&#237;.</p>
-<h3 id="section-9-3">9.3. Maz&#225;n&#237; a integrita XML</h3>
-<p>Pr&#225;zdn&#233; pole smaže nalezen&#253; rozsah. Smaz&#225;n&#237; pr&#225;zdn&#233;ho prvku, atributu nebo odkazu může poškodit dokument i po spr&#225;vn&#233;m vyhled&#225;n&#237;. Struktur&#225;ln&#237; postupy jsou proto přev&#225;žně diagnostick&#233;.</p>
-<p>Změna <code>id</code> na jedin&#233;m m&#237;stě může zanechat odkazy na starou hodnotu. U souvisej&#237;c&#237;ch objektů použ&#237;vejte přejmenov&#225;n&#237; ID ve FBE, ne nez&#225;visl&#233; textov&#233; n&#225;hrady.</p>
-<h2 id="section-10">10. Jak č&#237;st XML postupy</h2>
-<p>XML rozlišuje velikost: <code>&lt;p&gt;</code> a <code>&lt;P&gt;</code> jsou jin&#233; n&#225;zvy. Pořad&#237; atributů neurčuje v&#253;znam; hodnoty mohou b&#253;t v jednoduch&#253;ch nebo dvojit&#253;ch uvozovk&#225;ch a kolem <code>=</code> jsou př&#237;pustn&#233; mezery. Př&#237;klady pokr&#253;vaj&#237; běžn&#233; varianty, pokud to nepřiměřeně nezkomplikuje vzor. [S3]</p>
-<p><code>l:</code> a <code>xlink:</code> jsou běžn&#233; prefixy XLink FB2. V&#253;znam určuje deklarace <code>xmlns</code>, nikoli samotn&#253; n&#225;zev prefixu. Vzor s těmito dvěma n&#225;zvy nepozn&#225; automaticky jin&#253;; upravte jej podle deklarace.</p>
-<p>Mnoh&#233; uk&#225;zky přibližuj&#237; obsah otev&#237;rac&#237;ho tagu pomoc&#237; <code>[^&gt;]*</code>. Pro běžn&#233; FB2 je to praktick&#233;, ale <code>&gt;</code> může leg&#225;lně b&#253;t uvnitř hodnoty atributu. Tak&#233; koment&#225;ře a CDATA mohou obsahovat text podobn&#253; značk&#225;m. Jde o v&#253;běr kandid&#225;tů ke kontrole, ne &#250;plnou validaci či slepou přestavbu XML.</p>
-<p>„Pr&#225;zdn&#253; prvek“ nen&#237; vždy chyba sch&#233;matu a „č&#237;seln&#225; entita“ nen&#237; nutně poškozen&#253; znak. Provizorn&#237; n&#225;zev, zvl&#225;štn&#237; identifik&#225;tor nebo extern&#237; odkaz mohou b&#253;t opr&#225;vněn&#233;.</p>
-<h2 id="section-11">11. Praktick&#233; postupy FB2/XML</h2>
-<p>Nen&#237;-li uvedeno jinak, všechny z&#250;častněn&#233; č&#225;sti mus&#237; ležet na jednom fyzick&#233;m ř&#225;dku. Při hled&#225;n&#237; cel&#233; otev&#237;rac&#237; značky na něj patř&#237; i kontrolovan&#233; atributy. Vzor hledaj&#237;c&#237; jen atribut tuto podm&#237;nku na celou značku neklade.</p>
-<h3 id="heading-1">K01. Mezery na konci fyzick&#233;ho ř&#225;dku</h3>
-<p>Naj&#237;t koncov&#233; obyčejn&#233; mezery a tabul&#225;tory.</p>
-<p>Akce: nahrazen&#237; po kontrole.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p><code>(12)</code> se změní na <code>[12]</code>. Smysl to má jen ve zvoleném kontextu: číslo v kulatých závorkách nemusí být poznámkou.</p>
+<p>Dolar ve Source není třeba zdvojovat podle pravidel cizího systému. Zpětné lomítko naopak zůstává řídicím znakem.</p>
+<h3 id="section-9-2">9.2. Řídicí znaky v náhradě</h3>
+<p>Scintilla interpretuje <code>\t</code>, <code>\n</code>, <code>\r</code> a <code>\\</code> jako tabulátor, LF, CR a doslovné zpětné lomítko. To neumožňuje hledání přes fyzické řádky.</p>
+<p>Pro CRLF použijte <code>\r\n</code>, pro LF <code>\n</code>, podle dokumentu. Nevytvářejte omylem smíšené konce řádků.</p>
+<p>PCRE2 zápis <code>\x{00A0}</code> nevloží Unicode znak; pro NBSP je nutný skutečný znak. <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> z Návrhu zde neřídí velikost ani formátování.</p>
+<h3 id="section-9-3">9.3. Mazání a integrita XML</h3>
+<p>Prázdné pole smaže nalezený rozsah. Smazání prázdného prvku, atributu nebo odkazu může poškodit dokument i po správném vyhledání. Strukturální postupy jsou proto převážně diagnostické.</p>
+<p>Změna <code>id</code> na jediném místě může zanechat odkazy na starou hodnotu. U souvisejících objektů používejte přejmenování ID ve FBE, ne nezávislé textové náhrady.</p>
+<h2 id="section-10">10. Jak číst XML postupy</h2>
+<p>XML rozlišuje velikost: <code>&lt;p&gt;</code> a <code>&lt;P&gt;</code> jsou jiné názvy. Pořadí atributů neurčuje význam; hodnoty mohou být v jednoduchých nebo dvojitých uvozovkách a kolem <code>=</code> jsou přípustné mezery. Příklady pokrývají běžné varianty, pokud to nepřiměřeně nezkomplikuje vzor. [S2]</p>
+<p><code>l:</code> a <code>xlink:</code> jsou běžné prefixy XLink FB2. Význam určuje deklarace <code>xmlns</code>, nikoli samotný název prefixu. Vzor s těmito dvěma názvy nepozná automaticky jiný; upravte jej podle deklarace.</p>
+<p>Mnohé ukázky přibližují obsah otevíracího tagu pomocí <code>[^&gt;]*</code>. Pro běžné FB2 je to praktické, ale <code>&gt;</code> může legálně být uvnitř hodnoty atributu. Také komentáře a CDATA mohou obsahovat text podobný značkám. Jde o výběr kandidátů ke kontrole, ne úplnou validaci či slepou přestavbu XML.</p>
+<p>„Prázdný prvek“ není vždy chyba schématu a „číselná entita“ není nutně poškozený znak. Provizorní název, zvláštní identifikátor nebo externí odkaz mohou být oprávněné.</p>
+<h2 id="section-11">11. Praktické postupy FB2/XML</h2>
+<p>Není-li uvedeno jinak, všechny zúčastněné části musí ležet na jednom fyzickém řádku. Při hledání celé otevírací značky na něj patří i kontrolované atributy. Vzor hledající jen atribut tuto podmínku na celou značku neklade.</p>
+<h3 id="heading-1">K01. Mezery na konci fyzického řádku</h3>
+<p>Najít koncové obyčejné mezery a tabulátory.</p>
+<p>Akce: nahrazení po kontrole.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
-<p>Tent&#253;ž testovac&#237; text s viditeln&#253;mi značkami:</p>
+<p>Tentýž testovací text s viditelnými značkami:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
-<p>Značka ␠ znamen&#225; obyčejnou mezeru, [TAB] tabul&#225;tor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětluj&#237;c&#237; z&#225;pis; tyto značky se do knihy nevkl&#225;daj&#237;.</p>
-<p>Nahradit za: nechte pole &#250;plně pr&#225;zdn&#233;. Nepište slovo „pr&#225;zdn&#233;“.</p>
-<p>V&#253;sledek nahrazen&#237;:</p>
+<p>Značka ␠ znamená obyčejnou mezeru, [TAB] tabulátor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětlující zápis; tyto značky se do knihy nevkládají.</p>
+<p>Nahradit za: nechte pole úplně prázdné. Nepište slovo „prázdné“.</p>
+<p>Výsledek nahrazení:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Nemaže konec ř&#225;dku. Ve sm&#237;šen&#233;m XML, CDATA či oblastech v&#253;znamov&#253;ch mezer může b&#253;t konec souč&#225;st&#237; textu. Glob&#225;ln&#237; čištěn&#237; neoznačujte za bezpodm&#237;nečně bezpečn&#233;.</p>
-<h3 id="heading-2">K02. Vyčistit ř&#225;dek jen s mezerami</h3>
-<p>Odstranit b&#237;l&#225; m&#237;sta z ř&#225;dku bez dalš&#237;ho obsahu.</p>
-<p>Akce: nahrazen&#237; po kontrole.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Nemaže konec řádku. Ve smíšeném XML, CDATA či oblastech významových mezer může být konec součástí textu. Globální čištění neoznačujte za bezpodmínečně bezpečné.</p>
+<h3 id="heading-2">K02. Vyčistit řádek jen s mezerami</h3>
+<p>Odstranit bílá místa z řádku bez dalšího obsahu.</p>
+<p>Akce: nahrazení po kontrole.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Tent&#253;ž testovac&#237; text s viditeln&#253;mi značkami:</p>
+<p>Tentýž testovací text s viditelnými značkami:</p>
 <pre><code>␠␠␠[TAB]
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Značka ␠ znamen&#225; obyčejnou mezeru, [TAB] tabul&#225;tor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětluj&#237;c&#237; z&#225;pis; tyto značky se do knihy nevkl&#225;daj&#237;.</p>
-<p>Nahradit za: nechte pole &#250;plně pr&#225;zdn&#233;. Nepište slovo „pr&#225;zdn&#233;“.</p>
-<p>V&#253;sledek nahrazen&#237;:</p>
+<p>Značka ␠ znamená obyčejnou mezeru, [TAB] tabulátor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětlující zápis; tyto značky se do knihy nevkládají.</p>
+<p>Nahradit za: nechte pole úplně prázdné. Nepište slovo „prázdné“.</p>
+<p>Výsledek nahrazení:</p>
 <pre><code>
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Ř&#225;dek zůstane pr&#225;zdn&#253;: LF/CRLF nebyly souč&#225;st&#237; n&#225;lezu. Nejde o odstraněn&#237; všech pr&#225;zdn&#253;ch fyzick&#253;ch ř&#225;dků.</p>
-<h3 id="heading-3">K03. Mezera před koncem pr&#225;zdn&#233;ho prvku</h3>
-<p>Naj&#237;t obyčejn&#253; odstup těsně před /&gt;.</p>
-<p>Akce: nahrazen&#237; po kontrole.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Řádek zůstane prázdný: LF/CRLF nebyly součástí nálezu. Nejde o odstranění všech prázdných fyzických řádků.</p>
+<h3 id="heading-3">K03. Mezera před koncem prázdného prvku</h3>
+<p>Najít obyčejný odstup těsně před /&gt;.</p>
+<p>Akce: nahrazení po kontrole.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;empty-line /&gt;</code></pre>
 <p>Nahradit za:</p>
 <pre><code>/&gt;</code></pre>
-<p>V&#253;sledek nahrazen&#237;:</p>
+<p>Výsledek nahrazení:</p>
 <pre><code>&lt;empty-line/&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;empty-line/&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: XML dovoluje obě podoby. Jde o kosmetiku, ne povinnou opravu. Sekvence může b&#253;t v textu či koment&#225;ři, takže glob&#225;ln&#237; změnu kontrolujte.</p>
-<h3 id="heading-4">K04. Jednoduch&#253; pr&#225;zdn&#253; odstavec</h3>
+<p>Omezení a poznámky: XML dovoluje obě podoby. Jde o kosmetiku, ne povinnou opravu. Sekvence může být v textu či komentáři, takže globální změnu kontrolujte.</p>
+<h3 id="heading-4">K04. Jednoduchý prázdný odstavec</h3>
 <p>Zkontrolovat dvojici p bez textu.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;  &lt;/p&gt;&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Nepokr&#253;v&#225; atributy, konce ř&#225;dků, entitu NBSP nebo vnořenou značku. Pr&#225;zdn&#253; odstavec a empty-line nejsou automaticky zaměniteln&#233;.</p>
-<h3 id="heading-5">K05. Dvě empty-line na stejn&#233;m ř&#225;dku</h3>
-<p>Naj&#237;t sousedn&#237; pr&#225;zdn&#233; FB2 ř&#225;dky zapsan&#233; na jedn&#233; fyzick&#233; ř&#225;dce.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Nepokrývá atributy, konce řádků, entitu NBSP nebo vnořenou značku. Prázdný odstavec a empty-line nejsou automaticky zaměnitelné.</p>
+<h3 id="heading-5">K05. Dvě empty-line na stejném řádku</h3>
+<p>Najít sousední prázdné FB2 řádky zapsané na jedné fyzické řádce.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Dovoluje jen obyčejn&#233; mezery a tabul&#225;tory. Konec ř&#225;dku mezi prvky je z&#225;měrně vyloučen. Dvojice pr&#225;zdn&#253;ch ř&#225;dků může oddělovat sc&#233;ny.</p>
-<h3 id="heading-6">K06. Pr&#225;zdn&#225; důležit&#225; metadata</h3>
-<p>Zkontrolovat několik jednoduch&#253;ch metadatov&#253;ch pol&#237; bez hodnoty.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Dovoluje jen obyčejné mezery a tabulátory. Konec řádku mezi prvky je záměrně vyloučen. Dvojice prázdných řádků může oddělovat scény.</p>
+<h3 id="heading-6">K06. Prázdná důležitá metadata</h3>
+<p>Zkontrolovat několik jednoduchých metadatových polí bez hodnoty.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Ne všechna pole jsou vždy povinn&#225;. Regex neověřuje sch&#233;ma FB2, rodiče ani spr&#225;vnost vyplněn&#253;ch hodnot.</p>
-<h3 id="heading-7">K07. Pr&#225;zdn&#233; inline form&#225;tov&#225;n&#237;</h3>
-<p>Naj&#237;t pr&#225;zdn&#233; p&#225;rov&#233; prvky form&#225;tov&#225;n&#237;.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Ne všechna pole jsou vždy povinná. Regex neověřuje schéma FB2, rodiče ani správnost vyplněných hodnot.</p>
+<h3 id="heading-7">K07. Prázdné inline formátování</h3>
+<p>Najít prázdné párové prvky formátování.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: NBSP, atributy a vnořen&#237; vyžaduj&#237; jin&#233; pravidlo. Před odstraněn&#237;m ověřte struktur&#225;ln&#237; v&#253;znam.</p>
-<h3 id="heading-8">K08. Stejn&#233; form&#225;tov&#225;n&#237; vnořen&#233; do sebe</h3>
-<p>Rozlišit strong/strong od spr&#225;vn&#233;ho strong/emphasis.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: NBSP, atributy a vnoření vyžadují jiné pravidlo. Před odstraněním ověřte strukturální význam.</p>
+<h3 id="heading-8">K08. Stejné formátování vnořené do sebe</h3>
+<p>Rozlišit strong/strong od správného strong/emphasis.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;strong&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/strong&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;strong&gt;&lt;strong</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Druh&#253; v&#253;běr nen&#237; nez&#225;visl&#253;: odkaz vyžaduje prvn&#237; n&#225;zev. N&#225;lez neobsahuje cel&#253; prvek a nen&#237; určen k prost&#233;mu smaz&#225;n&#237;.</p>
-<h3 id="heading-9">K09. Možn&#233; HTML značky po importu</h3>
-<p>Naj&#237;t běžn&#233; HTML n&#225;zvy k ověřen&#237; ve FB2.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Druhý výběr není nezávislý: odkaz vyžaduje první název. Nález neobsahuje celý prvek a není určen k prostému smazání.</p>
+<h3 id="heading-9">K09. Možné HTML značky po importu</h3>
+<p>Najít běžné HTML názvy k ověření ve FB2.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;div&gt;Text&lt;/div&gt;</code></pre>
-<p>Oček&#225;van&#233; shody postupně:</p>
+<p>Očekávané shody postupně:</p>
 <pre><code>&lt;div&gt;
 &lt;/div&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Text v koment&#225;ři nebo CDATA může tak&#233; vyhovět. Nenahrazujte b za strong či i za emphasis bez kontroly obsahu a atributů.</p>
-<h3 id="heading-10">K10. Značka velk&#253;mi p&#237;smeny</h3>
-<p>Naj&#237;t běžn&#233; n&#225;zvy značek cel&#233; z velk&#253;ch p&#237;smen.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Text v komentáři nebo CDATA může také vyhovět. Nenahrazujte b za strong či i za emphasis bez kontroly obsahu a atributů.</p>
+<h3 id="heading-10">K10. Značka velkými písmeny</h3>
+<p>Najít běžné názvy značek celé z velkých písmen.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;P&gt;Text&lt;/P&gt;</code></pre>
-<p>Oček&#225;van&#233; shody postupně:</p>
+<p>Očekávané shody postupně:</p>
 <pre><code>&lt;P&gt;
 &lt;/P&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Rozlišov&#225;n&#237; velikosti mus&#237; b&#253;t zapnut&#233;, jinak se najde i obyčejn&#233; p. Vzor neobsahuje všechny leg&#225;ln&#237; XML Unicode n&#225;zvy a nehodnot&#237; jmenn&#233; prostory.</p>
+<p>Omezení a poznámky: Rozlišování velikosti musí být zapnuté, jinak se najde i obyčejné p. Vzor neobsahuje všechny legální XML Unicode názvy a nehodnotí jmenné prostory.</p>
 <h3 id="heading-11">K11. HTML entita NBSP</h3>
-<p>Naj&#237;t doslovn&#233; &amp;nbsp; ve zdrojov&#233;m souboru.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Najít doslovné &amp;nbsp; ve zdrojovém souboru.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&amp;nbsp;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Bez odpov&#237;daj&#237;c&#237; deklarace nen&#237; &amp;nbsp; jednou z pěti předdefinovan&#253;ch XML entit. Ověřte DTD a koment&#225;ře. Nerozv&#237;jejte hromadně všechny entity.</p>
-<h3 id="heading-12">K12. Č&#237;seln&#233; odkazy na znaky</h3>
-<p>Naj&#237;t des&#237;tkov&#253; nebo šestn&#225;ctkov&#253; z&#225;pis znaku.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Bez odpovídající deklarace není &amp;nbsp; jednou z pěti předdefinovaných XML entit. Ověřte DTD a komentáře. Nerozvíjejte hromadně všechny entity.</p>
+<h3 id="heading-12">K12. Číselné odkazy na znaky</h3>
+<p>Najít desítkový nebo šestnáctkový zápis znaku.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;&amp;#160; &amp;#xA0;&lt;/p&gt;</code></pre>
-<p>Oček&#225;van&#233; shody postupně:</p>
+<p>Očekávané shody postupně:</p>
 <pre><code>&amp;#160;
 &amp;#xA0;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Obě formy mohou b&#253;t platn&#233;. Kontroluje se tvar, ne platnost k&#243;dov&#233;ho bodu. Rozveden&#237; &amp;lt; na &lt; v textu může XML poškodit.</p>
-<h3 id="heading-13">K13. Pr&#225;zdn&#233; id</h3>
-<p>Naj&#237;t nevyplněn&#253; běžn&#253; atribut id v obou typech uvozovek.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Obě formy mohou být platné. Kontroluje se tvar, ne platnost kódového bodu. Rozvedení &amp;lt; na &lt; v textu může XML poškodit.</p>
+<h3 id="heading-13">K13. Prázdné id</h3>
+<p>Najít nevyplněný běžný atribut id v obou typech uvozovek.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code> id=&quot;&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Mezera před atributem je souč&#225;st shody. Prefixov&#225; jm&#233;na jako xml:id se nehledaj&#237;. Nov&#233; ID vyžaduje jedinečnost a aktualizovan&#233; odkazy, což regex neřeš&#237;.</p>
+<p>Omezení a poznámky: Mezera před atributem je součást shody. Prefixová jména jako xml:id se nehledají. Nové ID vyžaduje jedinečnost a aktualizované odkazy, což regex neřeší.</p>
 <h3 id="heading-14">K14. Seznam hodnot id</h3>
-<p>Naj&#237;t vyplněn&#233; běžn&#233; identifik&#225;tory pro kontrolu n&#225;zvů.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Najít vyplněné běžné identifikátory pro kontrolu názvů.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code> id=&quot;s1&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Seznam nepotvrzuje jedinečnost ani př&#237;pustnost ID. Souvisej&#237;c&#237; objekty přejmenov&#225;vejte funkc&#237; FBE.</p>
-<h3 id="heading-15">K15. Extern&#237; odkazy HTTP(S)</h3>
-<p>Naj&#237;t href s běžn&#253;m XLink prefixem a extern&#237; adresou.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Seznam nepotvrzuje jedinečnost ani přípustnost ID. Související objekty přejmenovávejte funkcí FBE.</p>
+<h3 id="heading-15">K15. Externí odkazy HTTP(S)</h3>
+<p>Najít href s běžným XLink prefixem a externí adresou.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a l:href=&quot;https://example.test/book&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Hled&#225; atribut, ne všechny URL v textu. Zahrnuje l a xlink; jin&#233; prefixy doplňte zvl&#225;šť. Neověřuje dostupnost adresy.</p>
-<h3 id="heading-16">K16. M&#237;stn&#237; odkazy file://</h3>
-<p>Naj&#237;t m&#237;stn&#237; souborov&#253; odkaz, kter&#253; nemus&#237; u čten&#225;ře fungovat.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Hledá atribut, ne všechny URL v textu. Zahrnuje l a xlink; jiné prefixy doplňte zvlášť. Neověřuje dostupnost adresy.</p>
+<h3 id="heading-16">K16. Místní odkazy file://</h3>
+<p>Najít místní souborový odkaz, který nemusí u čtenáře fungovat.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a xlink:href=&quot;file:///C:/Book/image.png&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Neotv&#237;rejte automaticky nezn&#225;m&#233; adresy. N&#225;lez nerozhodne, zda soubor vložit, odkaz změnit nebo odstranit.</p>
-<h3 id="heading-17">K17. Pr&#225;zdn&#253; c&#237;l odkazu</h3>
-<p>Naj&#237;t běžn&#253; pr&#225;zdn&#253; XLink odkaz.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Neotvírejte automaticky neznámé adresy. Nález nerozhodne, zda soubor vložit, odkaz změnit nebo odstranit.</p>
+<h3 id="heading-17">K17. Prázdný cíl odkazu</h3>
+<p>Najít běžný prázdný XLink odkaz.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a l:href=&quot;&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code> l:href=&quot;&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Zvl&#225;šť kontrolujte pr&#225;zdn&#253; viditeln&#253; text a zcela chyběj&#237;c&#237; atribut href: jde o odlišn&#233; př&#237;pady.</p>
-<h3 id="heading-18">K18. C&#237;l #undefined</h3>
-<p>Naj&#237;t doslovn&#253; provizorn&#237; odkaz.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Zvlášť kontrolujte prázdný viditelný text a zcela chybějící atribut href: jde o odlišné případy.</p>
+<h3 id="heading-18">K18. Cíl #undefined</h3>
+<p>Najít doslovný provizorní odkaz.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a xlink:href=&quot;#undefined&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Ověřte skutečnou existenci objektu. undefined nen&#237; XML zak&#225;zan&#253; n&#225;zev, i když často signalizuje nedokončen&#233; připojen&#237;.</p>
+<p>Omezení a poznámky: Ověřte skutečnou existenci objektu. undefined není XML zakázaný název, i když často signalizuje nedokončené připojení.</p>
 <h3 id="heading-19">K19. Odkazy s prefixem bookmark</h3>
-<p>Naj&#237;t typick&#233; konverzn&#237; c&#237;le bookmark, nikoli všechny vnitřn&#237; odkazy.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Najít typické konverzní cíle bookmark, nikoli všechny vnitřní odkazy.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a l:href=&quot;#bookmark12&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Samotn&#233; href=&quot;#...&quot; najde libovoln&#253; vnitřn&#237; odkaz. bookmark nedokazuje nadbytečnost; mazat až po posouzen&#237;.</p>
-<h3 id="heading-20">K20. Zpětn&#233; odkazy Word/FBD</h3>
-<p>Naj&#237;t obvykl&#225; _ftnref a _ednref v c&#237;lech.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Samotné href=&quot;#...&quot; najde libovolný vnitřní odkaz. bookmark nedokazuje nadbytečnost; mazat až po posouzení.</p>
+<h3 id="heading-20">K20. Zpětné odkazy Word/FBD</h3>
+<p>Najít obvyklá _ftnref a _ednref v cílech.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a l:href=&quot;#_ftnref1&quot;&gt;Back&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Zpětn&#253; odkaz může sloužit navigaci. Neodstraňujte jej jen podle původu n&#225;zvu.</p>
-<h3 id="heading-21">K21. Odkazy pozn&#225;mek bez z&#225;vislosti na pořad&#237; atributů</h3>
-<p>Naj&#237;t otev&#237;rac&#237; a s type=note a vnitřn&#237;m XLink-href v libovoln&#233;m pořad&#237;.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Zpětný odkaz může sloužit navigaci. Neodstraňujte jej jen podle původu názvu.</p>
+<h3 id="heading-21">K21. Odkazy poznámek bez závislosti na pořadí atributů</h3>
+<p>Najít otevírací a s type=note a vnitřním XLink-href v libovolném pořadí.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Povoluje i type před href, xlink a jednoduch&#233; uvozovky. Všechny kontrolovan&#233; atributy mus&#237; b&#253;t na stejn&#233;m fyzick&#233;m ř&#225;dku. Hodnoty s &gt;, koment&#225;ře a neobvykl&#233; značky potřebuj&#237; XML parser. C&#237;l pozn&#225;mky se nekontroluje.</p>
-<h3 id="heading-22">K22. Možn&#233; č&#237;seln&#233; značky pozn&#225;mek</h3>
-<p>Naj&#237;t č&#237;sla v hranat&#253;ch, složen&#253;ch nebo kulat&#253;ch z&#225;vork&#225;ch.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Povoluje i type před href, xlink a jednoduché uvozovky. Všechny kontrolované atributy musí být na stejném fyzickém řádku. Hodnoty s &gt;, komentáře a neobvyklé značky potřebují XML parser. Cíl poznámky se nekontroluje.</p>
+<h3 id="heading-22">K22. Možné číselné značky poznámek</h3>
+<p>Najít čísla v hranatých, složených nebo kulatých závorkách.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;Text [12], {3}, (4).&lt;/p&gt;</code></pre>
-<p>Oček&#225;van&#233; shody postupně:</p>
+<p>Očekávané shody postupně:</p>
 <pre><code>[12]
 {3}
 (4)</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Mohou to b&#253;t bibliografick&#233; odkazy, č&#237;sla vzorců, vysvětlen&#237; nebo obyčejn&#253; text. Postup nevytv&#225;ř&#237; pozn&#225;mky ani nehl&#237;d&#225; jedinečn&#233; č&#237;slov&#225;n&#237;.</p>
-<h3 id="heading-23">K23. Zapomenut&#233; hodnoty Your/Name</h3>
-<p>Zkontrolovat běžn&#233; anglick&#233; z&#225;stupn&#233; hodnoty jm&#233;na v metadatech.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Mohou to být bibliografické odkazy, čísla vzorců, vysvětlení nebo obyčejný text. Postup nevytváří poznámky ani nehlídá jedinečné číslování.</p>
+<h3 id="heading-23">K23. Zapomenuté hodnoty Your/Name</h3>
+<p>Zkontrolovat běžné anglické zástupné hodnoty jména v metadatech.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Ověřte autora/tvůrce souboru a prav&#233; jm&#233;no. Automaticky nepřeb&#237;rejte &#250;daje jin&#233; edice.</p>
-<h3 id="heading-24">K24. Nepřipojen&#225; ilustrace #undefined</h3>
-<p>Naj&#237;t image odkazuj&#237;c&#237; na obvykl&#253; placeholder.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Ověřte autora/tvůrce souboru a pravé jméno. Automaticky nepřebírejte údaje jiné edice.</p>
+<h3 id="heading-24">K24. Nepřipojená ilustrace #undefined</h3>
+<p>Najít image odkazující na obvyklý placeholder.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: FB2 zpravidla použ&#237;v&#225; XLink-href, ne HTML-src. Binary s dan&#253;m ID ověřte zvl&#225;šť. Chyběj&#237;c&#237; obraz a chybn&#253; odkaz maj&#237; jin&#233; př&#237;činy.</p>
+<p>Omezení a poznámky: FB2 zpravidla používá XLink-href, ne HTML-src. Binary s daným ID ověřte zvlášť. Chybějící obraz a chybný odkaz mají jiné příčiny.</p>
 <h3 id="heading-25">K25. Deklarace windows-1251</h3>
-<p>Naj&#237;t &#250;daj starš&#237;ho k&#243;dov&#225;n&#237; v XML deklaraci.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Najít údaj staršího kódování v XML deklaraci.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Sama o sobě to nen&#237; chyba. Přeps&#225;n&#237; windows-1251 na utf-8 nepřek&#243;duje bajty. Použijte uložen&#237; či konverzi odpov&#237;daj&#237;c&#237; deklaraci.</p>
-<h3 id="heading-26">K26. Ampersand bez zn&#225;m&#233; standardn&#237; entity</h3>
-<p>Naj&#237;t &amp; před z&#225;pisem, kter&#253; neodpov&#237;d&#225; běžn&#253;m standardn&#237;m odkazům.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Sama o sobě to není chyba. Přepsání windows-1251 na utf-8 nepřekóduje bajty. Použijte uložení či konverzi odpovídající deklaraci.</p>
+<h3 id="heading-26">K26. Ampersand bez známé standardní entity</h3>
+<p>Najít &amp; před zápisem, který neodpovídá běžným standardním odkazům.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;A &amp; B&lt;/p&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&amp;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: V CDATA a koment&#225;ři je &amp; dovolen a DTD může definovat dalš&#237; entity. Jde o diagnostick&#253; filtr, ne valid&#225;tor. &amp; → &amp;amp; bez kontextu způsob&#237; dvojit&#233; escapov&#225;n&#237;.</p>
-<h3 id="heading-27">K27. Běžn&#233; vnitřn&#237; odkazy</h3>
-<p>Naj&#237;t m&#237;stn&#237; c&#237;l #id bez z&#225;měny za bookmark.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: V CDATA a komentáři je &amp; dovolen a DTD může definovat další entity. Jde o diagnostický filtr, ne validátor. &amp; → &amp;amp; bez kontextu způsobí dvojité escapování.</p>
+<h3 id="heading-27">K27. Běžné vnitřní odkazy</h3>
+<p>Najít místní cíl #id bez záměny za bookmark.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>l:href=&quot;#note1&quot;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Ukazuje z&#225;pis odkazu, nepotvrzuje pr&#225;vě jeden c&#237;lov&#253; id. Chyběj&#237;c&#237; a duplicitn&#237; c&#237;le potřebuj&#237; anal&#253;zu dokumentu.</p>
-<h3 id="heading-28">K28. Rozdělit dvě empty-line po jednoř&#225;dkov&#233;m hled&#225;n&#237;</h3>
-<p>Uk&#225;zat rozd&#237;l mezi omezen&#237;m hled&#225;n&#237; a vložen&#237;m nov&#233;ho ř&#225;dku n&#225;hradou.</p>
-<p>Akce: jedno kontrolovan&#233; nahrazen&#237;.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Ukazuje zápis odkazu, nepotvrzuje právě jeden cílový id. Chybějící a duplicitní cíle potřebují analýzu dokumentu.</p>
+<h3 id="heading-28">K28. Rozdělit dvě empty-line po jednořádkovém hledání</h3>
+<p>Ukázat rozdíl mezi omezením hledání a vložením nového řádku náhradou.</p>
+<p>Akce: jedno kontrolované nahrazení.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
 <p>Nahradit za:</p>
 <pre><code>\1\r\n\2</code></pre>
-<p>V&#253;sledek nahrazen&#237;:</p>
+<p>Výsledek nahrazení:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Scintilla rozvine n&#225;hradu do CRLF. Pro dokument LF použijte \1\n\2. Nejde o obecn&#253; XML form&#225;tovač ani zapnut&#237; v&#237;ceř&#225;dkov&#233;ho hled&#225;n&#237;.</p>
-<h3 id="heading-29">K29. Dvojit&#233; mezery v jednoduch&#233;m XML textu</h3>
-<p>Naj&#237;t jednoduch&#253; &#250;sek mezi tagy s n&#225;sobn&#253;mi mezerami.</p>
-<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
-<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
-<p>Naj&#237;t:</p>
+<p>Omezení a poznámky: Scintilla rozvine náhradu do CRLF. Pro dokument LF použijte \1\n\2. Nejde o obecný XML formátovač ani zapnutí víceřádkového hledání.</p>
+<h3 id="heading-29">K29. Dvojité mezery v jednoduchém XML textu</h3>
+<p>Najít jednoduchý úsek mezi tagy s násobnými mezerami.</p>
+<p>Akce: pouze vyhledání a kontrola.</p>
+<p>„Regulární výraz“ zapnuto; „Pouze celá slova“ vypnuto. „Rozlišovat velikost písmen“ zapnuto.</p>
+<p>Najít:</p>
 <pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
-<p>V&#253;choz&#237; testovac&#237; text:</p>
+<p>Výchozí testovací text:</p>
 <pre><code>&lt;p&gt;one  two&lt;/p&gt;</code></pre>
-<p>Oček&#225;van&#225; shoda:</p>
+<p>Očekávaná shoda:</p>
 <pre><code>&gt;one  two&lt;</code></pre>
-<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<p>Protipříklad, který se nemá najít:</p>
 <pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
-<p>Omezen&#237; a pozn&#225;mky: Shoda obsahuje &#250;hlov&#233; oddělovače a cel&#253; jednoduch&#253; fragment. Pro slova je obvykle vhodnějš&#237; N&#225;vrh. Nenahrazujte cel&#253; &#250;sek XML jedinou mezerou.</p>
+<p>Omezení a poznámky: Shoda obsahuje úhlové oddělovače a celý jednoduchý fragment. Pro slova je obvykle vhodnější Návrh. Nenahrazujte celý úsek XML jedinou mezerou.</p>
 <h2 id="section-12">12. Proč regex nenahrazuje validaci XML</h2>
-<p>V&#253;raz může uk&#225;zat, že fragment vypad&#225; jako požadovan&#225; posloupnost znaků. Neověř&#237; spr&#225;vnost cel&#233;ho dokumentu: vnořen&#237;, sch&#233;ma FB2, deklarace jmenn&#253;ch prostorů, jedinečnost ID a existenci c&#237;lov&#253;ch prvků.</p>
-<p>Dvě stejn&#225; <code>id</code> na odlišn&#253;ch fyzick&#253;ch ř&#225;dc&#237;ch nelze spolehlivě odhalit jedn&#237;m srovn&#225;n&#237;m současn&#233;ho regex. Tot&#233;ž plat&#237; pro chyběj&#237;c&#237; c&#237;l jinde v knize. Použijte kontrolu FBE a struktur&#225;ln&#237; anal&#253;zu.</p>
-<p>Nerozv&#237;jejte všechny XML entity: <code>&amp;lt;</code> a <code>&amp;amp;</code> často chr&#225;n&#237; text před přeměnou na značky. Nemažte vše podobn&#233; HTML uvnitř CDATA, koment&#225;řů a citac&#237; k&#243;du.</p>
-<p>Změna značky mus&#237; zachovat p&#225;r, atributy a obsah. Přeps&#225;n&#237; samotn&#233;ho otev&#237;rac&#237;ho <code>&lt;strong&gt;</code> nech&#225; star&#233; uzavřen&#237;. Př&#237;klad se zpětn&#253;m odkazem nezaručuje bezpečnost každ&#233; n&#225;sledn&#233; n&#225;hrady.</p>
-<h2 id="section-13">13. Čast&#233; chyby</h2>
-<h3 id="section-13-1">13.1. M&#237;sto velk&#253;ch značek se nach&#225;zej&#237; mal&#233;</h3>
-<p>Zapněte Rozlišovat velikost p&#237;smen. V XML to nen&#237; kosmetika; <code>[A-Z]</code> bez rozlišov&#225;n&#237; přest&#225;v&#225; kontrolovat pr&#225;vě velk&#225; p&#237;smena.</p>
-<h3 id="section-13-2">13.2. V n&#225;hradě se objev&#237; doslovn&#233; $1</h3>
-<p>Použijte <code>\1</code>. Source n&#225;hrada FBE vede přes Scintillu, ne JavaScript nebo form&#225;t <code>$1</code> jin&#233;ho API.</p>
+<p>Výraz může ukázat, že fragment vypadá jako požadovaná posloupnost znaků. Neověří správnost celého dokumentu: vnoření, schéma FB2, deklarace jmenných prostorů, jedinečnost ID a existenci cílových prvků.</p>
+<p>Dvě stejná <code>id</code> na odlišných fyzických řádcích nelze spolehlivě odhalit jedním srovnáním současného regex. Totéž platí pro chybějící cíl jinde v knize. Použijte kontrolu FBE a strukturální analýzu.</p>
+<p>Nerozvíjejte všechny XML entity: <code>&amp;lt;</code> a <code>&amp;amp;</code> často chrání text před přeměnou na značky. Nemažte vše podobné HTML uvnitř CDATA, komentářů a citací kódu.</p>
+<p>Změna značky musí zachovat pár, atributy a obsah. Přepsání samotného otevíracího <code>&lt;strong&gt;</code> nechá staré uzavření. Příklad se zpětným odkazem nezaručuje bezpečnost každé následné náhrady.</p>
+<h2 id="section-13">13. Časté chyby</h2>
+<h3 id="section-13-1">13.1. Místo velkých značek se nacházejí malé</h3>
+<p>Zapněte Rozlišovat velikost písmen. V XML to není kosmetika; <code>[A-Z]</code> bez rozlišování přestává kontrolovat právě velká písmena.</p>
+<h3 id="section-13-2">13.2. V náhradě se objeví doslovné $1</h3>
+<p>Použijte <code>\1</code>. Source náhrada FBE vede přes Scintillu, ne JavaScript nebo formát <code>$1</code> jiného API.</p>
 <h3 id="section-13-3">13.3. Nefunguje \p, \K nebo lookbehind</h3>
-<p>To patř&#237; k jin&#233;mu profilu. Textov&#253; &#250;kol přesuňte do N&#225;vrhu, XML přepište pomoc&#237; v&#253;slovn&#253;ch tř&#237;d, zachycen&#237; kontextu, nezachycovac&#237;ch skupin a lookahead.</p>
-<h3 id="section-13-4">13.4. Sousedn&#237; značky se nenajdou</h3>
-<p>Zkontrolujte fyzick&#253; konec ř&#225;dku, mezeru před <code>/&gt;</code>, jednoduch&#233; uvozovky, doplňuj&#237;c&#237; atributy a prefix jmenn&#233;ho prostoru. Sousedstv&#237; v sazbě zdroje nen&#237; stejn&#233; jako sousedstv&#237; ve stromu XML.</p>
-<h3 id="section-13-5">13.5. Pozn&#225;mka se nenajde při jin&#233;m pořad&#237; atributů</h3>
-<p>Vzor „nejprve type, potom href“ na pořad&#237; z&#225;vis&#237;. K21 ověřuje obě podm&#237;nky oddělen&#253;mi lookahead. Je-li značka v&#237;ceř&#225;dkov&#225;, hledejte samotn&#253; atribut nebo pracujte se strukturou.</p>
-<h3 id="section-13-6">13.6. strong/emphasis je chybně považov&#225;no za vadn&#233; vnořen&#237;</h3>
-<p>Různ&#233; platn&#233; styly se směj&#237; vnořovat. Pro opakov&#225;n&#237; stejn&#233;ho n&#225;zvu je nutn&#253; odkaz jako K08, ne dvě nez&#225;visl&#233; volby ze stejn&#233;ho seznamu.</p>
-<h3 id="section-13-7">13.7. „Bookmark“ nach&#225;z&#237; všechny pozn&#225;mky</h3>
-<p>Vnitřn&#237; odkaz s <code>#</code> nen&#237; s&#225;m o sobě konverzn&#237; bookmark. Oddělte obecnou kontrolu K27 od konkr&#233;tn&#237;ho prefixu K19.</p>
-<h3 id="section-13-8">13.8. N&#225;hrada poškod&#237; viditeln&#253; text</h3>
-<p>V K&#243;du mohou mezery a fragmenty patřit textu, atributu, koment&#225;ři nebo bin&#225;rn&#237;m datům. Vraťte změnu a z&#250;žte rozsah či vzor. N&#225;zev „bezpečn&#225; n&#225;hrada“ neruš&#237; potřebu XML kontextu.</p>
-<h2 id="section-14">14. Omezen&#237; profilu Source</h2>
-<p>Nepouž&#237;vejte UCP, PCRE2 vlastnosti, lookbehind, modern&#237; pojmenovan&#233; skupiny JavaScriptu/PCRE2, atomick&#233; skupiny, přivlastňovac&#237; kvantifik&#225;tory, branch reset, podprogramy, PCRE2 verby, <code>\K</code>, <code>\G</code> a form&#225;tovac&#237; př&#237;kazy n&#225;hrad Design.</p>
-<p>Inline volby PCRE2 nenahrazuj&#237; nastaven&#237; dialogu K&#243;du. Funkce novějš&#237;ho JavaScriptu nejsou automaticky souč&#225;st&#237; C++11 ECMAScript.</p>
-<p>MatchOnLines zpracov&#225;v&#225; jednotliv&#233; ř&#225;dky bez ohledu na z&#225;pis konce ř&#225;dku ve vzoru. Kompilace jin&#253;m lok&#225;ln&#237;m modulem nedokazuje kompatibilitu FBE.</p>
-<p>Pro Unicode slova a složitou korekturu použijte N&#225;vrh. Pro strukturu jsou určeny XML/FB2 n&#225;stroje, nikoli neomezen&#233; <code>.*</code> kompenzuj&#237;c&#237; všechny limity.</p>
-<h2 id="section-15">15. V&#253;kon a dlouh&#233; ř&#225;dky XML</h2>
-<p>Kr&#225;tk&#253; vzor nen&#237; nutně rychl&#253;. Neomezen&#225; opakov&#225;n&#237; a dlouh&#233; soupeř&#237;c&#237; alternativy mohou zpomalit obrovsk&#233; ř&#225;dky, zvl&#225;šť když jedin&#225; ř&#225;dka obsahuje cel&#253; dokument nebo velk&#233; binary.</p>
-<p>Zač&#237;nejte konkr&#233;tn&#237;m n&#225;zvem značky či atributu a preferujte omezen&#233; tř&#237;dy. Samostatn&#233; postupy se l&#233;pe kontroluj&#237; a vracej&#237; než hled&#225;n&#237; všech mysliteln&#253;ch chyb najednou.</p>
-<p>Nespojujte cel&#233; XML do jednoho ř&#225;dku kvůli obch&#225;zen&#237; MatchOnLines. Změn&#237;te dokument a nezaruč&#237;te přijatelnou rychlost.</p>
-<h2 id="section-16">16. Kontrola po nahrazen&#237;</h2>
-<p>Porovnejte oček&#225;van&#253; a skutečn&#253; rozsah. U skupin ověřte uvozovky, prefixy, &#250;hlov&#233; z&#225;vorky a uzav&#237;rac&#237; značky. Zkontrolujte, že se nedotkly koment&#225;ře, CDATA a binary.</p>
-<p>Validujte FB2, uložte a po v&#253;znamn&#253;ch změn&#225;ch znovu otevřete. Ověřte přep&#237;n&#225;n&#237; K&#243;d ↔ N&#225;vrh, pozn&#225;mky, obr&#225;zky a viditeln&#253; text. Při přejmenov&#225;n&#237; ID kontrolujte objekt i všechny souvisej&#237;c&#237; odkazy.</p>
+<p>To patří k jinému profilu. Textový úkol přesuňte do Návrhu, XML přepište pomocí výslovných tříd, zachycení kontextu, nezachycovacích skupin a lookahead.</p>
+<h3 id="section-13-4">13.4. Sousední značky se nenajdou</h3>
+<p>Zkontrolujte fyzický konec řádku, mezeru před <code>/&gt;</code>, jednoduché uvozovky, doplňující atributy a prefix jmenného prostoru. Sousedství v sazbě zdroje není stejné jako sousedství ve stromu XML.</p>
+<h3 id="section-13-5">13.5. Poznámka se nenajde při jiném pořadí atributů</h3>
+<p>Vzor „nejprve type, potom href“ na pořadí závisí. K21 ověřuje obě podmínky oddělenými lookahead. Je-li značka víceřádková, hledejte samotný atribut nebo pracujte se strukturou.</p>
+<h3 id="section-13-6">13.6. strong/emphasis je chybně považováno za vadné vnoření</h3>
+<p>Různé platné styly se smějí vnořovat. Pro opakování stejného názvu je nutný odkaz jako K08, ne dvě nezávislé volby ze stejného seznamu.</p>
+<h3 id="section-13-7">13.7. „Bookmark“ nachází všechny poznámky</h3>
+<p>Vnitřní odkaz s <code>#</code> není sám o sobě konverzní bookmark. Oddělte obecnou kontrolu K27 od konkrétního prefixu K19.</p>
+<h3 id="section-13-8">13.8. Náhrada poškodí viditelný text</h3>
+<p>V Kódu mohou mezery a fragmenty patřit textu, atributu, komentáři nebo binárním datům. Vraťte změnu a zúžte rozsah či vzor. Název „bezpečná náhrada“ neruší potřebu XML kontextu.</p>
+<h2 id="section-14">14. Omezení profilu Source</h2>
+<p>Nepoužívejte UCP, PCRE2 vlastnosti, lookbehind, moderní pojmenované skupiny JavaScriptu/PCRE2, atomické skupiny, přivlastňovací kvantifikátory, branch reset, podprogramy, PCRE2 verby, <code>\K</code>, <code>\G</code> a formátovací příkazy náhrad Design.</p>
+<p>Inline volby PCRE2 nenahrazují nastavení dialogu Kódu. Funkce novějšího JavaScriptu nejsou automaticky součástí C++11 ECMAScript.</p>
+<p>MatchOnLines zpracovává jednotlivé řádky bez ohledu na zápis konce řádku ve vzoru. Kompilace jiným lokálním modulem nedokazuje kompatibilitu FBE.</p>
+<p>Pro Unicode slova a složitou korekturu použijte Návrh. Pro strukturu jsou určeny XML/FB2 nástroje, nikoli neomezené <code>.*</code> kompenzující všechny limity.</p>
+<h2 id="section-15">15. Výkon a dlouhé řádky XML</h2>
+<p>Krátký vzor není nutně rychlý. Neomezená opakování a dlouhé soupeřící alternativy mohou zpomalit obrovské řádky, zvlášť když jediná řádka obsahuje celý dokument nebo velké binary.</p>
+<p>Začínejte konkrétním názvem značky či atributu a preferujte omezené třídy. Samostatné postupy se lépe kontrolují a vracejí než hledání všech myslitelných chyb najednou.</p>
+<p>Nespojujte celé XML do jednoho řádku kvůli obcházení MatchOnLines. Změníte dokument a nezaručíte přijatelnou rychlost.</p>
+<h2 id="section-16">16. Kontrola po nahrazení</h2>
+<p>Porovnejte očekávaný a skutečný rozsah. U skupin ověřte uvozovky, prefixy, úhlové závorky a uzavírací značky. Zkontrolujte, že se nedotkly komentáře, CDATA a binary.</p>
+<p>Validujte FB2, uložte a po významných změnách znovu otevřete. Ověřte přepínání Kód ↔ Návrh, poznámky, obrázky a viditelný text. Při přejmenování ID kontrolujte objekt i všechny související odkazy.</p>
 <h2 id="section-17">17. Zdroje a rozsah platnosti</h2>
-<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Ofici&#225;ln&#237; dokumentace Scintilla, Searching: C++11 režim, vyhled&#225;vac&#237; volby a SCI_REPLACETARGETRE.</a></p>
-<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 a Namespaces in XML: n&#225;zvy, atributy, entity a jmenn&#233; prostory.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Oficiální dokumentace Scintilla, Searching: C++11 režim, vyhledávací volby a SCI_REPLACETARGETRE.</a></p>
+<p>[S2] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 a Namespaces in XML: názvy, atributy, entity a jmenné prostory.</a> · <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

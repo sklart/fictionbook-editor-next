@@ -7,15 +7,15 @@
 <p>Een volledig overzicht van zoeken en vervangen in de XML-bron van boeken in FictionBook Editor Next.</p>
 <p>Ontwerp wordt beschreven in regex-design.md. Deze recepten gelden voor Code; neem geen PCRE2-patronen over zonder controle.</p>
 <h2 id="section-1">1. Waarvoor zoeken in Code dient</h2>
-<p>Code toont XML-tags, attributen, verwijzingen, entiteiten en boektekst. Het is geschikt voor FB2-controle: lege elementen, ge&#239;mporteerde HTML-tags, tijdelijke verwijzingen, onverwachte attributen en technische conversieresten.</p>
+<p>Code toont XML-tags, attributen, verwijzingen, entiteiten en boektekst. Het is geschikt voor FB2-controle: lege elementen, geïmporteerde HTML-tags, tijdelijke verwijzingen, onverwachte attributen en technische conversieresten.</p>
 <aside class="note" id="note-2"><strong>Opmerking</strong><p>Regex onderzoekt XML-tekst, geen geparseerde DOM-boom. Controleer structuur met een XML-hulpmiddel.</p></aside>
-<p>Voor gewone tekstcorrectie is Ontwerp vaak handiger. In XML kan een treffer ook in een attribuut, commentaar, CDATA, bestandsnaam of binaire inhoud zitten. Houd daar rekening mee v&#243;&#243;r vervanging.</p>
+<p>Voor gewone tekstcorrectie is Ontwerp vaak handiger. In XML kan een treffer ook in een attribuut, commentaar, CDATA, bestandsnaam of binaire inhoud zitten. Houd daar rekening mee vóór vervanging.</p>
 <p>“Alleen zoeken en controleren” geeft kandidaten, geen bewijs dat XML of tekst fout is. Zelfs spaties kunnen inhoudelijk van belang zijn. Geen vervanging is universeel veilig voor willekeurige XML.</p>
 <h2 id="section-2">2. Snel beginnen</h2>
 <p>Bewaar een kopie, ga naar Code, open Zoeken en schakel Reguliere expressie in. XML-voorbeelden gebruiken normaal hoofdlettergevoeligheid met Alleen hele woorden uit. Tag- en attribuutgrenzen staan in het patroon.</p>
 <p>Eenvoudige lege alinea:</p>
 <pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
-<p>Vindt <code>&lt;p&gt;&lt;/p&gt;</code> en <code>&lt;p&gt;   &lt;/p&gt;</code> op &#233;&#233;n fysieke regel, niet <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Vervang niet automatisch door niets of <code>&lt;empty-line/&gt;</code>; de structurele functie kan verschillen.</p>
+<p>Vindt <code>&lt;p&gt;&lt;/p&gt;</code> en <code>&lt;p&gt;   &lt;/p&gt;</code> op één fysieke regel, niet <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Vervang niet automatisch door niets of <code>&lt;empty-line/&gt;</code>; de structurele functie kan verschillen.</p>
 <section class="example" id="example-1"><strong>Voorbeeld</strong><pre><code>Zoeken: &lt;p&gt;[ \t]*&lt;/p&gt;
 Invoer: &lt;p&gt;   &lt;/p&gt;
 Overeenkomst: &lt;p&gt;   &lt;/p&gt;
@@ -43,12 +43,12 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>met:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Voor XML kan dit dezelfde opeenvolging van elementen zijn. Voor de huidige FBE-regex past de eerste in &#233;&#233;n treffer; de tweede overschrijdt een regelgrens en past niet.</p>
-<p><code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> of een klasse voor “alles” toevoegen heft de beperking niet op. De engine ontvangt de twee regels niet als &#233;&#233;n fragment. Daarvoor is een codewijziging in het zoekpad nodig.</p>
-<p>Regelgewijs zoeken verhindert niet dat een vervanging een regeleinde invoegt. Dat is een andere handeling, ge&#239;llustreerd in K28. Onderscheid zoeken over een grens van het invoegen van zo’n grens.</p>
+<p>Voor XML kan dit dezelfde opeenvolging van elementen zijn. Voor de huidige FBE-regex past de eerste in één treffer; de tweede overschrijdt een regelgrens en past niet.</p>
+<p><code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> of een klasse voor “alles” toevoegen heft de beperking niet op. De engine ontvangt de twee regels niet als één fragment. Daarvoor is een codewijziging in het zoekpad nodig.</p>
+<p>Regelgewijs zoeken verhindert niet dat een vervanging een regeleinde invoegt. Dat is een andere handeling, geïllustreerd in K28. Onderscheid zoeken over een grens van het invoegen van zo’n grens.</p>
 <h3 id="section-4-1">4.1. Werken met meerregelige XML</h3>
 <p>Zoek voor een attribuut op een eigen regel vaak alleen het attribuut, zonder hele openingstag. Gebruik voor relaties tussen regels structurele FBE-functies, validator, script of XML-gereedschap.</p>
-<p>Verwijder niet alle regeleinden voor &#233;&#233;n regex: dat kan tekst, commentaar, CDATA en leesbaarheid veranderen. Bepaal eerst of de taak werkelijk een meerregelige treffer vraagt.</p>
+<p>Verwijder niet alle regeleinden voor één regex: dat kan tekst, commentaar, CDATA en leesbaarheid veranderen. Bepaal eerst of de taak werkelijk een meerregelige treffer vraagt.</p>
 <h2 id="section-5">5. Tekens en escaping</h2>
 <p>Een gewoon teken staat voor zichzelf. Gebruik een backslash om een metateken letterlijk te zoeken.</p>
 <div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Gewenste tekst</th><th scope="col">Expressie</th></tr></thead><tbody>
@@ -60,11 +60,11 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <tr><td>Nummer tussen vierkante haken</td><td><code>\[[0-9]+\]</code></td></tr>
 <tr><td>Backslash</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p><code>.</code> staat voor &#233;&#233;n teken in het beschikbare regelfragment. Bij UTF-8 hangt de echte verwerking af van Scintilla’s adapter en de standaardbibliotheek. Meet emoji niet op de aanname dat &#233;&#233;n punt altijd &#233;&#233;n zichtbaar teken is.</p>
+<p><code>.</code> staat voor één teken in het beschikbare regelfragment. Bij UTF-8 hangt de echte verwerking af van Scintilla’s adapter en de standaardbibliotheek. Meet emoji niet op de aanname dat één punt altijd één zichtbaar teken is.</p>
 <p><code>\r</code> en <code>\n</code> zijn CR/LF-syntaxis maar laten de huidige zoekopdracht geen regels oversteken. Gebruik <code>[ \t]</code> voor gewone spaties en tabs.</p>
 <p>PCRE2’s <code>\Q...\E</code> is hier geen overdraagbare manier om letterlijke tekst af te bakenen. Escape de speciale tekens afzonderlijk.</p>
 <h2 id="section-6">6. Klassen, bereiken en woordgrenzen</h2>
-<p><code>[abc]</code> vindt &#233;&#233;n teken uit de verzameling, <code>[a-z]</code> &#233;&#233;n uit het bereik en <code>[^abc]</code> &#233;&#233;n daarbuiten. Voeg zo nodig herhaling toe: <code>[0-9]+</code>.</p>
+<p><code>[abc]</code> vindt één teken uit de verzameling, <code>[a-z]</code> één uit het bereik en <code>[^abc]</code> één daarbuiten. Voeg zo nodig herhaling toe: <code>[0-9]+</code>.</p>
 <div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Klasse</th><th scope="col">Praktische betekenis</th></tr></thead><tbody>
 <tr><td class="syntax"><code>[0-9]</code></td><td>ASCII-cijfer</td></tr>
 <tr><td class="syntax"><code>[A-Za-z]</code></td><td>Latijnse ASCII-letter</td></tr>
@@ -82,9 +82,9 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Verwijderen van de treffer wist de regel zelf niet: het regeleinde was geen onderdeel van de overeenkomst.</p>
 <div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kwantor</th><th scope="col">Herhalingen</th></tr></thead><tbody>
-<tr><td class="syntax"><code>?</code></td><td>Nul of &#233;&#233;n</td></tr>
+<tr><td class="syntax"><code>?</code></td><td>Nul of één</td></tr>
 <tr><td class="syntax"><code>*</code></td><td>Nul of meer</td></tr>
-<tr><td class="syntax"><code>+</code></td><td>E&#233;n of meer</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Eén of meer</td></tr>
 <tr><td class="syntax"><code>{3}</code></td><td>Precies drie</td></tr>
 <tr><td class="syntax"><code>{3,}</code></td><td>Minstens drie</td></tr>
 <tr><td class="syntax"><code>{2,5}</code></td><td>Twee tot vijf</td></tr>
@@ -123,14 +123,14 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>PCRE2-notatie <code>\x{00A0}</code> voegt hier geen Unicode-teken in. Gebruik de echte NBSP. Design-opdrachten <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> regelen hier geen letterkast of opmaak.</p>
 <h3 id="section-9-3">9.3. Verwijderen en XML behouden</h3>
 <p>Een leeg veld verwijdert het gevonden bereik. Het wissen van een leeg element, attribuut of verwijzing kan het document beschadigen, ondanks een geslaagde zoekopdracht. Structurele recepten zijn daarom vooral diagnostisch.</p>
-<p>Een <code>id</code> maar op &#233;&#233;n plaats wijzigen kan verwijzingen naar de oude waarde achterlaten. Gebruik FBE’s ID-hernoeming voor gekoppelde objecten, niet onafhankelijke tekstvervangingen.</p>
+<p>Een <code>id</code> maar op één plaats wijzigen kan verwijzingen naar de oude waarde achterlaten. Gebruik FBE’s ID-hernoeming voor gekoppelde objecten, niet onafhankelijke tekstvervangingen.</p>
 <h2 id="section-10">10. XML-recepten lezen</h2>
-<p>XML is hoofdlettergevoelig: <code>&lt;p&gt;</code> en <code>&lt;P&gt;</code> zijn andere namen. Attribuutvolgorde bepaalt hun betekenis niet. Waarden mogen enkele of dubbele quotes hebben en spaties rond <code>=</code> zijn toegestaan. De recepten behandelen gangbare vormen voor zover dat niet buitensporig ingewikkeld wordt. [S3]</p>
+<p>XML is hoofdlettergevoelig: <code>&lt;p&gt;</code> en <code>&lt;P&gt;</code> zijn andere namen. Attribuutvolgorde bepaalt hun betekenis niet. Waarden mogen enkele of dubbele quotes hebben en spaties rond <code>=</code> zijn toegestaan. De recepten behandelen gangbare vormen voor zover dat niet buitensporig ingewikkeld wordt. [S2]</p>
 <p><code>l:</code> en <code>xlink:</code> zijn gangbare XLink-prefixen in FB2. De betekenis komt van <code>xmlns</code>, niet de prefixnaam zelf. Een recept dat die twee noemt garandeert geen andere prefix; pas het aan na controle van de declaratie.</p>
 <p>Veel voorbeelden gebruiken <code>[^&gt;]*</code> als benadering van de inhoud van een openingstag. Dat werkt vaak, maar <code>&gt;</code> kan legaal in een attribuutwaarde staan. Commentaar en CDATA kunnen ook markup nabootsen. Recepten dienen om kandidaten te bekijken, niet om XML volledig te valideren of blind te verbouwen.</p>
 <p>Een “leeg element” is niet altijd een schemafout; een “numerieke entiteit” niet noodzakelijk een beschadigd teken. Ook een tijdelijke naam, afwijkende naam of externe verwijzing kan legitiem zijn.</p>
 <h2 id="section-11">11. Praktische FB2/XML-recepten</h2>
-<p>Standaard moeten alle betrokken delen op &#233;&#233;n fysieke regel staan. Wordt de hele openingstag gezocht, dan moeten de gecontroleerde attributen ook op die regel staan. Een recept dat alleen een attribuut zoekt stelt die eis niet aan de gehele tag.</p>
+<p>Standaard moeten alle betrokken delen op één fysieke regel staan. Wordt de hele openingstag gezocht, dan moeten de gecontroleerde attributen ook op die regel staan. Een recept dat alleen een attribuut zoekt stelt die eis niet aan de gehele tag.</p>
 <h3 id="heading-1">K01. Spaties aan het einde van een fysieke regel</h3>
 <p>Een staart van gewone spaties en tabs vinden.</p>
 <p>Actie: vervangen na controle.</p>
@@ -168,8 +168,8 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Beperkingen en opmerkingen: De regel blijft leeg: LF/CRLF zat niet in de treffer. Dit verwijdert niet alle lege fysieke regels.</p>
-<h3 id="heading-3">K03. Spatie v&#243;&#243;r het einde van een leeg element</h3>
-<p>Gewone ruimte direct v&#243;&#243;r /&gt; vinden.</p>
+<h3 id="heading-3">K03. Spatie vóór het einde van een leeg element</h3>
+<p>Gewone ruimte direct vóór /&gt; vinden.</p>
 <p>Actie: vervangen na controle.</p>
 <p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
 <p>Zoeken:</p>
@@ -196,7 +196,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Beperkingen en opmerkingen: Exclusief attributen, regeleinde, NBSP-entiteit of geneste tag. Een lege alinea en empty-line zijn niet automatisch uitwisselbaar.</p>
-<h3 id="heading-5">K05. Twee empty-line-elementen op &#233;&#233;n regel</h3>
+<h3 id="heading-5">K05. Twee empty-line-elementen op één regel</h3>
 <p>Aangrenzende FB2-lege regels vinden die op dezelfde fysieke bronregel staan.</p>
 <p>Actie: alleen zoeken en controleren.</p>
 <p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
@@ -209,7 +209,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Beperkingen en opmerkingen: Alleen gewone spaties en tabs zijn toegestaan. Een regeleinde tussen elementen wordt bewust niet ondersteund. Twee lege regels kunnen een bewuste sc&#232;nescheiding zijn.</p>
+<p>Beperkingen en opmerkingen: Alleen gewone spaties en tabs zijn toegestaan. Een regeleinde tussen elementen wordt bewust niet ondersteund. Twee lege regels kunnen een bewuste scènescheiding zijn.</p>
 <h3 id="heading-6">K06. Lege belangrijke metadata</h3>
 <p>Verschillende eenvoudige metadatavelden zonder inhoud controleren.</p>
 <p>Actie: alleen zoeken en controleren.</p>
@@ -235,7 +235,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
-<p>Beperkingen en opmerkingen: NBSP, attributen en nesting vragen een andere regel. Controleer v&#243;&#243;r verwijdering of het element structureel van belang is.</p>
+<p>Beperkingen en opmerkingen: NBSP, attributen en nesting vragen een andere regel. Controleer vóór verwijdering of het element structureel van belang is.</p>
 <h3 id="heading-8">K08. Dezelfde opmaak in zichzelf genest</h3>
 <p>Herhaald strong/strong onderscheiden van toegestaan strong/emphasis.</p>
 <p>Actie: alleen zoeken en controleren.</p>
@@ -394,7 +394,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Beperkingen en opmerkingen: href=&quot;#...&quot; vindt zonder extra beperking iedere interne verwijzing. bookmark bewijst niet dat de link overbodig is; controleer v&#243;&#243;r verwijderen.</p>
+<p>Beperkingen en opmerkingen: href=&quot;#...&quot; vindt zonder extra beperking iedere interne verwijzing. bookmark bewijst niet dat de link overbodig is; controleer vóór verwijderen.</p>
 <h3 id="heading-20">K20. Word/FBD-terugverwijzingen</h3>
 <p>Gebruikelijke _ftnref en _ednref in verwijzingsdoelen vinden.</p>
 <p>Actie: alleen zoeken en controleren.</p>
@@ -420,7 +420,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
-<p>Beperkingen en opmerkingen: Ook type v&#243;&#243;r href, xlink en enkele quotes zijn toegestaan. Alle gecontroleerde attributen moeten op &#233;&#233;n fysieke regel staan. &gt; in waarden, commentaar en afwijkende markup vragen XML-parsing. De doelnoot wordt niet gecontroleerd.</p>
+<p>Beperkingen en opmerkingen: Ook type vóór href, xlink en enkele quotes zijn toegestaan. Alle gecontroleerde attributen moeten op één fysieke regel staan. &gt; in waarden, commentaar en afwijkende markup vragen XML-parsing. De doelnoot wordt niet gecontroleerd.</p>
 <h3 id="heading-22">K22. Mogelijke numerieke nootmarkeringen</h3>
 <p>Getallen tussen vierkante, ronde of accoladehaken vinden.</p>
 <p>Actie: alleen zoeken en controleren.</p>
@@ -476,7 +476,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
 <p>Beperkingen en opmerkingen: Niet vanzelf een fout. windows-1251 tekstueel in utf-8 veranderen codeert geen bytes om. Gebruik een opslag- of conversiehandeling die bij de declaratie past.</p>
 <h3 id="heading-26">K26. Ampersand zonder bekende standaardentiteit</h3>
-<p>&amp; vinden v&#243;&#243;r een reeks die niet op de standaardvormen lijkt.</p>
+<p>&amp; vinden vóór een reeks die niet op de standaardvormen lijkt.</p>
 <p>Actie: alleen zoeken en controleren.</p>
 <p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
 <p>Zoeken:</p>
@@ -487,7 +487,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>&amp;</code></pre>
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
-<p>Beperkingen en opmerkingen: &amp; mag in CDATA en commentaar staan; een DTD kan andere entiteiten defini&#235;ren. Dit is een filter, geen XML-validator. Blind &amp; → &amp;amp; geeft dubbele escaping.</p>
+<p>Beperkingen en opmerkingen: &amp; mag in CDATA en commentaar staan; een DTD kan andere entiteiten definiëren. Dit is een filter, geen XML-validator. Blind &amp; → &amp;amp; geeft dubbele escaping.</p>
 <h3 id="heading-27">K27. Gewone interne verwijzingen</h3>
 <p>Een lokaal #id-doel vinden zonder dit met bookmark te verwarren.</p>
 <p>Actie: alleen zoeken en controleren.</p>
@@ -500,10 +500,10 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>l:href=&quot;#note1&quot;</code></pre>
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
-<p>Beperkingen en opmerkingen: Regex toont de verwijzing, niet dat precies &#233;&#233;n doel-id bestaat. Ontbrekende of dubbele doelen vragen documentanalyse.</p>
-<h3 id="heading-28">K28. Twee empty-line-elementen scheiden na een zoekopdracht op &#233;&#233;n regel</h3>
+<p>Beperkingen en opmerkingen: Regex toont de verwijzing, niet dat precies één doel-id bestaat. Ontbrekende of dubbele doelen vragen documentanalyse.</p>
+<h3 id="heading-28">K28. Twee empty-line-elementen scheiden na een zoekopdracht op één regel</h3>
 <p>Het verschil tonen tussen een zoekbeperking en regeleinden invoegen bij vervangen.</p>
-<p>Actie: &#233;&#233;n gecontroleerde vervanging.</p>
+<p>Actie: één gecontroleerde vervanging.</p>
 <p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
 <p>Zoeken:</p>
 <pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
@@ -530,10 +530,10 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre><code>&gt;one  two&lt;</code></pre>
 <p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
 <pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
-<p>Beperkingen en opmerkingen: De treffer bevat hoekdelimiters en het hele eenvoudige fragment. Voor woorden is Ontwerp vaak beter. Vervang het volledige XML-fragment niet door &#233;&#233;n spatie.</p>
+<p>Beperkingen en opmerkingen: De treffer bevat hoekdelimiters en het hele eenvoudige fragment. Voor woorden is Ontwerp vaak beter. Vervang het volledige XML-fragment niet door één spatie.</p>
 <h2 id="section-12">12. Waarom regex XML-validatie niet vervangt</h2>
 <p>Een expressie kan tonen dat tekst op de bedoelde tekenreeks lijkt. Ze bewijst niet dat het hele document klopt: nesting, FB2-schema, namespaces, unieke ID’s en bestaande verwijzingsdoelen.</p>
-<p>Twee gelijke <code>id</code>-waarden op verschillende fysieke regels zijn niet betrouwbaar met &#233;&#233;n huidige regexvergelijking te ontdekken. Ook een ontbrekend doel elders in het boek vraagt FBE-controle en structurele analyse.</p>
+<p>Twee gelijke <code>id</code>-waarden op verschillende fysieke regels zijn niet betrouwbaar met één huidige regexvergelijking te ontdekken. Ook een ontbrekend doel elders in het boek vraagt FBE-controle en structurele analyse.</p>
 <p>Decodeer niet alle XML-entiteiten: <code>&amp;lt;</code> en <code>&amp;amp;</code> beschermen tekst vaak tegen verandering in markup. Verwijder niet alles wat op HTML lijkt uit CDATA, commentaar of codecitaten.</p>
 <p>Een tagvervanging moet paren, attributen en inhoud behouden. Alleen <code>&lt;strong&gt;</code> wijzigen laat de oude sluiting staan. Een voorbeeld met terugverwijzing maakt niet iedere vervolgbewerking structureel veilig.</p>
 <h2 id="section-13">13. Veelvoorkomende fouten</h2>
@@ -557,15 +557,15 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>Gebruik geen UCP, PCRE2-eigenschappen, lookbehind, moderne JavaScript/PCRE2-named groups, atomaire groepen, possessieve kwantoren, branch reset, subroutines, PCRE2-verbs, <code>\K</code>, <code>\G</code> of opmaakopdrachten uit Design-vervanging.</p>
 <p>PCRE2-inlineopties vervangen niet de selectievakjes van Code. De nieuwste browser-JavaScriptfuncties zijn niet automatisch in C++11-ECMAScript aanwezig.</p>
 <p>MatchOnLines blijft regelgewijs werken, ongeacht de genoteerde regeleindesequentie. Succesvol compileren met een andere engine bevestigt geen FBE-compatibiliteit.</p>
-<p>Gebruik Ontwerp voor Unicode-woorden en ingewikkelde boekcorrectie, en XML/FB2-functies voor structuur. Probeer niet alles met &#233;&#233;n onbeperkte <code>.*</code> op te lossen.</p>
+<p>Gebruik Ontwerp voor Unicode-woorden en ingewikkelde boekcorrectie, en XML/FB2-functies voor structuur. Probeer niet alles met één onbeperkte <code>.*</code> op te lossen.</p>
 <h2 id="section-15">15. Prestaties en lange XML-regels</h2>
-<p>Een kort patroon is niet noodzakelijk snel. Onbegrensde herhalingen en lange concurrerende alternatieven kunnen enorme regels vertragen, zeker wanneer &#233;&#233;n regel het hele document of veel binary bevat.</p>
+<p>Een kort patroon is niet noodzakelijk snel. Onbegrensde herhalingen en lange concurrerende alternatieven kunnen enorme regels vertragen, zeker wanneer één regel het hele document of veel binary bevat.</p>
 <p>Begin waar mogelijk met een concrete tag- of attribuutnaam en gebruik begrensde klassen. Afzonderlijke recepten zijn gemakkelijker te controleren en ongedaan te maken dan alle mogelijke fouten tegelijk zoeken.</p>
 <p>Voeg niet alle bronregels samen om MatchOnLines te omzeilen. Dat verandert het document en garandeert geen aanvaardbare snelheid.</p>
 <h2 id="section-16">16. Controle na de vervanging</h2>
 <p>Vergelijk verwacht en werkelijk matchbereik. Controleer bij groepen quotes, prefixen, hoekhaken en sluitende tags. Let erop dat commentaar, CDATA en binary niet onbedoeld zijn gewijzigd.</p>
 <p>Valideer FB2, sla op en heropen na belangrijke wijzigingen. Controleer Code ↔ Ontwerp, voetnoten, afbeeldingen en zichtbare tekst. Controleer bij ID-hernoeming zowel het object als alle gekoppelde verwijzingen.</p>
 <h2 id="section-17">17. Bronnen en geldigheidsgrenzen</h2>
-<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Offici&#235;le Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.</a></p>
-<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Officiële Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.</a></p>
+<p>[S2] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.</a> · <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

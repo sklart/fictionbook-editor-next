@@ -9,7 +9,9 @@ $labels = Get-Content -LiteralPath (Join-Path $repoRoot 'localization\regex-help
 $languages = @(Get-Content -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') -Raw -Encoding UTF8 | ConvertFrom-Json).targetLanguages
 $utf8 = [Text.UTF8Encoding]::new($false, $true)
 
-function Encode([string]$value) { return [Net.WebUtility]::HtmlEncode($value) }
+function Encode([string]$value) {
+    return $value.Replace('&', '&amp;').Replace('<', '&lt;').Replace('>', '&gt;').Replace('"', '&quot;').Replace("'", '&#39;')
+}
 
 function Inline([string]$value) {
     $result = [Text.StringBuilder]::new()

@@ -53,7 +53,7 @@ Aplicar en Plantillas transfiere expresión y opciones al diálogo. No significa
 
 ## 3. Motor y límites del modo Diseño
 
-Se utiliza PCRE2-16 con texto y patrones en UTF-16; UTF está siempre activado. FBE construye por separado el texto consultable y realiza los reemplazos teniendo en cuenta la estructura del libro. La documentación PCRE2 explica las coincidencias, pero no todas las operaciones de FBE. Véanse D1–D4.
+Se utiliza PCRE2-16 con texto y patrones en UTF-16; UTF está siempre activado. FBE construye por separado el texto consultable y realiza los reemplazos teniendo en cuenta la estructura del libro. La documentación PCRE2 explica las coincidencias, pero no todas las operaciones de FBE. Véanse D1–D2.
 
 Se busca en una representación textual del libro, no en el XML literal. `<strong>` no permite buscar negritas en Diseño. Para etiquetas use Código; para transformaciones estructurales, funciones del editor o scripts especializados.
 

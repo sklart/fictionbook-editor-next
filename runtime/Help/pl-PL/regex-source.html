@@ -1,33 +1,33 @@
 <!doctype html>
 <html lang="pl-PL">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Podręcznik wyrażeń regularnych — Kod</title><link rel="stylesheet" href="../regex-help.css"></head>
-<body><nav aria-label="Inny tryb"><strong>Źr&#243;dło</strong><a href="regex-design.html">Projekt</a></nav><main>
+<body><nav aria-label="Inny tryb"><strong>Źródło</strong><a href="regex-design.html">Projekt</a></nav><main>
 <h1 id="top">Podręcznik wyrażeń regularnych — Kod</h1>
 <aside class="note" id="note-1"><strong>Uwaga</strong><p>Rosyjskie słowa w przykładach pozostają bez zmian; przed użyciem reguł językowych w polskim tekście sprawdź ich działanie.</p></aside>
-<p>Pełny przewodnik po wyszukiwaniu i zamianie w źr&#243;dle XML książki w FictionBook Editor Next.</p>
+<p>Pełny przewodnik po wyszukiwaniu i zamianie w źródle XML książki w FictionBook Editor Next.</p>
 <p>Tryb Projekt opisano w regex-design.md. Przepisy tego dokumentu odnoszą się do Kodu; modeli PCRE2 nie wolno przenosić bez sprawdzenia.</p>
 <h2 id="section-1">1. Zastosowanie wyszukiwania w Kodzie</h2>
-<p>Kod pokazuje tagi, atrybuty, odsyłacze, encje i tekst książki. Nadaje się do audytu FB2: pustych element&#243;w, importowanych tag&#243;w HTML, odsyłaczy zastępczych, nietypowych atrybut&#243;w i pozostałości po konwersji.</p>
+<p>Kod pokazuje tagi, atrybuty, odsyłacze, encje i tekst książki. Nadaje się do audytu FB2: pustych elementów, importowanych tagów HTML, odsyłaczy zastępczych, nietypowych atrybutów i pozostałości po konwersji.</p>
 <aside class="note" id="note-2"><strong>Uwaga</strong><p>Regex bada tekst XML, nie przeanalizowane drzewo DOM. Strukturę sprawdzaj narzędziem XML.</p></aside>
-<p>Do korekty zwykłych sł&#243;w często wygodniejszy jest Projekt. W XML dopasowanie może wystąpić nie tylko w książce, lecz także w atrybucie, komentarzu, CDATA, nazwie pliku lub danych binarnych. Uwzględnij to przed zamianą.</p>
-<p>„Tylko wyszukiwanie i weryfikacja” oznacza listę kandydat&#243;w, nie dow&#243;d błędnego XML lub tekstu. Nawet zamiana spacji może naruszyć znaczący tekst. Nie ma tu uniwersalnie bezpiecznych zamian w dowolnym XML.</p>
+<p>Do korekty zwykłych słów często wygodniejszy jest Projekt. W XML dopasowanie może wystąpić nie tylko w książce, lecz także w atrybucie, komentarzu, CDATA, nazwie pliku lub danych binarnych. Uwzględnij to przed zamianą.</p>
+<p>„Tylko wyszukiwanie i weryfikacja” oznacza listę kandydatów, nie dowód błędnego XML lub tekstu. Nawet zamiana spacji może naruszyć znaczący tekst. Nie ma tu uniwersalnie bezpiecznych zamian w dowolnym XML.</p>
 <h2 id="section-2">2. Szybki start</h2>
-<p>Zapisz kopię, przejdź do Kodu, otw&#243;rz Znajdź i włącz Wyrażenie regularne. Przykłady XML zwykle wymagają Uwzględniaj wielkość liter oraz wyłączonego Tylko całe wyrazy. Granice tag&#243;w i atrybut&#243;w określa wzorzec.</p>
+<p>Zapisz kopię, przejdź do Kodu, otwórz Znajdź i włącz Wyrażenie regularne. Przykłady XML zwykle wymagają Uwzględniaj wielkość liter oraz wyłączonego Tylko całe wyrazy. Granice tagów i atrybutów określa wzorzec.</p>
 <p>Prosty pusty akapit:</p>
 <pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
-<p>Znajduje <code>&lt;p&gt;&lt;/p&gt;</code> i <code>&lt;p&gt;   &lt;/p&gt;</code> w jednym fizycznym wierszu, nie <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Nie zamieniaj automatycznie na pusty tekst albo <code>&lt;empty-line/&gt;</code>: mogą mieć r&#243;żne role strukturalne.</p>
+<p>Znajduje <code>&lt;p&gt;&lt;/p&gt;</code> i <code>&lt;p&gt;   &lt;/p&gt;</code> w jednym fizycznym wierszu, nie <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Nie zamieniaj automatycznie na pusty tekst albo <code>&lt;empty-line/&gt;</code>: mogą mieć różne role strukturalne.</p>
 <section class="example" id="example-1"><strong>Przykład</strong><pre><code>Znajdź: &lt;p&gt;[ \t]*&lt;/p&gt;
 Wejście: &lt;p&gt;   &lt;/p&gt;
 Dopasowanie: &lt;p&gt;   &lt;/p&gt;
 Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
-<p>Wklej tylko wzorzec, bez <code>/.../g</code>, cudzysłow&#243;w C++ i podwojonych ukośnik&#243;w z JSON.</p>
+<p>Wklej tylko wzorzec, bez <code>/.../g</code>, cudzysłowów C++ i podwojonych ukośników z JSON.</p>
 <h2 id="section-3">3. Silnik: Scintilla, nie PCRE2</h2>
-<p>FBE używa Scintilli z <code>SCFIND_REGEXP</code> i <code>SCFIND_CXX11REGEX</code>: wyrażeń regularnych C++ o gramatyce ECMAScript, a nie PCRE2 ani wszystkich funkcji wsp&#243;łczesnego JavaScriptu. [S1]</p>
-<p>Scintilla ma też starszy silnik podstawowy z innymi konwencjami. Nie mieszaj dawnych przykład&#243;w grup z nawiasami poprzedzonymi ucieczką z C++11 w FBE: <code>(слово)</code> przechwytuje, a <code>\(слово\)</code> wymaga dosłownych nawias&#243;w.</p>
+<p>FBE używa Scintilli z <code>SCFIND_REGEXP</code> i <code>SCFIND_CXX11REGEX</code>: wyrażeń regularnych C++ o gramatyce ECMAScript, a nie PCRE2 ani wszystkich funkcji współczesnego JavaScriptu. [S1]</p>
+<p>Scintilla ma też starszy silnik podstawowy z innymi konwencjami. Nie mieszaj dawnych przykładów grup z nawiasami poprzedzonymi ucieczką z C++11 w FBE: <code>(слово)</code> przechwytuje, a <code>\(слово\)</code> wymaga dosłownych nawiasów.</p>
 <p>Unicode w XML jest dozwolone, lecz nie ma oddzielnego UCP i właściwości PCRE2. Klasy zależą od biblioteki standardowej; <code>\w</code> nie oznacza wszystkich liter dowolnego języka. Dla przewidywalnego ASCII używaj <code>[A-Za-z0-9_]</code>; dla rosyjskiego <code>[А-Яа-яЁё]</code>, pamiętając, że nie obejmuje całej cyrylicy.</p>
-<h3 id="section-3-1">3.1. Najważniejsze r&#243;żnice względem Projektu</h3>
+<h3 id="section-3-1">3.1. Najważniejsze różnice względem Projektu</h3>
 <div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Właściwość</th><th scope="col">Projekt</th><th scope="col">Kod</th></tr></thead><tbody>
-<tr><td>Przeszukiwany obiekt</td><td>Reprezentacja tekstowa książki</td><td>Źr&#243;dło XML</td></tr>
+<tr><td>Przeszukiwany obiekt</td><td>Reprezentacja tekstowa książki</td><td>Źródło XML</td></tr>
 <tr><td>Silnik</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
 <tr><td>UCP i właściwości Unicode</td><td>Dostępne w profilu PCRE2</td><td>Brak składni właściwości PCRE2</td></tr>
 <tr><td>Lookbehind</td><td>Dostępny z ograniczeniami PCRE2</td><td>Niedostępny</td></tr>
@@ -38,17 +38,17 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <h2 id="section-4">4. Wyszukiwanie wiersz po wierszu: najważniejszy limit</h2>
 <p>W ścieżce Scintilla używanej przez FBE, <code>MatchOnLines</code> dopasowuje wzorzec do każdego fizycznego wiersza oddzielnie. Wiersz może być bardzo długi; zawinięcie na ekranie nie tworzy nowego fizycznego wiersza.</p>
 <aside class="warning" id="warning-1"><strong>Ostrzeżenie</strong><p>W bieżącym wyszukiwaniu regex w Kodzie nie przechodzi przez fizyczne wiersze; żaden wzorzec ich nie połączy.</p></aside>
-<p>Por&#243;wnaj:</p>
+<p>Porównaj:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
 <p>oraz:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
 <p>Dla XML mogą opisywać takie samo sąsiedztwo. Dla obecnego wyszukiwania FBE pierwsza forma może być jednym dopasowaniem, a druga przekracza granicę wiersza i nie może.</p>
 <p>Dodanie <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> lub klasy „dowolny znak” nie usuwa ograniczenia. Silnik nie dostaje obu wierszy jako jednego fragmentu. Wymagałoby to zmiany ścieżki programu, nie tylko wzorca.</p>
-<p>Wyszukiwanie wierszowe nie zabrania wstawienia nowego wiersza w zamianie. To osobna operacja, pokazana w K28. Odr&#243;żniaj wyszukiwanie przez granicę wiersza od wstawienia takiej granicy po wyniku.</p>
+<p>Wyszukiwanie wierszowe nie zabrania wstawienia nowego wiersza w zamianie. To osobna operacja, pokazana w K28. Odróżniaj wyszukiwanie przez granicę wiersza od wstawienia takiej granicy po wyniku.</p>
 <h3 id="section-4-1">4.1. Praca z wielowierszowym XML</h3>
 <p>Dla atrybutu w osobnym wierszu często wystarczy szukać samego atrybutu bez całego tagu. Relacje między wierszami sprawdzaj narzędziami strukturalnymi FBE, walidatorem, skryptem lub narzędziem XML.</p>
-<p>Nie usuwaj wszystkich nowych wierszy z książki dla jednego wzorca. Możesz zmienić tekst, komentarze, CDATA i czytelność źr&#243;dła. Najpierw ustal, czy zadanie faktycznie wymaga dopasowania wielowierszowego.</p>
+<p>Nie usuwaj wszystkich nowych wierszy z książki dla jednego wzorca. Możesz zmienić tekst, komentarze, CDATA i czytelność źródła. Najpierw ustal, czy zadanie faktycznie wymaga dopasowania wielowierszowego.</p>
 <h2 id="section-5">5. Znaki i ucieczki</h2>
 <p>Zwykły znak oznacza siebie. Metaznak szukany dosłownie poprzedź ukośnikiem odwrotnym.</p>
 <div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Szukany tekst</th><th scope="col">Wyrażenie</th></tr></thead><tbody>
@@ -60,49 +60,49 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <tr><td>Liczba w nawiasach kwadratowych</td><td><code>\[[0-9]+\]</code></td></tr>
 <tr><td>Ukośnik odwrotny</td><td><code>\\</code></td></tr>
 </tbody></table></div>
-<p><code>.</code> oznacza jeden znak dostępnego fragmentu, nie dosłowną kropkę. W dokumencie UTF-8 rzeczywista obsługa znak&#243;w zależy od adaptera Scintilla i biblioteki standardowej. Nie mierz długości emoji przy założeniu „jedna kropka = jeden widoczny znak”.</p>
-<p><code>\r</code> i <code>\n</code> zapisują CR i LF, ale nie pozwalają obecnie dopasować tekstu przez granice wierszy. Do spacji i tabulator&#243;w stosuj <code>[ \t]</code>.</p>
+<p><code>.</code> oznacza jeden znak dostępnego fragmentu, nie dosłowną kropkę. W dokumencie UTF-8 rzeczywista obsługa znaków zależy od adaptera Scintilla i biblioteki standardowej. Nie mierz długości emoji przy założeniu „jedna kropka = jeden widoczny znak”.</p>
+<p><code>\r</code> i <code>\n</code> zapisują CR i LF, ale nie pozwalają obecnie dopasować tekstu przez granice wierszy. Do spacji i tabulatorów stosuj <code>[ \t]</code>.</p>
 <p>PCRE2 <code>\Q...\E</code> nie jest tutaj przenośną metodą oznaczania tekstu dosłownego. Uciekaj metaznaki pojedynczo.</p>
 <h2 id="section-6">6. Klasy, zakresy i granice wyrazu</h2>
-<p><code>[abc]</code> znajduje jeden znak ze zbioru, <code>[a-z]</code> jeden z zakresu, a <code>[^abc]</code> jeden spoza niego. Po klasie można dodać powt&#243;rzenie, np. <code>[0-9]+</code>.</p>
+<p><code>[abc]</code> znajduje jeden znak ze zbioru, <code>[a-z]</code> jeden z zakresu, a <code>[^abc]</code> jeden spoza niego. Po klasie można dodać powtórzenie, np. <code>[0-9]+</code>.</p>
 <div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Klasa</th><th scope="col">Znaczenie praktyczne</th></tr></thead><tbody>
 <tr><td class="syntax"><code>[0-9]</code></td><td>Cyfra ASCII</td></tr>
 <tr><td class="syntax"><code>[A-Za-z]</code></td><td>Łacińska litera ASCII</td></tr>
 <tr><td class="syntax"><code>[ \t]</code></td><td>Zwykła spacja lub tabulator</td></tr>
 <tr><td class="syntax"><code>[^&lt;]</code></td><td>Dostępny znak inny niż &lt;</td></tr>
-<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Znak inny niż dwa typy prostych cudzysłow&#243;w</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Znak inny niż dwa typy prostych cudzysłowów</td></tr>
 <tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Klasa cyfr i jej dopełnienie według implementacji</td></tr>
 <tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Białe znaki i ich dopełnienie</td></tr>
 <tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Znaki wyrazu i ich dopełnienie</td></tr>
 </tbody></table></div>
 <p>Klasa negatywna nie rozumie XML. <code>[^&lt;]*</code> pomaga w prostym tekście między tagami, ale nie jest pełnym parserem encji, komentarzy ani CDATA.</p>
-<p><code>\b</code> oznacza granicę wyrazu, <code>\B</code> jej brak. Dla atrybut&#243;w to często za mało: <code>id</code> może wystąpić po dwukropku w innym imieniu. Lepiej jawnie sprawdzić separator atrybutu: początek wiersza, spację lub tabulator.</p>
-<h2 id="section-7">7. Kotwice i powt&#243;rzenia</h2>
-<p><code>^</code> i <code>$</code> dotyczą początku i końca fizycznego wiersza w bieżącej ścieżce. Wiersz złożony tylko z poziomych odstęp&#243;w:</p>
+<p><code>\b</code> oznacza granicę wyrazu, <code>\B</code> jej brak. Dla atrybutów to często za mało: <code>id</code> może wystąpić po dwukropku w innym imieniu. Lepiej jawnie sprawdzić separator atrybutu: początek wiersza, spację lub tabulator.</p>
+<h2 id="section-7">7. Kotwice i powtórzenia</h2>
+<p><code>^</code> i <code>$</code> dotyczą początku i końca fizycznego wiersza w bieżącej ścieżce. Wiersz złożony tylko z poziomych odstępów:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
 <p>Usunięcie dopasowania nie usuwa samego wiersza: znak końca nie został dopasowany.</p>
-<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kwantyfikator</th><th scope="col">Liczba powt&#243;rzeń</th></tr></thead><tbody>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kwantyfikator</th><th scope="col">Liczba powtórzeń</th></tr></thead><tbody>
 <tr><td class="syntax"><code>?</code></td><td>Zero lub jedno</td></tr>
 <tr><td class="syntax"><code>*</code></td><td>Zero lub więcej</td></tr>
 <tr><td class="syntax"><code>+</code></td><td>Jedno lub więcej</td></tr>
 <tr><td class="syntax"><code>{3}</code></td><td>Dokładnie trzy</td></tr>
 <tr><td class="syntax"><code>{3,}</code></td><td>Co najmniej trzy</td></tr>
-<tr><td class="syntax"><code>{2,5}</code></td><td>Od dw&#243;ch do pięciu</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Od dwóch do pięciu</td></tr>
 </tbody></table></div>
-<p>C++11 dopuszcza leniwe formy, np. <code>*?</code> i <code>+?</code>. Dla atrybutu XML zwykle czytelniej wykluczyć zamykający cudzysł&#243;w:</p>
+<p>C++11 dopuszcza leniwe formy, np. <code>*?</code> i <code>+?</code>. Dla atrybutu XML zwykle czytelniej wykluczyć zamykający cudzysłów:</p>
 <pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
-<p>Dotyczy podw&#243;jnych cudzysłow&#243;w; pojedyncze wymagają właściwej odrębnej gałęzi.</p>
-<p>Nie przenoś kwantyfikator&#243;w dzierżawczych PCRE2, grup atomowych ani opcji wewnętrznych PCRE2.</p>
+<p>Dotyczy podwójnych cudzysłowów; pojedyncze wymagają właściwej odrębnej gałęzi.</p>
+<p>Nie przenoś kwantyfikatorów dzierżawczych PCRE2, grup atomowych ani opcji wewnętrznych PCRE2.</p>
 <h2 id="section-8">8. Grupy, alternatywa i lookahead</h2>
 <p>Grupa <code>( ... )</code> przechwytuje tekst dla odwołań i zamiany. <code>(?: ... )</code> łączy elementy bez numeru.</p>
-<p>Wyb&#243;r kilku tag&#243;w:</p>
+<p>Wybór kilku tagów:</p>
 <pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
 <p>Odwołanie liczbowe może połączyć nazwy otwarcia i zamknięcia prostego fragmentu jednowierszowego:</p>
 <pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
 <p>Wymaga tej samej nazwy w obu pozycjach, lecz nie sprawdza dowolnego zagnieżdżenia XML.</p>
 <p>Pozytywny <code>(?=...)</code> i negatywny <code>(?!...)</code> lookahead sprawdzają dalszy tekst bez włączania go do dopasowania. Granica po nazwie tagu zapobiega dopasowaniu <code>&lt;a</code> na początku <code>&lt;author&gt;</code>:</p>
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
-<p>Kontekst z lewej przechwyć i odtw&#243;rz w zamianie: lookbehind nie jest dostępny. Nie kopiuj <code>(?&lt;=...)</code> z podręcznika Projektu.</p>
+<p>Kontekst z lewej przechwyć i odtwórz w zamianie: lookbehind nie jest dostępny. Nie kopiuj <code>(?&lt;=...)</code> z podręcznika Projektu.</p>
 <h2 id="section-9">9. Zamiana w trybie Kod</h2>
 <p>FBE używa <code>SCI_REPLACETARGETRE</code>: dopasowanie już istnieje, a Scintilla rozwija tekst zamiany według własnych zasad. To nie <code>std::regex_replace</code> z <code>$1</code> ani gramatyka Design FBE. [S1]</p>
 <h3 id="section-9-1">9.1. Odwołania do grup</h3>
@@ -119,18 +119,18 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Dolar w Source nie wymaga podwajania według zasad innego systemu. Ukośnik odwrotny pozostaje znakiem sterującym.</p>
 <h3 id="section-9-2">9.2. Znaki sterujące w zamianie</h3>
 <p>Scintilla interpretuje <code>\t</code>, <code>\n</code>, <code>\r</code> i <code>\\</code> w zamianie jako tabulator, LF, CR i dosłowny ukośnik odwrotny. Nie umożliwia to szukania przez fizyczne wiersze.</p>
-<p>CRLF zapisuj <code>\r\n</code>, a LF jako <code>\n</code>, zgodnie z dokumentem. Nie tw&#243;rz przypadkowo mieszanych zakończeń wierszy.</p>
+<p>CRLF zapisuj <code>\r\n</code>, a LF jako <code>\n</code>, zgodnie z dokumentem. Nie twórz przypadkowo mieszanych zakończeń wierszy.</p>
 <p>PCRE2 <code>\x{00A0}</code> nie wstawia tutaj znaku Unicode; do NBSP potrzebny jest rzeczywisty znak. <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> z Design nie sterują tu wielkością ani formatowaniem.</p>
 <h3 id="section-9-3">9.3. Usuwanie i zachowanie XML</h3>
-<p>Puste pole usuwa dopasowany zakres. Usunięcie pustego tagu, atrybutu lub odsyłacza może uszkodzić dokument mimo poprawnego wyszukania. Przepisy strukturalne są dlatego gł&#243;wnie diagnostyczne.</p>
-<p>Zmiana <code>id</code> tylko w jednym miejscu może pozostawić odsyłacze do starej wartości. Używaj wbudowanej zmiany identyfikatora dla obiekt&#243;w powiązanych zamiast niezależnych zamian tekstowych.</p>
-<h2 id="section-10">10. Czytanie przepis&#243;w XML</h2>
-<p>XML uwzględnia wielkość liter: <code>&lt;p&gt;</code> i <code>&lt;P&gt;</code> to inne nazwy. Kolejność atrybut&#243;w nie określa ich sensu; wartości mogą mieć pojedyncze lub podw&#243;jne cudzysłowy, a wok&#243;ł <code>=</code> dozwolone są spacje. Przykłady obejmują typowe warianty, jeżeli nie komplikuje to nadmiernie wzorca. [S3]</p>
+<p>Puste pole usuwa dopasowany zakres. Usunięcie pustego tagu, atrybutu lub odsyłacza może uszkodzić dokument mimo poprawnego wyszukania. Przepisy strukturalne są dlatego głównie diagnostyczne.</p>
+<p>Zmiana <code>id</code> tylko w jednym miejscu może pozostawić odsyłacze do starej wartości. Używaj wbudowanej zmiany identyfikatora dla obiektów powiązanych zamiast niezależnych zamian tekstowych.</p>
+<h2 id="section-10">10. Czytanie przepisów XML</h2>
+<p>XML uwzględnia wielkość liter: <code>&lt;p&gt;</code> i <code>&lt;P&gt;</code> to inne nazwy. Kolejność atrybutów nie określa ich sensu; wartości mogą mieć pojedyncze lub podwójne cudzysłowy, a wokół <code>=</code> dozwolone są spacje. Przykłady obejmują typowe warianty, jeżeli nie komplikuje to nadmiernie wzorca. [S2]</p>
 <p><code>l:</code> i <code>xlink:</code> są częstymi prefiksami XLink w FB2. Znaczenie nadaje deklaracja <code>xmlns</code>, nie sama nazwa prefiksu. Przepis wymieniający te dwa warianty nie gwarantuje obsługi innego; dostosuj go po sprawdzeniu deklaracji.</p>
-<p>Wiele przykład&#243;w przybliża zawartość otwierającego tagu przez <code>[^&gt;]*</code>. Jest to wygodne dla zwykłego FB2, lecz <code>&gt;</code> może legalnie wystąpić w wartości atrybutu. Komentarze i CDATA r&#243;wnież mogą zawierać tekst podobny do znacznik&#243;w. Przepisy wybierają kandydat&#243;w do obejrzenia, nie zastępują pełnej walidacji lub bezpiecznej przebudowy XML.</p>
-<p>„Pusty element” nie zawsze oznacza błąd schematu, a „encja liczbowa” nie oznacza uszkodzonego znaku. Atrapa, nietypowa nazwa lub zewnętrzny odsyłacz r&#243;wnież mogą być uzasadnione.</p>
+<p>Wiele przykładów przybliża zawartość otwierającego tagu przez <code>[^&gt;]*</code>. Jest to wygodne dla zwykłego FB2, lecz <code>&gt;</code> może legalnie wystąpić w wartości atrybutu. Komentarze i CDATA również mogą zawierać tekst podobny do znaczników. Przepisy wybierają kandydatów do obejrzenia, nie zastępują pełnej walidacji lub bezpiecznej przebudowy XML.</p>
+<p>„Pusty element” nie zawsze oznacza błąd schematu, a „encja liczbowa” nie oznacza uszkodzonego znaku. Atrapa, nietypowa nazwa lub zewnętrzny odsyłacz również mogą być uzasadnione.</p>
 <h2 id="section-11">11. Praktyczne przepisy FB2/XML</h2>
-<p>Domyślnie części biorące udział w dopasowaniu muszą znajdować się w jednym fizycznym wierszu. Gdy szukany jest cały tag otwierający, wszystkie sprawdzane atrybuty r&#243;wnież muszą być w tym wierszu. Wzorzec szukający tylko atrybutu nie nakłada tego wymagania na cały tag.</p>
+<p>Domyślnie części biorące udział w dopasowaniu muszą znajdować się w jednym fizycznym wierszu. Gdy szukany jest cały tag otwierający, wszystkie sprawdzane atrybuty również muszą być w tym wierszu. Wzorzec szukający tylko atrybutu nie nakłada tego wymagania na cały tag.</p>
 <h3 id="heading-1">K01. Spacje na końcu fizycznego wiersza</h3>
 <p>Znaleźć końcowe zwykłe spacje i tabulatory.</p>
 <p>Działanie: zamiana po sprawdzeniu.</p>
@@ -145,10 +145,10 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Zamień na: pozostaw pole całkowicie puste. Nie wpisuj słowa „puste”.</p>
 <p>Wynik zamiany:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
-<p>Ograniczenia i uwagi: Nie usuwa końca wiersza. W mieszanej zawartości XML, CDATA i obszarach znaczących spacji końc&#243;wka może być częścią tekstu. Nie uznawaj globalnego czyszczenia za bezwarunkowo bezpieczne.</p>
-<h3 id="heading-2">K02. Oczyścić wiersz złożony wyłącznie z odstęp&#243;w</h3>
+<p>Ograniczenia i uwagi: Nie usuwa końca wiersza. W mieszanej zawartości XML, CDATA i obszarach znaczących spacji końcówka może być częścią tekstu. Nie uznawaj globalnego czyszczenia za bezwarunkowo bezpieczne.</p>
+<h3 id="heading-2">K02. Oczyścić wiersz złożony wyłącznie z odstępów</h3>
 <p>Usunąć białe znaki z wiersza bez innej treści.</p>
 <p>Działanie: zamiana po sprawdzeniu.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
@@ -165,7 +165,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Wynik zamiany:</p>
 <pre><code>
 &lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Ograniczenia i uwagi: Wiersz pozostanie pusty: LF/CRLF nie były częścią dopasowania. To nie usuwanie wszystkich pustych fizycznych wierszy.</p>
 <h3 id="heading-3">K03. Spacja przed zamknięciem pustego elementu</h3>
@@ -180,7 +180,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>/&gt;</code></pre>
 <p>Wynik zamiany:</p>
 <pre><code>&lt;empty-line/&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;empty-line/&gt;</code></pre>
 <p>Ograniczenia i uwagi: XML dopuszcza oba zapisy. Zmiana jest kosmetyczna, nie obowiązkową naprawą. Sekwencja może wystąpić w tekście lub komentarzu, dlatego zamiana zbiorcza wymaga kontroli.</p>
 <h3 id="heading-4">K04. Prosty pusty akapit</h3>
@@ -193,9 +193,9 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;p&gt;  &lt;/p&gt;&lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
-<p>Ograniczenia i uwagi: Nie obejmuje atrybut&#243;w, nowego wiersza, encji NBSP ani zagnieżdżonego tagu. Pustego akapitu i empty-line nie traktuj automatycznie zamiennie.</p>
+<p>Ograniczenia i uwagi: Nie obejmuje atrybutów, nowego wiersza, encji NBSP ani zagnieżdżonego tagu. Pustego akapitu i empty-line nie traktuj automatycznie zamiennie.</p>
 <h3 id="heading-5">K05. Dwa empty-line w jednym wierszu</h3>
 <p>Znaleźć sąsiednie puste wiersze FB2 zapisane w tej samej fizycznej linii.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
@@ -206,12 +206,12 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
 <p>Ograniczenia i uwagi: Dozwolone są tylko zwykłe spacje i tabulatory. Koniec wiersza między elementami celowo nie jest obsługiwany. Dwie puste linie mogą rozdzielać sceny.</p>
 <h3 id="heading-6">K06. Puste ważne metadane</h3>
-<p>Sprawdzić kilka prostych p&#243;l metadanych bez zawartości.</p>
+<p>Sprawdzić kilka prostych pól metadanych bez zawartości.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -220,11 +220,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
 <p>Ograniczenia i uwagi: Nie wszystkie pola są obowiązkowe w każdym kontekście. Regex nie sprawdza schematu FB2, rodzica ani poprawności wypełnionych wartości.</p>
 <h3 id="heading-7">K07. Puste formatowanie inline</h3>
-<p>Znaleźć puste pary element&#243;w formatowania.</p>
+<p>Znaleźć puste pary elementów formatowania.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -233,11 +233,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
 <p>Ograniczenia i uwagi: NBSP, atrybuty i zagnieżdżenie wymagają innego wzorca. Przed usunięciem sprawdź rolę strukturalną.</p>
 <h3 id="heading-8">K08. To samo formatowanie zagnieżdżone w sobie</h3>
-<p>Odr&#243;żnić strong/strong od prawidłowego strong/emphasis.</p>
+<p>Odróżnić strong/strong od prawidłowego strong/emphasis.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -246,7 +246,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;strong&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/strong&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;strong&gt;&lt;strong</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
 <p>Ograniczenia i uwagi: Drugi element nie jest wybierany niezależnie: odwołanie wymaga pierwszej nazwy. Dopasowanie nie obejmuje całego elementu i nie jest przeznaczone do prostego usuwania.</p>
 <h3 id="heading-9">K09. Możliwe tagi HTML po imporcie</h3>
@@ -260,11 +260,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Oczekiwane dopasowania, kolejno:</p>
 <pre><code>&lt;div&gt;
 &lt;/div&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
-<p>Ograniczenia i uwagi: Tekst w komentarzu lub CDATA r&#243;wnież może pasować. Nie zamieniaj b na strong i i na emphasis bez sprawdzenia treści oraz atrybut&#243;w.</p>
+<p>Ograniczenia i uwagi: Tekst w komentarzu lub CDATA również może pasować. Nie zamieniaj b na strong i i na emphasis bez sprawdzenia treści oraz atrybutów.</p>
 <h3 id="heading-10">K10. Tag wielkimi literami</h3>
-<p>Znaleźć zwykłe nazwy tag&#243;w w całości zapisane wielkimi literami.</p>
+<p>Znaleźć zwykłe nazwy tagów w całości zapisane wielkimi literami.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -274,11 +274,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Oczekiwane dopasowania, kolejno:</p>
 <pre><code>&lt;P&gt;
 &lt;/P&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
 <p>Ograniczenia i uwagi: Uwzględnianie wielkości jest konieczne, inaczej znajdziesz zwykłe p. Wzorzec nie obejmuje wszystkich legalnych nazw Unicode XML i nie sprawdza przestrzeni nazw.</p>
 <h3 id="heading-11">K11. Encja HTML NBSP</h3>
-<p>Znaleźć dosłowny zapis &amp;nbsp; w źr&#243;dle.</p>
+<p>Znaleźć dosłowny zapis &amp;nbsp; w źródle.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -287,10 +287,10 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&amp;nbsp;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
 <p>Ograniczenia i uwagi: Bez odpowiedniej deklaracji &amp;nbsp; nie jest jedną z pięciu predefiniowanych encji XML. Sprawdź DTD i komentarze. Nie dekoduj masowo wszystkich encji.</p>
-<h3 id="heading-12">K12. Liczbowe odwołania do znak&#243;w</h3>
+<h3 id="heading-12">K12. Liczbowe odwołania do znaków</h3>
 <p>Znaleźć dziesiętny lub szesnastkowy zapis znaku.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
@@ -301,11 +301,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Oczekiwane dopasowania, kolejno:</p>
 <pre><code>&amp;#160;
 &amp;#xA0;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
 <p>Ograniczenia i uwagi: Obie postacie mogą być poprawne. Kontrolowany jest format, nie legalność punktu kodowego. Rozwinięcie &amp;lt; do &lt; w tekście może uszkodzić XML.</p>
 <h3 id="heading-13">K13. Pusty id</h3>
-<p>Znaleźć niewypełniony zwykły atrybut id z pojedynczymi lub podw&#243;jnymi cudzysłowami.</p>
+<p>Znaleźć niewypełniony zwykły atrybut id z pojedynczymi lub podwójnymi cudzysłowami.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -314,7 +314,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code> id=&quot;&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
 <p>Ograniczenia i uwagi: Dopasowanie zawiera spację przed atrybutem. Nazwy prefiksowe jak xml:id są pomijane. Tworzenie nowego ID musi uwzględnić odsyłacze i unikalność, czego regex nie robi.</p>
 <h3 id="heading-14">K14. Lista wartości id</h3>
@@ -327,7 +327,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code> id=&quot;s1&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
 <p>Ograniczenia i uwagi: Lista dopasowań nie potwierdza unikalności i dopuszczalności ID. Obiekty powiązane zmieniaj funkcją FBE.</p>
 <h3 id="heading-15">K15. Zewnętrzne odsyłacze HTTP(S)</h3>
@@ -340,11 +340,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a l:href=&quot;https://example.test/book&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Szuka atrybutu, nie każdego URL w tekście. Obsługuje l i xlink; inne prefiksy uwzględnij osobno. Nie sprawdza dostępności adresu.</p>
 <h3 id="heading-16">K16. Lokalne odsyłacze file://</h3>
-<p>Znaleźć odniesienie do pliku lokalnego, kt&#243;re może nie działać u czytelnika.</p>
+<p>Znaleźć odniesienie do pliku lokalnego, które może nie działać u czytelnika.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -353,7 +353,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a xlink:href=&quot;file:///C:/Book/image.png&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Nie otwieraj automatycznie nieznanego adresu. Wynik nie rozstrzyga, czy osadzić plik, zmienić odsyłacz czy go usunąć.</p>
 <h3 id="heading-17">K17. Pusty cel odsyłacza</h3>
@@ -366,7 +366,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a l:href=&quot;&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code> l:href=&quot;&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Osobno sprawdzaj pustą treść widoczną i brak atrybutu href — to inne przypadki.</p>
 <h3 id="heading-18">K18. Cel #undefined</h3>
@@ -379,7 +379,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a xlink:href=&quot;#undefined&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Sprawdź istnienie obiektu. Nazwa undefined nie jest sama w sobie zabroniona przez XML, choć często sygnalizuje niedokończone powiązanie.</p>
 <h3 id="heading-19">K19. Odsyłacze z prefiksem bookmark</h3>
@@ -392,7 +392,7 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a l:href=&quot;#bookmark12&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: href=&quot;#...&quot; bez dalszego ograniczenia znajduje dowolny odsyłacz wewnętrzny. Obecność bookmark nie dowodzi zbędności linku; usuwać dopiero po kontroli.</p>
 <h3 id="heading-20">K20. Odsyłacze powrotne Word/FBD</h3>
@@ -405,10 +405,10 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a l:href=&quot;#_ftnref1&quot;&gt;Back&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Odsyłacz powrotny może być potrzebny do nawigacji. Nie usuwaj go tylko z powodu pochodzenia nazwy.</p>
-<h3 id="heading-21">K21. Odsyłacze przypis&#243;w niezależne od kolejności atrybut&#243;w</h3>
+<h3 id="heading-21">K21. Odsyłacze przypisów niezależne od kolejności atrybutów</h3>
 <p>Znaleźć otwierający a z type=note i wewnętrznym XLink-href w dowolnej kolejności.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
@@ -418,10 +418,10 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;1&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Dopuszcza też type przed href, xlink i pojedyncze cudzysłowy. Wszystkie sprawdzane atrybuty muszą być w jednym wierszu. Wartości z &gt;, komentarze i nietypowe znaczniki wymagają parsera XML. Cel przypisu nie jest sprawdzany.</p>
-<h3 id="heading-22">K22. Możliwe liczbowe oznaczenia przypis&#243;w</h3>
+<h3 id="heading-22">K22. Możliwe liczbowe oznaczenia przypisów</h3>
 <p>Znaleźć liczby w nawiasach kwadratowych, klamrach lub nawiasach okrągłych.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
@@ -433,9 +433,9 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>[12]
 {3}
 (4)</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
-<p>Ograniczenia i uwagi: Mogą to być bibliografia, numery wzor&#243;w, objaśnienia lub zwykły tekst. Wzorzec nie tworzy przypis&#243;w i nie sprawdza unikalności numeracji.</p>
+<p>Ograniczenia i uwagi: Mogą to być bibliografia, numery wzorów, objaśnienia lub zwykły tekst. Wzorzec nie tworzy przypisów i nie sprawdza unikalności numeracji.</p>
 <h3 id="heading-23">K23. Pozostawione wartości Your/Name</h3>
 <p>Sprawdzić typowe angielskie atrapy nazwiska w metadanych.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
@@ -446,9 +446,9 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
-<p>Ograniczenia i uwagi: Sprawdź kontekst autora lub tw&#243;rcy pliku i prawdziwe dane. Nie zastępuj automatycznie danymi innego wydania.</p>
+<p>Ograniczenia i uwagi: Sprawdź kontekst autora lub twórcy pliku i prawdziwe dane. Nie zastępuj automatycznie danymi innego wydania.</p>
 <h3 id="heading-24">K24. Niepowiązana ilustracja #undefined</h3>
 <p>Znaleźć image odwołujący się do typowej atrapy.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
@@ -459,9 +459,9 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
-<p>Ograniczenia i uwagi: FB2 używa zwykle XLink-href, nie HTML-src. Obecność binary o danym ID sprawdza się osobno. Brak obrazu i błędny odsyłacz mają r&#243;żne przyczyny.</p>
+<p>Ograniczenia i uwagi: FB2 używa zwykle XLink-href, nie HTML-src. Obecność binary o danym ID sprawdza się osobno. Brak obrazu i błędny odsyłacz mają różne przyczyny.</p>
 <h3 id="heading-25">K25. Deklaracja windows-1251</h3>
 <p>Znaleźć wskazanie starego kodowania w deklaracji XML.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
@@ -472,9 +472,9 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
-<p>Ograniczenia i uwagi: To nie błąd sam w sobie. Zamiana napisu windows-1251 na utf-8 nie przekodowuje bajt&#243;w. Kodowanie zmieniaj przez zapis lub konwersję sp&#243;jną z deklaracją.</p>
+<p>Ograniczenia i uwagi: To nie błąd sam w sobie. Zamiana napisu windows-1251 na utf-8 nie przekodowuje bajtów. Kodowanie zmieniaj przez zapis lub konwersję spójną z deklaracją.</p>
 <h3 id="heading-26">K26. Ampersand bez znanej standardowej encji</h3>
 <p>Znaleźć &amp; przed ciągiem niepasującym do standardowych form odwołania do znaku.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
@@ -485,9 +485,9 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;p&gt;A &amp; B&lt;/p&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&amp;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
-<p>Ograniczenia i uwagi: W CDATA i komentarzach &amp; jest dozwolone, a DTD może definiować inne encje. To filtr, nie walidator XML. Automatyczne &amp; → &amp;amp; bez kontekstu prowadzi do podw&#243;jnego kodowania.</p>
+<p>Ograniczenia i uwagi: W CDATA i komentarzach &amp; jest dozwolone, a DTD może definiować inne encje. To filtr, nie walidator XML. Automatyczne &amp; → &amp;amp; bez kontekstu prowadzi do podwójnego kodowania.</p>
 <h3 id="heading-27">K27. Zwykłe odsyłacze wewnętrzne</h3>
 <p>Znaleźć lokalny cel #id bez utożsamiania go z bookmark.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
@@ -498,11 +498,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>l:href=&quot;#note1&quot;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
 <p>Ograniczenia i uwagi: Regex pokazuje zapis odsyłacza, nie dowodzi istnienia dokładnie jednego celu. Wiszące i powielone odsyłacze wymagają analizy dokumentu.</p>
 <h3 id="heading-28">K28. Rozdzielić dwa empty-line po wyszukaniu jednowierszowym</h3>
-<p>Pokazać r&#243;żnicę między ograniczeniem wyszukiwania a wstawieniem nowego wiersza w zamianie.</p>
+<p>Pokazać różnicę między ograniczeniem wyszukiwania a wstawieniem nowego wiersza w zamianie.</p>
 <p>Działanie: pojedyncza kontrolowana zamiana.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
 <p>Znajdź:</p>
@@ -514,11 +514,11 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <p>Wynik zamiany:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;empty-line/&gt;
 &lt;empty-line/&gt;</code></pre>
 <p>Ograniczenia i uwagi: Sekwencje zamiany Scintilla rozwijają się w CRLF. Dla pliku LF użyj \1\n\2. To nie uniwersalny formater XML ani włączenie wyszukiwania wielowierszowego.</p>
-<h3 id="heading-29">K29. Podw&#243;jne spacje w prostym tekście XML</h3>
+<h3 id="heading-29">K29. Podwójne spacje w prostym tekście XML</h3>
 <p>Znaleźć prosty fragment między tagami z wielokrotnymi spacjami.</p>
 <p>Działanie: tylko wyszukiwanie i weryfikacja.</p>
 <p>„Wyrażenie regularne” — włączone; „Tylko całe wyrazy” — wyłączone. „Uwzględniaj wielkość liter” — włączone.</p>
@@ -528,12 +528,12 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <pre><code>&lt;p&gt;one  two&lt;/p&gt;</code></pre>
 <p>Oczekiwane dopasowanie:</p>
 <pre><code>&gt;one  two&lt;</code></pre>
-<p>Przykład, kt&#243;ry nie powinien zostać znaleziony:</p>
+<p>Przykład, który nie powinien zostać znaleziony:</p>
 <pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
-<p>Ograniczenia i uwagi: Wynik zawiera delimitery kątowe i cały prosty fragment. Do poprawiania sł&#243;w zwykle wygodniejszy jest Projekt. Nie zamieniaj całego fragmentu XML na jedną spację.</p>
+<p>Ograniczenia i uwagi: Wynik zawiera delimitery kątowe i cały prosty fragment. Do poprawiania słów zwykle wygodniejszy jest Projekt. Nie zamieniaj całego fragmentu XML na jedną spację.</p>
 <h2 id="section-12">12. Dlaczego regex nie zastępuje walidacji XML</h2>
-<p>Wyrażenie może dowieść, że fragment przypomina określoną sekwencję znak&#243;w. Nie dowodzi poprawności całego dokumentu: zagnieżdżenia, zgodności ze schematem FB2, przestrzeni nazw, unikalności ID i istnienia cel&#243;w odsyłaczy.</p>
-<p>Dwa takie same <code>id</code> w r&#243;żnych fizycznych wierszach nie są wiarygodnie wykrywalne jednym por&#243;wnaniem obecnego regex. Podobnie z odsyłaczem, kt&#243;rego cel jest nieobecny w innej części książki. Potrzebna jest kontrola FBE i analiza struktury.</p>
+<p>Wyrażenie może dowieść, że fragment przypomina określoną sekwencję znaków. Nie dowodzi poprawności całego dokumentu: zagnieżdżenia, zgodności ze schematem FB2, przestrzeni nazw, unikalności ID i istnienia celów odsyłaczy.</p>
+<p>Dwa takie same <code>id</code> w różnych fizycznych wierszach nie są wiarygodnie wykrywalne jednym porównaniem obecnego regex. Podobnie z odsyłaczem, którego cel jest nieobecny w innej części książki. Potrzebna jest kontrola FBE i analiza struktury.</p>
 <p>Nie rozwijaj wszystkich encji XML: <code>&amp;lt;</code> i <code>&amp;amp;</code> często chronią tekst przed staniem się znacznikami. Nie usuwaj wszystkiego, co wygląda jak HTML, wewnątrz CDATA, komentarza lub cytatu kodu.</p>
 <p>Zamiana tagu musi zachować parę, atrybuty i treść. Zmiana samego otwierającego <code>&lt;strong&gt;</code> pozostawia stare zamknięcie. Przykład z odwołaniem wstecznym nie gwarantuje bezpieczeństwa każdej dalszej zamiany.</p>
 <h2 id="section-13">13. Typowe błędy</h2>
@@ -544,28 +544,28 @@ Oczekiwane: Sprawdź ten akapit przed zmianą XML.</code></pre></section>
 <h3 id="section-13-3">13.3. Nie działa \p, \K lub lookbehind</h3>
 <p>To inny profil. Do pracy tekstowej przejdź do Projektu albo przepisz zadanie XML na jawne klasy, przechwycenie kontekstu, grupy nieprzechwytujące i lookahead.</p>
 <h3 id="section-13-4">13.4. Nie znajdują się sąsiednie tagi</h3>
-<p>Sprawdź fizyczny nowy wiersz, spację przed <code>/&gt;</code>, pojedyncze cudzysłowy, dodatkowe atrybuty i prefiks przestrzeni nazw. Sąsiedztwo w sformatowanym źr&#243;dle r&#243;żni się od sąsiedztwa w drzewie XML.</p>
-<h3 id="section-13-5">13.5. Przypis znika przy innym porządku atrybut&#243;w</h3>
+<p>Sprawdź fizyczny nowy wiersz, spację przed <code>/&gt;</code>, pojedyncze cudzysłowy, dodatkowe atrybuty i prefiks przestrzeni nazw. Sąsiedztwo w sformatowanym źródle różni się od sąsiedztwa w drzewie XML.</p>
+<h3 id="section-13-5">13.5. Przypis znika przy innym porządku atrybutów</h3>
 <p>Wzorzec „najpierw type, potem href” zależy od kolejności. K21 sprawdza warunki oddzielnymi lookahead. Gdy tag ma kilka wierszy, wyszukanie całego tagu nadal nie zadziała; szukaj atrybutu albo skorzystaj ze struktury.</p>
 <h3 id="section-13-6">13.6. Kontrola zagnieżdżenia uznaje strong/emphasis za błąd</h3>
-<p>R&#243;żne poprawne style mogą być zagnieżdżone. Do powt&#243;rzenia tej samej nazwy potrzeba odwołania jak w K08, nie dw&#243;ch niezależnych grup z tą samą listą.</p>
+<p>Różne poprawne style mogą być zagnieżdżone. Do powtórzenia tej samej nazwy potrzeba odwołania jak w K08, nie dwóch niezależnych grup z tą samą listą.</p>
 <h3 id="section-13-7">13.7. „Bookmark” znajduje wszystkie przypisy</h3>
-<p>Odsyłacz z <code>#</code> nie jest jeszcze pozostałością bookmark. Oddziel og&#243;lną kontrolę odsyłaczy K27 od konkretnego prefiksu w K19.</p>
+<p>Odsyłacz z <code>#</code> nie jest jeszcze pozostałością bookmark. Oddziel ogólną kontrolę odsyłaczy K27 od konkretnego prefiksu w K19.</p>
 <h3 id="section-13-8">13.8. Zamiana psuje widoczny tekst</h3>
 <p>W Kodzie spacje i fragmenty mogą należeć do tekstu, atrybutu, komentarza lub danych binarnych. Cofnij zmianę i ogranicz zakres albo wzorzec. Nazwa „bezpieczna zamiana” nie unieważnia kontekstu XML.</p>
 <h2 id="section-14">14. Ograniczenia profilu Source</h2>
-<p>Nie używaj UCP, właściwości PCRE2, lookbehind, nazwanych grup wsp&#243;łczesnego JavaScript/PCRE2, grup atomowych, kwantyfikator&#243;w dzierżawczych, branch reset, podprogram&#243;w, czasownik&#243;w PCRE2, <code>\K</code>, <code>\G</code> i poleceń formatowania zamiany Design.</p>
+<p>Nie używaj UCP, właściwości PCRE2, lookbehind, nazwanych grup współczesnego JavaScript/PCRE2, grup atomowych, kwantyfikatorów dzierżawczych, branch reset, podprogramów, czasowników PCRE2, <code>\K</code>, <code>\G</code> i poleceń formatowania zamiany Design.</p>
 <p>Opcje inline PCRE2 nie zastępują opcji okna Source. Funkcje najnowszego JavaScript nie pojawiają się automatycznie w implementacji ECMAScript C++11.</p>
 <p>MatchOnLines działa wierszowo niezależnie od zapisanej sekwencji końca wiersza. Udana kompilacja innym silnikiem nie dowodzi zgodności z FBE.</p>
-<p>Dla wyraz&#243;w Unicode i złożonej korekty stosuj Projekt. Dla struktury używaj narzędzi XML/FB2 zamiast jednego nieograniczonego <code>.*</code>.</p>
+<p>Dla wyrazów Unicode i złożonej korekty stosuj Projekt. Dla struktury używaj narzędzi XML/FB2 zamiast jednego nieograniczonego <code>.*</code>.</p>
 <h2 id="section-15">15. Wydajność i długie wiersze XML</h2>
-<p>Kr&#243;tki wzorzec nie musi być szybki. Nieograniczone powt&#243;rzenia i długie konkurujące alternatywy spowalniają duże wiersze, szczeg&#243;lnie gdy jedna linia zawiera cały dokument lub duże binary.</p>
-<p>Zaczynaj od konkretnej nazwy tagu lub atrybutu, a zamiast „dowolnych znak&#243;w” wybieraj ograniczoną klasę. Nie szukaj naraz wszystkich możliwych błęd&#243;w; osobne przepisy łatwiej sprawdzać i cofać.</p>
+<p>Krótki wzorzec nie musi być szybki. Nieograniczone powtórzenia i długie konkurujące alternatywy spowalniają duże wiersze, szczególnie gdy jedna linia zawiera cały dokument lub duże binary.</p>
+<p>Zaczynaj od konkretnej nazwy tagu lub atrybutu, a zamiast „dowolnych znaków” wybieraj ograniczoną klasę. Nie szukaj naraz wszystkich możliwych błędów; osobne przepisy łatwiej sprawdzać i cofać.</p>
 <p>Nie sklejaj całego XML w jeden wiersz dla obejścia MatchOnLines: zmienia to dokument i nie gwarantuje szybkości.</p>
 <h2 id="section-16">16. Sprawdzenie po zamianie</h2>
-<p>Por&#243;wnaj oczekiwany i rzeczywisty zakres. Przy grupach sprawdź zachowanie cudzysłow&#243;w, prefiks&#243;w, nawias&#243;w kątowych i zamknięć tag&#243;w. Upewnij się, że komentarze, CDATA i binary nie zostały zmienione.</p>
-<p>Uruchom walidację FB2, zapisz i po istotnych zmianach otw&#243;rz ponownie. Sprawdź przejście Kod ↔ Projekt, przypisy, ilustracje i tekst. Przy zmianie identyfikatora kontroluj obiekt oraz wszystkie powiązane odsyłacze.</p>
-<h2 id="section-17">17. Źr&#243;dła i zakres stosowania</h2>
+<p>Porównaj oczekiwany i rzeczywisty zakres. Przy grupach sprawdź zachowanie cudzysłowów, prefiksów, nawiasów kątowych i zamknięć tagów. Upewnij się, że komentarze, CDATA i binary nie zostały zmienione.</p>
+<p>Uruchom walidację FB2, zapisz i po istotnych zmianach otwórz ponownie. Sprawdź przejście Kod ↔ Projekt, przypisy, ilustracje i tekst. Przy zmianie identyfikatora kontroluj obiekt oraz wszystkie powiązane odsyłacze.</p>
+<h2 id="section-17">17. Źródła i zakres stosowania</h2>
 <p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Oficjalna dokumentacja Scintilla, Searching: tryb C++11, opcje wyszukiwania i SCI_REPLACETARGETRE.</a></p>
-<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 i Namespaces in XML: nazwy, atrybuty, encje i przestrzenie nazw.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
+<p>[S2] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 i Namespaces in XML: nazwy, atrybuty, encje i przestrzenie nazw.</a> · <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

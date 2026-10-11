@@ -53,7 +53,7 @@ Appliquer dans le panneau Modèles transfère l’expression et les options vers
 
 ## 3. Moteur et limites du mode Design
 
-Ce mode utilise PCRE2-16, avec texte et motifs en UTF-16 ; UTF est toujours activé. FBE construit séparément le texte interrogeable puis effectue les remplacements en tenant compte de la structure du livre. La documentation PCRE2 explique donc les correspondances, mais pas toutes les opérations de FBE. Voir D1–D4.
+Ce mode utilise PCRE2-16, avec texte et motifs en UTF-16 ; UTF est toujours activé. FBE construit séparément le texte interrogeable puis effectue les remplacements en tenant compte de la structure du livre. La documentation PCRE2 explique donc les correspondances, mais pas toutes les opérations de FBE. Voir D1–D2.
 
 La recherche porte sur une représentation textuelle du livre, pas sur le balisage XML littéral. `<strong>` ne permet pas de rechercher le texte en gras dans Design. Recherchez les balises en mode Code et utilisez les fonctions structurelles ou des scripts spécialisés pour les transformations.
 
