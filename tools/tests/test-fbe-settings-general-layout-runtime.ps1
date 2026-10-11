@@ -1,6 +1,10 @@
 <# Audits every Settings page in priority locales, with General and Hotkeys in six locales. #>
 [CmdletBinding()]
-param([string]$FbeExe)
+param(
+    [string]$FbeExe,
+    [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
+    [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
+)
 $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -98,7 +102,7 @@ try {
         throw 'The isolated settings template lacks the interface language.'
     }
     $languagePattern = [regex]::new('<IntefaceLangID>[0-9]+</IntefaceLangID>')
-    foreach ($locale in 'ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG') {
+    foreach ($locale in $Locales) {
         $process = $null
         try {
             $settings = $languagePattern.Replace($settingsTemplate,
@@ -231,7 +235,7 @@ try {
             if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
         }
     }
-    Write-Host 'Settings pages fit in ru/en/de/uk; General and Hotkeys also fit in es/bg.'
+    Write-Host "Settings layout checks passed for: $($Locales -join ', ')."
     $passed = $true
 }
 finally {
