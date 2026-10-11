@@ -31,7 +31,7 @@ namespace
 CSettingsDlg::CSettingsDlg() :
 	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
-	m_initialDpi(0), m_layoutDpi(0),
+	m_automaticSize(false), m_initialDpi(0), m_layoutDpi(0),
 	m_pageLeft(0), m_pageTop(0), m_pageRightMargin(0), m_pageBottomMargin(0),
 	m_buttonWidth(0), m_buttonHeight(0), m_buttonGap(0), m_buttonBottomMargin(0),
 	m_navigationBottomGap(0)
@@ -138,6 +138,15 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	const int minimumPageHeight = max(5 * m_navigation.GetItemHeight(0), 6 * m_buttonHeight);
 	m_minimumWindowSize = CSize(nonClientWidth + m_pageLeft + minimumPageWidth + m_pageRightMargin,
 		nonClientHeight + m_pageTop + minimumPageHeight + m_pageBottomMargin);
+	int preferredPageWidth = minimumPageWidth;
+	int preferredPageHeight = max(minimumPageHeight, m_navigationRect.Height());
+	for(const PageLayout& page : m_pageLayouts)
+	{
+		preferredPageWidth = max(preferredPageWidth, page.contentSize.cx);
+		preferredPageHeight = max(preferredPageHeight, page.contentSize.cy);
+	}
+	m_preferredWindowSize = CSize(nonClientWidth + m_pageLeft + preferredPageWidth + m_pageRightMargin,
+		nonClientHeight + m_pageTop + preferredPageHeight + m_pageBottomMargin);
 	RestoreGeometry();
 	GetClientRect(client);
 	LayoutControls(client.Width(), client.Height());
@@ -209,6 +218,12 @@ LRESULT CSettingsDlg::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&)
 	return 0;
 }
 
+LRESULT CSettingsDlg::OnExitSizeMove(UINT, WPARAM, LPARAM, BOOL&)
+{
+	m_automaticSize = false;
+	return 0;
+}
+
 LRESULT CSettingsDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
 	MINMAXINFO* minMax = reinterpret_cast<MINMAXINFO*>(lParam);
@@ -236,6 +251,7 @@ LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 		m_navigationBottomGap = scale(m_navigationBottomGap);
 		for(PageLayout& page : m_pageLayouts)
 		{
+			page.templateSize = CSize(scale(page.templateSize.cx), scale(page.templateSize.cy));
 			page.contentSize = CSize(scale(page.contentSize.cx), scale(page.contentSize.cy));
 			page.scrollX = scale(page.scrollX);
 			page.scrollY = scale(page.scrollY);
@@ -253,10 +269,17 @@ LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 		{
 			const int workWidth = monitor.rcWork.right - monitor.rcWork.left;
 			const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top;
+			const int minimumWidth = min(::MulDiv(m_minimumWindowSize.cx, dpi, m_initialDpi), workWidth);
+			const int minimumHeight = min(::MulDiv(m_minimumWindowSize.cy, dpi, m_initialDpi), workHeight);
+			const int margin = UiMetrics::ScaleForDpi(28, dpi);
+			const int preferredWidth = min(::MulDiv(m_preferredWindowSize.cx, dpi, m_initialDpi),
+				max(minimumWidth, workWidth - 2 * margin));
+			const int preferredHeight = min(::MulDiv(m_preferredWindowSize.cy, dpi, m_initialDpi),
+				max(minimumHeight, workHeight - 2 * margin));
 			const int width = min(max(suggested->right - suggested->left,
-				min(::MulDiv(m_minimumWindowSize.cx, dpi, m_initialDpi), workWidth)), workWidth);
+				m_automaticSize ? preferredWidth : minimumWidth), workWidth);
 			const int height = min(max(suggested->bottom - suggested->top,
-				min(::MulDiv(m_minimumWindowSize.cy, dpi, m_initialDpi), workHeight)), workHeight);
+				m_automaticSize ? preferredHeight : minimumHeight), workHeight);
 			const int x = min(max(suggested->left, monitor.rcWork.left), monitor.rcWork.right - width);
 			const int y = min(max(suggested->top, monitor.rcWork.top), monitor.rcWork.bottom - height);
 			::SetWindowPos(m_hWnd, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -336,14 +359,35 @@ void CSettingsDlg::CapturePageLayouts()
 		RECT client = {};
 		::GetClientRect(page, &client);
 		PageLayout& layout = m_pageLayouts[index];
-		layout.contentSize = CSize(client.right, client.bottom);
+		layout.templateSize = CSize(client.right, client.bottom);
+		int right = 0, bottom = 0;
 		for(HWND child = ::GetWindow(page, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
 		{
 			RECT rect = {};
 			::GetWindowRect(child, &rect);
 			::MapWindowPoints(NULL, page, reinterpret_cast<POINT*>(&rect), 2);
 			layout.controls.push_back({ child, CRect(rect), ::GetDlgCtrlID(child) });
+			// A combo's window rectangle includes its closed dropdown list. Only
+			// the visible selection field needs to fit in the page viewport.
+			RECT visible = rect;
+			wchar_t className[16] = {};
+			if(::GetClassNameW(child, className, _countof(className)) &&
+				_wcsicmp(className, L"ComboBox") == 0)
+			{
+				COMBOBOXINFO combo = { sizeof(combo) };
+				if(::GetComboBoxInfo(child, &combo))
+				{
+					POINT fieldBottom = { 0, max(combo.rcItem.bottom, combo.rcButton.bottom) };
+					::ScreenToClient(page, &fieldBottom);
+					visible.bottom = min(visible.bottom, fieldBottom.y +
+						UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(page)));
+				}
+			}
+			right = max(right, visible.right);
+			bottom = max(bottom, visible.bottom);
 		}
+		const int padding = UiMetrics::ScaleForDpi(8, UiMetrics::DpiForWindow(page));
+		layout.contentSize = CSize(right + padding, bottom + padding);
 		::SetWindowLongPtrW(page, GWL_STYLE, ::GetWindowLongPtrW(page, GWL_STYLE) | WS_VSCROLL | WS_HSCROLL);
 		::SetWindowSubclass(page, PageSubclassProc, static_cast<UINT_PTR>(index), reinterpret_cast<DWORD_PTR>(this));
 	}
@@ -356,12 +400,21 @@ void CSettingsDlg::LayoutPage(int index)
 	PageLayout& layout = m_pageLayouts[index];
 	if(layout.contentSize.cx <= 0 || layout.contentSize.cy <= 0) return;
 	RECT client = {};
-	::GetClientRect(page, &client);
-	::ShowScrollBar(page, SB_VERT, client.bottom < layout.contentSize.cy);
-	::ShowScrollBar(page, SB_HORZ, client.right < layout.contentSize.cx);
-	::GetClientRect(page, &client);
-	::ShowScrollBar(page, SB_VERT, client.bottom < layout.contentSize.cy);
-	::ShowScrollBar(page, SB_HORZ, client.right < layout.contentSize.cx);
+	// Re-evaluate both axes until the viewport accounts for the other bar.
+	// Start without bars so an obsolete bar cannot keep its partner visible.
+	::ShowScrollBar(page, SB_VERT, FALSE);
+	::ShowScrollBar(page, SB_HORZ, FALSE);
+	for(int pass = 0; pass < 3; ++pass)
+	{
+		::GetClientRect(page, &client);
+		const bool vertical = client.bottom < layout.contentSize.cy;
+		const bool horizontal = client.right < layout.contentSize.cx;
+		const bool hadVertical = (::GetWindowLongPtrW(page, GWL_STYLE) & WS_VSCROLL) != 0;
+		const bool hadHorizontal = (::GetWindowLongPtrW(page, GWL_STYLE) & WS_HSCROLL) != 0;
+		if(vertical == hadVertical && horizontal == hadHorizontal) break;
+		::ShowScrollBar(page, SB_VERT, vertical);
+		::ShowScrollBar(page, SB_HORZ, horizontal);
+	}
 	::GetClientRect(page, &client);
 	const int availableWidth = max(0, client.right - client.left);
 	const int availableHeight = max(0, client.bottom - client.top);
@@ -374,13 +427,13 @@ void CSettingsDlg::LayoutPage(int index)
 	::SetScrollInfo(page, SB_HORZ, &info, TRUE);
 	info.nMin = 0; info.nMax = contentHeight - 1; info.nPage = availableHeight; info.nPos = layout.scrollY;
 	::SetScrollInfo(page, SB_VERT, &info, TRUE);
-	const int extraWidth = contentWidth - layout.contentSize.cx;
-	const int extraHeight = contentHeight - layout.contentSize.cy;
+	const int extraWidth = max(0, contentWidth - max(layout.templateSize.cx, layout.contentSize.cx));
+	const int extraHeight = max(0, contentHeight - max(layout.templateSize.cy, layout.contentSize.cy));
 	for(const PageControlLayout& control : layout.controls)
 	{
 		if(!::IsWindow(control.window)) continue;
 		CRect rect(control.rect);
-		const bool nearRight = rect.right >= layout.contentSize.cx - UiMetrics::ScaleForDpi(20, m_layoutDpi);
+		const bool nearRight = rect.right >= layout.templateSize.cx - UiMetrics::ScaleForDpi(20, m_layoutDpi);
 		const bool stretchField =
 			(index == PageIndex(SettingsPageId::General) && (control.id == IDC_LANG ||
 				control.id == IDC_GENRE_CATALOG || control.id == IDC_INTERFACE_THEME ||
@@ -395,17 +448,17 @@ void CSettingsDlg::LayoutPage(int index)
 		if((index == PageIndex(SettingsPageId::Words) && control.id == IDC_BUTTON_ADD) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SELECT_SCRIPTS_FOLDER_BUTTON))
 			rect.OffsetRect(extraWidth, 0);
-		else if(stretchField || (nearRight && rect.Width() > layout.contentSize.cx / 2)) rect.right += extraWidth;
-		else if(nearRight && rect.left > layout.contentSize.cx / 2) rect.OffsetRect(extraWidth, 0);
+		else if(stretchField || (nearRight && rect.Width() > layout.templateSize.cx / 2)) rect.right += extraWidth;
+		else if(nearRight && rect.left > layout.templateSize.cx / 2) rect.OffsetRect(extraWidth, 0);
 		if(index == PageIndex(SettingsPageId::Keyboard))
 		{
 			if(control.id == IDC_LIST_HOTKEYS_GROUPS || control.id == IDC_LIST_HOTKEYS) rect.bottom += extraHeight;
-			else if(rect.top >= layout.contentSize.cy / 3) rect.OffsetRect(0, extraHeight);
+			else if(rect.top >= layout.templateSize.cy / 3) rect.OffsetRect(0, extraHeight);
 		}
 		else if(index == PageIndex(SettingsPageId::Words))
 		{
 			if(control.id == IDC_STATIC_WORDS_CHEVRON || control.id == IDC_LIST_WORDS) rect.bottom += extraHeight;
-			else if(rect.top >= layout.contentSize.cy / 2) rect.OffsetRect(0, extraHeight);
+			else if(rect.top >= layout.templateSize.cy / 2) rect.OffsetRect(0, extraHeight);
 		}
 		else if((index == PageIndex(SettingsPageId::Editor) &&
 			(control.id == IDC_EDITOR_BACKGROUND_PREVIEW || control.id == IDC_EDITOR_BACKGROUND_GROUP)) ||
@@ -487,25 +540,78 @@ bool CSettingsDlg::ProbeLayout()
 {
 	CRect original;
 	GetWindowRect(original);
-	const int width = m_minimumWindowSize.cx + UiMetrics::ScaleForDpi(8, m_layoutDpi);
-	const int height = m_minimumWindowSize.cy + UiMetrics::ScaleForDpi(8, m_layoutDpi);
-	::SetWindowPos(m_hWnd, NULL, original.left, original.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 	CRect client;
-	GetClientRect(client);
 	auto controlRect = [&](HWND control) {
 		CRect rect;
 		::GetWindowRect(control, &rect);
 		::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&rect), 2);
 		return rect;
 	};
-	const CRect ok = controlRect(GetDlgItem(IDOK));
-	const CRect cancel = controlRect(GetDlgItem(IDCANCEL));
-	const CRect navigation = controlRect(m_navigation);
 	auto inside = [&](const CRect& rect) {
 		return rect.left >= client.left && rect.top >= client.top &&
 			rect.right <= client.right && rect.bottom <= client.bottom;
 	};
-	bool passed = inside(ok) && inside(cancel) && inside(navigation) && ok.right <= cancel.left;
+	bool passed = true;
+	GetClientRect(client);
+	const CRect ok = controlRect(GetDlgItem(IDOK));
+	const CRect cancel = controlRect(GetDlgItem(IDCANCEL));
+	const CRect navigation = controlRect(m_navigation);
+	passed = passed && inside(ok) && inside(cancel) && inside(navigation) && ok.right <= cancel.left;
+	MONITORINFO monitor = { sizeof(monitor) };
+	const bool hasWorkArea = ::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor) != FALSE;
+	const int margin = UiMetrics::ScaleForDpi(28, m_layoutDpi);
+	const bool preferredFits = hasWorkArea &&
+		m_preferredWindowSize.cx + 2 * margin <= monitor.rcWork.right - monitor.rcWork.left &&
+		m_preferredWindowSize.cy + 2 * margin <= monitor.rcWork.bottom - monitor.rcWork.top;
+	RECT saved = {};
+	UINT savedDpi = 0;
+	if(hasWorkArea && !m_automaticSize && _Settings.GetSettingsDialogGeometry(saved, savedDpi) &&
+		savedDpi == m_layoutDpi && saved.left >= monitor.rcWork.left &&
+		saved.top >= monitor.rcWork.top && saved.right <= monitor.rcWork.right &&
+		saved.bottom <= monitor.rcWork.bottom)
+		passed = passed && original == CRect(saved);
+	if(preferredFits && m_automaticSize)
+		passed = passed && original.Width() >= m_preferredWindowSize.cx &&
+			original.Height() >= m_preferredWindowSize.cy;
+	// Switching among all eight pages must not resize the outer dialog. On a
+	// monitor that can hold the preferred size, its initial pages need no bars.
+	for(int index = 0; index < PageIndex(SettingsPageId::Count); ++index)
+	{
+		SelectPage(static_cast<SettingsPageId>(index));
+		const HWND page = m_pages[index]->m_hWnd;
+		const CRect pageRect = controlRect(page);
+		passed = passed && inside(pageRect) && navigation.right <= pageRect.left && pageRect.bottom <= ok.top;
+		CRect unchanged;
+		GetWindowRect(unchanged);
+		passed = passed && unchanged == original;
+		if(preferredFits && m_automaticSize)
+		{
+			RECT viewport = {};
+			::GetClientRect(page, &viewport);
+			passed = passed && viewport.right >= m_pageLayouts[index].contentSize.cx &&
+				viewport.bottom >= m_pageLayouts[index].contentSize.cy &&
+				!(::GetWindowLongPtrW(page, GWL_STYLE) & (WS_VSCROLL | WS_HSCROLL));
+		}
+	}
+	if(preferredFits && m_automaticSize)
+	{
+		const int deficit = UiMetrics::ScaleForDpi(20, m_layoutDpi);
+		::SetWindowPos(m_hWnd, NULL, original.left, original.top,
+			original.Width() - deficit, original.Height() - deficit, SWP_NOZORDER | SWP_NOACTIVATE);
+		SelectPage(SettingsPageId::Source);
+		RECT viewport = {};
+		::GetClientRect(m_sourcePage->m_hWnd, &viewport);
+		passed = passed && (viewport.right < m_pageLayouts[PageIndex(SettingsPageId::Source)].contentSize.cx ||
+			viewport.bottom < m_pageLayouts[PageIndex(SettingsPageId::Source)].contentSize.cy);
+		::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
+			SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+	const int width = m_minimumWindowSize.cx + UiMetrics::ScaleForDpi(8, m_layoutDpi);
+	const int height = m_minimumWindowSize.cy + UiMetrics::ScaleForDpi(8, m_layoutDpi);
+	::SetWindowPos(m_hWnd, NULL, original.left, original.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+	GetClientRect(client);
+	passed = passed && inside(controlRect(GetDlgItem(IDOK))) && inside(controlRect(GetDlgItem(IDCANCEL))) &&
+		inside(controlRect(m_navigation));
 	int verticallyScrollablePages = 0;
 	int horizontallyScrollablePages = 0;
 	for(int index = 0; index < PageIndex(SettingsPageId::Count); ++index)
@@ -544,6 +650,9 @@ bool CSettingsDlg::ProbeLayout()
 	passed = passed && verticallyScrollablePages > 0 && horizontallyScrollablePages > 0;
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
+	CRect restored;
+	GetWindowRect(restored);
+	passed = passed && restored == original;
 	SelectPage(SettingsPageId::General);
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_LAYOUT_PASSED", reinterpret_cast<HANDLE>(passed ? 1 : 2));
 	return passed;
@@ -556,7 +665,8 @@ void CSettingsDlg::RestoreGeometry()
 	RECT saved = {};
 	UINT savedDpi = 0;
 	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-	if(_Settings.GetSettingsDialogGeometry(saved, savedDpi))
+	m_automaticSize = !_Settings.GetSettingsDialogGeometry(saved, savedDpi);
+	if(!m_automaticSize)
 	{
 		wanted = saved;
 		wanted.right = wanted.left + ::MulDiv(saved.right - saved.left, dpi, savedDpi);
@@ -566,8 +676,18 @@ void CSettingsDlg::RestoreGeometry()
 	if(!::GetMonitorInfoW(::MonitorFromRect(&wanted, MONITOR_DEFAULTTONEAREST), &monitor)) return;
 	const int workWidth = monitor.rcWork.right - monitor.rcWork.left;
 	const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top;
-	const int width = min(max(wanted.Width(), min(::MulDiv(m_minimumWindowSize.cx, dpi, m_initialDpi), workWidth)), workWidth);
-	const int height = min(max(wanted.Height(), min(::MulDiv(m_minimumWindowSize.cy, dpi, m_initialDpi), workHeight)), workHeight);
+	const int minimumWidth = min(::MulDiv(m_minimumWindowSize.cx, dpi, m_initialDpi), workWidth);
+	const int minimumHeight = min(::MulDiv(m_minimumWindowSize.cy, dpi, m_initialDpi), workHeight);
+	const int margin = UiMetrics::ScaleForDpi(28, dpi);
+	const int preferredWidth = min(m_preferredWindowSize.cx, max(minimumWidth, workWidth - 2 * margin));
+	const int preferredHeight = min(m_preferredWindowSize.cy, max(minimumHeight, workHeight - 2 * margin));
+	const int width = min(max(wanted.Width(), m_automaticSize ? preferredWidth : minimumWidth), workWidth);
+	const int height = min(max(wanted.Height(), m_automaticSize ? preferredHeight : minimumHeight), workHeight);
+	if(m_automaticSize)
+	{
+		wanted.left -= (width - wanted.Width()) / 2;
+		wanted.top -= (height - wanted.Height()) / 2;
+	}
 	const int x = min(max(wanted.left, monitor.rcWork.left), monitor.rcWork.right - width);
 	const int y = min(max(wanted.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
 	::SetWindowPos(m_hWnd, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);

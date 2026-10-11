@@ -9,7 +9,7 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-settings-dialog-' + [guid]::N
 try {
     Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $root -Recurse -Force
     $exe = Join-Path $root 'FBE.exe'; $fixture = Join-Path $root 'settings.fb2'
-    $report = Join-Path $root 'settings.txt'; $verifyReport = Join-Path $root 'verify.txt'; $backupReport = Join-Path $root 'backup.txt'; $backupExistingReport = Join-Path $root 'backup-existing.txt'; $backupVerifyReport = Join-Path $root 'backup-verify.txt'
+    $report = Join-Path $root 'settings.txt'; $reopenReport = Join-Path $root 'settings-reopen.txt'; $verifyReport = Join-Path $root 'verify.txt'; $backupReport = Join-Path $root 'backup.txt'; $backupExistingReport = Join-Path $root 'backup-existing.txt'; $backupVerifyReport = Join-Path $root 'backup-verify.txt'
     [IO.File]::WriteAllText((Join-Path $root 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [Text.UTF8Encoding]::new($false))
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><id>settings-dialog-test</id><version>1</version></document-info></description><body><section><p>BACKUP_RUNTIME_BEFORE</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
     function Invoke-Scenario([string]$Scenario, [string]$Path) {
@@ -23,9 +23,11 @@ try {
         } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
+    $reopened=Invoke-Scenario 'settings-dialog-runtime' $reopenReport
     $second=Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport
-    foreach($text in @($first,$second)) { foreach($line in 'persisted=1','applied=1') { if($text -notmatch [regex]::Escape($line)) { throw "Settings runtime report is missing ${line}: $text" } } }
+    foreach($text in @($first,$reopened,$second)) { foreach($line in 'persisted=1','applied=1') { if($text -notmatch [regex]::Escape($line)) { throw "Settings runtime report is missing ${line}: $text" } } }
     if($first -notmatch 'settings_dialog=1' -or $first -notmatch 'layout=1' -or
+        $reopened -notmatch 'settings_dialog=1' -or $reopened -notmatch 'layout=1' -or
         $second -notmatch 'settings_dialog=0') { throw 'Settings dialog layout/verify phases were not distinguished.' }
     $backupFirst=Invoke-Scenario 'backup-settings-save-runtime' $backupReport
     foreach($line in 'settings_dialog=1','backup_disabled=1','source_edited=1','source_applied=1','saved=1') { if($backupFirst -notmatch [regex]::Escape($line)) { throw "Backup runtime report is missing ${line}: $backupFirst" } }
@@ -39,5 +41,5 @@ try {
     if([IO.File]::ReadAllText(($fixture + '.bak'), [Text.UTF8Encoding]::new($false)) -ne 'PREEXISTING_BACKUP') { throw 'Backup-disabled runtime save replaced the existing .bak.' }
     $backupSecond=Invoke-Scenario 'backup-settings-save-runtime-verify' $backupVerifyReport
     foreach($line in 'settings_dialog=0','backup_disabled=1') { if($backupSecond -notmatch [regex]::Escape($line)) { throw "Backup persistence report is missing ${line}: $backupSecond" } }
-    Write-Host 'FBE Settings dialog Apply/OK, backup-disabled save, and portable restart persistence passed.'
+    Write-Host 'FBE Settings dialog layout, geometry reopen, Apply/OK, and backup-disabled save passed.'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
