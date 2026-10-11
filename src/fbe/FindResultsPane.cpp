@@ -167,10 +167,16 @@ LRESULT CFindResultsPane::OnListCustomDraw(int, LPNMHDR header, BOOL&)
 		matchLength = (std::min)(matchLength, static_cast<std::size_t>(text.GetLength()) - matchStart);
 		SIZE prefix = {}; ::GetTextExtentPoint32(dc, text, static_cast<int>(matchStart), &prefix); const CString matched = text.Mid(static_cast<int>(matchStart), static_cast<int>(matchLength)); SIZE matchedSize = {}; ::GetTextExtentPoint32(dc, matched, matched.GetLength(), &matchedSize);
 		RECT highlight = cell; highlight.left += prefix.cx; highlight.right = highlight.left + matchedSize.cx;
-		if (highlight.left < cell.right && highlight.right > cell.left) {
-			::FillRect(dc, &highlight, ::GetSysColorBrush(COLOR_INFOBK));
-			::SetTextColor(dc, ::GetSysColor(COLOR_INFOTEXT));
-			::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
+		RECT visibleHighlight = {};
+		if (::IntersectRect(&visibleHighlight, &highlight, &paintCell)) {
+			::FillRect(dc, &visibleHighlight, ::GetSysColorBrush(COLOR_INFOBK));
+			const int savedDc = ::SaveDC(dc);
+			if (savedDc != 0) {
+				::IntersectClipRect(dc, visibleHighlight.left, visibleHighlight.top, visibleHighlight.right, visibleHighlight.bottom);
+				::SetTextColor(dc, ::GetSysColor(COLOR_INFOTEXT));
+				::DrawText(dc, matched, matched.GetLength(), &highlight, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_NOCLIP);
+				::RestoreDC(dc, savedDc);
+			}
 		}
 	}
 	if (oldFont != NULL) ::SelectObject(dc, oldFont);
