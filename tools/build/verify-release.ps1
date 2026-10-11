@@ -171,6 +171,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-runtime-directory-layout.ps1") -RuntimeDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-editor-background-settings.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-settings-dialog-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-inputbox-layout-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 # Mandatory post-build Dark Theme stabilization contour. Each script throws
 # on failure and retains its isolated runtime diagnostics for inspection.
 & (Join-Path $repoRoot "tools\tests\test-fbe-status-bar-long-paint-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
