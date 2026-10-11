@@ -155,12 +155,15 @@ void CHtmlExportOptionsDialog::CapturePageLayouts()
         RECT client = {};
         ::GetClientRect(pages[index], &client);
         m_pageLayouts[index].initialSize = CSize(client.right, client.bottom);
+        const int margin = ::MulDiv(8, OptionsWindowDpi(pages[index]), 96);
         for (HWND child = ::GetWindow(pages[index], GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
         {
             RECT rect = {};
             ::GetWindowRect(child, &rect);
             ::MapWindowPoints(NULL, pages[index], reinterpret_cast<POINT*>(&rect), 2);
             m_pageLayouts[index].controls.push_back({ child, CRect(rect), ::GetDlgCtrlID(child) });
+            m_pageLayouts[index].contentSize.cx = max(m_pageLayouts[index].contentSize.cx, rect.right + margin);
+            m_pageLayouts[index].contentSize.cy = max(m_pageLayouts[index].contentSize.cy, rect.bottom + margin);
         }
         ::SetWindowLongPtrW(pages[index], GWL_STYLE,
             ::GetWindowLongPtrW(pages[index], GWL_STYLE) | WS_VSCROLL | WS_HSCROLL);
@@ -177,17 +180,18 @@ void CHtmlExportOptionsDialog::LayoutPageFields(int index, HWND page)
     PageLayout& layout = m_pageLayouts[index];
     const auto scale = [this](int value) { return MulDiv(value, m_layoutDpi, m_initialDpi); };
     const int initialWidth = scale(layout.initialSize.cx);
-    const int initialHeight = scale(layout.initialSize.cy);
-    ::ShowScrollBar(page, SB_VERT, client.bottom < initialHeight);
-    ::ShowScrollBar(page, SB_HORZ, client.right < initialWidth);
+    const int neededWidth = scale(layout.contentSize.cx);
+    const int neededHeight = scale(layout.contentSize.cy);
+    ::ShowScrollBar(page, SB_VERT, client.bottom < neededHeight);
+    ::ShowScrollBar(page, SB_HORZ, client.right < neededWidth);
     ::GetClientRect(page, &client);
-    ::ShowScrollBar(page, SB_VERT, client.bottom < initialHeight);
-    ::ShowScrollBar(page, SB_HORZ, client.right < initialWidth);
+    ::ShowScrollBar(page, SB_VERT, client.bottom < neededHeight);
+    ::ShowScrollBar(page, SB_HORZ, client.right < neededWidth);
     ::GetClientRect(page, &client);
     const int availableWidth = max(0, client.right - client.left);
     const int availableHeight = max(0, client.bottom - client.top);
-    const int contentWidth = max(availableWidth, initialWidth);
-    const int contentHeight = max(availableHeight, initialHeight);
+    const int contentWidth = max(availableWidth, neededWidth);
+    const int contentHeight = max(availableHeight, neededHeight);
     layout.scrollX = min(max(0, layout.scrollX), contentWidth - availableWidth);
     layout.scrollY = min(max(0, layout.scrollY), contentHeight - availableHeight);
     SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
@@ -195,7 +199,7 @@ void CHtmlExportOptionsDialog::LayoutPageFields(int index, HWND page)
     ::SetScrollInfo(page, SB_HORZ, &info, TRUE);
     info.nMin = 0; info.nMax = contentHeight - 1; info.nPage = availableHeight; info.nPos = layout.scrollY;
     ::SetScrollInfo(page, SB_VERT, &info, TRUE);
-    const int extraWidth = contentWidth - initialWidth;
+    const int extraWidth = max(0, availableWidth - initialWidth);
     for (const PageControlLayout& control : layout.controls)
     {
         CRect rect(scale(control.initial.left), scale(control.initial.top),
@@ -225,7 +229,7 @@ void CHtmlExportOptionsDialog::ScrollPage(int index, WPARAM command, bool horizo
     RECT client = {};
     ::GetClientRect(page, &client);
     const int available = horizontal ? client.right - client.left : client.bottom - client.top;
-    const int content = ::MulDiv(horizontal ? layout.initialSize.cx : layout.initialSize.cy,
+    const int content = ::MulDiv(horizontal ? layout.contentSize.cx : layout.contentSize.cy,
         m_layoutDpi, m_initialDpi);
     const int maximum = max(0, content - available);
     int& position = horizontal ? layout.scrollX : layout.scrollY;
@@ -297,10 +301,11 @@ void CHtmlExportOptionsDialog::LayoutChrome()
     CRect client;
     GetClientRect(client);
     const auto scale = [this](int value) { return MulDiv(value, m_layoutDpi, m_initialDpi); };
-    const int extraWidth = max(0, client.Width() - scale(m_initialClient.cx));
-    const int extraHeight = max(0, client.Height() - scale(m_initialClient.cy));
+    const int extraWidth = client.Width() - scale(m_initialClient.cx);
+    const int extraHeight = client.Height() - scale(m_initialClient.cy);
     GetDlgItem(IDC_OPTIONS_TABS).MoveWindow(scale(m_initialTabs.left), scale(m_initialTabs.top),
-        scale(m_initialTabs.Width()) + extraWidth, scale(m_initialTabs.Height()) + extraHeight);
+        max(0, scale(m_initialTabs.Width()) + extraWidth),
+        max(0, scale(m_initialTabs.Height()) + extraHeight));
     GetDlgItem(IDOK).MoveWindow(client.right - scale(m_initialClient.cx - m_initialOk.left),
         client.bottom - scale(m_initialClient.cy - m_initialOk.top),
         scale(m_initialOk.Width()), scale(m_initialOk.Height()));

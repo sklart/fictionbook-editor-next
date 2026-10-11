@@ -19,7 +19,7 @@
 | Блок | SHA |
 | --- | --- |
 | Settings | `0e0b7e81`, `4fb97f47`, `f0e94eeb`, `bfd2a1a6`, `2ab34d15`, `cf180de4`, `84913aad`, `ae6edb8f` |
-| Import и Export | `ef0d88fe`, `d665b219`, `7799f91c`, `ecfa3488`, `852313d7` |
+| Import и Export | `ef0d88fe`, `d665b219`, `7799f91c`, `ecfa3488`, `852313d7`, `911d0eff` |
 | Главное окно, Scripts Tree, GDI | `b5c5108c` |
 | Поиск, диалоги и подсказки | `7adf806b`, `c9dc301a`, `fc36c593`, `4f597036`, `10640bed`, `0f4b2c1e`, `6fb73dad`, `a40c70fb`, `f45419ea`, `06a80efa`, `d843c180`, `eec8090b`, `757ffc02`, `0fec2126`, `657d422e` |
 | FBV | `f6d750f9`, `11f5ed1f`, `b1a019fb` |
@@ -32,7 +32,7 @@
 - Редактор: `src/fbe/ArchiveEntryPicker.cpp`, `DocumentTree.cpp`, `FBE.cpp`, `FBE.rc`, `FBEview.h`, `FindResultsPane.cpp`, `FindResultsPane.h`, `ModelessDialog.h`, `Settings.cpp`, `Settings.h`, `Speller.cpp`, `Speller.h`, `TreeView.cpp`, `UiMetrics.cpp`, `UiMetrics.h`, `apputils.cpp`, `mainfrm.cpp`, `search/ui/RegexQuickReferencePopup.cpp`, `testing/RuntimeTestArchiveAndLifecycle.inl`, `toolbars/ToolbarFactory.cpp`, `ui/ContextAttributeBars.cpp`.
 - Страницы настроек: `src/fbe/settings/SettingsDefaults.cpp`, `SettingsSerialization.cpp`; `src/fbe/settings/ui/SettingsDlg.cpp`, `SettingsDlg.h`, `SettingsGeneralPage.cpp`, `SettingsGeneralPage.h`, `SettingsTooltips.h`.
 - FBV: `src/fbv/FBV.cpp`.
-- Проверки и инструмент: `tools/build/verify-release.ps1`; `tools/ui/README.md`, `UiLayoutAudit.cs`, `invoke-ui-layout-audit.ps1`; `tools/tests/test-fbe-about-dialog-layout-runtime.ps1`, `test-fbe-add-image-dialog-layout-runtime.ps1`, `test-fbe-archive-document-support.ps1`, `test-fbe-context-attribute-bars.ps1`, `test-fbe-dialog-layout-contract.ps1`, `test-fbe-dialog-mnemonics.ps1`, `test-fbe-inputbox-layout-runtime.ps1`, `test-fbe-navigation-scripts-contract.ps1`, `test-fbe-runtime-dialog-coverage.ps1`, `test-fbe-settings-dialog-runtime.ps1`, `test-fbe-settings-general-layout-runtime.ps1`, `test-fbe-spell-dialog-layout-runtime.ps1`, `test-fbv-layout-runtime.ps1`, `test-ui-layout-audit.ps1`.
+- Проверки и инструмент: `tools/build/verify-release.ps1`; `tools/ui/README.md`, `UiLayoutAudit.cs`, `invoke-ui-layout-audit.ps1`; `tools/tests/test-export-html-options-layout-runtime.ps1`, `test-fbe-about-dialog-layout-runtime.ps1`, `test-fbe-add-image-dialog-layout-runtime.ps1`, `test-fbe-archive-document-support.ps1`, `test-fbe-context-attribute-bars.ps1`, `test-fbe-dialog-layout-contract.ps1`, `test-fbe-dialog-mnemonics.ps1`, `test-fbe-inputbox-layout-runtime.ps1`, `test-fbe-navigation-scripts-contract.ps1`, `test-fbe-runtime-dialog-coverage.ps1`, `test-fbe-settings-dialog-runtime.ps1`, `test-fbe-settings-general-layout-runtime.ps1`, `test-fbe-spell-dialog-layout-runtime.ps1`, `test-fbv-layout-runtime.ps1`, `test-ui-layout-audit.ps1`.
 
 ## Выполненные короткие проверки
 
@@ -45,6 +45,7 @@
 - Контракты локализации: `test-runtime-interface-language-contract.ps1`, `test-export-docx-localization-resources.ps1`, `test-export-epub-localization-resources.ps1`, `test-fbe-dialog-mnemonics.ps1`, `test-fbe-main-menu-mnemonics.ps1`, `test-fbe-settings-tooltips.ps1`, `test-fbe-document-tree-tooltips-localization.ps1`. PASS, 12 локалей там, где это заявлено в самих проверках.
 - Контракты интерфейса: `test-export-html-options-dialog.ps1`, `test-fbe-dialog-layout-contract.ps1`, `test-fbe-find-results-pane-contract.ps1`, `test-fbe-navigation-scripts-contract.ps1`, `test-fbe-context-attribute-bars.ps1`, `test-release-pipeline-deduplication.ps1`. PASS.
 - После доработки HTML Options: `test-export-html-options-dialog.ps1` и инкрементальная сборка ExportHTML Release Win32 с v143 / VC Tools 14.44 и строгими предупреждениями — PASS. Прокрутка на малой рабочей области и tooltip после перемещения между мониторами остаются предметом общей GUI-приёмки.
+- `test-export-html-options-layout-runtime.ps1`: в изолированном FBE при текущем DPI 120 отсутствуют лишние полосы прокрутки; ограниченный сценарий `WM_DPICHANGED` для 240 DPI даёт горизонтальную и вертикальную прокрутку с перемещением содержимого, а OK/Отмена остаются внутри окна — PASS. Это синтетическая проверка компоновки, не замена реального переноса между мониторами и DPI-матрицы.
 - `git diff --check` для изменённых файлов при фиксации блоков. PASS.
 
 Контрактные проверки доказывают структуру и полноту строк, а не внешний вид на каждом DPI. Изолированные GUI smoke доказывают только перечисленные окна и состояние машины, на которой они выполнялись.

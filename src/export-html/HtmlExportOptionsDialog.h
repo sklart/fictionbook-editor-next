@@ -61,7 +61,7 @@ public:
     UINT m_initialDpi = 0;
     UINT m_layoutDpi = 0;
     struct PageControlLayout { HWND window; CRect initial; int id; };
-    struct PageLayout { CSize initialSize = CSize(0, 0); int scrollX = 0; int scrollY = 0; std::vector<PageControlLayout> controls; };
+    struct PageLayout { CSize initialSize = CSize(0, 0); CSize contentSize = CSize(0, 0); int scrollX = 0; int scrollY = 0; std::vector<PageControlLayout> controls; };
     PageLayout m_pageLayouts[4];
     void SetSplitSupported(bool value) { m_splitSupported = value; m_generalPage.SetSplitSupported(value); }
 
