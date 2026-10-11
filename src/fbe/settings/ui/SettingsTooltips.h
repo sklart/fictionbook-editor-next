@@ -51,10 +51,39 @@ public:
 		CString& text = m_rectangleTexts[id];
 		text = FbeLoadRuntimeStringByKey(key, fallback);
 		CToolInfo toolInfo(TTF_SUBCLASS, m_owner, id, &rect, text.GetBuffer());
-		m_tooltips.AddTool(&toolInfo);
+		if(m_tooltips.AddTool(&toolInfo))
+		{
+			const BOOL tracking = ::SetWindowSubclass(control, DisabledAreaSubclassProc, id, reinterpret_cast<DWORD_PTR>(this));
+			ATLASSERT(tracking);
+			(void)tracking;
+		}
 	}
 
 private:
+	static LRESULT CALLBACK DisabledAreaSubclassProc(HWND control, UINT message, WPARAM wParam, LPARAM lParam,
+		UINT_PTR toolId, DWORD_PTR reference)
+	{
+		CSettingsTooltips* self = reinterpret_cast<CSettingsTooltips*>(reference);
+		if(message == WM_WINDOWPOSCHANGED)
+			self->RefreshDisabledControlArea(control, toolId);
+		else if(message == WM_NCDESTROY)
+		{
+			::RemoveWindowSubclass(control, DisabledAreaSubclassProc, toolId);
+			if(self->m_tooltips.IsWindow()) self->m_tooltips.DelTool(self->m_owner, toolId);
+			self->m_rectangleTexts.erase(toolId);
+		}
+		return ::DefSubclassProc(control, message, wParam, lParam);
+	}
+
+	void RefreshDisabledControlArea(HWND control, UINT_PTR toolId)
+	{
+		if(!m_tooltips.IsWindow() || !::IsWindow(m_owner)) return;
+		RECT rect = {};
+		if(!::GetWindowRect(control, &rect)) return;
+		::MapWindowPoints(NULL, m_owner, reinterpret_cast<LPPOINT>(&rect), 2);
+		m_tooltips.SetToolRect(m_owner, toolId, &rect);
+	}
+
 	HWND m_owner = NULL;
 	UINT_PTR m_nextRectangleToolId = 1;
 	CToolTipCtrl m_tooltips;
