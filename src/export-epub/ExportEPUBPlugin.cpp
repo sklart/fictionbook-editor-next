@@ -2863,10 +2863,192 @@ void DestroyExportOptionsTooltips(HWND hwnd)
     }
 }
 
+int MaxLayoutInt(int left, int right) { return left > right ? left : right; }
+int MinLayoutInt(int left, int right) { return left < right ? left : right; }
+
 struct ExportOptionsDialogContext {
     ExportPluginSettings* settings = nullptr;
     fbe::epub::EpubVersion version = fbe::epub::EpubVersion::Epub3;
+    struct Control { HWND window; RECT initial; int id; };
+    std::vector<Control> controls;
+    SIZE initialClient = {};
+    int contentBottom = 0;
+    int footerHeight = 0;
+    int scrollX = 0;
+    int scrollY = 0;
+    UINT initialDpi = 96;
+    UINT dpi = 96;
+    LOGFONTW initialFont = {};
+    bool hasFont = false;
+    HFONT dpiFont = nullptr;
 };
+
+UINT ExportOptionsDpi(HWND hwnd)
+{
+    using GetDpiForWindowProc = UINT (WINAPI*)(HWND);
+    const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    const auto getDpi = user32 ? reinterpret_cast<GetDpiForWindowProc>(
+        GetProcAddress(user32, "GetDpiForWindow")) : nullptr;
+    if (getDpi)
+    {
+        const UINT dpi = getDpi(hwnd);
+        if (dpi) return dpi;
+    }
+    HDC dc = GetDC(hwnd);
+    const UINT dpi = dc ? static_cast<UINT>(GetDeviceCaps(dc, LOGPIXELSX)) : 96;
+    if (dc) ReleaseDC(hwnd, dc);
+    return dpi ? dpi : 96;
+}
+
+void CaptureExportOptionsLayout(HWND hwnd, ExportOptionsDialogContext& ctx)
+{
+    ShowScrollBar(hwnd, SB_VERT, FALSE);
+    ShowScrollBar(hwnd, SB_HORZ, FALSE);
+    RECT client = {};
+    GetClientRect(hwnd, &client);
+    ctx.initialClient = { client.right, client.bottom };
+    ctx.initialDpi = ctx.dpi = ExportOptionsDpi(hwnd);
+    const HFONT originalFont = reinterpret_cast<HFONT>(SendMessageW(GetDlgItem(hwnd, IDOK), WM_GETFONT, 0, 0));
+    ctx.hasFont = originalFont && GetObjectW(originalFont, sizeof(ctx.initialFont), &ctx.initialFont) != 0;
+    RECT ok = {};
+    GetWindowRect(GetDlgItem(hwnd, IDOK), &ok);
+    MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&ok), 2);
+    ctx.footerHeight = ctx.initialClient.cy - ok.top + MulDiv(8, ctx.dpi, 96);
+    for (HWND child = GetWindow(hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT))
+    {
+        RECT rect = {};
+        GetWindowRect(child, &rect);
+        MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&rect), 2);
+        const int id = GetDlgCtrlID(child);
+        ctx.controls.push_back({ child, rect, id });
+        if (id != IDOK && id != IDCANCEL)
+            ctx.contentBottom = MaxLayoutInt(ctx.contentBottom, rect.bottom + MulDiv(8, ctx.dpi, 96));
+    }
+}
+
+void UpdateExportOptionsFont(HWND hwnd, ExportOptionsDialogContext& ctx)
+{
+    if (!ctx.hasFont) return;
+    LOGFONTW font = ctx.initialFont;
+    font.lfHeight = MulDiv(font.lfHeight, ctx.dpi, ctx.initialDpi);
+    HFONT updated = CreateFontIndirectW(&font);
+    if (!updated) return;
+    for (const auto& control : ctx.controls)
+        SendMessageW(control.window, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+    const HWND tooltip = reinterpret_cast<HWND>(GetPropW(hwnd, L"ExportEPUB.OptionsTooltip"));
+    if (tooltip) SendMessageW(tooltip, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+    if (ctx.dpiFont) DeleteObject(ctx.dpiFont);
+    ctx.dpiFont = updated;
+}
+
+void LayoutExportOptions(HWND hwnd, ExportOptionsDialogContext& ctx)
+{
+    if (ctx.controls.empty()) return;
+    const auto scale = [&ctx](int value) { return MulDiv(value, ctx.dpi, ctx.initialDpi); };
+    RECT client = {};
+    GetClientRect(hwnd, &client);
+    auto viewportHeight = [&]() { return MaxLayoutInt(0, client.bottom - scale(ctx.footerHeight)); };
+    ShowScrollBar(hwnd, SB_VERT, scale(ctx.contentBottom) > viewportHeight() ? TRUE : FALSE);
+    ShowScrollBar(hwnd, SB_HORZ, scale(ctx.initialClient.cx) > client.right ? TRUE : FALSE);
+    GetClientRect(hwnd, &client);
+    ShowScrollBar(hwnd, SB_VERT, scale(ctx.contentBottom) > viewportHeight() ? TRUE : FALSE);
+    ShowScrollBar(hwnd, SB_HORZ, scale(ctx.initialClient.cx) > client.right ? TRUE : FALSE);
+    GetClientRect(hwnd, &client);
+    const int maxX = MaxLayoutInt(0, scale(ctx.initialClient.cx) - client.right);
+    const int maxY = MaxLayoutInt(0, scale(ctx.contentBottom) - viewportHeight());
+    ctx.scrollX = MinLayoutInt(MaxLayoutInt(ctx.scrollX, 0), maxX);
+    ctx.scrollY = MinLayoutInt(MaxLayoutInt(ctx.scrollY, 0), maxY);
+    SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
+    info.nMin = 0; info.nMax = MaxLayoutInt(0, scale(ctx.initialClient.cx) - 1);
+    info.nPage = client.right; info.nPos = ctx.scrollX;
+    SetScrollInfo(hwnd, SB_HORZ, &info, TRUE);
+    info.nMax = MaxLayoutInt(0, scale(ctx.contentBottom) - 1);
+    info.nPage = viewportHeight(); info.nPos = ctx.scrollY;
+    SetScrollInfo(hwnd, SB_VERT, &info, TRUE);
+    const int extraWidth = MaxLayoutInt(0, client.right - scale(ctx.initialClient.cx));
+    for (const auto& control : ctx.controls)
+    {
+        int x = scale(control.initial.left);
+        int y = scale(control.initial.top);
+        int width = scale(control.initial.right - control.initial.left);
+        const int height = scale(control.initial.bottom - control.initial.top);
+        if (control.id == IDOK || control.id == IDCANCEL)
+        {
+            x = client.right - scale(ctx.initialClient.cx - control.initial.left);
+            y = client.bottom - scale(ctx.initialClient.cy - control.initial.top);
+        }
+        else
+        {
+            x -= ctx.scrollX;
+            y -= ctx.scrollY;
+            if (control.initial.left < ctx.initialClient.cx / 3 &&
+                control.initial.right > ctx.initialClient.cx * 2 / 3) width += extraWidth;
+            else if (control.initial.left > ctx.initialClient.cx / 2) x += extraWidth;
+        }
+        SetWindowPos(control.window, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
+void ScrollExportOptions(HWND hwnd, ExportOptionsDialogContext& ctx, bool horizontal, WPARAM command)
+{
+    RECT client = {};
+    GetClientRect(hwnd, &client);
+    const int page = horizontal ? client.right : MaxLayoutInt(0, client.bottom -
+        MulDiv(ctx.footerHeight, ctx.dpi, ctx.initialDpi));
+    const int maximum = MaxLayoutInt(0, MulDiv(horizontal ? ctx.initialClient.cx : ctx.contentBottom,
+        ctx.dpi, ctx.initialDpi) - page);
+    int& position = horizontal ? ctx.scrollX : ctx.scrollY;
+    switch (LOWORD(command))
+    {
+    case SB_LINEUP: position -= MulDiv(24, ctx.dpi, 96); break;
+    case SB_LINEDOWN: position += MulDiv(24, ctx.dpi, 96); break;
+    case SB_PAGEUP: position -= page; break;
+    case SB_PAGEDOWN: position += page; break;
+    case SB_THUMBTRACK: case SB_THUMBPOSITION:
+        { SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
+            GetScrollInfo(hwnd, horizontal ? SB_HORZ : SB_VERT, &info);
+            position = info.nTrackPos; }
+        break;
+    case SB_TOP: position = 0; break;
+    case SB_BOTTOM: position = maximum; break;
+    default: return;
+    }
+    position = MinLayoutInt(MaxLayoutInt(position, 0), maximum);
+    LayoutExportOptions(hwnd, ctx);
+}
+
+void ConstrainExportOptionsToWorkArea(HWND hwnd, const RECT* suggested = nullptr)
+{
+    RECT window = {};
+    if (suggested) window = *suggested;
+    else GetWindowRect(hwnd, &window);
+    MONITORINFO monitor = { sizeof(monitor) };
+    if (!GetMonitorInfoW(MonitorFromRect(&window, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+    const int width = MinLayoutInt(window.right - window.left, monitor.rcWork.right - monitor.rcWork.left);
+    const int height = MinLayoutInt(window.bottom - window.top, monitor.rcWork.bottom - monitor.rcWork.top);
+    const int x = MinLayoutInt(MaxLayoutInt(window.left, monitor.rcWork.left), monitor.rcWork.right - width);
+    const int y = MinLayoutInt(MaxLayoutInt(window.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+    SetWindowPos(hwnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void RevealExportOptionsFocus(HWND hwnd, ExportOptionsDialogContext& ctx)
+{
+    HWND focus = GetFocus();
+    if (!focus || !IsChild(hwnd, focus)) return;
+    const int id = GetDlgCtrlID(focus);
+    if (id == IDOK || id == IDCANCEL) return;
+    RECT rect = {}, client = {};
+    GetWindowRect(focus, &rect);
+    MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&rect), 2);
+    GetClientRect(hwnd, &client);
+    const int viewportBottom = client.bottom - MulDiv(ctx.footerHeight, ctx.dpi, ctx.initialDpi);
+    const int oldX = ctx.scrollX, oldY = ctx.scrollY;
+    if (rect.left < 0) ctx.scrollX += rect.left;
+    else if (rect.right > client.right) ctx.scrollX += rect.right - client.right;
+    if (rect.top < 0) ctx.scrollY += rect.top;
+    else if (rect.bottom > viewportBottom) ctx.scrollY += rect.bottom - viewportBottom;
+    if (ctx.scrollX != oldX || ctx.scrollY != oldY) LayoutExportOptions(hwnd, ctx);
+}
 
 void FillExportOptionsDialog(HWND hwnd, const ExportPluginSettings& settings)
 {
@@ -2932,14 +3114,68 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
             FillExportOptionsDialog(hwnd, *settings);
         }
 
+        if (ctx) {
+            CaptureExportOptionsLayout(hwnd, *ctx);
+            ConstrainExportOptionsToWorkArea(hwnd);
+            LayoutExportOptions(hwnd, *ctx);
+        }
         InstallExportOptionsTooltips(hwnd);
         return TRUE;
+
+    case WM_SIZE:
+        if (ctx) LayoutExportOptions(hwnd, *ctx);
+        return TRUE;
+
+    case WM_DPICHANGED:
+        if (ctx) ctx->dpi = LOWORD(wParam);
+        if (ctx) UpdateExportOptionsFont(hwnd, *ctx);
+        ConstrainExportOptionsToWorkArea(hwnd, reinterpret_cast<const RECT*>(lParam));
+        if (ctx) LayoutExportOptions(hwnd, *ctx);
+        return TRUE;
+
+    case WM_GETMINMAXINFO:
+        if (ctx && lParam) {
+            MINMAXINFO* bounds = reinterpret_cast<MINMAXINFO*>(lParam);
+            MONITORINFO monitor = { sizeof(monitor) };
+            if (GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
+                RECT minimum = { 0, 0, MulDiv(280, ctx->dpi, 96), MulDiv(250, ctx->dpi, 96) };
+                AdjustWindowRectEx(&minimum, static_cast<DWORD>(GetWindowLongW(hwnd, GWL_STYLE)),
+                    FALSE, static_cast<DWORD>(GetWindowLongW(hwnd, GWL_EXSTYLE)));
+                bounds->ptMinTrackSize.x = MinLayoutInt(minimum.right - minimum.left,
+                    monitor.rcWork.right - monitor.rcWork.left);
+                bounds->ptMinTrackSize.y = MinLayoutInt(minimum.bottom - minimum.top,
+                    monitor.rcWork.bottom - monitor.rcWork.top);
+            }
+        }
+        return TRUE;
+
+    case WM_VSCROLL:
+        if (ctx && !lParam) { ScrollExportOptions(hwnd, *ctx, false, wParam); return TRUE; }
+        break;
+    case WM_HSCROLL:
+        if (ctx && !lParam) { ScrollExportOptions(hwnd, *ctx, true, wParam); return TRUE; }
+        break;
+    case WM_MOUSEWHEEL:
+        if (ctx) {
+            ctx->scrollY -= MulDiv(GET_WHEEL_DELTA_WPARAM(wParam), MulDiv(72, ctx->dpi, 96), WHEEL_DELTA);
+            LayoutExportOptions(hwnd, *ctx);
+            return TRUE;
+        }
+        break;
 
     case WM_DESTROY:
         DestroyExportOptionsTooltips(hwnd);
         return TRUE;
 
+    case WM_NCDESTROY:
+        if (ctx && ctx->dpiFont) { DeleteObject(ctx->dpiFont); ctx->dpiFont = nullptr; }
+        return FALSE;
+
     case WM_COMMAND:
+        if (HIWORD(wParam) != BN_CLICKED) {
+            if (ctx) RevealExportOptionsFocus(hwnd, *ctx);
+            break;
+        }
         switch (LOWORD(wParam)) {
         case IDOK:
             if (settings != nullptr) {
@@ -2974,6 +3210,10 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
             EndDialog(hwnd, IDCANCEL);
             return TRUE;
         }
+        break;
+
+    case WM_NOTIFY:
+        if (ctx) RevealExportOptionsFocus(hwnd, *ctx);
         break;
     }
     return FALSE;
