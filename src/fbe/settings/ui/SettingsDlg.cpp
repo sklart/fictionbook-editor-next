@@ -31,7 +31,8 @@ namespace
 CSettingsDlg::CSettingsDlg() :
 	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
-	m_automaticSize(false), m_initialDpi(0), m_layoutDpi(0),
+	m_automaticSize(false), m_sizeMoveDpi(0), m_sizeMoveDpiChanged(false), m_sizingDuringMove(false),
+	m_initialDpi(0), m_layoutDpi(0),
 	m_pageLeft(0), m_pageTop(0), m_pageRightMargin(0), m_pageBottomMargin(0),
 	m_buttonWidth(0), m_buttonHeight(0), m_buttonGap(0), m_buttonBottomMargin(0),
 	m_navigationBottomGap(0)
@@ -218,9 +219,38 @@ LRESULT CSettingsDlg::OnSize(UINT, WPARAM, LPARAM lParam, BOOL&)
 	return 0;
 }
 
+LRESULT CSettingsDlg::OnEnterSizeMove(UINT, WPARAM, LPARAM, BOOL&)
+{
+	GetWindowRect(m_sizeMoveStart);
+	m_sizeMoveDpi = UiMetrics::DpiForWindow(m_hWnd);
+	m_sizeMoveDpiChanged = false;
+	m_sizingDuringMove = false;
+	return 0;
+}
+
+LRESULT CSettingsDlg::OnSizing(UINT, WPARAM, LPARAM, BOOL& bHandled)
+{
+	m_sizingDuringMove = true;
+	bHandled = FALSE;
+	return 0;
+}
+
 LRESULT CSettingsDlg::OnExitSizeMove(UINT, WPARAM, LPARAM, BOOL&)
 {
-	m_automaticSize = false;
+	if(m_sizeMoveDpi)
+	{
+		CRect current;
+		GetWindowRect(current);
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const int widthAtStartDpi = ::MulDiv(current.Width(), m_sizeMoveDpi, dpi);
+		const int heightAtStartDpi = ::MulDiv(current.Height(), m_sizeMoveDpi, dpi);
+		const int tolerance = UiMetrics::ScaleForDpi(2, m_sizeMoveDpi);
+		if(m_sizingDuringMove || (!m_sizeMoveDpiChanged &&
+			(abs(widthAtStartDpi - m_sizeMoveStart.Width()) > tolerance ||
+			abs(heightAtStartDpi - m_sizeMoveStart.Height()) > tolerance)))
+			m_automaticSize = false;
+		m_sizeMoveDpi = 0;
+	}
 	return 0;
 }
 
@@ -239,6 +269,7 @@ LRESULT CSettingsDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 {
 	const UINT dpi = LOWORD(wParam);
+	if(m_sizeMoveDpi && dpi && dpi != m_sizeMoveDpi) m_sizeMoveDpiChanged = true;
 	if(m_layoutDpi && dpi && dpi != m_layoutDpi)
 	{
 		const auto scale = [this, dpi](int value) { return ::MulDiv(value, dpi, m_layoutDpi); };
@@ -276,12 +307,16 @@ LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 				max(minimumWidth, workWidth - 2 * margin));
 			const int preferredHeight = min(::MulDiv(m_preferredWindowSize.cy, dpi, m_initialDpi),
 				max(minimumHeight, workHeight - 2 * margin));
-			const int width = min(max(suggested->right - suggested->left,
-				m_automaticSize ? preferredWidth : minimumWidth), workWidth);
-			const int height = min(max(suggested->bottom - suggested->top,
-				m_automaticSize ? preferredHeight : minimumHeight), workHeight);
-			const int x = min(max(suggested->left, monitor.rcWork.left), monitor.rcWork.right - width);
-			const int y = min(max(suggested->top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+			const int width = m_automaticSize ? preferredWidth :
+				min(max(suggested->right - suggested->left, minimumWidth), workWidth);
+			const int height = m_automaticSize ? preferredHeight :
+				min(max(suggested->bottom - suggested->top, minimumHeight), workHeight);
+			const int wantedX = suggested->left + (m_automaticSize ?
+				(suggested->right - suggested->left - width) / 2 : 0);
+			const int wantedY = suggested->top + (m_automaticSize ?
+				(suggested->bottom - suggested->top - height) / 2 : 0);
+			const int x = min(max(wantedX, monitor.rcWork.left), monitor.rcWork.right - width);
+			const int y = min(max(wantedY, monitor.rcWork.top), monitor.rcWork.bottom - height);
 			::SetWindowPos(m_hWnd, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
 	}
@@ -568,7 +603,9 @@ bool CSettingsDlg::ProbeLayout()
 	if(hasWorkArea && !m_automaticSize && _Settings.GetSettingsDialogGeometry(saved, savedDpi) &&
 		savedDpi == m_layoutDpi && saved.left >= monitor.rcWork.left &&
 		saved.top >= monitor.rcWork.top && saved.right <= monitor.rcWork.right &&
-		saved.bottom <= monitor.rcWork.bottom)
+		saved.bottom <= monitor.rcWork.bottom &&
+		saved.right - saved.left >= m_minimumWindowSize.cx &&
+		saved.bottom - saved.top >= m_minimumWindowSize.cy)
 		passed = passed && original == CRect(saved);
 	if(preferredFits && m_automaticSize)
 		passed = passed && original.Width() >= m_preferredWindowSize.cx &&
@@ -606,6 +643,29 @@ bool CSettingsDlg::ProbeLayout()
 		::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 			SWP_NOZORDER | SWP_NOACTIVATE);
 	}
+	// Distinguish moving the window from a deliberate resize. Restore the
+	// runtime probe's temporary state before the normal close/save path.
+	const bool originalAutomaticSize = m_automaticSize;
+	::SendMessageW(m_hWnd, WM_ENTERSIZEMOVE, 0, 0);
+	::SetWindowPos(m_hWnd, NULL, original.left + UiMetrics::ScaleForDpi(8, m_layoutDpi),
+		original.top, original.Width(), original.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+	::SendMessageW(m_hWnd, WM_EXITSIZEMOVE, 0, 0);
+	passed = passed && m_automaticSize == originalAutomaticSize;
+	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	::SendMessageW(m_hWnd, WM_ENTERSIZEMOVE, 0, 0);
+	const int resizeStep = UiMetrics::ScaleForDpi(20, m_layoutDpi);
+	const int resizedWidth = hasWorkArea && original.Width() + resizeStep <=
+		monitor.rcWork.right - monitor.rcWork.left ? original.Width() + resizeStep :
+		max(m_minimumWindowSize.cx, original.Width() - resizeStep);
+	::SetWindowPos(m_hWnd, NULL, original.left, original.top,
+		resizedWidth, original.Height(),
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	::SendMessageW(m_hWnd, WM_EXITSIZEMOVE, 0, 0);
+	if(resizedWidth != original.Width()) passed = passed && !m_automaticSize;
+	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	m_automaticSize = originalAutomaticSize;
 	const int width = m_minimumWindowSize.cx + UiMetrics::ScaleForDpi(8, m_layoutDpi);
 	const int height = m_minimumWindowSize.cy + UiMetrics::ScaleForDpi(8, m_layoutDpi);
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -665,8 +725,9 @@ void CSettingsDlg::RestoreGeometry()
 	RECT saved = {};
 	UINT savedDpi = 0;
 	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-	m_automaticSize = !_Settings.GetSettingsDialogGeometry(saved, savedDpi);
-	if(!m_automaticSize)
+	const bool hasSavedGeometry = _Settings.GetSettingsDialogGeometry(saved, savedDpi);
+	m_automaticSize = !hasSavedGeometry || !_Settings.GetSettingsDialogManualSize();
+	if(hasSavedGeometry)
 	{
 		wanted = saved;
 		wanted.right = wanted.left + ::MulDiv(saved.right - saved.left, dpi, savedDpi);
@@ -681,8 +742,8 @@ void CSettingsDlg::RestoreGeometry()
 	const int margin = UiMetrics::ScaleForDpi(28, dpi);
 	const int preferredWidth = min(m_preferredWindowSize.cx, max(minimumWidth, workWidth - 2 * margin));
 	const int preferredHeight = min(m_preferredWindowSize.cy, max(minimumHeight, workHeight - 2 * margin));
-	const int width = min(max(wanted.Width(), m_automaticSize ? preferredWidth : minimumWidth), workWidth);
-	const int height = min(max(wanted.Height(), m_automaticSize ? preferredHeight : minimumHeight), workHeight);
+	const int width = m_automaticSize ? preferredWidth : min(max(wanted.Width(), minimumWidth), workWidth);
+	const int height = m_automaticSize ? preferredHeight : min(max(wanted.Height(), minimumHeight), workHeight);
 	if(m_automaticSize)
 	{
 		wanted.left -= (width - wanted.Width()) / 2;
@@ -698,5 +759,5 @@ void CSettingsDlg::SaveGeometry()
 	if(!m_initialDpi || ::IsIconic(m_hWnd)) return;
 	RECT rect = {};
 	if(::GetWindowRect(m_hWnd, &rect))
-		_Settings.SetSettingsDialogGeometry(rect, UiMetrics::DpiForWindow(m_hWnd), true);
+		_Settings.SetSettingsDialogGeometry(rect, UiMetrics::DpiForWindow(m_hWnd), !m_automaticSize, true);
 }

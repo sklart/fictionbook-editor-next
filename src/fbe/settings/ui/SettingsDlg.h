@@ -46,6 +46,10 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	CSize m_minimumWindowSize;
 	CSize m_preferredWindowSize;
 	bool m_automaticSize;
+	CRect m_sizeMoveStart;
+	UINT m_sizeMoveDpi;
+	bool m_sizeMoveDpiChanged;
+	bool m_sizingDuringMove;
 	UINT m_initialDpi;
 	UINT m_layoutDpi;
 	int m_pageLeft;
@@ -81,6 +85,8 @@ BEGIN_MSG_MAP(CSettingsDlg)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_SETTINGS_NAV, LBN_SELCHANGE, OnNavigationChanged)
 	MESSAGE_HANDLER(WM_SIZE, OnSize)
+	MESSAGE_HANDLER(WM_ENTERSIZEMOVE, OnEnterSizeMove)
+	MESSAGE_HANDLER(WM_SIZING, OnSizing)
 	MESSAGE_HANDLER(WM_EXITSIZEMOVE, OnExitSizeMove)
 	MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 	MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
@@ -93,6 +99,8 @@ END_MSG_MAP()
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnNavigationChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnEnterSizeMove(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnSizing(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnExitSizeMove(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnGetMinMaxInfo(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);

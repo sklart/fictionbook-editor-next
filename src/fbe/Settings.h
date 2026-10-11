@@ -214,6 +214,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	DWORD		m_splitter_pos;
 	DWORD		m_find_results_pane_height;
 	CString		m_settings_dialog_geometry;
+	bool		m_settings_dialog_manual_size;
 	CString		m_toolbars_settings;
 	CString		m_script_command_ids;
 	CString		m_favorite_scripts;
@@ -335,6 +336,7 @@ public:
 	DWORD	GetSplitterPos()const;
 	DWORD	GetFindResultsPaneHeight()const;
 	bool GetSettingsDialogGeometry(RECT& rect, UINT& dpi) const;
+	bool GetSettingsDialogManualSize() const;
 	CString GetToolbarsSettings()const;
 	CString GetScriptCommandIds()const;
 	CString GetFavoriteScripts() const;
@@ -421,7 +423,7 @@ public:
 	void SetDocumentTreeScripts(bool value, bool apply = false);
 	void	SetSplitterPos(DWORD pos,  bool apply = false);
 	void	SetFindResultsPaneHeight(DWORD height, bool apply = false);
-	void SetSettingsDialogGeometry(const RECT& rect, UINT dpi, bool apply = false);
+	void SetSettingsDialogGeometry(const RECT& rect, UINT dpi, bool manualSize, bool apply = false);
 	void	SetToolbarsSettings(CString& settings,  bool apply = false);
 	void	SetScriptCommandIds(const CString& ids, bool apply = false);
 	void SetFavoriteScripts(const CString& favorites, bool apply = false);

@@ -45,6 +45,7 @@ void CSettings::SetDefaults()
 	m_splitter_pos			= 200;
 	m_find_results_pane_height = 180;
 	m_settings_dialog_geometry.Empty();
+	m_settings_dialog_manual_size = false;
 	m_toolbars_settings.Empty();
 	m_script_command_ids.Empty();
 	m_favorite_scripts.Empty();

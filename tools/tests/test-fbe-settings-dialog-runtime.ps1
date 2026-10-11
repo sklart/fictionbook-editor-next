@@ -1,15 +1,16 @@
 <# Exercises the Settings dialog's real page lifecycle and persistence. #>
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 90)
+param([string]$FbeExe, [int]$TimeoutSeconds = 90)
 
 $ErrorActionPreference = 'Stop'
+if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-settings-dialog-' + [guid]::NewGuid().ToString('N'))
 try {
     Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $root -Recurse -Force
     $exe = Join-Path $root 'FBE.exe'; $fixture = Join-Path $root 'settings.fb2'
-    $report = Join-Path $root 'settings.txt'; $reopenReport = Join-Path $root 'settings-reopen.txt'; $verifyReport = Join-Path $root 'verify.txt'; $backupReport = Join-Path $root 'backup.txt'; $backupExistingReport = Join-Path $root 'backup-existing.txt'; $backupVerifyReport = Join-Path $root 'backup-verify.txt'
+    $report = Join-Path $root 'settings.txt'; $reopenReport = Join-Path $root 'settings-reopen.txt'; $legacyReport = Join-Path $root 'settings-legacy.txt'; $manualReport = Join-Path $root 'settings-manual.txt'; $verifyReport = Join-Path $root 'verify.txt'; $backupReport = Join-Path $root 'backup.txt'; $backupExistingReport = Join-Path $root 'backup-existing.txt'; $backupVerifyReport = Join-Path $root 'backup-verify.txt'
     [IO.File]::WriteAllText((Join-Path $root 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [Text.UTF8Encoding]::new($false))
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><id>settings-dialog-test</id><version>1</version></document-info></description><body><section><p>BACKUP_RUNTIME_BEFORE</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
     function Invoke-Scenario([string]$Scenario, [string]$Path) {
@@ -24,10 +25,47 @@ try {
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
     $reopened=Invoke-Scenario 'settings-dialog-runtime' $reopenReport
+    $settingsFile = Join-Path $root 'Settings.xml'
+    if (-not (Test-Path -LiteralPath $settingsFile)) { throw 'Portable Settings.xml was not saved.' }
+    function Set-TestGeometry([bool]$Manual, [bool]$Legacy) {
+        [xml]$document = Get-Content -LiteralPath $settingsFile -Raw
+        $settings = $document.SelectSingleNode('/FBE/Settings[@ID="0"]')
+        $geometry = $settings.SelectSingleNode('SettingsDialogGeometry')
+        if (-not $geometry) { throw 'Saved Settings dialog geometry is missing.' }
+        $parts = $geometry.InnerText.Split(';')
+        if ($parts.Count -ne 5) { throw 'Saved Settings dialog geometry is invalid.' }
+        $parts[2] = ([int]$parts[2] - 24).ToString()
+        $parts[3] = ([int]$parts[3] - 24).ToString()
+        $geometry.InnerText = $parts -join ';'
+        $manualNode = $settings.SelectSingleNode('SettingsDialogManualSize')
+        if ($Legacy) {
+            if ($manualNode) { [void]$settings.RemoveChild($manualNode) }
+        } else {
+            if (-not $manualNode) { $manualNode = $document.CreateElement('SettingsDialogManualSize'); [void]$settings.AppendChild($manualNode) }
+            $manualNode.InnerText = if ($Manual) { 'true' } else { 'false' }
+        }
+        $document.Save($settingsFile)
+        return $geometry.InnerText
+    }
+    $legacySmall = Set-TestGeometry -Manual $false -Legacy $true
+    $legacy = Invoke-Scenario 'settings-dialog-runtime' $legacyReport
+    [xml]$afterLegacy = Get-Content -LiteralPath $settingsFile -Raw
+    if ($afterLegacy.SelectSingleNode('/FBE/Settings[@ID="0"]/SettingsDialogGeometry').InnerText -eq $legacySmall -or
+        $afterLegacy.SelectSingleNode('/FBE/Settings[@ID="0"]/SettingsDialogManualSize').InnerText -ne 'false') {
+        throw 'Legacy saved geometry did not return to automatic sizing.'
+    }
+    $manualSmall = Set-TestGeometry -Manual $true -Legacy $false
+    $manual = Invoke-Scenario 'settings-dialog-runtime' $manualReport
+    [xml]$afterManual = Get-Content -LiteralPath $settingsFile -Raw
+    if ($afterManual.SelectSingleNode('/FBE/Settings[@ID="0"]/SettingsDialogGeometry').InnerText -ne $manualSmall -or
+        $afterManual.SelectSingleNode('/FBE/Settings[@ID="0"]/SettingsDialogManualSize').InnerText -ne 'true') {
+        throw 'A manually chosen small Settings dialog size was not preserved.'
+    }
     $second=Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport
-    foreach($text in @($first,$reopened,$second)) { foreach($line in 'persisted=1','applied=1') { if($text -notmatch [regex]::Escape($line)) { throw "Settings runtime report is missing ${line}: $text" } } }
+    foreach($text in @($first,$reopened,$legacy,$manual,$second)) { foreach($line in 'persisted=1','applied=1') { if($text -notmatch [regex]::Escape($line)) { throw "Settings runtime report is missing ${line}: $text" } } }
     if($first -notmatch 'settings_dialog=1' -or $first -notmatch 'layout=1' -or
         $reopened -notmatch 'settings_dialog=1' -or $reopened -notmatch 'layout=1' -or
+        $legacy -notmatch 'layout=1' -or $manual -notmatch 'layout=1' -or
         $second -notmatch 'settings_dialog=0') { throw 'Settings dialog layout/verify phases were not distinguished.' }
     $backupFirst=Invoke-Scenario 'backup-settings-save-runtime' $backupReport
     foreach($line in 'settings_dialog=1','backup_disabled=1','source_edited=1','source_applied=1','saved=1') { if($backupFirst -notmatch [regex]::Escape($line)) { throw "Backup runtime report is missing ${line}: $backupFirst" } }
@@ -41,5 +79,5 @@ try {
     if([IO.File]::ReadAllText(($fixture + '.bak'), [Text.UTF8Encoding]::new($false)) -ne 'PREEXISTING_BACKUP') { throw 'Backup-disabled runtime save replaced the existing .bak.' }
     $backupSecond=Invoke-Scenario 'backup-settings-save-runtime-verify' $backupVerifyReport
     foreach($line in 'settings_dialog=0','backup_disabled=1') { if($backupSecond -notmatch [regex]::Escape($line)) { throw "Backup persistence report is missing ${line}: $backupSecond" } }
-    Write-Host 'FBE Settings dialog layout, geometry reopen, Apply/OK, and backup-disabled save passed.'
+    Write-Host 'FBE Settings dialog auto/legacy/manual geometry, move/resize, Apply/OK, and backup-disabled save passed.'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }

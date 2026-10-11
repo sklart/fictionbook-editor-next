@@ -306,6 +306,10 @@ bool CSettings::GetSettingsDialogGeometry(RECT& rect, UINT& dpi) const
 	dpi = storedDpi;
 	return true;
 }
+bool CSettings::GetSettingsDialogManualSize() const
+{
+	return m_settings_dialog_manual_size;
+}
 CString CSettings::GetToolbarsSettings()const
 {
 	return m_toolbars_settings;
@@ -850,12 +854,13 @@ void CSettings::SetFindResultsPaneHeight(DWORD height, bool apply)
 	if(apply)
 		Save();
 }
-void CSettings::SetSettingsDialogGeometry(const RECT& rect, UINT dpi, bool apply)
+void CSettings::SetSettingsDialogGeometry(const RECT& rect, UINT dpi, bool manualSize, bool apply)
 {
 	if(rect.right <= rect.left || rect.bottom <= rect.top || dpi < 48 || dpi > 768)
 		return;
 	m_settings_dialog_geometry.Format(L"%ld;%ld;%ld;%ld;%u",
 		rect.left, rect.top, rect.right, rect.bottom, dpi);
+	m_settings_dialog_manual_size = manualSize;
 	if(apply) Save();
 }
 
