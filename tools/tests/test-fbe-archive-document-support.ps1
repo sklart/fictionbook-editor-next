@@ -90,8 +90,11 @@ Require ($runtimeArchiveLifecycle + $archiveOpen) 'archive-open-runtime"\)' 'Arc
 Require $startup 'CommandLineToArgvW' 'CLI parsing must use CommandLineToArgvW.'
 if ($startup -match 'static void ParseCommandLine\(') { throw 'Legacy ParseCommandLine must not remain after CommandLineToArgvW migration.' }
 Require $picker 'min\(max\(static_cast<int>\(m_entries\.size\(\)\), 5\), 10\)' 'Archive picker must keep space for five to ten visible rows.'
-Require $picker 'nonClientWidth[\s\S]{0,500}desiredClientWidth \+ nonClientWidth' 'Archive picker must convert client width to full window width.'
-Require $picker 'MonitorFromWindow[\s\S]{0,300}4 / 5' 'Archive picker width must remain within 80% of the work area.'
+Require $picker 'desiredClientWidth \+ nonClientWidth' 'Archive picker must convert client width to full window width.'
+Require $picker 'maximumWindowWidth = workWidth \* 4 / 5' 'Archive picker width must remain within 80% of the work area.'
+Require $picker 'UiMetrics::DpiForWindow\(window\)' 'Archive picker layout must use its own window DPI.'
+Require $picker 'MessageHeight\(GetDlgItem\(IDC_ARCHIVE_ENTRY_MESSAGE\)' 'Archive picker must wrap its localized message using the control font.'
+Require $picker 'desiredWindowHeight = min\(desiredClientHeight \+ nonClientHeight, workHeight\)' 'Archive picker must fit within the monitor work height.'
 Require $picker 'LayoutColumns\(\)' 'Archive picker must recompute columns after every resize.'
 Require $picker 'SetColumnWidth\(sizeColumn, sizeWidth\)' 'Archive picker Size column must remain compact.'
 Require $picker 'FbeLoadRuntimeStringByKey\(L"fbe\.archive\.picker\.open"' 'Archive picker Open button must use the runtime localization key.'
