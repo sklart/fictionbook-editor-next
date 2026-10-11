@@ -3,6 +3,7 @@
 #include <atlctrls.h>
 #include <map>
 #include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\UiMetrics.h"
 
 class CSettingsTooltips
 {
@@ -14,7 +15,10 @@ public:
 		ATLASSERT(m_tooltips.IsWindow());
 		m_tooltips.Activate(TRUE);
 		m_tooltips.SetDelayTime(TTDT_INITIAL, 500);
-		m_tooltips.SetMaxTipWidth(400);
+		RefreshDpiMetrics();
+		const BOOL tracking = ::SetWindowSubclass(owner, OwnerSubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
+		ATLASSERT(tracking);
+		(void)tracking;
 	}
 
 	void Add(HWND control, LPCWSTR key, LPCWSTR fallback)
@@ -60,6 +64,31 @@ public:
 	}
 
 private:
+	static LRESULT CALLBACK OwnerSubclassProc(HWND owner, UINT message, WPARAM wParam, LPARAM lParam,
+		UINT_PTR subclassId, DWORD_PTR reference)
+	{
+		CSettingsTooltips* self = reinterpret_cast<CSettingsTooltips*>(reference);
+		// The project's Windows 7 SDK target does not declare this newer child-window message.
+		constexpr UINT dpiChangedAfterParent = 0x02E3;
+		if(message == WM_WINDOWPOSCHANGED || message == WM_DPICHANGED || message == dpiChangedAfterParent)
+			self->RefreshDpiMetrics();
+		else if(message == WM_NCDESTROY)
+		{
+			::RemoveWindowSubclass(owner, OwnerSubclassProc, subclassId);
+			self->m_owner = NULL;
+		}
+		return ::DefSubclassProc(owner, message, wParam, lParam);
+	}
+
+	void RefreshDpiMetrics()
+	{
+		if(!m_tooltips.IsWindow() || !::IsWindow(m_owner)) return;
+		const UINT dpi = UiMetrics::DpiForWindow(m_owner);
+		if(dpi == m_tipDpi) return;
+		m_tipDpi = dpi;
+		m_tooltips.SetMaxTipWidth(UiMetrics::ScaleForDpi(400, dpi));
+	}
+
 	static LRESULT CALLBACK DisabledAreaSubclassProc(HWND control, UINT message, WPARAM wParam, LPARAM lParam,
 		UINT_PTR toolId, DWORD_PTR reference)
 	{
@@ -85,6 +114,7 @@ private:
 	}
 
 	HWND m_owner = NULL;
+	UINT m_tipDpi = 0;
 	UINT_PTR m_nextRectangleToolId = 1;
 	CToolTipCtrl m_tooltips;
 	std::map<HWND, CString> m_texts;

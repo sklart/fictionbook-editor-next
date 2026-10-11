@@ -21,6 +21,8 @@ public static class SettingsGeneralLayoutWindow
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr window);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
@@ -57,6 +59,23 @@ public static class SettingsGeneralLayoutWindow
         SendMessage(settings, 0x0111, (IntPtr)(1625 | (1 << 16)), navigation); // LBN_SELCHANGE
     }
     public static void Close(IntPtr window) { PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); }
+    public static bool HasTooltipWidth(int processId, IntPtr settings, int expected)
+    {
+        bool found = false;
+        EnumWindows((window, data) => {
+            uint owner;
+            GetWindowThreadProcessId(window, out owner);
+            if (owner != (uint)processId || GetWindow(window, 4) != settings) return true; // GW_OWNER resolves a popup's top-level owner
+            var name = new StringBuilder(128);
+            GetClassName(window, name, name.Capacity);
+            if (name.ToString().Equals("tooltips_class32", StringComparison.OrdinalIgnoreCase) &&
+                SendMessage(window, 0x0400 + 25, IntPtr.Zero, IntPtr.Zero).ToInt64() == expected)
+                found = true; // TTM_GETMAXTIPWIDTH
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+    public static IntPtr Parent(IntPtr window) { return GetParent(window); }
 }
 '@
 $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
@@ -120,6 +139,15 @@ try {
             $backup = @($rows | Where-Object Id -eq 1128)
             if ($backup.Count -ne 1 -or $backup[0].Text -ne $expectedBackup) {
                 throw "$locale General page did not use the selected language."
+            }
+            if ($locale -eq 'ru-RU') {
+                $backupControl = [IntPtr]::new([Convert]::ToInt64($backup[0].Hwnd.Substring(2), 16))
+                $page = [SettingsGeneralLayoutWindow]::Parent($backupControl)
+                $pageRow = @($rows | Where-Object Hwnd -eq ('0x' + $page.ToInt64().ToString('X')))[0]
+                $expectedWidth = [int][Math]::Round(400.0 * $pageRow.Dpi / 96, [MidpointRounding]::AwayFromZero)
+                if (-not [SettingsGeneralLayoutWindow]::HasTooltipWidth($process.Id, $settings, $expectedWidth)) {
+                    throw "Settings tooltip does not use its page DPI for maximum width ($expectedWidth px)."
+                }
             }
             $expected = @(1120, 1154, 1160, 1053, 1603, 1051, 1128, 1130, 1158)
             foreach ($id in $expected) {
