@@ -193,6 +193,11 @@ try {
             Write-Host "$locale General page labels and actions fit."
             [SettingsGeneralLayoutWindow]::SelectHotkeys($settings)
             Start-Sleep -Milliseconds 100
+            foreach ($id in 1, 2) {
+                if (-not [SettingsGeneralLayoutWindow]::FooterButtonIsTopmost($settings, $id)) {
+                    throw "$locale Hotkeys page covers Settings footer button $id."
+                }
+            }
             $hotkeysReport = Join-Path $ArtifactDirectory "settings-hotkeys-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $hotkeysReport | Out-Null
             $hotkeysAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $hotkeysReport | ConvertFrom-Json
@@ -223,6 +228,11 @@ try {
                 foreach ($pageIndex in 1, 2, 3, 4, 6, 7) {
                     [SettingsGeneralLayoutWindow]::SelectPage($settings, $pageIndex)
                     Start-Sleep -Milliseconds 100
+                    foreach ($id in 1, 2) {
+                        if (-not [SettingsGeneralLayoutWindow]::FooterButtonIsTopmost($settings, $id)) {
+                            throw "$locale Settings page $pageIndex covers footer button $id."
+                        }
+                    }
                     $pageReport = Join-Path $ArtifactDirectory "settings-page-$pageIndex-$locale.json"
                     & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $pageReport | Out-Null
                     $pageAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $pageReport | ConvertFrom-Json
