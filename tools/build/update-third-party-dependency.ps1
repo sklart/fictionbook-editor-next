@@ -150,16 +150,29 @@ if (($updateInfo.Status -eq "UpToDate") -and (-not $AllowCurrentVersion) -and (-
     exit 0
 }
 
-$sourceDirectory = Invoke-Step -Label (Get-ThirdPartyText -Base64 "0KHQutCw0YfQuNCy0LDQvdC40LUg0Lgg0YDQsNGB0L/QsNC60L7QstC60LAg0LjRgdGF0L7QtNC90LjQutC+0LI=") -Action { Invoke-DownloadStep -UpdateInfo $updateInfo }
+$sourceDirectory = $null
+if ($dependencyEntry.UpdateMode -ne 'GitSubmodule') {
+    $sourceDirectory = Invoke-Step -Label (Get-ThirdPartyText -Base64 "0KHQutCw0YfQuNCy0LDQvdC40LUg0Lgg0YDQsNGB0L/QsNC60L7QstC60LAg0LjRgdGF0L7QtNC90LjQutC+0LI=") -Action { Invoke-DownloadStep -UpdateInfo $updateInfo }
+
+    if (-not $script:IsWhatIfMode -and -not (Test-Path -LiteralPath $sourceDirectory)) {
+        throw (Format-ThirdPartyText "0J3QtSDQvdCw0LnQtNC10L0g0LrQsNGC0LDQu9C+0LMg0YHQutCw0YfQsNC90L3QvtCz0L4g0L7QsdC90L7QstC70LXQvdC40Y86IHswfQ==" $sourceDirectory)
+    }
+}
 
 if ($script:IsWhatIfMode) {
     Write-Host ""
-    Write-Host (Format-ThirdPartyText "V2hhdElmINC30LDQstC10YDRiNGR0L06INC00LDQu9GM0YjQtSDQsdGL0Lsg0LHRiyDQuNGB0L/QvtC70YzQt9C+0LLQsNC9INC60LDRgtCw0LvQvtCzIHswfSDQuCDQt9Cw0L/Rg9GJ0LXQvSBidWlsZC90ZXN0LdC60L7QvdGC0YPRgCDQtNC70Y8gezF9Lg==" $sourceDirectory, $Dependency)
+    if ($dependencyEntry.UpdateMode -eq 'GitSubmodule') {
+        if ($updateInfo.Status -eq 'UpToDate' -and $AllowCurrentVersion -and -not $ForceApply) {
+            Write-Host 'WhatIf: gitlink уже актуален; будут запущены только сборка и тесты.'
+        }
+        else {
+            Write-Host ("WhatIf: будет обновлён gitlink {0} до {1}, затем запущены сборка и тесты." -f $dependencyEntry.RelativePath, $updateInfo.RemoteTag)
+        }
+    }
+    else {
+        Write-Host (Format-ThirdPartyText "V2hhdElmINC30LDQstC10YDRiNGR0L06INC00LDQu9GM0YjQtSDQsdGL0Lsg0LHRiyDQuNGB0L/QvtC70YzQt9C+0LLQsNC9INC60LDRgtCw0LvQvtCzIHswfSDQuCDQt9Cw0L/Rg9GJ0LXQvSBidWlsZC90ZXN0LdC60L7QvdGC0YPRgCDQtNC70Y8gezF9Lg==" $sourceDirectory, $Dependency)
+    }
     exit 0
-}
-
-if (-not (Test-Path -LiteralPath $sourceDirectory)) {
-    throw (Format-ThirdPartyText "0J3QtSDQvdCw0LnQtNC10L0g0LrQsNGC0LDQu9C+0LMg0YHQutCw0YfQsNC90L3QvtCz0L4g0L7QsdC90L7QstC70LXQvdC40Y86IHswfQ==" $sourceDirectory)
 }
 
 $skipApply = ($updateInfo.Status -eq "UpToDate" -and $AllowCurrentVersion -and -not $ForceApply)

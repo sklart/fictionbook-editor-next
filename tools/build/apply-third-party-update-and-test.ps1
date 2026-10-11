@@ -156,7 +156,7 @@ function Invoke-AomPipeline {
     }
 
     Invoke-ScriptStep -Label "Сборка libaom и libheif" -Action {
-        & (Join-Path $PSScriptRoot "build-libheif.ps1") -Configuration $Configuration
+        & (Join-Path $PSScriptRoot "build-libheif.ps1") -Configuration $Configuration -PlatformToolset v143
         if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
         }

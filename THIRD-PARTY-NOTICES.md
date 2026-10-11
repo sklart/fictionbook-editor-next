@@ -19,7 +19,7 @@ is needed to build the project but is not shipped as a separate component.
 | OpenJPEG | 2.5.4 | BSD-2-Clause | JPEG 2000 decoder build input for FBE | <https://github.com/uclouvain/openjpeg> |
 | libheif | 1.23.6 | LGPL-2.1-or-later | Static ISO-BMFF/HEIF container reader in FBE; AVIF/HEIC/HEIF decoding only | <https://github.com/strukturag/libheif> |
 | libde265 | 1.1.3 | LGPL-2.1-or-later | Static HEVC decoder used by bundled libheif | <https://github.com/strukturag/libde265> |
-| libaom | 3.15.1 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
+| libaom | 3.15.2 | BSD-2-Clause and Alliance for Open Media Patent License 1.0 | Static AV1 decoder used by bundled libheif | <https://aomedia.googlesource.com/aom> |
 | zlib | 1.3.2 | zlib License | Static DEFLATE backend used by libarchive | <https://github.com/madler/zlib> |
 | libarchive | 3.8.9 | BSD-2-Clause | Static ZIP/RAR/RAR5 reader and ZIP writer linked into FBE | <https://github.com/libarchive/libarchive> |
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
