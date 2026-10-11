@@ -74,7 +74,7 @@ try {
                 $about = [AboutLayoutWindow]::Find($process.Id, $true)
             }
             if ($about -eq [IntPtr]::Zero) { throw "$locale About dialog missing." }
-            $report = Join-Path $PSScriptRoot "..\..\out\tests\about-layout-$locale.json"
+            $report = Join-Path $isolation.Root "about-layout-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $report | Out-Null
             $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $report | ConvertFrom-Json
             $aboutHandle = '0x' + $about.ToInt64().ToString('X')
