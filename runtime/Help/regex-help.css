@@ -9,7 +9,7 @@ h1, h2, h3 { line-height: 1.24; scroll-margin-top: 18px; }
 h1 { margin-top: 0; }
 h2 { margin-top: 2em; border-bottom: 1px solid #c8d0da; border-bottom: 1px solid var(--line); padding-bottom: .25em; }
 p, ul { margin: .7em 0 1em; }
-a { color: #0758a7; color: var(--link); }
+a { color: #0758a7; color: var(--link); word-wrap: break-word; overflow-wrap: anywhere; }
 a:focus-visible { outline: 2px solid #0758a7; outline: 2px solid var(--link); outline-offset: 3px; }
 code, pre, .syntax { font-family: "Cascadia Mono", Consolas, monospace; }
 p code, li code, td code { background: #f4f6f8; background: var(--subtle); border-radius: 3px; padding: .08em .23em; }

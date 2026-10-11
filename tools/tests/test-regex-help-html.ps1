@@ -18,6 +18,9 @@ foreach($fallback in @('background: #ffffff; background: var(--page)', 'color: #
     'word-wrap: break-word; overflow-wrap: anywhere')) {
     if(-not $css.Contains($fallback)) { throw "HTML CSS lacks legacy fallback: $fallback" }
 }
+if($css -notmatch 'a\s*\{[^}]*word-wrap:\s*break-word;\s*overflow-wrap:\s*anywhere;') {
+    throw 'HTML links lack legacy wrapping fallback.'
+}
 if($css -match '(?i)@import|url\(\s*https?://') { throw 'HTML CSS has a network dependency.' }
 $workflow = Get-Content -LiteralPath (Join-Path $root '.github\workflows\build.yml') -Raw -Encoding UTF8
 $validate = ($workflow -split '(?m)^  build:\s*$', 2)[0]
