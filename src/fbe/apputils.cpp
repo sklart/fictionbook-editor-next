@@ -142,9 +142,69 @@ public:
     DoDataExchange(FALSE);  // Populate the controls
     SetDlgItemText(IDC_PROMPT,m_prompt);
     SetWindowText(m_title);
-	if (dialogRect.left != -1)
-		::SetWindowPos(m_hWnd, HWND_TOPMOST, dialogRect.left, dialogRect.top, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
+	AdjustPromptLayout();
     return 0;
+  }
+
+  void AdjustPromptLayout()
+  {
+	CRect window, prompt;
+	GetWindowRect(window);
+	GetDlgItem(IDC_PROMPT).GetWindowRect(prompt);
+	ScreenToClient(prompt);
+	const CString text(m_prompt ? m_prompt : L"");
+	RECT measured = { 0, 0, prompt.Width(), 0 };
+	HDC dc = ::GetDC(m_hWnd);
+	const HFONT font = reinterpret_cast<HFONT>(::SendMessage(GetDlgItem(IDC_PROMPT), WM_GETFONT, 0, 0));
+	const HFONT previous = dc && font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+	if(dc) ::DrawTextW(dc, text, text.GetLength(), &measured, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+	if(previous) ::SelectObject(dc, previous);
+	const int padding = dc ? ::MulDiv(4, ::GetDeviceCaps(dc, LOGPIXELSY), 96) : 4;
+	if(dc) ::ReleaseDC(m_hWnd, dc);
+	CRect wanted(window);
+	if(dialogRect.left != -1) wanted.MoveToXY(dialogRect.left, dialogRect.top);
+	MONITORINFO monitor = { sizeof(monitor) };
+	if(!::GetMonitorInfoW(::MonitorFromRect(&wanted, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+	const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top;
+	const int maxGrowth = (std::max)(0, workHeight - window.Height());
+	const int desiredHeight = (std::max)(prompt.Height(), static_cast<int>(measured.bottom) + padding);
+	const int growth = (std::min)(desiredHeight - prompt.Height(), maxGrowth);
+	const bool needsScroll = desiredHeight > prompt.Height() + growth;
+	if(growth > 0)
+	{
+		GetDlgItem(IDC_PROMPT).MoveWindow(prompt.left, prompt.top, prompt.Width(), prompt.Height() + growth);
+		const int buttons[] = { IDC_INPUT, IDYES, IDNO, IDCANCEL };
+		for(int id : buttons)
+		{
+			CRect bounds;
+			GetDlgItem(id).GetWindowRect(bounds);
+			ScreenToClient(bounds);
+			GetDlgItem(id).MoveWindow(bounds.left, bounds.top + growth, bounds.Width(), bounds.Height());
+		}
+		wanted.bottom += growth;
+	}
+	if(needsScroll)
+	{
+		HWND originalPrompt = ::GetDlgItem(m_hWnd, IDC_PROMPT);
+		::SetWindowLongPtrW(originalPrompt, GWLP_ID, static_cast<LONG_PTR>(IDC_STATIC));
+		HWND details = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", text,
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
+			prompt.left, prompt.top, prompt.Width(), prompt.Height() + growth,
+			m_hWnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_PROMPT)), _Module.GetModuleInstance(), NULL);
+		if(details)
+		{
+			::SendMessage(details, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+			::ShowWindow(originalPrompt, SW_HIDE);
+		}
+		else ::SetWindowLongPtrW(originalPrompt, GWLP_ID, static_cast<LONG_PTR>(IDC_PROMPT));
+	}
+	const int workWidth = monitor.rcWork.right - monitor.rcWork.left;
+	const int width = (std::min)(wanted.Width(), workWidth);
+	const int height = (std::min)(wanted.Height(), workHeight);
+	const int x = (std::min)((std::max)(wanted.left, monitor.rcWork.left), monitor.rcWork.right - width);
+	const int y = (std::min)((std::max)(wanted.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+	::SetWindowPos(m_hWnd, dialogRect.left != -1 ? HWND_TOPMOST : NULL, x, y, width, height,
+		SWP_NOACTIVATE | SWP_SHOWWINDOW);
   }
 
   BOOL EndDialog(int nRetCode)

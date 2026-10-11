@@ -60,7 +60,14 @@ void CFindResultsPane::LayoutChildren()
 
 LRESULT CFindResultsPane::OnSize(UINT, WPARAM, LPARAM, BOOL&) { LayoutChildren(); return 0; }
 LRESULT CFindResultsPane::OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&) { ApplyDpi(); return 0; }
-LRESULT CFindResultsPane::OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_fontOwned && m_font != NULL) ::DeleteObject(m_font); m_font = NULL; m_fontOwned = false; return 0; }
+LRESULT CFindResultsPane::OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled)
+{
+	if (m_fontOwned && m_font != NULL) ::DeleteObject(m_font);
+	m_font = NULL;
+	m_fontOwned = false;
+	handled = FALSE;
+	return 0;
+}
 
 void CFindResultsPane::Attach(CFBEView* view) { if (m_view != view) { m_view = view; m_revision = 0; } Refresh(); }
 void CFindResultsPane::Detach(CFBEView* view)
