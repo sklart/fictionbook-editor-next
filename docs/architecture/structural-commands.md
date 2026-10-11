@@ -23,7 +23,8 @@ used by the menu and command handlers. A check must not modify the DOM.
 
 Failed preflight leaves the DOM unchanged and reports a localized reason for
 an invoked command. Execution wraps native DOM changes in an undo unit and
-restores moved nodes if a DOM operation throws. Because MSHTML can record
+restores the original node order if a DOM operation throws. If restoration
+cannot be verified, it reports that failure explicitly. Because MSHTML can record
 individual DOM moves independently, the commands do not promise that every
 successful operation is undone with a single Ctrl+Z.
 

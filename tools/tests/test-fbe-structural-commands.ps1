@@ -9,7 +9,12 @@ $runner = Join-Path $env:TEMP ('fbe-structural-{0}.js' -f [guid]::NewGuid().ToSt
 try {
     $script = @'
 function need(ok, message) { if(!ok) { WScript.Echo("FAIL "+message); WScript.Quit(1); } }
-var messages=[], undo=0, failMove=false;
+var messages=[], undo=0, fault=null, rollbackFault=false;
+function failurePhase(kind) {
+ if(!fault || fault.kind!=kind) return "";
+ if(++fault.count!=fault.nth) return "";
+ var phase=fault.phase; fault=null; return phase;
+}
 var window={external:{
  BeginUndoUnit:function(){++undo;}, EndUndoUnit:function(){--undo;},
  GetLocalizedString:function(key){return key;}, MsgBox:function(message){messages.push(message);}
@@ -32,9 +37,24 @@ function node(name, cls, id) {
    children:[],firstChild:null,nextSibling:null,parentNode:null,innerHTML:"",
    getAttribute:function(key){return this[key]||null;},
    setAttribute:function(key,value){this[key]=value;},
-   appendChild:function(child){if(failMove) {failMove=false; throw new Error("injected move failure");} detach(child); this.children.push(child); refresh(this); return child;},
+   appendChild:function(child){
+     var phase=failurePhase("appendChild");
+     if(phase=="before") throw new Error("injected append failure");
+     detach(child); this.children.push(child); refresh(this);
+     if(phase=="after") throw new Error("injected append failure");
+     return child;
+   },
+   insertBefore:function(child,ref){
+     if(rollbackFault) {rollbackFault=false; throw new Error("injected rollback failure");}
+     need(ref.parentNode===this,"insertBefore reference");
+     detach(child);
+     var index=0; for(;index<this.children.length;++index) if(this.children[index]===ref) break;
+     this.children.splice(index,0,child); refresh(this); return child;
+   },
+   removeChild:function(child){need(child.parentNode===this,"removeChild parent"); detach(child); return child;},
    insertAdjacentElement:function(where,child){
-     if(failMove) {failMove=false; throw new Error("injected move failure");}
+     var phase=failurePhase("insertAdjacentElement");
+     if(phase=="before") throw new Error("injected insertion failure");
      var parent=where=="beforeBegin" || where=="afterEnd" ? this.parentNode : this;
      need(!!parent,"insertion parent");
      var index=0;
@@ -43,8 +63,14 @@ function node(name, cls, id) {
        if(where=="afterEnd") ++index;
      } else if(where=="beforeEnd") index=parent.children.length;
      detach(child); parent.children.splice(index,0,child); refresh(parent);
+     if(phase=="after") throw new Error("injected insertion failure");
    },
-   removeNode:function(){detach(this);}
+   removeNode:function(){
+     var phase=failurePhase("removeNode");
+     if(phase=="before") throw new Error("injected removal failure");
+     detach(this);
+     if(phase=="after") throw new Error("injected removal failure");
+   }
  };
  if(id) self.attributes.push({specified:true,nodeName:"id"});
  return self;
@@ -52,6 +78,13 @@ function node(name, cls, id) {
 function add(parent, child) {parent.appendChild(child); return child;}
 function p(cls) {return node("P",cls||"");}
 function section() {return node("DIV","section");}
+function same(parent, expected) {
+ if(parent.children.length!=expected.length) return false;
+ for(var i=0;i<expected.length;++i)
+  if(parent.children[i]!==expected[i] || expected[i].parentNode!==parent ||
+     expected[i].nextSibling!==(i+1<expected.length ? expected[i+1] : null)) return false;
+ return true;
+}
 var document={createElement:function(name){return node(name,"");}};
 function MsgBox(message){messages.push(message);}
 function GetLocalizedStringOrDefault(key){return key;}
@@ -107,8 +140,47 @@ need(MergeContainers(a,false)===false && a.children.length==2,"author-before-tex
 body=node("DIV","body"); a=add(body,node("DIV","stanza")); b=add(body,node("DIV","stanza")); add(a,p()); add(b,p());
 need(MergeContainers(a,false)===true && a.children.length==2,"stanza lines retained");
 
-body=node("DIV","body"); a=add(body,section()); b=add(body,section()); add(a,p()); add(b,p()); failMove=true;
+body=node("DIV","body"); a=add(body,section()); b=add(body,section()); add(a,p()); add(b,p());
+fault={kind:"appendChild",nth:1,count:0,phase:"before"};
 need(MergeContainers(a,false)===false && a.children.length==1 && b.children.length==1 && undo==0,"failed move keeps DOM and closes undo");
+
+for(var move=1;move<=2;++move) {
+ body=node("DIV","body"); var before=add(body,section()), first=add(body,section()), second=add(body,section()), after=add(body,section());
+ var firstLine=add(first,p()), one=add(second,p()), two=add(second,p()), three=add(second,p());
+ fault={kind:"appendChild",nth:move,count:0,phase:"after"};
+ need(MergeContainers(first,false)===false,"merge fails after moved node "+move);
+ need(same(body,[before,first,second,after]) && same(first,[firstLine]) && same(second,[one,two,three]),"merge restores exact node order "+move);
+ need(undo==0 && messages[messages.length-1]==="fbe.structure.operation.failed","merge closes undo and confirms restoration "+move);
+}
+
+for(var move=1;move<=2;++move) {
+ body=node("DIV","body"); before=add(body,section()); outer=add(body,section()); after=add(body,section());
+ one=add(outer,section()); two=add(outer,section()); three=add(outer,section());
+ fault={kind:"insertAdjacentElement",nth:move,count:0,phase:"after"};
+ need(RemoveOuterContainer(outer,false)===false,"remove outer fails after moved node "+move);
+ need(same(body,[before,outer,after]) && same(outer,[one,two,three]),"remove outer restores exact node order "+move);
+ need(undo==0 && messages[messages.length-1]==="fbe.structure.operation.failed","remove outer closes undo "+move);
+}
+
+body=node("DIV","body"); before=add(body,section()); outer=add(body,section()); after=add(body,section());
+one=add(outer,section()); two=add(outer,section());
+fault={kind:"removeNode",nth:1,count:0,phase:"after"};
+need(RemoveOuterContainer(outer,false)===false,"remove outer fails after shell removal");
+need(same(body,[before,outer,after]) && same(outer,[one,two]) && undo==0,"outer shell and children restored after removal failure");
+
+body=node("DIV","body"); before=add(body,section()); a=add(body,section()); after=add(body,section()); add(a,p());
+fault={kind:"insertAdjacentElement",nth:1,count:0,phase:"after"};
+need(CloneContainer(a,false)===false && same(body,[before,a,after]) && undo==0,"clone insertion failure leaves no partial node");
+need(messages[messages.length-1]==="fbe.structure.operation.failed","clone confirms restoration");
+
+body=node("DIV","body"); before=add(body,section()); a=add(body,section()); b=add(body,section()); after=add(body,section());
+one=add(a,p()); two=add(b,p()); three=add(b,p());
+fault={kind:"appendChild",nth:1,count:0,phase:"after"}; rollbackFault=true;
+need(MergeContainers(a,false)===false && undo==0,"failed rollback still closes undo");
+need(messages[messages.length-1]==="fbe.structure.operation.rollback_failed","incomplete rollback is reported honestly");
+
+body=node("DIV","body"); a=add(body,section()); b=add(body,section()); one=add(a,p()); two=add(b,section());
+need(MergeContainers(a,false)===false && same(body,[a,b]) && same(a,[one]) && same(b,[two]) && undo==0,"invalid merge with check=false leaves DOM unchanged");
 WScript.Echo("structural command behavior passed");
 '@
     [IO.File]::WriteAllText($runner, $script, [Text.Encoding]::Unicode)

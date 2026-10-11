@@ -2997,9 +2997,17 @@ function CloneContainer(cp,check)
   case "stanza": case "cite": case "epigraph": ncp.innerHTML='<P></P>'; break;
  }
  InflateIt(ncp);
+ var parent=cp.parentNode, before=StructuralNodeOrder(parent), failed=false;
  window.external.BeginUndoUnit(document,"clone "+cp.className);
  try { cp.insertAdjacentElement("afterEnd",ncp); }
+ catch(error)
+ {
+  failed=true;
+  try { if(ncp.parentNode) ncp.parentNode.removeChild(ncp); } catch(rollbackError) {}
+  try { StructuralRestoreNodeOrder(parent,before); } catch(rollbackError) {}
+ }
  finally { window.external.EndUndoUnit(document); }
+ if(failed) return StructuralOperationFailure(StructuralNodeOrderMatches(parent,before) && !ncp.parentNode);
  GoTo(ncp);
  return true;
 }
@@ -3371,6 +3379,45 @@ function StructuralChildren(node)
  return children;
 }
 
+function StructuralNodeOrder(parent)
+{
+ var nodes=[];
+ for(var child=parent.firstChild; child; child=child.nextSibling) nodes.push(child);
+ return nodes;
+}
+
+function StructuralRestoreNodeOrder(parent, nodes)
+{
+ var next=null;
+ for(var i=nodes.length-1; i>=0; --i)
+ {
+  if(nodes[i].parentNode!=parent || nodes[i].nextSibling!=next)
+  {
+   if(next) parent.insertBefore(nodes[i],next);
+   else parent.appendChild(nodes[i]);
+  }
+  next=nodes[i];
+ }
+}
+
+function StructuralNodeOrderMatches(parent, nodes)
+{
+ var current=parent.firstChild;
+ for(var i=0; i<nodes.length; ++i)
+ {
+  if(current!=nodes[i]) return false;
+  current=current.nextSibling;
+ }
+ return !current;
+}
+
+function StructuralOperationFailure(restored)
+{
+ if(restored)
+  return StructuralFailure("fbe.structure.operation.failed","The structural change failed; the document was left unchanged.",false);
+ return StructuralFailure("fbe.structure.operation.rollback_failed","The structural change failed and could not be fully restored. Save a copy and inspect the document.",false);
+}
+
 function StructuralHasExtraAttributes(node)
 {
  if(node.id) return true;
@@ -3481,20 +3528,24 @@ function MergeContainers(cp,check)
     return StructuralFailure("fbe.structure.merge.author","The first quotation has an author line before the second quotation's text.",check);
  }
  if(check) return true;
- var moved=[], complete=false;
+ var parent=cp.parentNode, parentBefore=StructuralNodeOrder(parent);
+ var firstBefore=StructuralNodeOrder(cp), secondBefore=StructuralNodeOrder(nx), failed=false;
  window.external.BeginUndoUnit(document,"merge "+cp.className+"s");
  try
  {
-  for(var i=0; i<second.length; ++i) { cp.appendChild(second[i]); moved.push(second[i]); }
+  for(var i=0; i<second.length; ++i) cp.appendChild(second[i]);
   nx.removeNode(true);
-  complete=true;
  }
  catch(error)
  {
-  for(var i=0; i<moved.length; ++i) nx.appendChild(moved[i]);
+  failed=true;
+  try { StructuralRestoreNodeOrder(parent,parentBefore); } catch(rollbackError) {}
+  try { StructuralRestoreNodeOrder(nx,secondBefore); } catch(rollbackError) {}
+  try { StructuralRestoreNodeOrder(cp,firstBefore); } catch(rollbackError) {}
  }
  finally { window.external.EndUndoUnit(document); }
- if(!complete) return StructuralFailure("fbe.structure.operation.failed","The structural change failed; the document was left unchanged.",false);
+ if(failed) return StructuralOperationFailure(StructuralNodeOrderMatches(parent,parentBefore) &&
+  StructuralNodeOrderMatches(cp,firstBefore) && StructuralNodeOrderMatches(nx,secondBefore));
  GoTo(cp);
  return true;
 }
@@ -3519,21 +3570,23 @@ function RemoveOuterContainer(cp,check)
  if(parent.className=="section" && StructuralSectionKind(parent)!="nested")
   return StructuralFailure("fbe.structure.remove.layout","Removing this section would create an invalid FB2 layout.",check);
  if(check) return true;
- var moved=[], complete=false;
+ var parentBefore=StructuralNodeOrder(parent), outerBefore=StructuralNodeOrder(cp), failed=false;
  window.external.BeginUndoUnit(document,"Remove Outer Section");
  try
  {
-  for(var i=0; i<children.length; ++i) { cp.insertAdjacentElement("beforeBegin",children[i]); moved.push(children[i]); }
+  for(var i=0; i<children.length; ++i) cp.insertAdjacentElement("beforeBegin",children[i]);
   cp.removeNode(true);
-  complete=true;
  }
  catch(error)
  {
-  for(var i=moved.length-1; i>=0; --i) cp.insertAdjacentElement("afterBegin",moved[i]);
+  failed=true;
+  try { StructuralRestoreNodeOrder(parent,parentBefore); } catch(rollbackError) {}
+  try { StructuralRestoreNodeOrder(cp,outerBefore); } catch(rollbackError) {}
  }
  finally { window.external.EndUndoUnit(document); }
- if(!complete) return StructuralFailure("fbe.structure.operation.failed","The structural change failed; the document was left unchanged.",false);
- if(moved.length) GoTo(moved[0]);
+ if(failed) return StructuralOperationFailure(StructuralNodeOrderMatches(parent,parentBefore) &&
+  StructuralNodeOrderMatches(cp,outerBefore));
+ GoTo(children[0]);
  return true;
 }
 //-----------------------------------------------
