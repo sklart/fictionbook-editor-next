@@ -118,7 +118,7 @@ LRESULT CHtmlExportOptionsDialog::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, B
     MONITORINFO monitor = { sizeof(monitor) };
     if (GetMonitorInfoW(MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor))
     {
-        const UINT dpi = OptionsWindowDpi(m_hWnd);
+        const UINT dpi = m_layoutDpi;
         bounds->ptMinTrackSize.x = min(MulDiv(m_minimumWindow.cx, dpi, m_initialDpi),
             monitor.rcWork.right - monitor.rcWork.left);
         bounds->ptMinTrackSize.y = min(MulDiv(m_minimumWindow.cy, dpi, m_initialDpi),

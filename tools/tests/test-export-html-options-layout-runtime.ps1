@@ -11,6 +11,10 @@ using System.Text;
 using System.Runtime.InteropServices;
 public static class ExportHtmlProbeWin32 {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] public struct MinMaxInfo {
+        public Point Reserved, MaxSize, MaxPosition, MinTrackSize, MaxTrackSize;
+    }
     [StructLayout(LayoutKind.Sequential)] public struct ScrollInfo {
         public uint cbSize, fMask; public int nMin, nMax; public uint nPage; public int nPos, nTrackPos;
     }
@@ -20,6 +24,15 @@ public static class ExportHtmlProbeWin32 {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, StringBuilder text, int capacity);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hwnd, uint message, IntPtr wparam, IntPtr lparam);
+    public static MinMaxInfo GetMinimumTrack(IntPtr hwnd) {
+        MinMaxInfo empty = new MinMaxInfo();
+        IntPtr buffer = Marshal.AllocHGlobal(Marshal.SizeOf(empty));
+        try {
+            Marshal.StructureToPtr(empty, buffer, false);
+            SendMessage(hwnd, 0x24, IntPtr.Zero, buffer); // WM_GETMINMAXINFO
+            return (MinMaxInfo)Marshal.PtrToStructure(buffer, typeof(MinMaxInfo));
+        } finally { Marshal.FreeHGlobal(buffer); }
+    }
     public static void ClickAsync(IntPtr hwnd) {
         var thread = new System.Threading.Thread(() => SendMessage(hwnd, 0x00F5, IntPtr.Zero, IntPtr.Zero));
         thread.IsBackground = true;
@@ -143,7 +156,7 @@ try {
     if ($saveDialog -eq [IntPtr]::Zero) { throw 'HTML Save dialog missing.' }
     $optionsButton = [ExportHtmlProbeWin32]::FindChildWithText($saveDialog, 'Параметры экспорта HTML')
     if ($optionsButton -eq [IntPtr]::Zero) { throw 'HTML options button missing.' }
-    if (-not [ExportHtmlProbeWin32]::SetForegroundWindow($saveDialog)) { throw 'Cannot activate HTML Save dialog.' }
+    [void][ExportHtmlProbeWin32]::SetForegroundWindow($saveDialog)
     Start-Sleep -Milliseconds 300
     [ExportHtmlProbeWin32]::ClickAsync($optionsButton)
     $options = [IntPtr]::Zero
@@ -170,6 +183,7 @@ try {
     if ($horizontal.nMax -ge $horizontal.nPage -or $vertical.nMax -ge $vertical.nPage) {
         throw 'The normal minimum size still shows a needless scrollbar.'
     }
+    $minimumBefore = [ExportHtmlProbeWin32]::GetMinimumTrack($options)
     $initialDpi = [ExportHtmlProbeWin32]::WindowDpi($options)
     $probeDpi = [int]($initialDpi * 2)
     $suggested = [Runtime.InteropServices.Marshal]::AllocHGlobal(16)
@@ -181,6 +195,20 @@ try {
     finally { [Runtime.InteropServices.Marshal]::FreeHGlobal($suggested) }
     Start-Sleep -Milliseconds 300
     [void][ExportHtmlProbeWin32]::GetWindowRect($options, [ref]$actual)
+    $minimumAfter = [ExportHtmlProbeWin32]::GetMinimumTrack($options)
+    if ($minimumAfter.MinTrackSize.X -le $minimumBefore.MinTrackSize.X -or
+        $minimumAfter.MinTrackSize.Y -le $minimumBefore.MinTrackSize.Y) {
+        throw 'Minimum window size did not increase with the layout DPI.'
+    }
+    $scaledPage = [ExportHtmlProbeWin32+Rect]::new()
+    [void][ExportHtmlProbeWin32]::GetWindowRect($page, [ref]$scaledPage)
+    if (-not [ExportHtmlProbeWin32]::SetWindowPos($page, [IntPtr]::Zero, 0, 0,
+        [Math]::Max(80, $scaledPage.Right - $scaledPage.Left - 250),
+        [Math]::Max(80, $scaledPage.Bottom - $scaledPage.Top - 140), 0x16)) {
+        throw 'Cannot constrain the HTML Options page viewport.'
+    }
+    [void][ExportHtmlProbeWin32]::SendMessage($page, 0x114, [IntPtr]6, [IntPtr]::Zero)
+    [void][ExportHtmlProbeWin32]::SendMessage($page, 0x115, [IntPtr]6, [IntPtr]::Zero)
     $horizontal = Get-Scroll $page 0
     $vertical = Get-Scroll $page 1
     if ($horizontal.nMax -lt $horizontal.nPage -or $vertical.nMax -lt $vertical.nPage) {
