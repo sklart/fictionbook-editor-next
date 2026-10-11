@@ -97,7 +97,7 @@ foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_T
 Assert-Contains $rc 'IDD_TOOLS_SETTINGS DIALOGEX 0, 0, 430, 360' 'Settings container dimensions changed.'
 Assert-Contains $rc 'IDC_SETTINGS_NAV,10,10,100,298' 'Settings navigation geometry changed.'
 Assert-Contains $rc 'IDD_ABOUTBOX DIALOGEX 0, 0, 420, 165' 'About dimensions changed.'
-Assert-Contains $rc 'LTEXT           "Build",IDC_STATIC_BUILD,101,20,40,8' 'About build label must fit localized text.'
+Assert-Contains $rc 'LTEXT           "Build",IDC_STATIC_BUILD,101,18,50,14' 'About build label must fit localized text.'
 Assert-Contains $rc 'EDITTEXT        IDC_CONTRIBS,70,51,343,91' 'About contributors area must use increased height.'
 Assert-Contains $rc 'IDC_TEXT_STATUS,"Static",SS_LEFT \| WS_GROUP,24,147,210,20' 'About status geometry changed.'
 Assert-Contains $rc 'IDC_WHATS_NEW,240,150,70,14' 'About What''s New button geometry changed.'
