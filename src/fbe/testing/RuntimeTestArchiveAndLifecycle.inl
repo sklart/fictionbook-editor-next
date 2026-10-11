@@ -504,6 +504,83 @@
 		::PostQuitMessage(persisted && applied && layoutPassed ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"spell-dialog-layout-runtime"))
+	{
+		struct SpellLocale { DWORD language; LPCWSTR name; LPCWSTR ignoreAll; };
+		const SpellLocale locales[] = {
+			{ FBE_INTERFACE_LANGUAGE_RUSSIAN, L"ru-RU", L"Пропустить все" },
+			{ FBE_INTERFACE_LANGUAGE_ENGLISH, L"en-US", L"Ignore all" },
+			{ FBE_INTERFACE_LANGUAGE_GERMAN, L"de-DE", L"Alle ignorieren" },
+			{ FBE_INTERFACE_LANGUAGE_UKRAINIAN, L"uk-UA", L"Пропустити все" }
+		};
+		const DWORD originalLanguage = _Settings.GetInterfaceLanguageID();
+		const RECT originalDialogRect = dialogRect;
+		dialogRect.left = -30000; dialogRect.top = -30000;
+		CSpeller fallbackSpeller(U::GetProgDir() + L"Dict\\");
+		CStringA report;
+		bool passed = true;
+		for(const SpellLocale& locale : locales)
+		{
+			_Settings.SetInterfaceLanguage(locale.language);
+			FbePublishRuntimeLocaleName(locale.name); FbeResetRuntimeLocalization();
+			CSpellDialog dialog(m_Speller ? m_Speller : &fallbackSpeller);
+			const HWND window = dialog.ShowDialog(m_hWnd);
+			bool valid = window != NULL;
+			bool localized = false, textFits = true, geometry = false, workArea = false;
+			CStringA clipped;
+			if(valid)
+			{
+				wchar_t caption[128] = {};
+				::GetDlgItemTextW(window, IDC_SPELL_IGNOREALL, caption, _countof(caption));
+				localized = wcscmp(caption, locale.ignoreAll) == 0;
+				auto bounds = [window](int id) {
+					RECT result = {};
+					::GetWindowRect(::GetDlgItem(window, id), &result);
+					return result;
+				};
+				auto fits = [window, &bounds](int id) {
+					HWND control = ::GetDlgItem(window, id);
+					wchar_t text[512] = {};
+					::GetWindowTextW(control, text, _countof(text));
+					HDC dc = ::GetDC(control);
+					if(!dc) return false;
+					HFONT font = reinterpret_cast<HFONT>(::SendMessage(control, WM_GETFONT, 0, 0));
+					HFONT previous = font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+					RECT measured = { 0, 0, 10000, 0 };
+					::DrawTextW(dc, text, -1, &measured, DT_CALCRECT | DT_SINGLELINE);
+					if(previous) ::SelectObject(dc, previous);
+					::ReleaseDC(control, dc);
+					const RECT actual = bounds(id);
+					return measured.right - measured.left + 4 <= actual.right - actual.left;
+				};
+				for(int id : { IDC_SPELL_NOT_IN_DICTIONARY, IDC_SPELL_CHANGE_TO, IDC_SPELL_SUGGESTIONS,
+					IDC_SPELL_IGNORE, IDC_SPELL_IGNOREALL, IDC_SPELL_CHANGE, IDC_SPELL_CHANGEALL,
+					IDC_SPELL_ADD, IDC_SPELL_SUGGEST, IDC_SPELL_UNDO, IDCANCEL })
+					if(!fits(id)) { textFits = false; clipped.AppendFormat("%d,", id); }
+				const RECT list = bounds(IDC_SPELL_SUGG_LIST);
+				const RECT first = bounds(IDC_SPELL_IGNORE);
+				const RECT second = bounds(IDC_SPELL_IGNOREALL);
+				const RECT dialogBounds = [&]() { RECT result = {}; ::GetWindowRect(window, &result); return result; }();
+				MONITORINFO monitor = { sizeof(monitor) };
+				geometry = list.right <= first.left && first.right <= second.left;
+				workArea = ::GetMonitorInfoW(::MonitorFromRect(&dialogBounds, MONITOR_DEFAULTTONEAREST), &monitor) &&
+					dialogBounds.left >= monitor.rcWork.left && dialogBounds.top >= monitor.rcWork.top &&
+					dialogBounds.right <= monitor.rcWork.right && dialogBounds.bottom <= monitor.rcWork.bottom;
+				valid = localized && textFits && geometry && workArea;
+				dialog.DestroyWindow();
+			}
+			report.AppendFormat("%S=%d localized=%d text=%d geometry=%d work=%d clipped=%s\n",
+				locale.name, valid, localized, textFits, geometry, workArea, static_cast<LPCSTR>(clipped));
+			passed = passed && valid;
+		}
+		_Settings.SetInterfaceLanguage(originalLanguage);
+		dialogRect = originalDialogRect;
+		FbePublishRuntimeLocaleName(_Settings.GetInterfaceLocaleName()); FbeResetRuntimeLocalization();
+		report.AppendFormat("result=%s\n", passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"backup-settings-save-runtime") || IsFbeTestScenario(L"backup-settings-save-runtime-verify"))
 	{
 		const bool verifyOnly = IsFbeTestScenario(L"backup-settings-save-runtime-verify");

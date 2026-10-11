@@ -135,10 +135,29 @@ public:
 
 		windows().Add(m_hWnd);
 
-		if (dialogRect.left != -1)
-			::SetWindowPos(m_hWnd, HWND_TOP, dialogRect.left, dialogRect.top, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
-		else
-			::ShowWindow(m_hWnd, SW_SHOW);
+		RECT bounds = {};
+		::GetWindowRect(m_hWnd, &bounds);
+		if(dialogRect.left != -1)
+		{
+			const int width = bounds.right - bounds.left;
+			const int height = bounds.bottom - bounds.top;
+			bounds.left = dialogRect.left;
+			bounds.top = dialogRect.top;
+			bounds.right = bounds.left + width;
+			bounds.bottom = bounds.top + height;
+		}
+		MONITORINFO monitor = { sizeof(monitor) };
+		if(::GetMonitorInfoW(::MonitorFromRect(&bounds, MONITOR_DEFAULTTONEAREST), &monitor))
+		{
+			const int width = bounds.right - bounds.left;
+			const int height = bounds.bottom - bounds.top;
+			const int x = (std::max)(monitor.rcWork.left,
+				(std::min)(bounds.left, monitor.rcWork.right - width));
+			const int y = (std::max)(monitor.rcWork.top,
+				(std::min)(bounds.top, monitor.rcWork.bottom - height));
+			::SetWindowPos(m_hWnd, HWND_TOP, x, y, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
+		}
+		else ::ShowWindow(m_hWnd, SW_SHOW);
 
 		m_valid = true;
 		return hWnd;

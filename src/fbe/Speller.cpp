@@ -7,6 +7,7 @@
 #include "Speller.h"
 #include "SpellParagraphTraversal.h"
 #include "RuntimeLocalization.h"
+#include "UiMetrics.h"
 #include "StartupTrace.h"
 #include "utils.h"
 
@@ -41,9 +42,78 @@ LRESULT CSpellDialog::OnInitDialog(UINT /* unused: uMsg */, WPARAM /* unused: wP
 	SetRuntimeSpellText(m_hWnd, IDC_SPELL_SUGGEST, L"fbe.dialog.idd_spell_check.suggest", L"Suggest");
 	SetRuntimeSpellText(m_hWnd, IDC_SPELL_UNDO, L"fbe.dialog.idd_spell_check.undo", L"Undo");
 
+	FitLocalizedControls();
 	UpdateData();
 	CenterWindow();
 	return 1;
+}
+
+void CSpellDialog::FitLocalizedControls()
+{
+	HDC dc = ::GetDC(m_hWnd);
+	if(!dc) return;
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	const int labelGap = UiMetrics::ScaleForDpi(4, dpi);
+	const int buttonPadding = UiMetrics::ScaleForDpi(20, dpi);
+	auto rect = [this](int id) {
+		RECT result = {};
+		::GetWindowRect(GetDlgItem(id), &result);
+		::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&result), 2);
+		return result;
+	};
+	auto textWidth = [this, dc](int id, LPCWSTR alternate = NULL) {
+		HWND control = GetDlgItem(id);
+		wchar_t text[512] = {};
+		if(alternate) wcsncpy_s(text, alternate, _TRUNCATE);
+		else ::GetWindowTextW(control, text, _countof(text));
+		HFONT font = reinterpret_cast<HFONT>(::SendMessage(control, WM_GETFONT, 0, 0));
+		HFONT previous = font ? static_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+		RECT measure = { 0, 0, 10000, 0 };
+		::DrawTextW(dc, text, -1, &measure, DT_CALCRECT | DT_SINGLELINE);
+		if(previous) ::SelectObject(dc, previous);
+		return static_cast<int>(measure.right - measure.left);
+	};
+	int labelGrowth = 0;
+	for(int id : { IDC_SPELL_NOT_IN_DICTIONARY, IDC_SPELL_CHANGE_TO, IDC_SPELL_SUGGESTIONS })
+	{
+		const RECT label = rect(id);
+		labelGrowth = (std::max)(labelGrowth,
+			textWidth(id) + labelGap - static_cast<int>(label.right - label.left));
+	}
+	labelGrowth = (std::max)(0, labelGrowth);
+	const RECT first = rect(IDC_SPELL_IGNORE);
+	const RECT second = rect(IDC_SPELL_IGNOREALL);
+	int firstWidth = first.right - first.left;
+	int secondWidth = second.right - second.left;
+	for(int id : { IDC_SPELL_IGNORE, IDC_SPELL_CHANGE, IDC_SPELL_ADD, IDC_SPELL_UNDO })
+		firstWidth = (std::max)(firstWidth, textWidth(id) + buttonPadding);
+	const CString continueText = FbeLoadCString(IDS_SPELL_CONTINUE);
+	firstWidth = (std::max)(firstWidth, textWidth(IDC_SPELL_IGNORE, continueText) + buttonPadding);
+	for(int id : { IDC_SPELL_IGNOREALL, IDC_SPELL_CHANGEALL, IDC_SPELL_SUGGEST, IDCANCEL })
+		secondWidth = (std::max)(secondWidth, textWidth(id) + buttonPadding);
+	::ReleaseDC(m_hWnd, dc);
+	const int firstGrowth = firstWidth - (first.right - first.left);
+	const int secondGrowth = secondWidth - (second.right - second.left);
+	const int growth = labelGrowth + firstGrowth + secondGrowth;
+	if(growth <= 0) return;
+	auto move = [this, &rect](int id, int offsetX, int extraWidth) {
+		const RECT old = rect(id);
+		::SetWindowPos(GetDlgItem(id), NULL, old.left + offsetX, old.top,
+			old.right - old.left + extraWidth, old.bottom - old.top, SWP_NOZORDER | SWP_NOACTIVATE);
+	};
+	for(int id : { IDC_SPELL_NOT_IN_DICTIONARY, IDC_SPELL_CHANGE_TO, IDC_SPELL_SUGGESTIONS })
+		move(id, 0, labelGrowth);
+	for(int id : { IDC_SPELL_BEDWORD, IDC_SPELL_REPLACEMENT })
+		move(id, labelGrowth, firstGrowth + secondGrowth);
+	move(IDC_SPELL_SUGG_LIST, 0, labelGrowth);
+	for(int id : { IDC_SPELL_IGNORE, IDC_SPELL_CHANGE, IDC_SPELL_ADD, IDC_SPELL_UNDO })
+		move(id, labelGrowth, firstGrowth);
+	for(int id : { IDC_SPELL_IGNOREALL, IDC_SPELL_CHANGEALL, IDC_SPELL_SUGGEST, IDCANCEL })
+		move(id, labelGrowth + firstGrowth, secondGrowth);
+	RECT window = {};
+	::GetWindowRect(m_hWnd, &window);
+	::SetWindowPos(m_hWnd, NULL, window.left, window.top, window.right - window.left + growth,
+		window.bottom - window.top, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 LRESULT CSpellDialog::OnActivate(UINT, WPARAM wParam, LPARAM, BOOL&)

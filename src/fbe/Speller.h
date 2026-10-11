@@ -129,6 +129,7 @@ private:
 	LRESULT OnSelDblClick(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnEditChange(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnCancel(WORD, WORD wID, HWND, BOOL&);
+	void FitLocalizedControls();
 };
 
 typedef std::pair<long, MSHTML::IHighlightSegmentPtr> HIGHLIGHT;
