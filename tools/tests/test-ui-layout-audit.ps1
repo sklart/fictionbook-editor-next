@@ -28,9 +28,9 @@ try {
     $visible = 0x50000000 # WS_CHILD | WS_VISIBLE
     [void][UiAuditFixture]::CreateWindowEx(0, 'STATIC', 'A long label intentionally clipped', $visible,
         20, 20, 55, 18, $parent, [IntPtr]111, [IntPtr]::Zero, [IntPtr]::Zero)
-    [void][UiAuditFixture]::CreateWindowEx(0, 'BUTTON', 'One', $visible,
+    [void][UiAuditFixture]::CreateWindowEx(0, 'BUTTON', '&One', $visible,
         20, 70, 90, 30, $parent, [IntPtr]112, [IntPtr]::Zero, [IntPtr]::Zero)
-    [void][UiAuditFixture]::CreateWindowEx(0, 'BUTTON', 'Two', $visible,
+    [void][UiAuditFixture]::CreateWindowEx(0, 'BUTTON', 'One', $visible,
         60, 75, 90, 30, $parent, [IntPtr]113, [IntPtr]::Zero, [IntPtr]::Zero)
     [Windows.Forms.Application]::DoEvents()
     & (Join-Path $root 'tools\ui\invoke-ui-layout-audit.ps1') -ProcessId $PID -Language en-US `
@@ -43,6 +43,9 @@ try {
     }
     $overlap = @($report.issues | Where-Object { $_.kind -eq 'possible-overlap' })
     if ($overlap.Count -ne 1 -or -not $overlap[0].ignored) { throw 'Intentional overlap exception was not recorded.' }
+    $mnemonic = @($report.controls | Where-Object { $_.Id -eq 112 })[0]
+    $plain = @($report.controls | Where-Object { $_.Id -eq 113 })[0]
+    if ($mnemonic.MeasuredTextWidth -ne $plain.MeasuredTextWidth) { throw 'Button mnemonic marker was measured as visible text.' }
     Write-Host 'UI Layout Audit native fixture passed.'
 }
 finally {

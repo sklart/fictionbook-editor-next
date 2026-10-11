@@ -32,7 +32,12 @@ public static class FbvLayoutProbe
     }
 }
 '@
-$process = Start-Process -FilePath $FbvExe -ArgumentList ('"' + $fixture + '"') -WindowStyle Hidden -PassThru
+$previousLocale = $env:FBE_NEXT_UI_LOCALE
+try {
+    $env:FBE_NEXT_UI_LOCALE = 'ru-RU'
+    $process = Start-Process -FilePath $FbvExe -ArgumentList ('"' + $fixture + '"') -PassThru
+}
+finally { $env:FBE_NEXT_UI_LOCALE = $previousLocale }
 try {
     $window = [IntPtr]::Zero
     for ($attempt = 0; $attempt -lt 30 -and $window -eq [IntPtr]::Zero; ++$attempt) {
@@ -41,6 +46,16 @@ try {
         $window = [FbvLayoutProbe]::Find($process.Id)
     }
     if ($window -eq [IntPtr]::Zero) { throw 'FBV main dialog was not created.' }
+    $auditPath = Join-Path $PSScriptRoot '..\..\out\tests\fbv-layout-audit.json'
+    & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language ru-RU -OutputPath $auditPath
+    $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $auditPath | ConvertFrom-Json
+    $buttons = @($audit.controls | Where-Object { $_.Id -eq 1002 -or $_.Id -eq 2 })
+    if ($buttons.Count -ne 2 -or @($buttons | Where-Object { $_.TextMayClip }).Count -ne 0) {
+        throw 'FBV localized action button text is clipped.'
+    }
+    if (@($audit.issues | Where-Object { -not $_.ignored -and $_.kind -eq 'possible-overlap' }).Count -ne 0) {
+        throw 'FBV controls overlap after fitting the localized buttons.'
+    }
     $list = [FbvLayoutProbe]::GetDlgItem($window, 1000)
     $status = [FbvLayoutProbe]::GetDlgItem($window, 1004)
     $beforeWindow = New-Object FbvLayoutProbe+Rect

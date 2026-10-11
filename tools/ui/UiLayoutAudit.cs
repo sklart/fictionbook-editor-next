@@ -123,7 +123,14 @@ public static class UiLayoutAudit
             available = Math.Max(1, available - row.Dpi / 5); // checkbox/radio glyph
         Rect measured = new Rect { Left = 0, Top = 0, Right = available, Bottom = 0 };
         bool multiline = kind.Equals("Static", StringComparison.OrdinalIgnoreCase);
-        DrawText(dc, text, text.Length, ref measured, multiline ? 0x00000C10U : 0x00000C20U); // CALCRECT, NOPREFIX, WORDBREAK/SINGLELINE
+        uint flags = multiline ? 0x00000410U : 0x00000420U; // CALCRECT with WORDBREAK/SINGLELINE
+        // Buttons and ordinary static labels render '&' as a mnemonic marker.
+        // Edit text and SS_NOPREFIX labels render it literally.
+        if ((!kind.Equals("Button", StringComparison.OrdinalIgnoreCase) &&
+             !kind.Equals("Static", StringComparison.OrdinalIgnoreCase)) ||
+            (kind.Equals("Static", StringComparison.OrdinalIgnoreCase) && (style & 0x80) != 0))
+            flags |= 0x00000800U; // NOPREFIX
+        DrawText(dc, text, text.Length, ref measured, flags);
         if (old != IntPtr.Zero) SelectObject(dc, old);
         ReleaseDC(hwnd, dc);
         row.MeasuredTextWidth = measured.Right - measured.Left;

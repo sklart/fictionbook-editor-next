@@ -118,6 +118,7 @@ public:
 	bool GetFileMetadata(const wchar_t* filename, FILETIME& ft, ULARGE_INTEGER& size) const;
 	void ClearErrorMessage(FileInfo* fi);
 	void UpdateFileColumnWidth();
+	void FitActionButtons();
 };
 
 enum {
@@ -720,8 +721,6 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 	SetDlgItemText(IDCANCEL, LoadFbString(IDS_BUTTON_EXIT));
 	SendDlgItemMessage(IDC_STATUS, SB_SETTEXT, 0, (LPARAM)(LPCTSTR)LoadFbString(IDS_STATUS_SCANNING));
 
-	DlgResize_Init(false);
-
 	RECT	      rcmsg, rcstatus;
 
 	// adjust the edit control height to avoid overlapping the status line
@@ -731,6 +730,8 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 	ScreenToClient(*this, rcmsg);
 	::MoveWindow(GetDlgItem(IDC_MSG), rcmsg.left, rcmsg.top,
 		rcmsg.right - rcmsg.left, rcmsg.bottom - rcmsg.top, FALSE);
+	FitActionButtons();
+	DlgResize_Init(false);
 	// initialize resizing structures
 	SizeInit(*this, g_controls, NCONTROLS);
 	::SendMessage(*this, WM_SETICON, ICON_BIG,
@@ -754,6 +755,47 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 	m_timer = ::SetTimer(*this, INIT_TIMER, 100, NULL);
 
 	return TRUE;
+}
+
+void CMainDlg::FitActionButtons()
+{
+	const int ids[] = { IDC_VALIDATE, IDCANCEL };
+	RECT buttons[_countof(ids)] = {};
+	int width = 0;
+	HDC dc = ::GetDC(m_hWnd);
+	const int dpi = dc ? ::GetDeviceCaps(dc, LOGPIXELSX) : 96;
+	const int padding = ::MulDiv(32, dpi, 96);
+	const int gap = ::MulDiv(6, dpi, 96);
+	for (size_t index = 0; index < _countof(ids); ++index)
+	{
+		HWND button = GetDlgItem(ids[index]);
+		::GetWindowRect(button, &buttons[index]);
+		ScreenToClient(m_hWnd, buttons[index]);
+		width = (std::max)(width, static_cast<int>(buttons[index].right - buttons[index].left));
+		if (!dc) continue;
+		const int length = ::GetWindowTextLengthW(button);
+		CString caption;
+		::GetWindowTextW(button, caption.GetBuffer(length + 1), length + 1);
+		caption.ReleaseBuffer();
+		HFONT font = reinterpret_cast<HFONT>(::SendMessage(button, WM_GETFONT, 0, 0));
+		HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+		RECT text = {};
+		::DrawTextW(dc, caption, caption.GetLength(), &text, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+		if (oldFont) ::SelectObject(dc, oldFont);
+		width = (std::max)(width, static_cast<int>(text.right - text.left) + padding);
+	}
+	if (dc) ::ReleaseDC(m_hWnd, dc);
+	const int right = (std::max)(buttons[0].right, buttons[1].right);
+	const int left = right - width;
+	for (size_t index = 0; index < _countof(ids); ++index)
+		::MoveWindow(GetDlgItem(ids[index]), left, buttons[index].top, width,
+			buttons[index].bottom - buttons[index].top, FALSE);
+	RECT message = {};
+	::GetWindowRect(GetDlgItem(IDC_MSG), &message);
+	ScreenToClient(m_hWnd, message);
+	const int messageRight = (std::min)(static_cast<int>(message.right), left - gap);
+	::MoveWindow(GetDlgItem(IDC_MSG), message.left, message.top,
+		(std::max)(0, messageRight - static_cast<int>(message.left)), message.bottom - message.top, FALSE);
 }
 
 void CMainDlg::UpdateFileColumnWidth()
