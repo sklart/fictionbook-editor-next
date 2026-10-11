@@ -7,6 +7,7 @@
 void LoadImportOptions(EpubImportOptions& options);
 void SaveImportOptions(const EpubImportOptions& options);
 
-// Shows the EPUB import settings dialog.
-// Returns true when the user clicked OK and false on cancel/close.
-bool ShowImportOptionsDialog(HWND owner, EpubImportOptions& options);
+enum class ImportOptionsDialogResult { Confirmed, Cancelled, Error };
+
+// Distinguishes user cancellation from failure to create or run the dialog.
+ImportOptionsDialogResult ShowImportOptionsDialog(HWND owner, EpubImportOptions& options);

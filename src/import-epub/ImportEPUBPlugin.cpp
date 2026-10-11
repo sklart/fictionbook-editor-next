@@ -123,7 +123,10 @@ namespace
         {
             m_owner = owner;
             m_options = options;
+            m_optionsDialogFailed = false;
         }
+
+        bool OptionsDialogFailed() const { return m_optionsDialogFailed; }
 
         STDMETHOD(OnFileOk)(IFileDialog*)
         {
@@ -189,10 +192,18 @@ namespace
                 // It does not cancel file selection. This is less surprising than
                 // closing the whole import operation from a secondary options popup.
                 EpubImportOptions edited = *m_options;
-                if (ShowImportOptionsDialog(owner, edited))
+                const ImportOptionsDialogResult dialogResult = ShowImportOptionsDialog(owner, edited);
+                if (dialogResult == ImportOptionsDialogResult::Confirmed)
                 {
                     *m_options = edited;
                     SaveImportOptions(*m_options);
+                }
+                else if (dialogResult == ImportOptionsDialogResult::Error)
+                {
+                    m_optionsDialogFailed = true;
+                    CComPtr<IFileDialog> fileDialog;
+                    if (customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialog))) && fileDialog)
+                        fileDialog->Close(E_FAIL);
                 }
 
                 // Some Windows builds reset the standard OK button text after
@@ -222,9 +233,10 @@ namespace
     private:
         HWND m_owner;
         EpubImportOptions* m_options;
+        bool m_optionsDialogFailed = false;
     };
 
-    bool SelectEpubFileLegacy(HWND owner, CStringW& outPath, EpubImportOptions& options)
+    bool SelectEpubFileLegacy(HWND owner, CStringW& outPath, EpubImportOptions& options, bool& optionsDialogFailed)
     {
         wchar_t buffer[MAX_PATH] = L"";
 
@@ -248,7 +260,13 @@ namespace
         // the settings dialog is still available, but it cannot be embedded into
         // the legacy GetOpenFileName dialog.
         EpubImportOptions edited = options;
-        if (ShowImportOptionsDialog(owner, edited))
+        const ImportOptionsDialogResult dialogResult = ShowImportOptionsDialog(owner, edited);
+        if (dialogResult == ImportOptionsDialogResult::Error)
+        {
+            optionsDialogFailed = true;
+            return false;
+        }
+        if (dialogResult == ImportOptionsDialogResult::Confirmed)
         {
             options = edited;
             SaveImportOptions(options);
@@ -258,9 +276,10 @@ namespace
         return true;
     }
 
-    bool SelectEpubFile(HWND owner, CStringW& outPath, EpubImportOptions& options)
+    bool SelectEpubFile(HWND owner, CStringW& outPath, EpubImportOptions& options, bool& optionsDialogFailed)
     {
         outPath.Empty();
+        optionsDialogFailed = false;
 
         const std::wstring epubFilter = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILTER_EPUB, L"EPUB files (*.epub)").GetString();
         const std::wstring allFilter = LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_FILTER_ALL, L"All files (*.*)").GetString();
@@ -268,7 +287,7 @@ namespace
         CComObject<COpenDialogEvents>* rawEvents = nullptr;
         HRESULT hr = CComObject<COpenDialogEvents>::CreateInstance(&rawEvents);
         if (FAILED(hr) || !rawEvents)
-            return SelectEpubFileLegacy(owner, outPath, options);
+            return SelectEpubFileLegacy(owner, outPath, options, optionsDialogFailed);
 
         rawEvents->AddRef();
         rawEvents->Init(owner, &options);
@@ -277,7 +296,7 @@ namespace
         hr = rawEvents->QueryInterface(IID_PPV_ARGS(&events));
         rawEvents->Release();
         if (FAILED(hr))
-            return SelectEpubFileLegacy(owner, outPath, options);
+            return SelectEpubFileLegacy(owner, outPath, options, optionsDialogFailed);
 
         ModernFileDialog::Request request;
         request.fileMustExist = true;
@@ -295,10 +314,15 @@ namespace
                 LoadPluginString(IDS_IMPORT_PLUGIN_FILEDLG_SETTINGS_BUTTON, L"Import settings..."));
         };
         const ModernFileDialog::Result result = ModernFileDialog::Show(owner, request);
+        if (rawEvents->OptionsDialogFailed())
+        {
+            optionsDialogFailed = true;
+            return false;
+        }
         if (result.outcome == ModernFileDialog::Outcome::Cancelled)
             return false;
         if (result.outcome != ModernFileDialog::Outcome::Accepted)
-            return SelectEpubFileLegacy(owner, outPath, options);
+            return SelectEpubFileLegacy(owner, outPath, options, optionsDialogFailed);
         outPath = result.paths.front().c_str();
         return !outPath.IsEmpty();
     }
@@ -464,6 +488,7 @@ STDMETHODIMP CImportEPUBPlugin::Import(IFBEPluginHost* host, BSTR* suggestedFile
     EpubImportOptions options;
     LoadImportOptions(options);
     CStringW epubPath;
+    bool optionsDialogFailed = false;
     wchar_t mode[4] = {}, scenario[32] = {}, testPath[MAX_PATH] = {};
     const bool headless = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 && wcscmp(mode, L"1") == 0 &&
         ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) > 0 && wcscmp(scenario, L"import-epub") == 0;
@@ -473,8 +498,9 @@ STDMETHODIMP CImportEPUBPlugin::Import(IFBEPluginHost* host, BSTR* suggestedFile
         if (::GetEnvironmentVariableW(L"FBE_NEXT_TEST_IMPORT_EPUB_PATH", testPath, _countof(testPath)) == 0)
             return ReportImportFailure(host, E_FAIL, L"Test EPUB input path was not supplied");
         epubPath = testPath;
-    } else if (!SelectEpubFile(owner, epubPath, options)) {
-        return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+    } else if (!SelectEpubFile(owner, epubPath, options, optionsDialogFailed)) {
+        return optionsDialogFailed ? ReportImportFailure(host, E_FAIL, L"Could not open EPUB import settings") :
+            HRESULT_FROM_WIN32(ERROR_CANCELLED);
     }
 
     const DWORD attributes = ::GetFileAttributesW(epubPath);
@@ -573,11 +599,12 @@ STDMETHODIMP CImportEPUBPlugin::Import(long hWnd, BSTR* filename, IDispatch** do
 #endif
 
         EpubImportOptions options;
+        bool optionsDialogFailed = false;
         stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_READ_SETTINGS, L"reading ImportEPUB settings");
         LoadImportOptions(options);
         stage = LoadPluginString(IDS_IMPORT_PLUGIN_STAGE_SELECT_FILE, L"selecting EPUB file");
-        if (!SelectEpubFile(ownerWindow, epubPath, options))
-            return S_FALSE;
+        if (!SelectEpubFile(ownerWindow, epubPath, options, optionsDialogFailed))
+            return optionsDialogFailed ? E_FAIL : S_FALSE;
 
         const CStringW fb2Path = ChangeExtensionToFb2(epubPath);
 

@@ -196,15 +196,46 @@ namespace
         }
     }
 
+    UINT WindowDpi(HWND window)
+    {
+        using GetDpiForWindowProc = UINT (WINAPI*)(HWND);
+        const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+        const auto getDpi = user32 ? reinterpret_cast<GetDpiForWindowProc>(
+            GetProcAddress(user32, "GetDpiForWindow")) : nullptr;
+        if (getDpi && window)
+        {
+            const UINT dpi = getDpi(window);
+            if (dpi) return dpi;
+        }
+        HDC dc = GetDC(window);
+        const UINT dpi = dc ? static_cast<UINT>(GetDeviceCaps(dc, LOGPIXELSX)) : 96;
+        if (dc) ReleaseDC(window, dc);
+        return dpi ? dpi : 96;
+    }
+
+    int Scale(int value, UINT dpi) { return MulDiv(value, static_cast<int>(dpi), 96); }
+
+    void AdjustDialogRect(RECT& rect, DWORD style, DWORD exStyle, UINT dpi)
+    {
+        using AdjustForDpiProc = BOOL (WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
+        const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+        const auto adjustForDpi = user32 ? reinterpret_cast<AdjustForDpiProc>(
+            GetProcAddress(user32, "AdjustWindowRectExForDpi")) : nullptr;
+        if (!adjustForDpi || !adjustForDpi(&rect, style, FALSE, exStyle, dpi))
+            AdjustWindowRectEx(&rect, style, FALSE, exStyle);
+    }
+
     class OptionsWindow
     {
     public:
         OptionsWindow(HWND owner, EpubImportOptions& options)
-            : m_owner(owner), m_options(options), m_hwnd(nullptr), m_tooltip(nullptr), m_done(false), m_result(false)
+            : m_owner(owner), m_options(options), m_originalOptions(options), m_hwnd(nullptr), m_tooltip(nullptr), m_done(false), m_result(false),
+              m_unexpectedDestroy(false),
+              m_dpi(WindowDpi(owner)), m_font(nullptr), m_contentHeight(0), m_scrollX(0), m_scrollY(0)
         {
         }
 
-        bool DoModal()
+        ImportOptionsDialogResult DoModal()
         {
             INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES };
             InitCommonControlsEx(&icc);
@@ -218,31 +249,33 @@ namespace
             wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
             RegisterClassW(&wc);
 
-            const int width = 700;
-            const int height = 920;
-            RECT rc = { 0, 0, width, height };
-            AdjustWindowRectEx(&rc, WS_CAPTION | WS_SYSMENU | WS_POPUP, FALSE, WS_EX_DLGMODALFRAME);
-
-            int x = CW_USEDEFAULT;
-            int y = CW_USEDEFAULT;
-            if (m_owner)
-            {
-                RECT pr = {};
-                GetWindowRect(m_owner, &pr);
-                x = pr.left + ((pr.right - pr.left) - (rc.right - rc.left)) / 2;
-                y = pr.top + ((pr.bottom - pr.top) - (rc.bottom - rc.top)) / 2;
-            }
+            const DWORD style = WS_CAPTION | WS_SYSMENU | WS_POPUP | WS_THICKFRAME | WS_VSCROLL | WS_HSCROLL;
+            RECT rc = { 0, 0, Scale(700, m_dpi), Scale(920, m_dpi) };
+            AdjustDialogRect(rc, style, WS_EX_DLGMODALFRAME, m_dpi);
+            MONITORINFO monitor = { sizeof(monitor) };
+            const HWND monitorWindow = m_owner ? m_owner : GetDesktopWindow();
+            GetMonitorInfoW(MonitorFromWindow(monitorWindow, MONITOR_DEFAULTTONEAREST), &monitor);
+            const int workWidth = monitor.rcWork.right - monitor.rcWork.left;
+            const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top;
+            const int width = min(rc.right - rc.left, workWidth);
+            const int height = min(rc.bottom - rc.top, workHeight);
+            RECT ownerRect = monitor.rcWork;
+            if (m_owner) GetWindowRect(m_owner, &ownerRect);
+            const int x = min(max(ownerRect.left + ((ownerRect.right - ownerRect.left) - width) / 2,
+                monitor.rcWork.left), monitor.rcWork.right - width);
+            const int y = min(max(ownerRect.top + ((ownerRect.bottom - ownerRect.top) - height) / 2,
+                monitor.rcWork.top), monitor.rcWork.bottom - height);
 
             m_hwnd = CreateWindowExW(
                 WS_EX_DLGMODALFRAME,
                 wc.lpszClassName,
                 LoadText(IDS_IMPORT_OPTIONS_TITLE),
-                WS_CAPTION | WS_SYSMENU | WS_POPUP,
-                x, y, rc.right - rc.left, rc.bottom - rc.top,
+                style,
+                x, y, width, height,
                 m_owner, nullptr, _AtlBaseModule.GetModuleInstance(), this);
 
             if (!m_hwnd)
-                return true; // fail open: use defaults and continue import
+                return ImportOptionsDialogResult::Error;
 
             if (m_owner)
                 EnableWindow(m_owner, FALSE);
@@ -251,7 +284,8 @@ namespace
             UpdateWindow(m_hwnd);
 
             MSG msg = {};
-            while (!m_done && GetMessageW(&msg, nullptr, 0, 0) > 0)
+            BOOL messageResult = 1;
+            while (!m_done && (messageResult = GetMessageW(&msg, nullptr, 0, 0)) > 0)
             {
                 if (!IsDialogMessageW(m_hwnd, &msg))
                 {
@@ -266,7 +300,14 @@ namespace
                 SetActiveWindow(m_owner);
             }
 
-            return m_result;
+            if (messageResult == -1 || (!m_done && messageResult == 0) || m_unexpectedDestroy)
+            {
+                if (m_hwnd) DestroyWindow(m_hwnd);
+                m_options = m_originalOptions;
+                if (messageResult == 0) PostQuitMessage(static_cast<int>(msg.wParam));
+                return ImportOptionsDialogResult::Error;
+            }
+            return m_result ? ImportOptionsDialogResult::Confirmed : ImportOptionsDialogResult::Cancelled;
         }
 
     private:
@@ -294,32 +335,102 @@ namespace
             switch (msg)
             {
             case WM_CREATE:
+                m_hwnd = hwnd;
                 CreateControls(hwnd);
+                if (!ControlsReady()) return -1;
+                CaptureControls();
+                UpdateFont();
+                Layout();
+                return 0;
+
+            case WM_SIZE:
+                Layout();
+                return 0;
+
+            case WM_GETMINMAXINFO:
+                if (lp)
+                {
+                    MINMAXINFO* bounds = reinterpret_cast<MINMAXINFO*>(lp);
+                    MONITORINFO monitor = { sizeof(monitor) };
+                    if (GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
+                    {
+                        RECT minimum = { 0, 0, Scale(420, m_dpi), Scale(320, m_dpi) };
+                        AdjustDialogRect(minimum, GetWindowLongW(hwnd, GWL_STYLE),
+                            GetWindowLongW(hwnd, GWL_EXSTYLE), m_dpi);
+                        bounds->ptMinTrackSize.x = min(minimum.right - minimum.left,
+                            monitor.rcWork.right - monitor.rcWork.left);
+                        bounds->ptMinTrackSize.y = min(minimum.bottom - minimum.top,
+                            monitor.rcWork.bottom - monitor.rcWork.top);
+                    }
+                }
+                return 0;
+
+            case WM_DPICHANGED:
+                m_dpi = LOWORD(wp);
+                UpdateFont();
+                if (lp)
+                {
+                    const RECT* suggested = reinterpret_cast<const RECT*>(lp);
+                    MONITORINFO monitor = { sizeof(monitor) };
+                    if (GetMonitorInfoW(MonitorFromRect(suggested, MONITOR_DEFAULTTONEAREST), &monitor))
+                    {
+                        const int width = min(suggested->right - suggested->left,
+                            monitor.rcWork.right - monitor.rcWork.left);
+                        const int height = min(suggested->bottom - suggested->top,
+                            monitor.rcWork.bottom - monitor.rcWork.top);
+                        const int x = min(max(suggested->left, monitor.rcWork.left), monitor.rcWork.right - width);
+                        const int y = min(max(suggested->top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+                        SetWindowPos(hwnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+                    }
+                }
+                Layout();
+                return 0;
+
+            case WM_VSCROLL:
+                if (!lp) { Scroll(false, wp); return 0; }
+                break;
+            case WM_HSCROLL:
+                if (!lp) { Scroll(true, wp); return 0; }
+                break;
+            case WM_MOUSEWHEEL:
+                m_scrollY -= MulDiv(GET_WHEEL_DELTA_WPARAM(wp), Scale(72, m_dpi), WHEEL_DELTA);
+                Layout();
                 return 0;
 
             case WM_COMMAND:
-                switch (LOWORD(wp))
+                if (HIWORD(wp) == BN_CLICKED)
                 {
-                case IDC_IMPORT:
-                    ReadOptions();
-                    Finish(true);
-                    return 0;
-                case IDC_DEFAULTS:
-                    m_options = EpubImportOptions();
-                    ResetControlsToOptions(m_hwnd, m_options);
-                    return 0;
-                case IDC_CANCEL:
-                    Finish(false);
-                    return 0;
+                    switch (LOWORD(wp))
+                    {
+                    case IDC_IMPORT:
+                        ReadOptions();
+                        Finish(true);
+                        return 0;
+                    case IDC_DEFAULTS:
+                        m_options = EpubImportOptions();
+                        ResetControlsToOptions(m_hwnd, m_options);
+                        return 0;
+                    case IDC_CANCEL:
+                        Finish(false);
+                        return 0;
+                    }
                 }
+                RevealFocus();
+                break;
+
+            case WM_NOTIFY:
+                RevealFocus();
                 break;
 
             case WM_CLOSE:
                 Finish(false);
                 return 0;
 
-            case WM_DESTROY:
-                return 0;
+            case WM_NCDESTROY:
+                if (!m_done) { m_unexpectedDestroy = true; m_done = true; }
+                m_hwnd = nullptr;
+                if (m_font) { DeleteObject(m_font); m_font = nullptr; }
+                return DefWindowProcW(hwnd, msg, wp, lp);
             }
             return DefWindowProcW(hwnd, msg, wp, lp);
         }
@@ -414,6 +525,7 @@ namespace
             SendMessageW(hint, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 
             const int buttonY = y + 36;
+            m_contentHeight = y + 30;
             CStringW defaultsText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_DEFAULTS);
             CStringW okText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_OK);
             CStringW cancelText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_CANCEL);
@@ -427,6 +539,140 @@ namespace
             SendMessageW(ok, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             SendMessageW(cancel, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
             AddTooltipString(defaults, IDS_IMPORT_OPTIONS_TOOLTIP_DEFAULTS);
+        }
+
+        struct ControlPlacement { HWND window; RECT logical; int id; };
+
+        bool ControlsReady() const
+        {
+            if (!GetDlgItem(m_hwnd, IDC_SVG_MODE) || !GetDlgItem(m_hwnd, IDC_DEFAULTS) ||
+                !GetDlgItem(m_hwnd, IDC_IMPORT) || !GetDlgItem(m_hwnd, IDC_CANCEL)) return false;
+            for (const CheckDef& check : kChecks)
+                if (!GetDlgItem(m_hwnd, check.id)) return false;
+            return true;
+        }
+
+        void CaptureControls()
+        {
+            for (HWND child = GetWindow(m_hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT))
+            {
+                RECT rect = {};
+                GetWindowRect(child, &rect);
+                MapWindowPoints(nullptr, m_hwnd, reinterpret_cast<POINT*>(&rect), 2);
+                m_controls.push_back({ child, rect, GetDlgCtrlID(child) });
+            }
+        }
+
+        void UpdateFont()
+        {
+            LOGFONTW font = {};
+            if (!GetObjectW(GetStockObject(DEFAULT_GUI_FONT), sizeof(font), &font)) return;
+            const UINT systemDpi = WindowDpi(nullptr);
+            font.lfHeight = MulDiv(font.lfHeight, static_cast<int>(m_dpi), static_cast<int>(systemDpi));
+            HFONT updated = CreateFontIndirectW(&font);
+            if (!updated) return;
+            for (const ControlPlacement& control : m_controls)
+                SendMessageW(control.window, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+            if (m_tooltip) SendMessageW(m_tooltip, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+            if (m_font) DeleteObject(m_font);
+            m_font = updated;
+        }
+
+        void Layout()
+        {
+            if (!m_hwnd || m_controls.empty()) return;
+            RECT client = {};
+            GetClientRect(m_hwnd, &client);
+            auto viewportHeight = [&]() { return max(0, client.bottom - Scale(56, m_dpi)); };
+            ShowScrollBar(m_hwnd, SB_VERT, Scale(m_contentHeight, m_dpi) > viewportHeight());
+            ShowScrollBar(m_hwnd, SB_HORZ, Scale(700, m_dpi) > client.right);
+            GetClientRect(m_hwnd, &client);
+            ShowScrollBar(m_hwnd, SB_VERT, Scale(m_contentHeight, m_dpi) > viewportHeight());
+            ShowScrollBar(m_hwnd, SB_HORZ, Scale(700, m_dpi) > client.right);
+            GetClientRect(m_hwnd, &client);
+            const int availableWidth = max(0, client.right);
+            const int availableHeight = viewportHeight();
+            const int maxX = max(0, Scale(700, m_dpi) - availableWidth);
+            const int maxY = max(0, Scale(m_contentHeight, m_dpi) - availableHeight);
+            m_scrollX = min(max(m_scrollX, 0), maxX);
+            m_scrollY = min(max(m_scrollY, 0), maxY);
+            SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
+            info.nMin = 0; info.nMax = max(0, Scale(700, m_dpi) - 1);
+            info.nPage = availableWidth; info.nPos = m_scrollX;
+            SetScrollInfo(m_hwnd, SB_HORZ, &info, TRUE);
+            info.nMax = max(0, Scale(m_contentHeight, m_dpi) - 1);
+            info.nPage = availableHeight; info.nPos = m_scrollY;
+            SetScrollInfo(m_hwnd, SB_VERT, &info, TRUE);
+            const int extraWidth = max(0, availableWidth - Scale(700, m_dpi));
+            for (const ControlPlacement& control : m_controls)
+            {
+                const RECT& base = control.logical;
+                int x = Scale(base.left, m_dpi);
+                int y = Scale(base.top, m_dpi);
+                int width = Scale(base.right - base.left, m_dpi);
+                const int height = Scale(base.bottom - base.top, m_dpi);
+                if (control.id == IDC_DEFAULTS)
+                {
+                    x = Scale(18, m_dpi); y = client.bottom - Scale(42, m_dpi);
+                }
+                else if (control.id == IDC_IMPORT || control.id == IDC_CANCEL)
+                {
+                    x = availableWidth - Scale(control.id == IDC_IMPORT ? 225 : 125, m_dpi);
+                    y = client.bottom - Scale(42, m_dpi);
+                }
+                else
+                {
+                    x -= m_scrollX; y -= m_scrollY;
+                    if (base.right >= 650) width += extraWidth;
+                }
+                SetWindowPos(control.window, nullptr, x, y, width, height,
+                    SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
+
+        void Scroll(bool horizontal, WPARAM command)
+        {
+            RECT client = {};
+            GetClientRect(m_hwnd, &client);
+            int& position = horizontal ? m_scrollX : m_scrollY;
+            const int page = horizontal ? client.right : max(0, client.bottom - Scale(56, m_dpi));
+            const int maximum = max(0, Scale(horizontal ? 700 : m_contentHeight, m_dpi) - page);
+            switch (LOWORD(command))
+            {
+            case SB_LINEUP: position -= Scale(24, m_dpi); break;
+            case SB_LINEDOWN: position += Scale(24, m_dpi); break;
+            case SB_PAGEUP: position -= page; break;
+            case SB_PAGEDOWN: position += page; break;
+            case SB_THUMBTRACK: case SB_THUMBPOSITION:
+                { SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
+                    GetScrollInfo(m_hwnd, horizontal ? SB_HORZ : SB_VERT, &info);
+                    position = info.nTrackPos; }
+                break;
+            case SB_TOP: position = 0; break;
+            case SB_BOTTOM: position = maximum; break;
+            default: return;
+            }
+            position = min(max(position, 0), maximum);
+            Layout();
+        }
+
+        void RevealFocus()
+        {
+            HWND focus = GetFocus();
+            if (!focus || !IsChild(m_hwnd, focus)) return;
+            RECT control = {}, client = {};
+            GetWindowRect(focus, &control);
+            MapWindowPoints(nullptr, m_hwnd, reinterpret_cast<POINT*>(&control), 2);
+            GetClientRect(m_hwnd, &client);
+            const int viewportBottom = client.bottom - Scale(56, m_dpi);
+            const int previousX = m_scrollX, previousY = m_scrollY;
+            if (control.left < 0) m_scrollX += control.left;
+            else if (control.right > client.right) m_scrollX += control.right - client.right;
+            if (control.top < 0) m_scrollY += control.top;
+            else if (control.bottom > viewportBottom && GetDlgCtrlID(focus) != IDC_DEFAULTS &&
+                GetDlgCtrlID(focus) != IDC_IMPORT && GetDlgCtrlID(focus) != IDC_CANCEL)
+                m_scrollY += control.bottom - viewportBottom;
+            if (m_scrollX != previousX || m_scrollY != previousY) Layout();
         }
 
         CStringW LoadText(UINT stringId)
@@ -477,6 +723,7 @@ namespace
 
         void Finish(bool result)
         {
+            if (!result) m_options = m_originalOptions;
             m_result = result;
             m_done = true;
             if (m_hwnd)
@@ -488,11 +735,19 @@ namespace
 
         HWND m_owner;
         EpubImportOptions& m_options;
+        EpubImportOptions m_originalOptions;
         HWND m_hwnd;
         HWND m_tooltip;
         std::vector<CStringW> m_tooltipText;
+        std::vector<ControlPlacement> m_controls;
         bool m_done;
         bool m_result;
+        bool m_unexpectedDestroy;
+        UINT m_dpi;
+        HFONT m_font;
+        int m_contentHeight;
+        int m_scrollX;
+        int m_scrollY;
     };
 }
 
@@ -572,7 +827,7 @@ void SaveImportOptions(const EpubImportOptions& options)
     key.SetDWORDValue(L"SvgConversionMode", static_cast<DWORD>(options.svgConversionMode));
 }
 
-bool ShowImportOptionsDialog(HWND owner, EpubImportOptions& options)
+ImportOptionsDialogResult ShowImportOptionsDialog(HWND owner, EpubImportOptions& options)
 {
     OptionsWindow wnd(owner, options);
     return wnd.DoModal();
