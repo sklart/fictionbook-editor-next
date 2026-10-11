@@ -90,7 +90,7 @@ try {
                 $dialog = [AddImageLayoutWindow]::Find($process.Id, $true)
             }
             if ($dialog -eq [IntPtr]::Zero) { throw "$locale Add Image dialog missing." }
-            $report = Join-Path $PSScriptRoot "..\..\out\tests\add-image-layout-$locale.json"
+            $report = Join-Path $isolation.Root "add-image-layout-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $report | Out-Null
             $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $report | ConvertFrom-Json
             $dialogHandle = '0x' + $dialog.ToInt64().ToString('X')
@@ -119,7 +119,7 @@ try {
                 $table = [AddImageLayoutWindow]::FindTable($process.Id)
             }
             if ($table -eq [IntPtr]::Zero) { throw "$locale Table dialog missing." }
-            $tableReport = Join-Path $PSScriptRoot "..\..\out\tests\table-layout-$locale.json"
+            $tableReport = Join-Path $isolation.Root "table-layout-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $tableReport | Out-Null
             $tableAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $tableReport | ConvertFrom-Json
             $tableHandle = '0x' + $table.ToInt64().ToString('X')
