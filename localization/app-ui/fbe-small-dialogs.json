@@ -1080,7 +1080,7 @@
         "it-IT": "&Maiuscole/minuscole",
         "pl-PL": "Uwzględniaj &wielkość liter",
         "pt-PT": "&Diferenciar maiúsculas",
-        "nl-NL": "&Hoofdlettergevoelig",
+        "nl-NL": "Hoofdletter&gevoelig",
         "cs-CZ": "Rozlišovat &velikost písmen",
         "bg-BG": "&Различавай главни/малки"
       }
@@ -1090,18 +1090,18 @@
       "kind": "CONTROL",
       "targetId": "IDC_REGEXP",
       "translations": {
-        "en-US": "&Regular expression",
+        "en-US": "Re&gular expression",
         "ru-RU": "&Регулярное выражение",
         "uk-UA": "&Регулярний вираз",
         "de-DE": "&Regulärer Ausdruck",
-        "fr-FR": "Expression &régulière",
-        "es-ES": "Expresión &regular",
+        "fr-FR": "Expression ré&gulière",
+        "es-ES": "Expresión re&gular",
         "it-IT": "Espressione &regolare",
         "pl-PL": "Wyrażenie &regularne",
         "pt-PT": "Expressão &regular",
         "nl-NL": "&Reguliere expressie",
         "cs-CZ": "&Regulární výraz",
-        "bg-BG": "&Регулярен израз"
+        "bg-BG": "Регулярен &израз"
       }
     },
     "fbe.dialog.idd_find.direction": {
@@ -1152,7 +1152,7 @@
         "uk-UA": "В&низ",
         "de-DE": "Nach &unten",
         "fr-FR": "Vers le &bas",
-        "es-ES": "A&bajo",
+        "es-ES": "Aba&jo",
         "it-IT": "&Giù",
         "pl-PL": "W &dół",
         "pt-PT": "Para &baixo",
@@ -1182,7 +1182,7 @@
     },
     "fbe.dialog.idd_find.find_all": {
       "resource": "IDD_FIND", "kind": "PUSHBUTTON", "targetId": "IDC_FIND_ALL",
-      "translations": { "en-US": "Find &All", "ru-RU": "Найти &все", "uk-UA": "Знайти &все", "de-DE": "&Alle suchen", "fr-FR": "Tout &rechercher", "es-ES": "Buscar &todo", "it-IT": "Trova &tutto", "pl-PL": "Znajdź &wszystko", "pt-PT": "Localizar &tudo", "nl-NL": "&Alles zoeken", "cs-CZ": "Najít &vše", "bg-BG": "Намери &всички" }
+      "translations": { "en-US": "Find &All", "ru-RU": "Найти вс&е", "uk-UA": "Знайти в&се", "de-DE": "&Alle suchen", "fr-FR": "Tout &rechercher", "es-ES": "Buscar &todo", "it-IT": "Tr&ova tutto", "pl-PL": "Znajdź w&szystko", "pt-PT": "Localizar &tudo", "nl-NL": "&Alles zoeken", "cs-CZ": "Najít vš&e", "bg-BG": "Намери &всички" }
     },
     "fbe.dialog.idd_find.scope": {
       "resource": "IDD_FIND", "kind": "LTEXT", "targetId": "IDC_FIND_SCOPE_LABEL",
@@ -1202,11 +1202,11 @@
     },
     "fbe.dialog.idd_find.unicode_properties": {
       "resource": "IDD_FIND", "kind": "CONTROL", "targetId": "IDC_FIND_UNICODE_PROPERTIES",
-      "translations": { "en-US": "Unicode (&UCP)", "ru-RU": "Unicode (&UCP)", "uk-UA": "Unicode (&UCP)", "de-DE": "Unicode (&UCP)", "fr-FR": "Unicode (&UCP)", "es-ES": "Unicode (&UCP)", "it-IT": "Unicode (&UCP)", "pl-PL": "Unicode (&UCP)", "pt-PT": "Unicode (&UCP)", "nl-NL": "Unicode (&UCP)", "cs-CZ": "Unicode (&UCP)", "bg-BG": "Unicode (&UCP)" }
+      "translations": { "en-US": "Unicode (U&CP)", "ru-RU": "Unicode (&UCP)", "uk-UA": "Unicode (&UCP)", "de-DE": "Unicode (U&CP)", "fr-FR": "Unicode (&UCP)", "es-ES": "Unicode (&UCP)", "it-IT": "Unicode (&UCP)", "pl-PL": "Unicode (&UCP)", "pt-PT": "Unicode (&UCP)", "nl-NL": "Unicode (&UCP)", "cs-CZ": "Unicode (&UCP)", "bg-BG": "Unicode (&UCP)" }
     },
     "fbe.dialog.idd_find.from_start": {
       "resource": "IDD_FIND", "kind": "PUSHBUTTON", "targetId": "IDC_FIND_FROM_START",
-      "translations": { "en-US": "&From start", "ru-RU": "&С начала", "uk-UA": "&З початку", "de-DE": "&Von Anfang", "fr-FR": "Depuis le &début", "es-ES": "&Desde el inicio", "it-IT": "&Dall'inizio", "pl-PL": "&Od początku", "pt-PT": "&Do início", "nl-NL": "&Vanaf begin", "cs-CZ": "&Od začátku", "bg-BG": "&От началото" }
+      "translations": { "en-US": "From &start", "ru-RU": "&С начала", "uk-UA": "З &початку", "de-DE": "&Von Anfang", "fr-FR": "Depuis le &début", "es-ES": "&Desde el inicio", "it-IT": "&Dall'inizio", "pl-PL": "&Od początku", "pt-PT": "Do &início", "nl-NL": "Vanaf &begin", "cs-CZ": "&Od začátku", "bg-BG": "&От началото" }
     },
     "fbe.tooltip.find.text": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "IDC_TEXT", "translations": { "en-US": "Text to find. Results update after a short pause while typing.", "ru-RU": "Текст для поиска. Результаты обновляются после короткой паузы при вводе.", "uk-UA": "Текст для пошуку. Результати оновлюються після короткої паузи під час введення.", "de-DE": "Zu suchender Text. Die Ergebnisse werden nach einer kurzen Eingabepause aktualisiert.", "fr-FR": "Texte à rechercher. Les résultats sont mis à jour après une courte pause de saisie.", "es-ES": "Texto que buscar. Los resultados se actualizan tras una breve pausa al escribir.", "it-IT": "Testo da cercare. I risultati si aggiornano dopo una breve pausa durante la digitazione.", "pl-PL": "Tekst do wyszukania. Wyniki są aktualizowane po krótkiej przerwie podczas wpisywania.", "pt-PT": "Texto a procurar. Os resultados são atualizados após uma breve pausa ao escrever.", "nl-NL": "Te zoeken tekst. Resultaten worden na een korte typ-pauze bijgewerkt.", "cs-CZ": "Text k hledání. Výsledky se aktualizují po krátké pauze při psaní.", "bg-BG": "Текст за търсене. Резултатите се обновяват след кратка пауза при въвеждане." } },
     "fbe.tooltip.find.next": { "resource": "IDD_FIND", "kind": "TOOLTIP", "targetId": "ID_FIND_NEXT", "translations": { "en-US": "Select the next match in the chosen direction.", "ru-RU": "Перейти к следующему совпадению в выбранном направлении.", "uk-UA": "Вибрати наступний збіг у вибраному напрямку.", "de-DE": "Den nächsten Treffer in der gewählten Richtung auswählen.", "fr-FR": "Sélectionner l'occurrence suivante dans la direction choisie.", "es-ES": "Seleccionar la siguiente coincidencia en la dirección elegida.", "it-IT": "Seleziona la corrispondenza successiva nella direzione scelta.", "pl-PL": "Wybierz następne dopasowanie w wybranym kierunku.", "pt-PT": "Selecionar a ocorrência seguinte na direção escolhida.", "nl-NL": "Selecteer de volgende overeenkomst in de gekozen richting.", "cs-CZ": "Vybrat další shodu ve zvoleném směru.", "bg-BG": "Изберете следващото съвпадение в избраната посока." } },
@@ -1310,7 +1310,7 @@
         "it-IT": "&Maiuscole/minuscole",
         "pl-PL": "Uwzględniaj &wielkość liter",
         "pt-PT": "&Diferenciar maiúsculas",
-        "nl-NL": "&Hoofdlettergevoelig",
+        "nl-NL": "Hoofdletter&gevoelig",
         "cs-CZ": "Rozlišovat &velikost písmen",
         "bg-BG": "&Различавай главни/малки"
       }
@@ -1320,18 +1320,18 @@
       "kind": "CONTROL",
       "targetId": "IDC_REGEXP",
       "translations": {
-        "en-US": "&Regular expression",
+        "en-US": "Re&gular expression",
         "ru-RU": "&Регулярное выражение",
         "uk-UA": "&Регулярний вираз",
         "de-DE": "&Regulärer Ausdruck",
-        "fr-FR": "Expression &régulière",
-        "es-ES": "Expresión &regular",
+        "fr-FR": "Expression ré&gulière",
+        "es-ES": "Expresión re&gular",
         "it-IT": "Espressione &regolare",
         "pl-PL": "Wyrażenie &regularne",
         "pt-PT": "Expressão &regular",
         "nl-NL": "&Reguliere expressie",
         "cs-CZ": "&Regulární výraz",
-        "bg-BG": "&Регулярен израз"
+        "bg-BG": "Регулярен &израз"
       }
     },
     "fbe.dialog.idd_replace.direction": {
@@ -1382,7 +1382,7 @@
         "uk-UA": "В&низ",
         "de-DE": "Nach &unten",
         "fr-FR": "Vers le &bas",
-        "es-ES": "A&bajo",
+        "es-ES": "Aba&jo",
         "it-IT": "&Giù",
         "pl-PL": "W &dół",
         "pt-PT": "Para &baixo",
@@ -1417,15 +1417,15 @@
       "translations": {
         "en-US": "&Replace",
         "ru-RU": "&Заменить",
-        "uk-UA": "&Замінити",
+        "uk-UA": "За&мінити",
         "de-DE": "&Ersetzen",
         "fr-FR": "&Remplacer",
         "es-ES": "&Reemplazar",
-        "it-IT": "&Sostituisci",
-        "pl-PL": "&Zamień",
+        "it-IT": "S&ostituisci",
+        "pl-PL": "Za&mień",
         "pt-PT": "&Substituir",
-        "nl-NL": "&Vervangen",
-        "cs-CZ": "&Nahradit",
+        "nl-NL": "V&ervangen",
+        "cs-CZ": "N&ahradit",
         "bg-BG": "&Замени"
       }
     },
@@ -1435,16 +1435,16 @@
       "targetId": "IDC_REPLACE_ALL",
       "translations": {
         "en-US": "Replace &all",
-        "ru-RU": "Заменить &все",
-        "uk-UA": "Замінити &все",
+        "ru-RU": "Заменить в&се",
+        "uk-UA": "Замінити в&се",
         "de-DE": "&Alle ersetzen",
-        "fr-FR": "Tout &remplacer",
+        "fr-FR": "&Tout remplacer",
         "es-ES": "Reemplazar &todo",
-        "it-IT": "Sostituisci &tutto",
-        "pl-PL": "Zamień &wszystko",
+        "it-IT": "Sostituisci t&utto",
+        "pl-PL": "Zamień w&szystko",
         "pt-PT": "Substituir &tudo",
         "nl-NL": "&Alles vervangen",
-        "cs-CZ": "Nahradit &vše",
+        "cs-CZ": "Nahradit vš&e",
         "bg-BG": "Замени &всички"
       }
     },
