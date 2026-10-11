@@ -5,9 +5,6 @@
 
 #include "utils.h"
 #include "apputils.h"
-#include "ModelessDialog.h"
-
-extern RECT dialogRect;
 
 namespace AU {
 
@@ -114,6 +111,9 @@ bool  ParseCmdLineArgs() {
   }
 }
 
+// Keep modal input-box placement separate from the modeless Find/Replace position.
+static RECT s_inputBoxRect = {-1, -1, -1, -1};
+
 // an input box
 class CInputBox: public CDialogImpl<CInputBox>,
 		 public CWinDataExchange<CInputBox>
@@ -162,7 +162,7 @@ public:
 	const int padding = dc ? ::MulDiv(4, ::GetDeviceCaps(dc, LOGPIXELSY), 96) : 4;
 	if(dc) ::ReleaseDC(m_hWnd, dc);
 	CRect wanted(window);
-	if(dialogRect.left != -1) wanted.MoveToXY(dialogRect.left, dialogRect.top);
+	if(s_inputBoxRect.left != -1) wanted.MoveToXY(s_inputBoxRect.left, s_inputBoxRect.top);
 	MONITORINFO monitor = { sizeof(monitor) };
 	if(!::GetMonitorInfoW(::MonitorFromRect(&wanted, MONITOR_DEFAULTTONEAREST), &monitor)) return;
 	const int workHeight = monitor.rcWork.bottom - monitor.rcWork.top;
@@ -203,13 +203,13 @@ public:
 	const int height = (std::min)(wanted.Height(), workHeight);
 	const int x = (std::min)((std::max)(wanted.left, monitor.rcWork.left), monitor.rcWork.right - width);
 	const int y = (std::min)((std::max)(wanted.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
-	::SetWindowPos(m_hWnd, dialogRect.left != -1 ? HWND_TOPMOST : NULL, x, y, width, height,
-		SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	::SetWindowPos(m_hWnd, NULL, x, y, width, height,
+		SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOZORDER);
   }
 
   BOOL EndDialog(int nRetCode)
   {
-    ::GetWindowRect(m_hWnd, &dialogRect);
+	::GetWindowRect(m_hWnd, &s_inputBoxRect);
 	return ::EndDialog(m_hWnd, nRetCode);
   }
 
