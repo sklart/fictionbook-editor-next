@@ -143,6 +143,8 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	const int margin = UiMetrics::ScaleForDpi(8, dpi);
 	const int gap = UiMetrics::ScaleForDpi(8, dpi);
 	const int padding = UiMetrics::ScaleForDpi(10, dpi);
+	const int rowGap = UiMetrics::ScaleForDpi(2, dpi);
+	const int minimumTextHeight = UiMetrics::ScaleForDpi(20, dpi);
 	auto bounds = [this](int id) {
 		CRect result;
 		::GetWindowRect(GetDlgItem(id), &result);
@@ -188,10 +190,16 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 		CRect label = bounds(labelId), combo = bounds(comboId);
 		const CSize text = measure(labelId, 10000, false);
 		label.right = comboLeft - gap;
-		label.bottom = label.top + max(label.Height(), text.cy + padding);
+		label.bottom = label.top + max(minimumTextHeight, max(label.Height(), text.cy + padding));
 		combo.left = comboLeft;
 		combo.right = max(comboLeft, comboRight);
 		place(labelId, label); place(comboId, combo);
+	};
+	auto separateRows = [&](int previousLabelId, int previousComboId, int nextLabelId, int nextComboId) {
+		const int previousBottom = max(bounds(previousLabelId).bottom, bounds(previousComboId).bottom);
+		CRect label = bounds(nextLabelId), combo = bounds(nextComboId);
+		const int move = max(0, previousBottom + rowGap - min(label.top, combo.top));
+		if(move > 0) { label.OffsetRect(0, move); combo.OffsetRect(0, move); place(nextLabelId, label); place(nextComboId, combo); }
 	};
 	auto fitCheckbox = [&](int groupId, int controlId, bool multiline) {
 		CRect group = bounds(groupId), check = bounds(controlId);
@@ -213,6 +221,8 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	fitLabelCombo(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, interfaceComboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, interfaceComboLeft, interfaceComboRight);
 	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, interfaceComboLeft, interfaceComboRight);
+	separateRows(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG);
+	separateRows(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME });
 	shift(IDC_SETTINGS_OTHER_OPEN_GROUP, { IDC_RESTORE_POS });
 	fitCheckbox(IDC_SETTINGS_OTHER_OPEN_GROUP, IDC_RESTORE_POS, false);
@@ -222,6 +232,10 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	const int encodingLeft = max(bounds(IDC_DEFAULT_ENC).left,
 		bounds(IDC_SETTINGS_OTHER_ENCODING).left + 2 * measure(IDC_SETTINGS_OTHER_ENCODING, 10000, false).cx + padding + gap);
 	fitLabelCombo(IDC_SETTINGS_OTHER_ENCODING, IDC_DEFAULT_ENC, encodingLeft, savingGroup.right - margin);
+	CRect keep = bounds(IDC_KEEP);
+	const int keepMove = max(0, max(bounds(IDC_SETTINGS_OTHER_ENCODING).bottom,
+		bounds(IDC_DEFAULT_ENC).bottom) + rowGap - keep.top);
+	if(keepMove > 0) { keep.OffsetRect(0, keepMove); place(IDC_KEEP, keep); }
 	fitCheckbox(IDC_SETTINGS_OTHER_SAVE_GROUP, IDC_KEEP, false);
 	grow(IDC_SETTINGS_OTHER_SAVE_GROUP, { IDC_KEEP });
 	shift(IDC_FBE_NEXT_SAVING_GROUP, { IDC_CREATE_BACKUP_FILE });

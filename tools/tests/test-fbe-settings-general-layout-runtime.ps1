@@ -53,14 +53,24 @@ public static class SettingsGeneralLayoutWindow
 }
 '@
 $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
-$previousLocale = $env:FBE_NEXT_UI_LOCALE
 try {
     & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\localization\export-runtime-lang.ps1') -OutputDirectory (Join-Path $isolation.Runtime 'Lang') -Clean | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Runtime localization export failed.' }
+    $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot '..\..\localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
+    $languageIds = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003 }
+    $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
+    New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
+    $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
+    if ($settingsTemplate -notmatch '<IntefaceLangID>[0-9]+</IntefaceLangID>') {
+        throw 'The isolated settings template lacks the interface language.'
+    }
+    $languagePattern = [regex]::new('<IntefaceLangID>[0-9]+</IntefaceLangID>')
     foreach ($locale in 'ru-RU', 'en-US', 'de-DE', 'uk-UA') {
         $process = $null
         try {
-            $env:FBE_NEXT_UI_LOCALE = $locale
+            $settings = $languagePattern.Replace($settingsTemplate,
+                '<IntefaceLangID>' + $languageIds[$locale] + '</IntefaceLangID>', 1)
+            [IO.File]::WriteAllText((Join-Path $settingsDirectory 'Settings.xml'), $settings, [Text.UTF8Encoding]::new($false))
             $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', ('"' + $fixture + '"')) -PassThru
             $frame = [IntPtr]::Zero
             for ($attempt = 0; $attempt -lt 60 -and $frame -eq [IntPtr]::Zero; ++$attempt) {
@@ -99,6 +109,11 @@ try {
             $settingsHandle = '0x' + $settings.ToInt64().ToString('X')
             $dialog = @($audit.controls | Where-Object Hwnd -eq $settingsHandle)[0].Dialog
             $rows = @($audit.controls | Where-Object Dialog -eq $dialog)
+            $expectedBackup = $catalog.strings.'fbe.dialog.idd_setting_next.create_backup_file'.translations.$locale
+            $backup = @($rows | Where-Object Id -eq 1128)
+            if ($backup.Count -ne 1 -or $backup[0].Text -ne $expectedBackup) {
+                throw "$locale General page did not use the selected language."
+            }
             $expected = @(1120, 1154, 1160, 1053, 1603, 1051, 1128, 1130, 1158)
             foreach ($id in $expected) {
                 $control = @($rows | Where-Object Id -eq $id)
@@ -118,7 +133,6 @@ try {
     Write-Host 'Settings General localized layout passed for ru/en/de/uk.'
 }
 finally {
-    $env:FBE_NEXT_UI_LOCALE = $previousLocale
     for ($cleanupAttempt = 0; $cleanupAttempt -lt 5; ++$cleanupAttempt) {
         try {
             Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $true -ErrorAction Stop
