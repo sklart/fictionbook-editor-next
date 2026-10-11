@@ -12,6 +12,9 @@ try {
     $exe = Join-Path $root 'FBE.exe'; $fixture = Join-Path $root 'settings.fb2'
     $report = Join-Path $root 'settings.txt'; $reopenReport = Join-Path $root 'settings-reopen.txt'; $legacyReport = Join-Path $root 'settings-legacy.txt'; $manualReport = Join-Path $root 'settings-manual.txt'; $verifyReport = Join-Path $root 'verify.txt'; $backupReport = Join-Path $root 'backup.txt'; $backupExistingReport = Join-Path $root 'backup-existing.txt'; $backupVerifyReport = Join-Path $root 'backup-verify.txt'
     [IO.File]::WriteAllText((Join-Path $root 'portable.ini'), "[Portable]`r`nDataPath=TestData`r`n", [Text.UTF8Encoding]::new($false))
+    $settingsDirectory = Join-Path $root 'TestData\Settings'
+    $settingsFile = Join-Path $settingsDirectory 'Settings.xml'
+    New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><id>settings-dialog-test</id><version>1</version></document-info></description><body><section><p>BACKUP_RUNTIME_BEFORE</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
     function Invoke-Scenario([string]$Scenario, [string]$Path) {
         $oldMode,$oldScenario=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
@@ -25,8 +28,8 @@ try {
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
     $reopened=Invoke-Scenario 'settings-dialog-runtime' $reopenReport
-    $settingsFile = Join-Path $root 'Settings.xml'
-    if (-not (Test-Path -LiteralPath $settingsFile)) { throw 'Portable Settings.xml was not saved.' }
+    if (-not (Test-Path -LiteralPath $settingsFile)) { throw 'Portable TestData\Settings\Settings.xml was not saved.' }
+    if (Test-Path -LiteralPath (Join-Path $root 'Settings.xml')) { throw 'Settings.xml was incorrectly saved next to FBE.exe.' }
     function Set-TestGeometry([bool]$Manual, [bool]$Legacy) {
         [xml]$document = Get-Content -LiteralPath $settingsFile -Raw
         $settings = $document.SelectSingleNode('/FBE/Settings[@ID="0"]')
@@ -79,5 +82,6 @@ try {
     if([IO.File]::ReadAllText(($fixture + '.bak'), [Text.UTF8Encoding]::new($false)) -ne 'PREEXISTING_BACKUP') { throw 'Backup-disabled runtime save replaced the existing .bak.' }
     $backupSecond=Invoke-Scenario 'backup-settings-save-runtime-verify' $backupVerifyReport
     foreach($line in 'settings_dialog=0','backup_disabled=1') { if($backupSecond -notmatch [regex]::Escape($line)) { throw "Backup persistence report is missing ${line}: $backupSecond" } }
+    if (Test-Path -LiteralPath (Join-Path $root 'Settings.xml')) { throw 'Settings.xml was incorrectly saved next to FBE.exe.' }
     Write-Host 'FBE Settings dialog auto/legacy/manual geometry, move/resize, Apply/OK, and backup-disabled save passed.'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }

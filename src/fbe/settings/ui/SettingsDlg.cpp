@@ -245,9 +245,9 @@ LRESULT CSettingsDlg::OnExitSizeMove(UINT, WPARAM, LPARAM, BOOL&)
 		const int widthAtStartDpi = ::MulDiv(current.Width(), m_sizeMoveDpi, dpi);
 		const int heightAtStartDpi = ::MulDiv(current.Height(), m_sizeMoveDpi, dpi);
 		const int tolerance = UiMetrics::ScaleForDpi(2, m_sizeMoveDpi);
-		if(m_sizingDuringMove || (!m_sizeMoveDpiChanged &&
-			(abs(widthAtStartDpi - m_sizeMoveStart.Width()) > tolerance ||
-			abs(heightAtStartDpi - m_sizeMoveStart.Height()) > tolerance)))
+		const bool sizeChanged = abs(widthAtStartDpi - m_sizeMoveStart.Width()) > tolerance ||
+			abs(heightAtStartDpi - m_sizeMoveStart.Height()) > tolerance;
+		if(sizeChanged && (!m_sizeMoveDpiChanged || m_sizingDuringMove))
 			m_automaticSize = false;
 		m_sizeMoveDpi = 0;
 	}
@@ -649,10 +649,21 @@ bool CSettingsDlg::ProbeLayout()
 	::SendMessageW(m_hWnd, WM_ENTERSIZEMOVE, 0, 0);
 	::SetWindowPos(m_hWnd, NULL, original.left + UiMetrics::ScaleForDpi(8, m_layoutDpi),
 		original.top, original.Width(), original.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_sizeMoveDpiChanged = true; // A move across monitors must retain automatic sizing.
 	::SendMessageW(m_hWnd, WM_EXITSIZEMOVE, 0, 0);
 	passed = passed && m_automaticSize == originalAutomaticSize;
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
+	::SendMessageW(m_hWnd, WM_ENTERSIZEMOVE, 0, 0);
+	BOOL sizingHandled = FALSE;
+	OnSizing(WM_SIZING, WMSZ_RIGHT, 0, sizingHandled);
+	::SetWindowPos(m_hWnd, NULL, original.left, original.top,
+		original.Width() + UiMetrics::ScaleForDpi(8, m_layoutDpi), original.Height(),
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	::SendMessageW(m_hWnd, WM_EXITSIZEMOVE, 0, 0);
+	passed = passed && m_automaticSize == originalAutomaticSize;
 	::SendMessageW(m_hWnd, WM_ENTERSIZEMOVE, 0, 0);
 	const int resizeStep = UiMetrics::ScaleForDpi(20, m_layoutDpi);
 	const int resizedWidth = hasWorkArea && original.Width() + resizeStep <=
