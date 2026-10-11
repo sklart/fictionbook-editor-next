@@ -25,7 +25,8 @@ try {
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
     $second=Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport
     foreach($text in @($first,$second)) { foreach($line in 'persisted=1','applied=1') { if($text -notmatch [regex]::Escape($line)) { throw "Settings runtime report is missing ${line}: $text" } } }
-    if($first -notmatch 'settings_dialog=1' -or $second -notmatch 'settings_dialog=0') { throw 'Settings dialog/verify phases were not distinguished.' }
+    if($first -notmatch 'settings_dialog=1' -or $first -notmatch 'layout=1' -or
+        $second -notmatch 'settings_dialog=0') { throw 'Settings dialog layout/verify phases were not distinguished.' }
     $backupFirst=Invoke-Scenario 'backup-settings-save-runtime' $backupReport
     foreach($line in 'settings_dialog=1','backup_disabled=1','source_edited=1','source_applied=1','saved=1') { if($backupFirst -notmatch [regex]::Escape($line)) { throw "Backup runtime report is missing ${line}: $backupFirst" } }
     if((Get-Content -LiteralPath $fixture -Raw) -notmatch 'BACKUP_RUNTIME_AFTER') { throw 'Backup-disabled runtime save did not update the FB2.' }

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <vector>
 #include "resource.h"
 #include "SettingsAdvancedPage.h"
 #include "SettingsImagesPage.h"
@@ -43,6 +44,8 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	SettingsPageId m_currentPage;
 	CRect m_navigationRect;
 	CSize m_minimumWindowSize;
+	UINT m_initialDpi;
+	UINT m_layoutDpi;
 	int m_pageLeft;
 	int m_pageTop;
 	int m_pageRightMargin;
@@ -52,6 +55,14 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	int m_buttonGap;
 	int m_buttonBottomMargin;
 	int m_navigationBottomGap;
+	struct PageControlLayout { HWND window; CRect rect; int id; };
+	struct PageLayout {
+		CSize contentSize = CSize(0, 0);
+		int scrollX = 0;
+		int scrollY = 0;
+		std::vector<PageControlLayout> controls;
+	};
+	PageLayout m_pageLayouts[static_cast<int>(SettingsPageId::Count)];
 
 public:
 	CSettingsDlg();
@@ -67,6 +78,7 @@ BEGIN_MSG_MAP(CSettingsDlg)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_SETTINGS_NAV, LBN_SELCHANGE, OnNavigationChanged)
 	MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 	MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
 	CHAIN_MSG_MAP(CAxDialogImpl<CSettingsDlg>)
 END_MSG_MAP()
@@ -78,11 +90,21 @@ END_MSG_MAP()
 	LRESULT OnNavigationChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnGetMinMaxInfo(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 private:
 	void SelectPage(SettingsPageId page);
 	void LayoutControls(int width, int height);
+	void CapturePageLayouts();
+	void LayoutPage(int index);
+	void ScrollPage(int index, WPARAM command, bool horizontal);
+	void RevealFocusedPageControl(int index);
+	bool ProbeLayout();
+	static LRESULT CALLBACK PageSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+		UINT_PTR subclassId, DWORD_PTR reference);
+	void RestoreGeometry();
+	void SaveGeometry();
 	CRect GetPageRect();
 	static int PageIndex(SettingsPageId page);
 };

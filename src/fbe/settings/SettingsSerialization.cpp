@@ -89,6 +89,7 @@ const wchar_t VIEW_DOCUMENT_TREE_KEY[]	= L"ViewDocumentTree";
 const wchar_t DOCUMENT_TREE_SCRIPTS_KEY[] = L"DocumentTreeScripts";
 const wchar_t SPLITTER_POS_KEY[]		= L"SplitterPos";
 const wchar_t FIND_RESULTS_PANE_HEIGHT_KEY[] = L"FindResultsPaneHeight";
+const wchar_t SETTINGS_DIALOG_GEOMETRY_KEY[] = L"SettingsDialogGeometry";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
 const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t FAVORITE_SCRIPTS_KEY[] = L"FavoriteScripts";
@@ -169,6 +170,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(DOCUMENT_TREE_SCRIPTS_KEY);
 	properties.push_back(SPLITTER_POS_KEY);
 	properties.push_back(FIND_RESULTS_PANE_HEIGHT_KEY);
+	properties.push_back(SETTINGS_DIALOG_GEOMETRY_KEY);
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
 	properties.push_back(SCRIPT_COMMAND_IDS_KEY);
 	properties.push_back(FAVORITE_SCRIPTS_KEY);
@@ -362,6 +364,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == FIND_RESULTS_PANE_HEIGHT_KEY)
 	{
 		property = GetStringedProperty(&m_find_results_pane_height, KEY_INT);
+		return true;
+	}
+	else if(sProperty == SETTINGS_DIALOG_GEOMETRY_KEY)
+	{
+		property = m_settings_dialog_geometry;
 		return true;
 	}
 	else if(sProperty == TOOLBARS_SETTINGS_KEY)
@@ -730,6 +737,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == FIND_RESULTS_PANE_HEIGHT_KEY)
 	{
 		m_find_results_pane_height = StrToInt(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == SETTINGS_DIALOG_GEOMETRY_KEY)
+	{
+		m_settings_dialog_geometry = sValue.GetStringValue();
 		return true;
 	}
 	else if(sProperty == TOOLBARS_SETTINGS_KEY)

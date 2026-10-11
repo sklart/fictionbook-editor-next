@@ -294,6 +294,18 @@ DWORD CSettings::GetFindResultsPaneHeight()const
 {
 	return m_find_results_pane_height;
 }
+bool CSettings::GetSettingsDialogGeometry(RECT& rect, UINT& dpi) const
+{
+	long left = 0, top = 0, right = 0, bottom = 0;
+	unsigned int storedDpi = 0;
+	if(swscanf_s(m_settings_dialog_geometry, L"%ld;%ld;%ld;%ld;%u",
+		&left, &top, &right, &bottom, &storedDpi) != 5 ||
+		right <= left || bottom <= top || storedDpi < 48 || storedDpi > 768)
+		return false;
+	rect = { left, top, right, bottom };
+	dpi = storedDpi;
+	return true;
+}
 CString CSettings::GetToolbarsSettings()const
 {
 	return m_toolbars_settings;
@@ -837,6 +849,14 @@ void CSettings::SetFindResultsPaneHeight(DWORD height, bool apply)
 	m_find_results_pane_height = height;
 	if(apply)
 		Save();
+}
+void CSettings::SetSettingsDialogGeometry(const RECT& rect, UINT dpi, bool apply)
+{
+	if(rect.right <= rect.left || rect.bottom <= rect.top || dpi < 48 || dpi > 768)
+		return;
+	m_settings_dialog_geometry.Format(L"%ld;%ld;%ld;%ld;%u",
+		rect.left, rect.top, rect.right, rect.bottom, dpi);
+	if(apply) Save();
 }
 
 void CSettings::SetToolbarsSettings(CString& settings, bool apply)

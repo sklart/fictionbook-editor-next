@@ -490,15 +490,18 @@
 		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");
 		if (!verifyOnly)
 			SendMessage(WM_COMMAND, MAKEWPARAM(ID_TOOLS_OPTIONS, 0), 0);
+		const bool layoutPassed = verifyOnly ||
+			::GetPropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED") == reinterpret_cast<HANDLE>(1);
+		::RemovePropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED");
 		const bool backupPersisted = _Settings.GetCreateBackupFile();
 		const bool nbspPersisted = _Settings.GetNBSPChar() == L"\x25AB";
 		const bool wrapPersisted = _Settings.XmlSrcWrap();
 		const bool persisted = backupPersisted && nbspPersisted && wrapPersisted;
 		const bool applied = verifyOnly || (m_source.SendMessage(SCI_GETWRAPMODE) != SC_WRAP_NONE);
 		CStringA report;
-		report.Format("settings_dialog=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\n", !verifyOnly, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied);
+		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(persisted && applied ? 0 : 1);
+		::PostQuitMessage(persisted && applied && layoutPassed ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"backup-settings-save-runtime") || IsFbeTestScenario(L"backup-settings-save-runtime-verify"))
