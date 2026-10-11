@@ -30,6 +30,7 @@ runtime/HTML/**/*.html text eol=crlf
 runtime/HTML/**/*.htm text eol=crlf
 runtime/HTML/**/*.css text eol=crlf
 runtime/Help/**/*.html text eol=lf
+runtime/Help/**/*.md text eol=lf
 runtime/Dict/*.aff -text
 runtime/Dict/*.dic -text
 runtime/Backgrounds/*.png -text
