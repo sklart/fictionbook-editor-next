@@ -44,17 +44,19 @@ $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 $hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
 $imagesDialog = Get-Dialog 'IDD_SETTINGS_IMAGES'
 $wordsDialog = Get-Dialog 'IDD_SETTINGS_WORDS'
-Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, 320' 'Source page must fit the Settings content area without exceeding it.'
+Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, 410' 'Source page must retain room for full localized labels and preview.'
+$settingsLayout = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsDlg.cpp')
+Assert-Contains $settingsLayout 'GWL_STYLE\) \| WS_VSCROLL \| WS_HSCROLL' 'Long Settings pages must remain scrollable inside the window.'
 foreach ($control in @(
-    'IDC_WRAP,"Button".*?,14,38,266,10', 'IDC_SYNTAXHL,"Button".*?,14,52,266,10',
-    'IDC_TAGHL,"Button".*?,14,66,126,10', 'IDC_SHOWEOL,"Button".*?,14,80,266,10',
-    'IDC_SHOWWHITESPACE,"Button".*?,14,94,266,10', 'IDC_SHOWLINENUMBERS,"Button".*?,14,108,266,10',
-    'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,"Button".*?,14,122,154,10',
-    'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE,208,120,76,50',
-    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE,180,64,104,50',
-    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES,"Button".*?,14,136,120,10',
-    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS,"Button".*?,140,136,144,10',
-    'IDC_OPTIONS_SOURCE_PREVIEW,"Static",SS_OWNERDRAW,14,257,272,56'
+    'IDC_WRAP,"Button".*?,14,38,266,13', 'IDC_SYNTAXHL,"Button".*?,14,52,266,13',
+    'IDC_TAGHL,"Button".*?,14,66,266,13', 'IDC_SHOWEOL,"Button".*?,14,116,266,13',
+    'IDC_SHOWWHITESPACE,"Button".*?,14,130,266,13', 'IDC_SHOWLINENUMBERS,"Button".*?,14,144,266,13',
+    'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,"Button".*?,14,158,266,13',
+    'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE,78,170,206,50',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE,14,98,270,50',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES,"Button".*?,14,186,140,13',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS,"Button".*?,14,200,270,13',
+    'IDC_OPTIONS_SOURCE_PREVIEW,"Static",SS_OWNERDRAW,14,341,272,56'
 )) {
     Assert-Contains $sourceDialog $control 'Source control geometry changed unexpectedly.'
 }
@@ -69,7 +71,7 @@ foreach ($control in @('IDC_DEFAULT_SCRIPTS_FOLDER', 'IDC_SCRIPTS_FOLDER_PATH', 
     if ($generalDialog -match $control) { throw "Advanced control must not be in General: $control" }
 }
 Assert-Contains $generalDialog 'IDC_RESTORE_POS,"Button".*?,14,83,268,10' 'Restore-position checkbox must fit localized text.'
-Assert-Contains $advancedDialog 'IDC_DEFAULT_SCRIPTS_FOLDER,"Button".*?,14,19,260,10' 'Default-scripts-folder checkbox must fit localized text.'
+Assert-Contains $advancedDialog 'IDC_DEFAULT_SCRIPTS_FOLDER,"Button".*?,14,19,278,15' 'Default-scripts-folder checkbox must fit localized text.'
 foreach ($control in @('IDC_SETTINGS_OTHER_KEYBOARD', 'IDC_CHANGE_KEYB', 'IDC_SETTINGS_OTHER_CHANGE_TO', 'IDC_KEYB_LAYOUT')) {
     Assert-Contains $hotkeysDialog $control "Keyboard-layout control missing from IDD_HOTKEYS: $control"
     if ($imagesDialog -match $control) { throw "Keyboard-layout control must not be in IDD_SETTINGS_IMAGES: $control" }
@@ -83,10 +85,10 @@ foreach ($control in @('IDC_KEEP', 'IDC_DEFAULT_ENC', 'IDC_RESTORE_POS', 'IDC_SE
 if ($rc -match ('(?m)^IDD_SETTING' + '_OTHER DIALOGEX')) { throw 'Legacy Other dialog must be removed.' }
 Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,239,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
 Assert-Contains $wordsDialog 'IDD_SETTINGS_WORDS DIALOGEX 0, 0, 300, 227' 'Words page must use the Settings content width.'
-Assert-Contains $wordsDialog 'IDC_STATIC_WORDS_NEW_WORD,18,162,65,9' 'Words new-word label must stay aligned with the input row.'
-Assert-Contains $wordsDialog 'IDC_EDIT_NEW,86,160,130,14' 'Words input must follow its label on the same row.'
+Assert-Contains $wordsDialog 'IDC_STATIC_WORDS_NEW_WORD,18,162,90,16' 'Words new-word label must stay aligned with the input row.'
+Assert-Contains $wordsDialog 'IDC_EDIT_NEW,112,160,104,14' 'Words input must follow its label on the same row.'
 Assert-Contains $wordsDialog 'IDC_BUTTON_ADD,222,160,60,14' 'Words Add button must share the new-word row.'
-Assert-Contains $wordsDialog 'IDC_CHECK_SELALL,"Button".*?,19,142,70,10' 'Words Select all checkbox must fit its localized caption.'
+Assert-Contains $wordsDialog 'IDC_CHECK_SELALL,"Button".*?,19,142,95,13' 'Words Select all checkbox must fit its localized caption.'
 Assert-Contains $hotkeysDialog 'IDD_HOTKEYS DIALOGEX 0, 0, 300, 292' 'Hotkeys page must use the Settings content width and fit the export action.'
 Assert-Contains $hotkeysDialog 'IDC_LIST_HOTKEYS,99,21,194,88' 'Hotkeys command list must use the available page width.'
 Assert-Contains $hotkeysDialog 'IDC_KEYB_LAYOUT,92,245,194,30' 'Keyboard-layout combo must use the available page width.'
