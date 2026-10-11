@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="de-DE">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Quelltext</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hilfe zu regul&#228;ren Ausdr&#252;cken — Quelltext</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Anderer Modus"><strong>Quelltext</strong><a href="regex-design.html">Design</a></nav><main>
 <h1 id="top">Hilfe zu regul&#228;ren Ausdr&#252;cken — Quelltext</h1>
-<aside class="note" id="note-1"><strong>Hinweis</strong><p>Hinweis zur &#220;bersetzung: Russische W&#246;rter und S&#228;tze in den Kontrollbeispielen bleiben absichtlich unver&#228;ndert. Sie sind Testdaten: Regul&#228;re Ausdr&#252;cke, Ersetzungstexte, Leerraumzeichen und erwartete Ergebnisse entsprechen der russischen Referenzfassung. Die Erl&#228;uterungen sind &#252;bersetzt; die Beispiele werden nicht automatisch an deutsche typografische Regeln angepasst.</p></aside>
+<aside class="note" id="note-1"><strong>Hinweis</strong><p>Russische W&#246;rter in den Beispielen bleiben unver&#228;ndert; pr&#252;fen Sie sprachabh&#228;ngige Regeln vor der Anwendung auf deutschen Text.</p></aside>
 <p>Vollst&#228;ndiges Handbuch zum Suchen und Ersetzen im XML-Quelltext eines Buches in FictionBook Editor Next.</p>
-<p>Stand: 2. Oktober 2026. Design wird in regex-design.md beschrieben. Diese Rezepte gelten f&#252;r den Quelltextmodus; PCRE2-Ausdr&#252;cke d&#252;rfen nicht ungepr&#252;ft &#252;bernommen werden.</p>
+<p>Design wird in regex-design.md beschrieben. Diese Rezepte gelten f&#252;r den Quelltextmodus; PCRE2-Ausdr&#252;cke d&#252;rfen nicht ungepr&#252;ft &#252;bernommen werden.</p>
 <h2 id="section-1">1. Zweck der Suche im Quelltextmodus</h2>
 <p>Hier sind XML-Tags, Attribute, Links, Entit&#228;ten und Buchtext sichtbar. Der Modus eignet sich zur FB2-Pr&#252;fung: leere Elemente, importierte HTML-Tags, Platzhalterlinks, unerwartete Attribute und technische Konvertierungsreste.</p>
 <aside class="note" id="note-2"><strong>Hinweis</strong><p>Regex pr&#252;ft XML-Text, keinen geparsten DOM-Baum. Pr&#252;fen Sie Strukturbeziehungen mit einem XML-Werkzeug.</p></aside>
@@ -22,7 +22,7 @@ Treffer: &lt;p&gt;   &lt;/p&gt;
 Erwartet: Pr&#252;fen Sie diesen Absatz, bevor Sie XML &#228;ndern.</code></pre></section>
 <p>F&#252;gen Sie nur das Muster ein. JavaScript <code>/.../g</code>, C++-Stringanf&#252;hrungszeichen und doppelte JSON-Backslashes sind unn&#246;tig.</p>
 <h2 id="section-3">3. Die Engine: Scintilla statt PCRE2</h2>
-<p>FBE verwendet Scintilla mit <code>SCFIND_REGEXP</code> und <code>SCFIND_CXX11REGEX</code>. Im betrachteten Build ist dies eine C++-Regex-Implementierung mit ECMAScript-Grammatik, weder PCRE2 noch der vollst&#228;ndige Funktionsumfang modernen JavaScripts. [S1, S2]</p>
+<p>FBE verwendet Scintilla mit <code>SCFIND_REGEXP</code> und <code>SCFIND_CXX11REGEX</code>: C++-Regul&#228;rausdr&#252;cke mit ECMAScript-Grammatik, nicht PCRE2 oder den gesamten Funktionsumfang von JavaScript. [S1]</p>
 <p>Scintilla hat au&#223;erdem einen &#228;lteren Basismodus mit anderen Regeln. Alte Beispiele, die Gruppen mit maskierten Klammern bilden, geh&#246;ren nicht zu FBEs C++11-Modus: Hier erfasst <code>(слово)</code>, w&#228;hrend <code>\(слово\)</code> w&#246;rtliche Klammern verlangt.</p>
 <p>Unicode im XML ist nicht verboten, doch UCP und PCRE2-Eigenschaften fehlen. Zeichenklassen h&#228;ngen von der Standardbibliothek ab; <code>\w</code> ist nicht automatisch jede Sprache. F&#252;r verl&#228;ssliches ASCII verwenden Sie <code>[A-Za-z0-9_]</code>. <code>[А-Яа-яЁё]</code> kann russischen Text erfassen, deckt aber nicht ganz Kyrillisch ab.</p>
 <h3 id="section-3-1">3.1. Wichtigste Unterschiede zu Design</h3>
@@ -36,7 +36,7 @@ Erwartet: Pr&#252;fen Sie diesen Absatz, bevor Sie XML &#228;ndern.</code></pre>
 <tr><td>Suche &#252;ber physische Zeilen</td><td>Abh&#228;ngig von Suchdarstellung; absatz&#252;bergreifende Ersetzung beschr&#228;nkt</td><td>Im aktuellen Pfad nicht unterst&#252;tzt</td></tr>
 </tbody></table></div>
 <h2 id="section-4">4. Zeilenweise Suche: die wichtigste Einschr&#228;nkung</h2>
-<p>Im verwendeten Scintilla-Pfad gleicht <code>MatchOnLines</code> den Ausdruck separat mit jeder physischen Zeile ab. Eine Zeile kann sehr lang sein; visueller Fensterumbruch erzeugt keine neue physische Zeile. [S2]</p>
+<p>Im verwendeten Scintilla-Pfad gleicht <code>MatchOnLines</code> den Ausdruck separat mit jeder physischen Zeile ab. Eine Zeile kann sehr lang sein; visueller Fensterumbruch erzeugt keine neue physische Zeile.</p>
 <aside class="warning" id="warning-1"><strong>Warnung</strong><p>Im aktuellen Suchpfad kann Source Regex keine physischen Zeilen &#252;bergreifen; kein Muster verbindet sie.</p></aside>
 <p>Beispiel:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
@@ -104,7 +104,7 @@ Erwartet: Pr&#252;fen Sie diesen Absatz, bevor Sie XML &#228;ndern.</code></pre>
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Linken Kontext k&#246;nnen Sie erfassen und in der Ersetzung wiederherstellen; Lookbehind ist nicht verf&#252;gbar. Kopieren Sie keine <code>(?&lt;=...)</code>-Ausdr&#252;cke aus der Design-Hilfe.</p>
 <h2 id="section-9">9. Ersetzung im Quelltextmodus</h2>
-<p>FBE verwendet <code>SCI_REPLACETARGETRE</code>: Ein Treffer liegt bereits vor, und Scintilla interpretiert die Ersetzung. Das ist weder <code>std::regex_replace</code> mit &#252;blichem <code>$1</code> noch FBEs Design-Grammatik. [S1, S2]</p>
+<p>FBE verwendet <code>SCI_REPLACETARGETRE</code>: Ein Treffer liegt bereits vor, und Scintilla interpretiert die Ersetzung. Das ist weder <code>std::regex_replace</code> mit &#252;blichem <code>$1</code> noch FBEs Design-Grammatik. [S1]</p>
 <h3 id="section-9-1">9.1. Capture-Verweise</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Im Ersetzungsfeld</th><th scope="col">Bedeutung</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>Gesamter Treffer</td></tr>
@@ -118,7 +118,7 @@ Erwartet: Pr&#252;fen Sie diesen Absatz, bevor Sie XML &#228;ndern.</code></pre>
 <p>Aus <code>(12)</code> wird <code>[12]</code>. Das ist nur in ausgew&#228;hltem Kontext redaktionell sinnvoll: Eine eingeklammerte Zahl ist nicht automatisch ein Anmerkungszeichen.</p>
 <p>Ein w&#246;rtliches Dollarzeichen muss im Quelltext-Ersetzungsfeld nicht nach fremden Regeln verdoppelt werden. Der Backslash ist dagegen ein Steuerzeichen.</p>
 <h3 id="section-9-2">9.2. Steuerzeichen in Ersetzungen</h3>
-<p>Im gepr&#252;ften Scintilla-Code werden <code>\t</code>, <code>\n</code>, <code>\r</code> und <code>\\</code> als Tabulator, LF, CR und Backslash verarbeitet. Das widerspricht nicht dem fehlenden zeilen&#252;bergreifenden Suchen. [S2]</p>
+<p>Scintilla interpretiert <code>\t</code>, <code>\n</code>, <code>\r</code> und <code>\\</code> bei Ersetzungen als Tabulator, LF, CR und w&#246;rtlichen Backslash. Dadurch wird keine Suche &#252;ber physische Zeilen erm&#246;glicht.</p>
 <p>CRLF wird mit <code>\r\n</code>, LF mit <code>\n</code> eingef&#252;gt. Richten Sie sich nach dem Dokument und erzeugen Sie keine gemischten Zeilenenden.</p>
 <p>PCRE2-Folgen wie <code>\x{00A0}</code> f&#252;gen hier kein Unicode-Zeichen ein; verwenden Sie echtes NBSP. Design-Befehle <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code> und <code>\Q</code> steuern hier weder Schreibweise noch Formatierung.</p>
 <h3 id="section-9-3">9.3. L&#246;schen und XML-Erhaltung</h3>
@@ -566,12 +566,6 @@ Erwartet: Pr&#252;fen Sie diesen Absatz, bevor Sie XML &#228;ndern.</code></pre>
 <p>Vergleichen Sie erwarteten und tats&#228;chlichen Trefferbereich. Bei Gruppen m&#252;ssen Anf&#252;hrungszeichen, Pr&#228;fixe, spitze Klammern und Schlie&#223;tags erhalten bleiben. Kommentare, CDATA und binary d&#252;rfen nicht unbeabsichtigt betroffen sein.</p>
 <p>FB2 pr&#252;fen, speichern und nach wesentlichen &#196;nderungen erneut &#246;ffnen. Quelltext ↔ Design, Anmerkungen, Bilder und sichtbaren Text kontrollieren. Bei ID-Umbenennung sowohl Objekt als auch s&#228;mtliche Referenzen pr&#252;fen.</p>
 <h2 id="section-17">17. Quellen und Geltungsbereich</h2>
-<p>Dies &#252;bersetzt das erweiterte Handbuch zum bereitgestellten regex-source.md. Die Struktur „Engine → Syntax → Ersetzung → XML-Beispiele → Grenzen“ bleibt erhalten; zu allgemeine Rezepte wurden eingegrenzt. Erkl&#228;rungen und Kontrollszenarien sind neu verfasst, technische Unterschiede anhand von Prim&#228;rquellen gepr&#252;ft.</p>
-<p>[S1] Offizielle Scintilla-Dokumentation, Searching: C++11-Modus, Suchflags und SCI_REPLACETARGETRE.</p>
-<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
-<p>[S2] Scintilla-Quellcode im FBE-Stand d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Er unterscheidet zeilen&#252;bergreifende Suche von CR/LF-Einf&#252;gung bei Ersetzungen.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
-<p>[S3] W3C XML 1.0 und Namespaces in XML: Namen, Attribute, Entit&#228;ten und Namensr&#228;ume.</p>
-<p><code>https://www.w3.org/TR/xml/</code></p>
-<p><code>https://www.w3.org/TR/xml-names/</code></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Offizielle Scintilla-Dokumentation, Searching: C++11-Modus, Suchflags und SCI_REPLACETARGETRE.</a></p>
+<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 und Namespaces in XML: Namen, Attribute, Entit&#228;ten und Namensr&#228;ume.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

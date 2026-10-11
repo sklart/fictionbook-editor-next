@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="es-ES">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>C&#243;digo</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ayuda de expresiones regulares — C&#243;digo</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Otro modo"><strong>C&#243;digo</strong><a href="regex-design.html">Dise&#241;o</a></nav><main>
 <h1 id="top">Ayuda de expresiones regulares — C&#243;digo</h1>
-<aside class="note" id="note-1"><strong>Nota</strong><p>Nota sobre la traducci&#243;n: las palabras y frases rusas de los ejemplos de control se conservan intencionadamente. Son datos de prueba: las expresiones regulares, las cadenas de sustituci&#243;n, los espacios y los resultados esperados coinciden con la edici&#243;n rusa de referencia. Se han traducido las explicaciones; los ejemplos no se adaptan autom&#225;ticamente a la tipograf&#237;a espa&#241;ola.</p></aside>
+<aside class="note" id="note-1"><strong>Nota</strong><p>Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al espa&#241;ol.</p></aside>
 <p>Gu&#237;a completa de b&#250;squeda y reemplazo en el XML de un libro en FictionBook Editor Next.</p>
-<p>Edici&#243;n: 2 de octubre de 2026. Dise&#241;o se describe en regex-design.md. Estas recetas son para C&#243;digo; no copie patrones PCRE2 sin comprobarlos.</p>
+<p>Dise&#241;o se describe en regex-design.md. Estas recetas son para C&#243;digo; no copie patrones PCRE2 sin comprobarlos.</p>
 <h2 id="section-1">1. Para qu&#233; sirve buscar en C&#243;digo</h2>
 <p>Aqu&#237; se ven etiquetas XML, atributos, enlaces, entidades y texto. Es apropiado para auditar FB2: elementos vac&#237;os, HTML importado, enlaces de sustituci&#243;n, atributos extra&#241;os y restos de conversi&#243;n.</p>
 <aside class="note" id="note-2"><strong>Nota</strong><p>La regex examina texto XML, no un &#225;rbol DOM analizado. Valide la estructura con una herramienta XML.</p></aside>
@@ -22,7 +22,7 @@ Coincidencia: &lt;p&gt;   &lt;/p&gt;
 Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></section>
 <p>Pegue solo el patr&#243;n, sin <code>/.../g</code>, comillas C++ ni duplicaci&#243;n de barras JSON.</p>
 <h2 id="section-3">3. Motor: Scintilla, no PCRE2</h2>
-<p>FBE usa Scintilla con <code>SCFIND_REGEXP</code> y <code>SCFIND_CXX11REGEX</code>. La versi&#243;n considerada implementa en C++ la gram&#225;tica ECMAScript, no PCRE2 ni todo el JavaScript moderno. [S1, S2]</p>
+<p>FBE usa Scintilla con <code>SCFIND_REGEXP</code> y <code>SCFIND_CXX11REGEX</code>: expresiones regulares C++ con gram&#225;tica ECMAScript, no PCRE2 ni todas las funciones de JavaScript moderno. [S1]</p>
 <p>Tambi&#233;n existe un modo b&#225;sico antiguo con otras reglas. No mezcle sus grupos con par&#233;ntesis escapados con C++11: <code>(слово)</code> captura y <code>\(слово\)</code> busca par&#233;ntesis literales.</p>
 <p>Unicode no est&#225; prohibido, pero no hay UCP ni propiedades PCRE2. Las clases dependen de la biblioteca est&#225;ndar; <code>\w</code> no significa todas las letras de todos los idiomas. Use <code>[A-Za-z0-9_]</code> para ASCII previsible. <code>[А-Яа-яЁё]</code> cubre ruso, no todo cir&#237;lico.</p>
 <h3 id="section-3-1">3.1. Diferencias principales frente a Dise&#241;o</h3>
@@ -36,7 +36,7 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <tr><td>B&#250;squeda entre l&#237;neas f&#237;sicas</td><td>Depende del sujeto; reemplazo entre p&#225;rrafos limitado</td><td>No en el camino actual</td></tr>
 </tbody></table></div>
 <h2 id="section-4">4. B&#250;squeda l&#237;nea por l&#237;nea: limitaci&#243;n esencial</h2>
-<p><code>MatchOnLines</code> aplica el patr&#243;n por separado al contenido de cada l&#237;nea f&#237;sica. Una l&#237;nea puede ser enorme; ajustarla al ancho de ventana no crea otra. [S2]</p>
+<p><code>MatchOnLines</code> aplica el patr&#243;n por separado al contenido de cada l&#237;nea f&#237;sica. Una l&#237;nea puede ser enorme; ajustarla al ancho de ventana no crea otra.</p>
 <aside class="warning" id="warning-1"><strong>Advertencia</strong><p>En la b&#250;squeda actual, la regex de C&#243;digo no puede cruzar l&#237;neas f&#237;sicas; ning&#250;n patr&#243;n las une.</p></aside>
 <p>Por ejemplo:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
@@ -104,7 +104,7 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Para contexto izquierdo, capture y restaure en el reemplazo; no hay lookbehind. No copie <code>(?&lt;=...)</code> desde Dise&#241;o.</p>
 <h2 id="section-9">9. Reemplazo en C&#243;digo</h2>
-<p>Con <code>SCI_REPLACETARGETRE</code>, Scintilla expande la cadena despu&#233;s de encontrar la coincidencia. No es <code>std::regex_replace</code> con <code>$1</code> ni la gram&#225;tica Dise&#241;o. [S1, S2]</p>
+<p>Con <code>SCI_REPLACETARGETRE</code>, Scintilla expande la cadena despu&#233;s de encontrar la coincidencia. No es <code>std::regex_replace</code> con <code>$1</code> ni la gram&#225;tica Dise&#241;o. [S1]</p>
 <h3 id="section-9-1">9.1. Referencias a capturas</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Reemplazo</th><th scope="col">Significado</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>Coincidencia completa</td></tr>
@@ -118,7 +118,7 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p><code>(12)</code> se convierte en <code>[12]</code>. Solo tiene sentido editorial en contexto seleccionado: no todo n&#250;mero entre par&#233;ntesis es una nota.</p>
 <p>Un d&#243;lar literal no debe duplicarse por convenciones de otro sistema. La barra inversa s&#237; es un car&#225;cter de control.</p>
 <h3 id="section-9-2">9.2. Caracteres de control en reemplazo</h3>
-<p>El c&#243;digo Scintilla revisado procesa <code>\t</code>, <code>\n</code>, <code>\r</code>, <code>\\</code> como tabulaci&#243;n, LF, CR y barra inversa. No contradice la b&#250;squeda monol&#237;nea. [S2]</p>
+<p>Scintilla interpreta <code>\t</code>, <code>\n</code>, <code>\r</code> y <code>\\</code> en el reemplazo como tabulaci&#243;n, LF, CR y barra inversa literal. Esto no permite buscar entre l&#237;neas f&#237;sicas.</p>
 <p>Use <code>\r\n</code> para CRLF y <code>\n</code> para LF seg&#250;n el documento. Evite terminaciones mezcladas involuntariamente.</p>
 <p><code>\x{00A0}</code> no inserta aqu&#237; Unicode: use NBSP real. Las &#243;rdenes Dise&#241;o <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> no controlan caja ni formato.</p>
 <h3 id="section-9-3">9.3. Borrar y conservar XML</h3>
@@ -566,12 +566,6 @@ Esperado: Revise este p&#225;rrafo antes de cambiar el XML.</code></pre></sectio
 <p>Compare rango previsto y real. Con capturas, revise comillas, prefijos, &#225;ngulos y cierres. Evite afectar comentarios, CDATA y binary.</p>
 <p>Valide FB2, guarde y reabra despu&#233;s de cambios importantes. Compruebe C&#243;digo ↔ Dise&#241;o, notas, im&#225;genes y texto. Un ID renombrado exige revisar objeto y referencias.</p>
 <h2 id="section-17">17. Fuentes y alcance</h2>
-<p>Traducci&#243;n del manual ampliado basado en regex-source.md. Conserva motor, sintaxis, reemplazo, ejemplos XML y l&#237;mites. Se precisaron recetas demasiado amplias y se redactaron explicaciones y pruebas apoyadas en fuentes primarias.</p>
-<p>[S1] Documentaci&#243;n Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.</p>
-<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
-<p>[S2] Scintilla en FBE d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines y BuiltinRegex::SubstituteByPosition. Distingue b&#250;squeda entre l&#237;neas de inserci&#243;n CR/LF.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
-<p>[S3] W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.</p>
-<p><code>https://www.w3.org/TR/xml/</code></p>
-<p><code>https://www.w3.org/TR/xml-names/</code></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Documentaci&#243;n Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.</a></p>
+<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

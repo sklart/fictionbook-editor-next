@@ -1,12 +1,12 @@
 # Podręcznik wyrażeń regularnych — Kod
 
 :::note
-Uwaga do tłumaczenia: rosyjskie słowa i zdania w przykładach kontrolnych pozostawiono celowo bez zmian. Są to dane testowe: wyrażenia regularne, ciągi zastępujące, białe znaki i oczekiwane wyniki odpowiadają rosyjskiemu wydaniu wzorcowemu. Objaśnienia przetłumaczono; przykładów nie dostosowano automatycznie do polskich zasad typografii.
+Rosyjskie słowa w przykładach pozostają bez zmian; przed użyciem reguł językowych w polskim tekście sprawdź ich działanie.
 :::
 
 Pełny przewodnik po wyszukiwaniu i zamianie w źródle XML książki w FictionBook Editor Next.
 
-Wydanie: 2 października 2026 r. Tryb Projekt opisano w regex-design.md. Przepisy tego dokumentu odnoszą się do Kodu; modeli PCRE2 nie wolno przenosić bez sprawdzenia.
+Tryb Projekt opisano w regex-design.md. Przepisy tego dokumentu odnoszą się do Kodu; modeli PCRE2 nie wolno przenosić bez sprawdzenia.
 
 ## 1. Zastosowanie wyszukiwania w Kodzie
 
@@ -43,7 +43,7 @@ Wklej tylko wzorzec, bez `/.../g`, cudzysłowów C++ i podwojonych ukośników z
 
 ## 3. Silnik: Scintilla, nie PCRE2
 
-FBE stosuje Scintillę z `SCFIND_REGEXP` i `SCFIND_CXX11REGEX`. Badana kompilacja używa implementacji C++ z gramatyką ECMAScript. Nie jest to PCRE2 ani wszystkie funkcje współczesnego JavaScript. [S1, S2]
+FBE używa Scintilli z `SCFIND_REGEXP` i `SCFIND_CXX11REGEX`: wyrażeń regularnych C++ o gramatyce ECMAScript, a nie PCRE2 ani wszystkich funkcji współczesnego JavaScriptu. [S1]
 
 Scintilla ma też starszy silnik podstawowy z innymi konwencjami. Nie mieszaj dawnych przykładów grup z nawiasami poprzedzonymi ucieczką z C++11 w FBE: `(слово)` przechwytuje, a `\(слово\)` wymaga dosłownych nawiasów.
 
@@ -63,7 +63,7 @@ Unicode w XML jest dozwolone, lecz nie ma oddzielnego UCP i właściwości PCRE2
 
 ## 4. Wyszukiwanie wiersz po wierszu: najważniejszy limit
 
-W ścieżce Scintilla używanej przez FBE, `MatchOnLines` dopasowuje wzorzec do każdego fizycznego wiersza oddzielnie. Wiersz może być bardzo długi; zawinięcie na ekranie nie tworzy nowego fizycznego wiersza. [S2]
+W ścieżce Scintilla używanej przez FBE, `MatchOnLines` dopasowuje wzorzec do każdego fizycznego wiersza oddzielnie. Wiersz może być bardzo długi; zawinięcie na ekranie nie tworzy nowego fizycznego wiersza.
 
 :::warning
 W bieżącym wyszukiwaniu regex w Kodzie nie przechodzi przez fizyczne wiersze; żaden wzorzec ich nie połączy.
@@ -190,7 +190,7 @@ Kontekst z lewej przechwyć i odtwórz w zamianie: lookbehind nie jest dostępny
 
 ## 9. Zamiana w trybie Kod
 
-FBE używa `SCI_REPLACETARGETRE`: dopasowanie już istnieje, a Scintilla rozwija tekst zamiany według własnych zasad. To nie `std::regex_replace` z `$1` ani gramatyka Design FBE. [S1, S2]
+FBE używa `SCI_REPLACETARGETRE`: dopasowanie już istnieje, a Scintilla rozwija tekst zamiany według własnych zasad. To nie `std::regex_replace` z `$1` ani gramatyka Design FBE. [S1]
 
 ### 9.1. Odwołania do grup
 
@@ -218,7 +218,7 @@ Dolar w Source nie wymaga podwajania według zasad innego systemu. Ukośnik odwr
 
 ### 9.2. Znaki sterujące w zamianie
 
-Kod Scintilla z badanej wersji rozwija `\t`, `\n`, `\r` i `\\` do tabulatora, LF, CR i dosłownego ukośnika. Nie jest to sprzeczne z brakiem wyszukiwania wielowierszowego. [S2]
+Scintilla interpretuje `\t`, `\n`, `\r` i `\\` w zamianie jako tabulator, LF, CR i dosłowny ukośnik odwrotny. Nie umożliwia to szukania przez fizyczne wiersze.
 
 CRLF zapisuj `\r\n`, a LF jako `\n`, zgodnie z dokumentem. Nie twórz przypadkowo mieszanych zakończeń wierszy.
 
@@ -1372,18 +1372,6 @@ Uruchom walidację FB2, zapisz i po istotnych zmianach otwórz ponownie. Sprawd�
 
 ## 17. Źródła i zakres stosowania
 
-Podręcznik rozwija dostarczony regex-source.md. Zachowano układ silnik → składnia → zamiana → XML → ograniczenia, zastępując nieprecyzyjne ogólne przepisy węższymi. Wyjaśnienia i próbki są nowe, a różnice techniczne porównano ze źródłami pierwotnymi.
+[S1] [Oficjalna dokumentacja Scintilla, Searching: tryb C++11, opcje wyszukiwania i SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S1] Oficjalna dokumentacja Scintilla, Searching: tryb C++11, opcje wyszukiwania i SCI_REPLACETARGETRE.
-
-`https://www.scintilla.org/ScintillaDoc.html#Searching`
-
-[S2] Scintilla w wersji FBE Next d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Kod odróżnia wyszukiwanie przez wiersze od wstawiania CR/LF w zamianie.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx`
-
-[S3] W3C XML 1.0 i Namespaces in XML: nazwy, atrybuty, encje i przestrzenie nazw.
-
-`https://www.w3.org/TR/xml/`
-
-`https://www.w3.org/TR/xml-names/`
+[S3] [W3C XML 1.0 i Namespaces in XML: nazwy, atrybuty, encje i przestrzenie nazw.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

@@ -1,12 +1,12 @@
 # Handleiding voor reguliere expressies — Code
 
 :::note
-Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.
+Russische woorden in de voorbeelden blijven ongewijzigd; controleer taalafhankelijke regels voordat u ze op Nederlandse tekst toepast.
 :::
 
 Een volledig overzicht van zoeken en vervangen in de XML-bron van boeken in FictionBook Editor Next.
 
-Editie: 2 oktober 2026. Ontwerp wordt beschreven in regex-design.md. Deze recepten gelden voor Code; neem geen PCRE2-patronen over zonder controle.
+Ontwerp wordt beschreven in regex-design.md. Deze recepten gelden voor Code; neem geen PCRE2-patronen over zonder controle.
 
 ## 1. Waarvoor zoeken in Code dient
 
@@ -43,7 +43,7 @@ Plak uitsluitend het patroon, zonder `/.../g`, C++-stringtekens en dubbele JSON-
 
 ## 3. Engine: Scintilla, niet PCRE2
 
-FBE gebruikt Scintilla met `SCFIND_REGEXP` en `SCFIND_CXX11REGEX`. De onderzochte build gebruikt C++-regex met ECMAScript-grammatica. Dat is geen PCRE2 en omvat niet alle moderne JavaScript-functies. [S1, S2]
+FBE gebruikt Scintilla met `SCFIND_REGEXP` en `SCFIND_CXX11REGEX`: C++-reguliere expressies met ECMAScript-grammatica, niet PCRE2 of alle functies van modern JavaScript. [S1]
 
 Scintilla heeft ook een oudere basisengine met andere conventies. Verwar oude captures met ge-escapete haakjes niet met FBE’s C++11-modus: `(слово)` legt vast, `\(слово\)` vereist letterlijke haakjes.
 
@@ -63,7 +63,7 @@ Unicode-tekst is toegestaan, maar er zijn geen UCP- of PCRE2-eigenschappen. Teke
 
 ## 4. Regelgewijs zoeken: de belangrijkste beperking
 
-In het gebruikte Scintilla-pad past `MatchOnLines` het patroon afzonderlijk op elke fysieke regel toe. Een regel kan zeer lang zijn; visueel afbreken aan de vensterrand schept geen nieuwe fysieke regel. [S2]
+In het gebruikte Scintilla-pad past `MatchOnLines` het patroon afzonderlijk op elke fysieke regel toe. Een regel kan zeer lang zijn; visueel afbreken aan de vensterrand schept geen nieuwe fysieke regel.
 
 :::warning
 In het huidige zoekpad kan regex in Broncode geen fysieke regels overschrijden; geen patroon voegt ze samen.
@@ -190,7 +190,7 @@ Leg context links vast en voeg die bij de vervanging terug: lookbehind ontbreekt
 
 ## 9. Vervangen in Code
 
-FBE gebruikt `SCI_REPLACETARGETRE`: de overeenkomst is gevonden en Scintilla werkt de vervangingsstring uit. Dit is niet `std::regex_replace` met `$1`, noch FBE’s Design-grammatica. [S1, S2]
+FBE gebruikt `SCI_REPLACETARGETRE`: de overeenkomst is gevonden en Scintilla werkt de vervangingsstring uit. Dit is niet `std::regex_replace` met `$1`, noch FBE’s Design-grammatica. [S1]
 
 ### 9.1. Verwijzingen naar captures
 
@@ -218,7 +218,7 @@ Een dollarteken in Source hoeft niet volgens een ander systeem te worden verdubb
 
 ### 9.2. Stuurtekens in de vervanging
 
-De gecontroleerde Scintilla-code verwerkt `\t`, `\n`, `\r` en `\\` als tab, LF, CR en letterlijke backslash. Dit staat los van het ontbreken van zoeken over regels. [S2]
+Scintilla interpreteert `\t`, `\n`, `\r` en `\\` in vervangingen als tab, LF, CR en een letterlijke backslash. Dit maakt zoeken over fysieke regels niet mogelijk.
 
 Gebruik `\r\n` voor CRLF en `\n` voor LF, passend bij het document. Voorkom toevallig gemengde regeleinden.
 
@@ -1372,18 +1372,6 @@ Valideer FB2, sla op en heropen na belangrijke wijzigingen. Controleer Code ↔ 
 
 ## 17. Bronnen en geldigheidsgrenzen
 
-Deze handleiding breidt het aangeleverde regex-source.md uit. De volgorde engine → syntaxis → vervanging → XML → beperkingen blijft behouden, maar te brede recepten zijn aangescherpt. Toelichtingen en tests zijn herschreven en technische verschillen met primaire bronnen gecontroleerd.
+[S1] [Officiële Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S1] Officiële Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.
-
-`https://www.scintilla.org/ScintillaDoc.html#Searching`
-
-[S2] Scintilla in FBE Next-revisie d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Dit onderscheidt over regels zoeken van CR/LF invoegen bij vervanging.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx`
-
-[S3] W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.
-
-`https://www.w3.org/TR/xml/`
-
-`https://www.w3.org/TR/xml-names/`
+[S3] [W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

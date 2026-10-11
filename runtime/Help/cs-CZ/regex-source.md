@@ -1,12 +1,12 @@
 # Příručka regulárních výrazů — Kód
 
 :::note
-Poznámka k překladu: ruská slova a věty v kontrolních příkladech jsou záměrně ponechány beze změny. Jde o testovací data: regulární výrazy, nahrazovací řetězce, bílé znaky a očekávané výsledky odpovídají ruskému referenčnímu vydání. Vysvětlení jsou přeložena; příklady nejsou automaticky přizpůsobeny českým typografickým pravidlům.
+Ruská slova v příkladech zůstávají beze změny; pravidla závislá na jazyce před použitím na český text zkontrolujte.
 :::
 
 Úplná příručka hledání a nahrazování ve zdrojovém XML knihy v FictionBook Editor Next.
 
-Vydání: 2. října 2026. Návrh popisuje regex-design.md. Zdejší postupy patří Kódu; vzory PCRE2 nepřenášejte bez ověření.
+Návrh popisuje regex-design.md. Zdejší postupy patří Kódu; vzory PCRE2 nepřenášejte bez ověření.
 
 ## 1. K čemu slouží hledání v Kódu
 
@@ -43,7 +43,7 @@ Kopírujte jen vzor, bez `/.../g`, uvozovek řetězce C++ a zdvojení lomítek z
 
 ## 3. Modul: Scintilla, ne PCRE2
 
-FBE používá Scintillu s `SCFIND_REGEXP` a `SCFIND_CXX11REGEX`. Zkoumaná sestava používá C++ implementaci regulárních výrazů s gramatikou ECMAScript. Není to PCRE2 ani úplný moderní JavaScript. [S1, S2]
+FBE používá Scintillu s `SCFIND_REGEXP` a `SCFIND_CXX11REGEX`: regulární výrazy C++ s gramatikou ECMAScript, nikoli PCRE2 ani všechny funkce moderního JavaScriptu. [S1]
 
 Scintilla má i starší základní modul s odlišnými pravidly. Nezaměňujte staré zachycovací závorky s escape za režim C++11 FBE: `(слово)` zachycuje, `\(слово\)` vyžaduje skutečné závorky.
 
@@ -63,7 +63,7 @@ Unicode text není zakázán, ale UCP a vlastnosti PCRE2 nejsou k dispozici. Tř
 
 ## 4. Hledání po řádcích: zásadní omezení
 
-Ve Scintilla cestě FBE funkce `MatchOnLines` zpracovává vzor na každém fyzickém řádku zvlášť. Řádek může být velmi dlouhý; jeho zalomení na obrazovce není nový fyzický řádek. [S2]
+Ve Scintilla cestě FBE funkce `MatchOnLines` zpracovává vzor na každém fyzickém řádku zvlášť. Řádek může být velmi dlouhý; jeho zalomení na obrazovce není nový fyzický řádek.
 
 :::warning
 Regex ve Zdrojovém režimu nemůže v současné cestě hledat přes fyzické řádky; vzor je nespojí.
@@ -190,7 +190,7 @@ Levý kontext zachyťte a vraťte v náhradě: lookbehind není dostupný. `(?<=
 
 ## 9. Nahrazování v Kódu
 
-FBE používá `SCI_REPLACETARGETRE`: shoda již existuje a Scintilla rozvíjí náhradu. Nejde o `std::regex_replace` s `$1` ani o gramatiku náhrad Design. [S1, S2]
+FBE používá `SCI_REPLACETARGETRE`: shoda již existuje a Scintilla rozvíjí náhradu. Nejde o `std::regex_replace` s `$1` ani o gramatiku náhrad Design. [S1]
 
 ### 9.1. Odkazy na skupiny
 
@@ -218,7 +218,7 @@ Dolar ve Source není třeba zdvojovat podle pravidel cizího systému. Zpětné
 
 ### 9.2. Řídicí znaky v náhradě
 
-Zkoumaný kód Scintilla rozvine `\t`, `\n`, `\r` a `\\` na tabulátor, LF, CR a doslovné lomítko. Nezávisí to na nemožnosti hledání přes řádky. [S2]
+Scintilla interpretuje `\t`, `\n`, `\r` a `\\` jako tabulátor, LF, CR a doslovné zpětné lomítko. To neumožňuje hledání přes fyzické řádky.
 
 Pro CRLF použijte `\r\n`, pro LF `\n`, podle dokumentu. Nevytvářejte omylem smíšené konce řádků.
 
@@ -1372,18 +1372,6 @@ Validujte FB2, uložte a po významných změnách znovu otevřete. Ověřte př
 
 ## 17. Zdroje a rozsah platnosti
 
-Příručka rozšiřuje dodaný regex-source.md. Zachovává postup modul → syntaxe → náhrady → XML → omezení a zpřesňuje příliš obecné příklady. Vysvětlení i ukázky jsou přepracované a technické rozdíly ověřené primárními zdroji.
+[S1] [Oficiální dokumentace Scintilla, Searching: C++11 režim, vyhledávací volby a SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S1] Oficiální dokumentace Scintilla, Searching: C++11 režim, vyhledávací volby a SCI_REPLACETARGETRE.
-
-`https://www.scintilla.org/ScintillaDoc.html#Searching`
-
-[S2] Scintilla v revizi FBE Next d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Rozlišuje hledání přes řádky od vložení CR/LF náhradou.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx`
-
-[S3] W3C XML 1.0 a Namespaces in XML: názvy, atributy, entity a jmenné prostory.
-
-`https://www.w3.org/TR/xml/`
-
-`https://www.w3.org/TR/xml-names/`
+[S3] [W3C XML 1.0 a Namespaces in XML: názvy, atributy, entity a jmenné prostory.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

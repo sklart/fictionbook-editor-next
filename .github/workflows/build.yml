@@ -21,6 +21,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
+      - name: Check generated Regex Help HTML
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          ./tools/build/generate-regex-help-html.ps1 -Check
       - name: Validate localization preflight
         shell: pwsh
         run: |

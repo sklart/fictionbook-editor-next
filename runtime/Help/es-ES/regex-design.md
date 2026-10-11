@@ -1,10 +1,10 @@
 # Ayuda de expresiones regulares — Diseño
 
-Nota sobre la traducción: las palabras y frases rusas de los ejemplos de control se conservan intencionadamente. Son datos de prueba: las expresiones regulares, las cadenas de sustitución, los espacios y los resultados esperados coinciden con la edición rusa de referencia. Se han traducido las explicaciones; los ejemplos no se adaptan automáticamente a la tipografía española.
+Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al español.
 
 Guía completa para buscar, reemplazar y corregir libros en FictionBook Editor Next.
 
-Edición: 2 de octubre de 2026. El modo Código se explica en regex-source.md. «Patrón» significa aquí una expresión regular; una «plantilla integrada» es una expresión guardada junto con sus opciones en el panel Plantillas.
+El modo Código se explica en regex-source.md. «Patrón» significa aquí una expresión regular; una «plantilla integrada» es una expresión guardada junto con sus opciones en el panel Plantillas.
 
 ## 1. Cómo utilizar esta guía
 
@@ -77,7 +77,7 @@ Una letra acentuada puede almacenarse como un carácter o como letra seguida de 
 
 Unicode (UCP) cambia las clases abreviadas, especialmente `\w`, `\d`, `\s`, y sus límites dependientes `\b`, `\B`. No es el interruptor que habilita el cirílico en sí.
 
-Aclaración importante respecto a versiones anteriores: las propiedades explícitas `\p{L}`, `\p{N}`, `\P{...}` funcionan en una compilación Unicode de PCRE2 incluso sin UCP. No obstante, un patrón que combine `\p{L}` y `\b` debería normalmente activar UCP para que letras y límites concuerden.
+Las propiedades explícitas `\p{L}`, `\p{N}`, `\P{...}` funcionan en una compilación Unicode de PCRE2 incluso sin UCP. No obstante, un patrón que combine `\p{L}` y `\b` debería normalmente activar UCP para que letras y límites concuerden.
 
 Compare la búsqueda de una palabra rusa:
 
@@ -432,7 +432,7 @@ No añada puntos automáticamente, no una todos los párrafos que empiezan en mi
 
 ## 16. Gramática de reemplazo de FBE
 
-PCRE2 busca, pero FBE analiza la cadena de reemplazo. Compruebe antes de reutilizar ejemplos de JavaScript, Python, .NET, PCRE2 substitute u otros editores. Las órdenes siguientes están sustentadas por el código y la guía original. [D3, D4]
+PCRE2 busca, pero FBE analiza la cadena de reemplazo. Compruebe antes de reutilizar ejemplos de JavaScript, Python, .NET, PCRE2 substitute u otros editores.
 
 ### 16.1. Coincidencia y grupos
 
@@ -1595,7 +1595,7 @@ Revise la sección 16. `${name}`, `$10`, `\n`, `\x{...}` no se interpretan segú
 
 ### 18.5. «Alfabetos mezclados» encuentra frases bilingües normales
 
-Un ejemplo anterior probaba cirílico y latín en toda la línea, incluida `Он прочитал Latin.`. D12 limita ambas comprobaciones a una palabra. Es la diferencia crucial entre error OCR y línea bilingüe.
+D12 exige cirílico y latín en la misma palabra. La línea bilingüe `Он прочитал Latin.` no se marca como error OCR.
 
 ### 18.6. «Falta un punto» marca una cita correcta
 
@@ -1623,16 +1623,6 @@ Tras cambios estructurales delicados, valide con FBE. Guarde, vuelva a abrir si 
 
 ## 21. Fuentes y alcance
 
-Traducción del manual ruso ampliado a partir de regex-design.md. Se redactaron explicaciones y pruebas nuevas y se aclararon UCP, límites del sujeto, alfabetos mezclados y reemplazo con fuentes primarias. Las recetas son escenarios editoriales, no citas del manual PCRE2.
+[D1] [Sintaxis oficial PCRE2: anclas, grupos, propiedades Unicode, retroceso y opciones.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Sintaxis oficial PCRE2: anclas, grupos, propiedades Unicode, retroceso y opciones.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Documentación oficial Unicode de PCRE2.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] Compatibilidad PCRE2 y adaptador FBE Next, revisión d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Documentación oficial Unicode de PCRE2.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

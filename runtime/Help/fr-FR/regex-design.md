@@ -1,10 +1,10 @@
 # Aide sur les expressions régulières — Design
 
-Note sur la traduction : les mots et phrases russes des exemples de contrôle sont conservés volontairement. Il s’agit de données de test : expressions régulières, chaînes de remplacement, caractères d’espacement et résultats attendus restent identiques à ceux de l’édition russe de référence. Les explications sont traduites ; les exemples ne sont pas automatiquement adaptés aux règles typographiques françaises.
+Les mots russes des exemples restent inchangés ; vérifiez les règles liées à la langue avant de les appliquer au français.
 
 Guide complet de recherche, de remplacement et de relecture des livres dans FictionBook Editor Next.
 
-Édition du 2 octobre 2026. Le mode Code est traité dans regex-source.md. Dans ce guide, « motif » désigne une expression régulière ; un « modèle intégré » est un ensemble enregistré comprenant une expression et ses paramètres dans le panneau Modèles.
+Le mode Code est traité dans regex-source.md. Dans ce guide, « motif » désigne une expression régulière ; un « modèle intégré » est un ensemble enregistré comprenant une expression et ses paramètres dans le panneau Modèles.
 
 ## 1. Utiliser ce guide
 
@@ -77,7 +77,7 @@ Une lettre accentuée peut être stockée comme un caractère ou comme une lettr
 
 Unicode (UCP) modifie les classes abrégées, surtout `\w`, `\d` et `\s`, ainsi que les limites dépendantes `\b` et `\B`. Ce n’est pas l’option qui autorise le cyrillique lui-même.
 
-Précision importante par rapport aux premières versions : les propriétés explicites `\p{L}`, `\p{N}` et `\P{...}` fonctionnent dans une compilation Unicode de PCRE2 même sans UCP. Mais un motif combinant `\p{L}` et `\b` devrait généralement activer UCP pour accorder la définition des lettres et des limites de mots.
+Les propriétés explicites `\p{L}`, `\p{N}` et `\P{...}` fonctionnent dans une compilation Unicode de PCRE2 même sans UCP. Mais un motif combinant `\p{L}` et `\b` devrait généralement activer UCP pour accorder la définition des lettres et des limites de mots.
 
 Comparez la recherche d’un mot russe :
 
@@ -432,7 +432,7 @@ N’ajoutez pas automatiquement des points, ne fusionnez pas tous les paragraphe
 
 ## 16. Grammaire de remplacement de FBE
 
-PCRE2 recherche, mais FBE interprète le remplacement. Les exemples JavaScript, Python, .NET, PCRE2 substitute ou d’autres éditeurs doivent donc être vérifiés. Les commandes suivantes sont fondées sur le code FBE et le guide initial. [D3, D4]
+PCRE2 recherche, mais FBE interprète le remplacement. Les exemples JavaScript, Python, .NET, PCRE2 substitute ou d’autres éditeurs doivent donc être vérifiés.
 
 ### 16.1. Correspondance et groupes
 
@@ -1595,7 +1595,7 @@ Consultez la grammaire FBE de la section 16. `${name}`, `$10`, `\n` et `\x{...}`
 
 ### 18.5. Alphabets mélangés dans une phrase bilingue normale
 
-Un ancien exemple vérifiait latin et cyrillique dans toute la ligne et trouvait aussi `Он прочитал Latin.`. D12 limite les deux tests à un mot. C’est la différence essentielle entre une anomalie OCR et une ligne bilingue.
+D12 exige des lettres cyrilliques et latines dans un même mot. La ligne bilingue `Он прочитал Latin.` n’est donc pas signalée comme erreur OCR.
 
 ### 18.6. « Pas de point » signale une citation correcte
 
@@ -1623,16 +1623,6 @@ Après des opérations sensibles à la structure, lancez la validation FBE. Enre
 
 ## 21. Sources et champ d’application
 
-Cette traduction reprend le guide russe enrichi issu du fichier fourni regex-design.md. Les explications et contrôles ont été rédigés à nouveau ; les imprécisions sur UCP, les limites du sujet, les alphabets et le remplacement ont été corrigées à partir de sources primaires. Les recettes sont des scénarios éditoriaux, pas des citations du manuel PCRE2.
+[D1] [Syntaxe officielle PCRE2 : ancres, groupes, propriétés Unicode, retours arrière et options.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Syntaxe officielle PCRE2 : ancres, groupes, propriétés Unicode, retours arrière et options.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Documentation officielle Unicode de PCRE2.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] Compatibilité PCRE2 et adaptateur FBE Next, révision d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Documentation officielle Unicode de PCRE2.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

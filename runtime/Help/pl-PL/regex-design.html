@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="pl-PL">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Projekt</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Podręcznik wyrażeń regularnych — Projekt</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Inny tryb"><strong>Projekt</strong><a href="regex-source.html">Źr&#243;dło</a></nav><main>
 <h1 id="top">Podręcznik wyrażeń regularnych — Projekt</h1>
-<p>Uwaga do tłumaczenia: rosyjskie słowa i zdania w przykładach kontrolnych pozostawiono celowo bez zmian. Są to dane testowe: wyrażenia regularne, ciągi zastępujące, białe znaki i oczekiwane wyniki odpowiadają rosyjskiemu wydaniu wzorcowemu. Objaśnienia przetłumaczono; przykład&#243;w nie dostosowano automatycznie do polskich zasad typografii.</p>
+<p>Rosyjskie słowa w przykładach pozostają bez zmian; przed użyciem reguł językowych w polskim tekście sprawdź ich działanie.</p>
 <p>Pełny przewodnik po wyszukiwaniu, zamianie i korekcie książek w FictionBook Editor Next.</p>
-<p>Wydanie: 2 października 2026 r. Tryb Kod opisuje osobny dokument regex-source.md. „Wzorzec” oznacza tutaj wyrażenie regularne, natomiast „wbudowany szablon” — zapisany zestaw wyrażenia i parametr&#243;w w panelu Szablony. Nazwa Design oznacza wizualny tryb Projekt.</p>
+<p>Tryb Kod opisuje osobny dokument regex-source.md. „Wzorzec” oznacza tutaj wyrażenie regularne, natomiast „wbudowany szablon” — zapisany zestaw wyrażenia i parametr&#243;w w panelu Szablony. Nazwa Design oznacza wizualny tryb Projekt.</p>
 <h2 id="section-1">1. Jak korzystać z podręcznika</h2>
 <p>Wyrażenie regularne opisuje regułę wyszukiwania, a nie jeden dokładny ciąg. Na przykład <code>[0-9]+</code> znajduje ciąg cyfr dowolnej długości, a <code>[ \t]{2,}</code> — co najmniej dwie zwykłe spacje lub tabulatory. Znalezione dopasowanie i tekst, kt&#243;ry ma je zastąpić, to odrębne rzeczy.</p>
 <p>Pierwszy praktyczny wynik można uzyskać według rozdziału 2. Rozdziały 3–15 wyjaśniają składnię, a rozdział 16 — szczeg&#243;lną gramatykę zamiany FBE. Rozdział 17 zawiera przepisy do pracy z książkami: warunki, pr&#243;bki i ostrzeżenia. Na końcu znajdują się typowe problemy, wskaz&#243;wki wydajnościowe i źr&#243;dła.</p>
@@ -39,7 +39,7 @@ Oczekiwane: Он пришёл</code></pre></section>
 <p>Litera z akcentem może być jednym znakiem albo literą i oddzielnym znakiem łączącym. Wygląd może być podobny, ale wyszukiwanie znakowe inne. PCRE2 nie przeprowadza normalizacji NFC/NFD za użytkownika. Przy znakach diakrytycznych uwzględnij <code>\p{M}</code>.</p>
 <h3 id="section-4-2">4.2. Rola UCP</h3>
 <p>Unicode (UCP) zmienia przede wszystkim znaczenie klas <code>\w</code>, <code>\d</code>, <code>\s</code> oraz zależnych od nich granic <code>\b</code> i <code>\B</code>. Nie jest przełącznikiem samej obsługi cyrylicy.</p>
-<p>Uściślenie wcześniejszych wersji pomocy: jawne właściwości <code>\p{L}</code>, <code>\p{N}</code> i <code>\P{...}</code> są dostępne w kompilacji Unicode PCRE2 r&#243;wnież bez UCP. Wzorzec łączący <code>\p{L}</code> z <code>\b</code> zwykle warto jednak stosować z UCP, aby litery i granice wyrazu miały sp&#243;jną interpretację.</p>
+<p>Jawne właściwości <code>\p{L}</code>, <code>\p{N}</code> i <code>\P{...}</code> są dostępne w kompilacji Unicode PCRE2 r&#243;wnież bez UCP. Wzorzec łączący <code>\p{L}</code> z <code>\b</code> zwykle warto jednak stosować z UCP, aby litery i granice wyrazu miały sp&#243;jną interpretację.</p>
 <p>Por&#243;wnaj wyszukiwanie rosyjskiego wyrazu:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
 <p>Z UCP granice wynikają z klasy wyrazu Unicode. Bez UCP nie oczekuj, że <code>\b</code> zachowa się dla cyrylicy tak samo jak dla łacińskiego ASCII. Brak dopasowania nie dowodzi braku wyrazu.</p>
@@ -221,7 +221,7 @@ Oczekiwana zamiana przez [$1]: № [125]</code></pre></section>
 <p>Wielka litera po małej, brak znaku końcowego i powt&#243;rzenie wyrazu to cechy formalne, nie decyzje redaktora. Regex nie wie, czy <code>да да</code> jest pomyłką, zamierzonym dialogiem, wierszem czy tytułem.</p>
 <p>Nie dodawaj automatycznie kropek, nie sklejaj wszystkich akapit&#243;w zaczynających się małą literą, nie zamieniaj każdej litery łacińskiej na cyrylicę i każdego łącznika na myślnik. Potrzebny jest kontekst, a czasami kilka operacji na DOM. Skrypty FBE do czyszczenia, sklejonych sł&#243;w i przypis&#243;w rozwiązują właśnie bardziej złożone zadania.</p>
 <h2 id="section-16">16. Gramatyka zamiany FBE</h2>
-<p>PCRE2 wyszukuje, lecz ciąg zamiany interpretuje FBE. Przykład&#243;w z JavaScript, Pythona, .NET, PCRE2 substitute i innych edytor&#243;w nie przenoś bez sprawdzenia. Poniższe polecenia potwierdzają kod FBE i pierwotna pomoc. [D3, D4]</p>
+<p>PCRE2 wyszukuje, lecz ciąg zamiany interpretuje FBE. Przykład&#243;w z JavaScript, Pythona, .NET, PCRE2 substitute i innych edytor&#243;w nie przenoś bez sprawdzenia.</p>
 <h3 id="section-16-1">16.1. Dopasowanie i grupy</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">W polu zamiany</th><th scope="col">Znaczenie</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> albo <code>\0</code></td><td>Całe dopasowanie</td></tr>
@@ -666,7 +666,7 @@ Oczekiwana zamiana przez [$1]: № [125]</code></pre></section>
 <h3 id="section-18-4">18.4. W zamianie pojawiają się cyfry albo znikają ukośniki</h3>
 <p>Por&#243;wnaj gramatykę FBE z rozdziałem 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> i <code>\x{...}</code> nie podlegają automatycznie zasadom wyszukiwania lub innego edytora. Sprawdź, czy grupa istnieje i nie jest opcjonalna w innym odgałęzieniu.</p>
 <h3 id="section-18-5">18.5. Mieszane alfabety wykrywane są w poprawnym zdaniu dwujęzycznym</h3>
-<p>Wcześniejszy przykład sprawdzał łacinę i cyrylicę gdziekolwiek w całym wierszu, znajdując także <code>Он прочитал Latin.</code>. D12 ogranicza oba warunki do jednego wyrazu. To podstawowa r&#243;żnica między błędem OCR a dwujęzycznym wierszem.</p>
+<p>D12 wymaga cyrylicy i łaciny w tym samym wyrazie. Dwujęzyczny wiersz <code>Он прочитал Latin.</code> nie jest oznaczany jako błąd OCR.</p>
 <h3 id="section-18-6">18.6. „Brak kropki” wskazuje poprawny cytat</h3>
 <p>Ostatni znak akapitu nie wystarcza: po <code>!</code> może wystąpić <code>&#187;</code>. D17 uwzględnia końcowe nawiasy i cudzysłowy, ale tytuły i odsyłacze nadal wymagają sprawdzenia.</p>
 <h3 id="section-18-7">18.7. Nie udaje się znaleźć struktury</h3>
@@ -680,11 +680,6 @@ Oczekiwana zamiana przez [$1]: № [125]</code></pre></section>
 <p>Przejrzyj początek, środek i koniec opracowanego fragmentu. Sprawdź kilka wynik&#243;w każdego typu, szczeg&#243;lnie cudzysłowy, zakresy, inicjały, przypisy i zachowywane formatowanie. Upewnij się, że nie zniknęły znaczące NBSP i że akapity nie zmieniły się niespodziewanie.</p>
 <p>Po zmianach wrażliwych strukturalnie uruchom kontrolę dokumentu FBE. Zapisz, w razie potrzeby otw&#243;rz ponownie i por&#243;wnaj. Poprawne wyszukiwanie regex nie zastępuje walidacji FB2 ani korekty redakcyjnej.</p>
 <h2 id="section-21">21. Źr&#243;dła i zakres stosowania</h2>
-<p>To opracowanie dostarczonego regex-design.md z nowymi objaśnieniami i przykładami. Nieścisłości dotyczące UCP, granic obiektu, mieszanych alfabet&#243;w i zamiany doprecyzowano według źr&#243;deł pierwotnych. Przepisy z rozdziału 17 są autorskimi scenariuszami, nie cytatami z dokumentacji PCRE2.</p>
-<p>[D1] Oficjalny opis składni PCRE2: kotwice, grupy, właściwości Unicode, nawracanie i opcje.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
-<p>[D2] Oficjalna dokumentacja Unicode PCRE2.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
-<p>[D3] FBE Next: kompatybilność PCRE2 i adapter. Wersja repozytorium d2257405d95b0328649acee64b38829b40a4314b.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+<p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Oficjalny opis składni PCRE2: kotwice, grupy, właściwości Unicode, nawracanie i opcje.</a></p>
+<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Oficjalna dokumentacja Unicode PCRE2.</a></p>
 </main></body></html>

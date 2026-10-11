@@ -80,6 +80,7 @@ function Render-Page([string]$locale, [string]$mode, [string]$source, $strings) 
     $ids = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $headingNumber = 0
     $h1Count = 0
+    $pageTitle = ''
     $blockNumbers = @{ regex=0; example=0; note=0; warning=0; table=0 }
     $index = 0
     while($index -lt $lines.Length) {
@@ -108,7 +109,7 @@ function Render-Page([string]$locale, [string]$mode, [string]$source, $strings) 
         if($trim -match '^(#{1,3})\s+(.+)$') {
             $level = $Matches[1].Length
             $title = $Matches[2]
-            if($level -eq 1) { ++$h1Count; $id='top' }
+            if($level -eq 1) { ++$h1Count; $id='top'; $pageTitle = $title }
             elseif($title -match '^\s*(\d+(?:\.\d+)*)\.') { $id='section-' + $Matches[1].Replace('.','-') }
             else { $id='heading-' + (++$headingNumber) }
             if(-not $ids.Add($id)) { throw "$locale/$mode duplicates anchor $id" }
@@ -161,7 +162,7 @@ function Render-Page([string]$locale, [string]$mode, [string]$source, $strings) 
     $other = if($mode -eq 'design') { 'source' } else { 'design' }
     $title = if($mode -eq 'design') { $strings.design } else { $strings.source }
     $otherTitle = if($other -eq 'design') { $strings.design } else { $strings.source }
-    return "<!doctype html>`n<html lang=`"$locale`">`n<head><meta charset=`"utf-8`"><meta name=`"viewport`" content=`"width=device-width, initial-scale=1`"><title>$(Encode $title)</title><link rel=`"stylesheet`" href=`"../regex-help.css`"></head>`n<body><nav aria-label=`"$(Encode $strings.switch)`"><strong>$(Encode $title)</strong><a href=`"regex-$other.html`">$(Encode $otherTitle)</a></nav><main>`n$($body.ToString())</main></body></html>`n"
+    return "<!doctype html>`n<html lang=`"$locale`">`n<head><meta charset=`"utf-8`"><meta name=`"viewport`" content=`"width=device-width, initial-scale=1`"><title>$(Encode $pageTitle)</title><link rel=`"stylesheet`" href=`"../regex-help.css`"></head>`n<body><nav aria-label=`"$(Encode $strings.switch)`"><strong>$(Encode $title)</strong><a href=`"regex-$other.html`">$(Encode $otherTitle)</a></nav><main>`n$($body.ToString())</main></body></html>`n"
 }
 
 foreach($locale in $languages) {

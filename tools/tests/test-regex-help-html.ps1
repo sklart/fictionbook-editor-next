@@ -12,12 +12,26 @@ $css = Get-Content -LiteralPath (Join-Path $help 'regex-help.css') -Raw -Encodin
 foreach($token in @('max-width: 1050px','prefers-color-scheme: dark','@media print','focus-visible','Cascadia Mono','table-wrap')) {
     if(-not $css.Contains($token)) { throw "HTML CSS missing $token" }
 }
+foreach($fallback in @('background: #ffffff; background: var(--page)', 'color: #20232a; color: var(--text)',
+    'border: 1px solid #c8d0da; border: 1px solid var(--line)', 'background: #e8edf4; background: var(--head)',
+    'color: #0758a7; color: var(--link)', 'padding: 10px 20px; padding: 10px max(')) {
+    if(-not $css.Contains($fallback)) { throw "HTML CSS lacks legacy fallback: $fallback" }
+}
 if($css -match '(?i)@import|url\(\s*https?://') { throw 'HTML CSS has a network dependency.' }
+$workflow = Get-Content -LiteralPath (Join-Path $root '.github\workflows\build.yml') -Raw -Encoding UTF8
+$validate = ($workflow -split '(?m)^  build:\s*$', 2)[0]
+if($validate -notmatch 'generate-regex-help-html\.ps1 -Check' -or $validate -match 'generate-regex-help-html\.ps1 -Generate') {
+    throw 'CI validate must check generated HTML before the build can generate it.'
+}
 $regexCount = 0
 foreach($locale in $locales) {
     foreach($mode in 'design','source') {
         $markdown = Get-Content -LiteralPath (Join-Path $help "$locale\regex-$mode.md") -Raw -Encoding UTF8
         $html = Get-Content -LiteralPath (Join-Path $help "$locale\regex-$mode.html") -Raw -Encoding UTF8
+        $heading = ([regex]::Match($markdown, '(?m)^# (.+)$')).Groups[1].Value
+        if(-not $heading -or -not $html.Contains("<title>$([Net.WebUtility]::HtmlEncode($heading))</title>")) {
+            throw "$locale/$mode has an incomplete browser title"
+        }
         if($html -notmatch "<html lang=`"$locale`">" -or $html -notmatch '<h1 id="top">') { throw "$locale/$mode lacks document language or H1" }
         foreach($token in @('<table>','<thead>','<tbody>','<th scope="col">','<section class="example"','<aside class="note"','<aside class="warning"','<pre class="regex"')) {
             if(-not $html.Contains($token)) { throw "$locale/$mode missing semantic element $token" }
@@ -35,7 +49,10 @@ foreach($locale in $locales) {
         }
         $regexCount += $renderedBlocks.Count
         if($mode -eq 'source' -and -not $html.Contains('&lt;p&gt;[ \t]')) { throw "$locale/source XML regex is not escaped" }
-        if($html.Contains('<a href="http') -and -not $html.Contains('rel="noopener noreferrer"')) { throw "$locale/$mode external link lacks rel" }
+        $externalLinks = @([regex]::Matches($html, '<a href="https?://[^" ]+" rel="noopener noreferrer">'))
+        if($externalLinks.Count -lt $(if($mode -eq 'design') { 2 } else { 3 }) -or
+            $html -match '<a href="https?://[^" ]+"(?! rel="noopener noreferrer")' -or
+            $html -match '<code>https?://') { throw "$locale/$mode lacks clickable safe source links" }
     }
 }
 $manifest = Get-Content -LiteralPath (Join-Path $root 'packaging\package-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json

@@ -1,12 +1,12 @@
 # Hilfe zu regulären Ausdrücken — Quelltext
 
 :::note
-Hinweis zur Übersetzung: Russische Wörter und Sätze in den Kontrollbeispielen bleiben absichtlich unverändert. Sie sind Testdaten: Reguläre Ausdrücke, Ersetzungstexte, Leerraumzeichen und erwartete Ergebnisse entsprechen der russischen Referenzfassung. Die Erläuterungen sind übersetzt; die Beispiele werden nicht automatisch an deutsche typografische Regeln angepasst.
+Russische Wörter in den Beispielen bleiben unverändert; prüfen Sie sprachabhängige Regeln vor der Anwendung auf deutschen Text.
 :::
 
 Vollständiges Handbuch zum Suchen und Ersetzen im XML-Quelltext eines Buches in FictionBook Editor Next.
 
-Stand: 2. Oktober 2026. Design wird in regex-design.md beschrieben. Diese Rezepte gelten für den Quelltextmodus; PCRE2-Ausdrücke dürfen nicht ungeprüft übernommen werden.
+Design wird in regex-design.md beschrieben. Diese Rezepte gelten für den Quelltextmodus; PCRE2-Ausdrücke dürfen nicht ungeprüft übernommen werden.
 
 ## 1. Zweck der Suche im Quelltextmodus
 
@@ -43,7 +43,7 @@ Fügen Sie nur das Muster ein. JavaScript `/.../g`, C++-Stringanführungszeichen
 
 ## 3. Die Engine: Scintilla statt PCRE2
 
-FBE verwendet Scintilla mit `SCFIND_REGEXP` und `SCFIND_CXX11REGEX`. Im betrachteten Build ist dies eine C++-Regex-Implementierung mit ECMAScript-Grammatik, weder PCRE2 noch der vollständige Funktionsumfang modernen JavaScripts. [S1, S2]
+FBE verwendet Scintilla mit `SCFIND_REGEXP` und `SCFIND_CXX11REGEX`: C++-Regulärausdrücke mit ECMAScript-Grammatik, nicht PCRE2 oder den gesamten Funktionsumfang von JavaScript. [S1]
 
 Scintilla hat außerdem einen älteren Basismodus mit anderen Regeln. Alte Beispiele, die Gruppen mit maskierten Klammern bilden, gehören nicht zu FBEs C++11-Modus: Hier erfasst `(слово)`, während `\(слово\)` wörtliche Klammern verlangt.
 
@@ -63,7 +63,7 @@ Unicode im XML ist nicht verboten, doch UCP und PCRE2-Eigenschaften fehlen. Zeic
 
 ## 4. Zeilenweise Suche: die wichtigste Einschränkung
 
-Im verwendeten Scintilla-Pfad gleicht `MatchOnLines` den Ausdruck separat mit jeder physischen Zeile ab. Eine Zeile kann sehr lang sein; visueller Fensterumbruch erzeugt keine neue physische Zeile. [S2]
+Im verwendeten Scintilla-Pfad gleicht `MatchOnLines` den Ausdruck separat mit jeder physischen Zeile ab. Eine Zeile kann sehr lang sein; visueller Fensterumbruch erzeugt keine neue physische Zeile.
 
 :::warning
 Im aktuellen Suchpfad kann Source Regex keine physischen Zeilen übergreifen; kein Muster verbindet sie.
@@ -190,7 +190,7 @@ Linken Kontext können Sie erfassen und in der Ersetzung wiederherstellen; Lookb
 
 ## 9. Ersetzung im Quelltextmodus
 
-FBE verwendet `SCI_REPLACETARGETRE`: Ein Treffer liegt bereits vor, und Scintilla interpretiert die Ersetzung. Das ist weder `std::regex_replace` mit üblichem `$1` noch FBEs Design-Grammatik. [S1, S2]
+FBE verwendet `SCI_REPLACETARGETRE`: Ein Treffer liegt bereits vor, und Scintilla interpretiert die Ersetzung. Das ist weder `std::regex_replace` mit üblichem `$1` noch FBEs Design-Grammatik. [S1]
 
 ### 9.1. Capture-Verweise
 
@@ -218,7 +218,7 @@ Ein wörtliches Dollarzeichen muss im Quelltext-Ersetzungsfeld nicht nach fremde
 
 ### 9.2. Steuerzeichen in Ersetzungen
 
-Im geprüften Scintilla-Code werden `\t`, `\n`, `\r` und `\\` als Tabulator, LF, CR und Backslash verarbeitet. Das widerspricht nicht dem fehlenden zeilenübergreifenden Suchen. [S2]
+Scintilla interpretiert `\t`, `\n`, `\r` und `\\` bei Ersetzungen als Tabulator, LF, CR und wörtlichen Backslash. Dadurch wird keine Suche über physische Zeilen ermöglicht.
 
 CRLF wird mit `\r\n`, LF mit `\n` eingefügt. Richten Sie sich nach dem Dokument und erzeugen Sie keine gemischten Zeilenenden.
 
@@ -1372,18 +1372,6 @@ FB2 prüfen, speichern und nach wesentlichen Änderungen erneut öffnen. Quellte
 
 ## 17. Quellen und Geltungsbereich
 
-Dies übersetzt das erweiterte Handbuch zum bereitgestellten regex-source.md. Die Struktur „Engine → Syntax → Ersetzung → XML-Beispiele → Grenzen“ bleibt erhalten; zu allgemeine Rezepte wurden eingegrenzt. Erklärungen und Kontrollszenarien sind neu verfasst, technische Unterschiede anhand von Primärquellen geprüft.
+[S1] [Offizielle Scintilla-Dokumentation, Searching: C++11-Modus, Suchflags und SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S1] Offizielle Scintilla-Dokumentation, Searching: C++11-Modus, Suchflags und SCI_REPLACETARGETRE.
-
-`https://www.scintilla.org/ScintillaDoc.html#Searching`
-
-[S2] Scintilla-Quellcode im FBE-Stand d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Er unterscheidet zeilenübergreifende Suche von CR/LF-Einfügung bei Ersetzungen.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx`
-
-[S3] W3C XML 1.0 und Namespaces in XML: Namen, Attribute, Entitäten und Namensräume.
-
-`https://www.w3.org/TR/xml/`
-
-`https://www.w3.org/TR/xml-names/`
+[S3] [W3C XML 1.0 und Namespaces in XML: Namen, Attribute, Entitäten und Namensräume.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

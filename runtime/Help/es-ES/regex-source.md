@@ -1,12 +1,12 @@
 # Ayuda de expresiones regulares — Código
 
 :::note
-Nota sobre la traducción: las palabras y frases rusas de los ejemplos de control se conservan intencionadamente. Son datos de prueba: las expresiones regulares, las cadenas de sustitución, los espacios y los resultados esperados coinciden con la edición rusa de referencia. Se han traducido las explicaciones; los ejemplos no se adaptan automáticamente a la tipografía española.
+Las palabras rusas de los ejemplos se mantienen; revise las reglas dependientes del idioma antes de aplicarlas al español.
 :::
 
 Guía completa de búsqueda y reemplazo en el XML de un libro en FictionBook Editor Next.
 
-Edición: 2 de octubre de 2026. Diseño se describe en regex-design.md. Estas recetas son para Código; no copie patrones PCRE2 sin comprobarlos.
+Diseño se describe en regex-design.md. Estas recetas son para Código; no copie patrones PCRE2 sin comprobarlos.
 
 ## 1. Para qué sirve buscar en Código
 
@@ -43,7 +43,7 @@ Pegue solo el patrón, sin `/.../g`, comillas C++ ni duplicación de barras JSON
 
 ## 3. Motor: Scintilla, no PCRE2
 
-FBE usa Scintilla con `SCFIND_REGEXP` y `SCFIND_CXX11REGEX`. La versión considerada implementa en C++ la gramática ECMAScript, no PCRE2 ni todo el JavaScript moderno. [S1, S2]
+FBE usa Scintilla con `SCFIND_REGEXP` y `SCFIND_CXX11REGEX`: expresiones regulares C++ con gramática ECMAScript, no PCRE2 ni todas las funciones de JavaScript moderno. [S1]
 
 También existe un modo básico antiguo con otras reglas. No mezcle sus grupos con paréntesis escapados con C++11: `(слово)` captura y `\(слово\)` busca paréntesis literales.
 
@@ -63,7 +63,7 @@ Unicode no está prohibido, pero no hay UCP ni propiedades PCRE2. Las clases dep
 
 ## 4. Búsqueda línea por línea: limitación esencial
 
-`MatchOnLines` aplica el patrón por separado al contenido de cada línea física. Una línea puede ser enorme; ajustarla al ancho de ventana no crea otra. [S2]
+`MatchOnLines` aplica el patrón por separado al contenido de cada línea física. Una línea puede ser enorme; ajustarla al ancho de ventana no crea otra.
 
 :::warning
 En la búsqueda actual, la regex de Código no puede cruzar líneas físicas; ningún patrón las une.
@@ -190,7 +190,7 @@ Para contexto izquierdo, capture y restaure en el reemplazo; no hay lookbehind. 
 
 ## 9. Reemplazo en Código
 
-Con `SCI_REPLACETARGETRE`, Scintilla expande la cadena después de encontrar la coincidencia. No es `std::regex_replace` con `$1` ni la gramática Diseño. [S1, S2]
+Con `SCI_REPLACETARGETRE`, Scintilla expande la cadena después de encontrar la coincidencia. No es `std::regex_replace` con `$1` ni la gramática Diseño. [S1]
 
 ### 9.1. Referencias a capturas
 
@@ -218,7 +218,7 @@ Un dólar literal no debe duplicarse por convenciones de otro sistema. La barra 
 
 ### 9.2. Caracteres de control en reemplazo
 
-El código Scintilla revisado procesa `\t`, `\n`, `\r`, `\\` como tabulación, LF, CR y barra inversa. No contradice la búsqueda monolínea. [S2]
+Scintilla interpreta `\t`, `\n`, `\r` y `\\` en el reemplazo como tabulación, LF, CR y barra inversa literal. Esto no permite buscar entre líneas físicas.
 
 Use `\r\n` para CRLF y `\n` para LF según el documento. Evite terminaciones mezcladas involuntariamente.
 
@@ -1372,18 +1372,6 @@ Valide FB2, guarde y reabra después de cambios importantes. Compruebe Código �
 
 ## 17. Fuentes y alcance
 
-Traducción del manual ampliado basado en regex-source.md. Conserva motor, sintaxis, reemplazo, ejemplos XML y límites. Se precisaron recetas demasiado amplias y se redactaron explicaciones y pruebas apoyadas en fuentes primarias.
+[S1] [Documentación Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S1] Documentación Scintilla, Searching: C++11, opciones y SCI_REPLACETARGETRE.
-
-`https://www.scintilla.org/ScintillaDoc.html#Searching`
-
-[S2] Scintilla en FBE d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines y BuiltinRegex::SubstituteByPosition. Distingue búsqueda entre líneas de inserción CR/LF.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx`
-
-[S3] W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.
-
-`https://www.w3.org/TR/xml/`
-
-`https://www.w3.org/TR/xml-names/`
+[S3] [W3C XML 1.0 y Namespaces in XML: nombres, atributos, entidades y espacios de nombres.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

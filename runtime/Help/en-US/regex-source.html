@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en-US">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Source</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Regular expression help — Source</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Other mode"><strong>Source</strong><a href="regex-design.html">Design</a></nav><main>
 <h1 id="top">Regular expression help — Source</h1>
-<aside class="note" id="note-1"><strong>Note</strong><p>Translation note: Russian words and sentences in control examples are intentionally retained. They are test data: the regular expressions, replacement strings, whitespace characters and expected results are identical to the Russian reference edition. The explanations are translated; the examples are not automatically adapted to English typography.</p></aside>
+<aside class="note" id="note-1"><strong>Note</strong><p>Russian words in the examples remain unchanged; review language-specific rules before applying them to English text.</p></aside>
 <p>A complete guide to searching and replacing in a book’s XML source in FictionBook Editor Next.</p>
-<p>Revision: October 2, 2026. Design mode is covered separately in regex-design.md. These recipes are for Source mode; do not transfer PCRE2 expressions into it without checking them.</p>
+<p>Design mode is covered separately in regex-design.md. These recipes are for Source mode; do not transfer PCRE2 expressions into it without checking them.</p>
 <h2 id="section-1">1. What Source-mode search is for</h2>
 <p>Source exposes XML tags, attributes, links, entities, and the book’s text. It is suitable for auditing FB2: finding empty elements, imported HTML tags, placeholder links, unexpected attributes, and technical conversion remnants.</p>
 <aside class="note" id="note-2"><strong>Note</strong><p>Regex examines XML source text, not a parsed DOM tree. Validate structural relationships with an XML-aware tool.</p></aside>
@@ -22,7 +22,7 @@ Match: &lt;p&gt;   &lt;/p&gt;
 Expected: inspect this paragraph before changing the XML</code></pre></section>
 <p>Paste only the pattern into the field. JavaScript <code>/.../g</code> delimiters, C++ string quotes, and doubled JSON backslashes are unnecessary.</p>
 <h2 id="section-3">3. The engine: Scintilla, not PCRE2</h2>
-<p>FBE uses Scintilla with <code>SCFIND_REGEXP</code> and <code>SCFIND_CXX11REGEX</code>. In the build considered here, this is a C++ regular-expression implementation using the ECMAScript grammar. It is neither PCRE2 nor the full feature set of modern JavaScript. [S1, S2]</p>
+<p>FBE uses Scintilla with <code>SCFIND_REGEXP</code> and <code>SCFIND_CXX11REGEX</code>: C++ regular expressions with ECMAScript grammar, rather than PCRE2 or the complete feature set of modern JavaScript. [S1]</p>
 <p>Scintilla also has an older basic regex mechanism with different conventions. Do not mix old examples that create groups with escaped parentheses with FBE’s C++11 mode: here <code>(слово)</code> captures, while <code>\(слово\)</code> requires literal parentheses.</p>
 <p>Unicode text in XML is not forbidden, but there is no separate UCP mode or PCRE2 property syntax. Character classes depend on the standard-library implementation; do not assume <code>\w</code> means all letters in every language. For predictable ASCII matching, use explicit classes such as <code>[A-Za-z0-9_]</code>. For Russian text, <code>[А-Яа-яЁё]</code> is possible, but does not cover the entire Cyrillic script.</p>
 <h3 id="section-3-1">3.1. Main differences from Design</h3>
@@ -36,7 +36,7 @@ Expected: inspect this paragraph before changing the XML</code></pre></section>
 <tr><td>Search across physical lines</td><td>Depends on the search representation; cross-paragraph replacement is restricted</td><td>Not supported by the current path</td></tr>
 </tbody></table></div>
 <h2 id="section-4">4. Line-by-line matching: the key limitation</h2>
-<p>In FBE’s Scintilla path, <code>MatchOnLines</code> matches an expression separately against the content of each physical line. A line can be very long; wrapping it to the window width does not create a new physical line. [S2]</p>
+<p>In FBE’s Scintilla path, <code>MatchOnLines</code> matches an expression separately against the content of each physical line. A line can be very long; wrapping it to the window width does not create a new physical line.</p>
 <aside class="warning" id="warning-1"><strong>Warning</strong><p>Source regex cannot match across physical lines in the current search path. No pattern can make the engine see two lines as one subject.</p></aside>
 <p>For example:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
@@ -104,7 +104,7 @@ Expected: inspect this paragraph before changing the XML</code></pre></section>
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>When left context must be checked, capture it and restore it in the replacement: lookbehind is unavailable here. Do not copy <code>(?&lt;=...)</code> expressions from the Design guide.</p>
 <h2 id="section-9">9. Replacement in Source mode</h2>
-<p>FBE uses <code>SCI_REPLACETARGETRE</code>: a match has already been found, and Scintilla expands the replacement string according to its own rules. This is not <code>std::regex_replace</code> with its usual <code>$1</code>, nor FBE’s Design replacement grammar. [S1, S2]</p>
+<p>FBE uses <code>SCI_REPLACETARGETRE</code>: a match has already been found, and Scintilla expands the replacement string according to its own rules. This is not <code>std::regex_replace</code> with its usual <code>$1</code>, nor FBE’s Design replacement grammar. [S1]</p>
 <h3 id="section-9-1">9.1. Capture references</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">In the replacement field</th><th scope="col">Meaning</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>The whole match</td></tr>
@@ -118,7 +118,7 @@ Expected: inspect this paragraph before changing the XML</code></pre></section>
 <p>This changes <code>(12)</code> to <code>[12]</code>. It only makes editorial sense in selected context: a parenthesized number is not necessarily a note marker.</p>
 <p>A literal dollar sign in a Source replacement need not be doubled according to another replacement system’s conventions. A backslash, on the other hand, is a control character.</p>
 <h3 id="section-9-2">9.2. Control characters in replacement</h3>
-<p>In the Scintilla code used by the checked FBE snapshot, replacement processes <code>\t</code>, <code>\n</code>, <code>\r</code>, and <code>\\</code> as tab, LF, CR, and literal backslash. Do not confuse this with the lack of cross-line searching. [S2]</p>
+<p>Scintilla interprets <code>\t</code>, <code>\n</code>, <code>\r</code>, and <code>\\</code> in replacements as tab, LF, CR, and a literal backslash. This does not enable searching across physical lines.</p>
 <p>Use <code>\r\n</code> for CRLF and <code>\n</code> for LF. Choose according to the document, and do not accidentally create mixed line endings.</p>
 <p>PCRE2 sequences such as <code>\x{00A0}</code> are not a way to insert a Unicode character in this field. Use the actual NBSP character. Design commands <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, and <code>\Q</code> do not control case or formatting here.</p>
 <h3 id="section-9-3">9.3. Deletion and XML preservation</h3>
@@ -566,12 +566,6 @@ Expected: inspect this paragraph before changing the XML</code></pre></section>
 <p>Compare the expected and actual matched range. For capture-based replacements, verify that quotes, prefixes, angle brackets, and closing tags are preserved. Make sure comments, CDATA, and binary content have not been affected.</p>
 <p>Run FB2 validation, save the book, and reopen it after significant changes. Check Source ↔ Design switching, notes, illustrations, and visible text. When an identifier is renamed, verify both the object and all related references.</p>
 <h2 id="section-17">17. Sources and applicability</h2>
-<p>This translates the expanded guide based on the supplied regex-source.md. Its “engine → syntax → replacement → XML examples → limitations” structure is preserved, while imprecise broad recipes have been replaced by narrower ones. Explanations and control scenarios were written anew, and technical differences checked against primary sources.</p>
-<p>[S1] Official Scintilla documentation, Searching: C++11 mode, search flags, and SCI_REPLACETARGETRE.</p>
-<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
-<p>[S2] Scintilla source in FBE Next snapshot d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, and BuiltinRegex::SubstituteByPosition. This code distinguishes searching across lines from inserting CR/LF in replacement.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
-<p>[S3] W3C XML 1.0 and Namespaces in XML: names, attributes, entities, and namespaces.</p>
-<p><code>https://www.w3.org/TR/xml/</code></p>
-<p><code>https://www.w3.org/TR/xml-names/</code></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Official Scintilla documentation, Searching: C++11 mode, search flags, and SCI_REPLACETARGETRE.</a></p>
+<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 and Namespaces in XML: names, attributes, entities, and namespaces.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

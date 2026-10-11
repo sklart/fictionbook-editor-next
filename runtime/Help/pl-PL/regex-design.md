@@ -1,10 +1,10 @@
 # Podręcznik wyrażeń regularnych — Projekt
 
-Uwaga do tłumaczenia: rosyjskie słowa i zdania w przykładach kontrolnych pozostawiono celowo bez zmian. Są to dane testowe: wyrażenia regularne, ciągi zastępujące, białe znaki i oczekiwane wyniki odpowiadają rosyjskiemu wydaniu wzorcowemu. Objaśnienia przetłumaczono; przykładów nie dostosowano automatycznie do polskich zasad typografii.
+Rosyjskie słowa w przykładach pozostają bez zmian; przed użyciem reguł językowych w polskim tekście sprawdź ich działanie.
 
 Pełny przewodnik po wyszukiwaniu, zamianie i korekcie książek w FictionBook Editor Next.
 
-Wydanie: 2 października 2026 r. Tryb Kod opisuje osobny dokument regex-source.md. „Wzorzec” oznacza tutaj wyrażenie regularne, natomiast „wbudowany szablon” — zapisany zestaw wyrażenia i parametrów w panelu Szablony. Nazwa Design oznacza wizualny tryb Projekt.
+Tryb Kod opisuje osobny dokument regex-source.md. „Wzorzec” oznacza tutaj wyrażenie regularne, natomiast „wbudowany szablon” — zapisany zestaw wyrażenia i parametrów w panelu Szablony. Nazwa Design oznacza wizualny tryb Projekt.
 
 ## 1. Jak korzystać z podręcznika
 
@@ -77,7 +77,7 @@ Litera z akcentem może być jednym znakiem albo literą i oddzielnym znakiem ł
 
 Unicode (UCP) zmienia przede wszystkim znaczenie klas `\w`, `\d`, `\s` oraz zależnych od nich granic `\b` i `\B`. Nie jest przełącznikiem samej obsługi cyrylicy.
 
-Uściślenie wcześniejszych wersji pomocy: jawne właściwości `\p{L}`, `\p{N}` i `\P{...}` są dostępne w kompilacji Unicode PCRE2 również bez UCP. Wzorzec łączący `\p{L}` z `\b` zwykle warto jednak stosować z UCP, aby litery i granice wyrazu miały spójną interpretację.
+Jawne właściwości `\p{L}`, `\p{N}` i `\P{...}` są dostępne w kompilacji Unicode PCRE2 również bez UCP. Wzorzec łączący `\p{L}` z `\b` zwykle warto jednak stosować z UCP, aby litery i granice wyrazu miały spójną interpretację.
 
 Porównaj wyszukiwanie rosyjskiego wyrazu:
 
@@ -432,7 +432,7 @@ Nie dodawaj automatycznie kropek, nie sklejaj wszystkich akapitów zaczynającyc
 
 ## 16. Gramatyka zamiany FBE
 
-PCRE2 wyszukuje, lecz ciąg zamiany interpretuje FBE. Przykładów z JavaScript, Pythona, .NET, PCRE2 substitute i innych edytorów nie przenoś bez sprawdzenia. Poniższe polecenia potwierdzają kod FBE i pierwotna pomoc. [D3, D4]
+PCRE2 wyszukuje, lecz ciąg zamiany interpretuje FBE. Przykładów z JavaScript, Pythona, .NET, PCRE2 substitute i innych edytorów nie przenoś bez sprawdzenia.
 
 ### 16.1. Dopasowanie i grupy
 
@@ -1595,7 +1595,7 @@ Porównaj gramatykę FBE z rozdziałem 16. `${name}`, `$10`, `\n` i `\x{...}` ni
 
 ### 18.5. Mieszane alfabety wykrywane są w poprawnym zdaniu dwujęzycznym
 
-Wcześniejszy przykład sprawdzał łacinę i cyrylicę gdziekolwiek w całym wierszu, znajdując także `Он прочитал Latin.`. D12 ogranicza oba warunki do jednego wyrazu. To podstawowa różnica między błędem OCR a dwujęzycznym wierszem.
+D12 wymaga cyrylicy i łaciny w tym samym wyrazie. Dwujęzyczny wiersz `Он прочитал Latin.` nie jest oznaczany jako błąd OCR.
 
 ### 18.6. „Brak kropki” wskazuje poprawny cytat
 
@@ -1623,16 +1623,6 @@ Po zmianach wrażliwych strukturalnie uruchom kontrolę dokumentu FBE. Zapisz, w
 
 ## 21. Źródła i zakres stosowania
 
-To opracowanie dostarczonego regex-design.md z nowymi objaśnieniami i przykładami. Nieścisłości dotyczące UCP, granic obiektu, mieszanych alfabetów i zamiany doprecyzowano według źródeł pierwotnych. Przepisy z rozdziału 17 są autorskimi scenariuszami, nie cytatami z dokumentacji PCRE2.
+[D1] [Oficjalny opis składni PCRE2: kotwice, grupy, właściwości Unicode, nawracanie i opcje.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Oficjalny opis składni PCRE2: kotwice, grupy, właściwości Unicode, nawracanie i opcje.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Oficjalna dokumentacja Unicode PCRE2.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] FBE Next: kompatybilność PCRE2 i adapter. Wersja repozytorium d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Oficjalna dokumentacja Unicode PCRE2.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

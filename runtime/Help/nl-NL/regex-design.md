@@ -1,10 +1,10 @@
 # Handleiding voor reguliere expressies — Ontwerp
 
-Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.
+Russische woorden in de voorbeelden blijven ongewijzigd; controleer taalafhankelijke regels voordat u ze op Nederlandse tekst toepast.
 
 Een volledige handleiding voor zoeken, vervangen en het corrigeren van boeken in FictionBook Editor Next.
 
-Editie: 2 oktober 2026. De modus Code wordt afzonderlijk beschreven in regex-source.md. “Patroon” betekent hier een reguliere expressie; een “ingebouwd sjabloon” is een opgeslagen combinatie van expressie en opties in het paneel Sjablonen. Design is de visuele modus Ontwerp.
+De modus Code wordt afzonderlijk beschreven in regex-source.md. “Patroon” betekent hier een reguliere expressie; een “ingebouwd sjabloon” is een opgeslagen combinatie van expressie en opties in het paneel Sjablonen. Design is de visuele modus Ontwerp.
 
 ## 1. Deze handleiding gebruiken
 
@@ -77,7 +77,7 @@ Een geaccentueerde letter kan als één teken of als letter plus gecombineerd ac
 
 Unicode (UCP) verandert vooral de verkorte klassen `\w`, `\d`, `\s` en de daarvan afhankelijke grenzen `\b` en `\B`. Het is niet de schakelaar die Cyrillisch zelf mogelijk maakt.
 
-Een verduidelijking van eerdere versies: expliciete eigenschappen `\p{L}`, `\p{N}` en `\P{...}` zijn in een Unicode-build van PCRE2 ook zonder UCP beschikbaar. Combineert een patroon `\p{L}` met `\b`, dan is UCP doorgaans wenselijk voor een consistente interpretatie van letters en woordgrenzen.
+Expliciete eigenschappen `\p{L}`, `\p{N}` en `\P{...}` zijn in een Unicode-build van PCRE2 ook zonder UCP beschikbaar. Combineert een patroon `\p{L}` met `\b`, dan is UCP doorgaans wenselijk voor een consistente interpretatie van letters en woordgrenzen.
 
 Vergelijk een Russisch woord:
 
@@ -432,7 +432,7 @@ Voeg niet automatisch punten toe, plak niet alle alinea’s met een kleine begin
 
 ## 16. De vervangingsgrammatica van FBE
 
-PCRE2 zoekt, maar FBE verwerkt de vervangende tekenreeks. Neem voorbeelden uit JavaScript, Python, .NET, PCRE2 substitute of andere editors niet zonder test over. Hieronder staan opdrachten die door broncode en oorspronkelijke FBE-documentatie zijn bevestigd. [D3, D4]
+PCRE2 zoekt, maar FBE verwerkt de vervangende tekenreeks. Neem voorbeelden uit JavaScript, Python, .NET, PCRE2 substitute of andere editors niet zonder test over.
 
 ### 16.1. Overeenkomst en groepen
 
@@ -1595,7 +1595,7 @@ Vergelijk de FBE-grammatica in hoofdstuk 16. `${name}`, `$10`, `\n` en `\x{...}`
 
 ### 18.5. Gemengde alfabetten worden in een normale tweetalige zin gevonden
 
-Een oud voorbeeld controleerde beide alfabetten ergens in de hele regel en vond ook `Он прочитал Latin.`. D12 beperkt beide voorwaarden tot één woord: het onderscheid tussen OCR-diagnose en een tweetalige regel.
+D12 vereist Cyrillische en Latijnse letters binnen hetzelfde woord. De tweetalige regel `Он прочитал Latin.` wordt daardoor niet als OCR-fout gemarkeerd.
 
 ### 18.6. “Punt ontbreekt” markeert een correct citaat
 
@@ -1623,16 +1623,6 @@ Voer na structureel gevoelige wijzigingen FBE-documentcontrole uit. Sla op, open
 
 ## 21. Bronnen en geldigheidsgrenzen
 
-Deze handleiding bewerkt het aangeleverde regex-design.md met herschreven toelichting en testvoorbeelden. Onnauwkeurigheden over UCP, zoekobjectgrenzen, gemengde alfabetten en vervanging zijn met primaire bronnen verduidelijkt. De recepten in hoofdstuk 17 zijn eigen redactionele scenario’s, geen citaten uit PCRE2-documentatie.
+[D1] [Officiële PCRE2-syntaxis: ankers, groepen, Unicode-eigenschappen, backtracking en opties.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Officiële PCRE2-syntaxis: ankers, groepen, Unicode-eigenschappen, backtracking en opties.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Officiële PCRE2-Unicode-documentatie.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] FBE Next: PCRE2-compatibiliteit en adapter, revisie d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Officiële PCRE2-Unicode-documentatie.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

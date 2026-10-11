@@ -1,10 +1,10 @@
 # Příručka regulárních výrazů — Návrh
 
-Poznámka k překladu: ruská slova a věty v kontrolních příkladech jsou záměrně ponechány beze změny. Jde o testovací data: regulární výrazy, nahrazovací řetězce, bílé znaky a očekávané výsledky odpovídají ruskému referenčnímu vydání. Vysvětlení jsou přeložena; příklady nejsou automaticky přizpůsobeny českým typografickým pravidlům.
+Ruská slova v příkladech zůstávají beze změny; pravidla závislá na jazyce před použitím na český text zkontrolujte.
 
 Úplná příručka hledání, nahrazování a korektur knih ve FictionBook Editor Next.
 
-Vydání: 2. října 2026. Režim Kód popisuje samostatný soubor regex-source.md. „Vzor“ zde znamená regulární výraz; „vestavěná šablona“ je uložená kombinace výrazu a nastavení v panelu Šablony. Design označuje vizuální režim Návrh.
+Režim Kód popisuje samostatný soubor regex-source.md. „Vzor“ zde znamená regulární výraz; „vestavěná šablona“ je uložená kombinace výrazu a nastavení v panelu Šablony. Design označuje vizuální režim Návrh.
 
 ## 1. Jak příručku používat
 
@@ -77,7 +77,7 @@ Písmeno s diakritikou může být jediný znak nebo písmeno a kombinující zn
 
 Unicode (UCP) mění především zkrácené třídy `\w`, `\d`, `\s` a na nich závislé hranice `\b` a `\B`. Není to přepínač samotné podpory azbuky.
 
-Upřesnění starších verzí nápovědy: výslovné vlastnosti `\p{L}`, `\p{N}` a `\P{...}` jsou v Unicode sestavení PCRE2 dostupné i bez UCP. Pokud však vzor kombinuje `\p{L}` a `\b`, UCP zajistí soulad významu písmen a hranic slov.
+Výslovné vlastnosti `\p{L}`, `\p{N}` a `\P{...}` jsou v Unicode sestavení PCRE2 dostupné i bez UCP. Pokud však vzor kombinuje `\p{L}` a `\b`, UCP zajistí soulad významu písmen a hranic slov.
 
 Porovnejte hledání ruského slova:
 
@@ -432,7 +432,7 @@ Nepřidávejte automaticky tečky, nespojujte všechny odstavce začínající m
 
 ## 16. Gramatika náhrad FBE
 
-PCRE2 hledá, ale řetězec náhrady interpretuje FBE. Příklady z JavaScriptu, Pythonu, .NET, PCRE2 substitute nebo jiného editoru přenášejte jen po testu. Níže jsou příkazy potvrzené kódem a původní dokumentací FBE. [D3, D4]
+PCRE2 hledá, ale řetězec náhrady interpretuje FBE. Příklady z JavaScriptu, Pythonu, .NET, PCRE2 substitute nebo jiného editoru přenášejte jen po testu.
 
 ### 16.1. Shoda a skupiny
 
@@ -1595,7 +1595,7 @@ Porovnejte gramatiku FBE v kapitole 16. `${name}`, `$10`, `\n` a `\x{...}` autom
 
 ### 18.5. Smíšené abecedy označují běžnou dvojjazyčnou větu
 
-Starší příklad hledal latinku a azbuku kdekoli na řádku a našel i `Он прочитал Latin.`. D12 omezuje obě podmínky na stejné slovo — podstatný rozdíl mezi OCR anomálií a dvojjazyčným řádkem.
+D12 vyžaduje azbuku a latinku v jednom slově. Dvojjazyčný řádek `Он прочитал Latin.` se proto neoznačí jako chyba OCR.
 
 ### 18.6. „Chybí tečka“ označí správnou citaci
 
@@ -1623,16 +1623,6 @@ Po změnách citlivých na strukturu spusťte kontrolu dokumentu FBE. Uložte, p
 
 ## 21. Zdroje a rozsah platnosti
 
-Příručka přepracovává dodaný regex-design.md s novými vysvětleními a ukázkami. Nepřesnosti v UCP, hranicích hledaného objektu, smíšených abecedách a náhradách byly upřesněny primárními zdroji. Postupy v kapitole 17 jsou samostatné redakční scénáře, nikoli citace dokumentace PCRE2.
+[D1] [Oficiální syntaxe PCRE2: kotvy, skupiny, Unicode vlastnosti, backtracking a volby.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Oficiální syntaxe PCRE2: kotvy, skupiny, Unicode vlastnosti, backtracking a volby.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Oficiální Unicode dokumentace PCRE2.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] FBE Next: kompatibilita PCRE2 a adaptér, revize d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Oficiální Unicode dokumentace PCRE2.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

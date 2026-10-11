@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="cs-CZ">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>N&#225;vrh</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — N&#225;vrh</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Jin&#253; režim"><strong>N&#225;vrh</strong><a href="regex-source.html">Zdrojov&#253; k&#243;d</a></nav><main>
 <h1 id="top">Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — N&#225;vrh</h1>
-<p>Pozn&#225;mka k překladu: rusk&#225; slova a věty v kontroln&#237;ch př&#237;kladech jsou z&#225;měrně ponech&#225;ny beze změny. Jde o testovac&#237; data: regul&#225;rn&#237; v&#253;razy, nahrazovac&#237; řetězce, b&#237;l&#233; znaky a oček&#225;van&#233; v&#253;sledky odpov&#237;daj&#237; rusk&#233;mu referenčn&#237;mu vyd&#225;n&#237;. Vysvětlen&#237; jsou přeložena; př&#237;klady nejsou automaticky přizpůsobeny česk&#253;m typografick&#253;m pravidlům.</p>
+<p>Rusk&#225; slova v př&#237;kladech zůst&#225;vaj&#237; beze změny; pravidla z&#225;visl&#225; na jazyce před použit&#237;m na česk&#253; text zkontrolujte.</p>
 <p>&#218;pln&#225; př&#237;ručka hled&#225;n&#237;, nahrazov&#225;n&#237; a korektur knih ve FictionBook Editor Next.</p>
-<p>Vyd&#225;n&#237;: 2. ř&#237;jna 2026. Režim K&#243;d popisuje samostatn&#253; soubor regex-source.md. „Vzor“ zde znamen&#225; regul&#225;rn&#237; v&#253;raz; „vestavěn&#225; šablona“ je uložen&#225; kombinace v&#253;razu a nastaven&#237; v panelu Šablony. Design označuje vizu&#225;ln&#237; režim N&#225;vrh.</p>
+<p>Režim K&#243;d popisuje samostatn&#253; soubor regex-source.md. „Vzor“ zde znamen&#225; regul&#225;rn&#237; v&#253;raz; „vestavěn&#225; šablona“ je uložen&#225; kombinace v&#253;razu a nastaven&#237; v panelu Šablony. Design označuje vizu&#225;ln&#237; režim N&#225;vrh.</p>
 <h2 id="section-1">1. Jak př&#237;ručku použ&#237;vat</h2>
 <p>Regul&#225;rn&#237; v&#253;raz popisuje pravidlo hled&#225;n&#237; m&#237;sto jedin&#233;ho přesn&#233;ho řetězce. Např&#237;klad <code>[0-9]+</code> najde libovolně dlouhou posloupnost č&#237;slic a <code>[ \t]{2,}</code> alespoň dvě obyčejn&#233; mezery nebo tabul&#225;tory. Nalezen&#225; shoda a text, kter&#253; ji m&#225; nahradit, jsou dvě různ&#233; věci.</p>
 <p>Kapitola 2 umožňuje prvn&#237; praktick&#253; pokus. Kapitoly 3–15 vysvětluj&#237; syntaxi, kapitola 16 zvl&#225;štn&#237; gramatiku n&#225;hrad FBE. Kapitola 17 obsahuje postupy pro knihy s podm&#237;nkami, testovac&#237;m textem a upozorněn&#237;mi. N&#225;sleduj&#237; čast&#233; chyby, v&#253;kon a zdroje.</p>
@@ -39,7 +39,7 @@ Oček&#225;v&#225;no: Он пришёл</code></pre></section>
 <p>P&#237;smeno s diakritikou může b&#253;t jedin&#253; znak nebo p&#237;smeno a kombinuj&#237;c&#237; znam&#233;nko. Vzhled může b&#253;t stejn&#253;, hled&#225;n&#237; po znac&#237;ch jin&#233;. PCRE2 neprov&#225;d&#237; normalizaci NFC/NFD za uživatele. U diakritiky berte v &#250;vahu <code>\p{M}</code>.</p>
 <h3 id="section-4-2">4.2. Co měn&#237; UCP</h3>
 <p>Unicode (UCP) měn&#237; předevš&#237;m zkr&#225;cen&#233; tř&#237;dy <code>\w</code>, <code>\d</code>, <code>\s</code> a na nich z&#225;visl&#233; hranice <code>\b</code> a <code>\B</code>. Nen&#237; to přep&#237;nač samotn&#233; podpory azbuky.</p>
-<p>Upřesněn&#237; starš&#237;ch verz&#237; n&#225;povědy: v&#253;slovn&#233; vlastnosti <code>\p{L}</code>, <code>\p{N}</code> a <code>\P{...}</code> jsou v Unicode sestaven&#237; PCRE2 dostupn&#233; i bez UCP. Pokud však vzor kombinuje <code>\p{L}</code> a <code>\b</code>, UCP zajist&#237; soulad v&#253;znamu p&#237;smen a hranic slov.</p>
+<p>V&#253;slovn&#233; vlastnosti <code>\p{L}</code>, <code>\p{N}</code> a <code>\P{...}</code> jsou v Unicode sestaven&#237; PCRE2 dostupn&#233; i bez UCP. Pokud však vzor kombinuje <code>\p{L}</code> a <code>\b</code>, UCP zajist&#237; soulad v&#253;znamu p&#237;smen a hranic slov.</p>
 <p>Porovnejte hled&#225;n&#237; rusk&#233;ho slova:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
 <p>S UCP se hranice ř&#237;d&#237; Unicode tř&#237;dou slova. Bez UCP neoček&#225;vejte, že <code>\b</code> bude pro azbuku fungovat stejně jako pro latinku ASCII. Nenalezen&#225; shoda nemus&#237; znamenat chyběj&#237;c&#237; slovo.</p>
@@ -221,7 +221,7 @@ Oček&#225;van&#225; n&#225;hrada pomoc&#237; [$1]: № [125]</code></pre></sect
 <p>Velk&#233; p&#237;smeno po mal&#233;m, chyběj&#237;c&#237; koncov&#233; znam&#233;nko nebo opakovan&#233; slovo jsou form&#225;ln&#237; indicie, nikoli redakčn&#237; rozhodnut&#237;. Regex nev&#237;, zda <code>да да</code> je překlep, z&#225;měrn&#225; replika, verš nebo nadpis.</p>
 <p>Nepřid&#225;vejte automaticky tečky, nespojujte všechny odstavce zač&#237;naj&#237;c&#237; mal&#253;m p&#237;smenem, nepřev&#225;dějte každou latinku na azbuku a každ&#253; spojovn&#237;k na pomlčku. Nutn&#253; je kontext a někdy několik operac&#237; na DOM. Skripty FBE pro čištěn&#237;, slepen&#225; slova a pozn&#225;mky řeš&#237; pr&#225;vě tyto širš&#237; &#250;koly.</p>
 <h2 id="section-16">16. Gramatika n&#225;hrad FBE</h2>
-<p>PCRE2 hled&#225;, ale řetězec n&#225;hrady interpretuje FBE. Př&#237;klady z JavaScriptu, Pythonu, .NET, PCRE2 substitute nebo jin&#233;ho editoru přen&#225;šejte jen po testu. N&#237;že jsou př&#237;kazy potvrzen&#233; k&#243;dem a původn&#237; dokumentac&#237; FBE. [D3, D4]</p>
+<p>PCRE2 hled&#225;, ale řetězec n&#225;hrady interpretuje FBE. Př&#237;klady z JavaScriptu, Pythonu, .NET, PCRE2 substitute nebo jin&#233;ho editoru přen&#225;šejte jen po testu.</p>
 <h3 id="section-16-1">16.1. Shoda a skupiny</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">V poli n&#225;hrady</th><th scope="col">V&#253;znam</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> nebo <code>\0</code></td><td>Cel&#225; shoda</td></tr>
@@ -666,7 +666,7 @@ Oček&#225;van&#225; n&#225;hrada pomoc&#237; [$1]: № [125]</code></pre></sect
 <h3 id="section-18-4">18.4. V n&#225;hradě se objevuj&#237; č&#237;slice nebo miz&#237; lom&#237;tka</h3>
 <p>Porovnejte gramatiku FBE v kapitole 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> a <code>\x{...}</code> automaticky neděd&#237; pravidla hled&#225;n&#237; ani jin&#233;ho editoru. Ověřte, že skupina existuje a nen&#237; voliteln&#225; v jin&#233; větvi.</p>
 <h3 id="section-18-5">18.5. Sm&#237;šen&#233; abecedy označuj&#237; běžnou dvojjazyčnou větu</h3>
-<p>Starš&#237; př&#237;klad hledal latinku a azbuku kdekoli na ř&#225;dku a našel i <code>Он прочитал Latin.</code>. D12 omezuje obě podm&#237;nky na stejn&#233; slovo — podstatn&#253; rozd&#237;l mezi OCR anom&#225;li&#237; a dvojjazyčn&#253;m ř&#225;dkem.</p>
+<p>D12 vyžaduje azbuku a latinku v jednom slově. Dvojjazyčn&#253; ř&#225;dek <code>Он прочитал Latin.</code> se proto neoznač&#237; jako chyba OCR.</p>
 <h3 id="section-18-6">18.6. „Chyb&#237; tečka“ označ&#237; spr&#225;vnou citaci</h3>
 <p>Posledn&#237; znak nestač&#237;: po <code>!</code> může n&#225;sledovat <code>&#187;</code>. D17 zahrnuje uzav&#237;rac&#237; z&#225;vorky a uvozovky, ale nadpisy a pozn&#225;mkov&#233; odkazy st&#225;le potřebuj&#237; ověřen&#237;.</p>
 <h3 id="section-18-7">18.7. Požadovan&#225; struktura se nenajde</h3>
@@ -680,11 +680,6 @@ Oček&#225;van&#225; n&#225;hrada pomoc&#237; [$1]: № [125]</code></pre></sect
 <p>Prohl&#233;dněte zač&#225;tek, střed a konec zpracovan&#233; č&#225;sti. Ověřte vzorky každ&#233;ho typu, předevš&#237;m citace, rozsahy, inici&#225;ly, pozn&#225;mky a zachovan&#233; form&#225;tov&#225;n&#237;. Zkontrolujte, zda nezmizely v&#253;znamov&#233; NBSP nebo se nepřeskupily odstavce.</p>
 <p>Po změn&#225;ch citliv&#253;ch na strukturu spusťte kontrolu dokumentu FBE. Uložte, podle potřeby znovu otevřete a porovnejte. &#218;spěšn&#233; hled&#225;n&#237; nenahrazuje validaci FB2 ani redakčn&#237; korekturu.</p>
 <h2 id="section-21">21. Zdroje a rozsah platnosti</h2>
-<p>Př&#237;ručka přepracov&#225;v&#225; dodan&#253; regex-design.md s nov&#253;mi vysvětlen&#237;mi a uk&#225;zkami. Nepřesnosti v UCP, hranic&#237;ch hledan&#233;ho objektu, sm&#237;šen&#253;ch abeced&#225;ch a n&#225;hrad&#225;ch byly upřesněny prim&#225;rn&#237;mi zdroji. Postupy v kapitole 17 jsou samostatn&#233; redakčn&#237; sc&#233;n&#225;ře, nikoli citace dokumentace PCRE2.</p>
-<p>[D1] Ofici&#225;ln&#237; syntaxe PCRE2: kotvy, skupiny, Unicode vlastnosti, backtracking a volby.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
-<p>[D2] Ofici&#225;ln&#237; Unicode dokumentace PCRE2.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
-<p>[D3] FBE Next: kompatibilita PCRE2 a adapt&#233;r, revize d2257405d95b0328649acee64b38829b40a4314b.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+<p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Ofici&#225;ln&#237; syntaxe PCRE2: kotvy, skupiny, Unicode vlastnosti, backtracking a volby.</a></p>
+<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Ofici&#225;ln&#237; Unicode dokumentace PCRE2.</a></p>
 </main></body></html>

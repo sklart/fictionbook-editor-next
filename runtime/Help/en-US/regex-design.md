@@ -1,10 +1,10 @@
 # Regular expression help — Design
 
-Translation note: Russian words and sentences in control examples are intentionally retained. They are test data: the regular expressions, replacement strings, whitespace characters and expected results are identical to the Russian reference edition. The explanations are translated; the examples are not automatically adapted to English typography.
+Russian words in the examples remain unchanged; review language-specific rules before applying them to English text.
 
 A complete guide to searching, replacing, and proofreading books in FictionBook Editor Next.
 
-Revision: October 2, 2026. Source mode has a separate document, regex-source.md. In this guide, “pattern” means a regular expression; a “built-in template” is a saved expression and its settings in the Templates panel.
+Source mode has a separate document, regex-source.md. In this guide, “pattern” means a regular expression; a “built-in template” is a saved expression and its settings in the Templates panel.
 
 ## 1. How to use this guide
 
@@ -79,7 +79,7 @@ For example, an accented letter may be stored as one character or as a letter fo
 
 Unicode (UCP) changes the meaning of shorthand classes, particularly `\w`, `\d`, and `\s`, and the dependent boundaries `\b` and `\B`. It is not the switch that enables Cyrillic text itself.
 
-An important correction to early editions of this guide: explicit Unicode properties such as `\p{L}`, `\p{N}`, and `\P{...}` are available in a Unicode PCRE2 build even without UCP. However, a pattern using both `\p{L}` and `\b` should usually enable UCP so that letters and word boundaries are interpreted consistently.
+Explicit Unicode properties such as `\p{L}`, `\p{N}`, and `\P{...}` are available in a Unicode PCRE2 build even without UCP. However, a pattern using both `\p{L}` and `\b` should usually enable UCP so that letters and word boundaries are interpreted consistently.
 
 Compare a search for a Russian word:
 
@@ -434,7 +434,7 @@ Do not automatically add periods, join every paragraph starting with lowercase, 
 
 ## 16. FBE replacement grammar
 
-PCRE2 performs the search, but FBE parses the replacement string. Replacement examples from JavaScript, Python, .NET, PCRE2 substitute, or another editor must therefore be checked before reuse. The commands below are supported by FBE’s source code and the original guide. [D3, D4]
+PCRE2 performs the search, but FBE parses the replacement string. Replacement examples from JavaScript, Python, .NET, PCRE2 substitute, or another editor must therefore be checked before reuse.
 
 ### 16.1. The match and its groups
 
@@ -1597,7 +1597,7 @@ Check FBE’s replacement grammar in section 16. `${name}`, `$10`, `\n`, and `\x
 
 ### 18.5. Mixed alphabets are found in an ordinary bilingual sentence
 
-An early example checked for Cyrillic and Latin anywhere in a whole line, also matching `Он прочитал Latin.`. Recipe D12 confines both tests to one word. This is the essential difference between finding an OCR mistake and finding a bilingual line.
+D12 requires Cyrillic and Latin letters within the same word. A bilingual line such as `Он прочитал Latin.` is not flagged as an OCR error.
 
 ### 18.6. “Missing period” flags a correct quotation
 
@@ -1625,16 +1625,6 @@ After structurally sensitive edits, run FBE’s document validation. Save, reope
 
 ## 21. Sources and applicability
 
-This is a translation of the expanded Russian guide derived from the supplied regex-design.md, with newly written explanations and test examples. Inaccurate original descriptions of UCP, subject boundaries, mixed alphabets, and replacement grammar were clarified against primary sources. The recipes in section 17 are editorial scenarios, not quotations from the PCRE2 manual.
+[D1] [Official PCRE2 pattern documentation: anchors, groups, Unicode properties, backtracking, and options.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Official PCRE2 pattern documentation: anchors, groups, Unicode properties, backtracking, and options.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Official PCRE2 Unicode documentation.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] FBE Next: PCRE2 compatibility and wrapper details. Repository snapshot d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Official PCRE2 Unicode documentation.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

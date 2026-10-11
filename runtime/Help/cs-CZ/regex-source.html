@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="cs-CZ">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Zdrojov&#253; k&#243;d</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — K&#243;d</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Jin&#253; režim"><strong>Zdrojov&#253; k&#243;d</strong><a href="regex-design.html">N&#225;vrh</a></nav><main>
 <h1 id="top">Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — K&#243;d</h1>
-<aside class="note" id="note-1"><strong>Pozn&#225;mka</strong><p>Pozn&#225;mka k překladu: rusk&#225; slova a věty v kontroln&#237;ch př&#237;kladech jsou z&#225;měrně ponech&#225;ny beze změny. Jde o testovac&#237; data: regul&#225;rn&#237; v&#253;razy, nahrazovac&#237; řetězce, b&#237;l&#233; znaky a oček&#225;van&#233; v&#253;sledky odpov&#237;daj&#237; rusk&#233;mu referenčn&#237;mu vyd&#225;n&#237;. Vysvětlen&#237; jsou přeložena; př&#237;klady nejsou automaticky přizpůsobeny česk&#253;m typografick&#253;m pravidlům.</p></aside>
+<aside class="note" id="note-1"><strong>Pozn&#225;mka</strong><p>Rusk&#225; slova v př&#237;kladech zůst&#225;vaj&#237; beze změny; pravidla z&#225;visl&#225; na jazyce před použit&#237;m na česk&#253; text zkontrolujte.</p></aside>
 <p>&#218;pln&#225; př&#237;ručka hled&#225;n&#237; a nahrazov&#225;n&#237; ve zdrojov&#233;m XML knihy v FictionBook Editor Next.</p>
-<p>Vyd&#225;n&#237;: 2. ř&#237;jna 2026. N&#225;vrh popisuje regex-design.md. Zdejš&#237; postupy patř&#237; K&#243;du; vzory PCRE2 nepřen&#225;šejte bez ověřen&#237;.</p>
+<p>N&#225;vrh popisuje regex-design.md. Zdejš&#237; postupy patř&#237; K&#243;du; vzory PCRE2 nepřen&#225;šejte bez ověřen&#237;.</p>
 <h2 id="section-1">1. K čemu slouž&#237; hled&#225;n&#237; v K&#243;du</h2>
 <p>K&#243;d ukazuje XML značky, atributy, odkazy, entity a text knihy. Hod&#237; se pro audit FB2: pr&#225;zdn&#233; prvky, importovan&#233; HTML, provizorn&#237; odkazy, neobvykl&#233; atributy a zbytky konverze.</p>
 <aside class="note" id="note-2"><strong>Pozn&#225;mka</strong><p>Regex zkoum&#225; text XML, ne parsovan&#253; strom DOM. Strukturu ověřte n&#225;strojem pro XML.</p></aside>
@@ -22,7 +22,7 @@ Shoda: &lt;p&gt;   &lt;/p&gt;
 Oček&#225;v&#225;no: Před změnou XML tento odstavec zkontrolujte.</code></pre></section>
 <p>Kop&#237;rujte jen vzor, bez <code>/.../g</code>, uvozovek řetězce C++ a zdvojen&#237; lom&#237;tek z JSON.</p>
 <h2 id="section-3">3. Modul: Scintilla, ne PCRE2</h2>
-<p>FBE použ&#237;v&#225; Scintillu s <code>SCFIND_REGEXP</code> a <code>SCFIND_CXX11REGEX</code>. Zkouman&#225; sestava použ&#237;v&#225; C++ implementaci regul&#225;rn&#237;ch v&#253;razů s gramatikou ECMAScript. Nen&#237; to PCRE2 ani &#250;pln&#253; modern&#237; JavaScript. [S1, S2]</p>
+<p>FBE použ&#237;v&#225; Scintillu s <code>SCFIND_REGEXP</code> a <code>SCFIND_CXX11REGEX</code>: regul&#225;rn&#237; v&#253;razy C++ s gramatikou ECMAScript, nikoli PCRE2 ani všechny funkce modern&#237;ho JavaScriptu. [S1]</p>
 <p>Scintilla m&#225; i starš&#237; z&#225;kladn&#237; modul s odlišn&#253;mi pravidly. Nezaměňujte star&#233; zachycovac&#237; z&#225;vorky s escape za režim C++11 FBE: <code>(слово)</code> zachycuje, <code>\(слово\)</code> vyžaduje skutečn&#233; z&#225;vorky.</p>
 <p>Unicode text nen&#237; zak&#225;z&#225;n, ale UCP a vlastnosti PCRE2 nejsou k dispozici. Tř&#237;dy z&#225;visej&#237; na standardn&#237; knihovně; <code>\w</code> neznamen&#225; všechna p&#237;smena libovoln&#233;ho jazyka. Pro předv&#237;dateln&#233; ASCII použ&#237;vejte <code>[A-Za-z0-9_]</code>, pro ruštinu <code>[А-Яа-яЁё]</code>, kter&#233; nezahrnuje celou cyrilici.</p>
 <h3 id="section-3-1">3.1. Hlavn&#237; rozd&#237;ly proti N&#225;vrhu</h3>
@@ -36,7 +36,7 @@ Oček&#225;v&#225;no: Před změnou XML tento odstavec zkontrolujte.</code></pre
 <tr><td>Přesah fyzick&#233;ho ř&#225;dku</td><td>Z&#225;vis&#237; na reprezentaci; n&#225;hrady mezi odstavci omezen&#233;</td><td>V současn&#233; cestě nepodporov&#225;n</td></tr>
 </tbody></table></div>
 <h2 id="section-4">4. Hled&#225;n&#237; po ř&#225;dc&#237;ch: z&#225;sadn&#237; omezen&#237;</h2>
-<p>Ve Scintilla cestě FBE funkce <code>MatchOnLines</code> zpracov&#225;v&#225; vzor na každ&#233;m fyzick&#233;m ř&#225;dku zvl&#225;šť. Ř&#225;dek může b&#253;t velmi dlouh&#253;; jeho zalomen&#237; na obrazovce nen&#237; nov&#253; fyzick&#253; ř&#225;dek. [S2]</p>
+<p>Ve Scintilla cestě FBE funkce <code>MatchOnLines</code> zpracov&#225;v&#225; vzor na každ&#233;m fyzick&#233;m ř&#225;dku zvl&#225;šť. Ř&#225;dek může b&#253;t velmi dlouh&#253;; jeho zalomen&#237; na obrazovce nen&#237; nov&#253; fyzick&#253; ř&#225;dek.</p>
 <aside class="warning" id="warning-1"><strong>Varov&#225;n&#237;</strong><p>Regex ve Zdrojov&#233;m režimu nemůže v současn&#233; cestě hledat přes fyzick&#233; ř&#225;dky; vzor je nespoj&#237;.</p></aside>
 <p>Porovnejte:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
@@ -104,7 +104,7 @@ Oček&#225;v&#225;no: Před změnou XML tento odstavec zkontrolujte.</code></pre
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Lev&#253; kontext zachyťte a vraťte v n&#225;hradě: lookbehind nen&#237; dostupn&#253;. <code>(?&lt;=...)</code> z N&#225;vrhu sem nekop&#237;rujte.</p>
 <h2 id="section-9">9. Nahrazov&#225;n&#237; v K&#243;du</h2>
-<p>FBE použ&#237;v&#225; <code>SCI_REPLACETARGETRE</code>: shoda již existuje a Scintilla rozv&#237;j&#237; n&#225;hradu. Nejde o <code>std::regex_replace</code> s <code>$1</code> ani o gramatiku n&#225;hrad Design. [S1, S2]</p>
+<p>FBE použ&#237;v&#225; <code>SCI_REPLACETARGETRE</code>: shoda již existuje a Scintilla rozv&#237;j&#237; n&#225;hradu. Nejde o <code>std::regex_replace</code> s <code>$1</code> ani o gramatiku n&#225;hrad Design. [S1]</p>
 <h3 id="section-9-1">9.1. Odkazy na skupiny</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">V poli n&#225;hrady</th><th scope="col">V&#253;znam</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>Cel&#225; shoda</td></tr>
@@ -118,7 +118,7 @@ Oček&#225;v&#225;no: Před změnou XML tento odstavec zkontrolujte.</code></pre
 <p><code>(12)</code> se změn&#237; na <code>[12]</code>. Smysl to m&#225; jen ve zvolen&#233;m kontextu: č&#237;slo v kulat&#253;ch z&#225;vork&#225;ch nemus&#237; b&#253;t pozn&#225;mkou.</p>
 <p>Dolar ve Source nen&#237; třeba zdvojovat podle pravidel ciz&#237;ho syst&#233;mu. Zpětn&#233; lom&#237;tko naopak zůst&#225;v&#225; ř&#237;dic&#237;m znakem.</p>
 <h3 id="section-9-2">9.2. Ř&#237;dic&#237; znaky v n&#225;hradě</h3>
-<p>Zkouman&#253; k&#243;d Scintilla rozvine <code>\t</code>, <code>\n</code>, <code>\r</code> a <code>\\</code> na tabul&#225;tor, LF, CR a doslovn&#233; lom&#237;tko. Nez&#225;vis&#237; to na nemožnosti hled&#225;n&#237; přes ř&#225;dky. [S2]</p>
+<p>Scintilla interpretuje <code>\t</code>, <code>\n</code>, <code>\r</code> a <code>\\</code> jako tabul&#225;tor, LF, CR a doslovn&#233; zpětn&#233; lom&#237;tko. To neumožňuje hled&#225;n&#237; přes fyzick&#233; ř&#225;dky.</p>
 <p>Pro CRLF použijte <code>\r\n</code>, pro LF <code>\n</code>, podle dokumentu. Nevytv&#225;řejte omylem sm&#237;šen&#233; konce ř&#225;dků.</p>
 <p>PCRE2 z&#225;pis <code>\x{00A0}</code> nevlož&#237; Unicode znak; pro NBSP je nutn&#253; skutečn&#253; znak. <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> z N&#225;vrhu zde neř&#237;d&#237; velikost ani form&#225;tov&#225;n&#237;.</p>
 <h3 id="section-9-3">9.3. Maz&#225;n&#237; a integrita XML</h3>
@@ -566,12 +566,6 @@ Oček&#225;v&#225;no: Před změnou XML tento odstavec zkontrolujte.</code></pre
 <p>Porovnejte oček&#225;van&#253; a skutečn&#253; rozsah. U skupin ověřte uvozovky, prefixy, &#250;hlov&#233; z&#225;vorky a uzav&#237;rac&#237; značky. Zkontrolujte, že se nedotkly koment&#225;ře, CDATA a binary.</p>
 <p>Validujte FB2, uložte a po v&#253;znamn&#253;ch změn&#225;ch znovu otevřete. Ověřte přep&#237;n&#225;n&#237; K&#243;d ↔ N&#225;vrh, pozn&#225;mky, obr&#225;zky a viditeln&#253; text. Při přejmenov&#225;n&#237; ID kontrolujte objekt i všechny souvisej&#237;c&#237; odkazy.</p>
 <h2 id="section-17">17. Zdroje a rozsah platnosti</h2>
-<p>Př&#237;ručka rozšiřuje dodan&#253; regex-source.md. Zachov&#225;v&#225; postup modul → syntaxe → n&#225;hrady → XML → omezen&#237; a zpřesňuje př&#237;liš obecn&#233; př&#237;klady. Vysvětlen&#237; i uk&#225;zky jsou přepracovan&#233; a technick&#233; rozd&#237;ly ověřen&#233; prim&#225;rn&#237;mi zdroji.</p>
-<p>[S1] Ofici&#225;ln&#237; dokumentace Scintilla, Searching: C++11 režim, vyhled&#225;vac&#237; volby a SCI_REPLACETARGETRE.</p>
-<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
-<p>[S2] Scintilla v revizi FBE Next d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Rozlišuje hled&#225;n&#237; přes ř&#225;dky od vložen&#237; CR/LF n&#225;hradou.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
-<p>[S3] W3C XML 1.0 a Namespaces in XML: n&#225;zvy, atributy, entity a jmenn&#233; prostory.</p>
-<p><code>https://www.w3.org/TR/xml/</code></p>
-<p><code>https://www.w3.org/TR/xml-names/</code></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Ofici&#225;ln&#237; dokumentace Scintilla, Searching: C++11 režim, vyhled&#225;vac&#237; volby a SCI_REPLACETARGETRE.</a></p>
+<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 a Namespaces in XML: n&#225;zvy, atributy, entity a jmenn&#233; prostory.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

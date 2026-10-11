@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en-US">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Design</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Regular expression help — Design</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Other mode"><strong>Design</strong><a href="regex-source.html">Source</a></nav><main>
 <h1 id="top">Regular expression help — Design</h1>
-<p>Translation note: Russian words and sentences in control examples are intentionally retained. They are test data: the regular expressions, replacement strings, whitespace characters and expected results are identical to the Russian reference edition. The explanations are translated; the examples are not automatically adapted to English typography.</p>
+<p>Russian words in the examples remain unchanged; review language-specific rules before applying them to English text.</p>
 <p>A complete guide to searching, replacing, and proofreading books in FictionBook Editor Next.</p>
-<p>Revision: October 2, 2026. Source mode has a separate document, regex-source.md. In this guide, “pattern” means a regular expression; a “built-in template” is a saved expression and its settings in the Templates panel.</p>
+<p>Source mode has a separate document, regex-source.md. In this guide, “pattern” means a regular expression; a “built-in template” is a saved expression and its settings in the Templates panel.</p>
 <h2 id="section-1">1. How to use this guide</h2>
 <p>A regular expression describes a search rule rather than one exact string. For example, <code>[0-9]+</code> finds a sequence of digits of any length, while <code>[ \t]{2,}</code> finds two or more ordinary spaces or tabs. The match itself and the text used to replace it are different things.</p>
 <p>Section 2 provides a first practical result. Sections 3–15 explain the syntax. Section 16 covers FBE’s special replacement grammar. Section 17 collects ready-to-use book-editing recipes, each with settings, test text, and warnings. Troubleshooting, performance advice, and sources follow at the end.</p>
@@ -40,7 +40,7 @@ Expected: Он пришёл</code></pre></section>
 <p>For example, an accented letter may be stored as one character or as a letter followed by a separate combining mark. The forms look similar, but character-by-character searches may differ. PCRE2 does not perform NFC/NFD normalization for you. Books containing diacritics may require the combining-mark class <code>\p{M}</code>.</p>
 <h3 id="section-4-2">4.2. What UCP does</h3>
 <p>Unicode (UCP) changes the meaning of shorthand classes, particularly <code>\w</code>, <code>\d</code>, and <code>\s</code>, and the dependent boundaries <code>\b</code> and <code>\B</code>. It is not the switch that enables Cyrillic text itself.</p>
-<p>An important correction to early editions of this guide: explicit Unicode properties such as <code>\p{L}</code>, <code>\p{N}</code>, and <code>\P{...}</code> are available in a Unicode PCRE2 build even without UCP. However, a pattern using both <code>\p{L}</code> and <code>\b</code> should usually enable UCP so that letters and word boundaries are interpreted consistently.</p>
+<p>Explicit Unicode properties such as <code>\p{L}</code>, <code>\p{N}</code>, and <code>\P{...}</code> are available in a Unicode PCRE2 build even without UCP. However, a pattern using both <code>\p{L}</code> and <code>\b</code> should usually enable UCP so that letters and word boundaries are interpreted consistently.</p>
 <p>Compare a search for a Russian word:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
 <p>With UCP, boundaries follow the Unicode word class. Without UCP, do not expect <code>\b</code> to behave on Cyrillic as it does on Latin ASCII text. A missing match here does not prove that the word is absent.</p>
@@ -222,7 +222,7 @@ Expected replacement with [$1]: № [125]</code></pre></section>
 <p>“Uppercase after lowercase”, “no punctuation at the end of a paragraph”, and “repeated word” are formal signals, not editorial decisions. Regex does not know whether <code>да да</code> is a typo, an intentional line of dialogue, part of a poem, or a heading.</p>
 <p>Do not automatically add periods, join every paragraph starting with lowercase, replace all Latin letters with Cyrillic, or convert every hyphen to a dash. Complex operations need context and sometimes several DOM-based steps. FBE’s cleanup, joined-word, and note scripts address precisely these more complex tasks.</p>
 <h2 id="section-16">16. FBE replacement grammar</h2>
-<p>PCRE2 performs the search, but FBE parses the replacement string. Replacement examples from JavaScript, Python, .NET, PCRE2 substitute, or another editor must therefore be checked before reuse. The commands below are supported by FBE’s source code and the original guide. [D3, D4]</p>
+<p>PCRE2 performs the search, but FBE parses the replacement string. Replacement examples from JavaScript, Python, .NET, PCRE2 substitute, or another editor must therefore be checked before reuse.</p>
 <h3 id="section-16-1">16.1. The match and its groups</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">In the replacement field</th><th scope="col">Meaning</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> or <code>\0</code></td><td>The whole match</td></tr>
@@ -667,7 +667,7 @@ Expected replacement with [$1]: № [125]</code></pre></section>
 <h3 id="section-18-4">18.4. Replacement inserts digits, loses backslashes, or ignores a group name</h3>
 <p>Check FBE’s replacement grammar in section 16. <code>${name}</code>, <code>$10</code>, <code>\n</code>, and <code>\x{...}</code> must not be interpreted according to search rules or another editor. Make sure the required capture exists and is not optional in another branch.</p>
 <h3 id="section-18-5">18.5. Mixed alphabets are found in an ordinary bilingual sentence</h3>
-<p>An early example checked for Cyrillic and Latin anywhere in a whole line, also matching <code>Он прочитал Latin.</code>. Recipe D12 confines both tests to one word. This is the essential difference between finding an OCR mistake and finding a bilingual line.</p>
+<p>D12 requires Cyrillic and Latin letters within the same word. A bilingual line such as <code>Он прочитал Latin.</code> is not flagged as an OCR error.</p>
 <h3 id="section-18-6">18.6. “Missing period” flags a correct quotation</h3>
 <p>Checking only the final character is insufficient: <code>&#187;</code> may follow <code>!</code>. Recipe D17 accounts for closing quotes and brackets, but headings and notes still require review.</p>
 <h3 id="section-18-7">18.7. A structure cannot be found</h3>
@@ -681,11 +681,6 @@ Expected replacement with [$1]: № [125]</code></pre></section>
 <p>Inspect the beginning, middle, and end of the processed fragment. Review several matches of each type, especially quotations, ranges, initials, notes, and preserved formatting. Make sure significant NBSP characters have not disappeared and paragraphs have not changed unexpectedly.</p>
 <p>After structurally sensitive edits, run FBE’s document validation. Save, reopen when appropriate, and compare the result. A successful regex search does not replace FB2 validation or editorial proofreading.</p>
 <h2 id="section-21">21. Sources and applicability</h2>
-<p>This is a translation of the expanded Russian guide derived from the supplied regex-design.md, with newly written explanations and test examples. Inaccurate original descriptions of UCP, subject boundaries, mixed alphabets, and replacement grammar were clarified against primary sources. The recipes in section 17 are editorial scenarios, not quotations from the PCRE2 manual.</p>
-<p>[D1] Official PCRE2 pattern documentation: anchors, groups, Unicode properties, backtracking, and options.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
-<p>[D2] Official PCRE2 Unicode documentation.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
-<p>[D3] FBE Next: PCRE2 compatibility and wrapper details. Repository snapshot d2257405d95b0328649acee64b38829b40a4314b.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+<p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Official PCRE2 pattern documentation: anchors, groups, Unicode properties, backtracking, and options.</a></p>
+<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Official PCRE2 Unicode documentation.</a></p>
 </main></body></html>

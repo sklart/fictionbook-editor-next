@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="pt-PT">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Design</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Manual de express&#245;es regulares — Design</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Outro modo"><strong>Design</strong><a href="regex-source.html">C&#243;digo</a></nav><main>
 <h1 id="top">Manual de express&#245;es regulares — Design</h1>
-<p>Nota sobre a tradu&#231;&#227;o: as palavras e frases russas dos exemplos de controlo s&#227;o mantidas intencionalmente. S&#227;o dados de teste: as express&#245;es regulares, os textos de substitui&#231;&#227;o, os espa&#231;os e os resultados esperados coincidem com a edi&#231;&#227;o russa de refer&#234;ncia. As explica&#231;&#245;es foram traduzidas; os exemplos n&#227;o s&#227;o adaptados automaticamente &#224;s conven&#231;&#245;es tipogr&#225;ficas portuguesas.</p>
+<p>As palavras russas dos exemplos mant&#234;m-se; reveja as regras dependentes da l&#237;ngua antes de as aplicar a texto portugu&#234;s.</p>
 <p>Guia completo de pesquisa, substitui&#231;&#227;o e revis&#227;o de livros no FictionBook Editor Next.</p>
-<p>Edi&#231;&#227;o: 2 de outubro de 2026. O modo C&#243;digo &#233; tratado no documento regex-source.md. Neste manual, &#171;padr&#227;o&#187; significa uma express&#227;o regular; um &#171;modelo incorporado&#187; &#233; um conjunto guardado de express&#227;o e op&#231;&#245;es no painel Modelos.</p>
+<p>O modo C&#243;digo &#233; tratado no documento regex-source.md. Neste manual, &#171;padr&#227;o&#187; significa uma express&#227;o regular; um &#171;modelo incorporado&#187; &#233; um conjunto guardado de express&#227;o e op&#231;&#245;es no painel Modelos.</p>
 <h2 id="section-1">1. Como utilizar o manual</h2>
 <p>Uma express&#227;o regular descreve uma regra de pesquisa, em vez de uma &#250;nica cadeia exata. Por exemplo, <code>[0-9]+</code> encontra uma sequ&#234;ncia de algarismos de qualquer comprimento e <code>[ \t]{2,}</code> encontra dois ou mais espa&#231;os normais ou tabula&#231;&#245;es. A correspond&#234;ncia encontrada e o texto que a substitui s&#227;o entidades diferentes.</p>
 <p>A sec&#231;&#227;o 2 permite obter um primeiro resultado pr&#225;tico. As sec&#231;&#245;es 3–15 explicam a sintaxe; a sec&#231;&#227;o 16 descreve a gram&#225;tica espec&#237;fica de substitui&#231;&#227;o do FBE. A sec&#231;&#227;o 17 re&#250;ne receitas para livros, com condi&#231;&#245;es, texto de teste e avisos. No fim encontram-se problemas comuns, desempenho e fontes.</p>
@@ -39,7 +39,7 @@ Esperado: Он пришёл</code></pre></section>
 <p>Uma letra acentuada pode ser um car&#225;cter &#250;nico ou uma letra seguida de um sinal combinante. O aspeto pode ser semelhante, mas a pesquisa car&#225;cter a car&#225;cter diferente. O PCRE2 n&#227;o faz normaliza&#231;&#227;o NFC/NFD pelo utilizador. Em livros com diacr&#237;ticos, considere <code>\p{M}</code>.</p>
 <h3 id="section-4-2">4.2. O que faz UCP</h3>
 <p>Unicode (UCP) altera sobretudo as classes abreviadas <code>\w</code>, <code>\d</code>, <code>\s</code> e os limites <code>\b</code> e <code>\B</code> que delas dependem. N&#227;o &#233; o interruptor que permite o pr&#243;prio cir&#237;lico.</p>
-<p>Precis&#227;o relativamente a vers&#245;es anteriores: numa compila&#231;&#227;o Unicode de PCRE2, as propriedades expl&#237;citas <code>\p{L}</code>, <code>\p{N}</code> e <code>\P{...}</code> est&#227;o dispon&#237;veis sem UCP. Por&#233;m, quando uma express&#227;o combina <code>\p{L}</code> com <code>\b</code>, UCP torna coerentes a no&#231;&#227;o de letra e a de limite de palavra.</p>
+<p>Numa compila&#231;&#227;o Unicode de PCRE2, as propriedades expl&#237;citas <code>\p{L}</code>, <code>\p{N}</code> e <code>\P{...}</code> est&#227;o dispon&#237;veis sem UCP. Por&#233;m, quando uma express&#227;o combina <code>\p{L}</code> com <code>\b</code>, UCP torna coerentes a no&#231;&#227;o de letra e a de limite de palavra.</p>
 <p>Compare a pesquisa de uma palavra russa:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
 <p>Com UCP, os limites seguem a classe de palavra Unicode. Sem UCP, n&#227;o espere o mesmo comportamento de <code>\b</code> para cir&#237;lico e texto latino ASCII. A aus&#234;ncia de correspond&#234;ncia n&#227;o prova a aus&#234;ncia da palavra.</p>
@@ -221,7 +221,7 @@ Substitui&#231;&#227;o esperada com [$1]: № [125]</code></pre></section>
 <p>&#171;Mai&#250;scula depois de min&#250;scula&#187;, &#171;falta de pontua&#231;&#227;o final&#187; e &#171;palavra repetida&#187; s&#227;o ind&#237;cios formais, n&#227;o decis&#245;es editoriais. Regex n&#227;o sabe se <code>да да</code> &#233; uma gralha, fala intencional, verso ou t&#237;tulo.</p>
 <p>N&#227;o acrescente pontos automaticamente, n&#227;o una todos os par&#225;grafos com inicial min&#250;scula, n&#227;o troque todas as letras latinas por cir&#237;licas nem todos os h&#237;fenes por travess&#245;es. &#201; necess&#225;rio contexto e, por vezes, v&#225;rios passos no DOM. Os scripts FBE de limpeza, palavras coladas e notas tratam precisamente tarefas mais complexas.</p>
 <h2 id="section-16">16. Gram&#225;tica de substitui&#231;&#227;o FBE</h2>
-<p>O PCRE2 pesquisa, mas o FBE interpreta a substitui&#231;&#227;o. N&#227;o transfira exemplos de JavaScript, Python, .NET, PCRE2 substitute ou outro editor sem testar. Os comandos seguintes est&#227;o confirmados pelo c&#243;digo e pela documenta&#231;&#227;o original FBE. [D3, D4]</p>
+<p>O PCRE2 pesquisa, mas o FBE interpreta a substitui&#231;&#227;o. N&#227;o transfira exemplos de JavaScript, Python, .NET, PCRE2 substitute ou outro editor sem testar.</p>
 <h3 id="section-16-1">16.1. Correspond&#234;ncia e grupos</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">No campo de substitui&#231;&#227;o</th><th scope="col">Significado</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> ou <code>\0</code></td><td>Correspond&#234;ncia completa</td></tr>
@@ -666,7 +666,7 @@ Substitui&#231;&#227;o esperada com [$1]: № [125]</code></pre></section>
 <h3 id="section-18-4">18.4. Apareceram algarismos ou desapareceram barras na substitui&#231;&#227;o</h3>
 <p>Compare a gram&#225;tica FBE com a sec&#231;&#227;o 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> e <code>\x{...}</code> n&#227;o seguem automaticamente as regras da pesquisa ou de outro editor. Confirme que a captura existe e n&#227;o &#233; opcional noutra alternativa.</p>
 <h3 id="section-18-5">18.5. Mistura de alfabetos num texto bilingue normal</h3>
-<p>Um exemplo antigo procurava ambos os alfabetos em qualquer ponto da linha, encontrando <code>Он прочитал Latin.</code>. D12 restringe as duas verifica&#231;&#245;es &#224; mesma palavra. Esta &#233; a diferen&#231;a essencial entre erro OCR e frase bilingue.</p>
+<p>D12 exige cir&#237;lico e latim na mesma palavra. A linha bilingue <code>Он прочитал Latin.</code> n&#227;o &#233;, por isso, assinalada como erro OCR.</p>
 <h3 id="section-18-6">18.6. &#171;Falta de ponto&#187; assinala uma cita&#231;&#227;o correta</h3>
 <p>N&#227;o basta verificar o &#250;ltimo car&#225;cter: <code>!</code> pode ser seguido de <code>&#187;</code>. D17 considera aspas e par&#234;nteses finais, mas t&#237;tulos e refer&#234;ncias de notas continuam a exigir revis&#227;o.</p>
 <h3 id="section-18-7">18.7. A estrutura pretendida n&#227;o &#233; encontrada</h3>
@@ -680,11 +680,6 @@ Substitui&#231;&#227;o esperada com [$1]: № [125]</code></pre></section>
 <p>Examine o in&#237;cio, meio e fim do fragmento alterado. Verifique exemplos de cada tipo, sobretudo aspas, intervalos, iniciais, notas e formata&#231;&#227;o conservada. Confirme que n&#227;o desapareceram NBSP significativos nem se alteraram par&#225;grafos inesperadamente.</p>
 <p>Ap&#243;s altera&#231;&#245;es sens&#237;veis &#224; estrutura, execute a verifica&#231;&#227;o FBE. Guarde, reabra se necess&#225;rio e compare o resultado. Uma pesquisa bem-sucedida n&#227;o substitui a valida&#231;&#227;o FB2 nem a revis&#227;o editorial.</p>
 <h2 id="section-21">21. Fontes e &#226;mbito de aplica&#231;&#227;o</h2>
-<p>Este manual reformula o regex-design.md fornecido, com explica&#231;&#245;es e amostras reescritas. As imprecis&#245;es sobre UCP, objeto de pesquisa, alfabetos mistos e gram&#225;tica de substitui&#231;&#227;o foram esclarecidas por fontes prim&#225;rias. As receitas da sec&#231;&#227;o 17 s&#227;o cen&#225;rios editoriais originais, n&#227;o cita&#231;&#245;es do manual PCRE2.</p>
-<p>[D1] Sintaxe oficial PCRE2: &#226;ncoras, grupos, propriedades Unicode, retrocesso e op&#231;&#245;es.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
-<p>[D2] Documenta&#231;&#227;o oficial Unicode PCRE2.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
-<p>[D3] FBE Next: compatibilidade PCRE2 e adaptador. Revis&#227;o d2257405d95b0328649acee64b38829b40a4314b.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+<p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Sintaxe oficial PCRE2: &#226;ncoras, grupos, propriedades Unicode, retrocesso e op&#231;&#245;es.</a></p>
+<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Documenta&#231;&#227;o oficial Unicode PCRE2.</a></p>
 </main></body></html>

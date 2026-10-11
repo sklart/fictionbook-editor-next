@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="nl-NL">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Broncode</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Handleiding voor reguliere expressies — Code</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Andere modus"><strong>Broncode</strong><a href="regex-design.html">Ontwerp</a></nav><main>
 <h1 id="top">Handleiding voor reguliere expressies — Code</h1>
-<aside class="note" id="note-1"><strong>Opmerking</strong><p>Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.</p></aside>
+<aside class="note" id="note-1"><strong>Opmerking</strong><p>Russische woorden in de voorbeelden blijven ongewijzigd; controleer taalafhankelijke regels voordat u ze op Nederlandse tekst toepast.</p></aside>
 <p>Een volledig overzicht van zoeken en vervangen in de XML-bron van boeken in FictionBook Editor Next.</p>
-<p>Editie: 2 oktober 2026. Ontwerp wordt beschreven in regex-design.md. Deze recepten gelden voor Code; neem geen PCRE2-patronen over zonder controle.</p>
+<p>Ontwerp wordt beschreven in regex-design.md. Deze recepten gelden voor Code; neem geen PCRE2-patronen over zonder controle.</p>
 <h2 id="section-1">1. Waarvoor zoeken in Code dient</h2>
 <p>Code toont XML-tags, attributen, verwijzingen, entiteiten en boektekst. Het is geschikt voor FB2-controle: lege elementen, ge&#239;mporteerde HTML-tags, tijdelijke verwijzingen, onverwachte attributen en technische conversieresten.</p>
 <aside class="note" id="note-2"><strong>Opmerking</strong><p>Regex onderzoekt XML-tekst, geen geparseerde DOM-boom. Controleer structuur met een XML-hulpmiddel.</p></aside>
@@ -22,7 +22,7 @@ Overeenkomst: &lt;p&gt;   &lt;/p&gt;
 Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section>
 <p>Plak uitsluitend het patroon, zonder <code>/.../g</code>, C++-stringtekens en dubbele JSON-backslashes.</p>
 <h2 id="section-3">3. Engine: Scintilla, niet PCRE2</h2>
-<p>FBE gebruikt Scintilla met <code>SCFIND_REGEXP</code> en <code>SCFIND_CXX11REGEX</code>. De onderzochte build gebruikt C++-regex met ECMAScript-grammatica. Dat is geen PCRE2 en omvat niet alle moderne JavaScript-functies. [S1, S2]</p>
+<p>FBE gebruikt Scintilla met <code>SCFIND_REGEXP</code> en <code>SCFIND_CXX11REGEX</code>: C++-reguliere expressies met ECMAScript-grammatica, niet PCRE2 of alle functies van modern JavaScript. [S1]</p>
 <p>Scintilla heeft ook een oudere basisengine met andere conventies. Verwar oude captures met ge-escapete haakjes niet met FBE’s C++11-modus: <code>(слово)</code> legt vast, <code>\(слово\)</code> vereist letterlijke haakjes.</p>
 <p>Unicode-tekst is toegestaan, maar er zijn geen UCP- of PCRE2-eigenschappen. Tekenklassen hangen af van de standaardbibliotheek: <code>\w</code> betekent niet automatisch alle letters uit elke taal. Gebruik <code>[A-Za-z0-9_]</code> voor voorspelbaar ASCII, of <code>[А-Яа-яЁё]</code> voor Russisch, niet voor geheel Cyrillisch.</p>
 <h3 id="section-3-1">3.1. Belangrijkste verschillen met Ontwerp</h3>
@@ -36,7 +36,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <tr><td>Fysieke regels oversteken</td><td>Afhankelijk van zoekweergave; vervanging tussen alinea’s beperkt</td><td>In huidig pad niet ondersteund</td></tr>
 </tbody></table></div>
 <h2 id="section-4">4. Regelgewijs zoeken: de belangrijkste beperking</h2>
-<p>In het gebruikte Scintilla-pad past <code>MatchOnLines</code> het patroon afzonderlijk op elke fysieke regel toe. Een regel kan zeer lang zijn; visueel afbreken aan de vensterrand schept geen nieuwe fysieke regel. [S2]</p>
+<p>In het gebruikte Scintilla-pad past <code>MatchOnLines</code> het patroon afzonderlijk op elke fysieke regel toe. Een regel kan zeer lang zijn; visueel afbreken aan de vensterrand schept geen nieuwe fysieke regel.</p>
 <aside class="warning" id="warning-1"><strong>Waarschuwing</strong><p>In het huidige zoekpad kan regex in Broncode geen fysieke regels overschrijden; geen patroon voegt ze samen.</p></aside>
 <p>Vergelijk:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
@@ -104,7 +104,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Leg context links vast en voeg die bij de vervanging terug: lookbehind ontbreekt hier. Kopieer geen <code>(?&lt;=...)</code> uit de Ontwerp-handleiding.</p>
 <h2 id="section-9">9. Vervangen in Code</h2>
-<p>FBE gebruikt <code>SCI_REPLACETARGETRE</code>: de overeenkomst is gevonden en Scintilla werkt de vervangingsstring uit. Dit is niet <code>std::regex_replace</code> met <code>$1</code>, noch FBE’s Design-grammatica. [S1, S2]</p>
+<p>FBE gebruikt <code>SCI_REPLACETARGETRE</code>: de overeenkomst is gevonden en Scintilla werkt de vervangingsstring uit. Dit is niet <code>std::regex_replace</code> met <code>$1</code>, noch FBE’s Design-grammatica. [S1]</p>
 <h3 id="section-9-1">9.1. Verwijzingen naar captures</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">In het vervangingsveld</th><th scope="col">Betekenis</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>Hele overeenkomst</td></tr>
@@ -118,7 +118,7 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p><code>(12)</code> wordt <code>[12]</code>. Dat is alleen zinvol in de gekozen context: een getal tussen ronde haakjes is niet noodzakelijk een nootnummer.</p>
 <p>Een dollarteken in Source hoeft niet volgens een ander systeem te worden verdubbeld. De backslash is wel een stuurteken.</p>
 <h3 id="section-9-2">9.2. Stuurtekens in de vervanging</h3>
-<p>De gecontroleerde Scintilla-code verwerkt <code>\t</code>, <code>\n</code>, <code>\r</code> en <code>\\</code> als tab, LF, CR en letterlijke backslash. Dit staat los van het ontbreken van zoeken over regels. [S2]</p>
+<p>Scintilla interpreteert <code>\t</code>, <code>\n</code>, <code>\r</code> en <code>\\</code> in vervangingen als tab, LF, CR en een letterlijke backslash. Dit maakt zoeken over fysieke regels niet mogelijk.</p>
 <p>Gebruik <code>\r\n</code> voor CRLF en <code>\n</code> voor LF, passend bij het document. Voorkom toevallig gemengde regeleinden.</p>
 <p>PCRE2-notatie <code>\x{00A0}</code> voegt hier geen Unicode-teken in. Gebruik de echte NBSP. Design-opdrachten <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> regelen hier geen letterkast of opmaak.</p>
 <h3 id="section-9-3">9.3. Verwijderen en XML behouden</h3>
@@ -566,12 +566,6 @@ Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section
 <p>Vergelijk verwacht en werkelijk matchbereik. Controleer bij groepen quotes, prefixen, hoekhaken en sluitende tags. Let erop dat commentaar, CDATA en binary niet onbedoeld zijn gewijzigd.</p>
 <p>Valideer FB2, sla op en heropen na belangrijke wijzigingen. Controleer Code ↔ Ontwerp, voetnoten, afbeeldingen en zichtbare tekst. Controleer bij ID-hernoeming zowel het object als alle gekoppelde verwijzingen.</p>
 <h2 id="section-17">17. Bronnen en geldigheidsgrenzen</h2>
-<p>Deze handleiding breidt het aangeleverde regex-source.md uit. De volgorde engine → syntaxis → vervanging → XML → beperkingen blijft behouden, maar te brede recepten zijn aangescherpt. Toelichtingen en tests zijn herschreven en technische verschillen met primaire bronnen gecontroleerd.</p>
-<p>[S1] Offici&#235;le Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.</p>
-<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
-<p>[S2] Scintilla in FBE Next-revisie d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Dit onderscheidt over regels zoeken van CR/LF invoegen bij vervanging.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
-<p>[S3] W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.</p>
-<p><code>https://www.w3.org/TR/xml/</code></p>
-<p><code>https://www.w3.org/TR/xml-names/</code></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Offici&#235;le Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.</a></p>
+<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

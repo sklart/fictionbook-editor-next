@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="bg-BG">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Код</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ръководство за регулярни изрази — Код</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Друг режим"><strong>Код</strong><a href="regex-design.html">Дизайн</a></nav><main>
 <h1 id="top">Ръководство за регулярни изрази — Код</h1>
-<aside class="note" id="note-1"><strong>Бележка</strong><p>Бележка за превода: руските думи и изречения в контролните примери са запазени умишлено. Това са тестови данни: регулярните изрази, низовете за замяна, интервалите и очакваните резултати съответстват на руското еталонно издание. Обясненията са преведени; примерите не са автоматично адаптирани към българските типографски правила.</p></aside>
+<aside class="note" id="note-1"><strong>Бележка</strong><p>Руските думи в примерите остават непроменени; прилагайте езиково зависимите правила към български текст след преглед.</p></aside>
 <p>Пълно ръководство за търсене и замяна в XML изходния текст на книги във FictionBook Editor Next.</p>
-<p>Издание: 2 октомври 2026 г. Дизайн е описан в regex-design.md. Тези рецепти са за Код; не пренасяйте PCRE2 шаблони без проверка.</p>
+<p>Дизайн е описан в regex-design.md. Тези рецепти са за Код; не пренасяйте PCRE2 шаблони без проверка.</p>
 <h2 id="section-1">1. За какво служи търсенето в Код</h2>
 <p>Код показва XML тагове, атрибути, препратки, entities и текст. Подходящ е за FB2 одит: празни елементи, внесени HTML тагове, временни връзки, необичайни атрибути и технически следи от конверсия.</p>
 <aside class="note" id="note-2"><strong>Бележка</strong><p>Regex проверява XML текста, не разбира DOM дървото. Проверявайте структурните връзки с XML инструмент.</p></aside>
@@ -22,7 +22,7 @@
 Очаквано: Проверете този абзац, преди да променяте XML.</code></pre></section>
 <p>Копирайте само шаблона, без <code>/.../g</code>, C++ кавички и двойни JSON черти.</p>
 <h2 id="section-3">3. Двигател: Scintilla, не PCRE2</h2>
-<p>FBE използва Scintilla с <code>SCFIND_REGEXP</code> и <code>SCFIND_CXX11REGEX</code>. Проверената компилация използва C++ реализация с ECMAScript граматика. Това не е PCRE2 и не включва всички възможности на съвременния JavaScript. [S1, S2]</p>
+<p>FBE използва Scintilla с <code>SCFIND_REGEXP</code> и <code>SCFIND_CXX11REGEX</code>: C++ регулярни изрази с граматика ECMAScript, а не PCRE2 или всички възможности на съвременния JavaScript. [S1]</p>
 <p>Scintilla има и стар основен двигател с други конвенции. Не смесвайте старите групи с екранирани скоби с C++11 режима на FBE: <code>(слово)</code> улавя, а <code>\(слово\)</code> изисква буквални скоби.</p>
 <p>Unicode текстът не е забранен, но липсват отделно UCP и PCRE2 свойства. Класовете зависят от стандартната библиотека; <code>\w</code> не означава непременно всички букви от всички езици. За предвидим ASCII използвайте <code>[A-Za-z0-9_]</code>; за руски — <code>[А-Яа-яЁё]</code>, което не обхваща цялата кирилица.</p>
 <h3 id="section-3-1">3.1. Основни разлики от Дизайн</h3>
@@ -36,7 +36,7 @@
 <tr><td>Преминаване през физически редове</td><td>Зависи от представянето; замяна между абзаци ограничена</td><td>Не се поддържа в текущия път</td></tr>
 </tbody></table></div>
 <h2 id="section-4">4. Построчно търсене: основното ограничение</h2>
-<p>В Scintilla пътя, използван от FBE, <code>MatchOnLines</code> прилага шаблона отделно върху всеки физически ред. Редът може да е много дълъг; визуалното пренасяне до края на прозореца не създава нов физически ред. [S2]</p>
+<p>В Scintilla пътя, използван от FBE, <code>MatchOnLines</code> прилага шаблона отделно върху всеки физически ред. Редът може да е много дълъг; визуалното пренасяне до края на прозореца не създава нов физически ред.</p>
 <aside class="warning" id="warning-1"><strong>Внимание</strong><p>В текущото търсене Source regex не съвпада през физически редове; шаблонът не може да ги обедини.</p></aside>
 <p>Сравнете:</p>
 <pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
@@ -104,7 +104,7 @@
 <pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
 <p>Левия контекст уловете и върнете при замяната: lookbehind не е достъпен. Не копирайте <code>(?&lt;=...)</code> от ръководството Дизайн.</p>
 <h2 id="section-9">9. Замяна в Код</h2>
-<p>FBE използва <code>SCI_REPLACETARGETRE</code>: текстът вече е намерен, а Scintilla обработва заместващия низ. Това не е <code>std::regex_replace</code> с <code>$1</code>, нито граматиката на замяна Design. [S1, S2]</p>
+<p>FBE използва <code>SCI_REPLACETARGETRE</code>: текстът вече е намерен, а Scintilla обработва заместващия низ. Това не е <code>std::regex_replace</code> с <code>$1</code>, нито граматиката на замяна Design. [S1]</p>
 <h3 id="section-9-1">9.1. Препратки към групи</h3>
 <div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">В полето за замяна</th><th scope="col">Значение</th></tr></thead><tbody>
 <tr><td class="syntax"><code>\0</code></td><td>Цялото съвпадение</td></tr>
@@ -118,7 +118,7 @@
 <p><code>(12)</code> става <code>[12]</code>. Това има редакторски смисъл само в избран контекст: число в скоби не е задължително бележка.</p>
 <p>Долар в Source не се удвоява по правила от друга система. Обратната наклонена черта обаче е управляващ знак.</p>
 <h3 id="section-9-2">9.2. Управляващи знаци в замяната</h3>
-<p>В проверения Scintilla код <code>\t</code>, <code>\n</code>, <code>\r</code> и <code>\\</code> се превръщат в табулация, LF, CR и буквална обратна черта. Това е независимо от липсата на многоредово търсене. [S2]</p>
+<p>Scintilla тълкува <code>\t</code>, <code>\n</code>, <code>\r</code> и <code>\\</code> като табулация, LF, CR и буквална обратна наклонена черта. Това не позволява търсене през физически редове.</p>
 <p>За CRLF използвайте <code>\r\n</code>, а за LF — <code>\n</code>, съгласувано с документа. Избягвайте случайно смесване на окончания.</p>
 <p><code>\x{00A0}</code> PCRE2 не вмъква Unicode знак тук. За NBSP е нужен реалният знак. <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> от Дизайн не управляват регистър или оформление в Код.</p>
 <h3 id="section-9-3">9.3. Изтриване и цялост на XML</h3>
@@ -566,12 +566,6 @@
 <p>Сравнете очаквания и действителния диапазон. При групите проверете кавички, префикси, ъглови скоби и затварящи тагове. Уверете се, че коментари, CDATA и binary не са засегнати неволно.</p>
 <p>Валидирайте FB2, запишете и отворете отново след важни промени. Проверете Код ↔ Дизайн, бележки, илюстрации и видим текст. При преименуване на ID проверете обекта и всички негови връзки.</p>
 <h2 id="section-17">17. Източници и обхват на приложимост</h2>
-<p>Ръководството разширява предоставения regex-source.md. Запазва реда двигател → синтаксис → замяна → XML → ограничения, като уточнява прекалено общите рецепти. Поясненията и примерите са преработени; техническите разлики са сверени с първични източници.</p>
-<p>[S1] Официалната документация Scintilla, Searching: C++11 режим, флагове за търсене и SCI_REPLACETARGETRE.</p>
-<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
-<p>[S2] Scintilla в FBE Next ревизия d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Кодът различава търсене през редове от вмъкване на CR/LF в замяна.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
-<p>[S3] W3C XML 1.0 и Namespaces in XML: имена, атрибути, entities и пространства от имена.</p>
-<p><code>https://www.w3.org/TR/xml/</code></p>
-<p><code>https://www.w3.org/TR/xml-names/</code></p>
+<p>[S1] <a href="https://www.scintilla.org/ScintillaDoc.html#Searching" rel="noopener noreferrer">Официалната документация Scintilla, Searching: C++11 режим, флагове за търсене и SCI_REPLACETARGETRE.</a></p>
+<p>[S3] <a href="https://www.w3.org/TR/xml/" rel="noopener noreferrer">W3C XML 1.0 и Namespaces in XML: имена, атрибути, entities и пространства от имена.</a> &#183; <a href="https://www.w3.org/TR/xml-names/" rel="noopener noreferrer">Namespaces in XML</a></p>
 </main></body></html>

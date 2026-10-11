@@ -94,7 +94,6 @@ const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t FAVORITE_SCRIPTS_KEY[] = L"FavoriteScripts";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY[] = L"ScriptsToolbarCustomizeSize";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY[] = L"ScriptsToolbarCustomizePlacement";
-const wchar_t REGEX_HELP_PLACEMENT_KEY[] = L"RegexHelpPlacement";
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
 const wchar_t INTERFACE_LANG_KEY[]		= L"IntefaceLangID";
 const wchar_t INTERFACE_THEME_KEY[] = L"InterfaceTheme";
@@ -204,7 +203,6 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(UPDATE_CHANNEL_KEY);
 	properties.push_back(WINDOW_POSITION);
 	properties.push_back(WORDS_DLG_POSITION);
-	properties.push_back(REGEX_HELP_PLACEMENT_KEY);
 	properties.push_back(SHOW_WORDS_EXCLUSIONS);
 	properties.emplace_back(m_desc.GetClassName());
 	properties.emplace_back(m_tree_items.GetClassName());
@@ -536,19 +534,6 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 			m_scripts_toolbar_customize_placement.ptMaxPosition.y, m_scripts_toolbar_customize_placement.rcNormalPosition.bottom,
 			m_scripts_toolbar_customize_placement.rcNormalPosition.left, m_scripts_toolbar_customize_placement.rcNormalPosition.top,
 			m_scripts_toolbar_customize_placement.rcNormalPosition.right);
-		property = temp;
-		return true;
-	}
-	else if(sProperty == REGEX_HELP_PLACEMENT_KEY)
-	{
-		CString temp;
-		temp.Format(L"%u;%u;%u;%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld",
-			m_regex_help_placement.length, m_regex_help_placement.flags,
-			m_regex_help_placement.showCmd, m_regex_help_placement.ptMinPosition.x,
-			m_regex_help_placement.ptMinPosition.y, m_regex_help_placement.ptMaxPosition.x,
-			m_regex_help_placement.ptMaxPosition.y, m_regex_help_placement.rcNormalPosition.bottom,
-			m_regex_help_placement.rcNormalPosition.left, m_regex_help_placement.rcNormalPosition.top,
-			m_regex_help_placement.rcNormalPosition.right);
 		property = temp;
 		return true;
 	}
@@ -958,29 +943,6 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 			m_scripts_toolbar_customize_placement.rcNormalPosition.left = StrToInt(tokens[8]);
 			m_scripts_toolbar_customize_placement.rcNormalPosition.top = StrToInt(tokens[9]);
 			m_scripts_toolbar_customize_placement.rcNormalPosition.right = StrToInt(tokens[10]);
-		}
-		delete[] tokens;
-		return true;
-	}
-	else if(sProperty == REGEX_HELP_PLACEMENT_KEY)
-	{
-		CString str = sValue.GetStringValue(); int n = 0, curPos = 0;
-		while(!str.Tokenize(L";", curPos).IsEmpty()) n++;
-		CString* tokens = new CString[n]; curPos = n = 0; CString temp;
-		while(!(temp = str.Tokenize(L";", curPos)).IsEmpty()) { tokens[n] = temp; n++; }
-		if(n == 11)
-		{
-			m_regex_help_placement.length = StrToInt(tokens[0]);
-			m_regex_help_placement.flags = StrToInt(tokens[1]);
-			m_regex_help_placement.showCmd = StrToInt(tokens[2]);
-			m_regex_help_placement.ptMinPosition.x = StrToInt(tokens[3]);
-			m_regex_help_placement.ptMinPosition.y = StrToInt(tokens[4]);
-			m_regex_help_placement.ptMaxPosition.x = StrToInt(tokens[5]);
-			m_regex_help_placement.ptMaxPosition.y = StrToInt(tokens[6]);
-			m_regex_help_placement.rcNormalPosition.bottom = StrToInt(tokens[7]);
-			m_regex_help_placement.rcNormalPosition.left = StrToInt(tokens[8]);
-			m_regex_help_placement.rcNormalPosition.top = StrToInt(tokens[9]);
-			m_regex_help_placement.rcNormalPosition.right = StrToInt(tokens[10]);
 		}
 		delete[] tokens;
 		return true;

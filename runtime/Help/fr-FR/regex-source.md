@@ -1,12 +1,12 @@
 # Aide sur les expressions régulières — Code
 
 :::note
-Note sur la traduction : les mots et phrases russes des exemples de contrôle sont conservés volontairement. Il s’agit de données de test : expressions régulières, chaînes de remplacement, caractères d’espacement et résultats attendus restent identiques à ceux de l’édition russe de référence. Les explications sont traduites ; les exemples ne sont pas automatiquement adaptés aux règles typographiques françaises.
+Les mots russes des exemples restent inchangés ; vérifiez les règles liées à la langue avant de les appliquer au français.
 :::
 
 Guide complet de recherche et de remplacement dans le XML d’un livre avec FictionBook Editor Next.
 
-Édition du 2 octobre 2026. Le mode Design est décrit dans regex-design.md. Les recettes suivantes concernent le mode Code ; ne transposez pas les expressions PCRE2 sans vérification.
+Le mode Design est décrit dans regex-design.md. Les recettes suivantes concernent le mode Code ; ne transposez pas les expressions PCRE2 sans vérification.
 
 ## 1. À quoi sert la recherche en mode Code
 
@@ -43,7 +43,7 @@ Collez seulement le motif, sans `/.../g`, guillemets de chaîne C++ ni doubles b
 
 ## 3. Moteur : Scintilla, pas PCRE2
 
-FBE emploie Scintilla avec `SCFIND_REGEXP` et `SCFIND_CXX11REGEX`. Dans la version considérée, c’est une implémentation C++ de la grammaire ECMAScript, pas PCRE2 ni tout le JavaScript moderne. [S1, S2]
+FBE utilise Scintilla avec `SCFIND_REGEXP` et `SCFIND_CXX11REGEX` : des expressions régulières C++ de grammaire ECMAScript, et non PCRE2 ni toutes les fonctions du JavaScript moderne. [S1]
 
 Scintilla possède un ancien moteur de base avec d’autres conventions. Ne mélangez pas ses groupes à parenthèses échappées avec le mode C++11 : `(слово)` capture, `\(слово\)` exige des parenthèses littérales.
 
@@ -63,7 +63,7 @@ Unicode n’est pas interdit, mais UCP et les propriétés PCRE2 sont absents. L
 
 ## 4. Recherche ligne par ligne : limite essentielle
 
-`MatchOnLines` confronte le motif au contenu de chaque ligne physique séparément. Une ligne peut être longue ; son retour visuel dans la fenêtre n’en crée pas une autre. [S2]
+`MatchOnLines` confronte le motif au contenu de chaque ligne physique séparément. Une ligne peut être longue ; son retour visuel dans la fenêtre n’en crée pas une autre.
 
 :::warning
 Dans la recherche actuelle, une regex en Code ne peut franchir les lignes physiques ; aucun motif ne les fusionne.
@@ -190,7 +190,7 @@ Pour vérifier à gauche, capturez le contexte puis restituez-le dans le remplac
 
 ## 9. Remplacement en mode Code
 
-Avec `SCI_REPLACETARGETRE`, la correspondance est déjà trouvée et Scintilla interprète le remplacement. Ce n’est ni `std::regex_replace` avec `$1`, ni la grammaire Design. [S1, S2]
+Avec `SCI_REPLACETARGETRE`, la correspondance est déjà trouvée et Scintilla interprète le remplacement. Ce n’est ni `std::regex_replace` avec `$1`, ni la grammaire Design. [S1]
 
 ### 9.1. Références aux captures
 
@@ -218,7 +218,7 @@ Le dollar littéral n’a pas à être doublé selon les règles d’un autre sy
 
 ### 9.2. Caractères de contrôle au remplacement
 
-Le code Scintilla vérifié interprète `\t`, `\n`, `\r` et `\\` comme tabulation, LF, CR et barre oblique inverse. Cela ne contredit pas l’absence de recherche entre lignes. [S2]
+Scintilla interprète `\t`, `\n`, `\r` et `\\` dans le remplacement comme tabulation, LF, CR et barre oblique inverse littérale. Cela ne permet pas de rechercher entre lignes physiques.
 
 Pour CRLF, utilisez `\r\n` ; pour LF, `\n`, selon le document. Évitez de mélanger involontairement les terminaisons.
 
@@ -1372,18 +1372,6 @@ Validez FB2, enregistrez et rouvrez après les modifications importantes. Contr�
 
 ## 17. Sources et champ d’application
 
-Cette traduction reprend le guide étendu issu de regex-source.md. La structure moteur, syntaxe, remplacement, exemples XML et limites est conservée ; des motifs trop larges ont été précisés. Explications et contrôles ont été rédigés à nouveau et comparés aux sources primaires.
+[S1] [Documentation officielle Scintilla, Searching : mode C++11, options et SCI_REPLACETARGETRE.](https://www.scintilla.org/ScintillaDoc.html#Searching)
 
-[S1] Documentation officielle Scintilla, Searching : mode C++11, options et SCI_REPLACETARGETRE.
-
-`https://www.scintilla.org/ScintillaDoc.html#Searching`
-
-[S2] Code Scintilla du dépôt FBE à d2257405d95b0328649acee64b38829b40a4314b : Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Il distingue recherche interligne et insertion CR/LF au remplacement.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx`
-
-[S3] W3C XML 1.0 et Namespaces in XML : noms, attributs, entités et espaces de noms.
-
-`https://www.w3.org/TR/xml/`
-
-`https://www.w3.org/TR/xml-names/`
+[S3] [W3C XML 1.0 et Namespaces in XML : noms, attributs, entités et espaces de noms.](https://www.w3.org/TR/xml/) · [Namespaces in XML](https://www.w3.org/TR/xml-names/)

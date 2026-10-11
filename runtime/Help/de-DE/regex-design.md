@@ -1,10 +1,10 @@
 # Hilfe zu regulären Ausdrücken — Design
 
-Hinweis zur Übersetzung: Russische Wörter und Sätze in den Kontrollbeispielen bleiben absichtlich unverändert. Sie sind Testdaten: Reguläre Ausdrücke, Ersetzungstexte, Leerraumzeichen und erwartete Ergebnisse entsprechen der russischen Referenzfassung. Die Erläuterungen sind übersetzt; die Beispiele werden nicht automatisch an deutsche typografische Regeln angepasst.
+Russische Wörter in den Beispielen bleiben unverändert; prüfen Sie sprachabhängige Regeln vor der Anwendung auf deutschen Text.
 
 Vollständiges Handbuch zum Suchen, Ersetzen und Korrekturlesen von Büchern in FictionBook Editor Next.
 
-Stand: 2. Oktober 2026. Der Quelltextmodus wird in regex-source.md beschrieben. „Muster“ bezeichnet hier einen regulären Ausdruck; eine „integrierte Vorlage“ ist ein gespeicherter Ausdruck samt Einstellungen im Vorlagenbereich.
+Der Quelltextmodus wird in regex-source.md beschrieben. „Muster“ bezeichnet hier einen regulären Ausdruck; eine „integrierte Vorlage“ ist ein gespeicherter Ausdruck samt Einstellungen im Vorlagenbereich.
 
 ## 1. So verwenden Sie dieses Handbuch
 
@@ -77,7 +77,7 @@ Ein akzentuierter Buchstabe kann als einzelnes Zeichen oder als Buchstabe mit an
 
 „Unicode (UCP)“ verändert die Kurzklassen, vor allem `\w`, `\d` und `\s`, sowie die davon abhängigen Grenzen `\b` und `\B`. Es ist nicht der Schalter, der kyrillischen Text erst ermöglicht.
 
-Wichtige Präzisierung früherer Fassungen: Explizite Unicode-Eigenschaften wie `\p{L}`, `\p{N}` und `\P{...}` sind in einem Unicode-PCRE2-Build auch ohne UCP verfügbar. Enthält ein Ausdruck zugleich `\p{L}` und `\b`, sollte UCP normalerweise eingeschaltet sein, damit Buchstaben und Wortgrenzen zusammenpassen.
+Explizite Unicode-Eigenschaften wie `\p{L}`, `\p{N}` und `\P{...}` sind in einem Unicode-PCRE2-Build auch ohne UCP verfügbar. Enthält ein Ausdruck zugleich `\p{L}` und `\b`, sollte UCP normalerweise eingeschaltet sein, damit Buchstaben und Wortgrenzen zusammenpassen.
 
 Vergleichen Sie die Suche nach einem russischen Wort:
 
@@ -432,7 +432,7 @@ Fügen Sie nicht automatisch Punkte hinzu, verbinden Sie nicht alle klein beginn
 
 ## 16. Ersetzungsgrammatik von FBE
 
-PCRE2 sucht, FBE interpretiert die Ersetzungszeichenfolge. Beispiele aus JavaScript, Python, .NET, PCRE2 substitute oder anderen Editoren dürfen deshalb nicht ungeprüft übernommen werden. Die folgenden Befehle sind durch FBE-Quellcode und Ausgangshandbuch belegt. [D3, D4]
+PCRE2 sucht, FBE interpretiert die Ersetzungszeichenfolge. Beispiele aus JavaScript, Python, .NET, PCRE2 substitute oder anderen Editoren dürfen deshalb nicht ungeprüft übernommen werden.
 
 ### 16.1. Treffer und Gruppen
 
@@ -1595,7 +1595,7 @@ Vergleichen Sie die FBE-Ersetzungsgrammatik in Abschnitt 16. `${name}`, `$10`, `
 
 ### 18.5. Gemischte Alphabete in einem normalen zweisprachigen Satz
 
-Ein früheres Beispiel prüfte Kyrillisch und Lateinisch irgendwo in einer ganzen Zeile und fand daher auch `Он прочитал Latin.`. D12 begrenzt beide Prüfungen auf ein Wort. Das unterscheidet OCR-Fehlersuche wesentlich von der Suche nach zweisprachigen Zeilen.
+D12 verlangt kyrillische und lateinische Zeichen innerhalb desselben Wortes. Die zweisprachige Zeile `Он прочитал Latin.` gilt daher nicht als OCR-Fehler.
 
 ### 18.6. „Fehlender Punkt“ schlägt bei korrektem Zitat an
 
@@ -1623,16 +1623,6 @@ Führen Sie nach strukturell empfindlichen Änderungen die FBE-Dokumentprüfung 
 
 ## 21. Quellen und Geltungsbereich
 
-Diese Übersetzung beruht auf dem erweiterten russischen Handbuch zum bereitgestellten regex-design.md. Erklärungen und Kontrollbeispiele wurden neu verfasst; ungenaue Aussagen zu UCP, Suchobjektgrenzen, gemischten Alphabeten und Ersetzungsgrammatik anhand von Primärquellen präzisiert. Abschnitt 17 enthält redaktionelle Szenarien, keine Zitate aus dem PCRE2-Handbuch.
+[D1] [Offizielle PCRE2-Syntaxdokumentation: Anker, Gruppen, Unicode-Eigenschaften, Backtracking und Optionen.](https://www.pcre.org/current/doc/html/pcre2pattern.html)
 
-[D1] Offizielle PCRE2-Syntaxdokumentation: Anker, Gruppen, Unicode-Eigenschaften, Backtracking und Optionen.
-
-`https://www.pcre.org/current/doc/html/pcre2pattern.html`
-
-[D2] Offizielle Unicode-Dokumentation von PCRE2.
-
-`https://www.pcre.org/current/doc/html/pcre2unicode.html`
-
-[D3] FBE Next: PCRE2-Kompatibilität und Umhüllung. Repository-Stand d2257405d95b0328649acee64b38829b40a4314b.
-
-`https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md`
+[D2] [Offizielle Unicode-Dokumentation von PCRE2.](https://www.pcre.org/current/doc/html/pcre2unicode.html)

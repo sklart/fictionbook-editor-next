@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="nl-NL">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ontwerp</title><link rel="stylesheet" href="../regex-help.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Handleiding voor reguliere expressies — Ontwerp</title><link rel="stylesheet" href="../regex-help.css"></head>
 <body><nav aria-label="Andere modus"><strong>Ontwerp</strong><a href="regex-source.html">Broncode</a></nav><main>
 <h1 id="top">Handleiding voor reguliere expressies — Ontwerp</h1>
-<p>Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.</p>
+<p>Russische woorden in de voorbeelden blijven ongewijzigd; controleer taalafhankelijke regels voordat u ze op Nederlandse tekst toepast.</p>
 <p>Een volledige handleiding voor zoeken, vervangen en het corrigeren van boeken in FictionBook Editor Next.</p>
-<p>Editie: 2 oktober 2026. De modus Code wordt afzonderlijk beschreven in regex-source.md. “Patroon” betekent hier een reguliere expressie; een “ingebouwd sjabloon” is een opgeslagen combinatie van expressie en opties in het paneel Sjablonen. Design is de visuele modus Ontwerp.</p>
+<p>De modus Code wordt afzonderlijk beschreven in regex-source.md. “Patroon” betekent hier een reguliere expressie; een “ingebouwd sjabloon” is een opgeslagen combinatie van expressie en opties in het paneel Sjablonen. Design is de visuele modus Ontwerp.</p>
 <h2 id="section-1">1. Deze handleiding gebruiken</h2>
 <p>Een reguliere expressie beschrijft een zoekregel in plaats van &#233;&#233;n exacte tekenreeks. <code>[0-9]+</code> vindt bijvoorbeeld een reeks cijfers van willekeurige lengte; <code>[ \t]{2,}</code> vindt twee of meer gewone spaties of tabs. De gevonden overeenkomst en de tekst die ervoor in de plaats komt, zijn verschillende zaken.</p>
 <p>Hoofdstuk 2 geeft een eerste praktisch resultaat. Hoofdstukken 3–15 behandelen de syntaxis, hoofdstuk 16 de eigen vervangingsgrammatica van FBE. Hoofdstuk 17 bevat recepten voor boekbewerking, met voorwaarden, testteksten en waarschuwingen. Daarna volgen probleemoplossing, prestaties en bronnen.</p>
@@ -39,7 +39,7 @@ Verwacht: Он пришёл</code></pre></section>
 <p>Een geaccentueerde letter kan als &#233;&#233;n teken of als letter plus gecombineerd accent zijn opgeslagen. De weergave kan gelijk zijn terwijl een tekengewijze zoekopdracht verschilt. PCRE2 voert geen NFC/NFD-normalisatie voor u uit. Houd bij diakritische tekens rekening met <code>\p{M}</code>.</p>
 <h3 id="section-4-2">4.2. Wat UCP doet</h3>
 <p>Unicode (UCP) verandert vooral de verkorte klassen <code>\w</code>, <code>\d</code>, <code>\s</code> en de daarvan afhankelijke grenzen <code>\b</code> en <code>\B</code>. Het is niet de schakelaar die Cyrillisch zelf mogelijk maakt.</p>
-<p>Een verduidelijking van eerdere versies: expliciete eigenschappen <code>\p{L}</code>, <code>\p{N}</code> en <code>\P{...}</code> zijn in een Unicode-build van PCRE2 ook zonder UCP beschikbaar. Combineert een patroon <code>\p{L}</code> met <code>\b</code>, dan is UCP doorgaans wenselijk voor een consistente interpretatie van letters en woordgrenzen.</p>
+<p>Expliciete eigenschappen <code>\p{L}</code>, <code>\p{N}</code> en <code>\P{...}</code> zijn in een Unicode-build van PCRE2 ook zonder UCP beschikbaar. Combineert een patroon <code>\p{L}</code> met <code>\b</code>, dan is UCP doorgaans wenselijk voor een consistente interpretatie van letters en woordgrenzen.</p>
 <p>Vergelijk een Russisch woord:</p>
 <pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
 <p>Met UCP volgen de grenzen de Unicode-woordklasse. Verwacht zonder UCP niet dat <code>\b</code> zich voor Cyrillisch hetzelfde gedraagt als voor Latijnse ASCII-tekst. Geen treffer betekent hier niet noodzakelijk dat het woord ontbreekt.</p>
@@ -221,7 +221,7 @@ Verwachte vervanging met [$1]: № [125]</code></pre></section>
 <p>Een hoofdletter na een kleine letter, ontbrekende eindinterpunctie en een herhaald woord zijn formele aanwijzingen, geen redactionele beslissing. Regex weet niet of <code>да да</code> een fout, opzettelijke dialoog, vers of kop is.</p>
 <p>Voeg niet automatisch punten toe, plak niet alle alinea’s met een kleine beginletter aan elkaar, verander niet elke Latijnse letter in Cyrillisch en elk koppelteken in een gedachtestreep. Context en soms meerdere DOM-stappen zijn nodig. FBE-scripts voor opschonen, vastgeplakte woorden en noten lossen zulke complexere taken op.</p>
 <h2 id="section-16">16. De vervangingsgrammatica van FBE</h2>
-<p>PCRE2 zoekt, maar FBE verwerkt de vervangende tekenreeks. Neem voorbeelden uit JavaScript, Python, .NET, PCRE2 substitute of andere editors niet zonder test over. Hieronder staan opdrachten die door broncode en oorspronkelijke FBE-documentatie zijn bevestigd. [D3, D4]</p>
+<p>PCRE2 zoekt, maar FBE verwerkt de vervangende tekenreeks. Neem voorbeelden uit JavaScript, Python, .NET, PCRE2 substitute of andere editors niet zonder test over.</p>
 <h3 id="section-16-1">16.1. Overeenkomst en groepen</h3>
 <div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">In het vervangingsveld</th><th scope="col">Betekenis</th></tr></thead><tbody>
 <tr><td class="syntax"><code>$0</code> of <code>\0</code></td><td>Hele overeenkomst</td></tr>
@@ -666,7 +666,7 @@ Verwachte vervanging met [$1]: № [125]</code></pre></section>
 <h3 id="section-18-4">18.4. Cijfers verschijnen of backslashes verdwijnen in de vervanging</h3>
 <p>Vergelijk de FBE-grammatica in hoofdstuk 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> en <code>\x{...}</code> volgen niet automatisch de zoekregels of die van een andere editor. Controleer dat de capture bestaat en niet optioneel is in een andere tak.</p>
 <h3 id="section-18-5">18.5. Gemengde alfabetten worden in een normale tweetalige zin gevonden</h3>
-<p>Een oud voorbeeld controleerde beide alfabetten ergens in de hele regel en vond ook <code>Он прочитал Latin.</code>. D12 beperkt beide voorwaarden tot &#233;&#233;n woord: het onderscheid tussen OCR-diagnose en een tweetalige regel.</p>
+<p>D12 vereist Cyrillische en Latijnse letters binnen hetzelfde woord. De tweetalige regel <code>Он прочитал Latin.</code> wordt daardoor niet als OCR-fout gemarkeerd.</p>
 <h3 id="section-18-6">18.6. “Punt ontbreekt” markeert een correct citaat</h3>
 <p>Alleen het laatste teken controleren is onvoldoende: op <code>!</code> kan <code>&#187;</code> volgen. D17 houdt rekening met sluitende haakjes en aanhalingstekens, maar koppen en nootverwijzingen blijven aandacht vragen.</p>
 <h3 id="section-18-7">18.7. De gewenste structuur wordt niet gevonden</h3>
@@ -680,11 +680,6 @@ Verwachte vervanging met [$1]: № [125]</code></pre></section>
 <p>Bekijk begin, midden en einde van het bewerkte deel. Controleer voorbeelden van elk type, vooral citaten, bereiken, initialen, noten en behouden opmaak. Let op verdwenen betekenisvolle NBSP en onverwacht gewijzigde alinea’s.</p>
 <p>Voer na structureel gevoelige wijzigingen FBE-documentcontrole uit. Sla op, open zo nodig opnieuw en vergelijk. Een geslaagde regexzoekopdracht vervangt geen FB2-validatie of redactionele correctie.</p>
 <h2 id="section-21">21. Bronnen en geldigheidsgrenzen</h2>
-<p>Deze handleiding bewerkt het aangeleverde regex-design.md met herschreven toelichting en testvoorbeelden. Onnauwkeurigheden over UCP, zoekobjectgrenzen, gemengde alfabetten en vervanging zijn met primaire bronnen verduidelijkt. De recepten in hoofdstuk 17 zijn eigen redactionele scenario’s, geen citaten uit PCRE2-documentatie.</p>
-<p>[D1] Offici&#235;le PCRE2-syntaxis: ankers, groepen, Unicode-eigenschappen, backtracking en opties.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
-<p>[D2] Offici&#235;le PCRE2-Unicode-documentatie.</p>
-<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
-<p>[D3] FBE Next: PCRE2-compatibiliteit en adapter, revisie d2257405d95b0328649acee64b38829b40a4314b.</p>
-<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+<p>[D1] <a href="https://www.pcre.org/current/doc/html/pcre2pattern.html" rel="noopener noreferrer">Offici&#235;le PCRE2-syntaxis: ankers, groepen, Unicode-eigenschappen, backtracking en opties.</a></p>
+<p>[D2] <a href="https://www.pcre.org/current/doc/html/pcre2unicode.html" rel="noopener noreferrer">Offici&#235;le PCRE2-Unicode-documentatie.</a></p>
 </main></body></html>
