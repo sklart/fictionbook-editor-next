@@ -819,7 +819,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				LOWORD(buttonSize) >= compact + UiMetrics::ScaleForDpi(7, dpi) &&
 				HIWORD(buttonSize) >= compact + UiMetrics::ScaleForDpi(7, dpi) &&
 				HIWORD(buttonSize) < ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi) &&
-				search.bottom - search.top == UiMetrics::ScaleForDpi(30, dpi);
+				search.bottom - search.top == UiMetrics::ScaleForDpi(26, dpi);
 			for(COLORREF background : { RGB(255, 255, 255), RGB(32, 32, 32) })
 			{
 				BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader);

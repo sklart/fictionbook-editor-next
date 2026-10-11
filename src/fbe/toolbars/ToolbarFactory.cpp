@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ToolbarFactory.h"
+#include "..\\resource.h"
 #include "..\\StartupTrace.h"
 #include "..\\UiMetrics.h"
 namespace {
@@ -88,6 +89,70 @@ HBITMAP ScaleAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
 	return scaled;
 }
 
+HBITMAP ScaleHighResolutionAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
+{
+	if(alpha == NULL || sourceSize <= 0 || targetSize <= 0) return NULL;
+	if(targetSize == sourceSize) return alpha;
+	DIBSECTION sourceInfo = {};
+	if(::GetObject(alpha, sizeof(sourceInfo), &sourceInfo) != sizeof(sourceInfo) || sourceInfo.dsBm.bmBits == NULL ||
+		sourceInfo.dsBm.bmWidth != sourceSize || abs(sourceInfo.dsBmih.biHeight) != sourceSize)
+		{ ::DeleteObject(alpha); return NULL; }
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = targetSize;
+	info.bmiHeader.biHeight = -targetSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	void* targetBits = NULL;
+	HBITMAP scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &targetBits, NULL, 0);
+	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
+	const DWORD* sourcePixels = static_cast<const DWORD*>(sourceInfo.dsBm.bmBits);
+	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
+	// The source and destination both contain premultiplied ARGB. Average each
+	// channel directly to keep antialiased edges clear against both themes.
+	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
+	{
+		const double sourceX = (static_cast<double>(x) + 0.5) * sourceSize / targetSize - 0.5;
+		const double sourceY = (static_cast<double>(y) + 0.5) * sourceSize / targetSize - 0.5;
+		const double clampedX = max(0.0, min(static_cast<double>(sourceSize - 1), sourceX));
+		const double clampedY = max(0.0, min(static_cast<double>(sourceSize - 1), sourceY));
+		const int left = static_cast<int>(floor(clampedX)), top = static_cast<int>(floor(clampedY));
+		const int right = min(sourceSize - 1, left + 1), bottom = min(sourceSize - 1, top + 1);
+		const double fx = clampedX - left, fy = clampedY - top;
+		const DWORD samples[] = { sourcePixels[top * sourceSize + left], sourcePixels[top * sourceSize + right], sourcePixels[bottom * sourceSize + left], sourcePixels[bottom * sourceSize + right] };
+		const double weights[] = { (1.0 - fx) * (1.0 - fy), fx * (1.0 - fy), (1.0 - fx) * fy, fx * fy };
+		double channels[4] = {};
+		for(int sample = 0; sample < 4; ++sample)
+			for(int channel = 0; channel < 4; ++channel)
+				channels[channel] += ((samples[sample] >> (channel * 8)) & 0xFF) * weights[sample];
+		DWORD pixel = 0;
+		for(int channel = 0; channel < 4; ++channel)
+			pixel |= static_cast<DWORD>(min(255, max(0, static_cast<int>(channels[channel] + 0.5)))) << (channel * 8);
+		targetPixels[y * targetSize + x] = pixel;
+	}
+	::DeleteObject(alpha);
+	return scaled;
+}
+
+HBITMAP ScaleCompactToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
+{
+	if(alpha == NULL || sourceSize <= 0 || targetSize <= 0) return NULL;
+	if(targetSize <= sourceSize) return ScaleHighResolutionAlphaBitmap(alpha, sourceSize, targetSize);
+	DIBSECTION sourceInfo = {};
+	if(::GetObject(alpha, sizeof(sourceInfo), &sourceInfo) != sizeof(sourceInfo) || sourceInfo.dsBm.bmBits == NULL ||
+		sourceInfo.dsBm.bmWidth != sourceSize || abs(sourceInfo.dsBmih.biHeight) != sourceSize)
+		{ ::DeleteObject(alpha); return NULL; }
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = targetSize;
+	info.bmiHeader.biHeight = -targetSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	void* targetBits = NULL;
+	HBITMAP scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &targetBits, NULL, 0);
+	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
+	const DWORD* sourcePixels = static_cast<const DWORD*>(sourceInfo.dsBm.bmBits);
+	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
+	// The compact 24px artwork already has crisp keyed edges. Enlarging it
+	// with interpolation softens the arrows and delete glyph at high DPI.
+	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
+		targetPixels[y * targetSize + x] = sourcePixels[(y * sourceSize / targetSize) * sourceSize + x * sourceSize / targetSize];
+	::DeleteObject(alpha);
+	return scaled;
+}
+
 HBITMAP ScaleLegacyToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
 {
 	if(alpha == NULL || sourceSize <= 0 || targetSize <= 0) return NULL;
@@ -169,16 +234,21 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 		(toolbarData->width != 16 && toolbarData->width != 24) || (baseImageSize != 16 && baseImageSize != 24)) return false;
 	int standardImageCount = 0;
 	for(int index = 0; index < toolbarData->itemCount; ++index) if(toolbarData->Items()[index] != 0) ++standardImageCount;
-	const int sourceSize = toolbarData->width;
+	const bool lastScriptHighResolution = toolbarResourceId == IDR_SCRIPTS && baseImageSize == 24;
+	const int sourceSize = lastScriptHighResolution ? 48 : toolbarData->width;
 	const int imageSize = UiMetrics::ScaleForDpi(baseImageSize, dpi ? dpi : 96);
 	if(!ownedImages.Create(imageSize, imageSize, ILC_COLOR32, standardImageCount + 8, 8)) return false;
-	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(toolbarResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(lastScriptHighResolution ? IDB_LAST_SCRIPT_HIRES : toolbarResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL) { ownedImages.Destroy(); return false; }
 	bool added = true;
 	for(int index = 0; index < standardImageCount; ++index)
 	{
 		HBITMAP alpha = CreateAlphaBitmapCell(source, sourceSize, index);
-		HBITMAP scaled = sourceSize == 24 && baseImageSize == 24
+		HBITMAP scaled = lastScriptHighResolution
+			? ScaleHighResolutionAlphaBitmap(alpha, sourceSize, imageSize)
+			: toolbarResourceId == IDR_DOCUMENT_TREE
+			? ScaleCompactToolbarAlphaBitmap(alpha, sourceSize, imageSize)
+			: sourceSize == 24 && baseImageSize == 24
 			? ScaleLegacyToolbarAlphaBitmap(alpha, sourceSize, imageSize)
 			: ScaleAlphaBitmap(alpha, sourceSize, imageSize);
 		const int imageIndex = scaled != NULL ? ::ImageList_Add(static_cast<HIMAGELIST>(ownedImages), scaled, NULL) : -1;

@@ -757,6 +757,7 @@ END
 IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
 IDR_MAINFRAME_SMALL     BITMAP                  "res\\Toolbar_small.bmp"
 IDR_SCRIPTS             BITMAP                  "res\\Scripts.bmp"
+IDB_LAST_SCRIPT_HIRES    BITMAP                  "res\\Scripts_48.bmp"
 IDB_STRUCTURE           BITMAP                  "res\\struct.bmp"
 IDB_WORDSTATES          BITMAP                  "res\\wordstat.bmp"
 IDR_DOCUMENT_TREE       BITMAP                  "res\\document.bmp"

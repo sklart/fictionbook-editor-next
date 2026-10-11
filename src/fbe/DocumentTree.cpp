@@ -372,7 +372,7 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		{
 			const UINT dpi = m_layout_dpi;
 			const int margin = UiMetrics::ScaleForDpi(4, dpi);
-			const int height = ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(6, dpi);
+			const int height = UiMetrics::ScaleForDpi(26, dpi);
 			::MoveWindow(m_script_search, clientRect.left + margin, treeRect.top + margin,
 				(std::max)(1L, clientRect.right - clientRect.left - 2 * margin), height, TRUE);
 			treeRect.top += height + 2 * margin;

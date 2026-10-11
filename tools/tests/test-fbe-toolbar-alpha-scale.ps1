@@ -30,7 +30,15 @@ try {
         $row = @($rows | Where-Object dpi -eq $dpi)
         if($row.Count -ne 1 -or [int]$row[0].size -ne $expected[$dpi] -or [int]$row[0].transparent_corners -ne 1 -or [int]$row[0].visible_pixels -le 0 -or [int]$row[0].opaque_black_pixels -ne 0 -or [int]$row[0].magenta_pixels -ne 0 -or [int]$row[0].invalid_premultiplied_pixels -ne 0 -or [int]$row[0].max_color_error -gt 2 -or [int]$row[0].color_fidelity_passed -ne 1 -or [int]$row[0].standard_icons_passed -ne 1 -or [int]$row[0].standard_failure -ne 0 -or [int]$row[0].standard_intermediate_alpha_pixels -ne 0 -or [int]$row[0].standard_silhouette_passed -ne 1 -or [int]$row[0].standard_thin_line_width -le 0 -or [int]$row[0].standard_thin_line_width -gt [math]::Ceiling($expected[$dpi] / 24.0) -or [int]$row[0].standard_image_list_has_mask -ne 0 -or [int]$row[0].passed -ne 1) { throw "ARGB alpha-scale contract failed at $dpi DPI." }
     }
-    if($ArtifactDirectory) { foreach($dpi in 96,144,192) { if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory "toolbar-standard-$dpi.bmp"))) { throw "Missing standard-toolbar screenshot for $dpi DPI." } } }
+    if($ArtifactDirectory) {
+        foreach($dpi in 96,120,144,168,192) {
+            $names = @('toolbar-scripts-light', 'toolbar-scripts-dark', 'toolbar-document-tree-light', 'toolbar-document-tree-dark')
+            if($dpi -in 96,144,192) { $names += 'toolbar-standard' }
+            foreach($name in $names) {
+                if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory "$name-$dpi.bmp"))) { throw "Missing $name screenshot for $dpi DPI." }
+            }
+        }
+    }
     $passed = $true
     Write-Host 'FBE toolbar ARGB scaling contract passed.'
 } finally {
