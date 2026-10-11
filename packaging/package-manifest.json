@@ -7,6 +7,19 @@
       "Plugins\\plugins.json", "Plugins\\ExportHTML.dll", "Plugins\\ExportDOCX.dll",
       "Plugins\\ExportEPUB.dll", "Plugins\\ImportEPUB.dll", "Plugins\\ImportEPUBLunaSVG.dll",
       "Resources\\Words.xml",
+      "Help\\regex-help.css",
+      "Help\\en-US\\regex-design.html", "Help\\en-US\\regex-source.html",
+      "Help\\ru-RU\\regex-design.html", "Help\\ru-RU\\regex-source.html",
+      "Help\\uk-UA\\regex-design.html", "Help\\uk-UA\\regex-source.html",
+      "Help\\de-DE\\regex-design.html", "Help\\de-DE\\regex-source.html",
+      "Help\\fr-FR\\regex-design.html", "Help\\fr-FR\\regex-source.html",
+      "Help\\es-ES\\regex-design.html", "Help\\es-ES\\regex-source.html",
+      "Help\\it-IT\\regex-design.html", "Help\\it-IT\\regex-source.html",
+      "Help\\pl-PL\\regex-design.html", "Help\\pl-PL\\regex-source.html",
+      "Help\\pt-PT\\regex-design.html", "Help\\pt-PT\\regex-source.html",
+      "Help\\nl-NL\\regex-design.html", "Help\\nl-NL\\regex-source.html",
+      "Help\\cs-CZ\\regex-design.html", "Help\\cs-CZ\\regex-source.html",
+      "Help\\bg-BG\\regex-design.html", "Help\\bg-BG\\regex-source.html",
       "Help\\en-US\\regex-design.md", "Help\\en-US\\regex-source.md",
       "Help\\ru-RU\\regex-design.md", "Help\\ru-RU\\regex-source.md",
       "Help\\uk-UA\\regex-design.md", "Help\\uk-UA\\regex-source.md",
@@ -22,7 +35,7 @@
 
       "genres.txt", "genres.rus.txt", "genres.ukr.txt", "genres.librusec.txt", "genres.rus.librusec.txt",
       "Dict\\de_DE.aff", "Dict\\de_DE.dic", "Dict\\en_US.aff", "Dict\\en_US.dic", "Dict\\ru_RU.aff", "Dict\\ru_RU.dic", "Dict\\uk_UA.aff", "Dict\\uk_UA.dic", "Dict\\sources.json",
-      "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
+      "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES\\Fluent-UI-System-Icons-MIT.txt", "THIRD-PARTY-LICENSES\\Dictionary-de_DE.txt", "THIRD-PARTY-LICENSES\\Dictionary-en_US.txt", "THIRD-PARTY-LICENSES\\Dictionary-ru_RU.txt", "THIRD-PARTY-LICENSES\\Dictionary-uk_UA.txt"
     ],
     "optional": [],
     "forbidden": ["FBShell.dll", "FBShell64.dll", "FBE.Sequence.propdesc", "InstallerTools", "Utilities\\ArchHandler", "ExportHTML.dll", "ExportDOCX.dll", "ExportEPUB.dll", "ImportEPUB.dll", "ImportEPUBLunaSVG.dll", "Lang\\ru-RU\\res_rus.dll", "Lang\\uk-UA\\res_ukr.dll", "Lang\\ru-RU\\res_rus.pdb", "Lang\\uk-UA\\res_ukr.pdb", "dict", "EditorBackgrounds", "ArchiveMruRuntimeData"],

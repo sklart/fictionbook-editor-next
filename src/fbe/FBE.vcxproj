@@ -78,6 +78,8 @@ if exist "$(TargetDir)gdiplus.cat" del /Q "$(TargetDir)gdiplus.cat"
   if exist "$(TargetDir)ThirdPartyNotices.txt" del /Q "$(TargetDir)ThirdPartyNotices.txt"
   if exist "$(TargetDir)Themes\licenses" rd /S /Q "$(TargetDir)Themes\licenses"
   if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(SolutionDir)tools\build\generate-regex-help-html.ps1" -Generate
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll ExportDOCX.dll ExportEPUB.dll ImportEPUB.dll ImportEPUBLunaSVG.dll &gt;nul
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 exit /b 0
@@ -92,7 +94,7 @@ exit /b 0
       </HeaderFileName>
     </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Release\include;$(SolutionDir)build\libwebp\install\Release\include;$(SolutionDir)build\openjpeg\install\Release\include;$(SolutionDir)build\libheif\install\Release\include;$(SolutionDir)build\libarchive\install\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)build\generated\$(Platform)\$(Configuration)\pin-icons;$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Release\include;$(SolutionDir)build\libwebp\install\Release\include;$(SolutionDir)build\openjpeg\install\Release\include;$(SolutionDir)build\libheif\install\Release\include;$(SolutionDir)build\libarchive\install\Release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;UNICODE;STRICT;HUNSPELL_STATIC;_CRT_SECURE_NO_WARNINGS;_WTL_CMDBAR_VISTA_MENUS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
@@ -151,6 +153,8 @@ if exist "$(TargetDir)gdiplus.cat" del /Q "$(TargetDir)gdiplus.cat"
   if exist "$(TargetDir)ThirdPartyNotices.txt" del /Q "$(TargetDir)ThirdPartyNotices.txt"
   if exist "$(TargetDir)Themes\licenses" rd /S /Q "$(TargetDir)Themes\licenses"
   if exist "$(TargetDir)cmd" rd /S /Q "$(TargetDir)cmd"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(SolutionDir)tools\build\generate-regex-help-html.ps1" -Generate
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 robocopy "$(SolutionDir)runtime" "$(TargetDir)." /E /XF FBShell.dll FBV.exe ExportHTML.dll ExportDOCX.dll ExportEPUB.dll ImportEPUB.dll ImportEPUBLunaSVG.dll &gt;nul
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 exit /b 0
@@ -167,7 +171,7 @@ exit /b 0
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Debug\include;$(SolutionDir)build\libwebp\install\Debug\include;$(SolutionDir)build\openjpeg\install\Debug\include;$(SolutionDir)build\libheif\install\Debug\include;$(SolutionDir)build\libarchive\install\Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)build\generated\$(Platform)\$(Configuration)\pin-icons;$(FbeApiOutputDirectory);$(SolutionDir)third_party\scintilla\include;$(SolutionDir)third_party\lexilla\include;extras;utils;$(SolutionDir)third_party\wtl;$(SolutionDir)build\hunspell\include;$(SolutionDir)third_party\hunspell\src\hunspell;$(SolutionDir)build\pcre2\install\Debug\include;$(SolutionDir)build\libwebp\install\Debug\include;$(SolutionDir)build\openjpeg\install\Debug\include;$(SolutionDir)build\libheif\install\Debug\include;$(SolutionDir)build\libarchive\install\Debug\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;UNICODE;STRICT;HUNSPELL_STATIC;_ATL_TRACE_LEVEL=4;_CRT_SECURE_NO_WARNINGS;_WTL_CMDBAR_VISTA_MENUS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -331,8 +335,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClCompile Include="search\ScintillaRegexSearch.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="search\SearchPresetCatalog.cpp" />
     <ClCompile Include="search\SearchPresetStore.cpp" />
-    <ClCompile Include="search\ui\RegexHelpDialog.cpp" />
-    <ClCompile Include="search\ui\RegexHelpMarkdown.cpp" />
+    <ClCompile Include="search\ui\RegexHelpLauncher.cpp" />
     <ClCompile Include="search\ui\RegexQuickReferencePopup.cpp" />
 	<ClCompile Include="search\SearchDocumentAdapter.cpp" />
 	<ClCompile Include="ReplacementPreflight.cpp" />
@@ -578,8 +581,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="search\SearchPreset.h" />
     <ClInclude Include="search\SearchPresetCatalog.h" />
     <ClInclude Include="search\SearchPresetStore.h" />
-    <ClInclude Include="search\ui\RegexHelpDialog.h" />
-    <ClInclude Include="search\ui\RegexHelpMarkdown.h" />
+    <ClInclude Include="search\ui\RegexHelpLauncher.h" />
     <ClInclude Include="search\ui\ComboBoxEdit.h" />
     <ClInclude Include="search\ui\RegexQuickReferencePopup.h" />
     <ClInclude Include="search\RegexPcre2MatchLoop.h" />
@@ -802,5 +804,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
       <UserProperties RESOURCE_FILE="FBE.rc" WTLHELPER.Menu.IDR_MAINFRAME="CFBEView" />
     </VisualStudio>
   </ProjectExtensions>
+  <Target Name="GenerateFluentPinMasks" BeforeTargets="ClCompile" Condition="'$(Configuration)'=='Debug' Or '$(Configuration)'=='Release'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\tools\build\generate-fluent-pin-masks.ps1&quot; -OutputDirectory &quot;$(SolutionDir)build\generated\$(Platform)\$(Configuration)\pin-icons&quot;" />
+  </Target>
 </Project>
 

@@ -1,0 +1,14 @@
+{
+  "en-US": {"design":"Design","source":"Source","example":"Example","note":"Note","warning":"Warning","switch":"Other mode"},
+  "ru-RU": {"design":"Дизайн","source":"Код","example":"Пример","note":"Примечание","warning":"Внимание","switch":"Другой режим"},
+  "uk-UA": {"design":"Дизайн","source":"Код","example":"Приклад","note":"Примітка","warning":"Увага","switch":"Інший режим"},
+  "de-DE": {"design":"Design","source":"Quelltext","example":"Beispiel","note":"Hinweis","warning":"Warnung","switch":"Anderer Modus"},
+  "fr-FR": {"design":"Conception","source":"Source","example":"Exemple","note":"Remarque","warning":"Attention","switch":"Autre mode"},
+  "es-ES": {"design":"Diseño","source":"Código","example":"Ejemplo","note":"Nota","warning":"Advertencia","switch":"Otro modo"},
+  "it-IT": {"design":"Design","source":"Sorgente","example":"Esempio","note":"Nota","warning":"Attenzione","switch":"Altra modalità"},
+  "pl-PL": {"design":"Projekt","source":"Źródło","example":"Przykład","note":"Uwaga","warning":"Ostrzeżenie","switch":"Inny tryb"},
+  "pt-PT": {"design":"Design","source":"Código","example":"Exemplo","note":"Nota","warning":"Aviso","switch":"Outro modo"},
+  "nl-NL": {"design":"Ontwerp","source":"Broncode","example":"Voorbeeld","note":"Opmerking","warning":"Waarschuwing","switch":"Andere modus"},
+  "cs-CZ": {"design":"Návrh","source":"Zdrojový kód","example":"Příklad","note":"Poznámka","warning":"Varování","switch":"Jiný režim"},
+  "bg-BG": {"design":"Дизайн","source":"Код","example":"Пример","note":"Бележка","warning":"Внимание","switch":"Друг режим"}
+}

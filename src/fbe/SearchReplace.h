@@ -10,7 +10,8 @@
 #include "apputils.h"
 #include "search\\SearchPresetCatalog.h"
 #include "search\\SearchPresetStore.h"
-#include "search\\ui\\RegexHelpDialog.h"
+#include "search\\ui\\RegexHelpLauncher.h"
+#include "FluentPinMasks.generated.h"
 #include "search\\RegexQuickReference.h"
 #include "search\\ui\\ComboBoxEdit.h"
 #include "search\\ui\\RegexQuickReferencePopup.h"
@@ -625,32 +626,50 @@ public:
         ::SetFocus(GetDlgItem(IDC_TEXT));
     }
 
-    void DrawPresetPinGlyph(HDC dc, const RECT& target, bool pinned, COLORREF) const
+    void DrawPresetPinMask(HDC dc, const RECT& target, bool pinned, COLORREF tint, bool disabled) const
     {
-        const UINT dpi = UiMetrics::DpiForWindow(DialogWindow());
-        const int size = (std::min)(UiMetrics::ScaleForDpi(16, dpi), (std::min)(static_cast<int>(target.right - target.left - 2), static_cast<int>(target.bottom - target.top - 2)));
-        if(size <= 0) return;
-        const COLORREF tint = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
-            (pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor());
-        const int stroke = (std::max)(1, size / 16);
-        const int capWidth = (std::max)(5, size * 8 / 16);
-        const int headWidth = (std::max)(capWidth + stroke * 2, size * 10 / 16);
-        const int capHeight = (std::max)(2, size * 2 / 16);
-        const int headHeight = (std::max)(4, size * 6 / 16);
-        const int needleHeight = (std::max)(3, size * 5 / 16);
-        const int glyphHeight = headHeight + needleHeight;
-        const int centerX = target.left + (target.right - target.left) / 2;
-        const int top = target.top + ((target.bottom - target.top) - glyphHeight) / 2;
-        const HBRUSH brush = ::CreateSolidBrush(tint);
-        HPEN pen = ::CreatePen(PS_SOLID, stroke, tint);
-        const POINT head[] = {
-            { centerX - capWidth / 2, top }, { centerX + capWidth / 2, top },
-            { centerX + capWidth / 2, top + capHeight }, { centerX + headWidth / 2, top + headHeight },
-            { centerX - headWidth / 2, top + headHeight }, { centerX - capWidth / 2, top + capHeight }
-        };
-        HGDIOBJ previousBrush = ::SelectObject(dc, brush); HGDIOBJ previous = ::SelectObject(dc, pen); ::Polygon(dc, head, _countof(head)); ::SelectObject(dc, previousBrush); ::DeleteObject(brush);
-        ::MoveToEx(dc, centerX, top + headHeight - 1, NULL); ::LineTo(dc, centerX, top + glyphHeight);
-        ::SelectObject(dc, previous); ::DeleteObject(pen);
+        const FbeFluentPin::Mask mask = FbeFluentPin::Select(UiMetrics::DpiForWindow(DialogWindow()), pinned);
+        const int size = mask.size;
+        if (target.right - target.left < size || target.bottom - target.top < size) return;
+        BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        info.bmiHeader.biWidth = size; info.bmiHeader.biHeight = -size;
+        info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32; info.bmiHeader.biCompression = BI_RGB;
+        void* bits = NULL;
+        HBITMAP bitmap = ::CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, NULL, 0);
+        if (!bitmap || !bits) { if(bitmap) ::DeleteObject(bitmap); return; }
+        DWORD* pixels = static_cast<DWORD*>(bits);
+        for (int index = 0; index < size * size; ++index)
+        {
+            const BYTE alpha = disabled ? static_cast<BYTE>(mask.alpha[index] * 3 / 5) : mask.alpha[index];
+            pixels[index] = (static_cast<DWORD>(alpha) << 24) |
+                (static_cast<DWORD>(GetRValue(tint) * alpha / 255) << 16) |
+                (static_cast<DWORD>(GetGValue(tint) * alpha / 255) << 8) |
+                static_cast<DWORD>(GetBValue(tint) * alpha / 255);
+        }
+        HDC source = ::CreateCompatibleDC(dc);
+        if (source)
+        {
+            HGDIOBJ previous = ::SelectObject(source, bitmap);
+            BLENDFUNCTION blend = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+            ::AlphaBlend(dc, target.left + (target.right - target.left - size) / 2,
+                target.top + (target.bottom - target.top - size) / 2, size, size,
+                source, 0, 0, size, size, blend);
+            ::SelectObject(source, previous);
+            ::DeleteDC(source);
+        }
+        ::DeleteObject(bitmap);
+    }
+    void UpdatePresetPinAction()
+    {
+        HWND pin = GetDlgItem(IDC_FIND_PRESETS_PIN);
+        if (!pin) return;
+        const bool pinned = _Settings.SearchTemplatesPanelPinned();
+        const CString action = pinned
+            ? FbeLoadRuntimeStringByKey(L"fbe.search_preset.unpin", L"Unpin templates panel")
+            : FbeLoadRuntimeStringByKey(L"fbe.search_preset.pin", L"Pin templates panel");
+        ::SetWindowTextW(pin, action);
+        m_tooltips.UpdateText(pin, action);
+        ::InvalidateRect(pin, NULL, FALSE);
     }
     static LRESULT CALLBACK PresetPinButtonSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR reference)
     {
@@ -677,6 +696,9 @@ public:
         case WM_LBUTTONDOWN:
             panel->m_presetPinPressed = true;
             ::InvalidateRect(window, NULL, FALSE);
+            break;
+        case WM_KEYDOWN:
+            if (wParam == VK_RETURN) { ::SendMessage(window, BM_CLICK, 0, 0); return 0; }
             break;
         case WM_LBUTTONUP:
         case WM_CANCELMODE:
@@ -705,7 +727,10 @@ public:
         const COLORREF surface = highContrast ? ::GetSysColor(COLOR_BTNFACE) :
             (pressed ? ThemeManager::PressedColor() : hot ? ThemeManager::HoverColor() : ThemeManager::WindowColor());
         const HBRUSH brush = ::CreateSolidBrush(surface); ::FillRect(draw->hDC, &draw->rcItem, brush); ::DeleteObject(brush);
-        DrawPresetPinGlyph(draw->hDC, draw->rcItem, pinned, surface);
+        const bool disabled = (draw->itemState & ODS_DISABLED) != 0;
+        const COLORREF tint = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) : disabled ? ::GetSysColor(COLOR_GRAYTEXT) :
+            pinned ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor();
+        DrawPresetPinMask(draw->hDC, draw->rcItem, pinned, tint, disabled);
         if ((draw->itemState & ODS_FOCUS) != 0)
         {
             RECT focus = draw->rcItem;
@@ -720,8 +745,8 @@ public:
         }
         return TRUE;
     }
-    LRESULT OnTogglePresets(WORD, WORD, HWND, BOOL&) { const bool collapse = m_templatesExpanded; SetPresetPanelVisible(!collapse); if (collapse && _Settings.SearchTemplatesPanelPinned()) _Settings.SetSearchTemplatesPanelPinned(false, true); return 0; }
-    LRESULT OnTogglePresetPin(WORD, WORD, HWND, BOOL&) { const bool pinned = !_Settings.SearchTemplatesPanelPinned(); _Settings.SetSearchTemplatesPanelPinned(pinned, true); ::CheckDlgButton(DialogWindow(), IDC_FIND_PRESETS_PIN, pinned ? BST_CHECKED : BST_UNCHECKED); ::InvalidateRect(GetDlgItem(IDC_FIND_PRESETS_PIN), NULL, TRUE); return 0; }
+    LRESULT OnTogglePresets(WORD, WORD, HWND, BOOL&) { const bool collapse = m_templatesExpanded; SetPresetPanelVisible(!collapse); if (collapse && _Settings.SearchTemplatesPanelPinned()) _Settings.SetSearchTemplatesPanelPinned(false, true); UpdatePresetPinAction(); return 0; }
+    LRESULT OnTogglePresetPin(WORD, WORD, HWND, BOOL&) { const bool pinned = !_Settings.SearchTemplatesPanelPinned(); _Settings.SetSearchTemplatesPanelPinned(pinned, true); ::CheckDlgButton(DialogWindow(), IDC_FIND_PRESETS_PIN, pinned ? BST_CHECKED : BST_UNCHECKED); UpdatePresetPinAction(); return 0; }
     LRESULT OnApplyPreset(WORD, WORD, HWND, BOOL&) { ApplySelectedPreset(); return 0; }
     LRESULT OnSavePreset(WORD, WORD, HWND, BOOL&)
     {
@@ -818,7 +843,7 @@ public:
                 if(mode == FbeSearchPresets::RegexQuickReferenceMode::Search) m_view->m_fo.pattern = result.text; else m_view->m_fo.replacement = result.text;
                 InvalidateSearchSelectionState();
             },
-            [this]() { ShowRegexHelpDialog(DialogWindow(), SearchContext()); })) delete popup;
+            [this]() { OpenFullRegexHelp(DialogWindow(), SearchContext()); })) delete popup;
         return 0;
     }
 	BEGIN_MSG_MAP(FRBase)
@@ -1020,9 +1045,14 @@ public:
         SetRuntimeText(IDC_FIND_REGEX_HELP, L"fbe.search_preset.regex_help", L"?");
         SetRuntimeText(IDC_FIND_PRESETS_LABEL, L"fbe.search_preset.caption", L"Templates");
         ::CheckDlgButton(DialogWindow(), IDC_FIND_PRESETS_PIN, _Settings.SearchTemplatesPanelPinned() ? BST_CHECKED : BST_UNCHECKED);
-        SetRuntimeText(IDC_FIND_PRESETS_PIN, L"fbe.search_preset.pin", L"");
+        UpdatePresetPinAction();
         HWND pin = GetDlgItem(IDC_FIND_PRESETS_PIN);
         if (pin) ::SetWindowSubclass(pin, PresetPinButtonSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
+        HWND tooltipOwner = pin ? ::GetParent(pin) : NULL;
+        if (tooltipOwner) {
+            m_tooltips.Initialize(tooltipOwner);
+            m_tooltips.Add(pin, _Settings.SearchTemplatesPanelPinned() ? L"fbe.search_preset.unpin" : L"fbe.search_preset.pin", L"Pin templates panel");
+        }
 
         SetRuntimeText(IDC_FIND_PRESET_APPLY, L"fbe.search_preset.apply", L"Apply");
         SetRuntimeText(IDC_FIND_PRESET_SAVE, L"fbe.search_preset.save_current", L"Save current...");
@@ -1037,8 +1067,6 @@ public:
 			const HWND dialog = ::GetParent(GetDlgItem(IDC_TEXT));
 			if (dialog)
 			{
-				m_tooltips.Initialize(dialog);
-                m_tooltips.Add(GetDlgItem(IDC_FIND_PRESETS_PIN), L"fbe.search_preset.pin", L"Pin templates panel");
 				m_tooltips.Add(GetDlgItem(IDC_TEXT), L"fbe.tooltip.find.text", L"Text to find. Results update after a short pause while typing.");
 				m_tooltips.Add(GetDlgItem(ID_FIND_NEXT), L"fbe.tooltip.find.next", L"Select the next match in the chosen direction.");
 				if (!isReplaceDialog) m_tooltips.Add(GetDlgItem(IDC_FIND_ALL), L"fbe.tooltip.find.all", L"Show every match in the Results pane.");

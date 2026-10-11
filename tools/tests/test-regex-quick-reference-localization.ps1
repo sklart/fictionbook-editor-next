@@ -8,7 +8,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
 $keys = [System.Collections.Generic.HashSet[string]]::new()
 
-foreach($path in @('src\fbe\SearchReplace.h', 'src\fbe\search\SearchPresetCatalog.cpp', 'src\fbe\search\RegexQuickReference.h', 'src\fbe\search\ui\RegexHelpDialog.cpp', 'src\fbe\search\ui\RegexQuickReferencePopup.cpp')) {
+foreach($path in @('src\fbe\SearchReplace.h', 'src\fbe\search\SearchPresetCatalog.cpp', 'src\fbe\search\RegexQuickReference.h', 'src\fbe\search\ui\RegexHelpLauncher.cpp', 'src\fbe\search\ui\RegexQuickReferencePopup.cpp')) {
     $text = Get-Content -Raw -LiteralPath (Join-Path $root $path)
     foreach($match in [regex]::Matches($text, 'L"(fbe\.(?:search_preset|regex_quick|regex_help|tooltip\.find\.regex_help)[^"]*)"')) {
         $key = $match.Groups[1].Value
@@ -16,7 +16,7 @@ foreach($path in @('src\fbe\SearchReplace.h', 'src\fbe\search\SearchPresetCatalo
     }
 }
 
-foreach($key in @('fbe.dialog.idd_regex_help.caption', 'fbe.dialog.idd_regex_help.close', 'fbe.tooltip.find.templates')) {
+foreach($key in @('fbe.tooltip.find.templates')) {
     [void] $keys.Add($key)
 }
 

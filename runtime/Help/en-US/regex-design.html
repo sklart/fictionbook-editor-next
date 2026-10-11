@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en-US">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Design</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Other mode"><strong>Design</strong><a href="regex-source.html">Source</a></nav><main>
+<h1 id="top">Regular expression help — Design</h1>
+<p>Translation note: Russian words and sentences in control examples are intentionally retained. They are test data: the regular expressions, replacement strings, whitespace characters and expected results are identical to the Russian reference edition. The explanations are translated; the examples are not automatically adapted to English typography.</p>
+<p>A complete guide to searching, replacing, and proofreading books in FictionBook Editor Next.</p>
+<p>Revision: October 2, 2026. Source mode has a separate document, regex-source.md. In this guide, “pattern” means a regular expression; a “built-in template” is a saved expression and its settings in the Templates panel.</p>
+<h2 id="section-1">1. How to use this guide</h2>
+<p>A regular expression describes a search rule rather than one exact string. For example, <code>[0-9]+</code> finds a sequence of digits of any length, while <code>[ \t]{2,}</code> finds two or more ordinary spaces or tabs. The match itself and the text used to replace it are different things.</p>
+<p>Section 2 provides a first practical result. Sections 3–15 explain the syntax. Section 16 covers FBE’s special replacement grammar. Section 17 collects ready-to-use book-editing recipes, each with settings, test text, and warnings. Troubleshooting, performance advice, and sources follow at the end.</p>
+<p>Copy only the expression into the Find field. The words “Find” and “Replace”, labels such as U+0020, and Markdown backticks are not part of the pattern. Do not add JavaScript <code>/.../g</code> delimiters, C++ string-literal quotes, or doubled backslashes copied from JSON.</p>
+<p>Checkbox settings matter. A match found with case sensitivity disabled may not be found with it enabled. The settings in a recipe are part of that recipe, not optional formatting.</p>
+<p>“Find and review only” identifies a diagnostic recipe. A match may be correct: an intentional repetition, a foreign name, a quotation, a heading, or deliberate typography. “Replace after review” likewise does not mean that the change is safe for every book.</p>
+<h2 id="section-2">2. Your first search and a safe replacement</h2>
+<p>Save a working copy of the book. Switch to Design, open Find or Replace, and enable Regular expression. For initial experiments, turn off Whole words only: it is better to specify boundaries in the expression itself. Check the search scope and direction.</p>
+<p>To find repeated spaces, enter:</p>
+<pre class="regex" id="regex-1"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>In <code>Он   пришёл</code>, this finds the three-space gap.</p>
+<section class="example" id="example-1"><strong>Example</strong><pre><code>Find: [ \t]{2,}
+Input: Он   пришёл
+Match: three spaces between the words</code></pre></section>
+<p>Put one ordinary space in the replacement field. Replace a single occurrence first, check that the result is <code>Он пришёл</code>, and only then consider Replace All.</p>
+<section class="example" id="example-2"><strong>Example</strong><pre><code>Find: [ \t]{2,}
+Input: Он   пришёл
+Replace with: one space
+Expected: Он пришёл</code></pre></section>
+<p>When there are many matches, first inspect the search results and correct one or two representative cases. After a bulk operation, check the text, italics, bold formatting, notes, and paragraph boundaries. If the result is unexpected, undo it before starting another round of edits.</p>
+<aside class="warning" id="warning-1"><strong>Warning</strong><p>Replace All can change intentional spacing or formatting in many places. Test one replacement, inspect the result, and keep a working copy before applying it to the whole book.</p></aside>
+<p>Apply in the Templates panel transfers the expression and its settings to the search dialog. It should not be understood as an instruction to fix every match unconditionally. Use the appropriate dialog commands to perform the search or replacement.</p>
+<h2 id="section-3">3. The engine and the boundaries of Design mode</h2>
+<p>This mode uses PCRE2-16, passing text and patterns as UTF-16; UTF mode is always enabled. FBE separately builds searchable text from the document and separately performs replacements with regard to the book’s structure. PCRE2 documentation therefore explains matching, but does not define every FBE operation. See technical sources D1–D4.</p>
+<p>The search works on a textual representation of the book, not the file’s literal XML markup. Searching for <code>&lt;strong&gt;</code> is not a way to find bold text in Design. Search for XML tags in Source mode, and use editor commands or specialized scripts for structural transformations.</p>
+<aside class="note" id="note-1"><strong>Note</strong><p>Design regex sees searchable text, not the DOM tree. To inspect actual elements or attributes, switch to Source or use a structural tool.</p></aside>
+<p>A long line wrapping to the window width is not a newline character. Paragraphs, actual breaks, and visual wrapping must not be confused. FBE uses multiline mode for anchors in its searchable representation so that textual line boundaries reflect paragraph boundaries. Matching across paragraphs and replacing across paragraphs are different operations: the implementation considered here rejects cross-paragraph replacement.</p>
+<p>The anchors <code>\A</code> and <code>\z</code> refer to the start and end of the subject passed to the engine. Do not automatically assume that they always mean the start and end of the entire FB2 file: the scope and the search fragment constructed by FBE matter.</p>
+<h2 id="section-4">4. Unicode: UTF, UCP, and case</h2>
+<h3 id="section-4-1">4.1. What UTF does</h3>
+<p>UTF mode lets the engine process Unicode characters, including Cyrillic. It does not transliterate text, correct OCR, turn <code>ё</code> into <code>е</code>, or automatically merge canonically equivalent representations of letters.</p>
+<p>For example, an accented letter may be stored as one character or as a letter followed by a separate combining mark. The forms look similar, but character-by-character searches may differ. PCRE2 does not perform NFC/NFD normalization for you. Books containing diacritics may require the combining-mark class <code>\p{M}</code>.</p>
+<h3 id="section-4-2">4.2. What UCP does</h3>
+<p>Unicode (UCP) changes the meaning of shorthand classes, particularly <code>\w</code>, <code>\d</code>, and <code>\s</code>, and the dependent boundaries <code>\b</code> and <code>\B</code>. It is not the switch that enables Cyrillic text itself.</p>
+<p>An important correction to early editions of this guide: explicit Unicode properties such as <code>\p{L}</code>, <code>\p{N}</code>, and <code>\P{...}</code> are available in a Unicode PCRE2 build even without UCP. However, a pattern using both <code>\p{L}</code> and <code>\b</code> should usually enable UCP so that letters and word boundaries are interpreted consistently.</p>
+<p>Compare a search for a Russian word:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
+<p>With UCP, boundaries follow the Unicode word class. Without UCP, do not expect <code>\b</code> to behave on Cyrillic as it does on Latin ASCII text. A missing match here does not prove that the word is absent.</p>
+<p>When you specifically need ASCII digits, use <code>[0-9]</code> rather than <code>\d</code>: UCP may extend the latter to decimal digits in other writing systems.</p>
+<h3 id="section-4-3">4.3. Useful properties</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Expression</th><th scope="col">What it finds</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\p{L}</code></td><td>A Unicode letter</td></tr>
+<tr><td class="syntax"><code>\p{Lu}</code></td><td>An uppercase letter in a case-sensitive search</td></tr>
+<tr><td class="syntax"><code>\p{Ll}</code></td><td>A lowercase letter in a case-sensitive search</td></tr>
+<tr><td class="syntax"><code>\p{M}</code></td><td>A combining mark</td></tr>
+<tr><td class="syntax"><code>\p{N}</code></td><td>A numeric character, a broader concept than a decimal digit</td></tr>
+<tr><td class="syntax"><code>\p{Nd}</code></td><td>A decimal digit</td></tr>
+<tr><td class="syntax"><code>\p{Latin}</code></td><td>A character of the Latin script</td></tr>
+<tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>A character of the Cyrillic script</td></tr>
+<tr><td class="syntax"><code>\P{L}</code></td><td>A character that is not a letter</td></tr>
+</tbody></table></div>
+<p>For a sequence of letters together with combining accents:</p>
+<pre class="regex" id="regex-3"><code><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span></code></pre>
+<p>This is still not a universal linguistic definition of a word: hyphens and apostrophes are not included. Add them deliberately when needed.</p>
+<h3 id="section-4-4">4.4. Case is a separate setting</h3>
+<p>Enable Match case when looking for anomalies such as <code>строчнаяПрописная</code>, initials, or patterns containing <code>\p{Lu}</code> and <code>\p{Ll}</code>. Case-insensitive matching can undermine the very purpose of such a rule. UCP does not replace this checkbox.</p>
+<p>Temporarily enabling case-insensitive matching in an expression:</p>
+<pre class="regex" id="regex-4"><code><span class="rx-group">(?</span>i<span class="rx-group">)</span>глава</code></pre>
+<p>Restricting its effect to a group:</p>
+<pre class="regex" id="regex-5"><code><span class="rx-group">(?</span>i:глава<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<h2 id="section-5">5. Literal characters and escaping</h2>
+<p>Letters and most punctuation match themselves. Outside a character class, special characters include the period, brackets, asterisk, plus, question mark, braces, anchors, and backslash.</p>
+<p>To search for a metacharacter literally, place a backslash before it:</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Text to find</th><th scope="col">Expression</th></tr></thead><tbody>
+<tr><td>A period</td><td><code>\.</code></td></tr>
+<tr><td>A question mark</td><td><code>\?</code></td></tr>
+<tr><td>A plus sign</td><td><code>\+</code></td></tr>
+<tr><td>An asterisk</td><td><code>\*</code></td></tr>
+<tr><td>An opening parenthesis</td><td><code>\(</code></td></tr>
+<tr><td>A closing parenthesis</td><td><code>\)</code></td></tr>
+<tr><td>Square brackets surrounding a number</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>A backslash itself</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p>The expression <code>(123)</code> finds the digits <code>123</code> and captures them as a group; it does not require parentheses in the text. To find the string <code>(123)</code>, escape the parentheses.</p>
+<p>In a PCRE2 pattern, a long literal fragment can be enclosed between <code>\Q</code> and <code>\E</code>:</p>
+<pre class="regex" id="regex-6"><code><span class="rx-escape">\Q</span>Цена <span class="rx-group">(</span>руб.<span class="rx-group">)</span> <span class="rx-quantifier">+</span> доставка<span class="rx-escape">\E</span></code></pre>
+<p>Those same sequences have different meanings in FBE’s replacement field. Do not automatically transfer escaping rules from search to replacement.</p>
+<h2 id="section-6">6. Spaces, tabs, and invisible characters</h2>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Expression</th><th scope="col">Meaning in PCRE2 search</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[ ]</code></td><td>Only an ordinary space U+0020</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>An ordinary space or tab</td></tr>
+<tr><td class="syntax"><code>\t</code></td><td>A tab U+0009</td></tr>
+<tr><td class="syntax"><code>\x{00A0}</code></td><td>A non-breaking space</td></tr>
+<tr><td class="syntax"><code>\x{202F}</code></td><td>A narrow non-breaking space</td></tr>
+<tr><td class="syntax"><code>\h</code></td><td>A horizontal whitespace character, including several Unicode spaces</td></tr>
+<tr><td class="syntax"><code>\s</code></td><td>A whitespace character; may include line breaks</td></tr>
+<tr><td class="syntax"><code>\r</code></td><td>Carriage return, CR</td></tr>
+<tr><td class="syntax"><code>\n</code></td><td>Line feed, LF</td></tr>
+<tr><td class="syntax"><code>\R</code></td><td>A Unicode line-break sequence</td></tr>
+<tr><td class="syntax"><code>\x{00AD}</code></td><td>A soft hyphen</td></tr>
+<tr><td class="syntax"><code>\x{200B}</code></td><td>A zero-width space</td></tr>
+<tr><td class="syntax"><code>\x{FEFF}</code></td><td>FEFF occurring within the text</td></tr>
+</tbody></table></div>
+<p>For ordinary cleanup of gaps between words, choose <code>[ \t]</code> rather than <code>\s</code>. The latter is broader and may include paragraph boundaries and non-breaking spaces. Similarly, <code>\h</code> is useful for diagnosis but too broad for an unspecified typographic replacement.</p>
+<p>A non-breaking space keeps parts of a notation together: a number sign and number, initials and surname, or a number and unit. Replacing every such space with an ordinary one may worsen layout. FBE also has a configurable NBSP character; recipes using U+00A0 should be checked against the particular book’s settings and the build in use.</p>
+<p>U+200C and U+200D may be necessary in writing systems and composite emoji. Do not indiscriminately delete the whole range of “invisible” characters. Detection does not imply an error.</p>
+<h2 id="section-7">7. Character classes and ranges</h2>
+<p>A bracketed class consumes one character from its set. <code>[abc]</code> means one of three letters, not the word <code>abc</code>. Add a quantifier for one or more such letters: <code>[abc]+</code>.</p>
+<p>The negated class <code>[^abc]</code> consumes one character outside the set. It does not test that “abc does not precede the text”. Use lookaround for contextual tests of that kind.</p>
+<p>Inside a class, a period and most brackets lose their special meanings. A hyphen can define a range, so place a literal hyphen at the start or end of the class, or escape it. Writing <code>\]</code> is a convenient way to include a closing square bracket.</p>
+<pre class="regex" id="regex-7"><code><span class="rx-class">[А-Яа-яЁё-]</span><span class="rx-quantifier">+</span></code></pre>
+<p>This example permits Russian letters and a hyphen, but does not cover the whole Cyrillic script: Ukrainian, Belarusian, and other letters require a broader set or a Unicode property.</p>
+<p>Inside square brackets, <code>\b</code> is not a word boundary. Do not try to place word boundaries in an ordinary character set.</p>
+<h2 id="section-8">8. Anchors, boundaries, and zero-length matches</h2>
+<p>An anchor tests a position without consuming a letter or space. Consequently, <code>^</code>, <code>$</code>, or <code>\b</code> alone can produce a zero-length match, which does not appear in the interface like a normal highlighted text fragment.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Anchor</th><th scope="col">Meaning</th></tr></thead><tbody>
+<tr><td class="syntax"><code>^</code></td><td>Start of a line with multiline enabled; otherwise start of the subject</td></tr>
+<tr><td class="syntax"><code>$</code></td><td>End of a line with multiline enabled; treatment of a final newline depends on the mode</td></tr>
+<tr><td class="syntax"><code>\A</code></td><td>Start of the subject only</td></tr>
+<tr><td class="syntax"><code>\z</code></td><td>Strict end of the subject</td></tr>
+<tr><td class="syntax"><code>\Z</code></td><td>End of the subject or the position before its final newline</td></tr>
+<tr><td class="syntax"><code>\b</code></td><td>Boundary between a word character and a non-word character</td></tr>
+<tr><td class="syntax"><code>\B</code></td><td>A position that is not a word boundary</td></tr>
+<tr><td class="syntax"><code>\G</code></td><td>Starting position of the current matching call</td></tr>
+</tbody></table></div>
+<p><code>\G</code> does not independently remember “the previous match”. It is tied to the start offset supplied by the application. In successive calls that may be the end of the previous match, but in FBE this is not a universal way to traverse a book. Prefer more explicit boundaries for ordinary proofreading. [D1]</p>
+<p>To find a word rather than its occurrences inside longer words, use boundaries or tests of adjacent letters. With UCP:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-anchor">\b</span>том<span class="rx-anchor">\b</span></code></pre>
+<p>This does not match the start of <code>томик</code>. However, hyphens and apostrophes may divide words differently for the engine than for an editor.</p>
+<p>Use zero-length matches especially carefully with Replace All: text is inserted at positions rather than substituted for visible characters. Start with expressions that produce nonempty matches.</p>
+<h2 id="section-9">9. Quantifiers: repetition and backtracking</h2>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Form</th><th scope="col">Repetitions of the preceding element</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Zero or one</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Zero or more</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>One or more</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Exactly three</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>At least three</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Two through five</td></tr>
+</tbody></table></div>
+<p>A quantifier applies to the preceding character, class, or group. <code>аб+</code> repeats only <code>б</code>; <code>(?:аб)+</code> repeats the pair of letters.</p>
+<h3 id="section-9-1">9.1. Greedy matching</h3>
+<p>Input:</p>
+<pre><code>&#171;первый&#187; и &#171;второй&#187;</code></pre>
+<p>Pattern:</p>
+<pre class="regex" id="regex-9"><code>&#171;.<span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>The dot and asterisk first take as much text as possible, then the engine backtracks if necessary to satisfy what follows. Here the result spans both pairs of quotation marks.</p>
+<h3 id="section-9-2">9.2. Lazy matching</h3>
+<pre class="regex" id="regex-10"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>&#187;</code></pre>
+<p>This first tries the smallest number of characters but expands the match if needed. On this text, successive searches find <code>&#171;первый&#187;</code>, then <code>&#171;второй&#187;</code>.</p>
+<p>For a simple pair of quotation marks, explicitly restricting the content is often clearer:</p>
+<pre class="regex" id="regex-11"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>This does not parse nested quotations. Nested quotations require separate editorial review.</p>
+<h3 id="section-9-3">9.3. Possessive quantifiers</h3>
+<pre class="regex" id="regex-12"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>This does not mean “an even more correct quotation pattern”. <code>.*+</code> consumes the closing quotation mark too and will not give it back; the remaining <code>&#187;</code> in the pattern cannot match. There is no result on the sample text.</p>
+<p>A version excluding the closing character can be appropriate:</p>
+<pre class="regex" id="regex-13"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Use possessive quantifiers and atomic groups to control backtracking, not as a universal way to speed up every expression.</p>
+<h2 id="section-10">10. Groups and backreferences</h2>
+<p>Parentheses capture the matched fragment. Numbering begins at 1 and follows opening capturing parentheses from left to right. Nesting does not change that order.</p>
+<pre class="regex" id="regex-14"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>On <code>02.10.2026</code>, the groups contain <code>02</code>, <code>10</code>, and <code>2026</code>. This checks the shape of the notation, not the calendar validity of the date.</p>
+<p>A noncapturing group <code>(?:...)</code> combines elements without consuming a group number. It is useful in complex recipes where replacement references <code>$1</code> and <code>$2</code> must remain predictable.</p>
+<p>Named groups make a pattern easier to read:</p>
+<pre class="regex" id="regex-15"><code><span class="rx-group">(?&lt;</span>word&gt;<span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-escape">\k</span>&lt;word&gt;</code></pre>
+<p>A backreference finds the same captured text. A subroutine call, described later, repeats a rule and need not find the same text. These are different mechanisms.</p>
+<p>For repeated words in a real book, add boundaries, an appropriate case setting, and a suitable whitespace set; a ready-made recipe appears below. A backreference without boundaries can match part of a longer word.</p>
+<p>Named groups are allowed in the search expression, but this does not automatically provide named substitutions in FBE’s replacement field. Use the confirmed numeric references for replacement.</p>
+<h2 id="section-11">11. Alternation and atomic groups</h2>
+<p>The vertical bar selects one of several branches:</p>
+<pre class="regex" id="regex-16"><code><span class="rx-group">(?:</span>глава<span class="rx-alternation">|</span>часть<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Grouping matters. Without it, a shared suffix may apply only to the final branch. Alternatives are tried in their written order; arrange long and short forms deliberately.</p>
+<p>An atomic group prevents backtracking into a group that has already matched successfully:</p>
+<pre class="regex" id="regex-17"><code><span class="rx-group">(?</span>&gt;а<span class="rx-alternation">|</span>аб<span class="rx-group">)</span>в</code></pre>
+<p>On <code>абв</code>, the first branch selects <code>а</code>; returning to choose <code>аб</code> is then forbidden, so no match is found. The non-atomic version can find it. This is a teaching example: do not add atomicity without checking the result.</p>
+<h2 id="section-12">12. Testing surrounding text: lookaround</h2>
+<p>Lookaround checks context without including it in the whole match. For example, it can select only a number while leaving the sign before it untouched.</p>
+<pre class="regex" id="regex-18"><code><span class="rx-group">(?&lt;=</span>№ <span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>On <code>№ 125</code>, only <code>125</code> is found. The space here is exactly one ordinary space.</p>
+<section class="example" id="example-3"><strong>Example</strong><pre><code>Find: (?&lt;=№ )([0-9]+)
+Input: № 125
+Whole match: 125
+Group 1: 125
+Expected replacement with [$1]: № [125]</code></pre></section>
+<p>A test to the right:</p>
+<pre class="regex" id="regex-19"><code><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?=</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>руб<span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>On <code>125 руб.</code>, the number is found, but not <code>руб.</code>.</p>
+<p>A negative lookahead:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-anchor">\b</span>глава<span class="rx-anchor">\b</span><span class="rx-group">(?!</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>With UCP, this finds the word “глава” when it is not followed by ordinary numbering after a space. It illustrates contextual selection, not a book-correction rule.</p>
+<p>Lookbehind is written <code>(?&lt;=...)</code>, and negative lookbehind <code>(?&lt;!...)</code>. Lookahead is <code>(?=...)</code>, and negative lookahead <code>(?!...)</code>.</p>
+<p>Lookbehind has length restrictions. Modern PCRE2 permits some bounded variable lengths, but not arbitrary unbounded repetition. For portable recipes, use short fixed context or a capture/<code>\K</code>; do not rely on <code>.*</code> inside lookbehind.</p>
+<h2 id="section-13">13. Inline options</h2>
+<div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Option</th><th scope="col">Effect</th></tr></thead><tbody>
+<tr><td class="syntax"><code>(?i)</code></td><td>Ignore case</td></tr>
+<tr><td class="syntax"><code>(?-i)</code></td><td>Match case</td></tr>
+<tr><td class="syntax"><code>(?m)</code></td><td>Enable multiline start/end anchors</td></tr>
+<tr><td class="syntax"><code>(?-m)</code></td><td>Disable multiline anchors</td></tr>
+<tr><td class="syntax"><code>(?s)</code></td><td>Let the dot match a newline</td></tr>
+<tr><td class="syntax"><code>(?-s)</code></td><td>Restore the usual dot behavior</td></tr>
+<tr><td class="syntax"><code>(?x)</code></td><td>Ignore insignificant spaces and comments in the pattern</td></tr>
+</tbody></table></div>
+<p><code>(?m)</code> does not make the dot cross lines. <code>(?s)</code> does not authorize FBE to replace across paragraphs. These are two separate search options and a separate application restriction.</p>
+<p>In extended mode, spaces in the expression may cease to be literal. Use <code>[ ]</code> for a required space; <code>#</code> outside a class can start a comment. Nicely laid-out multiline patterns are useful in documentation, but the recipes below use a single line for the editor’s single-line search field.</p>
+<h2 id="section-14">14. Advanced PCRE2 features</h2>
+<p>Most corrections do not require this section. It explains constructs you may encounter in someone else’s pattern. Engine support for a construct does not mean that every pattern using it is convenient or safe for a whole book.</p>
+<h3 id="section-14-1">14.1. Resetting the start of a match</h3>
+<pre class="regex" id="regex-21"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\K</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>On <code>№ 125</code>, the prefix is checked but the reported match is only <code>125</code>. This is useful when the number, rather than the sign, must change. Do not use <code>\K</code> inside lookaround without separate verification: PCRE2 restricts that combination.</p>
+<h3 id="section-14-2">14.2. A condition on group participation</h3>
+<pre class="regex" id="regex-22"><code><span class="rx-anchor">^</span><span class="rx-group">(</span><span class="rx-escape">\(</span><span class="rx-group">)</span><span class="rx-quantifier">?</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">(?</span><span class="rx-group">(</span>1<span class="rx-group">)</span><span class="rx-escape">\)</span><span class="rx-group">)</span><span class="rx-anchor">$</span></code></pre>
+<p>This permits <code>12</code> or <code>(12)</code>, but not the unclosed <code>(12</code>. The condition tests whether group 1 participated. Do not turn this search example into a replacement relying on optional groups without checking FBE’s wrapper behavior.</p>
+<h3 id="section-14-3">14.3. Shared group numbering across alternatives</h3>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?</span><span class="rx-alternation">|</span>глава <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-alternation">|</span>часть <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">)</span></code></pre>
+<p>In both branches the number goes into group 1. This is branch reset. For simple cases, a noncapturing group with one shared capture is usually clearer.</p>
+<h3 id="section-14-4">14.4. Subroutine calls</h3>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?&lt;</span>pair&gt;<span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span>-<span class="rx-group">(?</span>&amp;pair<span class="rx-group">)</span></code></pre>
+<p>On <code>12-34</code>, both parts satisfy the same “two digits” rule, even though their values differ. A backreference <code>\k&lt;pair&gt;</code> would require another <code>12</code>.</p>
+<p>Recursive subroutines can describe some nested structures, but do not replace FBE’s XML parser. Use structural tools to edit <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, notes, and tables.</p>
+<h3 id="section-14-5">14.5. Skipping fragments</h3>
+<pre class="regex" id="regex-25"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
+<p>With UCP, this searches for the word outside simple pairs of Russian quotation marks. The first branch marks a quoted fragment to skip; the second searches for the word. It does not handle nested or unclosed quotations. Do not rely on it unconditionally for bulk editing.</p>
+<h2 id="section-15">15. What a regular expression cannot decide</h2>
+<p>“Uppercase after lowercase”, “no punctuation at the end of a paragraph”, and “repeated word” are formal signals, not editorial decisions. Regex does not know whether <code>да да</code> is a typo, an intentional line of dialogue, part of a poem, or a heading.</p>
+<p>Do not automatically add periods, join every paragraph starting with lowercase, replace all Latin letters with Cyrillic, or convert every hyphen to a dash. Complex operations need context and sometimes several DOM-based steps. FBE’s cleanup, joined-word, and note scripts address precisely these more complex tasks.</p>
+<h2 id="section-16">16. FBE replacement grammar</h2>
+<p>PCRE2 performs the search, but FBE parses the replacement string. Replacement examples from JavaScript, Python, .NET, PCRE2 substitute, or another editor must therefore be checked before reuse. The commands below are supported by FBE’s source code and the original guide. [D3, D4]</p>
+<h3 id="section-16-1">16.1. The match and its groups</h3>
+<div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">In the replacement field</th><th scope="col">Meaning</th></tr></thead><tbody>
+<tr><td class="syntax"><code>$0</code> or <code>\0</code></td><td>The whole match</td></tr>
+<tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>The corresponding numbered group</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>An alternative form for a numbered group</td></tr>
+<tr><td class="syntax"><code>$+</code> or <code>\+</code></td><td>The last group returned by the match wrapper</td></tr>
+</tbody></table></div>
+<p>“FBE replaces only groups 1–9” needs qualification: ordinary text and the whole match can also be inserted. Direct numeric access to groups is restricted; this is not PCRE2’s limit on the number of groups.</p>
+<p>Do not use <code>$10</code> as a reference to group 10. Named substitutions such as <code>${name}</code> are not part of FBE’s confirmed grammar. For predictability, keep the required captures among the first nine groups and make auxiliary groups noncapturing.</p>
+<p>Optional and empty groups need a separate trial: FBE has its own SubMatches wrapper. For new bulk replacements, avoid relying on subtle skipped-group behavior or the meaning of “last group”; use explicit mandatory captures.</p>
+<h3 id="section-16-2">16.2. Rearranging groups</h3>
+<p>Find:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Replace with:</p>
+<pre><code>$3-$2-$1</code></pre>
+<p>This changes <code>02.10.2026</code> to <code>2026-10-02</code>. It demonstrates rearrangement, not a recommendation to reformat every date in a book.</p>
+<h3 id="section-16-3">16.3. Changing case</h3>
+<div class="table-wrap" id="table-8"><table><thead><tr><th scope="col">Command</th><th scope="col">Effect</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\U</code></td><td>Convert the inserted fragment to uppercase</td></tr>
+<tr><td class="syntax"><code>\L</code></td><td>Convert it to lowercase</td></tr>
+<tr><td class="syntax"><code>\T</code></td><td>Make the fragment’s first letter uppercase and the rest lowercase</td></tr>
+<tr><td class="syntax"><code>\Q</code></td><td>Reset active case/formatting commands for the following fragment</td></tr>
+</tbody></table></div>
+<p>Find:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(</span>иван<span class="rx-group">)</span></code></pre>
+<p>Replace with:</p>
+<pre><code>\T$1\Q</code></pre>
+<p>Expected result: <code>Иван</code>. <code>\T</code> is not sophisticated linguistic title casing of every word: passing <code>иван иванов</code> as one fragment does not guarantee <code>Иван Иванов</code>.</p>
+<p>Do not layer <code>\U</code> and <code>\L</code> without resetting. Separate segments with <code>\Q</code> and check Cyrillic and diacritics. FBE changes the case, not a PCRE2 Unicode normalizer.</p>
+<h3 id="section-16-4">16.4. Bold and italic formatting</h3>
+<p><code>\S</code> enables bold for the inserted fragment; <code>\E</code> enables italics. <code>\Q</code> ends the effect of the active commands on subsequently inserted text.</p>
+<pre><code>\S$1\Q</code></pre>
+<p>This replacement formats group 1. It does not search for existing bold text and is not a way to remove all existing formatting in a book. Test one fragment and Undo first.</p>
+<h3 id="section-16-5">16.5. Sequences with different search and replacement meanings</h3>
+<p>In search, <code>\S</code> means a non-whitespace character; in FBE replacement it means bold. In search, <code>\Q...\E</code> quotes a literal fragment; in replacement, <code>\Q</code> resets commands and <code>\E</code> enables italics.</p>
+<p>Do not enter <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code>, or <code>$$</code> in a Design replacement expecting another editor’s behavior. They are not part of the literal grammar described above; an unknown control sequence may be discarded. Use an actual NBSP character, and preserve a special character through a captured group or a checked ordinary non-regex replacement.</p>
+<p>An empty replacement field deletes the matched text. A field containing one space replaces it with one space. Do not type explanatory labels such as <code>&lt;пусто&gt;</code>, <code>[NBSP]</code>, or <code>U+00A0</code> literally.</p>
+<h2 id="section-17">17. Practical recipes for editing and proofreading</h2>
+<p>The examples below are independent scenarios, not a promise that their names exactly match the built-in catalog. Try replacement recipes on one match first. Actual spaces and tabs are preserved in the test blocks. Negative examples demonstrate at least one boundary of applicability, but do not replace reviewing the entire book.</p>
+<h3 id="heading-1">D01. Multiple ordinary spaces into one</h3>
+<p>Normalize ordinary gaps without touching a single NBSP.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-28"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он   пришёл.</code></pre>
+<p>Replace with: one ordinary space U+0020. This is one character, not the word “space”.</p>
+<p>Replacement result:</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Limitations and notes: Several spaces may be intentional in poetry, tables, or simulated indentation. Check the scope; this is not a way to restructure paragraph indentation.</p>
+<h3 id="heading-2">D02. Spaces at the start of a paragraph</h3>
+<p>Remove manual indentation before ordinary text.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Test input:</p>
+<pre><code>   Начало абзаца.</code></pre>
+<p>The same test text with visible symbols:</p>
+<pre><code>␠␠␠Начало␠абзаца.</code></pre>
+<p>Here ␠ denotes an ordinary space, [TAB] a tab, [NBSP] U+00A0, [NNBSP] U+202F, and [ZWSP] U+200B. This is an explanatory representation; do not insert these labels into the book.</p>
+<p>Replace with: leave the field completely empty. Do not type the word “empty”.</p>
+<p>Replacement result:</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Limitations and notes: Manual indentation may be meaningful in poetry or artistic layout. The anchor refers to a textual line, not a visual wrap at the window edge.</p>
+<h3 id="heading-3">D03. Spaces at the end of a paragraph</h3>
+<p>Remove a tail of ordinary spaces or tabs.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-30"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Test input:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>The same test text with visible symbols:</p>
+<pre><code>Конец␠абзаца.␠␠␠</code></pre>
+<p>Here ␠ denotes an ordinary space, [TAB] a tab, [NBSP] U+00A0, [NNBSP] U+202F, and [ZWSP] U+200B. This is an explanatory representation; do not insert these labels into the book.</p>
+<p>Replace with: leave the field completely empty. Do not type the word “empty”.</p>
+<p>Replacement result:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Limitations and notes: NBSP is deliberately excluded. Use separate diagnostics for unusual spaces.</p>
+<h3 id="heading-4">D04. Space before a comma or other punctuation</h3>
+<p>Keep the punctuation mark and remove the preceding gap.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-31"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[,;:!?]</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>Слово , другое !</code></pre>
+<p>Replace with:</p>
+<pre><code>$1</code></pre>
+<p>Replacement result:</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Limitations and notes: This rule is for ordinary Russian text. French typography permits a special space before some punctuation; do not apply the recipe to such a book without adapting it.</p>
+<h3 id="heading-5">D05. Space after an opening mark</h3>
+<p>Remove ordinary spaces after a bracket or Russian opening quotation mark.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[&#171;„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Test input:</p>
+<pre><code>&#171; слово&#187; ( пример)</code></pre>
+<p>Replace with:</p>
+<pre><code>$1</code></pre>
+<p>Replacement result:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Limitations and notes: It does not affect spaces in formulas or examples unless they immediately follow one of the listed marks. Context still needs review.</p>
+<h3 id="heading-6">D06. Space before a closing mark</h3>
+<p>Remove ordinary spaces before a bracket or closing quotation mark.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>&#187;”]<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&#171;слово &#187; (пример )</code></pre>
+<p>Replace with:</p>
+<pre><code>$1</code></pre>
+<p>Replacement result:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Limitations and notes: This is not a normalizer for every quotation style or mathematical bracket convention.</p>
+<h3 id="heading-7">D07. Exactly three periods into an ellipsis</h3>
+<p>Convert three consecutive periods without touching a longer sequence.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-quantifier">{3}</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он подумал... и ответил.</code></pre>
+<p>Replace with:</p>
+<pre><code>…</code></pre>
+<p>Replacement result:</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Содержание.....12</code></pre>
+<p>Limitations and notes: Check the editorial policy. Four periods and table-of-contents leaders are intentionally not changed by this pattern.</p>
+<h3 id="heading-8">D08. Spaced-out ellipsis</h3>
+<p>Bring together three periods separated by ordinary spaces.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он подумал. . . и ответил.</code></pre>
+<p>Replace with:</p>
+<pre><code>…</code></pre>
+<p>Replacement result:</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Слово. Другое.</code></pre>
+<p>Limitations and notes: Also matches three adjacent periods. Do not use it for leader lines or omissions in quotations that follow special conventions.</p>
+<h3 id="heading-9">D09. Non-breaking space after №</h3>
+<p>Keep the number sign with the following number.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-36"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>№ 125</code></pre>
+<p>Replace with:</p>
+<pre><code>№&#160;$1</code></pre>
+<p>Replacement result:</p>
+<pre><code>№&#160;125</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>№125</code></pre>
+<p>Limitations and notes: The replacement contains a real U+00A0 between № and $1. Do not replace it with the printed sequence \x{00A0}. The pattern does not insert a missing space.</p>
+<h3 id="heading-10">D10. Non-breaking space after &#167;</h3>
+<p>Keep the section sign with its number.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-37"><code>&#167;<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&#167; 12</code></pre>
+<p>Replace with:</p>
+<pre><code>&#167;&#160;$1</code></pre>
+<p>Replacement result:</p>
+<pre><code>&#167;&#160;12</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&#167;12</code></pre>
+<p>Limitations and notes: The replacement contains an actual NBSP between &#167; and $1. For references with complex numbering, check that the intended fragment was found.</p>
+<h3 id="heading-11">D11. Possible repeated adjacent word</h3>
+<p>Find repetition across horizontal spaces without crossing paragraphs.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — off.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-38"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">+</span><span class="rx-escape">\1</span><span class="rx-anchor">\b</span></code></pre>
+<p>Test input:</p>
+<pre><code>Это это уже было.</code></pre>
+<p>Expected match:</p>
+<pre><code>Это это</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Это уже было.</code></pre>
+<p>Limitations and notes: “Да да” and similar repetitions may be intentional. Do not automatically remove the second instance; first decide whether deletion, a comma, or no change is appropriate. Words with apostrophes or hyphens are not fully covered.</p>
+<h3 id="heading-12">D12. Latin and Cyrillic within one word</h3>
+<p>Find OCR mixing inside one uninterrupted word, not any line containing two languages.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-39"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Latin}</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Cyrillic}</span><span class="rx-group">)</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>В слове Тeст латинская e.</code></pre>
+<p>Expected match:</p>
+<pre><code>Тeст</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он прочитал Latin.</code></pre>
+<p>Limitations and notes: In Тeст, e is Latin. A wholly Latin word beside a Russian word is not treated as mixed. Formulas, product names, and deliberate typographic effects can be valid matches. The rule does not transliterate anything.</p>
+<h3 id="heading-13">D13. Lowercase immediately followed by uppercase</h3>
+<p>Find possible joined words or a case error.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-40"><code><span class="rx-escape">\p{Ll}</span><span class="rx-escape">\p{Lu}</span></code></pre>
+<p>Test input:</p>
+<pre><code>ОнвышелИздома.</code></pre>
+<p>Expected match:</p>
+<pre><code>лИ</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он вышел из дома.</code></pre>
+<p>Limitations and notes: Case sensitivity is essential. Compound brands and names such as McDonald may be correct. The match identifies a transition, not an automatically reconstructed word boundary.</p>
+<h3 id="heading-14">D14. Digit between letters</h3>
+<p>Find a typical OCR substitution of a digit for a letter.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-41"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Test input:</p>
+<pre><code>Это сл0во.</code></pre>
+<p>Expected match:</p>
+<pre><code>сл0во</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>В главе 10 текст.</code></pre>
+<p>Limitations and notes: H2O and other formulas may be valid. Do not replace every 0 with о or every 3 with з.</p>
+<h3 id="heading-15">D15. Punctuation within a letter sequence</h3>
+<p>Inspect punctuation immediately surrounded by letters on both sides.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-42"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[.,;:!?]</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он,сказал слово.</code></pre>
+<p>Expected match:</p>
+<pre><code>Он,сказал</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он, сказав слово, ушёл.</code></pre>
+<p>Limitations and notes: Abbreviations, addresses, and domains may also match. To check commas only, reduce the class to [,]. Do not insert a space into every match in one operation.</p>
+<h3 id="heading-16">D16. Paragraph starts with lowercase</h3>
+<p>Find a possible unwanted paragraph break.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-43"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>Test input:</p>
+<pre><code>продолжение предложения.</code></pre>
+<p>Expected match:</p>
+<pre><code>п</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Начало предложения.</code></pre>
+<p>Limitations and notes: Poems, captions, lists, and quotations often legitimately start in lowercase. The pattern does not join paragraphs or understand neighboring context.</p>
+<h3 id="heading-17">D17. No final punctuation before closing quotation marks</h3>
+<p>Find a letter or digit at the end followed only by closing marks and spaces.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[&#187;”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
+<p>Test input:</p>
+<pre><code>&#171;Он пришёл&#187;</code></pre>
+<p>Expected match:</p>
+<pre><code>л&#187;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&#171;Он пришёл!&#187;</code></pre>
+<p>Limitations and notes: Headings and captions often do not require a period. A note reference after valid final punctuation may produce a false positive. Unlike a test of the final &#187; alone, this recipe does not flag &#171;Он пришёл!&#187;.</p>
+<h3 id="heading-18">D18. Lowercase after a sentence ending</h3>
+<p>Find a likely case error after a period, question mark, or exclamation mark.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он пришёл. потом ушёл.</code></pre>
+<p>Expected match:</p>
+<pre><code>. п</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он пришёл. Потом ушёл.</code></pre>
+<p>Limitations and notes: Periods in abbreviations and an author’s ellipsis often do not end a sentence. This is only a list of candidates to inspect.</p>
+<h3 id="heading-19">D19. Possible missing period</h3>
+<p>Find a transition from a lowercase ending to a capitalized word across a space.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[&#187;”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он пришёл Потом ушёл.</code></pre>
+<p>Expected match:</p>
+<pre><code>л Потом</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он пришёл потом ушёл.</code></pre>
+<p>Limitations and notes: Names and titles inside a sentence produce many valid matches. The recipe cannot decide whether a period, comma, or no punctuation belongs there.</p>
+<h3 id="heading-20">D20. Pairs of straight quotation marks</h3>
+<p>Find a simple fragment in straight double quotes on one line.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-47"><code>&quot;<span class="rx-group">(</span><span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>&quot;</code></pre>
+<p>Test input:</p>
+<pre><code>Он сказал &quot;да&quot;.</code></pre>
+<p>Expected match:</p>
+<pre><code>&quot;да&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он сказал &#171;да&#187;.</code></pre>
+<p>Limitations and notes: Check nesting, inch marks, code, and the chosen quotation convention. Replacing with &#171;$1&#187; is appropriate only in selected context; it is not universal typographic processing.</p>
+<h3 id="heading-21">D21. Hyphen or em dash between numbers</h3>
+<p>Find a possible range needing an editorial decision.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-48"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[-—]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>Страницы 12 - 15.</code></pre>
+<p>Expected match:</p>
+<pre><code>12 - 15</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Страницы 12–15.</code></pre>
+<p>Limitations and notes: The date 2026-10-02, a negative number, or subtraction can also match. Do not automatically convert them to ranges. The characters are – en dash, — em dash, and - hyphen.</p>
+<h3 id="heading-22">D22. Two initials before a surname</h3>
+<p>Find a simple two-initial form to check its spacing.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-49"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-anchor">\b</span></code></pre>
+<p>Test input:</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Expected match:</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Limitations and notes: Not all compound surnames or diacritics are covered. After review, a replacement may use $1., NBSP, $2., NBSP, $3; insert actual non-breaking spaces, not their names.</p>
+<h3 id="heading-23">D23. Surname before two initials</h3>
+<p>Find the reverse name order.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-50"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span></code></pre>
+<p>Test input:</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Expected match:</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Limitations and notes: This checks a format, not a person’s identity. Compound surnames, particles, and three initials require a separate rule.</p>
+<h3 id="heading-24">D24. Invisible characters to review</h3>
+<p>Find a soft hyphen, zero-width space, or FEFF in text.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-51"><code><span class="rx-class">[\x{00AD}\x{200B}\x{FEFF}]</span></code></pre>
+<p>Test input:</p>
+<pre><code>сло​во</code></pre>
+<p>The same test text with visible symbols:</p>
+<pre><code>сло[ZWSP]во</code></pre>
+<p>Here ␠ denotes an ordinary space, [TAB] a tab, [NBSP] U+00A0, [NNBSP] U+202F, and [ZWSP] U+200B. This is an explanatory representation; do not insert these labels into the book.</p>
+<p>Expected match:</p>
+<pre><code>​</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>слово</code></pre>
+<p>Limitations and notes: The match is invisible in the sample block: U+200B lies between о and в. Insert or delete it only after determining its purpose. A physical file BOM and FEFF within the text are different cases.</p>
+<h3 id="heading-25">D25. Unusual Unicode spaces</h3>
+<p>Find narrow, wide, and other special spaces.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-52"><code><span class="rx-class">[\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]</span></code></pre>
+<p>Test input:</p>
+<pre><code>10 000</code></pre>
+<p>The same test text with visible symbols:</p>
+<pre><code>10[NNBSP]000</code></pre>
+<p>Here ␠ denotes an ordinary space, [TAB] a tab, [NBSP] U+00A0, [NNBSP] U+202F, and [ZWSP] U+200B. This is an explanatory representation; do not insert these labels into the book.</p>
+<p>Expected match:</p>
+<pre><code> </code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>10 000</code></pre>
+<p>Limitations and notes: A narrow non-breaking space between digit groups may be entirely correct. The recipe helps identify inconsistent usage; it does not declare every such character erroneous.</p>
+<h3 id="heading-26">D26. Repeated question and exclamation marks</h3>
+<p>Find expressive punctuation or accidental doubling.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-53"><code><span class="rx-class">[!?]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Test input:</p>
+<pre><code>Что?! Правда!!!</code></pre>
+<p>Expected matches, in sequence:</p>
+<pre><code>?!
+!!!</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Что? Правда!</code></pre>
+<p>Limitations and notes: The combination ?! and authorial repetitions may be intentional. The default action is review, not reducing every sequence to one mark.</p>
+<h3 id="heading-27">D27. Cyrillic Х beside Roman numerals</h3>
+<p>Find a Russian Х in a notation otherwise using Latin Roman-numeral characters.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — not required for this expression. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-54"><code><span class="rx-group">(?&lt;=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span>Х<span class="rx-alternation">|</span>Х<span class="rx-group">(?=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>Глава IХ</code></pre>
+<p>Expected match:</p>
+<pre><code>Х</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Глава IX</code></pre>
+<p>Limitations and notes: Х is the Cyrillic letter, while X is Latin. Check case and context; this expression does not validate the whole Roman numeral.</p>
+<h3 id="heading-28">D28. Several uppercase letters before lowercase</h3>
+<p>Find a possible OCR case error at the start of a word.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Unicode (UCP)” — on. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-55"><code><span class="rx-escape">\p{Lu}</span><span class="rx-quantifier">{2,}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Test input:</p>
+<pre><code>Он сказал ПРИвет.</code></pre>
+<p>Expected match:</p>
+<pre><code>ПРИвет</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>Он сказал Привет.</code></pre>
+<p>Limitations and notes: Names, abbreviations with suffixes, and Latin abbreviations may be correct. Do not change case globally without review.</p>
+<h2 id="section-18">18. Common problems and diagnosis</h2>
+<h3 id="section-18-1">18.1. The text is visible, but there is no match</h3>
+<p>Check Design mode, the regex checkbox, case, scope, direction, and actual characters. Latin <code>a</code> and Cyrillic <code>а</code> look similar but differ. NBSP is not an ordinary space. Typographic quotes are not straight quotes.</p>
+<p>For Russian word boundaries, check UCP. For uppercase/lowercase rules, check case sensitivity. Do not combine Whole words only with complex boundaries of your own unless necessary.</p>
+<h3 id="section-18-2">18.2. The match is too large</h3>
+<p>First suspect a greedy dot-star or an overly broad negated class. Replace general “any text” with an explicit permitted set, and restrict lengths and boundaries. Check whether dotall is enabled.</p>
+<h3 id="section-18-3">18.3. Whitespace matches cross paragraphs</h3>
+<p>Do not use <code>\s+</code> as a synonym for a space. Start with <code>[ \t]+</code> for a gap between words and add NBSP separately only when required.</p>
+<h3 id="section-18-4">18.4. Replacement inserts digits, loses backslashes, or ignores a group name</h3>
+<p>Check FBE’s replacement grammar in section 16. <code>${name}</code>, <code>$10</code>, <code>\n</code>, and <code>\x{...}</code> must not be interpreted according to search rules or another editor. Make sure the required capture exists and is not optional in another branch.</p>
+<h3 id="section-18-5">18.5. Mixed alphabets are found in an ordinary bilingual sentence</h3>
+<p>An early example checked for Cyrillic and Latin anywhere in a whole line, also matching <code>Он прочитал Latin.</code>. Recipe D12 confines both tests to one word. This is the essential difference between finding an OCR mistake and finding a bilingual line.</p>
+<h3 id="section-18-6">18.6. “Missing period” flags a correct quotation</h3>
+<p>Checking only the final character is insufficient: <code>&#187;</code> may follow <code>!</code>. Recipe D17 accounts for closing quotes and brackets, but headings and notes still require review.</p>
+<h3 id="section-18-7">18.7. A structure cannot be found</h3>
+<p>A text regex does not see the DOM as a structural script does. Finding tags, checking nesting, identifying links to missing IDs, and moving notes are separate tasks. The right next tool may be Source mode, the FB2 validator, or a bundled script—not an even more complex expression.</p>
+<h2 id="section-19">19. Performance and large books</h2>
+<p>Start with a narrow condition: a particular mark, class, word, or paragraph beginning. Avoid repeatedly nested unbounded repetitions and several competing “any text” fragments in succession. They may explore an enormous number of possibilities on a failed search.</p>
+<p>Laziness is not a universal cure for a slow pattern: a lazy quantifier also explores alternatives. Explicitly excluding the delimiter, bounding the length, and reducing the search scope are often more effective.</p>
+<p>If a search takes a long time, do not launch further replacements on top of it. Simplify the expression and test it on short control text first. A PCRE2 resource-limit error does not mean “no matches”.</p>
+<p>For multistep processing involving neighboring paragraphs and tags, a script is often clearer and safer than a single complex regex. Do not combine every proofreading rule into one enormous alternation: separate rules make the cause of each match understandable.</p>
+<h2 id="section-20">20. Checks before saving the result</h2>
+<p>Inspect the beginning, middle, and end of the processed fragment. Review several matches of each type, especially quotations, ranges, initials, notes, and preserved formatting. Make sure significant NBSP characters have not disappeared and paragraphs have not changed unexpectedly.</p>
+<p>After structurally sensitive edits, run FBE’s document validation. Save, reopen when appropriate, and compare the result. A successful regex search does not replace FB2 validation or editorial proofreading.</p>
+<h2 id="section-21">21. Sources and applicability</h2>
+<p>This is a translation of the expanded Russian guide derived from the supplied regex-design.md, with newly written explanations and test examples. Inaccurate original descriptions of UCP, subject boundaries, mixed alphabets, and replacement grammar were clarified against primary sources. The recipes in section 17 are editorial scenarios, not quotations from the PCRE2 manual.</p>
+<p>[D1] Official PCRE2 pattern documentation: anchors, groups, Unicode properties, backtracking, and options.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
+<p>[D2] Official PCRE2 Unicode documentation.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
+<p>[D3] FBE Next: PCRE2 compatibility and wrapper details. Repository snapshot d2257405d95b0328649acee64b38829b40a4314b.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+</main></body></html>

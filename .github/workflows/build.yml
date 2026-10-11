@@ -192,17 +192,17 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-regex-help-markdown.ps1
+          ./tools/tests/test-regex-help-html.ps1
           ./tools/tests/test-regex-help-formatting.ps1
           ./tools/tests/test-regex-help-runtime.ps1 -FbeExe ./out/Release/FBE.exe
-          ./tools/tests/test-regex-help-placement-runtime.ps1 -FbeExe ./out/Release/FBE.exe
-          ./tools/tests/test-regex-help-visual-runtime.ps1 -FbeExe ./out/Release/FBE.exe -ArtifactDirectory ./out/tests/full-regex-help-visual
+          ./tools/tests/test-regex-help-visual-runtime.ps1 -ArtifactDirectory ./out/tests/full-regex-help-html
       - name: Upload Full Regex Help visual smoke captures
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: full-regex-help-visual-${{ github.sha }}
-          path: out/tests/full-regex-help-visual/**
-          if-no-files-found: ignore
+          name: full-regex-help-html-${{ github.sha }}
+          path: out/tests/full-regex-help-html/**
+          if-no-files-found: error
           retention-days: 3
       - name: Run filesystem backup regression
         shell: pwsh

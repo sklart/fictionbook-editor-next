@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="fr-FR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Conception</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Autre mode"><strong>Conception</strong><a href="regex-source.html">Source</a></nav><main>
+<h1 id="top">Aide sur les expressions r&#233;guli&#232;res — Design</h1>
+<p>Note sur la traduction : les mots et phrases russes des exemples de contr&#244;le sont conserv&#233;s volontairement. Il s’agit de donn&#233;es de test : expressions r&#233;guli&#232;res, cha&#238;nes de remplacement, caract&#232;res d’espacement et r&#233;sultats attendus restent identiques &#224; ceux de l’&#233;dition russe de r&#233;f&#233;rence. Les explications sont traduites ; les exemples ne sont pas automatiquement adapt&#233;s aux r&#232;gles typographiques fran&#231;aises.</p>
+<p>Guide complet de recherche, de remplacement et de relecture des livres dans FictionBook Editor Next.</p>
+<p>&#201;dition du 2 octobre 2026. Le mode Code est trait&#233; dans regex-source.md. Dans ce guide, &#171; motif &#187; d&#233;signe une expression r&#233;guli&#232;re ; un &#171; mod&#232;le int&#233;gr&#233; &#187; est un ensemble enregistr&#233; comprenant une expression et ses param&#232;tres dans le panneau Mod&#232;les.</p>
+<h2 id="section-1">1. Utiliser ce guide</h2>
+<p>Une expression r&#233;guli&#232;re d&#233;crit une r&#232;gle de recherche plut&#244;t qu’une cha&#238;ne exacte. Par exemple, <code>[0-9]+</code> trouve une suite de chiffres de longueur quelconque, tandis que <code>[ \t]{2,}</code> trouve au moins deux espaces ordinaires ou tabulations. La correspondance trouv&#233;e et le texte qui la remplace sont deux choses diff&#233;rentes.</p>
+<p>La section 2 permet un premier essai pratique. Les sections 3 &#224; 15 expliquent la syntaxe ; la section 16 d&#233;crit la grammaire de remplacement propre &#224; FBE. La section 17 r&#233;unit des recettes pour les livres, avec r&#233;glages, textes de contr&#244;le et avertissements. Les derni&#232;res sections traitent des probl&#232;mes courants, des performances et des sources.</p>
+<p>Ne copiez que l’expression dans le champ de recherche. Les mots &#171; Rechercher &#187; et &#171; Remplacer &#187;, les indications comme U+0020 et les accents graves Markdown n’appartiennent pas au motif. Les d&#233;limiteurs JavaScript <code>/.../g</code>, les guillemets d’une cha&#238;ne C++ et les doubles barres obliques inverses de JSON sont inutiles.</p>
+<p>Les cases &#224; cocher sont importantes. Une correspondance obtenue sans respecter la casse n’est pas n&#233;cessairement retrouv&#233;e en la respectant. Les r&#233;glages font partie de la recette ; ils ne sont pas d&#233;coratifs.</p>
+<p>&#171; Rechercher et v&#233;rifier uniquement &#187; signale une recette diagnostique. Le passage peut &#234;tre correct : r&#233;p&#233;tition volontaire, nom &#233;tranger, citation, titre ou choix typographique. &#171; Remplacer apr&#232;s v&#233;rification &#187; ne signifie pas non plus que la modification convient sans risque &#224; tous les livres.</p>
+<h2 id="section-2">2. Premi&#232;re recherche et remplacement prudent</h2>
+<p>Enregistrez une copie de travail. Passez en Design, ouvrez Rechercher ou Remplacer et activez les expressions r&#233;guli&#232;res. Pour commencer, d&#233;sactivez Mot entier : mieux vaut exprimer les limites dans le motif. V&#233;rifiez la port&#233;e et le sens de recherche.</p>
+<p>Pour rechercher plusieurs espaces :</p>
+<pre class="regex" id="regex-1"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Dans <code>Он   пришёл</code>, la correspondance est l’intervalle de trois espaces. Saisissez une espace ordinaire dans le champ de remplacement. Remplacez une seule occurrence, v&#233;rifiez <code>Он пришёл</code>, puis envisagez seulement Remplacer tout.</p>
+<section class="example" id="example-1"><strong>Exemple</strong><pre><code>Rechercher: [ \t]{2,}
+Entr&#233;e: Он   пришёл
+Correspondance: trois espaces entre les mots</code></pre></section>
+<section class="example" id="example-2"><strong>Exemple</strong><pre><code>Rechercher: [ \t]{2,}
+Entr&#233;e: Он   пришёл
+Remplacer par: un espace
+Attendu: Он пришёл</code></pre></section>
+<p>En pr&#233;sence de nombreux r&#233;sultats, inspectez-les d’abord et corrigez un ou deux cas repr&#233;sentatifs. Apr&#232;s une op&#233;ration globale, v&#233;rifiez texte, italique, gras, notes et limites de paragraphes. Annulez un r&#233;sultat inattendu avant une nouvelle s&#233;rie de modifications.</p>
+<aside class="warning" id="warning-1"><strong>Attention</strong><p>Tout remplacer peut modifier des espaces et une mise en forme voulus. V&#233;rifiez une substitution et conservez une copie de travail.</p></aside>
+<p>Appliquer dans le panneau Mod&#232;les transf&#232;re l’expression et les options vers le dialogue. Ce n’est pas une commande de correction inconditionnelle de tous les r&#233;sultats. Utilisez ensuite les commandes de recherche ou de remplacement du dialogue.</p>
+<h2 id="section-3">3. Moteur et limites du mode Design</h2>
+<p>Ce mode utilise PCRE2-16, avec texte et motifs en UTF-16 ; UTF est toujours activ&#233;. FBE construit s&#233;par&#233;ment le texte interrogeable puis effectue les remplacements en tenant compte de la structure du livre. La documentation PCRE2 explique donc les correspondances, mais pas toutes les op&#233;rations de FBE. Voir D1–D4.</p>
+<p>La recherche porte sur une repr&#233;sentation textuelle du livre, pas sur le balisage XML litt&#233;ral. <code>&lt;strong&gt;</code> ne permet pas de rechercher le texte en gras dans Design. Recherchez les balises en mode Code et utilisez les fonctions structurelles ou des scripts sp&#233;cialis&#233;s pour les transformations.</p>
+<aside class="note" id="note-1"><strong>Remarque</strong><p>En mode Design, la regex voit le texte de recherche, pas l’arbre DOM. V&#233;rifiez &#233;l&#233;ments et attributs en mode Code ou avec un outil structurel.</p></aside>
+<p>Le retour visuel d&#251; &#224; la largeur de la fen&#234;tre n’est pas un caract&#232;re de fin de ligne. Il faut distinguer paragraphes, sauts r&#233;els et retour visuel. FBE utilise des ancres multiligne dans sa repr&#233;sentation de recherche afin de refl&#233;ter les limites des paragraphes. Trouver une correspondance entre paragraphes et la remplacer sont deux op&#233;rations diff&#233;rentes : l’impl&#233;mentation &#233;tudi&#233;e refuse les remplacements interparagraphes.</p>
+<p><code>\A</code> et <code>\z</code> d&#233;signent le d&#233;but et la fin du sujet transmis au moteur. Ce n’est pas automatiquement le d&#233;but et la fin de tout le FB2 : la port&#233;e et le fragment construit par FBE interviennent.</p>
+<h2 id="section-4">4. Unicode : UTF, UCP et casse</h2>
+<h3 id="section-4-1">4.1. R&#244;le d’UTF</h3>
+<p>UTF permet de traiter les caract&#232;res Unicode, y compris le cyrillique. Il ne translitt&#232;re pas, ne corrige pas l’OCR, ne transforme pas <code>ё</code> en <code>е</code> et ne fusionne pas automatiquement les repr&#233;sentations canoniquement &#233;quivalentes.</p>
+<p>Une lettre accentu&#233;e peut &#234;tre stock&#233;e comme un caract&#232;re ou comme une lettre suivie d’un signe combinant. L’apparence est proche, mais la recherche caract&#232;re par caract&#232;re peut diff&#233;rer. PCRE2 n’effectue pas la normalisation NFC/NFD &#224; votre place. Les livres avec diacritiques peuvent n&#233;cessiter <code>\p{M}</code>.</p>
+<h3 id="section-4-2">4.2. R&#244;le d’UCP</h3>
+<p>Unicode (UCP) modifie les classes abr&#233;g&#233;es, surtout <code>\w</code>, <code>\d</code> et <code>\s</code>, ainsi que les limites d&#233;pendantes <code>\b</code> et <code>\B</code>. Ce n’est pas l’option qui autorise le cyrillique lui-m&#234;me.</p>
+<p>Pr&#233;cision importante par rapport aux premi&#232;res versions : les propri&#233;t&#233;s explicites <code>\p{L}</code>, <code>\p{N}</code> et <code>\P{...}</code> fonctionnent dans une compilation Unicode de PCRE2 m&#234;me sans UCP. Mais un motif combinant <code>\p{L}</code> et <code>\b</code> devrait g&#233;n&#233;ralement activer UCP pour accorder la d&#233;finition des lettres et des limites de mots.</p>
+<p>Comparez la recherche d’un mot russe :</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
+<p>Avec UCP, les limites suivent la classe de mot Unicode. Sans UCP, ne supposez pas que <code>\b</code> se comporte sur le cyrillique comme sur l’ASCII latin. L’absence de r&#233;sultat ne prouve pas celle du mot.</p>
+<p>Pour des chiffres strictement ASCII, utilisez <code>[0-9]</code> plut&#244;t que <code>\d</code> : UCP peut &#233;tendre ce dernier aux chiffres d&#233;cimaux d’autres &#233;critures.</p>
+<h3 id="section-4-3">4.3. Propri&#233;t&#233;s utiles</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Expression</th><th scope="col">&#201;l&#233;ment recherch&#233;</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\p{L}</code></td><td>Lettre Unicode</td></tr>
+<tr><td class="syntax"><code>\p{Lu}</code></td><td>Lettre majuscule lorsque la casse est respect&#233;e</td></tr>
+<tr><td class="syntax"><code>\p{Ll}</code></td><td>Lettre minuscule lorsque la casse est respect&#233;e</td></tr>
+<tr><td class="syntax"><code>\p{M}</code></td><td>Signe combinant</td></tr>
+<tr><td class="syntax"><code>\p{N}</code></td><td>Caract&#232;re num&#233;rique, notion plus large qu’un chiffre d&#233;cimal</td></tr>
+<tr><td class="syntax"><code>\p{Nd}</code></td><td>Chiffre d&#233;cimal</td></tr>
+<tr><td class="syntax"><code>\p{Latin}</code></td><td>Caract&#232;re de l’&#233;criture latine</td></tr>
+<tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>Caract&#232;re de l’&#233;criture cyrillique</td></tr>
+<tr><td class="syntax"><code>\P{L}</code></td><td>Caract&#232;re qui n’est pas une lettre</td></tr>
+</tbody></table></div>
+<p>Pour une suite de lettres avec accents combinants :</p>
+<pre class="regex" id="regex-3"><code><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Ce n’est toujours pas une d&#233;finition linguistique universelle du mot : traits d’union et apostrophes en sont absents. Ajoutez-les de mani&#232;re d&#233;lib&#233;r&#233;e.</p>
+<h3 id="section-4-4">4.4. La casse est un r&#233;glage distinct</h3>
+<p>Respectez la casse pour d&#233;tecter des anomalies comme <code>строчнаяПрописная</code>, des initiales ou des motifs avec <code>\p{Lu}</code> et <code>\p{Ll}</code>. Ignorer la casse peut annuler le sens m&#234;me de la r&#232;gle. UCP ne remplace pas cette option.</p>
+<p>Ignorer temporairement la casse dans une expression :</p>
+<pre class="regex" id="regex-4"><code><span class="rx-group">(?</span>i<span class="rx-group">)</span>глава</code></pre>
+<p>Limiter cet effet &#224; un groupe :</p>
+<pre class="regex" id="regex-5"><code><span class="rx-group">(?</span>i:глава<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<h2 id="section-5">5. Caract&#232;res litt&#233;raux et &#233;chappement</h2>
+<p>Les lettres et la plupart des signes se repr&#233;sentent eux-m&#234;mes. Hors d’une classe, point, parenth&#232;ses, crochets, ast&#233;risque, plus, point d’interrogation, accolades, ancres et barre oblique inverse peuvent avoir un sens particulier.</p>
+<p>Pour rechercher un m&#233;tacaract&#232;re litt&#233;ral, faites-le pr&#233;c&#233;der d’une barre oblique inverse :</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Texte &#224; trouver</th><th scope="col">Expression</th></tr></thead><tbody>
+<tr><td>Point</td><td><code>\.</code></td></tr>
+<tr><td>Point d’interrogation</td><td><code>\?</code></td></tr>
+<tr><td>Signe plus</td><td><code>\+</code></td></tr>
+<tr><td>Ast&#233;risque</td><td><code>\*</code></td></tr>
+<tr><td>Parenth&#232;se ouvrante</td><td><code>\(</code></td></tr>
+<tr><td>Parenth&#232;se fermante</td><td><code>\)</code></td></tr>
+<tr><td>Nombre entre crochets</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Barre oblique inverse elle-m&#234;me</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p><code>(123)</code> recherche <code>123</code> et l’enregistre dans un groupe ; les parenth&#232;ses du texte ne sont pas exig&#233;es. Pour trouver <code>(123)</code>, &#233;chappez les parenth&#232;ses.</p>
+<p>Un long passage litt&#233;ral peut &#234;tre encadr&#233; par <code>\Q</code> et <code>\E</code> dans un motif PCRE2 :</p>
+<pre class="regex" id="regex-6"><code><span class="rx-escape">\Q</span>Цена <span class="rx-group">(</span>руб.<span class="rx-group">)</span> <span class="rx-quantifier">+</span> доставка<span class="rx-escape">\E</span></code></pre>
+<p>Ces m&#234;mes s&#233;quences ont un autre sens dans le champ de remplacement de FBE. Ne transf&#233;rez pas automatiquement les r&#232;gles d’&#233;chappement de la recherche au remplacement.</p>
+<h2 id="section-6">6. Espaces, tabulations et caract&#232;res invisibles</h2>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Expression</th><th scope="col">Sens dans la recherche PCRE2</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[ ]</code></td><td>Espace ordinaire U+0020 seulement</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Espace ordinaire ou tabulation</td></tr>
+<tr><td class="syntax"><code>\t</code></td><td>Tabulation U+0009</td></tr>
+<tr><td class="syntax"><code>\x{00A0}</code></td><td>Espace ins&#233;cable</td></tr>
+<tr><td class="syntax"><code>\x{202F}</code></td><td>Espace fine ins&#233;cable</td></tr>
+<tr><td class="syntax"><code>\h</code></td><td>Espacement horizontal, dont plusieurs espaces Unicode</td></tr>
+<tr><td class="syntax"><code>\s</code></td><td>Espacement pouvant inclure des fins de ligne</td></tr>
+<tr><td class="syntax"><code>\r</code></td><td>Retour chariot CR</td></tr>
+<tr><td class="syntax"><code>\n</code></td><td>Saut de ligne LF</td></tr>
+<tr><td class="syntax"><code>\R</code></td><td>S&#233;quence de rupture de ligne Unicode</td></tr>
+<tr><td class="syntax"><code>\x{00AD}</code></td><td>Trait d’union conditionnel</td></tr>
+<tr><td class="syntax"><code>\x{200B}</code></td><td>Espace sans chasse</td></tr>
+<tr><td class="syntax"><code>\x{FEFF}</code></td><td>FEFF pr&#233;sent dans le texte</td></tr>
+</tbody></table></div>
+<p>Pour nettoyer les intervalles ordinaires entre mots, pr&#233;f&#233;rez <code>[ \t]</code> &#224; <code>\s</code>. La seconde classe est plus large et peut toucher les limites de paragraphes et les espaces ins&#233;cables. De m&#234;me, <code>\h</code> est utile au diagnostic, mais trop large pour un remplacement typographique non pr&#233;cis&#233;.</p>
+<p>L’espace ins&#233;cable lie les parties d’une notation : signe et num&#233;ro, initiales et nom, nombre et unit&#233;. Les remplacer toutes par des espaces ordinaires peut d&#233;grader la composition. FBE poss&#232;de aussi un r&#233;glage du caract&#232;re NBSP ; comparez les recettes U+00A0 avec les param&#232;tres du livre et de la version utilis&#233;e.</p>
+<p>U+200C et U+200D peuvent &#234;tre n&#233;cessaires &#224; certaines &#233;critures et aux emoji compos&#233;s. Ne supprimez pas syst&#233;matiquement tous les caract&#232;res &#171; invisibles &#187;. D&#233;tecter n’&#233;quivaut pas &#224; constater une erreur.</p>
+<h2 id="section-7">7. Classes et plages de caract&#232;res</h2>
+<p>Une classe entre crochets consomme un caract&#232;re de son ensemble. <code>[abc]</code> signifie l’une des trois lettres, pas le mot <code>abc</code>. Pour une ou plusieurs, ajoutez un quantificateur : <code>[abc]+</code>.</p>
+<p><code>[^abc]</code> consomme un caract&#232;re absent de l’ensemble. Il ne v&#233;rifie pas qu’&#171; abc ne pr&#233;c&#232;de pas le texte &#187;. Les assertions lookaround servent &#224; ces v&#233;rifications contextuelles.</p>
+<p>Dans une classe, le point et la plupart des parenth&#232;ses perdent leur r&#244;le sp&#233;cial. Le trait d’union peut d&#233;finir une plage ; placez-le au d&#233;but ou &#224; la fin, ou &#233;chappez-le, pour l’obtenir litt&#233;ralement. <code>\]</code> permet d’inclure un crochet fermant.</p>
+<pre class="regex" id="regex-7"><code><span class="rx-class">[А-Яа-яЁё-]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Ce motif accepte les lettres russes et le trait d’union, mais pas tout le cyrillique. L’ukrainien, le bi&#233;lorusse et d’autres langues n&#233;cessitent un ensemble plus large ou une propri&#233;t&#233; Unicode.</p>
+<p>Dans des crochets, <code>\b</code> n’est pas une limite de mot. N’int&#233;grez pas des limites de mots &#224; un ensemble de caract&#232;res ordinaire.</p>
+<h2 id="section-8">8. Ancres, limites et correspondances vides</h2>
+<p>Une ancre teste une position sans consommer de lettre ni d’espace. <code>^</code>, <code>$</code> ou <code>\b</code> seuls peuvent donc produire une correspondance de longueur nulle, qui ne ressemble pas &#224; une s&#233;lection textuelle normale.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Ancre</th><th scope="col">Signification</th></tr></thead><tbody>
+<tr><td class="syntax"><code>^</code></td><td>D&#233;but de ligne en multiligne, sinon d&#233;but du sujet</td></tr>
+<tr><td class="syntax"><code>$</code></td><td>Fin de ligne en multiligne ; le traitement de la derni&#232;re fin de ligne d&#233;pend du mode</td></tr>
+<tr><td class="syntax"><code>\A</code></td><td>D&#233;but du sujet uniquement</td></tr>
+<tr><td class="syntax"><code>\z</code></td><td>Fin stricte du sujet</td></tr>
+<tr><td class="syntax"><code>\Z</code></td><td>Fin du sujet ou position pr&#233;c&#233;dant sa derni&#232;re fin de ligne</td></tr>
+<tr><td class="syntax"><code>\b</code></td><td>Limite entre caract&#232;re de mot et caract&#232;re hors mot</td></tr>
+<tr><td class="syntax"><code>\B</code></td><td>Position qui n’est pas une limite de mot</td></tr>
+<tr><td class="syntax"><code>\G</code></td><td>Position de d&#233;part de l’appel de correspondance courant</td></tr>
+</tbody></table></div>
+<p><code>\G</code> ne m&#233;morise pas seul la correspondance pr&#233;c&#233;dente. Il d&#233;pend du d&#233;calage initial fourni par l’application. Lors d’appels successifs, celui-ci peut &#234;tre la fin du r&#233;sultat pr&#233;c&#233;dent, mais ce n’est pas une m&#233;thode universelle pour parcourir un livre dans FBE. Pr&#233;f&#233;rez des limites explicites en relecture courante. [D1]</p>
+<p>Pour trouver un mot plut&#244;t qu’une partie de mots plus longs, utilisez des limites ou des tests de lettres voisines. Avec UCP :</p>
+<pre class="regex" id="regex-8"><code><span class="rx-anchor">\b</span>том<span class="rx-anchor">\b</span></code></pre>
+<p>Le d&#233;but de <code>томик</code> ne correspond pas. Les traits d’union et apostrophes peuvent n&#233;anmoins s&#233;parer les mots autrement pour le moteur que pour le relecteur.</p>
+<p>Employez les r&#233;sultats vides avec prudence dans Remplacer tout : du texte est ins&#233;r&#233; &#224; des positions, au lieu de remplacer des caract&#232;res visibles. Commencez par des motifs &#224; r&#233;sultat non vide.</p>
+<h2 id="section-9">9. Quantificateurs : r&#233;p&#233;tition et retour arri&#232;re</h2>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Notation</th><th scope="col">R&#233;p&#233;titions de l’&#233;l&#233;ment pr&#233;c&#233;dent</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Z&#233;ro ou une</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Z&#233;ro ou davantage</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Une ou davantage</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Exactement trois</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>Au moins trois</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>De deux &#224; cinq</td></tr>
+</tbody></table></div>
+<p>Le quantificateur concerne le caract&#232;re, la classe ou le groupe pr&#233;c&#233;dent. <code>аб+</code> r&#233;p&#232;te seulement <code>б</code> ; <code>(?:аб)+</code> r&#233;p&#232;te les deux lettres.</p>
+<h3 id="section-9-1">9.1. Recherche gourmande</h3>
+<p>Texte initial :</p>
+<pre><code>&#171;первый&#187; и &#171;второй&#187;</code></pre>
+<p>Motif :</p>
+<pre class="regex" id="regex-9"><code>&#171;.<span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>Le point suivi d’un ast&#233;risque prend d’abord autant de texte que possible, puis le moteur revient en arri&#232;re au besoin pour satisfaire la suite. Ici, le r&#233;sultat englobe les deux paires de guillemets.</p>
+<h3 id="section-9-2">9.2. Recherche non gourmande</h3>
+<pre class="regex" id="regex-10"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>&#187;</code></pre>
+<p>Elle commence par le minimum de caract&#232;res, mais &#233;largit aussi le r&#233;sultat si n&#233;cessaire. Les recherches successives trouvent <code>&#171;первый&#187;</code>, puis <code>&#171;второй&#187;</code>.</p>
+<p>Pour une paire simple, limiter explicitement le contenu est souvent plus clair :</p>
+<pre class="regex" id="regex-11"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>Ce n’est pas une analyse de guillemets imbriqu&#233;s. Ceux-ci demandent une v&#233;rification &#233;ditoriale s&#233;par&#233;e.</p>
+<h3 id="section-9-3">9.3. Quantificateur possessif</h3>
+<pre class="regex" id="regex-12"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Ce n’est pas un motif de guillemets &#171; encore meilleur &#187;. <code>.*+</code> absorbe aussi le guillemet fermant et refuse de le rendre ; le <code>&#187;</code> restant du motif ne peut plus correspondre. Aucun r&#233;sultat sur ce texte.</p>
+<p>Une variante excluant le signe fermant peut convenir :</p>
+<pre class="regex" id="regex-13"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Utilisez quantificateurs possessifs et groupes atomiques pour ma&#238;triser les retours arri&#232;re, pas comme acc&#233;l&#233;ration universelle.</p>
+<h2 id="section-10">10. Groupes et r&#233;f&#233;rences arri&#232;re</h2>
+<p>Les parenth&#232;ses m&#233;morisent un fragment. La num&#233;rotation commence &#224; 1, selon les parenth&#232;ses capturantes ouvrantes de gauche &#224; droite ; l’imbrication ne change pas cet ordre.</p>
+<pre class="regex" id="regex-14"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Pour <code>02.10.2026</code>, les groupes contiennent <code>02</code>, <code>10</code> et <code>2026</code>. Cela v&#233;rifie la forme, non la validit&#233; calendaire de la date.</p>
+<p>Le groupe non capturant <code>(?:...)</code> regroupe sans prendre de num&#233;ro. Il aide &#224; conserver des <code>$1</code> et <code>$2</code> pr&#233;visibles dans les remplacements complexes.</p>
+<p>Un groupe nomm&#233; facilite la lecture :</p>
+<pre class="regex" id="regex-15"><code><span class="rx-group">(?&lt;</span>word&gt;<span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-escape">\k</span>&lt;word&gt;</code></pre>
+<p>Une r&#233;f&#233;rence arri&#232;re recherche le m&#234;me texte captur&#233;. Un appel de sous-programme, d&#233;crit plus loin, r&#233;p&#232;te une r&#232;gle et peut trouver un autre texte. Ce sont des m&#233;canismes distincts.</p>
+<p>Pour une r&#233;p&#233;tition de mot dans un livre, ajoutez limites, r&#233;glage de casse et espaces adapt&#233;s ; une recette figure plus bas. Sans limites, une r&#233;f&#233;rence peut trouver une portion d’un mot plus long.</p>
+<p>Les groupes nomm&#233;s dans la recherche n’ajoutent pas automatiquement des substitutions nomm&#233;es au remplacement FBE. Utilisez les r&#233;f&#233;rences num&#233;riques confirm&#233;es.</p>
+<h2 id="section-11">11. Alternative et groupes atomiques</h2>
+<p>La barre verticale choisit une branche :</p>
+<pre class="regex" id="regex-16"><code><span class="rx-group">(?:</span>глава<span class="rx-alternation">|</span>часть<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Le regroupement est important. Sans lui, une partie droite commune peut ne concerner que la derni&#232;re branche. Les alternatives sont essay&#233;es dans l’ordre &#233;crit ; disposez consciemment les formes longues et courtes.</p>
+<p>Un groupe atomique interdit le retour dans un groupe qui a d&#233;j&#224; r&#233;ussi :</p>
+<pre class="regex" id="regex-17"><code><span class="rx-group">(?</span>&gt;а<span class="rx-alternation">|</span>аб<span class="rx-group">)</span>в</code></pre>
+<p>Sur <code>абв</code>, la premi&#232;re branche choisit <code>а</code>, puis revenir &#224; <code>аб</code> est interdit : aucun r&#233;sultat. Sans atomicit&#233;, le motif peut r&#233;ussir. C’est un exemple p&#233;dagogique ; n’ajoutez pas l’atomicit&#233; sans v&#233;rifier le r&#233;sultat.</p>
+<h2 id="section-12">12. Tester le contexte : lookaround</h2>
+<p>Une assertion lookaround v&#233;rifie un contexte qui n’entre pas dans la correspondance compl&#232;te. On peut ainsi s&#233;lectionner un num&#233;ro tout en conservant son signe pr&#233;c&#233;dent.</p>
+<pre class="regex" id="regex-18"><code><span class="rx-group">(?&lt;=</span>№ <span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Sur <code>№ 125</code>, seul <code>125</code> est trouv&#233;. L’espace est ici exactement une espace ordinaire.</p>
+<section class="example" id="example-3"><strong>Exemple</strong><pre><code>Rechercher: (?&lt;=№ )([0-9]+)
+Entr&#233;e: № 125
+Correspondance compl&#232;te: 125
+Groupe 1: 125
+Remplacement attendu avec [$1]: № [125]</code></pre></section>
+<p>Test &#224; droite :</p>
+<pre class="regex" id="regex-19"><code><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?=</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>руб<span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Sur <code>125 руб.</code>, le nombre correspond, pas <code>руб.</code>.</p>
+<p>Assertion n&#233;gative vers l’avant :</p>
+<pre class="regex" id="regex-20"><code><span class="rx-anchor">\b</span>глава<span class="rx-anchor">\b</span><span class="rx-group">(?!</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>Avec UCP, le mot &#171; глава &#187; est recherch&#233; lorsqu’il n’est pas suivi d’une num&#233;rotation ordinaire s&#233;par&#233;e par une espace. C’est une s&#233;lection contextuelle, non une r&#232;gle de correction.</p>
+<p>L’assertion arri&#232;re est <code>(?&lt;=...)</code>, sa n&#233;gation <code>(?&lt;!...)</code>. L’assertion avant est <code>(?=...)</code>, sa n&#233;gation <code>(?!...)</code>.</p>
+<p>Le lookbehind impose des limites de longueur. PCRE2 moderne autorise certaines longueurs variables born&#233;es, pas des r&#233;p&#233;titions arbitrairement illimit&#233;es. Pour des recettes portables, choisissez un contexte court de longueur fixe ou une capture/<code>\K</code> ; ne comptez pas sur <code>.*</code> dans une assertion arri&#232;re.</p>
+<h2 id="section-13">13. Options int&#233;gr&#233;es au motif</h2>
+<div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Option</th><th scope="col">Effet</th></tr></thead><tbody>
+<tr><td class="syntax"><code>(?i)</code></td><td>Ignorer la casse</td></tr>
+<tr><td class="syntax"><code>(?-i)</code></td><td>Respecter la casse</td></tr>
+<tr><td class="syntax"><code>(?m)</code></td><td>Ancres de d&#233;but/fin multiligne</td></tr>
+<tr><td class="syntax"><code>(?-m)</code></td><td>D&#233;sactiver ces ancres multiligne</td></tr>
+<tr><td class="syntax"><code>(?s)</code></td><td>Autoriser le point &#224; englober une fin de ligne</td></tr>
+<tr><td class="syntax"><code>(?-s)</code></td><td>R&#233;tablir le comportement habituel du point</td></tr>
+<tr><td class="syntax"><code>(?x)</code></td><td>Ignorer les espaces non significatifs et les commentaires du motif</td></tr>
+</tbody></table></div>
+<p><code>(?m)</code> ne fait pas traverser les lignes au point. <code>(?s)</code> n’autorise pas les remplacements interparagraphes dans FBE. Il s’agit de deux options de recherche et d’une restriction applicative distincte.</p>
+<p>En mode &#233;tendu, les espaces du motif peuvent ne plus &#234;tre litt&#233;rales. Utilisez <code>[ ]</code> pour une espace requise ; <code>#</code> hors classe peut commencer un commentaire. Les motifs joliment dispos&#233;s sur plusieurs lignes conviennent &#224; la documentation, mais les recettes suivantes sont sur une ligne pour le champ de recherche.</p>
+<h2 id="section-14">14. Fonctions avanc&#233;es de PCRE2</h2>
+<p>La plupart des corrections n’exigent pas cette section. Elle explique des constructions pr&#233;sentes dans des motifs d’autrui. Le support syntaxique du moteur ne rend pas tout motif pratique ou s&#251;r &#224; l’&#233;chelle d’un livre.</p>
+<h3 id="section-14-1">14.1. R&#233;initialiser le d&#233;but de la correspondance</h3>
+<pre class="regex" id="regex-21"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\K</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Sur <code>№ 125</code>, le pr&#233;fixe est v&#233;rifi&#233;, mais seul <code>125</code> est signal&#233; comme r&#233;sultat. Cela sert &#224; modifier le nombre, pas le signe. N’employez pas <code>\K</code> dans un lookaround sans v&#233;rification : PCRE2 restreint cette combinaison.</p>
+<h3 id="section-14-2">14.2. Condition sur la participation d’un groupe</h3>
+<pre class="regex" id="regex-22"><code><span class="rx-anchor">^</span><span class="rx-group">(</span><span class="rx-escape">\(</span><span class="rx-group">)</span><span class="rx-quantifier">?</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">(?</span><span class="rx-group">(</span>1<span class="rx-group">)</span><span class="rx-escape">\)</span><span class="rx-group">)</span><span class="rx-anchor">$</span></code></pre>
+<p>Le motif accepte <code>12</code> ou <code>(12)</code>, pas <code>(12</code> non ferm&#233;. La condition v&#233;rifie la participation du groupe 1. Ne transformez pas cet exemple en remplacement d&#233;pendant de groupes optionnels sans tester l’adaptateur FBE.</p>
+<h3 id="section-14-3">14.3. Num&#233;rotation partag&#233;e entre alternatives</h3>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?</span><span class="rx-alternation">|</span>глава <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-alternation">|</span>часть <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">)</span></code></pre>
+<p>Le num&#233;ro est dans le groupe 1 dans les deux branches : c’est le branch reset. Pour les cas simples, un groupe non capturant avec une capture commune reste g&#233;n&#233;ralement plus clair.</p>
+<h3 id="section-14-4">14.4. Appel de sous-programme</h3>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?&lt;</span>pair&gt;<span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span>-<span class="rx-group">(?</span>&amp;pair<span class="rx-group">)</span></code></pre>
+<p>Dans <code>12-34</code>, les deux parties respectent la r&#232;gle &#171; deux chiffres &#187;, bien que diff&#233;rentes. Une r&#233;f&#233;rence <code>\k&lt;pair&gt;</code> exigerait &#224; nouveau <code>12</code>.</p>
+<p>Les sous-programmes r&#233;cursifs d&#233;crivent certaines structures imbriqu&#233;es, mais ne remplacent pas le parseur XML de FBE. Utilisez les outils structurels pour <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, les notes et les tableaux.</p>
+<h3 id="section-14-5">14.5. Ignorer des fragments</h3>
+<pre class="regex" id="regex-25"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
+<p>Avec UCP, le mot est recherch&#233; hors de paires simples de guillemets russes. La premi&#232;re branche marque la citation &#224; ignorer, la seconde cherche le mot. Les guillemets imbriqu&#233;s ou non ferm&#233;s ne sont pas analys&#233;s ; ne vous y fiez pas sans r&#233;serve pour des corrections globales.</p>
+<h2 id="section-15">15. Ce qu’une expression r&#233;guli&#232;re ne d&#233;cide pas</h2>
+<p>&#171; Majuscule apr&#232;s minuscule &#187;, &#171; aucun signe final &#187; et &#171; mot r&#233;p&#233;t&#233; &#187; sont des indices formels, non des d&#233;cisions &#233;ditoriales. Regex ignore si <code>да да</code> est une faute, une r&#233;plique volontaire, un vers ou un titre.</p>
+<p>N’ajoutez pas automatiquement des points, ne fusionnez pas tous les paragraphes d&#233;butant par une minuscule, ne remplacez pas toute lettre latine par du cyrillique et tout trait d’union par un tiret. Une op&#233;ration complexe exige du contexte, parfois plusieurs &#233;tapes DOM. Les scripts FBE de nettoyage, de mots coll&#233;s et de notes traitent ces t&#226;ches plus &#233;labor&#233;es.</p>
+<h2 id="section-16">16. Grammaire de remplacement de FBE</h2>
+<p>PCRE2 recherche, mais FBE interpr&#232;te le remplacement. Les exemples JavaScript, Python, .NET, PCRE2 substitute ou d’autres &#233;diteurs doivent donc &#234;tre v&#233;rifi&#233;s. Les commandes suivantes sont fond&#233;es sur le code FBE et le guide initial. [D3, D4]</p>
+<h3 id="section-16-1">16.1. Correspondance et groupes</h3>
+<div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">Dans le remplacement</th><th scope="col">Signification</th></tr></thead><tbody>
+<tr><td class="syntax"><code>$0</code> ou <code>\0</code></td><td>Correspondance compl&#232;te</td></tr>
+<tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>Groupe de num&#233;ro correspondant</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Autre notation d’un groupe num&#233;rique</td></tr>
+<tr><td class="syntax"><code>$+</code> ou <code>\+</code></td><td>Dernier groupe renvoy&#233; par l’adaptateur de correspondance</td></tr>
+</tbody></table></div>
+<p>&#171; FBE ne remplace que les groupes 1–9 &#187; est impr&#233;cis : le texte ordinaire et la correspondance compl&#232;te peuvent &#233;galement &#234;tre ins&#233;r&#233;s. C’est l’acc&#232;s num&#233;rique direct aux groupes qui est limit&#233;, pas leur nombre dans PCRE2.</p>
+<p>N’utilisez pas <code>$10</code> pour le dixi&#232;me groupe. <code>${name}</code> ne fait pas partie de la grammaire confirm&#233;e. Placez les captures utiles parmi les neuf premi&#232;res et rendez les groupes auxiliaires non capturants.</p>
+<p>Les groupes optionnels ou vides exigent un essai s&#233;par&#233; : FBE poss&#232;de son propre adaptateur SubMatches. Pour les nouveaux remplacements globaux, &#233;vitez de d&#233;pendre des subtilit&#233;s des groupes absents ou de la notion de dernier groupe ; pr&#233;f&#233;rez des captures obligatoires explicites.</p>
+<h3 id="section-16-2">16.2. R&#233;ordonner des groupes</h3>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Remplacer par :</p>
+<pre><code>$3-$2-$1</code></pre>
+<p><code>02.10.2026</code> devient <code>2026-10-02</code>. C’est une d&#233;monstration, pas une recommandation de changer toutes les dates du livre.</p>
+<h3 id="section-16-3">16.3. Modifier la casse</h3>
+<div class="table-wrap" id="table-8"><table><thead><tr><th scope="col">Commande</th><th scope="col">Effet</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\U</code></td><td>Convertir le fragment ins&#233;r&#233; en majuscules</td></tr>
+<tr><td class="syntax"><code>\L</code></td><td>Le convertir en minuscules</td></tr>
+<tr><td class="syntax"><code>\T</code></td><td>Premi&#232;re lettre en majuscule, les autres en minuscules</td></tr>
+<tr><td class="syntax"><code>\Q</code></td><td>R&#233;initialiser les commandes de casse/formatage pour la suite</td></tr>
+</tbody></table></div>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(</span>иван<span class="rx-group">)</span></code></pre>
+<p>Remplacer par :</p>
+<pre><code>\T$1\Q</code></pre>
+<p>R&#233;sultat : <code>Иван</code>. <code>\T</code> n’est pas une capitalisation linguistique de chaque mot : le fragment entier <code>иван иванов</code> ne devient pas n&#233;cessairement <code>Иван Иванов</code>.</p>
+<p>N’empilez pas <code>\U</code> et <code>\L</code> sans remise &#224; z&#233;ro. S&#233;parez les portions par <code>\Q</code> et v&#233;rifiez cyrillique et diacritiques. FBE change la casse, pas un normaliseur Unicode de PCRE2.</p>
+<h3 id="section-16-4">16.4. Gras et italique</h3>
+<p><code>\S</code> active le gras du fragment ins&#233;r&#233;, <code>\E</code> l’italique. <code>\Q</code> met fin aux commandes actives pour le texte ins&#233;r&#233; ensuite.</p>
+<pre><code>\S$1\Q</code></pre>
+<p>Ce remplacement formate le groupe 1. Il ne recherche pas du texte d&#233;j&#224; gras et n’efface pas toute mise en forme existante. Testez un fragment et l’annulation.</p>
+<h3 id="section-16-5">16.5. Sens diff&#233;rents en recherche et remplacement</h3>
+<p>En recherche, <code>\S</code> d&#233;signe un caract&#232;re non blanc ; en remplacement FBE, le gras. En recherche, <code>\Q...\E</code> prot&#232;ge un fragment litt&#233;ral ; en remplacement, <code>\Q</code> r&#233;initialise et <code>\E</code> active l’italique.</p>
+<p>Ne saisissez pas <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> ou <code>$$</code> en remplacement Design en attendant le comportement d’un autre &#233;diteur. Ces notations n’appartiennent pas &#224; la grammaire litt&#233;rale d&#233;crite ; une s&#233;quence inconnue peut &#234;tre supprim&#233;e. Pour NBSP, utilisez le caract&#232;re r&#233;el ; pour conserver un signe sp&#233;cial, utilisez un groupe captur&#233; ou un remplacement ordinaire v&#233;rifi&#233;.</p>
+<p>Un champ vide supprime la correspondance. Un champ contenant une espace remplace par une espace. Ne saisissez pas litt&#233;ralement les indications <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> ou <code>U+00A0</code>.</p>
+<h2 id="section-17">17. Recettes pratiques de correction et de relecture</h2>
+<p>Ces sc&#233;narios sont autonomes ; leurs noms ne correspondent pas obligatoirement exactement au catalogue int&#233;gr&#233;. Testez d’abord tout remplacement sur une occurrence. Les espaces et tabulations r&#233;elles sont conserv&#233;es dans les blocs de contr&#244;le. Les contre-exemples illustrent au moins une limite, mais ne remplacent pas la v&#233;rification du livre entier.</p>
+<h3 id="heading-1">D01. R&#233;duire plusieurs espaces ordinaires &#224; une seule</h3>
+<p>Uniformiser les intervalles ordinaires sans toucher une NBSP isol&#233;e.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-28"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он   пришёл.</code></pre>
+<p>Remplacer par : une espace ordinaire U+0020. Il s’agit d’un caract&#232;re, pas du mot &#171; espace &#187;.</p>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Limites et remarques : Des espaces multiples peuvent &#234;tre volontaires dans les vers, tableaux ou faux retraits. V&#233;rifiez la port&#233;e ; ce n’est pas une modification des retraits de paragraphes.</p>
+<h3 id="heading-2">D02. Espaces au d&#233;but du paragraphe</h3>
+<p>Supprimer un retrait manuel avant du texte ordinaire.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-29"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>   Начало абзаца.</code></pre>
+<p>Le m&#234;me texte de contr&#244;le avec les espaces rendus visibles :</p>
+<pre><code>␠␠␠Начало␠абзаца.</code></pre>
+<p>Ici, ␠ repr&#233;sente une espace ordinaire, [TAB] une tabulation, [NBSP] U+00A0, [NNBSP] U+202F et [ZWSP] U+200B. Cette notation est explicative ; ne pas ins&#233;rer ces libell&#233;s dans le livre.</p>
+<p>Remplacer par : laisser le champ enti&#232;rement vide. Ne pas saisir le mot &#171; vide &#187;.</p>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Limites et remarques : Les retraits manuels peuvent avoir un sens en po&#233;sie et composition artistique. L’ancre d&#233;signe une ligne textuelle, pas le retour visuel de la fen&#234;tre.</p>
+<h3 id="heading-3">D03. Espaces en fin de paragraphe</h3>
+<p>Supprimer une queue d’espaces ordinaires ou de tabulations.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-30"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Le m&#234;me texte de contr&#244;le avec les espaces rendus visibles :</p>
+<pre><code>Конец␠абзаца.␠␠␠</code></pre>
+<p>Ici, ␠ repr&#233;sente une espace ordinaire, [TAB] une tabulation, [NBSP] U+00A0, [NNBSP] U+202F et [ZWSP] U+200B. Cette notation est explicative ; ne pas ins&#233;rer ces libell&#233;s dans le livre.</p>
+<p>Remplacer par : laisser le champ enti&#232;rement vide. Ne pas saisir le mot &#171; vide &#187;.</p>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Limites et remarques : NBSP est volontairement exclue. Utilisez un diagnostic s&#233;par&#233; pour les espaces inhabituelles.</p>
+<h3 id="heading-4">D04. Espace avant virgule ou autre ponctuation</h3>
+<p>Conserver le signe et supprimer l’intervalle qui le pr&#233;c&#232;de.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-31"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[,;:!?]</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Слово , другое !</code></pre>
+<p>Remplacer par :</p>
+<pre><code>$1</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Limites et remarques : R&#232;gle pr&#233;vue pour le texte russe ordinaire. La typographie fran&#231;aise pr&#233;voit une espace sp&#233;ciale avant certains signes ; ne l’appliquez pas sans adaptation &#224; un livre fran&#231;ais.</p>
+<h3 id="heading-5">D05. Espace apr&#232;s un signe ouvrant</h3>
+<p>Supprimer les espaces ordinaires apr&#232;s une parenth&#232;se, un crochet ou un guillemet russe ouvrant.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[&#171;„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>&#171; слово&#187; ( пример)</code></pre>
+<p>Remplacer par :</p>
+<pre><code>$1</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Limites et remarques : Ne touche les espaces de formules ou d’exemples que si elles suivent imm&#233;diatement un signe list&#233;. Le contexte reste &#224; v&#233;rifier.</p>
+<h3 id="heading-6">D06. Espace avant un signe fermant</h3>
+<p>Supprimer les espaces ordinaires avant une parenth&#232;se, un crochet ou un guillemet fermant.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>&#187;”]<span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>&#171;слово &#187; (пример )</code></pre>
+<p>Remplacer par :</p>
+<pre><code>$1</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Limites et remarques : Ce n’est pas un normaliseur universel de guillemets ni de conventions math&#233;matiques.</p>
+<h3 id="heading-7">D07. Exactement trois points en points de suspension</h3>
+<p>Convertir trois points cons&#233;cutifs sans toucher une cha&#238;ne plus longue.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-quantifier">{3}</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он подумал... и ответил.</code></pre>
+<p>Remplacer par :</p>
+<pre><code>…</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Содержание.....12</code></pre>
+<p>Limites et remarques : V&#233;rifiez la politique &#233;ditoriale. Quatre points et les pointill&#233;s d’une table des mati&#232;res ne sont volontairement pas modifi&#233;s.</p>
+<h3 id="heading-8">D08. Points de suspension espac&#233;s</h3>
+<p>Rassembler trois points s&#233;par&#233;s par des espaces ordinaires.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он подумал. . . и ответил.</code></pre>
+<p>Remplacer par :</p>
+<pre><code>…</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Слово. Другое.</code></pre>
+<p>Limites et remarques : Accepte aussi trois points adjacents. Ne pas utiliser sur des lignes de conduite ou des omissions de citation soumises &#224; des r&#232;gles particuli&#232;res.</p>
+<h3 id="heading-9">D09. Espace ins&#233;cable apr&#232;s №</h3>
+<p>Lier le signe de num&#233;ro au nombre suivant.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-36"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>№ 125</code></pre>
+<p>Remplacer par :</p>
+<pre><code>№&#160;$1</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>№&#160;125</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>№125</code></pre>
+<p>Limites et remarques : Le remplacement contient un vrai U+00A0 entre № et $1. Ne pas le remplacer par la suite imprim&#233;e \x{00A0}. Le motif n’ins&#232;re pas une espace absente.</p>
+<h3 id="heading-10">D10. Espace ins&#233;cable apr&#232;s &#167;</h3>
+<p>Lier le signe de paragraphe &#224; son num&#233;ro.</p>
+<p>Action : remplacer apr&#232;s v&#233;rification.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-37"><code>&#167;<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>&#167; 12</code></pre>
+<p>Remplacer par :</p>
+<pre><code>&#167;&#160;$1</code></pre>
+<p>R&#233;sultat du remplacement :</p>
+<pre><code>&#167;&#160;12</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>&#167;12</code></pre>
+<p>Limites et remarques : Une v&#233;ritable NBSP se trouve entre &#167; et $1. Avec une num&#233;rotation complexe, v&#233;rifiez le fragment effectivement trouv&#233;.</p>
+<h3 id="heading-11">D11. R&#233;p&#233;tition possible d’un mot adjacent</h3>
+<p>Trouver une r&#233;p&#233;tition s&#233;par&#233;e par des espaces horizontales sans franchir les paragraphes.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — d&#233;sactiv&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-38"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">+</span><span class="rx-escape">\1</span><span class="rx-anchor">\b</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Это это уже было.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>Это это</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Это уже было.</code></pre>
+<p>Limites et remarques : &#171; Да да &#187; et d’autres r&#233;p&#233;titions peuvent &#234;tre voulues. Ne supprimez pas automatiquement la seconde occurrence : suppression, virgule ou absence de correction d&#233;pendent du contexte. Apostrophes et traits d’union ne sont pas enti&#232;rement trait&#233;s.</p>
+<h3 id="heading-12">D12. Latin et cyrillique dans un m&#234;me mot</h3>
+<p>D&#233;tecter un m&#233;lange OCR &#224; l’int&#233;rieur d’un mot continu, pas toute ligne bilingue.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-39"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Latin}</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Cyrillic}</span><span class="rx-group">)</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>В слове Тeст латинская e.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>Тeст</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он прочитал Latin.</code></pre>
+<p>Limites et remarques : Dans Тeст, e est latin. Un mot enti&#232;rement latin voisin d’un mot russe n’est pas consid&#233;r&#233; m&#233;lang&#233;. Formules, noms de produits et jeux typographiques peuvent &#234;tre valides. Aucune translitt&#233;ration.</p>
+<h3 id="heading-13">D13. Minuscule imm&#233;diatement suivie d’une majuscule</h3>
+<p>Trouver une possible fusion de mots ou erreur de casse.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-40"><code><span class="rx-escape">\p{Ll}</span><span class="rx-escape">\p{Lu}</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>ОнвышелИздома.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>лИ</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он вышел из дома.</code></pre>
+<p>Limites et remarques : Respecter la casse est indispensable. Des marques et noms comme McDonald peuvent &#234;tre corrects. Le r&#233;sultat indique une transition, pas une s&#233;paration de mots reconstruite.</p>
+<h3 id="heading-14">D14. Chiffre entre lettres</h3>
+<p>Trouver une substitution OCR courante d’une lettre par un chiffre.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-41"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Это сл0во.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>сл0во</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>В главе 10 текст.</code></pre>
+<p>Limites et remarques : H2O et d’autres formules peuvent &#234;tre correctes. Ne remplacez pas tous les 0 par о ni tous les 3 par з.</p>
+<h3 id="heading-15">D15. Ponctuation dans une s&#233;quence de lettres</h3>
+<p>V&#233;rifier un signe imm&#233;diatement entour&#233; de lettres.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-42"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[.,;:!?]</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он,сказал слово.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>Он,сказал</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он, сказав слово, ушёл.</code></pre>
+<p>Limites et remarques : Abr&#233;viations, adresses et domaines peuvent aussi correspondre. Pour les virgules seulement, r&#233;duisez la classe &#224; [,]. N’ins&#233;rez pas une espace dans tous les r&#233;sultats d’un seul coup.</p>
+<h3 id="heading-16">D16. Paragraphe commen&#231;ant par une minuscule</h3>
+<p>Rep&#233;rer une &#233;ventuelle rupture de paragraphe superflue.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-43"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>продолжение предложения.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>п</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Начало предложения.</code></pre>
+<p>Limites et remarques : Vers, l&#233;gendes, listes et citations commencent souvent l&#233;gitimement par une minuscule. Le motif ne fusionne pas les paragraphes et ne comprend pas le contexte voisin.</p>
+<h3 id="heading-17">D17. Absence de ponctuation finale avant les guillemets fermants</h3>
+<p>Trouver une fin alphab&#233;tique ou num&#233;rique suivie seulement de signes fermants et d’espaces.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[&#187;”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>&#171;Он пришёл&#187;</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>л&#187;</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>&#171;Он пришёл!&#187;</code></pre>
+<p>Limites et remarques : Titres et l&#233;gendes se passent souvent de point. Un appel de note apr&#232;s une ponctuation correcte peut produire un faux positif. Contrairement au seul dernier &#187;, ce motif ne signale pas &#171;Он пришёл!&#187;.</p>
+<h3 id="heading-18">D18. Minuscule apr&#232;s une fin de phrase</h3>
+<p>Trouver une probable erreur de casse apr&#232;s point, interrogation ou exclamation.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он пришёл. потом ушёл.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>. п</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он пришёл. Потом ушёл.</code></pre>
+<p>Limites et remarques : Les points d’abr&#233;viation et les suspensions d’auteur ne terminent pas toujours une phrase. Il s’agit seulement de candidats &#224; examiner.</p>
+<h3 id="heading-19">D19. Point &#233;ventuellement manquant</h3>
+<p>Trouver le passage d’une terminaison minuscule &#224; un mot capitalis&#233; s&#233;par&#233; par une espace.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[&#187;”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он пришёл Потом ушёл.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>л Потом</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он пришёл потом ушёл.</code></pre>
+<p>Limites et remarques : Les noms propres et titres internes &#224; une phrase donnent de nombreux r&#233;sultats valides. La recette ne d&#233;cide pas entre point, virgule ou absence de signe.</p>
+<h3 id="heading-20">D20. Paires de guillemets droits</h3>
+<p>Trouver un fragment simple entre guillemets doubles droits sur une ligne.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-47"><code>&quot;<span class="rx-group">(</span><span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>&quot;</code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он сказал &quot;да&quot;.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>&quot;да&quot;</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он сказал &#171;да&#187;.</code></pre>
+<p>Limites et remarques : V&#233;rifiez imbrication, pouces, code et syst&#232;me de guillemets choisi. &#171;$1&#187; n’est adapt&#233; qu’&#224; un contexte s&#233;lectionn&#233;, pas &#224; une conversion typographique universelle.</p>
+<h3 id="heading-21">D21. Trait d’union ou tiret cadratin entre nombres</h3>
+<p>Rep&#233;rer un possible intervalle &#224; soumettre &#224; une d&#233;cision &#233;ditoriale.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-48"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[-—]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Страницы 12 - 15.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>12 - 15</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Страницы 12–15.</code></pre>
+<p>Limites et remarques : Une date 2026-10-02, un nombre n&#233;gatif ou une soustraction peuvent aussi correspondre. Ne les convertissez pas automatiquement en intervalles. – est demi-cadratin, — cadratin, - trait d’union.</p>
+<h3 id="heading-22">D22. Deux initiales avant le nom</h3>
+<p>Trouver une notation simple &#224; deux initiales pour en v&#233;rifier les espaces.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-49"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-anchor">\b</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Limites et remarques : Tous les noms compos&#233;s et diacritiques ne sont pas couverts. Apr&#232;s s&#233;lection, on peut employer $1., NBSP, $2., NBSP, $3 ; ins&#233;rer de vraies espaces ins&#233;cables, pas leurs noms.</p>
+<h3 id="heading-23">D23. Nom avant deux initiales</h3>
+<p>Trouver l’ordre inverse du nom.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-50"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Limites et remarques : Contr&#244;le de forme, pas identification d’une personne. Noms compos&#233;s, particules et trois initiales exigent une autre r&#232;gle.</p>
+<h3 id="heading-24">D24. Caract&#232;res invisibles &#224; examiner</h3>
+<p>Trouver trait d’union conditionnel, espace sans chasse ou FEFF.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-51"><code><span class="rx-class">[\x{00AD}\x{200B}\x{FEFF}]</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>сло​во</code></pre>
+<p>Le m&#234;me texte de contr&#244;le avec les espaces rendus visibles :</p>
+<pre><code>сло[ZWSP]во</code></pre>
+<p>Ici, ␠ repr&#233;sente une espace ordinaire, [TAB] une tabulation, [NBSP] U+00A0, [NNBSP] U+202F et [ZWSP] U+200B. Cette notation est explicative ; ne pas ins&#233;rer ces libell&#233;s dans le livre.</p>
+<p>Correspondance attendue :</p>
+<pre><code>​</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>слово</code></pre>
+<p>Limites et remarques : Le r&#233;sultat est invisible : U+200B se situe entre о et в. Ne l’ins&#233;rez ou ne le supprimez qu’apr&#232;s avoir d&#233;termin&#233; son r&#244;le. BOM physique et FEFF dans le texte sont distincts.</p>
+<h3 id="heading-25">D25. Espaces Unicode inhabituelles</h3>
+<p>Trouver espaces fines, larges et autres espaces sp&#233;ciales.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-52"><code><span class="rx-class">[\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>10 000</code></pre>
+<p>Le m&#234;me texte de contr&#244;le avec les espaces rendus visibles :</p>
+<pre><code>10[NNBSP]000</code></pre>
+<p>Ici, ␠ repr&#233;sente une espace ordinaire, [TAB] une tabulation, [NBSP] U+00A0, [NNBSP] U+202F et [ZWSP] U+200B. Cette notation est explicative ; ne pas ins&#233;rer ces libell&#233;s dans le livre.</p>
+<p>Correspondance attendue :</p>
+<pre><code> </code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>10 000</code></pre>
+<p>Limites et remarques : Une espace fine ins&#233;cable entre groupes de chiffres peut &#234;tre parfaitement correcte. La recette r&#233;v&#232;le une h&#233;t&#233;rog&#233;n&#233;it&#233; ; elle ne d&#233;clare pas chaque caract&#232;re erron&#233;.</p>
+<h3 id="heading-26">D26. Interrogations et exclamations r&#233;p&#233;t&#233;es</h3>
+<p>Rep&#233;rer une ponctuation expressive ou accidentellement doubl&#233;e.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-53"><code><span class="rx-class">[!?]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Что?! Правда!!!</code></pre>
+<p>Correspondances attendues, successivement :</p>
+<pre><code>?!
+!!!</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Что? Правда!</code></pre>
+<p>Limites et remarques : ?! et les r&#233;p&#233;titions d’auteur peuvent &#234;tre intentionnels. L’action normale est l’examen, pas la r&#233;duction de toutes les cha&#238;nes &#224; un signe.</p>
+<h3 id="heading-27">D27. Х cyrillique pr&#232;s de chiffres romains</h3>
+<p>Trouver un Х russe dans une notation autrement compos&#233;e de signes romains latins.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — inutile pour cette expression. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-54"><code><span class="rx-group">(?&lt;=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span>Х<span class="rx-alternation">|</span>Х<span class="rx-group">(?=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Глава IХ</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>Х</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Глава IX</code></pre>
+<p>Limites et remarques : Х est cyrillique et X latin. V&#233;rifiez casse et contexte ; le nombre romain entier n’est pas valid&#233;.</p>
+<h3 id="heading-28">D28. Plusieurs majuscules avant une minuscule</h3>
+<p>Rep&#233;rer une possible erreur OCR de casse au d&#233;but d’un mot.</p>
+<p>Action : rechercher et v&#233;rifier uniquement.</p>
+<p>&#171; Expression r&#233;guli&#232;re &#187; — activ&#233;e ; &#171; Mot entier &#187; — d&#233;sactiv&#233;. &#171; Unicode (UCP) &#187; — activ&#233;. &#171; Respecter la casse &#187; — activ&#233;.</p>
+<p>Rechercher :</p>
+<pre class="regex" id="regex-55"><code><span class="rx-escape">\p{Lu}</span><span class="rx-quantifier">{2,}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Texte de contr&#244;le initial :</p>
+<pre><code>Он сказал ПРИвет.</code></pre>
+<p>Correspondance attendue :</p>
+<pre><code>ПРИвет</code></pre>
+<p>Contre-exemple qui ne doit pas correspondre :</p>
+<pre><code>Он сказал Привет.</code></pre>
+<p>Limites et remarques : Noms, abr&#233;viations avec suffixes et sigles latins peuvent &#234;tre corrects. Ne changez pas globalement la casse sans examen.</p>
+<h2 id="section-18">18. Probl&#232;mes courants et diagnostic</h2>
+<h3 id="section-18-1">18.1. Le texte est visible, mais ne correspond pas</h3>
+<p>V&#233;rifiez mode Design, option regex, casse, port&#233;e, direction et caract&#232;res r&#233;els. <code>a</code> latin et <code>а</code> cyrillique se ressemblent, mais diff&#232;rent. NBSP n’est pas une espace ordinaire ; guillemets typographiques et droits diff&#232;rent.</p>
+<p>V&#233;rifiez UCP pour les limites russes et la casse pour les majuscules/minuscules. N’ajoutez pas inutilement Mot entier &#224; des limites d&#233;j&#224; complexes dans le motif.</p>
+<h3 id="section-18-2">18.2. Un fragment trop grand est trouv&#233;</h3>
+<p>Soup&#231;onnez d’abord le point-&#233;toile gourmand ou une classe n&#233;gative trop large. Remplacez &#171; n’importe quel texte &#187; par un ensemble explicite et limitez longueur et bornes. V&#233;rifiez dotall.</p>
+<h3 id="section-18-3">18.3. Les espaces englobent des paragraphes</h3>
+<p><code>\s+</code> n’est pas un synonyme d’espace ordinaire. Commencez par <code>[ \t]+</code> entre mots et ajoutez NBSP s&#233;par&#233;ment seulement si n&#233;cessaire.</p>
+<h3 id="section-18-4">18.4. Chiffres inattendus, barres perdues ou nom de groupe ignor&#233;</h3>
+<p>Consultez la grammaire FBE de la section 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> et <code>\x{...}</code> ne suivent pas automatiquement les r&#232;gles de recherche ou d’un autre &#233;diteur. La capture requise doit exister et ne pas &#234;tre seulement optionnelle dans une autre branche.</p>
+<h3 id="section-18-5">18.5. Alphabets m&#233;lang&#233;s dans une phrase bilingue normale</h3>
+<p>Un ancien exemple v&#233;rifiait latin et cyrillique dans toute la ligne et trouvait aussi <code>Он прочитал Latin.</code>. D12 limite les deux tests &#224; un mot. C’est la diff&#233;rence essentielle entre une anomalie OCR et une ligne bilingue.</p>
+<h3 id="section-18-6">18.6. &#171; Pas de point &#187; signale une citation correcte</h3>
+<p>Le dernier caract&#232;re seul ne suffit pas : <code>&#187;</code> peut suivre <code>!</code>. D17 tient compte des fermetures, mais titres et appels de notes demandent toujours v&#233;rification.</p>
+<h3 id="section-18-7">18.7. La structure recherch&#233;e reste introuvable</h3>
+<p>Une regex textuelle ne voit pas le DOM comme un script structurel. Balises, imbrication, liens vers des IDs absents et d&#233;placement de notes sont d’autres t&#226;ches. L’outil appropri&#233; peut &#234;tre Code, le validateur FB2 ou un script, pas une expression encore plus complexe.</p>
+<h2 id="section-19">19. Performances et grands livres</h2>
+<p>Commencez par une condition pr&#233;cise : signe, classe, mot ou d&#233;but de paragraphe. &#201;vitez les r&#233;p&#233;titions illimit&#233;es imbriqu&#233;es et plusieurs fragments concurrents de &#171; texte quelconque &#187;. Un &#233;chec peut provoquer un tr&#232;s grand nombre d’essais.</p>
+<p>La non-gourmandise n’est pas un rem&#232;de universel : elle explore aussi des possibilit&#233;s. Exclure explicitement un s&#233;parateur, borner la longueur et r&#233;duire la port&#233;e sont souvent plus efficaces.</p>
+<p>Si la recherche devient longue, ne lancez pas d’autres remplacements par-dessus. Simplifiez puis testez sur un court texte. Une erreur de limite de ressources PCRE2 ne signifie pas &#171; aucune correspondance &#187;.</p>
+<p>Pour des op&#233;rations en plusieurs &#233;tapes impliquant paragraphes voisins et balises, un script est souvent plus clair et s&#251;r. N’unissez pas toutes les r&#232;gles dans une immense alternative : des r&#232;gles distinctes expliquent chaque r&#233;sultat.</p>
+<h2 id="section-20">20. Contr&#244;les avant enregistrement</h2>
+<p>Inspectez d&#233;but, milieu et fin de la zone trait&#233;e. V&#233;rifiez plusieurs r&#233;sultats de chaque type, surtout guillemets, intervalles, initiales, notes et mise en forme conserv&#233;e. Assurez-vous que les NBSP utiles et les paragraphes n’ont pas chang&#233; inopin&#233;ment.</p>
+<p>Apr&#232;s des op&#233;rations sensibles &#224; la structure, lancez la validation FBE. Enregistrez, rouvrez au besoin et comparez. Une recherche regex r&#233;ussie ne remplace ni validation FB2 ni relecture &#233;ditoriale.</p>
+<h2 id="section-21">21. Sources et champ d’application</h2>
+<p>Cette traduction reprend le guide russe enrichi issu du fichier fourni regex-design.md. Les explications et contr&#244;les ont &#233;t&#233; r&#233;dig&#233;s &#224; nouveau ; les impr&#233;cisions sur UCP, les limites du sujet, les alphabets et le remplacement ont &#233;t&#233; corrig&#233;es &#224; partir de sources primaires. Les recettes sont des sc&#233;narios &#233;ditoriaux, pas des citations du manuel PCRE2.</p>
+<p>[D1] Syntaxe officielle PCRE2 : ancres, groupes, propri&#233;t&#233;s Unicode, retours arri&#232;re et options.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
+<p>[D2] Documentation officielle Unicode de PCRE2.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
+<p>[D3] Compatibilit&#233; PCRE2 et adaptateur FBE Next, r&#233;vision d2257405d95b0328649acee64b38829b40a4314b.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+</main></body></html>

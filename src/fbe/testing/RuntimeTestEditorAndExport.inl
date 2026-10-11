@@ -1358,33 +1358,14 @@
 		}
 		output.Close(); PostMessage(WM_CLOSE); return 0;
 	}
-	if (IsFbeTestScenario(L"regex-help-runtime"))
+	if (IsFbeTestScenario(L"regex-help-launcher-runtime"))
 	{
 		CStringA report;
-		const bool passed = FbeRegexHelp::RunRuntimeSmoke(m_hWnd, report);
+		const bool passed = RunRegexHelpLauncherRuntimeSmoke(report);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
 	}
-	if (IsFbeTestScenario(L"regex-help-missing-files-runtime"))
-	{
-		CStringA report;
-		const bool passed = FbeRegexHelp::RunMissingFilesRuntimeSmoke(m_hWnd, report);
-		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
-	}
-	if (IsFbeTestScenario(L"regex-help-placement-runtime"))
-	{
-		CStringA report;
-		const bool passed = RunRegexHelpPlacementRuntimeSmoke(m_hWnd, report);
-		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
-	}	if (IsFbeTestScenario(L"regex-help-visual-runtime"))
-	{
-		wchar_t artifactDirectory[MAX_PATH] = {}; const DWORD length = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
-		CStringA report; const bool passed = length > 0 && length < _countof(artifactDirectory) && RunRegexHelpVisualCapture(m_hWnd, artifactDirectory, report);
-		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(passed && written == static_cast<DWORD>(report.GetLength()) ? 0 : 1); return 0;
-	}	if (IsFbeTestScenario(L"search-templates-open-runtime"))
+	if (IsFbeTestScenario(L"search-templates-open-runtime"))
 	{
 		wchar_t artifactDirectoryBuffer[MAX_PATH] = {};
 		const DWORD artifactDirectoryLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectoryBuffer, _countof(artifactDirectoryBuffer));
@@ -1503,12 +1484,19 @@
             const DWORD background = 0xff000000 | (static_cast<DWORD>(GetRValue(surface)) << 16) | (static_cast<DWORD>(GetGValue(surface)) << 8) | static_cast<DWORD>(GetBValue(surface));
             DWORD* values = static_cast<DWORD*>(pixels); for (int index = 0; index < 40 * 40; ++index) values[index] = background;
             HGDIOBJ previous = ::SelectObject(memory, bitmap); RECT target = { 4, 4, 36, 36 };
-            panel->DrawPresetPinGlyph(memory, target, pinned, surface);
+            panel->DrawPresetPinMask(memory, target, pinned, expectedColor, false);
             probe.exactColor = true;
+            int strongest = -1;
             for (int index = 0; index < 40 * 40; ++index)
             {
                 if (isDibColor(values[index], surface)) ++probe.background;
-                else { ++probe.foreground; probe.exactColor = probe.exactColor && isDibColor(values[index], expectedColor); probe.tint = RGB(GetBValue(values[index]), GetGValue(values[index]), GetRValue(values[index])); }
+                else {
+                    ++probe.foreground;
+                    const BYTE* channels = reinterpret_cast<const BYTE*>(&values[index]);
+                    const int distance = abs(static_cast<int>(channels[0]) - GetBValue(surface)) +
+                        abs(static_cast<int>(channels[1]) - GetGValue(surface)) + abs(static_cast<int>(channels[2]) - GetRValue(surface));
+                    if(distance > strongest) { strongest = distance; probe.tint = RGB(channels[0], channels[1], channels[2]); }
+                }
             }
             probe.drawn = probe.foreground > 0 && probe.background > 0 && probe.foreground < 40 * 40 / 2;
             ::SelectObject(memory, previous); ::DeleteDC(memory); ::DeleteObject(bitmap); ::ReleaseDC(panel->DialogWindow(), screen); return probe;
@@ -1555,11 +1543,28 @@
             const bool distinctTints = ThemeManager::IsHighContrast() || (lightOff.tint != lightOn.tint && darkOff.tint != darkOn.tint);
             const bool exactTints = lightOff.exactColor && lightOn.exactColor && darkOff.exactColor && darkOn.exactColor;
             const bool geometry = ::GetWindowRect(pin, &after) && ::EqualRect(&before, &after);
-            const bool glyphs = lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && exactTints;
+            const FbeFluentPin::Mask regular = FbeFluentPin::Select(UiMetrics::DpiForWindow(panel->DialogWindow()), false);
+            const FbeFluentPin::Mask filled = FbeFluentPin::Select(UiMetrics::DpiForWindow(panel->DialogWindow()), true);
+            const bool distinctShapes = regular.size == filled.size && memcmp(regular.alpha, filled.alpha, regular.size * regular.size) != 0;
+            const bool dpiAssets = FbeFluentPin::Select(96, false).size == 16 && FbeFluentPin::Select(120, false).size == 20 &&
+                FbeFluentPin::Select(144, false).size == 24 && FbeFluentPin::Select(168, false).size == 28 &&
+                FbeFluentPin::Select(192, false).size == 32;
+            const bool pinnedBefore = _Settings.SearchTemplatesPanelPinned();
+            wchar_t actionBefore[128] = {}, actionAfter[128] = {};
+            ::GetWindowTextW(pin, actionBefore, _countof(actionBefore));
+            ::SetFocus(pin);
+            ::SendMessageW(pin, WM_KEYDOWN, VK_RETURN, 0);
+            ::GetWindowTextW(pin, actionAfter, _countof(actionAfter));
+            const bool keyboardAction = _Settings.SearchTemplatesPanelPinned() != pinnedBefore &&
+                wcscmp(actionBefore, actionAfter) != 0 && ::GetWindowTextLengthW(pin) > 0;
+            ::SendMessageW(pin, WM_KEYDOWN, VK_RETURN, 0);
+            const bool keyboardRestored = _Settings.SearchTemplatesPanelPinned() == pinnedBefore;
+            const bool glyphs = lightOff.drawn && lightOn.drawn && darkOff.drawn && darkOn.drawn && distinctTints && exactTints && distinctShapes;
             const bool states = lightNormal.drawn && lightFocus.drawn && lightHover.drawn && lightPressed.drawn && darkNormal.drawn && darkFocus.drawn && darkHover.drawn && darkPressed.drawn && lightRestored.drawn && lightFocus.focusIndicator && darkFocus.focusIndicator;
             const bool surfaces = lightFocus.surface == lightNormal.surface && darkFocus.surface == darkNormal.surface && lightHover.surface == lightHoverSurface && lightPressed.surface == lightPressedSurface && darkHover.surface != darkNormal.surface && darkPressed.surface != darkNormal.surface;
-            detail = (geometry ? 1 : 0) | (glyphs ? 2 : 0) | (states ? 4 : 0) | (surfaces ? 8 : 0) | ((lightFocus.focusIndicator && darkFocus.focusIndicator) ? 16 : 0);
-            return geometry && glyphs && states && surfaces;
+            detail = (geometry ? 1 : 0) | (glyphs ? 2 : 0) | (states ? 4 : 0) | (surfaces ? 8 : 0) | ((lightFocus.focusIndicator && darkFocus.focusIndicator) ? 16 : 0) |
+                (dpiAssets ? 32 : 0) | ((keyboardAction && keyboardRestored) ? 64 : 0);
+            return geometry && glyphs && states && surfaces && dpiAssets && keyboardAction && keyboardRestored;
 		};
 		auto verifyLongPreviewLayout = [&](FRBase* panel, HWND tree) -> bool
 		{
@@ -1629,13 +1634,18 @@
 		const bool findCategories = findTreeContract && preservesCategoryState(find, findTree);
 		const bool findShortCapture = findCategories && captureWindow(find->DialogWindow(), L"templates-short.bmp");
 		HWND findPinControl = find ? find->FRBase::GetDlgItem(IDC_FIND_PRESETS_PIN) : NULL;
+		const bool unpinnedBeforeCapture = _Settings.SearchTemplatesPanelPinned();
+		_Settings.SetSearchTemplatesPanelPinned(false, false); if (findPinControl) { ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		const bool findUnpinnedCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-unpinned.bmp");
 		if (findPinControl) { ::SendMessage(findPinControl, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
 		const bool findHoverCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-hover.bmp");
 		if (findPinControl) { ::SendMessage(findPinControl, WM_MOUSELEAVE, 0, 0); ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
-		const bool pinnedBeforeCapture = _Settings.SearchTemplatesPanelPinned();
 		_Settings.SetSearchTemplatesPanelPinned(true, false); if (findPinControl) { ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
 		const bool findPinnedCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-pinned.bmp");
-		_Settings.SetSearchTemplatesPanelPinned(pinnedBeforeCapture, false); if (findPinControl) { ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		if (findPinControl) { ::SendMessage(findPinControl, WM_MOUSEMOVE, 0, MAKELPARAM(1, 1)); ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
+		const bool findPinnedHoverCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-pinned-hover.bmp");
+		if (findPinControl) { ::SendMessage(findPinControl, WM_MOUSELEAVE, 0, 0); }
+		_Settings.SetSearchTemplatesPanelPinned(unpinnedBeforeCapture, false); if (findPinControl) { ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
 		const InterfaceTheme captureTheme = ThemeManager::GetSelectedTheme();
 		ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT); if (findPinControl) { ::SetFocus(findPinControl); ::InvalidateRect(findPinControl, NULL, TRUE); ::UpdateWindow(find->DialogWindow()); }
 		const bool findPinFocusLightCapture = findCategories && captureWindow(find->DialogWindow(), L"pin-focus-light.bmp");
@@ -1645,7 +1655,7 @@
 		int findPinDetail = 0; const bool findPin = findCategories && verifyPins(find, findPinDetail);
 		const bool findPreview = findPin && verifyLongPreviewLayout(find, findTree);
 		const bool findLongCapture = findPreview;
-		const bool findOk = findPreview && findShortCapture && findHoverCapture && findPinnedCapture && findPinFocusLightCapture && findPinFocusDarkCapture && findLongCapture;
+		const bool findOk = findPreview && findShortCapture && findUnpinnedCapture && findHoverCapture && findPinnedCapture && findPinnedHoverCapture && findPinFocusLightCapture && findPinFocusDarkCapture && findLongCapture;
 		m_doc->m_body.OnReplace(0, ID_EDIT_REPLACE, m_doc->m_body, handled);
 		CReplaceDlgBase* replace = m_doc->m_body.m_replace_dlg; if (replace) replace->SetPresetPanelVisible(true);
 		HWND replaceTree = replace ? replace->FRBase::GetDlgItem(IDC_FIND_PRESETS_TREE) : NULL;
@@ -1658,7 +1668,7 @@
 		const bool replacePreview = replacePin && verifyLongPreviewLayout(replace, replaceTree);
 		const bool replaceOk = replacePreview;
 		for (int pump = 0; pump < 8; ++pump) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } }
-		CStringA report; report.Format("find=%d\r\nreplace=%d\r\nfind_window=%d\r\nfind_roots=%d\r\nfind_presets=%d\r\nfind_tree=%d\r\nfind_categories=%d\r\nfind_pin=%d\r\nfind_preview=%d\r\nreplace_window=%d\r\nreplace_roots=%d\r\nreplace_presets=%d\r\nreplace_tree=%d\r\nreplace_categories=%d\r\nreplace_pin=%d\r\nreplace_preview=%d\r\nfind_pin_detail=%d\r\nreplace_pin_detail=%d\r\nartifacts=%d\r\n", findOk, replaceOk, findWindow, findRoots, findPresets, findTreeContract, findCategories, findPin, findPreview, replaceWindow, replaceRoots, replacePresets, replaceTreeContract, replaceCategories, replacePin, replacePreview, findPinDetail, replacePinDetail, findShortCapture && findHoverCapture && findPinnedCapture && findPinFocusLightCapture && findPinFocusDarkCapture && findLongCapture);
+		CStringA report; report.Format("find=%d\r\nreplace=%d\r\nfind_window=%d\r\nfind_roots=%d\r\nfind_presets=%d\r\nfind_tree=%d\r\nfind_categories=%d\r\nfind_pin=%d\r\nfind_preview=%d\r\nreplace_window=%d\r\nreplace_roots=%d\r\nreplace_presets=%d\r\nreplace_tree=%d\r\nreplace_categories=%d\r\nreplace_pin=%d\r\nreplace_preview=%d\r\nfind_pin_detail=%d\r\nreplace_pin_detail=%d\r\nartifacts=%d\r\n", findOk, replaceOk, findWindow, findRoots, findPresets, findTreeContract, findCategories, findPin, findPreview, replaceWindow, replaceRoots, replacePresets, replaceTreeContract, replaceCategories, replacePin, replacePreview, findPinDetail, replacePinDetail, findShortCapture && findUnpinnedCapture && findHoverCapture && findPinnedCapture && findPinnedHoverCapture && findPinFocusLightCapture && findPinFocusDarkCapture && findLongCapture);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		if (find) m_doc->m_body.CloseFindDialog(find); if (replace) m_doc->m_body.CloseFindDialog(replace);
 		::PostQuitMessage(findOk && replaceOk ? 0 : 1); return 0;

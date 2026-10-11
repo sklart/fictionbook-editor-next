@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="nl-NL">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ontwerp</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Andere modus"><strong>Ontwerp</strong><a href="regex-source.html">Broncode</a></nav><main>
+<h1 id="top">Handleiding voor reguliere expressies — Ontwerp</h1>
+<p>Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.</p>
+<p>Een volledige handleiding voor zoeken, vervangen en het corrigeren van boeken in FictionBook Editor Next.</p>
+<p>Editie: 2 oktober 2026. De modus Code wordt afzonderlijk beschreven in regex-source.md. “Patroon” betekent hier een reguliere expressie; een “ingebouwd sjabloon” is een opgeslagen combinatie van expressie en opties in het paneel Sjablonen. Design is de visuele modus Ontwerp.</p>
+<h2 id="section-1">1. Deze handleiding gebruiken</h2>
+<p>Een reguliere expressie beschrijft een zoekregel in plaats van &#233;&#233;n exacte tekenreeks. <code>[0-9]+</code> vindt bijvoorbeeld een reeks cijfers van willekeurige lengte; <code>[ \t]{2,}</code> vindt twee of meer gewone spaties of tabs. De gevonden overeenkomst en de tekst die ervoor in de plaats komt, zijn verschillende zaken.</p>
+<p>Hoofdstuk 2 geeft een eerste praktisch resultaat. Hoofdstukken 3–15 behandelen de syntaxis, hoofdstuk 16 de eigen vervangingsgrammatica van FBE. Hoofdstuk 17 bevat recepten voor boekbewerking, met voorwaarden, testteksten en waarschuwingen. Daarna volgen probleemoplossing, prestaties en bronnen.</p>
+<p>Kopieer alleen de expressie naar het zoekveld. De labels “Zoeken”, “Vervangen”, aanduidingen als U+0020 en Markdown-backticks horen niet bij het patroon. JavaScript-omsluitingen <code>/.../g</code>, aanhalingstekens van C++-strings en verdubbelde backslashes uit JSON zijn niet nodig.</p>
+<p>De selectievakjes zijn onderdeel van het recept. Een resultaat zonder hoofdlettergevoeligheid hoeft niet hetzelfde te blijven wanneer die optie wordt ingeschakeld. Beschouw instellingen niet als bijkomstige opmaak.</p>
+<p>“Alleen zoeken en controleren” betekent een diagnostisch recept. De treffer kan correct zijn: een bewuste herhaling, buitenlandse naam, citaat, kop of typografische keuze. Ook “vervangen na controle” garandeert geen veiligheid in elk boek.</p>
+<h2 id="section-2">2. Eerste zoekopdracht en veilige vervanging</h2>
+<p>Sla een werkkopie op. Ga naar Ontwerp, open Zoeken of Vervangen en schakel Reguliere expressie in. Zet voor de eerste proeven Alleen hele woorden uit: leg grenzen liever in het patroon vast. Controleer zoekbereik en richting.</p>
+<p>Zoek meerdere spaties met:</p>
+<pre class="regex" id="regex-1"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>In <code>Он   пришёл</code> wordt de tussenruimte van drie spaties gevonden. Zet &#233;&#233;n gewone spatie in het vervangingsveld. Voer eerst &#233;&#233;n vervanging uit, controleer <code>Он пришёл</code> en overweeg pas daarna Alles vervangen.</p>
+<section class="example" id="example-1"><strong>Voorbeeld</strong><pre><code>Zoeken: [ \t]{2,}
+Invoer: Он   пришёл
+Overeenkomst: drie spaties tussen woorden</code></pre></section>
+<section class="example" id="example-2"><strong>Voorbeeld</strong><pre><code>Zoeken: [ \t]{2,}
+Invoer: Он   пришёл
+Vervangen door: &#233;&#233;n spatie
+Verwacht: Он пришёл</code></pre></section>
+<p>Bekijk bij veel treffers eerst de resultaten en corrigeer &#233;&#233;n of twee representatieve gevallen. Controleer na een bulkbewerking tekst, cursief, vet, voetnoten en alineagrenzen. Maak een onverwacht resultaat ongedaan voordat u verder bewerkt.</p>
+<aside class="warning" id="warning-1"><strong>Waarschuwing</strong><p>Alles vervangen kan bedoelde spaties en opmaak wijzigen. Controleer &#233;&#233;n vervanging en bewaar een werkkopie.</p></aside>
+<p>Toepassen in het sjabloonpaneel zet de expressie en opties in het zoekvenster. Het is geen opdracht om alle treffers zonder meer te corrigeren. Zoeken en vervangen hebben hun eigen opdrachten in het dialoogvenster.</p>
+<h2 id="section-3">3. Engine en grenzen van de modus Ontwerp</h2>
+<p>Deze modus gebruikt PCRE2-16 met patronen en tekst in UTF-16; UTF staat altijd aan. FBE bouwt de doorzoekbare tekst afzonderlijk op en voert vervanging uit met inachtneming van de boekstructuur. PCRE2-documentatie verklaart de overeenkomsten, niet alle handelingen van FBE. Technische bronnen staan bij D1–D4.</p>
+<p>Het zoekobject is een tekstweergave van het boek, niet de letterlijke XML. <code>&lt;strong&gt;</code> is geen manier om vette tekst in Ontwerp te vinden. Zoek XML-tags in Code; voer structurele wijzigingen uit met editorfuncties of gespecialiseerde scripts.</p>
+<aside class="note" id="note-1"><strong>Opmerking</strong><p>Regex in Ontwerp ziet doorzoekbare tekst, geen DOM-boom. Controleer elementen en attributen in Broncode of met een structureel hulpmiddel.</p></aside>
+<p>Een lange regel die visueel wordt omgebroken bevat daardoor nog geen regeleindeteken. Alinea’s, echte onderbrekingen en visuele terugloop zijn verschillende dingen. FBE gebruikt meerregelige ankers in de zoekweergave om begin en einde van tekstregels aan alineagrenzen te koppelen. Een overeenkomst over alineagrenzen en zo’n overeenkomst vervangen zijn niet hetzelfde: de onderzochte implementatie weigert vervanging tussen alinea’s.</p>
+<p><code>\A</code> en <code>\z</code> verwijzen naar begin en einde van de string die de engine ontvangt. Dat is niet automatisch het volledige FB2-bestand; zoekbereik en het door FBE opgebouwde fragment tellen mee.</p>
+<h2 id="section-4">4. Unicode: UTF, UCP en hoofdletters</h2>
+<h3 id="section-4-1">4.1. Wat UTF doet</h3>
+<p>UTF laat de engine Unicode-tekens verwerken, ook Cyrillisch. Het converteert geen alfabetten, corrigeert geen OCR, maakt van <code>ё</code> geen <code>е</code> en voegt canoniek equivalente tekenreeksen niet automatisch samen.</p>
+<p>Een geaccentueerde letter kan als &#233;&#233;n teken of als letter plus gecombineerd accent zijn opgeslagen. De weergave kan gelijk zijn terwijl een tekengewijze zoekopdracht verschilt. PCRE2 voert geen NFC/NFD-normalisatie voor u uit. Houd bij diakritische tekens rekening met <code>\p{M}</code>.</p>
+<h3 id="section-4-2">4.2. Wat UCP doet</h3>
+<p>Unicode (UCP) verandert vooral de verkorte klassen <code>\w</code>, <code>\d</code>, <code>\s</code> en de daarvan afhankelijke grenzen <code>\b</code> en <code>\B</code>. Het is niet de schakelaar die Cyrillisch zelf mogelijk maakt.</p>
+<p>Een verduidelijking van eerdere versies: expliciete eigenschappen <code>\p{L}</code>, <code>\p{N}</code> en <code>\P{...}</code> zijn in een Unicode-build van PCRE2 ook zonder UCP beschikbaar. Combineert een patroon <code>\p{L}</code> met <code>\b</code>, dan is UCP doorgaans wenselijk voor een consistente interpretatie van letters en woordgrenzen.</p>
+<p>Vergelijk een Russisch woord:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
+<p>Met UCP volgen de grenzen de Unicode-woordklasse. Verwacht zonder UCP niet dat <code>\b</code> zich voor Cyrillisch hetzelfde gedraagt als voor Latijnse ASCII-tekst. Geen treffer betekent hier niet noodzakelijk dat het woord ontbreekt.</p>
+<p>Gebruik <code>[0-9]</code> wanneer specifiek ASCII-cijfers nodig zijn, niet <code>\d</code>: UCP kan die laatste klasse uitbreiden met decimale cijfers uit andere schriften.</p>
+<h3 id="section-4-3">4.3. Bruikbare eigenschappen</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Expressie</th><th scope="col">Wat wordt gevonden</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\p{L}</code></td><td>Een Unicode-letter</td></tr>
+<tr><td class="syntax"><code>\p{Lu}</code></td><td>Een hoofdletter bij hoofdlettergevoelig zoeken</td></tr>
+<tr><td class="syntax"><code>\p{Ll}</code></td><td>Een kleine letter bij hoofdlettergevoelig zoeken</td></tr>
+<tr><td class="syntax"><code>\p{M}</code></td><td>Een gecombineerd teken</td></tr>
+<tr><td class="syntax"><code>\p{N}</code></td><td>Een numeriek teken, ruimer dan een decimaal cijfer</td></tr>
+<tr><td class="syntax"><code>\p{Nd}</code></td><td>Een decimaal cijfer</td></tr>
+<tr><td class="syntax"><code>\p{Latin}</code></td><td>Een teken uit het Latijnse schrift</td></tr>
+<tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>Een teken uit het Cyrillische schrift</td></tr>
+<tr><td class="syntax"><code>\P{L}</code></td><td>Een teken dat geen letter is</td></tr>
+</tbody></table></div>
+<p>Een reeks letters inclusief accenttekens:</p>
+<pre class="regex" id="regex-3"><code><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Dit is nog geen universele taalkundige definitie van een woord: koppeltekens en apostroffen ontbreken. Voeg die bewust toe.</p>
+<h3 id="section-4-4">4.4. Hoofdlettergevoeligheid is een aparte instelling</h3>
+<p>Schakel Hoofdlettergevoelig in voor afwijkingen zoals <code>строчнаяПрописная</code>, initialen en patronen met <code>\p{Lu}</code>/<code>\p{Ll}</code>. Hoofdletters negeren kan de betekenis van de regel tenietdoen. UCP vervangt deze instelling niet.</p>
+<p>Hoofdletters negeren vanuit de expressie:</p>
+<pre class="regex" id="regex-4"><code><span class="rx-group">(?</span>i<span class="rx-group">)</span>глава</code></pre>
+<p>Beperkt tot een groep:</p>
+<pre class="regex" id="regex-5"><code><span class="rx-group">(?</span>i:глава<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<h2 id="section-5">5. Letterlijke tekens en escaping</h2>
+<p>Letters en de meeste tekens staan voor zichzelf. Buiten een tekenklasse kunnen punt, haakjes, sterretje, plus, vraagteken, accolades, ankers en backslash een speciale betekenis hebben.</p>
+<p>Zet een backslash voor een metateken om het letterlijk te zoeken:</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Gezochte tekst</th><th scope="col">Expressie</th></tr></thead><tbody>
+<tr><td>Punt</td><td><code>\.</code></td></tr>
+<tr><td>Vraagteken</td><td><code>\?</code></td></tr>
+<tr><td>Plus</td><td><code>\+</code></td></tr>
+<tr><td>Sterretje</td><td><code>\*</code></td></tr>
+<tr><td>Openend rond haakje</td><td><code>\(</code></td></tr>
+<tr><td>Sluitend rond haakje</td><td><code>\)</code></td></tr>
+<tr><td>Getal tussen vierkante haken</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>De backslash zelf</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p><code>(123)</code> vindt de cijfers <code>123</code> en bewaart ze in een groep, maar eist geen haakjes in de tekst. Gebruik ge-escapete haakjes om <code>(123)</code> letterlijk te vinden.</p>
+<p>Een lang letterlijk fragment kan in PCRE2 tussen <code>\Q</code> en <code>\E</code> staan:</p>
+<pre class="regex" id="regex-6"><code><span class="rx-escape">\Q</span>Цена <span class="rx-group">(</span>руб.<span class="rx-group">)</span> <span class="rx-quantifier">+</span> доставка<span class="rx-escape">\E</span></code></pre>
+<p>In het vervangingsveld van FBE hebben deze tekens een andere betekenis. Neem zoekescaping niet automatisch over voor vervanging.</p>
+<h2 id="section-6">6. Spaties, tabs en onzichtbare tekens</h2>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Expressie</th><th scope="col">Betekenis bij PCRE2-zoeken</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[ ]</code></td><td>Alleen gewone spatie U+0020</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Gewone spatie of tab</td></tr>
+<tr><td class="syntax"><code>\t</code></td><td>Tab U+0009</td></tr>
+<tr><td class="syntax"><code>\x{00A0}</code></td><td>Vaste spatie</td></tr>
+<tr><td class="syntax"><code>\x{202F}</code></td><td>Smalle vaste spatie</td></tr>
+<tr><td class="syntax"><code>\h</code></td><td>Horizontale witruimte, inclusief diverse Unicode-spaties</td></tr>
+<tr><td class="syntax"><code>\s</code></td><td>Witruimte, mogelijk ook regeleinden</td></tr>
+<tr><td class="syntax"><code>\r</code></td><td>Carriage return CR</td></tr>
+<tr><td class="syntax"><code>\n</code></td><td>Line feed LF</td></tr>
+<tr><td class="syntax"><code>\R</code></td><td>Unicode-regeleindesequentie</td></tr>
+<tr><td class="syntax"><code>\x{00AD}</code></td><td>Zacht afbreekteken</td></tr>
+<tr><td class="syntax"><code>\x{200B}</code></td><td>Spatie met nulbreedte</td></tr>
+<tr><td class="syntax"><code>\x{FEFF}</code></td><td>FEFF in de tekst zelf</td></tr>
+</tbody></table></div>
+<p>Kies <code>[ \t]</code> voor het opschonen van normale woordspaties, niet <code>\s</code>. Die laatste klasse kan ook alineagrenzen en vaste spaties raken. <code>\h</code> is nuttig voor diagnose maar te ruim voor onvoorwaardelijke typografische vervanging.</p>
+<p>Een vaste spatie verbindt teken en nummer, initialen en achternaam, of getal en eenheid. Alles naar gewone spaties omzetten kan de opmaak verslechteren. FBE kent bovendien een NBSP-tekeninstelling: controleer U+00A0-recepten tegen het boek en de gebruikte build.</p>
+<p>U+200C en U+200D kunnen nodig zijn voor bepaalde schriften en samengestelde emoji. Verwijder niet blind alle “onzichtbare” tekens. Detectie is geen bewijs van een fout.</p>
+<h2 id="section-7">7. Tekenklassen en bereiken</h2>
+<p>Een klasse tussen vierkante haken verbruikt &#233;&#233;n teken uit de verzameling. <code>[abc]</code> is &#233;&#233;n van drie letters, niet het woord <code>abc</code>. <code>[abc]+</code> staat voor &#233;&#233;n of meer letters uit de verzameling.</p>
+<p><code>[^abc]</code> verbruikt &#233;&#233;n teken buiten de verzameling. Het betekent niet “er staat geen abc v&#243;&#243;r de tekst”; daarvoor dienen contextcontroles.</p>
+<p>Binnen een klasse verliezen punt en de meeste haakjes hun speciale betekenis. Een koppelteken kan een bereik aangeven. Zet het voor een letterlijke betekenis vooraan/achteraan of escape het. Een letterlijke sluitende vierkante haak kan als <code>\]</code>.</p>
+<pre class="regex" id="regex-7"><code><span class="rx-class">[А-Яа-яЁё-]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Dit laat Russische letters en een koppelteken toe, niet heel Cyrillisch. Oekra&#239;ense, Wit-Russische en andere letters vragen een ruimere verzameling of Unicode-eigenschap.</p>
+<p>Binnen een klasse is <code>\b</code> geen woordgrens. Voeg woordgrenzen niet toe aan een gewone tekenverzameling.</p>
+<h2 id="section-8">8. Ankers, grenzen en lege overeenkomsten</h2>
+<p>Een anker controleert een positie zonder een letter of spatie te verbruiken. <code>^</code>, <code>$</code> en <code>\b</code> kunnen daardoor een overeenkomst van nul tekens opleveren. Die ziet er niet uit als een normaal geselecteerd tekstfragment.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Anker</th><th scope="col">Betekenis</th></tr></thead><tbody>
+<tr><td class="syntax"><code>^</code></td><td>Regelbegin met multiline, anders begin van het zoekobject</td></tr>
+<tr><td class="syntax"><code>$</code></td><td>Regeleinde met multiline; de laatste regeleindeafhandeling is modusafhankelijk</td></tr>
+<tr><td class="syntax"><code>\A</code></td><td>Alleen begin van het zoekobject</td></tr>
+<tr><td class="syntax"><code>\z</code></td><td>Exact einde van het zoekobject</td></tr>
+<tr><td class="syntax"><code>\Z</code></td><td>Einde of positie v&#243;&#243;r het afsluitende regeleinde</td></tr>
+<tr><td class="syntax"><code>\b</code></td><td>Grens tussen woordteken en niet-woordteken</td></tr>
+<tr><td class="syntax"><code>\B</code></td><td>Positie die geen woordgrens is</td></tr>
+<tr><td class="syntax"><code>\G</code></td><td>Startpositie van de huidige matchaanroep</td></tr>
+</tbody></table></div>
+<p><code>\G</code> onthoudt niet zelfstandig “de vorige overeenkomst”. Het verwijst naar de startoffset die de toepassing doorgeeft. Bij opeenvolgende aanroepen kan dat het einde van een vorige treffer zijn, maar in FBE is dit geen universele manier om een boek te doorlopen. Gebruik bij gewone correctie expliciete grenzen. [D1]</p>
+<p>Voor een heel woord in plaats van delen van langere woorden gebruikt u grenzen of controles op naburige letters. Met UCP:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-anchor">\b</span>том<span class="rx-anchor">\b</span></code></pre>
+<p>Dit past niet op het begin van <code>томик</code>. De engine kan koppeltekens en apostroffen echter anders als woordgrens behandelen dan een redacteur.</p>
+<p>Gebruik lege overeenkomsten voorzichtig met Alles vervangen: de operatie voegt tekst op posities in, in plaats van zichtbare tekens te vervangen. Begin met niet-lege resultaten.</p>
+<h2 id="section-9">9. Kwantoren: herhaling en terugzoeken</h2>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Notatie</th><th scope="col">Herhalingen van het vorige element</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Nul of &#233;&#233;n</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Nul of meer</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>E&#233;n of meer</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Precies drie</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>Minstens drie</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Twee tot vijf</td></tr>
+</tbody></table></div>
+<p>Een kwantor werkt op het voorafgaande teken, de klasse of de groep. <code>аб+</code> herhaalt alleen <code>б</code>; <code>(?:аб)+</code> herhaalt het paar.</p>
+<h3 id="section-9-1">9.1. Gulzig zoeken</h3>
+<p>Oorspronkelijke tekst:</p>
+<pre><code>&#171;первый&#187; и &#171;второй&#187;</code></pre>
+<p>Patroon:</p>
+<pre class="regex" id="regex-9"><code>&#171;.<span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>De punt met sterretje neemt eerst zoveel mogelijk tekst en geeft zo nodig tekens terug om de rest van het patroon te laten passen. Hier omvat de treffer beide paren aanhalingstekens.</p>
+<h3 id="section-9-2">9.2. Niet-gulzig zoeken</h3>
+<pre class="regex" id="regex-10"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>&#187;</code></pre>
+<p>Dit probeert eerst zo weinig mogelijk tekens, maar kan de overeenkomst alsnog uitbreiden. Achtereenvolgens worden <code>&#171;первый&#187;</code> en <code>&#171;второй&#187;</code> gevonden.</p>
+<p>Voor een eenvoudig paar is een expliciete inhoudsgrens vaak duidelijker:</p>
+<pre class="regex" id="regex-11"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>Dit verwerkt geen geneste citaten. Die vragen aparte redactionele controle.</p>
+<h3 id="section-9-3">9.3. Bezittelijke kwantor</h3>
+<pre class="regex" id="regex-12"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Dit betekent niet “nog betere aanhalingstekens”. <code>.*+</code> slokt ook het sluitende teken op en geeft het niet terug. De resterende <code>&#187;</code> in het patroon kan daardoor niet passen; er is geen resultaat.</p>
+<p>Een variant die het sluitende teken uitsluit kan wel passend zijn:</p>
+<pre class="regex" id="regex-13"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Bezittelijke kwantoren en atomaire groepen sturen backtracking; ze zijn geen universele versnelling.</p>
+<h2 id="section-10">10. Groepen en terugverwijzingen</h2>
+<p>Ronde haakjes bewaren een gevonden fragment. Nummering begint bij 1 en volgt openende capturehaakjes van links naar rechts, ook bij nesting.</p>
+<pre class="regex" id="regex-14"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Voor <code>02.10.2026</code> bevatten de groepen <code>02</code>, <code>10</code>, <code>2026</code>. Dit controleert het formaat, niet de kalendergeldigheid.</p>
+<p><code>(?:...)</code> groepeert zonder groepsnummer. Dat houdt <code>$1</code> en <code>$2</code> voorspelbaar bij complexe vervangingen.</p>
+<p>Een benoemde groep maakt een patroon leesbaarder:</p>
+<pre class="regex" id="regex-15"><code><span class="rx-group">(?&lt;</span>word&gt;<span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-escape">\k</span>&lt;word&gt;</code></pre>
+<p>Een terugverwijzing zoekt dezelfde vastgelegde tekst. Een subroutineaanroep herhaalt de regel en kan andere tekst vinden. Dit zijn verschillende mechanismen.</p>
+<p>Voeg bij echte herhaalde woorden grenzen, hoofdletterinstelling en geschikte spaties toe. Zonder grenzen kan een verwijzing delen van langere woorden vinden. Een compleet recept staat verderop.</p>
+<p>Benoemde zoekgroepen maken benoemde vervangingen niet automatisch beschikbaar in FBE. Gebruik bevestigde numerieke verwijzingen in het vervangingsveld.</p>
+<h2 id="section-11">11. Alternatieven en atomaire groepen</h2>
+<p>Een verticale streep kiest tussen alternatieven:</p>
+<pre class="regex" id="regex-16"><code><span class="rx-group">(?:</span>глава<span class="rx-alternation">|</span>часть<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Groepering is belangrijk: zonder groep kan het gezamenlijke achterste deel alleen bij het laatste alternatief horen. Alternatieven worden in de geschreven volgorde geprobeerd. Kies de volgorde van lange en korte vormen bewust.</p>
+<p>Een atomaire groep verbiedt terugkeer binnen een al succesvol afgelegde groep:</p>
+<pre class="regex" id="regex-17"><code><span class="rx-group">(?</span>&gt;а<span class="rx-alternation">|</span>аб<span class="rx-group">)</span>в</code></pre>
+<p>Voor <code>абв</code> kiest het eerste alternatief <code>а</code>. Terugkeer naar <code>аб</code> mag dan niet meer en er is geen overeenkomst. De niet-atomaire versie kan die wel vinden. Voeg atomiciteit dus niet zonder resultaatcontrole toe.</p>
+<h2 id="section-12">12. Naburige tekst controleren: lookaround</h2>
+<p>Lookaround controleert context die niet in de volledige overeenkomst wordt opgenomen. Zo kunt u alleen een nummer selecteren en het voorafgaande teken behouden:</p>
+<pre class="regex" id="regex-18"><code><span class="rx-group">(?&lt;=</span>№ <span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Bij <code>№ 125</code> wordt alleen <code>125</code> gevonden. De spatie is gewoon en enkelvoudig.</p>
+<section class="example" id="example-3"><strong>Voorbeeld</strong><pre><code>Zoeken: (?&lt;=№ )([0-9]+)
+Invoer: № 125
+Volledige overeenkomst: 125
+Groep 1: 125
+Verwachte vervanging met [$1]: № [125]</code></pre></section>
+<p>Controle rechts:</p>
+<pre class="regex" id="regex-19"><code><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?=</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>руб<span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>In <code>125 руб.</code> vindt dit het getal zonder <code>руб.</code>.</p>
+<p>Negatieve controle vooruit:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-anchor">\b</span>глава<span class="rx-anchor">\b</span><span class="rx-group">(?!</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>Met UCP wordt “глава” gevonden wanneer er geen gewone nummering na een spatie volgt. Het is een voorbeeld van contextselectie, geen correctieregel.</p>
+<p><code>(?&lt;=...)</code> controleert voorafgaande tekst en <code>(?&lt;!...)</code> ontkent die voorwaarde. <code>(?=...)</code> en <code>(?!...)</code> doen hetzelfde voor volgende tekst.</p>
+<p>Lookbehind kent lengtegrenzen. Moderne PCRE2 ondersteunt sommige begrensde variabele lengtes, niet willekeurige onbegrensde herhaling. Gebruik voor overdraagbare recepten korte vaste context, een capture of <code>\K</code>; reken niet op <code>.*</code> in lookbehind.</p>
+<h2 id="section-13">13. Opties binnen het patroon</h2>
+<div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Optie</th><th scope="col">Effect</th></tr></thead><tbody>
+<tr><td class="syntax"><code>(?i)</code></td><td>Negeert hoofdletters</td></tr>
+<tr><td class="syntax"><code>(?-i)</code></td><td>Onderscheidt hoofdletters</td></tr>
+<tr><td class="syntax"><code>(?m)</code></td><td>Meerregelige begin- en eindankers</td></tr>
+<tr><td class="syntax"><code>(?-m)</code></td><td>Schakelt meerregelige ankers uit</td></tr>
+<tr><td class="syntax"><code>(?s)</code></td><td>De punt mag een regeleinde omvatten</td></tr>
+<tr><td class="syntax"><code>(?-s)</code></td><td>Herstelt het normale puntgedrag</td></tr>
+<tr><td class="syntax"><code>(?x)</code></td><td>Negeert niet-betekenisvolle spaties en commentaar in het patroon</td></tr>
+</tbody></table></div>
+<p><code>(?m)</code> laat de punt geen regels oversteken. <code>(?s)</code> staat FBE niet toe tussen alinea’s te vervangen. Het zijn aparte zoekopties en een afzonderlijke toepassingsbeperking.</p>
+<p>In uitgebreide modus zijn spaties in het patroon soms niet meer letterlijk. Gebruik <code>[ ]</code> voor een vereiste spatie; <code>#</code> kan buiten een klasse commentaar starten. Meerregelige patronen zijn prettig in documentatie, maar de recepten voor het zoekveld staan op &#233;&#233;n regel.</p>
+<h2 id="section-14">14. Geavanceerde PCRE2-functies</h2>
+<p>De meeste correcties vereisen dit hoofdstuk niet. Het helpt patronen van anderen te begrijpen. Syntactische ondersteuning maakt niet elk patroon handig of veilig voor een heel boek.</p>
+<h3 id="section-14-1">14.1. Het begin van de overeenkomst resetten</h3>
+<pre class="regex" id="regex-21"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\K</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>In <code>№ 125</code> wordt het voorvoegsel gecontroleerd, maar alleen <code>125</code> teruggegeven. Nuttig wanneer het getal moet veranderen, niet het teken. Gebruik <code>\K</code> niet ongecontroleerd binnen lookaround: PCRE2 beperkt die combinatie.</p>
+<h3 id="section-14-2">14.2. Voorwaarde op deelname van een groep</h3>
+<pre class="regex" id="regex-22"><code><span class="rx-anchor">^</span><span class="rx-group">(</span><span class="rx-escape">\(</span><span class="rx-group">)</span><span class="rx-quantifier">?</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">(?</span><span class="rx-group">(</span>1<span class="rx-group">)</span><span class="rx-escape">\)</span><span class="rx-group">)</span><span class="rx-anchor">$</span></code></pre>
+<p>Dit accepteert <code>12</code> en <code>(12)</code>, niet het ongesloten <code>(12</code>. De voorwaarde controleert deelname van groep 1. Maak hiervan geen vervanging met optionele groepen zonder de FBE-adapter te testen.</p>
+<h3 id="section-14-3">14.3. Gedeelde nummering tussen alternatieven</h3>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?</span><span class="rx-alternation">|</span>глава <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-alternation">|</span>часть <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">)</span></code></pre>
+<p>In beide takken komt het nummer in groep 1: branch reset. In eenvoudige gevallen is een niet-vastleggende groep met &#233;&#233;n gezamenlijke capture duidelijker.</p>
+<h3 id="section-14-4">14.4. Een subroutine aanroepen</h3>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?&lt;</span>pair&gt;<span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span>-<span class="rx-group">(?</span>&amp;pair<span class="rx-group">)</span></code></pre>
+<p>Bij <code>12-34</code> voldoen beide delen aan “twee cijfers”, hoewel de getallen verschillen. Een verwijzing <code>\k&lt;pair&gt;</code> zou precies <code>12</code> opnieuw vereisen.</p>
+<p>Recursieve subroutines beschrijven sommige geneste structuren, maar vervangen de XML-parser niet. Gebruik voor <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, noten en tabellen structurele functies.</p>
+<h3 id="section-14-5">14.5. Fragmenten overslaan</h3>
+<pre class="regex" id="regex-25"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
+<p>Met UCP wordt het woord buiten eenvoudige Russische aanhalingstekens gezocht. De eerste tak markeert het citaat om over te slaan, de tweede zoekt het woord. Geneste of ongesloten aanhalingstekens worden niet verwerkt; vertrouw hier niet blind op bij bulkredactie.</p>
+<h2 id="section-15">15. Wat een reguliere expressie niet beslist</h2>
+<p>Een hoofdletter na een kleine letter, ontbrekende eindinterpunctie en een herhaald woord zijn formele aanwijzingen, geen redactionele beslissing. Regex weet niet of <code>да да</code> een fout, opzettelijke dialoog, vers of kop is.</p>
+<p>Voeg niet automatisch punten toe, plak niet alle alinea’s met een kleine beginletter aan elkaar, verander niet elke Latijnse letter in Cyrillisch en elk koppelteken in een gedachtestreep. Context en soms meerdere DOM-stappen zijn nodig. FBE-scripts voor opschonen, vastgeplakte woorden en noten lossen zulke complexere taken op.</p>
+<h2 id="section-16">16. De vervangingsgrammatica van FBE</h2>
+<p>PCRE2 zoekt, maar FBE verwerkt de vervangende tekenreeks. Neem voorbeelden uit JavaScript, Python, .NET, PCRE2 substitute of andere editors niet zonder test over. Hieronder staan opdrachten die door broncode en oorspronkelijke FBE-documentatie zijn bevestigd. [D3, D4]</p>
+<h3 id="section-16-1">16.1. Overeenkomst en groepen</h3>
+<div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">In het vervangingsveld</th><th scope="col">Betekenis</th></tr></thead><tbody>
+<tr><td class="syntax"><code>$0</code> of <code>\0</code></td><td>Hele overeenkomst</td></tr>
+<tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>Groep met het betreffende nummer</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Alternatieve numerieke verwijzing</td></tr>
+<tr><td class="syntax"><code>$+</code> of <code>\+</code></td><td>Laatste groep die de matchadapter teruggeeft</td></tr>
+</tbody></table></div>
+<p>“FBE vervangt alleen groepen 1–9” is onvolledig: gewone tekst en de gehele overeenkomst kunnen ook worden ingevoegd. De beperking betreft directe numerieke toegang, niet het aantal PCRE2-groepen.</p>
+<p>Gebruik <code>$10</code> niet als verwijzing naar groep tien. <code>${name}</code> behoort niet tot de bevestigde grammatica. Houd benodigde captures bij de eerste negen groepen; maak hulpgroepen niet-vastleggend.</p>
+<p>Test optionele en lege groepen apart: FBE heeft een eigen SubMatches-adapter. Laat nieuwe bulkvervangingen liever niet afhangen van subtiele regels voor overgeslagen groepen of de “laatste groep”; gebruik expliciete verplichte captures.</p>
+<h3 id="section-16-2">16.2. Groepen opnieuw ordenen</h3>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Vervangen door:</p>
+<pre><code>$3-$2-$1</code></pre>
+<p><code>02.10.2026</code> wordt <code>2026-10-02</code>. Dit demonstreert herordening en is geen advies om alle datums in een boek om te zetten.</p>
+<h3 id="section-16-3">16.3. Hoofdletters en kleine letters veranderen</h3>
+<div class="table-wrap" id="table-8"><table><thead><tr><th scope="col">Opdracht</th><th scope="col">Effect</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\U</code></td><td>Zet het ingevoegde fragment in hoofdletters</td></tr>
+<tr><td class="syntax"><code>\L</code></td><td>Zet het in kleine letters</td></tr>
+<tr><td class="syntax"><code>\T</code></td><td>Eerste letter van het fragment hoofdletter, de rest klein</td></tr>
+<tr><td class="syntax"><code>\Q</code></td><td>Reset actieve letterkast- en opmaakopdrachten voor volgende tekst</td></tr>
+</tbody></table></div>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(</span>иван<span class="rx-group">)</span></code></pre>
+<p>Vervangen door:</p>
+<pre><code>\T$1\Q</code></pre>
+<p>Controleresultaat: <code>Иван</code>. <code>\T</code> is geen uitgebreide taalkundige omzetting van elk woord: &#233;&#233;n fragment <code>иван иванов</code> hoeft niet <code>Иван Иванов</code> te worden.</p>
+<p>Stapel <code>\U</code> en <code>\L</code> niet zonder reset. Scheid delen met <code>\Q</code> en controleer Cyrillisch en diakritische tekens. FBE past de letterkast aan, niet een PCRE2-Unicode-normalisator.</p>
+<h3 id="section-16-4">16.4. Vet en cursief</h3>
+<p><code>\S</code> schakelt vet in voor het ingevoegde fragment, <code>\E</code> cursief. <code>\Q</code> be&#235;indigt de actieve opdrachten voor volgende tekst.</p>
+<pre><code>\S$1\Q</code></pre>
+<p>Dit maakt de inhoud van groep 1 op. Het zoekt niet naar al vette tekst en wist niet alle bestaande opmaak. Test eerst &#233;&#233;n fragment en het ongedaan maken.</p>
+<h3 id="section-16-5">16.5. Dezelfde tekens met verschillende betekenissen</h3>
+<p>In een zoekpatroon is <code>\S</code> een niet-witruimteteken; in FBE-vervanging betekent het vet. <code>\Q...\E</code> maakt zoektekst letterlijk, maar in vervanging reset <code>\Q</code> opdrachten en schakelt <code>\E</code> cursief in.</p>
+<p>Typ geen <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> of <code>$$</code> in Design-vervanging in de verwachting dat een andere editor dezelfde regels heeft. Ze behoren niet tot de beschreven letterlijke grammatica; onbekende reeksen kunnen verdwijnen. Gebruik het echte NBSP-teken. Bewaar een speciaal teken via een gevonden groep of een gecontroleerde gewone vervanging.</p>
+<p>Een leeg veld verwijdert de treffer. E&#233;n spatie vervangt die door &#233;&#233;n spatie. Labels zoals <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> en <code>U+00A0</code> uit de toelichting moet u niet letterlijk typen.</p>
+<h2 id="section-17">17. Praktische recepten voor boekbewerking en correctie</h2>
+<p>De voorbeelden zijn zelfstandige scenario’s en hoeven niet exact overeen te komen met ingebouwde sjabloonnamen. Pas een vervanging eerst op &#233;&#233;n treffer toe. Echte spaties en tabs in de testblokken blijven behouden; negatieve voorbeelden tonen minstens &#233;&#233;n grens, maar vervangen geen controle van het hele boek.</p>
+<h3 id="heading-1">D01. Meerdere gewone spaties terugbrengen tot &#233;&#233;n</h3>
+<p>Gewone tussenruimtes verdichten zonder &#233;&#233;n afzonderlijke NBSP te wijzigen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-28"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он   пришёл.</code></pre>
+<p>Vervangen door: &#233;&#233;n gewone spatie U+0020. Dit is &#233;&#233;n teken, niet het woord “spatie”.</p>
+<p>Resultaat van de vervanging:</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Beperkingen en opmerkingen: In po&#235;zie, tabellen en nagebootste inspringing kunnen meerdere spaties bewust zijn. Controleer het zoekbereik; dit herbouwt geen alinea-inspringing.</p>
+<h3 id="heading-2">D02. Spaties aan het begin van een alinea</h3>
+<p>Handmatige inspringing v&#243;&#243;r gewone tekst verwijderen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>   Начало абзаца.</code></pre>
+<p>Dezelfde testtekst met zichtbare aanduidingen:</p>
+<pre><code>␠␠␠Начало␠абзаца.</code></pre>
+<p>Hier staat ␠ voor een gewone spatie, [TAB] voor een tab, [NBSP] voor U+00A0, [NNBSP] voor U+202F en [ZWSP] voor U+200B. Dit is een toelichtende weergave; deze labels worden niet in het boek ingevoegd.</p>
+<p>Vervangen door: laat het veld volledig leeg. Typ niet het woord “leeg”.</p>
+<p>Resultaat van de vervanging:</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Beperkingen en opmerkingen: Bij po&#235;zie en artistieke opmaak kan inspringing betekenis hebben. Het anker betreft de tekstregel, niet de visuele terugloop.</p>
+<h3 id="heading-3">D03. Spaties aan het einde van een alinea</h3>
+<p>Een staart van gewone spaties of tabs verwijderen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-30"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Dezelfde testtekst met zichtbare aanduidingen:</p>
+<pre><code>Конец␠абзаца.␠␠␠</code></pre>
+<p>Hier staat ␠ voor een gewone spatie, [TAB] voor een tab, [NBSP] voor U+00A0, [NNBSP] voor U+202F en [ZWSP] voor U+200B. Dit is een toelichtende weergave; deze labels worden niet in het boek ingevoegd.</p>
+<p>Vervangen door: laat het veld volledig leeg. Typ niet het woord “leeg”.</p>
+<p>Resultaat van de vervanging:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Beperkingen en opmerkingen: NBSP is bewust uitgesloten. Gebruik afzonderlijke diagnose voor afwijkende spaties.</p>
+<h3 id="heading-4">D04. Spatie v&#243;&#243;r komma en andere leestekens</h3>
+<p>Het leesteken bewaren en de voorafgaande ruimte verwijderen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-31"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[,;:!?]</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Слово , другое !</code></pre>
+<p>Vervangen door:</p>
+<pre><code>$1</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Beperkingen en opmerkingen: Deze regel is bedoeld voor gewone Russische tekst. Franse typografie staat bijzondere spaties v&#243;&#243;r sommige tekens toe; pas hem niet zonder aanpassing op zulke boeken toe.</p>
+<h3 id="heading-5">D05. Spatie na een openingsteken</h3>
+<p>Een gewone spatie na een haakje of Russisch openingsaanhalingsteken verwijderen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[&#171;„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&#171; слово&#187; ( пример)</code></pre>
+<p>Vervangen door:</p>
+<pre><code>$1</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Beperkingen en opmerkingen: Spaties in formules of voorbeelden blijven ongemoeid als ze niet direct na een genoemd teken staan. Controleer de context toch.</p>
+<h3 id="heading-6">D06. Spatie v&#243;&#243;r een sluitingsteken</h3>
+<p>Een gewone spatie v&#243;&#243;r haakje of sluitend aanhalingsteken verwijderen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>&#187;”]<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&#171;слово &#187; (пример )</code></pre>
+<p>Vervangen door:</p>
+<pre><code>$1</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Beperkingen en opmerkingen: Dit normaliseert niet alle soorten aanhalingstekens en wiskundige haakjes.</p>
+<h3 id="heading-7">D07. Precies drie punten vervangen door een beletselteken</h3>
+<p>Drie opeenvolgende punten omzetten en langere reeksen behouden.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-quantifier">{3}</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он подумал... и ответил.</code></pre>
+<p>Vervangen door:</p>
+<pre><code>…</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Содержание.....12</code></pre>
+<p>Beperkingen en opmerkingen: Controleer het redactionele beleid. Vier punten en opvulpunten in inhoudsopgaven blijven bewust buiten beschouwing.</p>
+<h3 id="heading-8">D08. Uit elkaar geschreven beletselteken</h3>
+<p>Drie punten met gewone spaties ertussen samenvoegen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он подумал. . . и ответил.</code></pre>
+<p>Vervangen door:</p>
+<pre><code>…</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Слово. Другое.</code></pre>
+<p>Beperkingen en opmerkingen: Vindt ook drie aansluitende punten. Niet gebruiken voor opvulregels of weglatingen in citaten met een eigen conventie.</p>
+<h3 id="heading-9">D09. Vaste spatie na №</h3>
+<p>Het nummerteken aan het volgende getal koppelen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-36"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>№ 125</code></pre>
+<p>Vervangen door:</p>
+<pre><code>№&#160;$1</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>№&#160;125</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>№125</code></pre>
+<p>Beperkingen en opmerkingen: Tussen № en $1 in de vervanging staat echt U+00A0. Vervang dit niet door de afgedrukte reeks \x{00A0}. Het patroon voegt geen geheel ontbrekende spatie toe.</p>
+<h3 id="heading-10">D10. Vaste spatie na &#167;</h3>
+<p>Het paragraafteken aan het nummer koppelen.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-37"><code>&#167;<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&#167; 12</code></pre>
+<p>Vervangen door:</p>
+<pre><code>&#167;&#160;$1</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>&#167;&#160;12</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&#167;12</code></pre>
+<p>Beperkingen en opmerkingen: Tussen &#167; en $1 staat een echte NBSP. Controleer bij samengestelde nummering of het juiste deel is gevonden.</p>
+<h3 id="heading-11">D11. Mogelijk herhaald aangrenzend woord</h3>
+<p>Herhaling over horizontale spaties vinden zonder alinea’s over te slaan.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” uit.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-38"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">+</span><span class="rx-escape">\1</span><span class="rx-anchor">\b</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Это это уже было.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>Это это</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Это уже было.</code></pre>
+<p>Beperkingen en opmerkingen: &#171;Да да&#187; en vergelijkbare herhalingen kunnen van de auteur zijn. Verwijder niet automatisch het tweede woord; misschien is een komma nodig of helemaal geen wijziging. Apostroffen en koppeltekens zijn niet volledig verwerkt.</p>
+<h3 id="heading-12">D12. Latijns en Cyrillisch binnen hetzelfde woord</h3>
+<p>Een OCR-mengvorm binnen &#233;&#233;n doorlopend woord vinden, niet iedere tweetalige regel.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-39"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Latin}</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Cyrillic}</span><span class="rx-group">)</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>В слове Тeст латинская e.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>Тeст</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он прочитал Latin.</code></pre>
+<p>Beperkingen en opmerkingen: In Тeст is e Latijns. Een geheel Latijns woord naast Russisch telt niet als mengvorm. Formules, merknamen en typografisch spel kunnen legitieme treffers geven. Er wordt niets getranslitereerd.</p>
+<h3 id="heading-13">D13. Kleine letter direct v&#243;&#243;r hoofdletter</h3>
+<p>Mogelijk vastgeplakte woorden of een fout in letterkast vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-40"><code><span class="rx-escape">\p{Ll}</span><span class="rx-escape">\p{Lu}</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>ОнвышелИздома.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>лИ</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он вышел из дома.</code></pre>
+<p>Beperkingen en opmerkingen: Hoofdlettergevoeligheid is noodzakelijk. Namen zoals McDonald kunnen correct zijn. De overgang wordt gevonden, niet automatisch de bedoelde woordgrens.</p>
+<h3 id="heading-14">D14. Cijfer tussen letters</h3>
+<p>Een typische OCR-verwisseling van letter naar cijfer vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-41"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Это сл0во.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>сл0во</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>В главе 10 текст.</code></pre>
+<p>Beperkingen en opmerkingen: H2O en andere formules kunnen correct zijn. Verander niet alle 0 in о en alle 3 in з.</p>
+<h3 id="heading-15">D15. Leesteken binnen een letterfragment</h3>
+<p>Een teken controleren dat direct aan beide kanten door letters wordt omgeven.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-42"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[.,;:!?]</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он,сказал слово.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>Он,сказал</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он, сказав слово, ушёл.</code></pre>
+<p>Beperkingen en opmerkingen: Afkortingen, adressen en domeinen kunnen ook passen. Beperk voor komma’s de klasse tot [,]. Voeg niet in alle treffers zonder controle een spatie toe.</p>
+<h3 id="heading-16">D16. Alinea begint met kleine letter</h3>
+<p>Een mogelijk overbodige alineaonderbreking vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-43"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>продолжение предложения.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>п</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Начало предложения.</code></pre>
+<p>Beperkingen en opmerkingen: Verzen, bijschriften, lijsten en citaten beginnen vaak terecht met kleine letters. Het patroon voegt geen alinea’s samen en kent de naburige context niet.</p>
+<h3 id="heading-17">D17. Eindinterpunctie ontbreekt v&#243;&#243;r sluitende aanhalingstekens</h3>
+<p>Een letter- of cijfereinde vinden met daarna alleen sluitingstekens en spaties.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[&#187;”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&#171;Он пришёл&#187;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>л&#187;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&#171;Он пришёл!&#187;</code></pre>
+<p>Beperkingen en opmerkingen: Koppen en bijschriften hebben vaak geen punt. Een nootverwijzing na correcte interpunctie kan een vals-positief geven. Anders dan een controle op alleen &#187;, vindt dit &#171;Он пришёл!&#187; niet verdacht.</p>
+<h3 id="heading-18">D18. Kleine letter na zinseinde</h3>
+<p>Een mogelijke letterkastfout na punt, vraagteken of uitroepteken vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он пришёл. потом ушёл.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>. п</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он пришёл. Потом ушёл.</code></pre>
+<p>Beperkingen en opmerkingen: Afkortingspunten en beletseltekens sluiten niet altijd een zin af. Het is uitsluitend een lijst om te beoordelen.</p>
+<h3 id="heading-19">D19. Mogelijk ontbrekende punt</h3>
+<p>Een overgang over een spatie van een kleine eindletter naar een woord met hoofdletter vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[&#187;”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он пришёл Потом ушёл.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>л Потом</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он пришёл потом ушёл.</code></pre>
+<p>Beperkingen en opmerkingen: Namen en titels midden in een zin geven veel correcte treffers. Het recept beslist niet of een punt, komma of niets nodig is.</p>
+<h3 id="heading-20">D20. Paren rechte aanhalingstekens</h3>
+<p>Een eenvoudig fragment tussen rechte dubbele aanhalingstekens op &#233;&#233;n regel vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-47"><code>&quot;<span class="rx-group">(</span><span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>&quot;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он сказал &quot;да&quot;.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&quot;да&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он сказал &#171;да&#187;.</code></pre>
+<p>Beperkingen en opmerkingen: Controleer nesting, inch-aanduidingen, code en de gekozen citaatstijl. &#171;$1&#187; kan alleen in geselecteerde context geschikt zijn; geen universele typografische omzetting.</p>
+<h3 id="heading-21">D21. Koppelteken of lange streep tussen getallen</h3>
+<p>Een mogelijk getalbereik vinden dat redactionele beoordeling vraagt.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-48"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[-—]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Страницы 12 - 15.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>12 - 15</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Страницы 12–15.</code></pre>
+<p>Beperkingen en opmerkingen: Een datum als 2026-10-02, negatieve waarde en aftrekking kunnen ook passen. Maak er niet automatisch een bereik van. – is een en-streep, — een em-streep, - een koppelteken.</p>
+<h3 id="heading-22">D22. Twee initialen v&#243;&#243;r een achternaam</h3>
+<p>Een eenvoudige notatie met twee initialen vinden om de spaties te beoordelen.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-49"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-anchor">\b</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Beperkingen en opmerkingen: Dekt niet alle samengestelde namen en diakritische tekens. Na selectie zijn $1., NBSP, $2., NBSP, $3 bruikbaar; voeg de echte vaste spaties in, niet hun namen.</p>
+<h3 id="heading-23">D23. Achternaam v&#243;&#243;r twee initialen</h3>
+<p>De omgekeerde naamvolgorde vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-50"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Beperkingen en opmerkingen: Dit controleert een formaat, niet de identiteit van een persoon. Samengestelde namen, tussenvoegsels en drie initialen vereisen een andere regel.</p>
+<h3 id="heading-24">D24. Onzichtbare tekens ter controle</h3>
+<p>Zacht afbreekteken, nulbreedtespatie of FEFF vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-51"><code><span class="rx-class">[\x{00AD}\x{200B}\x{FEFF}]</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>сло​во</code></pre>
+<p>Dezelfde testtekst met zichtbare aanduidingen:</p>
+<pre><code>сло[ZWSP]во</code></pre>
+<p>Hier staat ␠ voor een gewone spatie, [TAB] voor een tab, [NBSP] voor U+00A0, [NNBSP] voor U+202F en [ZWSP] voor U+200B. Dit is een toelichtende weergave; deze labels worden niet in het boek ingevoegd.</p>
+<p>Verwachte overeenkomst:</p>
+<pre><code>​</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>слово</code></pre>
+<p>Beperkingen en opmerkingen: De treffer is onzichtbaar: U+200B staat tussen о en в. Pas wijzigen na vaststelling van de functie. Een BOM aan het begin van het bestand en FEFF in de tekst zijn andere gevallen.</p>
+<h3 id="heading-25">D25. Ongebruikelijke Unicode-spaties</h3>
+<p>Smalle, brede en andere speciale spaties vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-52"><code><span class="rx-class">[\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>10 000</code></pre>
+<p>Dezelfde testtekst met zichtbare aanduidingen:</p>
+<pre><code>10[NNBSP]000</code></pre>
+<p>Hier staat ␠ voor een gewone spatie, [TAB] voor een tab, [NBSP] voor U+00A0, [NNBSP] voor U+202F en [ZWSP] voor U+200B. Dit is een toelichtende weergave; deze labels worden niet in het boek ingevoegd.</p>
+<p>Verwachte overeenkomst:</p>
+<pre><code> </code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>10 000</code></pre>
+<p>Beperkingen en opmerkingen: Een smalle vaste spatie tussen cijfergroepen kan volkomen correct zijn. Het recept toont inconsistentie, niet dat alle speciale spaties fouten zijn.</p>
+<h3 id="heading-26">D26. Herhaalde vraag- en uitroeptekens</h3>
+<p>Expressieve of per ongeluk dubbele interpunctie vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-53"><code><span class="rx-class">[!?]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Что?! Правда!!!</code></pre>
+<p>Verwachte overeenkomsten, achtereenvolgens:</p>
+<pre><code>?!
+!!!</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Что? Правда!</code></pre>
+<p>Beperkingen en opmerkingen: ?! en auteursherhalingen kunnen opzettelijk zijn. De normale actie is beoordeling, niet elke reeks tot &#233;&#233;n teken verkorten.</p>
+<h3 id="heading-27">D27. Cyrillische Х naast Romeinse cijfers</h3>
+<p>Een Russische Х in een Latijnse Romeinse aanduiding vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” is voor deze expressie niet nodig. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-54"><code><span class="rx-group">(?&lt;=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span>Х<span class="rx-alternation">|</span>Х<span class="rx-group">(?=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Глава IХ</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>Х</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Глава IX</code></pre>
+<p>Beperkingen en opmerkingen: Х is Cyrillisch, X Latijns. Controleer hoofdletters en context; het hele Romeinse nummer wordt niet gevalideerd.</p>
+<h3 id="heading-28">D28. Meerdere hoofdletters v&#243;&#243;r een kleine letter</h3>
+<p>Een mogelijke OCR-fout in de letterkast aan het woordbegin vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Unicode (UCP)” aan. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-55"><code><span class="rx-escape">\p{Lu}</span><span class="rx-quantifier">{2,}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>Он сказал ПРИвет.</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>ПРИвет</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>Он сказал Привет.</code></pre>
+<p>Beperkingen en opmerkingen: Namen, afkortingen met achtervoegsels en Latijnse afkortingen kunnen correct zijn. Verander de letterkast niet in bulk zonder controle.</p>
+<h2 id="section-18">18. Veelvoorkomende fouten en diagnose</h2>
+<h3 id="section-18-1">18.1. Tekst is zichtbaar maar er is geen treffer</h3>
+<p>Controleer Ontwerp, de regexoptie, hoofdletters, bereik, richting en werkelijke tekens. Latijnse <code>a</code> en Russische <code>а</code> lijken op elkaar maar verschillen. NBSP is geen gewone spatie en typografische aanhalingstekens zijn geen rechte.</p>
+<p>Controleer UCP bij Russische woordgrenzen en hoofdlettergevoeligheid bij letterkastpatronen. Combineer Alleen hele woorden niet onnodig met ingewikkelde eigen grenzen.</p>
+<h3 id="section-18-2">18.2. Er wordt een te groot fragment gevonden</h3>
+<p>Verdacht zijn vooral gulzige <code>.*</code> en te brede negatieve klassen. Vervang “willekeurige tekst” door toegestane tekens en begrens lengte en bereik. Controleer dotall.</p>
+<h3 id="section-18-3">18.3. Spaties nemen alinea’s mee</h3>
+<p><code>\s+</code> is geen synoniem voor gewone spaties. Begin voor woordtussenruimtes met <code>[ \t]+</code> en voeg NBSP alleen bewust toe.</p>
+<h3 id="section-18-4">18.4. Cijfers verschijnen of backslashes verdwijnen in de vervanging</h3>
+<p>Vergelijk de FBE-grammatica in hoofdstuk 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> en <code>\x{...}</code> volgen niet automatisch de zoekregels of die van een andere editor. Controleer dat de capture bestaat en niet optioneel is in een andere tak.</p>
+<h3 id="section-18-5">18.5. Gemengde alfabetten worden in een normale tweetalige zin gevonden</h3>
+<p>Een oud voorbeeld controleerde beide alfabetten ergens in de hele regel en vond ook <code>Он прочитал Latin.</code>. D12 beperkt beide voorwaarden tot &#233;&#233;n woord: het onderscheid tussen OCR-diagnose en een tweetalige regel.</p>
+<h3 id="section-18-6">18.6. “Punt ontbreekt” markeert een correct citaat</h3>
+<p>Alleen het laatste teken controleren is onvoldoende: op <code>!</code> kan <code>&#187;</code> volgen. D17 houdt rekening met sluitende haakjes en aanhalingstekens, maar koppen en nootverwijzingen blijven aandacht vragen.</p>
+<h3 id="section-18-7">18.7. De gewenste structuur wordt niet gevonden</h3>
+<p>Tekstregex ziet de DOM niet zoals een structureel script. Tags, nesting, ontbrekende ID-doelen en nootverplaatsing zijn andere taken. Code, een FB2-validator of een script kan geschikter zijn dan een complexere expressie.</p>
+<h2 id="section-19">19. Prestaties en grote boeken</h2>
+<p>Begin met een specifieke voorwaarde: teken, klasse, woord of alineabegin. Vermijd diep geneste onbegrensde herhalingen en meerdere concurrerende “willekeurige tekst”-delen. Een mislukte zoekopdracht kan anders zeer veel varianten aflopen.</p>
+<p>Niet-gulzigheid is geen universele oplossing voor traagheid; ook luie kwantoren proberen alternatieven. Meestal helpen expliciete scheidingstekens uitsluiten, lengte begrenzen en een kleiner bereik.</p>
+<p>Start bij een langdurige zoekopdracht geen nieuwe vervangingen eroverheen. Vereenvoudig en test op korte tekst. Een PCRE2-resourcelimietfout betekent niet “geen treffers”.</p>
+<p>Bij naburige alinea’s en tags is een script vaak begrijpelijker en veiliger. Voeg niet alle correctieregels samen tot een reusachtig alternatief: afzonderlijke regels maken de reden van een treffer duidelijk.</p>
+<h2 id="section-20">20. Controle v&#243;&#243;r opslaan</h2>
+<p>Bekijk begin, midden en einde van het bewerkte deel. Controleer voorbeelden van elk type, vooral citaten, bereiken, initialen, noten en behouden opmaak. Let op verdwenen betekenisvolle NBSP en onverwacht gewijzigde alinea’s.</p>
+<p>Voer na structureel gevoelige wijzigingen FBE-documentcontrole uit. Sla op, open zo nodig opnieuw en vergelijk. Een geslaagde regexzoekopdracht vervangt geen FB2-validatie of redactionele correctie.</p>
+<h2 id="section-21">21. Bronnen en geldigheidsgrenzen</h2>
+<p>Deze handleiding bewerkt het aangeleverde regex-design.md met herschreven toelichting en testvoorbeelden. Onnauwkeurigheden over UCP, zoekobjectgrenzen, gemengde alfabetten en vervanging zijn met primaire bronnen verduidelijkt. De recepten in hoofdstuk 17 zijn eigen redactionele scenario’s, geen citaten uit PCRE2-documentatie.</p>
+<p>[D1] Offici&#235;le PCRE2-syntaxis: ankers, groepen, Unicode-eigenschappen, backtracking en opties.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
+<p>[D2] Offici&#235;le PCRE2-Unicode-documentatie.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
+<p>[D3] FBE Next: PCRE2-compatibiliteit en adapter, revisie d2257405d95b0328649acee64b38829b40a4314b.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+</main></body></html>

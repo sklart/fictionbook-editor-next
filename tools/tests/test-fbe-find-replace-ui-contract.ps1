@@ -14,8 +14,7 @@ $pane = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FindResultsP
 $view = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBEview.cpp')
 $sourceView = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
 $presetCatalog = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\SearchPresetCatalog.cpp')
-$regexHelp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ui\RegexHelpDialog.cpp')
-$regexHelpMarkdown = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ui\RegexHelpMarkdown.cpp')
+$regexHelp = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\search\ui\RegexHelpLauncher.cpp')
 $settings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\Settings.h')
 $settingsSerialization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\SettingsSerialization.cpp')
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
@@ -111,33 +110,12 @@ foreach ($dialogBlock in @($find, $replace)) {
     }
     Require $dialogBlock 'DIALOGEX 0, 0, 326,' 'base compact dialog width provides a shared grid'
 }
-Require $regexHelp 'FbeRegexHelp::LoadMarkdown' 'Regex help loads Markdown at dialog creation'
-Require $regexHelp 'FbeRegexHelp::RenderMarkdown' 'Regex help renders parsed Markdown'
-Require $regexHelp 'ThemeManager::ApplyToWindow\(m_hWnd\)' 'Regex help theme integration'
-Require $regexHelp 'FbeApplyRuntimeDialogLocalization\(m_hWnd, IDD_REGEX_HELP\)' 'Regex help runtime localization'
-Require $regexHelpMarkdown 'EM_SETSEL, 0, 0' 'Regex help clears its initial selection'
-Require $regexHelpMarkdown 'EM_SCROLLCARET' 'Regex help scrolls to its beginning'
-Require $regexHelp 'SetFocus\(GetDlgItem\(IDC_REGEX_HELP_CLOSE\)\)' 'Regex help focuses Close'
-foreach ($token in @('ReadUtf8File', 'ParseMarkdown', 'ParseInlineCode', 'HelpPathForLocale', 'GetPreferredRuntimeLocaleName', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'dwEffects = bold ? CFE_BOLD : 0', 'Consolas')) {
-    if ($regexHelpMarkdown -notmatch [regex]::Escape($token)) { throw "Missing Markdown Regex Help behavior: $token" }
-}
-if ($regexHelpMarkdown -match 'JoinHelpBlocks|starts\[' -or $regexHelp -match 'BuildHelpBlocks|AddQuickReferenceSyntax') { throw 'Regex Help must not keep the embedded joined-text implementation.' }Require $regexHelp 'IDC_REGEX_HELP_CLOSE' 'Regex help uses its dedicated Close control for layout and dispatch'
-Require $regexHelp 'MonitorFromRect' 'Regex help restores its saved normal position on a valid monitor'
-Require $regexHelp 'WM_FBE_THEMECHANGED' 'Regex help reapplies its Rich Edit palette on app theme changes'
-Require $regexHelp 'WM_GETMINMAXINFO' 'Regex help enforces a minimum resizable size'
-Require $regexHelp 'WM_SIZE' 'Regex help lays out controls while resizing'
-Require $regexHelp '_Settings\.GetRegexHelpPlacement' 'Regex help restores its saved size'
-Require $regexHelp '_Settings\.SetRegexHelpPlacement' 'Regex help persists its size'
-Require $regexHelp 'LoadLibraryW\(L"Msftedit\.dll"\)' 'Regex help loads the Rich Edit control before creation'
-Require $settings 'm_regex_help_placement' 'Regex help placement setting storage'
-Require $settings 'GetRegexHelpPlacement' 'Regex help placement setting getter'
-Require $settings 'SetRegexHelpPlacement' 'Regex help placement setting setter'
-Require $settingsSerialization 'REGEX_HELP_PLACEMENT_KEY' 'Regex help placement serialized setting'
-Require $rc '(?s)IDD_REGEX_HELP.*?WS_THICKFRAME' 'Regex help dialog is resizable'
-Require $rc '(?s)IDD_REGEX_HELP.*?RICHEDIT50W' 'Regex help uses Rich Edit formatting'
+Require $regexHelp 'ShellExecuteExW' 'Full Help opens the local HTML page'
+Require $regexHelp 'GetPreferredRuntimeLocaleName' 'Full Help uses the active locale'
+Require $regexHelp 'L"en-US"' 'Full Help falls back to English'
+Require $regexHelp 'fbe.regex_help.open_failed' 'Full Help reports launch failure'
 Require $pane 'UiMetrics::CreateDialogFontForDpi' 'Results Pane owns a DPI-specific dialog font'
 Require $pane 'SelectObject\(dc,\s*m_font\)' 'Results Pane custom draw selects its owned font'
-Require $rc 'IDD_REGEX_HELP[\s\S]*?DEFPUSHBUTTON\s+"Close",IDC_REGEX_HELP_CLOSE' 'Regex help uses Close rather than Cancel'
 Require $dialog 'fbe\.tooltip\.find\.templates' 'Templates button tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_design' 'Design regex-help tooltip'
 Require $dialog 'fbe\.tooltip\.find\.regex_help_source' 'Source regex-help tooltip'
@@ -157,11 +135,9 @@ Require $dialog 'applyMaximum' 'templates Apply width has a bounded maximum'
 Require $dialog 'PreviewHeightForCurrentSelection' 'templates preview height follows its content'
 Require $dialog 'DT_CALCRECT \| DT_WORDBREAK' 'templates preview measures wrapped localized text'
 Require $dialog 'lineHeight \* 4' 'templates preview is bounded to four lines'
-if($dialog -match 'PresetPinMaskResource|GetDIBits|DrawFocusRect|DrawIconEx\(|GetIconInfo\(') { throw 'Templates pin must use the procedural flat thumbtack renderer.' }
-Require $dialog 'const int capWidth' 'templates pin has a symmetric cap'
-Require $dialog 'const int headWidth' 'templates pin has a symmetric thumbtack head'
-Require $dialog 'const int headHeight' 'templates pin has a compact head'
-Require $dialog 'const int needleHeight' 'templates pin has a needle'
+if($dialog -match 'DrawPresetPinGlyph|GetDIBits|DrawFocusRect|DrawIconEx\(|GetIconInfo\(') { throw 'Legacy Templates pin artwork remains.' }
+Require $dialog 'FbeFluentPin::Select' 'Templates pin selects a native size asset'
+Require $dialog 'DrawPresetPinMask' 'Templates pin paints its alpha mask'
 Require $dialog 'MakePresetPreviewValue\(preset->findText, 168\)' 'templates preview retains a useful clipped length'
 Require $rc 'IDC_FIND_PRESETS_PIN,"Button",BS_OWNERDRAW' 'templates pin uses an owner-drawn glyph rather than a text-only checkbox'
 Require $dialog 'SetSearchTemplatesPanelPinned' 'templates pin is persisted'
@@ -191,7 +167,7 @@ Require $sourceView 'class CSciFindDlg[\s\S]*?SearchContext\(\) const \{ return 
 Require $sourceView 'class CSciReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Source;' 'CSciReplaceDlg Source context'
 Require $dialog 'class CViewFindDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewFindDlg Design context'
 Require $view 'class CViewReplaceDlg[\s\S]*?SearchContext\(\) const \{ return FbeSearchPresets::SearchUiContext::Design;' 'CViewReplaceDlg Design context'
-foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.design.caption', 'fbe.regex_help.source.caption', 'fbe.tooltip.find.unicode_properties_source',
+foreach ($key in @('fbe.search_preset.expand', 'fbe.search_preset.collapse', 'fbe.search_preset.caption', 'fbe.search_preset.apply', 'fbe.search_preset.save_current', 'fbe.search_preset.update', 'fbe.search_preset.rename', 'fbe.search_preset.delete', 'fbe.regex_help.title', 'fbe.regex_help.open_failed', 'fbe.tooltip.find.unicode_properties_source',
     'fbe.search_preset.normalize_spaces.name', 'fbe.search_preset.normalize_spaces.description',
     'fbe.search_preset.duplicate_word.name', 'fbe.search_preset.duplicate_word.description',
     'fbe.search_preset.source_repeated_punctuation.name', 'fbe.search_preset.source_repeated_punctuation.description',

@@ -1,10 +1,11 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$source = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
-foreach ($token in @('COMMAND_ID_HANDLER(IDC_REGEX_HELP_CLOSE, OnClose)', 'COMMAND_ID_HANDLER(IDCANCEL, OnClose)', 'MESSAGE_HANDLER(WM_CLOSE, OnWindowClose)', 'LRESULT OnClose', 'LRESULT OnWindowClose', 'SaveSize(); EndDialog(IDC_REGEX_HELP_CLOSE);')) {
-    if ($source.IndexOf($token, [System.StringComparison]::Ordinal) -lt 0) { throw "Regex Help close path misses $token." }
+foreach($locale in @('en-US','ru-RU')) {
+    $html = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root "runtime\Help\$locale\regex-source.html")
+    if(-not $html.Contains('&lt;empty-line')) { throw "$locale XML example is not escaped." }
+    if($html -match '<empty-line(?:\s|/|>)') { throw "$locale XML example became an HTML element." }
+    if($html -match '(?i)<script\b|javascript:') { throw "$locale executable content in Help." }
 }
-if ($source -match 'COMMAND_ID_HANDLER\(IDCANCEL, OnClose\)[\s\S]*?COMMAND_ID_HANDLER\(IDCANCEL, OnClose\)') { throw 'Duplicate Escape command handler.' }
-Write-Host 'Regex Help Escape/close contract passed.'
+Write-Host 'Regex Help HTML escaping contract passed.'

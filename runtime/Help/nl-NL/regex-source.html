@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="nl-NL">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Broncode</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Andere modus"><strong>Broncode</strong><a href="regex-design.html">Ontwerp</a></nav><main>
+<h1 id="top">Handleiding voor reguliere expressies — Code</h1>
+<aside class="note" id="note-1"><strong>Opmerking</strong><p>Opmerking bij de vertaling: Russische woorden en zinnen in de controlevoorbeelden zijn bewust ongewijzigd gebleven. Het zijn testgegevens: reguliere expressies, vervangteksten, witruimtetekens en verwachte resultaten komen overeen met de Russische referentieversie. De uitleg is vertaald; de voorbeelden zijn niet automatisch aangepast aan Nederlandse typografische regels.</p></aside>
+<p>Een volledig overzicht van zoeken en vervangen in de XML-bron van boeken in FictionBook Editor Next.</p>
+<p>Editie: 2 oktober 2026. Ontwerp wordt beschreven in regex-design.md. Deze recepten gelden voor Code; neem geen PCRE2-patronen over zonder controle.</p>
+<h2 id="section-1">1. Waarvoor zoeken in Code dient</h2>
+<p>Code toont XML-tags, attributen, verwijzingen, entiteiten en boektekst. Het is geschikt voor FB2-controle: lege elementen, ge&#239;mporteerde HTML-tags, tijdelijke verwijzingen, onverwachte attributen en technische conversieresten.</p>
+<aside class="note" id="note-2"><strong>Opmerking</strong><p>Regex onderzoekt XML-tekst, geen geparseerde DOM-boom. Controleer structuur met een XML-hulpmiddel.</p></aside>
+<p>Voor gewone tekstcorrectie is Ontwerp vaak handiger. In XML kan een treffer ook in een attribuut, commentaar, CDATA, bestandsnaam of binaire inhoud zitten. Houd daar rekening mee v&#243;&#243;r vervanging.</p>
+<p>“Alleen zoeken en controleren” geeft kandidaten, geen bewijs dat XML of tekst fout is. Zelfs spaties kunnen inhoudelijk van belang zijn. Geen vervanging is universeel veilig voor willekeurige XML.</p>
+<h2 id="section-2">2. Snel beginnen</h2>
+<p>Bewaar een kopie, ga naar Code, open Zoeken en schakel Reguliere expressie in. XML-voorbeelden gebruiken normaal hoofdlettergevoeligheid met Alleen hele woorden uit. Tag- en attribuutgrenzen staan in het patroon.</p>
+<p>Eenvoudige lege alinea:</p>
+<pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Vindt <code>&lt;p&gt;&lt;/p&gt;</code> en <code>&lt;p&gt;   &lt;/p&gt;</code> op &#233;&#233;n fysieke regel, niet <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Vervang niet automatisch door niets of <code>&lt;empty-line/&gt;</code>; de structurele functie kan verschillen.</p>
+<section class="example" id="example-1"><strong>Voorbeeld</strong><pre><code>Zoeken: &lt;p&gt;[ \t]*&lt;/p&gt;
+Invoer: &lt;p&gt;   &lt;/p&gt;
+Overeenkomst: &lt;p&gt;   &lt;/p&gt;
+Verwacht: Controleer deze alinea voordat u de XML wijzigt.</code></pre></section>
+<p>Plak uitsluitend het patroon, zonder <code>/.../g</code>, C++-stringtekens en dubbele JSON-backslashes.</p>
+<h2 id="section-3">3. Engine: Scintilla, niet PCRE2</h2>
+<p>FBE gebruikt Scintilla met <code>SCFIND_REGEXP</code> en <code>SCFIND_CXX11REGEX</code>. De onderzochte build gebruikt C++-regex met ECMAScript-grammatica. Dat is geen PCRE2 en omvat niet alle moderne JavaScript-functies. [S1, S2]</p>
+<p>Scintilla heeft ook een oudere basisengine met andere conventies. Verwar oude captures met ge-escapete haakjes niet met FBE’s C++11-modus: <code>(слово)</code> legt vast, <code>\(слово\)</code> vereist letterlijke haakjes.</p>
+<p>Unicode-tekst is toegestaan, maar er zijn geen UCP- of PCRE2-eigenschappen. Tekenklassen hangen af van de standaardbibliotheek: <code>\w</code> betekent niet automatisch alle letters uit elke taal. Gebruik <code>[A-Za-z0-9_]</code> voor voorspelbaar ASCII, of <code>[А-Яа-яЁё]</code> voor Russisch, niet voor geheel Cyrillisch.</p>
+<h3 id="section-3-1">3.1. Belangrijkste verschillen met Ontwerp</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Eigenschap</th><th scope="col">Ontwerp</th><th scope="col">Code</th></tr></thead><tbody>
+<tr><td>Zoekobject</td><td>Tekstweergave van het boek</td><td>XML-bron</td></tr>
+<tr><td>Engine</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
+<tr><td>UCP en Unicode-eigenschappen</td><td>Beschikbaar in PCRE2-profiel</td><td>Geen PCRE2-eigenschapssyntaxis</td></tr>
+<tr><td>Lookbehind</td><td>Beschikbaar binnen PCRE2-grenzen</td><td>Niet ondersteund</td></tr>
+<tr><td>Eerste groep vervangen</td><td><code>$1</code> of <code>\1</code></td><td><code>\1</code></td></tr>
+<tr><td>Opmaak bij vervangen</td><td>FBE-opdrachten</td><td>Alleen XML-tekst</td></tr>
+<tr><td>Fysieke regels oversteken</td><td>Afhankelijk van zoekweergave; vervanging tussen alinea’s beperkt</td><td>In huidig pad niet ondersteund</td></tr>
+</tbody></table></div>
+<h2 id="section-4">4. Regelgewijs zoeken: de belangrijkste beperking</h2>
+<p>In het gebruikte Scintilla-pad past <code>MatchOnLines</code> het patroon afzonderlijk op elke fysieke regel toe. Een regel kan zeer lang zijn; visueel afbreken aan de vensterrand schept geen nieuwe fysieke regel. [S2]</p>
+<aside class="warning" id="warning-1"><strong>Waarschuwing</strong><p>In het huidige zoekpad kan regex in Broncode geen fysieke regels overschrijden; geen patroon voegt ze samen.</p></aside>
+<p>Vergelijk:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>met:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Voor XML kan dit dezelfde opeenvolging van elementen zijn. Voor de huidige FBE-regex past de eerste in &#233;&#233;n treffer; de tweede overschrijdt een regelgrens en past niet.</p>
+<p><code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> of een klasse voor “alles” toevoegen heft de beperking niet op. De engine ontvangt de twee regels niet als &#233;&#233;n fragment. Daarvoor is een codewijziging in het zoekpad nodig.</p>
+<p>Regelgewijs zoeken verhindert niet dat een vervanging een regeleinde invoegt. Dat is een andere handeling, ge&#239;llustreerd in K28. Onderscheid zoeken over een grens van het invoegen van zo’n grens.</p>
+<h3 id="section-4-1">4.1. Werken met meerregelige XML</h3>
+<p>Zoek voor een attribuut op een eigen regel vaak alleen het attribuut, zonder hele openingstag. Gebruik voor relaties tussen regels structurele FBE-functies, validator, script of XML-gereedschap.</p>
+<p>Verwijder niet alle regeleinden voor &#233;&#233;n regex: dat kan tekst, commentaar, CDATA en leesbaarheid veranderen. Bepaal eerst of de taak werkelijk een meerregelige treffer vraagt.</p>
+<h2 id="section-5">5. Tekens en escaping</h2>
+<p>Een gewoon teken staat voor zichzelf. Gebruik een backslash om een metateken letterlijk te zoeken.</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Gewenste tekst</th><th scope="col">Expressie</th></tr></thead><tbody>
+<tr><td>Punt</td><td><code>\.</code></td></tr>
+<tr><td>Plus</td><td><code>\+</code></td></tr>
+<tr><td>Vraagteken</td><td><code>\?</code></td></tr>
+<tr><td>Sterretje</td><td><code>\*</code></td></tr>
+<tr><td>Rond haakje</td><td><code>\(</code> of <code>\)</code></td></tr>
+<tr><td>Nummer tussen vierkante haken</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Backslash</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p><code>.</code> staat voor &#233;&#233;n teken in het beschikbare regelfragment. Bij UTF-8 hangt de echte verwerking af van Scintilla’s adapter en de standaardbibliotheek. Meet emoji niet op de aanname dat &#233;&#233;n punt altijd &#233;&#233;n zichtbaar teken is.</p>
+<p><code>\r</code> en <code>\n</code> zijn CR/LF-syntaxis maar laten de huidige zoekopdracht geen regels oversteken. Gebruik <code>[ \t]</code> voor gewone spaties en tabs.</p>
+<p>PCRE2’s <code>\Q...\E</code> is hier geen overdraagbare manier om letterlijke tekst af te bakenen. Escape de speciale tekens afzonderlijk.</p>
+<h2 id="section-6">6. Klassen, bereiken en woordgrenzen</h2>
+<p><code>[abc]</code> vindt &#233;&#233;n teken uit de verzameling, <code>[a-z]</code> &#233;&#233;n uit het bereik en <code>[^abc]</code> &#233;&#233;n daarbuiten. Voeg zo nodig herhaling toe: <code>[0-9]+</code>.</p>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Klasse</th><th scope="col">Praktische betekenis</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[0-9]</code></td><td>ASCII-cijfer</td></tr>
+<tr><td class="syntax"><code>[A-Za-z]</code></td><td>Latijnse ASCII-letter</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Gewone spatie of tab</td></tr>
+<tr><td class="syntax"><code>[^&lt;]</code></td><td>Beschikbaar teken anders dan &lt;</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Teken anders dan beide rechte aanhalingstekens</td></tr>
+<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Cijferklasse en complement volgens de implementatie</td></tr>
+<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Witruimteklasse en complement</td></tr>
+<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Woordklasse en complement</td></tr>
+</tbody></table></div>
+<p>Een negatieve klasse begrijpt XML niet. <code>[^&lt;]*</code> helpt bij eenvoudige inhoud tussen tags maar is geen volledige parser voor entiteiten, commentaar of CDATA.</p>
+<p><code>\b</code> is een woordgrens, <code>\B</code> juist niet. Voor attributen is dat vaak onvoldoende: <code>id</code> kan na een dubbele punt in een andere naam staan. Vereis expliciet een attribuutscheiding: regelbegin, spatie of tab.</p>
+<h2 id="section-7">7. Ankers en herhalingen</h2>
+<p><code>^</code> en <code>$</code> verwijzen in het huidige pad naar begin en einde van de fysieke regel. Een regel met alleen horizontale witruimte:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Verwijderen van de treffer wist de regel zelf niet: het regeleinde was geen onderdeel van de overeenkomst.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kwantor</th><th scope="col">Herhalingen</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Nul of &#233;&#233;n</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Nul of meer</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>E&#233;n of meer</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Precies drie</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>Minstens drie</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Twee tot vijf</td></tr>
+</tbody></table></div>
+<p>De C++11-grammatica ondersteunt niet-gulzige varianten zoals <code>*?</code> en <code>+?</code>. Bij XML-attributen is de sluitende quote uitsluiten vaak duidelijker:</p>
+<pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
+<p>Dit geldt voor dubbele quotes; enkele quotes vragen een overeenkomstig alternatief.</p>
+<p>Neem geen possessieve kwantoren, atomaire groepen of PCRE2-inlineopties over.</p>
+<h2 id="section-8">8. Groepen, alternatieven en lookahead</h2>
+<p><code>( ... )</code> bewaart tekst voor terugverwijzing en vervanging. <code>(?: ... )</code> groepeert zonder nummer.</p>
+<p>Keuze tussen tags:</p>
+<pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
+<p>Een numerieke verwijzing kan de openende en sluitende naam in een eenvoudig regelfragment koppelen:</p>
+<pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Dit vereist dezelfde naam maar controleert geen willekeurige XML-nesting.</p>
+<p><code>(?=...)</code> en <code>(?!...)</code> controleren volgende tekst zonder die mee te nemen. Een geldige grens na de tagnaam voorkomt dat <code>&lt;a</code> op het begin van <code>&lt;author&gt;</code> past:</p>
+<pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Leg context links vast en voeg die bij de vervanging terug: lookbehind ontbreekt hier. Kopieer geen <code>(?&lt;=...)</code> uit de Ontwerp-handleiding.</p>
+<h2 id="section-9">9. Vervangen in Code</h2>
+<p>FBE gebruikt <code>SCI_REPLACETARGETRE</code>: de overeenkomst is gevonden en Scintilla werkt de vervangingsstring uit. Dit is niet <code>std::regex_replace</code> met <code>$1</code>, noch FBE’s Design-grammatica. [S1, S2]</p>
+<h3 id="section-9-1">9.1. Verwijzingen naar captures</h3>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">In het vervangingsveld</th><th scope="col">Betekenis</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\0</code></td><td>Hele overeenkomst</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Inhoud van de betreffende groepen</td></tr>
+<tr><td class="syntax"><code>$1</code></td><td>Niet de groepsverwijzingssyntaxis van dit pad</td></tr>
+</tbody></table></div>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-7"><code><span class="rx-escape">\(</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-escape">\)</span></code></pre>
+<p>Vervangen door:</p>
+<pre><code>[\1]</code></pre>
+<p><code>(12)</code> wordt <code>[12]</code>. Dat is alleen zinvol in de gekozen context: een getal tussen ronde haakjes is niet noodzakelijk een nootnummer.</p>
+<p>Een dollarteken in Source hoeft niet volgens een ander systeem te worden verdubbeld. De backslash is wel een stuurteken.</p>
+<h3 id="section-9-2">9.2. Stuurtekens in de vervanging</h3>
+<p>De gecontroleerde Scintilla-code verwerkt <code>\t</code>, <code>\n</code>, <code>\r</code> en <code>\\</code> als tab, LF, CR en letterlijke backslash. Dit staat los van het ontbreken van zoeken over regels. [S2]</p>
+<p>Gebruik <code>\r\n</code> voor CRLF en <code>\n</code> voor LF, passend bij het document. Voorkom toevallig gemengde regeleinden.</p>
+<p>PCRE2-notatie <code>\x{00A0}</code> voegt hier geen Unicode-teken in. Gebruik de echte NBSP. Design-opdrachten <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> regelen hier geen letterkast of opmaak.</p>
+<h3 id="section-9-3">9.3. Verwijderen en XML behouden</h3>
+<p>Een leeg veld verwijdert het gevonden bereik. Het wissen van een leeg element, attribuut of verwijzing kan het document beschadigen, ondanks een geslaagde zoekopdracht. Structurele recepten zijn daarom vooral diagnostisch.</p>
+<p>Een <code>id</code> maar op &#233;&#233;n plaats wijzigen kan verwijzingen naar de oude waarde achterlaten. Gebruik FBE’s ID-hernoeming voor gekoppelde objecten, niet onafhankelijke tekstvervangingen.</p>
+<h2 id="section-10">10. XML-recepten lezen</h2>
+<p>XML is hoofdlettergevoelig: <code>&lt;p&gt;</code> en <code>&lt;P&gt;</code> zijn andere namen. Attribuutvolgorde bepaalt hun betekenis niet. Waarden mogen enkele of dubbele quotes hebben en spaties rond <code>=</code> zijn toegestaan. De recepten behandelen gangbare vormen voor zover dat niet buitensporig ingewikkeld wordt. [S3]</p>
+<p><code>l:</code> en <code>xlink:</code> zijn gangbare XLink-prefixen in FB2. De betekenis komt van <code>xmlns</code>, niet de prefixnaam zelf. Een recept dat die twee noemt garandeert geen andere prefix; pas het aan na controle van de declaratie.</p>
+<p>Veel voorbeelden gebruiken <code>[^&gt;]*</code> als benadering van de inhoud van een openingstag. Dat werkt vaak, maar <code>&gt;</code> kan legaal in een attribuutwaarde staan. Commentaar en CDATA kunnen ook markup nabootsen. Recepten dienen om kandidaten te bekijken, niet om XML volledig te valideren of blind te verbouwen.</p>
+<p>Een “leeg element” is niet altijd een schemafout; een “numerieke entiteit” niet noodzakelijk een beschadigd teken. Ook een tijdelijke naam, afwijkende naam of externe verwijzing kan legitiem zijn.</p>
+<h2 id="section-11">11. Praktische FB2/XML-recepten</h2>
+<p>Standaard moeten alle betrokken delen op &#233;&#233;n fysieke regel staan. Wordt de hele openingstag gezocht, dan moeten de gecontroleerde attributen ook op die regel staan. Een recept dat alleen een attribuut zoekt stelt die eis niet aan de gehele tag.</p>
+<h3 id="heading-1">K01. Spaties aan het einde van een fysieke regel</h3>
+<p>Een staart van gewone spaties en tabs vinden.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Dezelfde testtekst met zichtbare aanduidingen:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
+<p>Hier staat ␠ voor een gewone spatie, [TAB] voor een tab, [NBSP] voor U+00A0, [NNBSP] voor U+202F en [ZWSP] voor U+200B. Dit is een toelichtende weergave; deze labels worden niet in het boek ingevoegd.</p>
+<p>Vervangen door: laat het veld volledig leeg. Typ niet het woord “leeg”.</p>
+<p>Resultaat van de vervanging:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Verwijdert geen regeleinde. In gemengde XML, CDATA of betekenisvolle witruimte kan de staart bij de tekst horen. Noem het opschonen van alle regels niet onvoorwaardelijk veilig.</p>
+<h3 id="heading-2">K02. Een regel met alleen witruimte leegmaken</h3>
+<p>Witruimte verwijderen van een regel zonder andere inhoud.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Dezelfde testtekst met zichtbare aanduidingen:</p>
+<pre><code>␠␠␠[TAB]
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Hier staat ␠ voor een gewone spatie, [TAB] voor een tab, [NBSP] voor U+00A0, [NNBSP] voor U+202F en [ZWSP] voor U+200B. Dit is een toelichtende weergave; deze labels worden niet in het boek ingevoegd.</p>
+<p>Vervangen door: laat het veld volledig leeg. Typ niet het woord “leeg”.</p>
+<p>Resultaat van de vervanging:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: De regel blijft leeg: LF/CRLF zat niet in de treffer. Dit verwijdert niet alle lege fysieke regels.</p>
+<h3 id="heading-3">K03. Spatie v&#243;&#243;r het einde van een leeg element</h3>
+<p>Gewone ruimte direct v&#243;&#243;r /&gt; vinden.</p>
+<p>Actie: vervangen na controle.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;empty-line /&gt;</code></pre>
+<p>Vervangen door:</p>
+<pre><code>/&gt;</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Beide schrijfwijzen zijn geldig XML. Het is cosmetisch, geen verplichte foutcorrectie. De reeks kan ook in tekst of commentaar staan; controleer bulkvervanging.</p>
+<h3 id="heading-4">K04. Eenvoudige lege alinea</h3>
+<p>Een p-paar zonder tekst controleren.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Exclusief attributen, regeleinde, NBSP-entiteit of geneste tag. Een lege alinea en empty-line zijn niet automatisch uitwisselbaar.</p>
+<h3 id="heading-5">K05. Twee empty-line-elementen op &#233;&#233;n regel</h3>
+<p>Aangrenzende FB2-lege regels vinden die op dezelfde fysieke bronregel staan.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Alleen gewone spaties en tabs zijn toegestaan. Een regeleinde tussen elementen wordt bewust niet ondersteund. Twee lege regels kunnen een bewuste sc&#232;nescheiding zijn.</p>
+<h3 id="heading-6">K06. Lege belangrijke metadata</h3>
+<p>Verschillende eenvoudige metadatavelden zonder inhoud controleren.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Niet elk veld is in iedere context verplicht. Regex controleert geen FB2-schema, ouderstructuur of geldigheid van ingevulde waarden.</p>
+<h3 id="heading-7">K07. Lege inline-opmaak</h3>
+<p>Lege gepaarde opmaakelementen vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
+<p>Beperkingen en opmerkingen: NBSP, attributen en nesting vragen een andere regel. Controleer v&#243;&#243;r verwijdering of het element structureel van belang is.</p>
+<h3 id="heading-8">K08. Dezelfde opmaak in zichzelf genest</h3>
+<p>Herhaald strong/strong onderscheiden van toegestaan strong/emphasis.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;strong&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/strong&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;strong&gt;&lt;strong</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
+<p>Beperkingen en opmerkingen: De tweede naam wordt niet onafhankelijk gekozen: een terugverwijzing eist de eerste. De treffer omvat niet het hele element en is niet bedoeld om direct te wissen.</p>
+<h3 id="heading-9">K09. Mogelijke HTML-tags na import</h3>
+<p>Gangbare HTML-namen vinden die in FB2 controle vragen.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;div&gt;Text&lt;/div&gt;</code></pre>
+<p>Verwachte overeenkomsten, achtereenvolgens:</p>
+<pre><code>&lt;div&gt;
+&lt;/div&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Tekst in commentaar of CDATA kan ook passen. Verander b niet blind in strong en i in emphasis zonder inhoud en attributen te controleren.</p>
+<h3 id="heading-10">K10. Tag volledig in hoofdletters</h3>
+<p>Gangbare volledig in hoofdletters geschreven tagnamen vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;P&gt;Text&lt;/P&gt;</code></pre>
+<p>Verwachte overeenkomsten, achtereenvolgens:</p>
+<pre><code>&lt;P&gt;
+&lt;/P&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Hoofdlettergevoeligheid is verplicht, anders past ook gewone p. Dit omvat niet alle legale Unicode-XML-namen en beoordeelt geen namespace.</p>
+<h3 id="heading-11">K11. HTML-entiteit NBSP</h3>
+<p>De letterlijke notatie &amp;nbsp; in de bron vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&amp;nbsp;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Zonder passende declaratie is &amp;nbsp; niet een van de vijf voorgedefinieerde XML-entiteiten. Controleer DTD en commentaar. Decodeer niet alle entiteiten in bulk.</p>
+<h3 id="heading-12">K12. Numerieke tekenverwijzingen</h3>
+<p>Decimale of hexadecimale notatie van een teken vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;&amp;#160; &amp;#xA0;&lt;/p&gt;</code></pre>
+<p>Verwachte overeenkomsten, achtereenvolgens:</p>
+<pre><code>&amp;#160;
+&amp;#xA0;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Beide kunnen correct zijn. Het patroon controleert vorm, niet de geldigheid van het codepunt. &amp;lt; als &lt; in tekst uitschrijven kan XML beschadigen.</p>
+<h3 id="heading-13">K13. Lege id</h3>
+<p>Een leeg gewoon id-attribuut vinden met beide soorten quotes.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code> id=&quot;&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Beperkingen en opmerkingen: De voorafgaande spatie hoort bij de treffer. Namen zoals xml:id vallen erbuiten. Nieuwe ID’s vragen uniciteit en bijgewerkte verwijzingen, wat regex niet regelt.</p>
+<h3 id="heading-14">K14. Lijst van id-waarden</h3>
+<p>Gevulde gewone id-attributen vinden om naamgeving te beoordelen.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code> id=&quot;s1&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Een lijst bewijst geen uniciteit of geldigheid van alle ID’s. Gebruik de ingebouwde hernoemfunctie voor gekoppelde objecten.</p>
+<h3 id="heading-15">K15. Externe HTTP(S)-verwijzingen</h3>
+<p>href met gebruikelijke XLink-prefix en extern adres vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test/book&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Zoekt het attribuut, niet ieder URL in de tekst. Alleen l en xlink zijn opgenomen; andere prefixen vragen aanpassing. Bereikbaarheid van het adres wordt niet getest.</p>
+<h3 id="heading-16">K16. Lokale file://-verwijzingen</h3>
+<p>Een lokaal bestandspad vinden dat bij de lezer mogelijk niet werkt.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a xlink:href=&quot;file:///C:/Book/image.png&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Open onbekende adressen niet automatisch. Een treffer bepaalt niet of u moet insluiten, wijzigen of verwijderen.</p>
+<h3 id="heading-17">K17. Leeg verwijzingsdoel</h3>
+<p>Een gewone lege XLink-verwijzing vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a l:href=&quot;&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code> l:href=&quot;&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Controleer lege zichtbare linktekst en een geheel ontbrekend href-attribuut apart; dat zijn andere gevallen.</p>
+<h3 id="heading-18">K18. Doel #undefined</h3>
+<p>Een letterlijke tijdelijke verwijzing vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a xlink:href=&quot;#undefined&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Controleer of het object werkelijk bestaat. undefined is op zichzelf geen verboden XML-naam, maar wijst in de praktijk vaak op onvoltooide koppeling.</p>
+<h3 id="heading-19">K19. Verwijzingen met bookmark-prefix</h3>
+<p>Typische bookmark-doelen van conversie vinden, niet alle interne links.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a l:href=&quot;#bookmark12&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: href=&quot;#...&quot; vindt zonder extra beperking iedere interne verwijzing. bookmark bewijst niet dat de link overbodig is; controleer v&#243;&#243;r verwijderen.</p>
+<h3 id="heading-20">K20. Word/FBD-terugverwijzingen</h3>
+<p>Gebruikelijke _ftnref en _ednref in verwijzingsdoelen vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a l:href=&quot;#_ftnref1&quot;&gt;Back&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Een teruglink kan voor navigatie nodig zijn. Verwijder hem niet alleen vanwege de herkomst van de naam.</p>
+<h3 id="heading-21">K21. Nootverwijzingen ongeacht attribuutvolgorde</h3>
+<p>Een openingstag a met type=note en interne XLink-href in iedere volgorde vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Ook type v&#243;&#243;r href, xlink en enkele quotes zijn toegestaan. Alle gecontroleerde attributen moeten op &#233;&#233;n fysieke regel staan. &gt; in waarden, commentaar en afwijkende markup vragen XML-parsing. De doelnoot wordt niet gecontroleerd.</p>
+<h3 id="heading-22">K22. Mogelijke numerieke nootmarkeringen</h3>
+<p>Getallen tussen vierkante, ronde of accoladehaken vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;Text [12], {3}, (4).&lt;/p&gt;</code></pre>
+<p>Verwachte overeenkomsten, achtereenvolgens:</p>
+<pre><code>[12]
+{3}
+(4)</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Dit kunnen literatuurverwijzingen, formulenummers, toelichtingen of gewone tekst zijn. Het patroon maakt geen noten en controleert geen unieke nummering.</p>
+<h3 id="heading-23">K23. Achtergebleven Your/Name-waarden</h3>
+<p>Typische Engelse tijdelijke namen in metadata controleren.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Controleer auteur/makercontext en echte naam. Vervang niet automatisch door gegevens van een andere editie.</p>
+<h3 id="heading-24">K24. Ongekoppelde afbeelding #undefined</h3>
+<p>image vinden die naar een gebruikelijke placeholder verwijst.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
+<p>Beperkingen en opmerkingen: FB2 gebruikt doorgaans XLink-href, niet HTML-src. Controleer binary met het juiste ID afzonderlijk. Een ontbrekende afbeelding en verkeerde link zijn andere oorzaken.</p>
+<h3 id="heading-25">K25. windows-1251-declaratie</h3>
+<p>Een oude codering in de XML-declaratie vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Niet vanzelf een fout. windows-1251 tekstueel in utf-8 veranderen codeert geen bytes om. Gebruik een opslag- of conversiehandeling die bij de declaratie past.</p>
+<h3 id="heading-26">K26. Ampersand zonder bekende standaardentiteit</h3>
+<p>&amp; vinden v&#243;&#243;r een reeks die niet op de standaardvormen lijkt.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;A &amp; B&lt;/p&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&amp;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: &amp; mag in CDATA en commentaar staan; een DTD kan andere entiteiten defini&#235;ren. Dit is een filter, geen XML-validator. Blind &amp; → &amp;amp; geeft dubbele escaping.</p>
+<h3 id="heading-27">K27. Gewone interne verwijzingen</h3>
+<p>Een lokaal #id-doel vinden zonder dit met bookmark te verwarren.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>l:href=&quot;#note1&quot;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Regex toont de verwijzing, niet dat precies &#233;&#233;n doel-id bestaat. Ontbrekende of dubbele doelen vragen documentanalyse.</p>
+<h3 id="heading-28">K28. Twee empty-line-elementen scheiden na een zoekopdracht op &#233;&#233;n regel</h3>
+<p>Het verschil tonen tussen een zoekbeperking en regeleinden invoegen bij vervangen.</p>
+<p>Actie: &#233;&#233;n gecontroleerde vervanging.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>Vervangen door:</p>
+<pre><code>\1\r\n\2</code></pre>
+<p>Resultaat van de vervanging:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Beperkingen en opmerkingen: Scintilla werkt de vervangingsreeksen uit tot CRLF. Gebruik \1\n\2 voor een LF-document. Dit is geen algemene XML-formatter en schakelt geen meerregelig zoeken in.</p>
+<h3 id="heading-29">K29. Dubbele spaties in eenvoudige XML-tekst</h3>
+<p>Een tekststuk tussen tags met meerdere gewone spaties vinden.</p>
+<p>Actie: alleen zoeken en controleren.</p>
+<p>“Reguliere expressie” aan; “Alleen hele woorden” uit. “Hoofdlettergevoelig” aan.</p>
+<p>Zoeken:</p>
+<pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
+<p>Oorspronkelijke testtekst:</p>
+<pre><code>&lt;p&gt;one  two&lt;/p&gt;</code></pre>
+<p>Verwachte overeenkomst:</p>
+<pre><code>&gt;one  two&lt;</code></pre>
+<p>Tegenvoorbeeld dat niet gevonden mag worden:</p>
+<pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
+<p>Beperkingen en opmerkingen: De treffer bevat hoekdelimiters en het hele eenvoudige fragment. Voor woorden is Ontwerp vaak beter. Vervang het volledige XML-fragment niet door &#233;&#233;n spatie.</p>
+<h2 id="section-12">12. Waarom regex XML-validatie niet vervangt</h2>
+<p>Een expressie kan tonen dat tekst op de bedoelde tekenreeks lijkt. Ze bewijst niet dat het hele document klopt: nesting, FB2-schema, namespaces, unieke ID’s en bestaande verwijzingsdoelen.</p>
+<p>Twee gelijke <code>id</code>-waarden op verschillende fysieke regels zijn niet betrouwbaar met &#233;&#233;n huidige regexvergelijking te ontdekken. Ook een ontbrekend doel elders in het boek vraagt FBE-controle en structurele analyse.</p>
+<p>Decodeer niet alle XML-entiteiten: <code>&amp;lt;</code> en <code>&amp;amp;</code> beschermen tekst vaak tegen verandering in markup. Verwijder niet alles wat op HTML lijkt uit CDATA, commentaar of codecitaten.</p>
+<p>Een tagvervanging moet paren, attributen en inhoud behouden. Alleen <code>&lt;strong&gt;</code> wijzigen laat de oude sluiting staan. Een voorbeeld met terugverwijzing maakt niet iedere vervolgbewerking structureel veilig.</p>
+<h2 id="section-13">13. Veelvoorkomende fouten</h2>
+<h3 id="section-13-1">13.1. Kleine tags worden gevonden in plaats van hoofdletters</h3>
+<p>Schakel Hoofdlettergevoelig in. Voor XML is dit niet cosmetisch: <code>[A-Z]</code> met genegeerde hoofdletters verliest zijn betekenis als controle op hoofdletters.</p>
+<h3 id="section-13-2">13.2. Er verschijnt letterlijk $1 in de vervanging</h3>
+<p>Gebruik <code>\1</code>. Source-vervanging loopt via Scintilla, niet via JavaScript of de gewone <code>$1</code> van een andere API.</p>
+<h3 id="section-13-3">13.3. \p, \K of lookbehind werkt niet</h3>
+<p>Dit hoort bij een ander profiel. Gebruik Ontwerp voor tekstwerk of herschrijf XML-patronen met expliciete klassen, contextcaptures, niet-vastleggende groepen en lookahead.</p>
+<h3 id="section-13-4">13.4. Twee aangrenzende tags worden niet gevonden</h3>
+<p>Controleer fysieke regeleinden, spaties voor <code>/&gt;</code>, enkele quotes, extra attributen en namespaceprefixen. Aangrenzend in opgemaakte bron is niet hetzelfde als aangrenzend in de XML-boom.</p>
+<h3 id="section-13-5">13.5. Een noot wordt niet gevonden bij andere attribuutvolgorde</h3>
+<p>“Eerst type, dan href” is volgordeafhankelijk. K21 controleert beide kenmerken met afzonderlijke lookahead. Staat de tag op meerdere regels, zoek dan het attribuut of gebruik de documentstructuur.</p>
+<h3 id="section-13-6">13.6. strong/emphasis wordt als foutieve nesting gezien</h3>
+<p>Verschillende geldige stijlen mogen genest zijn. Gebruik een terugverwijzing zoals K08 om herhaling van dezelfde naam te controleren, niet twee onafhankelijke groepen met dezelfde alternatieven.</p>
+<h3 id="section-13-7">13.7. “Bookmark” vindt alle nootverwijzingen</h3>
+<p>Een interne <code>#</code>-link is niet automatisch een bookmarkrest. Houd algemene interne links K27 gescheiden van de specifieke prefix K19.</p>
+<h3 id="section-13-8">13.8. De vervanging beschadigt de zichtbare tekst</h3>
+<p>In Code kunnen spaties en fragmenten in tekst, attributen, commentaar of binaire gegevens staan. Maak de wijziging ongedaan en verklein bereik of patroon. Een sjabloonnaam “veilige vervanging” heft de XML-context niet op.</p>
+<h2 id="section-14">14. Beperkingen van het Source-profiel</h2>
+<p>Gebruik geen UCP, PCRE2-eigenschappen, lookbehind, moderne JavaScript/PCRE2-named groups, atomaire groepen, possessieve kwantoren, branch reset, subroutines, PCRE2-verbs, <code>\K</code>, <code>\G</code> of opmaakopdrachten uit Design-vervanging.</p>
+<p>PCRE2-inlineopties vervangen niet de selectievakjes van Code. De nieuwste browser-JavaScriptfuncties zijn niet automatisch in C++11-ECMAScript aanwezig.</p>
+<p>MatchOnLines blijft regelgewijs werken, ongeacht de genoteerde regeleindesequentie. Succesvol compileren met een andere engine bevestigt geen FBE-compatibiliteit.</p>
+<p>Gebruik Ontwerp voor Unicode-woorden en ingewikkelde boekcorrectie, en XML/FB2-functies voor structuur. Probeer niet alles met &#233;&#233;n onbeperkte <code>.*</code> op te lossen.</p>
+<h2 id="section-15">15. Prestaties en lange XML-regels</h2>
+<p>Een kort patroon is niet noodzakelijk snel. Onbegrensde herhalingen en lange concurrerende alternatieven kunnen enorme regels vertragen, zeker wanneer &#233;&#233;n regel het hele document of veel binary bevat.</p>
+<p>Begin waar mogelijk met een concrete tag- of attribuutnaam en gebruik begrensde klassen. Afzonderlijke recepten zijn gemakkelijker te controleren en ongedaan te maken dan alle mogelijke fouten tegelijk zoeken.</p>
+<p>Voeg niet alle bronregels samen om MatchOnLines te omzeilen. Dat verandert het document en garandeert geen aanvaardbare snelheid.</p>
+<h2 id="section-16">16. Controle na de vervanging</h2>
+<p>Vergelijk verwacht en werkelijk matchbereik. Controleer bij groepen quotes, prefixen, hoekhaken en sluitende tags. Let erop dat commentaar, CDATA en binary niet onbedoeld zijn gewijzigd.</p>
+<p>Valideer FB2, sla op en heropen na belangrijke wijzigingen. Controleer Code ↔ Ontwerp, voetnoten, afbeeldingen en zichtbare tekst. Controleer bij ID-hernoeming zowel het object als alle gekoppelde verwijzingen.</p>
+<h2 id="section-17">17. Bronnen en geldigheidsgrenzen</h2>
+<p>Deze handleiding breidt het aangeleverde regex-source.md uit. De volgorde engine → syntaxis → vervanging → XML → beperkingen blijft behouden, maar te brede recepten zijn aangescherpt. Toelichtingen en tests zijn herschreven en technische verschillen met primaire bronnen gecontroleerd.</p>
+<p>[S1] Offici&#235;le Scintilla-documentatie, Searching: C++11-modus, zoekvlaggen en SCI_REPLACETARGETRE.</p>
+<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
+<p>[S2] Scintilla in FBE Next-revisie d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Dit onderscheidt over regels zoeken van CR/LF invoegen bij vervanging.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
+<p>[S3] W3C XML 1.0 en Namespaces in XML: namen, attributen, entiteiten en namespaces.</p>
+<p><code>https://www.w3.org/TR/xml/</code></p>
+<p><code>https://www.w3.org/TR/xml-names/</code></p>
+</main></body></html>

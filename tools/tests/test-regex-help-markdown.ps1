@@ -3,7 +3,7 @@ param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
-$parser = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpMarkdown.cpp')
+$generator = Get-Content -Raw -LiteralPath (Join-Path $root 'tools\build\generate-regex-help-html.ps1')
 $readme = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'runtime\Help\README.md')
 $locales = @($catalog.targetLanguages | ForEach-Object { [string]$_ })
 function Get-FencedBlocks([string]$text, [string]$label) {
@@ -84,6 +84,5 @@ foreach ($locale in $locales) {
         if ($packageRequired -cnotcontains $packagePath) { throw "Package manifest misses localized Markdown help: $packagePath" }
     }
 }
-foreach ($token in @('MB_ERR_INVALID_CHARS', 'MarkdownBlockKind::Title', 'MarkdownBlockKind::Heading', 'MarkdownBlockKind::List', 'MarkdownBlockKind::Code', 'MarkdownBlockKind::Regex', 'MarkdownBlockKind::Example', 'MarkdownBlockKind::Table', 'MarkdownTable', 'SplitMarkdownTableRow', 'ParseInlineCode', 'ParseMarkdownText', 'RunRuntimeSmoke', 'HelpPathForLocale', 'EM_EXLIMITTEXT', 'Malformed Markdown code block.')) { if ($parser -notmatch [regex]::Escape($token)) { throw "Markdown parser lacks $token" } }
-if ($catalog.strings.PSObject.Properties.Name -contains 'fbe.regex_help.malformed_markdown') { throw 'Malformed Markdown diagnostic must remain the neutral built-in fallback until it is localized for every locale.' }
+foreach ($token in @('HtmlEncode', 'regex-$mode.md', "'example'", "'note'", "'warning'")) { if ($generator -notmatch [regex]::Escape($token)) { throw "HTML generator lacks $token" } }
 Write-Host 'Regex Help Markdown localization and package contract passed.'

@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="cs-CZ">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>N&#225;vrh</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Jin&#253; režim"><strong>N&#225;vrh</strong><a href="regex-source.html">Zdrojov&#253; k&#243;d</a></nav><main>
+<h1 id="top">Př&#237;ručka regul&#225;rn&#237;ch v&#253;razů — N&#225;vrh</h1>
+<p>Pozn&#225;mka k překladu: rusk&#225; slova a věty v kontroln&#237;ch př&#237;kladech jsou z&#225;měrně ponech&#225;ny beze změny. Jde o testovac&#237; data: regul&#225;rn&#237; v&#253;razy, nahrazovac&#237; řetězce, b&#237;l&#233; znaky a oček&#225;van&#233; v&#253;sledky odpov&#237;daj&#237; rusk&#233;mu referenčn&#237;mu vyd&#225;n&#237;. Vysvětlen&#237; jsou přeložena; př&#237;klady nejsou automaticky přizpůsobeny česk&#253;m typografick&#253;m pravidlům.</p>
+<p>&#218;pln&#225; př&#237;ručka hled&#225;n&#237;, nahrazov&#225;n&#237; a korektur knih ve FictionBook Editor Next.</p>
+<p>Vyd&#225;n&#237;: 2. ř&#237;jna 2026. Režim K&#243;d popisuje samostatn&#253; soubor regex-source.md. „Vzor“ zde znamen&#225; regul&#225;rn&#237; v&#253;raz; „vestavěn&#225; šablona“ je uložen&#225; kombinace v&#253;razu a nastaven&#237; v panelu Šablony. Design označuje vizu&#225;ln&#237; režim N&#225;vrh.</p>
+<h2 id="section-1">1. Jak př&#237;ručku použ&#237;vat</h2>
+<p>Regul&#225;rn&#237; v&#253;raz popisuje pravidlo hled&#225;n&#237; m&#237;sto jedin&#233;ho přesn&#233;ho řetězce. Např&#237;klad <code>[0-9]+</code> najde libovolně dlouhou posloupnost č&#237;slic a <code>[ \t]{2,}</code> alespoň dvě obyčejn&#233; mezery nebo tabul&#225;tory. Nalezen&#225; shoda a text, kter&#253; ji m&#225; nahradit, jsou dvě různ&#233; věci.</p>
+<p>Kapitola 2 umožňuje prvn&#237; praktick&#253; pokus. Kapitoly 3–15 vysvětluj&#237; syntaxi, kapitola 16 zvl&#225;štn&#237; gramatiku n&#225;hrad FBE. Kapitola 17 obsahuje postupy pro knihy s podm&#237;nkami, testovac&#237;m textem a upozorněn&#237;mi. N&#225;sleduj&#237; čast&#233; chyby, v&#253;kon a zdroje.</p>
+<p>Do pole Naj&#237;t kop&#237;rujte pouze v&#253;raz. Označen&#237; „Naj&#237;t“, „Nahradit“, U+0020 ani ohraničuj&#237;c&#237; značky Markdown nejsou souč&#225;st&#237; vzoru. Nepotřebujete obal JavaScriptu <code>/.../g</code>, uvozovky řetězce C++ ani zdvojen&#225; zpětn&#225; lom&#237;tka z JSON.</p>
+<p>Zaškrt&#225;vac&#237; pol&#237;čka jsou souč&#225;st&#237; postupu. Shoda při ignorov&#225;n&#237; velikosti p&#237;smen se po zapnut&#237; rozlišov&#225;n&#237; může změnit. Nejde jen o vzhled dialogu.</p>
+<p>„Pouze vyhled&#225;n&#237; a kontrola“ označuje diagnostiku. Nalezen&#253; text může b&#253;t spr&#225;vně: z&#225;měrn&#233; opakov&#225;n&#237;, ciz&#237; jm&#233;no, citace, nadpis nebo typografick&#225; volba. Ani „nahrazen&#237; po kontrole“ nezaručuje bezpečnost pro každou knihu.</p>
+<h2 id="section-2">2. Prvn&#237; hled&#225;n&#237; a bezpečn&#233; nahrazen&#237;</h2>
+<p>Uložte pracovn&#237; kopii knihy. Přejděte do N&#225;vrhu, otevřete Naj&#237;t nebo Nahradit a zapněte Regul&#225;rn&#237; v&#253;raz. Pro prvn&#237; pokusy vypněte Pouze cel&#225; slova; hranice je přehlednějš&#237; vyj&#225;dřit př&#237;mo ve vzoru. Zkontrolujte rozsah a směr hled&#225;n&#237;.</p>
+<p>Několik mezer najdete takto:</p>
+<pre class="regex" id="regex-1"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>V textu <code>Он   пришёл</code> se najde &#250;sek tř&#237; mezer. Do n&#225;hrady zadejte jednu obyčejnou mezeru. Nejprve nahraďte jedinou shodu, ověřte <code>Он пришёл</code> a teprve potom zvažte Nahradit vše.</p>
+<section class="example" id="example-1"><strong>Př&#237;klad</strong><pre><code>Naj&#237;t: [ \t]{2,}
+Vstup: Он   пришёл
+Shoda: tři mezery mezi slovy</code></pre></section>
+<section class="example" id="example-2"><strong>Př&#237;klad</strong><pre><code>Naj&#237;t: [ \t]{2,}
+Vstup: Он   пришёл
+Nahradit: jedna mezera
+Oček&#225;v&#225;no: Он пришёл</code></pre></section>
+<p>Při velk&#233;m počtu v&#253;sledků si je nejprve prohl&#233;dněte a opravte jeden či dva typick&#233; př&#237;pady. Po hromadn&#233; změně zkontrolujte text, kurzivu, tučn&#233; p&#237;smo, pozn&#225;mky a hranice odstavců. Neoček&#225;van&#253; v&#253;sledek vraťte zpět před dalš&#237;mi &#250;pravami.</p>
+<aside class="warning" id="warning-1"><strong>Varov&#225;n&#237;</strong><p>Nahradit vše může změnit z&#225;měrn&#233; mezery i form&#225;tov&#225;n&#237;. Ověřte jednu n&#225;hradu a uložte pracovn&#237; kopii.</p></aside>
+<p>Použ&#237;t v panelu šablon přenese v&#253;raz a nastaven&#237; do dialogu. Neznamen&#225; bezpodm&#237;nečně opravit všechny shody. Hled&#225;n&#237; a nahrazov&#225;n&#237; se spouštěj&#237; př&#237;slušn&#253;mi tlač&#237;tky zvl&#225;šť.</p>
+<h2 id="section-3">3. Modul a hranice režimu N&#225;vrh</h2>
+<p>Režim použ&#237;v&#225; PCRE2-16 s textem i vzory v UTF-16; UTF je vždy zapnut&#233;. FBE samostatně sestavuje hledan&#253; text a prov&#225;d&#237; n&#225;hrady s ohledem na strukturu knihy. Dokumentace PCRE2 proto vysvětluje shody, nikoli všechny operace aplikace. Technick&#233; zdroje jsou D1–D4.</p>
+<p>Prohled&#225;v&#225; se textov&#225; reprezentace knihy, ne doslovn&#233; XML. <code>&lt;strong&gt;</code> nen&#237; způsob hled&#225;n&#237; tučn&#233;ho p&#237;sma v N&#225;vrhu. XML značky hledejte v K&#243;du; struktur&#225;ln&#237; změny patř&#237; n&#225;strojům editoru nebo specializovan&#253;m skriptům.</p>
+<aside class="note" id="note-1"><strong>Pozn&#225;mka</strong><p>Regex v N&#225;vrhu vid&#237; prohled&#225;van&#253; text, ne strom DOM. Prvky a atributy kontrolujte v K&#243;du nebo struktur&#225;ln&#237;m n&#225;stroji.</p></aside>
+<p>Vizu&#225;ln&#237; zalomen&#237; dlouh&#233;ho ř&#225;dku nevkl&#225;d&#225; znak konce ř&#225;dku. Odstavce, skutečn&#225; přerušen&#237; a zalamov&#225;n&#237; podle š&#237;řky jsou odlišn&#233;. FBE použ&#237;v&#225; v&#237;ceř&#225;dkov&#233; kotvy reprezentace hled&#225;n&#237; pro hranice odstavců. Nalezen&#237; shody přes odstavce a jej&#237; nahrazen&#237; však nejsou tot&#233;ž: zkouman&#225; implementace n&#225;hrady mezi odstavci odm&#237;t&#225;.</p>
+<p><code>\A</code> a <code>\z</code> označuj&#237; zač&#225;tek a konec řetězce předan&#233;ho modulu. Nejde automaticky o cel&#253; FB2; z&#225;lež&#237; na rozsahu a fragmentu vytvořen&#233;m FBE.</p>
+<h2 id="section-4">4. Unicode: UTF, UCP a velikost p&#237;smen</h2>
+<h3 id="section-4-1">4.1. Co zajišťuje UTF</h3>
+<p>UTF dovoluje zpracov&#225;vat znaky Unicode včetně azbuky. Nepřev&#225;d&#237; abecedy, neopravuje OCR, neměn&#237; <code>ё</code> na <code>е</code> a automaticky nesjednocuje kanonicky rovnocenn&#233; z&#225;pisy znaků.</p>
+<p>P&#237;smeno s diakritikou může b&#253;t jedin&#253; znak nebo p&#237;smeno a kombinuj&#237;c&#237; znam&#233;nko. Vzhled může b&#253;t stejn&#253;, hled&#225;n&#237; po znac&#237;ch jin&#233;. PCRE2 neprov&#225;d&#237; normalizaci NFC/NFD za uživatele. U diakritiky berte v &#250;vahu <code>\p{M}</code>.</p>
+<h3 id="section-4-2">4.2. Co měn&#237; UCP</h3>
+<p>Unicode (UCP) měn&#237; předevš&#237;m zkr&#225;cen&#233; tř&#237;dy <code>\w</code>, <code>\d</code>, <code>\s</code> a na nich z&#225;visl&#233; hranice <code>\b</code> a <code>\B</code>. Nen&#237; to přep&#237;nač samotn&#233; podpory azbuky.</p>
+<p>Upřesněn&#237; starš&#237;ch verz&#237; n&#225;povědy: v&#253;slovn&#233; vlastnosti <code>\p{L}</code>, <code>\p{N}</code> a <code>\P{...}</code> jsou v Unicode sestaven&#237; PCRE2 dostupn&#233; i bez UCP. Pokud však vzor kombinuje <code>\p{L}</code> a <code>\b</code>, UCP zajist&#237; soulad v&#253;znamu p&#237;smen a hranic slov.</p>
+<p>Porovnejte hled&#225;n&#237; rusk&#233;ho slova:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">\b</span>мир<span class="rx-anchor">\b</span></code></pre>
+<p>S UCP se hranice ř&#237;d&#237; Unicode tř&#237;dou slova. Bez UCP neoček&#225;vejte, že <code>\b</code> bude pro azbuku fungovat stejně jako pro latinku ASCII. Nenalezen&#225; shoda nemus&#237; znamenat chyběj&#237;c&#237; slovo.</p>
+<p>Pro přesně ASCII č&#237;slice použ&#237;vejte <code>[0-9]</code>, nikoli <code>\d</code>: UCP může druhou tř&#237;du rozš&#237;řit o desetinn&#233; č&#237;slice jin&#253;ch p&#237;sem.</p>
+<h3 id="section-4-3">4.3. Užitečn&#233; vlastnosti</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">V&#253;raz</th><th scope="col">Co hled&#225;</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\p{L}</code></td><td>P&#237;smeno Unicode</td></tr>
+<tr><td class="syntax"><code>\p{Lu}</code></td><td>Velk&#233; p&#237;smeno při rozlišov&#225;n&#237; velikosti</td></tr>
+<tr><td class="syntax"><code>\p{Ll}</code></td><td>Mal&#233; p&#237;smeno při rozlišov&#225;n&#237; velikosti</td></tr>
+<tr><td class="syntax"><code>\p{M}</code></td><td>Kombinuj&#237;c&#237; znam&#233;nko</td></tr>
+<tr><td class="syntax"><code>\p{N}</code></td><td>Č&#237;seln&#253; znak, širš&#237; pojem než desetinn&#225; č&#237;slice</td></tr>
+<tr><td class="syntax"><code>\p{Nd}</code></td><td>Desetinn&#225; č&#237;slice</td></tr>
+<tr><td class="syntax"><code>\p{Latin}</code></td><td>Znak latinsk&#233;ho p&#237;sma</td></tr>
+<tr><td class="syntax"><code>\p{Cyrillic}</code></td><td>Znak cyrilice</td></tr>
+<tr><td class="syntax"><code>\P{L}</code></td><td>Znak, kter&#253; nen&#237; p&#237;smenem</td></tr>
+</tbody></table></div>
+<p>Posloupnost p&#237;smen s kombinuj&#237;c&#237;mi znam&#233;nky:</p>
+<pre class="regex" id="regex-3"><code><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Nejde o univerz&#225;ln&#237; jazykovou definici slova: chyběj&#237; spojovn&#237;ky a apostrofy. Přid&#225;vejte je vědomě.</p>
+<h3 id="section-4-4">4.4. Rozlišov&#225;n&#237; velikosti je samostatn&#225; volba</h3>
+<p>Zapněte Rozlišovat velikost p&#237;smen u přechodů jako <code>строчнаяПрописная</code>, inici&#225;l a vzorů s <code>\p{Lu}</code>/<code>\p{Ll}</code>. Ignorov&#225;n&#237; velikosti může smysl pravidla zrušit. UCP tuto volbu nenahrazuje.</p>
+<p>Ignorov&#225;n&#237; velikosti př&#237;mo ve vzoru:</p>
+<pre class="regex" id="regex-4"><code><span class="rx-group">(?</span>i<span class="rx-group">)</span>глава</code></pre>
+<p>&#218;činek omezen&#253; na skupinu:</p>
+<pre class="regex" id="regex-5"><code><span class="rx-group">(?</span>i:глава<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<h2 id="section-5">5. Doslovn&#233; znaky a escapov&#225;n&#237;</h2>
+<p>P&#237;smena a většina značek zastupuj&#237; sebe sama. Mimo tř&#237;du znaků mohou m&#237;t zvl&#225;štn&#237; v&#253;znam tečka, z&#225;vorky, hvězdička, plus, otazn&#237;k, složen&#233; z&#225;vorky, kotvy a zpětn&#233; lom&#237;tko.</p>
+<p>Pro doslovn&#233; hled&#225;n&#237; metaznaku před něj vložte zpětn&#233; lom&#237;tko:</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Hledan&#253; text</th><th scope="col">V&#253;raz</th></tr></thead><tbody>
+<tr><td>Tečka</td><td><code>\.</code></td></tr>
+<tr><td>Otazn&#237;k</td><td><code>\?</code></td></tr>
+<tr><td>Plus</td><td><code>\+</code></td></tr>
+<tr><td>Hvězdička</td><td><code>\*</code></td></tr>
+<tr><td>Otev&#237;rac&#237; kulat&#225; z&#225;vorka</td><td><code>\(</code></td></tr>
+<tr><td>Zav&#237;rac&#237; kulat&#225; z&#225;vorka</td><td><code>\)</code></td></tr>
+<tr><td>Č&#237;slo v hranat&#253;ch z&#225;vork&#225;ch</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Samotn&#233; zpětn&#233; lom&#237;tko</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p><code>(123)</code> hled&#225; č&#237;slice <code>123</code> a zachyt&#237; je do skupiny, ale z&#225;vorky v textu nevyžaduje. Pro nalezen&#237; <code>(123)</code> mus&#237; b&#253;t obě z&#225;vorky doslovn&#233;.</p>
+<p>Delš&#237; doslovn&#253; fragment lze v PCRE2 obalit <code>\Q</code> a <code>\E</code>:</p>
+<pre class="regex" id="regex-6"><code><span class="rx-escape">\Q</span>Цена <span class="rx-group">(</span>руб.<span class="rx-group">)</span> <span class="rx-quantifier">+</span> доставка<span class="rx-escape">\E</span></code></pre>
+<p>V n&#225;hradě FBE maj&#237; stejn&#233; značky jin&#253; v&#253;znam. Pravidla escapov&#225;n&#237; hled&#225;n&#237; nepřen&#225;šejte automaticky do n&#225;hrad.</p>
+<h2 id="section-6">6. Mezery, tabul&#225;tory a neviditeln&#233; znaky</h2>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">V&#253;raz</th><th scope="col">V&#253;znam při hled&#225;n&#237; PCRE2</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[ ]</code></td><td>Jen obyčejn&#225; mezera U+0020</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Obyčejn&#225; mezera nebo tabul&#225;tor</td></tr>
+<tr><td class="syntax"><code>\t</code></td><td>Tabul&#225;tor U+0009</td></tr>
+<tr><td class="syntax"><code>\x{00A0}</code></td><td>Nezlomiteln&#225; mezera</td></tr>
+<tr><td class="syntax"><code>\x{202F}</code></td><td>&#218;zk&#225; nezlomiteln&#225; mezera</td></tr>
+<tr><td class="syntax"><code>\h</code></td><td>Vodorovn&#253; b&#237;l&#253; znak včetně různ&#253;ch mezer Unicode</td></tr>
+<tr><td class="syntax"><code>\s</code></td><td>B&#237;l&#253; znak, př&#237;padně tak&#233; konec ř&#225;dku</td></tr>
+<tr><td class="syntax"><code>\r</code></td><td>N&#225;vrat voz&#237;ku CR</td></tr>
+<tr><td class="syntax"><code>\n</code></td><td>Posun ř&#225;dku LF</td></tr>
+<tr><td class="syntax"><code>\R</code></td><td>Sekvence zalomen&#237; ř&#225;dku Unicode</td></tr>
+<tr><td class="syntax"><code>\x{00AD}</code></td><td>Měkk&#253; spojovn&#237;k</td></tr>
+<tr><td class="syntax"><code>\x{200B}</code></td><td>Mezera s nulovou š&#237;řkou</td></tr>
+<tr><td class="syntax"><code>\x{FEFF}</code></td><td>FEFF v samotn&#233;m textu</td></tr>
+</tbody></table></div>
+<p>Pro běžn&#233; mezery mezi slovy volte <code>[ \t]</code>, ne <code>\s</code>. Druh&#225; tř&#237;da je širš&#237; a může zahrnout hranice odstavců a nezlomiteln&#233; mezery. Tak&#233; <code>\h</code> je užitečn&#233; diagnosticky, ale př&#237;liš širok&#233; pro neupřesněnou typografickou n&#225;hradu.</p>
+<p>NBSP drž&#237; pohromadě značku a č&#237;slo, inici&#225;ly a př&#237;jmen&#237;, hodnotu a jednotku. Převod všech na norm&#225;ln&#237; mezery může zhoršit sazbu. FBE m&#225; nav&#237;c nastaven&#237; znaku NBSP; př&#237;klady U+00A0 kontrolujte podle knihy a konkr&#233;tn&#237; sestavy.</p>
+<p>U+200C a U+200D mohou b&#253;t potřebn&#233; v někter&#253;ch p&#237;smech a složen&#253;ch emoji. Nemažte hromadně všechny „neviditeln&#233;“ znaky. Nalezen&#237; ještě nen&#237; chyba.</p>
+<h2 id="section-7">7. Tř&#237;dy a rozsahy znaků</h2>
+<p>Tř&#237;da v hranat&#253;ch z&#225;vork&#225;ch spotřebuje jeden znak ze sady. <code>[abc]</code> znamen&#225; jedno ze tř&#237; p&#237;smen, nikoli slovo <code>abc</code>. <code>[abc]+</code> požaduje jedno nebo v&#237;ce p&#237;smen ze sady.</p>
+<p><code>[^abc]</code> spotřebuje znak mimo sadu. Neznamen&#225; podm&#237;nku „před textem nen&#237; abc“; pro kontext slouž&#237; lookaround.</p>
+<p>Ve tř&#237;dě tečka a většina z&#225;vorek ztr&#225;cej&#237; speci&#225;ln&#237; v&#253;znam. Spojovn&#237;k může označovat rozsah; pro doslovnost jej um&#237;stěte na kraj nebo escapujte. Zav&#237;rac&#237; hranat&#225; z&#225;vorka se pohodlně zapisuje <code>\]</code>.</p>
+<pre class="regex" id="regex-7"><code><span class="rx-class">[А-Яа-яЁё-]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Uk&#225;zka dovoluje rusk&#225; p&#237;smena a spojovn&#237;k, ne celou cyrilici. Ukrajinsk&#225;, bělorusk&#225; a jin&#225; p&#237;smena vyžaduj&#237; širš&#237; sadu nebo vlastnost Unicode.</p>
+<p><code>\b</code> uvnitř tř&#237;dy neznamen&#225; hranici slova. Hranice slov ned&#225;vejte do běžn&#233; sady znaků.</p>
+<h2 id="section-8">8. Kotvy, hranice a pr&#225;zdn&#233; shody</h2>
+<p>Kotva kontroluje pozici, aniž spotřebuje p&#237;smeno nebo mezeru. <code>^</code>, <code>$</code> či <code>\b</code> může vr&#225;tit shodu nulov&#233; d&#233;lky, kterou rozhran&#237; nezobraz&#237; jako běžn&#253; označen&#253; &#250;sek.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Kotva</th><th scope="col">V&#253;znam</th></tr></thead><tbody>
+<tr><td class="syntax"><code>^</code></td><td>Zač&#225;tek ř&#225;dku při multiline, jinak zač&#225;tek hledan&#233;ho objektu</td></tr>
+<tr><td class="syntax"><code>$</code></td><td>Konec ř&#225;dku při multiline; zach&#225;zen&#237; s posledn&#237;m koncem ř&#225;dku z&#225;vis&#237; na režimu</td></tr>
+<tr><td class="syntax"><code>\A</code></td><td>Jen zač&#225;tek hledan&#233;ho objektu</td></tr>
+<tr><td class="syntax"><code>\z</code></td><td>Přesn&#253; konec objektu</td></tr>
+<tr><td class="syntax"><code>\Z</code></td><td>Konec objektu nebo pozice před posledn&#237;m koncem ř&#225;dku</td></tr>
+<tr><td class="syntax"><code>\b</code></td><td>Hranice mezi slovn&#237;m a neslovn&#237;m znakem</td></tr>
+<tr><td class="syntax"><code>\B</code></td><td>Pozice, kter&#225; nen&#237; hranic&#237; slova</td></tr>
+<tr><td class="syntax"><code>\G</code></td><td>Poč&#225;tečn&#237; pozice aktu&#225;ln&#237;ho vol&#225;n&#237; hled&#225;n&#237; shody</td></tr>
+</tbody></table></div>
+<p><code>\G</code> sama nepamatuje „předchoz&#237; shodu“. Z&#225;vis&#237; na poč&#225;tečn&#237;m offsetu předan&#233;m aplikac&#237;; při dalš&#237;m vol&#225;n&#237; to může b&#253;t konec předchoz&#237;ho v&#253;sledku. Ve FBE nejde o univerz&#225;ln&#237; proch&#225;zen&#237; knihy. Pro běžn&#233; korektury volte v&#253;slovn&#233; hranice. [D1]</p>
+<p>Pro cel&#233; slovo m&#237;sto č&#225;st&#237; delš&#237;ch slov použijte hranice nebo kontroly sousedn&#237;ch p&#237;smen. S UCP:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-anchor">\b</span>том<span class="rx-anchor">\b</span></code></pre>
+<p>Neodpov&#237;d&#225; zač&#225;tku <code>томик</code>. Spojovn&#237;ky a apostrofy však může modul považovat za hranice jinak než redaktor.</p>
+<p>Pr&#225;zdn&#233; shody v Nahradit vše použ&#237;vejte opatrně: vkl&#225;daj&#237; text do pozic, m&#237;sto aby měnily viditeln&#233; znaky. Pro prvn&#237; pokusy volte nepr&#225;zdn&#233; v&#253;sledky.</p>
+<h2 id="section-9">9. Kvantifik&#225;tory: opakov&#225;n&#237; a n&#225;vraty</h2>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">Z&#225;pis</th><th scope="col">Opakov&#225;n&#237; předchoz&#237;ho prvku</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Nula nebo jedno</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Nula nebo v&#237;ce</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Jedno nebo v&#237;ce</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Přesně tři</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>Alespoň tři</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Dvě až pět</td></tr>
+</tbody></table></div>
+<p>Kvantifik&#225;tor působ&#237; na předchoz&#237; znak, tř&#237;du či skupinu. <code>аб+</code> opakuje pouze <code>б</code>; <code>(?:аб)+</code> opakuje dvojici.</p>
+<h3 id="section-9-1">9.1. Hladov&#233; hled&#225;n&#237;</h3>
+<p>V&#253;choz&#237; text:</p>
+<pre><code>&#171;первый&#187; и &#171;второй&#187;</code></pre>
+<p>Vzor:</p>
+<pre class="regex" id="regex-9"><code>&#171;.<span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>Tečka s hvězdičkou nejprve vezme nejdelš&#237; možn&#253; &#250;sek. Podle potřeby vrac&#237; znaky, aby uspěl zbytek vzoru. Zde shoda zahrne oba p&#225;ry uvozovek.</p>
+<h3 id="section-9-2">9.2. L&#237;n&#233; hled&#225;n&#237;</h3>
+<pre class="regex" id="regex-10"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">?</span>&#187;</code></pre>
+<p>Nejprve zkus&#237; nejm&#233;ně znaků, ale st&#225;le může shodu rozš&#237;řit. Postupn&#233; hled&#225;n&#237; vr&#225;t&#237; <code>&#171;первый&#187;</code> a pak <code>&#171;второй&#187;</code>.</p>
+<p>Pro jednoduch&#253; p&#225;r b&#253;v&#225; přehlednějš&#237; v&#253;slovně omezit obsah:</p>
+<pre class="regex" id="regex-11"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;</code></pre>
+<p>Neanalyzuje vnořen&#233; uvozovky; ty vyžaduj&#237; samostatn&#233; redakčn&#237; posouzen&#237;.</p>
+<h3 id="section-9-3">9.3. Přivlastňovac&#237; kvantifik&#225;tor bez vracen&#237;</h3>
+<pre class="regex" id="regex-12"><code>&#171;.<span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Neznamen&#225; „ještě lepš&#237; uvozovky“. <code>.*+</code> spotřebuje i zav&#237;rac&#237; uvozovku a nevr&#225;t&#237; ji. Zb&#253;vaj&#237;c&#237; <code>&#187;</code> ve vzoru pak nenajde znak, takže na uk&#225;zce nebude shoda.</p>
+<p>Smysl může m&#237;t vyloučen&#237; uzav&#237;rac&#237;ho znaku:</p>
+<pre class="regex" id="regex-13"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span><span class="rx-quantifier">+</span>&#187;</code></pre>
+<p>Přivlastňovac&#237; kvantifik&#225;tory a atomick&#233; skupiny ř&#237;d&#237; backtracking; nejsou univerz&#225;ln&#237;m urychlen&#237;m každ&#233;ho vzoru.</p>
+<h2 id="section-10">10. Skupiny a zpětn&#233; odkazy</h2>
+<p>Kulat&#233; z&#225;vorky zachov&#225;vaj&#237; nalezen&#253; fragment. Č&#237;slov&#225;n&#237; zač&#237;n&#225; od 1 a jde po otev&#237;rac&#237;ch zachycovac&#237;ch z&#225;vork&#225;ch zleva doprava, i při vnořen&#237;.</p>
+<pre class="regex" id="regex-14"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Na <code>02.10.2026</code> skupiny obsahuj&#237; <code>02</code>, <code>10</code> a <code>2026</code>. Je to kontrola form&#225;tu, ne kalend&#225;řn&#237; platnosti.</p>
+<p><code>(?:...)</code> seskupuje bez č&#237;sla. U složit&#253;ch n&#225;hrad pom&#225;h&#225; udržet předv&#237;dateln&#233; <code>$1</code> a <code>$2</code>.</p>
+<p>Pojmenovan&#225; skupina zlepš&#237; čitelnost:</p>
+<pre class="regex" id="regex-15"><code><span class="rx-group">(?&lt;</span>word&gt;<span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-escape">\k</span>&lt;word&gt;</code></pre>
+<p>Zpětn&#253; odkaz vyžaduje stejn&#253; zachycen&#253; text. Vol&#225;n&#237; podprogramu opakuje pravidlo a může naj&#237;t jin&#253; text. Jsou to různ&#233; mechanismy.</p>
+<p>Pro opakovan&#233; slovo v knize přidejte hranice, nastaven&#237; velikosti a vhodnou sadu mezer. Bez hranic může odkaz naj&#237;t č&#225;sti delš&#237;ch slov; &#250;pln&#253; postup je uveden n&#237;že.</p>
+<p>Pojmenovan&#233; skupiny při hled&#225;n&#237; automaticky neznamenaj&#237; pojmenovan&#233; n&#225;hrady FBE. V n&#225;hrad&#225;ch použ&#237;vejte ověřen&#233; č&#237;seln&#233; odkazy.</p>
+<h2 id="section-11">11. Alternativa a atomick&#233; skupiny</h2>
+<p>Svisl&#225; č&#225;ra vol&#237; mezi větvemi:</p>
+<pre class="regex" id="regex-16"><code><span class="rx-group">(?:</span>глава<span class="rx-alternation">|</span>часть<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Seskupen&#237; je důležit&#233;: bez něj může společn&#225; prav&#225; č&#225;st patřit jen k posledn&#237; alternativě. Větve se zkoušej&#237; v pořad&#237; z&#225;pisu; dlouh&#233; a kr&#225;tk&#233; varianty řaďte vědomě.</p>
+<p>Atomick&#225; skupina zak&#225;že n&#225;vrat do již &#250;spěšně dokončen&#233; skupiny:</p>
+<pre class="regex" id="regex-17"><code><span class="rx-group">(?</span>&gt;а<span class="rx-alternation">|</span>аб<span class="rx-group">)</span>в</code></pre>
+<p>Na <code>абв</code> prvn&#237; větev zvol&#237; <code>а</code> a už nelze přej&#237;t na <code>аб</code>. Shoda nebude, ačkoli neatomick&#225; verze ji naj&#237;t může. Nepřid&#225;vejte tedy atomicitu bez kontroly v&#253;sledků.</p>
+<h2 id="section-12">12. Kontrola okoln&#237;ho textu: lookaround</h2>
+<p>Lookaround kontroluje kontext, kter&#253; se nezahrne do cel&#233; shody. Můžete vybrat pouze č&#237;slo a zachovat jeho značku:</p>
+<pre class="regex" id="regex-18"><code><span class="rx-group">(?&lt;=</span>№ <span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>Na <code>№ 125</code> najde pouze <code>125</code>. Požaduje přesně jednu obyčejnou mezeru.</p>
+<section class="example" id="example-3"><strong>Př&#237;klad</strong><pre><code>Naj&#237;t: (?&lt;=№ )([0-9]+)
+Vstup: № 125
+Cel&#225; shoda: 125
+Skupina 1: 125
+Oček&#225;van&#225; n&#225;hrada pomoc&#237; [$1]: № [125]</code></pre></section>
+<p>Kontrola napravo:</p>
+<pre class="regex" id="regex-19"><code><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?=</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>руб<span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>V <code>125 руб.</code> najde č&#237;slo bez <code>руб.</code>.</p>
+<p>Negativn&#237; kontrola dopředu:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-anchor">\b</span>глава<span class="rx-anchor">\b</span><span class="rx-group">(?!</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>S UCP najde slovo &#171;глава&#187;, po němž nen&#225;sleduje běžn&#233; č&#237;slov&#225;n&#237; oddělen&#233; mezerou. Je to př&#237;klad v&#253;běru podle kontextu, ne pravidlo oprav.</p>
+<p><code>(?&lt;=...)</code> kontroluje text před shodou a <code>(?&lt;!...)</code> podm&#237;nku neguje; <code>(?=...)</code> a <code>(?!...)</code> se t&#253;kaj&#237; textu za n&#237;.</p>
+<p>Lookbehind m&#225; omezen&#237; d&#233;lky. Modern&#237; PCRE2 podporuje někter&#233; omezen&#233; proměnliv&#233; d&#233;lky, ne libovoln&#233; neomezen&#233; opakov&#225;n&#237;. Pro přenositeln&#233; postupy použijte kr&#225;tk&#253; pevn&#253; kontext, zachycen&#237; či <code>\K</code>; nepředpokl&#225;dejte funkčnost <code>.*</code> v lookbehind.</p>
+<h2 id="section-13">13. Volby uvnitř vzoru</h2>
+<div class="table-wrap" id="table-6"><table><thead><tr><th scope="col">Volba</th><th scope="col">&#218;činek</th></tr></thead><tbody>
+<tr><td class="syntax"><code>(?i)</code></td><td>Ignoruje velikost p&#237;smen</td></tr>
+<tr><td class="syntax"><code>(?-i)</code></td><td>Rozlišuje velikost p&#237;smen</td></tr>
+<tr><td class="syntax"><code>(?m)</code></td><td>V&#237;ceř&#225;dkov&#233; kotvy zač&#225;tku a konce</td></tr>
+<tr><td class="syntax"><code>(?-m)</code></td><td>Vypne v&#237;ceř&#225;dkov&#233; kotvy</td></tr>
+<tr><td class="syntax"><code>(?s)</code></td><td>Tečka může zahrnout konec ř&#225;dku</td></tr>
+<tr><td class="syntax"><code>(?-s)</code></td><td>Obnov&#237; běžn&#233; chov&#225;n&#237; tečky</td></tr>
+<tr><td class="syntax"><code>(?x)</code></td><td>Ignoruje nev&#253;znamov&#233; mezery a koment&#225;ře ve vzoru</td></tr>
+</tbody></table></div>
+<p><code>(?m)</code> nezpůsob&#237; přechod tečky přes ř&#225;dky. <code>(?s)</code> nedovol&#237; FBE n&#225;hradu mezi odstavci. Jde o dvě možnosti vyhled&#225;n&#237; a oddělen&#233; omezen&#237; aplikace.</p>
+<p>V rozš&#237;řen&#233;m režimu nemus&#237; b&#253;t mezery ve vzoru doslovn&#233;. Povinnou mezeru zapisujte <code>[ ]</code>; <code>#</code> mimo tř&#237;du může zač&#237;t koment&#225;ř. V&#237;ceř&#225;dkov&#233; vzory jsou čiteln&#233; v dokumentaci, ale postupy pro jednoř&#225;dkov&#233; pole se uv&#225;děj&#237; na jednom ř&#225;dku.</p>
+<h2 id="section-14">14. Pokročil&#233; možnosti PCRE2</h2>
+<p>Většina korektur tuto kapitolu nepotřebuje. Pom&#225;h&#225; č&#237;st ciz&#237; vzory. Dostupn&#225; syntaxe neznamen&#225;, že je každ&#253; takov&#253; vzor praktick&#253; nebo bezpečn&#253; pro celou knihu.</p>
+<h3 id="section-14-1">14.1. Změna zač&#225;tku v&#253;sledn&#233; shody</h3>
+<pre class="regex" id="regex-21"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\K</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span></code></pre>
+<p>V <code>№ 125</code> ověř&#237; předponu, ale vr&#225;t&#237; jen <code>125</code>. Užitečn&#233; při změně č&#237;sla bez jeho značky. <code>\K</code> v lookaround použ&#237;vejte jen po ověřen&#237; omezen&#237; PCRE2.</p>
+<h3 id="section-14-2">14.2. Podm&#237;nka &#250;časti skupiny</h3>
+<pre class="regex" id="regex-22"><code><span class="rx-anchor">^</span><span class="rx-group">(</span><span class="rx-escape">\(</span><span class="rx-group">)</span><span class="rx-quantifier">?</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">(?</span><span class="rx-group">(</span>1<span class="rx-group">)</span><span class="rx-escape">\)</span><span class="rx-group">)</span><span class="rx-anchor">$</span></code></pre>
+<p>Povol&#237; <code>12</code> nebo <code>(12)</code>, nikoli neuzavřen&#233; <code>(12</code>. Podm&#237;nka kontroluje &#250;čast prvn&#237; skupiny. Před použit&#237;m voliteln&#253;ch skupin v n&#225;hradě otestujte adapt&#233;r FBE.</p>
+<h3 id="section-14-3">14.3. Společn&#233; č&#237;slov&#225;n&#237; větv&#237;</h3>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?</span><span class="rx-alternation">|</span>глава <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-alternation">|</span>часть <span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-group">)</span></code></pre>
+<p>Č&#237;slo je v obou větv&#237;ch ve skupině 1: branch reset. V jednoduch&#253;ch situac&#237;ch b&#253;v&#225; srozumitelnějš&#237; nezachycovac&#237; skupina se společn&#253;m zachycen&#237;m č&#237;sla.</p>
+<h3 id="section-14-4">14.4. Vol&#225;n&#237; podprogramu</h3>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?&lt;</span>pair&gt;<span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span>-<span class="rx-group">(?</span>&amp;pair<span class="rx-group">)</span></code></pre>
+<p>U <code>12-34</code> obě č&#225;sti splňuj&#237; pravidlo „dvě č&#237;slice“, i když jsou různ&#233;. Odkaz <code>\k&lt;pair&gt;</code> by vyžadoval zopakovat přesně <code>12</code>.</p>
+<p>Rekurzivn&#237; podprogramy uměj&#237; popsat určit&#233; vnořen&#233; struktury, ale nenahrazuj&#237; XML parser FBE. Pro <code>&lt;section&gt;</code>, <code>&lt;poem&gt;</code>, pozn&#225;mky a tabulky použijte struktur&#225;ln&#237; n&#225;stroje.</p>
+<h3 id="section-14-5">14.5. Přeskakov&#225;n&#237; fragmentů</h3>
+<pre class="regex" id="regex-25"><code>&#171;<span class="rx-class">[^&#187;\r\n]</span><span class="rx-quantifier">*</span>&#187;<span class="rx-group">(</span><span class="rx-quantifier">*</span>SKIP<span class="rx-group">)</span><span class="rx-group">(</span><span class="rx-quantifier">*</span>FAIL<span class="rx-group">)</span><span class="rx-alternation">|</span><span class="rx-anchor">\b</span>слово<span class="rx-anchor">\b</span></code></pre>
+<p>S UCP se slovo hled&#225; mimo jednoduch&#233; rusk&#233; uvozovky. Prvn&#237; větev vyznač&#237; citaci k přeskočen&#237;, druh&#225; hled&#225; slovo. Vnořen&#233; a neuzavřen&#233; uvozovky nejsou analyzov&#225;ny; nepouž&#237;vejte to slepě pro hromadn&#233; korektury.</p>
+<h2 id="section-15">15. Co regul&#225;rn&#237; v&#253;raz nerozhodne</h2>
+<p>Velk&#233; p&#237;smeno po mal&#233;m, chyběj&#237;c&#237; koncov&#233; znam&#233;nko nebo opakovan&#233; slovo jsou form&#225;ln&#237; indicie, nikoli redakčn&#237; rozhodnut&#237;. Regex nev&#237;, zda <code>да да</code> je překlep, z&#225;měrn&#225; replika, verš nebo nadpis.</p>
+<p>Nepřid&#225;vejte automaticky tečky, nespojujte všechny odstavce zač&#237;naj&#237;c&#237; mal&#253;m p&#237;smenem, nepřev&#225;dějte každou latinku na azbuku a každ&#253; spojovn&#237;k na pomlčku. Nutn&#253; je kontext a někdy několik operac&#237; na DOM. Skripty FBE pro čištěn&#237;, slepen&#225; slova a pozn&#225;mky řeš&#237; pr&#225;vě tyto širš&#237; &#250;koly.</p>
+<h2 id="section-16">16. Gramatika n&#225;hrad FBE</h2>
+<p>PCRE2 hled&#225;, ale řetězec n&#225;hrady interpretuje FBE. Př&#237;klady z JavaScriptu, Pythonu, .NET, PCRE2 substitute nebo jin&#233;ho editoru přen&#225;šejte jen po testu. N&#237;že jsou př&#237;kazy potvrzen&#233; k&#243;dem a původn&#237; dokumentac&#237; FBE. [D3, D4]</p>
+<h3 id="section-16-1">16.1. Shoda a skupiny</h3>
+<div class="table-wrap" id="table-7"><table><thead><tr><th scope="col">V poli n&#225;hrady</th><th scope="col">V&#253;znam</th></tr></thead><tbody>
+<tr><td class="syntax"><code>$0</code> nebo <code>\0</code></td><td>Cel&#225; shoda</td></tr>
+<tr><td class="syntax"><code>$1</code> … <code>$9</code></td><td>Skupina s př&#237;slušn&#253;m č&#237;slem</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Alternativn&#237; č&#237;seln&#253; odkaz</td></tr>
+<tr><td class="syntax"><code>$+</code> nebo <code>\+</code></td><td>Posledn&#237; skupina vr&#225;cen&#225; adapt&#233;rem shody</td></tr>
+</tbody></table></div>
+<p>Tvrzen&#237; „FBE nahrazuje jen skupiny 1–9“ je nepřesn&#233;: lze vložit i obyčejn&#253; text a celou shodu. Omezen&#253; je př&#237;m&#253; č&#237;seln&#253; př&#237;stup, ne počet skupin PCRE2.</p>
+<p>Nepouž&#237;vejte <code>$10</code> pro des&#225;tou skupinu. <code>${name}</code> nepatř&#237; do ověřen&#233; gramatiky. Potřebn&#225; zachycen&#237; ponechte mezi prvn&#237;mi dev&#237;ti a pomocn&#233; skupiny tvořte jako nezachycovac&#237;.</p>
+<p>Voliteln&#233; a pr&#225;zdn&#233; skupiny otestujte zvl&#225;šť: FBE m&#225; vlastn&#237; adapt&#233;r SubMatches. Nov&#233; hromadn&#233; n&#225;hrady nestavte na jemn&#253;ch rozd&#237;lech vynechan&#253;ch skupin nebo „posledn&#237; skupiny“; upřednostněte jasn&#225; povinn&#225; zachycen&#237;.</p>
+<h3 id="section-16-2">16.2. Změna pořad&#237; skupin</h3>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{2}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">{4}</span><span class="rx-group">)</span></code></pre>
+<p>Nahradit za:</p>
+<pre><code>$3-$2-$1</code></pre>
+<p><code>02.10.2026</code> se změn&#237; na <code>2026-10-02</code>. Je to uk&#225;zka změny pořad&#237;, ne doporučen&#237; přev&#233;st všechna data v knize.</p>
+<h3 id="section-16-3">16.3. Změna velikosti p&#237;smen</h3>
+<div class="table-wrap" id="table-8"><table><thead><tr><th scope="col">Př&#237;kaz</th><th scope="col">&#218;činek</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\U</code></td><td>Zapne velk&#225; p&#237;smena vkl&#225;dan&#233;ho fragmentu</td></tr>
+<tr><td class="syntax"><code>\L</code></td><td>Zapne mal&#225; p&#237;smena</td></tr>
+<tr><td class="syntax"><code>\T</code></td><td>Prvn&#237; p&#237;smeno fragmentu velk&#233;, ostatn&#237; mal&#225;</td></tr>
+<tr><td class="syntax"><code>\Q</code></td><td>Vypne aktivn&#237; př&#237;kazy velikosti a form&#225;tov&#225;n&#237; pro n&#225;sleduj&#237;c&#237; text</td></tr>
+</tbody></table></div>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(</span>иван<span class="rx-group">)</span></code></pre>
+<p>Nahradit za:</p>
+<pre><code>\T$1\Q</code></pre>
+<p>Kontroln&#237; v&#253;sledek: <code>Иван</code>. <code>\T</code> nen&#237; jazykově pokročil&#225; kapitalizace každ&#233;ho slova. Jedin&#253; fragment <code>иван иванов</code> se nemus&#237; změnit na <code>Иван Иванов</code>.</p>
+<p>Nekombinujte <code>\U</code> a <code>\L</code> bez resetu. Č&#225;sti oddělte <code>\Q</code> a ověřte cyrilici i diakritiku. Změnu velikosti děl&#225; FBE, ne Unicode normaliz&#225;tor PCRE2.</p>
+<h3 id="section-16-4">16.4. Tučn&#233; p&#237;smo a kurziva</h3>
+<p><code>\S</code> zapne tučn&#233; p&#237;smo vkl&#225;dan&#233;ho fragmentu, <code>\E</code> kurzivu. <code>\Q</code> ukonč&#237; působen&#237; aktivn&#237;ch př&#237;kazů na dalš&#237; text.</p>
+<pre><code>\S$1\Q</code></pre>
+<p>Form&#225;tuje obsah prvn&#237; skupiny. Nehled&#225; už tučn&#253; text a neruš&#237; vešker&#233; předchoz&#237; form&#225;tov&#225;n&#237;. Nejprve otestujte jeden fragment a vr&#225;cen&#237; změny.</p>
+<h3 id="section-16-5">16.5. Stejn&#233; značky s odlišn&#253;m v&#253;znamem</h3>
+<p>V hled&#225;n&#237; je <code>\S</code> neb&#237;l&#253; znak, v n&#225;hradě FBE tučn&#233; p&#237;smo. <code>\Q...\E</code> v hled&#225;n&#237; chr&#225;n&#237; doslovn&#253; fragment, zat&#237;mco v n&#225;hradě <code>\Q</code> resetuje př&#237;kazy a <code>\E</code> zap&#237;n&#225; kurzivu.</p>
+<p>Do n&#225;hrady Design nepište <code>\n</code>, <code>\t</code>, <code>\x{00A0}</code>, <code>\$</code> nebo <code>$$</code> s oček&#225;v&#225;n&#237;m pravidel jin&#233;ho editoru. Nejsou souč&#225;st&#237; zde popsan&#233; gramatiky liter&#225;lů; nezn&#225;m&#225; sekvence může zmizet. Pro NBSP vložte skutečn&#253; znak. Zvl&#225;štn&#237; znak zachovejte zachycen&#237;m nebo ověřenou běžnou n&#225;hradou.</p>
+<p>Pr&#225;zdn&#233; pole shodu smaže; pole s jednou mezerou ji nahrad&#237; mezerou. Značky <code>&lt;пусто&gt;</code>, <code>[NBSP]</code> a <code>U+00A0</code> z vysvětlen&#237; se nemaj&#237; ps&#225;t doslovně.</p>
+<h2 id="section-17">17. Praktick&#233; postupy pro &#250;pravu a korekturu knih</h2>
+<p>Př&#237;klady jsou samostatn&#233; sc&#233;n&#225;ře, nikoli př&#237;slib totožn&#253;ch n&#225;zvů vestavěn&#253;ch šablon. N&#225;hradu nejprve použijte na jedin&#253; v&#253;sledek. Skutečn&#233; mezery a tabul&#225;tory v uk&#225;zk&#225;ch zůst&#225;vaj&#237; zachov&#225;ny; negativn&#237; př&#237;klady ukazuj&#237; alespoň jednu hranici, ale nenahrazuj&#237; kontrolu cel&#233; knihy.</p>
+<h3 id="heading-1">D01. Několik obyčejn&#253;ch mezer na jednu</h3>
+<p>Zkr&#225;tit běžn&#233; mezery, aniž se změn&#237; samostatn&#225; NBSP.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-28"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он   пришёл.</code></pre>
+<p>Nahradit za: jednu obyčejnou mezeru U+0020. Je to jeden znak, nikoli slovo „mezera“.</p>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он пришёл.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: V poezii, tabulk&#225;ch a simulovan&#233;m odsazen&#237; mohou b&#253;t n&#225;sobn&#233; mezery z&#225;měrn&#233;. Ověřte rozsah; nejde o obnoven&#237; odsazen&#237; odstavců.</p>
+<h3 id="heading-2">D02. Mezery na zač&#225;tku odstavce</h3>
+<p>Odstranit ručn&#237; odsazen&#237; před běžn&#253;m textem.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>   Начало абзаца.</code></pre>
+<p>Tent&#253;ž testovac&#237; text s viditeln&#253;mi značkami:</p>
+<pre><code>␠␠␠Начало␠абзаца.</code></pre>
+<p>Značka ␠ znamen&#225; obyčejnou mezeru, [TAB] tabul&#225;tor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětluj&#237;c&#237; z&#225;pis; tyto značky se do knihy nevkl&#225;daj&#237;.</p>
+<p>Nahradit za: nechte pole &#250;plně pr&#225;zdn&#233;. Nepište slovo „pr&#225;zdn&#233;“.</p>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Начало абзаца.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: V poezii a uměleck&#233; sazbě může b&#253;t odsazen&#237; v&#253;znamov&#233;. Kotva se vztahuje na textov&#253; ř&#225;dek, ne jeho vizu&#225;ln&#237; zalomen&#237;.</p>
+<h3 id="heading-3">D03. Mezery na konci odstavce</h3>
+<p>Odstranit koncov&#233; obyčejn&#233; mezery nebo tabul&#225;tory.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-30"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Tent&#253;ž testovac&#237; text s viditeln&#253;mi značkami:</p>
+<pre><code>Конец␠абзаца.␠␠␠</code></pre>
+<p>Značka ␠ znamen&#225; obyčejnou mezeru, [TAB] tabul&#225;tor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětluj&#237;c&#237; z&#225;pis; tyto značky se do knihy nevkl&#225;daj&#237;.</p>
+<p>Nahradit za: nechte pole &#250;plně pr&#225;zdn&#233;. Nepište slovo „pr&#225;zdn&#233;“.</p>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Конец абзаца.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: NBSP je z&#225;měrně vynech&#225;na. Nestandardn&#237; mezery kontrolujte jin&#253;m postupem.</p>
+<h3 id="heading-4">D04. Mezera před č&#225;rkou a dalš&#237; interpunkc&#237;</h3>
+<p>Zachovat znam&#233;nko a smazat mezeru před n&#237;m.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-31"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[,;:!?]</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Слово , другое !</code></pre>
+<p>Nahradit za:</p>
+<pre><code>$1</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Слово, другое!</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Jde o pravidlo pro běžn&#253; rusk&#253; text. Francouzsk&#225; typografie před někter&#253;mi znam&#233;nky použ&#237;v&#225; zvl&#225;štn&#237; mezery; tam postup bez &#250;pravy neaplikujte.</p>
+<h3 id="heading-5">D05. Mezera za otev&#237;rac&#237;m znam&#233;nkem</h3>
+<p>Smazat obyčejnou mezeru za z&#225;vorkou nebo ruskou otev&#237;rac&#237; uvozovkou.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-32"><code><span class="rx-group">(</span><span class="rx-class">[(\[&#171;„]</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>&#171; слово&#187; ( пример)</code></pre>
+<p>Nahradit za:</p>
+<pre><code>$1</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Nezasahuje mezery ve vzorc&#237;ch a uk&#225;zk&#225;ch, pokud př&#237;mo nen&#225;sleduj&#237; uveden&#233; značky. Kontext přesto ověřte.</p>
+<h3 id="heading-6">D06. Mezera před zav&#237;rac&#237;m znam&#233;nkem</h3>
+<p>Smazat obyčejnou mezeru před z&#225;vorkou nebo zav&#237;rac&#237; uvozovkou.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-33"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[)\]</span>&#187;”]<span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>&#171;слово &#187; (пример )</code></pre>
+<p>Nahradit za:</p>
+<pre><code>$1</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>&#171;слово&#187; (пример)</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Nesjednocuje všechny syst&#233;my uvozovek a matematick&#253;ch z&#225;vorek.</p>
+<h3 id="heading-7">D07. Pr&#225;vě tři tečky na v&#253;pustku</h3>
+<p>Přev&#233;st tři souvisl&#233; tečky a ponechat delš&#237; posloupnosti.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-quantifier">{3}</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он подумал... и ответил.</code></pre>
+<p>Nahradit za:</p>
+<pre><code>…</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Содержание.....12</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Ověřte redakčn&#237; konvenci. Čtyři tečky a tečkovan&#233; vodic&#237; linky obsahu jsou z&#225;měrně vyloučen&#233;.</p>
+<h3 id="heading-8">D08. V&#253;pustka s mezerami</h3>
+<p>Spojit tři tečky oddělen&#233; obyčejn&#253;mi mezerami.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(?&lt;!</span><span class="rx-escape">\.</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\.</span><span class="rx-group">(?!</span><span class="rx-escape">\.</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он подумал. . . и ответил.</code></pre>
+<p>Nahradit za:</p>
+<pre><code>…</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>Он подумал… и ответил.</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Слово. Другое.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Najde i tři tečky bez mezer. Nepouž&#237;vat pro vodic&#237; tečky a vynech&#225;vky v citac&#237;ch ř&#237;zen&#233; zvl&#225;štn&#237;mi pravidly.</p>
+<h3 id="heading-9">D09. Nezlomiteln&#225; mezera za №</h3>
+<p>Sv&#225;zat znak č&#237;sla s n&#225;sleduj&#237;c&#237; hodnotou.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-36"><code>№<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>№ 125</code></pre>
+<p>Nahradit za:</p>
+<pre><code>№&#160;$1</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>№&#160;125</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>№125</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Mezi № a $1 je v n&#225;hradě skutečn&#253; U+00A0. Nezaměňujte jej za napsanou sekvenci \x{00A0}. Vzor nepřid&#225; mezeru tam, kde zcela chyb&#237;.</p>
+<h3 id="heading-10">D10. Nezlomiteln&#225; mezera za &#167;</h3>
+<p>Sv&#225;zat paragrafov&#253; znak s č&#237;slem.</p>
+<p>Akce: nahrazen&#237; po kontrole.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-37"><code>&#167;<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>&#167; 12</code></pre>
+<p>Nahradit za:</p>
+<pre><code>&#167;&#160;$1</code></pre>
+<p>V&#253;sledek nahrazen&#237;:</p>
+<pre><code>&#167;&#160;12</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>&#167;12</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Mezi &#167; a $1 je skutečn&#225; NBSP. U složit&#253;ch č&#237;seln&#253;ch označen&#237; ověřte vybran&#253; fragment.</p>
+<h3 id="heading-11">D11. Možn&#233; opakov&#225;n&#237; sousedn&#237;ho slova</h3>
+<p>Naj&#237;t opakov&#225;n&#237; přes vodorovn&#233; mezery bez přeskočen&#237; odstavce.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ vypnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-38"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">+</span><span class="rx-escape">\1</span><span class="rx-anchor">\b</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Это это уже было.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>Это это</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Это уже было.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Opakov&#225;n&#237; jako &#171;Да да&#187; může b&#253;t autorsk&#233;. Nemažte automaticky druh&#233; slovo; rozhodněte, zda patř&#237; č&#225;rka, odstraněn&#237; nebo ž&#225;dn&#225; změna. Apostrofy a spojovn&#237;ky se neanalyzuj&#237; &#250;plně.</p>
+<h3 id="heading-12">D12. Latinka a cyrilice uvnitř jednoho slova</h3>
+<p>Naj&#237;t OCR směs v jedin&#233;m souvisl&#233;m slově, ne každou dvojjazyčnou ř&#225;dku.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-39"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Latin}</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Cyrillic}</span><span class="rx-group">)</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[\p{L}\p{M}]</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>В слове Тeст латинская e.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>Тeст</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он прочитал Latin.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: V Тeст je e latinsk&#233;. Plně latinsk&#233; slovo vedle ruštiny nen&#237; směs. Vzorce, značky a typografick&#233; hř&#237;čky mohou b&#253;t spr&#225;vně. Pravidlo nic nepřepisuje do jin&#233; abecedy.</p>
+<h3 id="heading-13">D13. Mal&#233; p&#237;smeno př&#237;mo před velk&#253;m</h3>
+<p>Naj&#237;t možn&#225; slepen&#225; slova nebo chybu velikosti.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-40"><code><span class="rx-escape">\p{Ll}</span><span class="rx-escape">\p{Lu}</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>ОнвышелИздома.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>лИ</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он вышел из дома.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Nutně zapněte rozlišov&#225;n&#237; velikosti. Jm&#233;na typu McDonald mohou b&#253;t spr&#225;vn&#225;. Najde se přechod, ne automaticky rekonstruovan&#225; mezera.</p>
+<h3 id="heading-14">D14. Č&#237;slice mezi p&#237;smeny</h3>
+<p>Naj&#237;t typick&#233; OCR nahrazen&#237; p&#237;smena č&#237;slic&#237;.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-41"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Это сл0во.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>сл0во</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>В главе 10 текст.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: H2O a jin&#233; vzorce mohou b&#253;t spr&#225;vně. Nezaměňujte všechna 0 za о ani všechna 3 za з.</p>
+<h3 id="heading-15">D15. Interpunkce uvnitř p&#237;smenov&#233;ho fragmentu</h3>
+<p>Zkontrolovat značku obklopenou p&#237;smeny z obou stran.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-42"><code><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span><span class="rx-class">[.,;:!?]</span><span class="rx-escape">\p{L}</span><span class="rx-quantifier">+</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он,сказал слово.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>Он,сказал</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он, сказав слово, ушёл.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Zkratky, adresy a dom&#233;ny mohou tak&#233; vyhovět. Pro kontrolu jen č&#225;rek z&#250;žte tř&#237;du na [,]. Nevkl&#225;dejte hromadně mezery bez posouzen&#237;.</p>
+<h3 id="heading-16">D16. Odstavec zač&#237;naj&#237;c&#237; mal&#253;m p&#237;smenem</h3>
+<p>Naj&#237;t možn&#253; nadbytečn&#253; konec předchoz&#237;ho odstavce.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-43"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>продолжение предложения.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>п</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Начало предложения.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Verše, popisky, seznamy a citace mohou spr&#225;vně zač&#237;nat mal&#253;m p&#237;smenem. Vzor odstavce nespojuje a nezn&#225; sousedn&#237; kontext.</p>
+<h3 id="heading-17">D17. Chyběj&#237;c&#237; koncov&#225; interpunkce před uzavřen&#237;m citace</h3>
+<p>Naj&#237;t konec tvořen&#253; p&#237;smenem či č&#237;slic&#237;, po němž jsou jen uzav&#237;rac&#237; značky a mezery.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-44"><code><span class="rx-class">[\p{L}\p{N}]</span><span class="rx-class">[&#187;”&quot;)\]</span>}]<span class="rx-quantifier">*</span><span class="rx-class">[ \t\x{00A0}]</span><span class="rx-quantifier">*</span><span class="rx-anchor">$</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>&#171;Он пришёл&#187;</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>л&#187;</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>&#171;Он пришёл!&#187;</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Nadpisy a popisky často nemaj&#237; tečku. Odkaz na pozn&#225;mku za spr&#225;vnou interpunkc&#237; může d&#225;t falešn&#253; n&#225;lez. Oproti kontrole samotn&#233;ho &#187; postup neoznač&#237; &#171;Он пришёл!&#187;.</p>
+<h3 id="heading-18">D18. Mal&#233; p&#237;smeno po konci věty</h3>
+<p>Naj&#237;t pravděpodobnou chybu velikosti po tečce, otazn&#237;ku nebo vykřičn&#237;ku.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-45"><code><span class="rx-class">[.!?…]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“&quot;(\[]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Ll}</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он пришёл. потом ушёл.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>. п</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он пришёл. Потом ушёл.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Tečky zkratek a autorsk&#233; v&#253;pustky nemus&#237; končit větu. Jde jen o kandid&#225;ty ke kontrole.</p>
+<h3 id="heading-19">D19. Možn&#225; chyběj&#237;c&#237; tečka</h3>
+<p>Naj&#237;t přechod od mal&#233; koncovky přes mezeru ke slovu s velk&#253;m p&#237;smenem.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-46"><code><span class="rx-escape">\p{Ll}</span><span class="rx-class">[&#187;”]</span><span class="rx-quantifier">?</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[&#171;„“]</span><span class="rx-quantifier">?</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он пришёл Потом ушёл.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>л Потом</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он пришёл потом ушёл.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Vlastn&#237; jm&#233;na a n&#225;zvy uvnitř vět způsob&#237; mnoho spr&#225;vn&#253;ch shod. Postup nerozhodne mezi tečkou, č&#225;rkou a ž&#225;dnou změnou.</p>
+<h3 id="heading-20">D20. Dvojice rovn&#253;ch uvozovek</h3>
+<p>Naj&#237;t jednoduch&#253; &#250;sek v rovn&#253;ch dvojit&#253;ch uvozovk&#225;ch na jednom ř&#225;dku.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-47"><code>&quot;<span class="rx-group">(</span><span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>&quot;</code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он сказал &quot;да&quot;.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>&quot;да&quot;</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он сказал &#171;да&#187;.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Zkontrolujte vnořen&#237;, palcov&#233; značky, k&#243;d a zvolenou typografii. &#171;$1&#187; je vhodn&#225; n&#225;hrada jen ve vybran&#233;m kontextu, ne univerz&#225;ln&#237; převod.</p>
+<h3 id="heading-21">D21. Spojovn&#237;k nebo dlouh&#225; pomlčka mezi č&#237;sly</h3>
+<p>Naj&#237;t možn&#253; č&#237;seln&#253; rozsah k redakčn&#237; kontrole.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-48"><code><span class="rx-group">(?&lt;!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[-—]</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">(?!</span><span class="rx-class">[0-9]</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Страницы 12 - 15.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>12 - 15</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Страницы 12–15.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Datum 2026-10-02, z&#225;porn&#233; č&#237;slo i odč&#237;t&#225;n&#237; mohou vyhovět. Nepřev&#225;dějte automaticky na rozsah. – je kr&#225;tk&#225; pomlčka, — dlouh&#225;, - spojovn&#237;k.</p>
+<h3 id="heading-22">D22. Dvě inici&#225;ly před př&#237;jmen&#237;m</h3>
+<p>Naj&#237;t jednoduch&#233; dvě inici&#225;ly pro kontrolu mezer.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-49"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-anchor">\b</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>И.О. Иванов</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Nezahrnuje všechna složen&#225; př&#237;jmen&#237; a diakritiku. Po posouzen&#237; lze použ&#237;t $1., NBSP, $2., NBSP, $3 se skutečn&#253;mi nezlomiteln&#253;mi mezerami, ne jejich n&#225;zvy.</p>
+<h3 id="heading-23">D23. Př&#237;jmen&#237; před dvěma inici&#225;lami</h3>
+<p>Naj&#237;t opačn&#233; pořad&#237; z&#225;pisu jm&#233;na.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-50"><code><span class="rx-anchor">\b</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span><span class="rx-escape">\p{Lu}</span><span class="rx-group">)</span><span class="rx-escape">\.</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>Иванов И.О.</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Иванов Иван</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Kontroluje form&#225;t, ne identitu osoby. Složen&#225; př&#237;jmen&#237;, č&#225;stice a tři inici&#225;ly vyžaduj&#237; dalš&#237; pravidlo.</p>
+<h3 id="heading-24">D24. Neviditeln&#233; znaky ke kontrole</h3>
+<p>Naj&#237;t měkk&#253; spojovn&#237;k, nulovou mezeru nebo FEFF.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-51"><code><span class="rx-class">[\x{00AD}\x{200B}\x{FEFF}]</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>сло​во</code></pre>
+<p>Tent&#253;ž testovac&#237; text s viditeln&#253;mi značkami:</p>
+<pre><code>сло[ZWSP]во</code></pre>
+<p>Značka ␠ znamen&#225; obyčejnou mezeru, [TAB] tabul&#225;tor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětluj&#237;c&#237; z&#225;pis; tyto značky se do knihy nevkl&#225;daj&#237;.</p>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>​</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>слово</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: V uk&#225;zce je shoda neviditeln&#225;: mezi о a в je U+200B. Změnit až po určen&#237; jeho funkce. Fyzick&#253; BOM souboru a FEFF v textu jsou jin&#233; př&#237;pady.</p>
+<h3 id="heading-25">D25. Neobvykl&#233; mezery Unicode</h3>
+<p>Naj&#237;t &#250;zk&#233;, širok&#233; a jin&#233; zvl&#225;štn&#237; mezery.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-52"><code><span class="rx-class">[\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>10 000</code></pre>
+<p>Tent&#253;ž testovac&#237; text s viditeln&#253;mi značkami:</p>
+<pre><code>10[NNBSP]000</code></pre>
+<p>Značka ␠ znamen&#225; obyčejnou mezeru, [TAB] tabul&#225;tor, [NBSP] U+00A0, [NNBSP] U+202F a [ZWSP] U+200B. Jde o vysvětluj&#237;c&#237; z&#225;pis; tyto značky se do knihy nevkl&#225;daj&#237;.</p>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code> </code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>10 000</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: &#218;zk&#225; nezlomiteln&#225; mezera mezi skupinami č&#237;slic může b&#253;t spr&#225;vně. Postup upozorňuje na nejednotnost, neoznačuje všechny takov&#233; znaky za chybu.</p>
+<h3 id="heading-26">D26. Opakovan&#233; otazn&#237;ky a vykřičn&#237;ky</h3>
+<p>Naj&#237;t expresivn&#237; nebo n&#225;hodně zdvojenou interpunkci.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-53"><code><span class="rx-class">[!?]</span><span class="rx-quantifier">{2,}</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Что?! Правда!!!</code></pre>
+<p>Oček&#225;van&#233; shody postupně:</p>
+<pre><code>?!
+!!!</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Что? Правда!</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: ?! a autorsk&#233; opakov&#225;n&#237; mohou b&#253;t z&#225;měrn&#233;. V&#253;choz&#237; akc&#237; je kontrola, ne zkr&#225;cen&#237; každ&#233; sekvence na znak.</p>
+<h3 id="heading-27">D27. Cyrilsk&#233; Х u ř&#237;msk&#253;ch č&#237;slic</h3>
+<p>Naj&#237;t rusk&#233; Х vedle latinsk&#253;ch ř&#237;msk&#253;ch značek.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ nen&#237; pro tento v&#253;raz nutn&#233;. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-54"><code><span class="rx-group">(?&lt;=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span>Х<span class="rx-alternation">|</span>Х<span class="rx-group">(?=</span><span class="rx-class">[IVXLCDM]</span><span class="rx-group">)</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Глава IХ</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>Х</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Глава IX</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: Х je cyrilsk&#233;, X latinsk&#233;. Ověřte velikost a kontext; cel&#253; ř&#237;msk&#253; z&#225;pis vzor nevaliduje.</p>
+<h3 id="heading-28">D28. Několik velk&#253;ch p&#237;smen před mal&#253;m</h3>
+<p>Naj&#237;t možnou OCR chybu velikosti na zač&#225;tku slova.</p>
+<p>Akce: pouze vyhled&#225;n&#237; a kontrola.</p>
+<p>„Regul&#225;rn&#237; v&#253;raz“ zapnuto; „Pouze cel&#225; slova“ vypnuto. „Unicode (UCP)“ zapnuto. „Rozlišovat velikost p&#237;smen“ zapnuto.</p>
+<p>Naj&#237;t:</p>
+<pre class="regex" id="regex-55"><code><span class="rx-escape">\p{Lu}</span><span class="rx-quantifier">{2,}</span><span class="rx-escape">\p{Ll}</span><span class="rx-quantifier">+</span></code></pre>
+<p>V&#253;choz&#237; testovac&#237; text:</p>
+<pre><code>Он сказал ПРИвет.</code></pre>
+<p>Oček&#225;van&#225; shoda:</p>
+<pre><code>ПРИвет</code></pre>
+<p>Protipř&#237;klad, kter&#253; se nem&#225; naj&#237;t:</p>
+<pre><code>Он сказал Привет.</code></pre>
+<p>Omezen&#237; a pozn&#225;mky: N&#225;zvy, zkratkov&#225; slova s př&#237;ponami a latinsk&#233; zkratky mohou b&#253;t spr&#225;vně. Neměňte velikost plošně bez ověřen&#237;.</p>
+<h2 id="section-18">18. Čast&#233; chyby a jejich rozpozn&#225;n&#237;</h2>
+<h3 id="section-18-1">18.1. Text je viditeln&#253;, ale hled&#225;n&#237; ho nenajde</h3>
+<p>Zkontrolujte N&#225;vrh, volbu regex, velikost p&#237;smen, rozsah, směr a skutečn&#233; znaky. Latinsk&#233; <code>a</code> a rusk&#233; <code>а</code> jsou podobn&#233;, ale různ&#233;; NBSP nen&#237; obyčejn&#225; mezera a typografick&#233; uvozovky nejsou rovn&#233;.</p>
+<p>U rusk&#253;ch hranic slov ověřte UCP, u velk&#253;ch a mal&#253;ch p&#237;smen př&#237;slušnou volbu. Nekombinujte zbytečně Pouze cel&#225; slova se složit&#253;mi vlastn&#237;mi hranicemi.</p>
+<h3 id="section-18-2">18.2. Shoda je př&#237;liš dlouh&#225;</h3>
+<p>Nejprve podez&#237;rejte hladov&#233; <code>.*</code> nebo př&#237;liš širokou negovanou tř&#237;du. Nahraďte „jak&#253;koli text“ konkr&#233;tn&#237; sadou a omezte d&#233;lku a hranice. Ověřte dotall.</p>
+<h3 id="section-18-3">18.3. Mezery zahrnuj&#237; odstavce</h3>
+<p><code>\s+</code> nen&#237; synonymem mezery. Pro interval mezi slovy začněte <code>[ \t]+</code> a NBSP přidejte jen vědomě.</p>
+<h3 id="section-18-4">18.4. V n&#225;hradě se objevuj&#237; č&#237;slice nebo miz&#237; lom&#237;tka</h3>
+<p>Porovnejte gramatiku FBE v kapitole 16. <code>${name}</code>, <code>$10</code>, <code>\n</code> a <code>\x{...}</code> automaticky neděd&#237; pravidla hled&#225;n&#237; ani jin&#233;ho editoru. Ověřte, že skupina existuje a nen&#237; voliteln&#225; v jin&#233; větvi.</p>
+<h3 id="section-18-5">18.5. Sm&#237;šen&#233; abecedy označuj&#237; běžnou dvojjazyčnou větu</h3>
+<p>Starš&#237; př&#237;klad hledal latinku a azbuku kdekoli na ř&#225;dku a našel i <code>Он прочитал Latin.</code>. D12 omezuje obě podm&#237;nky na stejn&#233; slovo — podstatn&#253; rozd&#237;l mezi OCR anom&#225;li&#237; a dvojjazyčn&#253;m ř&#225;dkem.</p>
+<h3 id="section-18-6">18.6. „Chyb&#237; tečka“ označ&#237; spr&#225;vnou citaci</h3>
+<p>Posledn&#237; znak nestač&#237;: po <code>!</code> může n&#225;sledovat <code>&#187;</code>. D17 zahrnuje uzav&#237;rac&#237; z&#225;vorky a uvozovky, ale nadpisy a pozn&#225;mkov&#233; odkazy st&#225;le potřebuj&#237; ověřen&#237;.</p>
+<h3 id="section-18-7">18.7. Požadovan&#225; struktura se nenajde</h3>
+<p>Textov&#225; regex nevid&#237; DOM jako struktur&#225;ln&#237; skript. Tagy, vnořen&#237;, odkazy na chyběj&#237;c&#237; ID a přesuny pozn&#225;mek jsou jin&#233; &#250;koly. Vhodnějš&#237; může b&#253;t K&#243;d, valid&#225;tor FB2 nebo skript než složitějš&#237; v&#253;raz.</p>
+<h2 id="section-19">19. V&#253;kon a rozs&#225;hl&#233; knihy</h2>
+<p>Začněte konkr&#233;tn&#237;m omezen&#237;m: značkou, tř&#237;dou, slovem nebo zač&#225;tkem odstavce. Vyhněte se hluboce vnořen&#253;m neomezen&#253;m opakov&#225;n&#237;m a několika soupeř&#237;c&#237;m &#250;sekům „libovoln&#253; text“. Ne&#250;spěšn&#233; hled&#225;n&#237; pak může zkoušet obrovsk&#233; množstv&#237; možnost&#237;.</p>
+<p>L&#237;n&#253; kvantifik&#225;tor nen&#237; univerz&#225;ln&#237; l&#233;k na pomalost; tak&#233; proch&#225;z&#237; alternativy. Obvykle pomůže v&#253;slovn&#233; vyloučen&#237; oddělovače, omezen&#237; d&#233;lky a menš&#237; rozsah.</p>
+<p>Při dlouh&#233;m hled&#225;n&#237; nespouštějte dalš&#237; n&#225;hrady. Zjednodušte vzor a zkuste kr&#225;tk&#253; text. Chyba limitu prostředků PCRE2 neznamen&#225; „ž&#225;dn&#225; shoda“.</p>
+<p>U sousedn&#237;ch odstavců a tagů je skript často přehlednějš&#237; i bezpečnějš&#237;. Nespojujte všechny korektury do obrovsk&#233; alternativy: samostatn&#225; pravidla ukazuj&#237; důvod n&#225;lezu.</p>
+<h2 id="section-20">20. Kontrola před uložen&#237;m</h2>
+<p>Prohl&#233;dněte zač&#225;tek, střed a konec zpracovan&#233; č&#225;sti. Ověřte vzorky každ&#233;ho typu, předevš&#237;m citace, rozsahy, inici&#225;ly, pozn&#225;mky a zachovan&#233; form&#225;tov&#225;n&#237;. Zkontrolujte, zda nezmizely v&#253;znamov&#233; NBSP nebo se nepřeskupily odstavce.</p>
+<p>Po změn&#225;ch citliv&#253;ch na strukturu spusťte kontrolu dokumentu FBE. Uložte, podle potřeby znovu otevřete a porovnejte. &#218;spěšn&#233; hled&#225;n&#237; nenahrazuje validaci FB2 ani redakčn&#237; korekturu.</p>
+<h2 id="section-21">21. Zdroje a rozsah platnosti</h2>
+<p>Př&#237;ručka přepracov&#225;v&#225; dodan&#253; regex-design.md s nov&#253;mi vysvětlen&#237;mi a uk&#225;zkami. Nepřesnosti v UCP, hranic&#237;ch hledan&#233;ho objektu, sm&#237;šen&#253;ch abeced&#225;ch a n&#225;hrad&#225;ch byly upřesněny prim&#225;rn&#237;mi zdroji. Postupy v kapitole 17 jsou samostatn&#233; redakčn&#237; sc&#233;n&#225;ře, nikoli citace dokumentace PCRE2.</p>
+<p>[D1] Ofici&#225;ln&#237; syntaxe PCRE2: kotvy, skupiny, Unicode vlastnosti, backtracking a volby.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2pattern.html</code></p>
+<p>[D2] Ofici&#225;ln&#237; Unicode dokumentace PCRE2.</p>
+<p><code>https://www.pcre.org/current/doc/html/pcre2unicode.html</code></p>
+<p>[D3] FBE Next: kompatibilita PCRE2 a adapt&#233;r, revize d2257405d95b0328649acee64b38829b40a4314b.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/docs/pcre2-compatibility.md</code></p>
+</main></body></html>

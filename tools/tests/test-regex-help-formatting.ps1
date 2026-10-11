@@ -2,27 +2,18 @@
 param()
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$parser = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpMarkdown.cpp')
-$dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpDialog.cpp')
-foreach ($token in @('MarkdownBlockKind', 'headingLevel', 'ParseMarkdown', 'ParseInlineCode', 'ReadUtf8File', 'EM_EXLIMITTEXT', 'EM_REPLACESEL', 'WM_GETTEXTLENGTH', 'CFM_BOLD', 'CFM_SIZE', 'CFM_UNDERLINE', 'CFE_UNDERLINE', 'Consolas', 'PFM_SPACEAFTER', 'PFM_STARTINDENT', 'PFM_OFFSET', 'PFM_RIGHTINDENT', 'ThemeManager::AccentColor()', 'PointSizeForBlock', 'RenderedBlockText', 'ExpectedRenderedText', 'MakeHyperlinkCharacterFormat', 'format.dwMask = CFM_UNDERLINE | CFM_COLOR', 'preservesParentLinkFormat')) {
-    if ($parser -notmatch [regex]::Escape($token)) { throw "Missing Markdown formatting behavior: $token" }
+$project = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.vcxproj')
+$resource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\FBE.rc')
+$launcher = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexHelpLauncher.cpp')
+$generator = Get-Content -Raw -LiteralPath (Join-Path $root 'tools\build\generate-regex-help-html.ps1')
+foreach($name in @('RegexHelpDialog.cpp','RegexHelpMarkdown.cpp','RegexHelpDialog.h','RegexHelpMarkdown.h')) {
+    if($project.Contains($name)) { throw "Obsolete RichEdit help source is still built: $name" }
 }
-if ($parser -match '(?s)void RenderMarkdown\(.*?WM_GETTEXTLENGTH') { throw 'Full Help renderer must not derive formatting ranges from total text length.' }
-if ($parser -notmatch '(?s)void RenderMarkdown\(.*?EM_EXGETSEL.*?EM_REPLACESEL.*?EM_EXGETSEL.*?const int last = range\.cpMax.*?EM_REPLACESEL.*?L"\\r"') { throw 'Full Help must format exact CHARRANGE text and append the paragraph delimiter separately.' }
-if ($parser -match 'HelpBlockBackground|HelpTableHeaderBackground|CFM_BACKCOLOR|crBackColor') { throw 'Full Help must not create character-level background fragments.' }
-if ($parser -match 'CHARFORMAT2 hyperlink = MakeCharacterFormat') { throw 'Hyperlinks must not overwrite parent formatting.' }
-if ($parser -match 'MulDiv\(title \? 11 : 9, 1440, dpi\)') { throw 'RichEdit help text must not divide twip size by monitor DPI.' }
-if ($parser -match 'PFM_TABSTOPS|\\tx\d+') { throw 'Full Help tables must not use fixed tab stops.' }
-foreach ($required in @('if (block.kind == MarkdownBlockKind::Title) return 16;', 'if (block.headingLevel == 2) return 13;', 'if (block.headingLevel == 3) return 11;', 'bodyFormat.yHeight >= 200', 'MarkdownTable', 'SplitMarkdownTableRow', 'AddTable', 'block.table.headers', 'BuildTableRtf', 'ReplaceTableWithRtf', 'EM_STREAMIN', '\trowd', '\cellx', 'tableParagraph.cTabCount == 0', 'listParagraph.dxStartIndent > 0 && listParagraph.dxOffset < 0', 'paragraph.dxStartIndent = 360;', 'L"\x2139 "', 'automaticBackgrounds', 'backgroundReset', 'specialBlocks', 'MarkdownBlockKind::Regex', 'MarkdownBlockKind::Example')) {
-    if ($parser -notmatch [regex]::Escape($required)) { throw "Readable Help typography contract is missing: $required" }
+if($resource.Contains('IDD_REGEX_HELP')) { throw 'Native Full Help dialog remains in resources.' }
+foreach($token in @('ShellExecuteExW','GetPreferredRuntimeLocaleName','regex-design.html','regex-source.html','L"en-US"','fbe.regex_help.open_failed')) {
+    if(-not $launcher.Contains($token)) { throw "HTML Help launcher misses $token" }
 }
-foreach($required in @('::GetWindow(m_hWnd, GW_OWNER)', '::MonitorFromWindow(owner ? owner : m_hWnd, MONITOR_DEFAULTTONEAREST)', '::MulDiv(workWidth, 80, 100)', '::MulDiv(workHeight, 80, 100)', 'info.rcWork', 'MonitorFromRect(&placement.rcNormalPosition, MONITOR_DEFAULTTONEAREST)')) {
-    if($dialog -notmatch [regex]::Escape($required)) { throw "Full Help first-run/placement contract is missing: $required" }
+foreach($token in @('HtmlEncode','<table>','<thead>','<tbody>','class=`"regex`"','class=`"example`"','class=`"note`"','class=`"warning`"')) {
+    if(-not $generator.Contains($token)) { throw "HTML Help generator misses $token" }
 }
-foreach($required in @('WM_REGEX_HELP_RENDER = WM_APP + 211', '::PostMessage(m_hWnd, WM_REGEX_HELP_RENDER, 0, 0)', 'SetWindowTextW(text, L"Loading\x2026")', 'LRESULT OnDeferredRender', 'm_rendered', 'g_markdownCache', 'metrics->cacheHit = true')) {
-    if(($dialog + $parser) -notmatch [regex]::Escape($required)) { throw "Full Help deferred rendering/cache contract is missing: $required" }
-}
-foreach($required in @('tableDescriptionFormat', 'tableDescriptionAt', 'standaloneDescription.szFaceName, standaloneTerm.szFaceName) != 0', 'tableHeaderBold', 'tableDataNonBold', 'threeColumns')) {
-    if ($parser -notmatch [regex]::Escape($required)) { throw "Table terms must use Consolas while descriptions retain the UI font: $required" }
-}
-Write-Host 'Regex Help formatting and placement contract passed.'
+Write-Host 'Regex Help HTML migration contract passed.'

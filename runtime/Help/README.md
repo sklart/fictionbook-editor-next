@@ -1,5 +1,5 @@
-# Editable regular-expression help
+# Regular-expression help
 
-FBE loads `regex-design.md` or `regex-source.md` each time the Full Help dialog opens.
+The `regex-design.md` and `regex-source.md` files for all 12 supported UI locales are the editable sources. `tools/build/generate-regex-help-html.ps1 -Generate` creates the corresponding HTML pages; `-Check` verifies that the generated pages are current. Do not edit the HTML files by hand.
 
-The lookup order is `Help/<current locale>/...`, then `Help/en-US/...`, then a short built-in message. Complete reviewed translations are supplied for all 12 supported UI locales. The `en-US` fallback remains only for an unknown or unavailable locale; the application never writes these files.
+FBE opens the local HTML page in the user's browser. The lookup order is `Help/<current locale>/...`, then `Help/en-US/...`. If neither page exists or the browser cannot be opened, FBE displays a localized error. The help uses only local files and does not require a network connection.

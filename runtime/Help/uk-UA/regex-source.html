@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="uk-UA">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Код</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Інший режим"><strong>Код</strong><a href="regex-design.html">Дизайн</a></nav><main>
+<h1 id="top">Довідка з регулярних виразів — Код</h1>
+<aside class="note" id="note-1"><strong>Примітка</strong><p>Примітка до перекладу: російські слова й речення в контрольних прикладах збережено навмисно. Це тестові дані: регулярні вирази, рядки заміни, пробільні символи та очікувані результати відповідають російській еталонній редакції. Пояснення перекладено; приклади не адаптовано автоматично до української типографіки.</p></aside>
+<p>Повний посібник із пошуку та заміни в XML-коді книги FictionBook Editor Next.</p>
+<p>Редакція: 2 жовтня 2026 року. Режим &#171;Дизайн&#187; описано в regex-design.md. Ці рецепти стосуються &#171;Коду&#187;; PCRE2-вирази не слід переносити без перевірки.</p>
+<h2 id="section-1">1. Для чого потрібний пошук у &#171;Коді&#187;</h2>
+<p>У цьому режимі видно XML-теги, атрибути, посилання, сутності й текст. Це відповідний засіб аудиту FB2: порожні елементи, HTML-теги імпорту, заглушки посилань, незвичні атрибути й залишки конвертації.</p>
+<aside class="note" id="note-2"><strong>Примітка</strong><p>Regex перевіряє текст XML, а не розібране дерево DOM. Структуру перевіряйте XML-інструментом.</p></aside>
+<p>Для літературної вичитки звичайних слів часто зручніший &#171;Дизайн&#187;. У XML збіг може опинитися в атрибуті, коментарі, CDATA, імені файлу чи двійкових даних. Урахуйте це до заміни.</p>
+<p>&#171;Лише пошук і перевірка&#187; означає кандидатів, а не доведену помилку XML чи тексту. Навіть проста заміна пробілів змінює значущий вміст; універсально безпечних замін по довільному XML немає.</p>
+<h2 id="section-2">2. Швидкий початок</h2>
+<p>Збережіть копію, перейдіть у &#171;Код&#187;, відкрийте пошук і ввімкніть регулярні вирази. XML-приклади зазвичай враховують регістр і вимикають &#171;Лише слово цілком&#187;. Межі задає сам шаблон.</p>
+<p>Для простого порожнього абзацу:</p>
+<pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Знаходить <code>&lt;p&gt;&lt;/p&gt;</code> і <code>&lt;p&gt;   &lt;/p&gt;</code> на одному фізичному рядку, не <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Не видаляйте автоматично й не перетворюйте на <code>&lt;empty-line/&gt;</code>: структурне призначення може бути різним.</p>
+<section class="example" id="example-1"><strong>Приклад</strong><pre><code>Знайти: &lt;p&gt;[ \t]*&lt;/p&gt;
+Вхідний текст: &lt;p&gt;   &lt;/p&gt;
+Збіг: &lt;p&gt;   &lt;/p&gt;
+Очікується: Перевірте цей абзац, перш ніж змінювати XML.</code></pre></section>
+<p>Вставляйте лише шаблон, без <code>/.../g</code>, лапок C++ та подвоєних рисок JSON.</p>
+<h2 id="section-3">3. Рушій: Scintilla, а не PCRE2</h2>
+<p>FBE використовує Scintilla з <code>SCFIND_REGEXP</code> та <code>SCFIND_CXX11REGEX</code>. У розглянутій збірці це C++-реалізація граматики ECMAScript, не PCRE2 і не всі можливості сучасного JavaScript. [S1, S2]</p>
+<p>У Scintilla також є старий базовий механізм з іншими правилами. Старі приклади груп з екранованими дужками не змішуйте з C++11: тут <code>(слово)</code> захоплює, <code>\(слово\)</code> шукає буквальні дужки.</p>
+<p>Unicode у XML не заборонено, але UCP і властивостей PCRE2 немає. Класи залежать від стандартної бібліотеки; <code>\w</code> не дорівнює всім літерам усіх мов. Для передбачуваного ASCII використовуйте <code>[A-Za-z0-9_]</code>. <code>[А-Яа-яЁё]</code> охоплює російські літери, не всю кирилицю.</p>
+<h3 id="section-3-1">3.1. Головні відмінності від &#171;Дизайну&#187;</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Властивість</th><th scope="col">Дизайн</th><th scope="col">Код</th></tr></thead><tbody>
+<tr><td>Об’єкт пошуку</td><td>Текстове подання книги</td><td>XML-код</td></tr>
+<tr><td>Рушій</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
+<tr><td>UCP і Unicode-властивості</td><td>Доступні в PCRE2</td><td>Не підтримані як PCRE2-синтаксис</td></tr>
+<tr><td>Перевірка назад</td><td>З обмеженнями PCRE2</td><td>Не підтримана</td></tr>
+<tr><td>Перша група в заміні</td><td><code>$1</code> або <code>\1</code></td><td><code>\1</code></td></tr>
+<tr><td>Накреслення при заміні</td><td>Команди FBE</td><td>Лише XML-текст</td></tr>
+<tr><td>Пошук через фізичні рядки</td><td>Залежить від подання; міжабзацна заміна обмежена</td><td>Поточний шлях не підтримує</td></tr>
+</tbody></table></div>
+<h2 id="section-4">4. Построчний пошук: найважливіше обмеження</h2>
+<p>У поточному шляху <code>MatchOnLines</code> зіставляє вираз окремо з кожним фізичним рядком. Рядок може бути довгим; перенесення за шириною вікна не створює нового фізичного рядка. [S2]</p>
+<aside class="warning" id="warning-1"><strong>Увага</strong><p>У поточному пошуку regex у &#171;Коді&#187; не знаходить збігів через межі фізичних рядків; шаблон не об’єднає їх.</p></aside>
+<p>Наприклад:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>та:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Для XML це може бути те саме сусідство. Для regex FBE перший випадок уміщується в один збіг, другий перетинає межу й недоступний.</p>
+<p><code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> або клас будь-якого символу не знімають обмеження. Рушій не отримує обидва рядки як один фрагмент. Потрібна зміна програмного шляху, а не лише виразу.</p>
+<p>Водночас заміна може вставити розрив рядка. Це інша операція, наведена в K28. Не плутайте &#171;знайти між рядками&#187; й &#171;вставити межу після знайденого тексту&#187;.</p>
+<h3 id="section-4-1">4.1. Робота з багаторядковим XML</h3>
+<p>Для атрибута на окремому рядку часто досить шукати сам атрибут без усього тегу. Відношення між кількома рядками перевіряють структурними засобами, валідатором, скриптом або XML-інструментом.</p>
+<p>Не видаляйте всі розриви книги заради одного regex: це зачіпає текст, коментарі, CDATA та читабельність. Спершу визначте, чи потрібне міжрядкове зіставлення.</p>
+<h2 id="section-5">5. Символи й екранування</h2>
+<p>Звичайний символ шукає себе. Буквальний метасимвол екрануйте зворотною скісною рискою.</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Потрібний текст</th><th scope="col">Вираз</th></tr></thead><tbody>
+<tr><td>Крапка</td><td><code>\.</code></td></tr>
+<tr><td>Плюс</td><td><code>\+</code></td></tr>
+<tr><td>Питання</td><td><code>\?</code></td></tr>
+<tr><td>Зірочка</td><td><code>\*</code></td></tr>
+<tr><td>Кругла дужка</td><td><code>\(</code> або <code>\)</code></td></tr>
+<tr><td>Число у квадратних дужках</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Зворотна скісна риска</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p><code>.</code> означає один символ доступного фрагмента, не буквальну крапку. У UTF-8 фактичну обробку визначають адаптер Scintilla й бібліотека; не вимірюйте emoji за припущенням &#171;одна крапка — один видимий знак&#187;.</p>
+<p><code>\r</code> і <code>\n</code> позначають CR/LF, але не дозволяють построчному пошуку перейти межу. Для пробілів і табуляції використовуйте <code>[ \t]</code>.</p>
+<p>PCRE2-обрамлення <code>\Q...\E</code> не є переносним способом екранувати текст тут. Екрануйте спеціальні символи окремо.</p>
+<h2 id="section-6">6. Класи, діапазони й межі слова</h2>
+<p><code>[abc]</code> знаходить один символ списку, <code>[a-z]</code> — діапазону, <code>[^abc]</code> — поза списком. Далі можна повтор: <code>[0-9]+</code>.</p>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Клас</th><th scope="col">Практичний зміст</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[0-9]</code></td><td>ASCII-цифра</td></tr>
+<tr><td class="syntax"><code>[A-Za-z]</code></td><td>Латинська ASCII-літера</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Звичайний пробіл або табуляція</td></tr>
+<tr><td class="syntax"><code>[^&lt;]</code></td><td>Доступний символ, крім &lt;</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Символ, що не є жодною прямою лапкою</td></tr>
+<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Клас цифр реалізації та заперечення</td></tr>
+<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Пробільний клас та заперечення</td></tr>
+<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Клас слова та заперечення</td></tr>
+</tbody></table></div>
+<p>Негативний клас не розуміє XML. <code>[^&lt;]*</code> зручний для простого тексту між тегами, не повного розбору сутностей, коментарів чи CDATA.</p>
+<p><code>\b</code> — межа слова, <code>\B</code> — не-межа. Для атрибутів її часто замало: <code>id</code> може стояти після двокрапки іншого імені. Надійніше явно перевіряти розділювач: початок рядка, пробіл або табуляцію.</p>
+<h2 id="section-7">7. Якорі й повтори</h2>
+<p><code>^</code> і <code>$</code> у поточному шляху задають фізичні межі рядка. Для лише горизонтальних пробілів:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Видалення знайдених символів залишить порожній рядок: розрив не входив до збігу.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Квантифікатор</th><th scope="col">Повтори</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Нуль або один</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Нуль або більше</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Один або більше</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Рівно три</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>Щонайменше три</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Від двох до п’яти</td></tr>
+</tbody></table></div>
+<p>C++11 дозволяє ліниві форми <code>*?</code> та <code>+?</code>. Але для атрибута часто ясніше виключити обмежувальну лапку:</p>
+<pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
+<p>Приклад для подвійних лапок; одинарним потрібна власна гілка.</p>
+<p>Не переносіть possessive-квантифікатори, атомарні групи та inline-опції PCRE2.</p>
+<h2 id="section-8">8. Групи, альтернатива й перевірки вперед</h2>
+<p>Захоплювальна група <code>( ... )</code> зберігає фрагмент; <code>(?: ... )</code> об’єднує без номера.</p>
+<p>Вибір кількох тегів:</p>
+<pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
+<p>Числове посилання може зв’язати відкривальний і закривальний теги простого однорядкового фрагмента:</p>
+<pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Воно вимагає однакового імені. Це не перевірка довільної XML-вкладеності.</p>
+<p>Позитивне <code>(?=...)</code> та негативне <code>(?!...)</code> lookahead перевіряють правий контекст без включення до збігу. Межа після імені не дає <code>&lt;a</code> збігтися з початком <code>&lt;author&gt;</code>.</p>
+<pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Для перевірки ліворуч захопіть контекст і поверніть у заміні: lookbehind недоступний. Не копіюйте <code>(?&lt;=...)</code> з довідки &#171;Дизайн&#187;.</p>
+<h2 id="section-9">9. Заміна в режимі &#171;Код&#187;</h2>
+<p>FBE використовує <code>SCI_REPLACETARGETRE</code>: збіг уже знайдено, а Scintilla розгортає заміну за власними правилами. Це не <code>std::regex_replace</code> зі звичайним <code>$1</code> і не Design-граматика FBE. [S1, S2]</p>
+<h3 id="section-9-1">9.1. Посилання на захоплення</h3>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">У заміні</th><th scope="col">Значення</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\0</code></td><td>Повний збіг</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Відповідні групи</td></tr>
+<tr><td class="syntax"><code>$1</code></td><td>Не використовувати як групу: тут інший синтаксис</td></tr>
+</tbody></table></div>
+<p>Знайти:</p>
+<pre class="regex" id="regex-7"><code><span class="rx-escape">\(</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-escape">\)</span></code></pre>
+<p>Замінити:</p>
+<pre><code>[\1]</code></pre>
+<p>Із <code>(12)</code> виходить <code>[12]</code>. Це доречно лише у відібраному контексті: число в круглих дужках не обов’язково є приміткою.</p>
+<p>Долар у Source-заміни не потрібно подвоювати за правилами інших систем. Зворотна скісна риска натомість є керувальним символом.</p>
+<h3 id="section-9-2">9.2. Керувальні символи в заміні</h3>
+<p>Перевірений код Scintilla обробляє <code>\t</code>, <code>\n</code>, <code>\r</code> та <code>\\</code> як табуляцію, LF, CR і буквальну риску. Це не суперечить відсутності міжрядкового пошуку. [S2]</p>
+<p>Для CRLF використовується <code>\r\n</code>, для LF — <code>\n</code>. Вибір має відповідати документу; не створюйте змішаних закінчень випадково.</p>
+<p><code>\x{00A0}</code> не вставляє тут Unicode-символ. Використовуйте справжній NBSP. Design-команди <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> не задають регістру чи накреслення.</p>
+<h3 id="section-9-3">9.3. Видалення й збереження XML</h3>
+<p>Порожня заміна видаляє діапазон. Видалення порожнього тегу, атрибута чи посилання може пошкодити документ попри успішний пошук. Структурні рецепти нижче переважно діагностичні.</p>
+<p>Перейменування <code>id</code> лише в одному місці залишає старі посилання. Для зв’язаних об’єктів використовуйте штатне перейменування, а не незалежні масові заміни.</p>
+<h2 id="section-10">10. Як читати XML-рецепти</h2>
+<p>XML чутливий до регістру: <code>&lt;p&gt;</code> і <code>&lt;P&gt;</code> різні. Порядок атрибутів не визначає зміст, можливі одинарні/подвійні лапки й пробіли навколо рівності. Приклади охоплюють звичайні варіанти, доки правило не надто ускладнюється. [S3]</p>
+<p><code>l:</code> та <code>xlink:</code> — поширені префікси XLink у FB2. Зміст задає <code>xmlns</code>, а не саме ім’я префікса. Рецепти з цими формами не гарантують інші: адаптуйте правило й перевірте декларацію.</p>
+<p><code>[^&gt;]*</code> часто наближено описує вміст відкривального тегу. Це зручно, але <code>&gt;</code> законний в атрибуті. Коментарі й CDATA можуть містити псевдорозмітку. Тому це кандидати для перегляду, не повна XML-валідація чи сліпа перебудова.</p>
+<p>Порожній елемент не завжди порушує схему, числова сутність не означає пошкодження. Заглушка, незвичне ім’я чи зовнішнє посилання теж можуть мати законну мету.</p>
+<h2 id="section-11">11. Практичні рецепти FB2/XML</h2>
+<p>За замовчуванням частини прикладу мають бути на одному фізичному рядку. Якщо шукається весь відкривальний тег, усі перевірювані атрибути також мають бути там. Для пошуку лише атрибута такої вимоги до цілого тегу немає.</p>
+<h3 id="heading-1">K01. Пробіли наприкінці фізичного рядка</h3>
+<p>Знайти хвіст звичайних пробілів і табуляції.</p>
+<p>Дія: заміна після перевірки.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Той самий контрольний текст із видимими позначеннями:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
+<p>Тут ␠ означає звичайний пробіл, [TAB] — табуляцію, [NBSP] — U+00A0, [NNBSP] — U+202F, [ZWSP] — U+200B. Це пояснювальний запис; позначення не вставляються до книги.</p>
+<p>Замінити: залишити поле цілком порожнім. Слово &#171;порожньо&#187; вводити не потрібно.</p>
+<p>Результат заміни:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Не видаляє розрив. У змішаному XML, CDATA та пробільно чутливих ділянках хвіст може бути текстом. Не вважайте очищення всіх рядків безумовно безпечним.</p>
+<h3 id="heading-2">K02. Очистити лише пробільний рядок</h3>
+<p>Видалити пробільні символи рядка без іншого вмісту.</p>
+<p>Дія: заміна після перевірки.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Той самий контрольний текст із видимими позначеннями:</p>
+<pre><code>␠␠␠[TAB]
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Тут ␠ означає звичайний пробіл, [TAB] — табуляцію, [NBSP] — U+00A0, [NNBSP] — U+202F, [ZWSP] — U+200B. Це пояснювальний запис; позначення не вставляються до книги.</p>
+<p>Замінити: залишити поле цілком порожнім. Слово &#171;порожньо&#187; вводити не потрібно.</p>
+<p>Результат заміни:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Рядок залишиться порожнім: LF/CRLF не входили до діапазону. Це не видалення всіх порожніх фізичних рядків.</p>
+<h3 id="heading-3">K03. Пробіл перед закриттям порожнього елемента</h3>
+<p>Знайти звичайний проміжок перед /&gt;.</p>
+<p>Дія: заміна після перевірки.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;empty-line /&gt;</code></pre>
+<p>Замінити:</p>
+<pre><code>/&gt;</code></pre>
+<p>Результат заміни:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Обмеження та зауваження: XML дозволяє обидві форми. Це косметика, не обов’язкове виправлення. Поєднання може бути у тексті чи коментарі; масову заміну переглядайте.</p>
+<h3 id="heading-4">K04. Порожній простий абзац</h3>
+<p>Перевірити пару p без тексту.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Не охоплює атрибути, розриви, NBSP-сутність чи вкладений тег. Порожній p та empty-line не автоматично взаємозамінні.</p>
+<h3 id="heading-5">K05. Два empty-line на одному рядку</h3>
+<p>Знайти сусідні порожні рядки FB2 на одному фізичному рядку коду.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Обмеження та зауваження: Між ними лише звичайні пробіли/табуляція. Розрив навмисно не підтримується. Дві порожні строки можуть розділяти сцени.</p>
+<h3 id="heading-6">K06. Порожні важливі метадані</h3>
+<p>Перевірити кілька простих полів без вмісту.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
+<p>Обмеження та зауваження: Не всі поля обов’язкові скрізь. Regex не перевіряє схему FB2, батьківський елемент чи правильність заповненого значення.</p>
+<h3 id="heading-7">K07. Порожнє inline-форматування</h3>
+<p>Знайти порожні парні елементи накреслення.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
+<p>Обмеження та зауваження: NBSP, атрибути й вкладені елементи потребують іншої умови. До видалення перевірте структурне призначення.</p>
+<h3 id="heading-8">K08. Однакове форматування вкладене в себе</h3>
+<p>Відрізнити strong/strong від дозволеного strong/emphasis.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;strong&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/strong&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;strong&gt;&lt;strong</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
+<p>Обмеження та зауваження: Друге ім’я не вибирається незалежно, а посилається на перше. Збіг не включає весь елемент і не призначений для його видалення однією операцією.</p>
+<h3 id="heading-9">K09. Можливі HTML-теги після імпорту</h3>
+<p>Знайти поширені HTML-імена для перевірки FB2.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;div&gt;Text&lt;/div&gt;</code></pre>
+<p>Очікувані збіги послідовно:</p>
+<pre><code>&lt;div&gt;
+&lt;/div&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
+<p>Обмеження та зауваження: Текст коментарів/CDATA може збігатися. Не замінюйте b на strong та i на emphasis загальним правилом без перевірки вмісту й атрибутів.</p>
+<h3 id="heading-10">K10. Тег у верхньому регістрі</h3>
+<p>Знайти звичайні повністю великі імена тегів.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;P&gt;Text&lt;/P&gt;</code></pre>
+<p>Очікувані збіги послідовно:</p>
+<pre><code>&lt;P&gt;
+&lt;/P&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Регістр обов’язковий, інакше знайдеться звичайний p. Не перелічує всі законні Unicode-імена й не перевіряє простір імен.</p>
+<h3 id="heading-11">K11. HTML-сутність NBSP</h3>
+<p>Знайти буквальний &amp;nbsp; у файлі.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&amp;nbsp;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Без декларації &amp;nbsp; не є однією з п’яти визначених XML-сутностей. Перевірте DTD і коментарі. Не декодуйте всі сутності масово.</p>
+<h3 id="heading-12">K12. Числові посилання на символи</h3>
+<p>Знайти десяткову чи шістнадцяткову форму.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;&amp;#160; &amp;#xA0;&lt;/p&gt;</code></pre>
+<p>Очікувані збіги послідовно:</p>
+<pre><code>&amp;#160;
+&amp;#xA0;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Обидві можуть бути правильними. Перевіряється форма, не кодова точка. Перетворення &amp;lt; на буквальний &lt; може пошкодити XML.</p>
+<h3 id="heading-13">K13. Порожній id</h3>
+<p>Знайти звичайний порожній id з обома видами лапок.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code> id=&quot;&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Обмеження та зауваження: Пробіл перед атрибутом входить до збігу. xml:id не охоплюється. Новий ID потребує унікальності й перевірки посилань, чого regex не робить.</p>
+<h3 id="heading-14">K14. Перелік значень id</h3>
+<p>Знайти заповнені звичайні id для аудиту назв.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code> id=&quot;s1&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Обмеження та зауваження: Результати не доводять унікальність і допустимість усіх IDs. Для зв’язаних об’єктів є штатне перейменування FBE.</p>
+<h3 id="heading-15">K15. Зовнішні HTTP(S)-посилання</h3>
+<p>Знайти href із поширеним XLink-префіксом і зовнішньою адресою.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test/book&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Шукає атрибут, не всі URL тексту. Підтримано l і xlink; інші префікси врахуйте окремо. Доступність адреси не перевіряється.</p>
+<h3 id="heading-16">K16. Локальні file://-посилання</h3>
+<p>Знайти прив’язку до локального файлу, недоступну читачеві.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a xlink:href=&quot;file:///C:/Book/image.png&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Не відкривайте невідому адресу автоматично. Збіг не вирішує, чи вбудувати файл, замінити або видалити посилання.</p>
+<h3 id="heading-17">K17. Порожня ціль посилання</h3>
+<p>Знайти звичайну порожню XLink-ціль.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a l:href=&quot;&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code> l:href=&quot;&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Порожній текст посилання й відсутній href — інші випадки для окремої перевірки.</p>
+<h3 id="heading-18">K18. Ціль #undefined</h3>
+<p>Знайти буквальну заглушку.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a xlink:href=&quot;#undefined&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Перевіряйте реальний об’єкт. undefined не заборонене синтаксисом XML, але часто означає незавершене зв’язування.</p>
+<h3 id="heading-19">K19. Посилання з префіксом bookmark</h3>
+<p>Знайти характерні цілі конвертера, не всі внутрішні посилання.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a l:href=&quot;#bookmark12&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: href=&quot;#...&quot; охоплює будь-яке внутрішнє посилання, не лише bookmark. Сам bookmark не доводить зайвості; видалення потребує перегляду.</p>
+<h3 id="heading-20">K20. Зворотні посилання Word/FBD</h3>
+<p>Знайти _ftnref та _ednref у цілях.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a l:href=&quot;#_ftnref1&quot;&gt;Back&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Повернення може бути потрібним навігації. Не видаляйте лише через походження імені.</p>
+<h3 id="heading-21">K21. Посилання-примітки незалежно від порядку атрибутів</h3>
+<p>Знайти відкривальний a із type=note та внутрішнім XLink-href у будь-якому порядку.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Також підтримано xlink та одинарні лапки. Усі атрибути мають бути на одному фізичному рядку. Значення з &gt;, коментарі й нестандартна розмітка потребують XML-розбору. Наявність цілі не перевіряється.</p>
+<h3 id="heading-22">K22. Можливі числові маркери приміток</h3>
+<p>Знайти число у квадратних, фігурних або круглих дужках.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;Text [12], {3}, (4).&lt;/p&gt;</code></pre>
+<p>Очікувані збіги послідовно:</p>
+<pre><code>[12]
+{3}
+(4)</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Це можуть бути бібліографія, формули, пояснення чи звичайний текст. Правило не створює примітки й не перевіряє унікальність.</p>
+<h3 id="heading-23">K23. Забуті Your/Name</h3>
+<p>Перевірити типові англійські заглушки імені в метаданих.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
+<p>Обмеження та зауваження: Контекст автора/створювача та реальне ім’я потребують перегляду. Не підставляйте автоматично дані іншого видання.</p>
+<h3 id="heading-24">K24. Неприв’язана ілюстрація #undefined</h3>
+<p>Знайти image із типовою заглушкою.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
+<p>Обмеження та зауваження: У FB2 зазвичай XLink-href, не HTML-src. Binary з потрібним ID перевіряється окремо. Відсутнє зображення й неправильне посилання — різні причини.</p>
+<h3 id="heading-25">K25. Декларація windows-1251</h3>
+<p>Знайти старе кодування в XML-декларації.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
+<p>Обмеження та зауваження: Саме по собі не помилка. Заміна windows-1251 на utf-8 не перекодовує байти. Потрібне збереження/конвертація, узгоджене з декларацією.</p>
+<h3 id="heading-26">K26. Амперсанд без відомої стандартної сутності</h3>
+<p>Знайти &amp; перед послідовністю, не схожою на стандартне посилання на символ.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;A &amp; B&lt;/p&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&amp;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: У CDATA й коментарях &amp; законний, DTD може оголосити інші сутності. Це діагностика, не валідатор. Автоматичне &amp; → &amp;amp; може подвоїти екранування.</p>
+<h3 id="heading-27">K27. Звичайні внутрішні посилання</h3>
+<p>Знайти локальну #id-ціль окремо від bookmark.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>l:href=&quot;#note1&quot;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Обмеження та зауваження: Показує запис, не доводить існування рівно одного ID. Висячі й дубльовані посилання потребують аналізу документа.</p>
+<h3 id="heading-28">K28. Рознести два empty-line після однорядкового пошуку</h3>
+<p>Показати відмінність обмеження пошуку від вставлення розриву заміною.</p>
+<p>Дія: одинична контрольована заміна.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>Замінити:</p>
+<pre><code>\1\r\n\2</code></pre>
+<p>Результат заміни:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Обмеження та зауваження: Керувальні послідовності Scintilla перетворює на CRLF. Для LF використовуйте \1\n\2. Це не універсальне форматування XML і не ввімкнення багаторядкового пошуку.</p>
+<h3 id="heading-29">K29. Подвійні пробіли в простому XML-тексті</h3>
+<p>Знайти фрагмент між тегами з кількома звичайними пробілами.</p>
+<p>Дія: лише пошук і перевірка.</p>
+<p>&#171;Регулярний вираз&#187; — увімкнено; &#171;Лише слово цілком&#187; — вимкнено. &#171;Враховувати регістр&#187; — увімкнено.</p>
+<p>Знайти:</p>
+<pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
+<p>Контрольний початковий текст:</p>
+<pre><code>&lt;p&gt;one  two&lt;/p&gt;</code></pre>
+<p>Очікуваний збіг:</p>
+<pre><code>&gt;one  two&lt;</code></pre>
+<p>Контрприклад, який не має знаходитися:</p>
+<pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
+<p>Обмеження та зауваження: Збіг включає кутові розділювачі й увесь фрагмент. Слова зручніше виправляти в &#171;Дизайні&#187;. Не замінюйте весь XML-збіг одним пробілом.</p>
+<h2 id="section-12">12. Чому regex не замінює XML-перевірку</h2>
+<p>Вираз доводить лише локальну схожість із послідовністю символів, не правильність усього документа: вкладеність, схема FB2, простори імен, унікальні ID й наявні цілі потребують окремого аналізу.</p>
+<p>Два однакові <code>id</code> на різних фізичних рядках не можна надійно виявити одним порівнянням поточного построчного regex. Так само відсутню ціль в іншій частині книги. Для цього потрібні перевірка FBE та структура документа.</p>
+<p>Не декодуйте всі XML-сутності: <code>&amp;lt;</code> і <code>&amp;amp;</code> захищають текст від перетворення на розмітку. Не видаляйте все HTML-подібне з CDATA, коментарів чи цитат коду.</p>
+<p>Парність, атрибути й вміст має зберігати операція заміни. Зміна лише відкривального <code>&lt;strong&gt;</code> залишає старий закривальний тег. Посилання в прикладі не робить кожну подальшу зміну структурно безпечною.</p>
+<h2 id="section-13">13. Часті помилки</h2>
+<h3 id="section-13-1">13.1. Знаходяться малі теги замість великих</h3>
+<p>Увімкніть урахування регістру. Для XML це не косметична опція. <code>[A-Z]</code> без регістру втрачає сенс перевірки великих тегів.</p>
+<h3 id="section-13-2">13.2. У заміні буквальний $1</h3>
+<p>Використовуйте <code>\1</code>. Source-заміна йде через Scintilla, не JavaScript чи API з <code>$1</code>.</p>
+<h3 id="section-13-3">13.3. \p, \K або lookbehind не працюють</h3>
+<p>Це конструкції іншого профілю. Для тексту перейдіть у &#171;Дизайн&#187;, для XML перепишіть правило явними класами, захопленням контексту, незахоплювальними групами й lookahead.</p>
+<h3 id="section-13-4">13.4. Сусідні теги не знаходяться</h3>
+<p>Перевірте фізичний розрив, пробіл перед <code>/&gt;</code>, одинарні лапки, додаткові атрибути й префікс. Текстове сусідство не дорівнює сусідству XML-дерева.</p>
+<h3 id="section-13-5">13.5. Примітка не знаходиться за іншого порядку атрибутів</h3>
+<p>&#171;Спершу type, потім href&#187; залежить від порядку. K21 використовує окремі lookahead. Багаторядковий тег усе одно недоступний одному збігу; шукайте атрибут або структуру.</p>
+<h3 id="section-13-6">13.6. strong/emphasis оголошено помилкою вкладеності</h3>
+<p>Різні правильні стилі можуть вкладатися. Повтор однакового імені потребує посилання як у K08, не двох незалежних альтернатив.</p>
+<h3 id="section-13-7">13.7. &#171;Bookmark&#187; знаходить усі примітки</h3>
+<p>Внутрішнє <code>#</code>-посилання ще не bookmark-артефакт. Розділяйте загальний аудит K27 і специфічний префікс K19.</p>
+<h3 id="section-13-8">13.8. Заміна псує видимий текст</h3>
+<p>У &#171;Коді&#187; збіги можуть бути в тексті, атрибуті, коментарі чи binary. Скасуйте й звузьте область або правило. Назва &#171;безпечна заміна&#187; не скасовує XML-контексту.</p>
+<h2 id="section-14">14. Обмеження профілю Source</h2>
+<p>Не використовуйте UCP, властивості PCRE2, lookbehind, сучасні іменовані групи JavaScript/PCRE2, атомарні групи, possessive-квантифікатори, branch reset, підпрограми, PCRE2 verbs, <code>\K</code>, <code>\G</code> і Design-команди накреслення.</p>
+<p>Inline-опції PCRE2 не замінюють прапорці діалогу. Можливості нових браузерних JavaScript не з’являються автоматично в C++11 ECMAScript.</p>
+<p>MatchOnLines лишається построчним за будь-якої послідовності розриву в шаблоні. Компіляція іншим рушієм не доводить сумісності FBE.</p>
+<p>Для Unicode-слів і складної вичитки є &#171;Дизайн&#187;. Для структури — XML/FB2, а не необмежений <code>.*</code> для компенсації обмежень.</p>
+<h2 id="section-15">15. Швидкодія й довгі XML-рядки</h2>
+<p>Короткий вираз не обов’язково швидкий. Необмежені повтори й конкурентні альтернативи можуть гальмувати на великих рядках, особливо коли весь документ чи великий binary лежить в одному рядку.</p>
+<p>Починайте з конкретного тегу/атрибута й обмеженого класу, не &#171;будь-яких символів&#187;. Окремі діагностичні правила легше перевіряти та скасовувати, ніж пошук усіх можливих помилок разом.</p>
+<p>Не зводьте весь XML до одного рядка для обходу MatchOnLines: це змінює документ і не гарантує швидкодії.</p>
+<h2 id="section-16">16. Перевірка після заміни</h2>
+<p>Порівняйте очікуваний і фактичний діапазон. За груп перевірте лапки, префікси, кутові дужки та закривальні теги. Коментарі, CDATA й binary не мають постраждати.</p>
+<p>Перевірте FB2, збережіть і відкрийте після суттєвих змін. Контролюйте &#171;Код ↔ Дизайн&#187;, примітки, зображення й текст. Перейменування ID вимагає перевірки об’єкта та всіх посилань.</p>
+<h2 id="section-17">17. Джерела й межі застосування</h2>
+<p>Переклад розширеного посібника на основі regex-source.md зберігає структуру &#171;рушій → синтаксис → заміна → XML-приклади → обмеження&#187;. Надто загальні рецепти звужено, пояснення й тести написано заново та звірено з первинними джерелами.</p>
+<p>[S1] Офіційна документація Scintilla, Searching: C++11, прапорці й SCI_REPLACETARGETRE.</p>
+<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
+<p>[S2] Scintilla у зрізі FBE d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Тут розрізняються пошук між рядками та вставка CR/LF у заміні.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
+<p>[S3] W3C XML 1.0 та Namespaces in XML: імена, атрибути, сутності й простори імен.</p>
+<p><code>https://www.w3.org/TR/xml/</code></p>
+<p><code>https://www.w3.org/TR/xml-names/</code></p>
+</main></body></html>

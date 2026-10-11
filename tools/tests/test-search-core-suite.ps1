@@ -26,6 +26,7 @@ Invoke-Test 'test-search-templates-pin-rendering.ps1'
 Invoke-Test 'test-search-templates-open-runtime.ps1' -TestArguments @{ FbeExe = $FbeExe }
 Invoke-Test 'test-regex-help-formatting.ps1'
 Invoke-Test 'test-regex-help-markdown.ps1'
+Invoke-Test 'test-regex-help-html.ps1'
 Invoke-Test 'test-regex-help-runtime.ps1' -TestArguments @{ FbeExe = $FbeExe }
 Invoke-Test 'test-regex-help-escape.ps1'
 Invoke-Test 'test-regex-quick-reference-runtime.ps1' -TestArguments @{ PlatformToolset = $PlatformToolset }

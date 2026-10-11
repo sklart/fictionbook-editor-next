@@ -25,6 +25,7 @@ is needed to build the project but is not shipped as a separate component.
 | Windows Template Library (WTL) | 10.01 | MS-PL | UI and Windows shell components, compiled into FBE, FBV, and FBShell | <https://sourceforge.net/projects/wtl/> |
 | LunaSVG | 3.5.0 | MIT | EPUB import SVG renderer, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/lunasvg> |
 | PlutoVG | 1.3.3 | MIT | LunaSVG raster backend, statically linked into `ImportEPUBLunaSVG.dll` | <https://github.com/sammycage/plutovg> |
+| Microsoft Fluent UI System Icons — Pin | a347af95478f989038cccbf085978865264c048a | MIT | Regular/Filled Pin SVGs rasterized into FBE at build time | <https://github.com/microsoft/fluentui-system-icons> |
 | UAC plugin helper | source snapshot (no version metadata) | zlib/libpng license | Build-time UAC support for the NSIS installer | <https://nsis.sourceforge.io/UAC_plug-in> |
 
 ## Bundled XML source-editor palettes
@@ -65,6 +66,7 @@ The repository preserves upstream license material alongside source trees:
 - `third_party/zlib/LICENSE` and `third_party/libarchive/COPYING`;
 - `third_party/lunasvg/LICENSE` and
   `third_party/lunasvg/plutovg/LICENSE`;
+- `THIRD-PARTY-LICENSES/Fluent-UI-System-Icons-MIT.txt`;
 - `third_party/uac/License.txt`.
 
 `THIRD-PARTY-LICENSES/README.md` documents the release-package layout.  WTL

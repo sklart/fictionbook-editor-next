@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="bg-BG">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Код</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Друг режим"><strong>Код</strong><a href="regex-design.html">Дизайн</a></nav><main>
+<h1 id="top">Ръководство за регулярни изрази — Код</h1>
+<aside class="note" id="note-1"><strong>Бележка</strong><p>Бележка за превода: руските думи и изречения в контролните примери са запазени умишлено. Това са тестови данни: регулярните изрази, низовете за замяна, интервалите и очакваните резултати съответстват на руското еталонно издание. Обясненията са преведени; примерите не са автоматично адаптирани към българските типографски правила.</p></aside>
+<p>Пълно ръководство за търсене и замяна в XML изходния текст на книги във FictionBook Editor Next.</p>
+<p>Издание: 2 октомври 2026 г. Дизайн е описан в regex-design.md. Тези рецепти са за Код; не пренасяйте PCRE2 шаблони без проверка.</p>
+<h2 id="section-1">1. За какво служи търсенето в Код</h2>
+<p>Код показва XML тагове, атрибути, препратки, entities и текст. Подходящ е за FB2 одит: празни елементи, внесени HTML тагове, временни връзки, необичайни атрибути и технически следи от конверсия.</p>
+<aside class="note" id="note-2"><strong>Бележка</strong><p>Regex проверява XML текста, не разбира DOM дървото. Проверявайте структурните връзки с XML инструмент.</p></aside>
+<p>За обикновена словесна корекция Дизайн често е по-удобен. В XML съвпадението може да е в атрибут, коментар, CDATA, име на файл или двоични данни, не само в текста на книгата. Помислете за това преди замяна.</p>
+<p>„Само търсене и проверка“ връща кандидати, не доказателство за грешен XML или текст. Дори интервалът може да е значещ. Няма универсално безопасни замени във всякакъв XML.</p>
+<h2 id="section-2">2. Бързо начало</h2>
+<p>Запазете копие, преминете в Код, отворете Търсене и включете Регулярен израз. XML примерите обичайно изискват различаване на регистъра и изключено Само цели думи: границите на тагове и атрибути са в шаблона.</p>
+<p>Прост празен абзац:</p>
+<pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Намира <code>&lt;p&gt;&lt;/p&gt;</code> и <code>&lt;p&gt;   &lt;/p&gt;</code> на един физически ред, не <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Не заменяйте автоматично с нищо или <code>&lt;empty-line/&gt;</code>: структурната функция може да е различна.</p>
+<section class="example" id="example-1"><strong>Пример</strong><pre><code>Търси: &lt;p&gt;[ \t]*&lt;/p&gt;
+Вход: &lt;p&gt;   &lt;/p&gt;
+Съвпадение: &lt;p&gt;   &lt;/p&gt;
+Очаквано: Проверете този абзац, преди да променяте XML.</code></pre></section>
+<p>Копирайте само шаблона, без <code>/.../g</code>, C++ кавички и двойни JSON черти.</p>
+<h2 id="section-3">3. Двигател: Scintilla, не PCRE2</h2>
+<p>FBE използва Scintilla с <code>SCFIND_REGEXP</code> и <code>SCFIND_CXX11REGEX</code>. Проверената компилация използва C++ реализация с ECMAScript граматика. Това не е PCRE2 и не включва всички възможности на съвременния JavaScript. [S1, S2]</p>
+<p>Scintilla има и стар основен двигател с други конвенции. Не смесвайте старите групи с екранирани скоби с C++11 режима на FBE: <code>(слово)</code> улавя, а <code>\(слово\)</code> изисква буквални скоби.</p>
+<p>Unicode текстът не е забранен, но липсват отделно UCP и PCRE2 свойства. Класовете зависят от стандартната библиотека; <code>\w</code> не означава непременно всички букви от всички езици. За предвидим ASCII използвайте <code>[A-Za-z0-9_]</code>; за руски — <code>[А-Яа-яЁё]</code>, което не обхваща цялата кирилица.</p>
+<h3 id="section-3-1">3.1. Основни разлики от Дизайн</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Свойство</th><th scope="col">Дизайн</th><th scope="col">Код</th></tr></thead><tbody>
+<tr><td>Търсен обект</td><td>Текстово представяне на книгата</td><td>XML изходен текст</td></tr>
+<tr><td>Двигател</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
+<tr><td>UCP и Unicode свойства</td><td>Достъпни в PCRE2 профила</td><td>Без синтаксис на PCRE2 свойства</td></tr>
+<tr><td>Lookbehind</td><td>Достъпен с PCRE2 ограничения</td><td>Не се поддържа</td></tr>
+<tr><td>Първа група при замяна</td><td><code>$1</code> или <code>\1</code></td><td><code>\1</code></td></tr>
+<tr><td>Форматиране при замяна</td><td>Команди FBE</td><td>Само XML текст</td></tr>
+<tr><td>Преминаване през физически редове</td><td>Зависи от представянето; замяна между абзаци ограничена</td><td>Не се поддържа в текущия път</td></tr>
+</tbody></table></div>
+<h2 id="section-4">4. Построчно търсене: основното ограничение</h2>
+<p>В Scintilla пътя, използван от FBE, <code>MatchOnLines</code> прилага шаблона отделно върху всеки физически ред. Редът може да е много дълъг; визуалното пренасяне до края на прозореца не създава нов физически ред. [S2]</p>
+<aside class="warning" id="warning-1"><strong>Внимание</strong><p>В текущото търсене Source regex не съвпада през физически редове; шаблонът не може да ги обедини.</p></aside>
+<p>Сравнете:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>с:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>За XML могат да означават еднакво съседство. За текущото FBE regex първият вариант може да се побере в едно съвпадение, вторият пресича граница на ред и не може.</p>
+<p>Добавянето на <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code> или клас за „всичко“ не премахва ограничението. Двигателят не получава двата реда като един фрагмент. Нужна би била промяна на програмния път на търсене.</p>
+<p>Построчното търсене не пречи замяната да вмъкне нов ред. Това е друга операция, показана в K28. Различавайте намиране през граница от вмъкване на граница след намерения текст.</p>
+<h3 id="section-4-1">4.1. Работа с многоредов XML</h3>
+<p>За атрибут на отделен ред често е достатъчно да търсите само атрибута без целия начален таг. За връзки между редове използвайте структурните инструменти FBE, валидатор, скрипт или XML инструмент.</p>
+<p>Не премахвайте всички нови редове заради един regex: може да промените текст, коментари, CDATA и четимостта. Първо определете дали задачата наистина изисква многоредово съвпадение.</p>
+<h2 id="section-5">5. Знаци и екраниране</h2>
+<p>Обикновеният знак означава себе си. За буквален метазнак добавете обратна наклонена черта.</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Желан текст</th><th scope="col">Израз</th></tr></thead><tbody>
+<tr><td>Точка</td><td><code>\.</code></td></tr>
+<tr><td>Плюс</td><td><code>\+</code></td></tr>
+<tr><td>Въпросителна</td><td><code>\?</code></td></tr>
+<tr><td>Звездичка</td><td><code>\*</code></td></tr>
+<tr><td>Кръгла скоба</td><td><code>\(</code> или <code>\)</code></td></tr>
+<tr><td>Число в квадратни скоби</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Обратна наклонена черта</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p><code>.</code> означава един знак от наличния ред, не буквална точка. В UTF-8 реалното поведение зависи от Scintilla адаптера и стандартната библиотека. Не измервайте емоджи с допускане „една точка = един видим символ“.</p>
+<p><code>\r</code> и <code>\n</code> означават CR/LF, но не позволяват търсене през редове в текущия режим. За интервали и табулации използвайте <code>[ \t]</code>.</p>
+<p>PCRE2 <code>\Q...\E</code> тук не е преносим начин за буквален текст. Екранирайте метазнаците един по един.</p>
+<h2 id="section-6">6. Класове, диапазони и граници на думи</h2>
+<p><code>[abc]</code> намира знак от множеството, <code>[a-z]</code> — от диапазона, а <code>[^abc]</code> — извън множеството. Повторение може да се добави след класа: <code>[0-9]+</code>.</p>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Клас</th><th scope="col">Практическо значение</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[0-9]</code></td><td>ASCII цифра</td></tr>
+<tr><td class="syntax"><code>[A-Za-z]</code></td><td>Латинска ASCII буква</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Обикновен интервал или табулация</td></tr>
+<tr><td class="syntax"><code>[^&lt;]</code></td><td>Наличен знак, различен от &lt;</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>Знак, различен от двата вида прави кавички</td></tr>
+<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>Клас на цифри и допълнението му според реализацията</td></tr>
+<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Празни знаци и допълнение</td></tr>
+<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Знаци на дума и допълнение</td></tr>
+</tbody></table></div>
+<p>Отрицателният клас не разбира XML. <code>[^&lt;]*</code> е удобен за прост текст между тагове, но не е пълен parser за entities, коментари или CDATA.</p>
+<p><code>\b</code> е граница на дума, <code>\B</code> — липса на такава. За атрибути често не стига: <code>id</code> може да стои след двоеточие в друго име. По-надеждно е да изискате начало на ред, интервал или табулация като разделител на атрибут.</p>
+<h2 id="section-7">7. Котви и повторения</h2>
+<p><code>^</code> и <code>$</code> са начало и край на физическия ред в текущия път. За ред само от хоризонтални интервали:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Изтриването на съвпадението не премахва самия ред: неговият край не е участвал.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Квантификатор</th><th scope="col">Повторения</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Нула или едно</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Нула или повече</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>Едно или повече</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Точно три</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>Най-малко три</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>От две до пет</td></tr>
+</tbody></table></div>
+<p>C++11 граматиката позволява неалчни форми като <code>*?</code> и <code>+?</code>. За XML атрибут често е по-ясно да се изключи затварящата кавичка:</p>
+<pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
+<p>Това е за двойни кавички; единичните изискват съответния клон.</p>
+<p>Не пренасяйте притежателни квантификатори, атомарни групи и inline опции PCRE2.</p>
+<h2 id="section-8">8. Групи, алтернативи и lookahead</h2>
+<p><code>( ... )</code> улавя фрагмент за препратки и замяна. <code>(?: ... )</code> групира без номер.</p>
+<p>Избор на таг:</p>
+<pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
+<p>Числова препратка може да свърже отварящо и затварящо име в прост едноредов фрагмент:</p>
+<pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Изисква еднакво име, но не проверява произволна XML вложеност.</p>
+<p><code>(?=...)</code> и <code>(?!...)</code> проверяват или отричат следващ текст без включването му. Валидна граница след името предотвратява съвпадение на <code>&lt;a</code> с началото на <code>&lt;author&gt;</code>:</p>
+<pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Левия контекст уловете и върнете при замяната: lookbehind не е достъпен. Не копирайте <code>(?&lt;=...)</code> от ръководството Дизайн.</p>
+<h2 id="section-9">9. Замяна в Код</h2>
+<p>FBE използва <code>SCI_REPLACETARGETRE</code>: текстът вече е намерен, а Scintilla обработва заместващия низ. Това не е <code>std::regex_replace</code> с <code>$1</code>, нито граматиката на замяна Design. [S1, S2]</p>
+<h3 id="section-9-1">9.1. Препратки към групи</h3>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">В полето за замяна</th><th scope="col">Значение</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\0</code></td><td>Цялото съвпадение</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>Съдържание на съответната група</td></tr>
+<tr><td class="syntax"><code>$1</code></td><td>Не е използваният в този път групов синтаксис</td></tr>
+</tbody></table></div>
+<p>Търсене:</p>
+<pre class="regex" id="regex-7"><code><span class="rx-escape">\(</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-escape">\)</span></code></pre>
+<p>Замяна с:</p>
+<pre><code>[\1]</code></pre>
+<p><code>(12)</code> става <code>[12]</code>. Това има редакторски смисъл само в избран контекст: число в скоби не е задължително бележка.</p>
+<p>Долар в Source не се удвоява по правила от друга система. Обратната наклонена черта обаче е управляващ знак.</p>
+<h3 id="section-9-2">9.2. Управляващи знаци в замяната</h3>
+<p>В проверения Scintilla код <code>\t</code>, <code>\n</code>, <code>\r</code> и <code>\\</code> се превръщат в табулация, LF, CR и буквална обратна черта. Това е независимо от липсата на многоредово търсене. [S2]</p>
+<p>За CRLF използвайте <code>\r\n</code>, а за LF — <code>\n</code>, съгласувано с документа. Избягвайте случайно смесване на окончания.</p>
+<p><code>\x{00A0}</code> PCRE2 не вмъква Unicode знак тук. За NBSP е нужен реалният знак. <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, <code>\Q</code> от Дизайн не управляват регистър или оформление в Код.</p>
+<h3 id="section-9-3">9.3. Изтриване и цялост на XML</h3>
+<p>Празно поле изтрива намерения диапазон. Премахване на празен таг, атрибут или връзка може да повреди документа дори след правилно търсене. Затова структурните рецепти са предимно диагностични.</p>
+<p>Промяната на <code>id</code> само на едно място може да остави връзки към старата стойност. За свързани обекти използвайте преименуването на ID във FBE, не независими текстови замени.</p>
+<h2 id="section-10">10. Как да четете XML рецептите</h2>
+<p>XML различава регистъра: <code>&lt;p&gt;</code> и <code>&lt;P&gt;</code> са различни имена. Редът на атрибутите не определя смисъла им. Стойностите могат да са в единични или двойни кавички и около <code>=</code> се допускат интервали. Примерите включват обичайните варианти, когато това не усложнява прекомерно шаблона. [S3]</p>
+<p><code>l:</code> и <code>xlink:</code> са обичайни XLink префикси във FB2. Значението се определя от <code>xmlns</code>, а не от самото име на префикса. Рецепта с тези два не гарантира трети; адаптирайте след проверка на декларацията.</p>
+<p>Много примери използват <code>[^&gt;]*</code> като приближение на съдържанието на началния таг. Практично е за обичаен FB2, но <code>&gt;</code> е допустим в стойност на атрибут. Коментари и CDATA също могат да имитират маркиране. Рецептите избират кандидати за преглед, не валидират цялото XML и не са основа за сляпо преструктуриране.</p>
+<p>„Празен елемент“ не винаги е грешка в схемата; „числова entity“ не означава повреден знак. Временен идентификатор, необичайно име или външна връзка също могат да са оправдани.</p>
+<h2 id="section-11">11. Практически рецепти FB2/XML</h2>
+<p>По подразбиране участващите части трябва да са на един физически ред. Ако се търси целият начален таг, и всички проверявани атрибути трябва да са на този ред. Рецепта, търсеща само атрибут, не налага условието на целия таг.</p>
+<h3 id="heading-1">K01. Интервали в края на физически ред</h3>
+<p>Да се намерят крайни обикновени интервали и табулации.</p>
+<p>Действие: замяна след проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Същият контролен текст с видими означения:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
+<p>Тук ␠ означава обикновен интервал, [TAB] — табулация, [NBSP] — U+00A0, [NNBSP] — U+202F, а [ZWSP] — U+200B. Това са пояснителни означения; не ги вмъквайте буквално в книгата.</p>
+<p>Замяна с: оставете полето напълно празно. Не пишете думата „празно“.</p>
+<p>Резултат от замяната:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Не премахва края на реда. В смесен XML, CDATA и области със значещи интервали опашката може да е текст. Не считайте глобалното почистване за безусловно безопасно.</p>
+<h3 id="heading-2">K02. Изчистване на ред само с интервали</h3>
+<p>Да се премахнат празните знаци от ред без друго съдържание.</p>
+<p>Действие: замяна след проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Същият контролен текст с видими означения:</p>
+<pre><code>␠␠␠[TAB]
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Тук ␠ означава обикновен интервал, [TAB] — табулация, [NBSP] — U+00A0, [NNBSP] — U+202F, а [ZWSP] — U+200B. Това са пояснителни означения; не ги вмъквайте буквално в книгата.</p>
+<p>Замяна с: оставете полето напълно празно. Не пишете думата „празно“.</p>
+<p>Резултат от замяната:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Редът остава празен: LF/CRLF не са част от резултата. Това не е изтриване на всички празни физически редове.</p>
+<h3 id="heading-3">K03. Интервал пред края на празен елемент</h3>
+<p>Да се намери обикновено разстояние непосредствено пред /&gt;.</p>
+<p>Действие: замяна след проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;empty-line /&gt;</code></pre>
+<p>Замяна с:</p>
+<pre><code>/&gt;</code></pre>
+<p>Резултат от замяната:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Ограничения и бележки: И двата варианта са правилно XML. Промяната е козметична, не задължителна поправка. Последователността може да е в текст или коментар; проверете масовата замяна.</p>
+<h3 id="heading-4">K04. Прост празен абзац</h3>
+<p>Да се провери двойка p без текст.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Не обхваща атрибути, нов ред, entity NBSP или вложен таг. Празен абзац и empty-line не са автоматично взаимозаменяеми.</p>
+<h3 id="heading-5">K05. Два empty-line на един ред</h3>
+<p>Да се намерят съседни празни FB2 редове, записани в един физически ред.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Ограничения и бележки: Допустими са само обикновени интервали и табулации. Край на ред между елементите е нарочно изключен. Два празни реда може да разделят сцени.</p>
+<h3 id="heading-6">K06. Празни важни метаданни</h3>
+<p>Да се проверят няколко прости празни метаданни.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
+<p>Ограничения и бележки: Не всяко поле е задължително във всеки контекст. Regex не проверява FB2 схемата, родителя или валидността на попълнените стойности.</p>
+<h3 id="heading-7">K07. Празно inline форматиране</h3>
+<p>Да се намерят празни двойки форматиращи елементи.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
+<p>Ограничения и бележки: NBSP, атрибути и вложеност изискват друго правило. Проверете структурната роля преди изтриване.</p>
+<h3 id="heading-8">K08. Еднакво форматиране, вложено в себе си</h3>
+<p>Да се отличи strong/strong от валидното strong/emphasis.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;strong&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/strong&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;strong&gt;&lt;strong</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
+<p>Ограничения и бележки: Вторият избор не е независим: препратката изисква първото име. Резултатът не включва целия елемент и не е за пряко изтриване.</p>
+<h3 id="heading-9">K09. Възможни HTML тагове след импорт</h3>
+<p>Да се намерят обичайни HTML имена за проверка във FB2.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;div&gt;Text&lt;/div&gt;</code></pre>
+<p>Очаквани съвпадения, последователно:</p>
+<pre><code>&lt;div&gt;
+&lt;/div&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
+<p>Ограничения и бележки: Текст в коментар или CDATA може също да съвпадне. Не заменяйте b със strong и i с emphasis без проверка на съдържанието и атрибутите.</p>
+<h3 id="heading-10">K10. Таг с главни букви</h3>
+<p>Да се намерят обичайни имена, написани изцяло с главни букви.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;P&gt;Text&lt;/P&gt;</code></pre>
+<p>Очаквани съвпадения, последователно:</p>
+<pre><code>&lt;P&gt;
+&lt;/P&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Различаването на регистъра е задължително, иначе ще се намери и обичайното p. Не покрива всички допустими Unicode XML имена и не проверява пространства от имена.</p>
+<h3 id="heading-11">K11. HTML entity NBSP</h3>
+<p>Да се намери буквалното &amp;nbsp; в изходния файл.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&amp;nbsp;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Без подходяща декларация &amp;nbsp; не е една от петте предефинирани XML entities. Проверете DTD и коментарите. Не декодирайте масово всички entities.</p>
+<h3 id="heading-12">K12. Числови препратки към знаци</h3>
+<p>Да се намери десетичен или шестнадесетичен запис на знак.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;&amp;#160; &amp;#xA0;&lt;/p&gt;</code></pre>
+<p>Очаквани съвпадения, последователно:</p>
+<pre><code>&amp;#160;
+&amp;#xA0;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: И двете форми може да са правилни. Проверява се формата, не допустимостта на кодовата точка. Разгъване на &amp;lt; до &lt; в текст може да повреди XML.</p>
+<h3 id="heading-13">K13. Празно id</h3>
+<p>Да се намери непопълнен обикновен атрибут id в двата вида кавички.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code> id=&quot;&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Ограничения и бележки: Предходният интервал е част от съвпадението. Префиксни имена като xml:id са извън обхвата. Новите ID изискват уникалност и обновени връзки, които regex не осигурява.</p>
+<h3 id="heading-14">K14. Списък на стойностите id</h3>
+<p>Да се намерят попълнени обичайни идентификатори за проверка на имената.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code> id=&quot;s1&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Ограничения и бележки: Списъкът не доказва уникалност и допустимост на ID. За свързани обекти използвайте преименуването FBE.</p>
+<h3 id="heading-15">K15. Външни HTTP(S) връзки</h3>
+<p>Да се намери href с обичаен XLink префикс и външен адрес.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test/book&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Търси атрибута, не всеки URL в текста. Включва l и xlink; други префикси изискват отделна адаптация. Не проверява достъпността на адреса.</p>
+<h3 id="heading-16">K16. Локални file:// връзки</h3>
+<p>Да се намери локален файлов път, който може да не работи при читателя.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a xlink:href=&quot;file:///C:/Book/image.png&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Не отваряйте неизвестни адреси автоматично. Резултатът не решава дали файлът трябва да се вложи, връзката да се промени или премахне.</p>
+<h3 id="heading-17">K17. Празна цел на връзка</h3>
+<p>Да се намери обичайна празна XLink връзка.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a l:href=&quot;&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code> l:href=&quot;&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Проверете отделно празния видим текст и липсващ href: това са други случаи.</p>
+<h3 id="heading-18">K18. Цел #undefined</h3>
+<p>Да се намери буквална временна препратка.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a xlink:href=&quot;#undefined&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Проверете дали обектът действително съществува. undefined не е забранено XML име, макар на практика често да показва недовършено свързване.</p>
+<h3 id="heading-19">K19. Връзки с префикс bookmark</h3>
+<p>Да се намерят типични конверсионни bookmark цели, не всички вътрешни връзки.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a l:href=&quot;#bookmark12&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Самото href=&quot;#...&quot; намира произволна вътрешна препратка. bookmark не доказва излишност; изтривайте след преглед.</p>
+<h3 id="heading-20">K20. Връщащи връзки Word/FBD</h3>
+<p>Да се намерят обичайните _ftnref и _ednref в целите.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a l:href=&quot;#_ftnref1&quot;&gt;Back&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Обратната връзка може да е необходима за навигация. Не я премахвайте само заради произхода на името.</p>
+<h3 id="heading-21">K21. Бележки независимо от реда на атрибутите</h3>
+<p>Да се намери начален a с type=note и вътрешен XLink-href в произволен ред.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Позволява type пред href, xlink и единични кавички. Всички проверявани атрибути трябва да са на един физически ред. Стойности с &gt;, коментари и необичайни тагове изискват XML анализатор. Целевата бележка не се проверява.</p>
+<h3 id="heading-22">K22. Възможни числови маркери на бележки</h3>
+<p>Да се намерят числа в квадратни, фигурни или кръгли скоби.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;Text [12], {3}, (4).&lt;/p&gt;</code></pre>
+<p>Очаквани съвпадения, последователно:</p>
+<pre><code>[12]
+{3}
+(4)</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Може да са библиографски препратки, номера на формули, пояснения или обикновен текст. Не създава бележки и не следи уникалността на номерацията.</p>
+<h3 id="heading-23">K23. Забравени стойности Your/Name</h3>
+<p>Да се проверят типични английски заместители на име в метаданните.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
+<p>Ограничения и бележки: Проверете автор/създател и истинското име. Не заменяйте автоматично с данни от друга редакция.</p>
+<h3 id="heading-24">K24. Несвързана илюстрация #undefined</h3>
+<p>Да се намери image към обичайния временен идентификатор.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
+<p>Ограничения и бележки: FB2 обичайно използва XLink-href, не HTML-src. Binary с даденото ID се проверява отделно. Липсваща картинка и грешна препратка са различни причини.</p>
+<h3 id="heading-25">K25. Декларация windows-1251</h3>
+<p>Да се намери указание за стара кодировка в XML декларацията.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
+<p>Ограничения и бележки: Само по себе си не е грешка. Подмяна на текста windows-1251 с utf-8 не прекодира байтовете. Използвайте запис или конверсия, съгласувани с декларацията.</p>
+<h3 id="heading-26">K26. Амперсанд без известна стандартна entity</h3>
+<p>Да се намери &amp; пред поредица, която не е в стандартната форма.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;A &amp; B&lt;/p&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&amp;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: &amp; е допустим в CDATA и коментари; DTD може да декларира други entities. Това е диагностичен филтър, не XML валидатор. &amp; → &amp;amp; без контекст води до двойно екраниране.</p>
+<h3 id="heading-27">K27. Обичайни вътрешни връзки</h3>
+<p>Да се намери локална цел #id без смесване с bookmark.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>l:href=&quot;#note1&quot;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Ограничения и бележки: Regex показва записа на връзката, не доказва точно една съществуваща цел. Липсващи и дублирани цели изискват анализ на документа.</p>
+<h3 id="heading-28">K28. Разделяне на два empty-line след едноредово търсене</h3>
+<p>Да се покаже разликата между ограничено търсене и вмъкване на нов ред чрез замяна.</p>
+<p>Действие: единична контролирана замяна.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>Замяна с:</p>
+<pre><code>\1\r\n\2</code></pre>
+<p>Резултат от замяната:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Ограничения и бележки: Scintilla разгъва замяната в CRLF. За LF документ използвайте \1\n\2. Това не е универсален XML форматиращ инструмент и не включва многоредово търсене.</p>
+<h3 id="heading-29">K29. Двойни интервали в прост XML текст</h3>
+<p>Да се намери прост текстов участък между тагове с няколко интервала.</p>
+<p>Действие: само търсене и проверка.</p>
+<p>„Регулярен израз“ — включено; „Само цели думи“ — изключено. „Различаване на главни и малки букви“ — включено.</p>
+<p>Търсене:</p>
+<pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
+<p>Начален контролен текст:</p>
+<pre><code>&lt;p&gt;one  two&lt;/p&gt;</code></pre>
+<p>Очаквано съвпадение:</p>
+<pre><code>&gt;one  two&lt;</code></pre>
+<p>Контрапример, който не трябва да се намира:</p>
+<pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
+<p>Ограничения и бележки: Съвпадението включва ъгловите разделители и целия прост фрагмент. За поправяне на думи често е по-удобен Дизайн. Не заменяйте целия XML участък с един интервал.</p>
+<h2 id="section-12">12. Защо regex не заменя XML валидацията</h2>
+<p>Изразът може да покаже, че фрагментът прилича на търсената последователност. Не доказва правилност на целия документ: вложеност, FB2 схема, пространства от имена, уникални ID и съществуващи цели.</p>
+<p>Два еднакви <code>id</code> на различни физически редове не се откриват надеждно с едно сравнение на текущия regex. Същото важи за липсваща цел в друга част на книгата. Нужни са проверка FBE и структурен анализ.</p>
+<p>Не разгръщайте всички XML entities: <code>&amp;lt;</code> и <code>&amp;amp;</code> често предпазват текста от превръщане в markup. Не изтривайте всичко, което прилича на HTML, вътре в CDATA, коментар или цитат на код.</p>
+<p>Замяна на таг трябва да запази двойката, атрибутите и съдържанието. Промяна само на отварящия <code>&lt;strong&gt;</code> оставя старото затваряне. Пример с обратна препратка не гарантира всяка следваща структурна замяна.</p>
+<h2 id="section-13">13. Чести грешки</h2>
+<h3 id="section-13-1">13.1. Намират се малки тагове вместо главни</h3>
+<p>Включете различаването на регистъра. При XML то не е козметика: <code>[A-Z]</code> без него губи значението на проверка за главни букви.</p>
+<h3 id="section-13-2">13.2. Буквално $1 в резултата</h3>
+<p>Използвайте <code>\1</code>. Source замяната FBE минава през Scintilla, не JavaScript или обичайната <code>$1</code> граматика на друг API.</p>
+<h3 id="section-13-3">13.3. Не работят \p, \K или lookbehind</h3>
+<p>Това е друг профил. За текст преминете в Дизайн; за XML пренапишете с явни класове, улавяне на контекста, неулавящи групи и lookahead.</p>
+<h3 id="section-13-4">13.4. Съседни тагове не се намират</h3>
+<p>Проверете физически нов ред, интервал пред <code>/&gt;</code>, единични кавички, допълнителни атрибути и префикс на пространството от имена. Съседство във форматирания изходен текст не е същото като съседство в XML дървото.</p>
+<h3 id="section-13-5">13.5. Бележката не се намира при друг ред на атрибутите</h3>
+<p>„Първо type, после href“ зависи от реда. K21 проверява свойствата с отделни lookahead. Ако тагът е на няколко реда, търсете атрибута или работете със структурата.</p>
+<h3 id="section-13-6">13.6. strong/emphasis се смята за грешна вложеност</h3>
+<p>Различни валидни стилове могат да се влагат. За повторение на същото име е нужна препратка като K08, не два независими избора от един и същи списък.</p>
+<h3 id="section-13-7">13.7. „Bookmark“ намира всички бележки</h3>
+<p>Вътрешен <code>#</code> линк не е автоматично конверсионен bookmark. Разделете общия преглед K27 от конкретния префикс K19.</p>
+<h3 id="section-13-8">13.8. Замяната поврежда видим текст</h3>
+<p>В Код интервали и фрагменти могат да са в текст, атрибут, коментар или двоични данни. Отменете и ограничете обхвата или шаблона. Името „безопасна замяна“ не отменя XML контекста.</p>
+<h2 id="section-14">14. Ограничения на Source профила</h2>
+<p>Не използвайте UCP, PCRE2 свойства, lookbehind, съвременни именувани JavaScript/PCRE2 групи, атомарни групи, притежателни квантификатори, branch reset, подпрограми, PCRE2 verbs, <code>\K</code>, <code>\G</code> и команди за форматиране от Design замяната.</p>
+<p>Inline опциите PCRE2 не заменят отметките в прозореца Код. Възможностите на най-новия JavaScript не се появяват автоматично в ECMAScript C++11.</p>
+<p>MatchOnLines продължава да работи построчно независимо от записания край на ред в шаблона. Локална компилация с друг двигател не доказва съвместимост с FBE.</p>
+<p>За Unicode думи и сложна корекция използвайте Дизайн. За структура — XML/FB2 инструменти, не неограничено <code>.*</code>, което да компенсира всички ограничения.</p>
+<h2 id="section-15">15. Производителност и дълги XML редове</h2>
+<p>Къс шаблон не означава бърз. Неограничени повторения и дълги конкуриращи се алтернативи могат да забавят огромни редове, особено ако един ред съдържа целия документ или голямо binary съдържание.</p>
+<p>Започвайте по възможност с конкретно име на таг или атрибут и използвайте ограничени класове. Отделните рецепти се проверяват и отменят по-лесно от търсене на всички възможни грешки наведнъж.</p>
+<p>Не сливайте всички XML редове, за да заобиколите MatchOnLines: това променя документа и не гарантира приемлива скорост.</p>
+<h2 id="section-16">16. Проверка след замяна</h2>
+<p>Сравнете очаквания и действителния диапазон. При групите проверете кавички, префикси, ъглови скоби и затварящи тагове. Уверете се, че коментари, CDATA и binary не са засегнати неволно.</p>
+<p>Валидирайте FB2, запишете и отворете отново след важни промени. Проверете Код ↔ Дизайн, бележки, илюстрации и видим текст. При преименуване на ID проверете обекта и всички негови връзки.</p>
+<h2 id="section-17">17. Източници и обхват на приложимост</h2>
+<p>Ръководството разширява предоставения regex-source.md. Запазва реда двигател → синтаксис → замяна → XML → ограничения, като уточнява прекалено общите рецепти. Поясненията и примерите са преработени; техническите разлики са сверени с първични източници.</p>
+<p>[S1] Официалната документация Scintilla, Searching: C++11 режим, флагове за търсене и SCI_REPLACETARGETRE.</p>
+<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
+<p>[S2] Scintilla в FBE Next ревизия d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, BuiltinRegex::SubstituteByPosition. Кодът различава търсене през редове от вмъкване на CR/LF в замяна.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
+<p>[S3] W3C XML 1.0 и Namespaces in XML: имена, атрибути, entities и пространства от имена.</p>
+<p><code>https://www.w3.org/TR/xml/</code></p>
+<p><code>https://www.w3.org/TR/xml-names/</code></p>
+</main></body></html>

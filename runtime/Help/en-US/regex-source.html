@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en-US">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Source</title><link rel="stylesheet" href="../regex-help.css"></head>
+<body><nav aria-label="Other mode"><strong>Source</strong><a href="regex-design.html">Design</a></nav><main>
+<h1 id="top">Regular expression help — Source</h1>
+<aside class="note" id="note-1"><strong>Note</strong><p>Translation note: Russian words and sentences in control examples are intentionally retained. They are test data: the regular expressions, replacement strings, whitespace characters and expected results are identical to the Russian reference edition. The explanations are translated; the examples are not automatically adapted to English typography.</p></aside>
+<p>A complete guide to searching and replacing in a book’s XML source in FictionBook Editor Next.</p>
+<p>Revision: October 2, 2026. Design mode is covered separately in regex-design.md. These recipes are for Source mode; do not transfer PCRE2 expressions into it without checking them.</p>
+<h2 id="section-1">1. What Source-mode search is for</h2>
+<p>Source exposes XML tags, attributes, links, entities, and the book’s text. It is suitable for auditing FB2: finding empty elements, imported HTML tags, placeholder links, unexpected attributes, and technical conversion remnants.</p>
+<aside class="note" id="note-2"><strong>Note</strong><p>Regex examines XML source text, not a parsed DOM tree. Validate structural relationships with an XML-aware tool.</p></aside>
+<p>Design is often more convenient for literary proofreading of ordinary words. In XML source, a match may occur not only in the book’s text but also in an attribute, comment, CDATA section, filename, or binary data. Account for this before replacement.</p>
+<p>“Find and review only” means that a rule returns candidates to inspect. It does not prove that the XML or text is wrong. Even a simple whitespace replacement can change meaningful content; no replacement over arbitrary XML is universally safe here.</p>
+<h2 id="section-2">2. Quick start</h2>
+<p>Save a copy of the book, switch to Source, open Find, and enable Regular expression. XML examples below generally enable Match case and disable Whole words only. The pattern itself defines tag and attribute boundaries.</p>
+<p>For example, to find a simple empty paragraph:</p>
+<pre class="regex" id="regex-1"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>This finds <code>&lt;p&gt;&lt;/p&gt;</code> and <code>&lt;p&gt;   &lt;/p&gt;</code> on one physical source line. It does not find <code>&lt;p&gt;Текст&lt;/p&gt;</code>. Do not automatically replace the matched element with nothing or with <code>&lt;empty-line/&gt;</code>: a paragraph and a blank-line element may serve different structural purposes.</p>
+<section class="example" id="example-1"><strong>Example</strong><pre><code>Find: &lt;p&gt;[ \t]*&lt;/p&gt;
+Input: &lt;p&gt;   &lt;/p&gt;
+Match: &lt;p&gt;   &lt;/p&gt;
+Expected: inspect this paragraph before changing the XML</code></pre></section>
+<p>Paste only the pattern into the field. JavaScript <code>/.../g</code> delimiters, C++ string quotes, and doubled JSON backslashes are unnecessary.</p>
+<h2 id="section-3">3. The engine: Scintilla, not PCRE2</h2>
+<p>FBE uses Scintilla with <code>SCFIND_REGEXP</code> and <code>SCFIND_CXX11REGEX</code>. In the build considered here, this is a C++ regular-expression implementation using the ECMAScript grammar. It is neither PCRE2 nor the full feature set of modern JavaScript. [S1, S2]</p>
+<p>Scintilla also has an older basic regex mechanism with different conventions. Do not mix old examples that create groups with escaped parentheses with FBE’s C++11 mode: here <code>(слово)</code> captures, while <code>\(слово\)</code> requires literal parentheses.</p>
+<p>Unicode text in XML is not forbidden, but there is no separate UCP mode or PCRE2 property syntax. Character classes depend on the standard-library implementation; do not assume <code>\w</code> means all letters in every language. For predictable ASCII matching, use explicit classes such as <code>[A-Za-z0-9_]</code>. For Russian text, <code>[А-Яа-яЁё]</code> is possible, but does not cover the entire Cyrillic script.</p>
+<h3 id="section-3-1">3.1. Main differences from Design</h3>
+<div class="table-wrap" id="table-1"><table><thead><tr><th scope="col">Property</th><th scope="col">Design</th><th scope="col">Source</th></tr></thead><tbody>
+<tr><td>Search subject</td><td>Textual representation of the book</td><td>XML source</td></tr>
+<tr><td>Engine</td><td>PCRE2-16</td><td>Scintilla C++11</td></tr>
+<tr><td>UCP and Unicode properties</td><td>Available in the PCRE2 profile</td><td>Not supported as PCRE2 syntax</td></tr>
+<tr><td>Lookbehind</td><td>Available with PCRE2 restrictions</td><td>Not supported</td></tr>
+<tr><td>First-group replacement</td><td><code>$1</code> or <code>\1</code></td><td><code>\1</code></td></tr>
+<tr><td>Formatting in replacement</td><td>FBE commands</td><td>XML text only; no FBE commands</td></tr>
+<tr><td>Search across physical lines</td><td>Depends on the search representation; cross-paragraph replacement is restricted</td><td>Not supported by the current path</td></tr>
+</tbody></table></div>
+<h2 id="section-4">4. Line-by-line matching: the key limitation</h2>
+<p>In FBE’s Scintilla path, <code>MatchOnLines</code> matches an expression separately against the content of each physical line. A line can be very long; wrapping it to the window width does not create a new physical line. [S2]</p>
+<aside class="warning" id="warning-1"><strong>Warning</strong><p>Source regex cannot match across physical lines in the current search path. No pattern can make the engine see two lines as one subject.</p></aside>
+<p>For example:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>and:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>These can describe the same neighboring elements in XML. For FBE’s current regex search, they differ: the first pair is accessible to one match, while the second crosses a line boundary and is not.</p>
+<p>Adding <code>\r\n</code>, <code>\n</code>, <code>\x0D</code>, <code>\x0A</code>, <code>\s*</code>, or an “any character” class does not remove the restriction. The engine is not given both lines as one subject. Changing this requires a change to the search implementation, not merely another expression.</p>
+<p>Conversely, line-by-line matching does not prevent a replacement from inserting a newline. That is a separate operation, illustrated in K28. Distinguish “find across a line boundary” from “insert a line boundary after matching text”.</p>
+<h3 id="section-4-1">4.1. Working with multiline XML</h3>
+<p>To find an attribute placed on its own line, it is often enough to search for the attribute without the entire opening tag. For relationships spanning several lines, use FBE’s structural tools, a validator, an appropriate script, or a separate XML tool.</p>
+<p>Do not delete every newline in a book just to accommodate one regex: that can affect text, comments, CDATA, and source readability. First decide whether the task genuinely requires matching across lines.</p>
+<h2 id="section-5">5. Characters and escaping</h2>
+<p>An ordinary character matches itself. Escape a metacharacter with a backslash to find it literally.</p>
+<div class="table-wrap" id="table-2"><table><thead><tr><th scope="col">Required text</th><th scope="col">Expression</th></tr></thead><tbody>
+<tr><td>Period</td><td><code>\.</code></td></tr>
+<tr><td>Plus</td><td><code>\+</code></td></tr>
+<tr><td>Question mark</td><td><code>\?</code></td></tr>
+<tr><td>Asterisk</td><td><code>\*</code></td></tr>
+<tr><td>Parenthesis</td><td><code>\(</code> or <code>\)</code></td></tr>
+<tr><td>Number in square brackets</td><td><code>\[[0-9]+\]</code></td></tr>
+<tr><td>Backslash</td><td><code>\\</code></td></tr>
+</tbody></table></div>
+<p>The dot <code>.</code> means one character in the available line fragment, not a literal period. In a UTF-8 document, actual character handling depends on Scintilla’s adapter and the standard library; do not measure emoji length on the assumption that one dot always equals one visible symbol.</p>
+<p><code>\r</code> and <code>\n</code> denote CR and LF characters but do not permit matching across lines in this line-by-line path. Use <code>[ \t]</code> for ordinary spaces and tabs.</p>
+<p>PCRE2’s <code>\Q...\E</code> is not a portable way to quote literal text in this mode. Escape the required special characters individually.</p>
+<h2 id="section-6">6. Classes, ranges, and word boundaries</h2>
+<p><code>[abc]</code> finds one character from the list, <code>[a-z]</code> one from a range, and <code>[^abc]</code> one outside the list. A repetition may follow a class: <code>[0-9]+</code>.</p>
+<div class="table-wrap" id="table-3"><table><thead><tr><th scope="col">Class</th><th scope="col">Practical meaning</th></tr></thead><tbody>
+<tr><td class="syntax"><code>[0-9]</code></td><td>ASCII digit</td></tr>
+<tr><td class="syntax"><code>[A-Za-z]</code></td><td>ASCII Latin letter</td></tr>
+<tr><td class="syntax"><code>[ \t]</code></td><td>Ordinary space or tab</td></tr>
+<tr><td class="syntax"><code>[^&lt;]</code></td><td>Any available character except an opening angle bracket</td></tr>
+<tr><td class="syntax"><code>[^&quot;&#39;]</code></td><td>A character that is neither kind of straight quote</td></tr>
+<tr><td class="syntax"><code>\d</code>, <code>\D</code></td><td>The implementation’s digit class and its negation</td></tr>
+<tr><td class="syntax"><code>\s</code>, <code>\S</code></td><td>Whitespace class and its negation</td></tr>
+<tr><td class="syntax"><code>\w</code>, <code>\W</code></td><td>Word class and its negation</td></tr>
+</tbody></table></div>
+<p>A negated class does not understand XML. <code>[^&lt;]*</code> is useful for simple text between tags, but is not a complete parser for entities, comments, or CDATA.</p>
+<p><code>\b</code> denotes a word boundary and <code>\B</code> a non-boundary. A word boundary is often insufficient for attributes: <code>id</code>, for example, can follow a colon in a different name. It is more reliable to test an allowed attribute delimiter explicitly—the start of a line or a space/tab.</p>
+<h2 id="section-7">7. Anchors and repetition</h2>
+<p>In the current search path, <code>^</code> and <code>$</code> refer to physical line boundaries. For a line containing horizontal whitespace only:</p>
+<pre class="regex" id="regex-2"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>The matched characters can be deleted, but the physical line itself remains: its newline was not part of the match.</p>
+<div class="table-wrap" id="table-4"><table><thead><tr><th scope="col">Quantifier</th><th scope="col">Repetitions</th></tr></thead><tbody>
+<tr><td class="syntax"><code>?</code></td><td>Zero or one</td></tr>
+<tr><td class="syntax"><code>*</code></td><td>Zero or more</td></tr>
+<tr><td class="syntax"><code>+</code></td><td>One or more</td></tr>
+<tr><td class="syntax"><code>{3}</code></td><td>Exactly three</td></tr>
+<tr><td class="syntax"><code>{3,}</code></td><td>At least three</td></tr>
+<tr><td class="syntax"><code>{2,5}</code></td><td>Two through five</td></tr>
+</tbody></table></div>
+<p>The C++11 grammar supports lazy forms such as <code>*?</code> and <code>+?</code>. For XML attributes, however, excluding the delimiting quotation mark is often clearer:</p>
+<pre class="regex" id="regex-3"><code>&quot;<span class="rx-class">[^&quot;\r\n]</span><span class="rx-quantifier">*</span>&quot;</code></pre>
+<p>This example is for double quotes. Single quotes require a corresponding separate branch.</p>
+<p>Do not transfer PCRE2 possessive quantifiers, atomic groups, or inline options to this mode.</p>
+<h2 id="section-8">8. Groups, alternation, and lookahead</h2>
+<p>A capturing group <code>( ... )</code> saves a fragment for backreferences and replacement. A noncapturing group <code>(?: ... )</code> combines parts that do not need a number.</p>
+<p>Selecting several tag names:</p>
+<pre class="regex" id="regex-4"><code>&lt;<span class="rx-group">(?:</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;</code></pre>
+<p>A numeric backreference in search can connect the opening and closing names in a simple single-line fragment:</p>
+<pre class="regex" id="regex-5"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>It requires the same name in both positions. This does not validate arbitrary XML nesting.</p>
+<p>Positive lookahead <code>(?=...)</code> and negative lookahead <code>(?!...)</code> check what follows without including it in the match. For example, require a valid boundary after a tag name so that <code>&lt;a</code> does not match the beginning of <code>&lt;author&gt;</code>.</p>
+<pre class="regex" id="regex-6"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>When left context must be checked, capture it and restore it in the replacement: lookbehind is unavailable here. Do not copy <code>(?&lt;=...)</code> expressions from the Design guide.</p>
+<h2 id="section-9">9. Replacement in Source mode</h2>
+<p>FBE uses <code>SCI_REPLACETARGETRE</code>: a match has already been found, and Scintilla expands the replacement string according to its own rules. This is not <code>std::regex_replace</code> with its usual <code>$1</code>, nor FBE’s Design replacement grammar. [S1, S2]</p>
+<h3 id="section-9-1">9.1. Capture references</h3>
+<div class="table-wrap" id="table-5"><table><thead><tr><th scope="col">In the replacement field</th><th scope="col">Meaning</th></tr></thead><tbody>
+<tr><td class="syntax"><code>\0</code></td><td>The whole match</td></tr>
+<tr><td class="syntax"><code>\1</code> … <code>\9</code></td><td>The corresponding captures</td></tr>
+<tr><td class="syntax"><code>$1</code></td><td>Do not use it as a group reference; it is not this path’s syntax</td></tr>
+</tbody></table></div>
+<p>Find:</p>
+<pre class="regex" id="regex-7"><code><span class="rx-escape">\(</span><span class="rx-group">(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span><span class="rx-escape">\)</span></code></pre>
+<p>Replace with:</p>
+<pre><code>[\1]</code></pre>
+<p>This changes <code>(12)</code> to <code>[12]</code>. It only makes editorial sense in selected context: a parenthesized number is not necessarily a note marker.</p>
+<p>A literal dollar sign in a Source replacement need not be doubled according to another replacement system’s conventions. A backslash, on the other hand, is a control character.</p>
+<h3 id="section-9-2">9.2. Control characters in replacement</h3>
+<p>In the Scintilla code used by the checked FBE snapshot, replacement processes <code>\t</code>, <code>\n</code>, <code>\r</code>, and <code>\\</code> as tab, LF, CR, and literal backslash. Do not confuse this with the lack of cross-line searching. [S2]</p>
+<p>Use <code>\r\n</code> for CRLF and <code>\n</code> for LF. Choose according to the document, and do not accidentally create mixed line endings.</p>
+<p>PCRE2 sequences such as <code>\x{00A0}</code> are not a way to insert a Unicode character in this field. Use the actual NBSP character. Design commands <code>\U</code>, <code>\L</code>, <code>\T</code>, <code>\S</code>, <code>\E</code>, and <code>\Q</code> do not control case or formatting here.</p>
+<h3 id="section-9-3">9.3. Deletion and XML preservation</h3>
+<p>An empty replacement deletes the matched range. Deleting an empty tag, attribute, or link can damage a document even when the regex found it successfully. The structural recipes below are predominantly diagnostic.</p>
+<p>Reordering or renaming an <code>id</code> in only one location may leave references pointing to the old value. For linked objects, use the editor’s ID-renaming command rather than independent bulk text replacements.</p>
+<h2 id="section-10">10. How to read the XML recipes</h2>
+<p>XML is case-sensitive. <code>&lt;p&gt;</code> and <code>&lt;P&gt;</code> are different names. Attribute order does not define their meaning, values may use single or double quotes, and spaces are allowed around the equals sign. Examples cover common variants where doing so does not make a rule excessively complex. [S3]</p>
+<p><code>l:</code> and <code>xlink:</code> are common prefixes for the XLink namespace in FB2. A prefix is not itself the meaning; its <code>xmlns</code> declaration determines that. Recipes listing these two forms do not guarantee support for every other prefix. Adapt the rule and check the namespace declaration when another form is present.</p>
+<p>Many examples use <code>[^&gt;]*</code> as an approximation of an opening tag’s contents. This is convenient for ordinary FB2, but <code>&gt;</code> can legally occur inside an attribute value. Comments and CDATA may also contain text resembling markup. These recipes therefore identify candidates for review, not full XML validation or blind structural rewriting.</p>
+<p>An “empty element” is not always a schema error. A “numeric entity” is not a damaged character. A placeholder, unusual name, or external link may also have a legitimate purpose.</p>
+<h2 id="section-11">11. Practical FB2/XML recipes</h2>
+<p>Unless stated otherwise, all participating parts of a sample must lie on one physical line. If a pattern searches an entire opening tag, all inspected attributes must also be on that line. A recipe that searches only an attribute does not require the entire tag to be on the same line.</p>
+<h3 id="heading-1">K01. Spaces at the end of a physical line</h3>
+<p>Find trailing ordinary spaces and tabs.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-8"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>The same test text with visible symbols:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;␠␠␠</code></pre>
+<p>Here ␠ denotes an ordinary space, [TAB] a tab, [NBSP] U+00A0, [NNBSP] U+202F, and [ZWSP] U+200B. This is an explanatory representation; do not insert these labels into the book.</p>
+<p>Replace with: leave the field completely empty. Do not type the word “empty”.</p>
+<p>Replacement result:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;Текст&lt;/p&gt;</code></pre>
+<p>Limitations and notes: Does not delete the newline. In mixed XML content, CDATA, and whitespace-sensitive areas, trailing spaces can be part of the text. Do not call cleanup of every line unconditionally safe.</p>
+<h3 id="heading-2">K02. Clear a whitespace-only line</h3>
+<p>Remove whitespace from a line with no other content.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-9"><code><span class="rx-anchor">^</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-anchor">$</span></code></pre>
+<p>Test input:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>The same test text with visible symbols:</p>
+<pre><code>␠␠␠[TAB]
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Here ␠ denotes an ordinary space, [TAB] a tab, [NBSP] U+00A0, [NNBSP] U+202F, and [ZWSP] U+200B. This is an explanatory representation; do not insert these labels into the book.</p>
+<p>Replace with: leave the field completely empty. Do not type the word “empty”.</p>
+<p>Replacement result:</p>
+<pre><code>
+&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Limitations and notes: The line remains empty: LF/CRLF was not included in the matched range. This does not delete every empty physical line.</p>
+<h3 id="heading-3">K03. Space before an empty-element close</h3>
+<p>Find an ordinary gap immediately before /&gt;.</p>
+<p>Action: replace after review.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-10"><code><span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span>/&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;empty-line /&gt;</code></pre>
+<p>Replace with:</p>
+<pre><code>/&gt;</code></pre>
+<p>Replacement result:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;empty-line/&gt;</code></pre>
+<p>Limitations and notes: XML allows both forms. The change is cosmetic, not a required error correction. This combination can also occur in text or a comment, so bulk replacement needs review.</p>
+<h3 id="heading-4">K04. Simple empty paragraph</h3>
+<p>Check a p pair without textual content.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-11"><code>&lt;p&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/p&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;p&gt;  &lt;/p&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Limitations and notes: Does not cover paragraphs with attributes, newlines, an NBSP entity, or a nested tag. Do not automatically treat an empty paragraph and empty-line as interchangeable.</p>
+<h3 id="heading-5">K05. Two empty-line elements on one line</h3>
+<p>Find adjacent FB2 blank-line elements written on one physical source line.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-12"><code>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line /&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Limitations and notes: Only ordinary spaces and tabs are allowed between them. A newline is intentionally unsupported. Two blank lines can be an author’s scene separator.</p>
+<h3 id="heading-6">K06. Empty important metadata</h3>
+<p>Inspect several simple metadata fields with no content.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-13"><code>&lt;<span class="rx-group">(</span>book-title<span class="rx-alternation">|</span>first-name<span class="rx-alternation">|</span>middle-name<span class="rx-alternation">|</span>last-name<span class="rx-alternation">|</span>genre<span class="rx-alternation">|</span>lang<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;book-title&gt; &lt;/book-title&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;book-title&gt;Book&lt;/book-title&gt;</code></pre>
+<p>Limitations and notes: Not every listed field is mandatory in every context. Regex does not validate the FB2 schema, the parent element’s structure, or the correctness of a populated value.</p>
+<h3 id="heading-7">K07. Empty inline formatting</h3>
+<p>Find empty paired formatting elements.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-14"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-alternation">|</span>strikethrough<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;/<span class="rx-escape">\1</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;strong&gt; &lt;/strong&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;strong&gt;Text&lt;/strong&gt;</code></pre>
+<p>Limitations and notes: NBSP, attributes, or nested elements require a different rule. Before deleting an element, check whether it serves an important structural purpose.</p>
+<h3 id="heading-8">K08. Identical formatting nested within itself</h3>
+<p>Distinguish strong/strong repetition from a valid strong/emphasis combination.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-15"><code>&lt;<span class="rx-group">(</span>strong<span class="rx-alternation">|</span>emphasis<span class="rx-group">)</span>&gt;<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>&lt;<span class="rx-escape">\1</span><span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;strong&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/strong&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;strong&gt;&lt;strong</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;strong&gt;&lt;emphasis&gt;Text&lt;/emphasis&gt;&lt;/strong&gt;</code></pre>
+<p>Limitations and notes: Unlike an overly broad original example, the second name is not chosen independently: it is a backreference to the first. The match does not include the whole element and is not intended for deletion as a single match.</p>
+<h3 id="heading-9">K09. Possible HTML tags after import</h3>
+<p>Find common HTML names that need checking in FB2.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-16"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-group">(?:</span>b<span class="rx-alternation">|</span>i<span class="rx-alternation">|</span>br<span class="rx-alternation">|</span>div<span class="rx-alternation">|</span>span<span class="rx-alternation">|</span>font<span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;div&gt;Text&lt;/div&gt;</code></pre>
+<p>Expected matches, in sequence:</p>
+<pre><code>&lt;div&gt;
+&lt;/div&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;section&gt;&lt;p&gt;Text&lt;/p&gt;&lt;/section&gt;</code></pre>
+<p>Limitations and notes: Tag-like text in comments or CDATA may match. Do not replace b with strong and i with emphasis using one broad pattern without checking content and attributes.</p>
+<h3 id="heading-10">K10. Uppercase tag</h3>
+<p>Find ordinary all-uppercase tag names.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-17"><code>&lt;/<span class="rx-quantifier">?</span><span class="rx-class">[A-Z]</span><span class="rx-class">[A-Z0-9_.:-]</span><span class="rx-quantifier">*</span><span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;P&gt;Text&lt;/P&gt;</code></pre>
+<p>Expected matches, in sequence:</p>
+<pre><code>&lt;P&gt;
+&lt;/P&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;Text&lt;/p&gt;</code></pre>
+<p>Limitations and notes: Match case must be enabled; otherwise ordinary p tags are found too. The pattern does not enumerate every valid Unicode XML name or determine whether a namespace is allowed.</p>
+<h3 id="heading-11">K11. HTML NBSP entity</h3>
+<p>Find the literal &amp;nbsp; notation in the source file.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-18"><code>&amp;nbsp;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;&amp;nbsp;&lt;/p&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&amp;nbsp;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;&amp;#160;&lt;/p&gt;</code></pre>
+<p>Limitations and notes: Without a suitable declaration, &amp;nbsp; is not one of XML’s five predefined entities. Check any DTD and comment context. Do not decode all entities in bulk.</p>
+<h3 id="heading-12">K12. Numeric character references</h3>
+<p>Find decimal or hexadecimal character notation.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-19"><code>&amp;#<span class="rx-group">(?:</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-alternation">|</span>x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span><span class="rx-group">)</span>;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;&amp;#160; &amp;#xA0;&lt;/p&gt;</code></pre>
+<p>Expected matches, in sequence:</p>
+<pre><code>&amp;#160;
+&amp;#xA0;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;&amp;amp;&lt;/p&gt;</code></pre>
+<p>Limitations and notes: Both forms may be correct. The pattern checks their shape, not the validity of the code point. Decoding &amp;lt; into a literal &lt; inside text can damage XML.</p>
+<h3 id="heading-13">K13. Empty id</h3>
+<p>Find an unfilled ordinary id attribute with either kind of quote.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-20"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code> id=&quot;&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Limitations and notes: The preceding space is part of the match. Prefixed names such as xml:id are not covered. Generating a new ID must account for references and uniqueness, which regex does not do.</p>
+<h3 id="heading-14">K14. List id values</h3>
+<p>Find populated ordinary ids to audit naming.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-21"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span>id<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;section id=&quot;s1&quot;&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code> id=&quot;s1&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;section id=&quot;&quot;&gt;</code></pre>
+<p>Limitations and notes: A match list does not prove that all IDs are unique or valid. Use FBE’s built-in command to rename linked objects.</p>
+<h3 id="heading-15">K15. External HTTP(S) links</h3>
+<p>Find an href using a common XLink prefix and an external address.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-22"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;https<span class="rx-quantifier">?</span>://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test/book&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code> l:href=&quot;https://example.test/book&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Limitations and notes: This searches the attribute, not every URL in the text. It supports l and xlink; other namespace prefixes need separate treatment. A match does not verify that the address is reachable.</p>
+<h3 id="heading-16">K16. Local file:// links</h3>
+<p>Find a local-file reference that may not work for a reader.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-23"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;file://<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;file://<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a xlink:href=&quot;file:///C:/Book/image.png&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code> xlink:href=&quot;file:///C:/Book/image.png&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a xlink:href=&quot;#image1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Limitations and notes: Do not automatically open an unknown address. Finding it does not decide whether to embed a file, replace the link, or remove it.</p>
+<h3 id="heading-17">K17. Empty link target</h3>
+<p>Find an ordinary empty XLink target.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-24"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;&quot;<span class="rx-alternation">|</span>&#39;&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a l:href=&quot;&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code> l:href=&quot;&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Limitations and notes: An empty link label and a missing href attribute are different cases that need separate checks.</p>
+<h3 id="heading-18">K18. The #undefined target</h3>
+<p>Find a literal placeholder target.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-25"><code><span class="rx-group">(?:</span><span class="rx-anchor">^</span><span class="rx-alternation">|</span><span class="rx-class">[ \t]</span><span class="rx-group">)</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a xlink:href=&quot;#undefined&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code> xlink:href=&quot;#undefined&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a xlink:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Limitations and notes: Check whether the actual object exists. The name undefined is not itself forbidden by XML syntax; in practice it often indicates an unfinished association.</p>
+<h3 id="heading-19">K19. Links with the bookmark prefix</h3>
+<p>Find characteristic converter bookmark targets, not all internal links.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-26"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#bookmark<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#bookmark<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a l:href=&quot;#bookmark12&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>l:href=&quot;#bookmark12&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Limitations and notes: A general href=&quot;#...&quot; pattern finds any internal link and does not isolate bookmark artifacts. A bookmark target does not prove the link is unnecessary; review before deleting it.</p>
+<h3 id="heading-20">K20. Word/FBD return links</h3>
+<p>Find common _ftnref and _ednref forms in link targets.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-27"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&quot;]</span><span class="rx-quantifier">*</span>&quot;<span class="rx-alternation">|</span>&#39;#_<span class="rx-group">(?:</span>ftnref<span class="rx-alternation">|</span>ednref<span class="rx-group">)</span><span class="rx-class">[^&#39;]</span><span class="rx-quantifier">*</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a l:href=&quot;#_ftnref1&quot;&gt;Back&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>l:href=&quot;#_ftnref1&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Limitations and notes: A return link may be necessary for navigation. Do not delete it automatically merely because of the origin of its name.</p>
+<h3 id="heading-21">K21. Note links regardless of attribute order</h3>
+<p>Find an opening a tag containing type=note and an internal XLink href in either order.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-28"><code>&lt;a<span class="rx-group">(?=</span><span class="rx-class">[ \t&gt;]</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span>type<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;note&quot;<span class="rx-alternation">|</span>&#39;note&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-group">(?=</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot; type=&quot;note&quot;&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a type=&quot;link&quot; l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Limitations and notes: Also allows type before href, the xlink prefix, and single quotes. All inspected attributes must be on one physical line. Values containing &gt;, comments, and unusual markup require XML parsing. The target note’s existence is not checked.</p>
+<h3 id="heading-22">K22. Possible numeric note markers</h3>
+<p>Find a number in square, curly, or round brackets.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-29"><code><span class="rx-escape">\[</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\]</span><span class="rx-alternation">|</span><span class="rx-escape">\{</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\}</span><span class="rx-alternation">|</span><span class="rx-escape">\(</span><span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span><span class="rx-escape">\)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;Text [12], {3}, (4).&lt;/p&gt;</code></pre>
+<p>Expected matches, in sequence:</p>
+<pre><code>[12]
+{3}
+(4)</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;[note]&lt;/p&gt;</code></pre>
+<p>Limitations and notes: These may be bibliography references, equation numbers, explanations, or ordinary text. The pattern does not create notes or check numbering uniqueness.</p>
+<h3 id="heading-23">K23. Forgotten Your/Name values</h3>
+<p>Check typical English name placeholders in metadata.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-30"><code>&lt;first-name&gt;Your&lt;/first-name&gt;<span class="rx-alternation">|</span>&lt;last-name&gt;Name&lt;/last-name&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;first-name&gt;Your&lt;/first-name&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;first-name&gt;John&lt;/first-name&gt;</code></pre>
+<p>Limitations and notes: Review the author/creator context and actual name. Do not automatically replace these values with information from a different edition.</p>
+<h3 id="heading-24">K24. Unattached #undefined illustration</h3>
+<p>Find an image pointing to the typical placeholder.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-31"><code>&lt;image<span class="rx-group">(?=</span><span class="rx-class">[ \t/&gt;]</span><span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#undefined&quot;<span class="rx-alternation">|</span>&#39;#undefined&#39;<span class="rx-group">)</span><span class="rx-class">[^&gt;]</span><span class="rx-quantifier">*</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;image l:href=&quot;#undefined&quot;/&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;image l:href=&quot;#cover&quot;/&gt;</code></pre>
+<p>Limitations and notes: FB2 normally uses an XLink href rather than HTML src. Check the matching binary ID separately. A missing image and an incorrect reference are different causes.</p>
+<h3 id="heading-25">K25. Windows-1251 declaration</h3>
+<p>Find an old encoding declaration in XML.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-32"><code>&lt;<span class="rx-escape">\?</span>xml<span class="rx-class">[ \t]</span><span class="rx-quantifier">+</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span>encoding<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;windows-1251&quot;<span class="rx-alternation">|</span>&#39;windows-1251&#39;<span class="rx-group">)</span><span class="rx-class">[^?]</span><span class="rx-quantifier">*</span><span class="rx-escape">\?</span>&gt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;windows-1251&quot;?&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;</code></pre>
+<p>Limitations and notes: This is not inherently an error. Replacing windows-1251 with utf-8 as text does not re-encode the file’s bytes. Change encoding through a save/conversion operation consistent with the declaration.</p>
+<h3 id="heading-26">K26. Ampersand without a recognized standard entity</h3>
+<p>Find &amp; before a sequence unlike a standard character-reference form.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-33"><code>&amp;<span class="rx-group">(?!</span><span class="rx-group">(?:</span>amp<span class="rx-alternation">|</span>lt<span class="rx-alternation">|</span>gt<span class="rx-alternation">|</span>apos<span class="rx-alternation">|</span>quot<span class="rx-group">)</span>;<span class="rx-alternation">|</span>#<span class="rx-class">[0-9]</span><span class="rx-quantifier">+</span>;<span class="rx-alternation">|</span>#x<span class="rx-class">[0-9A-Fa-f]</span><span class="rx-quantifier">+</span>;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;A &amp; B&lt;/p&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&amp;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;A &amp;amp; B&lt;/p&gt;</code></pre>
+<p>Limitations and notes: An ampersand is allowed in CDATA and comments, and a DTD may declare other entities. This is a diagnostic filter, not an XML validator. Automatic &amp; → &amp;amp; without context can double-escape text.</p>
+<h3 id="heading-27">K27. Ordinary internal links</h3>
+<p>Find a local #id target without confusing this with bookmark detection.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-34"><code><span class="rx-group">(?:</span>l<span class="rx-alternation">|</span>xlink<span class="rx-group">)</span>:href<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>=<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(?:</span>&quot;#<span class="rx-class">[^&quot;]</span><span class="rx-quantifier">+</span>&quot;<span class="rx-alternation">|</span>&#39;#<span class="rx-class">[^&#39;]</span><span class="rx-quantifier">+</span>&#39;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;a l:href=&quot;#note1&quot;&gt;1&lt;/a&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>l:href=&quot;#note1&quot;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;a l:href=&quot;https://example.test&quot;&gt;Text&lt;/a&gt;</code></pre>
+<p>Limitations and notes: Regex shows the reference notation, but does not prove that exactly one target id exists. Dangling or duplicate references require document-level analysis.</p>
+<h3 id="heading-28">K28. Split two empty-line elements after a single-line search</h3>
+<p>Demonstrate the difference between a search limitation and inserting a newline through replacement.</p>
+<p>Action: one controlled replacement.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-35"><code><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span><span class="rx-group">(</span>&lt;empty-line<span class="rx-class">[ \t]</span><span class="rx-quantifier">*</span>/&gt;<span class="rx-group">)</span></code></pre>
+<p>Test input:</p>
+<pre><code>&lt;empty-line/&gt; &lt;empty-line/&gt;</code></pre>
+<p>Replace with:</p>
+<pre><code>\1\r\n\2</code></pre>
+<p>Replacement result:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;empty-line/&gt;
+&lt;empty-line/&gt;</code></pre>
+<p>Limitations and notes: The replacement contains control sequences that Scintilla expands to CRLF. For an LF document, use \1\n\2. This is not a universal XML formatter and does not enable multiline searching.</p>
+<h3 id="heading-29">K29. Double spaces in simple XML text</h3>
+<p>Find a text fragment between tags containing several ordinary spaces.</p>
+<p>Action: find and review only.</p>
+<p>“Regular expression” — on; “Whole words only” — off. “Match case” — on.</p>
+<p>Find:</p>
+<pre class="regex" id="regex-36"><code>&gt;<span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span><span class="rx-class">[ \t]</span><span class="rx-quantifier">{2,}</span><span class="rx-class">[^&lt;]</span><span class="rx-quantifier">*</span>&lt;</code></pre>
+<p>Test input:</p>
+<pre><code>&lt;p&gt;one  two&lt;/p&gt;</code></pre>
+<p>Expected match:</p>
+<pre><code>&gt;one  two&lt;</code></pre>
+<p>Negative example that must not match:</p>
+<pre><code>&lt;p&gt;one two&lt;/p&gt;</code></pre>
+<p>Limitations and notes: The match includes the angle delimiters and the entire simple fragment. Design is usually more convenient for correcting words. Do not replace the whole matched XML fragment with a single space.</p>
+<h2 id="section-12">12. Why regex does not replace XML validation</h2>
+<p>An expression can show that a piece of text resembles a particular sequence of characters. It does not prove the whole document is correct: proper nesting of every element, FB2 schema compliance, namespace declarations, unique IDs, and the existence of every link target require separate checks.</p>
+<p>For example, two identical <code>id</code> values on different physical lines cannot reliably be detected with one comparison in the current line-by-line regex path. The same problem arises when a link’s target is missing elsewhere in the book. Use FBE’s validation and document-structure analysis for these tasks.</p>
+<p>Do not decode all XML entities in bulk: <code>&amp;lt;</code> and <code>&amp;amp;</code> often protect text from becoming markup. Do not remove everything resembling HTML from CDATA, comments, or code quotations.</p>
+<p>Preserving tag pairing, attributes, and content is the responsibility of the replacement operation. Replacing only an opening <code>&lt;strong&gt;</code> leaves its closing tag unchanged. A backreference in an example does not make every subsequent replacement structurally safe.</p>
+<h2 id="section-13">13. Common mistakes</h2>
+<h3 id="section-13-1">13.1. Lowercase tags are found instead of uppercase ones</h3>
+<p>Enable Match case. For XML this is not a cosmetic option. Using <code>[A-Z]</code> case-insensitively defeats the purpose of checking uppercase tags.</p>
+<h3 id="section-13-2">13.2. A literal $1 appears in the replacement</h3>
+<p>Use <code>\1</code>. FBE’s Source replacement goes through Scintilla, not JavaScript formatting or another API’s standard <code>$1</code> substitution.</p>
+<h3 id="section-13-3">13.3. An expression with \p, \K, or lookbehind does not work</h3>
+<p>These constructs belong to another profile. For a text task, switch to Design; otherwise rewrite the XML recipe with Source tools: explicit classes, captured context, noncapturing groups, and lookahead.</p>
+<h3 id="section-13-4">13.4. Two neighboring tags are not found</h3>
+<p>Check for a physical newline, a space before <code>/&gt;</code>, single quotes, extra attributes, or a namespace prefix. Literal adjacency in formatted source is not the same as adjacency in the XML tree.</p>
+<h3 id="section-13-5">13.5. A note link is missed when attributes change order</h3>
+<p>A simple “type first, href second” pattern depends on attribute order. K21 checks both properties using independent lookaheads. If the tag spans several lines, the current whole-tag search still cannot handle it; search for an attribute or use document structure.</p>
+<h3 id="section-13-6">13.6. A nesting check calls strong/emphasis an error</h3>
+<p>Different valid styles may be nested. Checking repetition of the same name requires a backreference, as in K08, rather than two independent groups with identical alternatives.</p>
+<h3 id="section-13-7">13.7. “Bookmark” finds every note</h3>
+<p>An internal link containing <code>#</code> is not automatically a bookmark artifact. Separate the general internal-link audit in K27 from the specific bookmark prefix in K19.</p>
+<h3 id="section-13-8">13.8. Replacement begins damaging visible text</h3>
+<p>In Source, spaces, marks, and fragments may be inside text, an attribute, a comment, or binary data. Undo the change and narrow the scope or pattern. A built-in scenario named “safe replacement” does not eliminate XML context.</p>
+<h2 id="section-14">14. Limits of the Source profile</h2>
+<p>Do not use UCP, PCRE2 property classes, lookbehind, modern JavaScript/PCRE2-style named groups, atomic groups, possessive quantifiers, branch reset, subroutines, PCRE2 verbs, <code>\K</code>, <code>\G</code>, or Design replacement-formatting commands in this mode.</p>
+<p>Do not use PCRE2 inline options instead of the Source dialog’s checkboxes. Do not expect features of recent browser JavaScript versions to appear automatically in a C++11 ECMAScript implementation.</p>
+<p>Line-by-line processing through MatchOnLines remains in force regardless of the newline sequence written in the pattern. Successful local compilation by a different regex engine is not proof of FBE compatibility.</p>
+<p>Use Design for Unicode words and complex book proofreading. Use XML/FB2 facilities for structure rather than trying to compensate for restrictions with an unbounded <code>.*</code>.</p>
+<h2 id="section-15">15. Performance and long XML lines</h2>
+<p>A short expression is not necessarily fast. Several unbounded repetitions and long competing alternatives may be slow on large lines. One enormous line containing the entire document or a large binary element is a particular risk.</p>
+<p>Where possible, start with a specific tag or attribute name, and use a restricted class instead of general “any characters”. Do not search for every conceivable mistake at once: separate diagnostic recipes are easier to review and undo.</p>
+<p>Do not flatten all XML lines to bypass MatchOnLines. That changes the document and does not guarantee acceptable search performance.</p>
+<h2 id="section-16">16. Checks after replacement</h2>
+<p>Compare the expected and actual matched range. For capture-based replacements, verify that quotes, prefixes, angle brackets, and closing tags are preserved. Make sure comments, CDATA, and binary content have not been affected.</p>
+<p>Run FB2 validation, save the book, and reopen it after significant changes. Check Source ↔ Design switching, notes, illustrations, and visible text. When an identifier is renamed, verify both the object and all related references.</p>
+<h2 id="section-17">17. Sources and applicability</h2>
+<p>This translates the expanded guide based on the supplied regex-source.md. Its “engine → syntax → replacement → XML examples → limitations” structure is preserved, while imprecise broad recipes have been replaced by narrower ones. Explanations and control scenarios were written anew, and technical differences checked against primary sources.</p>
+<p>[S1] Official Scintilla documentation, Searching: C++11 mode, search flags, and SCI_REPLACETARGETRE.</p>
+<p><code>https://www.scintilla.org/ScintillaDoc.html#Searching</code></p>
+<p>[S2] Scintilla source in FBE Next snapshot d2257405d95b0328649acee64b38829b40a4314b: Document.cxx, Cxx11RegexFindText, MatchOnLines, and BuiltinRegex::SubstituteByPosition. This code distinguishes searching across lines from inserting CR/LF in replacement.</p>
+<p><code>https://github.com/sklart/fictionbook-editor-next/blob/d2257405d95b0328649acee64b38829b40a4314b/third_party/scintilla/src/Document.cxx</code></p>
+<p>[S3] W3C XML 1.0 and Namespaces in XML: names, attributes, entities, and namespaces.</p>
+<p><code>https://www.w3.org/TR/xml/</code></p>
+<p><code>https://www.w3.org/TR/xml-names/</code></p>
+</main></body></html>

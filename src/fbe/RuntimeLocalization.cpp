@@ -23,8 +23,6 @@ struct RuntimeDialogBinding {
 // translations.  Every control below has a stable resource ID (never
 // IDC_STATIC), so an English dialog template can be localized at runtime.
 static const RuntimeDialogBinding g_runtimeDialogBindings[] = {
-    { IDD_REGEX_HELP, 0, L"fbe.dialog.idd_regex_help.caption" },
-    { IDD_REGEX_HELP, IDC_REGEX_HELP_CLOSE, L"fbe.dialog.idd_regex_help.close" },
 	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, 0, L"fbe.scripts_toolbar_customize.caption" },
 	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_SEARCH_LABEL, L"fbe.scripts_toolbar_customize.search" },
 	{ IDD_SCRIPTS_TOOLBAR_CUSTOMIZE, IDC_SCRIPTS_TOOLBAR_AVAILABLE_LABEL, L"fbe.scripts_toolbar_customize.available" },

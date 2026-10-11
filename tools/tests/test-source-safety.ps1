@@ -60,7 +60,7 @@ function Read-SourceFile([string]$RelativePath) {
 # the host ANSI code page in both Windows PowerShell 5.1 and PowerShell 7.
 function Assert-FirstPartyUtf8 {
     $extensions = @('.c', '.cc', '.cpp', '.cxx', '.h', '.hpp', '.inl', '.ixx', '.ps1', '.psm1', '.psd1', '.props', '.targets', '.vcxproj', '.sln', '.idl', '.rc', '.rc2', '.cmd', '.bat')
-    $paths = & git -c core.quotepath=false ls-files
+    $paths = & git -c core.quotepath=false ls-files --cached --others --exclude-standard
     foreach ($relativePath in $paths) {
         $normalized = $relativePath.Replace('/', '\')
         if ($normalized -match '^(third_party|build|out)\\' -or
@@ -70,7 +70,9 @@ function Assert-FirstPartyUtf8 {
             $extensions -notcontains [System.IO.Path]::GetExtension($normalized).ToLowerInvariant()) {
             continue
         }
-        $bytes = [System.IO.File]::ReadAllBytes((Join-Path $repoRoot $normalized))
+        $path = Join-Path $repoRoot $normalized
+        if (-not [System.IO.File]::Exists($path)) { continue } # Staged or unstaged deletions have no source bytes to scan.
+        $bytes = [System.IO.File]::ReadAllBytes($path)
         try {
             $text = $utf8.GetString($bytes)
         } catch [System.Text.DecoderFallbackException] {

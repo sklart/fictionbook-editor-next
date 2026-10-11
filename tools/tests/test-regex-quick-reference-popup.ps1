@@ -8,7 +8,7 @@ $dialog = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\SearchReplace.
 $popup = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexQuickReferencePopup.cpp')
 $popupHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\search\ui\RegexQuickReferencePopup.h')
 $resources = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\resource.h')
-foreach($token in @('RegexQuickReferencePopup', 'GetDlgItem(IDC_FIND_REGEX_HELP)', 'RegexQuickReferenceMode::Replacement', 'm_lastRegexTarget', 'm_view->SyncSearchOptionsToOpenDialogs(this)', 'InvalidateSearchSelectionState()', 'ShowRegexHelpDialog')) {
+foreach($token in @('RegexQuickReferencePopup', 'GetDlgItem(IDC_FIND_REGEX_HELP)', 'RegexQuickReferenceMode::Replacement', 'm_lastRegexTarget', 'm_view->SyncSearchOptionsToOpenDialogs(this)', 'InvalidateSearchSelectionState()', 'OpenFullRegexHelp')) {
     if($dialog -notmatch [regex]::Escape($token)) { throw "Missing quick-reference dialog behavior: $token" }
 }
 foreach($token in @('WS_EX_TOOLWINDOW', 'MonitorFromWindow', 'UiMetrics::DpiForWindow', 'UiMetrics::ScaleForDpi', 'VK_ESCAPE', 'VK_RETURN', 'VK_F1', 'VK_LEFT', 'VK_RIGHT', 'm_left', 'm_right', 'AddRows', 'fbe.regex_quick.full_help', 'OnKillFocus', 'AddMessageFilter(this)', 'RemoveMessageFilter(this)', 'WM_LBUTTONDOWN', 'WM_RBUTTONDOWN', 'WM_MBUTTONDOWN', 'WM_NCLBUTTONDOWN', 'UpdateWindow()', 'OnNcDestroy', 'OnThemeChanged', 'LBS_OWNERDRAWFIXED', 'CreateFontW', 'GetTextExtentPoint32', 'm_syntaxColumnWidth', 'description is drawn in its own column')) {

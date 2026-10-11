@@ -30,7 +30,7 @@ public:
 
 	void UpdateText(HWND control, const CString& text)
 	{
-		if(control != NULL)
+		if(control != NULL && m_tooltips.IsWindow())
 		{
 			m_texts[control] = text;
 			m_tooltips.UpdateTipText(m_texts[control].GetString(), control);

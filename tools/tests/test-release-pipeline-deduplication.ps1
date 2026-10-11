@@ -64,8 +64,11 @@ Require $verify 'test-runtime-lang-output-layout.ps1' 'post-build localization o
 if ((Get-OccurrenceCount $workflow 'test-search-core-suite.ps1') -ne 1 -or (Get-OccurrenceCount $verify 'test-search-core-suite.ps1') -ne 1) {
     throw 'Search Core must be one explicit build suite and one default local verifier suite.'
 }
-if ((Get-OccurrenceCount $workflow 'test-regex-help-placement-runtime.ps1') -ne 1 -or (Get-OccurrenceCount $verify 'test-regex-help-placement-runtime.ps1') -ne 1) {
-    throw 'Regex Help placement runtime must run once in both CI and the default release contour.'
+if ((Get-OccurrenceCount $workflow 'test-regex-help-html.ps1') -ne 1 -or (Get-OccurrenceCount $verify 'test-regex-help-html.ps1') -ne 1) {
+    throw 'Regex Help HTML generation must be checked once in both CI and the default release contour.'
+}
+if ((Get-OccurrenceCount $workflow 'test-regex-help-visual-runtime.ps1') -ne 1) {
+    throw 'Regex Help HTML visual smoke must run once in CI.'
 }
 foreach ($test in @('test-search-session.ps1','test-literal-search-mshtml-differential.ps1','test-search-document-adapter-mshtml.ps1','test-search-preset-store.ps1','test-pcre2-match-loop.ps1')) {
     if ($verify.Contains($test)) { throw "$test must be delegated to test-search-core-suite.ps1." }
