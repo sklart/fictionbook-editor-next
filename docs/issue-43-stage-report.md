@@ -21,7 +21,7 @@
 | Settings | `0e0b7e81`, `4fb97f47`, `f0e94eeb`, `bfd2a1a6`, `2ab34d15`, `cf180de4`, `84913aad`, `ae6edb8f` |
 | Import и Export | `ef0d88fe`, `d665b219`, `7799f91c`, `ecfa3488`, `852313d7`, `911d0eff`, `a908e42e`, `b6968687`, `86fd3263` |
 | Главное окно, Scripts Tree, GDI | `b5c5108c` |
-| Поиск, диалоги и подсказки | `7adf806b`, `c9dc301a`, `fc36c593`, `4f597036`, `10640bed`, `0f4b2c1e`, `6fb73dad`, `a40c70fb`, `f45419ea`, `06a80efa`, `d843c180`, `eec8090b`, `757ffc02`, `0fec2126`, `657d422e` |
+| Поиск, диалоги и подсказки | `7adf806b`, `c9dc301a`, `fc36c593`, `4f597036`, `10640bed`, `0f4b2c1e`, `6fb73dad`, `a40c70fb`, `f45419ea`, `06a80efa`, `d843c180`, `eec8090b`, `757ffc02`, `0fec2126`, `657d422e`, `6dbfd3c0` |
 | FBV | `f6d750f9`, `11f5ed1f`, `b1a019fb` |
 | UI Layout Audit | `221794be`, `f3ec249a` |
 
@@ -42,6 +42,7 @@
 - `test-fbe-settings-general-layout-runtime.ps1` на актуальной сборке: восемь страниц Settings, подписи и кнопки General/Hotkeys для `ru-RU`, `en-US`, `de-DE` и `uk-UA` при текущем DPI — PASS, 0 замечаний UI Layout Audit на каждой проверенной странице. Для `es-ES` и `bg-BG` страницы General/Hotkeys — также PASS без замечаний. Снимки страниц «Изображения» и «Исходный код» просмотрены. Параметр `-Locales` позволяет выполнять короткую профильную проверку, не изменяя полный режим теста по умолчанию.
 - `test-ui-layout-audit.ps1`: измерение текста, мнемоник, намеренных перекрытий и границ; различает доступное прокручиванием содержимое и недоступный элемент. PASS.
 - `test-fbv-layout-runtime.ps1`: колонка имени, статус и изменение размера, 0 замечаний аудита. PASS.
+- `test-fbe-spell-dialog-layout-runtime.ps1`: реальный диалог орфографии в `ru-RU`, `en-US`, `de-DE` и `uk-UA` — подписи, текст, геометрия кнопок и границы рабочей области PASS. Ранее прямой запуск в пользовательском runtime дважды достиг 30-секундного таймаута; тест переведён на существующий изолированный runtime и прошёл за 20 секунд. Причина прежних таймаутов не доказана, поэтому устойчивость при повторных запусках остаётся предметом CI.
 - Контракты локализации: `test-runtime-interface-language-contract.ps1`, `test-export-docx-localization-resources.ps1`, `test-export-epub-localization-resources.ps1`, `test-fbe-dialog-mnemonics.ps1`, `test-fbe-main-menu-mnemonics.ps1`, `test-fbe-settings-tooltips.ps1`, `test-fbe-document-tree-tooltips-localization.ps1`. PASS, 12 локалей там, где это заявлено в самих проверках.
 - Контракты интерфейса: `test-export-html-options-dialog.ps1`, `test-fbe-dialog-layout-contract.ps1`, `test-fbe-find-results-pane-contract.ps1`, `test-fbe-navigation-scripts-contract.ps1`, `test-fbe-context-attribute-bars.ps1`, `test-release-pipeline-deduplication.ps1`. PASS.
 - После доработки HTML Options: `test-export-html-options-dialog.ps1` и инкрементальная сборка ExportHTML Release Win32 с v143 / VC Tools 14.44 и строгими предупреждениями — PASS. Прокрутка на малой рабочей области и tooltip после перемещения между мониторами остаются предметом общей GUI-приёмки.
