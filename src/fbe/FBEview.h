@@ -14,6 +14,7 @@
 #include "resource.h"
 #include "RuntimeLocalization.h"
 #include "Settings.h"
+#include "UiMetrics.h"
 #include "..\\common\\ModernFileDialog.h"
 #include "StartupTrace.h"
 #include "BinaryFileSave.h"
@@ -111,6 +112,75 @@ static void CenterChildWindow(CWindow parent, CWindow child)
 
 class CAddImageDlg : public CDialogImpl<CAddImageDlg>
 {
+    void FitLocalizedLayout()
+    {
+        const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+        const int gap = UiMetrics::ScaleForDpi(8, dpi);
+        const int padding = UiMetrics::ScaleForDpi(8, dpi);
+        RECT client = {};
+        ::GetClientRect(m_hWnd, &client);
+        auto bounds = [this](int id) {
+            CRect rect;
+            ::GetWindowRect(GetDlgItem(id), &rect);
+            ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&rect), 2);
+            return rect;
+        };
+        auto place = [this](int id, const CRect& rect) {
+            ::SetWindowPos(GetDlgItem(id), NULL, rect.left, rect.top, rect.Width(), rect.Height(),
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        };
+        auto measure = [this](int id, int width, bool wrap) {
+            HWND control = GetDlgItem(id);
+            const int length = ::GetWindowTextLengthW(control);
+            CString caption;
+            ::GetWindowTextW(control, caption.GetBuffer(length + 1), length + 1);
+            caption.ReleaseBuffer();
+            HDC dc = ::GetDC(control);
+            if(!dc) return CSize(0, 0);
+            HFONT font = reinterpret_cast<HFONT>(::SendMessage(control, WM_GETFONT, 0, 0));
+            HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+            RECT text = { 0, 0, max(1, width), 0 };
+            ::DrawTextW(dc, caption, caption.GetLength(), &text,
+                DT_CALCRECT | (wrap ? DT_WORDBREAK : DT_SINGLELINE));
+            if(previous) ::SelectObject(dc, previous);
+            ::ReleaseDC(control, dc);
+            return CSize(text.right - text.left, text.bottom - text.top);
+        };
+        CRect prompt = bounds(IDS_ADD_CLEARIMG_TEXT);
+        prompt.right = client.right - gap;
+        prompt.bottom = prompt.top + max(prompt.Height(), measure(IDS_ADD_CLEARIMG_TEXT, prompt.Width(), true).cy + padding);
+        place(IDS_ADD_CLEARIMG_TEXT, prompt);
+
+        CRect yes = bounds(IDYES), no = bounds(IDCANCEL), askAgain = bounds(IDC_ADDIMAGE_ASKAGAIN);
+        no.right = client.right - gap;
+        no.left = no.right - max(no.Width(), measure(IDCANCEL, 10000, false).cx + 2 * padding);
+        yes.right = no.left - gap;
+        yes.left = yes.right - max(yes.Width(), measure(IDYES, 10000, false).cx + 2 * padding);
+        const int buttonTextHeight = max(measure(IDYES, 10000, false).cy,
+            measure(IDCANCEL, 10000, false).cy);
+        yes.bottom = yes.top + max(UiMetrics::ScaleForDpi(24, dpi),
+            max(yes.Height(), buttonTextHeight + padding));
+        yes.OffsetRect(0, max(0, prompt.bottom + gap - yes.top));
+        no.top = yes.top;
+        no.bottom = no.top + yes.Height();
+        place(IDYES, yes);
+        place(IDCANCEL, no);
+
+        askAgain.top = max(askAgain.top, yes.bottom + gap);
+        askAgain.right = client.right - gap;
+        const int checkWidth = askAgain.Width() - UiMetrics::ScaleForDpi(24, dpi);
+        askAgain.bottom = askAgain.top + max(askAgain.Height(),
+            measure(IDC_ADDIMAGE_ASKAGAIN, checkWidth, true).cy + padding);
+        place(IDC_ADDIMAGE_ASKAGAIN, askAgain);
+
+        RECT window = {};
+        ::GetWindowRect(m_hWnd, &window);
+        const int requiredClientHeight = askAgain.bottom + gap;
+        if(requiredClientHeight > client.bottom)
+            ::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left,
+                window.bottom - window.top + requiredClientHeight - client.bottom,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
 public:
 	enum { IDD = IDD_ADDIMAGE };
 	BEGIN_MSG_MAP(CAddImageDlg)
@@ -130,6 +200,7 @@ public:
 		::SetWindowText(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.caption", L"Image insertion"));
 		::SetDlgItemText(m_hWnd, IDYES, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.yes", L"Insert"));
 		::SetDlgItemText(m_hWnd, IDCANCEL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_addimage.no", L"No"));
+		FitLocalizedLayout();
 		::CenterChildWindow(GetParent(), m_hWnd);
 		CButton btn = GetDlgItem(IDC_ADDIMAGE_ASKAGAIN);
 		btn.SetCheck(!_Settings.GetInsImageAsking());
