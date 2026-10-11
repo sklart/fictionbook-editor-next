@@ -58,7 +58,12 @@ int CaptionWidth(HWND bar, LPCWSTR text, HFONT font)
 // has no separator buttons: a separator is a painted Win32 primitive, not spacing.
 int AttributePairGap(HWND bar)
 {
-	return UiMetrics::ScaleForDpi(6, UiMetrics::DpiForWindow(bar));
+	return UiMetrics::ScaleForDpi(10, UiMetrics::DpiForWindow(bar));
+}
+
+int CaptionFieldGap(HWND bar)
+{
+	return UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(bar));
 }
 
 void AddAttributePairSlots(HWND, LPCWSTR, ContextAttributeFieldWidth, HFONT)
@@ -238,7 +243,7 @@ void SetContextRowHeight(HWND bar, CComboBox* const* boxes, size_t count)
 	{
 		if(boxes[index] != NULL) height = (std::max)(height, NativeControlHeight(*boxes[index]));
 	}
-	height += UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(bar));
+	height += UiMetrics::ScaleForDpi(8, UiMetrics::DpiForWindow(bar));
 	const DWORD buttonSize = static_cast<DWORD>(::SendMessage(bar, TB_GETBUTTONSIZE, 0, 0));
 	::SendMessage(bar, TB_SETBUTTONSIZE, 0, MAKELONG(LOWORD(buttonSize), height));
 	::SendMessage(bar, TB_AUTOSIZE, 0, 0);
@@ -409,11 +414,12 @@ void ContextAttributeBars::UpdateLocalization()
 			const int fieldWidth = FieldWidth(bindings[index].width, dpi);
 			const int controlHeight = (std::min)(rowHeight, NativeControlHeight(bindings[index].editor->m_hWnd));
 			const int controlTop = (rowHeight - controlHeight) / 2;
+			const int fieldLeft = left + captionWidth + CaptionFieldGap(toolbar);
 			::SetWindowPos(bindings[index].caption->m_hWnd, NULL, left, captionTop, captionWidth, captionHeight, SWP_NOACTIVATE | SWP_NOZORDER);
-			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, left + captionWidth, controlTop, fieldWidth, controlHeight, SWP_NOACTIVATE | SWP_NOZORDER);
-			RECT tooltipRect = { left, 0, left + captionWidth + fieldWidth, rowHeight };
+			::SetWindowPos(bindings[index].editor->m_hWnd, NULL, fieldLeft, controlTop, fieldWidth, controlHeight, SWP_NOACTIVATE | SWP_NOZORDER);
+			RECT tooltipRect = { left, 0, fieldLeft + fieldWidth, rowHeight };
 			tooltips.UpdateArea(bindings[index].tooltipId, tooltipRect, bindings[index].tooltipKey, bindings[index].tooltipFallback);
-			left += captionWidth + fieldWidth;
+			left = fieldLeft + fieldWidth;
 			if(index + 1 < count) left += AttributePairGap(toolbar);
 		}
 		::SetWindowPos(toolbar, NULL, 0, 0, left, rowHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);

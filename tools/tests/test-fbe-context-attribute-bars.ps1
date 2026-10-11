@@ -46,8 +46,10 @@ foreach($required in @('m_colspanCaption.*ContextAttributeFieldWidth::Short', 'm
 }
 if($barsSource -match 'TBSTYLE_SEP') { throw 'Context attribute spacing must not use painted toolbar separators.' }
 Require $barsSource 'AttributePairGap\(' 'context pairs retain a fixed gap helper'
+Require $barsSource 'CaptionFieldGap\(' 'captions and fields retain a DPI-aware gap'
 Require $barsSource 'info.cxMinChild = \(std::max\)\(1L, child.right - child.left\)' 'rebar preserves the explicit compact child width'
 Require $barsSource 'if\(index \+ 1 < count\) left \+= AttributePairGap\(toolbar\)' 'context pair gap is fixed and DPI-aware'
+Require $barsSource 'const int fieldLeft = left \+ captionWidth \+ CaptionFieldGap\(toolbar\)' 'caption and field placement uses the gap'
 foreach($token in @('CaptionHeight(', 'SetContextRowHeight(', 'TB_SETBUTTONSIZE', 'TB_GETBUTTONSIZE', 'HIWORD(buttonSize)', 'UiMetrics::ScaleForDpi(4', 'NormalizeRebarBands', 'RBBIM_CHILDSIZE', 'info.cyChild = height', 'info.cyMinChild = height', 'info.cyMaxChild = height', 'info.cyIntegral = height')) {
     if($barsSource -notmatch [regex]::Escape($token) -and $barsHeader -notmatch [regex]::Escape($token)) { throw "Context row height contract is missing $token." }
 }
@@ -94,7 +96,7 @@ foreach($key in $contextKeys) {
 Require $barsHeader 'class\s+ContextAttributeTooltips' 'context-owned tooltip manager'
 Require $barsSource 'TTS_ALWAYSTIP' 'always-on context tooltip control'
 Require $barsSource 'TTM_DELTOOLW' 'tooltip rectangles are replaced after layout'
-Require $barsSource 'RECT tooltipRect = \{ left, 0, left \+ captionWidth \+ fieldWidth, rowHeight \}' 'tooltip covers the complete caption/control pair'
+Require $barsSource 'RECT tooltipRect = \{ left, 0, fieldLeft \+ fieldWidth, rowHeight \}' 'tooltip covers the complete caption/control pair'
 Require $barsSource 'tooltips\.UpdateArea\(' 'tooltip area is updated during localization/layout'
 Require $barsSource 'RebuildTableTokenCatalog\(m_rowAlignBox, kAlignTokens\)' 'row alignment display values are localized'
 Require $barsSource 'RebuildTableTokenCatalog\(m_alignBox, kAlignTokens\)' 'cell alignment display values are localized'
