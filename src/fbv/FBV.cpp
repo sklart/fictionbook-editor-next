@@ -711,7 +711,10 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 	(void)lParam;
 	(void)bHandled;
 	if (!GetSchemaFile())
+	{
 		EndDialog(FALSE);
+		return FALSE;
+	}
 
 	SetDlgItemText(IDC_VALIDATE, LoadFbString(IDS_BUTTON_REVALIDATE));
 	SetDlgItemText(IDCANCEL, LoadFbString(IDS_BUTTON_EXIT));
