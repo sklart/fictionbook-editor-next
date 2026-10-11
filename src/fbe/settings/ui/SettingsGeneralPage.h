@@ -17,6 +17,7 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_updateChannel;
 	CSettingsTooltips m_tooltips;
 	InterfaceTheme m_originalTheme;
+	void FitLocalizedLayout();
 
 public:
 	enum { IDD = IDD_SETTINGS_GENERAL };

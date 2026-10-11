@@ -2956,7 +2956,7 @@
       "targetId": "IDC_CREATE_BACKUP_FILE",
       "translations": {
         "en-US": "Create a backup copy (.bak) when saving an existing file",
-        "ru-RU": "Создавать резервную копию (.bak) при сохранении существующего файла",
+        "ru-RU": "Создавать резервную копию (.bak) при перезаписи файла",
         "uk-UA": "Створювати резервну копію (.bak) під час збереження наявного файлу",
         "de-DE": "Beim Speichern einer vorhandenen Datei eine Sicherungskopie (.bak) erstellen",
         "fr-FR": "Créer une copie de sauvegarde (.bak) lors de l’enregistrement d’un fichier existant",

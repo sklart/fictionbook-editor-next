@@ -122,7 +122,8 @@ public static class UiLayoutAudit
         if (kind.Equals("Button", StringComparison.OrdinalIgnoreCase) && ((style & 0xF) == 2 || (style & 0xF) == 3))
             available = Math.Max(1, available - row.Dpi / 5); // checkbox/radio glyph
         Rect measured = new Rect { Left = 0, Top = 0, Right = available, Bottom = 0 };
-        bool multiline = kind.Equals("Static", StringComparison.OrdinalIgnoreCase);
+        bool multiline = kind.Equals("Static", StringComparison.OrdinalIgnoreCase) ||
+            (kind.Equals("Button", StringComparison.OrdinalIgnoreCase) && (style & 0x00002000) != 0); // BS_MULTILINE
         uint flags = multiline ? 0x00000410U : 0x00000420U; // CALCRECT with WORDBREAK/SINGLELINE
         // Buttons and ordinary static labels render '&' as a mnemonic marker.
         // Edit text and SS_NOPREFIX labels render it literally.

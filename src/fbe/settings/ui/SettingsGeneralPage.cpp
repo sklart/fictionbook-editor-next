@@ -2,8 +2,10 @@
 #include "SettingsGeneralPage.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\ThemeManager.h"
+#include "..\\..\\UiMetrics.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
+#include <initializer_list>
 
 extern CSettings _Settings;
 
@@ -75,6 +77,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE, L"fbe.dialog.idd_setting_next.show_full_path_in_window_title", L"Show full file path in the window title");
 	SetText(m_hWnd, IDC_FBE_NEXT_UPDATES_GROUP, L"fbe.dialog.idd_setting_next.updates", L"Updates");
 	SetText(m_hWnd, IDC_UPDATE_CHANNEL_LABEL, L"fbe.dialog.idd_setting_next.update_channel", L"Update channel:");
+	FitLocalizedLayout();
 
 	m_language.SetDroppedWidth(320);
 	const DWORD currentLanguage = _Settings.GetInterfaceLanguageID();
@@ -132,6 +135,114 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_updateChannel.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_setting_next.update_channel.prerelease", L"Prerelease versions (Beta / RC)"));
 	m_updateChannel.SetCurSel(_Settings.GetUpdateChannel() == UpdateChannel::Prerelease ? 1 : 0);
 	return 1;
+}
+
+void CSettingsGeneralPage::FitLocalizedLayout()
+{
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	const int margin = UiMetrics::ScaleForDpi(8, dpi);
+	const int gap = UiMetrics::ScaleForDpi(8, dpi);
+	const int padding = UiMetrics::ScaleForDpi(10, dpi);
+	auto bounds = [this](int id) {
+		CRect result;
+		::GetWindowRect(GetDlgItem(id), &result);
+		::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&result), 2);
+		return result;
+	};
+	auto place = [this](int id, const CRect& rect) {
+		::SetWindowPos(GetDlgItem(id), NULL, rect.left, rect.top, rect.Width(), rect.Height(),
+			SWP_NOZORDER | SWP_NOACTIVATE);
+	};
+	auto measure = [this](int id, int width, bool wrap) {
+		HWND control = GetDlgItem(id);
+		CString caption;
+		const int length = ::GetWindowTextLengthW(control);
+		::GetWindowTextW(control, caption.GetBuffer(length + 1), length + 1);
+		caption.ReleaseBuffer();
+		HDC dc = ::GetDC(control);
+		if(!dc) return CSize(0, 0);
+		HFONT font = reinterpret_cast<HFONT>(::SendMessage(control, WM_GETFONT, 0, 0));
+		HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+		RECT text = { 0, 0, max(1, width), 0 };
+		::DrawTextW(dc, caption, caption.GetLength(), &text,
+			DT_CALCRECT | (wrap ? DT_WORDBREAK : DT_SINGLELINE));
+		if(previous) ::SelectObject(dc, previous);
+		::ReleaseDC(control, dc);
+		return CSize(text.right - text.left, text.bottom - text.top);
+	};
+	int offset = 0;
+	auto shift = [&](int groupId, std::initializer_list<int> children) {
+		CRect group = bounds(groupId);
+		group.OffsetRect(0, offset);
+		place(groupId, group);
+		for(int id : children) { CRect rect = bounds(id); rect.OffsetRect(0, offset); place(id, rect); }
+	};
+	auto grow = [&](int groupId, std::initializer_list<int> children) {
+		CRect group = bounds(groupId);
+		int bottom = group.bottom;
+		for(int id : children) bottom = max(bottom, bounds(id).bottom + margin);
+		const int growth = bottom - group.bottom;
+		if(growth > 0) { group.bottom = bottom; place(groupId, group); offset += growth; }
+	};
+	auto fitLabelCombo = [&](int labelId, int comboId, int comboLeft, int comboRight) {
+		CRect label = bounds(labelId), combo = bounds(comboId);
+		const CSize text = measure(labelId, 10000, false);
+		label.right = comboLeft - gap;
+		label.bottom = label.top + max(label.Height(), text.cy + padding);
+		combo.left = comboLeft;
+		combo.right = max(comboLeft, comboRight);
+		place(labelId, label); place(comboId, combo);
+	};
+	auto fitCheckbox = [&](int groupId, int controlId, bool multiline) {
+		CRect group = bounds(groupId), check = bounds(controlId);
+		check.right = group.right - margin;
+		const CSize text = measure(controlId, check.Width() - UiMetrics::ScaleForDpi(24, dpi), multiline);
+		const int singleLineHeight = measure(controlId, 10000, false).cy;
+		const int minimumHeight = (multiline ? 2 : 1) * singleLineHeight + padding;
+		check.bottom = check.top + max(check.Height(), max(text.cy + padding, minimumHeight));
+		place(controlId, check);
+	};
+	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
+		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME });
+	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
+	int interfaceComboLeft = bounds(IDC_LANG).left;
+	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_INTERFACE_THEME_LABEL })
+		interfaceComboLeft = max(interfaceComboLeft, bounds(id).left + 2 * measure(id, 10000, false).cx + padding + gap);
+	interfaceComboLeft = min(interfaceComboLeft, interfaceGroup.right - margin - UiMetrics::ScaleForDpi(150, dpi));
+	const int interfaceComboRight = interfaceGroup.right - margin;
+	fitLabelCombo(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, interfaceComboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, interfaceComboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, interfaceComboLeft, interfaceComboRight);
+	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME });
+	shift(IDC_SETTINGS_OTHER_OPEN_GROUP, { IDC_RESTORE_POS });
+	fitCheckbox(IDC_SETTINGS_OTHER_OPEN_GROUP, IDC_RESTORE_POS, false);
+	grow(IDC_SETTINGS_OTHER_OPEN_GROUP, { IDC_RESTORE_POS });
+	shift(IDC_SETTINGS_OTHER_SAVE_GROUP, { IDC_SETTINGS_OTHER_ENCODING, IDC_DEFAULT_ENC, IDC_KEEP });
+	const CRect savingGroup = bounds(IDC_SETTINGS_OTHER_SAVE_GROUP);
+	const int encodingLeft = max(bounds(IDC_DEFAULT_ENC).left,
+		bounds(IDC_SETTINGS_OTHER_ENCODING).left + 2 * measure(IDC_SETTINGS_OTHER_ENCODING, 10000, false).cx + padding + gap);
+	fitLabelCombo(IDC_SETTINGS_OTHER_ENCODING, IDC_DEFAULT_ENC, encodingLeft, savingGroup.right - margin);
+	fitCheckbox(IDC_SETTINGS_OTHER_SAVE_GROUP, IDC_KEEP, false);
+	grow(IDC_SETTINGS_OTHER_SAVE_GROUP, { IDC_KEEP });
+	shift(IDC_FBE_NEXT_SAVING_GROUP, { IDC_CREATE_BACKUP_FILE });
+	fitCheckbox(IDC_FBE_NEXT_SAVING_GROUP, IDC_CREATE_BACKUP_FILE, true);
+	grow(IDC_FBE_NEXT_SAVING_GROUP, { IDC_CREATE_BACKUP_FILE });
+	shift(IDC_FBE_NEXT_WINDOW_TITLE_GROUP, { IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE });
+	fitCheckbox(IDC_FBE_NEXT_WINDOW_TITLE_GROUP, IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE, true);
+	grow(IDC_FBE_NEXT_WINDOW_TITLE_GROUP, { IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE });
+	shift(IDC_FBE_NEXT_UPDATES_GROUP, { IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL });
+	const CRect updatesGroup = bounds(IDC_FBE_NEXT_UPDATES_GROUP);
+	const int updateComboLeft = min(updatesGroup.right - margin - UiMetrics::ScaleForDpi(150, dpi),
+		bounds(IDC_UPDATE_CHANNEL_LABEL).left + 2 * measure(IDC_UPDATE_CHANNEL_LABEL, 10000, false).cx + padding + gap);
+	fitLabelCombo(IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL, updateComboLeft, updatesGroup.right - margin);
+	grow(IDC_FBE_NEXT_UPDATES_GROUP, { IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL });
+	RECT client = {}, window = {};
+	::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
+	const int requiredHeight = bounds(IDC_FBE_NEXT_UPDATES_GROUP).bottom + margin;
+	if(requiredHeight > client.bottom)
+		::SetWindowPos(m_hWnd, NULL, 0, 0, window.right - window.left,
+			requiredHeight + (window.bottom - window.top - client.bottom),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 LRESULT CSettingsGeneralPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
