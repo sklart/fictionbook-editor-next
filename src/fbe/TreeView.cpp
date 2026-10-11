@@ -916,11 +916,6 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 	if(refreshImages)
 	{
 		PrepareScriptImages();
-		// Recreating a CImageList changes its HIMAGELIST.  The native tree keeps
-		// the previous handle until it is explicitly rebound, so refreshes while
-		// Scripts mode is visible would otherwise leave item image indices backed
-		// by a destroyed list.
-		if(m_script_mode) SetImageList(m_scriptImageList,TVSIL_NORMAL);
 	}
 	if(m_script_mode) RebuildScriptTree();
 }
@@ -1063,7 +1058,6 @@ void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
 	if(size != m_script_image_size)
 	{
 		PrepareScriptImages(dpi);
-		if(m_script_mode) SetImageList(m_scriptImageList, TVSIL_NORMAL);
 	}
 	if(m_script_mode)
 	{
@@ -1159,9 +1153,18 @@ void CTreeView::SaveFavoriteScripts()
 void CTreeView::PrepareScriptImages(UINT dpi)
 {
 	// Preserve the compact tree geometry while rebuilding sidecars at its DPI.
+	const int previousSize = m_script_image_size;
+	const std::vector<int> previousMapping = m_script_images;
+	const int previousFavoriteImage = m_favorite_image;
 	m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, dpi ? dpi : UiMetrics::DpiForWindow(m_hWnd));
-	m_scriptImageList.Destroy();
-	m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,static_cast<int>(m_script_items.size())+2,8);
+	const HIMAGELIST previousImages = m_scriptImageList.Detach();
+	if(!m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,
+		static_cast<int>(m_script_items.size())+2,8))
+	{
+		if(previousImages != NULL) m_scriptImageList.Attach(previousImages);
+		m_script_image_size = previousSize;
+		return;
+	}
 	HBITMAP fallback = CreateScriptTreeGlyphBitmap(false, m_script_image_size);
 	if(fallback != NULL) { AddScriptImage(fallback); ::DeleteObject(fallback); }
 	HBITMAP favorite = CreateScriptTreeGlyphBitmap(true, m_script_image_size);
@@ -1215,6 +1218,22 @@ void CTreeView::PrepareScriptImages(UINT dpi)
 		}
 		if(m_script_images[index] < 0) m_script_images[index] = 0;
 	}
+	if(m_script_mode && IsWindow())
+	{
+		SetImageList(m_scriptImageList, TVSIL_NORMAL);
+		if(reinterpret_cast<HIMAGELIST>(::SendMessage(m_hWnd, TVM_GETIMAGELIST, TVSIL_NORMAL, 0)) !=
+			static_cast<HIMAGELIST>(m_scriptImageList))
+		{
+			SetImageList(previousImages, TVSIL_NORMAL);
+			m_scriptImageList.Destroy();
+			if(previousImages != NULL) m_scriptImageList.Attach(previousImages);
+			m_script_image_size = previousSize;
+			m_script_images = previousMapping;
+			m_favorite_image = previousFavoriteImage;
+			return;
+		}
+	}
+	if(previousImages != NULL) ::ImageList_Destroy(previousImages);
 }
 
 int CTreeView::AddScriptImage(HBITMAP bitmap)

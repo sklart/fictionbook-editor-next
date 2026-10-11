@@ -220,7 +220,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 	m_tree.Create(*this, rcDefault);
 	m_script_search.Create(*this, rcDefault, NULL, WS_CHILD | WS_TABSTOP | ES_AUTOHSCROLL | ES_LEFT, WS_EX_CLIENTEDGE, NavigationScriptSearchControlId);
-	::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+	::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFontForWindow(m_script_search)), TRUE);
 	::SendMessage(m_script_search, EM_SETCUEBANNER, TRUE, reinterpret_cast<LPARAM>(static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.search", L"Find script..."))));
 	::SetWindowSubclass(m_script_search, ScriptSearchSubclassProc, 1, reinterpret_cast<DWORD_PTR>(this));
 	m_tree.SetScriptSearchWindow(m_script_search);
@@ -409,7 +409,7 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	m_tree.SetLineColor(ThemeManager::SeparatorColor());
 	if(m_script_search.IsWindow())
 	{
-		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFontForWindow(m_script_search)), TRUE);
 		ThemeManager::ApplyToWindow(m_script_search);
 	}
 	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
@@ -676,7 +676,7 @@ void CTreeWithToolBar::RefreshLocalizedMenuCaptions()
 void CTreeWithToolBar::ApplyViewBarMetrics()
 {
 	if(!m_view_bar.IsWindow()) return;
-	::SendMessage(m_view_bar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+	::SendMessage(m_view_bar, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFontForWindow(m_view_bar)), TRUE);
 	m_view_bar.AutoSize();
 	EnsureViewBarElementMetrics();
 }
@@ -900,7 +900,7 @@ void CTreeWithToolBar::UpdateDpiMetrics(UINT dpi)
 		}
 	}
 	if(m_script_search.IsWindow())
-		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFont()), TRUE);
+		::SendMessage(m_script_search, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::MenuFontForWindow(m_script_search)), TRUE);
 	m_tree.UpdateScriptDpiMetrics(dpi);
 	SendMessage(WM_SIZE);
 }

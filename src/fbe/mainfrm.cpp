@@ -3953,7 +3953,6 @@ LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 		if(::IsWindow(runtime.window)) ::SendMessage(runtime.window, TB_SETIMAGELIST, 0, 0);
 		if(runtime.images != NULL) { ::ImageList_Destroy(runtime.images); runtime.images = NULL; }
 	}
-	UiMetrics::Shutdown();
 	// WTL's default CFrameWindowImpl handler posts WM_QUIT with code 1 for
 	// every top-level window.  A normal editor close, including a successful
 	// unattended Save, is a successful process termination.

@@ -19,6 +19,7 @@
 #include "ILexer.h"
 #include "EditorEngine.h"
 #include "MainFrm.h"
+#include "UiMetrics.h"
 #include "MemProtocol.h"
 #include "CrashHandler.h"
 #include "StartupTrace.h"
@@ -784,6 +785,7 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   StartupTrace::AppendTestStartupBreadcrumb("run-enter");
   nRet = Run(lpstrCmdLine, nCmdShow);
 out:
+  UiMetrics::Shutdown();
   _Module.Term();
 
   ::OleUninitialize();

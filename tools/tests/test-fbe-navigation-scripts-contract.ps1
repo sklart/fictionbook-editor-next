@@ -126,7 +126,8 @@ Must $frame '::IsChild\(m_document_tree, pMsg->hwnd\)' 'Ctrl+F is scoped to the 
 if($tree -match 'ScriptCatalog\s+[a-zA-Z_]+\s*;|void CTreeView::SetScriptFilter[\s\S]*?InitializeScripts\(') { throw 'Filtering must reuse the loaded catalog without discovery.' }
 Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
 Must $tree 'SetImageList\(m_scriptImageList,TVSIL_NORMAL\)' 'scripts select their own image list'
-Must $tree 'if\(m_script_mode\) SetImageList\(m_scriptImageList,TVSIL_NORMAL\);' 'scripts rebind the native image list after a visual refresh'
+Must $tree 'const HIMAGELIST previousImages = m_scriptImageList\.Detach\(\)' 'scripts retain the old image list while new images are prepared'
+Must $tree 'SetImageList\(m_scriptImageList, TVSIL_NORMAL\);[\s\S]*?ImageList_Destroy\(previousImages\)' 'scripts rebind before freeing the old image list'
 Must $tree 'SetImageList\(m_ImageList,TVSIL_NORMAL\)' 'structure restores the legacy structural image list'
 Must $tree 'SetWindowTheme\(m_hWnd, L" ", L" "\)' 'scripts use native legacy plus/minus expanders instead of themed chevrons'
 Must $tree 'UiMetrics::ScaleForDpi\(kScriptImageSize, dpi' 'scripts-tree icons retain compact DPI metrics'

@@ -26,7 +26,7 @@ LRESULT RegexQuickReferencePopup::OnCreate(UINT, WPARAM, LPARAM, BOOL&) {
     m_left.Create(m_hWnd, leftRect, NULL, listStyle, 0, IDC_REGEX_QUICK_LEFT);
     m_right.Create(m_hWnd, rightRect, NULL, listStyle, 0, IDC_REGEX_QUICK_RIGHT);
     m_fullHelp.Create(m_hWnd, fullHelpRect, FbeLoadRuntimeStringByKey(L"fbe.regex_quick.full_help", L"Full help..."), WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDC_REGEX_QUICK_FULL_HELP);
-    const HFONT font = UiMetrics::DialogFont();
+    const HFONT font = UiMetrics::DialogFontForWindow(m_hWnd);
     m_monospaceFont = ::CreateFontW(-::MulDiv(9, static_cast<int>(dpi), 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
     if (m_monospaceFont == NULL)
@@ -106,7 +106,7 @@ void RegexQuickReferencePopup::DrawListItem(const DRAWITEMSTRUCT& draw, const st
         const FbeSearchPresets::RegexQuickReferenceEntry& entry = m_entries[entryIndex];
         RECT syntax = text;
         syntax.right = (std::min)(text.right, syntax.left + m_syntaxColumnWidth);
-        HFONT old = static_cast<HFONT>(::SelectObject(dc, m_monospaceFont ? m_monospaceFont : UiMetrics::DialogFont()));
+        HFONT old = static_cast<HFONT>(::SelectObject(dc, m_monospaceFont ? m_monospaceFont : UiMetrics::DialogFontForWindow(m_hWnd)));
         ::DrawText(dc, entry.displaySyntax, entry.displaySyntax.GetLength(), &syntax, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
         ::SelectObject(dc, old);
         RECT description = text;
@@ -143,7 +143,7 @@ bool RegexQuickReferencePopup::DescriptionIsTruncated(HWND list, int row, const 
     RECT item = {}; if (::SendMessage(list, LB_GETITEMRECT, row, reinterpret_cast<LPARAM>(&item)) == LB_ERR) return false;
     const int padding = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(m_hWnd));
     const int available = item.right - item.left - padding * 3 - m_syntaxColumnWidth;
-    HDC dc = ::GetDC(list); HFONT old = static_cast<HFONT>(::SelectObject(dc, UiMetrics::DialogFont())); SIZE extent = {};
+    HDC dc = ::GetDC(list); HFONT old = static_cast<HFONT>(::SelectObject(dc, UiMetrics::DialogFontForWindow(m_hWnd))); SIZE extent = {};
     ::GetTextExtentPoint32(dc, description, description.GetLength(), &extent); if (old) ::SelectObject(dc, old); ::ReleaseDC(list, dc);
     if (available <= 0 || extent.cx <= available) return false;
     text.Format(L"%s — %s", static_cast<LPCWSTR>(entry.displaySyntax), static_cast<LPCWSTR>(description));

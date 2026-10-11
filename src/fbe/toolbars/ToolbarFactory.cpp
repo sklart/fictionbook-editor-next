@@ -5,7 +5,7 @@
 #include "..\\UiMetrics.h"
 namespace {
 struct ToolbarResourceData { WORD version; WORD width; WORD height; WORD itemCount; WORD* Items() { return reinterpret_cast<WORD*>(this + 1); } };
-BOOL CALLBACK SetDialogFontForToolbarChild(HWND window, LPARAM) { ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE); return TRUE; }
+BOOL CALLBACK SetDialogFontForToolbarChild(HWND window, LPARAM) { ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFontForWindow(window)), TRUE); return TRUE; }
 
 HBITMAP CreateAlphaBitmapCell(HBITMAP source, int cellSize, int cellIndex)
 {
@@ -187,7 +187,7 @@ HBITMAP ScaleLegacyToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetS
 }
 
 bool ToolbarFactory::ImageListHasMaskPlane(HIMAGELIST imageList) { IMAGEINFO imageInfo = {}; return imageList != NULL && ::ImageList_GetImageInfo(imageList, 0, &imageInfo) != FALSE && imageInfo.hbmMask != NULL; }
-void ToolbarFactory::SetDialogFontForToolbarRow(HWND window, bool includeChildren) { if(window == NULL) return; ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFont()), TRUE); if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0); }
+void ToolbarFactory::SetDialogFontForToolbarRow(HWND window, bool includeChildren) { if(window == NULL) return; ::SendMessage(window, WM_SETFONT, reinterpret_cast<WPARAM>(UiMetrics::DialogFontForWindow(window)), TRUE); if(includeChildren) ::EnumChildWindows(window, SetDialogFontForToolbarChild, 0); }
 void ToolbarFactory::AutoSizeToolbar(HWND window) { if(window != NULL) ::SendMessage(window, TB_AUTOSIZE, 0, 0); }
 
 HWND ToolbarFactory::CreateCommandToolbarCtrl(HWND parent, CImageList& ownedImages, UINT toolbarResourceId, UINT dpi, DWORD style, UINT controlId, int baseImageSize)

@@ -10,6 +10,8 @@ public:
 
 	static HFONT DialogFont();
 	static HFONT MenuFont();
+	static HFONT DialogFontForWindow(HWND window);
+	static HFONT MenuFontForWindow(HWND window);
 	static int Scale(int px);
 	static int SmallGap();
 	static int NormalGap();
