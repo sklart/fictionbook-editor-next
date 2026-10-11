@@ -4,6 +4,26 @@
 #include "TemplateResolver.h"
 #include "resource.h"
 
+namespace
+{
+UINT OptionsWindowDpi(HWND window)
+{
+    using GetDpiForWindowProc = UINT (WINAPI*)(HWND);
+    const HMODULE user32 = GetModuleHandleW(L"user32.dll");
+    const auto getDpi = user32 ? reinterpret_cast<GetDpiForWindowProc>(
+        GetProcAddress(user32, "GetDpiForWindow")) : nullptr;
+    if (getDpi)
+    {
+        const UINT dpi = getDpi(window);
+        if (dpi) return dpi;
+    }
+    HDC dc = GetDC(window);
+    const UINT dpi = dc ? static_cast<UINT>(GetDeviceCaps(dc, LOGPIXELSX)) : 96;
+    if (dc) ReleaseDC(window, dc);
+    return dpi ? dpi : 96;
+}
+}
+
 void CHtmlExportOptionsDialog::LoadSettings()
 {
     HtmlExportSettingsStore::Load(_Settings, m_settings);
@@ -34,21 +54,76 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     m_appearancePage.Create(m_hWnd);
     m_imagesPage.Create(m_hWnd);
     m_notesPage.Create(m_hWnd);
+    CapturePageLayouts();
+    CRect client, window;
+    GetClientRect(client);
+    GetWindowRect(window);
+    m_initialClient = client.Size();
+    m_minimumWindow = window.Size();
+    m_initialDpi = m_layoutDpi = OptionsWindowDpi(m_hWnd);
+    auto initialRect = [this](int id) {
+        CRect rect;
+        GetDlgItem(id).GetWindowRect(rect);
+        ScreenToClient(rect);
+        return rect;
+    };
+    m_initialTabs = initialRect(IDC_OPTIONS_TABS);
+    m_initialOk = initialRect(IDOK);
+    m_initialCancel = initialRect(IDCANCEL);
+    MONITORINFO monitor = { sizeof(monitor) };
+    if (GetMonitorInfoW(MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor))
+    {
+        const int width = min(window.Width(), monitor.rcWork.right - monitor.rcWork.left);
+        const int height = min(window.Height(), monitor.rcWork.bottom - monitor.rcWork.top);
+        const int x = min(max(window.left, monitor.rcWork.left), monitor.rcWork.right - width);
+        const int y = min(max(window.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+        SetWindowPos(NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    LayoutChrome();
     LayoutPages();
     SelectPage(0);
     return TRUE;
 }
 LRESULT CHtmlExportOptionsDialog::OnSize(UINT, WPARAM, LPARAM, BOOL&)
 {
+    LayoutChrome();
     LayoutPages();
     return 0;
 }
-LRESULT CHtmlExportOptionsDialog::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
+LRESULT CHtmlExportOptionsDialog::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 {
+    m_layoutDpi = LOWORD(wParam);
     const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
     if (suggested)
-        SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left, suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
+    {
+        MONITORINFO monitor = { sizeof(monitor) };
+        if (GetMonitorInfoW(MonitorFromRect(suggested, MONITOR_DEFAULTTONEAREST), &monitor))
+        {
+            const int width = min(suggested->right - suggested->left, monitor.rcWork.right - monitor.rcWork.left);
+            const int height = min(suggested->bottom - suggested->top, monitor.rcWork.bottom - monitor.rcWork.top);
+            const int x = min(max(suggested->left, monitor.rcWork.left), monitor.rcWork.right - width);
+            const int y = min(max(suggested->top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+            SetWindowPos(NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+    }
+    LayoutChrome();
     LayoutPages();
+    return 0;
+}
+
+LRESULT CHtmlExportOptionsDialog::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
+{
+    if (!m_initialDpi || !lParam) return 0;
+    auto* bounds = reinterpret_cast<MINMAXINFO*>(lParam);
+    MONITORINFO monitor = { sizeof(monitor) };
+    if (GetMonitorInfoW(MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor))
+    {
+        const UINT dpi = OptionsWindowDpi(m_hWnd);
+        bounds->ptMinTrackSize.x = min(MulDiv(m_minimumWindow.cx, dpi, m_initialDpi),
+            monitor.rcWork.right - monitor.rcWork.left);
+        bounds->ptMinTrackSize.y = min(MulDiv(m_minimumWindow.cy, dpi, m_initialDpi),
+            monitor.rcWork.bottom - monitor.rcWork.top);
+    }
     return 0;
 }
 LRESULT CHtmlExportOptionsDialog::OnTabChanged(int, LPNMHDR, BOOL&)
@@ -66,7 +141,72 @@ void CHtmlExportOptionsDialog::LayoutPages()
     tabs.AdjustRect(FALSE, &page);
     HWND pages[] = { m_generalPage.m_hWnd, m_appearancePage.m_hWnd, m_imagesPage.m_hWnd, m_notesPage.m_hWnd };
     for (size_t index = 0; index < _countof(pages); ++index)
-        if (pages[index]) ::SetWindowPos(pages[index], NULL, page.left, page.top, page.Width(), page.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+        if (pages[index]) {
+            ::SetWindowPos(pages[index], NULL, page.left, page.top, page.Width(), page.Height(), SWP_NOZORDER | SWP_NOACTIVATE);
+            LayoutPageFields(static_cast<int>(index), pages[index]);
+        }
+}
+
+void CHtmlExportOptionsDialog::CapturePageLayouts()
+{
+    HWND pages[] = { m_generalPage.m_hWnd, m_appearancePage.m_hWnd, m_imagesPage.m_hWnd, m_notesPage.m_hWnd };
+    for (int index = 0; index < static_cast<int>(_countof(pages)); ++index)
+    {
+        RECT client = {};
+        ::GetClientRect(pages[index], &client);
+        m_pageLayouts[index].initialSize = CSize(client.right, client.bottom);
+        for (HWND child = ::GetWindow(pages[index], GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT))
+        {
+            RECT rect = {};
+            ::GetWindowRect(child, &rect);
+            ::MapWindowPoints(NULL, pages[index], reinterpret_cast<POINT*>(&rect), 2);
+            m_pageLayouts[index].controls.push_back({ child, CRect(rect), ::GetDlgCtrlID(child) });
+        }
+    }
+}
+
+void CHtmlExportOptionsDialog::LayoutPageFields(int index, HWND page)
+{
+    if (!m_initialDpi || !page) return;
+    RECT client = {};
+    ::GetClientRect(page, &client);
+    const PageLayout& layout = m_pageLayouts[index];
+    const auto scale = [this](int value) { return MulDiv(value, m_layoutDpi, m_initialDpi); };
+    const int extraWidth = max(0, client.right - scale(layout.initialSize.cx));
+    for (const PageControlLayout& control : layout.controls)
+    {
+        CRect rect(scale(control.initial.left), scale(control.initial.top),
+            scale(control.initial.right), scale(control.initial.bottom));
+        const bool stretch = (index == 0 && (control.id == IDC_TEMPLATE || control.id == IDC_DOCUMENT_STRUCTURE)) ||
+            (index == 1 && control.id == IDC_CUSTOM_CSS) ||
+            (index == 2 && (control.id == IDC_COVER_MODE || control.id == IDC_IMAGES_FOLDER ||
+                control.id == IDC_IMAGES_FOLDER_NAME)) ||
+            (index == 3 && control.id == IDC_NOTE_PLACEMENT);
+        const bool move = (index == 0 && control.id == IDC_BROWSE) ||
+            (index == 1 && (control.id == IDC_BROWSE_CSS || control.id == IDC_CLEAR_CSS));
+        if (stretch) rect.right += extraWidth;
+        else if (move) rect.OffsetRect(extraWidth, 0);
+        ::SetWindowPos(control.window, NULL, rect.left, rect.top, rect.Width(), rect.Height(),
+            SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
+void CHtmlExportOptionsDialog::LayoutChrome()
+{
+    if (!m_initialDpi || !GetDlgItem(IDC_OPTIONS_TABS).IsWindow()) return;
+    CRect client;
+    GetClientRect(client);
+    const auto scale = [this](int value) { return MulDiv(value, m_layoutDpi, m_initialDpi); };
+    const int extraWidth = max(0, client.Width() - scale(m_initialClient.cx));
+    const int extraHeight = max(0, client.Height() - scale(m_initialClient.cy));
+    GetDlgItem(IDC_OPTIONS_TABS).MoveWindow(scale(m_initialTabs.left), scale(m_initialTabs.top),
+        scale(m_initialTabs.Width()) + extraWidth, scale(m_initialTabs.Height()) + extraHeight);
+    GetDlgItem(IDOK).MoveWindow(client.right - scale(m_initialClient.cx - m_initialOk.left),
+        client.bottom - scale(m_initialClient.cy - m_initialOk.top),
+        scale(m_initialOk.Width()), scale(m_initialOk.Height()));
+    GetDlgItem(IDCANCEL).MoveWindow(client.right - scale(m_initialClient.cx - m_initialCancel.left),
+        client.bottom - scale(m_initialClient.cy - m_initialCancel.top),
+        scale(m_initialCancel.Width()), scale(m_initialCancel.Height()));
 }
 void CHtmlExportOptionsDialog::SelectPage(int page)
 {

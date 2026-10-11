@@ -53,6 +53,16 @@ public:
     HtmlExportNotesMetadataPage m_notesPage;
     int m_currentPage = 0;
     bool m_splitSupported = true;
+    CRect m_initialTabs;
+    CRect m_initialOk;
+    CRect m_initialCancel;
+    CSize m_initialClient;
+    CSize m_minimumWindow;
+    UINT m_initialDpi = 0;
+    UINT m_layoutDpi = 0;
+    struct PageControlLayout { HWND window; CRect initial; int id; };
+    struct PageLayout { CSize initialSize = CSize(0, 0); std::vector<PageControlLayout> controls; };
+    PageLayout m_pageLayouts[4];
     void SetSplitSupported(bool value) { m_splitSupported = value; m_generalPage.SetSplitSupported(value); }
 
     void LoadSettings();
@@ -62,6 +72,7 @@ public:
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
+        MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         NOTIFY_HANDLER(IDC_OPTIONS_TABS, TCN_SELCHANGE, OnTabChanged)
         COMMAND_ID_HANDLER(IDOK, OnOk)
         COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
@@ -70,11 +81,15 @@ public:
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
+    LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM, BOOL&);
     LRESULT OnTabChanged(int, LPNMHDR, BOOL&);
     LRESULT OnOk(WORD, WORD, HWND, BOOL&);
     LRESULT OnCancel(WORD, WORD, HWND, BOOL&);
     void SelectPage(int page);
     void LayoutPages();
+    void LayoutChrome();
+    void CapturePageLayouts();
+    void LayoutPageFields(int index, HWND page);
 };
 
 class CHtmlFileDialogEvents : public CComObjectRootEx<CComSingleThreadModel>, public IFileDialogEvents, public IFileDialogControlEvents
