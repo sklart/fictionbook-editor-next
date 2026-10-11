@@ -13,6 +13,13 @@ public static class UiLayoutAudit
         public Rect Monitor, Work;
         public int Flags;
     }
+    [StructLayout(LayoutKind.Sequential)] private struct ScrollInfo
+    {
+        public uint Size, Mask;
+        public int Min, Max;
+        public uint Page;
+        public int Position, TrackPosition;
+    }
     public sealed class Row
     {
         public string Hwnd { get; set; }
@@ -45,6 +52,7 @@ public static class UiLayoutAudit
     [DllImport("user32.dll")] private static extern int GetDlgCtrlID(IntPtr hwnd);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int count);
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hwnd, int index);
+    [DllImport("user32.dll")] private static extern bool GetScrollInfo(IntPtr hwnd, int bar, ref ScrollInfo info);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hwnd);
@@ -90,6 +98,21 @@ public static class UiLayoutAudit
         ReleaseDC(hwnd, dc);
         return fallback > 0 ? fallback : 96;
     }
+    private static bool HasScrollableAncestor(IntPtr parent, int bar)
+    {
+        for (IntPtr current = parent; current != IntPtr.Zero; current = GetParent(current))
+        {
+            int style = GetWindowLong(current, -16);
+            int requiredStyle = bar == 0 ? 0x00100000 : 0x00200000; // WS_HSCROLL / WS_VSCROLL
+            if ((style & requiredStyle) != 0 && HasScrollRange(current, bar)) return true;
+        }
+        return false;
+    }
+    private static bool HasScrollRange(IntPtr hwnd, int bar)
+    {
+        var info = new ScrollInfo { Size = (uint)Marshal.SizeOf(typeof(ScrollInfo)), Mask = 0x3 }; // SIF_RANGE | SIF_PAGE
+        return GetScrollInfo(hwnd, bar, ref info) && info.Max - info.Min + 1 > info.Page;
+    }
     private static Row CaptureRow(IntPtr hwnd, IntPtr parent, string dialog, Rect work)
     {
         Rect bounds;
@@ -103,7 +126,9 @@ public static class UiLayoutAudit
             Id = parent == IntPtr.Zero ? 0 : GetDlgCtrlID(hwnd), Class = kind, Text = text,
             Dpi = WindowDpi(hwnd), Bounds = bounds, WorkArea = work,
             Enabled = IsWindowEnabled(hwnd),
-            OutsideWorkArea = bounds.Left < work.Left || bounds.Top < work.Top || bounds.Right > work.Right || bounds.Bottom > work.Bottom
+            // Controls scrolled outside their viewport remain reachable in that scroll direction.
+            OutsideWorkArea = ((bounds.Left < work.Left || bounds.Right > work.Right) && !HasScrollableAncestor(parent, 0)) ||
+                ((bounds.Top < work.Top || bounds.Bottom > work.Bottom) && !HasScrollableAncestor(parent, 1))
         };
         // Lists, edits, combos, icons and custom controls have their own scrolling/drawing rules.
         bool textControl = kind.Equals("Static", StringComparison.OrdinalIgnoreCase) || kind.Equals("Button", StringComparison.OrdinalIgnoreCase);
