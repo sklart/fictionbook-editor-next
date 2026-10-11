@@ -138,6 +138,9 @@
   <xsl:template match="f:section | f:annotation | f:epigraph | f:cite | f:poem | f:stanza | f:title">
     <div class="{local-name()}"><!-- container -->
       <xsl:call-template name="id"/>
+      <xsl:if test="(self::f:section or self::f:cite or self::f:poem or self::f:stanza or self::f:annotation or self::f:title) and @xml:lang">
+        <xsl:attribute name="xml:lang"><xsl:value-of select="@xml:lang"/></xsl:attribute>
+      </xsl:if>
       <!-- element content -->
       <xsl:apply-templates/>
     </div>

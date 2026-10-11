@@ -57,6 +57,7 @@ jobs:
           ./tools/tests/test-buildstamp-fallback.ps1
           ./tools/tests/test-first-party-msbuild-policy.ps1
           ./tools/tests/test-fbe-script-catalog.ps1
+          ./tools/tests/test-fbe-structural-commands.ps1
           ./tools/tests/test-fbe-navigation-scripts-contract.ps1
           ./tools/tests/test-document-tree-viewbar-elements.ps1
           ./tools/tests/test-fbe-script-menu-builder.ps1

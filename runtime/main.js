@@ -2980,8 +2980,14 @@ function CloneContainer(cp,check)
 
  if(check) return true;
 
- window.external.BeginUndoUnit(document,"clone "+cp.className);
- var ncp=cp.cloneNode(false);
+ // A shallow clone also copies the XML ID and MSHTML-only attributes.
+ var ncp=document.createElement("DIV");
+ ncp.className=cp.className;
+ if(cp.className=="section" || cp.className=="poem" || cp.className=="stanza" || cp.className=="cite")
+ {
+  var language=cp.getAttribute("xml:lang",2);
+  if(language) ncp.setAttribute("xml:lang",language,0);
+ }
 
  switch (cp.className)
  {
@@ -2991,9 +2997,11 @@ function CloneContainer(cp,check)
   case "stanza": case "cite": case "epigraph": ncp.innerHTML='<P></P>'; break;
  }
  InflateIt(ncp);
- cp.insertAdjacentElement("afterEnd",ncp);
- window.external.EndUndoUnit(document);
+ window.external.BeginUndoUnit(document,"clone "+cp.className);
+ try { cp.insertAdjacentElement("afterEnd",ncp); }
+ finally { window.external.EndUndoUnit(document); }
  GoTo(ncp);
+ return true;
 }
 //-----------------------------------------------
 
@@ -3336,188 +3344,197 @@ function AddTA(cp,check)
 }
 //-----------------------------------------------
 
-function IsCtSection(s)
+function StructuralFailure(key, fallback, check)
 {
- for(s=s.firstChild; s; s=s.nextSibling)
-   if(s.nodeName=="P") return false;
-
- return true;
+ if(!check) MsgBox(GetLocalizedStringOrDefault(key,fallback));
+ return false;
 }
-//-----------------------------------------------
 
-function FindSE(cp,name)
+function StructuralNextElement(node)
 {
- for(cp=cp.firstChild;cp;cp=cp.nextSibling)
+ for(var next=node.nextSibling; next; next=next.nextSibling)
  {
-  if(cp.nodeName !="DIV") return;
-  if(cp.className==name) return cp;
-  if(cp.className=="section") return;
+  if(next.nodeType==1) return next;
+  if(next.nodeType!=3 || /\S/.test(next.nodeValue)) return null;
  }
+ return null;
 }
-//-----------------------------------------------
+
+function StructuralChildren(node)
+{
+ var children=[];
+ for(var child=node.firstChild; child; child=child.nextSibling)
+ {
+  if(child.nodeType==1) children.push(child);
+  else if(child.nodeType!=3 || /\S/.test(child.nodeValue)) return null;
+ }
+ return children;
+}
+
+function StructuralHasExtraAttributes(node)
+{
+ if(node.id) return true;
+ for(var i=0; i<node.attributes.length; ++i)
+ {
+  var attribute=node.attributes[i];
+  var name=String(attribute.nodeName).toLowerCase();
+  if(attribute.specified && name!="class" && name!="classname") return true;
+ }
+ return false;
+}
+
+// Only accept layouts whose concatenation is known to satisfy sectionType.
+function StructuralSectionKind(section)
+{
+ var children=StructuralChildren(section), phase=0, kind="";
+ if(!children) return null;
+ for(var i=0; i<children.length; ++i)
+ {
+  var child=children[i], name=String(child.className || "").toLowerCase();
+  if(child.tagName=="DIV" && name=="title" && phase==0) { phase=1; continue; }
+  if(child.tagName=="DIV" && name=="epigraph" && phase<=2) { phase=2; continue; }
+  if(child.tagName=="DIV" && name=="image" && phase<=2) { phase=3; continue; }
+  if(child.tagName=="DIV" && name=="annotation" && phase<=3) { phase=4; continue; }
+  if(child.tagName=="DIV" && name=="section")
+  {
+   if(kind=="text") return null;
+   kind="nested"; phase=5; continue;
+  }
+  if((child.tagName=="P" && (name=="" || name=="subtitle" || name=="empty-line")) ||
+     (child.tagName=="DIV" && (name=="poem" || name=="cite" || name=="image" || name=="table")) ||
+     (child.tagName=="TABLE" && name=="table"))
+  {
+   if(name=="image" && kind!="text") return null;
+   if(kind=="nested") return null;
+   kind="text"; phase=5; continue;
+  }
+  return null;
+ }
+ return kind || null;
+}
+
+function StructuralSimpleContent(node, type, onlyLines)
+{
+ var children=StructuralChildren(node), author=false, lines=0, phase=0;
+ if(!children) return false;
+ for(var i=0; i<children.length; ++i)
+ {
+  var child=children[i], name=String(child.className || "").toLowerCase();
+  if(type=="stanza")
+  {
+   if(!onlyLines && child.tagName=="DIV" && name=="title" && phase==0) { phase=1; continue; }
+   if(!onlyLines && child.tagName=="P" && name=="subtitle" && phase<=1) { phase=2; continue; }
+   if(child.tagName!="P" || name!="") return false;
+   ++lines; phase=3;
+  }
+  else
+  {
+   if(child.tagName=="P" && name=="text-author") { author=true; continue; }
+   if(author || !((child.tagName=="P" && (name=="" || name=="subtitle" || name=="empty-line")) ||
+      (child.tagName=="DIV" && (name=="poem" || name=="table")) || (child.tagName=="TABLE" && name=="table"))) return false;
+   ++lines;
+  }
+ }
+ return type=="stanza" ? lines>0 : true;
+}
 
 function MergeContainers(cp,check)
 {
- cp=GetCP(cp); if(!cp) return;
-
- if(cp.className!="section" && cp.className!="stanza" && cp.className!="cite") return;
-
- var nx=cp.nextSibling;
-
- if(!nx || nx.tagName!="DIV" || nx.className!=cp.className) return;
-
- if(check) return true;
-
- window.external.BeginUndoUnit(document,"merge "+cp.className+"s");
-
- if(cp.className=="cite") {
-  for (var kj=cp.firstChild; kj; kj=kj.nextSibling)
-   if (kj.nodeName=="P" && kj.className=="text-author") kj.removeAttribute("className");
- }
-
- if(!IsCtSection(cp))
+ cp=GetCP(cp);
+ if(!cp || (cp.className!="section" && cp.className!="stanza" && cp.className!="cite")) return false;
+ var nx=StructuralNextElement(cp);
+ if(!nx || nx.tagName!="DIV" || nx.className!=cp.className || nx.parentNode!=cp.parentNode) return false;
+ if(StructuralHasExtraAttributes(nx))
+  return StructuralFailure("fbe.structure.merge.attributes","The second element has an ID or attributes that cannot be discarded safely.",check);
+ var first=StructuralChildren(cp), second=StructuralChildren(nx);
+ if(!first || !second)
+  return StructuralFailure("fbe.structure.merge.layout","The elements contain unsupported content.",check);
+ if(cp.className=="section")
  {
-  // delete all nested sections
-  var pi, ii=nx.firstChild;
-
-  while(ii)
+  var firstKind=StructuralSectionKind(cp), secondKind=StructuralSectionKind(nx);
+  if(!firstKind || firstKind!=secondKind)
+   return StructuralFailure("fbe.structure.merge.layout","The elements contain unsupported content.",check);
+  var secondBodySeen=false;
+  for(var i=0; i<second.length; ++i)
   {
-   if(ii.tagName=="DIV")
-   {
-	if(ii.className=="title")
-	{
-	  var pp=ii.getElementsByTagName("P");
-	  for(var l=0; l<pp.length; l++) pp.item(l).className="subtitle";
-	}
-	if(ii.className=="title" || ii.className=="epigraph" || ii.className=="section" || ii.className=="annotation")
-	{
-	  ii.removeNode(false);
-	  ii=pi ? pi.nextSibling : nx.firstChild;
-	  continue;
-	}
-   }
-   pi=ii; ii=ii.nextSibling;
+   var headerName=second[i].className;
+   if(second[i].tagName=="DIV" &&
+      (headerName=="title" || headerName=="epigraph" || headerName=="annotation" ||
+       (headerName=="image" && !secondBodySeen)))
+    return StructuralFailure("fbe.structure.merge.header","The second section has a heading or metadata that cannot be merged without changing its meaning.",check);
+   if(headerName!="image") secondBodySeen=true;
   }
  }
- else if(!IsCtSection(nx))
+ else if(cp.className=="stanza")
  {
-    // simply move nx under cp
-    cp.appendChild(nx);
+  if(!StructuralSimpleContent(cp,"stanza",false) || !StructuralSimpleContent(nx,"stanza",true))
+   return StructuralFailure("fbe.structure.merge.layout","The elements contain unsupported content.",check);
  }
  else
  {
-    // move nx's content under cp
-
-    // check if there are any header items to save
-    var needSave;
-    for(var ii=nx.firstChild;ii;ii=ii.nextSibling)
-      if(ii.nodeName=="DIV" && (ii.className=="image" || ii.className=="epigraph" ||
-				 ii.className=="annotation" || ii.className=="title"))
-      {
-	needSave=true; break;
-      }
-
-    if(needSave)
-    {
-      // find a destination section for section header items
-      var dst=nx.firstChild;
-      while (dst)
-      {
-	if(dst.nodeName=="DIV" && dst.className=="section") break;
-	dst=dst.nextSibling;
-      }
-
-      // create one
-      if(!dst)
-      {
-	dst=document.createElement("DIV");
-	dst.className="section";
-	var pp=document.createElement("P");
-	window.external.inflateBlock(pp)=true;
-	dst.appendChild(pp);
-	cp.appendChild(dst);
-      }
-
-      // move items
-      var jj=dst.firstChild;
-      for (;;)
-      {
-	var ii=nx.firstChild;
-	if (!ii)
-	  break;
-	if (ii.nodeName!="DIV")
-	  break;
-	var stop;
-	switch (ii.className) {
-	  case "title":
-	    if (jj && jj.nodeName=="DIV" && jj.className=="title") {
-	      jj.insertAdjacentElement("afterBegin",ii);
-	      ii.removeNode(false);
-	    } else
-	      InsBefore(dst,jj,ii);
-	    break;
-	  case "epigraph":
-	    while (jj && jj.nodeName=="DIV" && (jj.className=="title" || jj.className=="epigraph"))
-	      jj=jj.nextSibling;
-	    InsBefore(dst,jj,ii);
-	    break;
-	  case "image":
-	    while (jj && jj.nodeName=="DIV" && (jj.className=="title" || jj.className=="epigraph"))
-	      jj=jj.nextSibling;
-	    InsBefore(dst,jj,ii);
-	    break;
-	  case "annotation":
-	    while (jj && jj.nodeName=="DIV" && (jj.className=="title" || jj.className=="epigraph" || jj.className=="image"))
-	      jj=jj.nextSibling;
-	    if (jj && jj.nodeName=="DIV" && jj.className=="annotation")
-	    {
-	      jj.insertAdjacentElement("afterBegin",ii);
-	      ii.removeNode(false);
-	    } else
-	      InsBefore(dst,jj,ii);
-	    break;
-	  default:
-	    stop=true;
-	    break;
-	}
-	if (stop)
-	  break;
-      }
-    }
-
-    // finally merge
-    cp.appendChild(nx);
-    nx.removeNode(false);
-  }
-
-  cp.insertAdjacentElement("beforeEnd",nx);
-  nx.removeNode(false);
-
-  window.external.EndUndoUnit(document);
+  if(!StructuralSimpleContent(cp,"cite",false) || !StructuralSimpleContent(nx,"cite",false))
+   return StructuralFailure("fbe.structure.merge.layout","The elements contain unsupported content.",check);
+  var author=false;
+  for(var i=0; i<first.length; ++i) if(first[i].className=="text-author") author=true;
+  if(author)
+   for(var i=0; i<second.length; ++i) if(second[i].className!="text-author")
+    return StructuralFailure("fbe.structure.merge.author","The first quotation has an author line before the second quotation's text.",check);
+ }
+ if(check) return true;
+ var moved=[], complete=false;
+ window.external.BeginUndoUnit(document,"merge "+cp.className+"s");
+ try
+ {
+  for(var i=0; i<second.length; ++i) { cp.appendChild(second[i]); moved.push(second[i]); }
+  nx.removeNode(true);
+  complete=true;
+ }
+ catch(error)
+ {
+  for(var i=0; i<moved.length; ++i) nx.appendChild(moved[i]);
+ }
+ finally { window.external.EndUndoUnit(document); }
+ if(!complete) return StructuralFailure("fbe.structure.operation.failed","The structural change failed; the document was left unchanged.",false);
+ GoTo(cp);
+ return true;
 }
-//-----------------------------------------------
 
 function RemoveOuterContainer(cp,check)
 {
- cp=GetCP(cp); if(!cp) return;
-
- if((cp.className!="section" && cp.className!="body") || !IsCtSection(cp)) return;
-
+ cp=GetCP(cp);
+ if(!cp) return false;
+ if(cp.className=="body")
+  return StructuralFailure("fbe.structure.remove.body","The FB2 body cannot be removed.",check);
+ if(cp.className!="section") return false;
+ var parent=cp.parentNode;
+ if(!parent || parent.tagName!="DIV" || (parent.className!="body" && parent.className!="section")) return false;
+ if(StructuralHasExtraAttributes(cp))
+  return StructuralFailure("fbe.structure.remove.attributes","The outer section has an ID or attributes that cannot be removed safely.",check);
+ var children=StructuralChildren(cp);
+ if(!children || !children.length)
+  return StructuralFailure("fbe.structure.remove.content","The outer section contains content that would be lost.",check);
+ for(var i=0; i<children.length; ++i)
+  if(children[i].tagName!="DIV" || children[i].className!="section")
+   return StructuralFailure("fbe.structure.remove.content","The outer section contains content that would be lost.",check);
+ if(parent.className=="section" && StructuralSectionKind(parent)!="nested")
+  return StructuralFailure("fbe.structure.remove.layout","Removing this section would create an invalid FB2 layout.",check);
  if(check) return true;
-
+ var moved=[], complete=false;
  window.external.BeginUndoUnit(document,"Remove Outer Section");
-
- // ok, move all child sections to upper level
- while(cp.firstChild)
+ try
  {
-  var cc=cp.firstChild;
-  cc.removeNode(true);
-  if(cc.nodeName=="DIV" && cc.className=="section") cp.insertAdjacentElement("beforeBegin",cc);
+  for(var i=0; i<children.length; ++i) { cp.insertAdjacentElement("beforeBegin",children[i]); moved.push(children[i]); }
+  cp.removeNode(true);
+  complete=true;
  }
-
- cp.removeNode(true); // delete the section itself
-
- window.external.EndUndoUnit(document);
+ catch(error)
+ {
+  for(var i=moved.length-1; i>=0; --i) cp.insertAdjacentElement("afterBegin",moved[i]);
+ }
+ finally { window.external.EndUndoUnit(document); }
+ if(!complete) return StructuralFailure("fbe.structure.operation.failed","The structural change failed; the document was left unchanged.",false);
+ if(moved.length) GoTo(moved[0]);
+ return true;
 }
 //-----------------------------------------------
 

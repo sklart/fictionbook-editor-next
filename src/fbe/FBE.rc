@@ -1105,7 +1105,7 @@ STRINGTABLE
 BEGIN
     ID_EDIT_ADD_TITLE       "Add a title to the selected object\nAdd title"
     ID_EDIT_ADD_BODY        "Add a new body to the document\nAdd body"
-    ID_EDIT_CLONE           "Clone selected object\nClone"
+    ID_EDIT_CLONE           "Create a new empty element of the same type after the current element.\nClone"
     ID_EDIT_INS_IMAGE       "Insert an image at cursor\nInsert image"
     ID_EDIT_INS_INLINEIMAGE "Insert an inline image at cursor\nInsert inline image"
     ID_FILE_VALIDATE        "Validate current document against FictionBook schema\nValidate"

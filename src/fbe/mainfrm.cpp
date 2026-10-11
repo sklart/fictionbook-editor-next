@@ -726,6 +726,7 @@ CString CMainFrame::GetRuntimeToolbarToolTipText(UINT commandId) const
 	LPCWSTR toolbarKey = NULL;
 	switch(commandId)
 	{
+	case ID_EDIT_CLONE: return FbeLoadRuntimeStringByKey(L"fbe.structure.clone.tooltip", L"Create a new empty element of the same type after the current element.");
 	case ID_EDIT_BOLD: toolbarKey = L"fbe.hotkey.edit.bold"; break;
 	case ID_EDIT_ITALIC: toolbarKey = L"fbe.hotkey.edit.italic"; break;
 	case ID_EDIT_SUP: toolbarKey = L"fbe.hotkey.edit.superscript"; break;
@@ -6167,8 +6168,8 @@ LRESULT CMainFrame::OnTreeMerge(WORD, WORD, HWND, BOOL&)
 	if(!elem)
 		return 0;
 
-	bool merged = m_doc->m_body.bCall(L"MergeContainers", elem);
-	m_doc->m_body.Call(L"MergeContainers", elem);
+	_variant_t arguments[2] = { false, elem };
+	bool merged = m_doc->m_body.bCall(L"MergeContainers", 2, arguments);
 	// Move cursor to selected element
 	if(merged)
 		GoTo(elem);

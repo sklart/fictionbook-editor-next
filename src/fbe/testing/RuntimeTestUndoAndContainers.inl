@@ -1,3 +1,70 @@
+	if (IsFbeTestScenario(L"structural-commands"))
+	{
+		wchar_t action[32] = {};
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_STRUCTURE_ACTION", action, _countof(action));
+		CStringA header("action\tcheck_allowed\tcheck_unchanged\tapplied\tchanged\tundo_restored\tredo_restored\tsaved\tresult\r\n");
+		DWORD written = 0; output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		try {
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			MSHTML::IHTMLElementPtr root(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+			const bool clone = wcscmp(action, L"clone") == 0;
+			const bool clonePoem = wcscmp(action, L"clone-poem") == 0;
+			const bool cloneStanza = wcscmp(action, L"clone-stanza") == 0;
+			const bool cloneCite = wcscmp(action, L"clone-cite") == 0;
+			const bool cloneEpigraph = wcscmp(action, L"clone-epigraph") == 0;
+			const bool merge = wcscmp(action, L"merge") == 0;
+			const bool mergeCite = wcscmp(action, L"merge-cite") == 0;
+			const bool mergeStanza = wcscmp(action, L"merge-stanza") == 0;
+			const bool remove = wcscmp(action, L"remove") == 0;
+			const bool body = wcscmp(action, L"body") == 0;
+			const bool mergeId = wcscmp(action, L"merge-id") == 0;
+			const bool mergeMixed = wcscmp(action, L"merge-mixed") == 0;
+			const bool mergeTable = wcscmp(action, L"merge-table") == 0;
+			const bool citeAuthor = wcscmp(action, L"cite-author") == 0;
+			const bool removeMetadata = wcscmp(action, L"remove-metadata") == 0;
+			const bool removeId = wcscmp(action, L"remove-id") == 0;
+			const bool cloneAny = clone || clonePoem || cloneStanza || cloneCite || cloneEpigraph;
+			const wchar_t* command = cloneAny ? L"CloneContainer" : (merge || mergeCite || mergeStanza || mergeId || mergeMixed || mergeTable || citeAuthor) ? L"MergeContainers" : L"RemoveOuterContainer";
+			const wchar_t* targetId = clone ? L"clone-source" : clonePoem ? L"clone-poem-source" :
+				cloneStanza ? L"clone-stanza-line" : cloneCite ? L"clone-cite-source" : cloneEpigraph ? L"clone-epigraph-source" :
+				merge ? L"merge-first" : mergeCite ? L"merge-cite-first" : mergeStanza ? L"merge-stanza-line" : mergeId ? L"merge-id-first" :
+				mergeMixed ? L"merge-mixed-first" : mergeTable ? L"merge-table-first" : citeAuthor ? L"cite-first" : removeMetadata ? L"metadata-inner" : removeId ? L"id-inner" : L"inner-first";
+			MSHTML::IHTMLElementPtr target(document ? document->all->item(targetId) : MSHTML::IHTMLElementPtr());
+			if ((remove || body || removeMetadata || removeId) && target) target = target->parentElement;
+			if (body && target) target = target->parentElement;
+			if (!root || !target || !(cloneAny || merge || mergeCite || mergeStanza || remove || body || mergeId || mergeMixed || mergeTable || citeAuthor || removeMetadata || removeId)) throw _com_error(E_INVALIDARG);
+			auto snapshot = [&]() { return CString(static_cast<const wchar_t*>(root->innerHTML)); };
+			const CString before(snapshot());
+			const bool allowed = m_doc->m_body.bCall(command, target);
+			const bool checkUnchanged = before == snapshot();
+			const bool expectedAllowed = cloneAny || merge || mergeCite || mergeStanza || mergeTable || remove;
+			bool applied = false, changed = false, undoRestored = true, redoRestored = true, saved = true;
+			if (expectedAllowed && allowed) {
+				_variant_t arguments[2] = { false, target.GetInterfacePtr() };
+				applied = m_doc->m_body.bCall(command, 2, arguments);
+				const CString after(snapshot());
+				changed = after != before;
+				BOOL handled = FALSE;
+				m_doc->m_body.OnUndo(0, 0, m_doc->m_body, handled);
+				undoRestored = snapshot() == before;
+				m_doc->m_body.OnRedo(0, 0, m_doc->m_body, handled);
+				redoRestored = snapshot() == after;
+				int line = 0, column = 0;
+				saved = applied && m_doc->Validate(line, column) && m_doc->Save();
+			}
+			const bool passed = allowed == expectedAllowed && checkUnchanged &&
+				(expectedAllowed ? applied && changed && undoRestored && redoRestored && saved : before == snapshot());
+			CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", action,
+				allowed ? 1 : 0, checkUnchanged ? 1 : 0, applied ? 1 : 0, changed ? 1 : 0,
+				undoRestored ? 1 : 0, redoRestored ? 1 : 0, saved ? 1 : 0, passed ? "pass" : "fail");
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+			::PostQuitMessage(passed ? 0 : 1); return 0;
+		} catch (const _com_error& error) {
+			CStringA row; row.Format("%S\t0\t0\t0\t0\t0\t0\t0\tcom-0x%08lX\r\n", action, static_cast<unsigned long>(error.Error()));
+			output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close();
+			::PostQuitMessage(1); return 0;
+		}
+	}
 	if (IsFbeTestScenario(L"split-undo-probe"))
 	{
 		wchar_t variant[48] = {};

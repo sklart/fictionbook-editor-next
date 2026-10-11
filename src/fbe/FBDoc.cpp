@@ -1312,6 +1312,16 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
 
   SetID(div,xdiv,doc);
 
+  // Preserve language inherited by structural containers when round-tripping
+  // through the visual editor.  Epigraph does not permit xml:lang in FB2 XSD.
+  if (U::scmp(cls,L"section")==0 || U::scmp(cls,L"poem")==0 ||
+      U::scmp(cls,L"stanza")==0 || U::scmp(cls,L"cite")==0 ||
+      U::scmp(cls,L"annotation")==0 || U::scmp(cls,L"title")==0) {
+    _bstr_t language(AU::GetAttrB(div,L"xml:lang"));
+    if (language.length()>0)
+      SetAttr(xdiv,L"xml:lang",L"http://www.w3.org/XML/1998/namespace",language,doc);
+  }
+
   // Modification by Pilgrim
   if (U::scmp(cls,L"table")==0) {
 	  _bstr_t	style(AU::GetAttrB(div,L"fbstyle"));

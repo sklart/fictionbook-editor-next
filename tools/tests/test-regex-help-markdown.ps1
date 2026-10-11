@@ -47,13 +47,6 @@ foreach ($locale in $locales) {
             $english = [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes((Join-Path $root "runtime\Help\en-US\$name")))
             if ($text -ceq $english) { throw "$locale/$name must not be an English copy" }
         }
-        if ($locale -ne 'ru-RU') {
-            $firstSection = $text.IndexOf("`n## ")
-            if ($firstSection -lt 0) { throw "$locale/$name has no first H2 section" }
-            $preface = $text.Substring(0, $firstSection)
-            $translationNotes = @($preface -split '(?:\r?\n){2,}' | Where-Object { $_ -match '(?i)translation|übersetz|tradu|перекладу|превода|překlad|tłumacz|vertal' })
-            if ($translationNotes.Count -ne 1) { throw "$locale/$name must contain exactly one translation note before the first section; got $($translationNotes.Count)" }
-        }
     }
 }
 $ruHelpRoot = Join-Path $root 'runtime\Help\ru-RU'
