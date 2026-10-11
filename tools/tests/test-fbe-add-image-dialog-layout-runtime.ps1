@@ -1,6 +1,10 @@
 <# Opens the real Add Image and Table dialogs in four representative UI locales. #>
 [CmdletBinding()]
-param([string]$FbeExe)
+param(
+    [string]$FbeExe,
+    [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA')]
+    [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA')
+)
 $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
@@ -68,7 +72,7 @@ try {
         throw 'The isolated settings template lacks the interface language.'
     }
     $languagePattern = [regex]::new('<IntefaceLangID>[0-9]+</IntefaceLangID>')
-    foreach ($locale in 'ru-RU', 'en-US', 'de-DE', 'uk-UA') {
+    foreach ($locale in $Locales) {
         $process = $null
         try {
             $settings = $languagePattern.Replace($settingsTemplate,
@@ -93,6 +97,10 @@ try {
             $report = Join-Path $isolation.Root "add-image-layout-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $report | Out-Null
             $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $report | ConvertFrom-Json
+            foreach ($issue in $audit.issues) {
+                $affected = @($audit.controls | Where-Object Hwnd -eq $issue.hwnd | Select-Object -First 1)
+                Write-Verbose "$locale Add Image audit finding: $($issue.kind), hwnd=$($affected.Hwnd), class=$($affected.Class), id=$($affected.Id), ignored=$($issue.ignored)"
+            }
             $dialogHandle = '0x' + $dialog.ToInt64().ToString('X')
             $expectedPrompt = $catalog.strings.'fbe.dialog.idd_addimage.text'.translations.$locale
             $prompt = @($audit.controls | Where-Object { $_.Parent -eq $dialogHandle -and $_.Id -eq 188 })
@@ -122,6 +130,10 @@ try {
             $tableReport = Join-Path $isolation.Root "table-layout-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $tableReport | Out-Null
             $tableAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $tableReport | ConvertFrom-Json
+            foreach ($issue in $tableAudit.issues) {
+                $affected = @($tableAudit.controls | Where-Object Hwnd -eq $issue.hwnd | Select-Object -First 1)
+                Write-Verbose "$locale Table audit finding: $($issue.kind), hwnd=$($affected.Hwnd), class=$($affected.Class), id=$($affected.Id), ignored=$($issue.ignored)"
+            }
             $tableHandle = '0x' + $table.ToInt64().ToString('X')
             foreach ($item in @(
                 @{ Id = 1600; Key = 'fbe.dialog.idd_table.rows_label' },
@@ -157,7 +169,7 @@ try {
         }
     }
     $passed = $true
-    Write-Host 'Add Image and Table localized layout passed for ru/en/de/uk.'
+    Write-Host "Add Image and Table localized layout passed for $($Locales -join '/')."
 }
 finally {
     for ($attempt = 0; $attempt -lt 5; ++$attempt) {

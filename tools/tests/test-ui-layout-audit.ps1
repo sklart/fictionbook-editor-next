@@ -24,11 +24,11 @@ $form = New-Object System.Windows.Forms.Form
 $form.Text = 'UI Layout Audit fixture'
 $form.Width = 360
 $form.Height = 180
-$directory = Join-Path $root 'out\tests\ui-layout-audit'
-New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$exceptionPath = Join-Path $directory 'exceptions.json'
+$prefix = Join-Path ([IO.Path]::GetTempPath()) ('fbe-ui-layout-audit-' + [guid]::NewGuid().ToString('N'))
+$exceptionPath = $prefix + '-exceptions.json'
 [IO.File]::WriteAllText($exceptionPath, '{"ignoredOverlapPairs":["112:113"]}', [Text.UTF8Encoding]::new($false))
-$reportPath = Join-Path $directory 'report.json'
+$reportPath = $prefix + '-report.json'
+$passed = $false
 try {
     $form.Show()
     $parent = $form.Handle
@@ -82,8 +82,11 @@ try {
         throw 'A vertical scrollbar must not excuse a horizontally unreachable control.'
     }
     Write-Host 'UI Layout Audit native fixture passed.'
+    $passed = $true
 }
 finally {
     $form.Close()
     $form.Dispose()
+    if ($passed) { Remove-Item -LiteralPath $exceptionPath, $reportPath -Force -ErrorAction SilentlyContinue }
+    else { Write-Host "UI Layout Audit failure artifacts: $exceptionPath, $reportPath" }
 }

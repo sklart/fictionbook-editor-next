@@ -171,6 +171,10 @@ public static class UiLayoutAudit
             uint owner;
             GetWindowThreadProcessId(top, out owner);
             if (owner != (uint)processId || !IsWindowVisible(top)) return true;
+            // Windows input indicator overlays can share the process while sitting
+            // partly over the taskbar; they are not application layout controls.
+            string topClass = ClassName(top);
+            if (topClass == "UAC_InputIndicatorOverlayWnd" || topClass == "UAC Input Indicator") return true;
             var info = new MonitorInfo { Size = Marshal.SizeOf(typeof(MonitorInfo)) };
             if (!GetMonitorInfo(MonitorFromWindow(top, 2), ref info)) return true;
             string dialog = WindowText(top);
