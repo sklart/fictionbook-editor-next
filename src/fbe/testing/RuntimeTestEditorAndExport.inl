@@ -202,13 +202,10 @@
 		const bool qualityToolbarVisual = captureNativeWindow(m_CmdToolbar,
 			CString(qualityArtifactDirectory) + L"\\quality-toolbar-after.bmp");
 		HMENU fileMenu = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-		const int recentMenuPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
-		int exportMenuPosition = -1, importMenuPosition = -1;
-		for(int position = recentMenuPosition - 1; position >= 0; --position)
-			if(::GetSubMenu(fileMenu, position) != NULL) {
-				if(exportMenuPosition < 0) exportMenuPosition = position;
-				else { importMenuPosition = position; break; }
-			}
+		const FilePluginMenus pluginMenus = FindFilePluginMenus(fileMenu);
+		const int recentMenuPosition = pluginMenus.recentPosition;
+		const int importMenuPosition = pluginMenus.importPosition;
+		const int exportMenuPosition = pluginMenus.exportPosition;
 		auto menuCaption = [&](int position) -> CString {
 			wchar_t caption[256] = {};
 			if(position >= 0) ::GetMenuStringW(fileMenu, position, caption, _countof(caption), MF_BYPOSITION);
@@ -231,6 +228,17 @@
 						::GetSubMenu(fileMenu, shifted.importPosition) == originalImport &&
 						::GetSubMenu(fileMenu, shifted.exportPosition) == originalExport;
 					::RemoveMenu(fileMenu, importMenuPosition, MF_BYPOSITION);
+					if(shiftedPluginMenus) {
+						shiftedPluginMenus = false;
+						if(::InsertMenuW(fileMenu, exportMenuPosition, MF_BYPOSITION | MF_POPUP,
+							reinterpret_cast<UINT_PTR>(inserted), L"Extra menu")) {
+							const FilePluginMenus between = FindFilePluginMenus(fileMenu);
+							shiftedPluginMenus = between.importPosition >= 0 && between.exportPosition >= 0 &&
+								::GetSubMenu(fileMenu, between.importPosition) == originalImport &&
+								::GetSubMenu(fileMenu, between.exportPosition) == originalExport;
+							::RemoveMenu(fileMenu, exportMenuPosition, MF_BYPOSITION);
+						}
+					}
 				}
 				::DestroyMenu(inserted);
 			}

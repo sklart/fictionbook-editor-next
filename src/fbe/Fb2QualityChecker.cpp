@@ -1019,9 +1019,8 @@ private:
 		const HWND list = GetDlgItem(IDC_FB2_QUALITY_LIST);
 		const HWND header = list ? reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0)) : NULL;
 		if (notification && notification->hwndFrom == header &&
-			(notification->code == HDN_TRACKW || notification->code == HDN_ENDTRACKW ||
-				notification->code == HDN_TRACKA || notification->code == HDN_ENDTRACKA))
-			::InvalidateRect(list, NULL, TRUE);
+			(notification->code == HDN_ENDTRACKW || notification->code == HDN_ENDTRACKA))
+			::InvalidateRect(list, NULL, FALSE);
 		handled = FALSE;
 		return 0;
 	}

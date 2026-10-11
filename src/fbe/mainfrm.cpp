@@ -1004,12 +1004,35 @@ struct FilePluginMenus {
 static FilePluginMenus FindFilePluginMenus(HMENU fileMenu)
 {
 	FilePluginMenus result;
+	if(fileMenu == NULL) return result;
 	result.recentPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
-	for(int position = result.recentPosition - 1; position >= 0; --position)
-		if(::GetSubMenu(fileMenu, position) != NULL) {
-			if(result.exportPosition < 0) result.exportPosition = position;
-			else { result.importPosition = position; break; }
+	// Remember the actual popup handles: plug-ins replace their placeholder commands,
+	// and other submenus may subsequently be inserted anywhere in the File menu.
+	static HMENU knownFileMenu = NULL, knownImportMenu = NULL, knownExportMenu = NULL;
+	const int count = ::GetMenuItemCount(fileMenu);
+	if(fileMenu == knownFileMenu)
+		for(int position = 0; position < count; ++position)
+		{
+			const HMENU submenu = ::GetSubMenu(fileMenu, position);
+			if(submenu == knownImportMenu) result.importPosition = position;
+			if(submenu == knownExportMenu) result.exportPosition = position;
 		}
+	if(result.importPosition < 0 || result.exportPosition < 0)
+	{
+		result.importPosition = result.exportPosition = -1;
+		const int first = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_QUALITY_CHECK) + 1;
+		if(first > 0 && result.recentPosition > first)
+			for(int position = first; position < result.recentPosition; ++position)
+				if(::GetSubMenu(fileMenu, position) != NULL)
+				{
+					if(result.importPosition < 0) result.importPosition = position;
+					result.exportPosition = position;
+				}
+		if(result.importPosition == result.exportPosition) result.importPosition = result.exportPosition = -1;
+		knownFileMenu = fileMenu;
+		knownImportMenu = result.importPosition >= 0 ? ::GetSubMenu(fileMenu, result.importPosition) : NULL;
+		knownExportMenu = result.exportPosition >= 0 ? ::GetSubMenu(fileMenu, result.exportPosition) : NULL;
+	}
 	return result;
 }
 
