@@ -1,4 +1,4 @@
-<# Audits localized General settings controls in an isolated, visible FBE dialog. #>
+<# Audits localized General and Hotkeys controls in an isolated, visible FBE dialog. #>
 [CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
@@ -21,6 +21,7 @@ public static class SettingsGeneralLayoutWindow
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
@@ -49,6 +50,12 @@ public static class SettingsGeneralLayoutWindow
         ShowWindow(frame, 5);
         PostMessage(frame, 0x0111, (IntPtr)32834, IntPtr.Zero);
     }
+    public static void SelectHotkeys(IntPtr settings)
+    {
+        var navigation = GetDlgItem(settings, 1625);
+        SendMessage(navigation, 0x0186, (IntPtr)5, IntPtr.Zero); // LB_SETCURSEL
+        SendMessage(settings, 0x0111, (IntPtr)(1625 | (1 << 16)), navigation); // LBN_SELCHANGE
+    }
     public static void Close(IntPtr window) { PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); }
 }
 '@
@@ -57,7 +64,7 @@ try {
     & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\localization\export-runtime-lang.ps1') -OutputDirectory (Join-Path $isolation.Runtime 'Lang') -Clean | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Runtime localization export failed.' }
     $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot '..\..\localization\app-ui\fbe-small-dialogs.json') | ConvertFrom-Json
-    $languageIds = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003 }
+    $languageIds = @{ 'ru-RU' = 0xFBE002; 'en-US' = 0xFBE001; 'de-DE' = 0xFBE004; 'uk-UA' = 0xFBE003; 'es-ES' = 0xFBE006; 'bg-BG' = 0xFBE00C }
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
     $settingsTemplate = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
@@ -65,7 +72,7 @@ try {
         throw 'The isolated settings template lacks the interface language.'
     }
     $languagePattern = [regex]::new('<IntefaceLangID>[0-9]+</IntefaceLangID>')
-    foreach ($locale in 'ru-RU', 'en-US', 'de-DE', 'uk-UA') {
+    foreach ($locale in 'ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG') {
         $process = $null
         try {
             $settings = $languagePattern.Replace($settingsTemplate,
@@ -122,25 +129,46 @@ try {
                 }
             }
             Write-Host "$locale General page labels and actions fit."
+            [SettingsGeneralLayoutWindow]::SelectHotkeys($settings)
+            Start-Sleep -Milliseconds 100
+            $hotkeysReport = Join-Path $PSScriptRoot "..\..\out\tests\settings-hotkeys-$locale.json"
+            & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $hotkeysReport | Out-Null
+            $hotkeysAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $hotkeysReport | ConvertFrom-Json
+            foreach ($button in @(
+                @{ Id = 1071; Key = 'fbe.dialog.idd_hotkeys.default' },
+                @{ Id = 1076; Key = 'fbe.dialog.idd_hotkeys.delete' },
+                @{ Id = 1077; Key = 'fbe.dialog.idd_hotkeys.assign' },
+                @{ Id = 1074; Key = 'fbe.dialog.idd_hotkeys.groups' },
+                @{ Id = 1075; Key = 'fbe.dialog.idd_hotkeys.commands' },
+                @{ Id = 1622; Key = 'fbe.dialog.idd_hotkeys.shortcut' },
+                @{ Id = 1067; Key = 'fbe.dialog.idd_setting_other.change_keyboard' },
+                @{ Id = 1617; Key = 'fbe.dialog.idd_setting_other.layout' })) {
+                $control = @($hotkeysAudit.controls | Where-Object Id -eq $button.Id)
+                $expectedText = $catalog.strings.($button.Key).translations.$locale
+                if ($control.Count -ne 1 -or $control[0].Text -ne $expectedText -or $control[0].TextMayClip) {
+                    throw "$locale Hotkeys control $($button.Id) is missing, untranslated, or clips its text."
+                }
+            }
+            Write-Host "$locale Hotkeys labels and action buttons fit."
             [SettingsGeneralLayoutWindow]::Close($settings)
             [SettingsGeneralLayoutWindow]::Close($frame)
-            [void]$process.WaitForExit(1000)
+            [void]$process.WaitForExit(5000)
         }
         finally {
             if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
         }
     }
-    Write-Host 'Settings General localized layout passed for ru/en/de/uk.'
+    Write-Host 'Settings General and Hotkeys localized layout passed for ru/en/de/uk/es/bg.'
 }
 finally {
-    for ($cleanupAttempt = 0; $cleanupAttempt -lt 5; ++$cleanupAttempt) {
+    for ($cleanupAttempt = 0; $cleanupAttempt -lt 20; ++$cleanupAttempt) {
         try {
             Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $true -ErrorAction Stop
             break
         }
         catch {
-            if ($cleanupAttempt -eq 4) { throw }
-            Start-Sleep -Milliseconds 400
+            if ($cleanupAttempt -eq 19) { throw }
+            Start-Sleep -Milliseconds 500
         }
     }
 }

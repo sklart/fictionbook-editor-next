@@ -813,13 +813,13 @@
         "uk-UA": "Типово",
         "de-DE": "Standard",
         "fr-FR": "Par défaut",
-        "es-ES": "Predeterminado",
+        "es-ES": "Por defecto",
         "it-IT": "Predefinito",
         "pl-PL": "Domyślne",
         "pt-PT": "Predefinição",
         "nl-NL": "Standaard",
         "cs-CZ": "Výchozí",
-        "bg-BG": "По подразбиране"
+        "bg-BG": "Стандартно"
       }
     },
     "fbe.dialog.idd_hotkeys.delete": {
