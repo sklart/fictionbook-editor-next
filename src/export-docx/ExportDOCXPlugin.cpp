@@ -885,6 +885,13 @@ public:
     BEGIN_MSG_MAP(CDocxSettingsDialog) //-V1048
         //-V1048
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog) //-V1048
+        MESSAGE_HANDLER(WM_SIZE, OnSize)
+        MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
+        MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
+        MESSAGE_HANDLER(WM_VSCROLL, OnVScroll)
+        MESSAGE_HANDLER(WM_HSCROLL, OnHScroll)
+        MESSAGE_HANDLER(WM_MOUSEWHEEL, OnMouseWheel)
+        MESSAGE_HANDLER(WM_COMMAND, OnFocusCommand)
         NOTIFY_HANDLER(IDC_SETTINGS_TAB, TCN_SELCHANGE, OnTabChanged)
         COMMAND_ID_HANDLER(IDOK, OnOK)
         COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
@@ -900,6 +907,7 @@ public:
         COMMAND_ID_HANDLER(IDC_PRESET_EDITORIAL, OnPresetButton)
         COMMAND_HANDLER(IDC_STYLE_PROFILE, CBN_SELCHANGE, OnProfileChanged)
         MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+        MESSAGE_HANDLER(WM_NCDESTROY, OnNcDestroy)
     END_MSG_MAP()
 
 private:
@@ -907,6 +915,132 @@ private:
     DocxExportSettings m_original;
     HWND m_hToolTip;
     std::vector<CString> m_tooltipText;
+    struct ControlLayout { HWND window; CRect initial; int id; };
+    std::vector<ControlLayout> m_controls;
+    CSize m_initialClient = CSize(0, 0);
+    int m_contentBottom = 0;
+    int m_footerHeight = 0;
+    int m_scrollX = 0;
+    int m_scrollY = 0;
+    UINT m_initialDpi = 0;
+    UINT m_layoutDpi = 0;
+    HWND m_footer = NULL;
+    LOGFONTW m_initialFont = {};
+    bool m_hasInitialFont = false;
+    HFONT m_ownedFont = NULL;
+
+    static int MinInt(int left, int right) { return left < right ? left : right; }
+    static int MaxInt(int left, int right) { return left > right ? left : right; }
+
+    UINT WindowDpi() const {
+        using GetDpiForWindowProc = UINT (WINAPI*)(HWND);
+        const HMODULE user32 = ::GetModuleHandleW(L"user32.dll");
+        const auto getDpi = user32 ? reinterpret_cast<GetDpiForWindowProc>(
+            ::GetProcAddress(user32, "GetDpiForWindow")) : nullptr;
+        if (getDpi) {
+            const UINT dpi = getDpi(m_hWnd);
+            if (dpi) return dpi;
+        }
+        HDC dc = ::GetDC(m_hWnd);
+        const UINT dpi = dc ? static_cast<UINT>(::GetDeviceCaps(dc, LOGPIXELSX)) : 96;
+        if (dc) ::ReleaseDC(m_hWnd, dc);
+        return dpi ? dpi : 96;
+    }
+
+    void CaptureLayout() {
+        ::ShowScrollBar(m_hWnd, SB_VERT, FALSE);
+        ::ShowScrollBar(m_hWnd, SB_HORZ, FALSE);
+        CRect client, ok;
+        GetClientRect(client);
+        GetDlgItem(IDOK).GetWindowRect(ok);
+        ScreenToClient(ok);
+        m_initialClient = client.Size();
+        m_initialDpi = m_layoutDpi = WindowDpi();
+        m_footerHeight = client.bottom - ok.top + ::MulDiv(8, m_layoutDpi, 96);
+        HFONT font = reinterpret_cast<HFONT>(GetDlgItem(IDOK).SendMessage(WM_GETFONT));
+        m_hasInitialFont = font && ::GetObjectW(font, sizeof(m_initialFont), &m_initialFont) != 0;
+        for (HWND child = ::GetWindow(m_hWnd, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) {
+            CRect rect;
+            ::GetWindowRect(child, &rect);
+            ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&rect), 2);
+            const int id = ::GetDlgCtrlID(child);
+            m_controls.push_back({ child, rect, id });
+            if (id != IDOK && id != IDCANCEL && id != IDC_RESET_DEFAULTS)
+                m_contentBottom = MaxInt(m_contentBottom, rect.bottom + ::MulDiv(8, m_layoutDpi, 96));
+        }
+        m_footer = ::CreateWindowW(WC_STATICW, L"", WS_CHILD | WS_VISIBLE,
+            0, 0, 0, 0, m_hWnd, NULL, g_hInstance, NULL);
+    }
+
+    void UpdateDpiFont() {
+        if (!m_hasInitialFont) return;
+        LOGFONTW font = m_initialFont;
+        font.lfHeight = ::MulDiv(font.lfHeight, m_layoutDpi, m_initialDpi);
+        HFONT updated = ::CreateFontIndirectW(&font);
+        if (!updated) return;
+        for (const ControlLayout& control : m_controls)
+            ::SendMessageW(control.window, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+        if (m_hToolTip) ::SendMessageW(m_hToolTip, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+        if (m_ownedFont) ::DeleteObject(m_ownedFont);
+        m_ownedFont = updated;
+    }
+
+    void LayoutControls() {
+        if (m_controls.empty()) return;
+        const auto scale = [this](int value) { return ::MulDiv(value, m_layoutDpi, m_initialDpi); };
+        CRect client;
+        GetClientRect(client);
+        auto viewportHeight = [&]() { return MaxInt(0, client.bottom - scale(m_footerHeight)); };
+        ::ShowScrollBar(m_hWnd, SB_VERT, scale(m_contentBottom) > viewportHeight() ? TRUE : FALSE);
+        ::ShowScrollBar(m_hWnd, SB_HORZ, scale(m_initialClient.cx) > client.right ? TRUE : FALSE);
+        GetClientRect(client);
+        ::ShowScrollBar(m_hWnd, SB_VERT, scale(m_contentBottom) > viewportHeight() ? TRUE : FALSE);
+        ::ShowScrollBar(m_hWnd, SB_HORZ, scale(m_initialClient.cx) > client.right ? TRUE : FALSE);
+        GetClientRect(client);
+        const int maxX = MaxInt(0, scale(m_initialClient.cx) - client.right);
+        const int maxY = MaxInt(0, scale(m_contentBottom) - viewportHeight());
+        m_scrollX = MinInt(MaxInt(m_scrollX, 0), maxX);
+        m_scrollY = MinInt(MaxInt(m_scrollY, 0), maxY);
+        SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
+        info.nMin = 0; info.nMax = MaxInt(0, scale(m_initialClient.cx) - 1);
+        info.nPage = client.right; info.nPos = m_scrollX;
+        ::SetScrollInfo(m_hWnd, SB_HORZ, &info, TRUE);
+        info.nMax = MaxInt(0, scale(m_contentBottom) - 1);
+        info.nPage = viewportHeight(); info.nPos = m_scrollY;
+        ::SetScrollInfo(m_hWnd, SB_VERT, &info, TRUE);
+        const int extraWidth = MaxInt(0, client.right - scale(m_initialClient.cx));
+        const int extraHeight = MaxInt(0, viewportHeight() - scale(m_initialClient.cy - m_footerHeight));
+        for (const ControlLayout& control : m_controls) {
+            CRect rect(scale(control.initial.left), scale(control.initial.top),
+                scale(control.initial.right), scale(control.initial.bottom));
+            const bool footer = control.id == IDOK || control.id == IDCANCEL || control.id == IDC_RESET_DEFAULTS;
+            if (footer) {
+                rect.OffsetRect(client.right - scale(m_initialClient.cx),
+                    client.bottom - scale(m_initialClient.cy));
+            } else {
+                rect.OffsetRect(-m_scrollX, -m_scrollY);
+                if (control.id == IDC_SETTINGS_TAB || control.id == IDC_GRP_IMAGES ||
+                    control.id == IDC_GRP_NOTES || control.id == IDC_GRP_FORMAT || control.id == IDC_GRP_PROPS) {
+                    rect.right += extraWidth;
+                    rect.bottom += extraHeight;
+                }
+                if (control.id == IDC_NOTES_MODE || control.id == IDC_FONT_NAME ||
+                    control.id == IDC_DOC_LANGUAGE) rect.right += extraWidth;
+            }
+            ::SetWindowPos(control.window, NULL, rect.left, rect.top, rect.Width(), rect.Height(),
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        if (m_footer) {
+            ::SetWindowPos(m_footer, HWND_TOP, 0, viewportHeight(), client.right,
+                client.bottom - viewportHeight(), SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            ::SetWindowPos(GetDlgItem(IDC_RESET_DEFAULTS), HWND_TOP, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            ::SetWindowPos(GetDlgItem(IDOK), HWND_TOP, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            ::SetWindowPos(GetDlgItem(IDCANCEL), HWND_TOP, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+    }
 
     void SetDlgItemRuntimeText(int controlId, LPCWSTR key) {
         const CStringW text = LoadExportDocxStringByKey(key, nullptr);
@@ -1042,7 +1176,127 @@ private:
         InitTooltips();
         ShowSettingsTab(0);
         CenterWindow(GetParent());
+        CaptureLayout();
+        ConstrainToWorkArea(NULL);
+        LayoutControls();
         return TRUE;
+    }
+
+    void ConstrainToWorkArea(const RECT* suggested) {
+        CRect window;
+        if (suggested) window = *suggested;
+        else GetWindowRect(window);
+        MONITORINFO monitor = { sizeof(monitor) };
+        if (!::GetMonitorInfoW(::MonitorFromRect(&window, MONITOR_DEFAULTTONEAREST), &monitor)) return;
+        const int width = MinInt(window.Width(), monitor.rcWork.right - monitor.rcWork.left);
+        const int height = MinInt(window.Height(), monitor.rcWork.bottom - monitor.rcWork.top);
+        const int x = MinInt(MaxInt(window.left, monitor.rcWork.left), monitor.rcWork.right - width);
+        const int y = MinInt(MaxInt(window.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+        SetWindowPos(NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
+    LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&) {
+        LayoutControls();
+        return 0;
+    }
+
+    LRESULT OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&) {
+        if (!m_initialDpi || !lParam) return 0;
+        auto* bounds = reinterpret_cast<MINMAXINFO*>(lParam);
+        MONITORINFO monitor = { sizeof(monitor) };
+        if (::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
+            RECT minimum = { 0, 0, ::MulDiv(360, m_layoutDpi, 96), ::MulDiv(230, m_layoutDpi, 96) };
+            using AdjustForDpiProc = BOOL (WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
+            const HMODULE user32 = ::GetModuleHandleW(L"user32.dll");
+            const auto adjustForDpi = user32 ? reinterpret_cast<AdjustForDpiProc>(
+                ::GetProcAddress(user32, "AdjustWindowRectExForDpi")) : nullptr;
+            const DWORD style = static_cast<DWORD>(GetWindowLong(GWL_STYLE));
+            const DWORD exStyle = static_cast<DWORD>(GetWindowLong(GWL_EXSTYLE));
+            if (!adjustForDpi || !adjustForDpi(&minimum, style, FALSE, exStyle, m_layoutDpi))
+                ::AdjustWindowRectEx(&minimum, style, FALSE, exStyle);
+            bounds->ptMinTrackSize.x = MinInt(minimum.right - minimum.left,
+                monitor.rcWork.right - monitor.rcWork.left);
+            bounds->ptMinTrackSize.y = MinInt(minimum.bottom - minimum.top,
+                monitor.rcWork.bottom - monitor.rcWork.top);
+        }
+        return 0;
+    }
+
+    LRESULT OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&) {
+        m_layoutDpi = LOWORD(wParam);
+        UpdateDpiFont();
+        ConstrainToWorkArea(reinterpret_cast<const RECT*>(lParam));
+        LayoutControls();
+        return 0;
+    }
+
+    void Scroll(bool horizontal, WPARAM command) {
+        CRect client;
+        GetClientRect(client);
+        const int page = horizontal ? client.right : MaxInt(0, client.bottom -
+            ::MulDiv(m_footerHeight, m_layoutDpi, m_initialDpi));
+        const int maximum = MaxInt(0, ::MulDiv(horizontal ? m_initialClient.cx : m_contentBottom,
+            m_layoutDpi, m_initialDpi) - page);
+        int& position = horizontal ? m_scrollX : m_scrollY;
+        switch (LOWORD(command)) {
+        case SB_LINEUP: position -= ::MulDiv(24, m_layoutDpi, 96); break;
+        case SB_LINEDOWN: position += ::MulDiv(24, m_layoutDpi, 96); break;
+        case SB_PAGEUP: position -= page; break;
+        case SB_PAGEDOWN: position += page; break;
+        case SB_THUMBTRACK: case SB_THUMBPOSITION:
+            { SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
+                ::GetScrollInfo(m_hWnd, horizontal ? SB_HORZ : SB_VERT, &info);
+                position = info.nTrackPos; }
+            break;
+        case SB_TOP: position = 0; break;
+        case SB_BOTTOM: position = maximum; break;
+        default: return;
+        }
+        position = MinInt(MaxInt(position, 0), maximum);
+        LayoutControls();
+    }
+
+    LRESULT OnVScroll(UINT, WPARAM wParam, LPARAM lParam, BOOL& handled) {
+        if (lParam) { handled = FALSE; return 0; }
+        Scroll(false, wParam);
+        return 0;
+    }
+
+    LRESULT OnHScroll(UINT, WPARAM wParam, LPARAM lParam, BOOL& handled) {
+        if (lParam) { handled = FALSE; return 0; }
+        Scroll(true, wParam);
+        return 0;
+    }
+
+    LRESULT OnMouseWheel(UINT, WPARAM wParam, LPARAM, BOOL&) {
+        m_scrollY -= ::MulDiv(GET_WHEEL_DELTA_WPARAM(wParam), ::MulDiv(72, m_layoutDpi, 96), WHEEL_DELTA);
+        LayoutControls();
+        return 0;
+    }
+
+    LRESULT OnFocusCommand(UINT, WPARAM wParam, LPARAM, BOOL& handled) {
+        handled = FALSE;
+        if (HIWORD(wParam) == BN_SETFOCUS || HIWORD(wParam) == CBN_SETFOCUS ||
+            HIWORD(wParam) == EN_SETFOCUS) RevealFocus();
+        return 0;
+    }
+
+    void RevealFocus() {
+        HWND focus = ::GetFocus();
+        if (!focus || !::IsChild(m_hWnd, focus)) return;
+        const int id = ::GetDlgCtrlID(focus);
+        if (id == IDOK || id == IDCANCEL || id == IDC_RESET_DEFAULTS) return;
+        CRect rect, client;
+        ::GetWindowRect(focus, &rect);
+        ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&rect), 2);
+        GetClientRect(client);
+        const int viewportBottom = client.bottom - ::MulDiv(m_footerHeight, m_layoutDpi, m_initialDpi);
+        const int oldX = m_scrollX, oldY = m_scrollY;
+        if (rect.left < 0) m_scrollX += rect.left;
+        else if (rect.right > client.right) m_scrollX += rect.right - client.right;
+        if (rect.top < 0) m_scrollY += rect.top;
+        else if (rect.bottom > viewportBottom) m_scrollY += rect.bottom - viewportBottom;
+        if (m_scrollX != oldX || m_scrollY != oldY) LayoutControls();
     }
 
     LRESULT OnOK(WORD, WORD, HWND, BOOL&) {
@@ -1108,6 +1362,12 @@ private:
         return 0;
     }
 
+    LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
+        if (m_ownedFont) { ::DeleteObject(m_ownedFont); m_ownedFont = NULL; }
+        handled = FALSE;
+        return 0;
+    }
+
     LRESULT OnOptionChanged(WORD, WORD, HWND, BOOL&) {
         UpdateControlStates();
         return 0;
@@ -1164,6 +1424,8 @@ private:
     LRESULT OnTabChanged(int, LPNMHDR, BOOL&) {
         int tab = static_cast<int>(SendDlgItemMessage(IDC_SETTINGS_TAB, TCM_GETCURSEL, 0, 0));
         ShowSettingsTab(tab < 0 ? 0 : tab);
+        m_scrollY = 0;
+        LayoutControls();
         return 0;
     }
 
