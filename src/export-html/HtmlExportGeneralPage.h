@@ -14,6 +14,7 @@ public:
     bool SaveToSettings(HtmlExportSettings& candidate, CString& error);
     void UpdateEnabledState();
     void SetSplitSupported(bool value);
+    void RefreshStructureTooltipArea();
 
     BEGIN_MSG_MAP(HtmlExportGeneralPage)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)

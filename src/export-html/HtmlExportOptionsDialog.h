@@ -61,7 +61,7 @@ public:
     UINT m_initialDpi = 0;
     UINT m_layoutDpi = 0;
     struct PageControlLayout { HWND window; CRect initial; int id; };
-    struct PageLayout { CSize initialSize = CSize(0, 0); std::vector<PageControlLayout> controls; };
+    struct PageLayout { CSize initialSize = CSize(0, 0); int scrollX = 0; int scrollY = 0; std::vector<PageControlLayout> controls; };
     PageLayout m_pageLayouts[4];
     void SetSplitSupported(bool value) { m_splitSupported = value; m_generalPage.SetSplitSupported(value); }
 
@@ -90,6 +90,10 @@ public:
     void LayoutChrome();
     void CapturePageLayouts();
     void LayoutPageFields(int index, HWND page);
+    void ScrollPage(int index, WPARAM command, bool horizontal);
+    void RevealFocusedPageControl(int index);
+    static LRESULT CALLBACK PageSubclassProc(HWND page, UINT message, WPARAM wParam, LPARAM lParam,
+        UINT_PTR subclassId, DWORD_PTR reference);
 };
 
 class CHtmlFileDialogEvents : public CComObjectRootEx<CComSingleThreadModel>, public IFileDialogEvents, public IFileDialogControlEvents

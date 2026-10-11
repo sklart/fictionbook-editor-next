@@ -162,6 +162,10 @@ void CHtmlExportOptionsDialog::CapturePageLayouts()
             ::MapWindowPoints(NULL, pages[index], reinterpret_cast<POINT*>(&rect), 2);
             m_pageLayouts[index].controls.push_back({ child, CRect(rect), ::GetDlgCtrlID(child) });
         }
+        ::SetWindowLongPtrW(pages[index], GWL_STYLE,
+            ::GetWindowLongPtrW(pages[index], GWL_STYLE) | WS_VSCROLL | WS_HSCROLL);
+        ::SetWindowSubclass(pages[index], PageSubclassProc, static_cast<UINT_PTR>(index),
+            reinterpret_cast<DWORD_PTR>(this));
     }
 }
 
@@ -170,9 +174,28 @@ void CHtmlExportOptionsDialog::LayoutPageFields(int index, HWND page)
     if (!m_initialDpi || !page) return;
     RECT client = {};
     ::GetClientRect(page, &client);
-    const PageLayout& layout = m_pageLayouts[index];
+    PageLayout& layout = m_pageLayouts[index];
     const auto scale = [this](int value) { return MulDiv(value, m_layoutDpi, m_initialDpi); };
-    const int extraWidth = max(0, client.right - scale(layout.initialSize.cx));
+    const int initialWidth = scale(layout.initialSize.cx);
+    const int initialHeight = scale(layout.initialSize.cy);
+    ::ShowScrollBar(page, SB_VERT, client.bottom < initialHeight);
+    ::ShowScrollBar(page, SB_HORZ, client.right < initialWidth);
+    ::GetClientRect(page, &client);
+    ::ShowScrollBar(page, SB_VERT, client.bottom < initialHeight);
+    ::ShowScrollBar(page, SB_HORZ, client.right < initialWidth);
+    ::GetClientRect(page, &client);
+    const int availableWidth = max(0, client.right - client.left);
+    const int availableHeight = max(0, client.bottom - client.top);
+    const int contentWidth = max(availableWidth, initialWidth);
+    const int contentHeight = max(availableHeight, initialHeight);
+    layout.scrollX = min(max(0, layout.scrollX), contentWidth - availableWidth);
+    layout.scrollY = min(max(0, layout.scrollY), contentHeight - availableHeight);
+    SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
+    info.nMin = 0; info.nMax = contentWidth - 1; info.nPage = availableWidth; info.nPos = layout.scrollX;
+    ::SetScrollInfo(page, SB_HORZ, &info, TRUE);
+    info.nMin = 0; info.nMax = contentHeight - 1; info.nPage = availableHeight; info.nPos = layout.scrollY;
+    ::SetScrollInfo(page, SB_VERT, &info, TRUE);
+    const int extraWidth = contentWidth - initialWidth;
     for (const PageControlLayout& control : layout.controls)
     {
         CRect rect(scale(control.initial.left), scale(control.initial.top),
@@ -186,9 +209,86 @@ void CHtmlExportOptionsDialog::LayoutPageFields(int index, HWND page)
             (index == 1 && (control.id == IDC_BROWSE_CSS || control.id == IDC_CLEAR_CSS));
         if (stretch) rect.right += extraWidth;
         else if (move) rect.OffsetRect(extraWidth, 0);
+        rect.OffsetRect(-layout.scrollX, -layout.scrollY);
         ::SetWindowPos(control.window, NULL, rect.left, rect.top, rect.Width(), rect.Height(),
             SWP_NOZORDER | SWP_NOACTIVATE);
     }
+    if (index == 0) m_generalPage.RefreshStructureTooltipArea();
+}
+
+void CHtmlExportOptionsDialog::ScrollPage(int index, WPARAM command, bool horizontal)
+{
+    HWND page = index == 0 ? m_generalPage.m_hWnd : index == 1 ? m_appearancePage.m_hWnd :
+        index == 2 ? m_imagesPage.m_hWnd : m_notesPage.m_hWnd;
+    if (!page) return;
+    PageLayout& layout = m_pageLayouts[index];
+    RECT client = {};
+    ::GetClientRect(page, &client);
+    const int available = horizontal ? client.right - client.left : client.bottom - client.top;
+    const int content = ::MulDiv(horizontal ? layout.initialSize.cx : layout.initialSize.cy,
+        m_layoutDpi, m_initialDpi);
+    const int maximum = max(0, content - available);
+    int& position = horizontal ? layout.scrollX : layout.scrollY;
+    const int line = ::MulDiv(24, m_layoutDpi, 96);
+    switch (LOWORD(command))
+    {
+    case SB_LINEUP: position -= line; break;
+    case SB_LINEDOWN: position += line; break;
+    case SB_PAGEUP: position -= available; break;
+    case SB_PAGEDOWN: position += available; break;
+    case SB_THUMBTRACK: case SB_THUMBPOSITION:
+        {
+            SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
+            ::GetScrollInfo(page, horizontal ? SB_HORZ : SB_VERT, &info);
+            position = info.nTrackPos;
+        }
+        break;
+    case SB_TOP: position = 0; break;
+    case SB_BOTTOM: position = maximum; break;
+    default: return;
+    }
+    position = min(max(0, position), maximum);
+    LayoutPageFields(index, page);
+}
+
+void CHtmlExportOptionsDialog::RevealFocusedPageControl(int index)
+{
+    HWND page = index == 0 ? m_generalPage.m_hWnd : index == 1 ? m_appearancePage.m_hWnd :
+        index == 2 ? m_imagesPage.m_hWnd : m_notesPage.m_hWnd;
+    const HWND focus = ::GetFocus();
+    if (!page || !focus || !::IsChild(page, focus)) return;
+    RECT rect = {}, client = {};
+    ::GetWindowRect(focus, &rect);
+    ::MapWindowPoints(NULL, page, reinterpret_cast<POINT*>(&rect), 2);
+    ::GetClientRect(page, &client);
+    PageLayout& layout = m_pageLayouts[index];
+    const int oldX = layout.scrollX, oldY = layout.scrollY;
+    if (rect.left < client.left) layout.scrollX += rect.left - client.left;
+    else if (rect.right > client.right) layout.scrollX += rect.right - client.right;
+    if (rect.top < client.top) layout.scrollY += rect.top - client.top;
+    else if (rect.bottom > client.bottom) layout.scrollY += rect.bottom - client.bottom;
+    if (layout.scrollX != oldX || layout.scrollY != oldY) LayoutPageFields(index, page);
+}
+
+LRESULT CALLBACK CHtmlExportOptionsDialog::PageSubclassProc(HWND page, UINT message, WPARAM wParam,
+    LPARAM lParam, UINT_PTR subclassId, DWORD_PTR reference)
+{
+    auto* dialog = reinterpret_cast<CHtmlExportOptionsDialog*>(reference);
+    const int index = static_cast<int>(subclassId);
+    if (message == WM_VSCROLL && !lParam) { dialog->ScrollPage(index, wParam, false); return 0; }
+    if (message == WM_HSCROLL && !lParam) { dialog->ScrollPage(index, wParam, true); return 0; }
+    if (message == WM_MOUSEWHEEL)
+    {
+        dialog->m_pageLayouts[index].scrollY -= ::MulDiv(GET_WHEEL_DELTA_WPARAM(wParam),
+            ::MulDiv(3 * 24, dialog->m_layoutDpi, 96), WHEEL_DELTA);
+        dialog->LayoutPageFields(index, page);
+        return 0;
+    }
+    if (message == WM_NCDESTROY)
+        ::RemoveWindowSubclass(page, PageSubclassProc, subclassId);
+    const LRESULT result = ::DefSubclassProc(page, message, wParam, lParam);
+    if (message == WM_COMMAND || message == WM_NOTIFY) dialog->RevealFocusedPageControl(index);
+    return result;
 }
 
 void CHtmlExportOptionsDialog::LayoutChrome()

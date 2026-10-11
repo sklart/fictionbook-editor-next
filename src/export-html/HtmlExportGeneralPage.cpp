@@ -197,6 +197,26 @@ void HtmlExportGeneralPage::AddDisabledStructureTooltip()
     ::SendMessage(m_tooltip, TTM_ADDTOOL, 0, reinterpret_cast<LPARAM>(&info));
 }
 
+void HtmlExportGeneralPage::RefreshStructureTooltipArea()
+{
+    if (!m_tooltip) return;
+    HWND label = GetDlgItem(IDC_DOCUMENT_STRUCTURE_LABEL);
+    HWND combo = GetDlgItem(IDC_DOCUMENT_STRUCTURE);
+    if (!label || !combo) return;
+    RECT labelRect = {}, comboRect = {}, area = {};
+    ::GetWindowRect(label, &labelRect);
+    ::GetWindowRect(combo, &comboRect);
+    ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<LPPOINT>(&labelRect), 2);
+    ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<LPPOINT>(&comboRect), 2);
+    ::UnionRect(&area, &labelRect, &comboRect);
+    TOOLINFO info = {};
+    info.cbSize = sizeof(info);
+    info.hwnd = m_hWnd;
+    info.uId = IDC_DOCUMENT_STRUCTURE;
+    info.rect = area;
+    ::SendMessage(m_tooltip, TTM_NEWTOOLRECT, 0, reinterpret_cast<LPARAM>(&info));
+}
+
 void HtmlExportGeneralPage::UpdateStructureTooltip()
 {
     if (!m_tooltip) return;
