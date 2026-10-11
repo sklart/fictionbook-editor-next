@@ -2789,6 +2789,8 @@ void ApplyExportOptionsDialogText(HWND hwnd)
     }
 }
 
+UINT ExportOptionsDpi(HWND hwnd);
+
 void InstallExportOptionsTooltips(HWND hwnd)
 {
     INITCOMMONCONTROLSEX icc = {};
@@ -2812,7 +2814,7 @@ void InstallExportOptionsTooltips(HWND hwnd)
         return;
     }
 
-    SendMessageW(tooltip, TTM_SETMAXTIPWIDTH, 0, 420);
+    SendMessageW(tooltip, TTM_SETMAXTIPWIDTH, 0, MulDiv(420, ExportOptionsDpi(hwnd), 96));
     SendMessageW(tooltip, TTM_SETDELAYTIME, TTDT_INITIAL, MAKELPARAM(350, 0));
     SetPropW(hwnd, L"ExportEPUB.OptionsTooltip", tooltip);
 
@@ -2928,6 +2930,8 @@ void CaptureExportOptionsLayout(HWND hwnd, ExportOptionsDialogContext& ctx)
 
 void UpdateExportOptionsFont(HWND hwnd, ExportOptionsDialogContext& ctx)
 {
+    const HWND tooltip = reinterpret_cast<HWND>(GetPropW(hwnd, L"ExportEPUB.OptionsTooltip"));
+    if (tooltip) SendMessageW(tooltip, TTM_SETMAXTIPWIDTH, 0, MulDiv(420, ctx.dpi, 96));
     if (!ctx.hasFont) return;
     LOGFONTW font = ctx.initialFont;
     font.lfHeight = MulDiv(font.lfHeight, ctx.dpi, ctx.initialDpi);
@@ -2935,7 +2939,6 @@ void UpdateExportOptionsFont(HWND hwnd, ExportOptionsDialogContext& ctx)
     if (!updated) return;
     for (const auto& control : ctx.controls)
         SendMessageW(control.window, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
-    const HWND tooltip = reinterpret_cast<HWND>(GetPropW(hwnd, L"ExportEPUB.OptionsTooltip"));
     if (tooltip) SendMessageW(tooltip, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
     if (ctx.dpiFont) DeleteObject(ctx.dpiFont);
     ctx.dpiFont = updated;

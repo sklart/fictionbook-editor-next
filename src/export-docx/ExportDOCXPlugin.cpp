@@ -973,6 +973,7 @@ private:
     }
 
     void UpdateDpiFont() {
+        if (m_hToolTip) ::SendMessage(m_hToolTip, TTM_SETMAXTIPWIDTH, 0, ::MulDiv(440, m_layoutDpi, 96));
         if (!m_hasInitialFont) return;
         LOGFONTW font = m_initialFont;
         font.lfHeight = ::MulDiv(font.lfHeight, m_layoutDpi, m_initialDpi);
@@ -1585,7 +1586,7 @@ private:
         if (m_hToolTip == NULL)
             return;
 
-        ::SendMessage(m_hToolTip, TTM_SETMAXTIPWIDTH, 0, 440);
+        ::SendMessage(m_hToolTip, TTM_SETMAXTIPWIDTH, 0, ::MulDiv(440, WindowDpi(), 96));
         m_tooltipText.clear();
         m_tooltipText.reserve(40);
         AddTooltipString(IDC_EXPORT_IMAGES, IDS_TOOLTIP_EXPORT_IMAGES);

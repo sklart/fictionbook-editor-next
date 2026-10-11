@@ -449,7 +449,7 @@ namespace
                 WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
                 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
                 hwnd, nullptr, _AtlBaseModule.GetModuleInstance(), nullptr);
-            SendMessageW(m_tooltip, TTM_SETMAXTIPWIDTH, 0, 680);
+            SendMessageW(m_tooltip, TTM_SETMAXTIPWIDTH, 0, Scale(680, m_dpi));
 
             const int groupX = 14;
             const int groupW = 660;
@@ -565,6 +565,7 @@ namespace
 
         void UpdateFont()
         {
+            if (m_tooltip) SendMessageW(m_tooltip, TTM_SETMAXTIPWIDTH, 0, Scale(680, m_dpi));
             LOGFONTW font = {};
             if (!GetObjectW(GetStockObject(DEFAULT_GUI_FONT), sizeof(font), &font)) return;
             const UINT systemDpi = WindowDpi(nullptr);
