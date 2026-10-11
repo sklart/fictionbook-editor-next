@@ -272,13 +272,18 @@ try {
     $passed = $true
 }
 finally {
-    for ($cleanupAttempt = 0; $cleanupAttempt -lt 20; ++$cleanupAttempt) {
+    # Windows can keep the just-exited executable open briefly (for example,
+    # while a file-system scanner inspects it). Keep the isolated runtime until
+    # the lock clears, then remove it rather than reporting a layout failure.
+    $cleanupAttempts = 60
+    for ($cleanupAttempt = 0; $cleanupAttempt -lt $cleanupAttempts; ++$cleanupAttempt) {
         try {
             Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -ErrorAction Stop
             break
         }
         catch {
-            if ($cleanupAttempt -eq 19) { throw }
+            if ($_.Exception.Message -like 'Disposable runtime leaked FBE.exe process*') { throw }
+            if ($cleanupAttempt -eq $cleanupAttempts - 1) { throw }
             Start-Sleep -Milliseconds 500
         }
     }
