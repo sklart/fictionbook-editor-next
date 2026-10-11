@@ -1,10 +1,11 @@
-<# Audits localized General and Hotkeys controls plus every other Settings page in Russian. #>
+<# Audits every Settings page in priority locales, with General and Hotkeys in six locales. #>
 [CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'settings-general-layout'
+$passed = $false
 $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 if (-not [IO.Path]::GetFullPath($isolation.Root).StartsWith($temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Unexpected isolated runtime path.'
@@ -184,7 +185,7 @@ try {
                 }
             }
             Write-Host "$locale Hotkeys labels and action buttons fit."
-            if ($locale -eq 'ru-RU') {
+            if ($locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
                 $wideRect = New-Object SettingsGeneralLayoutWindow+Rect
                 [void][SettingsGeneralLayoutWindow]::GetWindowRect($settings, [ref]$wideRect)
                 $wideWidth = [Math]::Min(900, [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - 40)
@@ -206,7 +207,7 @@ try {
                         $dc = $graphics.GetHdc()
                         try { [void][SettingsGeneralLayoutWindow]::PrintWindow($settings, $dc, 0) }
                         finally { $graphics.ReleaseHdc($dc) }
-                        $bitmap.Save((Join-Path $PSScriptRoot "..\..\out\tests\settings-page-$pageIndex-ru-RU.bmp"))
+                        $bitmap.Save((Join-Path $PSScriptRoot "..\..\out\tests\settings-page-$pageIndex-$locale.bmp"))
                     }
                     finally { $graphics.Dispose(); $bitmap.Dispose() }
                     $pageHandles = @($pageAudit.controls | Where-Object Dialog -eq $dialog | ForEach-Object Hwnd)
@@ -230,12 +231,13 @@ try {
             if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
         }
     }
-    Write-Host 'Settings General and Hotkeys fit in ru/en/de/uk/es/bg; all other pages fit in ru-RU.'
+    Write-Host 'Settings pages fit in ru/en/de/uk; General and Hotkeys also fit in es/bg.'
+    $passed = $true
 }
 finally {
     for ($cleanupAttempt = 0; $cleanupAttempt -lt 20; ++$cleanupAttempt) {
         try {
-            Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $true -ErrorAction Stop
+            Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed -ErrorAction Stop
             break
         }
         catch {

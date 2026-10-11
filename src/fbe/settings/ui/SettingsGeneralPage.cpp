@@ -144,7 +144,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	const int gap = UiMetrics::ScaleForDpi(8, dpi);
 	const int padding = UiMetrics::ScaleForDpi(10, dpi);
 	const int rowGap = UiMetrics::ScaleForDpi(2, dpi);
-	const int minimumTextHeight = UiMetrics::ScaleForDpi(20, dpi);
+	const int minimumTextHeight = UiMetrics::ScaleForDpi(26, dpi);
 	auto bounds = [this](int id) {
 		CRect result;
 		::GetWindowRect(GetDlgItem(id), &result);

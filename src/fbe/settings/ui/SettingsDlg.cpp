@@ -392,8 +392,7 @@ void CSettingsDlg::LayoutPage(int index)
 			(index == PageIndex(SettingsPageId::Spelling) && control.id == IDC_CUSTOM_DICT) ||
 			(index == PageIndex(SettingsPageId::Words) && control.id == IDC_EDIT_NEW) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SCRIPTS_FOLDER_PATH);
-		if((index == PageIndex(SettingsPageId::Editor) && control.id == IDC_EDITOR_BACKGROUND_BROWSE) ||
-			(index == PageIndex(SettingsPageId::Words) && control.id == IDC_BUTTON_ADD) ||
+		if((index == PageIndex(SettingsPageId::Words) && control.id == IDC_BUTTON_ADD) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SELECT_SCRIPTS_FOLDER_BUTTON))
 			rect.OffsetRect(extraWidth, 0);
 		else if(stretchField || (nearRight && rect.Width() > layout.contentSize.cx / 2)) rect.right += extraWidth;
