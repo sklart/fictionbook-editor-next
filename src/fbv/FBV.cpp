@@ -56,6 +56,7 @@ public:
 		: m_timer(0)
 		, m_stop(false)
 		, m_validating(false)
+		, m_layoutReady(false)
 		, m_fileList(NULL)
 		, m_listItems(0)
 		, m_listMax(0) {
@@ -66,6 +67,7 @@ public:
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 		COMMAND_ID_HANDLER(IDC_VALIDATE, OnValidate)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		NOTIFY_HANDLER(IDC_FILELIST, LVN_GETDISPINFO, OnLvnGetdispinfoFilelist)
 		NOTIFY_HANDLER(IDC_FILELIST, LVN_ITEMCHANGED, OnLvnItemchangedFilelist)
 		CHAIN_MSG_MAP(CDialogResize<CMainDlg>)
@@ -77,7 +79,7 @@ public:
 		DLGRESIZE_CONTROL(IDC_MSG, DLSZ_SIZE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDC_VALIDATE, DLSZ_MOVE_X | DLSZ_MOVE_Y)
 		DLGRESIZE_CONTROL(IDCANCEL, DLSZ_MOVE_X | DLSZ_MOVE_Y)
-		DLGRESIZE_CONTROL(IDC_STATUS, DLSZ_MOVE_Y)
+		DLGRESIZE_CONTROL(IDC_STATUS, DLSZ_SIZE_X | DLSZ_MOVE_Y)
 	END_DLGRESIZE_MAP()
 
 	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
@@ -85,6 +87,7 @@ public:
 	LRESULT OnCancel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnValidate(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnTimer(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnSize(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/);
 	LRESULT OnLvnGetdispinfoFilelist(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/);
 	LRESULT OnLvnItemchangedFilelist(int /*idCtrl*/, LPNMHDR pNMHDR, BOOL& /*bHandled*/);
 
@@ -92,6 +95,7 @@ public:
 	UINT_PTR m_timer;
 	bool m_stop;
 	bool m_validating;
+	bool m_layoutReady;
 	FileInfo* m_fileList;
 	int m_listItems;
 	int m_listMax;
@@ -113,6 +117,7 @@ public:
 	int FindListViewItemByParam(LPARAM itemParam);
 	bool GetFileMetadata(const wchar_t* filename, FILETIME& ft, ULARGE_INTEGER& size) const;
 	void ClearErrorMessage(FileInfo* fi);
+	void UpdateFileColumnWidth();
 };
 
 enum {
@@ -741,10 +746,29 @@ LRESULT CMainDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bH
 	CString columnTitle = LoadFbString(IDS_COLUMN_FILE_NAME);
 	lvc.pszText = const_cast<LPTSTR>((LPCTSTR)columnTitle);
 	::SendDlgItemMessage(*this, IDC_FILELIST, LVM_INSERTCOLUMN, 0, (LPARAM)&lvc);
+	m_layoutReady = true;
 	// set startup timer
 	m_timer = ::SetTimer(*this, INIT_TIMER, 100, NULL);
 
 	return TRUE;
+}
+
+void CMainDlg::UpdateFileColumnWidth()
+{
+	RECT list = {};
+	if (!::GetClientRect(GetDlgItem(IDC_FILELIST), &list)) return;
+	const int width = (std::max)(0, static_cast<int>(list.right - list.left) - ::GetSystemMetrics(SM_CXVSCROLL) - 4);
+	SendDlgItemMessage(IDC_FILELIST, LVM_SETCOLUMNWIDTH, 0, width);
+}
+
+LRESULT CMainDlg::OnSize(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
+{
+	if (m_layoutReady && wParam != SIZE_MINIMIZED)
+	{
+		DlgResize_UpdateLayout(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		UpdateFileColumnWidth();
+	}
+	return 0;
 }
 
 
