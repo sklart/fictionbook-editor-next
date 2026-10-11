@@ -121,7 +121,7 @@ Must $tree 'script\.uid != m_favorite_scripts\[favorite\]\.first' 'favorite node
 Must $tree 'm_script_nodes\[item\] = index' 'favorite nodes reference existing descriptors'
 Must $tree 'NavigationPopupToggleFavorite' 'context menu can toggle favorites'
 Must $documentTree 'm_script_search\.ShowWindow\(scripts \? SW_SHOW : SW_HIDE\)' 'search exists only in Scripts mode'
-Must $documentTree 'ToolbarFactory::CommandToolbarImageSize\(dpi\) \+ UiMetrics::ScaleForDpi\(6, dpi\)' 'search height follows the shared toolbar DPI metric'
+Must $documentTree 'UiMetrics::ScaleForDpi\(26, dpi\)' 'search retains compact DPI-scaled height'
 Must $frame '::IsChild\(m_document_tree, pMsg->hwnd\)' 'Ctrl+F is scoped to the navigation pane'
 if($tree -match 'ScriptCatalog\s+[a-zA-Z_]+\s*;|void CTreeView::SetScriptFilter[\s\S]*?InitializeScripts\(') { throw 'Filtering must reuse the loaded catalog without discovery.' }
 Must $treeHeader 'm_scriptImageList' 'script mode owns a separate alpha-compatible image list'
