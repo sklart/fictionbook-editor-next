@@ -77,5 +77,5 @@ foreach ($locale in $locales) {
         if ($packageRequired -cnotcontains $packagePath) { throw "Package manifest misses localized Markdown help: $packagePath" }
     }
 }
-foreach ($token in @('HtmlEncode', 'regex-$mode.md', "'example'", "'note'", "'warning'")) { if ($generator -notmatch [regex]::Escape($token)) { throw "HTML generator lacks $token" } }
+foreach ($token in @('function Encode', 'regex-$mode.md', "'example'", "'note'", "'warning'")) { if ($generator -notmatch [regex]::Escape($token)) { throw "HTML generator lacks $token" } }
 Write-Host 'Regex Help Markdown localization and package contract passed.'
