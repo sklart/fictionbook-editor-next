@@ -2,12 +2,19 @@
 [CmdletBinding()]
 param(
     [string]$FbeExe,
+    [string]$ArtifactDirectory,
     [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
 $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+if (-not $ArtifactDirectory) {
+    $ArtifactDirectory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-settings-layout-' + [guid]::NewGuid().ToString('N'))
+}
+$ArtifactDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArtifactDirectory)
+New-Item -ItemType Directory -Path $ArtifactDirectory -Force | Out-Null
+Write-Host "Settings layout artifacts: $ArtifactDirectory"
 $isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'settings-general-layout'
 $passed = $false
 $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
@@ -126,7 +133,7 @@ try {
             if ($settings -eq [IntPtr]::Zero -or -not [SettingsGeneralLayoutWindow]::IsWindowVisible($settings)) {
                 throw "$locale Settings dialog missing."
             }
-            $report = Join-Path $PSScriptRoot "..\..\out\tests\settings-general-$locale.json"
+            $report = Join-Path $ArtifactDirectory "settings-general-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $report | Out-Null
             $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $report | ConvertFrom-Json
             if ($locale -eq 'ru-RU') {
@@ -139,7 +146,7 @@ try {
                     $dc = $graphics.GetHdc()
                     try { [void][SettingsGeneralLayoutWindow]::PrintWindow($settings, $dc, 0) }
                     finally { $graphics.ReleaseHdc($dc) }
-                    $bitmap.Save((Join-Path $PSScriptRoot '..\..\out\tests\settings-general-ru-RU.bmp'))
+                    $bitmap.Save((Join-Path $ArtifactDirectory 'settings-general-ru-RU.bmp'))
                 }
                 finally { $graphics.Dispose(); $bitmap.Dispose() }
             }
@@ -170,7 +177,7 @@ try {
             Write-Host "$locale General page labels and actions fit."
             [SettingsGeneralLayoutWindow]::SelectHotkeys($settings)
             Start-Sleep -Milliseconds 100
-            $hotkeysReport = Join-Path $PSScriptRoot "..\..\out\tests\settings-hotkeys-$locale.json"
+            $hotkeysReport = Join-Path $ArtifactDirectory "settings-hotkeys-$locale.json"
             & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $hotkeysReport | Out-Null
             $hotkeysAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $hotkeysReport | ConvertFrom-Json
             foreach ($button in @(
@@ -200,7 +207,7 @@ try {
                 foreach ($pageIndex in 1, 2, 3, 4, 6, 7) {
                     [SettingsGeneralLayoutWindow]::SelectPage($settings, $pageIndex)
                     Start-Sleep -Milliseconds 100
-                    $pageReport = Join-Path $PSScriptRoot "..\..\out\tests\settings-page-$pageIndex-$locale.json"
+                    $pageReport = Join-Path $ArtifactDirectory "settings-page-$pageIndex-$locale.json"
                     & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language $locale -OutputPath $pageReport | Out-Null
                     $pageAudit = Get-Content -Raw -Encoding UTF8 -LiteralPath $pageReport | ConvertFrom-Json
                     $rect = New-Object SettingsGeneralLayoutWindow+Rect
@@ -211,7 +218,7 @@ try {
                         $dc = $graphics.GetHdc()
                         try { [void][SettingsGeneralLayoutWindow]::PrintWindow($settings, $dc, 0) }
                         finally { $graphics.ReleaseHdc($dc) }
-                        $bitmap.Save((Join-Path $PSScriptRoot "..\..\out\tests\settings-page-$pageIndex-$locale.bmp"))
+                        $bitmap.Save((Join-Path $ArtifactDirectory "settings-page-$pageIndex-$locale.bmp"))
                     }
                     finally { $graphics.Dispose(); $bitmap.Dispose() }
                     $pageHandles = @($pageAudit.controls | Where-Object Dialog -eq $dialog | ForEach-Object Hwnd)
