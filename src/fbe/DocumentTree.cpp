@@ -423,7 +423,12 @@ LRESULT CTreeWithToolBar::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 			if(m_rebar.GetBandInfo(0, &baseBand)) m_rebarBandBaseStyle = baseBand.fStyle;
 			m_rebarThemeStateCaptured = true;
 		}
-		::SetWindowLongPtr(m_rebar, GWL_STYLE, dark ? m_rebarBaseStyle & ~static_cast<LONG_PTR>(RBS_BANDBORDERS) : m_rebarBaseStyle);
+		// Keep the active navigation mode's WS_VISIBLE state. Restoring the
+		// entire creation style would show Structure commands in Scripts mode.
+		const LONG_PTR borderStyle = static_cast<LONG_PTR>(RBS_BANDBORDERS);
+		const LONG_PTR currentStyle = ::GetWindowLongPtr(m_rebar, GWL_STYLE);
+		::SetWindowLongPtr(m_rebar, GWL_STYLE, (currentStyle & ~borderStyle) |
+			(dark ? 0 : (m_rebarBaseStyle & borderStyle)));
 		::SendMessage(m_rebar, RB_SETBKCOLOR, 0, dark ? ThemeManager::ControlColor() : ::GetSysColor(COLOR_BTNFACE));
 		for(int index = 0; index < static_cast<int>(m_rebar.GetBandCount()); ++index)
 		{
