@@ -33,6 +33,8 @@ public static class FbvLayoutProbe
 }
 '@
 $previousLocale = $env:FBE_NEXT_UI_LOCALE
+$auditPath = Join-Path ([IO.Path]::GetTempPath()) ('fbe-fbv-layout-' + [guid]::NewGuid().ToString('N') + '.json')
+$passed = $false
 try {
     $env:FBE_NEXT_UI_LOCALE = 'ru-RU'
     $process = Start-Process -FilePath $FbvExe -ArgumentList ('"' + $fixture + '"') -PassThru
@@ -46,7 +48,6 @@ try {
         $window = [FbvLayoutProbe]::Find($process.Id)
     }
     if ($window -eq [IntPtr]::Zero) { throw 'FBV main dialog was not created.' }
-    $auditPath = Join-Path $PSScriptRoot '..\..\out\tests\fbv-layout-audit.json'
     & (Join-Path $PSScriptRoot '..\ui\invoke-ui-layout-audit.ps1') -ProcessId $process.Id -Language ru-RU -OutputPath $auditPath
     $audit = Get-Content -Raw -Encoding UTF8 -LiteralPath $auditPath | ConvertFrom-Json
     $buttons = @($audit.controls | Where-Object { $_.Id -eq 1002 -or $_.Id -eq 2 })
@@ -80,8 +81,11 @@ try {
         throw "FBV resize regression: list $($beforeList.Right-$beforeList.Left)/$($afterList.Right-$afterList.Left), status $($beforeStatus.Right-$beforeStatus.Left)/$($afterStatus.Right-$afterStatus.Left), column $beforeColumn/$afterColumn"
     }
     Write-Host 'FBV list, filename column and status resize passed.'
+    $passed = $true
 }
 finally {
     if ($window -ne [IntPtr]::Zero) { [void][FbvLayoutProbe]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
     if (-not $process.WaitForExit(1000)) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+    if ($passed) { Remove-Item -LiteralPath $auditPath -Force -ErrorAction SilentlyContinue }
+    else { Write-Host "FBV layout failure artifact: $auditPath" }
 }
