@@ -10,13 +10,15 @@ int CFindResultsPane::Scale(int logicalPixels) const { return UiMetrics::ScaleFo
 
 LRESULT CFindResultsPane::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
-	m_header.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | static_cast<DWORD>(SS_ENDELLIPSIS), 0, static_cast<UINT>(IDC_STATIC));
+	m_header.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOTIFY | static_cast<DWORD>(SS_ENDELLIPSIS), 0, static_cast<UINT>(IDC_STATIC));
 	m_close.Create(m_hWnd, rcDefault, L"\x00D7", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 0, IDCANCEL);
 	m_list.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_OWNERDATA | LVS_SHOWSELALWAYS | LVS_SINGLESEL, 0, IDC_FIND_RESULTS_LIST);
-	m_status.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_ENDELLIPSIS, 0, IDC_FIND_RESULTS_STATUS);
+	m_status.Create(m_hWnd, rcDefault, NULL, WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOTIFY | SS_ENDELLIPSIS, 0, IDC_FIND_RESULTS_STATUS);
 	m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 	m_tooltips.Initialize(m_hWnd);
+	m_tooltips.Add(m_header, L"fbe.dialog.idd_find_results.caption", L"Find results");
 	m_tooltips.Add(m_close, L"fbe.dialog.idd_find_results.close", L"Close Results pane");
+	m_tooltips.Add(m_status, L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again.");
 	m_list.InsertColumn(0, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.number", L"#"), LVCFMT_RIGHT, Scale(38));
 	m_list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.context", L"Context"), LVCFMT_LEFT, Scale(260));
 	ApplyDpi();
@@ -75,8 +77,11 @@ void CFindResultsPane::Detach(CFBEView* view)
 	if (view != NULL && view != m_view) return;
 	m_view = NULL; m_revision = 0;
 	if (m_list.IsWindow()) m_list.SetItemCountEx(0, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
-	if (m_header.IsWindow()) m_header.SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.caption", L"Find results"));
-	if (m_status.IsWindow()) m_status.SetWindowText(L"");
+	if (m_header.IsWindow()) {
+		const CString caption = FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.caption", L"Find results");
+		m_header.SetWindowText(caption); m_tooltips.UpdateText(m_header, caption);
+	}
+	if (m_status.IsWindow()) { m_status.SetWindowText(L""); m_tooltips.UpdateText(m_status, L""); }
 }
 
 void CFindResultsPane::UpdateHeader()
@@ -91,18 +96,20 @@ void CFindResultsPane::UpdateHeader()
 		title += count;
 	}
 	m_header.SetWindowText(title);
+	m_tooltips.UpdateText(m_header, title);
 }
 
 void CFindResultsPane::Refresh()
 {
 	if (!m_list.IsWindow()) return;
 	m_list.SetItemCountEx(0, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL); UpdateHeader();
-	if (m_view == NULL) { m_status.SetWindowText(L""); return; }
+	if (m_view == NULL) { m_status.SetWindowText(L""); m_tooltips.UpdateText(m_status, L""); return; }
 	if (!m_view->AreFindResultsCurrent()) {
 		const CString completion = m_view->FindResultsCompletionStatus();
-		m_status.SetWindowText(completion.IsEmpty()
+		const CString status = completion.IsEmpty()
 			? FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.stale", L"Search results are stale. Run Find All again.")
-			: completion);
+			: completion;
+		m_status.SetWindowText(status); m_tooltips.UpdateText(m_status, status);
 		return;
 	}
 	m_revision = m_view->FindResultsRevision();
@@ -112,7 +119,8 @@ void CFindResultsPane::Refresh()
 	// visible rows through LVN_GETDISPINFO instead of materializing every hit.
 	m_list.SetItemCountEx(itemCount, LVSICF_NOINVALIDATEALL | LVSICF_NOSCROLL);
 	m_list.Invalidate();
-	CString status; status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"Found: %Iu"), m_view->FindResultCount()); m_status.SetWindowText(status);
+	CString status; status.Format(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_find_results.count", L"Found: %Iu"), m_view->FindResultCount());
+	m_status.SetWindowText(status); m_tooltips.UpdateText(m_status, status);
 }
 
 LRESULT CFindResultsPane::OnHide(WORD, WORD, HWND, BOOL&)
