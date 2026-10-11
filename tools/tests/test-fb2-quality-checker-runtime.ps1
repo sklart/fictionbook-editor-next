@@ -88,31 +88,33 @@ try {
     $rows = @{}
     Get-Content -LiteralPath $report | ForEach-Object { $pair = $_ -split '=', 2; if ($pair.Count -eq 2) { $rows[$pair[0]] = $pair[1] } }
     if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $fixtureHash) { throw 'FB2 quality runtime changed the original fixture.' }
-    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'snapshot_note_href', 'snapshot_note_accepted', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'nesting_rules', 'valid_metadata', 'valid_image_placements', 'large_document', 'cancellation', 'progress_completion', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection', 'locations', 'report_formats', 'report_files', 'report_save_failure', 'dialog_layout', 'dialog_visual', 'empty_dialog_visual', 'open_dialog_visual', 'save_dialog_visual', 'save_fbd_dialog_visual', 'report_save_dialog_visual', 'report_save_html_dialog_visual', 'quality_toolbar', 'quality_toolbar_visual', 'file_menu_localized', 'diagnostic_presentation') {
+    foreach ($key in 'unchanged', 'undo_preserved', 'binary_table_preserved', 'snapshot_current', 'snapshot_note_href', 'snapshot_note_accepted', 'failed_snapshot_isolated', 'subsequent_save', 'links', 'binaries', 'metadata', 'empty', 'malformed', 'xlink_rules', 'note_graph', 'binary_rules', 'structure_rules', 'nesting_rules', 'valid_metadata', 'valid_image_placements', 'large_document', 'cancellation', 'progress_completion', 'exact_links', 'exact_id', 'missing_attribute', 'no_stale_jump', 'malformed_end', 'unicode_offset', 'body_to_source', 'unicode_selection', 'locations', 'report_formats', 'report_files', 'report_save_failure', 'dialog_layout', 'dialog_visual', 'empty_dialog_visual', 'open_dialog_visual', 'save_dialog_visual', 'save_fbd_dialog_visual', 'report_save_dialog_visual', 'report_save_html_dialog_visual', 'quality_toolbar', 'quality_toolbar_visual', 'file_menu_localized', 'file_menu_inserted', 'diagnostic_presentation') {
         if ($rows[$key] -ne '1') { throw "FB2 quality runtime: $key=$($rows[$key])" }
     }
     if ($rows['result'] -ne 'pass') { throw "FB2 quality runtime result=$($rows['result'])" }
-    foreach ($name in 'quality-results-after.bmp', 'quality-results-empty-after.bmp', 'file-open-after.bmp', 'file-save-after.bmp', 'file-save-fbd-after.bmp', 'report-save-after.bmp', 'report-save-html-after.bmp', 'quality-toolbar-after.bmp') {
+    foreach ($name in 'quality-results-dpi-96.bmp', 'quality-results-dpi-120.bmp', 'quality-results-dpi-144.bmp', 'quality-results-dpi-192.bmp', 'quality-results-after.bmp', 'quality-results-after-redrawn.bmp', 'quality-results-empty-after.bmp', 'quality-results-empty-after-redrawn.bmp', 'file-open-after.bmp', 'file-save-after.bmp', 'file-save-fbd-after.bmp', 'report-save-after.bmp', 'report-save-html-after.bmp', 'quality-toolbar-after.bmp') {
         $screenshot = Join-Path $ArtifactDirectory $name
         $minimumBytes = if ($name -eq 'quality-toolbar-after.bmp') { 2000 } else { 10000 }
         if (-not (Test-Path -LiteralPath $screenshot -PathType Leaf) -or (Get-Item -LiteralPath $screenshot).Length -lt $minimumBytes) { throw "GUI screenshot is missing or empty: $name" }
+    }
+    foreach ($dpi in 96,120,144,192) {
+        $bitmap = [Drawing.Bitmap]::FromFile((Join-Path $ArtifactDirectory "quality-results-dpi-$dpi.bmp"))
+        try {
+            $bright = 0
+            foreach ($x in 1..8) { foreach ($y in 1..8) {
+                $pixel = $bitmap.GetPixel([int]($bitmap.Width * $x / 9), [int]($bitmap.Height * $y / 9))
+                if ($pixel.R -gt 32 -or $pixel.G -gt 32 -or $pixel.B -gt 32) { $bright++ }
+            } }
+            if ($bright -lt 40) { throw "DPI screenshot is blank at $dpi DPI." }
+        } finally { $bitmap.Dispose() }
     }
     if ((Get-FileHash (Join-Path $ArtifactDirectory 'quality-results-after.bmp') -Algorithm SHA256).Hash -eq
         (Get-FileHash (Join-Path $ArtifactDirectory 'quality-results-empty-after.bmp') -Algorithm SHA256).Hash) { throw 'Populated and empty result captures are identical.' }
     if ((Get-FileHash (Join-Path $ArtifactDirectory 'report-save-after.bmp') -Algorithm SHA256).Hash -eq
         (Get-FileHash (Join-Path $ArtifactDirectory 'report-save-html-after.bmp') -Algorithm SHA256).Hash) { throw 'TXT and HTML save dialog captures are identical.' }
-    $bitmap = [Drawing.Bitmap]::FromFile((Join-Path $ArtifactDirectory 'quality-results-after.bmp'))
-    try {
-        $sampleY = [int]($bitmap.Height * 0.55)
-        $boundaries = 0
-        $previous = $bitmap.GetPixel(20, $sampleY).ToArgb()
-        for ($x = 21; $x -lt $bitmap.Width - 20; $x++) {
-            $current = $bitmap.GetPixel($x, $sampleY).ToArgb()
-            if ($current -ne $previous) { $boundaries++ }
-            $previous = $current
-        }
-        if ($boundaries -gt 20) { throw "Vertical line artifacts remain in empty result area: $boundaries color transitions." }
-    } finally { $bitmap.Dispose() }
+    if ($rows['dialog_visual_probe'] -notmatch 'drags=10\s+scrolled=1\s+changed_pixels=\d+/\d+') {
+        throw "Quality table visual probe did not exercise mouse resizing and scrolling: $($rows['dialog_visual_probe'])"
+    }
     Write-Host 'FB2 quality checker runtime passed.'
 } finally {
     $resolved = [IO.Path]::GetFullPath($root)

@@ -202,22 +202,26 @@
 		const bool qualityToolbarVisual = captureNativeWindow(m_CmdToolbar,
 			CString(qualityArtifactDirectory) + L"\\quality-toolbar-after.bmp");
 		HMENU fileMenu = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
-		const int recentMenuPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
-		int exportMenuPosition = -1, importMenuPosition = -1;
-		for(int position = recentMenuPosition - 1; position >= 0; --position)
-			if(::GetSubMenu(fileMenu, position) != NULL) {
-				if(exportMenuPosition < 0) exportMenuPosition = position;
-				else { importMenuPosition = position; break; }
-			}
+		const FileMenuSections fileSections = FindFileMenuSections(fileMenu);
 		auto menuCaption = [&](int position) -> CString {
 			wchar_t caption[256] = {};
 			if(position >= 0) ::GetMenuStringW(fileMenu, position, caption, _countof(caption), MF_BYPOSITION);
 			return CString(caption);
 		};
-		const bool fileMenuLocalized = recentMenuPosition >= 0 && importMenuPosition >= 0 && exportMenuPosition >= 0 &&
-			menuCaption(importMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.import") &&
-			menuCaption(exportMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.export") &&
-			menuCaption(recentMenuPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.recent_documents");
+		const bool fileMenuLocalized = fileSections.recentPosition >= 0 && fileSections.importPosition >= 0 && fileSections.exportPosition >= 0 &&
+			menuCaption(fileSections.importPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.import") &&
+			menuCaption(fileSections.exportPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.export") &&
+			menuCaption(fileSections.recentPosition) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.popup.recent_documents");
+		bool fileMenuInserted = false;
+		if(fileSections.importPosition >= 0 && ::InsertMenuW(fileMenu, fileSections.importPosition,
+			MF_BYPOSITION | MF_STRING, 0x7ffe, L"Inserted command"))
+		{
+			const FileMenuSections shifted = FindFileMenuSections(fileMenu);
+			fileMenuInserted = shifted.importMenu == fileSections.importMenu && shifted.exportMenu == fileSections.exportMenu &&
+				shifted.recentMenu == fileSections.recentMenu && shifted.importPosition == fileSections.importPosition + 1 &&
+				shifted.exportPosition == fileSections.exportPosition + 1 && shifted.recentPosition == fileSections.recentPosition + 1;
+			::RemoveMenu(fileMenu, fileSections.importPosition, MF_BYPOSITION);
+		}
 		Fb2Quality::Report exportProbe(result);
 		exportProbe.title = L"<Demo & Co>";
 		const CString exportText = Fb2Quality::FormatReport(exportProbe);
@@ -450,15 +454,15 @@
 			}
 		}
 		const bool passed = unchanged && snapshotCurrent && snapshotNoteAccepted && failedSnapshotIsolated && subsequentSave && links && binaries && metadata && empty && malformed && xlinkRules && noteGraph && binaryRules && structureRules && validMetadataAccepted && validImagePlacements && largeDocument && cancellation && progressCompletion &&
-			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && dialogVisual && emptyDialogVisual && openDialogVisual && saveDialogVisual && saveFbdDialogVisual && reportSaveDialogVisual && reportSaveHtmlDialogVisual && qualityToolbar && qualityToolbarVisual && fileMenuLocalized && diagnosticPresentation && nestingRules;
+			exactLinks && exactId && missingAttribute && noStaleJump && malformedEnd && unicodeOffset && bodyToSource && unicodeSelection && locations && reportFormats && reportFiles && reportSaveFailure && dialogLayout && dialogVisual && emptyDialogVisual && openDialogVisual && saveDialogVisual && saveFbdDialogVisual && reportSaveDialogVisual && reportSaveHtmlDialogVisual && qualityToolbar && qualityToolbarVisual && fileMenuLocalized && fileMenuInserted && diagnosticPresentation && nestingRules;
 		CStringA report;
-		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nsnapshot_note_href=%d\nsnapshot_note_accepted=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndialog_visual=%d\ndialog_visual_probe=%S\nempty_dialog_visual=%d\nopen_dialog_visual=%d\nsave_dialog_visual=%d\nsave_fbd_dialog_visual=%d\nreport_save_dialog_visual=%d\nreport_save_html_dialog_visual=%d\nquality_toolbar=%d\nquality_toolbar_visual=%d\nfile_menu_localized=%d\ndiagnostic_presentation=%d\nresult=%s\n",
+		report.Format("unchanged=%d\nbody_preserved=%d\ndirty_preserved=%d\nsafety_preserved=%d\nundo_preserved=%d\nbinary_table_preserved=%d\nanalysis_error=%S\nsnapshot_current=%d\nsnapshot_note_href=%d\nsnapshot_note_accepted=%d\nfailed_snapshot_isolated=%d\nsubsequent_save=%d\nlinks=%d\nbinaries=%d\nmetadata=%d\nempty=%d\nmalformed=%d\nxlink_rules=%d\nnote_graph=%d\nbinary_rules=%d\nstructure_rules=%d\nnesting_rules=%d\nvalid_metadata=%d\nvalid_image_placements=%d\nlarge_document=%d\nlarge_ms=%llu\ncancellation=%d\ncancelled_report=%d\nprogress_cancelled=%d\nprogress_completion=%d\nexact_links=%d\nexact_id=%d\nmissing_attribute=%d\nno_stale_jump=%d\nmalformed_end=%d\nmalformed_start=%d\nmalformed_range_end=%d\nunicode_offset=%d\nbody_to_source=%d\nunicode_selection=%d\nlocations=%d\nreport_formats=%d\nreport_files=%d\nreport_save_failure=%d\ndialog_layout=%d\ndialog_probe=%S\ndialog_visual=%d\ndialog_visual_probe=%S\nempty_dialog_visual=%d\nopen_dialog_visual=%d\nsave_dialog_visual=%d\nsave_fbd_dialog_visual=%d\nreport_save_dialog_visual=%d\nreport_save_html_dialog_visual=%d\nquality_toolbar=%d\nquality_toolbar_visual=%d\nfile_menu_localized=%d\nfile_menu_inserted=%d\ndiagnostic_presentation=%d\nresult=%s\n",
 			unchanged, bodyPreserved, dirtyPreserved, safetyPreserved, undoPreserved, binaryTablePreserved,
 			static_cast<LPCWSTR>(analysisError), snapshotCurrent, snapshotNoteHref, snapshotNoteAccepted, failedSnapshotIsolated, subsequentSave, links, binaries, metadata, empty, malformed, xlinkRules, noteGraph, binaryRules, structureRules, nestingRules, validMetadataAccepted, validImagePlacements, largeDocument, largeMs, cancellation, cancelledReport.cancelled, progressCancelled, progressCompletion,
 			exactLinks, exactId, missingAttribute, noStaleJump, malformedEnd,
 			malformedEndReport.issues.empty() ? -99 : malformedEndReport.issues[0].start, endRange.end,
 			unicodeOffset, bodyToSource, unicodeSelection, locations, reportFormats, reportFiles, reportSaveFailure, dialogLayout,
-			static_cast<LPCWSTR>(dialogProbe), dialogVisual, static_cast<LPCWSTR>(dialogVisualProbe), emptyDialogVisual, openDialogVisual, saveDialogVisual, saveFbdDialogVisual, reportSaveDialogVisual, reportSaveHtmlDialogVisual, qualityToolbar, qualityToolbarVisual, fileMenuLocalized, diagnosticPresentation, passed ? "pass" : "fail");
+			static_cast<LPCWSTR>(dialogProbe), dialogVisual, static_cast<LPCWSTR>(dialogVisualProbe), emptyDialogVisual, openDialogVisual, saveDialogVisual, saveFbdDialogVisual, reportSaveDialogVisual, reportSaveHtmlDialogVisual, qualityToolbar, qualityToolbarVisual, fileMenuLocalized, fileMenuInserted, diagnosticPresentation, passed ? "pass" : "fail");
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
 		::PostQuitMessage(passed ? 0 : 1); return 0;
 	}

@@ -796,6 +796,7 @@ private:
 	bool m_sortDescending = false;
 	HFONT m_font = NULL;
 	HWND m_emptyMessage = NULL;
+	UINT m_layoutDpi = 96;
 	UINT m_columnDpi = 96;
 	void FitInitialColumns() {
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
@@ -831,7 +832,7 @@ private:
 		list.SetColumnWidth(3, description); list.SetColumnWidth(4, location);
 	}
 	void ButtonWidths(int (&widths)[4]) const {
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const UINT dpi = m_layoutDpi;
 		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
 		HDC dc = ::GetDC(m_hWnd);
 		HFONT oldFont = dc ? reinterpret_cast<HFONT>(::SelectObject(dc, m_font ? m_font : reinterpret_cast<HFONT>(::GetStockObject(DEFAULT_GUI_FONT)))) : NULL;
@@ -845,7 +846,7 @@ private:
 		if (dc) { ::SelectObject(dc, oldFont); ::ReleaseDC(m_hWnd, dc); }
 	}
 	int MinimumWindowWidth() const {
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const UINT dpi = m_layoutDpi;
 		int widths[4]; ButtonWidths(widths);
 		RECT window = {}, client = {}; ::GetWindowRect(m_hWnd, &window); ::GetClientRect(m_hWnd, &client);
 		const int nonClient = window.right - window.left - (client.right - client.left);
@@ -874,7 +875,7 @@ private:
 		RECT wanted = { left, top, left + width, top + height };
 		MONITORINFO monitor = { sizeof(monitor) };
 		if (!::GetMonitorInfoW(::MonitorFromRect(&wanted, MONITOR_DEFAULTTONEAREST), &monitor)) return;
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const UINT dpi = m_layoutDpi;
 		const int minimumWidth = MinimumWindowWidth();
 		const int minimumHeight = UiMetrics::ScaleForDpi(310, dpi);
 		width = min(max(width, minimumWidth), monitor.rcWork.right - monitor.rcWork.left);
@@ -908,7 +909,7 @@ private:
 	void Layout() {
 		if (!GetDlgItem(IDC_FB2_QUALITY_LIST)) return;
 		RECT client = {}; GetClientRect(&client);
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const UINT dpi = m_layoutDpi;
 		const int margin = UiMetrics::ScaleForDpi(8, dpi), gap = UiMetrics::ScaleForDpi(5, dpi);
 		const int summaryHeight = UiMetrics::ScaleForDpi(19, dpi), detailsHeight = UiMetrics::ScaleForDpi(69, dpi);
 		const int buttonHeight = UiMetrics::ScaleForDpi(25, dpi);
@@ -925,14 +926,15 @@ private:
 		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
 		int x = client.right - margin;
 		for (int i = 3; i >= 0; --i) {
-			x -= UiMetrics::ScaleForDpi(buttonWidths[i], dpi);
-			::SetWindowPos(GetDlgItem(ids[i]), NULL, x, buttonY, UiMetrics::ScaleForDpi(buttonWidths[i], dpi), buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+			x -= buttonWidths[i];
+			::SetWindowPos(GetDlgItem(ids[i]), NULL, x, buttonY, buttonWidths[i], buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 			x -= gap;
 		}
 	}
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&) {
 		::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
-		ApplyDpiFont(UiMetrics::DpiForWindow(m_hWnd));
+		m_layoutDpi = UiMetrics::DpiForWindow(m_hWnd);
+		ApplyDpiFont(m_layoutDpi);
 		SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"));
 		SetDlgItemText(IDC_FB2_QUALITY_GOTO, FbeLoadRuntimeStringByKey(L"fbe.quality.goto", L"Go to"));
 		SetDlgItemText(IDC_FB2_QUALITY_COPY, FbeLoadRuntimeStringByKey(L"fbe.quality.copy", L"Copy"));
@@ -943,7 +945,7 @@ private:
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
 		list.ModifyStyle(0, WS_CLIPSIBLINGS);
 		list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const UINT dpi = m_layoutDpi;
 		m_columnDpi = dpi;
 		list.InsertColumn(0, FbeLoadRuntimeStringByKey(L"fbe.quality.column.type", L"Type"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(90, dpi));
 		list.InsertColumn(1, FbeLoadRuntimeStringByKey(L"fbe.quality.column.code", L"Code"), LVCFMT_LEFT, UiMetrics::ScaleForDpi(170, dpi));
@@ -977,21 +979,22 @@ private:
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&) { SaveGeometry(); ::RemovePropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION"); return 0; }
 	LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_font) { ::DeleteObject(m_font); m_font = NULL; } return 0; }
 	LRESULT OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&) {
+		m_layoutDpi = LOWORD(wParam);
 		const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
 		SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left,
 			suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
-		ApplyDpiFont(LOWORD(wParam));
+		ApplyDpiFont(m_layoutDpi);
 		if (m_emptyMessage && m_font) ::SendMessageW(m_emptyMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
 		for(int column = 0; column < 5; ++column)
-			list.SetColumnWidth(column, ::MulDiv(list.GetColumnWidth(column), LOWORD(wParam), m_columnDpi));
-		m_columnDpi = LOWORD(wParam);
+			list.SetColumnWidth(column, ::MulDiv(list.GetColumnWidth(column), m_layoutDpi, m_columnDpi));
+		m_columnDpi = m_layoutDpi;
 		Layout();
 		return 0;
 	}
 	LRESULT OnMinMax(UINT, WPARAM, LPARAM parameter, BOOL&) {
 		MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(parameter);
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		const UINT dpi = m_layoutDpi;
 		info->ptMinTrackSize.x = MinimumWindowWidth();
 		info->ptMinTrackSize.y = UiMetrics::ScaleForDpi(310, dpi);
 		return 0;
@@ -1395,6 +1398,70 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 	const bool closeCorrect = CString(closeText) == FbeLoadRuntimeStringByKey(L"fbe.quality.close", L"Close");
 	const bool geometry = widthChanged && heightGrew && separated && buttonMoved && columns == 5 &&
 		cleanListStyle && buttonsFit && closeCorrect;
+	::ShowWindow(window, SW_SHOWNOACTIVATE);
+	::UpdateWindow(window);
+	wchar_t artifactDirectory[MAX_PATH] = {};
+	const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
+	auto saveDpiScreenshot = [&](UINT dpi) -> bool
+	{
+		if(artifactLength == 0) return true;
+		if(artifactLength >= _countof(artifactDirectory)) return false;
+		RECT bounds = {}; ::GetWindowRect(window, &bounds);
+		const int captureWidth = bounds.right - bounds.left, captureHeight = bounds.bottom - bounds.top;
+		BITMAPINFO bitmapInfo = {}; bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		bitmapInfo.bmiHeader.biWidth = captureWidth; bitmapInfo.bmiHeader.biHeight = -captureHeight;
+		bitmapInfo.bmiHeader.biPlanes = 1; bitmapInfo.bmiHeader.biBitCount = 32;
+		void* pixels = NULL;
+		HBITMAP bitmap = ::CreateDIBSection(NULL, &bitmapInfo, DIB_RGB_COLORS, &pixels, NULL, 0);
+		HDC dc = bitmap ? ::CreateCompatibleDC(NULL) : NULL;
+		HGDIOBJ previous = dc ? ::SelectObject(dc, bitmap) : NULL;
+		const bool captured = pixels && dc && previous && ::PrintWindow(window, dc, 0);
+		CString path; path.Format(L"%s\\quality-results-dpi-%u.bmp", artifactDirectory, dpi);
+		BITMAPFILEHEADER file = {}; file.bfType = 0x4d42;
+		file.bfOffBits = sizeof(file) + sizeof(BITMAPINFOHEADER);
+		file.bfSize = file.bfOffBits + captureWidth * captureHeight * 4;
+		HANDLE output = captured ? ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL) : INVALID_HANDLE_VALUE;
+		DWORD written = 0;
+		const bool saved = output != INVALID_HANDLE_VALUE &&
+			::WriteFile(output, &file, sizeof(file), &written, NULL) && written == sizeof(file) &&
+			::WriteFile(output, &bitmapInfo.bmiHeader, sizeof(bitmapInfo.bmiHeader), &written, NULL) && written == sizeof(bitmapInfo.bmiHeader) &&
+			::WriteFile(output, pixels, captureWidth * captureHeight * 4, &written, NULL) && written == static_cast<DWORD>(captureWidth * captureHeight * 4);
+		if(output != INVALID_HANDLE_VALUE) ::CloseHandle(output);
+		if(previous) ::SelectObject(dc, previous);
+		if(dc) ::DeleteDC(dc);
+		if(bitmap) ::DeleteObject(bitmap);
+		return saved;
+	};
+	bool dpiButtonsFit = true, dpiScreenshots = true;
+	for(UINT dpi : { 96u, 120u, 144u, 192u })
+	{
+		RECT suggested = { initialWindow.left, initialWindow.top,
+			initialWindow.left + UiMetrics::ScaleForDpi(900, dpi), initialWindow.top + UiMetrics::ScaleForDpi(500, dpi) };
+		::SendMessageW(window, WM_DPICHANGED, MAKEWPARAM(dpi, dpi), reinterpret_cast<LPARAM>(&suggested));
+		MINMAXINFO minimum = {}; ::SendMessageW(window, WM_GETMINMAXINFO, 0, reinterpret_cast<LPARAM>(&minimum));
+		::SetWindowPos(window, NULL, 0, 0, minimum.ptMinTrackSize.x, UiMetrics::ScaleForDpi(500, dpi),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		RECT dialogBounds = {}; ::GetWindowRect(window, &dialogBounds);
+		RECT previousButton = {};
+		for(int index = 0; index < 4; ++index)
+		{
+			const HWND control = ::GetDlgItem(window, buttonIds[index]);
+			RECT bounds = {}; ::GetWindowRect(control, &bounds);
+			wchar_t label[256] = {}; ::GetWindowTextW(control, label, _countof(label));
+			HDC dc = ::GetDC(control);
+			HFONT font = reinterpret_cast<HFONT>(::SendMessageW(control, WM_GETFONT, 0, 0));
+			HFONT old = dc && font ? reinterpret_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+			SIZE measured = {};
+			if(dc) ::GetTextExtentPoint32W(dc, label, static_cast<int>(wcslen(label)), &measured);
+			if(dc && old) ::SelectObject(dc, old);
+			if(dc) ::ReleaseDC(control, dc);
+			dpiButtonsFit = dpiButtonsFit && bounds.left >= dialogBounds.left && bounds.right <= dialogBounds.right &&
+				bounds.right - bounds.left >= measured.cx + UiMetrics::ScaleForDpi(28, dpi) &&
+				(index == 0 || previousButton.right < bounds.left);
+			previousButton = bounds;
+		}
+		dpiScreenshots = saveDpiScreenshot(dpi) && dpiScreenshots;
+	}
 	NMLISTVIEW click = {};
 	click.hdr.hwndFrom = list;
 	click.hdr.idFrom = IDC_FB2_QUALITY_LIST;
@@ -1417,32 +1484,45 @@ bool ProbeResultsDialogLayout(HWND parent, const Report& report, CString* diagno
 	if(emptyMessage) ::GetWindowTextW(emptyMessage, emptyText, _countof(emptyText));
 	const bool cleanMessage = emptyMessage && CString(emptyText) == FbeLoadRuntimeStringByKey(L"fbe.quality.report.clean", L"No issues found.");
 	if(cleanWindow) cleanDialog.DestroyWindow();
-	if (diagnostics) diagnostics->Format(L"width=%d height=%d separated=%d button=%d columns=%d styles=%d labels=%d close=%d empty=%d ascending=%d descending=%d",
-		widthChanged, heightGrew, separated, buttonMoved, columns, cleanListStyle, buttonsFit, closeCorrect, cleanMessage, sortedFirst, sortedReverse);
-	return geometry && cleanMessage && sortedFirst && sortedReverse;
+	if (diagnostics) diagnostics->Format(L"width=%d height=%d separated=%d button=%d columns=%d styles=%d labels=%d dpi_labels=%d dpi_screenshots=%d close=%d empty=%d ascending=%d descending=%d",
+		widthChanged, heightGrew, separated, buttonMoved, columns, cleanListStyle, buttonsFit, dpiButtonsFit, dpiScreenshots, closeCorrect, cleanMessage, sortedFirst, sortedReverse);
+	return geometry && dpiButtonsFit && dpiScreenshots && cleanMessage && sortedFirst && sortedReverse;
 }
 
 bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& screenshotPath, CString* diagnostics)
 {
-	ResultsDialog dialog(report);
+	Report visualReport(report);
+	if(!visualReport.issues.empty())
+		while(visualReport.issues.size() < 80) visualReport.issues.push_back(report.issues[visualReport.issues.size() % report.issues.size()]);
+	ResultsDialog dialog(visualReport);
 	const HWND window = dialog.Create(parent);
 	if(!window) { if(diagnostics) *diagnostics = L"dialog-create-failed"; return false; }
-	::ShowWindow(window, SW_SHOWNOACTIVATE);
+	::ShowWindow(window, SW_SHOW);
+	::SetForegroundWindow(window);
 	::UpdateWindow(window);
 	const HWND list = ::GetDlgItem(window, IDC_FB2_QUALITY_LIST);
-	int initialWidths[5] = {};
-	for(int column = 0; column < 5; ++column)
-		initialWidths[column] = static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0));
-	for(int iteration = 0; iteration < 10; ++iteration) {
-		const int column = iteration % 5;
-		const int width = UiMetrics::ScaleForDpi(85 + (iteration % 3) * 45, UiMetrics::DpiForWindow(window));
-		::SendMessageW(list, LVM_SETCOLUMNWIDTH, column, width);
+	const HWND header = reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0));
+	int changedWidths = 0;
+	for(int iteration = 0; header && iteration < 10; ++iteration)
+	{
+		const int column = iteration % 2;
+		RECT item = {};
+		if(!::SendMessageW(header, HDM_GETITEMRECT, column, reinterpret_cast<LPARAM>(&item))) break;
+		const int before = static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0));
+		const int fromX = item.right - 1, y = (item.top + item.bottom) / 2;
+		const int distance = UiMetrics::ScaleForDpi(iteration % 2 ? -15 : 19, UiMetrics::DpiForWindow(window));
+		::SendMessageW(header, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(fromX, y));
+		for(int step = 1; step <= 3; ++step)
+			::SendMessageW(header, WM_MOUSEMOVE, MK_LBUTTON, MAKELPARAM(fromX + distance * step / 3, y));
+		::SendMessageW(header, WM_LBUTTONUP, 0, MAKELPARAM(fromX + distance, y));
+		if(static_cast<int>(::SendMessageW(list, LVM_GETCOLUMNWIDTH, column, 0)) != before) ++changedWidths;
 	}
-	for(int column = 0; column < 5; ++column)
-		::SendMessageW(list, LVM_SETCOLUMNWIDTH, column, initialWidths[column]);
-	::RedrawWindow(list, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
-	if(HWND empty = ::GetDlgItem(window, IDC_FB2_QUALITY_EMPTY))
-		::RedrawWindow(empty, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+	NMLISTVIEW click = {}; click.hdr.hwndFrom = list; click.hdr.idFrom = IDC_FB2_QUALITY_LIST;
+	click.hdr.code = LVN_COLUMNCLICK; click.iSubItem = 0;
+	::SendMessageW(window, WM_NOTIFY, click.hdr.idFrom, reinterpret_cast<LPARAM>(&click));
+	const int rowCount = static_cast<int>(::SendMessageW(list, LVM_GETITEMCOUNT, 0, 0));
+	if(rowCount > 0) ::SendMessageW(list, LVM_ENSUREVISIBLE, rowCount - 1, FALSE);
+	const bool scrolled = rowCount == 0 || ::SendMessageW(list, LVM_GETTOPINDEX, 0, 0) > 0;
 	RECT bounds = {}; ::GetWindowRect(window, &bounds);
 	const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
 	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -1453,12 +1533,14 @@ bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& 
 	HDC memory = bitmap ? ::CreateCompatibleDC(NULL) : NULL;
 	HGDIOBJ previous = memory ? ::SelectObject(memory, bitmap) : NULL;
 	const bool captured = bits && memory && previous && ::PrintWindow(window, memory, 0) != FALSE;
-	bool saved = false;
-	if(captured) {
+	std::vector<DWORD> beforePixels;
+	if(captured) beforePixels.assign(static_cast<DWORD*>(bits), static_cast<DWORD*>(bits) + static_cast<size_t>(width) * height);
+	auto saveBitmap = [&](const CString& path) -> bool {
 		BITMAPFILEHEADER file = {}; file.bfType = 0x4d42;
 		file.bfOffBits = sizeof(file) + sizeof(BITMAPINFOHEADER);
 		file.bfSize = file.bfOffBits + width * height * 4;
-		HANDLE output = ::CreateFileW(screenshotPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE output = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		bool saved = false;
 		if(output != INVALID_HANDLE_VALUE) {
 			DWORD written = 0;
 			saved = ::WriteFile(output, &file, sizeof(file), &written, NULL) && written == sizeof(file) &&
@@ -1466,13 +1548,64 @@ bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& 
 				::WriteFile(output, bits, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4);
 			::CloseHandle(output);
 		}
+		return saved;
+	};
+	const bool saved = captured && saveBitmap(screenshotPath);
+	::RedrawWindow(list, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+	if(HWND empty = ::GetDlgItem(window, IDC_FB2_QUALITY_EMPTY))
+		::RedrawWindow(empty, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+	const bool redrawn = captured && ::PrintWindow(window, memory, 0) != FALSE;
+	const CString redrawnPath = screenshotPath.Left(screenshotPath.GetLength() - 4) + L"-redrawn.bmp";
+	const bool savedRedrawn = redrawn && saveBitmap(redrawnPath);
+	RECT listBounds = {}; ::GetWindowRect(list, &listBounds);
+	int changedPixels = 0, comparedPixels = 0;
+	if(redrawn)
+	{
+		const int left = max(0, listBounds.left - bounds.left + 8), right = min(width, listBounds.right - bounds.left - 24);
+		const int top = max(0, listBounds.top - bounds.top + UiMetrics::ScaleForDpi(30, UiMetrics::DpiForWindow(window)));
+		const int bottom = min(height, listBounds.bottom - bounds.top - 8);
+		for(int y = top; y < bottom; ++y) for(int x = left; x < right; ++x)
+		{
+			const size_t pixel = static_cast<size_t>(y) * width + x;
+			++comparedPixels;
+			if(beforePixels[pixel] != static_cast<DWORD*>(bits)[pixel]) ++changedPixels;
+		}
+	}
+	int ghostColumns = 0;
+	if(captured && visualReport.issues.empty() && header)
+	{
+		RECT headerBounds = {}; ::GetWindowRect(header, &headerBounds);
+		const int listLeft = listBounds.left - bounds.left, listRight = listBounds.right - bounds.left;
+		const int sampleTop = max(0, listBounds.top - bounds.top + UiMetrics::ScaleForDpi(100, UiMetrics::DpiForWindow(window)));
+		const int sampleBottom = min(height, listBounds.bottom - bounds.top - 24);
+		for(int x = listLeft + 6; x < listRight - 30 && sampleBottom > sampleTop; ++x)
+		{
+			bool currentBoundary = false;
+			for(int column = 0; column < 5; ++column)
+			{
+				RECT item = {};
+				if(::SendMessageW(header, HDM_GETITEMRECT, column, reinterpret_cast<LPARAM>(&item)))
+					currentBoundary = currentBoundary || abs(x - (headerBounds.left - bounds.left + item.right)) <= 2;
+			}
+			if(currentBoundary) continue;
+			int colored = 0;
+			for(int sample = 0; sample < 12; ++sample)
+			{
+				const int y = sampleTop + (sampleBottom - sampleTop - 1) * sample / 11;
+				const DWORD pixel = beforePixels[static_cast<size_t>(y) * width + x] & 0x00FFFFFF;
+				if(pixel != 0x00FFFFFF) ++colored;
+			}
+			if(colored >= 10) ++ghostColumns;
+		}
 	}
 	if(previous) ::SelectObject(memory, previous);
 	if(memory) ::DeleteDC(memory);
 	if(bitmap) ::DeleteObject(bitmap);
 	dialog.DestroyWindow();
-	if(diagnostics) diagnostics->Format(L"captured=%d saved=%d width=%d height=%d drags=10", captured, saved, width, height);
-	return captured && saved;
+	const bool stable = comparedPixels > 0 && changedPixels <= 10;
+	if(diagnostics) diagnostics->Format(L"captured=%d saved=%d redrawn=%d width=%d height=%d drags=%d scrolled=%d changed_pixels=%d/%d ghost_columns=%d",
+		captured, saved, savedRedrawn, width, height, changedWidths, scrolled, changedPixels, comparedPixels, ghostColumns);
+	return captured && saved && savedRedrawn && changedWidths == 10 && scrolled && stable && ghostColumns == 0;
 }
 
 bool ProbeReportSaveDialog(HWND parent, const Report& report, bool htmlFilter)
