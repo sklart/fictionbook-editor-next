@@ -1,6 +1,6 @@
-# Issue #43: локальная стадия интерфейсных исправлений
+# Issue #43: стадия интерфейсных исправлений
 
-Состояние локальной ветки `master` относительно `origin/master` (`0db1a75a`). Это отчёт о реализации и коротких проверках, **не акт приёмки**. Изменения остаются локальными: публикация и общий CI запланированы вместе с issues #44, #49 и #45 согласно ТЗ.
+Базовая серия исправлений опубликована в `master` до `74ebe486`; исправление стартового режима «Скрипты» — `be675e84`. Это отчёт о реализации и коротких проверках, **не акт приёмки**. Общая GUI/DPI-регрессия вместе с issues #44, #49 и #45 остаётся отложенной согласно ТЗ.
 
 ## Исправленные компоненты и причины
 
@@ -9,7 +9,7 @@
 | Settings и восемь страниц | Минимум окна ранее смешивал клиентские и внешние размеры; фиксированные строки и списки перекрывались при узком окне, длинном переводе и повышенном DPI. Минимум теперь учитывает рамки и рабочую область; страницы перестраивают содержимое, длинные группы прокручиваются, положение сохраняется и ограничивается монитором. |
 | Import EPUB | Исходные 700 × 920 не помещались на низком экране; ошибка создания окна могла приводить к импорту с настройками по умолчанию. Размер ограничен рабочей областью, параметры прокручиваются отдельно от нижних кнопок, подтверждение, отмена и ошибка различаются. |
 | Export DOCX, EPUB и HTML | Фиксированная компоновка делала локализованные настройки недоступными при малой высоте и изменении DPI. Диалоги и страницы подстраиваются под доступный размер с сохранением прежней логики экспорта. Дополнительно в HTML Options добавлена прокрутка содержимого вкладок при рабочей области меньше исходной страницы; область tooltip поля структуры документа обновляется после компоновки и прокрутки. |
-| Главное окно, Scripts Tree и toolbar | Размеры и сроки жизни изображений и шрифтов расходились при обновлении DPI. Ресурсы остаются живыми до привязки новых; размеры берутся из локальных UI-метрик окна. |
+| Главное окно, Scripts Tree и toolbar | Размеры и сроки жизни изображений и шрифтов расходились при обновлении DPI. Ресурсы остаются живыми до привязки новых; размеры берутся из локальных UI-метрик окна. Обновление темы восстанавливало `WS_VISIBLE` у нижнего rebar и показывало структурные команды поверх режима «Скрипты»; теперь меняется только стиль границ. |
 | Поиск, результаты и штатные диалоги | Длинные подписи, подсветка совпадений и подсказки выходили за поля или усекались; часть мнемоник совпадала. Исправлены геометрия, обрезка рисования, доступ к полному тексту через tooltip и переводы. Очень длинный `IDD_INPUTBOX` использует прокручиваемое поле. |
 | FBV | Колонка имени и строка состояния не использовали новое пространство; кнопки не вмещали длинные переводы. Их размеры пересчитываются вместе с окном; ошибка загрузки схемы останавливает инициализацию. |
 | UI Layout Audit | Отсутствовал структурированный аудит. Добавлен сбор HWND, текста, языка, DPI, прямоугольников, возможных перекрытий и обрезания с измерением шрифта. Намеренно выведенные за viewport элементы больше не отмечаются как выход за монитор, если у родителя есть действующий диапазон прокрутки по нужной оси. |
@@ -20,7 +20,7 @@
 | --- | --- |
 | Settings | `0e0b7e81`, `4fb97f47`, `f0e94eeb`, `bfd2a1a6`, `2ab34d15`, `cf180de4`, `84913aad`, `ae6edb8f`, `a229c080`, `6ba96995` |
 | Import и Export | `ef0d88fe`, `d665b219`, `7799f91c`, `ecfa3488`, `852313d7`, `911d0eff`, `a908e42e`, `b6968687`, `86fd3263`, `130d25ee` |
-| Главное окно, Scripts Tree, GDI | `b5c5108c` |
+| Главное окно, Scripts Tree, GDI | `b5c5108c`, `be675e84` |
 | Поиск, диалоги и подсказки | `7adf806b`, `c9dc301a`, `fc36c593`, `4f597036`, `10640bed`, `0f4b2c1e`, `6fb73dad`, `a40c70fb`, `f45419ea`, `06a80efa`, `d843c180`, `eec8090b`, `757ffc02`, `0fec2126`, `657d422e`, `6dbfd3c0`, `f3a08068`, `50b68ddc` |
 | FBV | `f6d750f9`, `11f5ed1f`, `b1a019fb`, `893ff687` |
 | UI Layout Audit | `221794be`, `f3ec249a`, `7ab540a1` |
@@ -32,7 +32,7 @@
 - Редактор: `src/fbe/ArchiveEntryPicker.cpp`, `DocumentTree.cpp`, `FBE.cpp`, `FBE.rc`, `FBEview.h`, `FindResultsPane.cpp`, `FindResultsPane.h`, `ModelessDialog.h`, `Settings.cpp`, `Settings.h`, `Speller.cpp`, `Speller.h`, `TreeView.cpp`, `UiMetrics.cpp`, `UiMetrics.h`, `apputils.cpp`, `mainfrm.cpp`, `search/ui/RegexQuickReferencePopup.cpp`, `testing/RuntimeTestArchiveAndLifecycle.inl`, `toolbars/ToolbarFactory.cpp`, `ui/ContextAttributeBars.cpp`.
 - Страницы настроек: `src/fbe/settings/SettingsDefaults.cpp`, `SettingsSerialization.cpp`; `src/fbe/settings/ui/SettingsDlg.cpp`, `SettingsDlg.h`, `SettingsGeneralPage.cpp`, `SettingsGeneralPage.h`, `SettingsTooltips.h`.
 - FBV: `src/fbv/FBV.cpp`.
-- Проверки и инструмент: `tools/build/verify-release.ps1`; `tools/ui/README.md`, `UiLayoutAudit.cs`, `invoke-ui-layout-audit.ps1`; `tools/tests/test-export-html-options-layout-runtime.ps1`, `test-fbe-about-dialog-layout-runtime.ps1`, `test-fbe-add-image-dialog-layout-runtime.ps1`, `test-fbe-archive-document-support.ps1`, `test-fbe-context-attribute-bars.ps1`, `test-fbe-dialog-layout-contract.ps1`, `test-fbe-dialog-mnemonics.ps1`, `test-fbe-inputbox-layout-runtime.ps1`, `test-fbe-navigation-scripts-contract.ps1`, `test-fbe-runtime-dialog-coverage.ps1`, `test-fbe-settings-dialog-runtime.ps1`, `test-fbe-settings-general-layout-runtime.ps1`, `test-fbe-spell-dialog-layout-runtime.ps1`, `test-fbv-layout-runtime.ps1`, `test-ui-layout-audit.ps1`.
+- Проверки и инструмент: `.github/workflows/build.yml`, `tools/build/verify-release.ps1`; `tools/ui/README.md`, `UiLayoutAudit.cs`, `invoke-ui-layout-audit.ps1`; `tools/tests/test-export-html-options-layout-runtime.ps1`, `test-fbe-about-dialog-layout-runtime.ps1`, `test-fbe-add-image-dialog-layout-runtime.ps1`, `test-fbe-archive-document-support.ps1`, `test-fbe-context-attribute-bars.ps1`, `test-fbe-dialog-layout-contract.ps1`, `test-fbe-dialog-mnemonics.ps1`, `test-fbe-inputbox-layout-runtime.ps1`, `test-fbe-navigation-scripts-contract.ps1`, `test-fbe-navigation-startup-mode-runtime.ps1`, `test-fbe-runtime-dialog-coverage.ps1`, `test-fbe-settings-dialog-runtime.ps1`, `test-fbe-settings-general-layout-runtime.ps1`, `test-fbe-spell-dialog-layout-runtime.ps1`, `test-fbv-layout-runtime.ps1`, `test-ui-layout-audit.ps1`.
 
 ## Выполненные короткие проверки
 
@@ -40,6 +40,7 @@
 - `test-fbe-inputbox-layout-runtime.ps1`: длинный текст полностью остаётся в `Edit` с рабочей вертикальной прокруткой; окно и кнопки внутри рабочей области. PASS.
 - Актуальный `out/Release/FBE.exe` собран из текущего `master`: затронутый проект FBE, Release Win32, v143 / VC Tools 14.44, строгие предупреждения — PASS. `test-fbe-settings-dialog-runtime.ps1` на этой сборке — PASS (Apply/OK, сохранение без резервной копии, переносимые настройки после перезапуска).
 - `test-fbe-settings-general-layout-runtime.ps1` на актуальной сборке: восемь страниц Settings, подписи и кнопки General/Hotkeys для `ru-RU`, `en-US`, `de-DE` и `uk-UA` при текущем DPI — PASS, 0 замечаний UI Layout Audit на каждой проверенной странице. Для `es-ES` и `bg-BG` страницы General/Hotkeys — также PASS без замечаний. Снимки страниц «Изображения» и «Исходный код» просмотрены. Параметр `-Locales` позволяет выполнять короткую профильную проверку, не изменяя полный режим теста по умолчанию.
+- `test-fbe-navigation-startup-mode-runtime.ps1`: сохранённый режим «Скрипты» воспроизвёл ошибку до правки (поиск и структурный rebar одновременно видны). После правки — PASS при запуске в Light и Dark, повторном обновлении темы и переключениях «Скрипты → Структура → Скрипты». Инкрементальная сборка FBE Release Win32 с VC Tools 14.44 и строгими предупреждениями — PASS.
 - После перевода BMP/JSON Settings на уникальный каталог каждого запуска короткий повтор для `ru-RU` прошёл: General, Hotkeys и шесть остальных страниц — 0 замечаний аудита. Дополнительная проверка `ChildWindowFromPointEx` подтвердила, что OK и Cancel находятся сверху в точках их центров на каждой из восьми страниц, включая переключение и расширение окна. `PrintWindow` в этом окружении может неполно рисовать дочерние окна на BMP, поэтому пиксельное отображение кнопок остаётся в общей GUI-приёмке.
 - Отдельный запуск Settings smoke для `en-US` проверил те же восемь страниц без замечаний аудита. После успешных проверок первый запуск столкнулся с кратковременной блокировкой файла `FBE.exe` при удалении изолированного runtime. Повторное удаление того же каталога прошло после освобождения файла; ожидание очистки увеличено до 30 секунд, а утечка процесса по-прежнему считается ошибкой. Повторный `en-US` smoke завершился успешно.
 - `test-ui-layout-audit.ps1`: измерение текста, мнемоник, намеренных перекрытий и границ; различает доступное прокручиванием содержимое и недоступный элемент. PASS.
