@@ -248,7 +248,7 @@
  function keyDown(ev) {
          var ev = ev || window.event;
          switch (ev.keyCode) {
-                 case 27:  window.close();   break;           //  Esc --  "Закрыть окно"
+                 case 27:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  window.close();   break;           //  Esc --  "Закрыть окно".
                  }
          }
 

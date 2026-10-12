@@ -1,4 +1,4 @@
- <!-- Создание файла — Александр Ка (05.05.2026) -->
+ <!-- Создание файла + обновления — Александр Ка -->
 
  <HTML>
  <HEAD>
@@ -126,19 +126,19 @@
 
 
 	 <FIELDSET style="width: 300px; padding: 0; border: none; text-align: right; position: absolute; top: 14; right: 15;">
-	 <BUTTON id=b15 onclick=button_X(15) style="width: 28px; height: 28px; margin: 0 0 0 10;">
+	 <BUTTON id=b15 onclick=button_X(15) style="width: 28px; height: 28px; margin: 0 0 0 5;">
 		 <SPAN style="display: block; margin: -8 0 0 -1; font-size: 24px; color: #222; font-family: Arial Unicode MS;">↻</SPAN>
 	 </BUTTON>
-	 <BUTTON id=b16 onclick=button_X(16) style="width: 28px; height: 28px; margin: 0 0 0 10;">
+	 <BUTTON id=b16 onclick=button_X(16) style="width: 28px; height: 28px; margin: 0 0 0 5;">
 		 <SPAN style="display: block; margin: -8 0 0 -1; font-size: 24px; color: #222; font-family: Arial Unicode MS;">⇅</SPAN>
 	 </BUTTON>
-	 <BUTTON id=b17 onclick=button_X(17) style="width: 32px; height: 28px; margin: 0 0 0 10; display: none;">
+	 <BUTTON id=b17 onclick=button_X(17) style="width: 32px; height: 28px; margin: 0 0 0 15;" disabled>
 		 <SPAN style="display: block; margin: -10 0 0 -1; font-size: 27px; color: #222; font-family: Arial Unicode MS;">↶</SPAN>
 	 </BUTTON>
-	 <BUTTON id=b18 onclick=button_X(18) style="width: 32px; height: 28px; margin: 0 0 0 5; display: none;">
+	 <BUTTON id=b18 onclick=button_X(18) style="width: 32px; height: 28px; margin: 0 0 0 5;" disabled>
 		 <SPAN style="display: block; margin: -10 0 0 -1; font-size: 27px; color: #222; font-family: Arial Unicode MS;">↷</SPAN>
 	 </BUTTON>
-	 <BUTTON id=b19 onclick=button_X(19) style="width: 28px; height: 28px; margin: 0 0 0 25;">
+	 <BUTTON id=b19 onclick=button_X(19) style="width: 28px; height: 28px; margin: 0 0 0 15;">
 		 <SPAN style="display: block; margin: -5 0 0 -1; font-size: 21px; color: #333; font-family: Arial Unicode MS;">?</SPAN>
 	 </BUTTON>
 	 </FIELDSET>
@@ -163,12 +163,12 @@
 				 <TD style="width: 10;">
 				 </TD>
 				 <TD id="td_File1" style="width: 50%;">
-					 <DIV contentEditable=true style="margin: 0; padding: 7 12 7 7; overflow: hidden; border-left: 1 solid #777; border-right: 1 solid #777;"></DIV>
+					 <DIV contentEditable=true onkeyup=keyUp1(event) style="margin: 0; padding: 7 12 7 7; overflow: hidden; border-left: 1 solid #777; border-right: 1 solid #777;"></DIV>
 				 </TD>
 				 <TD style="width: 10;">
 				 </TD>
 				 <TD id="td_File2" style="width: 50%;">
-					 <DIV contentEditable=true style="margin: 0; padding: 7 12 7 7; overflow: hidden; border-left: 1 solid #777; border-right: 1 solid #777;"></DIV>
+					 <DIV contentEditable=true onkeyup=keyUp2(event) style="margin: 0; padding: 7 12 7 7; overflow: hidden; border-left: 1 solid #777; border-right: 1 solid #777;"></DIV>
 				 </TD>
 				 <TD style="width: 10;">
 				 </TD>
@@ -182,7 +182,7 @@
 		 <SPAN id=miniStat style="font-size: 13px; color: 333;"></SPAN>
 	 </DIV>
 	 <DIV style="position: absolute; bottom: 9; right: 15;">
-		 <BUTTON id=b2 onclick=button_X(2) right>Сохранить</BUTTON>
+		 <BUTTON id=b2 onclick=button_X(2) right disabled>Сохранить</BUTTON>
 		 <BUTTON id=b3 onclick=button_X(3) right>Выход</BUTTON>
 	 </DIV>
  </DIV>
@@ -199,8 +199,8 @@
  var b14 = document.getElementById("b14");    //  Следующее отличие.
  var b15 = document.getElementById("b15");    //  Повторить сверку.
  var b16 = document.getElementById("b16");    //  Выравнять строки.
-// var b17 = document.getElementById("b17");    //  Отменить.
-// var b18 = document.getElementById("b18");    //  Вернуть.
+ var b17 = document.getElementById("b17");    //  Отменить.
+ var b18 = document.getElementById("b18");    //  Вернуть.
  var b19 = document.getElementById("b19");    //  Справка.
  var blockBackground = document.getElementById("blockBackground");    //  Блок выбора фона для текстов книг.
  var blockCount = document.getElementById("blockCount");    //  Блок поля счетчика.
@@ -210,7 +210,7 @@
  var fbw_body = document.getElementById("fbw_body");       //  Блок с текстами книг.
  var fontName = document.getElementById("fontName");      //  Блок выбора имени шрифта.
  var fontSize = document.getElementById("fontSize");             //  Список размеров шрифта.
- var miniStat = document.getElementById("miniStat");    //  Элемент с мини-статистикой.
+ var miniStat = document.getElementById("miniStat");    //  "Строка состояния" окна.
  var td_File1 = document.getElementById("td_File1");    //  Ячейка с текстом 1-й книги.
  var td_File2 = document.getElementById("td_File2");    //  Ячейка с текстом 2-й книги.
  var td_FileName1 = document.getElementById("td_FileName1");    //  Ячейка с именем текста 1-й книги.
@@ -245,13 +245,13 @@
  //  Указание заголовка окна
  document.title = " " + ScriptName + "                                                                                                                                                                                                                                                                    ";   //  Заголовок.
 
- if (txtPosition == 0) {      //  Если выбран порядок  --  дубль • финальный текст...
+ if (txtPosition == 0) {      //  Если выбрано расположение :   дубль • финальный текст...
          td_FileName1.firstChild.setAttribute("id","fileName1");    //  то сохраняем обычный порядок.
          td_FileName2.firstChild.setAttribute("id","fileName2");
          td_File1.firstChild.setAttribute("id","blockFile1");
          td_File2.firstChild.setAttribute("id","blockFile2");
          }
-     else {      //  Если выбран порядок  --  финальный текст • дубль...
+     else {      //  Если выбрано расположение :   финальный текст • дубль...
          td_FileName1.firstChild.setAttribute("id","fileName2");    //  то изменяем порядок.
          td_FileName2.firstChild.setAttribute("id","fileName1");
          td_File1.firstChild.setAttribute("id","blockFile2");
@@ -268,13 +268,15 @@
 ///////////////   Отображение подсказок
 
  if (hints == 1) {          //  Если включено отображение подсказок -- Добавляем их.
-         b2.title = " Сохранить изменения финального текста в FBE (Ctrl+S) ";
-         b3.title = " Закрыть скрипт (Esc) ";
-         b13.title = " Предыдущее отличие (F3) ";
-         b14.title = " Следующее отличие (F4) ";
-         b15.title = " Выполнить повторную сверку (F5) ";
-         b16.title = " Выровнять строки (F7) ";
-         b19.title = " Справка (F1) ";
+         b2.title = " Сохранить изменения финального текста в FBE [Ctrl+S] ";
+         b3.title = " Закрыть скрипт [Esc] ";
+         b13.title = " Предыдущее отличие [F3] ";
+         b14.title = " Следующее отличие [F4] ";
+         b15.title = " Выполнить повторную сверку [F5] ";
+         b16.title = " Выровнять строки [F7] ";
+         b17.title = " Отменить [Ctrl+Z] [F8] ";
+         b18.title = " Вернуть [Ctrl+Y] [Ctrl+Shift+Z] [F9] ";
+         b19.title = " Справка [F1] ";
          }
 
 
@@ -288,7 +290,6 @@
  var firstLine = [];       //  Элемент первой строки в видимой области, и её расположение.
  var winInfo;               //  Окно справки.
  var otvet;                    //  Ответ пользователя.
- var changeBook = false;    //  Флаг выполнения сохранения книги.
  var exit = false;    //  Флаг подтверждения выхода (false -- не подтверждено).
 
  var k;     //  Счетчики циклов.
@@ -304,18 +305,21 @@
 
  var mFont = blockFile2.getElementsByTagName("FONT");      //  Массив с элементами "FONT" во 2-м тексте (синхронизируемый, т.е. обновлять его не надо).
  var lengthMFont;         //  Длина массива с элементами "FONT".
- var countFont = 0;     //  Счетчик текущего номера элементами "FONT" (отсчет начинается с "1").
+ var countFont = 0;     //  Счетчик текущего номера элемента "FONT" (отсчет начинается с "1").
  var startFont;          //  Исходный элемент "FONT".
  var mBlockFont = [];  //  Массив с внестрочными элементами "FONT".
  var tagBlockFont = "<FONT style=\"box-sizing: content-box; height: 7; width=7; overflow: hidden; clear: both; background: #B8F;\"></FONT>";
  var checkFon = false;  //  Индикатор проверки фона на ошибки (false -- не проверенное или ошибочное значение).
  var defaultFon = "rgb(244, 241, 232)";    //  Значение фона по умолчанию.
 
- fontName.getElementsByTagName("OPTION")[font_family].selected = true;    //  Выбор заданного шрифта   в   Блоке выбора имени шрифта.
- selFontFamily(fontName.value);                               //  Применение заданного шрифта в текстах книг.
+ var mOptionFN = fontName.getElementsByTagName("OPTION");             //  Элементы списка имен шрифта.
+ var mOptionFS = fontSize.getElementsByTagName("OPTION");             //  Элементы списка имен шрифта.
 
- fontSize.getElementsByTagName("OPTION")[font_size].selected = true;     //  Выбор заданного шрифта   в   Блоке выбора размера шрифта.
- selFontSize(fontSize.value);                               //  Применение заданного размера шрифта в текстах книг.
+ mOptionFN[font_family].selected = true;    //  Выбор заданного шрифта   в   Блоке выбора имени шрифта.
+ selFontFamily(fontName.value);                    //  Применение заданного шрифта в текстах книг.
+
+ mOptionFS[font_size].selected = true;     //  Выбор заданного шрифта   в   Блоке выбора размера шрифта.
+ selFontSize(fontSize.value);                         //  Применение заданного размера шрифта в текстах книг.
 
  blockBackground.value = fon;       //  Выбор заданного фона   в   Блоке выбора фона для текстов книг.
  selectBackground(fon, 1);               //  Применение заданного фона в текстах книг.
@@ -329,8 +333,8 @@
  var reClear0 = new RegExp("</?FONT[^<>]*>", "g");              //  Чистка всего текста от лишних тегов "FONT".   //  * Удаление.
  var reClear1 = new RegExp("</?(BR|FONT)[^<>]*>", "g");   //  Чистка строк от лишних форматов.   //  * Удаление.
 
- fileName1.innerHTML = z1(".:::: ") + txtName1 + z1(" ::: ") + "дубль" + z1(" ::::.");                             //  Запись имени 1-го файла.
- fileName2.innerHTML = z2(".:::: ") + txtName2 + z2(" ::: ") + "финальный текст" + z2(" ::::.");    //  Запись имени 2-го файла.
+ fileName1.innerHTML = z1(".:::: ") + txtName1 + z1(" ::: ") + "<I>дубль</I>" + z1(" ::::.");                             //  Запись имени 1-го файла.
+ fileName2.innerHTML = z2(".:::: ") + txtName2 + z2(" ::: ") + "<I>финальный текст</I>" + z2(" ::::.");    //  Запись имени 2-го файла.
 
 function z1(txt) { return '<FONT  style="color: #B33;">' + txt + '</FONT>'; }    //  Функции форматирования в записи имени файлов.
 function z2(txt) { return '<FONT  style="color: #180;">' + txt + '</FONT>'; }
@@ -388,10 +392,11 @@ function z2(txt) { return '<FONT  style="color: #180;">' + txt + '</FONT>'; }
 
 
 
+
 ///////////////   Регулярные выражения для коррекции тегов <FONT> (добавленных сверкой строк).
 
-         //  Поиск соседних тегов.   При конфликте тегов -- добавление тегов  <FONT>
- var re01 = new RegExp("(<[^<>]+>)([^<>]*)(<[^<>]+>)", "g");
+         //  Поиск соседних тегов.   // * При конфликте тегов -- добавление разрывов элементов  <FONT>
+ var re01 = new RegExp("(<FONT>[^<>]*)(<[^<>]+>)", "g");
 
          //  Объединение примыкающих элементов  FONT.
  var re02 = new RegExp("</FONT><FONT>", "g");
@@ -433,9 +438,223 @@ function z2(txt) { return '<FONT  style="color: #180;">' + txt + '</FONT>'; }
 
 
 
+
 ///////////////   Запуск функции сверки текстов (полная сверка)
 
 compareMain(true);
+
+
+
+
+///////////////   Переменные для системы отмен
+ var UndoBlockFile1 = "";    //  Сохраненный текст книги 1.
+ var UndoBlockFile2 = "";    //  Сохраненный текст книги 2.
+ var bookTxt1 = "";             //  Промежуточный текст книги 1.
+ var bookTxt2 = "";             //  Промежуточный текст книги 2.
+ var mResult = [];            //  Массив результатов сверки текста до и после нажатия клавиши.
+ var mUndo=[];               //  Набор массивов для системы отмены/возврата действий.
+ var count_Undo = 0;    //  Счетчик замен для системы отмен.
+ var count_Change = 0;    //  Счетчик изменений финального текста.
+ var count_SaveChange = 0;    //  Счетчик сохраненных изменений финального текста.
+ var numSave = 0;    //  Номер сохранения.
+
+ var falseCursor = "&&1&&";     //  Спец. текст, заменяющий курсор.
+ var elem;                                          //  Вспомогательный элемент для обозначения курсора.
+ var re10 = new RegExp(falseCursor + "([^<>]*>)");            //  Вывод курсора из тега.
+ var re10_ = "$1" + falseCursor;
+ var re11 = new RegExp(falseCursor + "((?:<[^<>]+>)*(?:<P(?: [^<>]*)>))");     //  Перемещение курсора внутрь следующего параграфа (для курсора вне параграфа).
+ var re11_ = "$1" + falseCursor;
+ var re12 = new RegExp("((?:</P(?: [^<>]*)>)(?:<[^<>]+>)*)" + falseCursor);     //  Перемещение курсора внутрь предыдущего параграфа (для курсора вне параграфа).
+ var re12_ = falseCursor + "$1";
+ var re13 = new RegExp(falseCursor);             //  Замена спец. текста на элемент, заменяющий курсор.  // *  Вероятно, можно обойтись без трех преобразований, но не знаю как.
+ var re13_ = "<B id=kursor_sverki_dizajna></B>";
+
+
+
+
+
+///////////////   Функции фильтра клавиш, нажатых в блоках текстов книг
+
+ function keyUp1(ev) {
+         var ev = event || window.event;
+         switch (ev.keyCode) {         //  Если нажата используемая в скрипте клавиша -- выходим из функции.
+                 case 27:  return;      //  Esc --  "Выход"
+                 case 83:  if (ev.ctrlKey)  return;  break;     //  Ctrl+S --  "Сохранить"
+                 case 112:  return;     //  F1 --  "Справка"
+                 case 114:  return;     //  F3 --  "Предыдущее отличие"
+                 case 115:  return;    //  F4 --  "Следующее отличие"
+                 case 116:  return;     //  F5 --  "Обновить"
+                 case 118:  return;     //  F7 --  "Выравнять строки"
+                 case 90:  if (ev.ctrlKey)  return;  break;     //  Ctrl+Z --  "Отменить"
+                 case 119:  return;     //  F8 --  "Отменить"
+                 case 89:  if (ev.ctrlKey)  return;  break;     //  Ctrl+Y --  "Вернуть"
+                 case 120:  return;     //  F9 --  "Вернуть"
+                 }
+         saveUndo(1);     //  Если нажата другая клавиша -- переходим к сохранению действия в системе отмен.
+         }
+
+ function keyUp2(ev) {
+         var ev = event || window.event;
+         switch (ev.keyCode) {         //  Если нажата используемая в скрипте клавиша -- выходим из функции.
+                 case 27:  return;      //  Esc --  "Выход"
+                 case 83:  if (ev.ctrlKey)  return;  break;     //  Ctrl+S --  "Сохранить"
+                 case 112:  return;     //  F1 --  "Справка"
+                 case 114:  return;     //  F3 --  "Предыдущее отличие"
+                 case 115:  return;    //  F4 --  "Следующее отличие"
+                 case 116:  return;     //  F5 --  "Обновить"
+                 case 118:  return;     //  F7 --  "Выравнять строки"
+                 case 90:  if (ev.ctrlKey)  return;  break;     //  Ctrl+Z --  "Отменить"
+                 case 119:  return;     //  F8 --  "Отменить"
+                 case 89:  if (ev.ctrlKey)  return;  break;     //  Ctrl+Y --  "Вернуть"
+                 case 120:  return;     //  F9 --  "Вернуть"
+                 }
+         saveUndo(2);     //  Если нажата другая клавиша -- переходим к сохранению действия в системе отмен.
+         }
+
+
+
+///////////////   Функция -- Запись данных в систему отмен
+
+ function saveUndo(code) {
+
+ switch (code) {
+     case 0:                    //  Если производилась сверка или выравнивание строк.
+         bookTxt1 = blockFile1.innerHTML;    //  Сохраняем текст 1-го файла.
+         bookTxt2 = blockFile2.innerHTML;    //  Сохраняем текст 2-го файла.
+         if (bookTxt1 == UndoBlockFile1  &&  bookTxt2 == UndoBlockFile2)        //  Если никакой текст не изменился...
+                 return;                      //  то выходим из функции.
+         b17.disabled=false;    //  Включаем кнопку "Отменить".
+         b18.disabled=true;    //  Отключаем кнопку "Вернуть".
+         mUndo[count_Undo] = [0];   //  Сохраняем данные:  [Код изменения].
+         if (bookTxt1 != UndoBlockFile1) {       //  Если 1-й текст изменился...
+                 compareUndo(UndoBlockFile1, bookTxt1);    //  Сравниваем текст до и после изменения.
+                 mUndo[count_Undo][1] = mResult;   //  Сохраняем результат сверки для 1-го текста.
+                 UndoBlockFile1 = bookTxt1;    //  Сохраняем новый текст.
+                 }
+         if (bookTxt2 != UndoBlockFile2) {       //  Если 2-й текст изменился...
+                 compareUndo(UndoBlockFile2, bookTxt2);    //  Сравниваем текст до и после изменения.
+                 mUndo[count_Undo][2] = mResult;   //  Сохраняем результат сверки для 2-го текста.
+                 UndoBlockFile2 = bookTxt2;    //  Сохраняем новый текст.
+                 }
+         break;
+
+     case 1:                    //  Если была отпущена кнопка на 1-м тексте.
+         bookTxt1 = blockFile1.innerHTML;    //  Сохраняем 1-й текст.
+         if (bookTxt1 == UndoBlockFile1)        //  Если текст не изменился...
+                 return;                      //  то выходим из функции.
+         compareUndo(UndoBlockFile1, bookTxt1);    //  Сравниваем текст до и после изменения.
+         mUndo[count_Undo] = [1, mResult,, blockFiles.scrollTop];   //  Сохраняем данные:  [Код изменения,  Результат сверки для 1-го текста,,  Позиция прокрутки].
+         b17.disabled=false;    //  Включаем кнопку "Отменить".
+         b18.disabled=true;    //  Отключаем кнопку "Вернуть".
+         UndoBlockFile1 = bookTxt1;             //  Сохраняем новый текст.
+         miniStat.innerHTML = "Изменён дубль";         //  Добавляем текст в строку состояния окна.
+         break;
+
+     case 2:                    //  Если была отпущена кнопка на 2-м тексте.
+         bookTxt2 = blockFile2.innerHTML;    //  Сохраняем 2-й текст.
+         if (bookTxt2 == UndoBlockFile2)        //  Если текст не изменился...
+                 return;                      //  то выходим из функции.
+         compareUndo(UndoBlockFile2, bookTxt2);    //  Сравниваем текст до и после изменения.
+         mUndo[count_Undo] = [2,, mResult, blockFiles.scrollTop];   //  Сохраняем данные:  [Код изменения,,  Результат сверки для 2-го текста,  Позиция прокрутки].
+         b17.disabled=false;    //  Включаем кнопку "Отменить".
+         b18.disabled=true;    //  Отключаем кнопку "Вернуть".
+         UndoBlockFile2 = bookTxt2;    //  Сохраняем новый текст.
+         b2.disabled=false;                        //  Включаем кнопку "Сохранить".
+         count_Change++;                  //  Увеличиваем счетчик изменений.
+         miniStat.innerHTML = "Выполнено " + count_Change + "-е изменение финального текста";         //  Добавляем текст в строку состояния окна.
+         break;
+
+     case 3:
+         b17.disabled=false;    //  Включаем кнопку "Отменить".
+         b18.disabled=true;    //  Отключаем кнопку "Вернуть".
+         mUndo[count_Undo] = [3];   //  Сохраняем данные:  [Код изменения].
+         for (k=mOptionFN.length-1; k>=0; k--)
+                 if (mOptionFN[k].selected == true)
+                         break;
+         mUndo[count_Undo][4] = [font_family, k];   //  Сохраняем изменяемые данные:  Код имени шрифта.
+         font_family = k;          //  Сохраняем текущие данные:  Код имени шрифта.
+         miniStat.innerHTML = "Изменён шрифт";         //  Добавляем текст в строку состояния окна.
+         break;
+
+     case 4:
+         b17.disabled=false;    //  Включаем кнопку "Отменить".
+         b18.disabled=true;    //  Отключаем кнопку "Вернуть".
+         mUndo[count_Undo] = [4];   //  Сохраняем данные:  [Код изменения].
+         for (k=mOptionFS.length-1; k>=0; k--)
+                 if (mOptionFS[k].selected == true)
+                         break;
+         mUndo[count_Undo][5] = [font_size, k];   //  Сохраняем изменяемые данные:  Код размера шрифта.
+         font_size = k;               //  Сохраняем текущие данные:  Код размера шрифта.
+         miniStat.innerHTML = "Изменён размер шрифта";          //  Добавляем текст в строку состояния окна.
+         break;
+         }
+
+ count_Undo++;          //  Увеличиваем счетчик системы отмен.
+ if (mUndo[count_Undo])           //  Если есть записи следующих действий...
+         mUndo.length = count_Undo;    //  то удаляем их.
+ }
+
+
+
+///////////////   СВЕРКА ДВУХ ТЕКСТОВ :  Для системы отмен  (сверхбыстрый метод)
+
+ function compareUndo(txt1, txt2) {
+
+ mResult = [];       //  Очищаем массив результатов.
+
+ if (txt1.length < txt2.length) {    //  Если найденный текст меньше заменяемого...
+         order = true;          //  то сохраняем порядок фрагментов.
+         frag1 = txt1;
+         frag2 = txt2;
+         }
+     else {               //  А если больше...
+         order = false;                    //  то изменяем порядок фрагментов.
+         frag1 = txt2;
+         frag2 = txt1;
+         }
+
+ L1 = 0;                         //  Исходное значение  для наименьшей длины участка.
+ L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+ LBest = 0;                 //  Лучшая длина участка.
+
+ while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+         LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+         if (frag1.substring(0, LMidi) == frag2.substring(0, LMidi)) {      //  Если участки средней длины совпадают (в начале фрагментов)...
+                 L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                 LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                 }
+             else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+         }
+
+ mResult[0] = LBest;
+
+ frag1 = frag1.substring(LBest);    //  Убираем из фрагментов полученный участок.
+ frag2 = frag2.substring(LBest);
+
+ L1 = 0;                         //  Исходное значение  для наименьшей длины участка.
+ L2 = frag1.length+1;   //  Исходное значение  для наибольшей длины участка.
+ LBest = 0;                 //  Лучшая длина участка.
+
+ while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
+         LMidi = Math.floor((L2+L1)/2);          //  Получение средней длины (между наименьшей и наибольшей длиной).
+         if (frag1.substring(frag1.length - LMidi) == frag2.substring(frag2.length - LMidi)) {      //  Если участки средней длины совпадают (в конце фрагментов)...
+                 L1 = LMidi;                    //   Изменяем наименьшую длину на среднее значение.
+                 LBest = LMidi;                    //   Изменяем лучшую длину на среднее значение.
+                 }
+             else  L2 = LMidi;        //  Если участки не совпадают -- изменяем наибольшую длину на среднее значение.
+         }
+
+ if (order) {                                    //  Если порядок сверки обычный...
+         mResult[1] = frag1.substring(0, frag1.length - LBest);   //  то добавляем в массив текст несовпадающих участков в обычном порядке.
+         mResult[2] = frag2.substring(0, frag2.length - LBest);
+         }
+     else {                                    //  Если порядок сверки обратный...
+         mResult[1] = frag2.substring(0, frag2.length - LBest);   //  то добавляем в массив текст несовпадающих участков в обратном порядке.
+         mResult[2] = frag1.substring(0, frag1.length - LBest);
+         }
+ }
+
+
 
 
 
@@ -457,7 +676,7 @@ compareMain(true);
  if (mP1.length == 0) {             //  Если в тексте 1-й книги нет строк...
          otvet = command_FBE.AskYesNo(" ::: Ошибка: Первый файл не содержит строк :::   \n Скрипт не сможет выполнить сверку.   \n\n Закрыть скрипт?");
          if (otvet) {           //  Если выбран выход из скрипта...
-                 window.returnValue = [-1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
+                 window.returnValue = [-1, count_SaveChange, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
                  window.close();            //  Закрываем html-окно.
                  }
          return;                 //  Выходим из функции.
@@ -466,7 +685,7 @@ compareMain(true);
  if (mP2.length == 0) {             //  Если во тексте 2-й книги нет строк...
          otvet = command_FBE.AskYesNo(" ::: Ошибка: Второй файл не содержит строк :::   \n Скрипт не сможет выполнить сверку.   \n\n Закрыть скрипт?");
          if (otvet) {           //  Если выбран выход из скрипта...
-                 window.returnValue = [-1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
+                 window.returnValue = [-1, count_SaveChange, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
                  window.close();            //  Закрываем html-окно.
                  }
          return;                 //  Выходим из функции.
@@ -521,7 +740,7 @@ LBL:
  if (mPSort.length > 65535) {             //  Если количество элементов сортированного массива превышает допустимое значение...
          otvet = command_FBE.AskYesNo(" ::: Ошибка: Превышено предельное количество разнообразных строк на "+Math.round((mPSort.length / 65535 - 1) * 100000) / 1000+"% :::   \n Скрипт не сможет выполнить сверку.   \n\n* Для уменьшения количества различающихся строк, попробуйте обработать оба файла глобальными скриптами:   \n Почистить структуру, Стандартизация символов, Кириллица-латиница, Текст-корректор и т. п.   \n\n Закрыть скрипт?");
          if (otvet) {           //  Если выбран выход из скрипта...
-                 window.returnValue = [-1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
+                 window.returnValue = [-1, count_SaveChange, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем код ошибки.
                  window.close();            //  Закрываем html-окно.
                  }
          return;                 //  Выходим из функции.
@@ -642,12 +861,13 @@ LBL:
  if (! firstRun) {     //  Если это не первый запуск сверки...
          flushTxt2();     //  Запускаем выравнивание текста после повторной сверки.  // * Выравнивание после первой сверки выполняется после полной загрузки HTML.
          blockFiles.scrollTop += firstLine[0].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки (первая строка в видимой области).
+         saveUndo(0);     //  Сохраняем действие в системе отмен.
          }
 
- //  Добавляем запись с мини-статистикой сверки.
+ //  Добавляем запись с мини-статистикой сверки в строку состояния окна.
  if (mode)     //  * Для разных режимов -- разный вид записи.
-         miniStat.innerHTML = "Найдено " + count_difference + pad(count_difference, [" отличие", " отличия", " отличий"]) + " за " + time(new Date().getTime() - Ts);
-     else  miniStat.innerHTML = "При выравнивании строк найдено " + count_difference + pad(count_difference, [" базовое отличие", " базовых отличия", " базовых отличий"]) + " за " + time(new Date().getTime() - Ts);
+         miniStat.innerHTML = "Найдено " + pad(count_difference, ["отличие", "отличия", "отличий"]) + " за " + time(new Date().getTime() - Ts);
+     else  miniStat.innerHTML = "При выравнивании строк найдено " + pad(count_difference, ["базовое отличие", "базовых отличия", "базовых отличий"]) + " за " + time(new Date().getTime() - Ts);
 
 
  lengthMFont = mFont.length;           //  Получаем количество несовпадающих участков (отличий).
@@ -861,7 +1081,7 @@ LBL1:
                  }
 
          L1 = minSim-1;                    //  Исходное значение  для наименьшей длины участка.
-         L2 = Math.min(LParent[k], frag1.length)+1;    //  Исходное значение  для наибольшей длины участка.  // * Не может привышать длину родительского совпадающего участка.
+         L2 = Math.min(LParent[k], frag1.length)+1;    //  Исходное значение  для наибольшей длины участка.  // * Не может превышать длину родительского совпадающего участка.
          mRR = [];             //  Очищаем массив результата  с  совпадающем участком   максимальной   длины.
 
          while (L2-L1 >= 2) {                                        //  Цикл, который будет выполняться, пока значения наименьшей и наибольшей длины участка не встанут рядом.
@@ -941,8 +1161,8 @@ LBL2:
 
          //  Поиск соседних тегов.   При конфликте тегов -- добавление тегов  <FONT>
          for (re01.lastIndex = 0;   (rS = re01.exec(styleTxt)) != null; )    //  Запускаем цикл для детального поиска соседних тегов.
-                 if (rS[1] == "<FONT>"  &&  rS[3] != "</FONT>") {                   //  Если нет пары для начального тега <FONT>...
-                         styleTxt = styleTxt.substring(0, rS.index) + rS[1] + rS[2] + "</FONT>" + rS[3] + "<FONT>" + styleTxt.substring(re01.lastIndex);
+                 if (rS[2] != "</FONT>") {                   //  Если нет пары для начального тега <FONT>...
+                         styleTxt = styleTxt.substring(0, rS.index) + rS[1] + "</FONT>" + rS[2] + "<FONT>" + styleTxt.substring(re01.lastIndex);
                          //  То добавляем два тега  </FONT> и <FONT>  вокруг второго местного тега (не FONT).
                          re01.lastIndex += 7;   //  Корректируем начало поиска следующих соседних тегов.
                          }
@@ -1159,7 +1379,7 @@ LBL2:
 
 
 
-///////////////   СВЕРКА ТЕКСТОВ :  Выравнивание всех строк (для первой обработки)
+///////////////   СВЕРКА ТЕКСТОВ :  Выравнивание всех строк  (для первой обработки)
 
  function flushTxt1() {
          ind1 = 0;     //  Обнуляем счетчик строк 1-го текста.
@@ -1195,7 +1415,7 @@ LBL2:
 
 
 
-///////////////   СВЕРКА ТЕКСТОВ :  Выравнивание всех строк (для повторной обработки)
+///////////////   СВЕРКА ТЕКСТОВ :  Выравнивание всех строк  (для повторной обработки)
 
  function flushTxt2() {
          ind1 = 0;     //  Обнуляем счетчик строк 1-го текста.
@@ -1252,34 +1472,38 @@ LBL2:
  window.onload = function() {
          flushTxt1();       //  Выравниваем строки.
          mainElem.focus();          //  Устанавливаем фокус на основной блок.
-         //  Добавляем запись о времени выполнения сверки.
-         miniStat.innerHTML = "Найдено " + count_difference + pad(count_difference, [" отличие", " отличия", " отличий"]) + " за " + time(new Date().getTime() - Ts);
+         //  Добавляем запись о времени выполнения сверки в строку состояния окна.
+         miniStat.innerHTML = "Найдено " + pad(count_difference, ["отличие", "отличия", "отличий"]) + " за " + time(new Date().getTime() - Ts);
          firstRun = false;       //  Отмечаем, что первая сверка завершена.
+         UndoBlockFile1 = blockFile1.innerHTML;    //  Текст книги 1.
+         UndoBlockFile2 = blockFile2.innerHTML;    //  Текст книги 2.
          }
 
 
 ///////////////   Функция, которая включается перед закрытием окна
 
  window.onunload = function() {
-         if (!exit) {     //  Если нет подтверждения выхода...
+         if (!exit  &&  b2.disabled == false) {     //  Если нет подтверждения выхода   и   сохранение не выполнено...
                  var mTxt = [
                      ["Закрытие скрипта",, "17 жирный центр линия#444 #444 (Cambria, Georgia, Liberation Serif)"],
-                     ["Возможно остались не сохраненные изменения",, "13 жирный курсив центр #444 (Cambria, Georgia, Liberation Serif)"],  [],
+                     ["Финальный текст не сохранён",, "13 жирный курсив центр #444 (Cambria, Georgia, Liberation Serif)"],  [],
                      ["Сохранить изменения?",, "17 фон#335EA8 #FFF"],  []];
                  otvet = window.showModalDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Сохранить", "Закрыть без сохранения", 1],
                          "dialogHeight: 160px; dialogWidth: 500px; help: No; resizable: Yes; status: No");
                  if (otvet == 1)             //  Если выбрано сохранение...
                          button_X(2);       //  то сохраняем текст.
                  }
-         window.returnValue = [1, changeBook, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем данные обработки.
+         window.returnValue = [1, count_SaveChange, findElem(), blockFiles.getBoundingClientRect().top];   //  Отправляем данные обработки.
          }
 
 
 ///////////////   Функция изменения имени шрифта
 
  function selFontFamily(txt) {
-         if (! firstRun)         //  Если это не первый запуск...
+         if (! firstRun) {        //  Если это не первый запуск...
                  firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                 saveUndo(3);     //  Сохраняем действие в системе отмен.
+                 }
          blockFile1.style.fontFamily = txt;    //  Изменяем шрифт в 1-м тексте.
          blockFile2.style.fontFamily = txt;    //  Изменяем шрифт во 2-м тексте.
          if (! firstRun)         //  Если это не первый запуск...
@@ -1290,8 +1514,10 @@ LBL2:
 ///////////////   Функция изменения размера шрифта
 
  function selFontSize(num) {
-         if (! firstRun)         //  Если это не первый запуск...
+         if (! firstRun) {         //  Если это не первый запуск...
                  firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                 saveUndo(4);     //  Сохраняем действие в системе отмен.
+                 }
          blockFile1.style.fontSize = num+"pt";    //  Изменяем размер шрифта в 1-м тексте.
          blockFile2.style.fontSize = num+"pt";    //  Изменяем размер шрифта во 2-м тексте.
          if (! firstRun)         //  Если это не первый запуск...
@@ -1409,15 +1635,19 @@ LBL2:
  function keyDown(ev) {
          var ev = ev || window.event;
          switch (ev.keyCode) {
-                 case 27:  button_X(3);   break;           //  Esc --  "Выход"
-                 case 83:  if (ev.ctrlKey)  button_X(2);   break;    //  Ctrl+S --  "Сохранить"
-                 case 112:  button_X(19);   break;     //  F1 --  "Справка"
-                 case 114:  button_X(13);   break;     //  F3 --  "Предыдущее отличие"
-                 case 115:  button_X(14);   break;    //  F4 --  "Следующее отличие"
-                 case 116:  button_X(15);  break;     //  F5 --  "Обновить"
-                 case 118:  button_X(16);  break;     //  F7 --  "Выравнять строки"
-     //            case 119:  button_X(17);  break;     //  F8 --  "Отменить"
-     //            case 120:  button_X(18);  break;     //  F9 --  "Вернуть"
+                 case 27:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(3);   break;           //  Esc --  "Выход"
+                 case 83:  if (ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(2);   break;    //  Ctrl+S --  "Сохранить"
+                 case 90:  if (ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey  &&  b17.disabled == false)  button_X(17);     //  Ctrl+Z --  "Отменить"
+                         if (ev.ctrlKey  &&  ev.shiftKey  &&  !ev.altKey  &&  b18.disabled == false)  button_X(18);     //  Ctrl+Shift+Z --  "Вернуть"
+                         break;
+                 case 89:  if (ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey  &&  b18.disabled == false)  button_X(18);  break;     //  Ctrl+Y --  "Вернуть"
+                 case 112:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(19);   break;     //  F1 --  "Справка"
+                 case 114:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(13);   break;     //  F3 --  "Предыдущее отличие"
+                 case 115:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(14);   break;    //  F4 --  "Следующее отличие"
+                 case 116:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(15);  break;     //  F5 --  "Обновить"
+                 case 118:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey)  button_X(16);  break;     //  F7 --  "Выравнять строки"
+                 case 119:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey  &&  b17.disabled == false)  button_X(17);  break;     //  F8 --  "Отменить"
+                 case 120:  if (!ev.ctrlKey  &&  !ev.shiftKey  &&  !ev.altKey  &&  b18.disabled == false)  button_X(18);  break;     //  F9 --  "Вернуть"
              //    default:  alert("\n key    " + ev.key + "\n keyCode    " + ev.keyCode + "\n location    " + ev.location + "\n shiftKey      " + ev.shiftKey + "\n ctrlKey    " + ev.ctrlKey + "\n altKey      " + ev.altKey + "\n repeat     " + ev.repeat);
                  }
          }
@@ -1429,6 +1659,8 @@ LBL2:
 
  function button_X(num) {
          if (num == 2) {                              //  "Сохранить"
+                 if (b2.disabled == true)     //  Если кнопка сохранения заблокирована...
+                         return;            //  то выходим из функции.     //  * Такое возможно при сохранении через клавиатуру.
                  for (k=mBlockFont.length-1;  k>=0;  k--)    //  Цикл для внестрочных элементов "FONT".
                          mBlockFont[k].removeNode(true);     //  Удаляем все элементы.
                  str = blockFile2.innerHTML;      //  Получаем текст открытой книги.
@@ -1449,24 +1681,28 @@ LBL2:
                                  command_FBE.inflateBlock(mPEdit[k])=true;    //  и нормализуем пустую строку.
                                  }
 
-                 miniStat.innerHTML = "Все изменения сохранены в программе «FictionBook Editor»";    //  Отправляем текст в мини-статистику.
-                 changeBook = true;       //  Отмечаем выполнение сохранения.
+                 count_SaveChange = count_Change;    //  Изменяем счетчик сохраненных изменений финального текста.
+                 miniStat.innerHTML = "Все изменения финального текста сохранены в программе «FictionBook Editor»";    //  Отправляем текст в строку состояния окна.
+                 b2.disabled=true;    //  Отключаем кнопку "Сохранить".
+                 numSave = count_Undo;    //  Запоминаем положение выполненного сохранения в цепочке системы отмен.
                  }
 
          if (num == 3) {                              //  "Выход"
-                 var mTxt = [
-                     ["Закрытие скрипта",, "17 жирный центр линия#444 #444 (Cambria, Georgia, Liberation Serif)"],
-                     ["Возможно остались не сохраненные изменения",, "13 жирный курсив центр #444 (Cambria, Georgia, Liberation Serif)"],  [],
-                     ["Сохранить изменения?",, "17 фон#335EA8 #FFF"],  []];
-                 otvet = window.showModalDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Сохранить", "Закрыть без сохранения", "Отменить закрытие", 1],
-                         "dialogHeight: 160px; dialogWidth: 500px; help: No; resizable: Yes; status: No");
-                 if (otvet == 1) {            //  Если выбрано сохранение...
-                         button_X(2);       //  то сохраняем текст.
+                 if (b2.disabled == false) {     //  Если сохранение не выполнено...
+                         var mTxt = [
+                             ["Закрытие скрипта",, "17 жирный центр линия#444 #444 (Cambria, Georgia, Liberation Serif)"],
+                             ["Финальный текст не сохранён",, "13 жирный курсив центр #444 (Cambria, Georgia, Liberation Serif)"],  [],
+                             ["Сохранить изменения?",, "17 фон#335EA8 #FFF"],  []];
+                         otvet = window.showModalDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Сохранить", "Закрыть без сохранения", "Отменить закрытие", 1],
+                                 "dialogHeight: 160px; dialogWidth: 500px; help: No; resizable: Yes; status: No");
+                         if (otvet == 1) {            //  Если выбрано сохранение...
+                                 button_X(2);       //  то сохраняем текст.
+                                 }
+                         if (otvet == 3) {     //  Если выбрана отмена выхода из скрипта...
+                                 return;            //  то прерываем выполнение функции.
+                                 }
                          }
-                 if (otvet == 3) {           //  Если выбрана отмена выхода из скрипта...
-                         return;
-                         }
-                 exit = true;
+                 exit = true;              //  Подтверждаем выход из скрипта.
                  window.close();            //  Закрываем html-окно.
                  }
 
@@ -1506,9 +1742,222 @@ LBL2:
          if (num == 16)                              //  "Выравнять строки"
                  compareMain(false);            //  Запускаем выравнивание строк текстов.
 
+         if (num == 17) {                              //  "Отменить"
+                 count_Undo--;    //  Уменьшаем счетчик системы отмен.
+                 if (count_Undo == 0)     //  Если это самые первые данные системы отмен...
+                         b17.disabled=true;    //  то отключаем кнопку "Отменить".
+                 b18.disabled=false;        //  Активируем кнопку "Возвратить"
+
+                 if (mUndo[count_Undo][0] == 0) {      //  Если производилось местное форматирование текста...
+                         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                         if (mUndo[count_Undo][1]) {       //  Если изменялся 1-й текст...
+                                 blockFile1.innerHTML = UndoBlockFile1.substring(0, mUndo[count_Undo][1][0]) + mUndo[count_Undo][1][1]
+                                     + UndoBlockFile1.substring(mUndo[count_Undo][1][0] + mUndo[count_Undo][1][2].length);   //  Получаем 1-й текст до изменения.
+                                 for (k=mP1.length-1; k>=0; k--)     //  Цикл для строк 1-го текста.
+                                         if (mP1[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                                 mP1[k].innerHTML = "";                                          //  то удаляем его
+                                                 command_FBE.inflateBlock(mP1[k])=true;     //  и нормализуем пустую строку.
+                                                 }
+                                 UndoBlockFile1 = blockFile1.innerHTML;     //  Сохраняем измененный текст в переменной.
+                                 }
+                         if (mUndo[count_Undo][2]) {       //  Если изменялся 2-й текст...
+                                 blockFile2.innerHTML = UndoBlockFile2.substring(0, mUndo[count_Undo][2][0]) + mUndo[count_Undo][2][1]
+                                     + UndoBlockFile2.substring(mUndo[count_Undo][2][0] + mUndo[count_Undo][2][2].length);   //  Получаем 2-й текст до изменения.
+                                 for (k=mP2.length-1; k>=0; k--)     //  Цикл для строк 2-го текста.
+                                         if (mP2[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                                 mP2[k].innerHTML = "";                                           //  то удаляем его
+                                                 command_FBE.inflateBlock(mP2[k])=true;     //  и нормализуем пустую строку.
+                                                 }
+                                 UndoBlockFile2 = blockFile2.innerHTML;     //  Сохраняем измененный текст в переменной.
+                                 }
+                         blockCount.focus();      //  Переносим курсор в другое текстовое поле.
+                         mainElem.focus();          //  Устанавливаем фокус на основной блок.
+                         blockFiles.scrollTop += mP2[firstLine[2]].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+                         miniStat.innerHTML = "Отменено выполнение сверки/выравнивания строк";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 1) {      //  Если изменялся только 1-й текст...
+                         //  Получаем 1-й текст до изменения + обозначение курсора в начале измененного фрагмента.
+                         bookTxt1 = UndoBlockFile1.substring(0, mUndo[count_Undo][1][0]) + falseCursor + mUndo[count_Undo][1][1]
+                             + UndoBlockFile1.substring(mUndo[count_Undo][1][0] + mUndo[count_Undo][1][2].length);
+                         if (bookTxt1.search(re10) != -1)   bookTxt1 = bookTxt1.replace(re10, re10_);    //  Если курсор расположен внутри тега -- выводим его наружу.
+                         //  Если курсор вне параграфа и есть следующий параграф -- перемещаем его в начало следующего параграфа.
+                         if (bookTxt1.search(re11) != -1)   bookTxt1 = bookTxt1.replace(re11, re11_)
+                             //  Иначе, если курсор вне параграфа и есть предыдущий параграф -- перемещаем его в конец предыдущего параграфа.
+                             else   if (bookTxt1.search(re12) != -1)  bookTxt1 = bookTxt1.replace(re12, re12_);
+                         blockFile1.innerHTML = bookTxt1.replace(re13, re13_);                //  Заменяем спец. текст курсора на спец. элемент, и отправляем полученный текст в окно html.
+                         elem = document.getElementById("kursor_sverki_dizajna");    //  Получаем этот элемент.
+                         addCursur(elem);                   //  Добавляем курсор в этот элемент.
+                         elem.removeNode(true);     //  Удаляем элемент.
+                         for (k=mP1.length-1; k>=0; k--)     //  Цикл для строк 1-го текста.
+                                 if (mP1[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                         mP1[k].innerHTML = "";                                          //  то удаляем его
+                                         command_FBE.inflateBlock(mP1[k])=true;     //  и нормализуем пустую строку.
+                                         }
+                         UndoBlockFile1 = blockFile1.innerHTML;     //  Сохраняем измененный текст в переменной.
+                         blockFiles.scrollTop = mUndo[count_Undo][3];    //  Прокручиваем текст до указанной позиции в системе отмен.
+                         miniStat.innerHTML = "Отменено изменение в дубле";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 2) {      //  Если изменялся только 2-й текст...
+                         //  Получаем 2-й текст до изменения + обозначение курсора в начале измененного фрагмента.
+                         bookTxt2 = UndoBlockFile2.substring(0, mUndo[count_Undo][2][0]) + falseCursor + mUndo[count_Undo][2][1]
+                             + UndoBlockFile2.substring(mUndo[count_Undo][2][0] + mUndo[count_Undo][2][2].length);
+                         if (bookTxt2.search(re10) != -1)   bookTxt2 = bookTxt2.replace(re10, re10_);    //  Если курсор расположен внутри тега -- выводим его наружу.
+                         //  Если курсор вне параграфа и есть следующий параграф -- перемещаем его в начало следующего параграфа.
+                         if (bookTxt2.search(re11) != -1)   bookTxt2 = bookTxt2.replace(re11, re11_)
+                             //  Иначе, если курсор вне параграфа и есть предыдущий параграф -- перемещаем его в конец предыдущего параграфа.
+                             else   if (bookTxt2.search(re12) != -1)  bookTxt2 = bookTxt2.replace(re12, re12_);
+                         blockFile2.innerHTML = bookTxt2.replace(re13, re13_);                //  Заменяем спец. текст курсора на спец. элемент, и отправляем полученный текст в окно html.
+                         elem = document.getElementById("kursor_sverki_dizajna");    //  Получаем этот элемент.
+                         addCursur(elem);                   //  Добавляем курсор в этот элемент.
+                         elem.removeNode(true);     //  Удаляем элемент.
+                         for (k=mP2.length-1; k>=0; k--)     //  Цикл для строк 2-го текста.
+                                 if (mP2[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                         mP2[k].innerHTML = "";                                           //  то удаляем его
+                                         command_FBE.inflateBlock(mP2[k])=true;     //  и нормализуем пустую строку.
+                                         }
+                         UndoBlockFile2 = blockFile2.innerHTML;     //  Сохраняем измененный текст в переменной.
+                         blockFiles.scrollTop = mUndo[count_Undo][3];    //  Прокручиваем текст до указанной позиции в системе отмен.
+                         if (numSave == count_Undo)    //     Если текст сохранялся после этого действия...
+                                 b2.disabled=true;    //  то отключаем кнопку "Сохранить".
+                             else
+                                 b2.disabled=false;    //  иначе -- включаем кнопку "Сохранить".
+                         miniStat.innerHTML = "Отменено " + count_Change + "-е изменение в финальном тексте";         //  Добавляем текст в строку состояния окна.
+                         count_Change--;                  //  Уменьшаем счетчик изменений.
+                         }
+
+                 if (mUndo[count_Undo][0] == 3) {      //  Если изменялось имя шрифта...
+                         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                         mOptionFN[mUndo[count_Undo][4][0]].selected = true;   //  Фиксируем сохраненное имя шрифта.
+                         blockFile1.style.fontFamily = mOptionFN[mUndo[count_Undo][4][0]].value;    //  Изменяем шрифт в 1-м тексте.
+                         blockFile2.style.fontFamily = mOptionFN[mUndo[count_Undo][4][0]].value;    //  Изменяем шрифт во 2-м тексте.
+                         font_family = mUndo[count_Undo][4][0];                         //  Сохраняем текущие данные:  Код имени шрифта.
+                         blockFiles.scrollTop += mP2[firstLine[2]].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+                         miniStat.innerHTML = "Отменено изменение шрифта";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 4) {      //  Если изменялся размер шрифта...
+                         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                         mOptionFS[mUndo[count_Undo][5][0]].selected = true;   //  Фиксируем сохраненный размер шрифта.
+                         blockFile1.style.fontSize = mOptionFS[mUndo[count_Undo][5][0]].value+"pt";    //  Изменяем размер шрифта в 1-м тексте.
+                         blockFile2.style.fontSize = mOptionFS[mUndo[count_Undo][5][0]].value+"pt";    //  Изменяем размер шрифта во 2-м тексте.
+                         font_size = mUndo[count_Undo][5][0];                              //  Сохраняем текущие данные:  Код размера шрифта.
+                         blockFiles.scrollTop += mP2[firstLine[2]].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+                         miniStat.innerHTML = "Отменено изменение размера шрифта";         //  Добавляем текст в строку состояния окна.
+                         }
+                 }
+
+         if (num == 18) {                              //  "Вернуть"
+
+                 if (mUndo[count_Undo][0] == 0) {      //  Если производилось местное форматирование текста...
+                         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                         if (mUndo[count_Undo][1]) {       //  Если изменялся 1-й текст...
+                                 blockFile1.innerHTML = UndoBlockFile1.substring(0, mUndo[count_Undo][1][0]) + mUndo[count_Undo][1][2]
+                                     + UndoBlockFile1.substring(mUndo[count_Undo][1][0] + mUndo[count_Undo][1][1].length);   //  Получаем 1-й текст до изменения.
+                                 for (k=mP1.length-1; k>=0; k--)     //  Цикл для строк 1-го текста.
+                                         if (mP1[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                                 mP1[k].innerHTML = "";                                          //  то удаляем его
+                                                 command_FBE.inflateBlock(mP1[k])=true;     //  и нормализуем пустую строку.
+                                                 }
+                                 UndoBlockFile1 = blockFile1.innerHTML;     //  Сохраняем измененный текст в переменной.
+                                 }
+                         if (mUndo[count_Undo][2]) {       //  Если изменялся 2-й текст...
+                                 blockFile2.innerHTML = UndoBlockFile2.substring(0, mUndo[count_Undo][2][0]) + mUndo[count_Undo][2][2]
+                                     + UndoBlockFile2.substring(mUndo[count_Undo][2][0] + mUndo[count_Undo][2][1].length);   //  Получаем 2-й текст до изменения.
+                                 for (k=mP2.length-1; k>=0; k--)     //  Цикл для строк 2-го текста.
+                                         if (mP2[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                                 mP2[k].innerHTML = "";                                           //  то удаляем его
+                                                 command_FBE.inflateBlock(mP2[k])=true;     //  и нормализуем пустую строку.
+                                                 }
+                                 UndoBlockFile2 = blockFile2.innerHTML;     //  Сохраняем измененный текст в переменной.
+                                 }
+                         blockCount.focus();      //  Переносим курсор в другое текстовое поле.
+                         mainElem.focus();          //  Устанавливаем фокус на основной блок.
+                         blockFiles.scrollTop += mP2[firstLine[2]].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+                         miniStat.innerHTML = "Возвращено выполнение сверки/выравнивания строк";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 1) {      //  Если изменялся только 1-й текст...
+                         //  Получаем 1-й текст после изменения + обозначение курсора в начале измененного фрагмента.
+                         bookTxt1 = UndoBlockFile1.substring(0, mUndo[count_Undo][1][0]) + falseCursor + mUndo[count_Undo][1][2]
+                             + UndoBlockFile1.substring(mUndo[count_Undo][1][0] + mUndo[count_Undo][1][1].length);
+                         if (bookTxt1.search(re10) != -1)   bookTxt1 = bookTxt1.replace(re10, re10_);    //  Если курсор расположен внутри тега -- выводим его наружу.
+                         //  Если курсор вне параграфа и есть следующий параграф -- перемещаем его в начало следующего параграфа.
+                         if (bookTxt1.search(re11) != -1)   bookTxt1 = bookTxt1.replace(re11, re11_)
+                             //  Иначе, если курсор вне параграфа и есть предыдущий параграф -- перемещаем его в конец предыдущего параграфа.
+                             else   if (bookTxt1.search(re12) != -1)  bookTxt1 = bookTxt1.replace(re12, re12_);
+                         blockFile1.innerHTML = bookTxt1.replace(re13, re13_);                //  Заменяем спец. текст курсора на спец. элемент, и отправляем полученный текст в окно html.
+                         elem = document.getElementById("kursor_sverki_dizajna");    //  Получаем этот элемент.
+                         addCursur(elem);                   //  Добавляем курсор в этот элемент.
+                         elem.removeNode(true);     //  Удаляем элемент.
+                         for (k=mP1.length-1; k>=0; k--)     //  Цикл для строк 1-го текста.
+                                 if (mP1[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                         mP1[k].innerHTML = "";                                          //  то удаляем его
+                                         command_FBE.inflateBlock(mP1[k])=true;     //  и нормализуем пустую строку.
+                                         }
+                         UndoBlockFile1 = blockFile1.innerHTML;     //  Сохраняем измененный текст в переменной.
+                         blockFiles.scrollTop = mUndo[count_Undo][3];    //  Прокручиваем текст до указанной позиции в системе отмен.
+                         miniStat.innerHTML = "Возвращено изменение дубля";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 2) {      //  Если изменялся только 2-й текст...
+                         //  Получаем 2-й текст после изменения + обозначение курсора в начале измененного фрагмента.
+                         bookTxt2 = UndoBlockFile2.substring(0, mUndo[count_Undo][2][0]) + falseCursor + mUndo[count_Undo][2][2]
+                             + UndoBlockFile2.substring(mUndo[count_Undo][2][0] + mUndo[count_Undo][2][1].length);
+                         if (bookTxt2.search(re10) != -1)   bookTxt2 = bookTxt2.replace(re10, re10_);    //  Если курсор расположен внутри тега -- выводим его наружу.
+                         //  Если курсор вне параграфа и есть следующий параграф -- перемещаем его в начало следующего параграфа.
+                         if (bookTxt2.search(re11) != -1)   bookTxt2 = bookTxt2.replace(re11, re11_)
+                             //  Иначе, если курсор вне параграфа и есть предыдущий параграф -- перемещаем его в конец предыдущего параграфа.
+                             else   if (bookTxt2.search(re12) != -1)  bookTxt2 = bookTxt2.replace(re12, re12_);
+                         blockFile2.innerHTML = bookTxt2.replace(re13, re13_);                //  Заменяем спец. текст курсора на спец. элемент, и отправляем полученный текст в окно html.
+                         elem = document.getElementById("kursor_sverki_dizajna");    //  Получаем этот элемент.
+                         addCursur(elem);                   //  Добавляем курсор в этот элемент.
+                         elem.removeNode(true);     //  Удаляем элемент.
+                         for (k=mP2.length-1; k>=0; k--)     //  Цикл для строк 2-го текста.
+                                 if (mP2[k].innerHTML == "&nbsp;") {     //  Если в строке только код неразрывного пробела...
+                                         mP2[k].innerHTML = "";                                           //  то удаляем его
+                                         command_FBE.inflateBlock(mP2[k])=true;     //  и нормализуем пустую строку.
+                                         }
+                         UndoBlockFile2 = blockFile2.innerHTML;     //  Сохраняем измененный текст в переменной.
+                         blockFiles.scrollTop = mUndo[count_Undo][3];    //  Прокручиваем текст до указанной позиции в системе отмен.
+                         if (numSave == count_Undo+1)    //     Если текст сохранялся после этого действия...
+                                 b2.disabled=true;    //  то отключаем кнопку "Сохранить".
+                             else
+                                 b2.disabled=false;    //  иначе -- включаем кнопку "Сохранить".
+                         count_Change++;                  //  Увеличиваем счетчик изменений.
+                         miniStat.innerHTML = "Возвращено " + count_Change + "-е изменение финального текста";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 3) {      //  Если изменялось имя шрифта...
+                         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                         mOptionFN[mUndo[count_Undo][4][1]].selected = true;   //  Фиксируем сохраненное имя шрифта.
+                         blockFile1.style.fontFamily = mOptionFN[mUndo[count_Undo][4][1]].value;    //  Изменяем шрифт в 1-м тексте.
+                         blockFile2.style.fontFamily = mOptionFN[mUndo[count_Undo][4][1]].value;    //  Изменяем шрифт во 2-м тексте.
+                         font_family = mUndo[count_Undo][4][1];                         //  Сохраняем текущие данные:  Код имени шрифта.
+                         blockFiles.scrollTop += mP2[firstLine[2]].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+                         miniStat.innerHTML = "Возвращено изменение шрифта";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 if (mUndo[count_Undo][0] == 4) {      //  Если изменялся размер шрифта...
+                         firstLine = findElem();   //  Находим первую строку в видимой области, и ее расположение.
+                         mOptionFS[mUndo[count_Undo][5][1]].selected = true;   //  Фиксируем сохраненный размер шрифта.
+                         blockFile1.style.fontSize = mOptionFS[mUndo[count_Undo][5][1]].value+"pt";    //  Изменяем размер шрифта в 1-м тексте.
+                         blockFile2.style.fontSize = mOptionFS[mUndo[count_Undo][5][1]].value+"pt";    //  Изменяем размер шрифта во 2-м тексте.
+                         font_size = mUndo[count_Undo][5][1];                              //  Сохраняем текущие данные:  Код размера шрифта.
+                         blockFiles.scrollTop += mP2[firstLine[2]].getBoundingClientRect().top - firstLine[1];   //  Восстанавливаем положение ранее найденной строки.
+                         miniStat.innerHTML = "Возвращено изменение размера шрифта";         //  Добавляем текст в строку состояния окна.
+                         }
+
+                 count_Undo++;    //  Увеличиваем счетчик системы отмен.
+                 b17.disabled=false;      //  Включаем кнопку "Отменить".
+                 if (count_Undo == mUndo.length)   //  Если это последнее сохранение в системе отмен...
+                         b18.disabled=true;    //  то отключаем кнопку "Вернуть".
+                 }
+
          if (num == 19) {                              //  "Справка"
                  info();              //  Запускаем функцию открытия/закрытия окна справки.
-// window.clipboardData.setData("text", blockFile2.innerHTML);   //  Отправка текста в буфер обмена.
+// window.clipboardData.setData("text", blockFile2.innerHTML);   //  Отправка финального html-текста в буфер обмена.
                  }
          }
 
@@ -1646,31 +2095,28 @@ function info() {
      ["• "+z4("Основное управление"),, "14 #191919"],
      [z6("↻")+" — "+z5("F5")+" — Выполнить повторную сверку.",, "14 #191919"],
      [z6("⇅")+" — "+z5("F7")+" — Выровнять строки.",, "14 #191919"],
-     [z6("?")+" — "+z5("F1")+" — Открыть/закрыть это окно.",, "14 #191919"],
+     [z6("↶")+" — "+z5("Ctrl+Z")+" "+z5("F8")+" — Отменить действие.",, "14 #191919"],
+     [z6("↷")+" — "+z5("Ctrl+Y")+" "+z5("Ctrl+Shift+Z")+" "+z5("F9")+" — Вернуть действие.",, "14 #191919"],
+     [z6("?")+" — "+z5("F1")+" — Открыть/закрыть окно справки.",, "14 #191919"],
      [" ",, "7"],
      ["• "+z4("Сохранить")+" — "+z5("Ctrl+S")+" — Сохранить изменения финального текста в «FictionBook Editor».",, "14 #191919"],
      [" ",, "3"],
-     ["• "+z4("Выход")+" — Закрыть скрипт.",, "14 #191919"],
+     ["• "+z4("Выход")+" — "+z5("Esc")+" — Закрыть скрипт.",, "14 #191919"],
      [" ",, "3"],
-     [z3("×")+" — <I>системная кнопка</I> — Прервать выполнение всех операций.",, "14 #191919"],
+     [z3("×")+" — <I>системная кнопка</I> — Закрыть скрипт.",, "14 #191919"],
      [],
      ["  P.S.",, "16 разрядка жирный #222 фон#CCC"],
      [" ",, "7"],
      ["При редакции текстов, можно использовать системные комбинации:",, "14 #191919"],
      [" ",, "3"],
-     [z5("Ctrl+Z")+" — Отменить.",, "14 #191919"],
-     [z5("Ctrl+Y")+" — Вернуть.",, "14 #191919"],
      [z5("Ctrl+I")+" — Добавить/удалить курсив.",, "14 #191919"],
      [z5("Ctrl+B")+" — Добавить/удалить жирность.",, "14 #191919"],
-     [" ",, "3"],
-     ["... и другие горячие клавиши.",, "14 #191919"],
-
 
      []
      ];
 
  //  Запускаем окно справки.
- winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, "Закрыть", 0],
+ winInfo = window.showModelessDialog( "АК-скрипт - Сообщение.html", ["Сверка «Дизайна»", mTxt, 'Закрыть <FONT style="color: #777;">[Esc]</FONT>', 0],
      "dialogHeight: 600px; dialogWidth: 800px; help: No; resizable: Yes; status: No");
  }
 
@@ -1708,10 +2154,10 @@ function z7(txt) {
  function pad(num, M) {         //  * Исходные данные: "Число".
          var m1 = num%10;          //  Последняя цифра.
          var m2 = num%100 - m1;   //  Десятки.
-         if (m2 == 10)  return M[2];            //  Если предпоследняя цифра это 1  --  возвращаем тип окончания "2" (114 метров).
-         if (m1==1)  return M[0];                      //  Если последняя цифра это 1  --  возвращаем тип окончания "0" (101 метр).
-         if (m1>=2 && m1<=4)  return  M[1];     //  Если последняя цифра это 2, 3 или 4  --  то возвращаем тип окончания "1" (102 метра).
-         return M[2];          //  В остальных случаях возвращаем тип окончания "2" (114 метров).
+         if (m2 == 10)  return  num + " " + M[2];            //  Если предпоследняя цифра это 1  --  возвращаем тип окончания "2" (114 метров).
+         if (m1==1)  return  num + " " + M[0];                      //  Если последняя цифра это 1  --  возвращаем тип окончания "0" (101 метр).
+         if (m1>=2 && m1<=4)  return  num + " " + M[1];     //  Если последняя цифра это 2, 3 или 4  --  то возвращаем тип окончания "1" (102 метра).
+         return  num + " " + M[2];          //  В остальных случаях возвращаем тип окончания "2" (114 метров).
          }
 
 
@@ -1746,15 +2192,21 @@ function GoTo3(elem) {
          if (elemHeight <= wH)          //  Если высота элемента меньше высоты текстового поля...
                  blockFiles.scrollTop += elemTop - 3 - Math.round((wH-elemHeight)*0.3 + h1);   //  то выставляем элемент согласно указанному расположению,
              else  blockFiles.scrollTop += elemTop - 3 - h1;       //  а если нет - то выставляем элемент почти впритык к верхнему краю.
+         }
 
-         /*
-         var r=document.selection.createRange();
+
+///////////////   Функция установки курсора
+
+function addCursur(elem) {
+         var r=document.selection.createRange();            // * Строки из "main.js" -- установка курсора в начало указаного элемента
          if (!r || !("compareEndPoints" in r)) return;
          r.moveToElementText(elem);
          r.collapse(true);
-         if(r.parentElement!==elem && r.move("character",1)==1) r.move("character",-1);
-         r.select(); */
+  //       if(r.parentElement!==elem && r.move("character",1)==1) r.move("character",-1);     // * Похоже это лишняя строка
+         r.select();
          }
+
+
 
 </SCRIPT>
 </BODY>
