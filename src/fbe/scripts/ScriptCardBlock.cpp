@@ -6,8 +6,10 @@
 
 namespace ScriptCardBlock {
 namespace {
-constexpr char kOpen[] = "/*<FBE-NEXT-CARD version=\"1\">";
-constexpr char kClose[] = "</FBE-NEXT-CARD>*/";
+constexpr char kOpen[] = "/*<FBE-SCRIPT-CARD version=\"1\">";
+constexpr char kClose[] = "</FBE-SCRIPT-CARD>*/";
+constexpr char kLegacyOpen[] = "/*<FBE-NEXT-CARD version=\"1\">";
+constexpr char kLegacyClose[] = "</FBE-NEXT-CARD>*/";
 constexpr size_t kMaximumCardBytes = 64 * 1024;
 
 struct Encoding {
@@ -55,7 +57,8 @@ bool Matches(const BYTE* bytes, size_t length, size_t position, const char* mark
 bool ContainsMarker(const BYTE* bytes, size_t length, size_t start, const Encoding& encoding)
 {
 	for(size_t position = start; position < length; position += encoding.unit)
-		if(Matches(bytes, length, position, kOpen, encoding)) return true;
+		if(Matches(bytes, length, position, kOpen, encoding) ||
+			Matches(bytes, length, position, kLegacyOpen, encoding)) return true;
 	return false;
 }
 }
@@ -66,14 +69,18 @@ Status Find(const BYTE* bytes, size_t length, Span& span)
 	if(bytes == NULL) return Status::Malformed;
 	const Encoding encoding = Detect(bytes, length);
 	const size_t start = encoding.bom;
-	if(!Matches(bytes, length, start, kOpen, encoding))
+	const bool current = Matches(bytes, length, start, kOpen, encoding);
+	const bool legacy = !current && Matches(bytes, length, start, kLegacyOpen, encoding);
+	if(!current && !legacy)
 		return ContainsMarker(bytes, length, start, encoding) ? Status::Malformed : Status::Missing;
+	const char* closeMarker = current ? kClose : kLegacyClose;
+	const size_t openLength = strlen(current ? kOpen : kLegacyOpen) * encoding.unit;
 	const size_t limit = (std::min)(length, start + kMaximumCardBytes);
-	const size_t closeLength = (sizeof(kClose) - 1) * encoding.unit;
-	for(size_t cursor = start + (sizeof(kOpen) - 1) * encoding.unit;
+	const size_t closeLength = strlen(closeMarker) * encoding.unit;
+	for(size_t cursor = start + openLength;
 		cursor <= limit && closeLength <= limit - cursor; cursor += encoding.unit)
 	{
-		if(!Matches(bytes, length, cursor, kClose, encoding)) continue;
+		if(!Matches(bytes, length, cursor, closeMarker, encoding)) continue;
 		size_t end = cursor + closeLength;
 		if(Matches(bytes, length, end, "\r\n", encoding)) end += 2 * encoding.unit;
 		else if(Matches(bytes, length, end, "\n", encoding) || Matches(bytes, length, end, "\r", encoding))

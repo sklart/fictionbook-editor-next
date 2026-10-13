@@ -28,6 +28,17 @@ def sample_card():
 
 
 class ScriptCardToolTests(unittest.TestCase):
+    def test_legacy_marker_is_read_but_new_cards_use_script_marker(self):
+        source = b"function Run() {}\n"
+        current = cards.insert_card(source, sample_card())
+        self.assertTrue(current.startswith(cards.OPEN.encode()))
+        legacy = current.replace(cards.OPEN.encode(), cards.LEGACY_OPEN.encode(), 1).replace(
+            cards.CLOSE.encode(), cards.LEGACY_CLOSE.encode(), 1)
+        self.assertEqual(cards.read_document(legacy).code_bytes, source)
+        self.assertEqual(cards.read_document(legacy).card, cards.read_document(current).card)
+        with self.assertRaises(cards.CardError):
+            cards.read_document(current + legacy)
+
     def test_insertion_round_trip_for_original_byte_encodings(self):
         for encoding, bom in (("utf-8", b"\xef\xbb\xbf"), ("cp1251", b""),
                               ("utf-16-le", b"\xff\xfe"), ("utf-16-be", b"\xfe\xff")):

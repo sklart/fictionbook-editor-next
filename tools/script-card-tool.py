@@ -12,8 +12,10 @@ import stat
 import tempfile
 from dataclasses import dataclass
 
-OPEN = '/*<FBE-NEXT-CARD version="1">'
-CLOSE = '</FBE-NEXT-CARD>*/'
+OPEN = '/*<FBE-SCRIPT-CARD version="1">'
+CLOSE = '</FBE-SCRIPT-CARD>*/'
+LEGACY_OPEN = '/*<FBE-NEXT-CARD version="1">'
+LEGACY_CLOSE = '</FBE-NEXT-CARD>*/'
 ALGORITHM = "sha256-exclude-fbe-card-v1"
 MAX_CARD_BYTES = 64 * 1024
 REQUIRED = (
@@ -82,13 +84,15 @@ def _encoding(data: bytes, override: str | None) -> tuple[str, int]:
 
 def read_document(data: bytes, encoding: str | None = None) -> Document:
     codec, bom_size = _encoding(data, encoding)
-    opener = OPEN.encode(codec)
-    closer = CLOSE.encode(codec)
+    markers = tuple((opening.encode(codec), closing.encode(codec)) for opening, closing in
+                    ((OPEN, CLOSE), (LEGACY_OPEN, LEGACY_CLOSE)))
     start = bom_size
-    if not data.startswith(opener, start):
-        if data.find(opener, start) >= 0:
+    pair = next(((opener, closer) for opener, closer in markers if data.startswith(opener, start)), None)
+    if pair is None:
+        if any(data.find(opener, start) >= 0 for opener, _ in markers):
             raise CardError("card opening marker is not immediately after the BOM")
         return Document(data, codec, bom_size, None, None)
+    opener, closer = pair
     limit = min(len(data), start + MAX_CARD_BYTES)
     close = data.find(closer, start + len(opener), limit)
     if close < 0:
@@ -103,7 +107,7 @@ def read_document(data: bytes, encoding: str | None = None) -> Document:
         raise CardError("card must end with exactly one line ending")
     if end - start > MAX_CARD_BYTES:
         raise CardError("card exceeds 64 KiB")
-    if data.find(opener, end) >= 0:
+    if any(data.find(candidate, end) >= 0 for candidate, _ in markers):
         raise CardError("more than one card opening marker")
     try:
         body = data[start + len(opener):close].decode(codec, errors="strict")
@@ -178,7 +182,7 @@ def validate_schema(card: dict) -> list[str]:
 
 
 def serialize(card: dict, encoding: str, newline: str) -> bytes:
-    body = json.dumps(card, ensure_ascii=True, indent=2)
+    body = json.dumps(card, ensure_ascii=encoding not in ("utf-8", "utf-16-le", "utf-16-be"), indent=2)
     if "*/" in body:
         raise CardError("card JSON contains an unsafe comment terminator")
     text = OPEN + newline + body.replace("\n", newline) + newline + CLOSE + newline

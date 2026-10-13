@@ -6,8 +6,23 @@
 
 namespace ScriptCards {
 namespace {
-constexpr wchar_t kOpen[] = L"/*<FBE-NEXT-CARD version=\"1\">";
-constexpr wchar_t kClose[] = L"</FBE-NEXT-CARD>*/";
+constexpr wchar_t kOpen[] = L"/*<FBE-SCRIPT-CARD version=\"1\">";
+constexpr wchar_t kClose[] = L"</FBE-SCRIPT-CARD>*/";
+constexpr wchar_t kLegacyOpen[] = L"/*<FBE-NEXT-CARD version=\"1\">";
+constexpr wchar_t kLegacyClose[] = L"</FBE-NEXT-CARD>*/";
+
+bool ExtractJson(const std::wstring& text, std::wstring& json)
+{
+	const bool current = text.compare(0, _countof(kOpen) - 1, kOpen) == 0;
+	const wchar_t* open = current ? kOpen : kLegacyOpen;
+	const wchar_t* closeMarker = current ? kClose : kLegacyClose;
+	const size_t openLength = wcslen(open);
+	if(text.compare(0, openLength, open) != 0) return false;
+	const size_t close = text.find(closeMarker, openLength);
+	if(close == std::wstring::npos) return false;
+	json = text.substr(openLength, close - openLength);
+	return true;
+}
 
 bool ValidateJson(const std::wstring& json, size_t& cursor, int depth)
 {
@@ -94,6 +109,7 @@ bool StringArray(const std::wstring& json, size_t object, const wchar_t* key, st
 		const wchar_t delimiter = json[cursor++];
 		if(delimiter == L']') return true;
 		if(delimiter != L',') return false;
+		FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
 	}
 }
 
@@ -192,6 +208,7 @@ bool OptionalDisplayArray(const std::wstring& json, size_t object, const wchar_t
 		const wchar_t delimiter = json[cursor++];
 		if(delimiter == L']') return true;
 		if(delimiter != L',') return false;
+		FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
 	}
 }
 
@@ -292,11 +309,9 @@ Card Parse(const BYTE* bytes, size_t length)
 	card.state = State::Invalid;
 	if(block == ScriptCardBlock::Status::Malformed) { card.error = L"Card markers or size are invalid"; return card; }
 	std::wstring text;
-	if(!DecodeCard(bytes, span, text) || text.compare(0, _countof(kOpen) - 1, kOpen) != 0)
-		{ card.error = L"Card encoding is invalid"; return card; }
-	const size_t close = text.find(kClose, _countof(kOpen) - 1);
-	if(close == std::wstring::npos) { card.error = L"Card closing marker is invalid"; return card; }
-	const std::wstring json = text.substr(_countof(kOpen) - 1, close - (_countof(kOpen) - 1));
+	std::wstring json;
+	if(!DecodeCard(bytes, span, text) || !ExtractJson(text, json))
+		{ card.error = L"Card encoding or markers are invalid"; return card; }
 	if(json.find(L"*/") != std::wstring::npos) { card.error = L"Unsafe comment terminator"; return card; }
 	size_t cursor = 0;
 	if(!ValidateJson(json, cursor, 0)) { card.error = L"Card JSON is invalid or has duplicate keys"; return card; }
@@ -383,5 +398,31 @@ Card LoadFile(const CString& path)
 	}
 	::CloseHandle(file);
 	return Parse(bytes.data(), bytes.size());
+}
+
+CString ReadPreviewSummary(const CString& path)
+{
+	HANDLE file = ::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) return CString();
+	// The card format permits at most 64 KiB, including its markers and BOM.
+	std::vector<BYTE> bytes(64 * 1024 + 3);
+	DWORD read = 0;
+	const bool loaded = ::ReadFile(file, bytes.data(), static_cast<DWORD>(bytes.size()), &read, NULL) != FALSE;
+	::CloseHandle(file);
+	if(!loaded || read == 0) return CString();
+	bytes.resize(read);
+	ScriptCardBlock::Span span;
+	if(ScriptCardBlock::Find(bytes.data(), bytes.size(), span) != ScriptCardBlock::Status::Present)
+		return CString();
+	std::wstring text;
+	std::wstring json;
+	if(!DecodeCard(bytes.data(), span, text) || !ExtractJson(text, json)) return CString();
+	size_t cursor = 0;
+	if(!ValidateJson(json, cursor, 0)) return CString();
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
+	if(cursor != json.size()) return CString();
+	CString summary;
+	return StringMember(json, 0, L"summary", summary) ? summary : CString();
 }
 }

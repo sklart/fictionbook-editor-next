@@ -54,6 +54,8 @@ struct Card {
 // Static parser. It never executes JScript or updates an expected digest.
 Card Parse(const BYTE* bytes, size_t length);
 Card LoadFile(const CString& path);
+// Reads only the bounded leading card block. Never hashes the script or checks linked files.
+CString ReadPreviewSummary(const CString& path);
 // Call only when the card is opened, outside drawing and startup enumeration.
 void VerifyDependencies(Card& card, const CString& resourceRoot);
 

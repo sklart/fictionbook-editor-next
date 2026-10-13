@@ -22,6 +22,7 @@
 #define IDS_HOTKEY_EDIT_ADD_ANNOTATION  110
 #define IDR_EXTRAICONS                  111
 #define IDI_FB2_QUALITY                 299
+#define IDI_SCRIPT_CARD                 16000
 #define IDS_HOTKEY_EDIT_ADD_BODY        111
 #define IDS_HOTKEY_EDIT_ADD_EPIGRAPH    112
 #define IDS_HOTKEY_EDIT_ADD_IMAGE       113

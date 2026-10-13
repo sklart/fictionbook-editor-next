@@ -279,6 +279,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClCompile Include="scripts\ScriptCardDependencies.cpp" />
 	<ClCompile Include="scripts\ScriptCardDlg.cpp" />
 	<ClCompile Include="scripts\ScriptCardParser.cpp" />
+	<ClCompile Include="scripts\ScriptCardPreviewPopup.cpp" />
 	<ClCompile Include="scripts\ScriptCommandRegistry.cpp" />
 	<ClCompile Include="scripts\ScriptVisualResources.cpp" />
     <ClCompile Include="scripts\ScriptMenuBuilder.cpp" />
@@ -495,6 +496,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="scripts\ScriptCardBlock.h" />
 	<ClInclude Include="scripts\ScriptCardDlg.h" />
 	<ClInclude Include="scripts\ScriptCardParser.h" />
+	<ClInclude Include="scripts\ScriptCardPreviewPopup.h" />
 	<ClInclude Include="scripts\ScriptDescriptor.h" />
 	<ClInclude Include="scripts\ScriptCommandRegistry.h" />
 	<ClInclude Include="scripts\ScriptVisualResources.h" />
@@ -692,6 +694,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <None Include="res\FBE.ico" />
     <None Include="res\FBE2.ico" />
     <None Include="res\Fb2Quality.ico" />
+    <None Include="res\ScriptCard.ico" />
     <None Include="res\insert_column_left.bmp" />
     <None Include="res\insert_column_right.bmp" />
     <None Include="res\delete_row.bmp" />

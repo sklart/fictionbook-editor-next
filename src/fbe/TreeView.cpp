@@ -12,6 +12,7 @@
 #include "UiMetrics.h"
 #include "ThemeManager.h"
 #include "toolbars/ToolbarFactory.h"
+#include "scripts/ScriptCardParser.h"
 #include <commoncontrols.h>
 
 extern CElementDescMnr _EDMnr;
@@ -24,6 +25,10 @@ const int kFavoriteScriptImageIndex = 1;
 const int kScriptImageSize = 20;
 const int kScriptItemHeight = 24;
 const int kScriptIndent = 20;
+constexpr UINT_PTR kScriptPreviewShowTimer = 0x53435001;
+constexpr UINT_PTR kScriptPreviewHideTimer = 0x53435002;
+constexpr UINT kScriptPreviewBridgeDelayMs = 600;
+constexpr UINT kScriptPreviewExitDelayMs = 250;
 
 HBITMAP CreateScriptTreeGlyphBitmap(bool favorite, int size)
 {
@@ -276,6 +281,32 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 			const bool focused = ::GetFocus() == m_hWnd && GetSelectedItem() == item;
 			const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() :
 				item == m_current_item ? ThemeManager::HoverColor() : ThemeManager::WindowColor();
+			// Native TreeView text is unaware of the right-aligned information button.
+			// Repaint its label with a clipped width, keeping the full item text intact.
+			RECT label = {};
+			if(GetItemRect(item, &label, TRUE))
+			{
+				RECT client = {};
+				GetClientRect(&client);
+				RECT backgroundArea = { (std::max)(static_cast<int>(label.left), static_cast<int>(client.left)),
+					button.top, client.right, button.bottom };
+				HBRUSH textBackground = ::CreateSolidBrush(background);
+				if(textBackground)
+				{
+					::FillRect(draw->nmcd.hdc, &backgroundArea, textBackground);
+					::DeleteObject(textBackground);
+				}
+				RECT textArea = { label.left, button.top,
+					button.left - UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_hWnd)), button.bottom };
+				if(textArea.right > textArea.left)
+				{
+					CString name = m_script_items[scriptNode->second].name;
+					::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
+					::SetTextColor(draw->nmcd.hdc, selected ? ThemeManager::SelectionTextColor() : ThemeManager::TextColor());
+					::DrawTextW(draw->nmcd.hdc, name, -1, &textArea,
+						DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+				}
+			}
 			HBRUSH backdrop = ::CreateSolidBrush(background);
 			if(backdrop) { ::FillRect(draw->nmcd.hdc, &button, backdrop); ::DeleteObject(backdrop); }
 			const bool hovered = item == m_script_info_hover || focused;
@@ -293,10 +324,10 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 				::Ellipse(draw->nmcd.hdc, circle.left, circle.top, circle.right, circle.bottom);
 				::SelectObject(draw->nmcd.hdc, oldBrush);
 				::SelectObject(draw->nmcd.hdc, oldPen);
-				RECT label = circle;
+				RECT iconLabel = circle;
 				::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
 				::SetTextColor(draw->nmcd.hdc, pressed ? ThemeManager::SelectionTextColor() : color);
-				::DrawTextW(draw->nmcd.hdc, L"i", 1, &label, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+				::DrawTextW(draw->nmcd.hdc, L"i", 1, &iconLabel, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 			}
 			if(brush) ::DeleteObject(brush);
 			if(pen) ::DeleteObject(pen);
@@ -343,29 +374,104 @@ HTREEITEM CTreeView::ScriptInfoAt(POINT point)
 void CTreeView::UpdateScriptInfoHover(HTREEITEM item)
 {
 	if(item == m_script_info_hover) return;
+	const HTREEITEM previous = m_script_info_hover;
 	m_script_info_hover = item;
-	if(m_script_info_tooltip)
+	KillTimer(kScriptPreviewShowTimer);
+	KillTimer(kScriptPreviewHideTimer);
+	if(item != NULL)
 	{
-		TOOLINFOW tool = { sizeof(tool) };
-		tool.hwnd = m_hWnd;
-		tool.uId = 1;
-		::SendMessageW(m_script_info_tooltip, TTM_TRACKACTIVATE, FALSE, reinterpret_cast<LPARAM>(&tool));
-		if(item != NULL)
+		m_script_preview.Hide();
+		SetTimer(kScriptPreviewShowTimer, 450);
+	}
+	else if(m_script_preview.IsVisible()) SetTimer(kScriptPreviewHideTimer, kScriptPreviewBridgeDelayMs);
+	if(previous) { RECT bounds = {}; if(ScriptInfoRect(previous, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE); }
+	if(item) { RECT bounds = {}; if(ScriptInfoRect(item, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE); }
+}
+
+void CTreeView::HideScriptPreview()
+{
+	KillTimer(kScriptPreviewShowTimer);
+	KillTimer(kScriptPreviewHideTimer);
+	m_script_preview.Hide();
+}
+
+CString CTreeView::ScriptPreviewSummary(const ScriptDescriptor& script)
+{
+	WIN32_FILE_ATTRIBUTE_DATA data = {};
+	if(!::GetFileAttributesExW(script.path, GetFileExInfoStandard, &data)) return CString();
+	const ULONGLONG size = (static_cast<ULONGLONG>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+	ScriptPreviewCache& cached = m_script_preview_cache[std::wstring(script.uid.GetString())];
+	if(cached.path != script.path || cached.size != size || ::CompareFileTime(&cached.written, &data.ftLastWriteTime) != 0)
+	{
+		cached.path = script.path;
+		cached.written = data.ftLastWriteTime;
+		cached.size = size;
+		cached.summary = ScriptCards::ReadPreviewSummary(script.path);
+	}
+	return cached.summary;
+}
+
+bool CTreeView::OpenScriptCardUid(const CString& uid)
+{
+	if(uid.IsEmpty() || !m_show_script_card) return false;
+	for(const ScriptDescriptor& script : m_script_items)
+		if(!script.isFolder && script.uid == uid)
 		{
-			m_script_info_tooltip_text = FbeLoadRuntimeStringByKey(L"fbe.script_card.about", L"About script...");
-			tool.lpszText = const_cast<LPWSTR>(m_script_info_tooltip_text.GetString());
-			::SendMessageW(m_script_info_tooltip, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&tool));
+			HideScriptPreview();
+			m_show_script_card(uid);
+			return true;
+		}
+	return false;
+}
+
+LRESULT CTreeView::OnScriptPreviewTimer(UINT, WPARAM timer, LPARAM, BOOL& bHandled)
+{
+	if(timer == kScriptPreviewShowTimer)
+	{
+		KillTimer(timer);
+		if(m_script_mode && m_script_info_hover)
+		{
 			RECT bounds = {};
-			if(ScriptInfoRect(item, bounds))
+			const auto found = m_script_nodes.find(m_script_info_hover);
+			if(found != m_script_nodes.end() && found->second < m_script_items.size() &&
+				ScriptInfoRect(m_script_info_hover, bounds))
 			{
-				POINT anchor = { bounds.left, bounds.bottom };
-				ClientToScreen(&anchor);
-				::SendMessageW(m_script_info_tooltip, TTM_TRACKPOSITION, 0, MAKELPARAM(anchor.x, anchor.y));
-				::SendMessageW(m_script_info_tooltip, TTM_TRACKACTIVATE, TRUE, reinterpret_cast<LPARAM>(&tool));
+				const ScriptDescriptor& script = m_script_items[found->second];
+				const CString summary = ScriptPreviewSummary(script);
+				ClientToScreen(reinterpret_cast<POINT*>(&bounds));
+				ClientToScreen(reinterpret_cast<POINT*>(&bounds) + 1);
+				m_script_preview.Show(m_hWnd, bounds, script.uid, script.name,
+					summary.IsEmpty() ? FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_empty", L"No description is available yet.") : summary,
+					FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_more", L"More details..."),
+					[this](const CString& uid) { OpenScriptCardUid(uid); },
+					[this](bool inside) {
+						if(inside) KillTimer(kScriptPreviewHideTimer);
+						else SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
+					});
 			}
 		}
+		return 0;
 	}
-	::InvalidateRect(m_hWnd, NULL, FALSE);
+	if(timer == kScriptPreviewHideTimer)
+	{
+		KillTimer(timer);
+		POINT cursor = {};
+		if(::GetCursorPos(&cursor) && m_script_preview.Contains(cursor)) return 0;
+		POINT local = cursor; ScreenToClient(&local);
+		if(ScriptInfoAt(local) == NULL) m_script_preview.Hide();
+		return 0;
+	}
+	bHandled = FALSE;
+	return 0;
+}
+
+LRESULT CTreeView::OnScriptPreviewScroll(UINT message, WPARAM, LPARAM, BOOL& bHandled)
+{
+	HideScriptPreview();
+	m_script_info_hover = NULL;
+	if(message == WM_SIZE && m_script_mode) ::InvalidateRect(m_hWnd, NULL, FALSE);
+	bHandled = FALSE;
+	return 0;
 }
 
 
@@ -627,18 +733,6 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
 	  m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, UiMetrics::DpiForWindow(m_hWnd));
 	  m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,16,8);
-	m_script_info_tooltip = ::CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, NULL,
-		WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, CW_USEDEFAULT, CW_USEDEFAULT,
-		CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
-	if(m_script_info_tooltip)
-	{
-		TOOLINFOW tool = { sizeof(tool) };
-		tool.uFlags = TTF_TRACK | TTF_ABSOLUTE;
-		tool.hwnd = m_hWnd;
-		tool.uId = 1;
-		tool.lpszText = const_cast<LPWSTR>(L"About script...");
-		::SendMessageW(m_script_info_tooltip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&tool));
-	}
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
   SetScrollTime(1);
@@ -652,7 +746,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
 
 LRESULT CTreeView::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
-	if(m_script_info_tooltip) { ::DestroyWindow(m_script_info_tooltip); m_script_info_tooltip = NULL; }
+	HideScriptPreview();
   SetImageList(NULL,TVSIL_NORMAL);
   m_scriptImageList.Destroy();
   m_ImageList.Destroy();
@@ -869,8 +963,8 @@ LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 			if(activate)
 			{
 				const auto found = m_script_nodes.find(pressed);
-				if(found != m_script_nodes.end() && m_show_script_card)
-					m_show_script_card(m_script_items[found->second].uid);
+				if(found != m_script_nodes.end() && found->second < m_script_items.size())
+					OpenScriptCardUid(m_script_items[found->second].uid);
 			}
 		}
 		bHandled = TRUE;
@@ -1098,6 +1192,8 @@ void CTreeView::SetScriptCatalog(const std::vector<ScriptDescriptor>& items, con
 	if(m_script_mode && m_script_filter.IsEmpty()) CaptureScriptExpansions();
 	LoadFavoriteScripts();
 	const bool refreshImages = m_script_images.size() != items.size() || !ScriptVisualsMatch(m_script_visuals, visuals, items.size());
+	HideScriptPreview();
+	m_script_preview_cache.clear();
 	m_script_items = items; m_script_visuals = visuals; m_script_toolbars = toolbars; m_add_scripts_to_toolbar = addToToolbar; m_open_script_location = openLocation; m_run_script = runScript;
 	bool rebound = false;
 	for(size_t favorite = 0; favorite < m_favorite_scripts.size(); ++favorite)
@@ -1224,9 +1320,7 @@ bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 bool CTreeView::ShowSelectedScriptCard()
 {
 	const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
-	if(scripts.size() != 1 || !m_show_script_card) return false;
-	m_show_script_card(scripts[0]->uid);
-	return true;
+	return scripts.size() == 1 && OpenScriptCardUid(scripts[0]->uid);
 }
 
 void CTreeView::SetScriptMode(bool value)
@@ -1235,6 +1329,7 @@ void CTreeView::SetScriptMode(bool value)
 	if(value && m_drag) EndDrag();
 	if(!value) {
 		UpdateScriptInfoHover(NULL);
+		HideScriptPreview();
 		m_script_info_pressed = NULL;
 		if(::GetCapture() == m_hWnd) ::ReleaseCapture();
 	}
@@ -1284,6 +1379,7 @@ void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
 void CTreeView::RebuildScriptTree()
 {
 	UpdateScriptInfoHover(NULL);
+	HideScriptPreview();
 	m_script_info_pressed = NULL;
 	if(::GetCapture() == m_hWnd) ::ReleaseCapture();
 	m_current_item = NULL;

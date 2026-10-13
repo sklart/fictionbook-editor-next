@@ -7,6 +7,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <vector>
 
 class CScriptCardDlg : public CDialogImpl<CScriptCardDlg>
 {
@@ -19,10 +20,19 @@ public:
 	bool IsLoading() const { return m_work != nullptr; }
 	const CString& CurrentUid() const { return m_script.uid; }
 	const CString& BodyText() const { return m_bodyText; }
+	const CString& StatusText() const { return m_statusText; }
+	const CString& HeaderRightText() const { return m_headerRightText; }
+	size_t VisualBlockCount() const { return m_blocks.size(); }
+	HWND ViewportWindow() const { return m_viewport; }
+	int ScrollPosition() const { return m_scrollY; }
+	bool CanScroll() const { RECT bounds = {}; return m_viewport && ::GetClientRect(m_viewport, &bounds) &&
+		m_contentHeight > bounds.bottom - bounds.top; }
 
 	BEGIN_MSG_MAP(CScriptCardDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
+		MESSAGE_HANDLER(WM_VSCROLL, OnViewportScroll)
+		MESSAGE_HANDLER(WM_MOUSEWHEEL, OnViewportWheel)
 		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnMinMax)
 		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
 		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
@@ -47,13 +57,35 @@ private:
 	ScriptDescriptor m_script = {};
 	ScriptCards::Card m_lastCard;
 	CString m_bodyText;
+	CString m_headerText;
+	CString m_headerRightText;
+	CString m_statusText;
+	struct VisualBlock {
+		CString title, content;
+		int layout = 0; // 0: full width, 1: property grid, 2: paired blocks.
+		bool warning = false;
+		HWND heading = NULL, body = NULL;
+	};
+	std::vector<VisualBlock> m_blocks;
+	HWND m_viewport = NULL;
+	HWND m_headerRight = NULL;
+	HWND m_status = NULL;
+	HFONT m_headingFont = NULL;
+	int m_scrollY = 0;
+	int m_contentHeight = 0;
+	struct SectionRange { LONG begin; LONG end; bool warning; };
+	std::vector<SectionRange> m_sections;
 	HFONT m_font = NULL;
 	HICON m_icon = NULL;
+	HICON m_windowIconSmall = NULL;
+	HICON m_windowIconBig = NULL;
 	HMODULE m_richEdit = NULL;
 	UINT m_dpi = 96;
 
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnViewportScroll(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnViewportWheel(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnMinMax(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
@@ -67,6 +99,15 @@ private:
 	void ApplyFont();
 	void ApplyBodyPalette();
 	void ApplyScriptIcon();
+	void ApplyWindowIcon();
+	void ApplyRichFormatting();
+	void AppendSection(const CString& label, const CString& value, bool warning = false);
+	void AddVisualBlock(const CString& label, const CString& value, int layout = 0, bool warning = false);
+	void RebuildVisualBlocks();
+	void LayoutVisualBlocks(int width, int height);
+	void ScrollTo(int offset);
+	static LRESULT CALLBACK BlockSubclass(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+	void CopyText(const CString& text);
 	void Layout();
 	CString PlacementPath() const;
 	void RestorePlacement();

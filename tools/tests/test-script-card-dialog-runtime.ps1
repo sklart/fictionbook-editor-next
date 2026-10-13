@@ -3,18 +3,14 @@
 param([Parameter(Mandatory)][string]$FbeExe, [ValidateRange(15, 120)][int]$TimeoutSeconds = 45, [string]$ArtifactDirectory)
 
 $ErrorActionPreference = 'Stop'
-$FbeExe = (Resolve-Path -LiteralPath $FbeExe).Path
-$exeDirectory = Split-Path -Parent $FbeExe
-$portableIni = Join-Path $exeDirectory 'portable.ini'
-$hadIni = Test-Path -LiteralPath $portableIni
-$oldIni = if($hadIni) { [IO.File]::ReadAllBytes($portableIni) } else { $null }
-$dataDirectory = [IO.Path]::GetFullPath((Join-Path $exeDirectory 'ScriptCardDialogRuntime'))
-if((Split-Path -Parent $dataDirectory) -ne [IO.Path]::GetFullPath($exeDirectory)) { throw 'Unsafe script-card test directory.' }
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'script-card-dialog'
+$dataDirectory = $isolation.DataPath
+$passed = $false
 
 try {
-    [IO.File]::WriteAllText($portableIni, "[Portable]`r`nDataPath=ScriptCardDialogRuntime`r`n", [Text.UTF8Encoding]::new($false))
-    if(Test-Path -LiteralPath $dataDirectory) { Remove-Item -LiteralPath $dataDirectory -Recurse -Force }
-    New-Item -ItemType Directory -Path $dataDirectory -Force | Out-Null
+    $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+    & (Join-Path $repoRoot 'tools\localization\export-runtime-lang.ps1') -RepositoryRoot $repoRoot -OutputDirectory (Join-Path $isolation.Root 'Lang') -Clean | Out-Null
     $document = Join-Path $dataDirectory 'script-card-runtime.fb2'
     [IO.File]::WriteAllText($document, '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Script card runtime</book-title><lang>ru</lang></title-info></description><body><section><title><p>Test</p></title><p>Test</p></section></body></FictionBook>', [Text.UTF8Encoding]::new($false))
     $report = Join-Path $dataDirectory 'Diagnostics\portable-state-report.txt'
@@ -31,13 +27,10 @@ try {
         } else {
             Remove-Item Env:FBE_NEXT_TEST_ARTIFACT_DIR -ErrorAction SilentlyContinue
         }
-        $process = Start-Process -FilePath $FbeExe -WorkingDirectory $exeDirectory -ArgumentList @('--portable', $document) -PassThru
-        if(-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-            Stop-Process -Id $process.Id -Force
-            throw 'Script-card runtime scenario timed out.'
-        }
+        $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', $document) -PassThru
+        $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario $env:FBE_NEXT_TEST_SCENARIO -Report $report -TimeoutSeconds $TimeoutSeconds
         $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
-        foreach($line in @('phase=script-card-dialog', 'missing=1', 'reused=1', 'rendered=1', 'optional=1', 'uid=1', 'changed-warning=1', 'buttons=1', 'info-click=1', 'info-double-click-safe=1', 'context-opens=1', 'multi-card-disabled=1', 'run-count=0', 'result=pass')) {
+        foreach($line in @('phase=script-card-dialog', 'missing=1', 'reused=1', 'rendered=1', 'structured=1', 'responsive=1', 'optional=1', 'hashes-hidden=1', 'origin-hidden=1', 'technical-absent=1', 'window-icons=1', 'bold-heading=1', 'copied-details=1', 'category=1', 'preview-delayed=1', 'preview-shown=1', 'preview-reusable=1', 'preview-link=1', 'preview-fallback=1', 'preview-scroll-hidden=1', 'uid=1', 'changed-warning=1', 'buttons=1', 'info-click=1', 'info-double-click-safe=1', 'context-opens=1', 'multi-card-disabled=1', 'run-count=0', 'result=pass')) {
             if($text -notmatch [regex]::Escape($line)) { throw "Script-card runtime scenario failed:`n$text" }
         }
         if($ArtifactDirectory) {
@@ -45,14 +38,14 @@ try {
                 if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory $name))) { throw "Missing script-card screenshot: $name" }
             }
         }
-        if($process.ExitCode -ne 0) { throw "Script-card process exit code $($process.ExitCode):`n$text" }
+        if($exitCode -ne 0) { throw "Script-card process exit code ${exitCode}:`n$text" }
     } finally {
         $env:FBE_NEXT_TEST_MODE = $savedMode
         $env:FBE_NEXT_TEST_SCENARIO = $savedScenario
         $env:FBE_NEXT_TEST_ARTIFACT_DIR = $savedArtifactDirectory
     }
+    $passed = $true
     Write-Host 'Script-card dialog runtime regression passed.'
 } finally {
-    if($hadIni) { [IO.File]::WriteAllBytes($portableIni, $oldIni) } else { Remove-Item -LiteralPath $portableIni -Force -ErrorAction SilentlyContinue }
-    if(Test-Path -LiteralPath $dataDirectory) { Remove-Item -LiteralPath $dataDirectory -Recurse -Force -ErrorAction SilentlyContinue }
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

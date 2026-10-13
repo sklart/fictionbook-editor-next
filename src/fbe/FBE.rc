@@ -508,12 +508,12 @@ CAPTION "About script"
 FONT 9, "Segoe UI"
 BEGIN
     CONTROL         "",IDC_SCRIPT_CARD_ICON,"Static",SS_ICON,10,10,32,32
-    LTEXT           "",IDC_SCRIPT_CARD_HEADER,50,10,460,48
+    CONTROL         "",IDC_SCRIPT_CARD_HEADER,"RICHEDIT50W",ES_MULTILINE | ES_READONLY,50,10,460,48
     CONTROL         "",IDC_SCRIPT_CARD_BODY,"RICHEDIT50W",ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP | WS_BORDER,10,66,500,270
-    PUSHBUTTON      "Run",IDC_SCRIPT_CARD_RUN,220,350,65,20
+    DEFPUSHBUTTON   "Run",IDC_SCRIPT_CARD_RUN,220,350,65,20
     PUSHBUTTON      "Open file",IDC_SCRIPT_CARD_OPEN,290,350,75,20
     PUSHBUTTON      "Copy details",IDC_SCRIPT_CARD_COPY,370,350,75,20
-    DEFPUSHBUTTON   "Close",IDCANCEL,450,350,60,20
+    PUSHBUTTON      "Close",IDCANCEL,450,350,60,20
 END
 
 IDD_ARCHIVE_ENTRY DIALOGEX 0, 0, 430, 250
@@ -640,6 +640,7 @@ END
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\FBE2.ico"
 IDI_FB2_QUALITY         ICON                    "res\\Fb2Quality.ico"
+IDI_SCRIPT_CARD         ICON                    "res\\ScriptCard.ico"
 IDI_OLDICON             ICON                    "res\\FBE.ico"
 IDB_TABLE_INSERT_ROW_ABOVE BITMAP                  "res\\insert_row_above.bmp"
 IDB_TABLE_INSERT_ROW_BELOW BITMAP                  "res\\insert_row_below.bmp"

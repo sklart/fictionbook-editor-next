@@ -4,6 +4,8 @@
 #include "ElementDescMnr.h"
 #include "scripts\\ScriptUiController.h"
 #include <map>
+#include <string>
+#include "scripts/ScriptCardPreviewPopup.h"
 #include <set>
 #include <vector>
 #include <functional>
@@ -68,8 +70,14 @@ protected:
 	HWND m_script_search_window = NULL;
 	HTREEITEM m_script_info_hover = NULL;
 	HTREEITEM m_script_info_pressed = NULL;
-	HWND m_script_info_tooltip = NULL;
-	CString m_script_info_tooltip_text;
+	ScriptCardPreviewPopup m_script_preview;
+	struct ScriptPreviewCache {
+		CString path;
+		CString summary;
+		FILETIME written = {};
+		ULONGLONG size = 0;
+	};
+	std::map<std::wstring, ScriptPreviewCache> m_script_preview_cache;
 	std::function<bool(const std::vector<CString>&, const CString&)> m_add_scripts_to_toolbar;
 	std::function<void(const CString&)> m_open_script_location;
 	std::function<void(UINT)> m_run_script;
@@ -103,6 +111,11 @@ public:
   BEGIN_MSG_MAP(CTreeView)
 	MESSAGE_HANDLER(WM_MOUSEMOVE, OnMouseMove)
 		MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
+	MESSAGE_HANDLER(WM_TIMER, OnScriptPreviewTimer)
+	MESSAGE_HANDLER(WM_VSCROLL, OnScriptPreviewScroll)
+	MESSAGE_HANDLER(WM_HSCROLL, OnScriptPreviewScroll)
+	MESSAGE_HANDLER(WM_MOUSEWHEEL, OnScriptPreviewScroll)
+	MESSAGE_HANDLER(WM_SIZE, OnScriptPreviewScroll)
 		MESSAGE_HANDLER(WM_SETCURSOR, OnSetCursor)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
     MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
@@ -157,10 +170,15 @@ public:
   LRESULT OnMerge(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnCustomDraw(int /* unused: idCtrl */, LPNMHDR header, BOOL& bHandled);
 	LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnScriptPreviewTimer(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnScriptPreviewScroll(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSetCursor(UINT, WPARAM, LPARAM, BOOL&);
 	bool ScriptInfoRect(HTREEITEM item, RECT& bounds);
 	HTREEITEM ScriptInfoAt(POINT point);
 	void UpdateScriptInfoHover(HTREEITEM item);
+	void HideScriptPreview();
+	CString ScriptPreviewSummary(const ScriptDescriptor& script);
+	bool OpenScriptCardUid(const CString& uid);
 
   
   LRESULT OnDeleteItem(int /* unused: idCtrl */, LPNMHDR pnmh, BOOL& /* unused: bHandled */) {
@@ -223,6 +241,10 @@ public:
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 	bool ExecuteScriptPopupCommand(UINT command);
 	bool ShowSelectedScriptCard();
+	bool ScriptPreviewVisible() const { return m_script_preview.IsVisible(); }
+	HWND ScriptPreviewWindow() const { return m_script_preview.Window(); }
+	const CString& ScriptPreviewUid() const { return m_script_preview.Uid(); }
+	const CString& ScriptPreviewText() const { return m_script_preview.Summary(); }
 
   CTreeItem GetMoveElementFrom(){m_move_from.m_pTreeView = this; return m_move_from;}
   CTreeItem GetMoveElementTo(){m_move_to.m_pTreeView = this;return m_move_to;}

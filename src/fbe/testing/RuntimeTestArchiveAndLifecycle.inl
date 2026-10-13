@@ -3,7 +3,7 @@
 		return 0;
 	if (IsFbeTestScenario(L"script-card-block-runtime"))
 	{
-		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-NEXT-CARD version=\"1\">\r\n{}\r\n</FBE-NEXT-CARD>*/\r\nABC";
+		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-SCRIPT-CARD version=\"1\">\r\n{}\r\n</FBE-SCRIPT-CARD>*/\r\nABC";
 		ScriptCardBlock::Span span;
 		const bool asciiSpan = ScriptCardBlock::Find(ascii, sizeof(ascii) - 1, span) == ScriptCardBlock::Status::Present &&
 			span.begin == 3 && span.end < sizeof(ascii) - 1;
@@ -23,14 +23,14 @@
 		const bool malformed = ScriptCardBlock::Find(invalid, sizeof(invalid) - 1, span) == ScriptCardBlock::Status::Malformed;
 		const BYTE misplaced[] = "// header\n/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\nABC";
 		const bool rejectedMisplaced = ScriptCardBlock::Find(misplaced, sizeof(misplaced) - 1, span) == ScriptCardBlock::Status::Malformed;
-		const BYTE duplicate[] = "/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\n/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\nABC";
+		const BYTE duplicate[] = "/*<FBE-SCRIPT-CARD version=\"1\">\n{}\n</FBE-SCRIPT-CARD>*/\n/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\nABC";
 		const bool rejectedDuplicate = ScriptCardBlock::Find(duplicate, sizeof(duplicate) - 1, span) == ScriptCardBlock::Status::Malformed;
 		const char json[] = "{\"schema\":1,\"title\":\"Example\",\"version\":\"1\",\"authors\":[{\"name\":\"Author\",\"role\":\"author\"}],"
 			"\"summary\":\"Summary\",\"description\":\"Description\",\"scope\":\"document\",\"modifiesDocument\":null,"
 			"\"requiresSelection\":false,\"usage\":[\"Open\"],\"warnings\":[],\"dependencies\":[],"
 			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\",\"sha256\":\"b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78\",\"reviewStatus\":\"generated\"}}";
-		CStringA cardText("/*<FBE-NEXT-CARD version=\"1\">\n");
-		cardText += json; cardText += "\n</FBE-NEXT-CARD>*/\nABC";
+		CStringA cardText("/*<FBE-SCRIPT-CARD version=\"1\">\n");
+		cardText += json; cardText += "\n</FBE-SCRIPT-CARD>*/\nABC";
 		auto parseText = [](const CStringA& value) {
 			return ScriptCards::Parse(reinterpret_cast<const BYTE*>(static_cast<LPCSTR>(value)), static_cast<size_t>(value.GetLength()));
 		};

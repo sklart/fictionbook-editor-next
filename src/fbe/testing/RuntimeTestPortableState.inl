@@ -227,9 +227,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		if(documentReady && wroteCp1251) m_doc->RunScript(scriptPath);
 		const CString plainText = m_status_state.EffectiveMainText(false, false, CString());
 		const bool plainCp1251 = plainText == L"\x041F\x0440\x0438\x0432\x0435\x0442 \x0438\x0437 CP1251";
-		std::string cardScript = "/*<FBE-NEXT-CARD version=\"1\">\n{\"schema\":1,\"padding\":\"";
+		std::string cardScript = "/*<FBE-SCRIPT-CARD version=\"1\">\n{\"schema\":1,\"padding\":\"";
 		cardScript.append(1500, 'x');
-		cardScript += "\"}\n</FBE-NEXT-CARD>*/\n";
+		cardScript += "\"}\n</FBE-SCRIPT-CARD>*/\n";
 		cardScript += cp1251Code.GetString();
 		const bool wroteCard = WritePortableStateTestText(scriptPath, cardScript.c_str());
 		if(documentReady && wroteCard) m_doc->RunScript(scriptPath);
@@ -281,38 +281,90 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_script_card_window.BodyText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.missing",
 				L"Detailed information about this script is not available yet.")) >= 0;
 		const std::string cardSource =
-			"/*<FBE-NEXT-CARD version=\"1\">\n"
+			"/*<FBE-SCRIPT-CARD version=\"1\">\n"
 			"{\"schema\":1,\"title\":\"Card test\",\"summary\":\"Card runtime summary\","
 			"\"description\":\"Card runtime description\",\"version\":\"1.0\","
 			"\"scope\":\"Current document\",\"modifiesDocument\":false,\"requiresSelection\":false,"
 			"\"usage\":[\"Open card\"],\"warnings\":[],\"dependencies\":[],"
-			"\"settings\":[{\"name\":\"Mode\",\"expression\":\"safe\",\"description\":\"Change mode\"}],"
+			"\"settings\":[{\"name\":\"Mode\",\"expression\":\"safe\",\"description\":\"Change mode\"},"
+			"{\"name\":\"Second\",\"expression\":\"false\",\"description\":\"\\u0434\\u0430\"}],"
 			"\"examples\":[{\"before\":\"abc\",\"after\":\"ABC\"}],"
 			"\"undo\":{\"description\":\"Undoable\"},\"tags\":[\"case\"],"
-			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"}],"
+			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"}],"
 			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\","
 			"\"reviewStatus\":\"generated\","
 			"\"sha256\":\"b93000a4f6aabe6d01c3db1f2b99000a48756d7181161e50dd4011758dc89c89\"}}"
-			"\n</FBE-NEXT-CARD>*/\nfunction Run(){}\n";
+			"\n</FBE-SCRIPT-CARD>*/\nfunction Run(){}\n";
 		const bool wroteCard = WritePortableStateTestText(cardPath, cardSource.c_str());
 		script.path = cardPath;
 		script.uid = L"card-test-present";
 		const bool openedCard = wroteCard && openCard() && awaitCard();
 		const bool reused = openedCard && m_script_card_window.m_hWnd == firstWindow;
 		const bool rendered = openedCard && m_script_card_window.BodyText().Find(L"Card runtime summary") >= 0;
+		const bool structured = openedCard && m_script_card_window.VisualBlockCount() >= 9 &&
+			m_script_card_window.HeaderRightText().Find(L"Helper") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.coauthors", L"Co-authors")) >= 0;
+		RECT originalCardBounds = {};
+		::GetWindowRect(m_script_card_window.m_hWnd, &originalCardBounds);
+		const int cardDpi = UiMetrics::DpiForWindow(m_script_card_window.m_hWnd);
+		::SetWindowPos(m_script_card_window.m_hWnd, NULL, 0, 0,
+			UiMetrics::ScaleForDpi(700, cardDpi), UiMetrics::ScaleForDpi(520, cardDpi),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		const bool canScroll = m_script_card_window.CanScroll();
+		::SendMessageW(m_script_card_window.m_hWnd, WM_VSCROLL, SB_LINEDOWN,
+			reinterpret_cast<LPARAM>(m_script_card_window.ViewportWindow()));
+		const bool responsive = canScroll && m_script_card_window.ScrollPosition() > 0;
+		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
+			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
+			SWP_NOZORDER | SWP_NOACTIVATE);
+		::SendMessageW(m_script_card_window.m_hWnd, WM_VSCROLL, SB_TOP,
+			reinterpret_cast<LPARAM>(m_script_card_window.ViewportWindow()));
 		const bool optionalRendered = openedCard && m_script_card_window.BodyText().Find(L"Mode = safe") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Second = false — да") >= 0 &&
+			m_script_card_window.BodyText().Find(L"\\u0434") < 0 &&
 			m_script_card_window.BodyText().Find(L"abc → ABC") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Undoable") >= 0;
+		const bool hashesHidden = openedCard && m_script_card_window.BodyText().Find(L"b93000a4f6") < 0;
+		const bool originHidden = openedCard && m_script_card_window.BodyText().Find(L"автоматически") < 0 &&
+			m_script_card_window.BodyText().Find(L"automatically") < 0;
+		const bool windowIcons = openedCard &&
+			::SendMessageW(m_script_card_window.m_hWnd, WM_GETICON, ICON_SMALL, 0) != 0 &&
+			::SendMessageW(m_script_card_window.m_hWnd, WM_GETICON, ICON_BIG, 0) != 0;
+		HWND bodyWindow = m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER);
+		CHARRANGE headingRange = { 0, 5 };
+		::SendMessageW(bodyWindow, EM_EXSETSEL, 0, reinterpret_cast<LPARAM>(&headingRange));
+		CHARFORMAT2W headingFormat = {}; headingFormat.cbSize = sizeof(headingFormat);
+		::SendMessageW(bodyWindow, EM_GETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&headingFormat));
+		const bool boldHeading = (headingFormat.dwEffects & CFE_BOLD) != 0;
+		const bool technicalAbsent = !::IsWindow(m_script_card_window.GetDlgItem(1703)) &&
+			!::IsWindow(m_script_card_window.GetDlgItem(1704)) &&
+			!::IsWindow(m_script_card_window.GetDlgItem(1705));
+		auto clipboardText = [&]() -> CString {
+			CString value;
+			if(::OpenClipboard(m_script_card_window.m_hWnd)) {
+				HANDLE data = ::GetClipboardData(CF_UNICODETEXT);
+				if(data) { LPCWSTR text = static_cast<LPCWSTR>(::GlobalLock(data)); if(text) { value = text; ::GlobalUnlock(data); } }
+				::CloseClipboard();
+			}
+			return value;
+		};
+		::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
+		const CString copied = clipboardText();
+		const bool copiedDetails = copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
+			copied.Find(L"Tester") >= 0 && copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0;
 		const bool uidUpdated = m_script_card_window.CurrentUid() == script.uid;
 		const bool altered = WritePortableStateTestText(cardPath, (cardSource + " ").c_str());
+		script.relativePath = L"Иллюстрации/Подраздел/card-present.js";
 		const bool reopened = altered && openCard() && awaitCard();
 		wchar_t header[512] = {};
 		::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), header, _countof(header));
-		const bool changedWarning = reopened && CString(header).Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.changed",
+		const bool categoryShown = CString(header).Find(L"Иллюстрации/Подраздел") >= 0;
+		const bool changedWarning = reopened && m_script_card_window.StatusText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.changed",
 			L"Warning: description may not match the current script")) >= 0;
 		const bool buttons = ::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_RUN)) &&
 			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_OPEN)) &&
 			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY));
+		m_script_card_window.ShowWindow(SW_HIDE);
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
 		_Settings.SetDocumentTreeScripts(true, true);
 		const bool initialized = InitializeScripts();
@@ -336,6 +388,52 @@ void CMainFrame::RunPortableStateTestScenario()
 		tree.GetClientRect(&treeClient);
 		const int infoX = treeClient.right - UiMetrics::ScaleForDpi(15, UiMetrics::DpiForWindow(tree.m_hWnd));
 		const int infoY = (infoRow.top + infoRow.bottom) / 2;
+		POINT priorCursor = {};
+		::GetCursorPos(&priorCursor);
+		POINT infoPoint = { infoX, infoY };
+		tree.ClientToScreen(&infoPoint);
+		if(rowVisible) {
+			::SetCursorPos(infoPoint.x, infoPoint.y);
+			::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+		}
+		POINT observedCursor = {};
+		::GetCursorPos(&observedCursor);
+		const bool cursorPlaced = observedCursor.x == infoPoint.x && observedCursor.y == infoPoint.y;
+		const bool previewDelayed = rowVisible && !tree.ScriptPreviewVisible();
+		// Isolated runtime desktops can reject SetCursorPos. Advance the same hover timer
+		// after its delay before dispatching queued mouse-leave messages in that case.
+		if(rowVisible && (!cursorPlaced || ::WindowFromPoint(observedCursor) != tree.m_hWnd)) {
+			::Sleep(470);
+			::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+			::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+			if(!tree.ScriptPreviewVisible()) {
+				BOOL handled = FALSE;
+				tree.OnScriptPreviewTimer(WM_TIMER, 0x53435001, 0, handled);
+			}
+		}
+		const DWORD previewDeadline = ::GetTickCount() + 900;
+		while(rowVisible && !tree.ScriptPreviewVisible() && ::GetTickCount() < previewDeadline) {
+			MSG message = {};
+			while(::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) {
+				::TranslateMessage(&message);
+				::DispatchMessageW(&message);
+			}
+			::Sleep(10);
+		}
+		const bool previewShown = tree.ScriptPreviewVisible() && tree.ScriptPreviewUid() == infoUid &&
+			tree.ScriptPreviewText().Find(L"Card runtime summary") >= 0;
+		const HWND previewWindow = tree.ScriptPreviewWindow();
+		const bool previewReusable = previewWindow != NULL && ::IsWindow(previewWindow);
+		RECT previewBounds = {};
+		const bool previewBoundsValid = previewReusable && ::GetWindowRect(previewWindow, &previewBounds);
+		const int previewDpi = UiMetrics::DpiForWindow(tree.m_hWnd);
+		const int previewHeight = previewBounds.bottom - previewBounds.top;
+		const int linkY = previewHeight - UiMetrics::ScaleForDpi(23, previewDpi);
+		if(previewBoundsValid) ::SendMessageW(previewWindow, WM_LBUTTONUP, 0,
+			MAKELPARAM(UiMetrics::ScaleForDpi(24, previewDpi), linkY));
+		const bool previewLink = previewBoundsValid && awaitCard() &&
+			m_script_card_window.CurrentUid() == infoUid && !tree.ScriptPreviewVisible();
+		::SetCursorPos(priorCursor.x, priorCursor.y);
 		if(rowVisible) {
 			::SendMessageW(tree.m_hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(infoX, infoY));
 			::SendMessageW(tree.m_hWnd, WM_LBUTTONUP, 0, MAKELPARAM(infoX, infoY));
@@ -402,12 +500,41 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool darkTreeScreenshot = captureWindow(tree.m_hWnd, L"script-tree-info-dark.bmp");
 		ThemeManager::SetSelectedTheme(originalTheme);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
-		const bool passed = openedMissing && missingFallback && reused && rendered && optionalRendered && uidUpdated &&
+		if(selectedItem != NULL) tree.EnsureVisible(selectedItem);
+		RECT missingRow = {};
+		const bool missingRowVisible = selectedItem != NULL && tree.GetItemRect(selectedItem, &missingRow, FALSE);
+		if(missingRowVisible) {
+			RECT missingClient = {};
+			tree.GetClientRect(&missingClient);
+			const int missingX = missingClient.right - UiMetrics::ScaleForDpi(15, UiMetrics::DpiForWindow(tree.m_hWnd));
+			const int missingY = (missingRow.top + missingRow.bottom) / 2;
+			POINT missingPoint = { missingX, missingY };
+			tree.ClientToScreen(&missingPoint);
+			::SetCursorPos(missingPoint.x, missingPoint.y);
+			::SendMessageW(tree.m_hWnd, WM_MOUSELEAVE, 0, 0);
+			::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(missingX, missingY));
+			::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+		}
+		const bool previewFallback = missingRowVisible && tree.ScriptPreviewVisible() &&
+			tree.ScriptPreviewText() == FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_empty", L"No description is available yet.") &&
+			tree.ScriptPreviewWindow() == previewWindow;
+		const bool fallbackVisible = tree.ScriptPreviewVisible();
+		const bool fallbackWindow = tree.ScriptPreviewWindow() == previewWindow;
+		const bool fallbackText = tree.ScriptPreviewText() == FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_empty", L"No description is available yet.");
+		::SendMessageW(tree.m_hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
+		const bool previewScrollHidden = !tree.ScriptPreviewVisible();
+		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
+			hashesHidden && originHidden && technicalAbsent && windowIcons && boldHeading &&
+			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewLink &&
+			previewFallback && previewScrollHidden && uidUpdated &&
 			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
 			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot && runCount == 0;
 		CStringA report;
-		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\noptional=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
-			missingFallback, reused, rendered, optionalRendered, uidUpdated, changedWarning, buttons, infoOpened,
+		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-hidden=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
+			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originHidden, technicalAbsent, windowIcons, boldHeading,
+			copiedDetails, categoryShown, previewDelayed, previewShown,
+			previewReusable, previewLink, previewFallback, missingRowVisible, fallbackVisible, fallbackWindow, fallbackText,
+			previewScrollHidden, uidUpdated, changedWarning, buttons, infoOpened,
 			infoDoubleClickSafe, contextOpened, multiCardDisabled,
 			initialized, infoItem != NULL, rowVisible, static_cast<unsigned>(tree.ScriptTreeNodeCount()),
 			m_script_card_window.CurrentUid() == infoUid,
