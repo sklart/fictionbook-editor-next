@@ -10,6 +10,7 @@
 #include "resource.h"
 #include "res1.h"
 #include "RuntimeLocalization.h"
+#include "CaretFocusDiagnostics.h"
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
 #include "recovery\\RecoveryController.h"
@@ -569,6 +570,7 @@ public:
 		COMMAND_ID_HANDLER(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 		COMMAND_RANGE_HANDLER(ID_STATUS_PANE_POSITION, ID_STATUS_PANE_INSERT_MODE, OnStatusPaneVisibility)
 		COMMAND_ID_HANDLER(ID_VIEW_FASTMODE, OnViewFastMode)
+		COMMAND_ID_HANDLER(ID_VIEW_SHOW_TEXT_CARET, OnViewShowTextCaret)
 		COMMAND_ID_HANDLER(ID_VIEW_SCRIPT_TOOLBARS_MANAGE, OnViewScriptToolbarsManage)
 		COMMAND_RANGE_HANDLER(ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST, ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST, OnViewScriptToolbarToggle)
 		COMMAND_ID_HANDLER(ID_VIEW_TREE, OnViewTree)
@@ -759,6 +761,7 @@ public:
   LRESULT OnUnhandledCommand(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnSetFocus(UINT, WPARAM, LPARAM, BOOL&) {
     m_view.SetFocus();
+	ReportCaretFocusState(L"frame-focus", IsSourceActive() ? m_source.m_hWnd : m_view.GetActiveWnd(), IsSourceActive());
 	UpdateViewSizeInfo();
     return 0;
   }
@@ -861,6 +864,7 @@ public:
   LRESULT OnStatusBarDoubleClick(int, LPNMHDR, BOOL&);
   LRESULT OnStatusBarRightClick(int, LPNMHDR, BOOL&);
 	LRESULT OnViewFastMode(WORD, WORD, HWND, BOOL&);
+	LRESULT OnViewShowTextCaret(WORD, WORD, HWND, BOOL&);
 	LRESULT OnViewScriptToolbarsManage(WORD, WORD, HWND, BOOL&) { ShowScriptToolbarManagerDialog(); return 0; }
   LRESULT OnViewTree(WORD, WORD, HWND, BOOL&);
   LRESULT OnViewDesc(WORD, WORD, HWND, BOOL&) {

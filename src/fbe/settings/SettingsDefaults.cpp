@@ -38,6 +38,7 @@ void CSettings::SetDefaults()
 	m_editor_background_id.Empty();
 	m_editor_background_custom_path.Empty();
 	m_editor_background_layout = L"tile";
+	m_caret_preferences = CaretPreferences();
 	m_view_status_bar		= true;
 	m_status_bar_panes		= 0x3f;
 	m_view_doc_tree			= true;

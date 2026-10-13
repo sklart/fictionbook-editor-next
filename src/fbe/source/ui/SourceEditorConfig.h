@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <atlstr.h>
+#include "../../CaretPreferences.h"
 
 enum SourceEditorColorRole
 {
@@ -45,4 +46,5 @@ struct SourceEditorConfig
 	CString fontName;
 	int fontSize = 10;
 	COLORREF colors[SourceEditorColorCount] = {};
+	CaretPreferences caret;
 };

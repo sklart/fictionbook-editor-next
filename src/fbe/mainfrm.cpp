@@ -646,6 +646,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_VIEW_DESC, L"fbe.menu.idr_mainframe.view.description" },
 	{ ID_VIEW_BODY, L"fbe.menu.idr_mainframe.view.body" },
 	{ ID_VIEW_SOURCE, L"fbe.menu.idr_mainframe.view.source" },
+	{ ID_VIEW_SHOW_TEXT_CARET, L"fbe.menu.idr_mainframe.view.show_text_caret" },
 	{ ID_VIEW_FASTMODE, L"fbe.menu.idr_mainframe.view.fast_mode" },
 	{ ID_EDIT_ADD_BODY, L"fbe.menu.idr_mainframe.insert.body" },
 	{ ID_EDIT_ADD_TITLE, L"fbe.menu.idr_mainframe.insert.title" },
@@ -1103,6 +1104,7 @@ struct EditorConfigurationSnapshot
 	CString editorBackgroundId;
 	CString editorBackgroundCustomPath;
 	CString editorBackgroundLayout;
+	CaretPreferences caret;
 	DWORD sourceColorPalette;
 	CString sourceThemeId;
 	DWORD sourceColors[XML_SRC_COLOR_GROUP_COUNT];
@@ -1126,7 +1128,7 @@ struct EditorConfigurationSnapshot
 			fontSize == other.fontSize && foreground == other.foreground &&
 			background == other.background && editorBackgroundKind == other.editorBackgroundKind &&
 			editorBackgroundId == other.editorBackgroundId && editorBackgroundCustomPath == other.editorBackgroundCustomPath &&
-			editorBackgroundLayout == other.editorBackgroundLayout && sourceColorPalette == other.sourceColorPalette &&
+			editorBackgroundLayout == other.editorBackgroundLayout && caret == other.caret && sourceColorPalette == other.sourceColorPalette &&
 			sourceThemeId == other.sourceThemeId &&
 			memcmp(sourceColors, other.sourceColors, sizeof(sourceColors)) == 0 &&
 			customDictionaryCodepage == other.customDictionaryCodepage &&
@@ -1154,6 +1156,7 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.editorBackgroundId = _Settings.GetEditorBackgroundId();
 	snapshot.editorBackgroundCustomPath = _Settings.GetEditorBackgroundCustomPath();
 	snapshot.editorBackgroundLayout = _Settings.GetEditorBackgroundLayout();
+	snapshot.caret = _Settings.GetCaretPreferences();
 	snapshot.sourceColorPalette = _Settings.GetXmlSrcColorPalette();
 	snapshot.sourceThemeId = _Settings.GetXmlSrcThemeId();
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
@@ -5170,6 +5173,65 @@ LRESULT CMainFrame::OnViewFastMode(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+namespace
+{
+LRESULT CALLBACK CaretMarkerWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if(message == WM_NCHITTEST) return HTTRANSPARENT;
+	if(message == WM_MOUSEACTIVATE) return MA_NOACTIVATE;
+	if(message == WM_TIMER) { ::DestroyWindow(window); return 0; }
+	if(message == WM_PAINT)
+	{
+		PAINTSTRUCT paint = {};
+		HDC dc = ::BeginPaint(window, &paint);
+		RECT area = {};
+		::GetClientRect(window, &area);
+		HBRUSH brush = ::CreateSolidBrush(::GetSysColor(COLOR_HIGHLIGHT));
+		::FillRect(dc, &area, brush);
+		::DeleteObject(brush);
+		::EndPaint(window, &paint);
+		return 0;
+	}
+	return ::DefWindowProcW(window, message, wParam, lParam);
+}
+}
+
+LRESULT CMainFrame::OnViewShowTextCaret(WORD, WORD, HWND, BOOL&)
+{
+	if(IsSourceActive() || !m_doc) return 0;
+	HWND editorWindow = m_view.GetActiveWnd();
+	HWND focus = ::GetFocus();
+	if(!editorWindow || (focus != editorWindow && !::IsChild(editorWindow, focus))) return 0;
+	CFBEView* editor = &m_doc->m_body;
+	if(!editor->HasDoc()) return 0;
+	MSHTML::IDisplayServicesPtr display(editor->Document());
+	MSHTML::IHTMLCaretPtr caret;
+	if(!display || FAILED(display->GetCaret(&caret)) || !caret) return 0;
+	long visible = 0;
+	MSHTML::tagPOINT point = {};
+	if(FAILED(caret->IsVisible(&visible)) || visible == 0 ||
+		FAILED(caret->GetLocation(&point, true))) return 0;
+	static const wchar_t className[] = L"FBE.Next.CaretMarker";
+	WNDCLASSW windowClass = {};
+	windowClass.lpfnWndProc = CaretMarkerWindowProc;
+	windowClass.hInstance = _Module.GetModuleInstance();
+	windowClass.lpszClassName = className;
+	::RegisterClassW(&windowClass);
+	const UINT dpi = UiMetrics::DpiForWindow(editorWindow);
+	const int width = UiMetrics::ScaleForDpi(5, dpi);
+	const int height = UiMetrics::ScaleForDpi(24, dpi);
+	HWND marker = ::CreateWindowExW(WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+		className, L"", WS_POPUP, point.x - width / 2, point.y, width, height,
+		m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	if(marker)
+	{
+		::SetWindowPos(marker, HWND_TOPMOST, 0, 0, 0, 0,
+			SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+		if(!::SetTimer(marker, 1, 1100, NULL)) ::DestroyWindow(marker);
+	}
+	return 0;
+}
+
 LRESULT CMainFrame::OnViewTree(WORD, WORD, HWND, BOOL&)
 {
 	if(IsSourceActive())
@@ -6510,6 +6572,7 @@ void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 	if (prev != vt && vt != SOURCE)
 		UIEnable(ID_VIEW_TREE, 1);
 	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
+	UIEnable(ID_VIEW_SHOW_TEXT_CARET, vt != SOURCE);
 	if (vt == BODY) { m_sel_changed = true; if (m_Speller) m_Speller->SetDocumentLanguage(); }
 	InvalidateUi(UiDirtyView | UiDirtySelection | UiDirtyToolbar | UiDirtyStatus);
 	if (vt == DESC) {
@@ -6539,6 +6602,7 @@ static SourceEditorConfig BuildSourceEditorConfig()
 	config.tagHighlightErrors = _Settings.XmlSrcTagHighlightErrors();
 	config.fontName = _Settings.GetSrcFont();
 	config.fontSize = static_cast<int>(_Settings.GetFontSize());
+	config.caret = _Settings.GetCaretPreferences();
 	for(int token = 0; token < XML_SRC_STYLE_TOKEN_COUNT; ++token)
 		config.colors[token] = _Settings.GetXmlSrcStyleColor(static_cast<XmlSrcStyleToken>(token));
 	return config;

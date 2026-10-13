@@ -286,6 +286,7 @@ CString CSettings::GetEditorBackgroundKind()const { return m_editor_background_k
 CString CSettings::GetEditorBackgroundId()const { return m_editor_background_id; }
 CString CSettings::GetEditorBackgroundCustomPath()const { return m_editor_background_custom_path; }
 CString CSettings::GetEditorBackgroundLayout()const { return m_editor_background_layout; }
+CaretPreferences CSettings::GetCaretPreferences()const { return m_caret_preferences; }
 DWORD CSettings::GetSplitterPos()const
 {
 	return m_splitter_pos;
@@ -820,6 +821,16 @@ void CSettings::SetEditorBackgroundKind(const CString& value, bool apply) { m_ed
 void CSettings::SetEditorBackgroundId(const CString& value, bool apply) { m_editor_background_id = value; if(apply) Save(); }
 void CSettings::SetEditorBackgroundCustomPath(const CString& value, bool apply) { m_editor_background_custom_path = value; if(apply) Save(); }
 void CSettings::SetEditorBackgroundLayout(const CString& value, bool apply) { m_editor_background_layout = value == L"center" || value == L"contain" || value == L"cover" ? value : L"tile"; if(apply) Save(); }
+void CSettings::SetCaretPreferences(const CaretPreferences& value, bool apply)
+{
+	m_caret_preferences = value;
+	if(static_cast<DWORD>(m_caret_preferences.mode) > static_cast<DWORD>(TextCaretMode::Custom)) m_caret_preferences.mode = TextCaretMode::System;
+	if(m_caret_preferences.width > 5) m_caret_preferences.width = 0;
+	if(static_cast<DWORD>(m_caret_preferences.color) > static_cast<DWORD>(TextCaretColor::Custom)) m_caret_preferences.color = TextCaretColor::Automatic;
+	if(static_cast<DWORD>(m_caret_preferences.blink) > static_cast<DWORD>(TextCaretBlink::Solid)) m_caret_preferences.blink = TextCaretBlink::System;
+	m_caret_preferences.customColor &= 0x00ffffff;
+	if(apply) Save();
+}
 
 void CSettings::SetViewStatusBar(bool view, bool apply)
 {

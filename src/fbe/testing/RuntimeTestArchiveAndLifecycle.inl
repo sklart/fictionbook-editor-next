@@ -569,6 +569,47 @@
 		::PostQuitMessage(reopened && sourceDeclaration ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"caret-design-runtime"))
+	{
+		ShowView(BODY);
+		m_doc->m_body.SetFocus();
+		MSHTML::IHTMLDocument3Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body = document ? document->getElementById(L"fbw_body") : NULL;
+		const _bstr_t before = body ? body->outerHTML : _bstr_t();
+		MSHTML::IDisplayServicesPtr display(m_doc->m_body.Document());
+		MSHTML::IHTMLCaretPtr caret;
+		if(display) display->GetCaret(&caret);
+		if(caret) caret->Show(0);
+		MSHTML::tagPOINT beforePoint = {}, afterPoint = {};
+		const bool located = caret && SUCCEEDED(caret->GetLocation(&beforePoint, true));
+		BOOL handled = FALSE;
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const HWND marker = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL);
+		const bool shown = marker != NULL;
+		const bool unchanged = body && before == _bstr_t(body->outerHTML) && located &&
+			SUCCEEDED(caret->GetLocation(&afterPoint, true)) &&
+			beforePoint.x == afterPoint.x && beforePoint.y == afterPoint.y;
+		::Sleep(1250);
+		MSG pending = {};
+		while(::PeekMessageW(&pending, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&pending); ::DispatchMessageW(&pending); }
+		const bool removed = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) == NULL;
+		ShowView(SOURCE);
+		m_source.SetFocus();
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool sourceIgnored = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) == NULL;
+		ShowView(BODY);
+		m_doc->m_body.SetFocus();
+		const bool focusRestored = ::GetFocus() == m_view.GetActiveWnd() ||
+			::IsChild(m_view.GetActiveWnd(), ::GetFocus());
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool shownAfterReturn = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) != NULL;
+		CStringA report;
+		report.Format("located=%d\nshown=%d\nunchanged=%d\nremoved=%d\nsource_ignored=%d\nfocus_restored=%d\nshown_after_return=%d\n",
+			located, shown, unchanged, removed, sourceIgnored, focusRestored, shownAfterReturn);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(located && shown && unchanged && removed && sourceIgnored && focusRestored && shownAfterReturn ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
 	{
 		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");
@@ -577,15 +618,25 @@
 		const bool layoutPassed = verifyOnly ||
 			::GetPropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED") == reinterpret_cast<HANDLE>(1);
 		::RemovePropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED");
+		const bool initialSystem = ::GetPropW(m_hWnd, L"FBE_CARET_INITIAL_SYSTEM") == reinterpret_cast<HANDLE>(1);
+		::RemovePropW(m_hWnd, L"FBE_CARET_INITIAL_SYSTEM");
 		const bool backupPersisted = _Settings.GetCreateBackupFile();
 		const bool nbspPersisted = _Settings.GetNBSPChar() == L"\x25AB";
 		const bool wrapPersisted = _Settings.XmlSrcWrap();
 		const bool persisted = backupPersisted && nbspPersisted && wrapPersisted;
 		const bool applied = verifyOnly || (m_source.SendMessage(SCI_GETWRAPMODE) != SC_WRAP_NONE);
+		const CaretPreferences caret = _Settings.GetCaretPreferences();
+		const bool caretPersisted = caret.mode == TextCaretMode::Custom && caret.width == 4 &&
+			caret.color == TextCaretColor::White && caret.blink == TextCaretBlink::Solid;
+		const bool caretApplied = m_source.SendMessage(SCI_GETCARETWIDTH) ==
+			UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_source.m_hWnd)) &&
+			m_source.SendMessage(SCI_GETCARETPERIOD) == 0 &&
+			m_source.SendMessage(SCI_GETCARETFORE) == (ThemeManager::IsHighContrast() ?
+				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
-		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied);
+		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied, caretPersisted, caretApplied, initialSystem);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(persisted && applied && layoutPassed ? 0 : 1);
+		::PostQuitMessage(persisted && applied && layoutPassed && caretPersisted && caretApplied ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"spell-dialog-layout-runtime"))

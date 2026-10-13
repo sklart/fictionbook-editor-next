@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
+#include "CaretFocusDiagnostics.h"
 #include "structure/BodyStructuralEditor.h"
 #include "ReplacementPreflight.h"
 #include "search/ReplacementParser.h"
@@ -3098,6 +3099,7 @@ void  CFBEView::OnBeforeNavigate(IDispatch */* unused: pDisp */,VARIANT *vtUrl,V
 
 // HTMLDocumentEvents
 void  CFBEView::OnSelChange(IDispatch */* unused: evt */) {
+	ReportCaretFocusState(L"design-selection", m_hWnd, false);
   if (!m_ignore_changes)
     ::SendMessage(m_frame,WM_COMMAND,MAKELONG(0,IDN_SEL_CHANGE),(LPARAM)m_hWnd);
   if (m_cur_sel)
@@ -3743,6 +3745,7 @@ void  CFBEView::ResetFormCP() {
 }
 
 void  CFBEView::OnFocusIn(IDispatch *evt) {
+	ReportCaretFocusState(L"design-focusin", m_hWnd, false);
   // check previous value
   if (m_cur_input) {
     bool cv=m_cur_input->value != m_cur_val;

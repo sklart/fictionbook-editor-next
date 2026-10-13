@@ -157,10 +157,16 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	SelectPage(SettingsPageId::General);
 	if (IsSettingsDialogRuntimeTest())
 	{
+		::SetPropW(::GetParent(m_hWnd), L"FBE_CARET_INITIAL_SYSTEM",
+			reinterpret_cast<HANDLE>(_Settings.GetCaretPreferences().mode == TextCaretMode::System ? 1 : 2));
 		// Test-only automation still commits through the normal global OK path.
 		// Use independent pages so ApplyConfChanges covers more than one category.
 		m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, IsBackupSettingsSaveRuntimeTest() ? BST_UNCHECKED : BST_CHECKED);
 		m_editorPage->SendDlgItemMessage(IDC_NBSP_CHAR, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"\x25AB"));
+		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_MODE, CB_SETCURSEL, 2, 0);
+		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_WIDTH, CB_SETCURSEL, 4, 0);
+		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_COLOR, CB_SETCURSEL, 3, 0);
+		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_BLINK, CB_SETCURSEL, 4, 0);
 		m_sourcePage->CheckDlgButton(IDC_WRAP, BST_CHECKED);
 		m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);
 		m_spellingPage->SetDlgItemText(IDC_CUSTOM_DICT, L"");
@@ -491,7 +497,8 @@ void CSettingsDlg::LayoutPage(int index)
 				control.id == IDC_GENRE_CATALOG || control.id == IDC_INTERFACE_THEME ||
 				control.id == IDC_UPDATE_CHANNEL)) ||
 			(index == PageIndex(SettingsPageId::Editor) && (control.id == IDC_EDITOR_BACKGROUND_IMAGE ||
-				control.id == IDC_EDITOR_BACKGROUND_LAYOUT)) ||
+				control.id == IDC_EDITOR_BACKGROUND_LAYOUT || control.id == IDC_EDITOR_CARET_MODE ||
+				control.id == IDC_EDITOR_CARET_WIDTH || control.id == IDC_EDITOR_CARET_BLINK)) ||
 			(index == PageIndex(SettingsPageId::Source) && (control.id == IDC_SRCFONT ||
 				control.id == IDC_OPTIONS_SOURCE_PALETTE)) ||
 			(index == PageIndex(SettingsPageId::Spelling) && control.id == IDC_CUSTOM_DICT) ||
@@ -512,10 +519,8 @@ void CSettingsDlg::LayoutPage(int index)
 			if(control.id == IDC_STATIC_WORDS_CHEVRON || control.id == IDC_LIST_WORDS) rect.bottom += extraHeight;
 			else if(rect.top >= layout.templateSize.cy / 2) rect.OffsetRect(0, extraHeight);
 		}
-		else if((index == PageIndex(SettingsPageId::Editor) &&
-			(control.id == IDC_EDITOR_BACKGROUND_PREVIEW || control.id == IDC_EDITOR_BACKGROUND_GROUP)) ||
-			(index == PageIndex(SettingsPageId::Source) &&
-			(control.id == IDC_OPTIONS_SOURCE_PREVIEW || control.id == IDC_OPTIONS_SOURCE_GROUP)))
+		else if(index == PageIndex(SettingsPageId::Source) &&
+			(control.id == IDC_OPTIONS_SOURCE_PREVIEW || control.id == IDC_OPTIONS_SOURCE_GROUP))
 			rect.bottom += extraHeight;
 		rect.OffsetRect(-layout.scrollX, -layout.scrollY);
 		RECT current = {};
@@ -675,6 +680,12 @@ bool CSettingsDlg::ProbeLayout()
 				!(::GetWindowLongPtrW(page, GWL_STYLE) & (WS_VSCROLL | WS_HSCROLL));
 		}
 	}
+	SelectPage(SettingsPageId::Editor);
+	const CRect backgroundGroup = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_BACKGROUND_GROUP));
+	const CRect caretGroup = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_CARET_GROUP));
+	const CRect caretPreview = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_CARET_PREVIEW));
+	passed = passed && caretGroup.top >= backgroundGroup.bottom &&
+		caretPreview.top > caretGroup.top && caretPreview.bottom <= caretGroup.bottom;
 	if(preferredFits && m_automaticSize)
 	{
 		const int deficit = UiMetrics::ScaleForDpi(20, m_layoutDpi);

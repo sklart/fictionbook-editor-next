@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UpdateChannel.h"
+#include "CaretPreferences.h"
 
 // Shared by SettingsSourcePage and CMainFrame; must target the main window.
 #define WM_FBE_APPLY_XML_SOURCE_THEME (WM_APP + 0x145)
@@ -172,6 +173,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	CString		m_editor_background_id;
 	CString		m_editor_background_custom_path;
 	CString		m_editor_background_layout;
+	CaretPreferences m_caret_preferences;
 
 	bool		m_xml_src_wrap;
 	bool		m_xml_src_syntaxHL;
@@ -333,6 +335,7 @@ public:
 	CString GetEditorBackgroundId()const;
 	CString GetEditorBackgroundCustomPath()const;
 	CString GetEditorBackgroundLayout()const;
+	CaretPreferences GetCaretPreferences()const;
 	DWORD	GetSplitterPos()const;
 	DWORD	GetFindResultsPaneHeight()const;
 	bool GetSettingsDialogGeometry(RECT& rect, UINT& dpi) const;
@@ -417,6 +420,7 @@ public:
 	void SetEditorBackgroundId(const CString& value, bool apply = false);
 	void SetEditorBackgroundCustomPath(const CString& value, bool apply = false);
 	void SetEditorBackgroundLayout(const CString& value, bool apply = false);
+	void SetCaretPreferences(const CaretPreferences& value, bool apply = false);
 	void	SetViewStatusBar(bool view,  bool apply = false);
 	void	SetStatusBarPanes(DWORD panes, bool apply = false);
 	void	SetViewDocumentTree(bool view,  bool apply = false);

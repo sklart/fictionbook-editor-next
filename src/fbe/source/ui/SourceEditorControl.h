@@ -19,6 +19,11 @@ struct SourceEditorControlDiagnostics
 	bool tagState = false;
 	bool metrics = false;
 	bool reapply = false;
+	bool caretEnhanced = false;
+	bool caretCustom = false;
+	bool caretDpi = false;
+	bool caretSelection = false;
+	bool caretUndo = false;
 };
 
 class SourceEditorControl : public CWindow

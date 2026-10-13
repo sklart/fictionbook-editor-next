@@ -82,6 +82,11 @@ const wchar_t EDITOR_BACKGROUND_KIND_KEY[] = L"EditorBackgroundKind";
 const wchar_t EDITOR_BACKGROUND_ID_KEY[] = L"EditorBackgroundId";
 const wchar_t EDITOR_BACKGROUND_CUSTOM_PATH_KEY[] = L"EditorBackgroundCustomPath";
 const wchar_t EDITOR_BACKGROUND_LAYOUT_KEY[] = L"EditorBackgroundLayout";
+const wchar_t TEXT_CARET_MODE_KEY[] = L"TextCaretMode";
+const wchar_t TEXT_CARET_WIDTH_KEY[] = L"TextCaretWidth";
+const wchar_t TEXT_CARET_COLOR_KEY[] = L"TextCaretColor";
+const wchar_t TEXT_CARET_CUSTOM_COLOR_KEY[] = L"TextCaretCustomColor";
+const wchar_t TEXT_CARET_BLINK_KEY[] = L"TextCaretBlink";
 const wchar_t SRC_FONT_KEY[]			= L"SrcFont";
 const wchar_t VIEW_STATUS_BAR_KEY[]		= L"ViewStatusBar";
 const wchar_t STATUS_BAR_PANES_KEY[]		= L"StatusBarPanes";
@@ -164,6 +169,11 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(EDITOR_BACKGROUND_ID_KEY);
 	properties.push_back(EDITOR_BACKGROUND_CUSTOM_PATH_KEY);
 	properties.push_back(EDITOR_BACKGROUND_LAYOUT_KEY);
+	properties.push_back(TEXT_CARET_MODE_KEY);
+	properties.push_back(TEXT_CARET_WIDTH_KEY);
+	properties.push_back(TEXT_CARET_COLOR_KEY);
+	properties.push_back(TEXT_CARET_CUSTOM_COLOR_KEY);
+	properties.push_back(TEXT_CARET_BLINK_KEY);
 	properties.push_back(SRC_FONT_KEY);
 	properties.push_back(VIEW_STATUS_BAR_KEY);
 	properties.push_back(STATUS_BAR_PANES_KEY);
@@ -338,6 +348,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == EDITOR_BACKGROUND_ID_KEY) { property = m_editor_background_id; return true; }
 	else if(sProperty == EDITOR_BACKGROUND_CUSTOM_PATH_KEY) { property = m_editor_background_custom_path; return true; }
 	else if(sProperty == EDITOR_BACKGROUND_LAYOUT_KEY) { property = m_editor_background_layout; return true; }
+	else if(sProperty == TEXT_CARET_MODE_KEY) { CString value; value.Format(L"%u", static_cast<unsigned>(m_caret_preferences.mode)); property = value; return true; }
+	else if(sProperty == TEXT_CARET_WIDTH_KEY) { property = GetStringedProperty(&m_caret_preferences.width, KEY_ULONG); return true; }
+	else if(sProperty == TEXT_CARET_COLOR_KEY) { CString value; value.Format(L"%u", static_cast<unsigned>(m_caret_preferences.color)); property = value; return true; }
+	else if(sProperty == TEXT_CARET_CUSTOM_COLOR_KEY) { property = GetStringedProperty(&m_caret_preferences.customColor, KEY_ULONG); return true; }
+	else if(sProperty == TEXT_CARET_BLINK_KEY) { CString value; value.Format(L"%u", static_cast<unsigned>(m_caret_preferences.blink)); property = value; return true; }
 	else if(sProperty == SRC_FONT_KEY)
 	{
 		property = m_srcfont;
@@ -716,6 +731,19 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == EDITOR_BACKGROUND_ID_KEY) { m_editor_background_id = sValue.GetStringValue(); return true; }
 	else if(sProperty == EDITOR_BACKGROUND_CUSTOM_PATH_KEY) { m_editor_background_custom_path = sValue.GetStringValue(); return true; }
 	else if(sProperty == EDITOR_BACKGROUND_LAYOUT_KEY) { SetEditorBackgroundLayout(sValue.GetStringValue()); return true; }
+	else if(sProperty == TEXT_CARET_MODE_KEY || sProperty == TEXT_CARET_WIDTH_KEY ||
+		sProperty == TEXT_CARET_COLOR_KEY || sProperty == TEXT_CARET_CUSTOM_COLOR_KEY || sProperty == TEXT_CARET_BLINK_KEY)
+	{
+		CaretPreferences preferences = m_caret_preferences;
+		const DWORD value = static_cast<DWORD>(StrToInt(sValue.GetStringValue()));
+		if(sProperty == TEXT_CARET_MODE_KEY) preferences.mode = static_cast<TextCaretMode>(value);
+		else if(sProperty == TEXT_CARET_WIDTH_KEY) preferences.width = value;
+		else if(sProperty == TEXT_CARET_COLOR_KEY) preferences.color = static_cast<TextCaretColor>(value);
+		else if(sProperty == TEXT_CARET_CUSTOM_COLOR_KEY) preferences.customColor = value;
+		else preferences.blink = static_cast<TextCaretBlink>(value);
+		SetCaretPreferences(preferences);
+		return true;
+	}
 	else if(sProperty == SRC_FONT_KEY)
 	{
 		m_srcfont = sValue.GetStringValue();

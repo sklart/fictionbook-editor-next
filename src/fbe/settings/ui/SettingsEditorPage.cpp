@@ -98,6 +98,95 @@ void SetText(HWND window, int controlId, LPCWSTR key, LPCWSTR fallback)
 
 }
 
+LRESULT CTextCaretPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
+{
+	PAINTSTRUCT paint = {};
+	HDC dc = BeginPaint(&paint);
+	RECT bounds = {};
+	GetClientRect(&bounds);
+	const bool highContrast = ThemeManager::IsHighContrast();
+	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) : ThemeManager::WindowColor();
+	const COLORREF foreground = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) : ThemeManager::TextColor();
+	HBRUSH brush = ::CreateSolidBrush(background);
+	::FillRect(dc, &bounds, brush);
+	::DeleteObject(brush);
+	::SetBkMode(dc, TRANSPARENT);
+	::SetTextColor(dc, foreground);
+	HFONT font = reinterpret_cast<HFONT>(::SendMessage(GetParent(), WM_GETFONT, 0, 0));
+	HFONT previous = font ? reinterpret_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+	const int left = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(m_hWnd));
+	const int top = UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(m_hWnd));
+	::TextOutW(dc, left, top, m_text, m_text.GetLength());
+	SIZE text = {};
+	::GetTextExtentPoint32W(dc, m_text, m_text.GetLength(), &text);
+	TEXTMETRICW metrics = {};
+	::GetTextMetricsW(dc, &metrics);
+	if(m_visible)
+	{
+		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+		int width = m_preferences.mode == TextCaretMode::Enhanced ? 3 :
+			m_preferences.mode == TextCaretMode::Custom && m_preferences.width ? static_cast<int>(m_preferences.width) : 1;
+		width = (std::max)(1, UiMetrics::ScaleForDpi(width, dpi));
+		COLORREF color = foreground;
+		if(!highContrast && m_preferences.mode != TextCaretMode::System)
+		{
+			switch(m_preferences.mode == TextCaretMode::Enhanced ? TextCaretColor::Automatic : m_preferences.color)
+			{
+			case TextCaretColor::Automatic: color = (GetRValue(background) * 299 + GetGValue(background) * 587 +
+				GetBValue(background) * 114) >= 128000 ? RGB(0, 0, 0) : RGB(255, 255, 255); break;
+			case TextCaretColor::System: color = ::GetSysColor(COLOR_WINDOWTEXT); break;
+			case TextCaretColor::Black: color = RGB(0, 0, 0); break;
+			case TextCaretColor::White: color = RGB(255, 255, 255); break;
+			case TextCaretColor::Custom: color = m_preferences.customColor; break;
+			}
+		}
+		RECT caret = { left + text.cx + UiMetrics::ScaleForDpi(2, dpi), top,
+			left + text.cx + UiMetrics::ScaleForDpi(2, dpi) + width, top + metrics.tmHeight };
+		HBRUSH caretBrush = ::CreateSolidBrush(color);
+		::FillRect(dc, &caret, caretBrush);
+		::DeleteObject(caretBrush);
+	}
+	if(previous) ::SelectObject(dc, previous);
+	EndPaint(&paint);
+	return 0;
+}
+
+void CTextCaretPreview::SetPreview(const CaretPreferences& preferences, const CString& text)
+{
+	m_preferences = preferences;
+	m_text = text;
+	m_visible = true;
+	KillTimer(1);
+	UINT period = ::GetCaretBlinkTime();
+	if(period == INFINITE || period == 0) period = 0;
+	if(preferences.mode == TextCaretMode::Enhanced) period = 800;
+	else if(preferences.mode == TextCaretMode::Custom)
+	{
+		switch(preferences.blink)
+		{
+		case TextCaretBlink::Slow: period = 800; break;
+		case TextCaretBlink::Normal: period = 500; break;
+		case TextCaretBlink::Fast: period = 300; break;
+		case TextCaretBlink::Solid: period = 0; break;
+		default: break;
+		}
+	}
+	if(period) SetTimer(1, (std::max)(100U, period));
+	Invalidate();
+}
+
+LRESULT CTextCaretPreview::OnTimer(UINT, WPARAM timer, LPARAM, BOOL&)
+{
+	if(timer == 1) { m_visible = !m_visible; Invalidate(); }
+	return 0;
+}
+
+LRESULT CTextCaretPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
+{
+	KillTimer(1);
+	return 0;
+}
+
 CSettingsEditorPage::~CSettingsEditorPage()
 {
 	if(m_cachedBackgroundBitmap) ::DeleteObject(m_cachedBackgroundBitmap);
@@ -114,6 +203,12 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_backgroundImage = GetDlgItem(IDC_EDITOR_BACKGROUND_IMAGE);
 	m_backgroundLayout = GetDlgItem(IDC_EDITOR_BACKGROUND_LAYOUT);
 	m_backgroundPreview.SubclassWindow(GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW));
+	m_caretPreview.SubclassWindow(GetDlgItem(IDC_EDITOR_CARET_PREVIEW));
+	m_caretMode = GetDlgItem(IDC_EDITOR_CARET_MODE);
+	m_caretWidth = GetDlgItem(IDC_EDITOR_CARET_WIDTH);
+	m_caretColor = GetDlgItem(IDC_EDITOR_CARET_COLOR);
+	m_caretBlink = GetDlgItem(IDC_EDITOR_CARET_BLINK);
+	m_caretCustomColor.SubclassWindow(GetDlgItem(IDC_EDITOR_CARET_CUSTOM_COLOR));
 	m_customBackgroundPath = _Settings.GetEditorBackgroundCustomPath();
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_fonts, L"fbe.settings.tooltip.editor.font", L"Font used in the visual editor.");
@@ -124,6 +219,10 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_backgroundImage, L"fbe.settings.tooltip.editor.background_image", L"An optional local image used behind the editor text.");
 	m_tooltips.Add(m_backgroundLayout, L"fbe.settings.tooltip.editor.background_layout", L"How the selected background image is placed.");
 	m_tooltips.Add(m_backgroundPreview, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
+	m_tooltips.Add(m_caretMode, L"fbe.settings.caret.note", L"Design uses the Windows cursor. These settings apply to XML code.");
+	m_tooltips.Add(m_caretWidth, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
+	m_tooltips.Add(m_caretColor, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
+	m_tooltips.Add(m_caretBlink, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
 	const CString automaticColorText = FbeLoadRuntimeStringByKey(
 		L"fbe.dialog.idd_setting_next.color_automatic", L"Automatic");
 	const CString moreColorsText = FbeLoadRuntimeStringByKey(
@@ -146,6 +245,35 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_IMAGE_LABEL, L"fbe.settings.editor_background.image", L"Background image:");
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_BROWSE, L"fbe.settings.editor_background.browse", L"Browse...");
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_LAYOUT_LABEL, L"fbe.settings.editor_background.layout", L"Layout:");
+	SetText(m_hWnd, IDC_EDITOR_CARET_GROUP, L"fbe.settings.caret.group", L"Text cursor (XML code)");
+	SetText(m_hWnd, IDC_EDITOR_CARET_NOTE, L"fbe.settings.caret.note", L"Design uses the Windows cursor. These settings apply to XML code.");
+	SetText(m_hWnd, IDC_EDITOR_CARET_MODE_LABEL, L"fbe.settings.caret.mode", L"Mode:");
+	SetText(m_hWnd, IDC_EDITOR_CARET_WIDTH_LABEL, L"fbe.settings.caret.width", L"Width:");
+	SetText(m_hWnd, IDC_EDITOR_CARET_COLOR_LABEL, L"fbe.settings.caret.color", L"Color:");
+	SetText(m_hWnd, IDC_EDITOR_CARET_BLINK_LABEL, L"fbe.settings.caret.blink", L"Blink:");
+	m_caretMode.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
+	m_caretMode.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.enhanced", L"Enhanced visibility"));
+	m_caretMode.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.custom", L"Custom"));
+	m_caretWidth.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
+	for(int logical = 1; logical <= 5; ++logical) { CString label; label.Format(L"%d", logical); m_caretWidth.AddString(label); }
+	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.auto_color", L"Automatic contrast"));
+	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
+	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.black", L"Black"));
+	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.white", L"White"));
+	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.custom", L"Custom"));
+	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
+	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.slow", L"Slow"));
+	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.normal", L"Normal"));
+	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.fast", L"Fast"));
+	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.solid", L"Do not blink"));
+	const CaretPreferences caret = _Settings.GetCaretPreferences();
+	m_caretMode.SetCurSel(static_cast<int>(caret.mode));
+	m_caretWidth.SetCurSel(static_cast<int>(caret.width));
+	m_caretColor.SetCurSel(static_cast<int>(caret.color));
+	m_caretBlink.SetCurSel(static_cast<int>(caret.blink));
+	m_caretCustomColor.SetDefaultText(automaticColorText);
+	m_caretCustomColor.SetCustomText(moreColorsText);
+	m_caretCustomColor.SetColor(caret.customColor);
 
 	CSimpleArray<CString> installedFonts;
 	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
@@ -201,6 +329,7 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_backgroundLayout.SetCurSel(layout == L"center" ? 1 : layout == L"contain" ? 2 : layout == L"cover" ? 3 : 0);
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
+	UpdateCaretPreview();
 	return 1;
 }
 
@@ -211,6 +340,7 @@ LRESULT CSettingsEditorPage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	// open.  Refresh defaults without changing an explicit user swatch.
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
+	UpdateCaretPreview();
 	return 0;
 }
 
@@ -259,6 +389,7 @@ void CSettingsEditorPage::Commit()
 	else _Settings.SetEditorBackgroundKind(L"custom");
 	_Settings.SetEditorBackgroundCustomPath(m_customBackgroundPath);
 	_Settings.SetEditorBackgroundLayout(SelectedBackgroundLayout());
+	_Settings.SetCaretPreferences(SelectedCaretPreferences());
 }
 
 LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
@@ -283,6 +414,41 @@ LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&)
 {
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
+	return 0;
+}
+
+CaretPreferences CSettingsEditorPage::SelectedCaretPreferences()
+{
+	CaretPreferences preferences;
+	preferences.mode = static_cast<TextCaretMode>((std::max)(0, m_caretMode.GetCurSel()));
+	preferences.width = static_cast<DWORD>((std::max)(0, m_caretWidth.GetCurSel()));
+	preferences.color = static_cast<TextCaretColor>((std::max)(0, m_caretColor.GetCurSel()));
+	preferences.blink = static_cast<TextCaretBlink>((std::max)(0, m_caretBlink.GetCurSel()));
+	preferences.customColor = m_caretCustomColor.GetColor();
+	return preferences;
+}
+
+void CSettingsEditorPage::UpdateCaretPreview()
+{
+	const bool custom = m_caretMode.GetCurSel() == static_cast<int>(TextCaretMode::Custom);
+	m_caretWidth.EnableWindow(custom);
+	m_caretColor.EnableWindow(custom);
+	m_caretBlink.EnableWindow(custom);
+	m_caretCustomColor.EnableWindow(custom && m_caretColor.GetCurSel() == static_cast<int>(TextCaretColor::Custom));
+	if(m_caretPreview.IsWindow())
+		m_caretPreview.SetPreview(SelectedCaretPreferences(),
+			FbeLoadRuntimeStringByKey(L"fbe.settings.caret.preview", L"Sample text"));
+}
+
+LRESULT CSettingsEditorPage::OnCaretSettingsChanged(WORD, WORD, HWND, BOOL&)
+{
+	UpdateCaretPreview();
+	return 0;
+}
+
+LRESULT CSettingsEditorPage::OnCaretColorChanged(int, LPNMHDR, BOOL&)
+{
+	UpdateCaretPreview();
 	return 0;
 }
 

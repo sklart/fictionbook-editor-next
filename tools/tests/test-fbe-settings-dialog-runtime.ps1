@@ -28,9 +28,13 @@ try {
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
     if($LayoutOnly) {
-        foreach($line in 'settings_dialog=1','layout=1','persisted=1','applied=1') {
+        foreach($line in 'settings_dialog=1','layout=1','persisted=1','applied=1','caret_persisted=1','caret_applied=1','caret_initial_system=1') {
             if($first -notmatch [regex]::Escape($line)) { throw "Settings layout smoke is missing ${line}: $first" }
         }
+		$verification = Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport
+		foreach($line in 'settings_dialog=0','caret_persisted=1','caret_applied=1') {
+			if($verification -notmatch [regex]::Escape($line)) { throw "Settings caret restart smoke is missing ${line}: $verification" }
+		}
         Write-Host 'FBE Settings dialog short layout and Keyboard resize smoke passed.'
         return
     }

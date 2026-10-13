@@ -20,6 +20,24 @@
   "resource": "IDR_MAINFRAME",
   "resourceType": "MENU",
   "strings": {
+    "fbe.menu.idr_mainframe.view.show_text_caret": {
+      "kind": "MENUITEM",
+      "targetId": "ID_VIEW_SHOW_TEXT_CARET",
+      "translations": {
+        "en-US": "Show text cursor",
+        "ru-RU": "Показать текстовый курсор",
+        "uk-UA": "Показати текстовий курсор",
+        "de-DE": "Textcursor anzeigen",
+        "fr-FR": "Afficher le curseur de texte",
+        "es-ES": "Mostrar cursor de texto",
+        "it-IT": "Mostra cursore di testo",
+        "pl-PL": "Pokaż kursor tekstowy",
+        "pt-PT": "Mostrar cursor de texto",
+        "nl-NL": "Tekstcursor tonen",
+        "cs-CZ": "Zobrazit textový kurzor",
+        "bg-BG": "Показване на текстовия курсор"
+      }
+    },
     "fbe.menu.idr_mainframe.popup.file": {
       "kind": "POPUP",
       "targetId": "",

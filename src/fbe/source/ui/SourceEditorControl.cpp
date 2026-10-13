@@ -2,6 +2,8 @@
 #include "SourceEditorControl.h"
 #include "../../RuntimeLocalization.h"
 #include "../../EditorEngine.h"
+#include "../../UiMetrics.h"
+#include "../../CaretFocusDiagnostics.h"
 #include "SciLexer.h"
 
 namespace {
@@ -13,6 +15,73 @@ bool IsHighContrastEnabled()
 	return ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(highContrast), &highContrast, 0) && (highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
 }
 COLORREF Color(const SourceEditorConfig& config, SourceEditorColorRole role) { return config.colors[role]; }
+
+int SystemCaretWidth()
+{
+	DWORD width = 1;
+	if(!::SystemParametersInfo(SPI_GETCARETWIDTH, 0, &width, 0) || width == 0) width = 1;
+	return static_cast<int>((std::min)(width, static_cast<DWORD>(20)));
+}
+
+int SystemCaretPeriod()
+{
+	const UINT period = ::GetCaretBlinkTime();
+	return period == INFINITE ? 0 : period == 0 ? 500 : static_cast<int>((std::min)(period, 5000U));
+}
+
+int CaretWidthPixels(const CaretPreferences& preferences, UINT dpi, int systemWidth)
+{
+	int width = systemWidth;
+	if(preferences.mode == TextCaretMode::Enhanced)
+		width = (std::max)(width, UiMetrics::ScaleForDpi(3, dpi));
+	else if(preferences.mode == TextCaretMode::Custom && preferences.width != 0)
+		width = UiMetrics::ScaleForDpi(static_cast<int>(preferences.width), dpi);
+	return (std::min)(20, (std::max)(1, width));
+}
+
+COLORREF ContrastingCaretColor(COLORREF background)
+{
+	const int luminance = 299 * GetRValue(background) + 587 * GetGValue(background) + 114 * GetBValue(background);
+	return luminance >= 128000 ? RGB(0, 0, 0) : RGB(255, 255, 255);
+}
+
+void ApplyCaretPreferences(const SourceEditorControl& editor, const SourceEditorConfig& config,
+	COLORREF background, COLORREF themeCaret, bool highContrast)
+{
+	const CaretPreferences& preferences = config.caret;
+	const UINT dpi = UiMetrics::DpiForWindow(editor.m_hWnd);
+	const int width = CaretWidthPixels(preferences, dpi, SystemCaretWidth());
+	int period = SystemCaretPeriod();
+	COLORREF color = themeCaret;
+	if(preferences.mode == TextCaretMode::Enhanced)
+	{
+		color = ContrastingCaretColor(background);
+		period = 800;
+	}
+	else if(preferences.mode == TextCaretMode::Custom)
+	{
+		switch(preferences.color)
+		{
+		case TextCaretColor::Automatic: color = ContrastingCaretColor(background); break;
+		case TextCaretColor::System: color = ::GetSysColor(COLOR_WINDOWTEXT); break;
+		case TextCaretColor::Black: color = RGB(0, 0, 0); break;
+		case TextCaretColor::White: color = RGB(255, 255, 255); break;
+		case TextCaretColor::Custom: color = preferences.customColor; break;
+		}
+		switch(preferences.blink)
+		{
+		case TextCaretBlink::System: break;
+		case TextCaretBlink::Slow: period = 800; break;
+		case TextCaretBlink::Normal: period = 500; break;
+		case TextCaretBlink::Fast: period = 300; break;
+		case TextCaretBlink::Solid: period = 0; break;
+		}
+	}
+	if(highContrast) color = ::GetSysColor(COLOR_WINDOWTEXT);
+	editor.Send(SCI_SETCARETWIDTH, static_cast<uptr_t>(width));
+	editor.Send(SCI_SETCARETFORE, color);
+	editor.Send(SCI_SETCARETPERIOD, static_cast<uptr_t>(period));
+}
 }
 
 bool SourceEditorControl::Create(HWND parent) { if(!CWindow::Create(L"Scintilla", parent, rcDefault, NULL, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0)) return false; Send(SCI_USEPOPUP, SC_POPUP_NEVER); ::SetProp(m_hWnd, L"FBE.Next.SourceEditorControl", this); m_previousWindowProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(m_hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&WindowProc))); if(m_previousWindowProc != NULL) return true; ::RemoveProp(m_hWnd, L"FBE.Next.SourceEditorControl"); DestroyWindow(); return false; }
@@ -22,6 +91,8 @@ LRESULT CALLBACK SourceEditorControl::WindowProc(HWND window, UINT message, WPAR
 {
 	SourceEditorControl* editor = reinterpret_cast<SourceEditorControl*>(::GetProp(window, L"FBE.Next.SourceEditorControl"));
 	if(editor != NULL && message == WM_CONTEXTMENU) { editor->ShowContextMenu(lParam); return 0; }
+	if(editor != NULL && (message == WM_SETFOCUS || message == WM_KILLFOCUS))
+		ReportCaretFocusState(message == WM_SETFOCUS ? L"source-focus" : L"source-blur", window, true);
 	return editor != NULL && editor->m_previousWindowProc != NULL ? ::CallWindowProc(editor->m_previousWindowProc, window, message, wParam, lParam) : ::DefWindowProc(window, message, wParam, lParam);
 }
 void SourceEditorControl::ShowContextMenu(LPARAM screenPosition)
@@ -140,7 +211,7 @@ void SourceEditorControl::ApplyStyles(const SourceEditorConfig& config)
 	Send(SCI_SETFOLDMARGINCOLOUR, TRUE, windowBackground); Send(SCI_SETFOLDMARGINHICOLOUR, TRUE, windowBackground);
 	// Measure after STYLE_DEFAULT, STYLECLEARALL, and STYLE_LINENUMBER have been applied.
 	UpdateLineNumberMargin(true, config);
-	Send(SCI_SETCARETFORE, highContrast ? windowText : Color(config, SourceEditorColorCaret));
+	ApplyCaretPreferences(*this, config, windowBackground, highContrast ? windowText : Color(config, SourceEditorColorCaret), highContrast);
 	if(highContrast) Send(SCI_SETCARETLINEVISIBLE, FALSE); else { Send(SCI_SETCARETLINEBACK, Color(config, SourceEditorColorCurrentLineBackground)); Send(SCI_SETCARETLINEVISIBLE, TRUE); }
 	Send(SCI_SETSELFORE, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHTTEXT) : Color(config, SourceEditorColorSelectionForeground)); Send(SCI_SETSELBACK, TRUE, highContrast ? ::GetSysColor(COLOR_HIGHLIGHT) : Color(config, SourceEditorColorSelectionBackground));
 	struct Style { int scintilla; SourceEditorColorRole color; };
@@ -251,5 +322,26 @@ SourceEditorControlDiagnostics SourceEditorControl::RunDiagnostics()
 	diagnostics.tagState = m_tagMatchState.documentRevision == revision;
 	diagnostics.metrics = m_config.showLineNumbers ? Send(SCI_GETMARGINWIDTHN, 0) > 0 : Send(SCI_GETMARGINWIDTHN, 0) == 0;
 	diagnostics.reapply = IsWindow() != FALSE && Send(SCI_GETCODEPAGE) == SC_CP_UTF8 && Send(SCI_GETVIEWEOL) == static_cast<sptr_t>(m_config.showEol);
+	const SourceEditorConfig original = m_config;
+	const sptr_t anchor = Send(SCI_GETANCHOR), current = Send(SCI_GETCURRENTPOS);
+	const sptr_t length = Send(SCI_GETLENGTH), undo = Send(SCI_CANUNDO);
+	SourceEditorConfig exercise = original;
+	exercise.caret.mode = TextCaretMode::Enhanced;
+	ApplyConfiguration(exercise);
+	diagnostics.caretEnhanced = Send(SCI_GETCARETWIDTH) == CaretWidthPixels(exercise.caret, UiMetrics::DpiForWindow(m_hWnd), SystemCaretWidth()) &&
+		Send(SCI_GETCARETPERIOD) == 800;
+	exercise.caret.mode = TextCaretMode::Custom;
+	exercise.caret.width = 4;
+	exercise.caret.color = TextCaretColor::White;
+	exercise.caret.blink = TextCaretBlink::Solid;
+	ApplyConfiguration(exercise);
+	diagnostics.caretCustom = Send(SCI_GETCARETWIDTH) == CaretWidthPixels(exercise.caret, UiMetrics::DpiForWindow(m_hWnd), SystemCaretWidth()) &&
+		Send(SCI_GETCARETFORE) == (IsHighContrastEnabled() ? ::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255)) &&
+		Send(SCI_GETCARETPERIOD) == 0;
+	diagnostics.caretDpi = CaretWidthPixels(exercise.caret, 96, 1) == 4 &&
+		CaretWidthPixels(exercise.caret, 144, 1) == 6 && CaretWidthPixels(exercise.caret, 192, 1) == 8;
+	ApplyConfiguration(original);
+	diagnostics.caretSelection = Send(SCI_GETANCHOR) == anchor && Send(SCI_GETCURRENTPOS) == current;
+	diagnostics.caretUndo = Send(SCI_GETLENGTH) == length && Send(SCI_CANUNDO) == undo;
 	return diagnostics;
 }
