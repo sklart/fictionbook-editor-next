@@ -619,11 +619,39 @@ void Doc::RunScript(LPCOLESTR filePath)
 		htmlFolder = U::GetProgDirFile(L"HTML\\");
 	StartupTrace::Event(L"script", L"C200", L"script HTML folder selected");
 
-	// InvokeN передаёт аргументы в обратном порядке.
-	CComVariant params[2];
-	params[1] = filePath;
-	params[0] = htmlFolder;
-	InvokeFunc(L"apiRunCmd", params, 2, vtResult);
+	// MSHTML loads user commands through a script element. Its page charset
+	// cannot reliably identify a legacy ANSI file, especially after an ASCII
+	// metadata card. An explicit charset is needed only for non-UTF-8 input.
+	CString scriptCharset;
+	HANDLE scriptFile = ::CreateFileW(filePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(scriptFile != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER size = {};
+		if(::GetFileSizeEx(scriptFile, &size) && size.QuadPart > 0 && size.QuadPart <= INT_MAX)
+		{
+			std::vector<char> bytes(static_cast<size_t>(size.QuadPart));
+			DWORD read = 0;
+			if(::ReadFile(scriptFile, bytes.data(), static_cast<DWORD>(bytes.size()), &read, NULL) && read == bytes.size())
+			{
+				const bool bom = read >= 2 &&
+					((static_cast<BYTE>(bytes[0]) == 0xff && static_cast<BYTE>(bytes[1]) == 0xfe) ||
+					 (static_cast<BYTE>(bytes[0]) == 0xfe && static_cast<BYTE>(bytes[1]) == 0xff)) ||
+					(read >= 3 && static_cast<BYTE>(bytes[0]) == 0xef &&
+					 static_cast<BYTE>(bytes[1]) == 0xbb && static_cast<BYTE>(bytes[2]) == 0xbf);
+				if(!bom && !::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(),
+					static_cast<int>(read), NULL, 0))
+					scriptCharset.Format(L"windows-%u", ::GetACP());
+			}
+		}
+		::CloseHandle(scriptFile);
+	}
+	// InvokeN passes arguments in reverse order.
+	CComVariant params[3];
+	params[2] = filePath;
+	params[1] = htmlFolder;
+	params[0] = scriptCharset;
+	InvokeFunc(L"apiRunCmd", params, 3, vtResult);
 	TraceDocumentEvent(L"D301", L"script execution completed", CString(filePath));
 }
 VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)

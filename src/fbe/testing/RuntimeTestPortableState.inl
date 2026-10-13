@@ -88,11 +88,12 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool navigationViewBarElementsRuntime = IsFbeTestScenario(L"navigation-viewbar-elements-runtime");
 	const bool navigationScriptsReloadRuntime = IsFbeTestScenario(L"navigation-scripts-reload-runtime");
 	const bool scriptLiveReloadRuntime = IsFbeTestScenario(L"script-live-reload-runtime");
+	const bool scriptCardDialogRuntime = IsFbeTestScenario(L"script-card-dialog-runtime");
 	const bool scriptCatalogRefreshRuntime = IsFbeTestScenario(L"script-catalog-refresh-runtime");
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationScriptsMultiRuntime && !navigationFavoritesReadRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationScriptsMultiRuntime && !navigationFavoritesReadRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCardDialogRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -104,7 +105,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const WORD portableStateHotkeyKey = VK_F24;
 	const int portableStateToolbarWidth = 731;
 	const UINT portableStateToolbarBandId = ATL_IDW_BAND_FIRST;
-	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationScriptsMultiRuntime && !navigationFavoritesReadRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCatalogRefreshRuntime)
+	if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationScriptsMultiRuntime && !navigationFavoritesReadRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCardDialogRuntime && !scriptCatalogRefreshRuntime)
 	{
 		WritePortableStateTestText(reportPath, "phase=failed\nreason=not-portable\n");
 		PostMessage(WM_CLOSE);
@@ -218,9 +219,203 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool wroteSecond = WritePortableStateTestText(scriptPath, "function Run(){window.external.SetStatusBarText('version-2');}\n");
 		if(documentReady && wroteSecond) m_doc->RunScript(scriptPath);
 		const bool version2 = m_status_state.EffectiveMainText(false, false, CString()) == L"version-2";
-		const bool passed = documentReady && wroteFirst && version1 && wroteSecond && version2;
-		CStringA report; report.Format("phase=script-live-reload\nversion-1=%d\nversion-2=%d\nresult=%s\n", version1, version2, passed ? "pass" : "fail");
+		CString cp1251Source = L"// \x041F\x0440\x0438\x043C\x0435\x0447\x0430\x043D\x0438\x0435: \x0438\x0441\x0445\x043E\x0434\x043D\x044B\x0439 \x0441\x043A\x0440\x0438\x043F\x0442 \x043D\x0430 \x0440\x0443\x0441\x0441\x043A\x043E\x043C \x044F\x0437\x044B\x043A\x0435.\n";
+		for(int index = 0; index < 12; ++index) cp1251Source += L"// \x041F\x0440\x043E\x0432\x0435\x0440\x043A\x0430 \x043A\x043E\x0434\x0438\x0440\x043E\x0432\x043A\x0438 \x0434\x043B\x044F \x0438\x0441\x0442\x043E\x0440\x0438\x0447\x0435\x0441\x043A\x043E\x0433\x043E \x0441\x043A\x0440\x0438\x043F\x0442\x0430.\n";
+		cp1251Source += L"function Run(){window.external.SetStatusBarText('\x041F\x0440\x0438\x0432\x0435\x0442 \x0438\x0437 CP1251');}\n";
+		const CStringA cp1251Code(CW2A(cp1251Source, 1251));
+		const bool wroteCp1251 = WritePortableStateTestText(scriptPath, cp1251Code);
+		if(documentReady && wroteCp1251) m_doc->RunScript(scriptPath);
+		const CString plainText = m_status_state.EffectiveMainText(false, false, CString());
+		const bool plainCp1251 = plainText == L"\x041F\x0440\x0438\x0432\x0435\x0442 \x0438\x0437 CP1251";
+		std::string cardScript = "/*<FBE-NEXT-CARD version=\"1\">\n{\"schema\":1,\"padding\":\"";
+		cardScript.append(1500, 'x');
+		cardScript += "\"}\n</FBE-NEXT-CARD>*/\n";
+		cardScript += cp1251Code.GetString();
+		const bool wroteCard = WritePortableStateTestText(scriptPath, cardScript.c_str());
+		if(documentReady && wroteCard) m_doc->RunScript(scriptPath);
+		const CString cardText = m_status_state.EffectiveMainText(false, false, CString());
+		const bool cardCp1251 = cardText == L"\x041F\x0440\x0438\x0432\x0435\x0442 \x0438\x0437 CP1251";
+		const bool passed = documentReady && wroteFirst && version1 && wroteSecond && version2 && wroteCp1251 && plainCp1251 && wroteCard && cardCp1251;
+		CStringA report; report.Format("phase=script-live-reload\nversion-1=%d\nversion-2=%d\nplain-cp1251=%d\ncard-cp1251=%d\nplain-text=%s\ncard-text=%s\nresult=%s\n",
+			version1, version2, plainCp1251, cardCp1251, static_cast<LPCSTR>(CW2A(plainText, CP_UTF8)),
+			static_cast<LPCSTR>(CW2A(cardText, CP_UTF8)), passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
+	}
+	if(scriptCardDialogRuntime)
+	{
+		::CreateDirectory(scriptsDirectory, NULL);
+		const CString missingPath = scriptsDirectory + L"card-missing.js";
+		const CString cardPath = scriptsDirectory + L"card-present.js";
+		const bool wroteMissing = WritePortableStateTestText(missingPath, "function Run(){}\n");
+		ScriptDescriptor script = {};
+		script.name = L"Card test";
+		script.path = missingPath;
+		script.relativePath = L"Card test.js";
+		script.uid = L"card-test-missing";
+		CString resourceRoot(scriptsDirectory);
+		resourceRoot.TrimRight(L"\\/");
+		const int lastSlash = max(resourceRoot.ReverseFind(L'\\'), resourceRoot.ReverseFind(L'/'));
+		if(lastSlash >= 0) resourceRoot = resourceRoot.Left(lastSlash);
+		int runCount = 0;
+		auto openCard = [this, &script, &resourceRoot, &runCount]() {
+			return m_script_card_window.ShowScript(m_hWnd, script, resourceRoot,
+				[&runCount](const CString&) { ++runCount; });
+		};
+		auto awaitCard = [this]() {
+			const DWORD deadline = ::GetTickCount() + 5000;
+			while(m_script_card_window.IsLoading() && static_cast<LONG>(::GetTickCount() - deadline) < 0)
+			{
+				MSG message = {};
+				while(::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE))
+				{
+					::TranslateMessage(&message);
+					::DispatchMessageW(&message);
+				}
+				::Sleep(10);
+			}
+			return !m_script_card_window.IsLoading();
+		};
+		const bool openedMissing = wroteMissing && openCard() && awaitCard();
+		const HWND firstWindow = m_script_card_window.m_hWnd;
+		const bool missingFallback = openedMissing &&
+			m_script_card_window.BodyText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.missing",
+				L"Detailed information about this script is not available yet.")) >= 0;
+		const std::string cardSource =
+			"/*<FBE-NEXT-CARD version=\"1\">\n"
+			"{\"schema\":1,\"title\":\"Card test\",\"summary\":\"Card runtime summary\","
+			"\"description\":\"Card runtime description\",\"version\":\"1.0\","
+			"\"scope\":\"Current document\",\"modifiesDocument\":false,\"requiresSelection\":false,"
+			"\"usage\":[\"Open card\"],\"warnings\":[],\"dependencies\":[],"
+			"\"settings\":[{\"name\":\"Mode\",\"expression\":\"safe\",\"description\":\"Change mode\"}],"
+			"\"examples\":[{\"before\":\"abc\",\"after\":\"ABC\"}],"
+			"\"undo\":{\"description\":\"Undoable\"},\"tags\":[\"case\"],"
+			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"}],"
+			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\","
+			"\"reviewStatus\":\"generated\","
+			"\"sha256\":\"b93000a4f6aabe6d01c3db1f2b99000a48756d7181161e50dd4011758dc89c89\"}}"
+			"\n</FBE-NEXT-CARD>*/\nfunction Run(){}\n";
+		const bool wroteCard = WritePortableStateTestText(cardPath, cardSource.c_str());
+		script.path = cardPath;
+		script.uid = L"card-test-present";
+		const bool openedCard = wroteCard && openCard() && awaitCard();
+		const bool reused = openedCard && m_script_card_window.m_hWnd == firstWindow;
+		const bool rendered = openedCard && m_script_card_window.BodyText().Find(L"Card runtime summary") >= 0;
+		const bool optionalRendered = openedCard && m_script_card_window.BodyText().Find(L"Mode = safe") >= 0 &&
+			m_script_card_window.BodyText().Find(L"abc → ABC") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Undoable") >= 0;
+		const bool uidUpdated = m_script_card_window.CurrentUid() == script.uid;
+		const bool altered = WritePortableStateTestText(cardPath, (cardSource + " ").c_str());
+		const bool reopened = altered && openCard() && awaitCard();
+		wchar_t header[512] = {};
+		::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), header, _countof(header));
+		const bool changedWarning = reopened && CString(header).Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.changed",
+			L"Warning: description may not match the current script")) >= 0;
+		const bool buttons = ::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_RUN)) &&
+			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_OPEN)) &&
+			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY));
+		_Settings.SetScriptsFolder(scriptsDirectory, true);
+		_Settings.SetDocumentTreeScripts(true, true);
+		const bool initialized = InitializeScripts();
+		RefreshNavigationScriptTree();
+		CTreeView& tree = m_document_tree.m_tree.m_tree;
+		if(!tree.IsScriptMode()) m_document_tree.m_tree.ToggleScriptMode();
+		tree.SetScriptFilter(CString());
+		m_document_tree.ShowWindow(SW_SHOW);
+		m_document_tree.m_tree.ShowWindow(SW_SHOW);
+		tree.ShowWindow(SW_SHOW);
+		HTREEITEM selectedItem = tree.FindScriptTreeItem(L"card-missing.js");
+		HTREEITEM infoItem = tree.FindScriptTreeItem(L"card-present.js");
+		CString infoUid;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(m_scripts.Menu().Item(index).relativePath == L"card-present.js") infoUid = m_scripts.Menu().Item(index).uid;
+		::SetWindowPos(tree.m_hWnd, NULL, 0, 0, 400, 300, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		if(infoItem != NULL) tree.EnsureVisible(infoItem);
+		if(selectedItem != NULL) tree.SelectItem(selectedItem);
+		RECT infoRow = {}, treeClient = {};
+		const bool rowVisible = infoItem != NULL && tree.GetItemRect(infoItem, &infoRow, FALSE);
+		tree.GetClientRect(&treeClient);
+		const int infoX = treeClient.right - UiMetrics::ScaleForDpi(15, UiMetrics::DpiForWindow(tree.m_hWnd));
+		const int infoY = (infoRow.top + infoRow.bottom) / 2;
+		if(rowVisible) {
+			::SendMessageW(tree.m_hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(infoX, infoY));
+			::SendMessageW(tree.m_hWnd, WM_LBUTTONUP, 0, MAKELPARAM(infoX, infoY));
+		}
+		const bool infoOpened = initialized && rowVisible && awaitCard() &&
+			m_script_card_window.CurrentUid() == infoUid && tree.GetSelectedItem() == selectedItem &&
+			m_script_card_window.m_hWnd == firstWindow;
+		if(rowVisible) ::SendMessageW(tree.m_hWnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(infoX, infoY));
+		const bool infoDoubleClickSafe = runCount == 0;
+		if(infoItem != NULL) tree.SelectItem(infoItem);
+		const bool contextOpened = infoItem != NULL && tree.ExecuteScriptPopupCommand(NavigationPopupAboutScript) &&
+			awaitCard() && m_script_card_window.CurrentUid() == infoUid && m_script_card_window.m_hWnd == firstWindow;
+		if(selectedItem != NULL) tree.SetItemState(selectedItem, TVIS_SELECTED, TVIS_SELECTED);
+		const bool multiCardDisabled = selectedItem != NULL && !tree.ExecuteScriptPopupCommand(NavigationPopupAboutScript) &&
+			m_script_card_window.CurrentUid() == infoUid;
+		wchar_t artifactDirectory[MAX_PATH] = {};
+		const DWORD artifactLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_ARTIFACT_DIR", artifactDirectory, _countof(artifactDirectory));
+		auto captureWindow = [&](HWND window, LPCWSTR filename) -> bool {
+			if(artifactLength == 0) return true;
+			if(artifactLength >= _countof(artifactDirectory) || !::IsWindow(window)) return false;
+			RECT bounds = {};
+			if(!::GetWindowRect(window, &bounds)) return false;
+			const int width = bounds.right - bounds.left, height = bounds.bottom - bounds.top;
+			if(width < 100 || height < 20) return false;
+			BITMAPINFO info = {};
+			info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			info.bmiHeader.biWidth = width;
+			info.bmiHeader.biHeight = -height;
+			info.bmiHeader.biPlanes = 1;
+			info.bmiHeader.biBitCount = 32;
+			void* pixels = NULL;
+			HBITMAP bitmap = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &pixels, NULL, 0);
+			HDC memory = bitmap ? ::CreateCompatibleDC(NULL) : NULL;
+			HGDIOBJ previous = memory ? ::SelectObject(memory, bitmap) : NULL;
+			bool saved = false;
+			if(pixels && previous && ::PrintWindow(window, memory, 0)) {
+				BITMAPFILEHEADER header = {};
+				header.bfType = 0x4d42;
+				header.bfOffBits = sizeof(header) + sizeof(BITMAPINFOHEADER);
+				header.bfSize = header.bfOffBits + width * height * 4;
+				const CString path = CString(artifactDirectory) + L"\\" + filename;
+				HANDLE file = ::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				if(file != INVALID_HANDLE_VALUE) {
+					DWORD written = 0;
+					saved = ::WriteFile(file, &header, sizeof(header), &written, NULL) && written == sizeof(header) &&
+						::WriteFile(file, &info.bmiHeader, sizeof(info.bmiHeader), &written, NULL) && written == sizeof(info.bmiHeader) &&
+						::WriteFile(file, pixels, width * height * 4, &written, NULL) && written == static_cast<DWORD>(width * height * 4);
+					::CloseHandle(file);
+				}
+			}
+			if(previous) ::SelectObject(memory, previous);
+			if(memory) ::DeleteDC(memory);
+			if(bitmap) ::DeleteObject(bitmap);
+			return saved;
+		};
+		const bool cardScreenshot = captureWindow(m_script_card_window.m_hWnd, L"script-card.bmp");
+		const bool treeScreenshot = captureWindow(tree.m_hWnd, L"script-tree-info.bmp");
+		const InterfaceTheme originalTheme = ThemeManager::GetSelectedTheme();
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		::RedrawWindow(tree.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+		::RedrawWindow(m_script_card_window.m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+		const bool darkCardScreenshot = captureWindow(m_script_card_window.m_hWnd, L"script-card-dark.bmp");
+		const bool darkTreeScreenshot = captureWindow(tree.m_hWnd, L"script-tree-info-dark.bmp");
+		ThemeManager::SetSelectedTheme(originalTheme);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool passed = openedMissing && missingFallback && reused && rendered && optionalRendered && uidUpdated &&
+			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
+			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot && runCount == 0;
+		CStringA report;
+		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\noptional=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
+			missingFallback, reused, rendered, optionalRendered, uidUpdated, changedWarning, buttons, infoOpened,
+			infoDoubleClickSafe, contextOpened, multiCardDisabled,
+			initialized, infoItem != NULL, rowVisible, static_cast<unsigned>(tree.ScriptTreeNodeCount()),
+			m_script_card_window.CurrentUid() == infoUid,
+			tree.GetSelectedItem() == selectedItem, runCount,
+			passed ? "pass" : "fail");
+		WritePortableStateTestText(reportPath, report);
+		PostMessage(WM_CLOSE);
+		return;
 	}
 	if(scriptCatalogRefreshRuntime)
 	{

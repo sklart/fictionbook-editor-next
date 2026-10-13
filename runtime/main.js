@@ -1575,7 +1575,7 @@ function apiShowDesc(state)
 	TraceScript("J859", "operation=apiShowDesc completed");
 	return true;
 }
-function apiRunCmd(path)
+function apiRunCmd(path, htmlFolder, charset)
 {
 	var messageTemplate=GetLocalizedStringOrDefault("fbe.script.run_failed", "The script\n\n{path}\n\ncould not be started because it could not be loaded successfully.\n\nThe file may no longer be at its expected path.");
 	var scriptPath=String(path==null ? "" : path);
@@ -1583,7 +1583,7 @@ function apiRunCmd(path)
 	window.Run=function() {
 	  if (window.msgText) alert(window.msgText);
 	};
-	if(!LoadUserCommandScript(path))
+	if(!LoadUserCommandScript(path, charset))
 		return;
         Run();
 	window.Run=function() {
@@ -1594,7 +1594,7 @@ function apiRunCmd(path)
 // MSHTML may reuse a script whose src has already been assigned. Replace the
 // element so every command invocation is a fresh load; the id remains stable
 // for legacy combo scripts which address userCmd directly.
-function LoadUserCommandScript(path)
+function LoadUserCommandScript(path, charset)
 {
 	var previous=document.getElementById("userCmd");
 	if(!previous || !previous.parentNode)
@@ -1603,6 +1603,7 @@ function LoadUserCommandScript(path)
 	script.id="userCmd";
 	script.language="JavaScript";
 	script.type="text/javascript";
+	if(charset) script.charset=charset;
 	previous.parentNode.replaceChild(script,previous);
 	script.src="file:///"+path;
 	return script;

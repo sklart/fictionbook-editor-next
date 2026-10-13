@@ -275,6 +275,10 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClCompile Include="document\recent\RecentDocumentsController.cpp" />
 	<ClCompile Include="scripts\ScriptCatalog.cpp" />
 	<ClCompile Include="scripts\ScriptRegistry.cpp" />
+	<ClCompile Include="scripts\ScriptCardBlock.cpp" />
+	<ClCompile Include="scripts\ScriptCardDependencies.cpp" />
+	<ClCompile Include="scripts\ScriptCardDlg.cpp" />
+	<ClCompile Include="scripts\ScriptCardParser.cpp" />
 	<ClCompile Include="scripts\ScriptCommandRegistry.cpp" />
 	<ClCompile Include="scripts\ScriptVisualResources.cpp" />
     <ClCompile Include="scripts\ScriptMenuBuilder.cpp" />
@@ -488,6 +492,9 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="document\recent\RecentDocumentsController.h" />
 	<ClInclude Include="scripts\ScriptCatalog.h" />
 	<ClInclude Include="scripts\ScriptRegistry.h" />
+	<ClInclude Include="scripts\ScriptCardBlock.h" />
+	<ClInclude Include="scripts\ScriptCardDlg.h" />
+	<ClInclude Include="scripts\ScriptCardParser.h" />
 	<ClInclude Include="scripts\ScriptDescriptor.h" />
 	<ClInclude Include="scripts\ScriptCommandRegistry.h" />
 	<ClInclude Include="scripts\ScriptVisualResources.h" />

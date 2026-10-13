@@ -26,6 +26,12 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/build/generate-regex-help-html.ps1 -Check
+      - name: Check embedded Script Cards and search index
+        shell: pwsh
+        run: |
+          ./tools/build/Initialize-CiUtf8.ps1
+          python ./tools/tests/test-script-card-catalog.py
+          python ./tools/generate-script-card-index.py --check
       - name: Validate localization preflight
         shell: pwsh
         run: |

@@ -40,7 +40,7 @@ try {
     $savedMode = $env:FBE_NEXT_TEST_MODE; $savedScenario = $env:FBE_NEXT_TEST_SCENARIO
     try {
         $env:FBE_NEXT_TEST_MODE = '1'
-        Invoke-Scenario 'script-live-reload-runtime' @('phase=script-live-reload', 'version-1=1', 'version-2=1')
+        Invoke-Scenario 'script-live-reload-runtime' @('phase=script-live-reload', 'version-1=1', 'version-2=1', 'plain-cp1251=1', 'card-cp1251=1')
         Invoke-Scenario 'script-catalog-refresh-runtime' @('phase=script-catalog-refresh', 'contents=1', 'added=1', 'removed=1', 'renamed=1', 'icon=1', 'uid=1', 'tree=1', 'document=1')
     } finally { $env:FBE_NEXT_TEST_MODE = $savedMode; $env:FBE_NEXT_TEST_SCENARIO = $savedScenario }
     Write-Host 'Script live reload runtime regression passed.'

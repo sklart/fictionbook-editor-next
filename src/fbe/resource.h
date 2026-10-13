@@ -211,6 +211,7 @@
 #define IDD_SETTINGS_IMAGES             262
 #define IDD_FIND_RESULTS                263
 #define IDD_FB2_QUALITY_RESULTS         268
+#define IDD_SCRIPT_CARD                 269
 #define IDD_SCRIPTS_TOOLBAR_CUSTOMIZE   264
 #define IDD_SCRIPT_TOOLBAR_MANAGER      266
 #define IDD_ARCHIVE_ENTRY                265
@@ -804,6 +805,12 @@
 #define IDC_FB2_QUALITY_DETAILS        1694
 #define IDC_FB2_QUALITY_COPY           1695
 #define IDC_FB2_QUALITY_EMPTY          1696
+#define IDC_SCRIPT_CARD_HEADER          1697
+#define IDC_SCRIPT_CARD_BODY            1698
+#define IDC_SCRIPT_CARD_RUN             1699
+#define IDC_SCRIPT_CARD_OPEN            1700
+#define IDC_SCRIPT_CARD_COPY            1701
+#define IDC_SCRIPT_CARD_ICON            1702
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_FIRST 33033
 #define ID_VIEW_SCRIPT_TOOLBAR_DYNAMIC_LAST  57599
 #define ID_DOCUMENT_TREE_MODE_STRUCTURE       57600
@@ -820,9 +827,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        269
+#define _APS_NEXT_RESOURCE_VALUE        270
 #define _APS_NEXT_COMMAND_VALUE         57605
-#define _APS_NEXT_CONTROL_VALUE         1697
+#define _APS_NEXT_CONTROL_VALUE         1703
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

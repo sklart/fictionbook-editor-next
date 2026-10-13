@@ -174,6 +174,10 @@
 	<ClCompile Include="document\recent\RecentDocumentsManager.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptCatalog.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptRegistry.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="scripts\ScriptCardBlock.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="scripts\ScriptCardDependencies.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="scripts\ScriptCardDlg.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="scripts\ScriptCardParser.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptCommandRegistry.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="scripts\ScriptVisualResources.cpp"><Filter>Source Files</Filter></ClCompile>
 	<ClCompile Include="toolbars\ScriptToolbarCollection.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -361,6 +365,9 @@
 	<ClInclude Include="document\recent\RecentDocumentsManager.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptCatalog.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptRegistry.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="scripts\ScriptCardBlock.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="scripts\ScriptCardDlg.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="scripts\ScriptCardParser.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptDescriptor.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptCommandRegistry.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="scripts\ScriptVisualResources.h"><Filter>Header Files</Filter></ClInclude>

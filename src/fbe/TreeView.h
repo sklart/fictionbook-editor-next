@@ -28,6 +28,7 @@ enum NavigationPopupCommand
 	NavigationPopupRunScript = 1,
 	NavigationPopupOpenLocation = 2,
 	NavigationPopupToggleFavorite = 3,
+	NavigationPopupAboutScript = 4,
 	NavigationPopupAddToolbarBase = 100
 };
 
@@ -65,9 +66,14 @@ protected:
 	bool m_script_popup_run_enabled = false;
 	bool m_script_popup_open_enabled = false;
 	HWND m_script_search_window = NULL;
+	HTREEITEM m_script_info_hover = NULL;
+	HTREEITEM m_script_info_pressed = NULL;
+	HWND m_script_info_tooltip = NULL;
+	CString m_script_info_tooltip_text;
 	std::function<bool(const std::vector<CString>&, const CString&)> m_add_scripts_to_toolbar;
 	std::function<void(const CString&)> m_open_script_location;
 	std::function<void(UINT)> m_run_script;
+	std::function<void(const CString&)> m_show_script_card;
   std::map<long, HTREEITEM>	m_source_index;
   ULONGLONG				m_tree_index_lookup_count;
   ULONGLONG				m_tree_linear_fallback_count;
@@ -96,6 +102,8 @@ public:
   
   BEGIN_MSG_MAP(CTreeView)
 	MESSAGE_HANDLER(WM_MOUSEMOVE, OnMouseMove)
+		MESSAGE_HANDLER(WM_MOUSELEAVE, OnMouseLeave)
+		MESSAGE_HANDLER(WM_SETCURSOR, OnSetCursor)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
     MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
     MESSAGE_HANDLER(WM_LBUTTONDOWN, OnClick)
@@ -104,6 +112,7 @@ public:
     MESSAGE_HANDLER(WM_KEYDOWN, OnKeyDown)
 	MESSAGE_HANDLER(WM_CHAR, OnChar)
 	MESSAGE_HANDLER(WM_LBUTTONUP, OnLButtonUp)
+	MESSAGE_HANDLER(WM_CAPTURECHANGED, OnCaptureChanged)
 	MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
 
 	COMMAND_ID_HANDLER(ID_DOCUMENT_TREE_CUT, OnCut)
@@ -132,6 +141,7 @@ public:
   LRESULT OnKeyDown(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
   LRESULT OnChar(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
   LRESULT OnContextMenu(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/);
+	LRESULT OnCaptureChanged(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnCut(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
   LRESULT OnPaste(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
   LRESULT OnView(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
@@ -146,6 +156,11 @@ public:
   LRESULT OnLeftWithChildren(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
   LRESULT OnMerge(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnCustomDraw(int /* unused: idCtrl */, LPNMHDR header, BOOL& bHandled);
+	LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnSetCursor(UINT, WPARAM, LPARAM, BOOL&);
+	bool ScriptInfoRect(HTREEITEM item, RECT& bounds);
+	HTREEITEM ScriptInfoAt(POINT point);
+	void UpdateScriptInfoHover(HTREEITEM item);
 
   
   LRESULT OnDeleteItem(int /* unused: idCtrl */, LPNMHDR pnmh, BOOL& /* unused: bHandled */) {
@@ -168,6 +183,7 @@ public:
 		const std::function<void(const CString&)>& openLocation,
 		const std::function<void(UINT)>& runScript);
 	void SetScriptToolbarTargets(const std::vector<ScriptTreeToolbarTarget>& toolbars);
+	void SetScriptCardHandler(const std::function<void(const CString&)>& handler) { m_show_script_card = handler; }
 	void SetScriptFilter(const CString& filter);
 	const CString& ScriptFilter() const { return m_script_filter; }
 	void SetScriptSearchWindow(HWND window) { m_script_search_window = window; }
@@ -206,6 +222,7 @@ public:
 	void SelectAllVisibleItems();
 	bool HasScriptToolbarTarget(const CString& id, const CString& name) const;
 	bool ExecuteScriptPopupCommand(UINT command);
+	bool ShowSelectedScriptCard();
 
   CTreeItem GetMoveElementFrom(){m_move_from.m_pTreeView = this; return m_move_from;}
   CTreeItem GetMoveElementTo(){m_move_to.m_pTreeView = this;return m_move_to;}

@@ -22,6 +22,9 @@
 *.rc2 text eol=crlf
 runtime/main.js text eol=crlf
 runtime/Scripts/**/*.js text eol=crlf
+# This historical script is LF in the audited source snapshot. Its embedded
+# sourceRevision hashes exact bytes, so keep that checkout representation.
+runtime/Scripts/32_*/52_*.js text eol=lf
 runtime/Scripts/**/*.html text eol=crlf
 runtime/Scripts/**/*.htm text eol=crlf
 runtime/Scripts/**/*.css text eol=crlf

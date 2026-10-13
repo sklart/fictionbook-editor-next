@@ -1,6 +1,90 @@
 	CAtlFile output;
 	if (FAILED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))
 		return 0;
+	if (IsFbeTestScenario(L"script-card-block-runtime"))
+	{
+		const BYTE ascii[] = "\xEF\xBB\xBF/*<FBE-NEXT-CARD version=\"1\">\r\n{}\r\n</FBE-NEXT-CARD>*/\r\nABC";
+		ScriptCardBlock::Span span;
+		const bool asciiSpan = ScriptCardBlock::Find(ascii, sizeof(ascii) - 1, span) == ScriptCardBlock::Status::Present &&
+			span.begin == 3 && span.end < sizeof(ascii) - 1;
+		const bool asciiHash = ScriptCardBlock::Sha256WithoutCard(ascii, sizeof(ascii) - 1) ==
+			L"850e8455109dc0670eaecf5b638e036046b87d83db5d0bbc6b455a027d5a627a";
+		const BYTE plain[] = { 'A', 'B', 'C' };
+		const bool plainHash = ScriptCardBlock::Sha256WithoutCard(plain, sizeof(plain)) ==
+			L"b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78";
+		std::vector<BYTE> utf16 = { 0xFF, 0xFE };
+		const wchar_t text[] = L"/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\nABC";
+		const BYTE* encoded = reinterpret_cast<const BYTE*>(text);
+		utf16.insert(utf16.end(), encoded, encoded + (wcslen(text) * sizeof(wchar_t)));
+		const bool utf16Hash = ScriptCardBlock::Find(utf16.data(), utf16.size(), span) == ScriptCardBlock::Status::Present &&
+			ScriptCardBlock::Sha256WithoutCard(utf16.data(), utf16.size()) ==
+			L"c85e33093b36131b8fee0a7df1b83e94e21e78576831e2df7e5965f1c764f748";
+		const BYTE invalid[] = "/*<FBE-NEXT-CARD version=\"1\">\n{}";
+		const bool malformed = ScriptCardBlock::Find(invalid, sizeof(invalid) - 1, span) == ScriptCardBlock::Status::Malformed;
+		const BYTE misplaced[] = "// header\n/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\nABC";
+		const bool rejectedMisplaced = ScriptCardBlock::Find(misplaced, sizeof(misplaced) - 1, span) == ScriptCardBlock::Status::Malformed;
+		const BYTE duplicate[] = "/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\n/*<FBE-NEXT-CARD version=\"1\">\n{}\n</FBE-NEXT-CARD>*/\nABC";
+		const bool rejectedDuplicate = ScriptCardBlock::Find(duplicate, sizeof(duplicate) - 1, span) == ScriptCardBlock::Status::Malformed;
+		const char json[] = "{\"schema\":1,\"title\":\"Example\",\"version\":\"1\",\"authors\":[{\"name\":\"Author\",\"role\":\"author\"}],"
+			"\"summary\":\"Summary\",\"description\":\"Description\",\"scope\":\"document\",\"modifiesDocument\":null,"
+			"\"requiresSelection\":false,\"usage\":[\"Open\"],\"warnings\":[],\"dependencies\":[],"
+			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\",\"sha256\":\"b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78\",\"reviewStatus\":\"generated\"}}";
+		CStringA cardText("/*<FBE-NEXT-CARD version=\"1\">\n");
+		cardText += json; cardText += "\n</FBE-NEXT-CARD>*/\nABC";
+		auto parseText = [](const CStringA& value) {
+			return ScriptCards::Parse(reinterpret_cast<const BYTE*>(static_cast<LPCSTR>(value)), static_cast<size_t>(value.GetLength()));
+		};
+		const ScriptCards::Card current = parseText(cardText);
+		const bool parsedCurrent = current.state == ScriptCards::State::Current && current.title == L"Example" &&
+			current.authors.size() == 1 && current.authors[0].name == L"Author" && current.modifiesDocument == -1;
+		const ScriptCards::Card changed = parseText(cardText + " ");
+		const bool parsedChanged = changed.state == ScriptCards::State::Changed;
+		CStringA uncheckedText(cardText);
+		uncheckedText.Replace("\"b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78\"", "null");
+		const ScriptCards::Card unchecked = parseText(uncheckedText);
+		const bool parsedUnchecked = unchecked.state == ScriptCards::State::Unchecked && !unchecked.currentSha256.IsEmpty();
+		CStringA broken(cardText); broken.Replace("\"schema\":1", "\"schema\":2");
+		const bool parsedInvalid = parseText(broken).state == ScriptCards::State::Invalid;
+		const bool parsedMissing = parseText(CStringA("ABC")).state == ScriptCards::State::Missing;
+		CStringA withDependency(cardText);
+		withDependency.Replace("\"dependencies\":[]", "\"dependencies\":[{\"path\":\"HTML/helper.html\",\"sha256\":null,\"optional\":false}],\"dependenciesComplete\":false");
+		const ScriptCards::Card dependency = parseText(withDependency);
+		const bool parsedDependency = dependency.state == ScriptCards::State::Current && dependency.dependencies.size() == 1 &&
+			dependency.dependencies[0].path == L"HTML/helper.html" && !dependency.dependencies[0].optional && !dependency.dependenciesComplete;
+		CStringA escapingDependency(withDependency);
+		escapingDependency.Replace("HTML/helper.html", "../outside.html");
+		const bool rejectedDependency = parseText(escapingDependency).state == ScriptCards::State::Invalid;
+		CString dependencyRoot(AU::_ARGS.source_memory_benchmark_path);
+		const int lastSlash = dependencyRoot.ReverseFind(L'\\');
+		dependencyRoot = lastSlash >= 0 ? dependencyRoot.Left(lastSlash) : CString();
+		const CString dependencyPath = dependencyRoot + L"\\script-card-dependency.bin";
+		CAtlFile dependencyFile;
+		const bool openedDependency = !dependencyRoot.IsEmpty() &&
+			SUCCEEDED(dependencyFile.Create(dependencyPath, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS));
+		DWORD dependencyWritten = 0;
+		const bool wroteDependency = openedDependency && SUCCEEDED(dependencyFile.Write("old", 3, &dependencyWritten)) && dependencyWritten == 3;
+		dependencyFile.Close();
+		CStringA checkedDependency(cardText);
+		checkedDependency.Replace("\"dependencies\":[]",
+			"\"dependencies\":[{\"path\":\"script-card-dependency.bin\",\"sha256\":\"cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4\",\"optional\":false}],\"dependenciesComplete\":true");
+		ScriptCards::Card checked = parseText(checkedDependency);
+		if(wroteDependency) ScriptCards::VerifyDependencies(checked, dependencyRoot);
+		const bool dependencyCurrent = checked.dependencyState == ScriptCards::Card::DependenciesState::Current &&
+			checked.dependencies.size() == 1 && checked.dependencies[0].state == ScriptCards::Dependency::State::Current;
+		::DeleteFileW(dependencyPath);
+		ScriptCards::VerifyDependencies(checked, dependencyRoot);
+		const bool dependencyMissing = checked.dependencyState == ScriptCards::Card::DependenciesState::Changed &&
+			checked.dependencies[0].state == ScriptCards::Dependency::State::Missing;
+		const bool passed = asciiSpan && asciiHash && plainHash && utf16Hash && malformed && rejectedMisplaced && rejectedDuplicate &&
+			parsedCurrent && parsedChanged && parsedUnchecked && parsedInvalid && parsedMissing && parsedDependency && rejectedDependency &&
+			dependencyCurrent && dependencyMissing;
+		CStringA report; report.Format("ascii-span=%d\nascii-hash=%d\nplain-hash=%d\nutf16-hash=%d\nmalformed=%d\nrejected-misplaced=%d\nrejected-duplicate=%d\nparsed-current=%d\nparsed-changed=%d\nparsed-unchecked=%d\nparsed-invalid=%d\nparsed-missing=%d\nparsed-dependency=%d\nrejected-dependency=%d\ndependency-current=%d\ndependency-missing=%d\nresult=%s\n",
+			asciiSpan, asciiHash, plainHash, utf16Hash, malformed, rejectedMisplaced, rejectedDuplicate, parsedCurrent, parsedChanged,
+			parsedUnchecked, parsedInvalid, parsedMissing, parsedDependency, rejectedDependency,
+			dependencyCurrent, dependencyMissing, passed ? "pass" : "fail");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"xml-source-theme-v1-runtime"))
 	{
 		static const wchar_t* const tokenNames[XML_SRC_STYLE_TOKEN_COUNT] = {

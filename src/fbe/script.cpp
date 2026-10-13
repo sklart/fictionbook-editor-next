@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#include "scripts/ScriptCardBlock.h"
+
 
 #include <exception>
 #include <new>
@@ -697,9 +699,26 @@ HRESULT	ScriptLoad(const wchar_t *filename) {
     return FAILED(hr) ? hr : E_NOINTERFACE;
   }
 
-  // 1КБ текста вполне достаточно для определения кодировки. Работает гораздо быстрее, чем с целым файлом.
-  INT len = min(1024, length);
-  HRESULT hCP = pimlang2->DetectInputCodepage(MLDETECTCP_8BIT, 0, (CHAR*)tmp, &len, &pencode, &nos);
+  // A long ASCII card must not mask the original script's code page. Keep
+  // decoding the complete file, but use the first code bytes for MLang's
+  // heuristic when there is no BOM to identify the encoding directly.
+  ScriptCardBlock::Span cardSpan;
+  const bool hasCard = ScriptCardBlock::Find(tmp, length, cardSpan) == ScriptCardBlock::Status::Present;
+  const bool hasBom = length >= 2 && ((tmp[0] == 0xFF && tmp[1] == 0xFE) ||
+    (tmp[0] == 0xFE && tmp[1] == 0xFF) ||
+    (length >= 3 && tmp[0] == 0xEF && tmp[1] == 0xBB && tmp[2] == 0xBF));
+  const BYTE* detection = hasCard && !hasBom ? tmp + cardSpan.end : tmp;
+  const DWORD detectionLength = hasCard && !hasBom ? length - static_cast<DWORD>(cardSpan.end) : length;
+  INT len = static_cast<INT>(min(1024UL, detectionLength));
+  HRESULT hCP = pimlang2->DetectInputCodepage(MLDETECTCP_8BIT, 0, (CHAR*)detection, &len, &pencode, &nos);
+
+  // MLang can report UTF-8 for legacy ANSI scripts even when their bytes are
+  // not valid UTF-8. In that case use the Windows ANSI page rather than
+  // replacing source characters with U+FFFD before JScript sees them.
+  if(hCP == S_OK && pencode.nCodePage == CP_UTF8 && !hasBom && length <= INT_MAX &&
+    ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, reinterpret_cast<LPCCH>(tmp),
+      static_cast<int>(length), NULL, 0) == 0)
+    pencode.nCodePage = ::GetACP();
 
   if(hCP == S_OK)
   {

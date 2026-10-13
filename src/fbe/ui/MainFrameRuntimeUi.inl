@@ -271,5 +271,6 @@ void CMainFrame::RefreshLocalizedMainFrameUi()
 	RefreshLocalizedToolbarCaptions();
 	m_contextAttributeBars.UpdateLocalization();
 	m_document_tree.RefreshLocalizedTitle();
+	m_script_card_window.RefreshLocalization();
 	UpdateLayout();
 }

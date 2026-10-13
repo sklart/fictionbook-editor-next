@@ -15,6 +15,7 @@
 #include "recovery\\RecoveryController.h"
 #include "document\\recent\\RecentDocumentsController.h"
 #include "scripts\\ScriptUiController.h"
+#include "scripts\\ScriptCardDlg.h"
 #include "plugins\\PluginUiController.h"
 #include "plugins\\PluginExecutionController.h"
 #include "diagnostics\\DiagnosticCommandService.h"
@@ -154,6 +155,7 @@ public:
 	//CSplitterWindow		m_dummy_pane; // frame around the tree
 	//CTreeView			m_tree; // treeview itself
 	CDocumentTree		m_document_tree;
+	CScriptCardDlg		m_script_card_window;
 
   CMultiPaneStatusBarCtrl m_status; // status bar
   wchar_t strINS[MAX_LOAD_STRING + 1];
@@ -256,6 +258,7 @@ public:
 	bool AddScriptToToolbar(const CString& scriptUid, const CString& toolbarId);
 	bool AddScriptsToToolbar(const std::vector<CString>& scriptUids, const CString& toolbarId);
 	void RefreshNavigationScriptTree();
+	void ShowScriptCard(const CString& uid);
 	void RefreshNavigationScriptToolbarTargets();
 	bool InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition);
 	void RefreshScriptToolbarViewMenu();

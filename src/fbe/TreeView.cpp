@@ -237,8 +237,12 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 {
 	if(header == NULL || header->code != NM_CUSTOMDRAW) { bHandled = FALSE; return CDRF_DODEFAULT; }
 	LPNMTVCUSTOMDRAW draw = reinterpret_cast<LPNMTVCUSTOMDRAW>(header);
-	if(ThemeManager::IsHighContrast()) return CDRF_DODEFAULT;
+	if(draw->nmcd.dwDrawStage == CDDS_PREPAINT) return CDRF_NOTIFYITEMDRAW;
 	const HTREEITEM item = reinterpret_cast<HTREEITEM>(draw->nmcd.dwItemSpec);
+	const std::map<HTREEITEM, size_t>::const_iterator scriptNode = m_script_nodes.find(item);
+	const bool scriptInfo = m_script_mode && scriptNode != m_script_nodes.end() &&
+		scriptNode->second < m_script_items.size() && !m_script_items[scriptNode->second].isFolder;
+	if(ThemeManager::IsHighContrast() && !scriptInfo) return CDRF_DODEFAULT;
 	if(draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT && item == m_current_item)
 	{
 		if(!(GetItemState(m_current_item, TVIS_SELECTED) & TVIS_SELECTED))
@@ -251,6 +255,7 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 		// receives the accent marker at post-paint below.
 		return CDRF_NOTIFYPOSTPAINT;
 	}
+	if(draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT && scriptInfo) return CDRF_NOTIFYPOSTPAINT;
 	if(draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && item == m_current_item)
 	{
 		RECT bounds = {};
@@ -262,7 +267,105 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 			if(marker) { ::FillRect(draw->nmcd.hdc, &bounds, marker); ::DeleteObject(marker); }
 		}
 	}
+	if(draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && scriptInfo)
+	{
+		RECT button = {};
+		if(ScriptInfoRect(item, button))
+		{
+			const bool selected = (GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED) != 0;
+			const bool focused = ::GetFocus() == m_hWnd && GetSelectedItem() == item;
+			const COLORREF background = selected ? ThemeManager::SelectionBackgroundColor() :
+				item == m_current_item ? ThemeManager::HoverColor() : ThemeManager::WindowColor();
+			HBRUSH backdrop = ::CreateSolidBrush(background);
+			if(backdrop) { ::FillRect(draw->nmcd.hdc, &button, backdrop); ::DeleteObject(backdrop); }
+			const bool hovered = item == m_script_info_hover || focused;
+			const bool pressed = item == m_script_info_pressed && item == m_script_info_hover;
+			const int inset = UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_hWnd));
+			RECT circle = { button.left + inset, button.top + inset, button.right - inset, button.bottom - inset };
+			const COLORREF color = selected ? ThemeManager::SelectionTextColor() : ThemeManager::AccentColor();
+			HPEN pen = ::CreatePen(PS_SOLID, (std::max)(1, UiMetrics::ScaleForDpi(1, UiMetrics::DpiForWindow(m_hWnd))), color);
+			HBRUSH brush = ::CreateSolidBrush(pressed ? ThemeManager::AccentColor() :
+				hovered ? ThemeManager::HoverColor() : background);
+			if(pen && brush)
+			{
+				HGDIOBJ oldPen = ::SelectObject(draw->nmcd.hdc, pen);
+				HGDIOBJ oldBrush = ::SelectObject(draw->nmcd.hdc, brush);
+				::Ellipse(draw->nmcd.hdc, circle.left, circle.top, circle.right, circle.bottom);
+				::SelectObject(draw->nmcd.hdc, oldBrush);
+				::SelectObject(draw->nmcd.hdc, oldPen);
+				RECT label = circle;
+				::SetBkMode(draw->nmcd.hdc, TRANSPARENT);
+				::SetTextColor(draw->nmcd.hdc, pressed ? ThemeManager::SelectionTextColor() : color);
+				::DrawTextW(draw->nmcd.hdc, L"i", 1, &label, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+			}
+			if(brush) ::DeleteObject(brush);
+			if(pen) ::DeleteObject(pen);
+		}
+	}
 	return CDRF_DODEFAULT;
+}
+
+bool CTreeView::ScriptInfoRect(HTREEITEM item, RECT& bounds)
+{
+	if(!m_script_mode || item == NULL) return false;
+	const auto found = m_script_nodes.find(item);
+	if(found == m_script_nodes.end() || found->second >= m_script_items.size() ||
+		m_script_items[found->second].isFolder || !GetItemRect(item, &bounds, FALSE)) return false;
+	RECT client = {}; GetClientRect(&client);
+	const int side = (std::min)(static_cast<int>(bounds.bottom - bounds.top), UiMetrics::ScaleForDpi(24, UiMetrics::DpiForWindow(m_hWnd)));
+	const int margin = UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(m_hWnd));
+	bounds.left = client.right - margin - side;
+	bounds.right = bounds.left + side;
+	bounds.top += ((bounds.bottom - bounds.top) - side) / 2;
+	bounds.bottom = bounds.top + side;
+	return bounds.left >= client.left;
+}
+
+HTREEITEM CTreeView::ScriptInfoAt(POINT point)
+{
+	if(!m_script_mode) return NULL;
+	HTREEITEM item = HitTest(point, NULL);
+	RECT bounds = {};
+	if(item == NULL)
+	{
+		for(HTREEITEM visible = TreeView_GetFirstVisible(m_hWnd); visible != NULL;
+			visible = TreeView_GetNextVisible(m_hWnd, visible))
+		{
+			RECT row = {};
+			if(!GetItemRect(visible, &row, FALSE)) continue;
+			if(point.y >= row.top && point.y < row.bottom) { item = visible; break; }
+			if(row.top > point.y) break;
+		}
+	}
+	return ScriptInfoRect(item, bounds) && ::PtInRect(&bounds, point) ? item : NULL;
+}
+
+void CTreeView::UpdateScriptInfoHover(HTREEITEM item)
+{
+	if(item == m_script_info_hover) return;
+	m_script_info_hover = item;
+	if(m_script_info_tooltip)
+	{
+		TOOLINFOW tool = { sizeof(tool) };
+		tool.hwnd = m_hWnd;
+		tool.uId = 1;
+		::SendMessageW(m_script_info_tooltip, TTM_TRACKACTIVATE, FALSE, reinterpret_cast<LPARAM>(&tool));
+		if(item != NULL)
+		{
+			m_script_info_tooltip_text = FbeLoadRuntimeStringByKey(L"fbe.script_card.about", L"About script...");
+			tool.lpszText = const_cast<LPWSTR>(m_script_info_tooltip_text.GetString());
+			::SendMessageW(m_script_info_tooltip, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&tool));
+			RECT bounds = {};
+			if(ScriptInfoRect(item, bounds))
+			{
+				POINT anchor = { bounds.left, bounds.bottom };
+				ClientToScreen(&anchor);
+				::SendMessageW(m_script_info_tooltip, TTM_TRACKPOSITION, 0, MAKELPARAM(anchor.x, anchor.y));
+				::SendMessageW(m_script_info_tooltip, TTM_TRACKACTIVATE, TRUE, reinterpret_cast<LPARAM>(&tool));
+			}
+		}
+	}
+	::InvalidateRect(m_hWnd, NULL, FALSE);
 }
 
 
@@ -524,6 +627,18 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
 	  m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, UiMetrics::DpiForWindow(m_hWnd));
 	  m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,16,8);
+	m_script_info_tooltip = ::CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, NULL,
+		WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	if(m_script_info_tooltip)
+	{
+		TOOLINFOW tool = { sizeof(tool) };
+		tool.uFlags = TTF_TRACK | TTF_ABSOLUTE;
+		tool.hwnd = m_hWnd;
+		tool.uId = 1;
+		tool.lpszText = const_cast<LPWSTR>(L"About script...");
+		::SendMessageW(m_script_info_tooltip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&tool));
+	}
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
   SetScrollTime(1);
@@ -537,6 +652,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
 
 LRESULT CTreeView::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if(m_script_info_tooltip) { ::DestroyWindow(m_script_info_tooltip); m_script_info_tooltip = NULL; }
   SetImageList(NULL,TVSIL_NORMAL);
   m_scriptImageList.Destroy();
   m_ImageList.Destroy();
@@ -553,6 +669,21 @@ LRESULT CTreeView::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam *
 
 LRESULT CTreeView::OnClick(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	if(m_script_mode)
+	{
+		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		const HTREEITEM info = ScriptInfoAt(point);
+		if(info != NULL)
+		{
+			m_script_info_pressed = info;
+			UpdateScriptInfoHover(info);
+			::SetCapture(m_hWnd);
+			RECT bounds = {};
+			if(ScriptInfoRect(info, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE);
+			bHandled = TRUE;
+			return 0;
+		}
+	}
 	bHandled = SetMultiSelection(wParam, lParam);
   // check if we are going to hit an item
   /*UINT	  flags=0;
@@ -573,6 +704,8 @@ LRESULT CTreeView::OnDblClick(UINT /* unused: uMsg */, WPARAM /* unused: wParam 
 {
 	if(m_script_mode)
 	{
+		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		if(ScriptInfoAt(point) != NULL) return 0;
 		UINT flags = 0;
 		CTreeItem item(HitTest(CPoint(LOWORD(lParam), HIWORD(lParam)), &flags), this);
 		if((flags & TVHT_ONITEM) && !item.IsNull())
@@ -637,6 +770,12 @@ LRESULT CTreeView::OnKeyDown(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* u
 	}
 	if(m_script_mode && wParam == VK_RETURN)
 	{
+		if((::GetKeyState(VK_MENU) & 0x8000) != 0)
+		{
+			ShowSelectedScriptCard();
+			bHandled = TRUE;
+			return 0;
+		}
 		const ScriptDescriptor* script = SelectedScript();
 		if(script != NULL && script->isFolder) {
 			CTreeItem item = GetSelectedItem(); item.Expand((item.GetState(TVIS_EXPANDED) & TVIS_EXPANDED) ? TVE_COLLAPSE : TVE_EXPAND);
@@ -714,9 +853,29 @@ LRESULT CTreeView::OnBegindrag(int /* unused: idCtrl */, LPNMHDR mhdr, BOOL& bHa
 	return 0;
 }
 
-LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM, BOOL& bHandled)
+LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
-	if(m_script_mode) { bHandled = TRUE; return 0; }
+	if(m_script_mode)
+	{
+		const HTREEITEM pressed = m_script_info_pressed;
+		m_script_info_pressed = NULL;
+		if(pressed != NULL)
+		{
+			const POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			const bool activate = ScriptInfoAt(point) == pressed;
+			if(::GetCapture() == m_hWnd) ::ReleaseCapture();
+			RECT bounds = {};
+			if(ScriptInfoRect(pressed, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE);
+			if(activate)
+			{
+				const auto found = m_script_nodes.find(pressed);
+				if(found != m_script_nodes.end() && m_show_script_card)
+					m_show_script_card(m_script_items[found->second].uid);
+			}
+		}
+		bHandled = TRUE;
+		return 0;
+	}
 	if(m_drag)
 	{
 		EndDrag();
@@ -726,9 +885,27 @@ LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM, BOOL& bHandled)
 	return 0;
 }
 
+LRESULT CTreeView::OnCaptureChanged(UINT, WPARAM, LPARAM, BOOL& bHandled)
+{
+	const HTREEITEM pressed = m_script_info_pressed;
+	m_script_info_pressed = NULL;
+	RECT bounds = {};
+	if(pressed != NULL && ScriptInfoRect(pressed, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE);
+	bHandled = FALSE;
+	return 0;
+}
+
 LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 {
-	if(m_script_mode) { bHandled = TRUE; return 0; }
+	if(m_script_mode)
+	{
+		TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, m_hWnd, 0 };
+		::TrackMouseEvent(&tracking);
+		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		UpdateScriptInfoHover(ScriptInfoAt(point));
+		bHandled = TRUE;
+		return 0;
+	}
 	if(m_drag)
 	{
 		POINTS Pos = MAKEPOINTS(lParam);
@@ -788,6 +965,27 @@ LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 	return 0;	
 }
 
+LRESULT CTreeView::OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&)
+{
+	UpdateScriptInfoHover(NULL);
+	return 0;
+}
+
+LRESULT CTreeView::OnSetCursor(UINT, WPARAM, LPARAM, BOOL& bHandled)
+{
+	POINT point = {};
+	::GetCursorPos(&point);
+	ScreenToClient(&point);
+	if(ScriptInfoAt(point) != NULL)
+	{
+		::SetCursor(::LoadCursor(NULL, IDC_HAND));
+		bHandled = TRUE;
+		return TRUE;
+	}
+	bHandled = FALSE;
+	return FALSE;
+}
+
 LRESULT CTreeView::OnRClick(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled)
 {
 	if(m_script_mode)
@@ -843,6 +1041,8 @@ LRESULT CTreeView::OnContextMenu(UINT /*uMsg*/, WPARAM /* unused: wParam */, LPA
 		m_script_popup_open_enabled = !multiple;
 		CMenu menu; menu.CreatePopupMenu();
 		menu.AppendMenu(MF_STRING | (multiple ? MF_GRAYED : 0), NavigationPopupRunScript, FbeLoadRuntimeStringByKey(L"fbe.document_tree.scripts.run", L"Run"));
+		menu.AppendMenu(MF_STRING | (multiple ? MF_GRAYED : 0), NavigationPopupAboutScript,
+			FbeLoadRuntimeStringByKey(L"fbe.script_card.about", L"About script..."));
 		menu.AppendMenu(MF_SEPARATOR);
 		m_script_popup_favorite_label = FbeLoadRuntimeStringByKey(allFavorites ? L"fbe.document_tree.scripts.remove_favorite" : L"fbe.document_tree.scripts.add_favorite",
 			allFavorites ? L"★ Remove from favorites" : L"★ Add to favorites");
@@ -994,6 +1194,7 @@ bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 	const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
 	if(scripts.empty()) return false;
 	if(command == NavigationPopupRunScript) { if(scripts.size() != 1) return false; RunSelectedScript(); return true; }
+	if(command == NavigationPopupAboutScript) return ShowSelectedScriptCard();
 	if(command == NavigationPopupToggleFavorite)
 	{
 		const bool remove = SelectedScriptsAreAllFavorites();
@@ -1020,10 +1221,23 @@ bool CTreeView::ExecuteScriptPopupCommand(UINT command)
 	return false;
 }
 
+bool CTreeView::ShowSelectedScriptCard()
+{
+	const std::vector<const ScriptDescriptor*> scripts = SelectedScripts();
+	if(scripts.size() != 1 || !m_show_script_card) return false;
+	m_show_script_card(scripts[0]->uid);
+	return true;
+}
+
 void CTreeView::SetScriptMode(bool value)
 {
 	if(m_script_mode == value) return;
 	if(value && m_drag) EndDrag();
+	if(!value) {
+		UpdateScriptInfoHover(NULL);
+		m_script_info_pressed = NULL;
+		if(::GetCapture() == m_hWnd) ::ReleaseCapture();
+	}
 	m_script_mode = value;
 	ApplyModeAppearance();
 	if(m_script_mode) { SetImageList(m_scriptImageList,TVSIL_NORMAL); RebuildScriptTree(); }
@@ -1069,6 +1283,9 @@ void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
 
 void CTreeView::RebuildScriptTree()
 {
+	UpdateScriptInfoHover(NULL);
+	m_script_info_pressed = NULL;
+	if(::GetCapture() == m_hWnd) ::ReleaseCapture();
 	m_current_item = NULL;
 	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear(); m_favorite_group = NULL;
 	for(size_t favorite = 0; favorite < m_favorite_scripts.size(); ++favorite)

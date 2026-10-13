@@ -2,6 +2,8 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
+#include "scripts/ScriptCardBlock.h"
+#include "scripts/ScriptCardParser.h"
 #include "structure/BodyStructuralEditor.h"
 #include "structure/StructuralTrace.h"
 #include "table/TableGrid.h"
@@ -1665,6 +1667,9 @@ void  CMainFrame::GoTo(MSHTML::IHTMLElement *e) {
 // message handlers
 BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 {
+	if(m_script_card_window.IsWindow() &&
+		(pMsg->hwnd == m_script_card_window.m_hWnd || ::IsChild(m_script_card_window, pMsg->hwnd)) &&
+		::IsDialogMessageW(m_script_card_window.m_hWnd, pMsg)) return TRUE;
 	// reset ctrl tab
 	if (pMsg->message == WM_KEYUP && pMsg->wParam == VK_CONTROL)
 	{
@@ -2748,6 +2753,33 @@ void CMainFrame::RefreshNavigationScriptTree()
 		[this](const std::vector<CString>& uids, const CString& id) { return AddScriptsToToolbar(uids, id); },
 		[this](const CString& path) { const int slash = path.ReverseFind(L'\\'); if(slash >= 0) ::ShellExecute(m_hWnd, L"open", path.Left(slash), NULL, NULL, SW_SHOWNORMAL); },
 		[this](UINT commandId) { BOOL handled = FALSE; OnToolsScript(0, static_cast<WORD>(ID_SCRIPT_BASE + commandId), NULL, handled); });
+	m_document_tree.m_tree.m_tree.SetScriptCardHandler([this](const CString& uid) { ShowScriptCard(uid); });
+}
+
+void CMainFrame::ShowScriptCard(const CString& uid)
+{
+	for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+	{
+		const ScriptDescriptor& script = m_scripts.Menu().Item(index);
+		if(script.isFolder || script.uid != uid) continue;
+		CString resourceRoot = _Settings.GetScriptsFolder();
+		resourceRoot.TrimRight(L"\\/");
+		const int separator = resourceRoot.ReverseFind(L'\\');
+		if(separator >= 0) resourceRoot = resourceRoot.Left(separator);
+		m_script_card_window.ShowScript(m_hWnd, script, resourceRoot, [this](const CString& currentUid) {
+			for(int current = 0; current < m_scripts.Menu().Count(); ++current)
+			{
+				const ScriptDescriptor& item = m_scripts.Menu().Item(current);
+				if(!item.isFolder && item.uid == currentUid && item.commandId > 0)
+				{
+					BOOL handled = FALSE;
+					OnToolsScript(0, static_cast<WORD>(ID_SCRIPT_BASE + item.commandId), NULL, handled);
+					return;
+				}
+			}
+		});
+		return;
+	}
 }
 
 void CMainFrame::RefreshNavigationScriptToolbarTargets()
@@ -3920,6 +3952,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	if(m_script_card_window.IsWindow()) m_script_card_window.DestroyWindow();
 	if (m_clipboard_listener_registered)
 	{
 		::RemoveClipboardFormatListener(m_hWnd);
