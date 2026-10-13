@@ -109,7 +109,34 @@ foreach ($requiredKey in @(
 }
 
 $resourceText = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.rc')
+$resourceIds = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\resource.h')
 $frameSource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
+foreach($placeholder in @(
+    @{ Key = 'fbe.menu.idr_mainframe.plugins.none.import'; Id = 'ID_FILE_IMPORT_PLACEHOLDER' },
+    @{ Key = 'fbe.menu.idr_mainframe.plugins.none.export'; Id = 'ID_FILE_EXPORT_PLACEHOLDER' }
+)) {
+    $entry = $catalog.strings.PSObject.Properties[$placeholder.Key]
+    if(-not $entry -or $entry.Value.targetId -ne $placeholder.Id) { throw "Неверный targetId для $($placeholder.Key)." }
+    if($resourceText -notmatch ('MENUITEM\s+"[^"]+",\s*{0},\s*INACTIVE' -f [regex]::Escape($placeholder.Id)) -or
+       $resourceIds -notmatch "(?m)^#define\s+$($placeholder.Id)\s+\d+" -or
+       $frameSource -notmatch ([regex]::Escape("GetMenuItemID(importMenu, 0) == ID_FILE_IMPORT_PLACEHOLDER")) -or
+       $frameSource -notmatch ([regex]::Escape("GetMenuItemID(exportMenu, 0) == ID_FILE_EXPORT_PLACEHOLDER"))) {
+        throw "Заглушка $($placeholder.Id) не согласована с ресурсами и runtime-локализацией."
+    }
+}
+$pluginUi = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\plugins\PluginUiController.cpp')
+if($pluginUi -notmatch 'if\(list\.GetSize\(\) > 0\) ::RemoveMenu\(menu, 0, MF_BYPOSITION\)') {
+    throw 'Инициализация плагинов должна удалять заглушку только при наличии команд.'
+}
+$commandIds = @{}
+foreach($name in @('ID_FILE_RESTART', 'ID_FILE_IMPORT_PLACEHOLDER', 'ID_FILE_EXPORT_PLACEHOLDER')) {
+    $match = [regex]::Match($resourceIds, "(?m)^#define\s+$name\s+(\d+)")
+    if(-not $match.Success) { throw "Нет служебного ID меню: $name" }
+    $value = [int]$match.Groups[1].Value
+    if($value -ge 57600 -and $value -lt 57856) { throw "$name пересекается со стандартным диапазоном WTL 0xE100-0xE1FF." }
+    if($commandIds.ContainsKey($value)) { throw "Служебные ID меню совпадают: $name." }
+    $commandIds[$value] = $name
+}
 $helpDiagnostics = '(?s)POPUP "&Help"\s+BEGIN.*?POPUP "&Diagnostics"\s+BEGIN.*?ID_TOOLS_DIAGNOSTIC_TRACE.*?ID_TOOLS_OPEN_DIAGNOSTIC_LOG.*?ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER.*?ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH.*?ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS.*?END.*?END'
 if ($resourceText -notmatch $helpDiagnostics) {
     throw 'Пять команд диагностики должны быть в подменю Справка → Диагностика.'

@@ -166,7 +166,7 @@
     },
     "fbe.menu.idr_mainframe.plugins.none.import": {
       "kind": "MENUITEM",
-      "targetId": "IDCANCEL",
+      "targetId": "ID_FILE_IMPORT_PLACEHOLDER",
       "translations": {
         "en-US": "No plugin installed",
         "ru-RU": "Не установлено ни одного плагина",
@@ -202,7 +202,7 @@
     },
     "fbe.menu.idr_mainframe.plugins.none.export": {
       "kind": "MENUITEM",
-      "targetId": "IDCANCEL",
+      "targetId": "ID_FILE_EXPORT_PLACEHOLDER",
       "translations": {
         "en-US": "No plugin installed",
         "ru-RU": "Не установлено ни одного плагина",

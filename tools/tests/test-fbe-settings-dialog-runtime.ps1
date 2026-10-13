@@ -1,6 +1,6 @@
 <# Exercises the Settings dialog's real page lifecycle and persistence. #>
 [CmdletBinding()]
-param([string]$FbeExe, [int]$TimeoutSeconds = 90)
+param([string]$FbeExe, [int]$TimeoutSeconds = 90, [switch]$LayoutOnly)
 
 $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
@@ -27,6 +27,13 @@ try {
         } finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
+    if($LayoutOnly) {
+        foreach($line in 'settings_dialog=1','layout=1','persisted=1','applied=1') {
+            if($first -notmatch [regex]::Escape($line)) { throw "Settings layout smoke is missing ${line}: $first" }
+        }
+        Write-Host 'FBE Settings dialog short layout and Keyboard resize smoke passed.'
+        return
+    }
     $reopened=Invoke-Scenario 'settings-dialog-runtime' $reopenReport
     if (-not (Test-Path -LiteralPath $settingsFile)) { throw 'Portable TestData\Settings\Settings.xml was not saved.' }
     if (Test-Path -LiteralPath (Join-Path $root 'Settings.xml')) { throw 'Settings.xml was incorrectly saved next to FBE.exe.' }

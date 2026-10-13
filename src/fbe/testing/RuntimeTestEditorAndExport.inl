@@ -1,3 +1,61 @@
+	if (IsFbeTestScenario(L"issue43-menu-quality-visual-runtime"))
+	{
+		auto menuText = [](HMENU menu, int position) -> CString {
+			wchar_t text[256] = {};
+			if(menu != NULL && position >= 0) ::GetMenuStringW(menu, position, text, _countof(text), MF_BYPOSITION);
+			return text;
+		};
+		HMENU installedFile = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
+		const FilePluginMenus installed = FindFilePluginMenus(installedFile);
+		HMENU installedImport = installed.importPosition >= 0 ? ::GetSubMenu(installedFile, installed.importPosition) : NULL;
+		HMENU installedExport = installed.exportPosition >= 0 ? ::GetSubMenu(installedFile, installed.exportPosition) : NULL;
+		const bool populated = installedImport && installedExport &&
+			::GetMenuItemCount(installedImport) > 0 && ::GetMenuItemCount(installedExport) > 0 &&
+			::GetMenuItemID(installedImport, 0) != ID_FILE_IMPORT_PLACEHOLDER &&
+			::GetMenuItemID(installedExport, 0) != ID_FILE_EXPORT_PLACEHOLDER;
+		HMENU emptyMenu = ::LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_MAINFRAME));
+		if(emptyMenu) ApplyRuntimeMainFrameMenuLocalization(emptyMenu);
+		HMENU emptyFile = emptyMenu ? ::GetSubMenu(emptyMenu, 0) : NULL;
+		const FilePluginMenus empty = FindFilePluginMenus(emptyFile);
+		HMENU emptyImport = empty.importPosition >= 0 ? ::GetSubMenu(emptyFile, empty.importPosition) : NULL;
+		HMENU emptyExport = empty.exportPosition >= 0 ? ::GetSubMenu(emptyFile, empty.exportPosition) : NULL;
+		const bool emptyMenus = emptyImport && emptyExport;
+		const bool emptyIds = emptyMenus && ::GetMenuItemID(emptyImport, 0) == ID_FILE_IMPORT_PLACEHOLDER &&
+			::GetMenuItemID(emptyExport, 0) == ID_FILE_EXPORT_PLACEHOLDER;
+		const bool emptyTexts = emptyMenus &&
+			menuText(emptyImport, 0) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.plugins.none.import") &&
+			menuText(emptyExport, 0) == FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.plugins.none.export");
+		const bool emptyDisabled = emptyMenus &&
+			(::GetMenuState(emptyImport, 0, MF_BYPOSITION) & (MF_DISABLED | MF_GRAYED)) != 0 &&
+			(::GetMenuState(emptyExport, 0, MF_BYPOSITION) & (MF_DISABLED | MF_GRAYED)) != 0;
+		const bool emptyLocalized = emptyMenus && emptyIds && emptyTexts && emptyDisabled;
+		const CString actualImport = menuText(emptyImport, 0);
+		const CString actualExport = menuText(emptyExport, 0);
+		const CString expectedImport = FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.plugins.none.import");
+		const CString expectedExport = FbeLoadRuntimeStringByKey(L"fbe.menu.idr_mainframe.plugins.none.export");
+		if(emptyMenu) ::DestroyMenu(emptyMenu);
+		Fb2Quality::Report report;
+		Fb2Quality::Issue error = {}; error.severity = Fb2Quality::Severity::Error;
+		error.message = L"Test error"; report.issues.push_back(error);
+		Fb2Quality::Issue warning = {}; warning.severity = Fb2Quality::Severity::Warning;
+		warning.message = L"Test warning"; report.issues.push_back(warning);
+		CString layoutDiagnostics, visualDiagnostics;
+		const bool layout = Fb2Quality::ProbeResultsDialogLayout(m_hWnd, report, &layoutDiagnostics);
+		const bool visual = Fb2Quality::ProbeResultsDialogVisual(m_hWnd, report,
+			AU::_ARGS.source_memory_benchmark_path + L".bmp", &visualDiagnostics);
+		const bool passed = populated && emptyLocalized && layout && visual;
+		CStringA result;
+		result.Format("phase=issue43-menu-quality-visual\npopulated=%d\nempty-menus=%d\nempty-ids=%d\nempty-texts=%d\nempty-disabled=%d\nempty-localized=%d\nimport-actual=%s\nimport-expected=%s\nexport-actual=%s\nexport-expected=%s\nlayout=%d\nvisual=%d\nresult=%s\n",
+			populated, emptyMenus, emptyIds, emptyTexts, emptyDisabled, emptyLocalized,
+			static_cast<LPCSTR>(CW2A(actualImport, CP_UTF8)), static_cast<LPCSTR>(CW2A(expectedImport, CP_UTF8)),
+			static_cast<LPCSTR>(CW2A(actualExport, CP_UTF8)), static_cast<LPCSTR>(CW2A(expectedExport, CP_UTF8)),
+			layout, visual, passed ? "pass" : "fail");
+		DWORD written = 0;
+		output.Write(result, static_cast<DWORD>(result.GetLength()), &written);
+		output.Close();
+		::PostQuitMessage(passed && written == static_cast<DWORD>(result.GetLength()) ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"script-toolbar-tooltips-runtime"))
 	{
 		m_scripts.Menu().Clear();

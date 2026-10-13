@@ -1469,6 +1469,15 @@ bool ProbeResultsDialogVisual(HWND parent, const Report& report, const CString& 
 	if(!window) { if(diagnostics) *diagnostics = L"dialog-create-failed"; return false; }
 	::ShowWindow(window, SW_SHOWNOACTIVATE);
 	::UpdateWindow(window);
+	RECT initial = {};
+	::GetWindowRect(window, &initial);
+	const int initialWidth = initial.right - initial.left, initialHeight = initial.bottom - initial.top;
+	for(int cycle = 0; cycle < 3; ++cycle) {
+		::SetWindowPos(window, NULL, 0, 0, initialWidth + 80, initialHeight + 60,
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		::SetWindowPos(window, NULL, 0, 0, initialWidth, initialHeight,
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
 	const HWND list = ::GetDlgItem(window, IDC_FB2_QUALITY_LIST);
 	const HWND header = reinterpret_cast<HWND>(::SendMessageW(list, LVM_GETHEADER, 0, 0));
 	bool dragged = header != NULL;

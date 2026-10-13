@@ -478,6 +478,9 @@ void CSettingsDlg::LayoutPage(int index)
 	::SetScrollInfo(page, SB_VERT, &info, TRUE);
 	const int extraWidth = max(0, contentWidth - max(layout.templateSize.cx, layout.contentSize.cx));
 	const int extraHeight = max(0, contentHeight - max(layout.templateSize.cy, layout.contentSize.cy));
+	struct PageMove { HWND window; CRect rect; };
+	std::vector<PageMove> moves;
+	moves.reserve(layout.controls.size());
 	for(const PageControlLayout& control : layout.controls)
 	{
 		if(!::IsWindow(control.window)) continue;
@@ -515,9 +518,28 @@ void CSettingsDlg::LayoutPage(int index)
 			(control.id == IDC_OPTIONS_SOURCE_PREVIEW || control.id == IDC_OPTIONS_SOURCE_GROUP)))
 			rect.bottom += extraHeight;
 		rect.OffsetRect(-layout.scrollX, -layout.scrollY);
-		::SetWindowPos(control.window, NULL, rect.left, rect.top, max(0, rect.Width()), max(0, rect.Height()),
-			SWP_NOZORDER | SWP_NOACTIVATE);
+		RECT current = {};
+		if(::GetWindowRect(control.window, &current))
+		{
+			::MapWindowPoints(NULL, page, reinterpret_cast<POINT*>(&current), 2);
+			if(CRect(current) == rect) continue;
+		}
+		moves.push_back({ control.window, rect });
 	}
+	if(moves.empty()) return;
+	const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
+	HDWP positions = ::BeginDeferWindowPos(static_cast<int>(moves.size()));
+	for(const PageMove& move : moves)
+	{
+		if(!positions) break;
+		positions = ::DeferWindowPos(positions, move.window, NULL, move.rect.left, move.rect.top,
+			max(0, move.rect.Width()), max(0, move.rect.Height()), flags);
+	}
+	if(!positions || !::EndDeferWindowPos(positions))
+		for(const PageMove& move : moves)
+			::SetWindowPos(move.window, NULL, move.rect.left, move.rect.top,
+				max(0, move.rect.Width()), max(0, move.rect.Height()), flags);
+	::RedrawWindow(page, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 
 void CSettingsDlg::ScrollPage(int index, WPARAM command, bool horizontal)
@@ -742,6 +764,37 @@ bool CSettingsDlg::ProbeLayout()
 		}
 	}
 	passed = passed && verticallyScrollablePages > 0 && horizontallyScrollablePages > 0;
+	// Repeat narrow and preferred layouts: group frames and their controls on
+	// the Keyboard page must return to the same non-overlapping geometry.
+	for(int cycle = 0; cycle < 3; ++cycle)
+	{
+		const bool narrow = (cycle % 2) == 0;
+		::SetWindowPos(m_hWnd, NULL, original.left, original.top,
+			narrow ? width : original.Width(), narrow ? height : original.Height(),
+			SWP_NOZORDER | SWP_NOACTIVATE);
+		SelectPage(SettingsPageId::Keyboard);
+		const HWND page = m_hotkeysPage->m_hWnd;
+		auto pageRect = [&](int id) {
+			CRect rect;
+			const HWND control = ::GetDlgItem(page, id);
+			if(control) { ::GetWindowRect(control, &rect); ::MapWindowPoints(NULL, page, reinterpret_cast<POINT*>(&rect), 2); }
+			return rect;
+		};
+		const CRect actions = pageRect(IDC_STATIC_HOTKEY_ACTIONS);
+		const CRect collision = pageRect(IDC_STATIC_HOTKEY_COLLISION);
+		const CRect description = pageRect(IDC_STATIC_HOTKEY_DESCRIPTION);
+		const CRect assign = pageRect(IDC_BUTTON_HOTKEY_ASSIGN);
+		const CRect collisionText = pageRect(IDC_EDIT_HOTKEY_COLLISION);
+		const CRect descriptionText = pageRect(IDC_EDIT_HOTKEY_DESCRIPTION);
+		passed = passed && actions.Width() > 0 && collision.Width() > 0 && description.Width() > 0 &&
+			collision.right < actions.left && collision.bottom <= description.top &&
+			assign.left >= actions.left && assign.right <= actions.right && assign.bottom <= actions.bottom &&
+			collisionText.left >= collision.left && collisionText.right <= collision.right &&
+			descriptionText.left >= description.left && descriptionText.right <= description.right;
+		GetClientRect(client);
+		passed = passed && inside(controlRect(GetDlgItem(IDOK))) && inside(controlRect(GetDlgItem(IDCANCEL))) &&
+			controlRect(GetDlgItem(IDOK)).right <= controlRect(GetDlgItem(IDCANCEL)).left;
+	}
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
 	CRect restored;
