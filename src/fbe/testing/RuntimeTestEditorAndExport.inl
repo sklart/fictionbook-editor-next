@@ -5,21 +5,48 @@
 			if(menu != NULL && position >= 0) ::GetMenuStringW(menu, position, text, _countof(text), MF_BYPOSITION);
 			return text;
 		};
+		const auto pluginCaption = [&](HMENU menu, int position) {
+			CString caption = menuText(menu, position);
+			const int shortcut = caption.Find(L'\t');
+			if(shortcut >= 0) caption = caption.Left(shortcut);
+			return caption;
+		};
 		HMENU installedFile = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
 		const FilePluginMenus installed = FindFilePluginMenus(installedFile);
 		HMENU installedImport = installed.importPosition >= 0 ? ::GetSubMenu(installedFile, installed.importPosition) : NULL;
 		HMENU installedExport = installed.exportPosition >= 0 ? ::GetSubMenu(installedFile, installed.exportPosition) : NULL;
-		const bool populated = installedImport && installedExport &&
-			::GetMenuItemCount(installedImport) > 0 && ::GetMenuItemCount(installedExport) > 0 &&
-			::GetMenuItemID(installedImport, 0) != ID_FILE_IMPORT_PLACEHOLDER &&
-			::GetMenuItemID(installedExport, 0) != ID_FILE_EXPORT_PLACEHOLDER;
+		const auto pluginItemMatches = [&](HMENU menu, int position, UINT command, LPCWSTR key) {
+			return menu != NULL && ::GetMenuItemID(menu, position) == command &&
+				pluginCaption(menu, position) == FbeLoadRuntimeStringByKey(key);
+		};
+		const bool pluginCount = installedImport && installedExport &&
+			::GetMenuItemCount(installedImport) == 1 && ::GetMenuItemCount(installedExport) == 3;
+		const bool pluginIds = pluginCount &&
+			pluginItemMatches(installedImport, 0, ID_IMPORT_BASE, L"fbe.plugin.import_epub.menu") &&
+			pluginItemMatches(installedExport, 0, ID_EXPORT_BASE, L"fbe.plugin.export_html.menu") &&
+			pluginItemMatches(installedExport, 1, ID_EXPORT_BASE + 1, L"fbe.plugin.export_docx.menu") &&
+			pluginItemMatches(installedExport, 2, ID_EXPORT_BASE + 2, L"fbe.plugin.export_epub.menu");
+		const bool pluginDescriptors = m_plugins.ImportPlugins().GetSize() == 1 &&
+			m_plugins.ExportPlugins().GetSize() == 3 &&
+			m_plugins.Manager().GetPlugins().size() == 4 &&
+			m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[0]) != NULL &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[0]) != NULL &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[1]) != NULL &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[2]) != NULL;
+		const bool pluginNames = pluginDescriptors &&
+			m_plugins.Manager().FindPlugin(m_plugins.ImportPlugins()[0])->id == L"import-epub" &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[0])->id == L"export-html" &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[1])->id == L"export-docx" &&
+			m_plugins.Manager().FindPlugin(m_plugins.ExportPlugins()[2])->id == L"export-epub";
+		const bool populated = pluginIds && pluginNames;
 		HMENU emptyMenu = ::LoadMenuW(_Module.GetResourceInstance(), MAKEINTRESOURCEW(IDR_MAINFRAME));
 		if(emptyMenu) ApplyRuntimeMainFrameMenuLocalization(emptyMenu);
 		HMENU emptyFile = emptyMenu ? ::GetSubMenu(emptyMenu, 0) : NULL;
 		const FilePluginMenus empty = FindFilePluginMenus(emptyFile);
 		HMENU emptyImport = empty.importPosition >= 0 ? ::GetSubMenu(emptyFile, empty.importPosition) : NULL;
 		HMENU emptyExport = empty.exportPosition >= 0 ? ::GetSubMenu(emptyFile, empty.exportPosition) : NULL;
-		const bool emptyMenus = emptyImport && emptyExport;
+		const bool emptyMenus = emptyImport && emptyExport &&
+			::GetMenuItemCount(emptyImport) == 1 && ::GetMenuItemCount(emptyExport) == 1;
 		const bool emptyIds = emptyMenus && ::GetMenuItemID(emptyImport, 0) == ID_FILE_IMPORT_PLACEHOLDER &&
 			::GetMenuItemID(emptyExport, 0) == ID_FILE_EXPORT_PLACEHOLDER;
 		const bool emptyTexts = emptyMenus &&
@@ -45,8 +72,17 @@
 			AU::_ARGS.source_memory_benchmark_path + L".bmp", &visualDiagnostics);
 		const bool passed = populated && emptyLocalized && layout && visual;
 		CStringA result;
-		result.Format("phase=issue43-menu-quality-visual\npopulated=%d\nempty-menus=%d\nempty-ids=%d\nempty-texts=%d\nempty-disabled=%d\nempty-localized=%d\nimport-actual=%s\nimport-expected=%s\nexport-actual=%s\nexport-expected=%s\nlayout=%d\nvisual=%d\nresult=%s\n",
-			populated, emptyMenus, emptyIds, emptyTexts, emptyDisabled, emptyLocalized,
+		result.Format("phase=issue43-menu-quality-visual\npopulated=%d\nplugin-count=%d\nplugin-ids=%d\nplugin-names=%d\nimport-id=%u\nhtml-id=%u\ndocx-id=%u\nepub-id=%u\nimport-caption=%s\nhtml-caption=%s\ndocx-caption=%s\nepub-caption=%s\nempty-menus=%d\nempty-ids=%d\nempty-texts=%d\nempty-disabled=%d\nempty-localized=%d\nimport-actual=%s\nimport-expected=%s\nexport-actual=%s\nexport-expected=%s\nlayout=%d\nvisual=%d\nresult=%s\n",
+			populated, pluginCount, pluginIds, pluginNames,
+			installedImport ? ::GetMenuItemID(installedImport, 0) : 0,
+			installedExport ? ::GetMenuItemID(installedExport, 0) : 0,
+			installedExport ? ::GetMenuItemID(installedExport, 1) : 0,
+			installedExport ? ::GetMenuItemID(installedExport, 2) : 0,
+			static_cast<LPCSTR>(CW2A(pluginCaption(installedImport, 0), CP_UTF8)),
+			static_cast<LPCSTR>(CW2A(pluginCaption(installedExport, 0), CP_UTF8)),
+			static_cast<LPCSTR>(CW2A(pluginCaption(installedExport, 1), CP_UTF8)),
+			static_cast<LPCSTR>(CW2A(pluginCaption(installedExport, 2), CP_UTF8)),
+			emptyMenus, emptyIds, emptyTexts, emptyDisabled, emptyLocalized,
 			static_cast<LPCSTR>(CW2A(actualImport, CP_UTF8)), static_cast<LPCSTR>(CW2A(expectedImport, CP_UTF8)),
 			static_cast<LPCSTR>(CW2A(actualExport, CP_UTF8)), static_cast<LPCSTR>(CW2A(expectedExport, CP_UTF8)),
 			layout, visual, passed ? "pass" : "fail");

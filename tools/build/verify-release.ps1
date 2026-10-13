@@ -208,6 +208,8 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-startup-validation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 }
 
+& (Join-Path $repoRoot "tools\tests\test-issue43-menu-quality-visual-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structure-boundary.ps1")
 # Fast table smoke: real structural edit, live DOM Undo/Redo, Save -> reopen and XSD.
