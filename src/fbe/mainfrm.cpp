@@ -2490,7 +2490,7 @@ void CMainFrame::ShowCommandToolbarCustomizeDialog()
 		if(!GetButtonText(button, text)) continue;
 		const CString localized = GetRuntimeToolbarToolTipText(button.idCommand);
 		if(!localized.IsEmpty()) text = localized;
-		ScriptsToolbarCommand command = {}; command.command = button.idCommand; command.name = text; command.button = button;
+		ScriptsToolbarCommand command = {}; command.command = button.idCommand; command.name = StripMenuMnemonics(text); command.button = button;
 		commands.push_back(command);
 	}
 	std::sort(commands.begin(), commands.end(), [](const ScriptsToolbarCommand& left, const ScriptsToolbarCommand& right) {
@@ -2544,7 +2544,7 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 		if(catalog[index].idCommand == ID_LAST_SCRIPT)
 			text = FbeLoadRuntimeStringByKey(L"fbe.hotkey.scripts.last_script", L"Last script");
 		else if(!GetButtonText(catalog[index], text)) continue;
-		addCommand(catalog[index].idCommand, text, CString());
+		addCommand(catalog[index].idCommand, StripMenuMnemonics(text), CString());
 	}
 	for(int index = 0; index < m_scripts.Menu().Count(); ++index) {
 		const ScriptDescriptor& script = m_scripts.Menu().Item(index);
