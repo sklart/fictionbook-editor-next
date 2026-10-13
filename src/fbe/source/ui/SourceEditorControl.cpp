@@ -91,9 +91,12 @@ LRESULT CALLBACK SourceEditorControl::WindowProc(HWND window, UINT message, WPAR
 {
 	SourceEditorControl* editor = reinterpret_cast<SourceEditorControl*>(::GetProp(window, L"FBE.Next.SourceEditorControl"));
 	if(editor != NULL && message == WM_CONTEXTMENU) { editor->ShowContextMenu(lParam); return 0; }
+	const LRESULT result = editor != NULL && editor->m_previousWindowProc != NULL ?
+		::CallWindowProc(editor->m_previousWindowProc, window, message, wParam, lParam) :
+		::DefWindowProc(window, message, wParam, lParam);
 	if(editor != NULL && (message == WM_SETFOCUS || message == WM_KILLFOCUS))
 		ReportCaretFocusState(message == WM_SETFOCUS ? L"source-focus" : L"source-blur", window, true);
-	return editor != NULL && editor->m_previousWindowProc != NULL ? ::CallWindowProc(editor->m_previousWindowProc, window, message, wParam, lParam) : ::DefWindowProc(window, message, wParam, lParam);
+	return result;
 }
 void SourceEditorControl::ShowContextMenu(LPARAM screenPosition)
 {

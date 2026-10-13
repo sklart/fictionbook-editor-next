@@ -11,8 +11,10 @@ inline void ReportCaretFocusState(LPCWSTR event, HWND expectedEditor, bool sourc
 	GUITHREADINFO state = { sizeof(state) };
 	if(!::GetGUIThreadInfo(::GetCurrentThreadId(), &state)) return;
 	wchar_t message[320] = {};
-	::swprintf_s(message, L"FBE caret: %s mode=%s expected=%p focus=%p caret=%p flags=0x%lx blink=%u\n",
-		event, sourceMode ? L"source" : L"design", expectedEditor, state.hwndFocus,
-		state.hwndCaret, state.flags, ::GetCaretBlinkTime());
+	const bool active = expectedEditor != NULL &&
+		(state.hwndFocus == expectedEditor || ::IsChild(expectedEditor, state.hwndFocus));
+	::swprintf_s(message, L"FBE caret: %s mode=%s active=%d expected=%p focus=%p caret=%p flags=0x%lx blink=%u\n",
+		event, sourceMode ? L"source" : L"design", active ? 1 : 0, expectedEditor,
+		state.hwndFocus, state.hwndCaret, state.flags, ::GetCaretBlinkTime());
 	::OutputDebugStringW(message);
 }
