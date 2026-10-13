@@ -52,12 +52,24 @@ CString ScriptCategory(const CString& relativePath)
 	const int slash = (std::max)(relativePath.ReverseFind(L'\\'), relativePath.ReverseFind(L'/'));
 	return slash >= 0 ? relativePath.Left(slash) : CString();
 }
+
+CString AuthorRoleLabel(const CString& role)
+{
+	if(role == L"author") return Label(L"fbe.script_card.role.author", L"Author");
+	if(role == L"original_author") return Label(L"fbe.script_card.role.original_author", L"Original author");
+	if(role == L"coauthor") return Label(L"fbe.script_card.role.coauthor", L"Co-author");
+	if(role == L"modifier") return Label(L"fbe.script_card.role.modifier", L"Modified by");
+	if(role == L"contributor") return Label(L"fbe.script_card.role.contributor", L"Contributor");
+	if(role == L"ai_assistance") return Label(L"fbe.script_card.role.ai_assistance", L"AI assistance");
+	return Label(L"fbe.script_card.role.unknown", L"Author not specified");
+}
 }
 
 CScriptCardDlg::~CScriptCardDlg()
 {
 	if(IsWindow()) DestroyWindow();
 	if(m_headingFont != NULL) ::DeleteObject(m_headingFont);
+	if(m_originFont != NULL) ::DeleteObject(m_originFont);
 	if(m_richEdit != NULL) ::FreeLibrary(m_richEdit);
 }
 
@@ -90,6 +102,9 @@ bool CScriptCardDlg::ShowScript(HWND owner, const ScriptDescriptor& script, cons
 	if(m_headerRight) ::SetWindowTextW(m_headerRight, L"");
 	m_statusText = m_bodyText;
 	if(m_status) ::SetWindowTextW(m_status, m_statusText);
+	m_originText.Empty();
+	if(m_origin) ::SetWindowTextW(m_origin, L"");
+	m_scrollY = 0;
 	Layout();
 	ApplyRichFormatting();
 	auto work = std::make_shared<Work>();
@@ -136,8 +151,11 @@ LRESULT CScriptCardDlg::OnInit(UINT, WPARAM, LPARAM, BOOL&)
 		ES_MULTILINE | ES_READONLY, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
 	m_status = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"RICHEDIT50W", L"", WS_CHILD | WS_VISIBLE |
 		ES_MULTILINE | ES_READONLY, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	m_origin = ::CreateWindowExW(0, L"RICHEDIT50W", L"", WS_CHILD | WS_VISIBLE |
+		ES_MULTILINE | ES_READONLY, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
 	m_viewport = ::CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | WS_VSCROLL |
 		WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	if(m_viewport) ::SetWindowSubclass(m_viewport, ViewportSubclass, 1, reinterpret_cast<DWORD_PTR>(this));
 	::ShowWindow(GetDlgItem(IDC_SCRIPT_CARD_BODY), SW_HIDE);
 	ApplyFont();
 	ApplyWindowIcon();
@@ -159,6 +177,18 @@ void CScriptCardDlg::ApplyFont()
 	for(int id : ids) ::SendMessageW(GetDlgItem(id), WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 	for(HWND extra : { m_headerRight, m_status })
 		if(extra) ::SendMessageW(extra, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
+	if(m_origin)
+	{
+		LOGFONTW origin = {};
+		::GetObjectW(font, sizeof(origin), &origin);
+		origin.lfHeight = origin.lfHeight * 9 / 10;
+		HFONT smaller = ::CreateFontIndirectW(&origin);
+		if(smaller) {
+			::SendMessageW(m_origin, WM_SETFONT, reinterpret_cast<WPARAM>(smaller), TRUE);
+			if(m_originFont) ::DeleteObject(m_originFont);
+			m_originFont = smaller;
+		}
+	}
 	for(const VisualBlock& block : m_blocks)
 		if(block.body) ::SendMessageW(block.body, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 	LOGFONTW details = {};
@@ -184,7 +214,7 @@ void CScriptCardDlg::ApplyBodyPalette()
 	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) : ThemeManager::WindowColor();
 	const COLORREF foreground = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) : ThemeManager::TextColor();
 	for(HWND rich : { static_cast<HWND>(GetDlgItem(IDC_SCRIPT_CARD_HEADER)),
-		static_cast<HWND>(GetDlgItem(IDC_SCRIPT_CARD_BODY)), m_headerRight, m_status })
+		static_cast<HWND>(GetDlgItem(IDC_SCRIPT_CARD_BODY)), m_headerRight, m_status, m_origin })
 	{
 		if(!::IsWindow(rich)) continue;
 		::SendMessageW(rich, EM_SETBKGNDCOLOR, 0,
@@ -192,7 +222,7 @@ void CScriptCardDlg::ApplyBodyPalette()
 		CHARFORMAT2W format = {};
 		format.cbSize = sizeof(format);
 		format.dwMask = CFM_COLOR | CFM_BACKCOLOR;
-		format.crTextColor = foreground;
+		format.crTextColor = rich == m_origin && !highContrast ? ThemeManager::SecondaryTextColor() : foreground;
 		format.crBackColor = background;
 		::SendMessageW(rich, EM_SETCHARFORMAT, SCF_DEFAULT, reinterpret_cast<LPARAM>(&format));
 		::SendMessageW(rich, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&format));
@@ -216,7 +246,8 @@ void CScriptCardDlg::ApplyBodyPalette()
 			CHARFORMAT2W format = {};
 			format.cbSize = sizeof(format);
 			format.dwMask = CFM_COLOR;
-			format.crTextColor = block.warning && rich == block.heading ? RGB(166, 53, 35) : foreground;
+			format.crTextColor = block.warning && rich == block.heading ?
+				(highContrast ? foreground : ThemeManager::WarningColor()) : foreground;
 			::SendMessageW(rich, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&format));
 			::InvalidateRect(rich, NULL, TRUE);
 		}
@@ -287,9 +318,35 @@ void CScriptCardDlg::AddVisualBlock(const CString& label, const CString& value, 
 LRESULT CALLBACK CScriptCardDlg::BlockSubclass(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
 	UINT_PTR, DWORD_PTR context)
 {
+	CScriptCardDlg* card = reinterpret_cast<CScriptCardDlg*>(context);
 	if(message == WM_MOUSEWHEEL)
-		return ::SendMessageW(reinterpret_cast<CScriptCardDlg*>(context)->m_hWnd, message, wParam, lParam);
+		return ::SendMessageW(card->m_viewport, message, wParam, lParam);
+	if(message == WM_KEYDOWN && (wParam == VK_HOME || wParam == VK_END ||
+		wParam == VK_PRIOR || wParam == VK_NEXT) &&
+		(::GetKeyState(VK_SHIFT) & 0x8000) == 0 && (::GetKeyState(VK_CONTROL) & 0x8000) == 0)
+	{
+		CHARRANGE selection = {};
+		::SendMessageW(window, EM_EXGETSEL, 0, reinterpret_cast<LPARAM>(&selection));
+		if(selection.cpMin == selection.cpMax)
+		{
+			const int code = wParam == VK_HOME ? SB_TOP : wParam == VK_END ? SB_BOTTOM :
+				wParam == VK_PRIOR ? SB_PAGEUP : SB_PAGEDOWN;
+			::SendMessageW(card->m_viewport, WM_VSCROLL, code, 0);
+			return 0;
+		}
+	}
 	if(message == WM_NCDESTROY) ::RemoveWindowSubclass(window, BlockSubclass, 1);
+	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+
+LRESULT CALLBACK CScriptCardDlg::ViewportSubclass(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+	UINT_PTR, DWORD_PTR context)
+{
+	CScriptCardDlg* card = reinterpret_cast<CScriptCardDlg*>(context);
+	if(message == WM_VSCROLL) { card->HandleViewportScroll(wParam); return 0; }
+	if(message == WM_MOUSEWHEEL)
+		return ::SendMessageW(card->m_hWnd, message, wParam, lParam);
+	if(message == WM_NCDESTROY) ::RemoveWindowSubclass(window, ViewportSubclass, 1);
 	return ::DefSubclassProc(window, message, wParam, lParam);
 }
 
@@ -324,7 +381,6 @@ void CScriptCardDlg::RebuildVisualBlocks()
 		if(block.body && m_font)
 			::SendMessageW(block.body, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), FALSE);
 	}
-	m_scrollY = 0;
 	ApplyBodyPalette();
 }
 
@@ -337,11 +393,23 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 	const int headingHeight = UiMetrics::ScaleForDpi(26, m_dpi);
 	HDC dc = ::GetDC(m_viewport);
 	HFONT previous = dc && m_font ? reinterpret_cast<HFONT>(::SelectObject(dc, m_font)) : NULL;
+	TEXTMETRICW metrics = {};
+	if(dc) ::GetTextMetricsW(dc, &metrics);
 	auto contentHeight = [&](const VisualBlock& block, int columnWidth) {
-		RECT bounds = { 0, 0, (std::max)(1, columnWidth - UiMetrics::ScaleForDpi(20, m_dpi)), 0 };
-		if(dc) ::DrawTextW(dc, block.content, -1, &bounds, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
-		return (std::max)(UiMetrics::ScaleForDpi(30, m_dpi),
-			static_cast<int>(bounds.bottom) + UiMetrics::ScaleForDpi(14, m_dpi));
+		if(!::IsWindow(block.body)) return UiMetrics::ScaleForDpi(30, m_dpi);
+		// Ask the actual RichEdit control to wrap at the final column width.
+		::SetWindowPos(block.body, NULL, 0, 0, columnWidth, (std::max)(1, height),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
+		const int lines = (std::max)(1, static_cast<int>(::SendMessageW(block.body, EM_GETLINECOUNT, 0, 0)));
+		RECT formatting = {}, client = {};
+		::SendMessageW(block.body, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&formatting));
+		::GetClientRect(block.body, &client);
+		const int verticalInsets = (std::max)(0, static_cast<int>(formatting.top)) +
+			(std::max)(0, static_cast<int>(client.bottom - formatting.bottom)) +
+			UiMetrics::ScaleForDpi(4, m_dpi);
+		const int lineHeight = (std::max)(1, static_cast<int>(metrics.tmHeight + metrics.tmExternalLeading));
+		return (std::max)(UiMetrics::ScaleForDpi(30, m_dpi), lines * lineHeight + verticalInsets +
+			UiMetrics::ScaleForDpi(4, m_dpi));
 	};
 	struct Placement { HWND window; int x, y, width, height; };
 	std::vector<Placement> placements;
@@ -409,26 +477,27 @@ void CScriptCardDlg::ScrollTo(int offset)
 	LayoutVisualBlocks(bounds.right - bounds.left, bounds.bottom - bounds.top);
 }
 
-LRESULT CScriptCardDlg::OnViewportScroll(UINT, WPARAM wParam, LPARAM source, BOOL& handled)
+void CScriptCardDlg::HandleViewportScroll(WPARAM command)
 {
-	if(reinterpret_cast<HWND>(source) != m_viewport) { handled = FALSE; return 0; }
 	SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
 	::GetScrollInfo(m_viewport, SB_VERT, &info);
 	const int step = UiMetrics::ScaleForDpi(40, m_dpi);
 	int target = m_scrollY;
-	switch(LOWORD(wParam))
+	RECT bounds = {};
+	::GetClientRect(m_viewport, &bounds);
+	const int page = (std::max)(1, static_cast<int>(bounds.bottom - bounds.top));
+	switch(LOWORD(command))
 	{
 	case SB_LINEUP: target -= step; break;
 	case SB_LINEDOWN: target += step; break;
-	case SB_PAGEUP: target -= UiMetrics::ScaleForDpi(240, m_dpi); break;
-	case SB_PAGEDOWN: target += UiMetrics::ScaleForDpi(240, m_dpi); break;
+	case SB_PAGEUP: target -= page; break;
+	case SB_PAGEDOWN: target += page; break;
 	case SB_TOP: target = 0; break;
 	case SB_BOTTOM: target = m_contentHeight; break;
 	case SB_THUMBTRACK: case SB_THUMBPOSITION: target = info.nTrackPos; break;
 	default: break;
 	}
 	ScrollTo(target);
-	return 0;
 }
 
 LRESULT CScriptCardDlg::OnViewportWheel(UINT, WPARAM wParam, LPARAM, BOOL&)
@@ -444,7 +513,7 @@ void CScriptCardDlg::ApplyRichFormatting()
 	if(!::GetObjectW(m_font, sizeof(face), &face)) return;
 	const LONG baseTwips = (std::max)(160L, static_cast<LONG>(::MulDiv(abs(face.lfHeight), 1440, m_dpi)));
 	const COLORREF warningColor = ThemeManager::IsHighContrast() ? ::GetSysColor(COLOR_WINDOWTEXT) :
-		ThemeManager::IsDark() ? RGB(255, 177, 128) : RGB(157, 58, 31);
+		ThemeManager::WarningColor();
 	auto apply = [&](HWND rich, const std::vector<SectionRange>& spans, bool header) {
 		if(!::IsWindow(rich)) return;
 		POINT scroll = {}; ::SendMessageW(rich, EM_GETSCROLLPOS, 0, reinterpret_cast<LPARAM>(&scroll));
@@ -511,6 +580,7 @@ void CScriptCardDlg::Layout()
 	RECT detailsMeasure = { 0, 0, (std::max)(1, leftWidth), 0 };
 	RECT rightMeasure = { 0, 0, (std::max)(1, rightWidth), 0 };
 	RECT statusMeasure = { 0, 0, (std::max)(1, usable - 2 * gap), 0 };
+	RECT originMeasure = { 0, 0, (std::max)(1, usable - 2 * gap), 0 };
 	if(dc) {
 		LOGFONTW titleFont = {};
 		if(m_font) ::GetObjectW(m_font, sizeof(titleFont), &titleFont);
@@ -526,6 +596,11 @@ void CScriptCardDlg::Layout()
 		if(!details.IsEmpty()) ::DrawTextW(dc, details, -1, &detailsMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
 		::DrawTextW(dc, m_headerRightText, -1, &rightMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
 		::DrawTextW(dc, m_statusText, -1, &statusMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+		if(!m_originText.IsEmpty()) {
+			HFONT beforeOrigin = m_originFont ? reinterpret_cast<HFONT>(::SelectObject(dc, m_originFont)) : NULL;
+			::DrawTextW(dc, m_originText, -1, &originMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+			if(beforeOrigin) ::SelectObject(dc, beforeOrigin);
+		}
 	}
 	if(dc) { if(oldFont) ::SelectObject(dc, oldFont); ::ReleaseDC(m_hWnd, dc); }
 	const int textPadding = UiMetrics::ScaleForDpi(10, m_dpi);
@@ -535,19 +610,22 @@ void CScriptCardDlg::Layout()
 		(rightHeight ? gap + rightHeight : 0);
 	const int statusHeight = (std::max)(UiMetrics::ScaleForDpi(42, m_dpi),
 		static_cast<int>(statusMeasure.bottom) + textPadding * 2);
+	const int originHeight = m_originText.IsEmpty() ? 0 :
+		(std::max)(UiMetrics::ScaleForDpi(18, m_dpi), static_cast<int>(originMeasure.bottom) + UiMetrics::ScaleForDpi(4, m_dpi));
 	const int buttonTop = clientHeight - margin - buttonHeight;
 	const int statusTop = margin + headerHeight + gap;
-	const int viewportTop = statusTop + statusHeight + gap;
+	const int viewportTop = statusTop + statusHeight + originHeight + gap;
 	const int viewportHeight = (std::max)(0, buttonTop - gap - viewportTop);
 	const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
 	struct Move { HWND window; int x, y, width, height; };
 	std::vector<Move> moves;
-	moves.reserve(9);
+	moves.reserve(10);
 	moves.push_back({ GetDlgItem(IDC_SCRIPT_CARD_ICON), margin, margin, iconSide, iconSide });
 	moves.push_back({ GetDlgItem(IDC_SCRIPT_CARD_HEADER), margin + iconSide + gap, margin, leftWidth, leftHeight });
 	moves.push_back({ m_headerRight, splitHeader ? margin + iconSide + gap + leftWidth + gap :
 		margin + iconSide + gap, splitHeader ? margin : margin + leftHeight + gap, rightWidth, rightHeight });
 	moves.push_back({ m_status, margin, statusTop, usable, statusHeight });
+	moves.push_back({ m_origin, margin + gap, statusTop + statusHeight, usable - 2 * gap, originHeight });
 	moves.push_back({ m_viewport, margin, viewportTop, usable, viewportHeight });
 	int x = clientWidth - margin;
 	for(int index = 3; index >= 0; --index)
@@ -623,24 +701,26 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	const CString category = ScriptCategory(m_script.relativePath);
 	if(!category.IsEmpty()) header += L"\r\n" + Label(L"fbe.script_card.category", L"Category") + L": " + category;
 	if(!card.version.IsEmpty()) header += L"\r\n" + Label(L"fbe.script_card.version", L"Version") + L": " + card.version;
-	CString primaryAuthors, coauthors, contributors;
+	CString primaryAuthors, primaryRole, coauthors, allAuthors;
 	for(const ScriptCards::Author& author : card.authors)
 	{
-		CString& names = author.role == L"author" || author.role == L"original_author" ? primaryAuthors :
-			author.role == L"coauthor" || author.role == L"modifier" ? coauthors : contributors;
-		if(!names.IsEmpty()) names += L", ";
-		names += author.name.IsEmpty() ? Label(L"fbe.script_card.unknown_author", L"Unknown author") : author.name;
+		const CString name = author.name.IsEmpty() ?
+			Label(L"fbe.script_card.unknown_author", L"Unknown author") : author.name;
+		if(!allAuthors.IsEmpty()) allAuthors += L"\r\n";
+		allAuthors += AuthorRoleLabel(author.role) + L": " + name;
+		if(author.role == L"author" || author.role == L"original_author") {
+			if(primaryAuthors.IsEmpty()) { primaryAuthors = name; primaryRole = author.role; }
+		} else if(author.role == L"coauthor" && coauthors.IsEmpty()) coauthors = name;
 	}
 	m_headerRightText.Empty();
-	if(!primaryAuthors.IsEmpty()) m_headerRightText += Label(L"fbe.script_card.role.author", L"Author") + L": " + primaryAuthors;
+	if(!primaryAuthors.IsEmpty()) m_headerRightText += AuthorRoleLabel(primaryRole) + L": " + primaryAuthors;
 	if(!coauthors.IsEmpty()) {
 		if(!m_headerRightText.IsEmpty()) m_headerRightText += L"\r\n";
 		m_headerRightText += Label(L"fbe.script_card.coauthors", L"Co-authors") + L": " + coauthors;
 	}
-	if(!contributors.IsEmpty()) {
-		if(!m_headerRightText.IsEmpty()) m_headerRightText += L"\r\n";
-		m_headerRightText += Label(L"fbe.script_card.authors", L"Authors and contributors") + L": " + contributors;
-	}
+	if(m_headerRightText.IsEmpty() && !card.authors.empty())
+		m_headerRightText = AuthorRoleLabel(card.authors.front().role) + L": " +
+			(card.authors.front().name.IsEmpty() ? Label(L"fbe.script_card.unknown_author", L"Unknown author") : card.authors.front().name);
 	CString state;
 	switch(card.state)
 	{
@@ -658,6 +738,15 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	SetDlgItemText(IDC_SCRIPT_CARD_HEADER, m_headerText);
 	m_statusText = state;
 	if(m_status) ::SetWindowTextW(m_status, m_statusText);
+	m_originText.Empty();
+	if(card.state != ScriptCards::State::Missing && card.state != ScriptCards::State::Invalid) {
+		m_originText = card.reviewStatus == L"generated" ?
+			Label(L"fbe.script_card.review.generated", L"Description was generated automatically and may need review") :
+			card.reviewStatus == L"reviewed" ?
+			Label(L"fbe.script_card.review.reviewed", L"Description reviewed by a maintainer") :
+			Label(L"fbe.script_card.review.unknown", L"Description review status is unknown");
+	}
+	if(m_origin) ::SetWindowTextW(m_origin, m_originText);
 	if(m_headerRight) ::SetWindowTextW(m_headerRight, m_headerRightText);
 	m_bodyText.Empty();
 	m_sections.clear();
@@ -674,6 +763,9 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	}
 	else
 	{
+		if(card.authors.size() > 2 || (card.authors.size() == 1 && primaryAuthors.IsEmpty()) ||
+			(card.authors.size() == 2 && coauthors.IsEmpty()))
+			AddVisualBlock(Label(L"fbe.script_card.authors", L"Authors and contributors"), allAuthors);
 		AddVisualBlock(Label(L"fbe.script_card.summary", L"Purpose"), card.summary);
 		AddVisualBlock(Label(L"fbe.script_card.description", L"Description"), card.description);
 		AddVisualBlock(Label(L"fbe.script_card.usage", L"How to use"), NumberedText(card.usage));
@@ -776,6 +868,7 @@ LRESULT CScriptCardDlg::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
 {
 	KillTimer(kCardTimer);
 	m_work.reset();
+	if(m_viewport && ::IsWindow(m_viewport)) ::RemoveWindowSubclass(m_viewport, ViewportSubclass, 1);
 	::RemovePropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION");
 	::SendMessageW(GetDlgItem(IDC_SCRIPT_CARD_ICON), STM_SETICON, 0, 0);
 	if(m_icon != NULL) { ::DestroyIcon(m_icon); m_icon = NULL; }

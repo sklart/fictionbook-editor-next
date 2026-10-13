@@ -21,6 +21,7 @@ public:
 	const CString& CurrentUid() const { return m_script.uid; }
 	const CString& BodyText() const { return m_bodyText; }
 	const CString& StatusText() const { return m_statusText; }
+	const CString& OriginText() const { return m_originText; }
 	const CString& HeaderRightText() const { return m_headerRightText; }
 	size_t VisualBlockCount() const { return m_blocks.size(); }
 	HWND ViewportWindow() const { return m_viewport; }
@@ -31,7 +32,6 @@ public:
 	BEGIN_MSG_MAP(CScriptCardDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
 		MESSAGE_HANDLER(WM_SIZE, OnSize)
-		MESSAGE_HANDLER(WM_VSCROLL, OnViewportScroll)
 		MESSAGE_HANDLER(WM_MOUSEWHEEL, OnViewportWheel)
 		MESSAGE_HANDLER(WM_GETMINMAXINFO, OnMinMax)
 		MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
@@ -60,6 +60,7 @@ private:
 	CString m_headerText;
 	CString m_headerRightText;
 	CString m_statusText;
+	CString m_originText;
 	struct VisualBlock {
 		CString title, content;
 		int layout = 0; // 0: full width, 1: property grid, 2: paired blocks.
@@ -70,7 +71,9 @@ private:
 	HWND m_viewport = NULL;
 	HWND m_headerRight = NULL;
 	HWND m_status = NULL;
+	HWND m_origin = NULL;
 	HFONT m_headingFont = NULL;
+	HFONT m_originFont = NULL;
 	int m_scrollY = 0;
 	int m_contentHeight = 0;
 	struct SectionRange { LONG begin; LONG end; bool warning; };
@@ -84,7 +87,6 @@ private:
 
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
-	LRESULT OnViewportScroll(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnViewportWheel(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnMinMax(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDpiChanged(UINT, WPARAM, LPARAM, BOOL&);
@@ -106,6 +108,8 @@ private:
 	void RebuildVisualBlocks();
 	void LayoutVisualBlocks(int width, int height);
 	void ScrollTo(int offset);
+	void HandleViewportScroll(WPARAM command);
+	static LRESULT CALLBACK ViewportSubclass(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
 	static LRESULT CALLBACK BlockSubclass(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
 	void CopyText(const CString& text);
 	void Layout();

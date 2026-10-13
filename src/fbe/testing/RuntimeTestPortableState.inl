@@ -285,12 +285,12 @@ void CMainFrame::RunPortableStateTestScenario()
 			"{\"schema\":1,\"title\":\"Card test\",\"summary\":\"Card runtime summary\","
 			"\"description\":\"Card runtime description\",\"version\":\"1.0\","
 			"\"scope\":\"Current document\",\"modifiesDocument\":false,\"requiresSelection\":false,"
-			"\"usage\":[\"Open card\"],\"warnings\":[],\"dependencies\":[],"
+			"\"usage\":[\"Open card\"],\"warnings\":[\"Review changes before running\"],\"dependencies\":[],"
 			"\"settings\":[{\"name\":\"Mode\",\"expression\":\"safe\",\"description\":\"Change mode\"},"
 			"{\"name\":\"Second\",\"expression\":\"false\",\"description\":\"\\u0434\\u0430\"}],"
 			"\"examples\":[{\"before\":\"abc\",\"after\":\"ABC\"}],"
 			"\"undo\":{\"description\":\"Undoable\"},\"tags\":[\"case\"],"
-			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"}],"
+			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"},{\"name\":\"Modifier\",\"role\":\"modifier\"}],"
 			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\","
 			"\"reviewStatus\":\"generated\","
 			"\"sha256\":\"b93000a4f6aabe6d01c3db1f2b99000a48756d7181161e50dd4011758dc89c89\"}}"
@@ -303,7 +303,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool rendered = openedCard && m_script_card_window.BodyText().Find(L"Card runtime summary") >= 0;
 		const bool structured = openedCard && m_script_card_window.VisualBlockCount() >= 9 &&
 			m_script_card_window.HeaderRightText().Find(L"Helper") >= 0 &&
-			m_script_card_window.HeaderRightText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.coauthors", L"Co-authors")) >= 0;
+			m_script_card_window.HeaderRightText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.coauthors", L"Co-authors")) >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Modifier") < 0 &&
+			m_script_card_window.BodyText().Find(L"Modifier") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Review changes before running") >= 0;
 		RECT originalCardBounds = {};
 		::GetWindowRect(m_script_card_window.m_hWnd, &originalCardBounds);
 		const int cardDpi = UiMetrics::DpiForWindow(m_script_card_window.m_hWnd);
@@ -311,22 +314,38 @@ void CMainFrame::RunPortableStateTestScenario()
 			UiMetrics::ScaleForDpi(700, cardDpi), UiMetrics::ScaleForDpi(520, cardDpi),
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 		const bool canScroll = m_script_card_window.CanScroll();
-		::SendMessageW(m_script_card_window.m_hWnd, WM_VSCROLL, SB_LINEDOWN,
-			reinterpret_cast<LPARAM>(m_script_card_window.ViewportWindow()));
-		const bool responsive = canScroll && m_script_card_window.ScrollPosition() > 0;
+		const HWND viewport = m_script_card_window.ViewportWindow();
+		::SendMessageW(viewport, WM_VSCROLL, SB_LINEDOWN, 0);
+		const int linePosition = m_script_card_window.ScrollPosition();
+		::SendMessageW(viewport, WM_VSCROLL, SB_PAGEDOWN, 0);
+		const int pagePosition = m_script_card_window.ScrollPosition();
+		::SendMessageW(viewport, WM_VSCROLL, SB_BOTTOM, 0);
+		const int bottomPosition = m_script_card_window.ScrollPosition();
+		HWND richBlock = ::GetWindow(viewport, GW_CHILD);
+		if(richBlock) ::SendMessageW(richBlock, WM_MOUSEWHEEL, MAKEWPARAM(0, WHEEL_DELTA), 0);
+		const int wheelPosition = m_script_card_window.ScrollPosition();
+		if(richBlock) ::SendMessageW(richBlock, WM_KEYDOWN, VK_HOME, 0);
+		const int homePosition = m_script_card_window.ScrollPosition();
+		if(richBlock) ::SendMessageW(richBlock, WM_KEYDOWN, VK_END, 0);
+		const int endPosition = m_script_card_window.ScrollPosition();
+		if(richBlock) ::SendMessageW(richBlock, WM_KEYDOWN, VK_PRIOR, 0);
+		const int pageUpPosition = m_script_card_window.ScrollPosition();
+		const bool responsive = canScroll && linePosition > 0 && pagePosition > linePosition &&
+			bottomPosition >= pagePosition && wheelPosition < bottomPosition &&
+			homePosition == 0 && endPosition == bottomPosition && pageUpPosition < endPosition;
 		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
 			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
 			SWP_NOZORDER | SWP_NOACTIVATE);
-		::SendMessageW(m_script_card_window.m_hWnd, WM_VSCROLL, SB_TOP,
-			reinterpret_cast<LPARAM>(m_script_card_window.ViewportWindow()));
+		::SendMessageW(viewport, WM_VSCROLL, SB_TOP, 0);
 		const bool optionalRendered = openedCard && m_script_card_window.BodyText().Find(L"Mode = safe") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Second = false — да") >= 0 &&
 			m_script_card_window.BodyText().Find(L"\\u0434") < 0 &&
 			m_script_card_window.BodyText().Find(L"abc → ABC") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Undoable") >= 0;
 		const bool hashesHidden = openedCard && m_script_card_window.BodyText().Find(L"b93000a4f6") < 0;
-		const bool originHidden = openedCard && m_script_card_window.BodyText().Find(L"автоматически") < 0 &&
-			m_script_card_window.BodyText().Find(L"automatically") < 0;
+		const bool originShown = openedCard && m_script_card_window.OriginText() ==
+			FbeLoadRuntimeStringByKey(L"fbe.script_card.review.generated",
+				L"Description was generated automatically and may need review");
 		const bool windowIcons = openedCard &&
 			::SendMessageW(m_script_card_window.m_hWnd, WM_GETICON, ICON_SMALL, 0) != 0 &&
 			::SendMessageW(m_script_card_window.m_hWnd, WM_GETICON, ICON_BIG, 0) != 0;
@@ -361,6 +380,18 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool categoryShown = CString(header).Find(L"Иллюстрации/Подраздел") >= 0;
 		const bool changedWarning = reopened && m_script_card_window.StatusText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.changed",
 			L"Warning: description may not match the current script")) >= 0;
+		auto checkReviewOrigin = [&](const char* review, LPCWSTR key, LPCWSTR fallback) {
+			std::string source = cardSource;
+			const std::string marker = "\"reviewStatus\":\"generated\"";
+			const size_t position = source.find(marker);
+			if(position == std::string::npos) return false;
+			source.replace(position, marker.size(), std::string("\"reviewStatus\":\"") + review + "\"");
+			return WritePortableStateTestText(cardPath, source.c_str()) && openCard() && awaitCard() &&
+				m_script_card_window.OriginText() == FbeLoadRuntimeStringByKey(key, fallback);
+		};
+		const bool originStates = checkReviewOrigin("reviewed", L"fbe.script_card.review.reviewed",
+			L"Description reviewed by a maintainer") && checkReviewOrigin("unknown", L"fbe.script_card.review.unknown",
+			L"Description review status is unknown");
 		const bool buttons = ::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_RUN)) &&
 			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_OPEN)) &&
 			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY));
@@ -524,14 +555,14 @@ void CMainFrame::RunPortableStateTestScenario()
 		::SendMessageW(tree.m_hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
 		const bool previewScrollHidden = !tree.ScriptPreviewVisible();
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
-			hashesHidden && originHidden && technicalAbsent && windowIcons && boldHeading &&
+			hashesHidden && originShown && originStates && technicalAbsent && windowIcons && boldHeading &&
 			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
 			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
 			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot && runCount == 0;
 		CStringA report;
-		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-hidden=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
-			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originHidden, technicalAbsent, windowIcons, boldHeading,
+		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-shown=%d\norigin-states=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
+			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originShown, originStates, technicalAbsent, windowIcons, boldHeading,
 			copiedDetails, categoryShown, previewDelayed, previewShown,
 			previewReusable, previewLink, previewFallback, missingRowVisible, fallbackVisible, fallbackWindow, fallbackText,
 			previewScrollHidden, uidUpdated, changedWarning, buttons, infoOpened,
