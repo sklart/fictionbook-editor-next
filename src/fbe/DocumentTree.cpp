@@ -231,7 +231,7 @@ LRESULT CTreeWithToolBar::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_tree.ApplyModeAppearance();
 	m_rebar = CFrameWindowImplBase<>::CreateSimpleReBarCtrl(*this, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | CCS_NODIVIDER | CCS_NOPARENTALIGN | CS_HREDRAW);
 	m_toolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, m_toolbar_images, IDR_DOCUMENT_TREE,
-		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_WRAPABLE, ATL_IDW_TOOLBAR, 16);
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_WRAPABLE, ATL_IDW_TOOLBAR, 24);
 	if(!m_toolbar.IsWindow()) return -1;
 	CFrameWindowImplBase<>::AddSimpleReBarBandCtrl(m_rebar, m_toolbar);
 	if(m_rebar.IsWindow())
@@ -307,14 +307,16 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 		RECT firstButton = {};
 		m_toolbar.SendMessage(TB_GETITEMRECT, 0, reinterpret_cast<LPARAM>(&firstButton));
 		const int buttonWidth = (std::max)(1, static_cast<int>((std::max)(firstButton.right - firstButton.left, static_cast<LONG>(LOWORD(button)))));
-		RECT currentRebar = {}; m_rebar.GetWindowRect(&currentRebar);
 		REBARBANDINFO widthBand = {}; widthBand.cbSize = sizeof(widthBand); widthBand.fMask = RBBIM_SIZE | RBBIM_CHILDSIZE;
 		widthBand.cx = (std::max)(buttonWidth, static_cast<int>(clientRect.right - clientRect.left));
 		widthBand.cxMinChild = buttonWidth;
-		widthBand.cyMinChild = currentRebar.bottom - currentRebar.top;
+		RECT baseToolbarBounds = {}; m_toolbar.GetWindowRect(&baseToolbarBounds);
+		widthBand.cyMinChild = baseToolbarBounds.bottom - baseToolbarBounds.top;
 		m_rebar.SetBandInfo(0, &widthBand);
+		const int requiredRebarHeight = (std::max)(static_cast<int>(widthBand.cyMinChild),
+			static_cast<int>(m_rebar.SendMessage(RB_GETBARHEIGHT)));
 		m_rebar.SetWindowPos(NULL, 0, 0, clientRect.right - clientRect.left,
-			currentRebar.bottom - currentRebar.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+			requiredRebarHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 		const int count = m_toolbar.GetButtonCount();
 		const int columns = (std::max)(1, static_cast<int>((clientRect.right - clientRect.left) / buttonWidth));
 		bool wrapChanged = false;
@@ -342,11 +344,11 @@ LRESULT CTreeWithToolBar::OnSize(UINT /* unused: uMsg */, WPARAM /* unused: wPar
 			m_rebar.SendMessage(WM_SIZE);
 		}
 	}
-	::GetWindowRect(m_toolbar, &rebarRect);
+	if(m_rebar.IsWindow()) m_rebar.SendMessage(WM_SIZE);
+	::GetWindowRect(m_rebar, &rebarRect);
 	::GetWindowRect(m_view_bar, &viewBarRect);
-	const bool dark = ThemeManager::IsDark() && !ThemeManager::IsHighContrast();
 	const bool rebarVisible = m_rebar.IsWindowVisible() != FALSE;
-	int rebarHight = rebarVisible ? rebarRect.bottom - rebarRect.top + (dark ? 0 : GetSystemMetrics(SM_CYEDGE) * 2) : 0;
+	int rebarHight = rebarVisible ? rebarRect.bottom - rebarRect.top : 0;
 	rebarRect.left = treeRect.left = clientRect.left;
 	rebarRect.right = treeRect.right = clientRect.right;
 
@@ -886,19 +888,19 @@ void CTreeWithToolBar::UpdateDpiMetrics(UINT dpi)
 	if(m_toolbar.IsWindow())
 	{
 		CImageList images;
-		if(ToolbarFactory::CreateCommandToolbarImages(images, IDR_DOCUMENT_TREE, dpi, 16))
+		if(ToolbarFactory::CreateCommandToolbarImages(images, IDR_DOCUMENT_TREE, dpi, 24))
 		{
 			m_toolbar.SetImageList(images);
 			m_toolbar_images.Destroy();
 			m_toolbar_images.Attach(images.Detach());
 			ToolbarFactory::SetDialogFontForToolbarRow(m_toolbar);
-			ToolbarFactory::ApplyCommandToolbarMetrics(m_toolbar, IDR_DOCUMENT_TREE, dpi, 16);
+			ToolbarFactory::ApplyCommandToolbarMetrics(m_toolbar, IDR_DOCUMENT_TREE, dpi, 24);
 			if(m_rebar.IsWindow())
 			{
 				RECT toolbarRect = {}; m_toolbar.GetWindowRect(&toolbarRect);
 				REBARBANDINFO band = {}; band.cbSize = sizeof(band); band.fMask = RBBIM_CHILDSIZE;
 				band.cyMinChild = toolbarRect.bottom - toolbarRect.top;
-				band.cxMinChild = ToolbarFactory::CompactToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi);
+				band.cxMinChild = ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi);
 				m_rebar.SetBandInfo(0, &band);
 				m_rebar.SendMessage(WM_SIZE);
 			}

@@ -48,6 +48,7 @@ CSettingsDlg::~CSettingsDlg()
 LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
+	ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 	ThemeManager::ApplyToWindow(m_hWnd);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_TOOLS_SETTINGS);
 	m_navigation = GetDlgItem(IDC_SETTINGS_NAV);
@@ -136,7 +137,8 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	const int nonClientHeight = window.Height() - client.Height();
 	const int buttonRowWidth = 2 * m_buttonWidth + m_buttonGap;
 	const int minimumPageWidth = max(buttonRowWidth, 2 * m_navigationRect.Width());
-	const int minimumPageHeight = max(5 * m_navigation.GetItemHeight(0), 6 * m_buttonHeight);
+	const int navigationHeight = 8 * m_navigation.GetItemHeight(0) + m_navigationBottomGap;
+	const int minimumPageHeight = max(navigationHeight, 6 * m_buttonHeight);
 	m_minimumWindowSize = CSize(nonClientWidth + m_pageLeft + minimumPageWidth + m_pageRightMargin,
 		nonClientHeight + m_pageTop + minimumPageHeight + m_pageBottomMargin);
 	int preferredPageWidth = minimumPageWidth;
@@ -371,12 +373,24 @@ void CSettingsDlg::LayoutControls(int width, int height)
 {
 	if(!m_navigation.IsWindow())
 		return;
-	m_navigation.MoveWindow(m_navigationRect.left, m_navigationRect.top, m_navigationRect.Width(),
-		max(0, height - m_navigationRect.top - m_buttonBottomMargin - m_buttonHeight - m_navigationBottomGap));
+	const int navigationHeight = max(0, height - m_navigationRect.top - m_buttonBottomMargin - m_buttonHeight - m_navigationBottomGap);
 	const int cancelLeft = width - m_pageRightMargin - m_buttonWidth;
 	const int buttonTop = height - m_buttonBottomMargin - m_buttonHeight;
-	GetDlgItem(IDOK).MoveWindow(cancelLeft - m_buttonGap - m_buttonWidth, buttonTop, m_buttonWidth, m_buttonHeight);
-	GetDlgItem(IDCANCEL).MoveWindow(cancelLeft, buttonTop, m_buttonWidth, m_buttonHeight);
+	HDWP positions = ::BeginDeferWindowPos(3);
+	if(positions) positions = ::DeferWindowPos(positions, m_navigation, NULL, m_navigationRect.left,
+		m_navigationRect.top, m_navigationRect.Width(), navigationHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+	if(positions) positions = ::DeferWindowPos(positions, GetDlgItem(IDOK), NULL,
+		cancelLeft - m_buttonGap - m_buttonWidth, buttonTop, m_buttonWidth, m_buttonHeight,
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	if(positions) positions = ::DeferWindowPos(positions, GetDlgItem(IDCANCEL), NULL,
+		cancelLeft, buttonTop, m_buttonWidth, m_buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+	if(positions) ::EndDeferWindowPos(positions);
+	else
+	{
+		m_navigation.MoveWindow(m_navigationRect.left, m_navigationRect.top, m_navigationRect.Width(), navigationHeight);
+		GetDlgItem(IDOK).MoveWindow(cancelLeft - m_buttonGap - m_buttonWidth, buttonTop, m_buttonWidth, m_buttonHeight);
+		GetDlgItem(IDCANCEL).MoveWindow(cancelLeft, buttonTop, m_buttonWidth, m_buttonHeight);
+	}
 	if(m_currentPage != SettingsPageId::Count && m_pages[PageIndex(m_currentPage)])
 	{
 		const int index = PageIndex(m_currentPage);
@@ -618,6 +632,15 @@ bool CSettingsDlg::ProbeLayout()
 		const HWND page = m_pages[index]->m_hWnd;
 		const CRect pageRect = controlRect(page);
 		passed = passed && inside(pageRect) && navigation.right <= pageRect.left && pageRect.bottom <= ok.top;
+		if(index == PageIndex(SettingsPageId::Keyboard))
+		{
+			const HWND label = ::GetDlgItem(page, IDC_SETTINGS_OTHER_CHANGE_TO);
+			const HWND combo = ::GetDlgItem(page, IDC_KEYB_LAYOUT);
+			const HWND toggle = ::GetDlgItem(page, IDC_CHANGE_KEYB);
+			passed = passed && label && ::IsWindowEnabled(label) && combo && toggle &&
+				(::IsWindowEnabled(combo) != FALSE) ==
+				(::SendMessage(toggle, BM_GETCHECK, 0, 0) == BST_CHECKED);
+		}
 		CRect unchanged;
 		GetWindowRect(unchanged);
 		passed = passed && unchanged == original;

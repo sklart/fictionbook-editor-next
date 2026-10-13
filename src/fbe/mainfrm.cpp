@@ -1005,33 +1005,27 @@ static FilePluginMenus FindFilePluginMenus(HMENU fileMenu)
 {
 	FilePluginMenus result;
 	if(fileMenu == NULL) return result;
+	const int qualityPosition = FindMenuPositionByCommand(fileMenu, ID_FILE_QUALITY_CHECK);
 	result.recentPosition = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_MRU_FIRST);
-	// Remember the actual popup handles: plug-ins replace their placeholder commands,
-	// and other submenus may subsequently be inserted anywhere in the File menu.
+	if(qualityPosition < 0 || result.recentPosition <= qualityPosition) return result;
+	// The resource placeholders identify each popup independently of its position
+	// and translated caption. After initialization, plug-ins replace them.
 	static HMENU knownFileMenu = NULL, knownImportMenu = NULL, knownExportMenu = NULL;
 	const int count = ::GetMenuItemCount(fileMenu);
-	if(fileMenu == knownFileMenu)
-		for(int position = 0; position < count; ++position)
-		{
-			const HMENU submenu = ::GetSubMenu(fileMenu, position);
-			if(submenu == knownImportMenu) result.importPosition = position;
-			if(submenu == knownExportMenu) result.exportPosition = position;
-		}
-	if(result.importPosition < 0 || result.exportPosition < 0)
+	for(int position = qualityPosition + 1; position < result.recentPosition && position < count; ++position)
 	{
-		result.importPosition = result.exportPosition = -1;
-		const int first = FindTopLevelMenuPositionByCommand(fileMenu, ID_FILE_QUALITY_CHECK) + 1;
-		if(first > 0 && result.recentPosition > first)
-			for(int position = first; position < result.recentPosition; ++position)
-				if(::GetSubMenu(fileMenu, position) != NULL)
-				{
-					if(result.importPosition < 0) result.importPosition = position;
-					result.exportPosition = position;
-				}
-		if(result.importPosition == result.exportPosition) result.importPosition = result.exportPosition = -1;
+		const HMENU submenu = ::GetSubMenu(fileMenu, position);
+		if(submenu == NULL) continue;
+		if(FindMenuPositionByCommand(submenu, ID_FILE_IMPORT_PLACEHOLDER) >= 0 ||
+			(fileMenu == knownFileMenu && submenu == knownImportMenu)) result.importPosition = position;
+		if(FindMenuPositionByCommand(submenu, ID_FILE_EXPORT_PLACEHOLDER) >= 0 ||
+			(fileMenu == knownFileMenu && submenu == knownExportMenu)) result.exportPosition = position;
+	}
+	if(result.importPosition >= 0 && result.exportPosition >= 0)
+	{
 		knownFileMenu = fileMenu;
-		knownImportMenu = result.importPosition >= 0 ? ::GetSubMenu(fileMenu, result.importPosition) : NULL;
-		knownExportMenu = result.exportPosition >= 0 ? ::GetSubMenu(fileMenu, result.exportPosition) : NULL;
+		knownImportMenu = ::GetSubMenu(fileMenu, result.importPosition);
+		knownExportMenu = ::GetSubMenu(fileMenu, result.exportPosition);
 	}
 	return result;
 }
@@ -1073,9 +1067,9 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 
 		HMENU importMenu = menus.importPosition >= 0 ? ::GetSubMenu(fileMenu, menus.importPosition) : NULL;
 		HMENU exportMenu = menus.exportPosition >= 0 ? ::GetSubMenu(fileMenu, menus.exportPosition) : NULL;
-		if(importMenu != NULL && ::GetMenuItemID(importMenu, 0) == IDCANCEL)
+		if(importMenu != NULL && ::GetMenuItemID(importMenu, 0) == ID_FILE_IMPORT_PLACEHOLDER)
 			SetRuntimePlainMenuItemTextByPosition(importMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.import");
-		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == IDCANCEL)
+		if(exportMenu != NULL && ::GetMenuItemID(exportMenu, 0) == ID_FILE_EXPORT_PLACEHOLDER)
 			SetRuntimePlainMenuItemTextByPosition(exportMenu, 0, L"fbe.menu.idr_mainframe.plugins.none.export");
 	}
 
@@ -3411,6 +3405,8 @@ void CMainFrame::InitializeBundledPlugins()
 {
 	HMENU file = ::GetSubMenu(m_MenuBar.GetMenu(), 0);
 	const FilePluginMenus menus = FindFilePluginMenus(file);
+	if(menus.importPosition < 0 || menus.exportPosition < 0)
+		StartupTrace::Event(L"plugin", L"P200", L"plugin-menu-placeholder-missing");
 	m_plugins.Initialize(menus.importPosition >= 0 ? ::GetSubMenu(file, menus.importPosition) : NULL,
 		menus.exportPosition >= 0 ? ::GetSubMenu(file, menus.exportPosition) : NULL,
 		[](const PluginDescriptor& plugin) { return FbeLoadRuntimeStringByKey(plugin.menuKey, plugin.menu); },

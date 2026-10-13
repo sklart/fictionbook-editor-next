@@ -156,7 +156,6 @@ void CSettingsHotkeysDlg::UpdateKeyboardLayoutDependencies()
 {
 	const BOOL enabled = m_changeKeyb.GetCheck() == BST_CHECKED;
 	m_keybLayout.EnableWindow(enabled);
-	GetDlgItem(IDC_SETTINGS_OTHER_CHANGE_TO).EnableWindow(enabled);
 }
 
 LRESULT CSettingsHotkeysDlg::OnChangeKeyboardLayout(WORD, WORD, HWND, BOOL&)

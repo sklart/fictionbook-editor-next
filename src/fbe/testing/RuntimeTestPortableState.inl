@@ -792,8 +792,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		const HIMAGELIST bottomImages = reinterpret_cast<HIMAGELIST>(::SendMessage(bottomToolbar, TB_GETIMAGELIST, 0, 0));
 		const LRESULT bottomButtonSize = ::SendMessage(bottomToolbar, TB_GETBUTTONSIZE, 0, 0);
 		const bool bottomCompact = bottomImages != NULL && ::ImageList_GetIconSize(bottomImages, &bottomImageWidth, &bottomImageHeight) &&
-			bottomImageWidth == ToolbarFactory::CompactToolbarImageSize(scriptDpi) && bottomImageHeight == bottomImageWidth &&
-			HIWORD(bottomButtonSize) < UiMetrics::ScaleForDpi(31, scriptDpi);
+			bottomImageWidth == ToolbarFactory::CommandToolbarImageSize(scriptDpi) && bottomImageHeight == bottomImageWidth &&
+			HIWORD(bottomButtonSize) >= bottomImageHeight + UiMetrics::ScaleForDpi(4, scriptDpi);
 		bool dpiMatrix = true, dpiIconAlpha = true, narrowToolbar = true;
 		int narrowRowsObserved = 0, narrowMaxRight = 0, narrowWidthObserved = 0, toolbarWidthObserved = 0, wrapFlagsObserved = 0;
 		const UINT panelDpis[] = { 96, 120, 144, 168, 192 };
@@ -806,7 +806,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_document_tree.m_tree.UpdateDpiMetrics(dpi);
 			int image = 0, row = 0, indent = 0; bool expanders = false;
 		const int expected = UiMetrics::ScaleForDpi(20, dpi);
-		const int compact = ToolbarFactory::CompactToolbarImageSize(dpi);
+		const int toolbarIconSize = ToolbarFactory::CommandToolbarImageSize(dpi);
 			int toolbarImageWidth = 0, toolbarImageHeight = 0;
 			const HWND toolbar = m_document_tree.m_tree.BottomToolbarWindow();
 			const HIMAGELIST toolbarImages = reinterpret_cast<HIMAGELIST>(::SendMessage(toolbar, TB_GETIMAGELIST, 0, 0));
@@ -815,10 +815,9 @@ void CMainFrame::RunPortableStateTestScenario()
 			dpiMatrix = dpiMatrix && tree.GetScriptTreeMetrics(image, row, indent, expanders) &&
 				image == expected && row == UiMetrics::ScaleForDpi(24, dpi) && indent == expected &&
 				::ImageList_GetIconSize(toolbarImages, &toolbarImageWidth, &toolbarImageHeight) &&
-				toolbarImageWidth == compact && toolbarImageHeight == compact &&
-				LOWORD(buttonSize) >= compact + UiMetrics::ScaleForDpi(7, dpi) &&
-				HIWORD(buttonSize) >= compact + UiMetrics::ScaleForDpi(7, dpi) &&
-				HIWORD(buttonSize) < ToolbarFactory::CommandToolbarImageSize(dpi) + UiMetrics::ScaleForDpi(7, dpi) &&
+				toolbarImageWidth == toolbarIconSize && toolbarImageHeight == toolbarIconSize &&
+				LOWORD(buttonSize) >= toolbarIconSize + UiMetrics::ScaleForDpi(7, dpi) &&
+				HIWORD(buttonSize) >= toolbarIconSize + UiMetrics::ScaleForDpi(7, dpi) &&
 				search.bottom - search.top == UiMetrics::ScaleForDpi(26, dpi);
 			for(COLORREF background : { RGB(255, 255, 255), RGB(32, 32, 32) })
 			{
@@ -922,7 +921,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		// command routing itself is covered by the direct tree handler contract.
 		CStringA report; const bool passed = initialized && modeButtonReady && viewBarElements && switchedStructure && switchedScripts && hierarchy && visualMapping && scriptMetrics && bottomCommandsPreserved && bottomCompact && dpiMatrix && dpiIconAlpha && narrowToolbar && unorderedHierarchy && refreshedImageListBound && imagesStable && enterRuns && doubleClickRuns && folderOnly && dragGuarded && bitmapOnlyChild && uidPersisted && targetLive && structuralDragWorks;
 		report.Format("phase=navigation-scripts\nmode-button-window=%d\nmode-button-visible=%d\nmode-button-position-valid=%d\nmode-button-image-initial=%d\nmode-button-image-after-click=%d\nmode-button-image-after-second-click=%d\nmode-button-switch=%d\nviewbar-elements=%d\nviewbar-width=%d\nviewbar-measured-width=%d\nviewbar-padding=%d\nhierarchy=%d\nvisual-mapping=%d\nscript-image-size=%d\nscript-item-height=%d\nscript-indent=%d\nscript-legacy-expanders=%d\nscript-metrics=%d\ndpi-matrix=%d\nnarrow-toolbar=%d\nunordered-hierarchy=%d\nrefreshed-image-list-bound=%d\nimages-stable=%d\nsource-active=%d\nchild-command=%d\nbitmap-only-script=%d\nenter-runs=%d\ndouble-click-runs=%d\nfolder-only=%d\ndrag-guarded=%d\nstructural-drag-works=%d\nroot-added=%d\ndeep-added=%d\nroot-uid-persisted=%d\ndeep-uid-persisted=%d\nuid-persisted=%d\ntoolbar-target-live=%d\nresult=%s\n", modeButtonReady, modeButtonReady, modeButtonReady, initialImage, scriptsImage, structureImage, switchedStructure && switchedScripts, viewBarElements, viewBarWidth, viewBarMeasuredWidth, viewBarPadding, hierarchy, visualMapping, scriptImageSize, scriptItemHeight, scriptIndent, legacyExpanders, scriptMetrics, dpiMatrix, narrowToolbar, unorderedHierarchy, refreshedImageListBound, imagesStable, IsSourceActive(), childCommand, bitmapOnlyChild, enterRuns, doubleClickRuns, folderOnly, dragGuarded, structuralDragWorks, rootAdded, deepAdded, rootUidPersisted, deepUidPersisted, uidPersisted, targetLive, passed ? "pass" : "fail");
-		report.AppendFormat("bottom-commands-preserved=%d\nbottom-compact=%d\ndpi-icon-alpha=%d\nvisible-narrow-toolbar=%d\nnarrow-rows=%d\nnarrow-max-right=%d\nnarrow-width=%d\ntoolbar-width=%d\nwrap-flags=%d\n", bottomCommandsPreserved, bottomCompact, dpiIconAlpha, visibleNarrowToolbar, narrowRowsObserved, narrowMaxRight, narrowWidthObserved, toolbarWidthObserved, wrapFlagsObserved);
+		report.AppendFormat("bottom-commands-preserved=%d\nbottom-compact=%d\nbottom-image-size=%dx%d\nbottom-button-size=%dx%d\nbottom-dpi=%u\ndpi-icon-alpha=%d\nvisible-narrow-toolbar=%d\nnarrow-rows=%d\nnarrow-max-right=%d\nnarrow-width=%d\ntoolbar-width=%d\nwrap-flags=%d\n", bottomCommandsPreserved, bottomCompact, bottomImageWidth, bottomImageHeight, LOWORD(bottomButtonSize), HIWORD(bottomButtonSize), scriptDpi, dpiIconAlpha, visibleNarrowToolbar, narrowRowsObserved, narrowMaxRight, narrowWidthObserved, toolbarWidthObserved, wrapFlagsObserved);
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if(scriptToolbarRollbackNoMain)

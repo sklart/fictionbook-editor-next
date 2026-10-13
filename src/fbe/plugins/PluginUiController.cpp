@@ -17,6 +17,7 @@ void PluginUiController::InitializeType(HMENU menu, const TCHAR* type, UINT comm
 	const std::function<void(const PluginDescriptor&, UINT, const CString&)>& registerHotkey,
 	const std::function<void(HICON, UINT)>& addMenuIcon)
 {
+	if(menu == NULL) return;
 	const int capacity = static_cast<int>((commandBase == ID_IMPORT_BASE ? ID_PLUGIN_IMPORT_LAST : ID_PLUGIN_EXPORT_LAST) - commandBase + 1);
 	const std::vector<PluginDescriptor>& plugins = m_manager.GetPlugins();
 	for(size_t index = 0; index < plugins.size() && list.GetSize() < capacity; ++index)

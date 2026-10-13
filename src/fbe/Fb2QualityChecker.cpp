@@ -918,20 +918,33 @@ private:
 		const int buttonY = client.bottom - margin - buttonHeight;
 		const int detailsY = buttonY - gap - detailsHeight;
 		const int listY = margin + summaryHeight + gap;
-		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_SUMMARY), NULL, margin, margin, width, summaryHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_LIST), NULL, margin, listY, width, max(0, detailsY - gap - listY), SWP_NOZORDER | SWP_NOACTIVATE);
-		if (m_emptyMessage) ::SetWindowPos(m_emptyMessage, HWND_TOP, margin + gap, listY + UiMetrics::ScaleForDpi(32, dpi),
-			max(0, width - 2 * gap), UiMetrics::ScaleForDpi(30, dpi), SWP_NOACTIVATE);
-		::SetWindowPos(GetDlgItem(IDC_FB2_QUALITY_DETAILS), NULL, margin, detailsY, width, detailsHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+		struct Position { HWND window; HWND after; int x, y, width, height; UINT flags; };
+		Position positions[8] = {};
+		int count = 0;
+		const UINT fixed = SWP_NOZORDER | SWP_NOACTIVATE;
+		positions[count++] = { GetDlgItem(IDC_FB2_QUALITY_SUMMARY), NULL, margin, margin, width, summaryHeight, fixed };
+		positions[count++] = { GetDlgItem(IDC_FB2_QUALITY_LIST), NULL, margin, listY, width, max(0, detailsY - gap - listY), fixed };
+		if (m_emptyMessage) positions[count++] = { m_emptyMessage, HWND_TOP, margin + gap,
+			listY + UiMetrics::ScaleForDpi(32, dpi), max(0, width - 2 * gap), UiMetrics::ScaleForDpi(30, dpi), SWP_NOACTIVATE };
+		positions[count++] = { GetDlgItem(IDC_FB2_QUALITY_DETAILS), NULL, margin, detailsY, width, detailsHeight, fixed };
 		const int ids[] = { IDC_FB2_QUALITY_GOTO, IDC_FB2_QUALITY_COPY, IDC_FB2_QUALITY_SAVE, IDCANCEL };
 		int x = client.right - margin;
 		for (int i = 3; i >= 0; --i) {
 			x -= buttonWidths[i];
-			::SetWindowPos(GetDlgItem(ids[i]), NULL, x, buttonY, buttonWidths[i], buttonHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+			positions[count++] = { GetDlgItem(ids[i]), NULL, x, buttonY, buttonWidths[i], buttonHeight, fixed };
 			x -= gap;
 		}
+		HDWP batch = ::BeginDeferWindowPos(count);
+		for (int i = 0; batch && i < count; ++i)
+			batch = ::DeferWindowPos(batch, positions[i].window, positions[i].after,
+				positions[i].x, positions[i].y, positions[i].width, positions[i].height, positions[i].flags);
+		if (batch) ::EndDeferWindowPos(batch);
+		else for (int i = 0; i < count; ++i)
+			::SetWindowPos(positions[i].window, positions[i].after, positions[i].x, positions[i].y,
+				positions[i].width, positions[i].height, positions[i].flags);
 	}
 	LRESULT OnInit(UINT, WPARAM, LPARAM, BOOL&) {
+		ModifyStyle(0, WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 		::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
 		ApplyDpiFont(UiMetrics::DpiForWindow(m_hWnd));
 		SetWindowText(FbeLoadRuntimeStringByKey(L"fbe.quality.caption", L"FB2 quality check"));
@@ -979,8 +992,18 @@ private:
 	LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL&) { if (m_font) { ::DeleteObject(m_font); m_font = NULL; } return 0; }
 	LRESULT OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&) {
 		const RECT* suggested = reinterpret_cast<const RECT*>(lParam);
-		SetWindowPos(NULL, suggested->left, suggested->top, suggested->right - suggested->left,
-			suggested->bottom - suggested->top, SWP_NOZORDER | SWP_NOACTIVATE);
+		MONITORINFO monitor = { sizeof(monitor) };
+		RECT bounds = *suggested;
+		if (::GetMonitorInfoW(::MonitorFromRect(suggested, MONITOR_DEFAULTTONEAREST), &monitor)) {
+			const int width = min(bounds.right - bounds.left, monitor.rcWork.right - monitor.rcWork.left);
+			const int height = min(bounds.bottom - bounds.top, monitor.rcWork.bottom - monitor.rcWork.top);
+			bounds.left = min(max(bounds.left, monitor.rcWork.left), monitor.rcWork.right - width);
+			bounds.top = min(max(bounds.top, monitor.rcWork.top), monitor.rcWork.bottom - height);
+			bounds.right = bounds.left + width;
+			bounds.bottom = bounds.top + height;
+		}
+		SetWindowPos(NULL, bounds.left, bounds.top, bounds.right - bounds.left,
+			bounds.bottom - bounds.top, SWP_NOZORDER | SWP_NOACTIVATE);
 		ApplyDpiFont(LOWORD(wParam));
 		if (m_emptyMessage && m_font) ::SendMessageW(m_emptyMessage, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), TRUE);
 		CListViewCtrl list = GetDlgItem(IDC_FB2_QUALITY_LIST);
@@ -993,8 +1016,14 @@ private:
 	LRESULT OnMinMax(UINT, WPARAM, LPARAM parameter, BOOL&) {
 		MINMAXINFO* info = reinterpret_cast<MINMAXINFO*>(parameter);
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		info->ptMinTrackSize.x = MinimumWindowWidth();
-		info->ptMinTrackSize.y = UiMetrics::ScaleForDpi(310, dpi);
+		MONITORINFO monitor = { sizeof(monitor) };
+		if (::GetMonitorInfoW(::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
+			info->ptMinTrackSize.x = min(MinimumWindowWidth(), monitor.rcWork.right - monitor.rcWork.left);
+			info->ptMinTrackSize.y = min(UiMetrics::ScaleForDpi(310, dpi), monitor.rcWork.bottom - monitor.rcWork.top);
+		} else {
+			info->ptMinTrackSize.x = MinimumWindowWidth();
+			info->ptMinTrackSize.y = UiMetrics::ScaleForDpi(310, dpi);
+		}
 		return 0;
 	}
 	void UpdateGoTo() {

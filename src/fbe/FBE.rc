@@ -864,11 +864,11 @@ BEGIN
         MENUITEM SEPARATOR
         POPUP "&Import"
         BEGIN
-            MENUITEM "No import plugins installed", IDCANCEL
+            MENUITEM "No import plugins installed", ID_FILE_IMPORT_PLACEHOLDER, INACTIVE
         END
         POPUP "&Export"
         BEGIN
-            MENUITEM "No export plugins installed", IDCANCEL
+            MENUITEM "No export plugins installed", ID_FILE_EXPORT_PLACEHOLDER, INACTIVE
         END
         MENUITEM SEPARATOR
         POPUP "&Recent Files"
