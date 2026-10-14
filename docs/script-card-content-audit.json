@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 365,
-    "generic_usage": 937,
-    "incorrect_undo": 141,
+    "requires_review": 364,
+    "generic_usage": 932,
+    "incorrect_undo": 140,
     "inaccurate_description": 54
   },
   "reviewedChanges": [
@@ -49646,44 +49646,191 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/765_Создать заголовок из обычных абзацев или подзаголовков.js",
+      "codeSha256": "dc9f0c076139251cde5d5a36895633ce8dba4affbc3585cedbd749c9dff62aee",
+      "evidence": "Строки 1-24 задают назначение и авторство; 35-36 — настройку; 201-229 проверяют P и общую секцию; 253-339 находят диапазон; 341-422 создают соседний раздел и переносят элементы; 424-463 убирают маркеры и завершают группу. Внешних файлов и сети нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация по указанию в шапке"
+            }
+          ],
+          "category": "duplicate_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для создания заголовка (DIV class=\"title\")",
+          "after": "Создаёт новый раздел с заголовком из абзаца под курсором или смежных выбранных абзацев.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для создания заголовка (DIV class=\"title\")",
+          "after": "Вставляет временные маркеры, собирает обычные P и подзаголовки в одной секции, отклоняет защищённые блочные элементы. Копирует выбранные абзацы в DIV title нового соседнего раздела; элементы исходной секции после выбора переносит туда же, а из старой секции удаляет. При необходимости добавляет пустой абзац после прежнего заголовка и в новый раздел без дальнейшего содержимого. Курсор без выделения также допускается.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Один абзац под курсором либо смежные абзацы одного раздела; изменяются также все элементы этой секции после выбранных абзацев и создаётся соседний раздел.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в обычный абзац или подзаголовок либо выделите несколько абзацев одной секции.",
+            "После запуска проверьте новый заголовок, перенос содержимого и то, не осталась ли прежняя секция пустой."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Если первый выбранный абзац был первым элементом секции без заголовка, исходная секция может остаться пустой после переноса содержимого.",
+            "Обход к конечному маркеру не ограничен корнем книги; при некорректном диапазоне возможна ошибка. При частичной структурной правке автоматическое восстановление не выполняется."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Явные досрочные выходы закрывают группу действий, а ошибки основного блока перехватываются перед её завершением. Скрипт не восстанавливает частично изменённую структуру при ошибке; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Показывать сообщение об успешной обработке: 1 — да, 0 — нет. Ошибки показываются всегда.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 413,
+          "issue": "При выборе первого абзаца секции без заголовка удаляются он и все следующие элементы. Старая parentSection не удаляется и не наполняется; остаётся пустой DIV.section."
+        },
+        {
+          "line": 154,
+          "issue": "getNextNode поднимается по родителям без проверки null и границы fbw_body. Если конечный маркер недостижим, обход может обратиться к nextSibling у null и прервать обработку с ошибкой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 667,
-    "generic_usage": 355,
+    "inaccurate_description": 668,
+    "generic_usage": 356,
     "false_warning": 319,
-    "incorrect_setting": 187,
-    "incorrect_scope": 362,
-    "incorrect_undo": 354,
+    "incorrect_setting": 188,
+    "incorrect_scope": 363,
+    "incorrect_undo": 355,
     "uncertain_attribution": 54,
-    "generic_summary": 52,
-    "incorrect_dependency": 370,
+    "generic_summary": 53,
+    "incorrect_dependency": 371,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "generic_warning": 54,
+    "generic_warning": 55,
     "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 35,
+    "incorrect_selection": 36,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 3,
-    "duplicate_attribution": 6,
+    "duplicate_attribution": 7,
     "missing_warning": 1
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 346,
-    "usageCorrected": 355,
-    "purposeClarified": 353,
-    "warningsClarified": 287,
-    "scopeClarified": 339,
-    "settingsClarified": 501,
-    "attributionClarified": 54,
-    "dependenciesVerified": 237,
+    "undoDescriptionsClarified": 347,
+    "usageCorrected": 356,
+    "purposeClarified": 354,
+    "warningsClarified": 288,
+    "scopeClarified": 340,
+    "settingsClarified": 502,
+    "attributionClarified": 55,
+    "dependenciesVerified": 238,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -158562,49 +158709,45 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Создать заголовок из обычных абзацев или подзаголовков",
-        "summary": "Скрипт предназначен для создания заголовка (DIV class=\"title\")",
-        "description": "Скрипт предназначен для создания заголовка (DIV class=\"title\")",
+        "summary": "Создаёт новый раздел с заголовком из абзаца под курсором или смежных выбранных абзацев.",
+        "description": "Вставляет временные маркеры, собирает обычные P и подзаголовки в одной секции, отклоняет защищённые блочные элементы. Копирует выбранные абзацы в DIV title нового соседнего раздела; элементы исходной секции после выбора переносит туда же, а из старой секции удаляет. При необходимости добавляет пустой абзац после прежнего заголовка и в новый раздел без дальнейшего содержимого. Курсор без выделения также допускается.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация по указанию в шапке"
           }
         ],
         "version": "2.1",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Один абзац под курсором либо смежные абзацы одного раздела; изменяются также все элементы этой секции после выбранных абзацев и создаётся соседний раздел.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в обычный абзац или подзаголовок либо выделите несколько абзацев одной секции.",
+          "После запуска проверьте новый заголовок, перенос содержимого и то, не осталась ли прежняя секция пустой."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Если первый выбранный абзац был первым элементом секции без заголовка, исходная секция может остаться пустой после переноса содержимого.",
+          "Обход к конечному маркеру не ограничен корнем книги; при некорректном диапазоне возможна ошибка. При частичной структурной правке автоматическое восстановление не выполняется."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать сообщение об успешной обработке: 1 — да, 0 — нет. Ошибки показываются всегда.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Явные досрочные выходы закрывают группу действий, а ошибки основного блока перехватываются перед её завершением. Скрипт не восстанавливает частично изменённую структуру при ошибке; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -158615,58 +158758,58 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 321,
+            "line": 317,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
           }
         ],
         "undo_end": [
           {
-            "line": 368,
+            "line": 364,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 385,
+            "line": 381,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 524,
+            "line": 520,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 124,
+            "line": 120,
             "text": "var sel = document.selection;"
           },
           {
-            "line": 126,
+            "line": 122,
             "text": "var controlRange = sel.createRange();"
           },
           {
-            "line": 240,
+            "line": 236,
             "text": "var tr = document.selection.createRange();"
           },
           {
-            "line": 240,
+            "line": 236,
             "text": "var tr = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 253,
+            "line": 249,
             "text": "var p = document.createElement(\"P\");"
           },
           {
-            "line": 254,
+            "line": 250,
             "text": "p.innerHTML = nbspChar;"
           },
           {
-            "line": 437,
+            "line": 433,
             "text": "var newSection = document.createElement(\"DIV\");"
           },
           {
-            "line": 440,
+            "line": 436,
             "text": "var newTitle = document.createElement(\"DIV\");"
           }
         ],
@@ -158677,123 +158820,123 @@
         "file": [],
         "return": [
           {
-            "line": 132,
+            "line": 128,
             "text": "return;"
           },
           {
-            "line": 145,
+            "line": 141,
             "text": "return true;"
           },
           {
-            "line": 149,
+            "line": 145,
             "text": "return false;"
           },
           {
-            "line": 165,
+            "line": 161,
             "text": "return true;"
+          },
+          {
+            "line": 164,
+            "text": "return false;"
           },
           {
             "line": 168,
             "text": "return false;"
           },
           {
-            "line": 172,
-            "text": "return false;"
+            "line": 176,
+            "text": "return true;"
           },
           {
-            "line": 180,
-            "text": "return true;"
+            "line": 181,
+            "text": "return false;"
           },
           {
             "line": 185,
-            "text": "return false;"
-          },
-          {
-            "line": 189,
             "text": "if (!ptr) return false;"
           },
           {
-            "line": 199,
+            "line": 195,
             "text": "return true;"
           },
           {
-            "line": 204,
+            "line": 200,
             "text": "return false;"
           },
           {
-            "line": 219,
+            "line": 215,
             "text": "return el;"
           },
           {
-            "line": 226,
+            "line": 222,
             "text": "return el;"
           },
           {
-            "line": 255,
+            "line": 251,
             "text": "return p;"
           },
           {
-            "line": 263,
+            "line": 259,
             "text": "if (!p || p.nodeName != \"P\") return false;"
           },
           {
-            "line": 266,
+            "line": 262,
             "text": "if (className != \"\" && className != \"subtitle\") return false;"
           },
           {
-            "line": 268,
+            "line": 264,
             "text": "if (isInHistory(p)) return false;"
           },
           {
-            "line": 269,
+            "line": 265,
             "text": "if (isInFirstAnnotation(p)) return false;"
           },
           {
-            "line": 270,
+            "line": 266,
             "text": "if (isInProtectedElement(p)) return false;"
           },
           {
-            "line": 271,
+            "line": 267,
             "text": "if (isInsideBlockElement(p)) return false;"
           },
           {
-            "line": 273,
+            "line": 269,
             "text": "return true;"
           },
           {
-            "line": 281,
+            "line": 277,
             "text": "if (ps.length == 0) return false;"
           },
           {
-            "line": 284,
+            "line": 280,
             "text": "if (!parentEl || parentEl.className != \"section\") return false;"
           },
           {
-            "line": 287,
+            "line": 283,
             "text": "if (ps[i].parentNode != parentEl) return false;"
           },
           {
-            "line": 290,
+            "line": 286,
             "text": "return true;"
           },
           {
-            "line": 304,
+            "line": 300,
             "text": "return true;"
           },
           {
-            "line": 307,
+            "line": 303,
             "text": "return false;"
           },
           {
-            "line": 318,
+            "line": 314,
             "text": "return;"
           },
           {
-            "line": 369,
+            "line": 365,
             "text": "return;"
           },
           {
-            "line": 386,
+            "line": 382,
             "text": "return;"
           }
         ]
@@ -158805,17 +158948,17 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 97,
+              "line": 93,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 97,
+              "line": 93,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 494,
+              "line": 490,
               "text": "if (showStatistics == 1) {"
             }
           ],
@@ -158825,25 +158968,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 63,
+          "line": 59,
           "text": "// version 2.1"
         },
         {
-          "line": 83,
+          "line": 79,
           "text": "// version 2.1, 14.04.2026"
         },
         {
-          "line": 88,
+          "line": 84,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 90,
+          "line": 86,
           "text": "var version = \"2.1\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Если первый выбранный абзац был первым элементом секции без заголовка, исходная секция может остаться пустой после переноса содержимого.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Обход к конечному маркеру не ограничен корнем книги; при некорректном диапазоне возможна ошибка. При частичной структурной правке автоматическое восстановление не выполняется.",
           "verification": "requires_review"
         }
       ],
@@ -158866,110 +159013,30 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 321,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
-            },
-            {
-              "line": 368,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 385,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 524,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Явные досрочные выходы закрывают группу действий, а ошибки основного блока перехватываются перед её завершением. Скрипт не восстанавливает частично изменённую структуру при ошибке; полнота отката не проверена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 321,
+              "line": 317,
               "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
             },
             {
-              "line": 369,
+              "line": 365,
               "text": "return;"
             },
             {
-              "line": 386,
+              "line": 382,
               "text": "return;"
             },
             {
-              "line": 524,
+              "line": 520,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]

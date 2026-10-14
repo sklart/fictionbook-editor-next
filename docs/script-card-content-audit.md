@@ -16,52 +16,52 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **409**. Исполняемый код не изменён.
+Изменено карточек: **410**. Исполняемый код не изменён.
 
-- `duplicate_attribution`: 6
+- `duplicate_attribution`: 7
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 52
-- `generic_usage`: 355
-- `generic_warning`: 54
-- `inaccurate_description`: 667
+- `generic_summary`: 53
+- `generic_usage`: 356
+- `generic_warning`: 55
+- `inaccurate_description`: 668
 - `inaccurate_summary`: 3
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 370
+- `incorrect_dependency`: 371
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 362
-- `incorrect_selection`: 35
-- `incorrect_setting`: 187
-- `incorrect_undo`: 354
+- `incorrect_scope`: 363
+- `incorrect_selection`: 36
+- `incorrect_setting`: 188
+- `incorrect_undo`: 355
 - `incorrect_version`: 8
 - `missing_warning`: 1
 - `uncertain_attribution`: 54
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 54
+- `attributionClarified`: 55
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 237
+- `dependenciesVerified`: 238
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 353
-- `scopeClarified`: 339
+- `purposeClarified`: 354
+- `scopeClarified`: 340
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 501
-- `undoDescriptionsClarified`: 346
-- `usageCorrected`: 355
+- `settingsClarified`: 502
+- `undoDescriptionsClarified`: 347
+- `usageCorrected`: 356
 - `versionCorrected`: 3
-- `warningsClarified`: 287
+- `warningsClarified`: 288
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **249**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **250**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -539,13 +539,15 @@
 - `13_Заголовки, подзаголовки, пустые строки/715_Разделить заголовок на два по месту установки курсора.js:233` — window.external.inflateBlock(emptyParagraph) = true вызывает ошибку после изменения исходного заголовка и удаления перенесённых элементов, но до вставки newSection. Перехват не восстанавливает их; возможно частичное исчезновение содержимого книги.
 - `13_Заголовки, подзаголовки, пустые строки/715_Разделить заголовок на два по месту установки курсора.js:341` — findHtmlPosition сравнивает декодированный текст TextRange с символами сырого innerHTML. Сущности вроде &amp; и форматирующие теги нарушают соответствие позиции курсора и HTML; разрез может не найтись либо прийтись не туда.
 - `13_Заголовки, подзаголовки, пустые строки/715_Разделить заголовок на два по месту установки курсора.js:321` — normalizeSpaces для левой части обрезает HTML сразу после последнего текстового символа и может удалить закрывающие теги форматирования перед курсором. После присваивания innerHTML разметка меняется не только в точке разделения.
+- `13_Заголовки, подзаголовки, пустые строки/765_Создать заголовок из обычных абзацев или подзаголовков.js:413` — При выборе первого абзаца секции без заголовка удаляются он и все следующие элементы. Старая parentSection не удаляется и не наполняется; остаётся пустой DIV.section.
+- `13_Заголовки, подзаголовки, пустые строки/765_Создать заголовок из обычных абзацев или подзаголовков.js:154` — getNextNode поднимается по родителям без проверки null и границы fbw_body. Если конечный маркер недостижим, обход может обратиться к nextSibling у null и прервать обработку с ошибкой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 937
+- `generic_usage`: 932
 - `inaccurate_description`: 54
-- `incorrect_undo`: 141
-- `requires_review`: 365
+- `incorrect_undo`: 140
+- `requires_review`: 364
 
 ## Границы проверки
 
