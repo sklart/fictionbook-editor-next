@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 358,
-    "generic_usage": 903,
-    "incorrect_undo": 134,
+    "requires_review": 357,
+    "generic_usage": 898,
+    "incorrect_undo": 133,
     "inaccurate_description": 50
   },
   "reviewedChanges": [
@@ -50950,30 +50950,233 @@
         "dependenciesVerified": 1,
         "settingsClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/560_Унификация подзаголовков-звездочек (С-К).js",
+      "codeSha256": "5287198e37593a2a13a93a604b594d339273e3dba3d287fcd942a1b572776d14",
+      "evidence": "Строки 1–11 указывают происхождение оболочки и операции; 29–79 задают пользовательские параметры; 90–110 содержат единственную активную замену; 260–299 определяют подзаголовки и записывают изменённый HTML; 318–337 обходят дочерние DIV и завершают группу; 692–695 только подписывают статистику выбранным режимом. Внешних файлов и сетевых операций нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Александр Ка",
+              "role": "author"
+            },
+            {
+              "name": "Александр Ка",
+              "role": "modifier"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "операция унификации звёздочек"
+            },
+            {
+              "name": "Александр Ка",
+              "role": "original_author",
+              "contribution": "оболочка скрипта-конструктора и редакции 1.0–1.2"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Предназначен для быстрого и удобного создания несложных скриптов по поиску и замене в строках текста (с тегами).",
+          "after": "Приводит звёздочные строки в подзаголовках к виду «* * *».",
+          "category": "inaccurate_summary"
+        },
+        {
+          "field": "description",
+          "before": "Предназначен для быстрого и удобного создания несложных скриптов по поиску и замене в строках текста (с тегами).",
+          "after": "Просматривает абзацы книги, включая аннотацию и исключая историю при исходных настройках. Единственная активная операция ищет в уже размеченных подзаголовках строки из трёх и более звёздочек с различными пробелами, возможно окружённые простыми тегами жирности или курсива, и заменяет весь HTML строки на «* * *». Выводит число проверенных и изменённых абзацев. Другие типы абзацев не изменяет; выбор «Поиск и подсчёт» меняет только подпись статистики.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все P внутри дочерних DIV fbw_body, кроме history при исходной настройке; изменения только в P с точным классом subtitle.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Запустите команду без выделения для всей книги. Проверьте звёздочные подзаголовки и итоговое число изменений.",
+            "Если требуется обработать историю или исключить аннотацию, измените соответствующие настройки в исходном JS. Режим «Поиск и подсчёт» не отключает замену."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Скрипт заменяет весь HTML подходящего подзаголовка строкой «* * *»; сохраните копию книги и проверьте форматирование таких строк.",
+            "Настройка Poisk_ili_Ispravlenija=0 не делает запуск проверкой без изменений: замена по-прежнему выполняется. При ошибке обхода группа отмены может остаться незавершённой."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "При штатном завершении изменения объединяются для отмены. После начала обработки нет досрочных выходов, но исключение в обходе может помешать завершению группы; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "ObrabotkaHistory_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaAnnotation_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Vysota_kolonki",
+              "value": 37,
+              "expression": "37",
+              "description": "12-46 // Число строк в одной колонке.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Poslovitsa_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "VseStroki_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "ObrabotkaHistory_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать абзацы истории изменений: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaAnnotation_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать абзацы аннотации: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Poisk_ili_Ispravlenija",
+              "value": 1,
+              "expression": "1",
+              "description": "Заголовок статистики: 0 — «Поиск и подсчёт», 1 — «Исправления». На замену текста настройка не влияет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Vysota_kolonki",
+              "value": 37,
+              "expression": "37",
+              "description": "Желаемое число строк в колонке итогового окна.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Poslovitsa_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "Добавлять пословицу в итоговое окно: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "VseStroki_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "Показывать нулевые строки статистики: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 105,
+          "issue": "Замена s.replace выполняется независимо от Poisk_ili_Ispravlenija. Значение 0 меняет только подпись статистики, хотя пользовательский комментарий обещает режим поиска и подсчёта."
+        },
+        {
+          "line": 320,
+          "issue": "Код использует fbw_body как неявную глобальную переменную по id без локального поиска элемента. Если такое имя не предоставлено движком или элемент отсутствует, ошибка произойдёт после BeginUndoUnit и группа действий останется незавершённой."
+        },
+        {
+          "line": 98,
+          "issue": "Шаблон допускает начальные и конечные теги жирности/курсива независимо друг от друга; при непарной исходной разметке совпавшая строка целиком заменяется на «* * *», скрывая повреждение тегов."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 674,
-    "generic_usage": 362,
+    "inaccurate_description": 675,
+    "generic_usage": 363,
     "false_warning": 319,
-    "incorrect_setting": 194,
-    "incorrect_scope": 369,
-    "incorrect_undo": 361,
+    "incorrect_setting": 195,
+    "incorrect_scope": 370,
+    "incorrect_undo": 362,
     "uncertain_attribution": 54,
     "generic_summary": 58,
-    "incorrect_dependency": 377,
+    "incorrect_dependency": 378,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "generic_warning": 61,
-    "incorrect_attribution": 42,
+    "generic_warning": 62,
+    "incorrect_attribution": 43,
     "incorrect_metadata": 10,
     "false_setting": 9,
     "incorrect_selection": 36,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
-    "inaccurate_summary": 4,
+    "inaccurate_summary": 5,
     "duplicate_attribution": 8,
     "missing_warning": 1,
     "missing_version": 4
@@ -50981,14 +51184,14 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 353,
-    "usageCorrected": 362,
-    "purposeClarified": 360,
-    "warningsClarified": 294,
-    "scopeClarified": 346,
-    "settingsClarified": 508,
-    "attributionClarified": 56,
-    "dependenciesVerified": 244,
+    "undoDescriptionsClarified": 354,
+    "usageCorrected": 363,
+    "purposeClarified": 361,
+    "warningsClarified": 295,
+    "scopeClarified": 347,
+    "settingsClarified": 509,
+    "attributionClarified": 57,
+    "dependenciesVerified": 245,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -140312,72 +140515,80 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Унификация подзаголовков-звездочек (С-К)",
-        "summary": "Предназначен для быстрого и удобного создания несложных скриптов по поиску и замене в строках текста (с тегами).",
-        "description": "Предназначен для быстрого и удобного создания несложных скриптов по поиску и замене в строках текста (с тегами).",
+        "summary": "Приводит звёздочные строки в подзаголовках к виду «* * *».",
+        "description": "Просматривает абзацы книги, включая аннотацию и исключая историю при исходных настройках. Единственная активная операция ищет в уже размеченных подзаголовках строки из трёх и более звёздочек с различными пробелами, возможно окружённые простыми тегами жирности или курсива, и заменяет весь HTML строки на «* * *». Выводит число проверенных и изменённых абзацев. Другие типы абзацев не изменяет; выбор «Поиск и подсчёт» меняет только подпись статистики.",
         "authors": [
           {
-            "name": "Александр Ка",
-            "role": "author"
+            "name": "TaKir",
+            "role": "author",
+            "contribution": "операция унификации звёздочек"
           },
           {
             "name": "Александр Ка",
-            "role": "modifier"
+            "role": "original_author",
+            "contribution": "оболочка скрипта-конструктора и редакции 1.0–1.2"
           }
         ],
         "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все P внутри дочерних DIV fbw_body, кроме history при исходной настройке; изменения только в P с точным классом subtitle.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Запустите команду без выделения для всей книги. Проверьте звёздочные подзаголовки и итоговое число изменений.",
+          "Если требуется обработать историю или исключить аннотацию, измените соответствующие настройки в исходном JS. Режим «Поиск и подсчёт» не отключает замену."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Скрипт заменяет весь HTML подходящего подзаголовка строкой «* * *»; сохраните копию книги и проверьте форматирование таких строк.",
+          "Настройка Poisk_ili_Ispravlenija=0 не делает запуск проверкой без изменений: замена по-прежнему выполняется. При ошибке обхода группа отмены может остаться незавершённой."
         ],
         "settings": [
           {
             "name": "ObrabotkaHistory_on_off",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать абзацы истории изменений: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaAnnotation_on_off",
             "value": 1,
             "expression": "1",
-            "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать абзацы аннотации: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "Poisk_ili_Ispravlenija",
+            "value": 1,
+            "expression": "1",
+            "description": "Заголовок статистики: 0 — «Поиск и подсчёт», 1 — «Исправления». На замену текста настройка не влияет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "Vysota_kolonki",
             "value": 37,
             "expression": "37",
-            "description": "12-46 // Число строк в одной колонке.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Желаемое число строк в колонке итогового окна.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "Poslovitsa_on_off",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Добавлять пословицу в итоговое окно: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "VseStroki_on_off",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать нулевые строки статистики: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "При штатном завершении изменения объединяются для отмены. После начала обработки нет досрочных выходов, но исключение в обходе может помешать завершению группы; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -140388,13 +140599,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 402,
+            "line": 410,
             "text": "window.external.BeginUndoUnit(document,\"«\"+NazvanieSkripta+\"» v.\"+NumerusVersion);  // Начало записи в систему отмен FBE"
           }
         ],
         "undo_end": [
           {
-            "line": 421,
+            "line": 429,
             "text": "window.external.EndUndoUnit(document);  // Конец записи в систему отмен FBE"
           }
         ],
@@ -140402,15 +140613,15 @@
         "selection": [],
         "write": [
           {
-            "line": 346,
+            "line": 354,
             "text": "s=ptr.innerHTML;  //  получение текста параграфа (с внутренними тегами)"
           },
           {
-            "line": 379,
+            "line": 387,
             "text": "if (ptr.innerHTML != s) {"
           },
           {
-            "line": 381,
+            "line": 389,
             "text": "ptr.innerHTML=s }"
           }
         ],
@@ -140428,17 +140639,17 @@
           "name": "ObrabotkaHistory_on_off",
           "declarations": [
             {
-              "line": 126,
+              "line": 134,
               "text": "var ObrabotkaHistory_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             }
           ],
           "uses": [
             {
-              "line": 126,
+              "line": 134,
               "text": "var ObrabotkaHistory_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             },
             {
-              "line": 408,
+              "line": 416,
               "text": "if (div.nodeName == \"DIV\"  &&  (div.className != \"history\"  ||  ObrabotkaHistory_on_off != 0)  &&  (div.className != \"annotation\"  ||  ObrabotkaAnnotation_on_off != 0)) {"
             }
           ],
@@ -140449,17 +140660,17 @@
           "name": "ObrabotkaAnnotation_on_off",
           "declarations": [
             {
-              "line": 131,
+              "line": 139,
               "text": "var ObrabotkaAnnotation_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             }
           ],
           "uses": [
             {
-              "line": 131,
+              "line": 139,
               "text": "var ObrabotkaAnnotation_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             },
             {
-              "line": 408,
+              "line": 416,
               "text": "if (div.nodeName == \"DIV\"  &&  (div.className != \"history\"  ||  ObrabotkaHistory_on_off != 0)  &&  (div.className != \"annotation\"  ||  ObrabotkaAnnotation_on_off != 0)) {"
             }
           ],
@@ -140467,62 +140678,83 @@
         },
         {
           "index": 2,
-          "name": "Vysota_kolonki",
+          "name": "Poisk_ili_Ispravlenija",
           "declarations": [
             {
               "line": 146,
-              "text": "var Vysota_kolonki = 37;      // 12-46 //      Число строк в одной колонке."
+              "text": "var Poisk_ili_Ispravlenija = 1;      // 0 ; 1 //      (\"0\" — Поиск и подсчет, \"1\" — Исправления)"
             }
           ],
           "uses": [
             {
               "line": 146,
-              "text": "var Vysota_kolonki = 37;      // 12-46 //      Число строк в одной колонке."
+              "text": "var Poisk_ili_Ispravlenija = 1;      // 0 ; 1 //      (\"0\" — Поиск и подсчет, \"1\" — Исправления)"
             },
             {
-              "line": 819,
-              "text": "var max0=Vysota_kolonki;   //  Желаемая высота колонки"
+              "line": 785,
+              "text": "if (Poisk_ili_Ispravlenija==0)  mSt[ind]=\"• ПОИСК И ПОДСЧЁТ:\t\t\t\";"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 3,
-          "name": "Poslovitsa_on_off",
+          "name": "Vysota_kolonki",
           "declarations": [
             {
-              "line": 155,
-              "text": "var Poslovitsa_on_off = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+              "line": 154,
+              "text": "var Vysota_kolonki = 37;      // 12-46 //      Число строк в одной колонке."
             }
           ],
           "uses": [
             {
-              "line": 155,
-              "text": "var Poslovitsa_on_off = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+              "line": 154,
+              "text": "var Vysota_kolonki = 37;      // 12-46 //      Число строк в одной колонке."
             },
             {
-              "line": 791,
-              "text": "if (Poslovitsa_on_off != 0) {"
+              "line": 827,
+              "text": "var max0=Vysota_kolonki;   //  Желаемая высота колонки"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 4,
-          "name": "VseStroki_on_off",
+          "name": "Poslovitsa_on_off",
           "declarations": [
             {
               "line": 163,
-              "text": "var VseStroki_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
+              "text": "var Poslovitsa_on_off = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
             }
           ],
           "uses": [
             {
               "line": 163,
+              "text": "var Poslovitsa_on_off = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+            },
+            {
+              "line": 799,
+              "text": "if (Poslovitsa_on_off != 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "VseStroki_on_off",
+          "declarations": [
+            {
+              "line": 171,
+              "text": "var VseStroki_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
+            }
+          ],
+          "uses": [
+            {
+              "line": 171,
               "text": "var VseStroki_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             },
             {
-              "line": 782,
+              "line": 790,
               "text": "if (VseStroki_on_off == 1)  d = \"показать все строки\";"
             }
           ],
@@ -140532,25 +140764,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 86,
+          "line": 94,
           "text": "//             «Скрипт-конструктор» версия «Унификация подзаголовков-звёздочек» (TaKir, декабрь 2024)"
         },
         {
-          "line": 116,
+          "line": 124,
           "text": "//     Номер версии скрипта"
         },
         {
-          "line": 118,
+          "line": 126,
           "text": "var NumerusVersion=\"1.2\";      // текст //"
         },
         {
-          "line": 120,
+          "line": 128,
           "text": "// * Название и версия скрипта отображаются  в окне статистики  и  в списке системы отмен \"FictionBook Editor\""
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Скрипт заменяет весь HTML подходящего подзаголовка строкой «* * *»; сохраните копию книги и проверьте форматирование таких строк.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Настройка Poisk_ili_Ispravlenija=0 не делает запуск проверкой без изменений: замена по-прежнему выполняется. При ошибке обхода группа отмены может остаться незавершённой.",
           "verification": "requires_review"
         }
       ],
@@ -140571,80 +140807,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 402,
-              "text": "window.external.BeginUndoUnit(document,\"«\"+NazvanieSkripta+\"» v.\"+NumerusVersion);  // Начало записи в систему отмен FBE"
-            },
-            {
-              "line": 421,
-              "text": "window.external.EndUndoUnit(document);  // Конец записи в систему отмен FBE"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/570_Поиск возможных заголовков по ключевым словам.js",

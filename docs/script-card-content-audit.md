@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **214**.
+Карточек без автоматических замечаний: **215**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,28 +16,28 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **416**. Исполняемый код не изменён.
+Изменено карточек: **417**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
 - `generic_summary`: 58
-- `generic_usage`: 362
-- `generic_warning`: 61
-- `inaccurate_description`: 674
-- `inaccurate_summary`: 4
+- `generic_usage`: 363
+- `generic_warning`: 62
+- `inaccurate_description`: 675
+- `inaccurate_summary`: 5
 - `inaccurate_version`: 1
-- `incorrect_attribution`: 42
+- `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 377
+- `incorrect_dependency`: 378
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 369
+- `incorrect_scope`: 370
 - `incorrect_selection`: 36
-- `incorrect_setting`: 194
-- `incorrect_undo`: 361
+- `incorrect_setting`: 195
+- `incorrect_undo`: 362
 - `incorrect_version`: 8
 - `missing_version`: 4
 - `missing_warning`: 1
@@ -45,25 +45,25 @@
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 56
+- `attributionClarified`: 57
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 244
+- `dependenciesVerified`: 245
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 360
-- `scopeClarified`: 346
+- `purposeClarified`: 361
+- `scopeClarified`: 347
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 508
-- `undoDescriptionsClarified`: 353
-- `usageCorrected`: 362
+- `settingsClarified`: 509
+- `undoDescriptionsClarified`: 354
+- `usageCorrected`: 363
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 294
+- `warningsClarified`: 295
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **256**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **257**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -567,13 +567,16 @@
 - `13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js:196` — При отсутствии body выражение window.external.inflateBlock(newSection.firstChild)=true присваивает значение результату вызова и вызывает ошибку после создания body и section, но до закрытия группы отмены.
 - `13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js:221` — При отсутствии title такое же присваивание результату вызова вызывает ошибку после создания контейнера title и P, но до добавления строк и EndUndoUnit.
 - `13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js:410` — При добавлении к существующему непустому title код вставляет разделительный P и затем ошибочно присваивает true результату inflateBlock; выполнение прерывается до добавления названия и авторов и до EndUndoUnit.
+- `13_Заголовки, подзаголовки, пустые строки/560_Унификация подзаголовков-звездочек (С-К).js:105` — Замена s.replace выполняется независимо от Poisk_ili_Ispravlenija. Значение 0 меняет только подпись статистики, хотя пользовательский комментарий обещает режим поиска и подсчёта.
+- `13_Заголовки, подзаголовки, пустые строки/560_Унификация подзаголовков-звездочек (С-К).js:320` — Код использует fbw_body как неявную глобальную переменную по id без локального поиска элемента. Если такое имя не предоставлено движком или элемент отсутствует, ошибка произойдёт после BeginUndoUnit и группа действий останется незавершённой.
+- `13_Заголовки, подзаголовки, пустые строки/560_Унификация подзаголовков-звездочек (С-К).js:98` — Шаблон допускает начальные и конечные теги жирности/курсива независимо друг от друга; при непарной исходной разметке совпавшая строка целиком заменяется на «* * *», скрывая повреждение тегов.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 903
+- `generic_usage`: 898
 - `inaccurate_description`: 50
-- `incorrect_undo`: 134
-- `requires_review`: 358
+- `incorrect_undo`: 133
+- `requires_review`: 357
 
 ## Границы проверки
 
