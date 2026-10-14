@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 426,
-    "generic_usage": 1276,
-    "incorrect_undo": 197,
-    "inaccurate_description": 91
+    "requires_review": 424,
+    "generic_usage": 1269,
+    "incorrect_undo": 195,
+    "inaccurate_description": 90
   },
   "reviewedChanges": [
     {
@@ -36617,17 +36617,348 @@
         "dependenciesVerified": 1,
         "settingsClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/05_Слипшиеся слова.js",
+      "codeSha256": "003b79eef7b57ac6122a92ba7e36ecd0b20c59382f4d133151bcbefdec8b8d97",
+      "evidence": "Run сначала спрашивает, учитывать ли апостроф и слэш, затем от абзаца курсора обходит P до конца fbw_body. HandleP проверяет множество шаблонов: знаки между буквами, прилепившиеся прописные, цифры, кавычки, дефис/тире, апостроф/слэш при выбранном режиме; каждый найденный вариант предлагается через InputBox, затем обновляется innerHTML P. История и аннотация по умолчанию включены. BeginUndoUnit до проверки tr/body.contains(ptr), поэтому ранние return обходят EndUndoUnit; отмена диалога прерывает обход с закрытием группы. Сети и файловых операций нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Слипшиеся слова.",
+          "after": "Пошагово предлагает исправить подозрительные стыки слов и знаков.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Ищет и исправляет предположительно слипшиеся слова. Обходит абзацы и применяет характерные для данного файла правила поиска/замены; точные выражения и условия сохранены в matchingRules и полном анализе. В сомнительных случаях показывает найденное место и диалог; при подтверждении записывает новый HTML абзаца. Не является неизменяющим документ отчётом.",
+          "after": "От абзаца с курсором ищет возможные слипшиеся слова и знаки между буквами: соседство строчной и прописной, цифры возле слов, кавычки, дефисы, тире и другие сочетания. При запуске отдельно спрашивает, учитывать ли апострофы и слэши. Для каждой находки предлагает вариант в диалоге и позволяет его изменить или отклонить.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзац с курсором и последующие P в fbw_body; history и annotation включены при исходных настройках. Выделение текста не требуется.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в абзац начала проверки и запустите скрипт.",
+            "Ответьте на вопросы об апострофах и слэшах, затем проверяйте каждое предложенное исправление в контексте.",
+            "После обработки просмотрите места с дефисами, цифрами, кавычками и смешанной разметкой."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Шаблоны указывают лишь на подозрительный стык; правильные имена, записи и стилистические приёмы могут попасть в результаты.",
+            "Если диапазон недоступен или курсор вне книги, скрипт выходит после открытия группы отмены, не закрыв её."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути группа отмены закрывается, включая прерывание диалога. Ранние выходы при недоступном диапазоне или курсоре вне книги оставляют её незакрытой; полный откат не подтверждён."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли history",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли annotation",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Apostrophe",
+              "value": false,
+              "expression": "false",
+              "description": "обрабатывать ли апостроф",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "PromptApostrophe",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли апостроф обрабатывать ли слэш",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Slash",
+              "value": false,
+              "expression": "false",
+              "description": "обрабатывать ли слэш",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "PromptSlash",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли слэш",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": true,
+              "expression": "true",
+              "description": "Включать абзацы истории изменений после позиции курсора.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "Включать абзацы аннотации после позиции курсора.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "PromptApostrophe",
+              "value": true,
+              "expression": "true",
+              "description": "Спрашивать при запуске, искать ли случаи с апострофом.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Apostrophe",
+              "value": false,
+              "expression": "false",
+              "description": "Исходный режим поиска апострофов; при включённом запросе заменяется ответом пользователя.",
+              "valueMeaning": "Исходное значение в коде скрипта, не сохранённый выбор в диалоге."
+            },
+            {
+              "name": "PromptSlash",
+              "value": true,
+              "expression": "true",
+              "description": "Спрашивать при запуске, искать ли случаи со слэшем.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Slash",
+              "value": false,
+              "expression": "false",
+              "description": "Исходный режим поиска слэшей; при включённом запросе заменяется ответом пользователя.",
+              "valueMeaning": "Исходное значение в коде скрипта, не сохранённый выбор в диалоге."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 925,
+          "issue": "return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен."
+        },
+        {
+          "line": 928,
+          "issue": "return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 0
+      }
+    },
+    {
+      "path": "06_Чистка/06_Управляемое исправление разрывов абзацев....js",
+      "codeSha256": "e68d98854635a4f4df7b8d759b3ffb1a847fa366a5558eb2d43e0f62bd2d3941",
+      "evidence": "Run открывает группу отмены, затем модальный выбор режимов. При undefined делает return без EndUndoUnit. Далее обходит P во всём fbw_body, не углубляясь в title/table/history/annotation/poem; между разделами сбрасывает prevP. По семи классам соседних абзацев либо выполняет выбранное автоматическое действие, либо копит пары для второго HTML-диалога, где решения принимаются вручную; EndUndoUnit после него на штатном пути. Два HTML используют два CSS. В карточке один и тот же Sclex указан дважды, тогда как исходник содержит одно авторское указание. URL в комментарии — адрес сайта автора, сетевых операций нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "Sclex",
+              "role": "contributor",
+              "contribution": "declared_credit"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Интерактивно исправляет предполагаемые ошибочные разрывы абзацев.",
+          "after": "По выбранным правилам соединяет разорванные абзацы и предлагает ручную проверку спорных мест.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Открывает HTML-диалог с режимами и сомнительными местами. Сопоставляет соседние абзацы и позволяет управлять объединением, вместо безусловного удаления всех границ абзацев.",
+          "after": "Сначала открывает окно выбора режимов для семи типов стыка соседних абзацев. Затем проходит книгу: одни случаи исправляет автоматически по выбранному действию, другие собирает для отдельного окна ручного решения. Учитывает дефис или тире на границе, запятую, регистр следующей буквы и пустые строки; в конце сообщает число автоматических и ручных исправлений.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы во всём fbw_body, за исключением содержимого title, table, history, annotation и poem; переход между разделами прерывает сравнение соседних абзацев. Выделение и курсор не определяют начало.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Запустите скрипт и выберите для каждого типа разрыва автоматическое действие или ручную проверку.",
+            "Во втором окне проверьте собранные сомнительные места и подтвердите нужные слияния.",
+            "После завершения проверьте структуру абзацев и итоговое сообщение."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Выбранные автоматические режимы меняют все подходящие границы без отдельного подтверждения каждого случая.",
+            "Закрытие первого окна выбора режимов без результата оставляет открытую группу отмены; полный откат не подтверждён."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Управляемое исправление разрывов абзацев - выбор режимов.html",
+              "sha256": "51bc529d03bc56e71f83060f3df000f56b5889d63891c0b62167ff95f60e8cab",
+              "optional": true
+            },
+            {
+              "path": "HTML/Управляемое исправление разрывов абзацев - сомнительные места.html",
+              "sha256": "49b13ae3495b2e3c4703a8a20fcc3bb710fdb0e1793a86276d49a3223a5c3762",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Управляемое исправление разрывов абзацев - выбор режимов.html",
+              "sha256": "51bc529d03bc56e71f83060f3df000f56b5889d63891c0b62167ff95f60e8cab",
+              "optional": false
+            },
+            {
+              "path": "HTML/Управляемое исправление разрывов абзацев - сомнительные места.html",
+              "sha256": "49b13ae3495b2e3c4703a8a20fcc3bb710fdb0e1793a86276d49a3223a5c3762",
+              "optional": false
+            },
+            {
+              "path": "HTML/css/Управляемое исправление разрывов абзацев - main.css",
+              "sha256": "be2f86586277731dc162057f79c04eea53b01b482617fe42048c0bf94f238227",
+              "optional": false
+            },
+            {
+              "path": "HTML/css/Управляемое исправление разрывов абзацев - add.css",
+              "sha256": "c0ee844355fd0821251046282dabd5dc9f0b009dd9d59bb73bcd376fab025254",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути группа отмены охватывает оба этапа и закрывается. Если окно выбора режимов закрыто без результата, группа остаётся незакрытой; полный откат не подтверждён."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 663,
+          "issue": "return после BeginUndoUnit не вызывает EndUndoUnit при закрытии диалога выбора режимов без результата."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 0,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 552,
-    "generic_usage": 273,
-    "false_warning": 292,
-    "incorrect_setting": 130,
-    "incorrect_scope": 272,
-    "incorrect_undo": 272,
-    "uncertain_attribution": 2,
-    "incorrect_dependency": 277,
+    "inaccurate_description": 556,
+    "generic_usage": 275,
+    "false_warning": 294,
+    "incorrect_setting": 131,
+    "incorrect_scope": 275,
+    "incorrect_undo": 274,
+    "uncertain_attribution": 3,
+    "incorrect_dependency": 280,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -36640,16 +36971,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 264,
-    "usageCorrected": 273,
-    "purposeClarified": 271,
-    "warningsClarified": 204,
-    "scopeClarified": 257,
-    "settingsClarified": 443,
-    "attributionClarified": 5,
+    "undoDescriptionsClarified": 266,
+    "usageCorrected": 275,
+    "purposeClarified": 273,
+    "warningsClarified": 206,
+    "scopeClarified": 259,
+    "settingsClarified": 444,
+    "attributionClarified": 6,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 155,
+    "dependenciesVerified": 157,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -92327,8 +92658,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Слипшиеся слова",
-        "summary": "Слипшиеся слова.",
-        "description": "Ищет и исправляет предположительно слипшиеся слова. Обходит абзацы и применяет характерные для данного файла правила поиска/замены; точные выражения и условия сохранены в matchingRules и полном анализе. В сомнительных случаях показывает найденное место и диалог; при подтверждении записывает новый HTML абзаца. Не является неизменяющим документ отчётом.",
+        "summary": "Пошагово предлагает исправить подозрительные стыки слов и знаков.",
+        "description": "От абзаца с курсором ищет возможные слипшиеся слова и знаки между буквами: соседство строчной и прописной, цифры возле слов, кавычки, дефисы, тире и другие сочетания. При запуске отдельно спрашивает, учитывать ли апострофы и слэши. Для каждой находки предлагает вариант в диалоге и позволяет его изменить или отклонить.",
         "authors": [
           {
             "name": "jurgennt",
@@ -92340,66 +92671,66 @@
           }
         ],
         "version": "3.3",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзац с курсором и последующие P в fbw_body; history и annotation включены при исходных настройках. Выделение текста не требуется.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в абзац начала проверки и запустите скрипт.",
+          "Ответьте на вопросы об апострофах и слэшах, затем проверяйте каждое предложенное исправление в контексте.",
+          "После обработки просмотрите места с дефисами, цифрами, кавычками и смешанной разметкой."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Шаблоны указывают лишь на подозрительный стык; правильные имена, записи и стилистические приёмы могут попасть в результаты.",
+          "Если диапазон недоступен или курсор вне книги, скрипт выходит после открытия группы отмены, не закрыв её."
         ],
         "settings": [
           {
             "name": "ObrabotkaHistory",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли history",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать абзацы истории изменений после позиции курсора.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaAnnotation",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли annotation",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "Apostrophe",
-            "value": false,
-            "expression": "false",
-            "description": "обрабатывать ли апостроф",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать абзацы аннотации после позиции курсора.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "PromptApostrophe",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли апостроф обрабатывать ли слэш",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Спрашивать при запуске, искать ли случаи с апострофом.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
-            "name": "Slash",
+            "name": "Apostrophe",
             "value": false,
             "expression": "false",
-            "description": "обрабатывать ли слэш",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Исходный режим поиска апострофов; при включённом запросе заменяется ответом пользователя.",
+            "valueMeaning": "Исходное значение в коде скрипта, не сохранённый выбор в диалоге."
           },
           {
             "name": "PromptSlash",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли слэш",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Спрашивать при запуске, искать ли случаи со слэшем.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "Slash",
+            "value": false,
+            "expression": "false",
+            "description": "Исходный режим поиска слэшей; при включённом запросе заменяется ответом пользователя.",
+            "valueMeaning": "Исходное значение в коде скрипта, не сохранённый выбор в диалоге."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути группа отмены закрывается, включая прерывание диалога. Ранние выходы при недоступном диапазоне или курсоре вне книги оставляют её незакрытой; полный откат не подтверждён."
         },
         "examples": null,
         "tags": [
@@ -92704,6 +93035,27 @@
         },
         {
           "index": 2,
+          "name": "PromptApostrophe",
+          "declarations": [
+            {
+              "line": 147,
+              "text": "var PromptApostrophe=true;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 147,
+              "text": "var PromptApostrophe=true;"
+            },
+            {
+              "line": 160,
+              "text": "if (PromptApostrophe) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
           "name": "Apostrophe",
           "declarations": [
             {
@@ -92732,28 +93084,28 @@
           "classification": "requires_review"
         },
         {
-          "index": 3,
-          "name": "PromptApostrophe",
+          "index": 4,
+          "name": "PromptSlash",
           "declarations": [
             {
-              "line": 147,
-              "text": "var PromptApostrophe=true;"
+              "line": 150,
+              "text": "var PromptSlash=true;"
             }
           ],
           "uses": [
             {
-              "line": 147,
-              "text": "var PromptApostrophe=true;"
+              "line": 150,
+              "text": "var PromptSlash=true;"
             },
             {
-              "line": 160,
-              "text": "if (PromptApostrophe) {"
+              "line": 164,
+              "text": "if (PromptSlash) {"
             }
           ],
           "classification": "requires_review"
         },
         {
-          "index": 4,
+          "index": 5,
           "name": "Slash",
           "declarations": [
             {
@@ -92776,27 +93128,6 @@
             }
           ],
           "classification": "requires_review"
-        },
-        {
-          "index": 5,
-          "name": "PromptSlash",
-          "declarations": [
-            {
-              "line": 150,
-              "text": "var PromptSlash=true;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 150,
-              "text": "var PromptSlash=true;"
-            },
-            {
-              "line": 164,
-              "text": "if (PromptSlash) {"
-            }
-          ],
-          "classification": "requires_review"
         }
       ],
       "dependencyEvidence": [],
@@ -92816,7 +93147,11 @@
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Шаблоны указывают лишь на подозрительный стык; правильные имена, записи и стилистические приёмы могут попасть в результаты.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если диапазон недоступен или курсор вне книги, скрипт выходит после открытия группы отмены, не закрыв её.",
           "verification": "requires_review"
         }
       ],
@@ -92839,83 +93174,11 @@
       ],
       "findings": [
         {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Слипшиеся слова.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 917,
-              "text": "window.external.BeginUndoUnit(document,\"«Слипшиеся слова»\");                               // ОТКАТ (UNDO) начало"
-            },
-            {
-              "line": 955,
-              "text": "window.external.EndUndoUnit(document);                               // Undo конец"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "На штатном пути группа отмены закрывается, включая прерывание диалога. Ранние выходы при недоступном диапазоне или курсоре вне книги оставляют её незакрытой; полный откат не подтверждён."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
@@ -92951,48 +93214,53 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Управляемое исправление разрывов абзацев",
-        "summary": "Интерактивно исправляет предполагаемые ошибочные разрывы абзацев.",
-        "description": "Открывает HTML-диалог с режимами и сомнительными местами. Сопоставляет соседние абзацы и позволяет управлять объединением, вместо безусловного удаления всех границ абзацев.",
+        "summary": "По выбранным правилам соединяет разорванные абзацы и предлагает ручную проверку спорных мест.",
+        "description": "Сначала открывает окно выбора режимов для семи типов стыка соседних абзацев. Затем проходит книгу: одни случаи исправляет автоматически по выбранному действию, другие собирает для отдельного окна ручного решения. Учитывает дефис или тире на границе, запятую, регистр следующей буквы и пустые строки; в конце сообщает число автоматических и ручных исправлений.",
         "authors": [
           {
             "name": "Sclex",
             "role": "author"
-          },
-          {
-            "name": "Sclex",
-            "role": "contributor",
-            "contribution": "declared_credit"
           }
         ],
         "version": "4.5",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы во всём fbw_body, за исключением содержимого title, table, history, annotation и poem; переход между разделами прерывает сравнение соседних абзацев. Выделение и курсор не определяют начало.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Запустите скрипт и выберите для каждого типа разрыва автоматическое действие или ручную проверку.",
+          "Во втором окне проверьте собранные сомнительные места и подтвердите нужные слияния.",
+          "После завершения проверьте структуру абзацев и итоговое сообщение."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Выбранные автоматические режимы меняют все подходящие границы без отдельного подтверждения каждого случая.",
+          "Закрытие первого окна выбора режимов без результата оставляет открытую группу отмены; полный откат не подтверждён."
         ],
         "settings": null,
         "dependencies": [
           {
             "path": "HTML/Управляемое исправление разрывов абзацев - выбор режимов.html",
             "sha256": "51bc529d03bc56e71f83060f3df000f56b5889d63891c0b62167ff95f60e8cab",
-            "optional": true
+            "optional": false
           },
           {
             "path": "HTML/Управляемое исправление разрывов абзацев - сомнительные места.html",
             "sha256": "49b13ae3495b2e3c4703a8a20fcc3bb710fdb0e1793a86276d49a3223a5c3762",
-            "optional": true
+            "optional": false
+          },
+          {
+            "path": "HTML/css/Управляемое исправление разрывов абзацев - main.css",
+            "sha256": "be2f86586277731dc162057f79c04eea53b01b482617fe42048c0bf94f238227",
+            "optional": false
+          },
+          {
+            "path": "HTML/css/Управляемое исправление разрывов абзацев - add.css",
+            "sha256": "c0ee844355fd0821251046282dabd5dc9f0b009dd9d59bb73bcd376fab025254",
+            "optional": false
           }
         ],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути группа отмены охватывает оба этапа и закрывается. Если окно выбора режимов закрыто без результата, группа остаётся незакрытой; полный откат не подтверждён."
         },
         "examples": null,
         "tags": [
@@ -93002,42 +93270,42 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 72,
+            "line": 77,
             "text": "window.external.BeginUndoUnit(document,\"abruption killing\");"
           }
         ],
         "undo_end": [
           {
-            "line": 795,
+            "line": 800,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 660,
+            "line": 665,
             "text": "var modes=window.showModalDialog(\"HTML/Управляемое исправление разрывов абзацев - выбор режимов.html\",coll,"
           },
           {
-            "line": 790,
+            "line": 795,
             "text": "var rslt=window.showModalDialog(\"HTML/Управляемое исправление разрывов абзацев - сомнительные места.html\",coll,"
           }
         ],
         "selection": [],
         "write": [
           {
-            "line": 166,
+            "line": 171,
             "text": "prevP.appendChild(spaceNode);"
           },
           {
-            "line": 202,
+            "line": 207,
             "text": "if (emptyLineRE.test(ptr.innerHTML.replace(regExpToDetectEmpties,\"\"))) return true;"
           },
           {
-            "line": 257,
+            "line": 262,
             "text": "a1.appendChild(tmp_node);"
           },
           {
-            "line": 258,
+            "line": 263,
             "text": "a2.removeChild(a2.childNodes[0]);"
           }
         ],
@@ -93048,62 +93316,62 @@
         "file": [],
         "return": [
           {
-            "line": 202,
+            "line": 207,
             "text": "if (emptyLineRE.test(ptr.innerHTML.replace(regExpToDetectEmpties,\"\"))) return true;"
           },
           {
-            "line": 203,
+            "line": 208,
             "text": "return false;"
           },
           {
-            "line": 272,
+            "line": 277,
             "text": "if (i2>0) return;"
           },
           {
-            "line": 279,
+            "line": 284,
             "text": "if (ptr==SavePtr) return false;"
           },
           {
-            "line": 338,
+            "line": 343,
             "text": "myPtr.nodeValue=myPtr.nodeValue.replace(makeFirstLetterSmallRegExp, function myFunction(allWhatFound, brackets1, brackets2) { return brackets1 + brackets2.toLowerCase(); } );"
           },
           {
-            "line": 471,
+            "line": 476,
             "text": "return;"
           },
           {
-            "line": 479,
+            "line": 484,
             "text": "if (ptr==SavePtr) return false;"
           },
           {
-            "line": 495,
+            "line": 500,
             "text": "if (i1<len) {ptr.nodeValue=s.substr(i1); return}"
           },
           {
-            "line": 518,
+            "line": 523,
             "text": "return;"
           },
           {
-            "line": 526,
+            "line": 531,
             "text": "if (myPtr==ptr) return;"
           },
           {
-            "line": 578,
+            "line": 583,
             "text": "if (letterCnt==2) {secondSymbol=myStr.charAt(g); return;}"
           },
           {
-            "line": 625,
+            "line": 630,
             "text": "if (letterCnt==2) {preLastSymbolOfPrevP=myStr.charAt(g); return;}"
           },
           {
-            "line": 663,
+            "line": 668,
             "text": "if (modes==undefined) return;"
           }
         ]
       },
       "namespaceUrls": [
         {
-          "line": 61,
+          "line": 66,
           "text": "// Сайт скриптов FBE Sclex’а: http://scripts.fictionbook.org"
         }
       ],
@@ -93124,29 +93392,49 @@
           "actualSha256": "49b13ae3495b2e3c4703a8a20fcc3bb710fdb0e1793a86276d49a3223a5c3762",
           "digestMatches": true,
           "contentReviewed": false
+        },
+        {
+          "path": "HTML/css/Управляемое исправление разрывов абзацев - main.css",
+          "exists": true,
+          "declaredSha256": "be2f86586277731dc162057f79c04eea53b01b482617fe42048c0bf94f238227",
+          "actualSha256": "be2f86586277731dc162057f79c04eea53b01b482617fe42048c0bf94f238227",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/css/Управляемое исправление разрывов абзацев - add.css",
+          "exists": true,
+          "declaredSha256": "c0ee844355fd0821251046282dabd5dc9f0b009dd9d59bb73bcd376fab025254",
+          "actualSha256": "c0ee844355fd0821251046282dabd5dc9f0b009dd9d59bb73bcd376fab025254",
+          "digestMatches": true,
+          "contentReviewed": false
         }
       ],
       "authorshipEvidence": [
         {
-          "line": 60,
+          "line": 65,
           "text": "// Автор скрипта: Sclex"
         },
         {
-          "line": 63,
+          "line": 68,
           "text": "var versionStr=\"4.5\";"
         },
         {
-          "line": 659,
+          "line": 664,
           "text": "coll[\"versionStr\"]=versionStr;"
         },
         {
-          "line": 659,
+          "line": 664,
           "text": "coll[\"versionStr\"]=versionStr;"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Выбранные автоматические режимы меняют все подходящие границы без отдельного подтверждения каждого случая.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Закрытие первого окна выбора режимов без результата оставляет открытую группу отмены; полный откат не подтверждён.",
           "verification": "requires_review"
         }
       ],
@@ -93169,92 +93457,38 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 72,
-              "text": "window.external.BeginUndoUnit(document,\"abruption killing\");"
-            },
-            {
-              "line": 795,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "На штатном пути группа отмены охватывает оба этапа и закрывается. Если окно выбора режимов закрыто без результата, группа остаётся незакрытой; полный откат не подтверждён."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 72,
+              "line": 77,
               "text": "window.external.BeginUndoUnit(document,\"abruption killing\");"
             },
             {
-              "line": 202,
+              "line": 207,
               "text": "if (emptyLineRE.test(ptr.innerHTML.replace(regExpToDetectEmpties,\"\"))) return true;"
             },
             {
-              "line": 203,
+              "line": 208,
               "text": "return false;"
             },
             {
-              "line": 272,
+              "line": 277,
               "text": "if (i2>0) return;"
             },
             {
-              "line": 279,
+              "line": 284,
               "text": "if (ptr==SavePtr) return false;"
             },
             {
-              "line": 795,
+              "line": 800,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
