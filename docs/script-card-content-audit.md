@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **301**. Исполняемый код не изменён.
+Изменено карточек: **305**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 265
-- `generic_usage`: 246
-- `inaccurate_description`: 498
+- `false_warning`: 269
+- `generic_usage`: 250
+- `inaccurate_description`: 506
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 245
+- `incorrect_dependency`: 249
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 242
+- `incorrect_scope`: 246
 - `incorrect_selection`: 17
-- `incorrect_setting`: 113
-- `incorrect_undo`: 245
+- `incorrect_setting`: 117
+- `incorrect_undo`: 249
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 128
+- `dependenciesVerified`: 132
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 244
-- `scopeClarified`: 230
+- `purposeClarified`: 248
+- `scopeClarified`: 234
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 426
-- `undoDescriptionsClarified`: 237
-- `usageCorrected`: 246
-- `warningsClarified`: 177
+- `settingsClarified`: 430
+- `undoDescriptionsClarified`: 241
+- `usageCorrected`: 250
+- `warningsClarified`: 181
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **151**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **153**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -310,12 +310,14 @@
 - `16_Поиск форматирования/026_Перейти на следующее совмещение курсива с жирностью.js:205` — При выделенной картинке выполняется return после открытия группы отмены.
 - `16_Поиск форматирования/200_Найти предыдущие подряд идущие однотипные элементы.js:168` — Сравнение getParentWithClass(ptr,classRE) с самим RegExp всегда истинно для элемента или null; начальный блок не исключается задуманным способом.
 - `16_Поиск форматирования/201_Найти следующие подряд идущие однотипные элементы.js:168` — Сравнение getParentWithClass(ptr,classRE) с самим RegExp всегда истинно для элемента или null; начальный блок не исключается задуманным способом.
+- `16_Поиск форматирования/202_Перейти на предыдущий абзац с верхним или нижним индексом.js:313` — При выделении типа Control возврат выполняется после открытия группы отмены, до её закрытия.
+- `16_Поиск форматирования/203_Перейти на следующий абзац с верхним или нижним индексом.js:311` — При выделении типа Control возврат выполняется после открытия группы отмены, до её закрытия.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1381
+- `generic_usage`: 1365
 - `inaccurate_description`: 99
-- `incorrect_undo`: 215
+- `incorrect_undo`: 211
 - `requires_review`: 440
 
 ## Границы проверки
