@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 439,
-    "generic_usage": 1356,
-    "incorrect_undo": 210,
+    "requires_review": 437,
+    "generic_usage": 1346,
+    "incorrect_undo": 208,
     "inaccurate_description": 99
   },
   "reviewedChanges": [
@@ -33957,17 +33957,447 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/35_Вставить заданные иллюстрации в началах и концах секций.js",
+      "codeSha256": "c5024a4882ed23ddbb390d5e719e38f290e197b308bcd4deb79781acbfc25545",
+      "evidence": "Run задаёт START_IMAGE_NAME=start, END_IMAGE_NAME=end, INSERT_IN_NAMELESS_SECTIONS=0; checkImagesExist ищет имена в binobj и DOM-изображениях с расширениями .png/.jpg/.jpeg. После AskYesNo по началу и концу собирает все DIV с className, содержащим section, исключает body notes и не анализирует выделение. findInsertPositionAtStart возвращает позицию после первого epigraph; insertRealImageAtEnd добавляет в конец. Проверки hasImageAtPosition/hasImageAtEnd сравнивают только ближайшую ссылку. BeginUndoUnit до обхода, EndUndoUnit после; ранние return стоят до открытия группы.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для расстановки указанных иллюстраций",
+          "after": "Вставляет заранее прикреплённые иллюстрации в началах и концах секций.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для расстановки указанных иллюстраций",
+          "after": "Ищет в книге прикреплённые изображения с базовыми именами start и end и расширениями png, jpg или jpeg без учёта регистра. После подтверждения вставляет выбранные изображения в секции вне раздела примечаний: первое после заголовка или обнаруженного эпиграфа, второе в конец секции. Повторную вставку того же изображения непосредственно в проверяемой позиции пропускает; при необходимости добавляет пустые строки.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV, чей класс содержит section, кроме секций внутри body notes. Непустое выделение не ограничивает обработку. Секции без заголовка по умолчанию пропускаются; при включении настройки в них возможна вставка только в конец.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Сначала прикрепите к книге изображения start и end в формате PNG или JPEG либо измените их базовые имена в начале скрипта.",
+            "Запустите скрипт и ответьте на отдельные вопросы о вставке в начала и концы секций.",
+            "Проверьте расположение изображений около заголовков и эпиграфов, пустые строки и итоговую статистику."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Сообщение перед вопросами содержит текст «Продолжить расстановку?», но само это информационное окно не служит подтверждением; выбор делается в следующих вопросах.",
+            "Если после заголовка подряд несколько эпиграфов, поиск позиции возвращает первый найденный эпиграф; вставка может оказаться перед остальными.",
+            "Проверка повтора сравнивает ссылку только с ближайшим изображением в выбранной позиции; копия в другом месте секции не предотвращает новую вставку.",
+            "На штатном пути группа отмены закрывается после обработки секций. Общего перехвата ошибок между её открытием и закрытием нет; полный откат при сбое не проверен."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "INSERT_IN_NAMELESS_SECTIONS",
+              "value": 0,
+              "expression": "0",
+              "description": "1 - да, 0 - нет (по умолчанию)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "START_IMAGE_NAME",
+              "title": "Имя иллюстрации для начала",
+              "value": "start",
+              "expression": "\"start\"",
+              "description": "Базовое имя уже прикреплённого изображения без расширения; допустимы PNG и JPEG.",
+              "source": "script"
+            },
+            {
+              "name": "END_IMAGE_NAME",
+              "title": "Имя иллюстрации для конца",
+              "value": "end",
+              "expression": "\"end\"",
+              "description": "Базовое имя уже прикреплённого изображения без расширения; допустимы PNG и JPEG.",
+              "source": "script"
+            },
+            {
+              "name": "INSERT_IN_NAMELESS_SECTIONS",
+              "title": "Секции без заголовка",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — пропустить; 1 — разрешить вставку в конец такой секции. В начало без заголовка код не вставляет.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути вставки изображений и пустых строк сгруппированы для отмены, затем группа закрывается. Поведение при исключении в процессе обработки и полнота отката не проверены."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 515,
+          "issue": "findInsertPositionAtStart возвращает первый найденный эпиграф, а не проходит все подряд; при нескольких эпиграфах вставка может оказаться между ними."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "05_Иллюстрации/43_Преобразовать инлайн иллюстрации в блочные.js",
+      "codeSha256": "a4b25c4b4fc842ff7fb6ac10154daf19b1e07b065fbd81f4a5ecc4160207c499",
+      "evidence": "Run определяет 14 настроек; getInlineImagesInSelection принимает SPAN.image только при полном охвате диапазоном, иначе getAllInlineImages обходит fbw_body. isInsideProtectedDiv исключает семь структурных DIV, isInProcessedSection по умолчанию исключает notes/comments. processInlineImage классифицирует пустой/начальный/конечный/срединный случай, выносит DIV.image, при середине разделяет P, добавляет маркеры и пустые строки. Для единственного P в section пустой P добавляется независимо от AddEmptyLines. showStatistics управляет и подтверждением, и итоговым окном. BeginUndoUnit охватывает цикл, EndUndoUnit вызван на штатном пути и в catch.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для преобразования внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
+          "after": "Выносит иллюстрации из абзацев в отдельные блоки image.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для преобразования внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
+          "after": "Преобразует SPAN.image внутри абзацев P в блочные DIV.image, сохраняя ссылку и содержимое изображения. В зависимости от положения изображения заменяет пустой абзац, переносит блок перед или после абзаца либо разделяет абзац на две части. Может добавлять пользовательские текстовые маркеры и пустые строки согласно настройкам.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "При текстовом выделении — только SPAN.image, целиком находящиеся в диапазоне; при выделении одного элемента управления — этот SPAN.image; без выделения — все инлайн иллюстрации в fbw_body. По умолчанию исключены body notes/comments и защищённые DIV history, annotation, epigraph, title, poem, cite, table.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "При необходимости выделите целиком нужные инлайн иллюстрации; без выделения скрипт рассмотрит всю книгу.",
+            "Проверьте переключатели для четырёх положений иллюстрации, текстовых маркеров и пустых строк в начале исходного файла.",
+            "При обычном режиме подтвердите преобразование, затем проверьте разделённые абзацы, блоки image и статистику."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Частично попавшая в текстовое выделение инлайн иллюстрация не обрабатывается.",
+            "Тихий режим showStatistics=0 пропускает и запрос подтверждения перед изменением документа.",
+            "При замене единственного абзаца секции пустой абзац добавляется даже при AddEmptyLines=0.",
+            "Области history, annotation, epigraph, title, poem, cite и table не обрабатываются независимо от переключателей разделов notes/comments.",
+            "При ошибке обработки группа отмены закрывается, но полнота отката уже сделанных изменений не проверена."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - тихий режим, 1 - показывать статистику",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processEmptyPic",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processStartPic",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processEndPic",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCenterPic",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processMarkersStart",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processMarkersEnd",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processMarkersCenter",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "InlinePicMarkerStart",
+              "value": "ZZZ_INLINE_PIC_START_",
+              "expression": "\"ZZZ_INLINE_PIC_START_\"",
+              "description": "Пользовательский маркер для начала абзаца",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "InlinePicMarkerEnd",
+              "value": "_ZZZ_INLINE_PIC_END",
+              "expression": "\"_ZZZ_INLINE_PIC_END\"",
+              "description": "Пользовательский маркер для конца абзаца",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "InlinePicMarkerCenter",
+              "value": "_ZZZ_INLINE_PIC_CENTER",
+              "expression": "\"_ZZZ_INLINE_PIC_CENTER\"",
+              "description": "Пользовательский маркер для середины абзаца",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "AddEmptyLines",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "title": "Подтверждение и статистика",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — спросить перед обработкой и показать результат; 0 — выполнить без этих окон.",
+              "source": "script"
+            },
+            {
+              "name": "processNotesSection",
+              "title": "Раздел примечаний",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — обрабатывать body notes; по умолчанию пропускать.",
+              "source": "script"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Раздел комментариев",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — обрабатывать body comments; по умолчанию пропускать.",
+              "source": "script"
+            },
+            {
+              "name": "processEmptyPic",
+              "title": "Изображение в пустом абзаце",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — преобразовывать, заменяя абзац блоком image.",
+              "source": "script"
+            },
+            {
+              "name": "processStartPic",
+              "title": "Изображение в начале абзаца",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — выносить изображение перед абзацем.",
+              "source": "script"
+            },
+            {
+              "name": "processEndPic",
+              "title": "Изображение в конце абзаца",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — выносить изображение после абзаца.",
+              "source": "script"
+            },
+            {
+              "name": "processCenterPic",
+              "title": "Изображение в середине абзаца",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — разделить абзац и поместить блок между частями.",
+              "source": "script"
+            },
+            {
+              "name": "processMarkersStart",
+              "title": "Маркер в начале",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — оставить текстовый маркер в прежней позиции изображения.",
+              "source": "script"
+            },
+            {
+              "name": "processMarkersEnd",
+              "title": "Маркер в конце",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — оставить текстовый маркер в прежней позиции изображения.",
+              "source": "script"
+            },
+            {
+              "name": "processMarkersCenter",
+              "title": "Маркер в середине",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — добавить маркер в конец первой части разделённого абзаца.",
+              "source": "script"
+            },
+            {
+              "name": "InlinePicMarkerStart",
+              "title": "Текст маркера начала",
+              "value": "ZZZ_INLINE_PIC_START_",
+              "expression": "\"ZZZ_INLINE_PIC_START_\"",
+              "description": "Вставляется при включённом processMarkersStart.",
+              "source": "script"
+            },
+            {
+              "name": "InlinePicMarkerEnd",
+              "title": "Текст маркера конца",
+              "value": "_ZZZ_INLINE_PIC_END",
+              "expression": "\"_ZZZ_INLINE_PIC_END\"",
+              "description": "Вставляется при включённом processMarkersEnd.",
+              "source": "script"
+            },
+            {
+              "name": "InlinePicMarkerCenter",
+              "title": "Текст маркера середины",
+              "value": "_ZZZ_INLINE_PIC_CENTER",
+              "expression": "\"_ZZZ_INLINE_PIC_CENTER\"",
+              "description": "Вставляется при включённом processMarkersCenter.",
+              "source": "script"
+            },
+            {
+              "name": "AddEmptyLines",
+              "title": "Пустые строки рядом с блоком",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — добавлять при необходимости; при замене единственного абзаца секции пустой абзац добавляется независимо от флага.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Преобразование выполняется внутри группы отмены; штатный и обработанный ошибочный путь закрывают её. Полная отмена изменений при частичной ошибке не подтверждена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 835,
+          "issue": "При замене единственного абзаца секции пустой P добавляется без проверки AddEmptyLines, поэтому настройка не действует в этой ветви."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 512,
-    "generic_usage": 253,
-    "false_warning": 272,
-    "incorrect_setting": 118,
-    "incorrect_scope": 250,
-    "incorrect_undo": 252,
+    "inaccurate_description": 516,
+    "generic_usage": 255,
+    "false_warning": 274,
+    "incorrect_setting": 120,
+    "incorrect_scope": 252,
+    "incorrect_undo": 254,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 253,
+    "incorrect_dependency": 255,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -33980,16 +34410,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 244,
-    "usageCorrected": 253,
-    "purposeClarified": 251,
-    "warningsClarified": 184,
-    "scopeClarified": 237,
-    "settingsClarified": 431,
+    "undoDescriptionsClarified": 246,
+    "usageCorrected": 255,
+    "purposeClarified": 253,
+    "warningsClarified": 186,
+    "scopeClarified": 239,
+    "settingsClarified": 433,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 135,
+    "dependenciesVerified": 137,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -74007,8 +74437,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Вставить заданные иллюстрации в началах и концах секций",
-        "summary": "Скрипт предназначен для расстановки указанных иллюстраций",
-        "description": "Скрипт предназначен для расстановки указанных иллюстраций",
+        "summary": "Вставляет заранее прикреплённые иллюстрации в началах и концах секций.",
+        "description": "Ищет в книге прикреплённые изображения с базовыми именами start и end и расширениями png, jpg или jpeg без учёта регистра. После подтверждения вставляет выбранные изображения в секции вне раздела примечаний: первое после заголовка или обнаруженного эпиграфа, второе в конец секции. Повторную вставку того же изображения непосредственно в проверяемой позиции пропускает; при необходимости добавляет пустые строки.",
         "authors": [
           {
             "name": "TaKir",
@@ -74025,31 +74455,50 @@
           }
         ],
         "version": "2.9",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV, чей класс содержит section, кроме секций внутри body notes. Непустое выделение не ограничивает обработку. Секции без заголовка по умолчанию пропускаются; при включении настройки в них возможна вставка только в конец.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Сначала прикрепите к книге изображения start и end в формате PNG или JPEG либо измените их базовые имена в начале скрипта.",
+          "Запустите скрипт и ответьте на отдельные вопросы о вставке в начала и концы секций.",
+          "Проверьте расположение изображений около заголовков и эпиграфов, пустые строки и итоговую статистику."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Сообщение перед вопросами содержит текст «Продолжить расстановку?», но само это информационное окно не служит подтверждением; выбор делается в следующих вопросах.",
+          "Если после заголовка подряд несколько эпиграфов, поиск позиции возвращает первый найденный эпиграф; вставка может оказаться перед остальными.",
+          "Проверка повтора сравнивает ссылку только с ближайшим изображением в выбранной позиции; копия в другом месте секции не предотвращает новую вставку.",
+          "На штатном пути группа отмены закрывается после обработки секций. Общего перехвата ошибок между её открытием и закрытием нет; полный откат при сбое не проверен."
         ],
         "settings": [
           {
+            "name": "START_IMAGE_NAME",
+            "title": "Имя иллюстрации для начала",
+            "value": "start",
+            "expression": "\"start\"",
+            "description": "Базовое имя уже прикреплённого изображения без расширения; допустимы PNG и JPEG.",
+            "source": "script"
+          },
+          {
+            "name": "END_IMAGE_NAME",
+            "title": "Имя иллюстрации для конца",
+            "value": "end",
+            "expression": "\"end\"",
+            "description": "Базовое имя уже прикреплённого изображения без расширения; допустимы PNG и JPEG.",
+            "source": "script"
+          },
+          {
             "name": "INSERT_IN_NAMELESS_SECTIONS",
+            "title": "Секции без заголовка",
             "value": 0,
             "expression": "0",
-            "description": "1 - да, 0 - нет (по умолчанию)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — пропустить; 1 — разрешить вставку в конец такой секции. В начало без заголовка код не вставляет.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути вставки изображений и пустых строк сгруппированы для отмены, затем группа закрывается. Поведение при исключении в процессе обработки и полнота отката не проверены."
         },
         "examples": null,
         "tags": [
@@ -74061,13 +74510,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 210,
+            "line": 229,
             "text": "window.external.BeginUndoUnit(document, \"Вставка заданных иллюстраций\");"
           }
         ],
         "undo_end": [
           {
-            "line": 275,
+            "line": 294,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -74075,19 +74524,19 @@
         "selection": [],
         "write": [
           {
-            "line": 646,
+            "line": 665,
             "text": "var emptyLine = document.createElement('P');"
           },
           {
-            "line": 647,
+            "line": 666,
             "text": "emptyLine.innerHTML = '&nbsp;';"
           },
           {
-            "line": 679,
+            "line": 698,
             "text": "var emptyLine = document.createElement('P');"
           },
           {
-            "line": 680,
+            "line": 699,
             "text": "emptyLine.innerHTML = '&nbsp;';"
           }
         ],
@@ -74098,151 +74547,151 @@
         "file": [],
         "return": [
           {
-            "line": 107,
+            "line": 126,
             "text": "return;"
           },
           {
-            "line": 168,
+            "line": 187,
             "text": "return; // Отмена"
           },
           {
-            "line": 182,
+            "line": 201,
             "text": "return; // Отмена"
           },
           {
-            "line": 189,
+            "line": 208,
             "text": "return;"
           },
           {
-            "line": 322,
+            "line": 341,
             "text": "return filename.substring(0, lastDotIndex);"
           },
           {
-            "line": 324,
+            "line": 343,
             "text": "return filename;"
           },
           {
-            "line": 383,
+            "line": 402,
             "text": "return result;"
           },
           {
-            "line": 463,
+            "line": 482,
             "text": "return result;"
           },
           {
-            "line": 475,
+            "line": 494,
             "text": "return true; // Нашли body с fbname=\"notes\" - это сноски"
           },
           {
-            "line": 481,
+            "line": 500,
             "text": "return false;"
           },
           {
-            "line": 488,
+            "line": 507,
             "text": "return null; // Секция без заголовка"
           },
           {
-            "line": 498,
+            "line": 517,
             "text": "return {"
           },
           {
-            "line": 514,
+            "line": 533,
             "text": "return {"
           },
           {
-            "line": 526,
+            "line": 545,
             "text": "return next;"
           },
           {
-            "line": 530,
+            "line": 549,
             "text": "return next;"
           },
           {
-            "line": 535,
+            "line": 554,
             "text": "return null;"
-          },
-          {
-            "line": 546,
-            "text": "return child;"
-          },
-          {
-            "line": 550,
-            "text": "return null;"
-          },
-          {
-            "line": 556,
-            "text": "return false;"
-          },
-          {
-            "line": 561,
-            "text": "return false;"
           },
           {
             "line": 565,
-            "text": "if (!href) return false;"
+            "text": "return child;"
           },
           {
-            "line": 571,
-            "text": "return hrefLower === \"#\" + imageNameLower;"
-          },
-          {
-            "line": 578,
-            "text": "return false;"
-          },
-          {
-            "line": 583,
-            "text": "return false;"
-          },
-          {
-            "line": 587,
-            "text": "if (!href) return false;"
-          },
-          {
-            "line": 593,
-            "text": "return hrefLower === \"#\" + imageNameLower;"
-          },
-          {
-            "line": 604,
-            "text": "return lastChild;"
-          },
-          {
-            "line": 609,
-            "text": "return lastChild;"
-          },
-          {
-            "line": 614,
+            "line": 569,
             "text": "return null;"
           },
           {
-            "line": 637,
+            "line": 575,
+            "text": "return false;"
+          },
+          {
+            "line": 580,
+            "text": "return false;"
+          },
+          {
+            "line": 584,
+            "text": "if (!href) return false;"
+          },
+          {
+            "line": 590,
+            "text": "return hrefLower === \"#\" + imageNameLower;"
+          },
+          {
+            "line": 597,
+            "text": "return false;"
+          },
+          {
+            "line": 602,
+            "text": "return false;"
+          },
+          {
+            "line": 606,
+            "text": "if (!href) return false;"
+          },
+          {
+            "line": 612,
+            "text": "return hrefLower === \"#\" + imageNameLower;"
+          },
+          {
+            "line": 623,
+            "text": "return lastChild;"
+          },
+          {
+            "line": 628,
+            "text": "return lastChild;"
+          },
+          {
+            "line": 633,
+            "text": "return null;"
+          },
+          {
+            "line": 656,
             "text": "if (!insertedImage) return;"
           },
           {
-            "line": 662,
+            "line": 681,
             "text": "if (!lastChild || lastChild.nodeType != 1) return;"
           },
           {
-            "line": 665,
+            "line": 684,
             "text": "if (className.indexOf('image') == -1) return;"
           },
           {
-            "line": 706,
+            "line": 725,
             "text": "return true;"
           },
           {
-            "line": 708,
+            "line": 727,
             "text": "return false;"
           },
           {
-            "line": 717,
+            "line": 736,
             "text": "return true;"
           },
           {
-            "line": 719,
+            "line": 738,
             "text": "return false;"
           },
           {
-            "line": 739,
+            "line": 758,
             "text": "return imageDiv;"
           }
         ]
@@ -74251,24 +74700,74 @@
       "settingEvidence": [
         {
           "index": 0,
+          "name": "START_IMAGE_NAME",
+          "declarations": [
+            {
+              "line": 108,
+              "text": "var START_IMAGE_NAME = \"start\";    // Имя файла для иллюстрации в начале секции (без расширения)"
+            }
+          ],
+          "uses": [
+            {
+              "line": 108,
+              "text": "var START_IMAGE_NAME = \"start\";    // Имя файла для иллюстрации в начале секции (без расширения)"
+            },
+            {
+              "line": 115,
+              "text": "var imagesExist = checkImagesExist(START_IMAGE_NAME, END_IMAGE_NAME);"
+            },
+            {
+              "line": 123,
+              "text": "\"• \\\"\" + START_IMAGE_NAME + \"\\\" - для начала секций\\n\" +"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "END_IMAGE_NAME",
+          "declarations": [
+            {
+              "line": 109,
+              "text": "var END_IMAGE_NAME = \"end\";        // Имя файла для иллюстрации в конце секции (без расширения)"
+            }
+          ],
+          "uses": [
+            {
+              "line": 109,
+              "text": "var END_IMAGE_NAME = \"end\";        // Имя файла для иллюстрации в конце секции (без расширения)"
+            },
+            {
+              "line": 115,
+              "text": "var imagesExist = checkImagesExist(START_IMAGE_NAME, END_IMAGE_NAME);"
+            },
+            {
+              "line": 124,
+              "text": "\"• \\\"\" + END_IMAGE_NAME + \"\\\" - для конца секций\\n\\n\" +"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
           "name": "INSERT_IN_NAMELESS_SECTIONS",
           "declarations": [
             {
-              "line": 93,
+              "line": 112,
               "text": "var INSERT_IN_NAMELESS_SECTIONS = 0;   // 1 - да, 0 - нет (по умолчанию)"
             }
           ],
           "uses": [
             {
-              "line": 93,
+              "line": 112,
               "text": "var INSERT_IN_NAMELESS_SECTIONS = 0;   // 1 - да, 0 - нет (по умолчанию)"
             },
             {
-              "line": 240,
+              "line": 259,
               "text": "if (!hasTitle && INSERT_IN_NAMELESS_SECTIONS == 0) {"
             },
             {
-              "line": 306,
+              "line": 325,
               "text": "if (INSERT_IN_NAMELESS_SECTIONS == 0 && stats.skippedNameless > 0) {"
             }
           ],
@@ -74278,17 +74777,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 64,
+          "line": 83,
           "text": "// version 2.9"
         },
         {
-          "line": 82,
+          "line": 101,
           "text": "// version 2.9, 04.01.2026"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Сообщение перед вопросами содержит текст «Продолжить расстановку?», но само это информационное окно не служит подтверждением; выбор делается в следующих вопросах.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если после заголовка подряд несколько эпиграфов, поиск позиции возвращает первый найденный эпиграф; вставка может оказаться перед остальными.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Проверка повтора сравнивает ссылку только с ближайшим изображением в выбранной позиции; копия в другом месте секции не предотвращает новую вставку.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "На штатном пути группа отмены закрывается после обработки секций. Общего перехвата ошибок между её открытием и закрытием нет; полный откат при сбое не проверен.",
           "verification": "requires_review"
         }
       ],
@@ -74309,80 +74820,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 210,
-              "text": "window.external.BeginUndoUnit(document, \"Вставка заданных иллюстраций\");"
-            },
-            {
-              "line": 275,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/36_Объединить секцию, состоящую из иллюстраций, с вышестоящей секцией.js",
@@ -77353,8 +77791,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Преобразовать инлайн иллюстрации в блочные",
-        "summary": "Скрипт предназначен для преобразования внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
-        "description": "Скрипт предназначен для преобразования внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
+        "summary": "Выносит иллюстрации из абзацев в отдельные блоки image.",
+        "description": "Преобразует SPAN.image внутри абзацев P в блочные DIV.image, сохраняя ссылку и содержимое изображения. В зависимости от положения изображения заменяет пустой абзац, переносит блок перед или после абзаца либо разделяет абзац на две части. Может добавлять пользовательские текстовые маркеры и пустые строки согласно настройкам.",
         "authors": [
           {
             "name": "TaKir",
@@ -77371,122 +77809,139 @@
           }
         ],
         "version": "2.0",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "При текстовом выделении — только SPAN.image, целиком находящиеся в диапазоне; при выделении одного элемента управления — этот SPAN.image; без выделения — все инлайн иллюстрации в fbw_body. По умолчанию исключены body notes/comments и защищённые DIV history, annotation, epigraph, title, poem, cite, table.",
         "modifiesDocument": true,
         "requiresSelection": null,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "При необходимости выделите целиком нужные инлайн иллюстрации; без выделения скрипт рассмотрит всю книгу.",
+          "Проверьте переключатели для четырёх положений иллюстрации, текстовых маркеров и пустых строк в начале исходного файла.",
+          "При обычном режиме подтвердите преобразование, затем проверьте разделённые абзацы, блоки image и статистику."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Частично попавшая в текстовое выделение инлайн иллюстрация не обрабатывается.",
+          "Тихий режим showStatistics=0 пропускает и запрос подтверждения перед изменением документа.",
+          "При замене единственного абзаца секции пустой абзац добавляется даже при AddEmptyLines=0.",
+          "Области history, annotation, epigraph, title, poem, cite и table не обрабатываются независимо от переключателей разделов notes/comments.",
+          "При ошибке обработки группа отмены закрывается, но полнота отката уже сделанных изменений не проверена."
         ],
         "settings": [
           {
             "name": "showStatistics",
+            "title": "Подтверждение и статистика",
             "value": 1,
             "expression": "1",
-            "description": "0 - тихий режим, 1 - показывать статистику",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — спросить перед обработкой и показать результат; 0 — выполнить без этих окон.",
+            "source": "script"
           },
           {
             "name": "processNotesSection",
+            "title": "Раздел примечаний",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — обрабатывать body notes; по умолчанию пропускать.",
+            "source": "script"
           },
           {
             "name": "processCommentsSection",
+            "title": "Раздел комментариев",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — обрабатывать body comments; по умолчанию пропускать.",
+            "source": "script"
           },
           {
             "name": "processEmptyPic",
+            "title": "Изображение в пустом абзаце",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — преобразовывать, заменяя абзац блоком image.",
+            "source": "script"
           },
           {
             "name": "processStartPic",
+            "title": "Изображение в начале абзаца",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — выносить изображение перед абзацем.",
+            "source": "script"
           },
           {
             "name": "processEndPic",
+            "title": "Изображение в конце абзаца",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — выносить изображение после абзаца.",
+            "source": "script"
           },
           {
             "name": "processCenterPic",
+            "title": "Изображение в середине абзаца",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — разделить абзац и поместить блок между частями.",
+            "source": "script"
           },
           {
             "name": "processMarkersStart",
+            "title": "Маркер в начале",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — оставить текстовый маркер в прежней позиции изображения.",
+            "source": "script"
           },
           {
             "name": "processMarkersEnd",
+            "title": "Маркер в конце",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — оставить текстовый маркер в прежней позиции изображения.",
+            "source": "script"
           },
           {
             "name": "processMarkersCenter",
+            "title": "Маркер в середине",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — добавить маркер в конец первой части разделённого абзаца.",
+            "source": "script"
           },
           {
             "name": "InlinePicMarkerStart",
+            "title": "Текст маркера начала",
             "value": "ZZZ_INLINE_PIC_START_",
             "expression": "\"ZZZ_INLINE_PIC_START_\"",
-            "description": "Пользовательский маркер для начала абзаца",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Вставляется при включённом processMarkersStart.",
+            "source": "script"
           },
           {
             "name": "InlinePicMarkerEnd",
+            "title": "Текст маркера конца",
             "value": "_ZZZ_INLINE_PIC_END",
             "expression": "\"_ZZZ_INLINE_PIC_END\"",
-            "description": "Пользовательский маркер для конца абзаца",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Вставляется при включённом processMarkersEnd.",
+            "source": "script"
           },
           {
             "name": "InlinePicMarkerCenter",
+            "title": "Текст маркера середины",
             "value": "_ZZZ_INLINE_PIC_CENTER",
             "expression": "\"_ZZZ_INLINE_PIC_CENTER\"",
-            "description": "Пользовательский маркер для середины абзаца",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Вставляется при включённом processMarkersCenter.",
+            "source": "script"
           },
           {
             "name": "AddEmptyLines",
+            "title": "Пустые строки рядом с блоком",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — добавлять при необходимости; при замене единственного абзаца секции пустой абзац добавляется независимо от флага.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Преобразование выполняется внутри группы отмены; штатный и обработанный ошибочный путь закрывают её. Полная отмена изменений при частичной ошибке не подтверждена."
         },
         "examples": null,
         "tags": [
@@ -77498,54 +77953,54 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 1003,
+            "line": 1020,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
           }
         ],
         "undo_end": [
           {
-            "line": 1010,
+            "line": 1027,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 1079,
+            "line": 1096,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 541,
+            "line": 558,
             "text": "var range = document.body.createTextRange();"
           },
           {
-            "line": 543,
+            "line": 560,
             "text": "var spanRange = document.body.createTextRange();"
           },
           {
-            "line": 896,
+            "line": 913,
             "text": "var spanRange = document.body.createTextRange();"
           },
           {
-            "line": 915,
+            "line": 932,
             "text": "var sel = document.selection;"
           }
         ],
         "write": [
           {
-            "line": 390,
+            "line": 407,
             "text": "var html = element.innerHTML || \"\";"
           },
           {
-            "line": 413,
+            "line": 430,
             "text": "var emptyP = document.createElement(\"P\");"
           },
           {
-            "line": 414,
+            "line": 431,
             "text": "emptyP.innerHTML = nbspEntity;"
           },
           {
-            "line": 424,
+            "line": 441,
             "text": "var emptyP = document.createElement(\"P\");"
           }
         ],
@@ -77556,271 +78011,271 @@
         "file": [],
         "return": [
           {
-            "line": 308,
+            "line": 325,
             "text": "if (!element || element.nodeType != 1) return;"
           },
           {
-            "line": 340,
+            "line": 357,
             "text": "if (ch == \" \" || ch == \"\\t\" || ch == \"\\n\" || ch == \"\\r\") return true;"
           },
           {
-            "line": 341,
+            "line": 358,
             "text": "if (ch == nbspChar) return true;"
           },
           {
-            "line": 343,
+            "line": 360,
             "text": "if (ch == unusualSpaces.charAt(i)) return true;"
           },
           {
-            "line": 345,
+            "line": 362,
             "text": "return false;"
           },
           {
-            "line": 349,
+            "line": 366,
             "text": "if (!str) return true;"
           },
           {
-            "line": 351,
+            "line": 368,
             "text": "if (!isSpaceChar(str.charAt(i))) return false;"
           },
           {
-            "line": 353,
+            "line": 370,
             "text": "return true;"
           },
           {
-            "line": 363,
+            "line": 380,
             "text": "return true;"
           },
           {
-            "line": 369,
+            "line": 386,
             "text": "return false;"
           },
           {
-            "line": 379,
+            "line": 396,
             "text": "return className;"
           },
           {
-            "line": 385,
+            "line": 402,
             "text": "return \"\";"
           },
           {
-            "line": 389,
+            "line": 406,
             "text": "if (!element || element.nodeName != \"P\") return false;"
           },
           {
-            "line": 392,
+            "line": 409,
             "text": "return trimmed == nbspEntity || trimmed == nbspChar;"
           },
           {
-            "line": 400,
+            "line": 417,
             "text": "return prev && isEmptyLineP(prev);"
           },
           {
-            "line": 408,
+            "line": 425,
             "text": "return next && isEmptyLineP(next);"
           },
           {
-            "line": 417,
+            "line": 434,
             "text": "return emptyP;"
           },
           {
-            "line": 419,
+            "line": 436,
             "text": "return null;"
           },
           {
-            "line": 433,
+            "line": 450,
             "text": "return emptyP;"
           },
           {
-            "line": 435,
+            "line": 452,
             "text": "return null;"
-          },
-          {
-            "line": 440,
-            "text": "if (!parent || parent.nodeName != \"DIV\" || parent.className != \"section\") return false;"
-          },
-          {
-            "line": 448,
-            "text": "if (pCount > 1) return false;"
-          },
-          {
-            "line": 451,
-            "text": "return pCount == 1;"
-          },
-          {
-            "line": 456,
-            "text": "if (fbname == \"\") return true;"
           },
           {
             "line": 457,
-            "text": "if (fbname == \"notes\" && processNotesSection) return true;"
+            "text": "if (!parent || parent.nodeName != \"DIV\" || parent.className != \"section\") return false;"
           },
           {
-            "line": 458,
-            "text": "if (fbname == \"comments\" && processCommentsSection) return true;"
+            "line": 465,
+            "text": "if (pCount > 1) return false;"
           },
           {
-            "line": 459,
-            "text": "return false;"
+            "line": 468,
+            "text": "return pCount == 1;"
           },
           {
-            "line": 466,
-            "text": "return shouldProcessSection(parent);"
-          },
-          {
-            "line": 470,
-            "text": "return true;"
+            "line": 473,
+            "text": "if (fbname == \"\") return true;"
           },
           {
             "line": 474,
-            "text": "if (!str) return str;"
+            "text": "if (fbname == \"notes\" && processNotesSection) return true;"
           },
           {
-            "line": 479,
-            "text": "return str.substring(i);"
+            "line": 475,
+            "text": "if (fbname == \"comments\" && processCommentsSection) return true;"
           },
           {
-            "line": 483,
-            "text": "if (!str) return str;"
-          },
-          {
-            "line": 488,
-            "text": "return str.substring(0, i + 1);"
-          },
-          {
-            "line": 492,
-            "text": "if (!textNode || textNode.nodeType != 3) return;"
-          },
-          {
-            "line": 494,
-            "text": "if (!text) return;"
-          },
-          {
-            "line": 510,
-            "text": "if (!p) return;"
-          },
-          {
-            "line": 524,
-            "text": "if (!p) return;"
-          },
-          {
-            "line": 568,
-            "text": "if (!hasTextBefore && !hasTextAfter) return \"empty\";"
-          },
-          {
-            "line": 569,
-            "text": "if (!hasTextBefore && hasTextAfter) return \"start\";"
-          },
-          {
-            "line": 570,
-            "text": "if (hasTextBefore && !hasTextAfter) return \"end\";"
-          },
-          {
-            "line": 571,
-            "text": "return \"center\";"
-          },
-          {
-            "line": 588,
-            "text": "return div;"
-          },
-          {
-            "line": 592,
-            "text": "if (!p || !markerText) return false;"
-          },
-          {
-            "line": 606,
-            "text": "return true;"
-          },
-          {
-            "line": 615,
-            "text": "if (!p || p.nodeName != \"P\") return null;"
-          },
-          {
-            "line": 618,
-            "text": "if (!parent) return null;"
-          },
-          {
-            "line": 737,
-            "text": "return { firstP: p, secondP: newP, parent: parent };"
-          },
-          {
-            "line": 741,
-            "text": "if (!span || span.nodeName != \"SPAN\") return false;"
-          },
-          {
-            "line": 742,
-            "text": "if (span.className != \"image\") return false;"
-          },
-          {
-            "line": 753,
+            "line": 476,
             "text": "return false;"
           },
           {
-            "line": 755,
+            "line": 483,
+            "text": "return shouldProcessSection(parent);"
+          },
+          {
+            "line": 487,
+            "text": "return true;"
+          },
+          {
+            "line": 491,
+            "text": "if (!str) return str;"
+          },
+          {
+            "line": 496,
+            "text": "return str.substring(i);"
+          },
+          {
+            "line": 500,
+            "text": "if (!str) return str;"
+          },
+          {
+            "line": 505,
+            "text": "return str.substring(0, i + 1);"
+          },
+          {
+            "line": 509,
+            "text": "if (!textNode || textNode.nodeType != 3) return;"
+          },
+          {
+            "line": 511,
+            "text": "if (!text) return;"
+          },
+          {
+            "line": 527,
+            "text": "if (!p) return;"
+          },
+          {
+            "line": 541,
+            "text": "if (!p) return;"
+          },
+          {
+            "line": 585,
+            "text": "if (!hasTextBefore && !hasTextAfter) return \"empty\";"
+          },
+          {
+            "line": 586,
+            "text": "if (!hasTextBefore && hasTextAfter) return \"start\";"
+          },
+          {
+            "line": 587,
+            "text": "if (hasTextBefore && !hasTextAfter) return \"end\";"
+          },
+          {
+            "line": 588,
+            "text": "return \"center\";"
+          },
+          {
+            "line": 605,
+            "text": "return div;"
+          },
+          {
+            "line": 609,
+            "text": "if (!p || !markerText) return false;"
+          },
+          {
+            "line": 623,
+            "text": "return true;"
+          },
+          {
+            "line": 632,
+            "text": "if (!p || p.nodeName != \"P\") return null;"
+          },
+          {
+            "line": 635,
+            "text": "if (!parent) return null;"
+          },
+          {
+            "line": 754,
+            "text": "return { firstP: p, secondP: newP, parent: parent };"
+          },
+          {
+            "line": 758,
+            "text": "if (!span || span.nodeName != \"SPAN\") return false;"
+          },
+          {
+            "line": 759,
+            "text": "if (span.className != \"image\") return false;"
+          },
+          {
+            "line": 770,
+            "text": "return false;"
+          },
+          {
+            "line": 772,
             "text": "if (!isInProcessedSection(span)) return false;"
           },
           {
-            "line": 761,
+            "line": 778,
             "text": "if (!p || p.nodeName != \"P\") return false;"
           },
           {
-            "line": 765,
+            "line": 782,
             "text": "if (position == \"empty\" && !processEmptyPic) return false;"
           },
           {
-            "line": 766,
+            "line": 783,
             "text": "if (position == \"start\" && !processStartPic) return false;"
           },
           {
-            "line": 767,
+            "line": 784,
             "text": "if (position == \"end\" && !processEndPic) return false;"
           },
           {
-            "line": 768,
+            "line": 785,
             "text": "if (position == \"center\" && !processCenterPic) return false;"
           },
           {
-            "line": 809,
+            "line": 826,
             "text": "return true;"
           },
           {
-            "line": 867,
+            "line": 884,
             "text": "return true;"
           },
           {
-            "line": 872,
+            "line": 889,
             "text": "if (!fbwBody) return [];"
           },
           {
-            "line": 881,
+            "line": 898,
             "text": "return images;"
           },
           {
-            "line": 887,
+            "line": 904,
             "text": "if (!fbwBody) return images;"
           },
           {
-            "line": 908,
+            "line": 925,
             "text": "return images;"
           },
           {
-            "line": 918,
+            "line": 935,
             "text": "return;"
           },
           {
-            "line": 926,
+            "line": 943,
             "text": "return;"
           },
           {
-            "line": 970,
+            "line": 987,
             "text": "return;"
           },
           {
-            "line": 988,
+            "line": 1005,
             "text": "return;"
           },
           {
-            "line": 997,
+            "line": 1014,
             "text": "return;"
           }
         ]
@@ -77832,21 +78287,21 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 191,
+              "line": 208,
               "text": "var showStatistics = 1; // 0 - тихий режим, 1 - показывать статистику"
             }
           ],
           "uses": [
             {
-              "line": 191,
+              "line": 208,
               "text": "var showStatistics = 1; // 0 - тихий режим, 1 - показывать статистику"
             },
             {
-              "line": 991,
+              "line": 1008,
               "text": "if (showStatistics) {"
             },
             {
-              "line": 1016,
+              "line": 1033,
               "text": "if (showStatistics) {"
             }
           ],
@@ -77857,21 +78312,21 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 194,
+              "line": 211,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 194,
+              "line": 211,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 457,
+              "line": 474,
               "text": "if (fbname == \"notes\" && processNotesSection) return true;"
             },
             {
-              "line": 1070,
+              "line": 1087,
               "text": "msg += \"• Обработка раздела сносок (примечаний): \" + (processNotesSection ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -77882,21 +78337,21 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 197,
+              "line": 214,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 197,
+              "line": 214,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 458,
+              "line": 475,
               "text": "if (fbname == \"comments\" && processCommentsSection) return true;"
             },
             {
-              "line": 1071,
+              "line": 1088,
               "text": "msg += \"• Обработка раздела комментариев: \" + (processCommentsSection ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -77907,21 +78362,21 @@
           "name": "processEmptyPic",
           "declarations": [
             {
-              "line": 200,
+              "line": 217,
               "text": "var processEmptyPic = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 200,
+              "line": 217,
               "text": "var processEmptyPic = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 765,
+              "line": 782,
               "text": "if (position == \"empty\" && !processEmptyPic) return false;"
             },
             {
-              "line": 1062,
+              "line": 1079,
               "text": "msg += \"• Иллюстрации в пустых абзацах: \" + (processEmptyPic ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -77932,21 +78387,21 @@
           "name": "processStartPic",
           "declarations": [
             {
-              "line": 203,
+              "line": 220,
               "text": "var processStartPic = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 203,
+              "line": 220,
               "text": "var processStartPic = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 766,
+              "line": 783,
               "text": "if (position == \"start\" && !processStartPic) return false;"
             },
             {
-              "line": 1063,
+              "line": 1080,
               "text": "msg += \"• Иллюстрации в начале абзацев: \" + (processStartPic ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -77957,21 +78412,21 @@
           "name": "processEndPic",
           "declarations": [
             {
-              "line": 206,
+              "line": 223,
               "text": "var processEndPic = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 206,
+              "line": 223,
               "text": "var processEndPic = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 767,
+              "line": 784,
               "text": "if (position == \"end\" && !processEndPic) return false;"
             },
             {
-              "line": 1064,
+              "line": 1081,
               "text": "msg += \"• Иллюстрации в конце абзацев: \" + (processEndPic ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -77982,21 +78437,21 @@
           "name": "processCenterPic",
           "declarations": [
             {
-              "line": 209,
+              "line": 226,
               "text": "var processCenterPic = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 209,
+              "line": 226,
               "text": "var processCenterPic = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 768,
+              "line": 785,
               "text": "if (position == \"center\" && !processCenterPic) return false;"
             },
             {
-              "line": 1065,
+              "line": 1082,
               "text": "msg += \"• Иллюстрации в середине абзацев: \" + (processCenterPic ? \"ДА\" : \"НЕТ\") + \"\\n\\n\";"
             }
           ],
@@ -78007,29 +78462,29 @@
           "name": "processMarkersStart",
           "declarations": [
             {
-              "line": 212,
+              "line": 229,
               "text": "var processMarkersStart = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 212,
+              "line": 229,
               "text": "var processMarkersStart = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 839,
+              "line": 856,
               "text": "if (processMarkersStart) {"
             },
             {
-              "line": 1028,
+              "line": 1045,
               "text": "var hasMarkers = (processMarkersStart && stats.markersStartAdded > 0) ||"
             },
             {
-              "line": 1034,
+              "line": 1051,
               "text": "if (processMarkersStart && stats.markersStartAdded > 0) {"
             },
             {
-              "line": 1066,
+              "line": 1083,
               "text": "msg += \"• Вставка маркеров в начале абзацев: \" + (processMarkersStart ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -78040,29 +78495,29 @@
           "name": "processMarkersEnd",
           "declarations": [
             {
-              "line": 215,
+              "line": 232,
               "text": "var processMarkersEnd = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 215,
+              "line": 232,
               "text": "var processMarkersEnd = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 858,
+              "line": 875,
               "text": "if (processMarkersEnd) {"
             },
             {
-              "line": 1029,
+              "line": 1046,
               "text": "(processMarkersEnd && stats.markersEndAdded > 0) ||"
             },
             {
-              "line": 1037,
+              "line": 1054,
               "text": "if (processMarkersEnd && stats.markersEndAdded > 0) {"
             },
             {
-              "line": 1067,
+              "line": 1084,
               "text": "msg += \"• Вставка маркеров в конце абзацев: \" + (processMarkersEnd ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -78073,29 +78528,29 @@
           "name": "processMarkersCenter",
           "declarations": [
             {
-              "line": 223,
+              "line": 240,
               "text": "var processMarkersCenter = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 223,
+              "line": 240,
               "text": "var processMarkersCenter = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 801,
+              "line": 818,
               "text": "if (processMarkersCenter) {"
             },
             {
-              "line": 1030,
+              "line": 1047,
               "text": "(processMarkersCenter && stats.markersCenterAdded > 0);"
             },
             {
-              "line": 1040,
+              "line": 1057,
               "text": "if (processMarkersCenter && stats.markersCenterAdded > 0) {"
             },
             {
-              "line": 1068,
+              "line": 1085,
               "text": "msg += \"• Вставка маркеров в середине абзацев: \" + (processMarkersCenter ? \"ДА\" : \"НЕТ\") + \"\\n\\n\";"
             }
           ],
@@ -78106,21 +78561,21 @@
           "name": "InlinePicMarkerStart",
           "declarations": [
             {
-              "line": 227,
+              "line": 244,
               "text": "var InlinePicMarkerStart = \"ZZZ_INLINE_PIC_START_\";"
             }
           ],
           "uses": [
             {
-              "line": 227,
+              "line": 244,
               "text": "var InlinePicMarkerStart = \"ZZZ_INLINE_PIC_START_\";"
             },
             {
-              "line": 840,
+              "line": 857,
               "text": "addMarkerToParagraph(p, InlinePicMarkerStart, false);"
             },
             {
-              "line": 1035,
+              "line": 1052,
               "text": "msg += \"  • В начале (\" + InlinePicMarkerStart + \"): \" + stats.markersStartAdded + \"\\n\";"
             }
           ],
@@ -78131,21 +78586,21 @@
           "name": "InlinePicMarkerEnd",
           "declarations": [
             {
-              "line": 230,
+              "line": 247,
               "text": "var InlinePicMarkerEnd = \"_ZZZ_INLINE_PIC_END\";"
             }
           ],
           "uses": [
             {
-              "line": 230,
+              "line": 247,
               "text": "var InlinePicMarkerEnd = \"_ZZZ_INLINE_PIC_END\";"
             },
             {
-              "line": 859,
+              "line": 876,
               "text": "addMarkerToParagraph(p, InlinePicMarkerEnd, true);"
             },
             {
-              "line": 1038,
+              "line": 1055,
               "text": "msg += \"  • В конце (\" + InlinePicMarkerEnd + \"): \" + stats.markersEndAdded + \"\\n\";"
             }
           ],
@@ -78156,21 +78611,21 @@
           "name": "InlinePicMarkerCenter",
           "declarations": [
             {
-              "line": 233,
+              "line": 250,
               "text": "var InlinePicMarkerCenter = \"_ZZZ_INLINE_PIC_CENTER\";"
             }
           ],
           "uses": [
             {
-              "line": 233,
+              "line": 250,
               "text": "var InlinePicMarkerCenter = \"_ZZZ_INLINE_PIC_CENTER\";"
             },
             {
-              "line": 802,
+              "line": 819,
               "text": "addMarkerToParagraph(firstP, InlinePicMarkerCenter, true);"
             },
             {
-              "line": 1041,
+              "line": 1058,
               "text": "msg += \"  • В середине (\" + InlinePicMarkerCenter + \"): \" + stats.markersCenterAdded + \"\\n\";"
             }
           ],
@@ -78181,25 +78636,25 @@
           "name": "AddEmptyLines",
           "declarations": [
             {
-              "line": 236,
+              "line": 253,
               "text": "var AddEmptyLines = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 236,
+              "line": 253,
               "text": "var AddEmptyLines = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 412,
+              "line": 429,
               "text": "if (AddEmptyLines && !hasEmptyLineBefore(element)) {"
             },
             {
-              "line": 423,
+              "line": 440,
               "text": "if (AddEmptyLines && !hasEmptyLineAfter(element)) {"
             },
             {
-              "line": 1069,
+              "line": 1086,
               "text": "msg += \"• Добавление пустых строк: \" + (AddEmptyLines ? \"ДА\" : \"НЕТ\") + \"\\n\\n\";"
             }
           ],
@@ -78209,25 +78664,41 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 155,
+          "line": 172,
           "text": "// version 2.0"
         },
         {
-          "line": 178,
+          "line": 195,
           "text": "// version 2.0, 16.04.2026"
         },
         {
-          "line": 182,
+          "line": 199,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 184,
+          "line": 201,
           "text": "var version = \"2.0\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Частично попавшая в текстовое выделение инлайн иллюстрация не обрабатывается.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Тихий режим showStatistics=0 пропускает и запрос подтверждения перед изменением документа.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При замене единственного абзаца секции пустой абзац добавляется даже при AddEmptyLines=0.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Области history, annotation, epigraph, title, poem, cite и table не обрабатываются независимо от переключателей разделов notes/comments.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке обработки группа отмены закрывается, но полнота отката уже сделанных изменений не проверена.",
           "verification": "requires_review"
         }
       ],
@@ -78248,84 +78719,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 1003,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
-            },
-            {
-              "line": 1010,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 1079,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/44_Удалить лишние секции вокруг блочных иллюстраций.js",

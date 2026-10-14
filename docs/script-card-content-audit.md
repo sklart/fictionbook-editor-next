@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **144**.
+Карточек без автоматических замечаний: **146**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **308**. Исполняемый код не изменён.
+Изменено карточек: **310**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 272
-- `generic_usage`: 253
-- `inaccurate_description`: 512
+- `false_warning`: 274
+- `generic_usage`: 255
+- `inaccurate_description`: 516
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 253
+- `incorrect_dependency`: 255
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 250
+- `incorrect_scope`: 252
 - `incorrect_selection`: 17
-- `incorrect_setting`: 118
-- `incorrect_undo`: 252
+- `incorrect_setting`: 120
+- `incorrect_undo`: 254
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 135
+- `dependenciesVerified`: 137
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 251
-- `scopeClarified`: 237
+- `purposeClarified`: 253
+- `scopeClarified`: 239
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 431
-- `undoDescriptionsClarified`: 244
-- `usageCorrected`: 253
-- `warningsClarified`: 184
+- `settingsClarified`: 433
+- `undoDescriptionsClarified`: 246
+- `usageCorrected`: 255
+- `warningsClarified`: 186
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **156**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **158**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -316,13 +316,15 @@
 - `16_Поиск форматирования/206_Выделить следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац.js:143` — Первое правило допускает строчные буквы вне своего русского и расширенного латинского набора; второе аналогично для других алфавитов. Название «целиком заглавный» следует читать с этим ограничением.
 - `05_Иллюстрации/30_Вставить ссылки на пустые картинки в началах и концах секций.js:379` — Условие hasNormalImg безусловно завершает обработку секции; skipStartWithImage и skipEndWithImage влияют только на счётчики, хотя диалог обещает управление пропуском.
 - `05_Иллюстрации/30_Вставить ссылки на пустые картинки в началах и концах секций.js:365` — В ветви вставки в начале секции без title пропускаются при обоих значениях skipNameless.
+- `05_Иллюстрации/35_Вставить заданные иллюстрации в началах и концах секций.js:515` — findInsertPositionAtStart возвращает первый найденный эпиграф, а не проходит все подряд; при нескольких эпиграфах вставка может оказаться между ними.
+- `05_Иллюстрации/43_Преобразовать инлайн иллюстрации в блочные.js:835` — При замене единственного абзаца секции пустой P добавляется без проверки AddEmptyLines, поэтому настройка не действует в этой ветви.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1356
+- `generic_usage`: 1346
 - `inaccurate_description`: 99
-- `incorrect_undo`: 210
-- `requires_review`: 439
+- `incorrect_undo`: 208
+- `requires_review`: 437
 
 ## Границы проверки
 
