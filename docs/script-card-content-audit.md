@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **207**.
+Карточек без автоматических замечаний: **208**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,52 +16,52 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **405**. Исполняемый код не изменён.
+Изменено карточек: **407**. Исполняемый код не изменён.
 
-- `duplicate_attribution`: 2
+- `duplicate_attribution`: 4
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 50
-- `generic_usage`: 351
-- `generic_warning`: 50
-- `inaccurate_description`: 663
+- `generic_summary`: 52
+- `generic_usage`: 353
+- `generic_warning`: 52
+- `inaccurate_description`: 665
 - `inaccurate_summary`: 1
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 366
+- `incorrect_dependency`: 368
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 358
+- `incorrect_scope`: 360
 - `incorrect_selection`: 33
-- `incorrect_setting`: 183
-- `incorrect_undo`: 350
+- `incorrect_setting`: 185
+- `incorrect_undo`: 352
 - `incorrect_version`: 8
 - `missing_warning`: 1
 - `uncertain_attribution`: 54
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 50
+- `attributionClarified`: 52
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 233
+- `dependenciesVerified`: 235
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 349
-- `scopeClarified`: 335
+- `purposeClarified`: 351
+- `scopeClarified`: 337
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 497
-- `undoDescriptionsClarified`: 342
-- `usageCorrected`: 351
+- `settingsClarified`: 499
+- `undoDescriptionsClarified`: 344
+- `usageCorrected`: 353
 - `versionCorrected`: 3
-- `warningsClarified`: 283
+- `warningsClarified`: 285
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **245**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **247**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -529,13 +529,17 @@
 - `13_Заголовки, подзаголовки, пустые строки/750_Выделить (под)заголовок, содержащий форматирование.js:205` — После BeginUndoUnit скрипт вызывает fbwBody.contains(ptr) без проверки fbwBody на null; при отсутствии корневого элемента ошибка оставит группу действий незавершённой.
 - `13_Заголовки, подзаголовки, пустые строки/755_Создать подзаголовок(-ки) из обычных выделенных абзацев.js:212` — При removeEmptyLines=1 пустые P не пропускаются и далее заменяются на P.subtitle; обещанное удаление пустых строк не выполняется.
 - `13_Заголовки, подзаголовки, пустые строки/755_Создать подзаголовок(-ки) из обычных выделенных абзацев.js:90` — getNextNode поднимается по parentNode без проверки конца fbw_body или null. Если конечный маркер не найден при сборе диапазона, обход может обратиться к nextSibling у null после BeginUndoUnit.
+- `13_Заголовки, подзаголовки, пустые строки/760_Расформатировать заголовок раздела под курсором.js:77` — Проверка заголовка секции смотрит только на firstChild и не пропускает пробельные текстовые узлы. При таком узле перед DIV title сообщение об отсутствии заголовка может быть неверным.
+- `13_Заголовки, подзаголовки, пустые строки/760_Расформатировать заголовок раздела под курсором.js:51` — Группа отмены открывается до вставки маркера и структурной обработки, а EndUndoUnit находится после всех операций без защиты от исключений; ошибка в правке оставит группу незавершённой.
+- `13_Заголовки, подзаголовки, пустые строки/785_Вставить пользовательский подзаголовок по месту курсора.js:162` — При подъёме от TABLE переменная foundAllowedDiv запоминает сам TABLE раньше его родительского DIV.table и больше не заменяется. Вставка выполняется перед TABLE внутри контейнера, хотя заявлена перед всем контейнером таблицы.
+- `13_Заголовки, подзаголовки, пустые строки/785_Вставить пользовательский подзаголовок по месту курсора.js:211` — UserSubtitle присваивается innerHTML без экранирования. Введённые в настройке символы HTML меняют разметку нового подзаголовка вместо вставки буквального текста.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 957
+- `generic_usage`: 947
 - `inaccurate_description`: 54
-- `incorrect_undo`: 145
-- `requires_review`: 370
+- `incorrect_undo`: 143
+- `requires_review`: 368
 
 ## Границы проверки
 
