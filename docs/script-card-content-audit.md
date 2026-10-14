@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **83**.
+Карточек без автоматических замечаний: **84**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,40 +16,40 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **182**. Исполняемый код не изменён.
+Изменено карточек: **183**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 150
-- `generic_usage`: 127
-- `inaccurate_description`: 260
+- `false_warning`: 151
+- `generic_usage`: 128
+- `inaccurate_description`: 262
 - `inaccurate_version`: 1
-- `incorrect_attribution`: 9
+- `incorrect_attribution`: 10
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 123
+- `incorrect_dependency`: 125
 - `incorrect_effect`: 2
-- `incorrect_metadata`: 9
-- `incorrect_scope`: 120
-- `incorrect_setting`: 101
-- `incorrect_undo`: 126
+- `incorrect_metadata`: 10
+- `incorrect_scope`: 121
+- `incorrect_setting`: 102
+- `incorrect_undo`: 127
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
 Подтверждённые результаты:
 
 - `attributionClarified`: 5
-- `attributionCorrected`: 9
+- `attributionCorrected`: 10
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 9
+- `dependenciesVerified`: 10
 - `externalWarningsRefined`: 12
-- `falseSettingsRemoved`: 9
+- `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 125
-- `scopeClarified`: 111
+- `purposeClarified`: 126
+- `scopeClarified`: 112
 - `serviceSettingsRemoved`: 143
 - `settingsClarified`: 397
-- `undoDescriptionsClarified`: 118
-- `usageCorrected`: 127
-- `warningsClarified`: 58
+- `undoDescriptionsClarified`: 119
+- `usageCorrected`: 128
+- `warningsClarified`: 59
 
 Скриптов с подтверждёнными замечаниями к исполняемому коду: **71**.
 
@@ -185,10 +185,10 @@
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1775
+- `generic_usage`: 1770
 - `inaccurate_description`: 104
 - `incorrect_undo`: 321
-- `requires_review`: 477
+- `requires_review`: 476
 
 ## Границы проверки
 

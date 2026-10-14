@@ -2,8 +2,8 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 477,
-    "generic_usage": 1775,
+    "requires_review": 476,
+    "generic_usage": 1770,
     "incorrect_undo": 321,
     "inaccurate_description": 104
   },
@@ -21587,40 +21587,319 @@
         "falseSettingsRemoved": 1,
         "attributionCorrected": 1
       }
+    },
+    {
+      "path": "07_Символы/10_Ударения (рус-лат).js",
+      "codeSha256": "3dd9a3313e8e92c7dec2b34a1e56be5c9933625c0b871037b13beba7b70f8069",
+      "evidence": "JS version 2.0: комментарии называют TaKir автором идеи и соавтором реализации, DeepSeek помощником реализации; скрипт основан на серии jurgennt/Sclex. Настройки в отмеченном блоке: выбор позиции, размер и массивы сдвигов; edgeMargin, scrollbarWidth, dividerWidth и вычисляемые координаты служебные. Run открывает обязательный HTML/Ударения рус-лат.html. HTML onClick проверяет fbw_body и вставляет выбранную ячейку; группа отмены внутри HTML.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "TaKir",
+              "role": "original_author"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            },
+            {
+              "name": "Sclex",
+              "role": "original_author"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            },
+            {
+              "name": "Sclex",
+              "role": "contributor",
+              "contribution": "source_series_engine"
+            },
+            {
+              "name": "jurgennt",
+              "role": "contributor",
+              "contribution": "source_series_table"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Открывает таблицу «Ударения (рус-лат)» для вставки символов в текст.",
+          "after": "Открывает таблицу русских и латинских гласных с ударением для вставки в текст книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Немодальное HTML-окно получает документ и окно FBE. Нажатие на ячейку формирует код вставки через диапазон/pasteHTML в исходном окне и группирует его в Undo. Открытие таблицы само по себе текст не меняет; нажатие на символ — меняет.",
+          "after": "Открывает отдельную немодальную таблицу ударных гласных. Сам запуск скрипта не меняет документ. При щелчке по ячейке связанная HTML-таблица вставляет символ в текущую позицию или вместо выделения, если диапазон находится внутри книги. Положение и размер окна задаются параметрами исходного JS.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется обходом DOM и условиями запуска; подробности в правилах и функциях.",
+          "after": "Текущий текстовый диапазон внутри fbw_body; вне его щелчок по символу ничего не вставляет.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в текст книги или выделите фрагмент, который нужно заменить гласной с ударением.",
+            "Запустите таблицу и щёлкните нужную русскую или латинскую гласную. Окно останется открытым для следующих вставок.",
+            "Для другого расположения или размера окна измените параметры в исходном JS; затем проверьте место вставки в книге."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
+            "Вставка выполняется HTML-зависимостью через eval в окне FBE; короткий файл запуска не содержит самих DOM-записей."
+          ],
+          "after": [
+            "Если текущий диапазон находится вне текста книги, символ не вставляется.",
+            "Вставку выполняет связанная HTML-таблица. При ошибке во время вставки завершение операции отмены не гарантировано."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Ударения рус-лат.html",
+              "sha256": "68244d99be6733ad88ce948614ed3bc866eb8b9ce1e41d07be5b75e12d83d7f6",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Ударения рус-лат.html",
+              "sha256": "68244d99be6733ad88ce948614ed3bc866eb8b9ce1e41d07be5b75e12d83d7f6",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "tags",
+          "before": [
+            "Символы",
+            "параметры"
+          ],
+          "after": [
+            "Символы",
+            "положение окна"
+          ],
+          "category": "incorrect_metadata"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "may_be_delegated",
+            "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          },
+          "after": {
+            "status": "may_be_delegated",
+            "description": "При щелчке по символу связанная таблица выполняет вставку в рамках одной операции отмены редактора. При ошибке её завершение и полнота отката не проверены."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "windowPosition",
+              "value": 6,
+              "expression": "6",
+              "description": "по умолчанию - флаг 6",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "dialogWidthPx",
+              "value": 440,
+              "expression": "440",
+              "description": "ширина окна, px",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "dialogHeightPx",
+              "value": 225,
+              "expression": "225",
+              "description": "высота окна, px",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "edgeMargin",
+              "value": 5,
+              "expression": "5",
+              "description": "Отступ окна от края монитора (для флагов 0 и 4), px",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "scrollbarWidth",
+              "value": 35,
+              "expression": "35",
+              "description": "зависит от системной темы и масштаба",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "dividerWidth",
+              "value": 35,
+              "expression": "35",
+              "description": "Зависит от системного масштаба (100%, 125%, 150%, 200%)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "scrLeft",
+              "value": 0,
+              "expression": "0",
+              "description": "Границы рабочей области монитора",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "scrTop",
+              "value": 0,
+              "expression": "0",
+              "description": "Границы рабочей области монитора",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "posParams",
+              "value": "",
+              "expression": "\"\"",
+              "description": "Строка параметров позиционирования для showModelessDialog",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "offX",
+              "value": 0,
+              "expression": "0",
+              "description": "Индивидуальные сдвиги для текущего флага",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "offY",
+              "value": 0,
+              "expression": "0",
+              "description": "Индивидуальные сдвиги для текущего флага",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "windowPosition",
+              "value": 6,
+              "expression": "6",
+              "description": "Расположение окна: 0 — слева у монитора, 1 — по центру, 2/5/6 — слева от текста, 3 — справа от текста, 4 — справа у монитора.",
+              "valueMeaning": "Выбирается в исходном скрипте; 6 располагает окно слева у верхней границы текстовой области."
+            },
+            {
+              "name": "dialogWidthPx",
+              "value": 440,
+              "expression": "440",
+              "description": "Ширина таблицы символов в пикселях.",
+              "valueMeaning": "Меняется в исходном скрипте."
+            },
+            {
+              "name": "dialogHeightPx",
+              "value": 225,
+              "expression": "225",
+              "description": "Высота таблицы символов в пикселях.",
+              "valueMeaning": "Меняется в исходном скрипте."
+            },
+            {
+              "name": "posOffsetX",
+              "value": "0, 0, -300, 0, 0, 0, 0",
+              "expression": "[0, 0, -300, 0, 0, 0, 0]",
+              "description": "Горизонтальный сдвиг для вариантов положения от 0 до 6.",
+              "valueMeaning": "Массив в исходном скрипте; для варианта 1 сдвиг не используется."
+            },
+            {
+              "name": "posOffsetY",
+              "value": "0, 0, 0, 0, 0, -90, 140",
+              "expression": "[0, 0, 0, 0, 0, -90, 140]",
+              "description": "Вертикальный сдвиг для вариантов положения от 0 до 6.",
+              "valueMeaning": "Массив в исходном скрипте; для варианта 1 сдвиг не используется."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "dependenciesVerified": 1,
+        "falseSettingsRemoved": 1,
+        "attributionCorrected": 1,
+        "undoDescriptionsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 260,
-    "generic_usage": 127,
-    "false_warning": 150,
-    "incorrect_setting": 101,
-    "incorrect_scope": 120,
-    "incorrect_undo": 126,
+    "inaccurate_description": 262,
+    "generic_usage": 128,
+    "false_warning": 151,
+    "incorrect_setting": 102,
+    "incorrect_scope": 121,
+    "incorrect_undo": 127,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 123,
+    "incorrect_dependency": 125,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "incorrect_attribution": 9,
-    "incorrect_metadata": 9,
+    "incorrect_attribution": 10,
+    "incorrect_metadata": 10,
     "false_setting": 9
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 118,
-    "usageCorrected": 127,
-    "purposeClarified": 125,
-    "warningsClarified": 58,
-    "scopeClarified": 111,
+    "undoDescriptionsClarified": 119,
+    "usageCorrected": 128,
+    "purposeClarified": 126,
+    "warningsClarified": 59,
+    "scopeClarified": 112,
     "settingsClarified": 397,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 9,
-    "falseSettingsRemoved": 9,
-    "attributionCorrected": 9
+    "dependenciesVerified": 10,
+    "falseSettingsRemoved": 10,
+    "attributionCorrected": 10
   },
   "scripts": [
     {
@@ -85851,21 +86130,12 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Ударения (рус-лат)",
-        "summary": "Открывает таблицу «Ударения (рус-лат)» для вставки символов в текст.",
-        "description": "Немодальное HTML-окно получает документ и окно FBE. Нажатие на ячейку формирует код вставки через диапазон/pasteHTML в исходном окне и группирует его в Undo. Открытие таблицы само по себе текст не меняет; нажатие на символ — меняет.",
+        "summary": "Открывает таблицу русских и латинских гласных с ударением для вставки в текст книги.",
+        "description": "Открывает отдельную немодальную таблицу ударных гласных. Сам запуск скрипта не меняет документ. При щелчке по ячейке связанная HTML-таблица вставляет символ в текущую позицию или вместо выделения, если диапазон находится внутри книги. Положение и размер окна задаются параметрами исходного JS.",
         "authors": [
           {
             "name": "TaKir",
             "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
-          },
-          {
-            "name": "TaKir",
-            "role": "original_author"
           },
           {
             "name": "DeepSeek",
@@ -85873,118 +86143,80 @@
           },
           {
             "name": "Sclex",
-            "role": "original_author"
+            "role": "contributor",
+            "contribution": "source_series_engine"
+          },
+          {
+            "name": "jurgennt",
+            "role": "contributor",
+            "contribution": "source_series_table"
           }
         ],
         "version": "2.0",
-        "scope": "Область определяется обходом DOM и условиями запуска; подробности в правилах и функциях.",
+        "scope": "Текущий текстовый диапазон внутри fbw_body; вне его щелчок по символу ничего не вставляет.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в текст книги или выделите фрагмент, который нужно заменить гласной с ударением.",
+          "Запустите таблицу и щёлкните нужную русскую или латинскую гласную. Окно останется открытым для следующих вставок.",
+          "Для другого расположения или размера окна измените параметры в исходном JS; затем проверьте место вставки в книге."
         ],
         "warnings": [
-          "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
-          "Вставка выполняется HTML-зависимостью через eval в окне FBE; короткий файл запуска не содержит самих DOM-записей."
+          "Если текущий диапазон находится вне текста книги, символ не вставляется.",
+          "Вставку выполняет связанная HTML-таблица. При ошибке во время вставки завершение операции отмены не гарантировано."
         ],
         "settings": [
           {
             "name": "windowPosition",
             "value": 6,
             "expression": "6",
-            "description": "по умолчанию - флаг 6",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Расположение окна: 0 — слева у монитора, 1 — по центру, 2/5/6 — слева от текста, 3 — справа от текста, 4 — справа у монитора.",
+            "valueMeaning": "Выбирается в исходном скрипте; 6 располагает окно слева у верхней границы текстовой области."
           },
           {
             "name": "dialogWidthPx",
             "value": 440,
             "expression": "440",
-            "description": "ширина окна, px",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Ширина таблицы символов в пикселях.",
+            "valueMeaning": "Меняется в исходном скрипте."
           },
           {
             "name": "dialogHeightPx",
             "value": 225,
             "expression": "225",
-            "description": "высота окна, px",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Высота таблицы символов в пикселях.",
+            "valueMeaning": "Меняется в исходном скрипте."
           },
           {
-            "name": "edgeMargin",
-            "value": 5,
-            "expression": "5",
-            "description": "Отступ окна от края монитора (для флагов 0 и 4), px",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "posOffsetX",
+            "value": "0, 0, -300, 0, 0, 0, 0",
+            "expression": "[0, 0, -300, 0, 0, 0, 0]",
+            "description": "Горизонтальный сдвиг для вариантов положения от 0 до 6.",
+            "valueMeaning": "Массив в исходном скрипте; для варианта 1 сдвиг не используется."
           },
           {
-            "name": "scrollbarWidth",
-            "value": 35,
-            "expression": "35",
-            "description": "зависит от системной темы и масштаба",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "dividerWidth",
-            "value": 35,
-            "expression": "35",
-            "description": "Зависит от системного масштаба (100%, 125%, 150%, 200%)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "scrLeft",
-            "value": 0,
-            "expression": "0",
-            "description": "Границы рабочей области монитора",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "scrTop",
-            "value": 0,
-            "expression": "0",
-            "description": "Границы рабочей области монитора",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "posParams",
-            "value": "",
-            "expression": "\"\"",
-            "description": "Строка параметров позиционирования для showModelessDialog",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "offX",
-            "value": 0,
-            "expression": "0",
-            "description": "Индивидуальные сдвиги для текущего флага",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "offY",
-            "value": 0,
-            "expression": "0",
-            "description": "Индивидуальные сдвиги для текущего флага",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "posOffsetY",
+            "value": "0, 0, 0, 0, 0, -90, 140",
+            "expression": "[0, 0, 0, 0, 0, -90, 140]",
+            "description": "Вертикальный сдвиг для вариантов положения от 0 до 6.",
+            "valueMeaning": "Массив в исходном скрипте; для варианта 1 сдвиг не используется."
           }
         ],
         "dependencies": [
           {
             "path": "HTML/Ударения рус-лат.html",
             "sha256": "68244d99be6733ad88ce948614ed3bc866eb8b9ce1e41d07be5b75e12d83d7f6",
-            "optional": true
+            "optional": false
           }
         ],
         "undo": {
           "status": "may_be_delegated",
-          "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          "description": "При щелчке по символу связанная таблица выполняет вставку в рамках одной операции отмены редактора. При ошибке её завершение и полнота отката не проверены."
         },
         "examples": null,
         "tags": [
           "Символы",
-          "параметры"
+          "положение окна"
         ]
       },
       "evidence": {
@@ -86007,41 +86239,41 @@
           "name": "windowPosition",
           "declarations": [
             {
-              "line": 192,
+              "line": 145,
               "text": "var windowPosition = 6;   // по умолчанию - флаг 6"
             }
           ],
           "uses": [
             {
-              "line": 192,
+              "line": 145,
               "text": "var windowPosition = 6;   // по умолчанию - флаг 6"
             },
             {
-              "line": 276,
+              "line": 229,
               "text": "if (windowPosition >= 0 && windowPosition <= 6) {"
             },
             {
-              "line": 276,
+              "line": 229,
               "text": "if (windowPosition >= 0 && windowPosition <= 6) {"
             },
             {
-              "line": 277,
+              "line": 230,
               "text": "offX = posOffsetX[windowPosition];"
             },
             {
-              "line": 278,
+              "line": 231,
               "text": "offY = posOffsetY[windowPosition];"
             },
             {
-              "line": 281,
+              "line": 234,
               "text": "if (windowPosition == 0) {"
             },
             {
-              "line": 291,
+              "line": 244,
               "text": "else if (windowPosition == 1) {"
             },
             {
-              "line": 295,
+              "line": 248,
               "text": "else if (windowPosition == 2) {"
             }
           ],
@@ -86052,33 +86284,33 @@
           "name": "dialogWidthPx",
           "declarations": [
             {
-              "line": 200,
+              "line": 153,
               "text": "var dialogWidthPx  = 440;   // ширина окна, px"
             }
           ],
           "uses": [
             {
-              "line": 200,
+              "line": 153,
               "text": "var dialogWidthPx  = 440;   // ширина окна, px"
             },
             {
-              "line": 245,
+              "line": 198,
               "text": "var dialogWidth  = dialogWidthPx  + \"px\";"
             },
             {
-              "line": 263,
+              "line": 216,
               "text": "var scrRight  = screen.availWidth  - dialogWidthPx;"
             },
             {
-              "line": 297,
+              "line": 250,
               "text": "posLeft = edLeft - dialogWidthPx + offX;"
             },
             {
-              "line": 329,
+              "line": 282,
               "text": "posLeft = edLeft - dialogWidthPx - dividerWidth + offX;"
             },
             {
-              "line": 347,
+              "line": 300,
               "text": "posLeft = edLeft - dialogWidthPx - dividerWidth + offX;"
             }
           ],
@@ -86089,29 +86321,29 @@
           "name": "dialogHeightPx",
           "declarations": [
             {
-              "line": 201,
+              "line": 154,
               "text": "var dialogHeightPx = 225;   // высота окна, px"
             }
           ],
           "uses": [
             {
-              "line": 201,
+              "line": 154,
               "text": "var dialogHeightPx = 225;   // высота окна, px"
             },
             {
-              "line": 246,
+              "line": 199,
               "text": "var dialogHeight = dialogHeightPx + \"px\";"
             },
             {
-              "line": 264,
+              "line": 217,
               "text": "var scrBottom = screen.availHeight - dialogHeightPx;"
             },
             {
-              "line": 333,
+              "line": 286,
               "text": "if (edHeight >= dialogHeightPx) {"
             },
             {
-              "line": 334,
+              "line": 287,
               "text": "posTop = edTop + edHeight - dialogHeightPx + offY;"
             }
           ],
@@ -86119,312 +86351,42 @@
         },
         {
           "index": 3,
-          "name": "edgeMargin",
+          "name": "posOffsetX",
           "declarations": [
             {
-              "line": 208,
-              "text": "var edgeMargin = 5;"
+              "line": 191,
+              "text": "var posOffsetX = [   0,   0,  -300,   0,   0,   0,    0 ];"
             }
           ],
           "uses": [
             {
-              "line": 208,
-              "text": "var edgeMargin = 5;"
+              "line": 191,
+              "text": "var posOffsetX = [   0,   0,  -300,   0,   0,   0,    0 ];"
             },
             {
-              "line": 283,
-              "text": "posLeft = edgeMargin + offX;"
-            },
-            {
-              "line": 285,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 286,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            },
-            {
-              "line": 299,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 300,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            },
-            {
-              "line": 309,
-              "text": "if (posLeft > scrRight)  posLeft = scrRight - edgeMargin;"
-            },
-            {
-              "line": 310,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop   + edgeMargin;"
+              "line": 230,
+              "text": "offX = posOffsetX[windowPosition];"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 4,
-          "name": "scrollbarWidth",
+          "name": "posOffsetY",
           "declarations": [
             {
-              "line": 212,
-              "text": "var scrollbarWidth = 35;"
+              "line": 192,
+              "text": "var posOffsetY = [   0,   0,     0,   0,   0,  -90,  140 ];"
             }
           ],
           "uses": [
             {
-              "line": 212,
-              "text": "var scrollbarWidth = 35;"
+              "line": 192,
+              "text": "var posOffsetY = [   0,   0,     0,   0,   0,  -90,  140 ];"
             },
             {
-              "line": 307,
-              "text": "posLeft = edLeft + edWidth + scrollbarWidth + offX;"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 5,
-          "name": "dividerWidth",
-          "declarations": [
-            {
-              "line": 217,
-              "text": "var dividerWidth = 35;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 217,
-              "text": "var dividerWidth = 35;"
-            },
-            {
-              "line": 329,
-              "text": "posLeft = edLeft - dialogWidthPx - dividerWidth + offX;"
-            },
-            {
-              "line": 347,
-              "text": "posLeft = edLeft - dialogWidthPx - dividerWidth + offX;"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 6,
-          "name": "scrLeft",
-          "declarations": [
-            {
-              "line": 261,
-              "text": "var scrLeft   = 0;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 261,
-              "text": "var scrLeft   = 0;"
-            },
-            {
-              "line": 285,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 285,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 299,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 299,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 319,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            },
-            {
-              "line": 319,
-              "text": "if (posLeft < scrLeft)   posLeft = scrLeft + edgeMargin;"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 7,
-          "name": "scrTop",
-          "declarations": [
-            {
-              "line": 262,
-              "text": "var scrTop    = 0;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 262,
-              "text": "var scrTop    = 0;"
-            },
-            {
-              "line": 286,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            },
-            {
-              "line": 286,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            },
-            {
-              "line": 300,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            },
-            {
-              "line": 300,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            },
-            {
-              "line": 310,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop   + edgeMargin;"
-            },
-            {
-              "line": 310,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop   + edgeMargin;"
-            },
-            {
-              "line": 321,
-              "text": "if (posTop  < scrTop)    posTop  = scrTop  + edgeMargin;"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 8,
-          "name": "posParams",
-          "declarations": [
-            {
-              "line": 271,
-              "text": "var posParams = \"\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 271,
-              "text": "var posParams = \"\";"
-            },
-            {
-              "line": 288,
-              "text": "posParams = \"dialogLeft: \" + posLeft + \"px; \" +"
-            },
-            {
-              "line": 293,
-              "text": "posParams = \"center: Yes; \";"
-            },
-            {
-              "line": 302,
-              "text": "posParams = \"dialogLeft: \" + posLeft + \"px; \" +"
-            },
-            {
-              "line": 312,
-              "text": "posParams = \"dialogLeft: \" + posLeft + \"px; \" +"
-            },
-            {
-              "line": 323,
-              "text": "posParams = \"dialogLeft: \" + posLeft + \"px; \" +"
-            },
-            {
-              "line": 341,
-              "text": "posParams = \"dialogLeft: \" + posLeft + \"px; \" +"
-            },
-            {
-              "line": 352,
-              "text": "posParams = \"dialogLeft: \" + posLeft + \"px; \" +"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 9,
-          "name": "offX",
-          "declarations": [
-            {
-              "line": 274,
-              "text": "var offX = 0;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 274,
-              "text": "var offX = 0;"
-            },
-            {
-              "line": 277,
-              "text": "offX = posOffsetX[windowPosition];"
-            },
-            {
-              "line": 283,
-              "text": "posLeft = edgeMargin + offX;"
-            },
-            {
-              "line": 297,
-              "text": "posLeft = edLeft - dialogWidthPx + offX;"
-            },
-            {
-              "line": 307,
-              "text": "posLeft = edLeft + edWidth + scrollbarWidth + offX;"
-            },
-            {
-              "line": 317,
-              "text": "posLeft = scrRight - edgeMargin + offX;"
-            },
-            {
-              "line": 329,
-              "text": "posLeft = edLeft - dialogWidthPx - dividerWidth + offX;"
-            },
-            {
-              "line": 347,
-              "text": "posLeft = edLeft - dialogWidthPx - dividerWidth + offX;"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 10,
-          "name": "offY",
-          "declarations": [
-            {
-              "line": 275,
-              "text": "var offY = 0;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 275,
-              "text": "var offY = 0;"
-            },
-            {
-              "line": 278,
+              "line": 231,
               "text": "offY = posOffsetY[windowPosition];"
-            },
-            {
-              "line": 284,
-              "text": "posTop  = edTop + offY;"
-            },
-            {
-              "line": 298,
-              "text": "posTop  = edTop  + offY;"
-            },
-            {
-              "line": 308,
-              "text": "posTop  = edTop  + offY;"
-            },
-            {
-              "line": 318,
-              "text": "posTop  = edTop + offY;"
-            },
-            {
-              "line": 334,
-              "text": "posTop = edTop + edHeight - dialogHeightPx + offY;"
-            },
-            {
-              "line": 336,
-              "text": "posTop = edTop + offY;"
             }
           ],
           "classification": "requires_review"
@@ -86442,25 +86404,25 @@
       ],
       "authorshipEvidence": [
         {
-          "line": 149,
+          "line": 102,
           "text": "// version 2.0"
         },
         {
-          "line": 165,
+          "line": 118,
           "text": "// version 2.0, 20.09.2026"
         },
         {
-          "line": 170,
+          "line": 123,
           "text": "var version = \"2.0\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
+          "text": "Если текущий диапазон находится вне текста книги, символ не вставляется.",
           "verification": "requires_review"
         },
         {
-          "text": "Вставка выполняется HTML-зависимостью через eval в окне FBE; короткий файл запуска не содержит самих DOM-записей.",
+          "text": "Вставку выполняет связанная HTML-таблица. При ошибке во время вставки завершение операции отмены не гарантировано.",
           "verification": "requires_review"
         }
       ],
@@ -86481,62 +86443,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "08_Структура разделов/01_Управление структурой разделов и их заголовками....js",
