@@ -52,43 +52,7 @@
     "status": "explicit_calls_found",
     "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
   },
-  "settings": [
-    {
-      "name": "InsideP",
-      "value": false,
-      "expression": "false",
-      "description": "true, если находимся внутри тега P",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "InsideSelection",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда текущая позиция внутри выделенного текста",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "ProcessingEnded",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда обработка закончена и пора выходить",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "paragraphProcessed",
-      "value": false,
-      "expression": "false",
-      "description": "флаг, что текущий абзац уже обработан",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "paragraphStarted",
-      "value": false,
-      "expression": "false",
-      "description": "флаг, что мы вошли в новый абзац",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    }
-  ]
+  "settings": []
 }
 </FBE-SCRIPT-CARD>*/
 // Скрипт «Первую букву абзаца -  в верхний регистр» v.1.0

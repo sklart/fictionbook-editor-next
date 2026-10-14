@@ -13,6 +13,13 @@ struct Author {
 	CString role;
 };
 
+struct Setting {
+	CString title;
+	CString name;
+	CString value;
+	CString description;
+};
+
 struct Dependency {
 	enum class State { Unverified, Current, Changed, Missing, OptionalMissing, Invalid };
 	CString path;
@@ -35,12 +42,14 @@ struct Card {
 	CString reviewStatus;
 	CString minFbeVersion;
 	CString undo;
+	CString undoStatus;
 	int modifiesDocument = -1;
 	int requiresSelection = -1;
 	std::vector<Author> authors;
 	std::vector<CString> usage;
 	std::vector<CString> warnings;
 	std::vector<CString> settings;
+	std::vector<Setting> settingRows;
 	std::vector<CString> examples;
 	std::vector<CString> tags;
 	std::vector<CString> changelog;

@@ -42,13 +42,6 @@
   },
   "settings": [
     {
-      "name": "InsideSelection",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда текущая позиция внутри выделенного текста",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
       "name": "ProcessingEnded",
       "value": false,
       "expression": "false",

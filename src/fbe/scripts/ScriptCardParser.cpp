@@ -175,8 +175,6 @@ bool OptionalDisplayArray(const std::wstring& json, size_t object, const wchar_t
 				if(!value.IsEmpty()) display += L" = " + value;
 				CString note = ObjectField(json, cursor, L"description");
 				if(!note.IsEmpty()) display += L" — " + note;
-				CString meaning = ObjectField(json, cursor, L"valueMeaning");
-				if(!meaning.IsEmpty()) display += L"\r\n" + meaning;
 			}
 			else if(wcscmp(key, L"examples") == 0)
 			{
@@ -210,6 +208,34 @@ bool OptionalDisplayArray(const std::wstring& json, size_t object, const wchar_t
 		if(delimiter != L',') return false;
 		FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
 	}
+}
+
+bool OptionalSettings(const std::wstring& json, std::vector<Setting>& result)
+{
+	size_t cursor = 0;
+	if(!Member(json, 0, L"settings", cursor)) return true;
+	if(json[cursor++] != L'[') return false;
+	FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
+	while(cursor < json.size() && json[cursor] != L']')
+	{
+		Setting row;
+		if(json[cursor] == L'{')
+		{
+			row.title = ObjectField(json, cursor, L"title");
+			row.name = ObjectField(json, cursor, L"name");
+			row.value = ObjectField(json, cursor, L"expression");
+			if(row.value.IsEmpty()) row.value = ObjectField(json, cursor, L"value");
+			row.description = ObjectField(json, cursor, L"description");
+		}
+		else row.name = ValueText(json, cursor);
+		if(!FbeRuntimeLocalization::JsonSkipValue(json, cursor)) return false;
+		if(!row.name.IsEmpty() || !row.title.IsEmpty()) result.push_back(row);
+		FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor);
+		if(cursor >= json.size()) return false;
+		if(json[cursor] == L',') { ++cursor; FbeRuntimeLocalization::JsonSkipWhitespace(json, cursor); }
+		else if(json[cursor] != L']') return false;
+	}
+	return cursor < json.size() && json[cursor] == L']';
 }
 
 bool DecodeCard(const BYTE* bytes, const ScriptCardBlock::Span& span, std::wstring& text)
@@ -352,10 +378,12 @@ Card Parse(const BYTE* bytes, size_t length)
 	if(Member(json, 0, L"undo", complete))
 	{
 		if(json[complete] != L'{') { card.error = L"Undo description is invalid"; return card; }
+		card.undoStatus = ObjectField(json, complete, L"status");
 		card.undo = ObjectField(json, complete, L"description");
-		if(card.undo.IsEmpty()) card.undo = ObjectField(json, complete, L"status");
+		if(card.undo.IsEmpty()) card.undo = card.undoStatus;
 	}
 	if(!OptionalDisplayArray(json, 0, L"settings", card.settings) ||
+		!OptionalSettings(json, card.settingRows) ||
 		!OptionalDisplayArray(json, 0, L"examples", card.examples) ||
 		!OptionalDisplayArray(json, 0, L"changelog", card.changelog) ||
 		!OptionalDisplayArray(json, 0, L"links", card.links) ||

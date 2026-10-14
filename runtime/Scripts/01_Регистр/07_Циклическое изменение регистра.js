@@ -40,43 +40,7 @@
     "status": "explicit_calls_found",
     "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
   },
-  "settings": [
-    {
-      "name": "ObrabotkaType",
-      "value": 2,
-      "expression": "2",
-      "description": "2 - перевод в нижний регистр",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "InsideP",
-      "value": false,
-      "expression": "false",
-      "description": "true, если находимся внутри тэга P",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "InsideSelection",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда текущая позиция внутри выделенного текста",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "ProcessingEnded",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда обработка закончена и пора выходить",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    },
-    {
-      "name": "lastSymbolLetter",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда обработка закончена и пора выходить",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    }
-  ]
+  "settings": []
 }
 </FBE-SCRIPT-CARD>*/
 //скрипт смены регистра by Sclex

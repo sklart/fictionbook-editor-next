@@ -243,6 +243,8 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	if(scriptCardDialogRuntime)
 	{
+		FbePublishRuntimeLocaleName(L"ru-RU");
+		FbeResetRuntimeLocalization();
 		::CreateDirectory(scriptsDirectory, NULL);
 		const CString missingPath = scriptsDirectory + L"card-missing.js";
 		const CString cardPath = scriptsDirectory + L"card-present.js";
@@ -289,7 +291,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			"\"settings\":[{\"name\":\"Mode\",\"expression\":\"safe\",\"description\":\"Change mode\"},"
 			"{\"name\":\"Second\",\"expression\":\"false\",\"description\":\"\\u0434\\u0430\"}],"
 			"\"examples\":[{\"before\":\"abc\",\"after\":\"ABC\"}],"
-			"\"undo\":{\"description\":\"Undoable\"},\"tags\":[\"case\"],"
+			"\"undo\":{\"status\":\"explicit_calls_found\",\"description\":\"BeginUndoUnit/EndUndoUnit found\"},\"tags\":[\"case\"],"
 			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"},{\"name\":\"Modifier\",\"role\":\"modifier\"}],"
 			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\","
 			"\"reviewStatus\":\"generated\","
@@ -337,15 +339,16 @@ void CMainFrame::RunPortableStateTestScenario()
 			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
 			SWP_NOZORDER | SWP_NOACTIVATE);
 		::SendMessageW(viewport, WM_VSCROLL, SB_TOP, 0);
-		const bool optionalRendered = openedCard && m_script_card_window.BodyText().Find(L"Mode = safe") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Second = false — да") >= 0 &&
+		const bool optionalRendered = openedCard && m_script_card_window.BodyText().Find(L"Mode  ·  safe") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Second  ·  Нет\r\nда") >= 0 &&
 			m_script_card_window.BodyText().Find(L"\\u0434") < 0 &&
 			m_script_card_window.BodyText().Find(L"abc → ABC") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Undoable") >= 0;
+			m_script_card_window.BodyText().Find(L"Скрипт предусматривает отмену изменений") >= 0 &&
+			m_script_card_window.BodyText().Find(L"BeginUndoUnit") < 0;
 		const bool hashesHidden = openedCard && m_script_card_window.BodyText().Find(L"b93000a4f6") < 0;
-		const bool originShown = openedCard && m_script_card_window.OriginText() ==
-			FbeLoadRuntimeStringByKey(L"fbe.script_card.review.generated",
-				L"Description was generated automatically and may need review");
+		const bool originHidden = openedCard && m_script_card_window.OriginText().IsEmpty() &&
+			m_script_card_window.StatusText().IsEmpty() &&
+			!::IsWindowVisible(m_script_card_window.WarningWindow());
 		const bool windowIcons = openedCard &&
 			::SendMessageW(m_script_card_window.m_hWnd, WM_GETICON, ICON_SMALL, 0) != 0 &&
 			::SendMessageW(m_script_card_window.m_hWnd, WM_GETICON, ICON_BIG, 0) != 0;
@@ -378,20 +381,20 @@ void CMainFrame::RunPortableStateTestScenario()
 		wchar_t header[512] = {};
 		::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), header, _countof(header));
 		const bool categoryShown = CString(header).Find(L"Иллюстрации/Подраздел") >= 0;
-		const bool changedWarning = reopened && m_script_card_window.StatusText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.changed",
-			L"Warning: description may not match the current script")) >= 0;
-		auto checkReviewOrigin = [&](const char* review, LPCWSTR key, LPCWSTR fallback) {
+		const bool changedWarning = reopened && m_script_card_window.StatusText() ==
+			FbeLoadRuntimeStringByKey(L"fbe.script_card.changed", L"⚠ Code changed. Description may be outdated") &&
+			::IsWindowVisible(m_script_card_window.WarningWindow());
+		auto checkReviewOrigin = [&](const char* review) {
 			std::string source = cardSource;
 			const std::string marker = "\"reviewStatus\":\"generated\"";
 			const size_t position = source.find(marker);
 			if(position == std::string::npos) return false;
 			source.replace(position, marker.size(), std::string("\"reviewStatus\":\"") + review + "\"");
 			return WritePortableStateTestText(cardPath, source.c_str()) && openCard() && awaitCard() &&
-				m_script_card_window.OriginText() == FbeLoadRuntimeStringByKey(key, fallback);
+				m_script_card_window.OriginText().IsEmpty() && m_script_card_window.StatusText().IsEmpty() &&
+				!::IsWindowVisible(m_script_card_window.WarningWindow());
 		};
-		const bool originStates = checkReviewOrigin("reviewed", L"fbe.script_card.review.reviewed",
-			L"Description reviewed by a maintainer") && checkReviewOrigin("unknown", L"fbe.script_card.review.unknown",
-			L"Description review status is unknown");
+		const bool originStates = checkReviewOrigin("reviewed") && checkReviewOrigin("unknown");
 		const bool buttons = ::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_RUN)) &&
 			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_OPEN)) &&
 			::IsWindow(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY));
@@ -531,6 +534,84 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool darkTreeScreenshot = captureWindow(tree.m_hWnd, L"script-tree-info-dark.bmp");
 		ThemeManager::SetSelectedTheme(originalTheme);
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool infoUidMatched = m_script_card_window.CurrentUid() == infoUid;
+		const bool infoSelectionMatched = tree.GetSelectedItem() == selectedItem;
+		const int infoRunCount = runCount;
+		int commentRunCount = 0;
+		wchar_t executable[MAX_PATH] = {};
+		::GetModuleFileNameW(NULL, executable, _countof(executable));
+		CString runtimePath(executable);
+		runtimePath = runtimePath.Left(runtimePath.ReverseFind(L'\\'));
+		const CString commentPath = runtimePath + L"\\Scripts\\03_Комментарии\\01_Добавить комментарий, остаться на его ссылке.js";
+		const ScriptCards::Card commentCard = ScriptCards::LoadFile(commentPath);
+		ScriptDescriptor comment = {};
+		comment.name = L"Добавить комментарий, остаться на его ссылке";
+		comment.path = commentPath;
+		comment.relativePath = L"03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js";
+		comment.uid = L"comment-card-visual";
+		const bool commentOpened = m_script_card_window.ShowScript(m_hWnd, comment, runtimePath,
+			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+		const bool commentContent = commentOpened && commentCard.state == ScriptCards::State::Current &&
+			commentCard.reviewStatus == L"generated" && commentCard.settingRows.size() == 11 &&
+			commentCard.settingRows.front().title == L"Шаблон ID комментария" &&
+			commentCard.warnings.size() == 1 && commentCard.undo.Find(L"BeginUndoUnit") < 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Автор: Sclex") >= 0 &&
+			m_script_card_window.BodyText().Find(L"InsideTag") < 0 &&
+			m_script_card_window.BodyText().Find(L"Пустая строка") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Значение литерала/резервное значение") < 0 &&
+			m_script_card_window.BodyText().Find(L"Запуск внешнего приложения") < 0 &&
+			m_script_card_window.StatusText().IsEmpty() &&
+			!::IsWindowVisible(m_script_card_window.WarningWindow());
+		::SetWindowPos(m_script_card_window.m_hWnd, NULL, 0, 0,
+			UiMetrics::ScaleForDpi(620, cardDpi), UiMetrics::ScaleForDpi(460, cardDpi),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		const bool commentNarrow = m_script_card_window.CanScroll() &&
+			captureWindow(m_script_card_window.m_hWnd, L"comment-card-narrow.bmp");
+		::SendMessageW(m_script_card_window.ViewportWindow(), WM_VSCROLL, SB_BOTTOM, 0);
+		const bool commentSettings = m_script_card_window.ScrollPosition() > 0 &&
+			captureWindow(m_script_card_window.m_hWnd, L"comment-card-settings.bmp");
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool commentDark = captureWindow(m_script_card_window.m_hWnd, L"comment-card-settings-dark.bmp");
+		ThemeManager::SetSelectedTheme(originalTheme);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const CString alteredComment = scriptsDirectory + L"comment-changed.js";
+		const bool commentCopied = ::CopyFileW(commentPath, alteredComment, FALSE) != FALSE;
+		bool commentAltered = false;
+		if(commentCopied) {
+			HANDLE file = ::CreateFileW(alteredComment, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(file != INVALID_HANDLE_VALUE) { DWORD written = 0; commentAltered = ::WriteFile(file, " ", 1, &written, NULL) && written == 1; ::CloseHandle(file); }
+		}
+		comment.path = alteredComment;
+		const bool commentReopened = commentAltered && m_script_card_window.ShowScript(m_hWnd, comment, runtimePath,
+			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+		RECT warningBounds = {}, copyBounds = {};
+		::GetWindowRect(m_script_card_window.WarningWindow(), &warningBounds);
+		::GetWindowRect(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), &copyBounds);
+		const bool commentWarning = commentReopened && ::IsWindowVisible(m_script_card_window.WarningWindow()) &&
+			warningBounds.right <= copyBounds.left &&
+			m_script_card_window.WarningText() == L"⚠ Код изменён. Описание может быть устаревшим" &&
+			captureWindow(m_script_card_window.m_hWnd, L"comment-card-changed.bmp");
+		TOOLINFOW warningTip = { sizeof(warningTip) };
+		wchar_t warningTipText[160] = {};
+		warningTip.hwnd = m_script_card_window.m_hWnd;
+		warningTip.uId = reinterpret_cast<UINT_PTR>(m_script_card_window.WarningWindow());
+		warningTip.lpszText = warningTipText;
+		::SendMessageW(m_script_card_window.WarningTooltipWindow(), TTM_GETTEXTW, 0, reinterpret_cast<LPARAM>(&warningTip));
+		const bool commentTooltip = CString(warningTipText) == m_script_card_window.WarningText();
+		::SetWindowPos(m_script_card_window.m_hWnd, NULL, 0, 0,
+			UiMetrics::ScaleForDpi(1100, cardDpi), UiMetrics::ScaleForDpi(460, cardDpi),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		wchar_t warningLabel[160] = {};
+		::GetWindowTextW(m_script_card_window.WarningWindow(), warningLabel, _countof(warningLabel));
+		const bool commentWide = CString(warningLabel) == m_script_card_window.WarningText() &&
+			captureWindow(m_script_card_window.m_hWnd, L"comment-card-changed-wide.bmp");
+		ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
+		const bool commentChangedDark = ::IsWindowVisible(m_script_card_window.WarningWindow()) &&
+			captureWindow(m_script_card_window.m_hWnd, L"comment-card-changed-dark.bmp");
+		ThemeManager::SetSelectedTheme(originalTheme);
+		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 		if(selectedItem != NULL) tree.EnsureVisible(selectedItem);
 		RECT missingRow = {};
 		const bool missingRowVisible = selectedItem != NULL && tree.GetItemRect(selectedItem, &missingRow, FALSE);
@@ -555,21 +636,25 @@ void CMainFrame::RunPortableStateTestScenario()
 		::SendMessageW(tree.m_hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
 		const bool previewScrollHidden = !tree.ScriptPreviewVisible();
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
-			hashesHidden && originShown && originStates && technicalAbsent && windowIcons && boldHeading &&
+			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
 			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
 			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
-			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot && runCount == 0;
+			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot &&
+			commentContent && commentNarrow && commentSettings && commentDark &&
+			commentWarning && commentTooltip && commentWide && commentChangedDark &&
+			infoUidMatched && infoRunCount == 0 && commentRunCount == 0;
 		CStringA report;
-		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-shown=%d\norigin-states=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
-			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originShown, originStates, technicalAbsent, windowIcons, boldHeading,
+		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-hidden=%d\norigin-states-hidden=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ncomment-content=%d\ncomment-narrow=%d\ncomment-settings=%d\ncomment-dark=%d\ncomment-warning=%d\ncomment-tooltip=%d\ncomment-wide=%d\ncomment-changed-dark=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
+			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originHidden, originStates, technicalAbsent, windowIcons, boldHeading,
 			copiedDetails, categoryShown, previewDelayed, previewShown,
 			previewReusable, previewLink, previewFallback, missingRowVisible, fallbackVisible, fallbackWindow, fallbackText,
 			previewScrollHidden, uidUpdated, changedWarning, buttons, infoOpened,
 			infoDoubleClickSafe, contextOpened, multiCardDisabled,
+			commentContent, commentNarrow, commentSettings, commentDark, commentWarning, commentTooltip, commentWide, commentChangedDark,
 			initialized, infoItem != NULL, rowVisible, static_cast<unsigned>(tree.ScriptTreeNodeCount()),
-			m_script_card_window.CurrentUid() == infoUid,
-			tree.GetSelectedItem() == selectedItem, runCount,
+			infoUidMatched,
+			infoSelectionMatched, infoRunCount,
 			passed ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);

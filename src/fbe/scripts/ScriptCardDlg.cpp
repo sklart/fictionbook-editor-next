@@ -69,7 +69,6 @@ CScriptCardDlg::~CScriptCardDlg()
 {
 	if(IsWindow()) DestroyWindow();
 	if(m_headingFont != NULL) ::DeleteObject(m_headingFont);
-	if(m_originFont != NULL) ::DeleteObject(m_originFont);
 	if(m_richEdit != NULL) ::FreeLibrary(m_richEdit);
 }
 
@@ -100,10 +99,10 @@ bool CScriptCardDlg::ShowScript(HWND owner, const ScriptDescriptor& script, cons
 	SetDlgItemText(IDC_SCRIPT_CARD_BODY, m_bodyText);
 	m_headerRightText.Empty();
 	if(m_headerRight) ::SetWindowTextW(m_headerRight, L"");
-	m_statusText = m_bodyText;
-	if(m_status) ::SetWindowTextW(m_status, m_statusText);
+	m_statusText.Empty();
+	m_warningText.Empty();
+	if(m_warning) ::ShowWindow(m_warning, SW_HIDE);
 	m_originText.Empty();
-	if(m_origin) ::SetWindowTextW(m_origin, L"");
 	m_scrollY = 0;
 	Layout();
 	ApplyRichFormatting();
@@ -137,7 +136,9 @@ void CScriptCardDlg::RefreshLocalization()
 	{
 		m_bodyText = Label(L"fbe.script_card.loading", L"Checking script description and linked files...");
 		SetDlgItemText(IDC_SCRIPT_CARD_BODY, m_bodyText);
-		if(m_status) ::SetWindowTextW(m_status, m_bodyText);
+		m_statusText.Empty();
+		m_warningText.Empty();
+		if(m_warning) ::ShowWindow(m_warning, SW_HIDE);
 	}
 	Layout();
 }
@@ -149,10 +150,19 @@ LRESULT CScriptCardDlg::OnInit(UINT, WPARAM, LPARAM, BOOL&)
 	m_dpi = UiMetrics::DpiForWindow(m_hWnd);
 	m_headerRight = ::CreateWindowExW(0, L"RICHEDIT50W", L"", WS_CHILD | WS_VISIBLE |
 		ES_MULTILINE | ES_READONLY, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
-	m_status = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"RICHEDIT50W", L"", WS_CHILD | WS_VISIBLE |
-		ES_MULTILINE | ES_READONLY, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
-	m_origin = ::CreateWindowExW(0, L"RICHEDIT50W", L"", WS_CHILD | WS_VISIBLE |
-		ES_MULTILINE | ES_READONLY, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	m_warning = ::CreateWindowExW(0, L"STATIC", L"", WS_CHILD | SS_LEFTNOWORDWRAP | SS_CENTERIMAGE,
+		0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	m_warningTip = ::CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, NULL, WS_POPUP | TTS_ALWAYSTIP,
+		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+	if(m_warningTip && m_warning)
+	{
+		TOOLINFOW tip = { sizeof(tip) };
+		tip.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+		tip.hwnd = m_hWnd;
+		tip.uId = reinterpret_cast<UINT_PTR>(m_warning);
+		tip.lpszText = const_cast<LPWSTR>(L"");
+		::SendMessageW(m_warningTip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&tip));
+	}
 	m_viewport = ::CreateWindowExW(0, L"STATIC", L"", WS_CHILD | WS_VISIBLE | WS_VSCROLL |
 		WS_CLIPCHILDREN | WS_CLIPSIBLINGS, 0, 0, 1, 1, m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
 	if(m_viewport) ::SetWindowSubclass(m_viewport, ViewportSubclass, 1, reinterpret_cast<DWORD_PTR>(this));
@@ -175,20 +185,8 @@ void CScriptCardDlg::ApplyFont()
 	const int ids[] = { IDC_SCRIPT_CARD_HEADER, IDC_SCRIPT_CARD_BODY, IDC_SCRIPT_CARD_RUN,
 		IDC_SCRIPT_CARD_OPEN, IDC_SCRIPT_CARD_COPY, IDCANCEL };
 	for(int id : ids) ::SendMessageW(GetDlgItem(id), WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-	for(HWND extra : { m_headerRight, m_status })
+	for(HWND extra : { m_headerRight, m_warning })
 		if(extra) ::SendMessageW(extra, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
-	if(m_origin)
-	{
-		LOGFONTW origin = {};
-		::GetObjectW(font, sizeof(origin), &origin);
-		origin.lfHeight = origin.lfHeight * 9 / 10;
-		HFONT smaller = ::CreateFontIndirectW(&origin);
-		if(smaller) {
-			::SendMessageW(m_origin, WM_SETFONT, reinterpret_cast<WPARAM>(smaller), TRUE);
-			if(m_originFont) ::DeleteObject(m_originFont);
-			m_originFont = smaller;
-		}
-	}
 	for(const VisualBlock& block : m_blocks)
 		if(block.body) ::SendMessageW(block.body, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 	LOGFONTW details = {};
@@ -214,25 +212,17 @@ void CScriptCardDlg::ApplyBodyPalette()
 	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) : ThemeManager::WindowColor();
 	const COLORREF foreground = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) : ThemeManager::TextColor();
 	for(HWND rich : { static_cast<HWND>(GetDlgItem(IDC_SCRIPT_CARD_HEADER)),
-		static_cast<HWND>(GetDlgItem(IDC_SCRIPT_CARD_BODY)), m_headerRight, m_status, m_origin })
+		static_cast<HWND>(GetDlgItem(IDC_SCRIPT_CARD_BODY)), m_headerRight })
 	{
 		if(!::IsWindow(rich)) continue;
-		::SendMessageW(rich, EM_SETBKGNDCOLOR, 0,
-			rich == m_status && !highContrast ? ThemeManager::HoverColor() : background);
+		::SendMessageW(rich, EM_SETBKGNDCOLOR, 0, background);
 		CHARFORMAT2W format = {};
 		format.cbSize = sizeof(format);
 		format.dwMask = CFM_COLOR | CFM_BACKCOLOR;
-		format.crTextColor = rich == m_origin && !highContrast ? ThemeManager::SecondaryTextColor() : foreground;
+		format.crTextColor = foreground;
 		format.crBackColor = background;
 		::SendMessageW(rich, EM_SETCHARFORMAT, SCF_DEFAULT, reinterpret_cast<LPARAM>(&format));
 		::SendMessageW(rich, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&format));
-		if(rich == m_status) {
-			CHARFORMAT2W emphasis = {};
-			emphasis.cbSize = sizeof(emphasis);
-			emphasis.dwMask = CFM_BOLD;
-			emphasis.dwEffects = CFE_BOLD;
-			::SendMessageW(rich, EM_SETCHARFORMAT, SCF_ALL, reinterpret_cast<LPARAM>(&emphasis));
-		}
 		::InvalidateRect(rich, NULL, TRUE);
 	}
 	for(const VisualBlock& block : m_blocks)
@@ -252,7 +242,9 @@ void CScriptCardDlg::ApplyBodyPalette()
 			::InvalidateRect(rich, NULL, TRUE);
 		}
 	}
+	if(m_warning) ::InvalidateRect(m_warning, NULL, TRUE);
 	ApplyRichFormatting();
+	ApplySettingFormatting();
 }
 
 void CScriptCardDlg::ApplyScriptIcon()
@@ -312,6 +304,57 @@ void CScriptCardDlg::AddVisualBlock(const CString& label, const CString& value, 
 	block.content = value;
 	block.layout = layout;
 	block.warning = warning;
+	m_blocks.push_back(block);
+}
+
+void CScriptCardDlg::AddSettingsBlock(const std::vector<ScriptCards::Setting>& settings)
+{
+	if(settings.empty()) return;
+	VisualBlock block;
+	block.title = Label(L"fbe.script_card.settings", L"Settings");
+	block.settings = true;
+	LONG offset = 0;
+	for(const ScriptCards::Setting& setting : settings)
+	{
+		if(!block.content.IsEmpty()) { block.content += L"\r\n\r\n"; offset += 2; }
+		if(!setting.title.IsEmpty())
+		{
+			block.titles.push_back({ offset, offset + setting.title.GetLength() });
+			block.content += setting.title;
+			offset += setting.title.GetLength();
+			if(!setting.name.IsEmpty())
+			{
+				block.content += L"  ("; offset += 3;
+				block.names.push_back({ offset, offset + setting.name.GetLength() });
+				block.content += setting.name;
+				offset += setting.name.GetLength();
+				block.content += L")"; ++offset;
+			}
+		}
+		else
+		{
+			block.titles.push_back({ offset, offset + setting.name.GetLength() });
+			block.names.push_back({ offset, offset + setting.name.GetLength() });
+			block.content += setting.name;
+			offset += setting.name.GetLength();
+		}
+		if(!setting.value.IsEmpty())
+		{
+			CString value = setting.value;
+			if(value == L"true") value = Label(L"fbe.script_card.yes", L"Yes");
+			else if(value == L"false") value = Label(L"fbe.script_card.no", L"No");
+			else if(value == L"\"\"") value = Label(L"fbe.script_card.empty_string", L"Empty string");
+			block.content += L"  ·  "; offset += 5;
+			block.values.push_back({ offset, offset + value.GetLength() });
+			block.content += value; offset += value.GetLength();
+		}
+		if(!setting.description.IsEmpty())
+		{
+			block.content += L"\r\n" + setting.description;
+			offset += 1 + setting.description.GetLength();
+		}
+	}
+	AppendSection(block.title, block.content);
 	m_blocks.push_back(block);
 }
 
@@ -382,6 +425,49 @@ void CScriptCardDlg::RebuildVisualBlocks()
 			::SendMessageW(block.body, WM_SETFONT, reinterpret_cast<WPARAM>(m_font), FALSE);
 	}
 	ApplyBodyPalette();
+}
+
+void CScriptCardDlg::ApplySettingFormatting()
+{
+	for(const VisualBlock& block : m_blocks)
+	{
+		if(!block.settings || !::IsWindow(block.body)) continue;
+		::SendMessageW(block.body, WM_SETREDRAW, FALSE, 0);
+		for(const VisualBlock::Range& range : block.titles)
+		{
+			CHARRANGE selection = { range.begin, range.end };
+			::SendMessageW(block.body, EM_EXSETSEL, 0, reinterpret_cast<LPARAM>(&selection));
+			CHARFORMAT2W format = {};
+			format.cbSize = sizeof(format);
+			format.dwMask = CFM_BOLD;
+			format.dwEffects = CFE_BOLD;
+			::SendMessageW(block.body, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&format));
+		}
+		for(const VisualBlock::Range& range : block.names)
+		{
+			CHARRANGE selection = { range.begin, range.end };
+			::SendMessageW(block.body, EM_EXSETSEL, 0, reinterpret_cast<LPARAM>(&selection));
+			CHARFORMAT2W format = {};
+			format.cbSize = sizeof(format);
+			format.dwMask = CFM_FACE;
+			wcscpy_s(format.szFaceName, L"Consolas");
+			::SendMessageW(block.body, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&format));
+		}
+		for(const VisualBlock::Range& range : block.values)
+		{
+			CHARRANGE selection = { range.begin, range.end };
+			::SendMessageW(block.body, EM_EXSETSEL, 0, reinterpret_cast<LPARAM>(&selection));
+			CHARFORMAT2W format = {};
+			format.cbSize = sizeof(format);
+			format.dwMask = CFM_FACE;
+			wcscpy_s(format.szFaceName, L"Consolas");
+			::SendMessageW(block.body, EM_SETCHARFORMAT, SCF_SELECTION, reinterpret_cast<LPARAM>(&format));
+		}
+		CHARRANGE start = { 0, 0 };
+		::SendMessageW(block.body, EM_EXSETSEL, 0, reinterpret_cast<LPARAM>(&start));
+		::SendMessageW(block.body, WM_SETREDRAW, TRUE, 0);
+		::InvalidateRect(block.body, NULL, FALSE);
+	}
 }
 
 void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
@@ -579,8 +665,6 @@ void CScriptCardDlg::Layout()
 	RECT titleMeasure = { 0, 0, (std::max)(1, leftWidth), 0 };
 	RECT detailsMeasure = { 0, 0, (std::max)(1, leftWidth), 0 };
 	RECT rightMeasure = { 0, 0, (std::max)(1, rightWidth), 0 };
-	RECT statusMeasure = { 0, 0, (std::max)(1, usable - 2 * gap), 0 };
-	RECT originMeasure = { 0, 0, (std::max)(1, usable - 2 * gap), 0 };
 	if(dc) {
 		LOGFONTW titleFont = {};
 		if(m_font) ::GetObjectW(m_font, sizeof(titleFont), &titleFont);
@@ -595,12 +679,6 @@ void CScriptCardDlg::Layout()
 		if(details.Left(2) == L"\r\n") details = details.Mid(2);
 		if(!details.IsEmpty()) ::DrawTextW(dc, details, -1, &detailsMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
 		::DrawTextW(dc, m_headerRightText, -1, &rightMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
-		::DrawTextW(dc, m_statusText, -1, &statusMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
-		if(!m_originText.IsEmpty()) {
-			HFONT beforeOrigin = m_originFont ? reinterpret_cast<HFONT>(::SelectObject(dc, m_originFont)) : NULL;
-			::DrawTextW(dc, m_originText, -1, &originMeasure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
-			if(beforeOrigin) ::SelectObject(dc, beforeOrigin);
-		}
 	}
 	if(dc) { if(oldFont) ::SelectObject(dc, oldFont); ::ReleaseDC(m_hWnd, dc); }
 	const int textPadding = UiMetrics::ScaleForDpi(10, m_dpi);
@@ -608,13 +686,8 @@ void CScriptCardDlg::Layout()
 	const int rightHeight = m_headerRightText.IsEmpty() ? 0 : static_cast<int>(rightMeasure.bottom) + textPadding * 2;
 	const int headerHeight = splitHeader ? (std::max)(leftHeight, rightHeight) : leftHeight +
 		(rightHeight ? gap + rightHeight : 0);
-	const int statusHeight = (std::max)(UiMetrics::ScaleForDpi(42, m_dpi),
-		static_cast<int>(statusMeasure.bottom) + textPadding * 2);
-	const int originHeight = m_originText.IsEmpty() ? 0 :
-		(std::max)(UiMetrics::ScaleForDpi(18, m_dpi), static_cast<int>(originMeasure.bottom) + UiMetrics::ScaleForDpi(4, m_dpi));
 	const int buttonTop = clientHeight - margin - buttonHeight;
-	const int statusTop = margin + headerHeight + gap;
-	const int viewportTop = statusTop + statusHeight + originHeight + gap;
+	const int viewportTop = margin + headerHeight + gap;
 	const int viewportHeight = (std::max)(0, buttonTop - gap - viewportTop);
 	const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
 	struct Move { HWND window; int x, y, width, height; };
@@ -624,8 +697,6 @@ void CScriptCardDlg::Layout()
 	moves.push_back({ GetDlgItem(IDC_SCRIPT_CARD_HEADER), margin + iconSide + gap, margin, leftWidth, leftHeight });
 	moves.push_back({ m_headerRight, splitHeader ? margin + iconSide + gap + leftWidth + gap :
 		margin + iconSide + gap, splitHeader ? margin : margin + leftHeight + gap, rightWidth, rightHeight });
-	moves.push_back({ m_status, margin, statusTop, usable, statusHeight });
-	moves.push_back({ m_origin, margin + gap, statusTop + statusHeight, usable - 2 * gap, originHeight });
 	moves.push_back({ m_viewport, margin, viewportTop, usable, viewportHeight });
 	int x = clientWidth - margin;
 	for(int index = 3; index >= 0; --index)
@@ -633,6 +704,22 @@ void CScriptCardDlg::Layout()
 		x -= widths[index];
 		moves.push_back({ GetDlgItem(ids[index]), x, buttonTop, widths[index], buttonHeight });
 		x -= gap;
+	}
+	if(m_warning)
+	{
+		const int warningWidth = (std::max)(0, x - margin);
+		SIZE warningSize = {};
+		if(!m_warningText.IsEmpty())
+		{
+			HDC measure = ::GetDC(m_hWnd);
+			HFONT previous = measure && m_font ? reinterpret_cast<HFONT>(::SelectObject(measure, m_font)) : NULL;
+			if(measure) ::GetTextExtentPoint32W(measure, m_warningText, m_warningText.GetLength(), &warningSize);
+			if(measure) { if(previous) ::SelectObject(measure, previous); ::ReleaseDC(m_hWnd, measure); }
+		}
+		::SetWindowTextW(m_warning, warningSize.cx + UiMetrics::ScaleForDpi(4, m_dpi) <= warningWidth ?
+			m_warningText.GetString() : L"⚠");
+		moves.push_back({ m_warning, margin, buttonTop, warningWidth, buttonHeight });
+		::ShowWindow(m_warning, m_warningText.IsEmpty() ? SW_HIDE : SW_SHOWNA);
 	}
 	HDWP positions = ::BeginDeferWindowPos(static_cast<int>(moves.size()));
 	for(const Move& move : moves)
@@ -685,6 +772,15 @@ LRESULT CScriptCardDlg::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
+LRESULT CScriptCardDlg::OnControlColor(UINT, WPARAM dc, LPARAM window, BOOL& handled)
+{
+	if(reinterpret_cast<HWND>(window) != m_warning) { handled = FALSE; return 0; }
+	::SetBkMode(reinterpret_cast<HDC>(dc), TRANSPARENT);
+	::SetTextColor(reinterpret_cast<HDC>(dc), ThemeManager::IsHighContrast() ?
+		::GetSysColor(COLOR_WINDOWTEXT) : ThemeManager::WarningColor());
+	return reinterpret_cast<LRESULT>(ThemeManager::WindowBrush());
+}
+
 LRESULT CScriptCardDlg::OnTimer(UINT, WPARAM timer, LPARAM, BOOL&)
 {
 	if(timer != kCardTimer || !m_work || !m_work->done.load(std::memory_order_acquire)) return 0;
@@ -726,27 +822,24 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	{
 	case ScriptCards::State::Missing: state = Label(L"fbe.script_card.missing", L"Detailed information about this script is not available yet."); break;
 	case ScriptCards::State::Invalid: state = Label(L"fbe.script_card.invalid", L"The embedded description is invalid."); break;
-	case ScriptCards::State::Unchecked: state = Label(L"fbe.script_card.unchecked", L"Code revision not checked"); break;
-	case ScriptCards::State::Current: state = Label(L"fbe.script_card.current", L"Description matches this code revision"); break;
-	case ScriptCards::State::Changed: state = Label(L"fbe.script_card.changed", L"Warning: description may not match the current script"); break;
+	case ScriptCards::State::Unchecked: break;
+	case ScriptCards::State::Current: break;
+	case ScriptCards::State::Changed: state = Label(L"fbe.script_card.changed", L"⚠ Code changed. Description may be outdated"); break;
 	}
-	if(card.dependencyState == ScriptCards::Card::DependenciesState::Changed)
-		state += L"; " + Label(L"fbe.script_card.dependencies_changed", L"linked files changed or are missing");
-	else if(card.dependencyState == ScriptCards::Card::DependenciesState::Unverified && !card.dependencies.empty())
-		state += L"; " + Label(L"fbe.script_card.dependencies_unverified", L"not all linked files were verified");
 	m_headerText = header;
 	SetDlgItemText(IDC_SCRIPT_CARD_HEADER, m_headerText);
-	m_statusText = state;
-	if(m_status) ::SetWindowTextW(m_status, m_statusText);
-	m_originText.Empty();
-	if(card.state != ScriptCards::State::Missing && card.state != ScriptCards::State::Invalid) {
-		m_originText = card.reviewStatus == L"generated" ?
-			Label(L"fbe.script_card.review.generated", L"Description was generated automatically and may need review") :
-			card.reviewStatus == L"reviewed" ?
-			Label(L"fbe.script_card.review.reviewed", L"Description reviewed by a maintainer") :
-			Label(L"fbe.script_card.review.unknown", L"Description review status is unknown");
+	m_statusText = card.state == ScriptCards::State::Changed ? state : CString();
+	m_warningText = m_statusText;
+	if(m_warningTip && m_warning)
+	{
+		TOOLINFOW tip = { sizeof(tip) };
+		tip.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+		tip.hwnd = m_hWnd;
+		tip.uId = reinterpret_cast<UINT_PTR>(m_warning);
+		tip.lpszText = const_cast<LPWSTR>(m_warningText.GetString());
+		::SendMessageW(m_warningTip, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&tip));
 	}
-	if(m_origin) ::SetWindowTextW(m_origin, m_originText);
+	m_originText.Empty();
 	if(m_headerRight) ::SetWindowTextW(m_headerRight, m_headerRightText);
 	m_bodyText.Empty();
 	m_sections.clear();
@@ -772,11 +865,6 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 		AddVisualBlock(Label(L"fbe.script_card.scope", L"Scope"), card.scope, 1);
 		AddVisualBlock(Label(L"fbe.script_card.modifies_document", L"Changes document"), TriState(card.modifiesDocument), 1);
 		AddVisualBlock(Label(L"fbe.script_card.requires_selection", L"Selection required"), TriState(card.requiresSelection), 1);
-		if(!card.settings.empty()) {
-			CString count;
-			count.Format(L"%u", static_cast<unsigned>(card.settings.size()));
-			AddVisualBlock(Label(L"fbe.script_card.settings", L"Settings"), count, 1);
-		}
 		if(!card.dependencies.empty() || !card.dependenciesComplete)
 		{
 			CString count;
@@ -784,10 +872,18 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 			else count.Format(L"%u", static_cast<unsigned>(card.dependencies.size()));
 			AddVisualBlock(Label(L"fbe.script_card.dependencies", L"Linked files"), count, 1);
 		}
-		AddVisualBlock(Label(L"fbe.script_card.undo", L"Undo"), card.undo, 1);
+		CString undo = card.undo;
+		if(card.undoStatus == L"explicit_calls_found" &&
+			(undo.Find(L"BeginUndoUnit") >= 0 || undo.Find(L"EndUndoUnit") >= 0))
+			undo = Label(L"fbe.script_card.undo_group_unverified",
+				L"The script provides for undo, but a complete rollback has not been verified");
+		else if((card.undoStatus == L"no_explicit_grouping" || card.undoStatus == L"may_be_delegated") &&
+			undo.Find(L"Undo") >= 0)
+			undo = Label(L"fbe.script_card.undo_unverified", L"Undo of changes has not been established");
+		AddVisualBlock(Label(L"fbe.script_card.undo", L"Undo"), undo, 1);
 		AddVisualBlock(Label(L"fbe.script_card.warnings", L"Warnings"), ListText(card.warnings), 2, true);
 		AddVisualBlock(Label(L"fbe.script_card.examples", L"Examples"), ListText(card.examples), 2);
-		AddVisualBlock(Label(L"fbe.script_card.settings", L"Settings"), ListText(card.settings));
+		AddSettingsBlock(card.settingRows);
 		CString dependencies;
 		for(const ScriptCards::Dependency& dependency : card.dependencies)
 		{
