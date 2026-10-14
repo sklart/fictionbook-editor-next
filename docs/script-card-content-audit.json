@@ -3,7 +3,7 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 440,
-    "generic_usage": 1365,
+    "generic_usage": 1359,
     "incorrect_undo": 211,
     "inaccurate_description": 99
   },
@@ -33604,17 +33604,177 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "16_Поиск форматирования/169_Выделить заглавный заголовок или подзаголовок (КАПС).js",
+      "codeSha256": "49d9bdb98550a98cbbe2a50b3e13eb0201c9866131a38da1ddc54dfd6d7ebe0d",
+      "evidence": "В init четыре активных addRegExp: пары правил для +title и +subtitle. Все имеют якоря начала и конца абзаца, но содержат (.*?) до и после [A-ZА-ЯЁ]{2,}; поэтому достаточно любой пары соседних прописных букв, остальные буквы не обязаны быть прописными. Первая пара отдельно требует после неё символ из набора знаков препинания, цифр и пробелов; вторая пара такого требования не содержит. Run берёт конец текущего выделения, ищет по P вперёд и выделяет совпавший абзац. Нет вызовов BeginUndoUnit/EndUndoUnit, запусков внешних программ и сетевых операций.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Выделяет заглавный заголовок или подзаголовок (КАПС).",
+          "after": "Ищет заголовок или подзаголовок с двумя соседними прописными буквами.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет заглавный заголовок или подзаголовок (КАПС). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически. Примеры предусмотренных сообщений: Найдено: Заголовок ЗАГЛАВНЫМИ БУКВАМИ со знаками препинания в конце; Найдено: Подзаголовок ЗАГЛАВНЫМИ БУКВАМИ со знаками препинания в конце; Найдено: Заголовок ЗАГЛАВНЫМИ БУКВАМИ без знаков препинания в конце.",
+          "after": "Ищет вперёд абзацы заголовков и подзаголовков, в которых есть не менее двух соседних прописных русских или латинских букв. Правила выделяют весь подходящий абзац и показывают описание находки в строке состояния. Остальные буквы абзаца могут быть строчными; это не проверка полного набора прописными.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Абзацы P внутри title или с классом subtitle от конца текущего выделения или курсора до конца fbw_body; циклического перехода нет.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор перед заголовками или подзаголовками, которые хотите проверить.",
+            "Запустите поиск; скрипт выделит следующий абзац с двумя соседними прописными буквами.",
+            "Проверьте весь выделенный заголовок вручную: наличие пары прописных букв не означает, что он целиком набран прописными."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Возможны ложные находки: два соседних прописных символа внутри смешанного регистра удовлетворяют выражению.",
+            "Правила учитывают только диапазоны A–Z и А–ЯЁ; другие алфавиты и отдельные расширенные латинские буквы не участвуют в условии."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт меняет выделение, прокрутку и строку состояния; содержимое книги на штатном пути не переписывается. Специальная группа отмены не открывается."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 158,
+          "issue": "Выражение с произвольным (.*?) до и после пары прописных букв не подтверждает заявленный поиск заголовка, целиком набранного прописными."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/206_Выделить следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац.js",
+      "codeSha256": "36edc73de23a6030ccfe835896fdc7f997e48b1394025cbace3d10641e71bd39",
+      "evidence": "В init активны два addRegExp с ^...$: один проверяет русские и расширенные латинские прописные символы, второй — греческие прописные символы. Каждый требует минимум две прописные буквы своего набора и исключает строчные своего набора; смешанный текст в других алфавитах этим же правилом не исключён. Оба правила имеют ограничения -annotation -title -epigraph -cite -stanza -poem -subtitle. Запасные правила без ограничений закомментированы. Run ищет по P вперёд от конца выделения, выбирает весь совпавший абзац; Undo-групп нет, сети и внешних приложений нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Выделяет следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац.",
+          "after": "Ищет следующий абзац с прописными буквами выбранных алфавитов.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически. Примеры предусмотренных сообщений: Найдено: абзац ЦЕЛИКОМ ЗАГЛАВНЫМИ БУКВАМИ (русский + расширенная латиница); Найдено: абзац ЦЕЛИКОМ ЗАГЛАВНЫМИ БУКВАМИ (греческий).",
+          "after": "Ищет вперёд абзац, подходящий под одно из двух правил: минимум две прописные русские или расширенные латинские буквы без строчных букв этого набора либо минимум две прописные греческие буквы без строчных букв набора второго правила. Выделяет весь найденный абзац. Заголовки, аннотации, эпиграфы, цитаты, стихи, строфы и подзаголовки по умолчанию исключены.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Абзацы P от конца текущего выделения или курсора до конца fbw_body, кроме исключённых структурных областей; циклического перехода нет.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор перед обычным текстом, который хотите проверить.",
+            "Запустите поиск; подходящий абзац будет выделен целиком.",
+            "Проверьте смешанные алфавиты вручную; если нужен поиск в исключённых блоках, измените ограничения двух правил в исходном файле."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Каждое правило проверяет только свой набор букв: строчные символы другого алфавита могут остаться незамеченными.",
+            "Закомментированные варианты без ограничений структурных областей при обычном запуске не работают."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт меняет выделение, прокрутку и строку состояния; содержимое книги на штатном пути не переписывается. Специальная группа отмены не открывается."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 143,
+          "issue": "Первое правило допускает строчные буквы вне своего русского и расширенного латинского набора; второе аналогично для других алфавитов. Название «целиком заглавный» следует читать с этим ограничением."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 506,
-    "generic_usage": 250,
-    "false_warning": 269,
+    "inaccurate_description": 510,
+    "generic_usage": 252,
+    "false_warning": 271,
     "incorrect_setting": 117,
-    "incorrect_scope": 246,
-    "incorrect_undo": 249,
+    "incorrect_scope": 248,
+    "incorrect_undo": 251,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 249,
+    "incorrect_dependency": 251,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -33627,16 +33787,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 241,
-    "usageCorrected": 250,
-    "purposeClarified": 248,
-    "warningsClarified": 181,
-    "scopeClarified": 234,
+    "undoDescriptionsClarified": 243,
+    "usageCorrected": 252,
+    "purposeClarified": 250,
+    "warningsClarified": 183,
+    "scopeClarified": 236,
     "settingsClarified": 430,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 132,
+    "dependenciesVerified": 134,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -175526,8 +175686,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить заглавный заголовок или подзаголовок (КАПС)",
-        "summary": "Выделяет заглавный заголовок или подзаголовок (КАПС).",
-        "description": "Выделяет заглавный заголовок или подзаголовок (КАПС). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически. Примеры предусмотренных сообщений: Найдено: Заголовок ЗАГЛАВНЫМИ БУКВАМИ со знаками препинания в конце; Найдено: Подзаголовок ЗАГЛАВНЫМИ БУКВАМИ со знаками препинания в конце; Найдено: Заголовок ЗАГЛАВНЫМИ БУКВАМИ без знаков препинания в конце.",
+        "summary": "Ищет заголовок или подзаголовок с двумя соседними прописными буквами.",
+        "description": "Ищет вперёд абзацы заголовков и подзаголовков, в которых есть не менее двух соседних прописных русских или латинских букв. Правила выделяют весь подходящий абзац и показывают описание находки в строке состояния. Остальные буквы абзаца могут быть строчными; это не проверка полного набора прописными.",
         "authors": [
           {
             "name": "Sclex",
@@ -175544,20 +175704,23 @@
           }
         ],
         "version": "5.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Абзацы P внутри title или с классом subtitle от конца текущего выделения или курсора до конца fbw_body; циклического перехода нет.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор перед заголовками или подзаголовками, которые хотите проверить.",
+          "Запустите поиск; скрипт выделит следующий абзац с двумя соседними прописными буквами.",
+          "Проверьте весь выделенный заголовок вручную: наличие пары прописных букв не означает, что он целиком набран прописными."
         ],
-        "warnings": [],
+        "warnings": [
+          "Возможны ложные находки: два соседних прописных символа внутри смешанного регистра удовлетворяют выражению.",
+          "Правила учитывают только диапазоны A–Z и А–ЯЁ; другие алфавиты и отдельные расширенные латинские буквы не участвуют в условии."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт меняет выделение, прокрутку и строку состояния; содержимое книги на штатном пути не переписывается. Специальная группа отмены не открывается."
         },
         "examples": null,
         "tags": [
@@ -175572,74 +175735,74 @@
         "dialog": [],
         "selection": [
           {
-            "line": 166,
+            "line": 169,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 166,
+            "line": 169,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 167,
+            "line": 170,
             "text": "if (selection) {"
           },
           {
-            "line": 168,
+            "line": 171,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 489,
+            "line": 492,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(nbspRE,nbspRE_).replace(ampRE,a"
           },
           {
-            "line": 504,
+            "line": 507,
             "text": "var s2=el.innerHTML;"
           },
           {
-            "line": 512,
+            "line": 515,
             "text": "s_html=ptr.innerHTML;"
           },
           {
-            "line": 626,
+            "line": 629,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(nbspRE,nbspRE_).replace(ampRE,a"
           }
         ],
         "external": [
           {
-            "line": 386,
+            "line": 389,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 388,
+            "line": 391,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 527,
+            "line": 530,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 532,
+            "line": 535,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
         "network": [],
         "process": [
           {
-            "line": 386,
+            "line": 389,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 388,
+            "line": 391,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 527,
+            "line": 530,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 532,
+            "line": 535,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
@@ -175647,79 +175810,79 @@
         "file": [],
         "return": [
           {
-            "line": 184,
+            "line": 187,
             "text": "return;"
           },
           {
-            "line": 194,
+            "line": 197,
             "text": "return;"
           },
           {
-            "line": 215,
+            "line": 218,
             "text": "return macroses[full_match.toLowerCase()];"
           },
           {
-            "line": 217,
+            "line": 220,
             "text": "return full_match;"
           },
           {
-            "line": 221,
+            "line": 224,
             "text": "if (brackets1.length%2==1) return nbspChar;"
           },
           {
-            "line": 222,
+            "line": 225,
             "text": "else return full_match;"
           },
           {
-            "line": 251,
+            "line": 254,
             "text": "return;"
           },
           {
-            "line": 292,
+            "line": 295,
             "text": "return;"
           },
           {
-            "line": 308,
+            "line": 311,
             "text": "return a[\"pos\"]-b[\"pos\"];"
           },
           {
-            "line": 363,
+            "line": 366,
             "text": "return full_match;"
           },
           {
-            "line": 370,
+            "line": 373,
             "text": "return tagFlag;"
           },
           {
-            "line": 374,
+            "line": 377,
             "text": "if (!lookBehinds[reNum]) return true;"
           },
           {
-            "line": 391,
+            "line": 394,
             "text": "if (!rslt_ || rslt_.index+rslt_[0].length!=s_len) return false;"
           },
           {
-            "line": 394,
+            "line": 397,
             "text": "if (rslt_ && rslt_.index+rslt_[0].length==s_len) return false;"
           },
           {
-            "line": 397,
+            "line": 400,
             "text": "return true;"
           },
           {
-            "line": 409,
+            "line": 412,
             "text": "return;"
           },
           {
-            "line": 436,
+            "line": 439,
             "text": "return;"
           },
           {
-            "line": 603,
+            "line": 606,
             "text": "if (desc.indexOf(\"Пропустить\") == 0) return true; // (stokber)"
           },
           {
-            "line": 605,
+            "line": 608,
             "text": "return false;"
           }
         ]
@@ -175729,23 +175892,32 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 52,
+          "line": 55,
           "text": "// Версия 5.3"
         },
         {
-          "line": 54,
+          "line": 57,
           "text": "// Автор Sclex, набор RegExp-ов - TaKir, май, 2025"
         },
         {
-          "line": 209,
+          "line": 212,
           "text": "var checkTagStrRE=new RegExp(\"^(([-+](section|body|epigraph|cite|poem|stanza|title|subtitle|text-author))([ \\t]+?[-+](section|body|epigraph|cite|poem|stanza|title|subtitle|text-aut"
         },
         {
-          "line": 209,
+          "line": 212,
           "text": "var checkTagStrRE=new RegExp(\"^(([-+](section|body|epigraph|cite|poem|stanza|title|subtitle|text-author))([ \\t]+?[-+](section|body|epigraph|cite|poem|stanza|title|subtitle|text-aut"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Возможны ложные находки: два соседних прописных символа внутри смешанного регистра удовлетворяют выражению.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Правила учитывают только диапазоны A–Z и А–ЯЁ; другие алфавиты и отдельные расширенные латинские буквы не участвуют в условии.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -175763,35 +175935,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/200_Найти предыдущие подряд идущие однотипные элементы.js",
@@ -178311,8 +178455,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац",
-        "summary": "Выделяет следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац.",
-        "description": "Выделяет следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически. Примеры предусмотренных сообщений: Найдено: абзац ЦЕЛИКОМ ЗАГЛАВНЫМИ БУКВАМИ (русский + расширенная латиница); Найдено: абзац ЦЕЛИКОМ ЗАГЛАВНЫМИ БУКВАМИ (греческий).",
+        "summary": "Ищет следующий абзац с прописными буквами выбранных алфавитов.",
+        "description": "Ищет вперёд абзац, подходящий под одно из двух правил: минимум две прописные русские или расширенные латинские буквы без строчных букв этого набора либо минимум две прописные греческие буквы без строчных букв набора второго правила. Выделяет весь найденный абзац. Заголовки, аннотации, эпиграфы, цитаты, стихи, строфы и подзаголовки по умолчанию исключены.",
         "authors": [
           {
             "name": "TaKir",
@@ -178328,20 +178472,23 @@
           }
         ],
         "version": "1.0",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Абзацы P от конца текущего выделения или курсора до конца fbw_body, кроме исключённых структурных областей; циклического перехода нет.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор перед обычным текстом, который хотите проверить.",
+          "Запустите поиск; подходящий абзац будет выделен целиком.",
+          "Проверьте смешанные алфавиты вручную; если нужен поиск в исключённых блоках, измените ограничения двух правил в исходном файле."
         ],
-        "warnings": [],
+        "warnings": [
+          "Каждое правило проверяет только свой набор букв: строчные символы другого алфавита могут остаться незамеченными.",
+          "Закомментированные варианты без ограничений структурных областей при обычном запуске не работают."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт меняет выделение, прокрутку и строку состояния; содержимое книги на штатном пути не переписывается. Специальная группа отмены не открывается."
         },
         "examples": null,
         "tags": [
@@ -178356,74 +178503,74 @@
         "dialog": [],
         "selection": [
           {
-            "line": 157,
+            "line": 160,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 157,
+            "line": 160,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 158,
+            "line": 161,
             "text": "if (selection) {"
           },
           {
-            "line": 159,
+            "line": 162,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 485,
+            "line": 488,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(ampRE,ampRE_).replace(nbspRE,nb"
           },
           {
-            "line": 500,
+            "line": 503,
             "text": "var s2=el.innerHTML;"
           },
           {
-            "line": 508,
+            "line": 511,
             "text": "s_html=ptr.innerHTML;"
           },
           {
-            "line": 622,
+            "line": 625,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(ampRE,ampRE_).replace(nbspRE,nb"
           }
         ],
         "external": [
           {
-            "line": 382,
+            "line": 385,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 384,
+            "line": 387,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 523,
+            "line": 526,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 528,
+            "line": 531,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
         "network": [],
         "process": [
           {
-            "line": 382,
+            "line": 385,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 384,
+            "line": 387,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 523,
+            "line": 526,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 528,
+            "line": 531,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
@@ -178431,83 +178578,83 @@
         "file": [],
         "return": [
           {
-            "line": 175,
+            "line": 178,
             "text": "return;"
           },
           {
-            "line": 185,
+            "line": 188,
             "text": "return;"
           },
           {
-            "line": 206,
+            "line": 209,
             "text": "return macroses[full_match.toLowerCase()];"
           },
           {
-            "line": 208,
+            "line": 211,
             "text": "return full_match;"
           },
           {
-            "line": 212,
+            "line": 215,
             "text": "if (brackets1.length%2==1) return nbspChar;"
           },
           {
-            "line": 213,
+            "line": 216,
             "text": "else return full_match;"
           },
           {
-            "line": 242,
+            "line": 245,
             "text": "return;"
           },
           {
-            "line": 283,
+            "line": 286,
             "text": "return;"
           },
           {
-            "line": 299,
+            "line": 302,
             "text": "return a[\"pos\"]-b[\"pos\"];"
           },
           {
-            "line": 359,
+            "line": 362,
             "text": "return full_match;"
           },
           {
-            "line": 366,
+            "line": 369,
             "text": "return tagFlag;"
           },
           {
-            "line": 370,
+            "line": 373,
             "text": "if (!lookBehinds[reNum]) return true;"
           },
           {
-            "line": 387,
+            "line": 390,
             "text": "if (!rslt_ || rslt_.index+rslt_[0].length!=s_len) return false;"
           },
           {
-            "line": 390,
+            "line": 393,
             "text": "if (rslt_ && rslt_.index+rslt_[0].length==s_len) return false;"
           },
           {
-            "line": 393,
+            "line": 396,
             "text": "return true;"
           },
           {
-            "line": 405,
+            "line": 408,
             "text": "return;"
           },
           {
-            "line": 432,
+            "line": 435,
             "text": "return;"
           },
           {
-            "line": 599,
+            "line": 602,
             "text": "if (desc.indexOf(\"Пропустить\") == 0) return true; // (stokber)"
           },
           {
-            "line": 601,
+            "line": 604,
             "text": "return false;"
           },
           {
-            "line": 673,
+            "line": 676,
             "text": "return scriptResult;"
           }
         ]
@@ -178517,23 +178664,32 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 52,
+          "line": 55,
           "text": "// version 1.0"
         },
         {
-          "line": 54,
+          "line": 57,
           "text": "// Основано на скрипте \"Поиск по набору регэкспов\" (версии 5.1)"
         },
         {
-          "line": 55,
+          "line": 58,
           "text": "// Автор исходного скрипта: Sclex"
         },
         {
-          "line": 63,
+          "line": 66,
           "text": "// version 1.0, 31.03.2026"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Каждое правило проверяет только свой набор букв: строчные символы другого алфавита могут остаться незамеченными.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Закомментированные варианты без ограничений структурных областей при обычном запуске не работают.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -178551,35 +178707,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "17_Перенос примечаний в скобки/01_Перенести примечания в скобки.js",
