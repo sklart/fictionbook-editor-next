@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **136**.
+Карточек без автоматических замечаний: **137**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **265**. Исполняемый код не изменён.
+Изменено карточек: **269**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 229
-- `generic_usage`: 210
-- `inaccurate_description`: 426
+- `false_warning`: 233
+- `generic_usage`: 214
+- `inaccurate_description`: 434
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 208
+- `incorrect_dependency`: 213
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 203
+- `incorrect_scope`: 208
 - `incorrect_selection`: 17
-- `incorrect_setting`: 104
-- `incorrect_undo`: 209
+- `incorrect_setting`: 108
+- `incorrect_undo`: 213
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 92
+- `dependenciesVerified`: 96
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 208
-- `scopeClarified`: 194
+- `purposeClarified`: 212
+- `scopeClarified`: 198
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 397
-- `undoDescriptionsClarified`: 201
-- `usageCorrected`: 210
-- `warningsClarified`: 141
+- `settingsClarified`: 416
+- `undoDescriptionsClarified`: 205
+- `usageCorrected`: 214
+- `warningsClarified`: 145
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **120**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **121**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -274,13 +274,15 @@
 - `12_Обработка кавычек/015_Перейти на следующие прямые кавычки, елочки или лапки.js:57` — Группа отмены открывается до проверок структуры книги и типа выделения; ранние return обходят её закрытие.
 - `16_Поиск форматирования/132_Выделить следующую пустую строку.js:468` — Проверка foundLen==0 не срабатывает по назначению: переменная объявлена, но длина найденного совпадения ей не присваивается.
 - `18_Мелочи редактирования/40_Сделать выделенный текст ссылкой на MIDI-файл (для AlReader'а).js:53` — При пустом HTML-выделении выполняется return после открытия группы отмены; закрытие группы пропускается.
+- `30_'Числовые' скрипты/45_Расширенная нумерация абзацев.js:152` — Значение 0 для начального номера или шага заменяется на 1 из-за оператора ||.
+- `30_'Числовые' скрипты/45_Расширенная нумерация абзацев.js:197` — processP возвращает успех даже без вставки текста; счётчик обработанных абзацев может завышаться.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1495
+- `generic_usage`: 1476
 - `inaccurate_description`: 99
-- `incorrect_undo`: 249
-- `requires_review`: 446
+- `incorrect_undo`: 245
+- `requires_review`: 442
 
 ## Границы проверки
 

@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 446,
-    "generic_usage": 1495,
-    "incorrect_undo": 249,
+    "requires_review": 442,
+    "generic_usage": 1476,
+    "incorrect_undo": 245,
     "inaccurate_description": 99
   },
   "reviewedChanges": [
@@ -29372,17 +29372,666 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "30_'Числовые' скрипты/45_Расширенная нумерация абзацев.js",
+      "codeSha256": "2fbf2bd9de97c26c5422fb75adb429a74cb7cc515ac21af868796ef188a1f78d",
+      "evidence": "Вариант 45: обязательный HTML-диалог проверен по SHA-256; его семь элементов задают параметры. JS при отсутствии выделения переводит onlySelected в false, собирает prefix+номер+suffix и вставляет через insertAdjacentHTML в начало P. parseInt(... ) || 1 заменяет нули. processP возвращает true даже при пустом textToInsert. Перед обработкой открывается группа отмены, штатно закрывается после обхода.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Нумерует выделенные абзацы по параметрам отдельного диалога.",
+          "after": "Добавляет выбранный префикс, номер и суффикс в начало абзацев.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "HTML-диалог задаёт вариант нумерации, формат и дополнительные условия. Полученные параметры используются для добавления/обновления маркеров в выбранных абзацах. Undo в описании подтверждается только обнаруженными вызовами, не runtime-прогоном.",
+          "after": "Окно задаёт префикс, включение номера, начальное число, шаг, суффикс и пропуск пустых абзацев. Скрипт добавляет получившийся текст в начало выбранных абзацев; при отсутствии выделения предупреждает и обрабатывает все абзацы книги. Существующие номера не распознаёт и не заменяет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+          "after": "По умолчанию все абзацы P, пересекаемые выделением; без выделения либо при выключенной настройке ограничения — все P внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": true,
+          "after": false,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Выделите нужные абзацы, если нумеровать следует только часть книги.",
+            "В окне задайте префикс, номер, шаг, суффикс, область и пропуск пустых строк; подтвердите запуск.",
+            "Если выделения нет, скрипт предупредит и обработает всю книгу. Проверьте результат и число обработанных абзацев."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Команда добавляет текст в начало абзаца и не проверяет существующую нумерацию; повторный запуск добавит ещё один префикс.",
+            "Без выделения команда после предупреждения обрабатывает все абзацы книги.",
+            "Префикс и суффикс вставляются как HTML; символы разметки в этих полях могут изменить структуру абзаца.",
+            "Нулевые начальный номер и шаг заменяются единицей. Если все части вставки пусты, счётчик всё равно может учитывать абзац как обработанный."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "textToInsert",
+              "value": "",
+              "expression": "\"\"",
+              "description": "Формируем текст для вставки",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "prefix",
+              "title": "Префикс",
+              "value": "",
+              "expression": "settings.prefix",
+              "description": "Текст перед номером; по умолчанию пусто.",
+              "source": "dialog"
+            },
+            {
+              "name": "useNumbering",
+              "title": "Добавлять номер",
+              "value": true,
+              "expression": "settings.useNumbering",
+              "description": "При выключении вставляются только префикс и суффикс.",
+              "source": "dialog"
+            },
+            {
+              "name": "startNumber",
+              "title": "Начальный номер",
+              "value": 1,
+              "expression": "settings.startNumber",
+              "description": "Первый номер; значение 0 код заменяет на 1.",
+              "source": "dialog"
+            },
+            {
+              "name": "increment",
+              "title": "Шаг",
+              "value": 1,
+              "expression": "settings.increment",
+              "description": "Приращение номера для следующего обработанного абзаца; 0 код заменяет на 1.",
+              "source": "dialog"
+            },
+            {
+              "name": "suffix",
+              "title": "Суффикс",
+              "value": ". ",
+              "expression": "settings.suffix",
+              "description": "Текст после номера; по умолчанию точка и пробел.",
+              "source": "dialog"
+            },
+            {
+              "name": "onlySelected",
+              "title": "Только выделенные абзацы",
+              "value": true,
+              "expression": "settings.onlySelected",
+              "description": "При отсутствии выделения скрипт переходит к обработке всей книги.",
+              "source": "dialog"
+            },
+            {
+              "name": "skipEmpty",
+              "title": "Пропускать пустые абзацы",
+              "value": true,
+              "expression": "settings.skipEmpty",
+              "description": "Не добавлять префикс к пустым и состоящим только из пробелов абзацам.",
+              "source": "dialog"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Расширенная нумерация абзацев - параметры.htm",
+              "sha256": "46c16b1536e6ecf7be0f8debafb81ac5d6edaf9eb512d761d46919801e21ecae",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Расширенная нумерация абзацев - параметры.htm",
+              "sha256": "46c16b1536e6ecf7be0f8debafb81ac5d6edaf9eb512d761d46919801e21ecae",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "После подтверждения окна скрипт открывает группу отмены и закрывает её по штатному завершению. При ошибке во время обхода закрытие и полный откат не проверены."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 152,
+          "issue": "Значение 0 для начального номера или шага заменяется на 1 из-за оператора ||."
+        },
+        {
+          "line": 197,
+          "issue": "processP возвращает успех даже без вставки текста; счётчик обработанных абзацев может завышаться."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 7,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "30_'Числовые' скрипты/46_Пронумеровать текстовые маркеры.js",
+      "codeSha256": "d3bcb2ff9f84cdfea2bbba762651182cffb9756d3a82a121b4d969766dca35ae",
+      "evidence": "Вариант 46: конфигурация markerType=zzz_pic, showStatistics=1, processNotesSection=0, processCommentsSection=0. Обход выбирает DIV.body без fbname, затем проверяет текст каждого P после нормализации пробелов; совпавший P очищается через removeChild и заполняется новым текстовым узлом. Все явные return после BeginUndoUnit предваряются EndUndoUnit. Внешних файлов и сетевых вызовов нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматической сквозной нумерации текстовых маркеров в fb2 документах.",
+          "after": "Нумерует отдельные абзацы с маркером zzz_pic.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматической сквозной нумерации текстовых маркеров в fb2 документах.",
+          "after": "Ищет отдельные абзацы, чей нормализованный текст равен zzz_pic, и заменяет их на zzz_pic_001, zzz_pic_002 и далее. Если в области найдётся уже нумерованный маркер, отменяет всю операцию. По умолчанию разделы примечаний и комментариев пропускаются.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы P в основных body без имени fbname; notes и comments по умолчанию исключены. Положение курсора и выделение не учитываются.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+            "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+            "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Если найден хотя бы один уже нумерованный маркер вида zzz_pic_001, новые номера не присваиваются.",
+            "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "markerType",
+              "value": "zzz_pic",
+              "expression": "\"zzz_pic\"",
+              "description": "Тип маркера (без подчеркивания и номера)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "nbspEntity",
+              "value": "&nbsp;",
+              "expression": "\"&nbsp;\"",
+              "description": "Получаем неразрывный пробел из настроек FBE",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "markerType",
+              "title": "Тип маркера",
+              "value": "zzz_pic",
+              "expression": "\"zzz_pic\"",
+              "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+              "source": "script"
+            },
+            {
+              "name": "showStatistics",
+              "title": "Подтверждение и статистика",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+              "source": "script"
+            },
+            {
+              "name": "processNotesSection",
+              "title": "Обрабатывать примечания",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — включить body примечаний; 0 — пропустить.",
+              "source": "script"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Обрабатывать комментарии",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — включить body комментариев; 0 — пропустить.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 4,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "30_'Числовые' скрипты/47_Разнумеровать текстовые маркеры.js",
+      "codeSha256": "a0e806354f78972d930ec558044bdde4e8d838ae5ad40f107ed661d505588f00",
+      "evidence": "Вариант 47: конфигурация markerType=zzz_pic, showStatistics=1, processNotesSection=0, processCommentsSection=0. Обход выбирает DIV.body без fbname, затем проверяет текст каждого P после нормализации пробелов; совпавший P очищается через removeChild и заполняется новым текстовым узлом. Все явные return после BeginUndoUnit предваряются EndUndoUnit. Внешних файлов и сетевых вызовов нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для снятия нумерации с текстовых маркеров в fb2 документах.",
+          "after": "Снимает номера с отдельных абзацев-маркеров zzz_pic.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для снятия нумерации с текстовых маркеров в fb2 документах.",
+          "after": "Ищет отдельные абзацы с текстом zzz_pic и номером из трёх или более цифр, с подчёркиванием либо без него, и заменяет содержимое каждого на zzz_pic. По умолчанию разделы примечаний и комментариев пропускаются.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы P в основных body без имени fbname; notes и comments по умолчанию исключены. Положение курсора и выделение не учитываются.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+            "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+            "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Совпадения с номером менее трёх цифр не обрабатываются.",
+            "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "markerType",
+              "value": "zzz_pic",
+              "expression": "\"zzz_pic\"",
+              "description": "Тип маркера (без подчеркивания и номера)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "nbspEntity",
+              "value": "&nbsp;",
+              "expression": "\"&nbsp;\"",
+              "description": "Получаем неразрывный пробел из настроек FBE",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "markerType",
+              "title": "Тип маркера",
+              "value": "zzz_pic",
+              "expression": "\"zzz_pic\"",
+              "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+              "source": "script"
+            },
+            {
+              "name": "showStatistics",
+              "title": "Подтверждение и статистика",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+              "source": "script"
+            },
+            {
+              "name": "processNotesSection",
+              "title": "Обрабатывать примечания",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — включить body примечаний; 0 — пропустить.",
+              "source": "script"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Обрабатывать комментарии",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — включить body комментариев; 0 — пропустить.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 4,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "30_'Числовые' скрипты/48_Перенумеровать текстовые маркеры.js",
+      "codeSha256": "8c11bc4bd7944f0d483683ceb59869c99d6b34e88c3c71156f134b591967fcda",
+      "evidence": "Вариант 48: конфигурация markerType=zzz_pic, showStatistics=1, processNotesSection=0, processCommentsSection=0. Обход выбирает DIV.body без fbname, затем проверяет текст каждого P после нормализации пробелов; совпавший P очищается через removeChild и заполняется новым текстовым узлом. Все явные return после BeginUndoUnit предваряются EndUndoUnit. Внешних файлов и сетевых вызовов нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для приведения нумерации текстовых маркеров к единому сквозному виду в fb2 документах.",
+          "after": "Перенумеровывает отдельные абзацы-маркеры zzz_pic по порядку.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для приведения нумерации текстовых маркеров к единому сквозному виду в fb2 документах.",
+          "after": "Ищет отдельные абзацы с zzz_pic либо с этим маркером и номером из трёх или более цифр, затем заменяет их на последовательность zzz_pic_001, zzz_pic_002 и далее. По умолчанию разделы примечаний и комментариев пропускаются.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы P в основных body без имени fbname; notes и comments по умолчанию исключены. Положение курсора и выделение не учитываются.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+            "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+            "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Все найденные номера назначаются заново в порядке абзацев; прежняя связь маркера с внешним объектом может измениться.",
+            "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "markerType",
+              "value": "zzz_pic",
+              "expression": "\"zzz_pic\"",
+              "description": "Тип маркера (без подчеркивания и номера)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "nbspEntity",
+              "value": "&nbsp;",
+              "expression": "\"&nbsp;\"",
+              "description": "Получаем неразрывный пробел из настроек FBE",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "markerType",
+              "title": "Тип маркера",
+              "value": "zzz_pic",
+              "expression": "\"zzz_pic\"",
+              "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+              "source": "script"
+            },
+            {
+              "name": "showStatistics",
+              "title": "Подтверждение и статистика",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+              "source": "script"
+            },
+            {
+              "name": "processNotesSection",
+              "title": "Обрабатывать примечания",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — включить body примечаний; 0 — пропустить.",
+              "source": "script"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Обрабатывать комментарии",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — включить body комментариев; 0 — пропустить.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 4,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 426,
-    "generic_usage": 210,
-    "false_warning": 229,
-    "incorrect_setting": 104,
-    "incorrect_scope": 203,
-    "incorrect_undo": 209,
+    "inaccurate_description": 434,
+    "generic_usage": 214,
+    "false_warning": 233,
+    "incorrect_setting": 108,
+    "incorrect_scope": 208,
+    "incorrect_undo": 213,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 208,
+    "incorrect_dependency": 213,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -29395,16 +30044,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 201,
-    "usageCorrected": 210,
-    "purposeClarified": 208,
-    "warningsClarified": 141,
-    "scopeClarified": 194,
-    "settingsClarified": 397,
+    "undoDescriptionsClarified": 205,
+    "usageCorrected": 214,
+    "purposeClarified": 212,
+    "warningsClarified": 145,
+    "scopeClarified": 198,
+    "settingsClarified": 416,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 92,
+    "dependenciesVerified": 96,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -210030,8 +210679,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Расширенная нумерация абзацев",
-        "summary": "Нумерует выделенные абзацы по параметрам отдельного диалога.",
-        "description": "HTML-диалог задаёт вариант нумерации, формат и дополнительные условия. Полученные параметры используются для добавления/обновления маркеров в выбранных абзацах. Undo в описании подтверждается только обнаруженными вызовами, не runtime-прогоном.",
+        "summary": "Добавляет выбранный префикс, номер и суффикс в начало абзацев.",
+        "description": "Окно задаёт префикс, включение номера, начальное число, шаг, суффикс и пропуск пустых абзацев. Скрипт добавляет получившийся текст в начало выбранных абзацев; при отсутствии выделения предупреждает и обрабатывает все абзацы книги. Существующие номера не распознаёт и не заменяет.",
         "authors": [
           {
             "name": "Haliz",
@@ -210047,39 +210696,88 @@
           }
         ],
         "version": "1.9",
-        "scope": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+        "scope": "По умолчанию все абзацы P, пересекаемые выделением; без выделения либо при выключенной настройке ограничения — все P внутри fbw_body.",
         "modifiesDocument": true,
-        "requiresSelection": true,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Выделите нужные абзацы, если нумеровать следует только часть книги.",
+          "В окне задайте префикс, номер, шаг, суффикс, область и пропуск пустых строк; подтвердите запуск.",
+          "Если выделения нет, скрипт предупредит и обработает всю книгу. Проверьте результат и число обработанных абзацев."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Команда добавляет текст в начало абзаца и не проверяет существующую нумерацию; повторный запуск добавит ещё один префикс.",
+          "Без выделения команда после предупреждения обрабатывает все абзацы книги.",
+          "Префикс и суффикс вставляются как HTML; символы разметки в этих полях могут изменить структуру абзаца.",
+          "Нулевые начальный номер и шаг заменяются единицей. Если все части вставки пусты, счётчик всё равно может учитывать абзац как обработанный."
         ],
         "settings": [
           {
-            "name": "textToInsert",
+            "name": "prefix",
+            "title": "Префикс",
             "value": "",
-            "expression": "\"\"",
-            "description": "Формируем текст для вставки",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "expression": "settings.prefix",
+            "description": "Текст перед номером; по умолчанию пусто.",
+            "source": "dialog"
+          },
+          {
+            "name": "useNumbering",
+            "title": "Добавлять номер",
+            "value": true,
+            "expression": "settings.useNumbering",
+            "description": "При выключении вставляются только префикс и суффикс.",
+            "source": "dialog"
+          },
+          {
+            "name": "startNumber",
+            "title": "Начальный номер",
+            "value": 1,
+            "expression": "settings.startNumber",
+            "description": "Первый номер; значение 0 код заменяет на 1.",
+            "source": "dialog"
+          },
+          {
+            "name": "increment",
+            "title": "Шаг",
+            "value": 1,
+            "expression": "settings.increment",
+            "description": "Приращение номера для следующего обработанного абзаца; 0 код заменяет на 1.",
+            "source": "dialog"
+          },
+          {
+            "name": "suffix",
+            "title": "Суффикс",
+            "value": ". ",
+            "expression": "settings.suffix",
+            "description": "Текст после номера; по умолчанию точка и пробел.",
+            "source": "dialog"
+          },
+          {
+            "name": "onlySelected",
+            "title": "Только выделенные абзацы",
+            "value": true,
+            "expression": "settings.onlySelected",
+            "description": "При отсутствии выделения скрипт переходит к обработке всей книги.",
+            "source": "dialog"
+          },
+          {
+            "name": "skipEmpty",
+            "title": "Пропускать пустые абзацы",
+            "value": true,
+            "expression": "settings.skipEmpty",
+            "description": "Не добавлять префикс к пустым и состоящим только из пробелов абзацам.",
+            "source": "dialog"
           }
         ],
         "dependencies": [
           {
             "path": "HTML/Расширенная нумерация абзацев - параметры.htm",
             "sha256": "46c16b1536e6ecf7be0f8debafb81ac5d6edaf9eb512d761d46919801e21ecae",
-            "optional": true
+            "optional": false
           }
         ],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "После подтверждения окна скрипт открывает группу отмены и закрывает её по штатному завершению. При ошибке во время обхода закрытие и полный откат не проверены."
         },
         "examples": null,
         "tags": [
@@ -210090,55 +210788,55 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 158,
+            "line": 207,
             "text": "window.external.BeginUndoUnit(document, \"добавление нумерации абзацев\");"
           }
         ],
         "undo_end": [
           {
-            "line": 265,
+            "line": 314,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 88,
+            "line": 137,
             "text": "var settings = window.showModalDialog("
           }
         ],
         "selection": [
           {
-            "line": 152,
+            "line": 201,
             "text": "var tr = document.selection.createRange();"
           },
           {
-            "line": 152,
+            "line": 201,
             "text": "var tr = document.selection.createRange();"
           },
           {
-            "line": 171,
+            "line": 220,
             "text": "var ttr1 = document.selection.createRange();"
           },
           {
-            "line": 171,
+            "line": 220,
             "text": "var ttr1 = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 114,
+            "line": 163,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<(?!img)[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 142,
+            "line": 191,
             "text": "p.insertAdjacentHTML(\"afterbegin\", textToInsert);"
           },
           {
-            "line": 253,
+            "line": 302,
             "text": "BlockStartNode.parentNode.removeChild(BlockStartNode);"
           },
           {
-            "line": 254,
+            "line": 303,
             "text": "BlockEndNode.parentNode.removeChild(BlockEndNode);"
           }
         ],
@@ -210149,19 +210847,19 @@
         "file": [],
         "return": [
           {
-            "line": 97,
+            "line": 146,
             "text": "return;"
           },
           {
-            "line": 114,
+            "line": 163,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<(?!img)[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 119,
+            "line": 168,
             "text": "return false;"
           },
           {
-            "line": 148,
+            "line": 197,
             "text": "return true;"
           }
         ]
@@ -210170,37 +210868,195 @@
       "settingEvidence": [
         {
           "index": 0,
-          "name": "textToInsert",
+          "name": "prefix",
           "declarations": [
             {
-              "line": 123,
-              "text": "var textToInsert = \"\";"
+              "line": 150,
+              "text": "var prefix = settings.prefix || \"\";"
             }
           ],
           "uses": [
             {
-              "line": 123,
-              "text": "var textToInsert = \"\";"
+              "line": 150,
+              "text": "var prefix = settings.prefix || \"\";"
             },
             {
-              "line": 127,
+              "line": 150,
+              "text": "var prefix = settings.prefix || \"\";"
+            },
+            {
+              "line": 175,
+              "text": "if (prefix) {"
+            },
+            {
+              "line": 176,
               "text": "textToInsert += prefix;"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "useNumbering",
+          "declarations": [
+            {
+              "line": 151,
+              "text": "var useNumbering = settings.useNumbering !== false;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 151,
+              "text": "var useNumbering = settings.useNumbering !== false;"
             },
             {
-              "line": 132,
-              "text": "textToInsert += cnt;"
+              "line": 151,
+              "text": "var useNumbering = settings.useNumbering !== false;"
             },
             {
-              "line": 137,
+              "line": 180,
+              "text": "if (useNumbering) {"
+            },
+            {
+              "line": 194,
+              "text": "if (useNumbering) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "startNumber",
+          "declarations": [
+            {
+              "line": 152,
+              "text": "var startNumber = parseInt(settings.startNumber) || 1;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 152,
+              "text": "var startNumber = parseInt(settings.startNumber) || 1;"
+            },
+            {
+              "line": 152,
+              "text": "var startNumber = parseInt(settings.startNumber) || 1;"
+            },
+            {
+              "line": 158,
+              "text": "var cnt = startNumber;"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "increment",
+          "declarations": [
+            {
+              "line": 153,
+              "text": "var increment = parseInt(settings.increment) || 1;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 153,
+              "text": "var increment = parseInt(settings.increment) || 1;"
+            },
+            {
+              "line": 153,
+              "text": "var increment = parseInt(settings.increment) || 1;"
+            },
+            {
+              "line": 195,
+              "text": "cnt += increment;"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
+          "name": "suffix",
+          "declarations": [
+            {
+              "line": 154,
+              "text": "var suffix = settings.suffix || \"\";"
+            }
+          ],
+          "uses": [
+            {
+              "line": 154,
+              "text": "var suffix = settings.suffix || \"\";"
+            },
+            {
+              "line": 154,
+              "text": "var suffix = settings.suffix || \"\";"
+            },
+            {
+              "line": 185,
+              "text": "if (suffix) {"
+            },
+            {
+              "line": 186,
               "text": "textToInsert += suffix;"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "onlySelected",
+          "declarations": [
+            {
+              "line": 155,
+              "text": "var onlySelected = settings.onlySelected !== false;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 155,
+              "text": "var onlySelected = settings.onlySelected !== false;"
             },
             {
-              "line": 141,
-              "text": "if (textToInsert) {"
+              "line": 155,
+              "text": "var onlySelected = settings.onlySelected !== false;"
             },
             {
-              "line": 142,
-              "text": "p.insertAdjacentHTML(\"afterbegin\", textToInsert);"
+              "line": 202,
+              "text": "if (onlySelected && (!tr || tr.compareEndPoints(\"StartToEnd\", tr) == 0)) {"
+            },
+            {
+              "line": 204,
+              "text": "onlySelected = false;"
+            },
+            {
+              "line": 216,
+              "text": "if (onlySelected) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 6,
+          "name": "skipEmpty",
+          "declarations": [
+            {
+              "line": 156,
+              "text": "var skipEmpty = settings.skipEmpty !== false;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 156,
+              "text": "var skipEmpty = settings.skipEmpty !== false;"
+            },
+            {
+              "line": 156,
+              "text": "var skipEmpty = settings.skipEmpty !== false;"
+            },
+            {
+              "line": 167,
+              "text": "if (skipEmpty && isLineEmpty(p)) {"
             }
           ],
           "classification": "requires_review"
@@ -210218,25 +211074,37 @@
       ],
       "authorshipEvidence": [
         {
-          "line": 70,
+          "line": 119,
           "text": "// version 1.9"
         },
         {
-          "line": 71,
+          "line": 120,
           "text": "// Автор идеи - Haliz"
         },
         {
-          "line": 77,
+          "line": 126,
           "text": "// version 1.9, 04.11.2025"
         },
         {
-          "line": 81,
+          "line": 130,
           "text": "var scriptVersion = \"1.9\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Команда добавляет текст в начало абзаца и не проверяет существующую нумерацию; повторный запуск добавит ещё один префикс.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Без выделения команда после предупреждения обрабатывает все абзацы книги.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Префикс и суффикс вставляются как HTML; символы разметки в этих полях могут изменить структуру абзаца.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Нулевые начальный номер и шаг заменяются единицей. Если все части вставки пусты, счётчик всё равно может учитывать абзац как обработанный.",
           "verification": "requires_review"
         }
       ],
@@ -210257,71 +211125,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 158,
-              "text": "window.external.BeginUndoUnit(document, \"добавление нумерации абзацев\");"
-            },
-            {
-              "line": 265,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "30_'Числовые' скрипты/46_Пронумеровать текстовые маркеры.js",
@@ -210333,8 +211137,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Пронумеровать текстовые маркеры",
-        "summary": "Скрипт предназначен для автоматической сквозной нумерации текстовых маркеров в fb2 документах.",
-        "description": "Скрипт предназначен для автоматической сквозной нумерации текстовых маркеров в fb2 документах.",
+        "summary": "Нумерует отдельные абзацы с маркером zzz_pic.",
+        "description": "Ищет отдельные абзацы, чей нормализованный текст равен zzz_pic, и заменяет их на zzz_pic_001, zzz_pic_002 и далее. Если в области найдётся уже нумерованный маркер, отменяет всю операцию. По умолчанию разделы примечаний и комментариев пропускаются.",
         "authors": [
           {
             "name": "TaKir",
@@ -210351,59 +211155,56 @@
           }
         ],
         "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы P в основных body без имени fbname; notes и comments по умолчанию исключены. Положение курсора и выделение не учитываются.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+          "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+          "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Если найден хотя бы один уже нумерованный маркер вида zzz_pic_001, новые номера не присваиваются.",
+          "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
         ],
         "settings": [
           {
             "name": "markerType",
+            "title": "Тип маркера",
             "value": "zzz_pic",
             "expression": "\"zzz_pic\"",
-            "description": "Тип маркера (без подчеркивания и номера)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+            "source": "script"
           },
           {
             "name": "showStatistics",
+            "title": "Подтверждение и статистика",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+            "source": "script"
           },
           {
             "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить body примечаний; 0 — пропустить.",
+            "source": "script"
           },
           {
             "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "nbspEntity",
-            "value": "&nbsp;",
-            "expression": "\"&nbsp;\"",
-            "description": "Получаем неразрывный пробел из настроек FBE",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить body комментариев; 0 — пропустить.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -210414,25 +211215,25 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 135,
+            "line": 132,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 277,
+            "line": 274,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 291,
+            "line": 288,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 305,
+            "line": 302,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 341,
+            "line": 338,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -210440,11 +211241,11 @@
         "selection": [],
         "write": [
           {
-            "line": 335,
+            "line": 332,
             "text": "para.removeChild(para.firstChild);"
           },
           {
-            "line": 337,
+            "line": 334,
             "text": "para.appendChild(document.createTextNode(newText));"
           }
         ],
@@ -210455,35 +211256,35 @@
         "file": [],
         "return": [
           {
-            "line": 184,
+            "line": 181,
             "text": "return result;"
           },
           {
-            "line": 189,
+            "line": 186,
             "text": "return str.replace(/^\\s+|\\s+$/g, '');"
           },
           {
-            "line": 195,
+            "line": 192,
             "text": "return pattern.test(str);"
           },
           {
-            "line": 200,
+            "line": 197,
             "text": "return str === marker;"
           },
           {
-            "line": 210,
+            "line": 207,
             "text": "return paragraphs;"
           },
           {
-            "line": 278,
+            "line": 275,
             "text": "return;"
           },
           {
-            "line": 292,
+            "line": 289,
             "text": "return;"
           },
           {
-            "line": 306,
+            "line": 303,
             "text": "return;"
           }
         ]
@@ -210495,41 +211296,41 @@
           "name": "markerType",
           "declarations": [
             {
-              "line": 119,
+              "line": 116,
               "text": "var markerType = \"zzz_pic\";"
             }
           ],
           "uses": [
             {
-              "line": 119,
+              "line": 116,
               "text": "var markerType = \"zzz_pic\";"
             },
             {
-              "line": 261,
+              "line": 258,
               "text": "if (isNumberedMarker(trimmed, markerType)) {"
             },
             {
-              "line": 263,
+              "line": 260,
               "text": "} else if (isPlainMarker(trimmed, markerType)) {"
             },
             {
-              "line": 274,
+              "line": 271,
               "text": "noMarkersMsg += \"Заданные маркеры \\\"\" + markerType + \"\\\" отсутствуют.\";"
             },
             {
-              "line": 287,
+              "line": 284,
               "text": "alreadyMsg += \"В документе найдены уже нумерованные маркеры \\\"\" + markerType + \"\\\": \" + alreadyNumbered + \" шт.\\n\\n\";"
             },
             {
-              "line": 301,
+              "line": 298,
               "text": "confirmMsg += \"Пронумеровать маркеры \\\"\" + markerType + \"\\\"?\\n\";"
             },
             {
-              "line": 331,
+              "line": 328,
               "text": "var newText = markerType + \"_\" + numStr;"
             },
             {
-              "line": 355,
+              "line": 352,
               "text": "msg += \"\\u2713 Тип маркера: \" + markerType + \"\\n\";"
             }
           ],
@@ -210540,21 +211341,21 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 122,
+              "line": 119,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 122,
+              "line": 119,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 298,
+              "line": 295,
               "text": "if (showStatistics) {"
             },
             {
-              "line": 347,
+              "line": 344,
               "text": "if (showStatistics) {"
             }
           ],
@@ -210565,17 +211366,17 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 125,
+              "line": 122,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 125,
+              "line": 122,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 237,
+              "line": 234,
               "text": "} else if (fbname == \"notes\" && processNotesSection) {"
             }
           ],
@@ -210586,39 +211387,18 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 128,
+              "line": 125,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 128,
+              "line": 125,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 239,
+              "line": 236,
               "text": "} else if (fbname == \"comments\" && processCommentsSection) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 4,
-          "name": "nbspEntity",
-          "declarations": [
-            {
-              "line": 138,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 138,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            },
-            {
-              "line": 143,
-              "text": "nbspEntity = nbspCharTemp;"
             }
           ],
           "classification": "requires_review"
@@ -210627,25 +211407,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 91,
+          "line": 88,
           "text": "// version 1.2"
         },
         {
-          "line": 106,
+          "line": 103,
           "text": "// version 1.2, 02.07.2026"
         },
         {
-          "line": 110,
+          "line": 107,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 112,
+          "line": 109,
           "text": "var version = \"1.2\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Если найден хотя бы один уже нумерованный маркер вида zzz_pic_001, новые номера не присваиваются.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется.",
           "verification": "requires_review"
         }
       ],
@@ -210668,122 +211452,38 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 135,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 277,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 291,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 305,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 341,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 135,
+              "line": 132,
               "text": "window.external.BeginUndoUnit(document, scriptName);"
             },
             {
-              "line": 184,
+              "line": 181,
               "text": "return result;"
             },
             {
-              "line": 189,
+              "line": 186,
               "text": "return str.replace(/^\\s+|\\s+$/g, '');"
             },
             {
-              "line": 195,
+              "line": 192,
               "text": "return pattern.test(str);"
             },
             {
-              "line": 200,
+              "line": 197,
               "text": "return str === marker;"
             },
             {
-              "line": 341,
+              "line": 338,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
@@ -210800,8 +211500,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Разнумеровать текстовые маркеры",
-        "summary": "Скрипт предназначен для снятия нумерации с текстовых маркеров в fb2 документах.",
-        "description": "Скрипт предназначен для снятия нумерации с текстовых маркеров в fb2 документах.",
+        "summary": "Снимает номера с отдельных абзацев-маркеров zzz_pic.",
+        "description": "Ищет отдельные абзацы с текстом zzz_pic и номером из трёх или более цифр, с подчёркиванием либо без него, и заменяет содержимое каждого на zzz_pic. По умолчанию разделы примечаний и комментариев пропускаются.",
         "authors": [
           {
             "name": "TaKir",
@@ -210818,59 +211518,56 @@
           }
         ],
         "version": "1.1",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы P в основных body без имени fbname; notes и comments по умолчанию исключены. Положение курсора и выделение не учитываются.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+          "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+          "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Совпадения с номером менее трёх цифр не обрабатываются.",
+          "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
         ],
         "settings": [
           {
             "name": "markerType",
+            "title": "Тип маркера",
             "value": "zzz_pic",
             "expression": "\"zzz_pic\"",
-            "description": "Тип маркера (без подчеркивания и номера)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+            "source": "script"
           },
           {
             "name": "showStatistics",
+            "title": "Подтверждение и статистика",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+            "source": "script"
           },
           {
             "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить body примечаний; 0 — пропустить.",
+            "source": "script"
           },
           {
             "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "nbspEntity",
-            "value": "&nbsp;",
-            "expression": "\"&nbsp;\"",
-            "description": "Получаем неразрывный пробел из настроек FBE",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить body комментариев; 0 — пропустить.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -210881,21 +211578,21 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 134,
+            "line": 131,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 268,
+            "line": 265,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 284,
+            "line": 281,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 309,
+            "line": 306,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -210903,11 +211600,11 @@
         "selection": [],
         "write": [
           {
-            "line": 303,
+            "line": 300,
             "text": "para.removeChild(para.firstChild);"
           },
           {
-            "line": 305,
+            "line": 302,
             "text": "para.appendChild(document.createTextNode(markerType));"
           }
         ],
@@ -210918,27 +211615,27 @@
         "file": [],
         "return": [
           {
-            "line": 183,
+            "line": 180,
             "text": "return result;"
           },
           {
-            "line": 188,
+            "line": 185,
             "text": "return str.replace(/^\\s+|\\s+$/g, '');"
           },
           {
-            "line": 194,
+            "line": 191,
             "text": "return pattern.test(str);"
           },
           {
-            "line": 204,
+            "line": 201,
             "text": "return paragraphs;"
           },
           {
-            "line": 269,
+            "line": 266,
             "text": "return;"
           },
           {
-            "line": 285,
+            "line": 282,
             "text": "return;"
           }
         ]
@@ -210950,41 +211647,41 @@
           "name": "markerType",
           "declarations": [
             {
-              "line": 118,
+              "line": 115,
               "text": "var markerType = \"zzz_pic\";"
             }
           ],
           "uses": [
             {
-              "line": 118,
+              "line": 115,
               "text": "var markerType = \"zzz_pic\";"
             },
             {
-              "line": 254,
+              "line": 251,
               "text": "if (isNumberedMarker(trimmed, markerType)) {"
             },
             {
-              "line": 265,
+              "line": 262,
               "text": "noMarkersMsg += \"Заданные маркеры \\\"\" + markerType + \"\\\" с нумерацией отсутствуют.\";"
             },
             {
-              "line": 278,
+              "line": 275,
               "text": "confirmMsg += \"Снять нумерацию с маркеров \\\"\" + markerType + \"\\\"?\\n\";"
             },
             {
-              "line": 280,
+              "line": 277,
               "text": "confirmMsg += \"Пример: \" + markerType + \"_001 → \" + markerType + \"\\n\";"
             },
             {
-              "line": 280,
+              "line": 277,
               "text": "confirmMsg += \"Пример: \" + markerType + \"_001 → \" + markerType + \"\\n\";"
             },
             {
-              "line": 281,
+              "line": 278,
               "text": "confirmMsg += \"Пример: \" + markerType + \"001 → \" + markerType;"
             },
             {
-              "line": 281,
+              "line": 278,
               "text": "confirmMsg += \"Пример: \" + markerType + \"001 → \" + markerType;"
             }
           ],
@@ -210995,21 +211692,21 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 121,
+              "line": 118,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 121,
+              "line": 118,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 275,
+              "line": 272,
               "text": "if (showStatistics) {"
             },
             {
-              "line": 315,
+              "line": 312,
               "text": "if (showStatistics) {"
             }
           ],
@@ -211020,17 +211717,17 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 124,
+              "line": 121,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 124,
+              "line": 121,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 230,
+              "line": 227,
               "text": "} else if (fbname == \"notes\" && processNotesSection) {"
             }
           ],
@@ -211041,39 +211738,18 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 127,
+              "line": 124,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 127,
+              "line": 124,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 232,
+              "line": 229,
               "text": "} else if (fbname == \"comments\" && processCommentsSection) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 4,
-          "name": "nbspEntity",
-          "declarations": [
-            {
-              "line": 137,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 137,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            },
-            {
-              "line": 142,
-              "text": "nbspEntity = nbspCharTemp;"
             }
           ],
           "classification": "requires_review"
@@ -211082,25 +211758,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 91,
+          "line": 88,
           "text": "// version 1.1"
         },
         {
-          "line": 105,
+          "line": 102,
           "text": "// version 1.1, 02.07.2026"
         },
         {
-          "line": 109,
+          "line": 106,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 111,
+          "line": 108,
           "text": "var version = \"1.1\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Совпадения с номером менее трёх цифр не обрабатываются.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется.",
           "verification": "requires_review"
         }
       ],
@@ -211123,118 +211803,38 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 134,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 268,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 284,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 309,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 134,
+              "line": 131,
               "text": "window.external.BeginUndoUnit(document, scriptName);"
             },
             {
-              "line": 183,
+              "line": 180,
               "text": "return result;"
             },
             {
-              "line": 188,
+              "line": 185,
               "text": "return str.replace(/^\\s+|\\s+$/g, '');"
             },
             {
-              "line": 194,
+              "line": 191,
               "text": "return pattern.test(str);"
             },
             {
-              "line": 204,
+              "line": 201,
               "text": "return paragraphs;"
             },
             {
-              "line": 309,
+              "line": 306,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
@@ -211251,8 +211851,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Перенумеровать текстовые маркеры",
-        "summary": "Скрипт предназначен для приведения нумерации текстовых маркеров к единому сквозному виду в fb2 документах.",
-        "description": "Скрипт предназначен для приведения нумерации текстовых маркеров к единому сквозному виду в fb2 документах.",
+        "summary": "Перенумеровывает отдельные абзацы-маркеры zzz_pic по порядку.",
+        "description": "Ищет отдельные абзацы с zzz_pic либо с этим маркером и номером из трёх или более цифр, затем заменяет их на последовательность zzz_pic_001, zzz_pic_002 и далее. По умолчанию разделы примечаний и комментариев пропускаются.",
         "authors": [
           {
             "name": "TaKir",
@@ -211269,59 +211869,56 @@
           }
         ],
         "version": "1.0",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы P в основных body без имени fbname; notes и comments по умолчанию исключены. Положение курсора и выделение не учитываются.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Проверьте, что нужные маркеры занимают отдельные абзацы и имеют выбранный тип zzz_pic.",
+          "При необходимости измените параметры обработки примечаний и комментариев в исходнике.",
+          "Запустите команду, подтвердите действие в сообщении и проверьте результат по всей книге."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Все найденные номера назначаются заново в порядке абзацев; прежняя связь маркера с внешним объектом может измениться.",
+          "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется."
         ],
         "settings": [
           {
             "name": "markerType",
+            "title": "Тип маркера",
             "value": "zzz_pic",
             "expression": "\"zzz_pic\"",
-            "description": "Тип маркера (без подчеркивания и номера)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Текст маркера без номера; по умолчанию zzz_pic.",
+            "source": "script"
           },
           {
             "name": "showStatistics",
+            "title": "Подтверждение и статистика",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — спрашивать подтверждение и показывать итог; 0 — тихий режим.",
+            "source": "script"
           },
           {
             "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить body примечаний; 0 — пропустить.",
+            "source": "script"
           },
           {
             "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "nbspEntity",
-            "value": "&nbsp;",
-            "expression": "\"&nbsp;\"",
-            "description": "Получаем неразрывный пробел из настроек FBE",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить body комментариев; 0 — пропустить.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -211332,21 +211929,21 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 134,
+            "line": 131,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 273,
+            "line": 270,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 290,
+            "line": 287,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 326,
+            "line": 323,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -211354,11 +211951,11 @@
         "selection": [],
         "write": [
           {
-            "line": 320,
+            "line": 317,
             "text": "para.removeChild(para.firstChild);"
           },
           {
-            "line": 322,
+            "line": 319,
             "text": "para.appendChild(document.createTextNode(newText));"
           }
         ],
@@ -211369,31 +211966,31 @@
         "file": [],
         "return": [
           {
-            "line": 183,
+            "line": 180,
             "text": "return result;"
           },
           {
-            "line": 188,
+            "line": 185,
             "text": "return str.replace(/^\\s+|\\s+$/g, '');"
           },
           {
-            "line": 194,
+            "line": 191,
             "text": "if (str === marker) return true;"
           },
           {
-            "line": 197,
+            "line": 194,
             "text": "return pattern.test(str);"
           },
           {
-            "line": 207,
+            "line": 204,
             "text": "return paragraphs;"
           },
           {
-            "line": 274,
+            "line": 271,
             "text": "return;"
           },
           {
-            "line": 291,
+            "line": 288,
             "text": "return;"
           }
         ]
@@ -211405,41 +212002,41 @@
           "name": "markerType",
           "declarations": [
             {
-              "line": 118,
+              "line": 115,
               "text": "var markerType = \"zzz_pic\";"
             }
           ],
           "uses": [
             {
-              "line": 118,
+              "line": 115,
               "text": "var markerType = \"zzz_pic\";"
             },
             {
-              "line": 255,
+              "line": 252,
               "text": "if (isMarker(trimmed, markerType)) {"
             },
             {
-              "line": 270,
+              "line": 267,
               "text": "noMarkersMsg += \"Заданные маркеры \\\"\" + markerType + \"\\\" отсутствуют.\";"
             },
             {
-              "line": 283,
+              "line": 280,
               "text": "confirmMsg += \"Перенумеровать маркеры \\\"\" + markerType + \"\\\"?\\n\";"
             },
             {
-              "line": 286,
+              "line": 283,
               "text": "confirmMsg += markerType + \" → \" + markerType + \"_001\\n\";"
             },
             {
-              "line": 286,
+              "line": 283,
               "text": "confirmMsg += markerType + \" → \" + markerType + \"_001\\n\";"
             },
             {
-              "line": 287,
+              "line": 284,
               "text": "confirmMsg += markerType + \"_005 → \" + markerType + \"_001\";"
             },
             {
-              "line": 287,
+              "line": 284,
               "text": "confirmMsg += markerType + \"_005 → \" + markerType + \"_001\";"
             }
           ],
@@ -211450,21 +212047,21 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 121,
+              "line": 118,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 121,
+              "line": 118,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 280,
+              "line": 277,
               "text": "if (showStatistics) {"
             },
             {
-              "line": 332,
+              "line": 329,
               "text": "if (showStatistics) {"
             }
           ],
@@ -211475,17 +212072,17 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 124,
+              "line": 121,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 124,
+              "line": 121,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 233,
+              "line": 230,
               "text": "} else if (fbname == \"notes\" && processNotesSection) {"
             }
           ],
@@ -211496,39 +212093,18 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 127,
+              "line": 124,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 127,
+              "line": 124,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 235,
+              "line": 232,
               "text": "} else if (fbname == \"comments\" && processCommentsSection) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 4,
-          "name": "nbspEntity",
-          "declarations": [
-            {
-              "line": 137,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 137,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            },
-            {
-              "line": 142,
-              "text": "nbspEntity = nbspCharTemp;"
             }
           ],
           "classification": "requires_review"
@@ -211537,25 +212113,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 91,
+          "line": 88,
           "text": "// version 1.0"
         },
         {
-          "line": 105,
+          "line": 102,
           "text": "// version 1.0, 02.07.2026"
         },
         {
-          "line": 109,
+          "line": 106,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 111,
+          "line": 108,
           "text": "var version = \"1.0\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Все найденные номера назначаются заново в порядке абзацев; прежняя связь маркера с внешним объектом может измениться.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Содержимое совпавшего абзаца заменяется новым текстовым узлом; прежнее оформление внутри маркера теряется.",
           "verification": "requires_review"
         }
       ],
@@ -211578,118 +212158,38 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 134,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 273,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 290,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 326,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Штатные выходы, включая отказ от подтверждения, закрывают группу отмены. При ошибке во время замены абзацев полный откат не проверен."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 134,
+              "line": 131,
               "text": "window.external.BeginUndoUnit(document, scriptName);"
             },
             {
-              "line": 183,
+              "line": 180,
               "text": "return result;"
             },
             {
-              "line": 188,
+              "line": 185,
               "text": "return str.replace(/^\\s+|\\s+$/g, '');"
             },
             {
-              "line": 194,
+              "line": 191,
               "text": "if (str === marker) return true;"
             },
             {
-              "line": 197,
+              "line": 194,
               "text": "return pattern.test(str);"
             },
             {
-              "line": 326,
+              "line": 323,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
