@@ -65,6 +65,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	struct PageLayout {
 		CSize templateSize = CSize(0, 0);
 		CSize contentSize = CSize(0, 0);
+		int naturalContentHeight = 0;
 		int scrollX = 0;
 		int scrollY = 0;
 		std::vector<PageControlLayout> controls;
@@ -114,6 +115,7 @@ private:
 	void SelectPage(SettingsPageId page);
 	void LayoutControls(int width, int height);
 	void CapturePageLayouts();
+	void UpdateSourcePreviewContentHeight();
 	void LayoutPage(int index);
 	void ScrollPage(int index, WPARAM command, bool horizontal);
 	void RevealFocusedPageControl(int index);

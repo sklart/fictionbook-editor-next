@@ -31,6 +31,7 @@ public:
 	bool Initialize(HWND placeholder);
 	void ApplyConfiguration(const SourceEditorConfig& config);
 	SourceEditorControl& Editor() { return m_editor; }
+	const SourceEditorControl& Editor() const { return m_editor; }
 	LRESULT OnSize(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnNotify(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
@@ -59,6 +60,7 @@ class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public IS
 public:
 	enum { IDD = IDD_SETTINGS_SOURCE };
 	void SetPreviewFontSize(int size);
+	int PreviewLineHeight() const;
 
 BEGIN_MSG_MAP(CSettingsSourcePage)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)

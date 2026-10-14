@@ -871,6 +871,12 @@ void CSettingsSourcePage::SetPreviewFontSize(int size)
 	InvalidateSourcePreview();
 }
 
+int CSettingsSourcePage::PreviewLineHeight() const
+{
+	return m_preview.Editor().Handle() ?
+		static_cast<int>(m_preview.Editor().Send(SCI_TEXTHEIGHT, 0)) : 0;
+}
+
 void CSettingsSourcePage::InvalidateSourcePreview()
 {
 	if(m_preview.IsWindow()) m_preview.ApplyConfiguration(SelectedPreviewConfiguration());

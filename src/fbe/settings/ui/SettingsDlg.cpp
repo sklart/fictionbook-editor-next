@@ -109,6 +109,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_pageLifecycle[PageIndex(SettingsPageId::Words)] = m_wordsPage;
 	m_pageLifecycle[PageIndex(SettingsPageId::Advanced)] = m_advancedPage;
 	CapturePageLayouts();
+	UpdateSourcePreviewContentHeight();
 
 	CRect client;
 	GetClientRect(client);
@@ -453,9 +454,26 @@ void CSettingsDlg::CapturePageLayouts()
 		}
 		const int padding = UiMetrics::ScaleForDpi(8, UiMetrics::DpiForWindow(page));
 		layout.contentSize = CSize(right + padding, bottom + padding);
+		layout.naturalContentHeight = layout.contentSize.cy;
 		::SetWindowLongPtrW(page, GWL_STYLE, ::GetWindowLongPtrW(page, GWL_STYLE) | WS_VSCROLL | WS_HSCROLL);
 		::SetWindowSubclass(page, PageSubclassProc, static_cast<UINT_PTR>(index), reinterpret_cast<DWORD_PTR>(this));
 	}
+}
+
+void CSettingsDlg::UpdateSourcePreviewContentHeight()
+{
+	PageLayout& layout = m_pageLayouts[PageIndex(SettingsPageId::Source)];
+	const int lineHeight = m_sourcePage->PreviewLineHeight();
+	layout.contentSize.cy = max(layout.templateSize.cy, layout.naturalContentHeight);
+	if(lineHeight <= 0) return;
+	for(const PageControlLayout& control : layout.controls)
+		if(control.id == IDC_OPTIONS_SOURCE_PREVIEW)
+		{
+			// Measure rendered Scintilla rows, including the child window border.
+			const int minimum = 4 * lineHeight + 2 * ::GetSystemMetrics(SM_CYEDGE);
+			layout.contentSize.cy += max(0, minimum - control.rect.Height());
+			break;
+		}
 }
 
 void CSettingsDlg::LayoutPage(int index)
@@ -463,6 +481,7 @@ void CSettingsDlg::LayoutPage(int index)
 	const HWND page = m_pages[index] ? m_pages[index]->m_hWnd : NULL;
 	if(!page || !::IsWindow(page)) return;
 	PageLayout& layout = m_pageLayouts[index];
+	if(index == PageIndex(SettingsPageId::Source)) UpdateSourcePreviewContentHeight();
 	if(layout.contentSize.cx <= 0 || layout.contentSize.cy <= 0) return;
 	RECT client = {};
 	// Re-evaluate both axes until the viewport accounts for the other bar.
@@ -493,7 +512,8 @@ void CSettingsDlg::LayoutPage(int index)
 	info.nMin = 0; info.nMax = contentHeight - 1; info.nPage = availableHeight; info.nPos = layout.scrollY;
 	::SetScrollInfo(page, SB_VERT, &info, TRUE);
 	const int extraWidth = max(0, contentWidth - max(layout.templateSize.cx, layout.contentSize.cx));
-	const int extraHeight = max(0, contentHeight - max(layout.templateSize.cy, layout.contentSize.cy));
+	const int extraHeight = max(0, contentHeight - max(layout.templateSize.cy,
+		index == PageIndex(SettingsPageId::Source) ? layout.naturalContentHeight : layout.contentSize.cy));
 	struct PageMove { HWND window; CRect rect; };
 	std::vector<PageMove> moves;
 	moves.reserve(layout.controls.size());
@@ -865,6 +885,51 @@ bool CSettingsDlg::ProbeLayout()
 		passed = passed && inside(controlRect(GetDlgItem(IDOK))) && inside(controlRect(GetDlgItem(IDCANCEL))) &&
 			controlRect(GetDlgItem(IDOK)).right <= controlRect(GetDlgItem(IDCANCEL)).left;
 	}
+	// Exercise the three main pages across repeated compact, original and
+	// expanded sizes. Measure preview rows using Scintilla's current font metrics.
+	const int expandedHeight = hasWorkArea ?
+		min(original.Height() + UiMetrics::ScaleForDpi(160, m_layoutDpi),
+			monitor.rcWork.bottom - original.top) : original.Height();
+	int sourcePreviewBaselineHeight = 0;
+	for(const PageControlLayout& control : m_pageLayouts[PageIndex(SettingsPageId::Source)].controls)
+		if(control.id == IDC_OPTIONS_SOURCE_PREVIEW) sourcePreviewBaselineHeight = control.rect.Height();
+	for(int cycle = 0; cycle < 6; ++cycle)
+	{
+		const int targetHeight = cycle % 3 == 0 ? height :
+			cycle % 3 == 1 ? original.Height() : expandedHeight;
+		const int targetWidth = cycle % 3 == 0 ? width : original.Width();
+		::SetWindowPos(m_hWnd, NULL, original.left, original.top, targetWidth, targetHeight,
+			SWP_NOZORDER | SWP_NOACTIVATE);
+		GetClientRect(client);
+		for(SettingsPageId pageId : { SettingsPageId::General, SettingsPageId::Editor, SettingsPageId::Source })
+		{
+			SelectPage(pageId);
+			passed = passed && inside(controlRect(GetDlgItem(IDOK))) &&
+				inside(controlRect(GetDlgItem(IDCANCEL)));
+			if(pageId != SettingsPageId::Source) continue;
+			for(const int fontSize : { 10, 12, 16 })
+			{
+				m_sourcePage->SetPreviewFontSize(fontSize);
+				LayoutPage(PageIndex(SettingsPageId::Source));
+				const int lineHeight = m_sourcePage->PreviewLineHeight();
+				RECT previewClient = {};
+				::GetClientRect(previewHost, &previewClient);
+				const CRect group = controlRect(m_sourcePage->GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW_GROUP));
+				const CRect preview = controlRect(previewHost);
+				const bool minimumRows = lineHeight > 0 && previewClient.bottom >= 4 * lineHeight;
+				const bool insideGroup = group.left < preview.left && group.top < preview.top &&
+					preview.right < group.right && preview.bottom < group.bottom;
+				passed = passed && minimumRows && insideGroup;
+				RECT pageClient = {};
+				::GetClientRect(m_sourcePage->m_hWnd, &pageClient);
+				if(pageClient.bottom >= max(m_pageLayouts[PageIndex(SettingsPageId::Source)].templateSize.cy,
+					m_pageLayouts[PageIndex(SettingsPageId::Source)].naturalContentHeight) +
+					max(0, 6 * lineHeight + 2 * ::GetSystemMetrics(SM_CYEDGE) - sourcePreviewBaselineHeight))
+					passed = passed && previewClient.bottom >= 6 * lineHeight;
+			}
+		}
+	}
+	m_sourcePage->SetPreviewFontSize(m_editorPage->CurrentPreviewFontSize());
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
 	CRect restored;

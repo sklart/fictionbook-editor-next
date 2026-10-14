@@ -2522,8 +2522,8 @@
       "kind": "CONTROL",
       "targetId": "IDC_SHOWEOL",
       "translations": {
-        "en-US": "Show line-end symbols",
-        "ru-RU": "Показывать символы конца строк",
+        "en-US": "Line-end marks",
+        "ru-RU": "Метки конца строк",
         "uk-UA": "Показувати символи кінця рядків",
         "de-DE": "Zeilenenden anzeigen",
         "fr-FR": "Afficher les fins de ligne",
@@ -2598,8 +2598,8 @@
       "kind": "CONTROL",
       "targetId": "IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS",
       "translations": {
-        "en-US": "Show invisible characters",
-        "ru-RU": "Показывать невидимые символы",
+        "en-US": "Invisible characters",
+        "ru-RU": "Невидимые символы",
         "uk-UA": "Показувати невидимі символи",
         "de-DE": "Unsichtbare Zeichen anzeigen",
         "fr-FR": "Afficher les caractères invisibles",
@@ -2823,7 +2823,7 @@
       "targetId": "IDC_SHOWLINENUMBERS",
       "translations": {
         "en-US": "Show line numbers",
-        "ru-RU": "Показывать номера строк",
+        "ru-RU": "Номера строк",
         "uk-UA": "Показувати номери рядків",
         "de-DE": "Zeilennummern anzeigen",
         "fr-FR": "Afficher les numéros de ligne",

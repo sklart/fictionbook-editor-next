@@ -161,7 +161,10 @@ public static class UiLayoutAudit
         ReleaseDC(hwnd, dc);
         row.MeasuredTextWidth = measured.Right - measured.Left;
         row.MeasuredTextHeight = measured.Bottom - measured.Top;
-        row.TextMayClip = row.MeasuredTextWidth > available || row.MeasuredTextHeight > bounds.Bottom - bounds.Top - 2 * inset;
+        // Static text uses the full control height; the horizontal inset only
+        // reserves space for glyph overhang at the sides.
+        int verticalInset = kind.Equals("Static", StringComparison.OrdinalIgnoreCase) ? 0 : inset;
+        row.TextMayClip = row.MeasuredTextWidth > available || row.MeasuredTextHeight > bounds.Bottom - bounds.Top - 2 * verticalInset;
         return row;
     }
     public static Row[] Capture(int processId)
