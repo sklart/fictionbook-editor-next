@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **185**.
+Карточек без автоматических замечаний: **186**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,25 +16,25 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **375**. Исполняемый код не изменён.
+Изменено карточек: **376**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 20
-- `generic_usage`: 320
-- `generic_warning`: 20
-- `inaccurate_description`: 632
+- `generic_summary`: 21
+- `generic_usage`: 321
+- `generic_warning`: 21
+- `inaccurate_description`: 633
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 331
+- `incorrect_dependency`: 332
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
-- `incorrect_scope`: 327
+- `incorrect_scope`: 328
 - `incorrect_selection`: 24
-- `incorrect_setting`: 166
-- `incorrect_undo`: 319
+- `incorrect_setting`: 167
+- `incorrect_undo`: 320
 - `incorrect_version`: 5
 - `uncertain_attribution`: 39
 
@@ -43,19 +43,19 @@
 - `attributionClarified`: 36
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 202
+- `dependenciesVerified`: 203
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 318
-- `scopeClarified`: 304
+- `purposeClarified`: 319
+- `scopeClarified`: 305
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 480
-- `undoDescriptionsClarified`: 311
-- `usageCorrected`: 320
-- `warningsClarified`: 251
+- `settingsClarified`: 481
+- `undoDescriptionsClarified`: 312
+- `usageCorrected`: 321
+- `warningsClarified`: 252
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **213**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **214**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -449,11 +449,12 @@
 - `10_Статистика/10_Статистика нецензурных слов.js:307` — Ветвь else return true выходит до EndUndoUnit на строке 309. Она срабатывает при отсутствии только Meta либо при наличии Facebook/Instagram; группа отмены остаётся открытой, в том числе после записи в аннотацию.
 - `10_Статистика/10_Статистика нецензурных слов.js:280` — Изменение аннотации и вызовы confirm внутри группы отмены не защищены finally; ошибка в диалоге или DOM-операции также оставляет группу открытой.
 - `10_Статистика/10_Статистика нецензурных слов.js:340` — Перед добавлением записей удаляются пустые P в начале и конце аннотации; изменение структуры превышает заявленное простое добавление уведомления.
+- `10_Статистика/16_Словарь книги - в буфер обмена.js:66` — После первого DIV.body цикл прерывается; в многотомной книге последующие основные body полностью отсутствуют в словаре, хотя название говорит о словаре книги.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1080
-- `inaccurate_description`: 69
+- `generic_usage`: 1076
+- `inaccurate_description`: 68
 - `incorrect_undo`: 160
 - `requires_review`: 387
 
