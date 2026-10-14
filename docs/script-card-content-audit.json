@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 437,
-    "generic_usage": 1346,
-    "incorrect_undo": 208,
+    "requires_review": 436,
+    "generic_usage": 1342,
+    "incorrect_undo": 207,
     "inaccurate_description": 99
   },
   "reviewedChanges": [
@@ -34387,17 +34387,193 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/32_Расставить подписи к иллюстрациям из выделенного фрагмента.js",
+      "codeSha256": "63301cb4dc8cbcd5ad6b6cd78c4fc3a7ef2f567b54f9249c9f9fe59bb7f63117",
+      "evidence": "Run требует непустое text-выделение, извлекает P из htmlText, группирует подписи по маркеру и находит все непустые DIV.image во всём document. Временный HTML диалога пишется через Scripting.FileSystemObject в GetSpecialFolder(2), затем удаляется после showModalDialog. Ответ разбирается через parseInt(parts[3]) || 1, поэтому addEmptyAfter=0 теряется. После вставки подписей исходный диапазон удаляется при deleteOriginal && successCount > 0, без требования успеха для всех подписей. BeginUndoUnit перед вставкой, EndUndoUnit на штатном пути; внешний catch группу не закрывает.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для расстановки подписей к иллюстрациям в fb2 документах",
+          "after": "Расставляет подписи из выделенного текста после блочных иллюстраций книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для расстановки подписей к иллюстрациям в fb2 документах",
+          "after": "Из непустого текстового выделения извлекает абзацы подписей и группирует продолжения по маркеру, по умолчанию ++. Находит непустые DIV.image в порядке документа, пропускает заданное число и вставляет подписи после следующих изображений с выбранным форматированием. Может убрать нумерацию и по отдельному подтверждению удалить исходный выделенный текст.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+          "after": "Источник подписей — абзацы P в HTML непустого текстового выделения; цели — все непустые блочные DIV.image в документе, а не только изображения в выделенной области. Порядок соответствия задаётся порядком DOM и числом пропущенных изображений.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Выделите абзацы исходных подписей; для многоабзацной подписи пометьте продолжения одним маркером в начале абзаца.",
+            "В диалоге задайте число изображений для пропуска, маркер продолжения, форматирование и пустые строки.",
+            "Подтвердите расстановку, затем отдельно решите, удалять ли нумерацию и исходное выделение. Проверьте соответствие подписей изображениям и исходный текст до сохранения."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+            "Файловые операции не отменяются обычным Ctrl+Z в книге."
+          ],
+          "after": [
+            "Снятый в диалоге флажок пустой строки после подписи код преобразует обратно в значение 1; этот параметр фактически нельзя выключить через диалог.",
+            "При подтверждении удаления исходного фрагмента он удаляется после любой успешной вставки; частичный успех не предотвращает потерю оставшихся исходных подписей.",
+            "Диалог создаётся как временный HTML-файл в системном каталоге; его запись и удаление не входят в отмену изменений книги. При сбое до очистки файл может остаться.",
+            "Группа отмены открывается перед вставкой, но общий обработчик ошибки не закрывает её при исключении; полнота отмены частичных изменений не проверена.",
+            "Поиск целей исключает изображения с пустой или неопределённой ссылкой, но не ограничивается основным текстом книги."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "removeNumbering",
+              "value": false,
+              "expression": "false",
+              "description": "Запрос на удаление нумерации (если она есть)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "skipImages",
+              "title": "Пропустить изображения",
+              "value": 0,
+              "expression": "0",
+              "description": "Количество блочных изображений от начала документа, которым подписи не назначаются.",
+              "source": "dialog"
+            },
+            {
+              "name": "formatStyle",
+              "title": "Формат подписи",
+              "value": 2,
+              "expression": "2",
+              "description": "0 — обычный текст; 1 — сохранить; 2 — курсив; 3 — жирный; 4 — жирный курсив.",
+              "source": "dialog"
+            },
+            {
+              "name": "addEmptyBefore",
+              "title": "Пустая строка перед подписью",
+              "value": 0,
+              "expression": "0",
+              "description": "Вставить строку между изображением и подписью при её отсутствии.",
+              "source": "dialog"
+            },
+            {
+              "name": "addEmptyAfter",
+              "title": "Пустая строка после подписи",
+              "value": 1,
+              "expression": "1",
+              "description": "Флажок есть в диалоге, но значение 0 при разборе ответа заменяется на 1.",
+              "source": "dialog"
+            },
+            {
+              "name": "forceInsert",
+              "title": "Разрешить меньше подписей, чем изображений",
+              "value": 1,
+              "expression": "1",
+              "description": "При несовпадении количества вставить подписи к первым доступным изображениям; в диалоге флажок появляется при меньшем числе подписей.",
+              "source": "dialog"
+            },
+            {
+              "name": "captionMarker",
+              "title": "Маркер продолжения подписи",
+              "value": "++",
+              "expression": "\"++\"",
+              "description": "Абзац, начинающийся с маркера, присоединяется к предыдущей подписи. Не более пяти символов.",
+              "source": "dialog"
+            },
+            {
+              "name": "removeNumbering",
+              "title": "Убрать нумерацию",
+              "value": false,
+              "expression": "false",
+              "description": "Отдельный вопрос появляется, если в исходных подписях обнаружена нумерация.",
+              "source": "dialog"
+            },
+            {
+              "name": "deleteOriginal",
+              "title": "Удалить исходное выделение",
+              "value": false,
+              "expression": "false",
+              "description": "Отдельный вопрос после настройки; при согласии исходный диапазон удаляется после хотя бы одной успешной вставки.",
+              "source": "dialog"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Вставки и возможное удаление исходного текста выполняются внутри группы отмены, закрываемой на штатном пути. При исключении общий обработчик показывает ошибку без закрытия группы; полнота отката не проверена. Временный файл диалога отменой книги не охватывается."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 513,
+          "issue": "Разбор addEmptyAfter как parseInt(parts[3]) || 1 заменяет явный 0 на 1, игнорируя снятый флажок."
+        },
+        {
+          "line": 326,
+          "issue": "При deleteOriginal достаточно successCount > 0 для удаления всего исходного выделения, в том числе подписей, которые не удалось вставить."
+        },
+        {
+          "line": 389,
+          "issue": "Общий catch после BeginUndoUnit не вызывает EndUndoUnit; при исключении группа отмены остаётся открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 516,
-    "generic_usage": 255,
-    "false_warning": 274,
-    "incorrect_setting": 120,
-    "incorrect_scope": 252,
-    "incorrect_undo": 254,
+    "inaccurate_description": 518,
+    "generic_usage": 256,
+    "false_warning": 275,
+    "incorrect_setting": 121,
+    "incorrect_scope": 253,
+    "incorrect_undo": 255,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 255,
+    "incorrect_dependency": 256,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -34410,16 +34586,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 246,
-    "usageCorrected": 255,
-    "purposeClarified": 253,
-    "warningsClarified": 186,
-    "scopeClarified": 239,
-    "settingsClarified": 433,
+    "undoDescriptionsClarified": 247,
+    "usageCorrected": 256,
+    "purposeClarified": 254,
+    "warningsClarified": 187,
+    "scopeClarified": 240,
+    "settingsClarified": 434,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 137,
+    "dependenciesVerified": 138,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -73057,8 +73233,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Расставить подписи к иллюстрациям из выделенного фрагмента",
-        "summary": "Скрипт предназначен для расстановки подписей к иллюстрациям в fb2 документах",
-        "description": "Скрипт предназначен для расстановки подписей к иллюстрациям в fb2 документах",
+        "summary": "Расставляет подписи из выделенного текста после блочных иллюстраций книги.",
+        "description": "Из непустого текстового выделения извлекает абзацы подписей и группирует продолжения по маркеру, по умолчанию ++. Находит непустые DIV.image в порядке документа, пропускает заданное число и вставляет подписи после следующих изображений с выбранным форматированием. Может убрать нумерацию и по отдельному подтверждению удалить исходный выделенный текст.",
         "authors": [
           {
             "name": "TaKir",
@@ -73075,33 +73251,91 @@
           }
         ],
         "version": "4.3",
-        "scope": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+        "scope": "Источник подписей — абзацы P в HTML непустого текстового выделения; цели — все непустые блочные DIV.image в документе, а не только изображения в выделенной области. Порядок соответствия задаётся порядком DOM и числом пропущенных изображений.",
         "modifiesDocument": true,
         "requiresSelection": true,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Выделите абзацы исходных подписей; для многоабзацной подписи пометьте продолжения одним маркером в начале абзаца.",
+          "В диалоге задайте число изображений для пропуска, маркер продолжения, форматирование и пустые строки.",
+          "Подтвердите расстановку, затем отдельно решите, удалять ли нумерацию и исходное выделение. Проверьте соответствие подписей изображениям и исходный текст до сохранения."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "Файловые операции не отменяются обычным Ctrl+Z в книге."
+          "Снятый в диалоге флажок пустой строки после подписи код преобразует обратно в значение 1; этот параметр фактически нельзя выключить через диалог.",
+          "При подтверждении удаления исходного фрагмента он удаляется после любой успешной вставки; частичный успех не предотвращает потерю оставшихся исходных подписей.",
+          "Диалог создаётся как временный HTML-файл в системном каталоге; его запись и удаление не входят в отмену изменений книги. При сбое до очистки файл может остаться.",
+          "Группа отмены открывается перед вставкой, но общий обработчик ошибки не закрывает её при исключении; полнота отмены частичных изменений не проверена.",
+          "Поиск целей исключает изображения с пустой или неопределённой ссылкой, но не ограничивается основным текстом книги."
         ],
         "settings": [
           {
+            "name": "skipImages",
+            "title": "Пропустить изображения",
+            "value": 0,
+            "expression": "0",
+            "description": "Количество блочных изображений от начала документа, которым подписи не назначаются.",
+            "source": "dialog"
+          },
+          {
+            "name": "formatStyle",
+            "title": "Формат подписи",
+            "value": 2,
+            "expression": "2",
+            "description": "0 — обычный текст; 1 — сохранить; 2 — курсив; 3 — жирный; 4 — жирный курсив.",
+            "source": "dialog"
+          },
+          {
+            "name": "addEmptyBefore",
+            "title": "Пустая строка перед подписью",
+            "value": 0,
+            "expression": "0",
+            "description": "Вставить строку между изображением и подписью при её отсутствии.",
+            "source": "dialog"
+          },
+          {
+            "name": "addEmptyAfter",
+            "title": "Пустая строка после подписи",
+            "value": 1,
+            "expression": "1",
+            "description": "Флажок есть в диалоге, но значение 0 при разборе ответа заменяется на 1.",
+            "source": "dialog"
+          },
+          {
+            "name": "forceInsert",
+            "title": "Разрешить меньше подписей, чем изображений",
+            "value": 1,
+            "expression": "1",
+            "description": "При несовпадении количества вставить подписи к первым доступным изображениям; в диалоге флажок появляется при меньшем числе подписей.",
+            "source": "dialog"
+          },
+          {
+            "name": "captionMarker",
+            "title": "Маркер продолжения подписи",
+            "value": "++",
+            "expression": "\"++\"",
+            "description": "Абзац, начинающийся с маркера, присоединяется к предыдущей подписи. Не более пяти символов.",
+            "source": "dialog"
+          },
+          {
             "name": "removeNumbering",
+            "title": "Убрать нумерацию",
             "value": false,
             "expression": "false",
-            "description": "Запрос на удаление нумерации (если она есть)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Отдельный вопрос появляется, если в исходных подписях обнаружена нумерация.",
+            "source": "dialog"
+          },
+          {
+            "name": "deleteOriginal",
+            "title": "Удалить исходное выделение",
+            "value": false,
+            "expression": "false",
+            "description": "Отдельный вопрос после настройки; при согласии исходный диапазон удаляется после хотя бы одной успешной вставки.",
+            "source": "dialog"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Вставки и возможное удаление исходного текста выполняются внутри группы отмены, закрываемой на штатном пути. При исключении общий обработчик показывает ошибку без закрытия группы; полнота отката не проверена. Временный файл диалога отменой книги не охватывается."
         },
         "examples": null,
         "tags": [
@@ -73113,55 +73347,55 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 228,
+            "line": 286,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 305,
+            "line": 363,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 440,
+            "line": 498,
             "text": "var rawResult = window.showModalDialog(tempPath, null,"
           }
         ],
         "selection": [
           {
-            "line": 118,
+            "line": 176,
             "text": "if (!document.selection || document.selection.type.toLowerCase() !== \"text\") {"
           },
           {
-            "line": 118,
+            "line": 176,
             "text": "if (!document.selection || document.selection.type.toLowerCase() !== \"text\") {"
           },
           {
-            "line": 124,
+            "line": 182,
             "text": "var myRange = document.selection.createRange();"
           },
           {
-            "line": 124,
+            "line": 182,
             "text": "var myRange = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 540,
+            "line": 598,
             "text": "var tempDiv = document.createElement('div');"
           },
           {
-            "line": 541,
+            "line": 599,
             "text": "tempDiv.innerHTML = html;"
           },
           {
-            "line": 583,
+            "line": 641,
             "text": "return tempDiv.innerHTML;"
           },
           {
-            "line": 668,
+            "line": 726,
             "text": "var tempDiv = document.createElement('div');"
           }
         ],
@@ -73171,209 +73405,209 @@
         "local_window": [],
         "file": [
           {
-            "line": 435,
+            "line": 493,
             "text": "var fh = fso.CreateTextFile(tempPath, true);"
           },
           {
-            "line": 445,
+            "line": 503,
             "text": "try { fso.DeleteFile(tempPath); } catch(e) {}"
           }
         ],
         "return": [
           {
-            "line": 121,
+            "line": 179,
             "text": "return;"
           },
           {
-            "line": 128,
+            "line": 186,
             "text": "return;"
           },
           {
-            "line": 159,
+            "line": 217,
             "text": "return; // Отмена"
           },
           {
-            "line": 177,
+            "line": 235,
             "text": "return;"
           },
           {
-            "line": 185,
+            "line": 243,
             "text": "return;"
           },
           {
-            "line": 194,
+            "line": 252,
             "text": "return;"
           },
           {
-            "line": 200,
+            "line": 258,
             "text": "return;"
           },
           {
-            "line": 209,
+            "line": 267,
             "text": "return;"
           },
           {
-            "line": 447,
+            "line": 505,
             "text": "if (!rawResult) return null;"
           },
           {
-            "line": 483,
+            "line": 541,
             "text": "return result;"
           },
           {
-            "line": 489,
+            "line": 547,
             "text": "if (!rawParagraphs || rawParagraphs.length === 0) return captions;"
           },
           {
-            "line": 498,
+            "line": 556,
             "text": "return captions;"
-          },
-          {
-            "line": 530,
-            "text": "return captions;"
-          },
-          {
-            "line": 535,
-            "text": "if (!html || !marker) return html;"
-          },
-          {
-            "line": 547,
-            "text": "if (textNodes.length === 0) return html;"
-          },
-          {
-            "line": 583,
-            "text": "return tempDiv.innerHTML;"
           },
           {
             "line": 588,
+            "text": "return captions;"
+          },
+          {
+            "line": 593,
+            "text": "if (!html || !marker) return html;"
+          },
+          {
+            "line": 605,
+            "text": "if (textNodes.length === 0) return html;"
+          },
+          {
+            "line": 641,
+            "text": "return tempDiv.innerHTML;"
+          },
+          {
+            "line": 646,
             "text": "if (!element) return;"
           },
           {
-            "line": 604,
+            "line": 662,
             "text": "if (!captions || captions.length === 0) return false;"
           },
           {
-            "line": 622,
+            "line": 680,
             "text": "return true;"
           },
           {
-            "line": 627,
+            "line": 685,
             "text": "return false;"
           },
           {
-            "line": 632,
+            "line": 690,
             "text": "if (!html) return \"\";"
           },
           {
-            "line": 643,
+            "line": 701,
             "text": "return text;"
           },
           {
-            "line": 648,
+            "line": 706,
             "text": "if (!html) return html;"
           },
           {
-            "line": 663,
+            "line": 721,
             "text": "return newHtml;"
           },
           {
-            "line": 675,
+            "line": 733,
             "text": "return html;"
           },
           {
-            "line": 692,
+            "line": 750,
             "text": "return newHtml;"
           },
           {
-            "line": 723,
+            "line": 781,
             "text": "return newHtml;"
           },
           {
-            "line": 727,
+            "line": 785,
             "text": "return originalHTML;"
           },
           {
-            "line": 730,
+            "line": 788,
             "text": "return originalHTML;"
           },
           {
-            "line": 736,
+            "line": 794,
             "text": "if (!element) return;"
           },
           {
-            "line": 755,
+            "line": 813,
             "text": "if (!html) return paragraphs;"
           },
           {
-            "line": 783,
+            "line": 841,
             "text": "return paragraphs;"
           },
           {
-            "line": 816,
+            "line": 874,
             "text": "return images;"
           },
           {
-            "line": 823,
+            "line": 881,
             "text": "if (!parent) return false;"
           },
           {
-            "line": 865,
+            "line": 923,
             "text": "return true;"
           },
           {
-            "line": 868,
+            "line": 926,
             "text": "return false;"
           },
           {
-            "line": 874,
+            "line": 932,
             "text": "if (!html) return html;"
           },
           {
-            "line": 879,
+            "line": 937,
             "text": "return getPlainTextFromHTML(html);"
           },
           {
-            "line": 882,
+            "line": 940,
             "text": "return html;"
           },
           {
-            "line": 885,
+            "line": 943,
             "text": "return '<EM>' + html + '</EM>';"
           },
           {
-            "line": 888,
+            "line": 946,
             "text": "return '<STRONG>' + html + '</STRONG>';"
           },
           {
-            "line": 891,
+            "line": 949,
             "text": "return '<EM><STRONG>' + html + '</STRONG></EM>';"
           },
           {
-            "line": 893,
+            "line": 951,
             "text": "return html;"
           },
           {
-            "line": 899,
+            "line": 957,
             "text": "if (!element) return false;"
           },
           {
-            "line": 900,
+            "line": 958,
             "text": "if (element.nodeType !== 1) return false;"
           },
           {
-            "line": 901,
+            "line": 959,
             "text": "if (element.tagName && element.tagName.toUpperCase() !== 'P') return false;"
           },
           {
-            "line": 908,
+            "line": 966,
             "text": "return html === '' || html === '<br>' || html === '<br/>';"
           },
           {
-            "line": 913,
+            "line": 971,
             "text": "if (!html) return '';"
           },
           {
-            "line": 919,
+            "line": 977,
             "text": "return trimmed;"
           }
         ]
@@ -73382,29 +73616,316 @@
       "settingEvidence": [
         {
           "index": 0,
+          "name": "skipImages",
+          "declarations": [
+            {
+              "line": 220,
+              "text": "var skipImages = settings.skipImages;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 220,
+              "text": "var skipImages = settings.skipImages;"
+            },
+            {
+              "line": 220,
+              "text": "var skipImages = settings.skipImages;"
+            },
+            {
+              "line": 239,
+              "text": "if (skipImages < 0) skipImages = 0;"
+            },
+            {
+              "line": 239,
+              "text": "if (skipImages < 0) skipImages = 0;"
+            },
+            {
+              "line": 240,
+              "text": "if (skipImages >= totalImages) {"
+            },
+            {
+              "line": 241,
+              "text": "MsgBox(scriptName + \"\\nver. \" + scriptVersion + \"\\n---------------------------\\n\\nОшибка!\\n\\nПропуск (\" + skipImages + \") превышает количество картинок (\" + totalImages + \").\\nНече"
+            },
+            {
+              "line": 246,
+              "text": "var availableImages = totalImages - skipImages;"
+            },
+            {
+              "line": 250,
+              "text": "MsgBox(scriptName + \"\\nver. \" + scriptVersion + \"\\n---------------------------\\n\\nОшибка!\\n\\nПосле пропуска \" + skipImages + \" картинок остаётся \" + availableImages + \".\\nПодписей:"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "formatStyle",
+          "declarations": [
+            {
+              "line": 221,
+              "text": "var formatStyle = settings.formatStyle;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 221,
+              "text": "var formatStyle = settings.formatStyle;"
+            },
+            {
+              "line": 221,
+              "text": "var formatStyle = settings.formatStyle;"
+            },
+            {
+              "line": 316,
+              "text": "formatStyle,"
+            },
+            {
+              "line": 348,
+              "text": "switch (formatStyle) {"
+            },
+            {
+              "line": 511,
+              "text": "formatStyle: parseInt(parts[1]),"
+            },
+            {
+              "line": 519,
+              "text": "if (isNaN(result.formatStyle) || result.formatStyle < 0 || result.formatStyle > 4) {"
+            },
+            {
+              "line": 519,
+              "text": "if (isNaN(result.formatStyle) || result.formatStyle < 0 || result.formatStyle > 4) {"
+            },
+            {
+              "line": 519,
+              "text": "if (isNaN(result.formatStyle) || result.formatStyle < 0 || result.formatStyle > 4) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "addEmptyBefore",
+          "declarations": [
+            {
+              "line": 222,
+              "text": "var addEmptyBefore = settings.addEmptyBefore;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 222,
+              "text": "var addEmptyBefore = settings.addEmptyBefore;"
+            },
+            {
+              "line": 222,
+              "text": "var addEmptyBefore = settings.addEmptyBefore;"
+            },
+            {
+              "line": 317,
+              "text": "addEmptyBefore,"
+            },
+            {
+              "line": 371,
+              "text": "\"Пустые строки перед подписями: \" + (addEmptyBefore ? \"ДА\" : \"НЕТ\") + \"\\n\" +"
+            },
+            {
+              "line": 512,
+              "text": "addEmptyBefore: parseInt(parts[2]) || 0,"
+            },
+            {
+              "line": 534,
+              "text": "addEmptyBefore: 0,"
+            },
+            {
+              "line": 878,
+              "text": "function insertCaptionWithFormattingFixed(imageElement, captionParts, formatStyle, addEmptyBefore, addEmptyAfter) {"
+            },
+            {
+              "line": 886,
+              "text": "if (addEmptyBefore) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "addEmptyAfter",
+          "declarations": [
+            {
+              "line": 223,
+              "text": "var addEmptyAfter = settings.addEmptyAfter;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 223,
+              "text": "var addEmptyAfter = settings.addEmptyAfter;"
+            },
+            {
+              "line": 223,
+              "text": "var addEmptyAfter = settings.addEmptyAfter;"
+            },
+            {
+              "line": 318,
+              "text": "addEmptyAfter"
+            },
+            {
+              "line": 372,
+              "text": "\"Пустые строки после подписей: \" + (addEmptyAfter ? \"ДА\" : \"НЕТ\");"
+            },
+            {
+              "line": 513,
+              "text": "addEmptyAfter: parseInt(parts[3]) || 1,"
+            },
+            {
+              "line": 535,
+              "text": "addEmptyAfter: 1,"
+            },
+            {
+              "line": 878,
+              "text": "function insertCaptionWithFormattingFixed(imageElement, captionParts, formatStyle, addEmptyBefore, addEmptyAfter) {"
+            },
+            {
+              "line": 908,
+              "text": "if (addEmptyAfter && lastInserted) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
+          "name": "forceInsert",
+          "declarations": [
+            {
+              "line": 224,
+              "text": "var forceInsert = settings.forceInsert;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 224,
+              "text": "var forceInsert = settings.forceInsert;"
+            },
+            {
+              "line": 224,
+              "text": "var forceInsert = settings.forceInsert;"
+            },
+            {
+              "line": 255,
+              "text": "if (totalCaptions < availableImages && !forceInsert) {"
+            },
+            {
+              "line": 514,
+              "text": "forceInsert: parseInt(parts[4]) || 0,"
+            },
+            {
+              "line": 536,
+              "text": "forceInsert: (totalImages >= preGroupedCount) ? 1 : 0,"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "captionMarker",
+          "declarations": [
+            {
+              "line": 225,
+              "text": "var captionMarker = settings.captionMarker;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 225,
+              "text": "var captionMarker = settings.captionMarker;"
+            },
+            {
+              "line": 225,
+              "text": "var captionMarker = settings.captionMarker;"
+            },
+            {
+              "line": 228,
+              "text": "var captions = groupCaptions(rawParagraphs, captionMarker);"
+            },
+            {
+              "line": 233,
+              "text": "MsgBox(scriptName + \"\\nver. \" + scriptVersion + \"\\n---------------------------\\n\\nОшибка!\\n\\nПодписей больше, чем картинок.\\nНайдено картинок: \" + totalImages + \"\\nНайдено подписей"
+            },
+            {
+              "line": 263,
+              "text": "if (captionMarker) {"
+            },
+            {
+              "line": 264,
+              "text": "confirmMsg += \"\\n\\nМаркер продолжения: \\\"\" + captionMarker + \"\\\"\";"
+            },
+            {
+              "line": 374,
+              "text": "if (captionMarker) {"
+            },
+            {
+              "line": 375,
+              "text": "resultMessage += \"\\nМаркер продолжения: \\\"\" + captionMarker + \"\\\"\";"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 6,
           "name": "removeNumbering",
           "declarations": [
             {
-              "line": 213,
+              "line": 271,
               "text": "var removeNumbering = false;"
             }
           ],
           "uses": [
             {
-              "line": 213,
+              "line": 271,
               "text": "var removeNumbering = false;"
             },
             {
-              "line": 215,
+              "line": 273,
               "text": "removeNumbering = confirm(\"В подписях обнаружена нумерация (1., 2., 1), 2) и т.д.).\\n\\n\" +"
             },
             {
-              "line": 245,
+              "line": 303,
               "text": "if (removeNumbering) {"
             },
             {
-              "line": 284,
+              "line": 342,
               "text": "if (removeNumbering && numberingRemovedCount > 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 7,
+          "name": "deleteOriginal",
+          "declarations": [
+            {
+              "line": 279,
+              "text": "var deleteOriginal = false;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 279,
+              "text": "var deleteOriginal = false;"
+            },
+            {
+              "line": 281,
+              "text": "deleteOriginal = confirm(\"После расстановки подписей удалить исходный выделенный фрагмент с текстами подписей?\\n\\n\" +"
+            },
+            {
+              "line": 326,
+              "text": "if (deleteOriginal && successCount > 0) {"
+            },
+            {
+              "line": 334,
+              "text": "} else if (deleteOriginal) {"
             }
           ],
           "classification": "requires_review"
@@ -73413,29 +73934,41 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 66,
+          "line": 124,
           "text": "// version 4.3"
         },
         {
-          "line": 98,
+          "line": 156,
           "text": "// version 4.3, 11.08.2026"
         },
         {
-          "line": 105,
+          "line": 163,
           "text": "var scriptVersion = \"4.3\";"
         },
         {
-          "line": 119,
+          "line": 177,
           "text": "MsgBox(scriptName + \"\\nver. \" + scriptVersion + \"\\n---------------------------\\n\\nВы ничего не выделили.\\n\\nПеред запуском данного скрипта, пожалуйста, выделите абзацы с подписями."
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Снятый в диалоге флажок пустой строки после подписи код преобразует обратно в значение 1; этот параметр фактически нельзя выключить через диалог.",
           "verification": "requires_review"
         },
         {
-          "text": "Файловые операции не отменяются обычным Ctrl+Z в книге.",
+          "text": "При подтверждении удаления исходного фрагмента он удаляется после любой успешной вставки; частичный успех не предотвращает потерю оставшихся исходных подписей.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Диалог создаётся как временный HTML-файл в системном каталоге; его запись и удаление не входят в отмену изменений книги. При сбое до очистки файл может остаться.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Группа отмены открывается перед вставкой, но общий обработчик ошибки не закрывает её при исключении; полнота отмены частичных изменений не проверена.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Поиск целей исключает изображения с пустой или неопределённой ссылкой, но не ограничивается основным текстом книги.",
           "verification": "requires_review"
         }
       ],
@@ -73456,71 +73989,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 228,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 305,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/33_Переместить иллюстрации после заголовков.js",
