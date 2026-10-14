@@ -18248,5 +18248,246 @@
       "usageCorrected": 1,
       "undoDescriptionsClarified": 1
     }
+  },
+  {
+    "path": "34_Управление курсором либо выделением/001_Установить курсор в начало документа.js",
+    "codeSha256": "605cb9150cdbbaebabfd6974d423c69d839c7e235ec9427b62953f62ee26bb85",
+    "evidence": "Run: строки 44-53 ищут fbw_body, создают текстовый диапазон, сворачивают его к началу, выделяют и прокручивают окно к (0,0). Выделение на входе не требуется; книга не меняется.",
+    "changes": [
+      {
+        "field": "scope",
+        "before": "Сеанс и интерфейс редактора.",
+        "after": "Начало визуального текста fbw_body и прокрутка текущего окна.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+          "Запустите команду из меню или дерева скриптов."
+        ],
+        "after": [
+          "Откройте книгу и запустите скрипт: курсор перейдёт к началу визуального текста, окно прокрутится вверх.",
+          "Если область книги fbw_body не найдена, скрипт завершится без сообщения."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт меняет только положение курсора и прокрутку окна; текст книги не меняется."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [],
+    "metrics": {
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "10_Статистика/22_Показать номер используемой версии IE.js",
+    "codeSha256": "8991a6208fdfa972601c9f690843cd89c565fde596c66df47a1fc23096b8472e",
+    "evidence": "Run: строки 41-78 разбирают navigator.userAgent по MSIE, Trident/rv: и Edge/, затем показывают найденную метку и полную строку User-Agent. Содержимое книги не читается, не изменяется и не экспортируется.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Показывает номер используемой версии IE.",
+        "after": "Показывает номер IE или метку Edge и строку User-Agent текущего окна.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+        "after": "Ищет MSIE, Trident с rv: или Edge/ в navigator.userAgent. При распознавании показывает номер IE либо слово Edge и саму строку User-Agent; установленную версию браузера и режим совместимости отдельно не проверяет.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Текущая книга или определённые кодом её разделы.",
+        "after": "Браузерное окружение текущего окна редактора; книгу не анализирует.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+        ],
+        "after": [
+          "Запустите скрипт и прочитайте номер или метку браузера вместе со строкой User-Agent.",
+          "Результат отражает строку User-Agent окна, а не независимую проверку установленного IE."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт читает браузерную строку и показывает сообщение; книгу не меняет."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "98_Встроенный таймер.js",
+    "codeSha256": "099828550d3644192980ac518b50049060fb83ddaa9637ff4689dd55e040f451",
+    "evidence": "Run: строки 67-74 запрашивают включение и создают setInterval(100000), выводящий напоминание. При отмене напоминания вызывается clearInterval(id). id — общая переменная; повторный запуск создаёт дополнительные таймеры, а callback всех таймеров использует последнее значение id. Документ не читается и не сохраняется.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Показывает периодическое напоминание сохранить книгу.",
+        "after": "Включает напоминание о сохранении каждые 100 секунд.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "После подтверждения устанавливает setInterval на 100000 миллисекунд. В очередном напоминании «Отмена» снимает таймер. Сам файл не сохраняется.",
+        "after": "После подтверждения запускает таймер с интервалом 100 секунд. В напоминании «Отмена» прекращает таймер при одиночном запуске. Скрипт не сохраняет книгу автоматически.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Сеанс и интерфейс редактора.",
+        "after": "Текущий сеанс окна редактора; действует, пока работает созданный таймер.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+        ],
+        "after": [
+          "Запустите скрипт и подтвердите включение напоминания.",
+          "При очередном сообщении нажмите «ОК», чтобы оставить один запущенный таймер, или «Отмена», чтобы его остановить. Не запускайте скрипт повторно до остановки таймера."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "warnings",
+        "before": [
+          "Это напоминание, а не автосохранение; подтверждение сообщения не записывает книгу на диск."
+        ],
+        "after": [
+          "Это напоминание, а не автосохранение; сохраните книгу вручную.",
+          "Повторный запуск создаёт ещё один таймер. Из-за общей переменной id отмена может остановить только последний таймер, оставив предыдущий работающим."
+        ],
+        "category": "false_warning"
+      },
+      {
+        "field": "authors",
+        "before": [
+          {
+            "name": "Forcosigan",
+            "role": "author"
+          },
+          {
+            "name": "Forcosigan",
+            "role": "contributor",
+            "contribution": "declared_credit"
+          },
+          {
+            "name": "wotti",
+            "role": "author"
+          },
+          {
+            "name": "wotti",
+            "role": "contributor",
+            "contribution": "declared_credit"
+          }
+        ],
+        "after": [
+          {
+            "name": "Forcosigan",
+            "role": "author"
+          },
+          {
+            "name": "wotti",
+            "role": "author"
+          }
+        ],
+        "category": "incorrect_authorship"
+      },
+      {
+        "field": "settings",
+        "before": [
+          {
+            "name": "interval",
+            "value": 100000,
+            "expression": "100000",
+            "description": "Период напоминания в миллисекундах (100 секунд); задан аргументом setInterval.",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          }
+        ],
+        "after": [],
+        "category": "incorrect_setting"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт создаёт таймер и показывает сообщения; книгу не меняет. Отмена действий редактора не управляет таймером."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 72,
+        "issue": "При повторном запуске callback старого таймера обращается к общему id последнего таймера; отмена может оставить старый таймер активным."
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "warningsClarified": 1,
+      "attributionClarified": 1,
+      "serviceSettingsRemoved": 1,
+      "undoDescriptionsClarified": 1
+    }
   }
 ]
