@@ -16,18 +16,18 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **140**. Исполняемый код не изменён.
+Изменено карточек: **141**. Исполняемый код не изменён.
 
-- `false_warning`: 116
-- `generic_usage`: 85
-- `inaccurate_description`: 172
+- `false_warning`: 117
+- `generic_usage`: 86
+- `inaccurate_description`: 174
 - `inaccurate_version`: 1
 - `incorrect_authorship`: 37
-- `incorrect_dependency`: 70
+- `incorrect_dependency`: 71
 - `incorrect_effect`: 1
-- `incorrect_scope`: 75
-- `incorrect_setting`: 96
-- `incorrect_undo`: 84
+- `incorrect_scope`: 76
+- `incorrect_setting`: 97
+- `incorrect_undo`: 85
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -37,15 +37,15 @@
 - `dependenciesClarified`: 29
 - `externalWarningsRefined`: 12
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 85
-- `scopeClarified`: 69
+- `purposeClarified`: 86
+- `scopeClarified`: 70
 - `serviceSettingsRemoved`: 142
-- `settingsClarified`: 382
-- `undoDescriptionsClarified`: 85
-- `usageCorrected`: 85
-- `warningsClarified`: 25
+- `settingsClarified`: 386
+- `undoDescriptionsClarified`: 86
+- `usageCorrected`: 86
+- `warningsClarified`: 26
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **61**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **62**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -157,13 +157,15 @@
 - `05_Иллюстрации/37_Заменить все иллюстрации на пустые картинки.js:249` — После BeginUndoUnit нет finally для EndUndoUnit; исключение в замене или удалении оставит группу отмены открытой.
 - `05_Иллюстрации/46_Заменить пустые строки на пустые картинки.js:126` — showStatistics объявлена в блоке настроек, но не читается; итоговый MsgBox на строке 744 показывается и в предполагаемом тихом режиме.
 - `05_Иллюстрации/46_Заменить пустые строки на пустые картинки.js:545` — BeginUndoUnit вызывается до проверки выделения без finally; исключение до EndUndoUnit оставит группу отмены открытой.
+- `05_Иллюстрации/47_Вставить пустую блочную иллюстрацию по месту курсора.js:439` — Если один из временных маркеров выделения не найден, возврат происходит без очистки уже вставленного маркера.
+- `05_Иллюстрации/47_Вставить пустую блочную иллюстрацию по месту курсора.js:679` — Операция отмены открывается без finally; исключение при перестройке секций или вставке до EndUndoUnit оставит её открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1932
+- `generic_usage`: 1927
 - `inaccurate_description`: 109
-- `incorrect_undo`: 344
-- `requires_review`: 509
+- `incorrect_undo`: 343
+- `requires_review`: 508
 
 ## Границы проверки
 
