@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **72**.
+Карточек без автоматических замечаний: **74**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,18 +16,18 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **163**. Исполняемый код не изменён.
+Изменено карточек: **173**. Исполняемый код не изменён.
 
-- `false_warning`: 131
-- `generic_usage`: 108
-- `inaccurate_description`: 213
+- `false_warning`: 141
+- `generic_usage`: 118
+- `inaccurate_description`: 233
 - `inaccurate_version`: 1
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 95
+- `incorrect_dependency`: 105
 - `incorrect_effect`: 2
-- `incorrect_scope`: 101
+- `incorrect_scope`: 111
 - `incorrect_setting`: 101
-- `incorrect_undo`: 107
+- `incorrect_undo`: 117
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -37,15 +37,15 @@
 - `dependenciesClarified`: 29
 - `externalWarningsRefined`: 12
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 106
-- `scopeClarified`: 92
+- `purposeClarified`: 116
+- `scopeClarified`: 102
 - `serviceSettingsRemoved`: 143
 - `settingsClarified`: 397
-- `undoDescriptionsClarified`: 108
-- `usageCorrected`: 108
-- `warningsClarified`: 39
+- `undoDescriptionsClarified`: 118
+- `usageCorrected`: 118
+- `warningsClarified`: 49
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **69**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **71**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -174,13 +174,15 @@
 - `06_Чистка/21_Удалить теги style.js:57` — Условие выбирает все SPAN, кроме точных классов code и image; название и исходное описание ошибочно ограничивали действие тегами style.
 - `06_Чистка/21_Удалить теги style.js:59` — После открытия операции отмены обход не защищён finally.
 - `09_Стихи/03_Слить параграфы.js:59` — Между началом и завершением операции отмены вставка HTML не защищена finally.
+- `19_Обработка форматирования/16_Расформатировать все эпиграфы.js:84` — EndUndoUnit вызывается даже при нуле совпадений, когда BeginUndoUnit не вызывался.
+- `19_Обработка форматирования/20_Расформатировать подзаголовок.js:55` — После открытия операции отмены вставка и удаление временного маркера не защищены finally; при исключении маркер и группа могут остаться.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1859
+- `generic_usage`: 1820
 - `inaccurate_description`: 104
-- `incorrect_undo`: 331
-- `requires_review`: 496
+- `incorrect_undo`: 321
+- `requires_review`: 486
 
 ## Границы проверки
 
