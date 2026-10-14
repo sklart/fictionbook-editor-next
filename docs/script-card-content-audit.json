@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 519,
-    "generic_usage": 1982,
-    "incorrect_undo": 354,
+    "requires_review": 517,
+    "generic_usage": 1972,
+    "incorrect_undo": 352,
     "inaccurate_description": 109
   },
   "reviewedChanges": [
@@ -15242,18 +15242,337 @@
         "settingsClarified": 2,
         "undoDescriptionsClarified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/44_Удалить лишние секции вокруг блочных иллюстраций.js",
+      "codeSha256": "ab4398158058832ec3376371a3c0e8817a15df0fbef1181c313a6e9c46c6b0cb",
+      "evidence": "Исходник строки 81–91: настройка; 114–130: поиск основных body; 152–191: ровно одно непосредственное изображение и пустые абзацы; 210–266: проверка позиции перед следующей секцией; 279–318: рекурсивный сбор; 322–342: подтверждение; 349–421: перенос, удаление оболочки и группировка отмены.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для удаления избыточных секций вокруг блочных иллюстраций в fb2 документах.",
+          "after": "Убирает секцию-оболочку вокруг одиночной блочной иллюстрации перед следующей секцией.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для удаления избыточных секций вокруг блочных иллюстраций в fb2 документах. Скрипт обрабатывает секции, которые содержат только одну блочную иллюстрацию (DIV class=image) и пустую строку,",
+          "after": "Ищет секции, содержащие ровно одну непосредственную DIV.image и только пустые абзацы. Если такая секция — первое непустое содержимое родителя, а после неё идёт другая секция, переносит иллюстрацию на её место в родителе, удаляет пустые абзацы и пустую оболочку. Секция после заголовка body пропускается.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Вложенные и прямые секции всех основных body без fbname; секции в notes/comments не обрабатываются. Общий счётчик блочных изображений в отчёте охватывает весь документ.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Запустите скрипт и при стандартном режиме подтвердите число подходящих секций.",
+            "Проверьте расположение изображений и границы секций после обработки до сохранения книги."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Удаляются пустые абзацы внутри подходящей секции; расположение иллюстрации в структуре книги меняется.",
+            "Тихий режим не спрашивает подтверждения; сообщение об отсутствии подходящих секций всё равно выводится."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "title": "Показывать подтверждение и итог",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — спросить перед переносом и показать результат; 0 — выполнять без подтверждения, но сообщать об отсутствии подходящих секций.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Перенос и удаление секций объединены в одну операцию отмены редактора на штатном пути; поведение при ошибке во время обработки отдельно не проверено."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 349,
+          "issue": "После открытия операции отмены цикл обработки не защищён finally; исключение до EndUndoUnit оставит её незавершённой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1
+      }
+    },
+    {
+      "path": "05_Иллюстрации/56_Вынести инлайн иллюстрации из заголовков.js",
+      "codeSha256": "4f2d6bd32fecbb65777b6887fe8dda23af0a8671396887d8eb7ea431e8e8fa53",
+      "evidence": "Исходник строки 104–125: четыре настройки; 230–250: создание блочного изображения с копией дочерних узлов; 253–257: создание пустой строки; 274–333: удаление SPAN и вставка DIV после заголовка; 345–382: поиск всех заголовков под fbw_body; 385–431: подтверждение, группировка отмены и обработка ошибки.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для выноса внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
+          "after": "Преобразует встроенные иллюстрации заголовков в блочные изображения после заголовка.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для выноса внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
+          "after": "Находит SPAN.image внутри заголовков под fbw_body, создаёт для каждого DIV.image с копией содержимого, удаляет исходный SPAN и вставляет новые блоки после заголовка с пустыми абзацами между ними. Если заголовок стал пустым, по умолчанию добавляет текстовый маркер. Режим заготовок меняет href нового блока на #undefined, но копирует содержимое исходного SPAN.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV.title внутри fbw_body, включая заголовки различных body; без ограничения на выделение.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Запустите скрипт на открытой книге; при стандартном режиме проверьте число затронутых заголовков и подтвердите перенос.",
+            "После обработки проверьте новые блочные изображения, пустые заголовки и вставленные маркеры до сохранения."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Режим replaceWithEmpty не очищает скопированный IMG src, поэтому созданная заготовка может сохранить ссылку на исходную картинку.",
+            "В исходнике есть присваивание результату вызова inflateBlock при создании пустой строки; выполнение ветки с несколькими изображениями требует отдельной проверки."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - тихий режим, 1 - показывать статистику",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "replaceWithEmpty",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - реальные, 1 - пустышки",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "addMarkerToEmptyTitle",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - оставить пустым, 1 - добавить маркер",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "emptyTitleMarker",
+              "value": "ZZZ_empty_title",
+              "expression": "\"ZZZ_empty_title\"",
+              "description": "Пользовательский маркер для пустого заголовка",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "title": "Показывать подтверждение и итог",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — запросить подтверждение и показать результат; 0 — выполнять без этих сообщений.",
+              "source": "code"
+            },
+            {
+              "name": "replaceWithEmpty",
+              "title": "Режим пустых иллюстраций",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — сохранить href исходной иллюстрации; 1 — записать #undefined в href нового блока, содержимое SPAN при этом копируется.",
+              "source": "code"
+            },
+            {
+              "name": "addMarkerToEmptyTitle",
+              "title": "Помечать пустые заголовки",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — добавить текстовый маркер, если после удаления иллюстраций заголовок пуст; 0 — оставить без маркера.",
+              "source": "code"
+            },
+            {
+              "name": "emptyTitleMarker",
+              "title": "Текст маркера заголовка",
+              "value": "ZZZ_empty_title",
+              "expression": "\"ZZZ_empty_title\"",
+              "description": "Текст, который добавляется в опустевший заголовок при включённом маркере.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Перенос заголовков группируется для отмены; при исключении скрипт пытается закрыть операцию и показывает ошибку. Полнота отката в редакторе отдельно не проверена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 256,
+          "issue": "В createEmptyLine записано присваивание результату вызова window.external.inflateBlock(emptyP); корректность такой записи и ветки нескольких изображений требует выполнения в JScript."
+        },
+        {
+          "line": 236,
+          "issue": "replaceWithEmpty подменяет только href блока, сохраняя клонированный IMG src исходной иллюстрации; адреса могут расходиться."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "settingsClarified": 4,
+        "undoDescriptionsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 152,
-    "generic_usage": 75,
-    "false_warning": 106,
-    "incorrect_setting": 86,
-    "incorrect_scope": 63,
-    "incorrect_undo": 74,
+    "inaccurate_description": 156,
+    "generic_usage": 77,
+    "false_warning": 108,
+    "incorrect_setting": 88,
+    "incorrect_scope": 65,
+    "incorrect_undo": 76,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 60,
-    "incorrect_authorship": 29,
+    "incorrect_dependency": 62,
+    "incorrect_authorship": 31,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 1
@@ -15261,12 +15580,12 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 137,
-    "undoDescriptionsClarified": 75,
-    "usageCorrected": 75,
-    "purposeClarified": 75,
+    "undoDescriptionsClarified": 77,
+    "usageCorrected": 77,
+    "purposeClarified": 77,
     "warningsClarified": 23,
-    "scopeClarified": 59,
-    "settingsClarified": 331,
+    "scopeClarified": 61,
+    "settingsClarified": 336,
     "attributionClarified": 3,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29
@@ -59669,49 +59988,46 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Удалить лишние секции вокруг блочных иллюстраций",
-        "summary": "Скрипт предназначен для удаления избыточных секций вокруг блочных иллюстраций в fb2 документах.",
-        "description": "Скрипт предназначен для удаления избыточных секций вокруг блочных иллюстраций в fb2 документах. Скрипт обрабатывает секции, которые содержат только одну блочную иллюстрацию (DIV class=image) и пустую строку,",
+        "summary": "Убирает секцию-оболочку вокруг одиночной блочной иллюстрации перед следующей секцией.",
+        "description": "Ищет секции, содержащие ровно одну непосредственную DIV.image и только пустые абзацы. Если такая секция — первое непустое содержимое родителя, а после неё идёт другая секция, переносит иллюстрацию на её место в родителе, удаляет пустые абзацы и пустую оболочку. Секция после заголовка body пропускается.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Вложенные и прямые секции всех основных body без fbname; секции в notes/comments не обрабатываются. Общий счётчик блочных изображений в отчёте охватывает весь документ.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Запустите скрипт и при стандартном режиме подтвердите число подходящих секций.",
+          "Проверьте расположение изображений и границы секций после обработки до сохранения книги."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Удаляются пустые абзацы внутри подходящей секции; расположение иллюстрации в структуре книги меняется.",
+          "Тихий режим не спрашивает подтверждения; сообщение об отсутствии подходящих секций всё равно выводится."
         ],
         "settings": [
           {
             "name": "showStatistics",
+            "title": "Показывать подтверждение и итог",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — спросить перед переносом и показать результат; 0 — выполнять без подтверждения, но сообщать об отсутствии подходящих секций.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Перенос и удаление секций объединены в одну операцию отмены редактора на штатном пути; поведение при ошибке во время обработки отдельно не проверено."
         },
         "examples": null,
         "tags": [
@@ -59723,13 +60039,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 349,
+            "line": 346,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 421,
+            "line": 418,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -59737,19 +60053,19 @@
         "selection": [],
         "write": [
           {
-            "line": 137,
+            "line": 134,
             "text": "var innerHTML = element.innerHTML || \"\";"
           },
           {
-            "line": 137,
+            "line": 134,
             "text": "var innerHTML = element.innerHTML || \"\";"
           },
           {
-            "line": 141,
+            "line": 138,
             "text": "if (innerHTML == \"\" || innerHTML == nbspEntity || innerHTML == nbspChar) return true;"
           },
           {
-            "line": 141,
+            "line": 138,
             "text": "if (innerHTML == \"\" || innerHTML == nbspEntity || innerHTML == nbspChar) return true;"
           }
         ],
@@ -59760,99 +60076,99 @@
         "file": [],
         "return": [
           {
-            "line": 130,
+            "line": 127,
             "text": "return;"
           },
           {
-            "line": 135,
+            "line": 132,
             "text": "if (element.nodeName != \"P\") return false;"
           },
           {
-            "line": 141,
+            "line": 138,
             "text": "if (innerHTML == \"\" || innerHTML == nbspEntity || innerHTML == nbspChar) return true;"
           },
           {
-            "line": 148,
+            "line": 145,
             "text": "return cleanHTML == \"\";"
           },
           {
-            "line": 153,
+            "line": 150,
             "text": "if (section.className != \"section\") return false;"
           },
           {
-            "line": 190,
+            "line": 187,
             "text": "return hasImage && imageCount == 1 && hasOnlyImageAndEmptyLines;"
           },
           {
-            "line": 195,
+            "line": 192,
             "text": "if (!element || element.nodeType != 1) return false;"
           },
           {
-            "line": 198,
+            "line": 195,
             "text": "if (element.className == \"section\") return true;"
           },
           {
-            "line": 199,
+            "line": 196,
             "text": "if (element.className == \"image\") return true;"
           },
           {
-            "line": 200,
+            "line": 197,
             "text": "if (element.className == \"annotation\") return true;"
           },
           {
-            "line": 201,
+            "line": 198,
             "text": "if (element.className == \"epigraph\") return true;"
           },
           {
-            "line": 203,
+            "line": 200,
             "text": "return !isEmptyLine(element);"
           },
           {
-            "line": 206,
+            "line": 203,
             "text": "return false;"
           },
           {
-            "line": 212,
+            "line": 209,
             "text": "if (!parent || parent.nodeName != \"DIV\") return false;"
           },
           {
-            "line": 215,
+            "line": 212,
             "text": "if (parent.className != \"section\" && parent.className != \"body\") return false;"
           },
           {
-            "line": 224,
+            "line": 221,
             "text": "return false;"
           },
           {
-            "line": 248,
+            "line": 245,
             "text": "return true;"
           },
           {
-            "line": 251,
+            "line": 248,
             "text": "return false;"
           },
           {
-            "line": 256,
+            "line": 253,
             "text": "return false;"
           },
           {
-            "line": 261,
+            "line": 258,
             "text": "return false;"
           },
           {
-            "line": 280,
+            "line": 277,
             "text": "if (!element || element.nodeType != 1) return;"
           },
           {
-            "line": 325,
+            "line": 322,
             "text": "return;"
           },
           {
-            "line": 337,
+            "line": 334,
             "text": "return;"
           },
           {
-            "line": 342,
+            "line": 339,
             "text": "return;"
           }
         ]
@@ -59864,25 +60180,25 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 91,
+              "line": 88,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 91,
+              "line": 88,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             },
             {
-              "line": 127,
+              "line": 124,
               "text": "if (showStatistics) {"
             },
             {
-              "line": 322,
+              "line": 319,
               "text": "if (showStatistics) {"
             },
             {
-              "line": 429,
+              "line": 426,
               "text": "if (showStatistics) {"
             }
           ],
@@ -59892,25 +60208,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 64,
+          "line": 61,
           "text": "// version 1.2"
         },
         {
-          "line": 78,
+          "line": 75,
           "text": "// version 1.2, 21.04.2026"
         },
         {
-          "line": 82,
+          "line": 79,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 84,
+          "line": 81,
           "text": "var version = \"1.2\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Удаляются пустые абзацы внутри подходящей секции; расположение иллюстрации в структуре книги меняется.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Тихий режим не спрашивает подтверждения; сообщение об отсутствии подходящих секций всё равно выводится.",
           "verification": "requires_review"
         }
       ],
@@ -59931,80 +60251,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 349,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 421,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/45_Расставить одинаковые инлайн иллюстрации взамен пустых картинок.js",
@@ -65507,70 +65754,70 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Вынести инлайн иллюстрации из заголовков",
-        "summary": "Скрипт предназначен для выноса внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
-        "description": "Скрипт предназначен для выноса внутриабзацных (инлайн) иллюстраций (SPAN class=image)",
+        "summary": "Преобразует встроенные иллюстрации заголовков в блочные изображения после заголовка.",
+        "description": "Находит SPAN.image внутри заголовков под fbw_body, создаёт для каждого DIV.image с копией содержимого, удаляет исходный SPAN и вставляет новые блоки после заголовка с пустыми абзацами между ними. Если заголовок стал пустым, по умолчанию добавляет текстовый маркер. Режим заготовок меняет href нового блока на #undefined, но копирует содержимое исходного SPAN.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV.title внутри fbw_body, включая заголовки различных body; без ограничения на выделение.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Запустите скрипт на открытой книге; при стандартном режиме проверьте число затронутых заголовков и подтвердите перенос.",
+          "После обработки проверьте новые блочные изображения, пустые заголовки и вставленные маркеры до сохранения."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Режим replaceWithEmpty не очищает скопированный IMG src, поэтому созданная заготовка может сохранить ссылку на исходную картинку.",
+          "В исходнике есть присваивание результату вызова inflateBlock при создании пустой строки; выполнение ветки с несколькими изображениями требует отдельной проверки."
         ],
         "settings": [
           {
             "name": "showStatistics",
+            "title": "Показывать подтверждение и итог",
             "value": 1,
             "expression": "1",
-            "description": "0 - тихий режим, 1 - показывать статистику",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — запросить подтверждение и показать результат; 0 — выполнять без этих сообщений.",
+            "source": "code"
           },
           {
             "name": "replaceWithEmpty",
+            "title": "Режим пустых иллюстраций",
             "value": 0,
             "expression": "0",
-            "description": "0 - реальные, 1 - пустышки",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — сохранить href исходной иллюстрации; 1 — записать #undefined в href нового блока, содержимое SPAN при этом копируется.",
+            "source": "code"
           },
           {
             "name": "addMarkerToEmptyTitle",
+            "title": "Помечать пустые заголовки",
             "value": 1,
             "expression": "1",
-            "description": "0 - оставить пустым, 1 - добавить маркер",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — добавить текстовый маркер, если после удаления иллюстраций заголовок пуст; 0 — оставить без маркера.",
+            "source": "code"
           },
           {
             "name": "emptyTitleMarker",
+            "title": "Текст маркера заголовка",
             "value": "ZZZ_empty_title",
             "expression": "\"ZZZ_empty_title\"",
-            "description": "Пользовательский маркер для пустого заголовка",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Текст, который добавляется в опустевший заголовок при включённом маркере.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Перенос заголовков группируется для отмены; при исключении скрипт пытается закрыть операцию и показывает ошибку. Полнота отката в редакторе отдельно не проверена."
         },
         "examples": null,
         "tags": [
@@ -65824,7 +66071,11 @@
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Режим replaceWithEmpty не очищает скопированный IMG src, поэтому созданная заготовка может сохранить ссылку на исходную картинку.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "В исходнике есть присваивание результату вызова inflateBlock при создании пустой строки; выполнение ветки с несколькими изображениями требует отдельной проверки.",
           "verification": "requires_review"
         }
       ],
@@ -65845,84 +66096,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 398,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
-            },
-            {
-              "line": 406,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 430,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/57_Перейти на предыдущую пустую 'блочную' иллюстрацию.js",
