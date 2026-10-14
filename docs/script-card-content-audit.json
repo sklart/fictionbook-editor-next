@@ -3,9 +3,9 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 385,
-    "generic_usage": 1060,
+    "generic_usage": 1056,
     "incorrect_undo": 159,
-    "inaccurate_description": 65
+    "inaccurate_description": 64
   },
   "reviewedChanges": [
     {
@@ -45622,42 +45622,183 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "10_Статистика/34_Текстовая статистика.js",
+      "codeSha256": "05f6bf9c988a51c57da2f2e64184d76245bfbf444eacc8270dddb06c42ee72f9",
+      "evidence": "Шапка 1-16 указывает идею TaKir, реализацию DeepSeek/TaKir и назначение; 61-176 содержат эвристики языка и частей речи; 248-335 определяют выделение; 344-436 считают выделение и затронутые абзацы; 438-535 обходят fbw_body без выделения; 539-687 вычисляют показатели и показывают MsgBox. Настройки в карточке были служебными регулярными выражениями; внешних файлов, приложений и сети нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация по указанию в шапке"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Текстовая статистика.",
+          "after": "Показывает текстовую и приблизительную лингвистическую статистику книги или выделенного фрагмента.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+          "after": "Без выделения обходит абзацы и изображения fbw_body. При непустом выделении считает символы и слова в выделенном тексте, а типы абзацев и изображения — по затронутым элементам. Показывает объём текста, уникальные слова, оценку листов и страниц, распределение по языкам и частям речи. Книгу, буфер обмена и файлы не изменяет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Весь fbw_body без выделения; при распознанном непустом выделении — выделенный текст для символов и слов и пересекаемые абзацы/изображения для структурных счётчиков.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Откройте книгу и при необходимости выделите фрагмент текста; без выделения команда считает весь видимый текст книги.",
+            "Запустите команду и прочитайте отчёт. При частичном выделении абзаца его тип учитывается как для целого абзаца."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Распознавание языка, частей речи и лемм основано на упрощённых правилах; их показатели и расчёт листов/страниц приблизительны.",
+            "При выделении структурные счётчики могут охватывать целые абзацы, хотя символы и слова подсчитаны только по выделенному тексту. Неиспользуемое выделение вне текста книги может дать несогласованный отчёт."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт читает текст и показывает сообщение; изменений книги для отмены нет."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "reRoman",
+              "expression": "/^[IVXLCDMivxlcdm]+$/",
+              "description": "как в скрипте \"ОБЩАЯ СТАТИСТИКА\"",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "reArabic",
+              "expression": "/^[0-9]+$/",
+              "description": "как в скрипте \"ОБЩАЯ СТАТИСТИКА\"",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "reHasLetter",
+              "expression": "/[А-Яа-яA-Za-zЁё0-9]/",
+              "description": "проверка наличия букв ИЛИ цифр",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 348,
+          "issue": "При частичном выделении P структура абзаца и его инлайн-изображения учитываются по целому элементу, тогда как символы и слова берутся только из выделенного текста; отчёт смешивает разные области."
+        },
+        {
+          "line": 317,
+          "issue": "Непустое выделение вне fbw_body может оставить isSelection=true при пустом списке абзацев; текст выделения всё равно анализируется на строках 379-433 и выдаётся как статистика фрагмента книги."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 637,
-    "generic_usage": 325,
+    "inaccurate_description": 638,
+    "generic_usage": 326,
     "false_warning": 319,
-    "incorrect_setting": 171,
-    "incorrect_scope": 332,
-    "incorrect_undo": 324,
-    "uncertain_attribution": 41,
-    "incorrect_dependency": 336,
+    "incorrect_setting": 172,
+    "incorrect_scope": 333,
+    "incorrect_undo": 325,
+    "uncertain_attribution": 42,
+    "incorrect_dependency": 337,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "generic_warning": 26,
+    "generic_warning": 27,
     "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
     "incorrect_selection": 24,
-    "generic_summary": 25,
+    "generic_summary": 26,
     "incorrect_modification": 1
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 316,
-    "usageCorrected": 325,
-    "purposeClarified": 323,
-    "warningsClarified": 257,
-    "scopeClarified": 309,
-    "settingsClarified": 485,
-    "attributionClarified": 38,
+    "undoDescriptionsClarified": 317,
+    "usageCorrected": 326,
+    "purposeClarified": 324,
+    "warningsClarified": 258,
+    "scopeClarified": 310,
+    "settingsClarified": 486,
+    "attributionClarified": 39,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 207,
+    "dependenciesVerified": 208,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -123435,57 +123576,37 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Текстовая статистика",
-        "summary": "Текстовая статистика.",
-        "description": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+        "summary": "Показывает текстовую и приблизительную лингвистическую статистику книги или выделенного фрагмента.",
+        "description": "Без выделения обходит абзацы и изображения fbw_body. При непустом выделении считает символы и слова в выделенном тексте, а типы абзацев и изображения — по затронутым элементам. Показывает объём текста, уникальные слова, оценку листов и страниц, распределение по языкам и частям речи. Книгу, буфер обмена и файлы не изменяет.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация по указанию в шапке"
           }
         ],
         "version": "3.1",
-        "scope": "Текущая книга или определённые кодом её разделы.",
+        "scope": "Весь fbw_body без выделения; при распознанном непустом выделении — выделенный текст для символов и слов и пересекаемые абзацы/изображения для структурных счётчиков.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Откройте книгу и при необходимости выделите фрагмент текста; без выделения команда считает весь видимый текст книги.",
+          "Запустите команду и прочитайте отчёт. При частичном выделении абзаца его тип учитывается как для целого абзаца."
         ],
-        "warnings": [],
-        "settings": [
-          {
-            "name": "reRoman",
-            "expression": "/^[IVXLCDMivxlcdm]+$/",
-            "description": "как в скрипте \"ОБЩАЯ СТАТИСТИКА\"",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "reArabic",
-            "expression": "/^[0-9]+$/",
-            "description": "как в скрипте \"ОБЩАЯ СТАТИСТИКА\"",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "reHasLetter",
-            "expression": "/[А-Яа-яA-Za-zЁё0-9]/",
-            "description": "проверка наличия букв ИЛИ цифр",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          }
+        "warnings": [
+          "Распознавание языка, частей речи и лемм основано на упрощённых правилах; их показатели и расчёт листов/страниц приблизительны.",
+          "При выделении структурные счётчики могут охватывать целые абзацы, хотя символы и слова подсчитаны только по выделенному тексту. Неиспользуемое выделение вне текста книги может дать несогласованный отчёт."
         ],
+        "settings": [],
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт читает текст и показывает сообщение; изменений книги для отмены нет."
         },
         "examples": null,
         "tags": [
@@ -123499,19 +123620,19 @@
         "dialog": [],
         "selection": [
           {
-            "line": 307,
+            "line": 287,
             "text": "var spanRange = document.body.createTextRange();"
           },
           {
-            "line": 327,
+            "line": 307,
             "text": "var sel = document.selection;"
           },
           {
-            "line": 329,
+            "line": 309,
             "text": "var range = sel.createRange();"
           },
           {
-            "line": 331,
+            "line": 311,
             "text": "var tempRange = sel.createRange();"
           }
         ],
@@ -123523,265 +123644,194 @@
         "file": [],
         "return": [
           {
-            "line": 142,
+            "line": 122,
             "text": "if (lemma.length <= 2 || reArabic.test(lemma) || reRoman.test(lemma)) return lemma;"
           },
           {
-            "line": 158,
+            "line": 138,
             "text": "return lemma;"
           },
           {
-            "line": 166,
+            "line": 146,
             "text": "return;"
           },
           {
-            "line": 172,
+            "line": 152,
             "text": "return;"
           },
           {
-            "line": 178,
+            "line": 158,
             "text": "return;"
           },
           {
-            "line": 184,
+            "line": 164,
             "text": "return;"
           },
           {
-            "line": 189,
+            "line": 169,
             "text": "return;"
           },
           {
-            "line": 194,
+            "line": 174,
             "text": "return;"
           },
           {
-            "line": 207,
+            "line": 187,
             "text": "return;"
           },
           {
-            "line": 212,
+            "line": 192,
             "text": "return;"
           },
           {
-            "line": 217,
+            "line": 197,
             "text": "return;"
           },
           {
-            "line": 222,
+            "line": 202,
             "text": "return;"
           },
           {
-            "line": 229,
+            "line": 209,
             "text": "return;"
           },
           {
-            "line": 235,
+            "line": 215,
             "text": "return;"
           },
           {
-            "line": 241,
+            "line": 221,
             "text": "return;"
           },
           {
-            "line": 257,
+            "line": 237,
             "text": "return el;"
           },
           {
-            "line": 262,
+            "line": 242,
             "text": "if (!el) return null;"
           },
           {
-            "line": 264,
+            "line": 244,
             "text": "if (el.nodeName == \"P\") return el;"
           },
           {
-            "line": 265,
+            "line": 245,
             "text": "if (el.nodeName == \"DIV\" && el.className == \"image\") return el;"
           },
           {
-            "line": 269,
+            "line": 249,
             "text": "if (current.nodeName == \"P\") return current;"
           },
           {
-            "line": 270,
+            "line": 250,
             "text": "if (current.nodeName == \"DIV\" && current.className == \"image\") return current;"
           },
           {
-            "line": 273,
+            "line": 253,
             "text": "return null;"
           },
           {
-            "line": 279,
+            "line": 259,
             "text": "if (!text) return true;"
           },
           {
-            "line": 281,
+            "line": 261,
             "text": "return cleanText.length == 0;"
           },
           {
-            "line": 287,
+            "line": 267,
             "text": "if (!text) return false;"
           },
           {
-            "line": 288,
+            "line": 268,
             "text": "return !reHasLetter.test(text);"
           },
           {
-            "line": 300,
+            "line": 280,
             "text": "return count;"
           },
           {
-            "line": 310,
+            "line": 290,
             "text": "return selectionRange.inRange(spanRange) || selectionRange.isEqual(spanRange);"
           },
           {
-            "line": 312,
+            "line": 292,
             "text": "return false;"
           },
           {
-            "line": 351,
+            "line": 331,
             "text": "if (el1 == el2) return true;"
           },
           {
-            "line": 356,
+            "line": 336,
             "text": "if (!fbwBody_local) return false;"
           },
           {
-            "line": 360,
+            "line": 340,
             "text": "return false;"
           },
           {
-            "line": 365,
+            "line": 345,
             "text": "return (ptr == el2);"
           },
           {
-            "line": 637,
+            "line": 617,
             "text": "if (num.length > 3) return num.replace(/(\\d)(?=(\\d{3})+$)/g, \"$1 \");"
           },
           {
-            "line": 638,
+            "line": 618,
             "text": "return num;"
           },
           {
-            "line": 680,
+            "line": 660,
             "text": "if (number > 10 && number < 20) return five;"
           },
           {
-            "line": 682,
+            "line": 662,
             "text": "if (lastDigit === 1) return one;"
           },
           {
-            "line": 683,
+            "line": 663,
             "text": "if (lastDigit >= 2 && lastDigit <= 4) return two;"
           },
           {
-            "line": 684,
+            "line": 664,
             "text": "return five;"
           }
         ]
       },
       "namespaceUrls": [],
-      "settingEvidence": [
-        {
-          "index": 0,
-          "name": "reRoman",
-          "declarations": [
-            {
-              "line": 133,
-              "text": "var reRoman = /^[IVXLCDMivxlcdm]+$/;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 133,
-              "text": "var reRoman = /^[IVXLCDMivxlcdm]+$/;"
-            },
-            {
-              "line": 142,
-              "text": "if (lemma.length <= 2 || reArabic.test(lemma) || reRoman.test(lemma)) return lemma;"
-            },
-            {
-              "line": 477,
-              "text": "if (reRoman.test(word)) {"
-            },
-            {
-              "line": 575,
-              "text": "if (reRoman.test(word)) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 1,
-          "name": "reArabic",
-          "declarations": [
-            {
-              "line": 134,
-              "text": "var reArabic = /^[0-9]+$/;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 134,
-              "text": "var reArabic = /^[0-9]+$/;"
-            },
-            {
-              "line": 142,
-              "text": "if (lemma.length <= 2 || reArabic.test(lemma) || reRoman.test(lemma)) return lemma;"
-            },
-            {
-              "line": 471,
-              "text": "if (reArabic.test(word)) {"
-            },
-            {
-              "line": 569,
-              "text": "if (reArabic.test(word)) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 2,
-          "name": "reHasLetter",
-          "declarations": [
-            {
-              "line": 136,
-              "text": "var reHasLetter = /[А-Яа-яA-Za-zЁё0-9]/;  // проверка наличия букв ИЛИ цифр"
-            }
-          ],
-          "uses": [
-            {
-              "line": 136,
-              "text": "var reHasLetter = /[А-Яа-яA-Za-zЁё0-9]/;  // проверка наличия букв ИЛИ цифр"
-            },
-            {
-              "line": 288,
-              "text": "return !reHasLetter.test(text);"
-            }
-          ],
-          "classification": "requires_review"
-        }
-      ],
+      "settingEvidence": [],
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 71,
+          "line": 51,
           "text": "// version 3.1"
         },
         {
-          "line": 80,
+          "line": 60,
           "text": "// Изменения по сравнению с версией 2.2:"
         },
         {
-          "line": 85,
+          "line": 65,
           "text": "// version 3.1, 22.04.2026"
         },
         {
-          "line": 90,
+          "line": 70,
           "text": "var NumerusVersion = \"3.1\";"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Распознавание языка, частей речи и лемм основано на упрощённых правилах; их показатели и расчёт листов/страниц приблизительны.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При выделении структурные счётчики могут охватывать целые абзацы, хотя символы и слова подсчитаны только по выделенному тексту. Неиспользуемое выделение вне текста книги может дать несогласованный отчёт.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -123799,53 +123849,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Текстовая статистика.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "10_Статистика/35_Общая статистика+лингвистика.js",
