@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **217**.
+Карточек без автоматических замечаний: **218**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,55 +16,55 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **422**. Исполняемый код не изменён.
+Изменено карточек: **423**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 63
-- `generic_usage`: 368
+- `generic_summary`: 64
+- `generic_usage`: 369
 - `generic_warning`: 62
-- `inaccurate_description`: 680
+- `inaccurate_description`: 681
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 383
+- `incorrect_dependency`: 384
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 375
+- `incorrect_scope`: 376
 - `incorrect_selection`: 36
 - `incorrect_setting`: 198
-- `incorrect_undo`: 367
+- `incorrect_undo`: 368
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 6
-- `uncertain_attribution`: 60
+- `missing_warning`: 7
+- `uncertain_attribution`: 62
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 62
+- `attributionClarified`: 63
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 250
+- `dependenciesVerified`: 251
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 366
-- `scopeClarified`: 352
+- `purposeClarified`: 367
+- `scopeClarified`: 353
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
 - `settingsCorrected`: 3
-- `undoDescriptionsClarified`: 359
-- `usageCorrected`: 368
+- `undoDescriptionsClarified`: 360
+- `usageCorrected`: 369
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 300
+- `warningsClarified`: 301
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **262**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **263**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -586,11 +586,14 @@
 - `13_Заголовки, подзаголовки, пустые строки/605_Разбить однострочные заголовки на 2 абзаца.js:822` — Если позиция разбиения попадает внутрь элемента оформления, его узел целиком копируется в первый абзац вместо разделения текста по позиции. Итог может быть неверным либо p2 окажется пустым и разбивка не произойдёт.
 - `13_Заголовки, подзаголовки, пустые строки/605_Разбить однострочные заголовки на 2 абзаца.js:552` — Пустое слово после удаления пунктуации считается числительным: проверка allDigits для пустой строки оставляет true на строке 564. Вариант вроде «Глава . Название» ошибочно допускается как заголовок с числом.
 - `13_Заголовки, подзаголовки, пустые строки/605_Разбить однострочные заголовки на 2 абзаца.js:92` — Группы отмены для анализа и обработки открываются без защиты finally; исключение до EndUndoUnit на строке 152 либо 275 оставит соответствующую группу открытой.
+- `13_Заголовки, подзаголовки, пустые строки/616_Диагностика нумерации заголовков.js:326` — Вывод номера через item.analysis.number || «нет» заменяет распознанный номер 0 словом «нет»; та же ошибка повторяется в ветках строк 340 и 353.
+- `13_Заголовки, подзаголовки, пустые строки/616_Диагностика нумерации заголовков.js:55` — Таблица римских чисел содержит лишь избранные значения. Корректное число XXI проходит проверку символов, но отсутствует в таблице и потому не распознаётся; другие пропуски аналогичны.
+- `13_Заголовки, подзаголовки, пустые строки/616_Диагностика нумерации заголовков.js:272` — Для многоабзацного DIV.title берётся только первый P. Номер во втором абзаце не попадает в анализ, хотя отчёт считает весь DIV.title найденным заголовком.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 877
-- `inaccurate_description`: 50
+- `generic_usage`: 874
+- `inaccurate_description`: 49
 - `incorrect_undo`: 129
 - `requires_review`: 356
 
