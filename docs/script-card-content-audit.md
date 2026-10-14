@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **183**.
+Карточек без автоматических замечаний: **185**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,24 +16,24 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **372**. Исполняемый код не изменён.
+Изменено карточек: **374**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 17
-- `generic_usage`: 317
-- `generic_warning`: 17
-- `inaccurate_description`: 629
+- `generic_summary`: 19
+- `generic_usage`: 319
+- `generic_warning`: 19
+- `inaccurate_description`: 631
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 327
+- `incorrect_dependency`: 329
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 324
+- `incorrect_scope`: 326
 - `incorrect_selection`: 24
-- `incorrect_setting`: 164
-- `incorrect_undo`: 316
+- `incorrect_setting`: 165
+- `incorrect_undo`: 318
 - `incorrect_version`: 5
 - `uncertain_attribution`: 39
 
@@ -42,19 +42,19 @@
 - `attributionClarified`: 36
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 199
+- `dependenciesVerified`: 201
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 315
-- `scopeClarified`: 301
+- `purposeClarified`: 317
+- `scopeClarified`: 303
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 478
-- `undoDescriptionsClarified`: 308
-- `usageCorrected`: 317
-- `warningsClarified`: 248
+- `settingsClarified`: 479
+- `undoDescriptionsClarified`: 310
+- `usageCorrected`: 319
+- `warningsClarified`: 250
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **210**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **212**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -441,11 +441,15 @@
 - `09_Стихи/60_Драма (расширенная версия).js:435` — Если непустое выделение не даёт абзацев (например, выбран неподходящий контейнер), isSelectionMode остаётся 0 и скрипт без отдельного подтверждения обрабатывает весь документ.
 - `09_Стихи/60_Драма (расширенная версия).js:400` — На конце fbw_body цикл продолжает подъём по родителям после установки ProcessingEnding; при отсутствии следующего соседа у fbw_body возможен выход за корень и обращение к null.nextSibling.
 - `09_Стихи/60_Драма (расширенная версия).js:444` — Обход DOM после открытия группы отмены не защищён finally; ошибка может оставить группу открытой.
+- `10_Статистика/03_Статистика документа.js:29` — P, IMG и A считаются через document.getElementsByTagName, тогда как текст берётся только из fbw_body; элементы HTML-интерфейса могут завышать статистику книги.
+- `10_Статистика/03_Статистика документа.js:49` — cover объявляется только при наличии select с id=href; без такого поля обращение к cover.length вызывает ошибку.
+- `10_Статистика/03_Статистика документа.js:77` — Размер бинарников в FB2 вычисляется грубой формулой и затем показывается как точный размер; реальный объём сериализованного FB2 может отличаться.
+- `10_Статистика/07_Общая статистика.js:599` — Поиск контейнера image может дойти до fbw_body, после чего строка 600 вызывает replace для отсутствующего href; нештатная структура иллюстрации прерывает отчёт.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1091
-- `inaccurate_description`: 72
+- `generic_usage`: 1084
+- `inaccurate_description`: 70
 - `incorrect_undo`: 161
 - `requires_review`: 387
 

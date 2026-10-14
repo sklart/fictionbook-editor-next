@@ -3,9 +3,9 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 387,
-    "generic_usage": 1091,
+    "generic_usage": 1084,
     "incorrect_undo": 161,
-    "inaccurate_description": 72
+    "inaccurate_description": 70
   },
   "reviewedChanges": [
     {
@@ -44531,17 +44531,257 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "10_Статистика/03_Статистика документа.js",
+      "codeSha256": "c350f0e671b3096727ecfa7c4b10ef3094f81819ee582352222c954ddf933b5a",
+      "evidence": "Строки 22-89: текст fbw_body, счётчики P/IMG/A через document, выбор обложки, размеры бинарников и MsgBox. Внешних файлов, приложений и сети нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Статистика документа.",
+          "after": "Показывает краткую статистику текста, иллюстраций, сносок и вложенных файлов книги.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+          "after": "Считает символы видимого текста fbw_body, абзацы, изображения и ссылки класса note, сообщает о выбранной обложке. Для вложенных бинарных объектов суммирует размер через API редактора и приблизительно оценивает объём их представления в FB2. Результат показывает в сообщении; книгу не изменяет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Весь открытый документ: текст в fbw_body, элементы P/IMG/A на HTML-странице редактора, поля обложки и вложенных файлов. Выделение не используется.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Откройте книгу и запустите команду; выделение не требуется.",
+            "Прочитайте краткую статистику в окне сообщения. Показанный размер бинарников в FB2 является оценкой."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Подсчёт P, IMG и A выполняется по всей HTML-странице, поэтому в него могут попасть элементы вне текста книги.",
+            "При отсутствии поля выбора обложки скрипт может завершиться ошибкой; размер бинарников в FB2 рассчитывается приблизительно."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт только читает данные и показывает сообщение; изменений книги для отмены нет."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 29,
+          "issue": "P, IMG и A считаются через document.getElementsByTagName, тогда как текст берётся только из fbw_body; элементы HTML-интерфейса могут завышать статистику книги."
+        },
+        {
+          "line": 49,
+          "issue": "cover объявляется только при наличии select с id=href; без такого поля обращение к cover.length вызывает ошибку."
+        },
+        {
+          "line": 77,
+          "issue": "Размер бинарников в FB2 вычисляется грубой формулой и затем показывается как точный размер; реальный объём сериализованного FB2 может отличаться."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "10_Статистика/07_Общая статистика.js",
+      "codeSha256": "bd3a488aea4ed50f963ee9cdccf99625c76a9933cc47b2cf811fc391592af787",
+      "evidence": "Шапка 1-34 задаёт назначение и две настройки; 259-517 обходит абзацы и структуру; 526-660 читает бинарники, иллюстрации и обложки; 1191-1277 показывает страницы; 1287-1293 сохраняет отчёт только по выбранному режиму и после подтверждения. Внешних зависимостей и сетевых операций нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Общая статистика.",
+          "after": "Показывает подробную статистику структуры и содержимого открытой FB2-книги.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+          "after": "Обходит текст, разделы, абзацы, форматирование, иллюстрации, обложки и вложенные файлы книги. Собирает подробный отчёт и показывает его последовательно в окнах сообщений. По умолчанию ничего не сохраняет; настройка SaveStat позволяет после отдельного подтверждения скопировать отчёт в буфер обмена либо сохранить TXT-файл.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Вся открытая книга: fbw_body, метаданные версии, обложки и вложенные файлы. Курсор и выделение не используются.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Откройте книгу и запустите команду без выделения; переходите между страницами отчёта через запросы в диалоге.",
+            "Для выгрузки отчёта заранее измените SaveStat в коде: 1 — буфер обмена, 2 — TXT; при запуске подтвердите сохранение."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Текущее содержимое буфера обмена может быть заменено или очищено.",
+            "Файловые операции не отменяются обычным Ctrl+Z в книге."
+          ],
+          "after": [
+            "При исходном SaveStat=0 отчёт только показывается. Режим 1 после подтверждения заменяет текст в буфере обмена, режим 2 создаёт TXT-файл; эти действия не отменяются через редактор.",
+            "Иллюстрация без ожидаемого контейнера image или ссылки href может прервать подсчёт."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Книга не изменяется. При включённом сохранении запись в буфер обмена или TXT-файл выполняется после подтверждения и не относится к отмене правок книги."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "Vysota_teksta",
+              "value": 50,
+              "expression": "50",
+              "description": "0-50 (примерно) // Число строк в окне результатов.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "SaveStat",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 ; 2 //",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "subt_",
+              "value": false,
+              "expression": "false",
+              "description": "Признак подзаголовка для строки",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "textAuthor_",
+              "value": false,
+              "expression": "false",
+              "description": "Признак формата \"автор текста\"",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Ttl_",
+              "value": false,
+              "expression": "false",
+              "description": "Признак строки в заголовках",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "epig_",
+              "value": false,
+              "expression": "false",
+              "description": "Эпиграфы",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "poem_",
+              "value": false,
+              "expression": "false",
+              "description": "Стихи",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "Vysota_teksta",
+              "value": 50,
+              "expression": "50",
+              "description": "Ориентировочный предел строк на странице окна результатов.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "SaveStat",
+              "value": 0,
+              "expression": "0",
+              "description": "Сохранение отчёта: 0 — выключено, 1 — после подтверждения в буфер обмена, 2 — после подтверждения в TXT-файл.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 599,
+          "issue": "Поиск контейнера image может дойти до fbw_body, после чего строка 600 вызывает replace для отсутствующего href; нештатная структура иллюстрации прерывает отчёт."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 629,
-    "generic_usage": 317,
+    "inaccurate_description": 631,
+    "generic_usage": 319,
     "false_warning": 319,
-    "incorrect_setting": 164,
-    "incorrect_scope": 324,
-    "incorrect_undo": 316,
+    "incorrect_setting": 165,
+    "incorrect_scope": 326,
+    "incorrect_undo": 318,
     "uncertain_attribution": 39,
-    "incorrect_dependency": 327,
+    "incorrect_dependency": 329,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -44550,22 +44790,22 @@
     "incorrect_metadata": 10,
     "false_setting": 9,
     "incorrect_selection": 24,
-    "generic_summary": 17,
-    "generic_warning": 17
+    "generic_summary": 19,
+    "generic_warning": 19
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 308,
-    "usageCorrected": 317,
-    "purposeClarified": 315,
-    "warningsClarified": 248,
-    "scopeClarified": 301,
-    "settingsClarified": 478,
+    "undoDescriptionsClarified": 310,
+    "usageCorrected": 319,
+    "purposeClarified": 317,
+    "warningsClarified": 250,
+    "scopeClarified": 303,
+    "settingsClarified": 479,
     "attributionClarified": 36,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 199,
+    "dependenciesVerified": 201,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -120501,27 +120741,30 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Статистика документа",
-        "summary": "Статистика документа.",
-        "description": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+        "summary": "Показывает краткую статистику текста, иллюстраций, сносок и вложенных файлов книги.",
+        "description": "Считает символы видимого текста fbw_body, абзацы, изображения и ссылки класса note, сообщает о выбранной обложке. Для вложенных бинарных объектов суммирует размер через API редактора и приблизительно оценивает объём их представления в FB2. Результат показывает в сообщении; книгу не изменяет.",
         "authors": [
           {
             "role": "unknown"
           }
         ],
         "version": "Не указана",
-        "scope": "Текущая книга или определённые кодом её разделы.",
+        "scope": "Весь открытый документ: текст в fbw_body, элементы P/IMG/A на HTML-странице редактора, поля обложки и вложенных файлов. Выделение не используется.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Откройте книгу и запустите команду; выделение не требуется.",
+          "Прочитайте краткую статистику в окне сообщения. Показанный размер бинарников в FB2 является оценкой."
         ],
-        "warnings": [],
+        "warnings": [
+          "Подсчёт P, IMG и A выполняется по всей HTML-странице, поэтому в него могут попасть элементы вне текста книги.",
+          "При отсутствии поля выбора обложки скрипт может завершиться ошибкой; размер бинарников в FB2 рассчитывается приблизительно."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт только читает данные и показывает сообщение; изменений книги для отмены нет."
         },
         "examples": null,
         "tags": [
@@ -120541,7 +120784,7 @@
         "file": [],
         "return": [
           {
-            "line": 55,
+            "line": 58,
             "text": "return out;"
           }
         ]
@@ -120550,7 +120793,16 @@
       "settingEvidence": [],
       "dependencyEvidence": [],
       "authorshipEvidence": [],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Подсчёт P, IMG и A выполняется по всей HTML-странице, поэтому в него могут попасть элементы вне текста книги.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При отсутствии поля выбора обложки скрипт может завершиться ошибкой; размер бинарников в FB2 рассчитывается приблизительно.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -120568,44 +120820,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Статистика документа.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "10_Статистика/07_Общая статистика.js",
@@ -120617,8 +120832,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Общая статистика",
-        "summary": "Общая статистика.",
-        "description": "Собирает сведения из текущего документа и выводит результат сообщением, в буфер обмена или HTML-отчёт согласно коду варианта. Не выполняет автоматического исправления анализируемых элементов.",
+        "summary": "Показывает подробную статистику структуры и содержимого открытой FB2-книги.",
+        "description": "Обходит текст, разделы, абзацы, форматирование, иллюстрации, обложки и вложенные файлы книги. Собирает подробный отчёт и показывает его последовательно в окнах сообщений. По умолчанию ничего не сохраняет; настройка SaveStat позволяет после отдельного подтверждения скопировать отчёт в буфер обмена либо сохранить TXT-файл.",
         "authors": [
           {
             "name": "Александр Ка",
@@ -120626,73 +120841,37 @@
           }
         ],
         "version": "1.4",
-        "scope": "Текущая книга или определённые кодом её разделы.",
+        "scope": "Вся открытая книга: fbw_body, метаданные версии, обложки и вложенные файлы. Курсор и выделение не используются.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Откройте книгу и запустите команду без выделения; переходите между страницами отчёта через запросы в диалоге.",
+          "Для выгрузки отчёта заранее измените SaveStat в коде: 1 — буфер обмена, 2 — TXT; при запуске подтвердите сохранение."
         ],
         "warnings": [
-          "Текущее содержимое буфера обмена может быть заменено или очищено.",
-          "Файловые операции не отменяются обычным Ctrl+Z в книге."
+          "При исходном SaveStat=0 отчёт только показывается. Режим 1 после подтверждения заменяет текст в буфере обмена, режим 2 создаёт TXT-файл; эти действия не отменяются через редактор.",
+          "Иллюстрация без ожидаемого контейнера image или ссылки href может прервать подсчёт."
         ],
         "settings": [
           {
             "name": "Vysota_teksta",
             "value": 50,
             "expression": "50",
-            "description": "0-50 (примерно) // Число строк в окне результатов.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Ориентировочный предел строк на странице окна результатов.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "SaveStat",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 ; 2 //",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "subt_",
-            "value": false,
-            "expression": "false",
-            "description": "Признак подзаголовка для строки",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "textAuthor_",
-            "value": false,
-            "expression": "false",
-            "description": "Признак формата \"автор текста\"",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "Ttl_",
-            "value": false,
-            "expression": "false",
-            "description": "Признак строки в заголовках",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "epig_",
-            "value": false,
-            "expression": "false",
-            "description": "Эпиграфы",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "poem_",
-            "value": false,
-            "expression": "false",
-            "description": "Стихи",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Сохранение отчёта: 0 — выключено, 1 — после подтверждения в буфер обмена, 2 — после подтверждения в TXT-файл.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Книга не изменяется. При включённом сохранении запись в буфер обмена или TXT-файл выполняется после подтверждения и не относится к отмене правок книги."
         },
         "examples": null,
         "tags": [
@@ -120708,19 +120887,19 @@
         "selection": [],
         "write": [
           {
-            "line": 356,
+            "line": 320,
             "text": "s=ptr.innerHTML;"
           },
           {
-            "line": 419,
+            "line": 383,
             "text": "if (mEm[j].innerHTML.search(reSt)!=-1)"
           },
           {
-            "line": 420,
+            "line": 384,
             "text": "count_EmSt += mEm[j].innerHTML.match(reSt).length;      // Жирный курсив"
           },
           {
-            "line": 425,
+            "line": 389,
             "text": "if (mStr[j].innerHTML.search(reEm)!=-1)"
           }
         ],
@@ -120731,31 +120910,31 @@
         "file": [],
         "return": [
           {
-            "line": 156,
+            "line": 120,
             "text": "return Math.floor((\"0000000\"+Math.tan(Ts+Math.random()*2000)).replace(/[\\.\\-]/g, \"\").replace(/.+(\\d\\d\\d\\d\\d\\d)\\d$/g, \"0.$1\")*rndN);  //  Генерация случайных чисел от 0 до \"rndN\"."
           },
           {
-            "line": 409,
+            "line": 373,
             "text": "if (divUp.search(/h/)!=-1)  return;   //  Выход из функции если это раздел истории"
           },
           {
-            "line": 827,
+            "line": 791,
             "text": "return  (d+\"\").replace(/\\./g, \",\");          //  обычное округление и замена точки на привычную запятую"
           },
           {
-            "line": 832,
+            "line": 796,
             "text": "if (num == 0)  return  0;"
           },
           {
-            "line": 833,
+            "line": 797,
             "text": "if (num < 1024)  return  num+\" Б\";"
           },
           {
-            "line": 835,
+            "line": 799,
             "text": "if (num < 1024)  return  okruglenie(num)+\" кБ\";"
           },
           {
-            "line": 837,
+            "line": 801,
             "text": "return  okruglenie(num)+\" МБ\";"
           }
         ]
@@ -120767,29 +120946,29 @@
           "name": "Vysota_teksta",
           "declarations": [
             {
-              "line": 117,
+              "line": 81,
               "text": "var Vysota_teksta = 50;      // 0-50 (примерно)  //      Число строк в окне результатов."
             }
           ],
           "uses": [
             {
-              "line": 117,
+              "line": 81,
               "text": "var Vysota_teksta = 50;      // 0-50 (примерно)  //      Число строк в окне результатов."
             },
             {
-              "line": 1286,
+              "line": 1250,
               "text": "if (Vysota_teksta >= ind) {   // Если все строки могут поместиться на одной странице"
             },
             {
-              "line": 1293,
+              "line": 1257,
               "text": "Vysota_teksta -= 2;   //  высота колонки (в конце сборки страниц добавятся 2 строки)"
             },
             {
-              "line": 1308,
+              "line": 1272,
               "text": "if (Kolo > Vysota_teksta)  break;   //  если полученная высота строки превысила максимум - завершаем определение высоты страницы."
             },
             {
-              "line": 1311,
+              "line": 1275,
               "text": "if (n > Vysota_teksta)  break;   //  если полученная высота строки превысила максимум - завершаем определение высоты страницы."
             }
           ],
@@ -120800,175 +120979,26 @@
           "name": "SaveStat",
           "declarations": [
             {
-              "line": 126,
+              "line": 90,
               "text": "var SaveStat = 0;      // 0 ; 1 ; 2 //"
             }
           ],
           "uses": [
             {
-              "line": 126,
+              "line": 90,
               "text": "var SaveStat = 0;      // 0 ; 1 ; 2 //"
             },
             {
-              "line": 1256,
+              "line": 1220,
               "text": "if (SaveStat)"
             },
             {
-              "line": 1382,
+              "line": 1346,
               "text": "if (SaveStat == 1  &&  AskYesNo (\"◊  Сохранить текст общей статистики       \\n               в буфер обмена?\"))"
             },
             {
-              "line": 1387,
+              "line": 1351,
               "text": "if (SaveStat == 2  &&  AskYesNo (\"◊  Сохранить текст общей статистики       \\n    в TXT-файл, в кодировке \\\"UTF-16 LE\\\"?       \"))"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 2,
-          "name": "subt_",
-          "declarations": [
-            {
-              "line": 173,
-              "text": "var subt_  = false;                          //  Признак подзаголовка для строки"
-            }
-          ],
-          "uses": [
-            {
-              "line": 173,
-              "text": "var subt_  = false;                          //  Признак подзаголовка для строки"
-            },
-            {
-              "line": 363,
-              "text": "subt_ = (ptr.className==\"subtitle\");         //   Подзаголовки"
-            },
-            {
-              "line": 368,
-              "text": "if (subt_) {"
-            },
-            {
-              "line": 392,
-              "text": "if (!subt_  &&  !textAuthor_  &&  ptr.parentNode.className==\"section\")    count_txt[tip]++;         //   Обычный текст"
-            },
-            {
-              "line": 400,
-              "text": "if (subt_)    count_subtSp[tip]++;         //   Пустые строки в подзаголовках"
-            },
-            {
-              "line": 447,
-              "text": "if (!subt_ && !Ttl_) if (sct.search(reA83)!=-1)    count_A83++;         // *  в начале строки"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 3,
-          "name": "textAuthor_",
-          "declarations": [
-            {
-              "line": 184,
-              "text": "var textAuthor_ = false;    //  Признак формата \"автор текста\""
-            }
-          ],
-          "uses": [
-            {
-              "line": 184,
-              "text": "var textAuthor_ = false;    //  Признак формата \"автор текста\""
-            },
-            {
-              "line": 366,
-              "text": "textAuthor_ = (ptr.className==\"text-author\");         //   Автор текста"
-            },
-            {
-              "line": 372,
-              "text": "if (textAuthor_) {"
-            },
-            {
-              "line": 392,
-              "text": "if (!subt_  &&  !textAuthor_  &&  ptr.parentNode.className==\"section\")    count_txt[tip]++;         //   Обычный текст"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 4,
-          "name": "Ttl_",
-          "declarations": [
-            {
-              "line": 188,
-              "text": "var Ttl_ = false;                    //  Признак строки в заголовках"
-            }
-          ],
-          "uses": [
-            {
-              "line": 188,
-              "text": "var Ttl_ = false;                    //  Признак строки в заголовках"
-            },
-            {
-              "line": 362,
-              "text": "Ttl_=(ptr.parentNode.className==\"title\");         //   Заголовки"
-            },
-            {
-              "line": 399,
-              "text": "if (Ttl_)    count_titleSp[tip]++;         //   Пустые строки в заголовках"
-            },
-            {
-              "line": 447,
-              "text": "if (!subt_ && !Ttl_) if (sct.search(reA83)!=-1)    count_A83++;         // *  в начале строки"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 5,
-          "name": "epig_",
-          "declarations": [
-            {
-              "line": 192,
-              "text": "var epig_ = false;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 192,
-              "text": "var epig_ = false;"
-            },
-            {
-              "line": 365,
-              "text": "epig_=(ptr.parentNode.className==\"epigraph\")         //   Эпиграф"
-            },
-            {
-              "line": 402,
-              "text": "if (epig_)    count_epigSp[tip]++;         //   Пустые строки в эпиграфе"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 6,
-          "name": "poem_",
-          "declarations": [
-            {
-              "line": 196,
-              "text": "var poem_ = false;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 196,
-              "text": "var poem_ = false;"
-            },
-            {
-              "line": 364,
-              "text": "poem_=(ptr.parentNode.className==\"stanza\")         //   Стихи"
-            },
-            {
-              "line": 401,
-              "text": "if (poem_)    count_poemSp[tip]++;         //   Пустые строки в стихах"
-            },
-            {
-              "line": 464,
-              "text": "if (!poem_  &&  sct.search(reA97)!=-1)    count_A97+=sct.match(reA97).length;         // Строчная буква в начале строки"
             }
           ],
           "classification": "requires_review"
@@ -120977,29 +121007,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 107,
+          "line": 71,
           "text": "var NumerusVersion=\"1.4\";"
         },
         {
-          "line": 175,
+          "line": 139,
           "text": "// Автор текста"
         },
         {
-          "line": 176,
+          "line": 140,
           "text": "var count_tAut = [0,0,0,0];    //  Невалидное форматирование \"автор текста\" (групп)"
         },
         {
-          "line": 177,
+          "line": 141,
           "text": "var count_tAut_p = [0,0,0,0];    //  Невалидное форматирование \"автор текста\" (строк)"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Текущее содержимое буфера обмена может быть заменено или очищено.",
+          "text": "При исходном SaveStat=0 отчёт только показывается. Режим 1 после подтверждения заменяет текст в буфере обмена, режим 2 создаёт TXT-файл; эти действия не отменяются через редактор.",
           "verification": "requires_review"
         },
         {
-          "text": "Файловые операции не отменяются обычным Ctrl+Z в книге.",
+          "text": "Иллюстрация без ожидаемого контейнера image или ссылки href может прервать подсчёт.",
           "verification": "requires_review"
         }
       ],
@@ -121020,53 +121050,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Общая статистика.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "10_Статистика/10_Статистика нецензурных слов.js",
