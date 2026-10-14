@@ -2,8 +2,8 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 356,
-    "generic_usage": 870,
+    "requires_review": 357,
+    "generic_usage": 866,
     "incorrect_undo": 128,
     "inaccurate_description": 49
   },
@@ -52220,18 +52220,260 @@
         "effectCorrected": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/618_Создать таблицу (под)заголовков номерных разделов (с переходом).js",
+      "codeSha256": "d987f98942e73ffc34c8b2ab2c9dea7c3cc60aef93d782100acc012545657389",
+      "evidence": "Строки 11–49 задают выбор режима и параметры; 563–618 читают и преобразуют HTML fbw_body без записи обратно; 644–1029 ищут номерные фрагменты; 1037–1107 отмечают нарушения порядка; 1114–1205 собирают HTML-таблицу и переходы; 1209–1219 открывают HTML/Таблица совпадений.html и заполняют отдельное окно. Вспомогательный файл существует в runtime/HTML и его SHA-256 совпадает; файловой записи, сети и запуска внешних приложений нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Создаёт таблицу (под)заголовков номерных разделов (с переходом).",
+          "after": "Строит отдельную таблицу номерных заголовков или подзаголовков с отметками порядка и переходом к позиции.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Собирает номера и тексты заголовков/подзаголовков, строит диагностическую таблицу и позволяет переходить к соответствующим местам. Генерация HTML-таблицы отчёта не равнозначна вставке таблицы в книгу.",
+          "after": "После выбора заголовков или подзаголовков берёт HTML открытой книги, по шаблонам ищет арабские, римские и словесные номера и показывает результаты в отдельном HTML-окне. В таблице указывает номер, текст и позицию, отмечает предполагаемые нарушения порядка и начала последовательностей цветом. Нажатие на позицию пытается перейти к соответствующему месту в окне редактора. Книгу не изменяет; отчёт зависит от вспомогательного HTML-файла. При исходной длине выделения 0 переход устанавливает курсор без выделения текста.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Сериализованный HTML элемента fbw_body; скрипт пытается исключить части notes и comments текстовой заменой, затем ищет номерные заголовки либо подзаголовки по выбранному режиму. Совпадения зависят от вида HTML-разметки и поддерживаемых шаблонов.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "В первом вопросе выберите «ОК» для заголовков или «Отмена» для подзаголовков; затем просмотрите отдельное окно с таблицей.",
+            "Нажмите на ячейку «Позиция», чтобы перейти к месту в книге. Проверьте цветовые отметки вручную: начало новой нумерации может быть допустимым.",
+            "Держите вместе со скриптом вспомогательный файл HTML/Таблица совпадений.html; параметры регистра, цветов и длины выделения меняются в исходном JS."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+          ],
+          "after": [
+            "Без HTML/Таблица совпадений.html окно отчёта не откроется штатно; блокировка нового окна также мешает выводу таблицы.",
+            "Позиции вычисляются из преобразованной HTML-строки и могут расходиться с курсорными позициями исходной книги; при длине выделения 0 текст не выделяется.",
+            "Таблица имеет непоследовательное удаление первого столбца у окрашенных и обычных строк; сверяйте номера и позиции перед использованием."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Таблица совпадений.html",
+              "sha256": "737bb2048513630b9ebf1892fb2f9b6b3f966c8688a08eef78e7e2d83282bb64",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Таблица совпадений.html",
+              "sha256": "737bb2048513630b9ebf1892fb2f9b6b3f966c8688a08eef78e7e2d83282bb64",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "may_be_delegated",
+            "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт читает книгу и открывает отдельный отчёт; изменений книги для отмены нет."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "color1",
+              "value": "DarkKhaki",
+              "expression": "\"DarkKhaki\"",
+              "description": "цвет заголовка каждого 1-го раздела (главы, части, книги и т .п.)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "color2",
+              "value": "Khaki",
+              "expression": "\"Khaki\"",
+              "description": "цвет ячейки заголовка очередной главы.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "color3",
+              "value": "tomato",
+              "expression": "\"tomato\"",
+              "description": "цвет ячейки перед ячейкой с нарушением порядка нумерации заголовков.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "perevod",
+              "value": "#",
+              "expression": "\"#\"",
+              "description": "?????????",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "metka1",
+              "value": "☺",
+              "expression": "\"☺\"",
+              "description": "метка начала заголовка.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "metka2",
+              "value": "☻",
+              "expression": "\"☻\"",
+              "description": "метка конца заголовка.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "metka3",
+              "value": "㋛",
+              "expression": "\"㋛\"",
+              "description": "метка пустой строки.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "select",
+              "value": 0,
+              "expression": "0",
+              "description": "количество символов для выделения заголовка при помощи скрипта \"Выделить фрагмент по позиции из буфера обмена\".",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "help",
+              "value": "<p><strong>СПРАВКА:</strong><br><small>Красным фоном выделены ячейки с нарушением порядка нумерации заголовков.<br>Цветом хаки выделены ячейки с номерами эквивалентными единице. Такие ячейки могут указывать на ошибки, только если нумерация заголовков сквозная, а не начинается в новых частях документа заново.<br> Для перехода к заголовку кликните по соответствующей ячейке <strong>Позиция</strong>.</small></p>",
+              "expression": "\"<p><strong>СПРАВКА:</strong><br><small>Красным фоном выделены ячейки с нарушением порядка нумерации заголовков.<br>Цветом хаки выделены ячейки с номерами эквивалентными единице. Такие ячейки могут указывать на ошибки, только если нумерация заголовков сквозная, а не начинается в новых частях документа заново.<br> Для перехода к заголовку кликните по соответствующей ячейке <strong>Позиция</strong>.</small></p>\"",
+              "description": "количество символов для выделения заголовка при помощи скрипта \"Выделить фрагмент по позиции из буфера обмена\".",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "isValid",
+              "value": false,
+              "expression": "false",
+              "description": "Проверяем, соответствует ли текст одному из шаблонов:",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "registr",
+              "value": 0,
+              "expression": "0",
+              "description": "Регистр римских чисел: 0 — только прописные; 1 — оба варианта; 2 — только строчные.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "color0",
+              "value": "darkseagreen",
+              "expression": "\"darkseagreen\"",
+              "description": "Цвет заголовка таблицы.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "color1",
+              "value": "DarkKhaki",
+              "expression": "\"DarkKhaki\"",
+              "description": "Цвет строк с номером 1.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "color2",
+              "value": "Khaki",
+              "expression": "\"Khaki\"",
+              "description": "Цвет обычных номерных строк.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "color3",
+              "value": "tomato",
+              "expression": "\"tomato\"",
+              "description": "Цвет строк с предполагаемым нарушением последовательности.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "select",
+              "value": 0,
+              "expression": "0",
+              "description": "Длина выделения при переходе к позиции. При 0 переход устанавливает курсор без выделения фрагмента.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "okno",
+              "value": 0,
+              "expression": "0",
+              "description": "Способ открытия отчёта: 0 — новое окно; 1 — немодальное диалоговое окно.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 48,
+          "issue": "Длина выделяемого фрагмента select равна 0, а переход использует её как длину диапазона на строке 1159. По умолчанию клик переносит курсор, но не выделяет соответствующий заголовок, хотя комментарий обещает выделение."
+        },
+        {
+          "line": 1167,
+          "issue": "В обработчике клика используется не определённая в этом окне переменная clientHeight. При выполнении ветки с rect возникает исключение, поэтому дополнительная прокрутка не выполняется."
+        },
+        {
+          "line": 1201,
+          "issue": "Удаление служебного первого столбца требует <tr> с дополнительными атрибутами. У окрашенных строк первый td удаляется, у обычных <tr> остаётся; после удаления заголовка столбца таблица получает несогласованную структуру."
+        },
+        {
+          "line": 1211,
+          "issue": "Окно открывается из обязательного HTML/Таблица совпадений.html; если файл отсутствует либо окно заблокировано, MsgWindow может быть null, а обращение к MsgWindow.document на строке 1217 завершится ошибкой без сообщения пользователю."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 682,
-    "generic_usage": 370,
+    "inaccurate_description": 683,
+    "generic_usage": 371,
     "false_warning": 319,
-    "incorrect_setting": 199,
-    "incorrect_scope": 377,
-    "incorrect_undo": 369,
+    "incorrect_setting": 200,
+    "incorrect_scope": 378,
+    "incorrect_undo": 370,
     "uncertain_attribution": 63,
-    "generic_summary": 65,
-    "incorrect_dependency": 385,
+    "generic_summary": 66,
+    "incorrect_dependency": 387,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -52245,20 +52487,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 8,
+    "missing_warning": 9,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 361,
-    "usageCorrected": 370,
-    "purposeClarified": 368,
-    "warningsClarified": 302,
-    "scopeClarified": 354,
+    "undoDescriptionsClarified": 362,
+    "usageCorrected": 371,
+    "purposeClarified": 369,
+    "warningsClarified": 303,
+    "scopeClarified": 355,
     "settingsClarified": 509,
     "attributionClarified": 64,
-    "dependenciesVerified": 252,
+    "dependenciesVerified": 253,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -52266,7 +52508,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 4,
+    "settingsCorrected": 5,
     "effectCorrected": 1
   },
   "scripts": [
@@ -144849,8 +145091,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Создать таблицу (под)заголовков номерных разделов (с переходом)",
-        "summary": "Создаёт таблицу (под)заголовков номерных разделов (с переходом).",
-        "description": "Собирает номера и тексты заголовков/подзаголовков, строит диагностическую таблицу и позволяет переходить к соответствующим местам. Генерация HTML-таблицы отчёта не равнозначна вставке таблицы в книгу.",
+        "summary": "Строит отдельную таблицу номерных заголовков или подзаголовков с отметками порядка и переходом к позиции.",
+        "description": "После выбора заголовков или подзаголовков берёт HTML открытой книги, по шаблонам ищет арабские, римские и словесные номера и показывает результаты в отдельном HTML-окне. В таблице указывает номер, текст и позицию, отмечает предполагаемые нарушения порядка и начала последовательностей цветом. Нажатие на позицию пытается перейти к соответствующему месту в окне редактора. Книгу не изменяет; отчёт зависит от вспомогательного HTML-файла. При исходной длине выделения 0 переход устанавливает курсор без выделения текста.",
         "authors": [
           {
             "name": "stokber",
@@ -144862,100 +145104,80 @@
           }
         ],
         "version": "1.7",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Сериализованный HTML элемента fbw_body; скрипт пытается исключить части notes и comments текстовой заменой, затем ищет номерные заголовки либо подзаголовки по выбранному режиму. Совпадения зависят от вида HTML-разметки и поддерживаемых шаблонов.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "В первом вопросе выберите «ОК» для заголовков или «Отмена» для подзаголовков; затем просмотрите отдельное окно с таблицей.",
+          "Нажмите на ячейку «Позиция», чтобы перейти к месту в книге. Проверьте цветовые отметки вручную: начало новой нумерации может быть допустимым.",
+          "Держите вместе со скриптом вспомогательный файл HTML/Таблица совпадений.html; параметры регистра, цветов и длины выделения меняются в исходном JS."
         ],
         "warnings": [
-          "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+          "Без HTML/Таблица совпадений.html окно отчёта не откроется штатно; блокировка нового окна также мешает выводу таблицы.",
+          "Позиции вычисляются из преобразованной HTML-строки и могут расходиться с курсорными позициями исходной книги; при длине выделения 0 текст не выделяется.",
+          "Таблица имеет непоследовательное удаление первого столбца у окрашенных и обычных строк; сверяйте номера и позиции перед использованием."
         ],
         "settings": [
+          {
+            "name": "registr",
+            "value": 0,
+            "expression": "0",
+            "description": "Регистр римских чисел: 0 — только прописные; 1 — оба варианта; 2 — только строчные.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "color0",
+            "value": "darkseagreen",
+            "expression": "\"darkseagreen\"",
+            "description": "Цвет заголовка таблицы.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
           {
             "name": "color1",
             "value": "DarkKhaki",
             "expression": "\"DarkKhaki\"",
-            "description": "цвет заголовка каждого 1-го раздела (главы, части, книги и т .п.)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Цвет строк с номером 1.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "color2",
             "value": "Khaki",
             "expression": "\"Khaki\"",
-            "description": "цвет ячейки заголовка очередной главы.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Цвет обычных номерных строк.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "color3",
             "value": "tomato",
             "expression": "\"tomato\"",
-            "description": "цвет ячейки перед ячейкой с нарушением порядка нумерации заголовков.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "perevod",
-            "value": "#",
-            "expression": "\"#\"",
-            "description": "?????????",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "metka1",
-            "value": "☺",
-            "expression": "\"☺\"",
-            "description": "метка начала заголовка.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "metka2",
-            "value": "☻",
-            "expression": "\"☻\"",
-            "description": "метка конца заголовка.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "metka3",
-            "value": "㋛",
-            "expression": "\"㋛\"",
-            "description": "метка пустой строки.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Цвет строк с предполагаемым нарушением последовательности.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "select",
             "value": 0,
             "expression": "0",
-            "description": "количество символов для выделения заголовка при помощи скрипта \"Выделить фрагмент по позиции из буфера обмена\".",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Длина выделения при переходе к позиции. При 0 переход устанавливает курсор без выделения фрагмента.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
-            "name": "help",
-            "value": "<p><strong>СПРАВКА:</strong><br><small>Красным фоном выделены ячейки с нарушением порядка нумерации заголовков.<br>Цветом хаки выделены ячейки с номерами эквивалентными единице. Такие ячейки могут указывать на ошибки, только если нумерация заголовков сквозная, а не начинается в новых частях документа заново.<br> Для перехода к заголовку кликните по соответствующей ячейке <strong>Позиция</strong>.</small></p>",
-            "expression": "\"<p><strong>СПРАВКА:</strong><br><small>Красным фоном выделены ячейки с нарушением порядка нумерации заголовков.<br>Цветом хаки выделены ячейки с номерами эквивалентными единице. Такие ячейки могут указывать на ошибки, только если нумерация заголовков сквозная, а не начинается в новых частях документа заново.<br> Для перехода к заголовку кликните по соответствующей ячейке <strong>Позиция</strong>.</small></p>\"",
-            "description": "количество символов для выделения заголовка при помощи скрипта \"Выделить фрагмент по позиции из буфера обмена\".",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "isValid",
-            "value": false,
-            "expression": "false",
-            "description": "Проверяем, соответствует ли текст одному из шаблонов:",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "okno",
+            "value": 0,
+            "expression": "0",
+            "description": "Способ открытия отчёта: 0 — новое окно; 1 — немодальное диалоговое окно.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [
           {
             "path": "HTML/Таблица совпадений.html",
             "sha256": "737bb2048513630b9ebf1892fb2f9b6b3f966c8688a08eef78e7e2d83282bb64",
-            "optional": true
+            "optional": false
           }
         ],
         "undo": {
-          "status": "may_be_delegated",
-          "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          "status": "no_explicit_grouping",
+          "description": "Скрипт читает книгу и открывает отдельный отчёт; изменений книги для отмены нет."
         },
         "examples": null,
         "tags": [
@@ -144970,28 +145192,28 @@
         "selection": [],
         "write": [
           {
-            "line": 696,
+            "line": 676,
             "text": "var fromHTML = sel.innerHTML;"
           },
           {
-            "line": 741,
+            "line": 721,
             "text": "var tempDiv = document.createElement(\"div\");"
           },
           {
-            "line": 742,
+            "line": 722,
             "text": "tempDiv.innerHTML = fromHTML;"
           }
         ],
         "external": [
           {
-            "line": 1101,
+            "line": 1081,
             "text": "while ((match = regexp.exec(text)) !== null) {"
           }
         ],
         "network": [],
         "process": [
           {
-            "line": 1101,
+            "line": 1081,
             "text": "while ((match = regexp.exec(text)) !== null) {"
           }
         ],
@@ -144999,95 +145221,95 @@
         "file": [],
         "return": [
           {
-            "line": 180,
+            "line": 160,
             "text": "if (!str) return \"\";"
           },
           {
-            "line": 181,
+            "line": 161,
             "text": "return str.replace(/&/g, \"&amp;\")"
           },
           {
-            "line": 228,
+            "line": 208,
             "text": "return null; // или можно выбросить исключение."
           },
           {
-            "line": 509,
+            "line": 489,
             "text": "return result.replace(/\\s+/g, '');"
           },
           {
-            "line": 536,
+            "line": 516,
             "text": "return 0;"
           },
           {
-            "line": 548,
+            "line": 528,
             "text": "return result;"
           },
           {
-            "line": 598,
+            "line": 578,
             "text": "return result.join('\\n');"
           },
           {
-            "line": 612,
+            "line": 592,
             "text": "return numbers;"
           },
           {
-            "line": 617,
+            "line": 597,
             "text": "if (prev.length !== curr.length) return false;"
           },
           {
-            "line": 620,
+            "line": 600,
             "text": "if (prev[k] !== curr[k]) return false;"
           },
           {
-            "line": 622,
+            "line": 602,
             "text": "return curr[prev.length - 1] === prev[prev.length - 1] + 1;"
           },
           {
-            "line": 627,
+            "line": 607,
             "text": "if (curr.length !== prev.length + 1) return false;"
           },
           {
-            "line": 630,
+            "line": 610,
             "text": "if (prev[l] !== curr[l]) return false;"
           },
           {
-            "line": 632,
+            "line": 612,
             "text": "return curr[curr.length - 1] === 1;"
           },
           {
-            "line": 637,
+            "line": 617,
             "text": "if (curr.length >= prev.length) return false;"
           },
           {
-            "line": 641,
+            "line": 621,
             "text": "if (prev[m] !== curr[m]) return false;"
           },
           {
-            "line": 643,
+            "line": 623,
             "text": "return curr[minLen - 1] === prev[minLen - 1] + 1;"
           },
           {
-            "line": 648,
+            "line": 628,
             "text": "if (curr.length !== 2) return false;"
           },
           {
-            "line": 650,
+            "line": 630,
             "text": "return curr[0] === prev[0] + 1 && curr[1] === 1;"
           },
           {
-            "line": 685,
+            "line": 665,
             "text": "return result.join('\\n');"
           },
           {
-            "line": 691,
+            "line": 671,
             "text": "return;"
           },
           {
-            "line": 1211,
+            "line": 1191,
             "text": "return resultLines.join('\\n');"
           },
           {
-            "line": 1224,
+            "line": 1204,
             "text": "return;"
           }
         ]
@@ -145096,256 +145318,131 @@
       "settingEvidence": [
         {
           "index": 0,
-          "name": "color1",
+          "name": "registr",
           "declarations": [
             {
-              "line": 165,
-              "text": "var color1 = \"DarkKhaki\"; // цвет заголовка каждого 1-го раздела (главы, части, книги и т .п.)"
+              "line": 119,
+              "text": "var registr = 0;"
             }
           ],
           "uses": [
             {
-              "line": 165,
-              "text": "var color1 = \"DarkKhaki\"; // цвет заголовка каждого 1-го раздела (главы, части, книги и т .п.)"
+              "line": 119,
+              "text": "var registr = 0;"
+            },
+            {
+              "line": 1095,
+              "text": "if (registr === 0) {"
+            },
+            {
+              "line": 1098,
+              "text": "if (registr === 1) {"
+            },
+            {
+              "line": 1101,
+              "text": "if (registr === 2) {"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 1,
-          "name": "color2",
+          "name": "color0",
           "declarations": [
             {
-              "line": 166,
-              "text": "var color2 = \"Khaki\"; // цвет ячейки заголовка очередной главы."
+              "line": 144,
+              "text": "var color0 = \"darkseagreen\"; // цвет заголовка таблицы."
             }
           ],
           "uses": [
             {
-              "line": 166,
-              "text": "var color2 = \"Khaki\"; // цвет ячейки заголовка очередной главы."
+              "line": 144,
+              "text": "var color0 = \"darkseagreen\"; // цвет заголовка таблицы."
+            },
+            {
+              "line": 1226,
+              "text": "tableHTML += \"<tr bgcolor=\\\"\" + color0 + \"\\\"><th>Номер</th><th>\" + razdels + \" (всего \" + count + \")</th><th>Позиция</th></tr>\";"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 2,
-          "name": "color3",
+          "name": "color1",
           "declarations": [
             {
-              "line": 167,
-              "text": "var color3 = \"tomato\"; // цвет ячейки перед ячейкой с нарушением порядка нумерации заголовков."
+              "line": 145,
+              "text": "var color1 = \"DarkKhaki\"; // цвет заголовка каждого 1-го раздела (главы, части, книги и т .п.)"
             }
           ],
           "uses": [
             {
-              "line": 167,
-              "text": "var color3 = \"tomato\"; // цвет ячейки перед ячейкой с нарушением порядка нумерации заголовков."
+              "line": 145,
+              "text": "var color1 = \"DarkKhaki\"; // цвет заголовка каждого 1-го раздела (главы, части, книги и т .п.)"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 3,
-          "name": "perevod",
+          "name": "color2",
           "declarations": [
             {
-              "line": 169,
-              "text": "var perevod = \"#\"; // ?????????"
+              "line": 146,
+              "text": "var color2 = \"Khaki\"; // цвет ячейки заголовка очередной главы."
             }
           ],
           "uses": [
             {
-              "line": 169,
-              "text": "var perevod = \"#\"; // ?????????"
+              "line": 146,
+              "text": "var color2 = \"Khaki\"; // цвет ячейки заголовка очередной главы."
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 4,
-          "name": "metka1",
+          "name": "color3",
           "declarations": [
             {
-              "line": 170,
-              "text": "var metka1 = \"☺\"; // метка начала заголовка."
+              "line": 147,
+              "text": "var color3 = \"tomato\"; // цвет ячейки перед ячейкой с нарушением порядка нумерации заголовков."
             }
           ],
           "uses": [
             {
-              "line": 170,
-              "text": "var metka1 = \"☺\"; // метка начала заголовка."
-            },
-            {
-              "line": 701,
-              "text": "fromHTML = fromHTML.replace(new RegExp(metka1 + \"|\" + metka2 + \"|\" + metka3, \"g\"), \"=\");"
-            },
-            {
-              "line": 731,
-              "text": "fromHTML = fromHTML.replace(new RegExp(\"<DIV class=title>([\\\\s\\\\S]*?)</DIV>\", \"gim\"), metka1 + \"$1\" + metka2);"
-            },
-            {
-              "line": 735,
-              "text": "fromHTML = fromHTML.replace(new RegExp(\"<P class=subtitle>(.*?)</P>\", \"gi\"), metka1 + \"$1\" + metka2);"
-            },
-            {
-              "line": 746,
-              "text": "text = text.replace(new RegExp(\"#\" + metka1, \"g\"), metka1);"
-            },
-            {
-              "line": 746,
-              "text": "text = text.replace(new RegExp(\"#\" + metka1, \"g\"), metka1);"
-            },
-            {
-              "line": 748,
-              "text": "text = text.replace(new RegExp(metka2 + metka1, \"g\"), metka1);"
-            },
-            {
-              "line": 748,
-              "text": "text = text.replace(new RegExp(metka2 + metka1, \"g\"), metka1);"
+              "line": 147,
+              "text": "var color3 = \"tomato\"; // цвет ячейки перед ячейкой с нарушением порядка нумерации заголовков."
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 5,
-          "name": "metka2",
-          "declarations": [
-            {
-              "line": 171,
-              "text": "var metka2 = \"☻\"; // метка конца заголовка."
-            }
-          ],
-          "uses": [
-            {
-              "line": 171,
-              "text": "var metka2 = \"☻\"; // метка конца заголовка."
-            },
-            {
-              "line": 701,
-              "text": "fromHTML = fromHTML.replace(new RegExp(metka1 + \"|\" + metka2 + \"|\" + metka3, \"g\"), \"=\");"
-            },
-            {
-              "line": 731,
-              "text": "fromHTML = fromHTML.replace(new RegExp(\"<DIV class=title>([\\\\s\\\\S]*?)</DIV>\", \"gim\"), metka1 + \"$1\" + metka2);"
-            },
-            {
-              "line": 735,
-              "text": "fromHTML = fromHTML.replace(new RegExp(\"<P class=subtitle>(.*?)</P>\", \"gi\"), metka1 + \"$1\" + metka2);"
-            },
-            {
-              "line": 747,
-              "text": "text = text.replace(new RegExp(\"#\" + metka2, \"g\"), metka2);"
-            },
-            {
-              "line": 747,
-              "text": "text = text.replace(new RegExp(\"#\" + metka2, \"g\"), metka2);"
-            },
-            {
-              "line": 748,
-              "text": "text = text.replace(new RegExp(metka2 + metka1, \"g\"), metka1);"
-            },
-            {
-              "line": 749,
-              "text": "text = text.replace(new RegExp(\"(\" + metka1 + \"[^\" + metka1 + \"#\" + metka2 + \"]+?)#\", \"g\"), \"$1\" + metka1);"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 6,
-          "name": "metka3",
-          "declarations": [
-            {
-              "line": 172,
-              "text": "var metka3 = \"㋛\"; // метка пустой строки."
-            }
-          ],
-          "uses": [
-            {
-              "line": 172,
-              "text": "var metka3 = \"㋛\"; // метка пустой строки."
-            },
-            {
-              "line": 701,
-              "text": "fromHTML = fromHTML.replace(new RegExp(metka1 + \"|\" + metka2 + \"|\" + metka3, \"g\"), \"=\");"
-            },
-            {
-              "line": 724,
-              "text": "fromHTML = fromHTML.replace(new RegExp(\"<P>&nbsp;</P>\", \"gim\"), \"<P>\" + metka3 + \"</P>\");"
-            },
-            {
-              "line": 753,
-              "text": "text = text.replace(new RegExp(metka2 + metka3 + metka1, \"g\"), metka2 + metka1);"
-            },
-            {
-              "line": 754,
-              "text": "text = text.replace(new RegExp(metka3, \"g\"), \"\");"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 7,
           "name": "select",
           "declarations": [
             {
-              "line": 173,
+              "line": 153,
               "text": "var select = 0; // количество символов для выделения заголовка при помощи скрипта \"Выделить фрагмент по позиции из буфера обмена\"."
             }
           ],
           "uses": [
             {
-              "line": 173,
+              "line": 153,
               "text": "var select = 0; // количество символов для выделения заголовка при помощи скрипта \"Выделить фрагмент по позиции из буфера обмена\"."
             },
             {
-              "line": 1109,
+              "line": 1089,
               "text": "var adjustedIndex = (match.index + 1 + 1) + \":\" + select; // ????????????????????"
             }
           ],
           "classification": "requires_review"
         },
         {
-          "index": 8,
-          "name": "help",
-          "declarations": [
-            {
-              "line": 174,
-              "text": "var help = \"<p><strong>СПРАВКА:</strong><br><small>Красным фоном выделены ячейки с нарушением порядка нумерации заголовков.<br>Цветом хаки выделены ячейки с номерами эквивалентными"
-            }
-          ],
-          "uses": [
-            {
-              "line": 174,
-              "text": "var help = \"<p><strong>СПРАВКА:</strong><br><small>Красным фоном выделены ячейки с нарушением порядка нумерации заголовков.<br>Цветом хаки выделены ячейки с номерами эквивалентными"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 9,
-          "name": "isValid",
-          "declarations": [
-            {
-              "line": 218,
-              "text": "var isValid = false;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 218,
-              "text": "var isValid = false;"
-            },
-            {
-              "line": 222,
-              "text": "isValid = true;"
-            },
-            {
-              "line": 227,
-              "text": "if (!isValid) {"
-            }
-          ],
+          "index": 6,
+          "name": "okno",
+          "declarations": [],
+          "uses": [],
           "classification": "requires_review"
         }
       ],
@@ -145361,17 +145458,25 @@
       ],
       "authorshipEvidence": [
         {
-          "line": 127,
+          "line": 107,
           "text": "// версия 1.7"
         },
         {
-          "line": 128,
+          "line": 108,
           "text": "// автор - stokber + DeepSeek (июль 2026)"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия.",
+          "text": "Без HTML/Таблица совпадений.html окно отчёта не откроется штатно; блокировка нового окна также мешает выводу таблицы.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Позиции вычисляются из преобразованной HTML-строки и могут расходиться с курсорными позициями исходной книги; при длине выделения 0 текст не выделяется.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Таблица имеет непоследовательное удаление первого столбца у окрашенных и обычных строк; сверяйте номера и позиции перед использованием.",
           "verification": "requires_review"
         }
       ],
@@ -145394,39 +145499,18 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "category": "requires_review",
+          "field": "settings[6]",
+          "previous": {
+            "name": "okno",
+            "value": 0,
+            "expression": "0",
+            "description": "Способ открытия отчёта: 0 — новое окно; 1 — немодальное диалоговое окно.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
           "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
           "evidence": []
         }
       ]
