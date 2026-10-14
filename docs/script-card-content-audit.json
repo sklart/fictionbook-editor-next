@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 520,
-    "generic_usage": 1994,
-    "incorrect_undo": 355,
-    "inaccurate_description": 110
+    "requires_review": 519,
+    "generic_usage": 1982,
+    "incorrect_undo": 354,
+    "inaccurate_description": 109
   },
   "reviewedChanges": [
     {
@@ -14836,18 +14836,424 @@
         "undoDescriptionsClarified": 1,
         "serviceSettingsRemoved": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/34_Диагностика иллюстраций.js",
+      "codeSha256": "22df2e01bf07b93ec01c4dc14233520a462285c21e388a1b725212aff616770b",
+      "evidence": "Исходник строки 48–53: идея TaKir и реализация DeepSeek; 55–141: сообщение с деталями только первых пяти секций; 146–194: выбор первого body не notes и остановка обхода при найденной секции; 246–256: счёт только прямых детей; 285–298: имя из href. Нет изменения документа и внешних зависимостей.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            },
+            {
+              "role": "unknown"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "идея"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Диагностика иллюстраций.",
+          "after": "Показывает диагностику первых пяти секций основного текста с разбором их непосредственных иллюстраций и соседних элементов.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Обходит основной body и секции, подсчитывает изображения и выводит сведения о разделах с картинками. Не вставляет изображения и не исправляет разметку секций.",
+          "after": "Находит первый body, отличный от notes, считает найденные секции и выводит подробности только для первых пяти: наличие иллюстраций среди непосредственных дочерних элементов, структуру детей и поиск последней иллюстрации с пустым абзацем после неё. Ссылки на бинарные файлы не проверяет и книгу не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Первый подходящий body внутри fbw_body; обход прекращается на найденной секции и не включает вложенные в неё секции. Подробности выводятся только для первых пяти найденных секций.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Откройте книгу и запустите скрипт: результат появится в информационном окне.",
+            "Сверяйте диагностику только с первыми пятью найденными секциями; для остальных выводится лишь число нерассмотренных секций."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Вложенные секции не входят в обход после обнаружения внешней секции."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт только читает структуру книги и показывает отчёт; текст книги не меняет, отменять нечего."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 182,
+          "issue": "findAllSections добавляет найденную секцию, но не обходит её потомков; вложенные секции отсутствуют в диагностике, хотя отчёт сообщает об общем числе секций."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "undoDescriptionsClarified": 1
+      }
+    },
+    {
+      "path": "05_Иллюстрации/63_Проверить ссылки 'блочных' иллюстраций.js",
+      "codeSha256": "882bb3f2c8348dfd3b7046cca02a5198500507fdee45a16bdde58b371a2e5311",
+      "evidence": "Исходник строки 67–91: назначение и авторство; 99–107: два переключателя; 135–145: сбор имён binobj; 151–166: классификация body; 169–205: извлечение имён и допустимые расширения; 248–350: обход DIV.image и последовательность проверок; 371–485: отчёт без изменений документа.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Проверяет ссылки блочных иллюстраций на бинарники.",
+          "after": "Проверяет ссылки блочных иллюстраций, наличие бинарных вложений и согласованность href с src.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Сопоставляет href/src графических контейнеров с доступными вложениями, отмечает пустые, битые и подозрительные ссылки. Назначение — диагностика; исправления следует рассматривать отдельно.",
+          "after": "Обходит DIV.image в основном тексте, примечаниях и комментариях. Сверяет href с именами бинарных вложений, поддерживаемым расширением JPG/JPEG/PNG и src прямого IMG; отдельно считает пустые заготовки с undefined в обоих адресах, проблемные и обычные иллюстрации. Выводит отчёт по категориям и разделам без исправления документа.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV с точным className image в основном body, notes и comments; body с другим fbname пропускаются. Примечания и комментарии включены исходными настройками.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Запустите скрипт на открытой книге и изучите сводку и списки проблемных ссылок в информационном окне.",
+            "При необходимости измените в исходном JS два переключателя обработки примечаний и комментариев до запуска."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Проверка определяет наличие бинарника по его имени и расширению, но не проверяет содержимое файла или возможность его декодировать.",
+            "Строки с undefined в обоих адресах считаются пустыми заготовками и не проверяются дальше."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел сносок (примечаний) - 0 нет, 1 да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел комментариев - 0 нет, 1 да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "processNotesSection",
+              "title": "Проверять примечания",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — включить раздел notes; 0 — пропустить.",
+              "source": "code"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Проверять комментарии",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — включить раздел comments; 0 — пропустить.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт только проверяет ссылки и показывает отчёт; текст книги не меняет, отменять нечего."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 282,
+          "issue": "Маркеры undefined в обоих адресах сразу классифицируются как пустая заготовка, даже если строки содержат этот фрагмент как часть иного имени."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "undoDescriptionsClarified": 1,
+        "settingsClarified": 2
+      }
+    },
+    {
+      "path": "05_Иллюстрации/36_Объединить секцию, состоящую из иллюстраций, с вышестоящей секцией.js",
+      "codeSha256": "6ec2da4810cac474abf57a4d826e4550ad86460cce861fd7f30d34550349dda0",
+      "evidence": "Исходник строки 89–102: настройки; 130–163: основной body и его прямые секции; 211–269: критерии и отсутствие получателя у первой секции; 279–337: тихий и обычный режим, подтверждение и группировка правки; 369–452: перенос, удаление секции и пустых абзацев.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматического объединения безымянных секций с иллюстрациями",
+          "after": "Переносит изображения из безымянных секций в предыдущие секции основного текста.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматического объединения безымянных секций с иллюстрациями",
+          "after": "Среди прямых секций основного body ищет секции без заголовков и непустого текста, содержащие хотя бы одну блочную иллюстрацию. После подтверждения переносит их изображения и пустые абзацы в предыдущую секцию, при необходимости вставляет пустой абзац, очищает пустые абзацы после последнего изображения и удаляет исходную секцию.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Только прямые DIV.section первого основного body (fbname пуст). Первая секция не переносится даже при включённом processFirstSection: ей не предшествует секция-получатель.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу и запустите скрипт. При стандартном режиме просмотрите число кандидатов и первые 15 примеров, затем подтвердите перенос.",
+            "Проверьте порядок изображений и абзацев после обработки; перед сохранением книги при необходимости используйте доступную отмену редактора."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Перенос меняет структуру секций и может удалить пустые абзацы после последней иллюстрации.",
+            "В тихом режиме перенос выполняется без запроса подтверждения."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processFirstSection",
+              "value": 0,
+              "expression": "0",
+              "description": "По умолчанию - не обрабатываем",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "title": "Показывать анализ и подтверждение",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — показать анализ, запросить подтверждение и вывести результат; 0 — выполнить найденные переносы без вопросов и отчёта.",
+              "source": "code"
+            },
+            {
+              "name": "processFirstSection",
+              "title": "Проверять первую секцию",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — пропустить первую секцию; 1 — проверить её, но перенести нельзя из-за отсутствия предыдущей секции.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Изменения DOM заключены в одну операцию отмены редактора на штатном пути. Поведение при ошибке во время переноса отдельно не проверено."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 268,
+          "issue": "Даже при processFirstSection=1 первая секция не становится кандидатом: для неё отсутствует предыдущая секция (i > 0)."
+        },
+        {
+          "line": 289,
+          "issue": "После BeginUndoUnit вызов performMerging не защищён finally; при исключении EndUndoUnit не выполнится. Аналогичная ветвь в строках 335–337."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "settingsClarified": 2,
+        "undoDescriptionsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 146,
-    "generic_usage": 72,
-    "false_warning": 103,
-    "incorrect_setting": 84,
-    "incorrect_scope": 60,
-    "incorrect_undo": 71,
+    "inaccurate_description": 152,
+    "generic_usage": 75,
+    "false_warning": 106,
+    "incorrect_setting": 86,
+    "incorrect_scope": 63,
+    "incorrect_undo": 74,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 57,
-    "incorrect_authorship": 26,
+    "incorrect_dependency": 60,
+    "incorrect_authorship": 29,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 1
@@ -14855,12 +15261,12 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 137,
-    "undoDescriptionsClarified": 72,
-    "usageCorrected": 72,
-    "purposeClarified": 72,
+    "undoDescriptionsClarified": 75,
+    "usageCorrected": 75,
+    "purposeClarified": 75,
     "warningsClarified": 23,
-    "scopeClarified": 56,
-    "settingsClarified": 327,
+    "scopeClarified": 59,
+    "settingsClarified": 331,
     "attributionClarified": 3,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29
@@ -54213,36 +54619,36 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Диагностика иллюстраций",
-        "summary": "Диагностика иллюстраций.",
-        "description": "Обходит основной body и секции, подсчитывает изображения и выводит сведения о разделах с картинками. Не вставляет изображения и не исправляет разметку секций.",
+        "summary": "Показывает диагностику первых пяти секций основного текста с разбором их непосредственных иллюстраций и соседних элементов.",
+        "description": "Находит первый body, отличный от notes, считает найденные секции и выводит подробности только для первых пяти: наличие иллюстраций среди непосредственных дочерних элементов, структуру детей и поиск последней иллюстрации с пустым абзацем после неё. Ссылки на бинарные файлы не проверяет и книгу не меняет.",
         "authors": [
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "idea"
+            "contribution": "идея"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
-          },
-          {
-            "role": "unknown"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.1",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Первый подходящий body внутри fbw_body; обход прекращается на найденной секции и не включает вложенные в неё секции. Подробности выводятся только для первых пяти найденных секций.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Откройте книгу и запустите скрипт: результат появится в информационном окне.",
+          "Сверяйте диагностику только с первыми пятью найденными секциями; для остальных выводится лишь число нерассмотренных секций."
         ],
-        "warnings": [],
+        "warnings": [
+          "Вложенные секции не входят в обход после обнаружения внешней секции."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт только читает структуру книги и показывает отчёт; текст книги не меняет, отменять нечего."
         },
         "examples": null,
         "tags": [
@@ -54425,7 +54831,12 @@
           "text": "// version 1.1, 10.01.2025"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Вложенные секции не входят в обход после обнаружения внешней секции.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -54443,44 +54854,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Диагностика иллюстраций.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/35_Вставить заданные иллюстрации в началах и концах секций.js",
@@ -54879,56 +55253,54 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Объединить секцию, состоящую из иллюстраций, с вышестоящей секцией",
-        "summary": "Скрипт предназначен для автоматического объединения безымянных секций с иллюстрациями",
-        "description": "Скрипт предназначен для автоматического объединения безымянных секций с иллюстрациями",
+        "summary": "Переносит изображения из безымянных секций в предыдущие секции основного текста.",
+        "description": "Среди прямых секций основного body ищет секции без заголовков и непустого текста, содержащие хотя бы одну блочную иллюстрацию. После подтверждения переносит их изображения и пустые абзацы в предыдущую секцию, при необходимости вставляет пустой абзац, очищает пустые абзацы после последнего изображения и удаляет исходную секцию.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.1",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Только прямые DIV.section первого основного body (fbname пуст). Первая секция не переносится даже при включённом processFirstSection: ей не предшествует секция-получатель.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу и запустите скрипт. При стандартном режиме просмотрите число кандидатов и первые 15 примеров, затем подтвердите перенос.",
+          "Проверьте порядок изображений и абзацев после обработки; перед сохранением книги при необходимости используйте доступную отмену редактора."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Перенос меняет структуру секций и может удалить пустые абзацы после последней иллюстрации.",
+          "В тихом режиме перенос выполняется без запроса подтверждения."
         ],
         "settings": [
           {
             "name": "showStatistics",
+            "title": "Показывать анализ и подтверждение",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — показать анализ, запросить подтверждение и вывести результат; 0 — выполнить найденные переносы без вопросов и отчёта.",
+            "source": "code"
           },
           {
             "name": "processFirstSection",
+            "title": "Проверять первую секцию",
             "value": 0,
             "expression": "0",
-            "description": "По умолчанию - не обрабатываем",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — пропустить первую секцию; 1 — проверить её, но перенести нельзя из-за отсутствия предыдущей секции.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Изменения DOM заключены в одну операцию отмены редактора на штатном пути. Поведение при ошибке во время переноса отдельно не проверено."
         },
         "examples": null,
         "tags": [
@@ -54940,21 +55312,21 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 289,
+            "line": 287,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           },
           {
-            "line": 335,
+            "line": 333,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 291,
+            "line": 289,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 337,
+            "line": 335,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -54962,19 +55334,19 @@
         "selection": [],
         "write": [
           {
-            "line": 402,
+            "line": 400,
             "text": "var emptyP = document.createElement(\"P\");"
           },
           {
-            "line": 403,
+            "line": 401,
             "text": "emptyP.innerHTML = nbspEntity;"
           },
           {
-            "line": 404,
+            "line": 402,
             "text": "aboveSection.appendChild(emptyP);"
           },
           {
-            "line": 410,
+            "line": 408,
             "text": "aboveSection.appendChild(element);"
           }
         ],
@@ -54985,39 +55357,39 @@
         "file": [],
         "return": [
           {
-            "line": 148,
+            "line": 146,
             "text": "return;"
           },
           {
-            "line": 170,
+            "line": 168,
             "text": "if (!pElement || pElement.nodeName != \"P\") return false;"
           },
           {
-            "line": 208,
+            "line": 206,
             "text": "return isEmpty;"
           },
           {
-            "line": 282,
+            "line": 280,
             "text": "return;"
           },
           {
-            "line": 294,
+            "line": 292,
             "text": "return;"
           },
           {
-            "line": 304,
+            "line": 302,
             "text": "return;"
           },
           {
-            "line": 329,
+            "line": 327,
             "text": "return;"
           },
           {
-            "line": 422,
+            "line": 420,
             "text": "return mergedCount;"
           },
           {
-            "line": 427,
+            "line": 425,
             "text": "if (!section) return;"
           }
         ]
@@ -55029,17 +55401,17 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 99,
+              "line": 97,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 99,
+              "line": 97,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             },
             {
-              "line": 279,
+              "line": 277,
               "text": "if (showStatistics == 0) {"
             }
           ],
@@ -55050,17 +55422,17 @@
           "name": "processFirstSection",
           "declarations": [
             {
-              "line": 102,
+              "line": 100,
               "text": "var processFirstSection = 0; // По умолчанию - не обрабатываем"
             }
           ],
           "uses": [
             {
-              "line": 102,
+              "line": 100,
               "text": "var processFirstSection = 0; // По умолчанию - не обрабатываем"
             },
             {
-              "line": 219,
+              "line": 217,
               "text": "if (i == 0 && !processFirstSection) {"
             }
           ],
@@ -55070,25 +55442,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 71,
+          "line": 69,
           "text": "// version 1.1"
         },
         {
-          "line": 86,
+          "line": 84,
           "text": "// version 1.1, 25.01.2026"
         },
         {
-          "line": 90,
+          "line": 88,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 92,
+          "line": 90,
           "text": "var version = \"1.1\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Перенос меняет структуру секций и может удалить пустые абзацы после последней иллюстрации.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "В тихом режиме перенос выполняется без запроса подтверждения.",
           "verification": "requires_review"
         }
       ],
@@ -55111,114 +55487,34 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 289,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 335,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 291,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 337,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Изменения DOM заключены в одну операцию отмены редактора на штатном пути. Поведение при ошибке во время переноса отдельно не проверено."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 289,
+              "line": 287,
               "text": "window.external.BeginUndoUnit(document, scriptName);"
             },
             {
-              "line": 294,
+              "line": 292,
               "text": "return;"
             },
             {
-              "line": 304,
+              "line": 302,
               "text": "return;"
             },
             {
-              "line": 329,
+              "line": 327,
               "text": "return;"
             },
             {
-              "line": 337,
+              "line": 335,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
@@ -67574,53 +67870,54 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Проверить ссылки 'блочных' иллюстраций",
-        "summary": "Проверяет ссылки блочных иллюстраций на бинарники.",
-        "description": "Сопоставляет href/src графических контейнеров с доступными вложениями, отмечает пустые, битые и подозрительные ссылки. Назначение — диагностика; исправления следует рассматривать отдельно.",
+        "summary": "Проверяет ссылки блочных иллюстраций, наличие бинарных вложений и согласованность href с src.",
+        "description": "Обходит DIV.image в основном тексте, примечаниях и комментариях. Сверяет href с именами бинарных вложений, поддерживаемым расширением JPG/JPEG/PNG и src прямого IMG; отдельно считает пустые заготовки с undefined в обоих адресах, проблемные и обычные иллюстрации. Выводит отчёт по категориям и разделам без исправления документа.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.3",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV с точным className image в основном body, notes и comments; body с другим fbname пропускаются. Примечания и комментарии включены исходными настройками.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Запустите скрипт на открытой книге и изучите сводку и списки проблемных ссылок в информационном окне.",
+          "При необходимости измените в исходном JS два переключателя обработки примечаний и комментариев до запуска."
         ],
-        "warnings": [],
+        "warnings": [
+          "Проверка определяет наличие бинарника по его имени и расширению, но не проверяет содержимое файла или возможность его декодировать.",
+          "Строки с undefined в обоих адресах считаются пустыми заготовками и не проверяются дальше."
+        ],
         "settings": [
           {
             "name": "processNotesSection",
+            "title": "Проверять примечания",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать раздел сносок (примечаний) - 0 нет, 1 да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить раздел notes; 0 — пропустить.",
+            "source": "code"
           },
           {
             "name": "processCommentsSection",
+            "title": "Проверять комментарии",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать раздел комментариев - 0 нет, 1 да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — включить раздел comments; 0 — пропустить.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт только проверяет ссылки и показывает отчёт; текст книги не меняет, отменять нечего."
         },
         "examples": null,
         "tags": [
@@ -67642,95 +67939,95 @@
         "file": [],
         "return": [
           {
-            "line": 159,
+            "line": 160,
             "text": "if (fbname == \"\") return \"main\";"
           },
           {
-            "line": 160,
+            "line": 161,
             "text": "if (fbname == \"notes\") return \"notes\";"
           },
           {
-            "line": 161,
+            "line": 162,
             "text": "if (fbname == \"comments\") return \"comments\";"
           },
           {
-            "line": 162,
+            "line": 163,
             "text": "return \"other\";"
           },
           {
-            "line": 166,
+            "line": 167,
             "text": "return \"main\";"
           },
           {
-            "line": 174,
+            "line": 175,
             "text": "if (!href) return \"\";"
           },
           {
-            "line": 175,
+            "line": 176,
             "text": "if (href.charAt(0) == \"#\") return href.substring(1);"
           },
           {
-            "line": 176,
+            "line": 177,
             "text": "return href;"
           },
           {
-            "line": 180,
+            "line": 181,
             "text": "if (!src) return \"\";"
           },
           {
-            "line": 184,
+            "line": 185,
             "text": "return src.substring(prefix1.length);"
           },
           {
-            "line": 187,
+            "line": 188,
             "text": "return src.substring(prefix2.length);"
           },
           {
-            "line": 189,
+            "line": 190,
             "text": "return src;"
           },
           {
-            "line": 197,
+            "line": 198,
             "text": "if (!fileName) return \"\";"
           },
           {
-            "line": 199,
+            "line": 200,
             "text": "if (lastDot == -1) return \"\";"
           },
           {
-            "line": 200,
+            "line": 201,
             "text": "return fileName.substring(lastDot + 1).toLowerCase();"
           },
           {
-            "line": 204,
+            "line": 205,
             "text": "return (ext == \"jpg\" || ext == \"jpeg\" || ext == \"png\");"
           },
           {
-            "line": 212,
+            "line": 213,
             "text": "return {"
           },
           {
-            "line": 356,
+            "line": 357,
             "text": "return;"
           },
           {
-            "line": 378,
+            "line": 379,
             "text": "return;"
           },
           {
-            "line": 390,
+            "line": 391,
             "text": "return;"
           },
           {
-            "line": 429,
+            "line": 430,
             "text": "return s.normal + s.empty + s.brokenNoHref + s.brokenNoBinary +"
           },
           {
-            "line": 434,
+            "line": 435,
             "text": "return s.brokenNoHref + s.brokenNoBinary + s.brokenNoExt + s.brokenBadExt;"
           },
           {
-            "line": 485,
+            "line": 486,
             "text": "return;"
           }
         ]
@@ -67742,21 +68039,21 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 104,
+              "line": 105,
               "text": "var processNotesSection = 1;"
             }
           ],
           "uses": [
             {
-              "line": 104,
+              "line": 105,
               "text": "var processNotesSection = 1;"
             },
             {
-              "line": 257,
+              "line": 258,
               "text": "if (sectionType == \"notes\" && !processNotesSection) continue;"
             },
             {
-              "line": 448,
+              "line": 449,
               "text": "if (processNotesSection && sectionTotal(statsNotes) > 0) {"
             }
           ],
@@ -67767,21 +68064,21 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 107,
+              "line": 108,
               "text": "var processCommentsSection = 1;"
             }
           ],
           "uses": [
             {
-              "line": 107,
+              "line": 108,
               "text": "var processCommentsSection = 1;"
             },
             {
-              "line": 258,
+              "line": 259,
               "text": "if (sectionType == \"comments\" && !processCommentsSection) continue;"
             },
             {
-              "line": 459,
+              "line": 460,
               "text": "if (processCommentsSection && sectionTotal(statsComments) > 0) {"
             }
           ],
@@ -67791,23 +68088,32 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 68,
+          "line": 69,
           "text": "// version 1.3"
         },
         {
-          "line": 91,
+          "line": 92,
           "text": "// version 1.3, 21.09.2026"
         },
         {
-          "line": 95,
+          "line": 96,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 97,
+          "line": 98,
           "text": "var version = \"1.3\";"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Проверка определяет наличие бинарника по его имени и расширению, но не проверяет содержимое файла или возможность его декодировать.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Строки с undefined в обоих адресах считаются пустыми заготовками и не проверяются дальше.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -67825,44 +68131,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/01_Генеральная уборка.js",
