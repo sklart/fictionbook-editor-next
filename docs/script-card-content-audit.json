@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 422,
-    "generic_usage": 1261,
-    "incorrect_undo": 193,
+    "requires_review": 421,
+    "generic_usage": 1257,
+    "incorrect_undo": 192,
     "inaccurate_description": 88
   },
   "reviewedChanges": [
@@ -37412,17 +37412,210 @@
         "serviceSettingsRemoved": 4,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/71_Кириллица-латиница.js",
+      "codeSha256": "51c8e3cb7d351b6062281c78bf74f7a9ab851212164fc167ee28328cfb5f5514",
+      "evidence": "История версий в конце исходника называет Александра Ка для v1.0–1.7. Параметры перечислены в начале Run; nbspEntity и povtorD — служебные переменные, VseStroki_on_off — флаг демонстрационного отчёта. Скрипт требует режим «Дизайн», обходит P в дочерних разделах fbw_body, спрашивает о похожих одиночных буквах, затем выполняет автоматические и ручные исправления. HistoryChange при включённой настройке меняет версию и историю внутри группы отмены. Выход по режиму расположен до BeginUndoUnit; между BeginUndoUnit и EndUndoUnit прямых выходов из Run нет. Внешних файлов, программ и сетевых операций не найдено.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "role": "unknown"
+            }
+          ],
+          "after": [
+            {
+              "name": "Александр Ка",
+              "role": "author"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "authorshipStatus",
+          "before": "not_stated",
+          "after": "declared",
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для восстановления текста, написанного смесью латиницы, кириллицы, цифр и греческих букв.",
+          "after": "Восстанавливает смешанные русские, латинские и греческие слова, отдельные буквы, римские числа и знаки ударения.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для восстановления текста, написанного смесью латиницы, кириллицы, цифр и греческих букв.",
+          "after": "В режиме «Дизайн» обходит абзацы книги, исправляет похожие символы в русских, латинских и греческих словах, отдельных буквах и римских числах. Спорные отдельные буквы и оставшиеся смешанные слова предлагает подтвердить вручную. При включённой настройке и изменениях обновляет версию и историю книги, затем показывает отчёт.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все абзацы P в дочерних разделах fbw_body; история включена при исходном значении параметра. Выделение и позиция курсора не ограничивают обработку. Требуется режим «Дизайн».",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу в режиме «Дизайн» и проверьте параметры в начале исходного JS.",
+            "Запустите скрипт; подтвердите замену отдельных букв и проверьте предлагаемые исправления смешанных слов в диалогах.",
+            "Просмотрите исправленный текст, версию и историю книги, затем итоговый отчёт."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Отдельные латинские и греческие буквы могут быть переменными или обозначениями; сверяйте предложенные замены с контекстом.",
+            "При исходных настройках скрипт обрабатывает историю изменений и после исправлений может повысить версию книги и изменить её историю.",
+            "Отмена в ручном диалоге прекращает соответствующий этап, но уже выполненные исправления сохраняются; полный откат через редактор не проверен."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Обработка текста, ручные диалоги и обновление истории находятся в одной группе отмены; обычный путь закрывает её. Выход из-за неподходящего режима расположен до открытия группы, прямого выхода между её открытием и закрытием нет. Полный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "ObrabotkaHistory_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Ud_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "0 ; 1 // (\"0\" — отключить эту операцию, \"1\" — включить)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Vsegda_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "nbspEntity",
+              "value": "&nbsp;",
+              "expression": "\"&nbsp;\"",
+              "description": "то используем стандартный код н/р пробела.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "povtorD",
+              "value": false,
+              "expression": "false",
+              "description": "Индикатор повторной обработки в последние 10 дней.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "ObrabotkaHistory_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать текст истории изменений: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Obrabotka_Predlogov",
+              "value": 2,
+              "expression": "2",
+              "description": "Заменять отдельные похожие буквы на русские: 0 — нет, 1 — да, 2 — спрашивать.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Ud_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "Преобразовывать буквы с ударением в русские буквы со знаком ударения: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Version_on_off",
+              "value": 1,
+              "expression": "1",
+              "description": "Автоматически обновлять версию и историю книги после исправлений: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Vsegda_on_off",
+              "value": 0,
+              "expression": "0",
+              "description": "Обновлять версию и историю даже без исправлений: 0 — нет, 1 — да; действует при включённом обновлении версии.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "youName",
+              "value": "Зорро",
+              "expression": "\"Зорро\"",
+              "description": "Имя в новой записи истории; глобальное имя пользователя из main.js при наличии его переопределяет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 300,
+          "issue": "Без фигурных скобок после проверки длины новой версии VersionUp отмечается даже когда запись нового значения версии не выполнялась."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "serviceSettingsRemoved": 2,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 560,
-    "generic_usage": 277,
-    "false_warning": 296,
-    "incorrect_setting": 133,
-    "incorrect_scope": 278,
-    "incorrect_undo": 276,
-    "uncertain_attribution": 5,
-    "incorrect_dependency": 283,
+    "inaccurate_description": 562,
+    "generic_usage": 278,
+    "false_warning": 297,
+    "incorrect_setting": 134,
+    "incorrect_scope": 279,
+    "incorrect_undo": 277,
+    "uncertain_attribution": 7,
+    "incorrect_dependency": 284,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -37434,17 +37627,17 @@
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
-    "serviceSettingsRemoved": 147,
-    "undoDescriptionsClarified": 268,
-    "usageCorrected": 277,
-    "purposeClarified": 275,
-    "warningsClarified": 208,
-    "scopeClarified": 261,
-    "settingsClarified": 446,
-    "attributionClarified": 8,
+    "serviceSettingsRemoved": 149,
+    "undoDescriptionsClarified": 269,
+    "usageCorrected": 278,
+    "purposeClarified": 276,
+    "warningsClarified": 209,
+    "scopeClarified": 262,
+    "settingsClarified": 447,
+    "attributionClarified": 9,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 159,
+    "dependenciesVerified": 160,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -98233,67 +98426,76 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Кириллица-латиница",
-        "summary": "Скрипт предназначен для восстановления текста, написанного смесью латиницы, кириллицы, цифр и греческих букв.",
-        "description": "Скрипт предназначен для восстановления текста, написанного смесью латиницы, кириллицы, цифр и греческих букв.",
+        "summary": "Восстанавливает смешанные русские, латинские и греческие слова, отдельные буквы, римские числа и знаки ударения.",
+        "description": "В режиме «Дизайн» обходит абзацы книги, исправляет похожие символы в русских, латинских и греческих словах, отдельных буквах и римских числах. Спорные отдельные буквы и оставшиеся смешанные слова предлагает подтвердить вручную. При включённой настройке и изменениях обновляет версию и историю книги, затем показывает отчёт.",
         "authors": [
           {
-            "role": "unknown"
+            "name": "Александр Ка",
+            "role": "author"
           }
         ],
         "version": "1.7",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все абзацы P в дочерних разделах fbw_body; история включена при исходном значении параметра. Выделение и позиция курсора не ограничивают обработку. Требуется режим «Дизайн».",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу в режиме «Дизайн» и проверьте параметры в начале исходного JS.",
+          "Запустите скрипт; подтвердите замену отдельных букв и проверьте предлагаемые исправления смешанных слов в диалогах.",
+          "Просмотрите исправленный текст, версию и историю книги, затем итоговый отчёт."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Отдельные латинские и греческие буквы могут быть переменными или обозначениями; сверяйте предложенные замены с контекстом.",
+          "При исходных настройках скрипт обрабатывает историю изменений и после исправлений может повысить версию книги и изменить её историю.",
+          "Отмена в ручном диалоге прекращает соответствующий этап, но уже выполненные исправления сохраняются; полный откат через редактор не проверен."
         ],
         "settings": [
           {
             "name": "ObrabotkaHistory_on_off",
             "value": 1,
             "expression": "1",
-            "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать текст истории изменений: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "Obrabotka_Predlogov",
+            "value": 2,
+            "expression": "2",
+            "description": "Заменять отдельные похожие буквы на русские: 0 — нет, 1 — да, 2 — спрашивать.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "Ud_on_off",
             "value": 1,
             "expression": "1",
-            "description": "0 ; 1 // (\"0\" — отключить эту операцию, \"1\" — включить)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Преобразовывать буквы с ударением в русские буквы со знаком ударения: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "Version_on_off",
+            "value": 1,
+            "expression": "1",
+            "description": "Автоматически обновлять версию и историю книги после исправлений: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "Vsegda_on_off",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 // (\"0\" — отключить, \"1\" — включить)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обновлять версию и историю даже без исправлений: 0 — нет, 1 — да; действует при включённом обновлении версии.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
-            "name": "nbspEntity",
-            "value": "&nbsp;",
-            "expression": "\"&nbsp;\"",
-            "description": "то используем стандартный код н/р пробела.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "povtorD",
-            "value": false,
-            "expression": "false",
-            "description": "Индикатор повторной обработки в последние 10 дней.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "youName",
+            "value": "Зорро",
+            "expression": "\"Зорро\"",
+            "description": "Имя в новой записи истории; глобальное имя пользователя из main.js при наличии его переопределяет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Обработка текста, ручные диалоги и обновление истории находятся в одной группе отмены; обычный путь закрывает её. Выход из-за неподходящего режима расположен до открытия группы, прямого выхода между её открытием и закрытием нет. Полный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -98304,46 +98506,46 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 984,
+            "line": 993,
             "text": "window.external.BeginUndoUnit(document, ScriptName + \" v.\"+NumerusVersion);    // Начало записи в систему отмен."
           }
         ],
         "undo_end": [
           {
-            "line": 1289,
+            "line": 1298,
             "text": "window.external.EndUndoUnit(document);    // Конец записи в систему отмен."
           }
         ],
         "dialog": [
           {
-            "line": 1099,
+            "line": 1108,
             "text": "otvet_txt = window.external.InputBox(msg, msgTitle, elem2);       //  Выводим на экран диалоговое окно, и сохраняем введенный текст."
           },
           {
-            "line": 1177,
+            "line": 1186,
             "text": "otvet_txt = window.external.InputBox(msg, msgTitle, elem2);       //  Выводим на экран диалоговое окно, и сохраняем введенный текст."
           },
           {
-            "line": 1251,
+            "line": 1260,
             "text": "otvet_txt = window.external.InputBox(msg, msgTitle, elem2);       //  Выводим на экран диалоговое окно, и сохраняем введенный текст."
           }
         ],
         "selection": [],
         "write": [
           {
-            "line": 186,
+            "line": 195,
             "text": "History = document.createElement(\"DIV\");     //   Создание нового раздела"
           },
           {
-            "line": 194,
+            "line": 203,
             "text": "History.insertAdjacentElement(\"beforeEnd\",document.createElement(\"P\"));     //  Добавляем пустую строку"
           },
           {
-            "line": 227,
+            "line": 236,
             "text": "s = mP[j].innerHTML;                //  Содержимое строки."
           },
           {
-            "line": 270,
+            "line": 279,
             "text": "if (mP[j].innerHTML != s) {                //  Затем проверяем изменилась ли строка истории, и если она изменилась..."
           }
         ],
@@ -98354,35 +98556,35 @@
         "file": [],
         "return": [
           {
-            "line": 279,
+            "line": 288,
             "text": "if (povtorD)  return;   //  Если производилась обработка записи в истории - выход из функции."
           },
           {
-            "line": 336,
+            "line": 345,
             "text": "return Math.floor((\"0000000\"+Math.tan(Ts+Math.random()*2000)).replace(/[\\.\\-]/g, \"\").replace(/.+(\\d\\d\\d\\d\\d\\d)\\d$/g, \"0.$1\")*rndN);  //  Генерация случайных чисел от 0 до \"rndN\"."
           },
           {
-            "line": 375,
+            "line": 384,
             "text": "return ok;"
           },
           {
-            "line": 401,
+            "line": 410,
             "text": "return tempus;"
           },
           {
-            "line": 414,
+            "line": 423,
             "text": "return;"
           },
           {
-            "line": 840,
+            "line": 849,
             "text": "return;               //  выходим из функции."
           },
           {
-            "line": 1040,
+            "line": 1049,
             "text": "return 1;    }"
           },
           {
-            "line": 1044,
+            "line": 1053,
             "text": "return 0;    }"
           }
         ]
@@ -98394,17 +98596,17 @@
           "name": "ObrabotkaHistory_on_off",
           "declarations": [
             {
-              "line": 100,
+              "line": 109,
               "text": "var ObrabotkaHistory_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             }
           ],
           "uses": [
             {
-              "line": 100,
+              "line": 109,
               "text": "var ObrabotkaHistory_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             },
             {
-              "line": 151,
+              "line": 160,
               "text": "var ObrabotkaHistory = (ObrabotkaHistory_on_off ==1);"
             }
           ],
@@ -98412,128 +98614,129 @@
         },
         {
           "index": 1,
-          "name": "Ud_on_off",
+          "name": "Obrabotka_Predlogov",
           "declarations": [
             {
-              "line": 114,
-              "text": "var Ud_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить эту операцию, \"1\" — включить)"
+              "line": 117,
+              "text": "var Obrabotka_Predlogov = 2;      // 0 ; 1 //      (\"0\" — Нет,   \"1\" — Да,   \"2\" — всегда спрашивать)"
             }
           ],
           "uses": [
             {
-              "line": 114,
-              "text": "var Ud_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить эту операцию, \"1\" — включить)"
+              "line": 117,
+              "text": "var Obrabotka_Predlogov = 2;      // 0 ; 1 //      (\"0\" — Нет,   \"1\" — Да,   \"2\" — всегда спрашивать)"
             },
             {
-              "line": 612,
-              "text": "if (Ud_on_off)"
+              "line": 533,
+              "text": "if (Obrabotka_Predlogov==2)  {                  //  Если в настройках включен просмотр возможных предлогов..."
             },
             {
-              "line": 621,
-              "text": "if (Ud_on_off)"
+              "line": 583,
+              "text": "otvet = (Obrabotka_Predlogov==1  ||  otvet);"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 2,
-          "name": "Vsegda_on_off",
+          "name": "Ud_on_off",
           "declarations": [
             {
               "line": 123,
-              "text": "var Vsegda_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
+              "text": "var Ud_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить эту операцию, \"1\" — включить)"
             }
           ],
           "uses": [
             {
               "line": 123,
-              "text": "var Vsegda_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
+              "text": "var Ud_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить эту операцию, \"1\" — включить)"
             },
             {
-              "line": 1284,
-              "text": "if (Version_on_off == 1  &&  (count_all  ||  Vsegda_on_off == 1))"
+              "line": 621,
+              "text": "if (Ud_on_off)"
+            },
+            {
+              "line": 630,
+              "text": "if (Ud_on_off)"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 3,
-          "name": "nbspEntity",
+          "name": "Version_on_off",
           "declarations": [
             {
-              "line": 141,
-              "text": "var nbspEntity=window.external.GetNBSP();   //  Получаем выбранный символ неразрывного пробела."
-            },
-            {
-              "line": 146,
-              "text": "var nbspEntity=\"&nbsp;\";   //  то используем стандартный код н/р пробела."
+              "line": 129,
+              "text": "var Version_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             }
           ],
           "uses": [
             {
-              "line": 141,
-              "text": "var nbspEntity=window.external.GetNBSP();   //  Получаем выбранный символ неразрывного пробела."
+              "line": 129,
+              "text": "var Version_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             },
             {
-              "line": 142,
-              "text": "if (nbspEntity.charCodeAt(0) == 160)   //  Если используется стандартный символ..."
-            },
-            {
-              "line": 143,
-              "text": "nbspEntity = \"&nbsp;\";   //  то заменяем его на стандартный код."
-            },
-            {
-              "line": 146,
-              "text": "var nbspEntity=\"&nbsp;\";   //  то используем стандартный код н/р пробела."
-            },
-            {
-              "line": 248,
-              "text": "var reHist01 = new RegExp(\"(.[^…\\\\\\?!\\\\\\.,;:—])(\\\\\\s|\"+nbspEntity+\")(— \"+textYouName+mDate[k]+\")\",\"\");"
-            },
-            {
-              "line": 251,
-              "text": "var reHist02 = new RegExp(\"(.[^…\\\\\\?!\\\\\\.,;:—])[,;:]{0,1}(\\\\\\s|\"+nbspEntity+\")(— \"+textYouName+mDate[k]+\")\",\"\");"
-            },
-            {
-              "line": 254,
-              "text": "var reHist03 = new RegExp(\"(.)(\\\\\\s|\"+nbspEntity+\")(— \"+textYouName+mDate[k]+\")\",\"\");"
-            },
-            {
-              "line": 257,
-              "text": "var reHist04 = new RegExp(\"(.)(\\\\\\s|\"+nbspEntity+\")(— \"+textYouName+mDate[k]+\")\",\"\");"
+              "line": 1293,
+              "text": "if (Version_on_off == 1  &&  (count_all  ||  Vsegda_on_off == 1))"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 4,
-          "name": "povtorD",
+          "name": "Vsegda_on_off",
           "declarations": [
             {
-              "line": 220,
-              "text": "var povtorD = false;   //  Индикатор повторной обработки в последние 10 дней."
+              "line": 132,
+              "text": "var Vsegda_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             }
           ],
           "uses": [
             {
-              "line": 220,
-              "text": "var povtorD = false;   //  Индикатор повторной обработки в последние 10 дней."
+              "line": 132,
+              "text": "var Vsegda_on_off = 0;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
             },
             {
-              "line": 230,
-              "text": "povtorD = true;                    //  то отмечаем это,"
+              "line": 1293,
+              "text": "if (Version_on_off == 1  &&  (count_all  ||  Vsegda_on_off == 1))"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "youName",
+          "declarations": [
+            {
+              "line": 135,
+              "text": "var youName = \"Зорро\";"
+            }
+          ],
+          "uses": [
+            {
+              "line": 135,
+              "text": "var youName = \"Зорро\";"
             },
             {
-              "line": 260,
-              "text": "if (povtorD) {                                         //  Если найдена запись с недавней датой..."
+              "line": 181,
+              "text": "function HistoryChange(Script_Name, youName) {"
             },
             {
-              "line": 276,
-              "text": "povtorD = false;   //  Объявляем, что недавняя дата - посторонняя, и надо повышать версию и добавлять новую строку в историю."
+              "line": 248,
+              "text": "try  { youName = fbeUserName }   //  Если есть строка:   var fbeUserName = \"Имя\";   в файле \"main.js\"  --  Изменение имени в соответствии с глобальной переменной."
             },
             {
-              "line": 279,
-              "text": "if (povtorD)  return;   //  Если производилась обработка записи в истории - выход из функции."
+              "line": 251,
+              "text": "var textYouName = youName+\"\";    //  Имя в тексте."
+            },
+            {
+              "line": 252,
+              "text": "if (youName!=\"\")                           //  Если есть заполненное имя..."
+            },
+            {
+              "line": 1294,
+              "text": "HistoryChange(ScriptName + \" \" + NumerusVersion, youName);   //  запускаем функцию для изменения данных истории."
             }
           ],
           "classification": "requires_review"
@@ -98542,25 +98745,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 91,
+          "line": 100,
           "text": "var NumerusVersion=\"1.7\";"
         },
         {
-          "line": 118,
+          "line": 127,
           "text": "//  Автоматическое повышение версии файла и запись в историю изменений."
         },
         {
-          "line": 120,
+          "line": 129,
           "text": "var Version_on_off = 1;      // 0 ; 1 //      (\"0\" — отключить, \"1\" — включить)"
         },
         {
-          "line": 170,
+          "line": 179,
           "text": "///  ФУНКЦИЯ ПОВЫШЕНИЯ ВЕРСИИ ФАЙЛА И ЗАПИСЬ В ИСТОРИЮ ИЗМЕНЕНИЙ"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Отдельные латинские и греческие буквы могут быть переменными или обозначениями; сверяйте предложенные замены с контекстом.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При исходных настройках скрипт обрабатывает историю изменений и после исправлений может повысить версию книги и изменить её историю.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Отмена в ручном диалоге прекращает соответствующий этап, но уже выполненные исправления сохраняются; полный откат через редактор не проверен.",
           "verification": "requires_review"
         }
       ],
@@ -98583,93 +98794,30 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 984,
-              "text": "window.external.BeginUndoUnit(document, ScriptName + \" v.\"+NumerusVersion);    // Начало записи в систему отмен."
-            },
-            {
-              "line": 1289,
-              "text": "window.external.EndUndoUnit(document);    // Конец записи в систему отмен."
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Обработка текста, ручные диалоги и обновление истории находятся в одной группе отмены; обычный путь закрывает её. Выход из-за неподходящего режима расположен до открытия группы, прямого выхода между её открытием и закрытием нет. Полный откат не проверен."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 984,
+              "line": 993,
               "text": "window.external.BeginUndoUnit(document, ScriptName + \" v.\"+NumerusVersion);    // Начало записи в систему отмен."
             },
             {
-              "line": 1040,
+              "line": 1049,
               "text": "return 1;    }"
             },
             {
-              "line": 1044,
+              "line": 1053,
               "text": "return 0;    }"
             },
             {
-              "line": 1289,
+              "line": 1298,
               "text": "window.external.EndUndoUnit(document);    // Конец записи в систему отмен."
             }
           ]

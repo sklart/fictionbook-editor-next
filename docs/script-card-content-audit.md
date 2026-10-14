@@ -16,43 +16,43 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **332**. Исполняемый код не изменён.
+Изменено карточек: **333**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 296
-- `generic_usage`: 277
-- `inaccurate_description`: 560
+- `false_warning`: 297
+- `generic_usage`: 278
+- `inaccurate_description`: 562
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 283
+- `incorrect_dependency`: 284
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 278
+- `incorrect_scope`: 279
 - `incorrect_selection`: 17
-- `incorrect_setting`: 133
-- `incorrect_undo`: 276
+- `incorrect_setting`: 134
+- `incorrect_undo`: 277
 - `incorrect_version`: 5
-- `uncertain_attribution`: 5
+- `uncertain_attribution`: 7
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 8
+- `attributionClarified`: 9
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 159
+- `dependenciesVerified`: 160
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 275
-- `scopeClarified`: 261
-- `serviceSettingsRemoved`: 147
-- `settingsClarified`: 446
-- `undoDescriptionsClarified`: 268
-- `usageCorrected`: 277
-- `warningsClarified`: 208
+- `purposeClarified`: 276
+- `scopeClarified`: 262
+- `serviceSettingsRemoved`: 149
+- `settingsClarified`: 447
+- `undoDescriptionsClarified`: 269
+- `usageCorrected`: 278
+- `warningsClarified`: 209
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **171**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **172**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -343,13 +343,14 @@
 - `06_Чистка/65_Дроби, степени, интервалы, габариты.js:880` — return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен.
 - `06_Чистка/65_Дроби, степени, интервалы, габариты.js:883` — return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body.
 - `06_Чистка/73_Пост-корректор.js:662` — Все FONT снимаются даже без найденных правил; это изменение не учитывается в changeBook и не отражается в статистике.
+- `06_Чистка/71_Кириллица-латиница.js:300` — Без фигурных скобок после проверки длины новой версии VersionUp отмечается даже когда запись нового значения версии не выполнялась.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1261
+- `generic_usage`: 1257
 - `inaccurate_description`: 88
-- `incorrect_undo`: 193
-- `requires_review`: 422
+- `incorrect_undo`: 192
+- `requires_review`: 421
 
 ## Границы проверки
 
