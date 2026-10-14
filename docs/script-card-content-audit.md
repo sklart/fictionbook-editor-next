@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **147**.
+Карточек без автоматических замечаний: **149**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **313**. Исполняемый код не изменён.
+Изменено карточек: **315**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 277
-- `generic_usage`: 258
-- `inaccurate_description`: 522
+- `false_warning`: 279
+- `generic_usage`: 260
+- `inaccurate_description`: 526
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 258
+- `incorrect_dependency`: 260
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 255
+- `incorrect_scope`: 257
 - `incorrect_selection`: 17
 - `incorrect_setting`: 123
-- `incorrect_undo`: 257
+- `incorrect_undo`: 259
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,17 +40,17 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 140
+- `dependenciesVerified`: 142
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 256
-- `scopeClarified`: 242
+- `purposeClarified`: 258
+- `scopeClarified`: 244
 - `serviceSettingsRemoved`: 143
 - `settingsClarified`: 436
-- `undoDescriptionsClarified`: 249
-- `usageCorrected`: 258
-- `warningsClarified`: 189
+- `undoDescriptionsClarified`: 251
+- `usageCorrected`: 260
+- `warningsClarified`: 191
 
 Скриптов с подтверждёнными замечаниями к исполняемому коду: **160**.
 
@@ -327,10 +327,10 @@
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1335
+- `generic_usage`: 1327
 - `inaccurate_description`: 99
-- `incorrect_undo`: 205
-- `requires_review`: 441
+- `incorrect_undo`: 203
+- `requires_review`: 439
 
 ## Границы проверки
 
