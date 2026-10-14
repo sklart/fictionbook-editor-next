@@ -3,8 +3,8 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 507,
-    "generic_usage": 1923,
-    "incorrect_undo": 342,
+    "generic_usage": 1919,
+    "incorrect_undo": 341,
     "inaccurate_description": 109
   },
   "reviewedChanges": [
@@ -17538,31 +17538,168 @@
         "settingsClarified": 3,
         "undoDescriptionsClarified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/50_Показать миниатюры иллюстраций из документа.js",
+      "codeSha256": "f3839d2a3999ef4ffb96763a208bf12c455655fc5299fee28c36eee9fd403260",
+      "evidence": "Run: 102-103 задаёт начальные параметры; 125-158 очищает либо создаёт temp_thumbs; 222-337 собирает изображения и сохраняет бинарные файлы; 437-1200 формирует HTML с просмотром, сортировкой и правками; 1200-1214 открывает окно; 1221-1415 после закрытия читает _swaps/_deleted, запрашивает подтверждение, меняет href/src и удаляет элементы книги, затем очищает временные файлы. Строки 1292-1378 образуют группу отмены только для подтверждённых изменений книги.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Показывает миниатюры встроенных иллюстраций.",
+          "after": "Открывает галерею миниатюр книги с возможностью изменить порядок и удалить ссылки на иллюстрации после подтверждения.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Формирует HTML-представление изображений документа. Изменения DOM окна отчёта не следует путать с изменением пикселей или структуры книги.",
+          "after": "Создаёт временную HTML-галерею блочных и внутриабзацных иллюстраций, обложки и неиспользуемых бинарных файлов. В галерее можно просматривать изображения, менять порядок обычных иллюстраций и помечать ссылки на удаление. После закрытия окна скрипт запрашивает подтверждение и при согласии изменяет ссылки и элементы изображений в книге; сами бинарные файлы при удалении ссылок сохраняются.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Текущая открытая книга и отдельное окно миниатюр. Подтверждённое изменение порядка или удаление ссылок применяется к изображениям в книге; временные файлы создаются в temp_thumbs каталога редактора.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "modifiesDocument",
+          "before": false,
+          "after": true,
+          "category": "incorrect_effect"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Откройте книгу и запустите скрипт: он создаст временные файлы иллюстраций и откроет окно миниатюр.",
+            "В окне можно менять размер и порядок показа, перейти к выбранной картинке в книге, а в режиме редактирования — переставлять иллюстрации и помечать ссылки на удаление.",
+            "Закройте окно и подтвердите применение изменений, если они нужны. Проверьте ссылки и порядок иллюстраций в книге; удалённые из текста бинарные файлы остаются во вложениях."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Файловые операции не отменяются обычным Ctrl+Z в книге.",
+            "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+          ],
+          "after": [
+            "При запуске скрипт очищает существующую папку temp_thumbs в каталоге редактора и записывает туда изображения, HTML и служебные файлы. При закрытии окна пытается удалить папку; отмена в книге не восстанавливает эти файлы.",
+            "Подтверждённые в окне перестановки меняют ссылки на изображения, а пометки удаления удаляют элементы из текста книги. Бинарные вложения при этом сохраняются.",
+            "Удаление сопоставляет изображения по отображаемому имени; при одинаковых именах возможна обработка нескольких вхождений. Проверяйте результат перед сохранением.",
+            "При ошибке после начала применения правок операция отмены может остаться открытой; полный откат не проверен."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "После подтверждения перестановка и удаление ссылок на штатном пути сгруппированы в одну операцию отмены редактора. При ошибке до её завершения группа может остаться открытой; полнота отката не проверена. Временные файлы галереи отменой в книге не восстанавливаются."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "defaultThumbSize",
+              "value": "medium",
+              "expression": "\"medium\"",
+              "description": "\"small\", \"medium\", \"large\"",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "defaultSortOrder",
+              "value": "mixed",
+              "expression": "\"mixed\"",
+              "description": "\"mixed\" - по порядку, \"blockfirst\" - блочные → инлайн",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "defaultThumbSize",
+              "title": "Начальный размер миниатюр",
+              "value": "medium",
+              "expression": "\"medium\"",
+              "description": "medium — средний; small — мелкий; large — крупный. Размер можно переключить в окне галереи.",
+              "source": "code"
+            },
+            {
+              "name": "defaultSortOrder",
+              "title": "Начальный порядок показа",
+              "value": "mixed",
+              "expression": "\"mixed\"",
+              "description": "mixed — по порядку в книге; blockfirst — сначала блочные, затем внутриабзацные. Порядок показа можно переключить в окне.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 132,
+          "issue": "При запуске очищается фиксированная папка temp_thumbs; оставшиеся файлы другого запуска могут быть удалены."
+        },
+        {
+          "line": 1351,
+          "issue": "Пометки удаления преобразуются в имена, затем по имени снова ищутся UID; одинаковые отображаемые имена могут привести к удалению нескольких вхождений."
+        },
+        {
+          "line": 1292,
+          "issue": "После начала применения правок нет finally для завершения операции отмены; исключение может оставить её открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 2,
+        "undoDescriptionsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 176,
-    "generic_usage": 87,
-    "false_warning": 118,
-    "incorrect_setting": 98,
-    "incorrect_scope": 77,
-    "incorrect_undo": 86,
+    "inaccurate_description": 178,
+    "generic_usage": 88,
+    "false_warning": 119,
+    "incorrect_setting": 99,
+    "incorrect_scope": 78,
+    "incorrect_undo": 87,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 72,
+    "incorrect_dependency": 73,
     "incorrect_authorship": 37,
     "incorrect_version": 5,
     "inaccurate_version": 1,
-    "incorrect_effect": 1
+    "incorrect_effect": 2
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 142,
-    "undoDescriptionsClarified": 87,
-    "usageCorrected": 87,
-    "purposeClarified": 87,
-    "warningsClarified": 27,
-    "scopeClarified": 71,
-    "settingsClarified": 389,
+    "undoDescriptionsClarified": 88,
+    "usageCorrected": 88,
+    "purposeClarified": 88,
+    "warningsClarified": 28,
+    "scopeClarified": 72,
+    "settingsClarified": 391,
     "attributionClarified": 3,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29
@@ -64869,8 +65006,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Показать миниатюры иллюстраций из документа",
-        "summary": "Показывает миниатюры встроенных иллюстраций.",
-        "description": "Формирует HTML-представление изображений документа. Изменения DOM окна отчёта не следует путать с изменением пикселей или структуры книги.",
+        "summary": "Открывает галерею миниатюр книги с возможностью изменить порядок и удалить ссылки на иллюстрации после подтверждения.",
+        "description": "Создаёт временную HTML-галерею блочных и внутриабзацных иллюстраций, обложки и неиспользуемых бинарных файлов. В галерее можно просматривать изображения, менять порядок обычных иллюстраций и помечать ссылки на удаление. После закрытия окна скрипт запрашивает подтверждение и при согласии изменяет ссылки и элементы изображений в книге; сами бинарные файлы при удалении ссылок сохраняются.",
         "authors": [
           {
             "name": "TaKir",
@@ -64887,38 +65024,42 @@
           }
         ],
         "version": "6.4",
-        "scope": "Текущая книга или определённые кодом её разделы.",
-        "modifiesDocument": false,
+        "scope": "Текущая открытая книга и отдельное окно миниатюр. Подтверждённое изменение порядка или удаление ссылок применяется к изображениям в книге; временные файлы создаются в temp_thumbs каталога редактора.",
+        "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Откройте книгу и запустите скрипт: он создаст временные файлы иллюстраций и откроет окно миниатюр.",
+          "В окне можно менять размер и порядок показа, перейти к выбранной картинке в книге, а в режиме редактирования — переставлять иллюстрации и помечать ссылки на удаление.",
+          "Закройте окно и подтвердите применение изменений, если они нужны. Проверьте ссылки и порядок иллюстраций в книге; удалённые из текста бинарные файлы остаются во вложениях."
         ],
         "warnings": [
-          "Файловые операции не отменяются обычным Ctrl+Z в книге.",
-          "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+          "При запуске скрипт очищает существующую папку temp_thumbs в каталоге редактора и записывает туда изображения, HTML и служебные файлы. При закрытии окна пытается удалить папку; отмена в книге не восстанавливает эти файлы.",
+          "Подтверждённые в окне перестановки меняют ссылки на изображения, а пометки удаления удаляют элементы из текста книги. Бинарные вложения при этом сохраняются.",
+          "Удаление сопоставляет изображения по отображаемому имени; при одинаковых именах возможна обработка нескольких вхождений. Проверяйте результат перед сохранением.",
+          "При ошибке после начала применения правок операция отмены может остаться открытой; полный откат не проверен."
         ],
         "settings": [
           {
             "name": "defaultThumbSize",
+            "title": "Начальный размер миниатюр",
             "value": "medium",
             "expression": "\"medium\"",
-            "description": "\"small\", \"medium\", \"large\"",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "medium — средний; small — мелкий; large — крупный. Размер можно переключить в окне галереи.",
+            "source": "code"
           },
           {
             "name": "defaultSortOrder",
+            "title": "Начальный порядок показа",
             "value": "mixed",
             "expression": "\"mixed\"",
-            "description": "\"mixed\" - по порядку, \"blockfirst\" - блочные → инлайн",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "mixed — по порядку в книге; blockfirst — сначала блочные, затем внутриабзацные. Порядок показа можно переключить в окне.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "После подтверждения перестановка и удаление ссылок на штатном пути сгруппированы в одну операцию отмены редактора. При ошибке до её завершения группа может остаться открытой; полнота отката не проверена. Временные файлы галереи отменой в книге не восстанавливаются."
         },
         "examples": null,
         "tags": [
@@ -64930,34 +65071,34 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 1292,
+            "line": 1296,
             "text": "window.external.BeginUndoUnit(document, scriptName + ' v.' + scriptVersion);"
           }
         ],
         "undo_end": [
           {
-            "line": 1378,
+            "line": 1382,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 414,
+            "line": 418,
             "text": "var sel = document.selection;"
           },
           {
-            "line": 417,
+            "line": 421,
             "text": "var controlRange = sel.createRange();"
           }
         ],
         "write": [
           {
-            "line": 1374,
+            "line": 1378,
             "text": "try { allImgs[i].outerHTML = allImgs[i].outerHTML; } catch(e) {}"
           },
           {
-            "line": 1374,
+            "line": 1378,
             "text": "try { allImgs[i].outerHTML = allImgs[i].outerHTML; } catch(e) {}"
           }
         ],
@@ -64966,102 +65107,102 @@
         "process": [],
         "local_window": [
           {
-            "line": 1211,
+            "line": 1215,
             "text": "var MsgWindow = window.open(fileUrl, '_blank', \"height=680,width=850,status=no,toolbar=no,menubar=no,location=no,scrollbars=yes,resizable=yes\");"
           }
         ],
         "file": [
           {
-            "line": 1199,
+            "line": 1203,
             "text": "var textFile = fso.CreateTextFile(htmlFilePath, true, true);"
           },
           {
-            "line": 1241,
+            "line": 1245,
             "text": "var f = fso2.OpenTextFile(swapsFilePath, 1, false, 0);"
           },
           {
-            "line": 1265,
+            "line": 1269,
             "text": "var f = fso2.OpenTextFile(deletedFilePath, 1, false, 0);"
           },
           {
-            "line": 1384,
+            "line": 1388,
             "text": "if (swEx) fso2.DeleteFile(swapsFilePath, true);"
           }
         ],
         "return": [
           {
-            "line": 122,
+            "line": 126,
             "text": "return;"
           },
           {
-            "line": 160,
+            "line": 164,
             "text": "return;"
           },
           {
-            "line": 280,
+            "line": 284,
             "text": "return;"
           },
           {
-            "line": 1204,
+            "line": 1208,
             "text": "return;"
           },
           {
-            "line": 1214,
+            "line": 1218,
             "text": "return;"
           },
           {
-            "line": 1413,
+            "line": 1417,
             "text": "return;"
           },
           {
-            "line": 1448,
+            "line": 1452,
             "text": "return s;"
           },
           {
-            "line": 1453,
+            "line": 1457,
             "text": "if (bytes <= 0) return \"0 байт\";"
           },
           {
-            "line": 1455,
+            "line": 1459,
             "text": "return Math.round(bytes / 1024) + \" Кб\";"
           },
           {
-            "line": 1457,
+            "line": 1461,
             "text": "return (Math.round(bytes / 10485.76) / 100) + \" Мб\";"
           },
           {
-            "line": 1462,
+            "line": 1466,
             "text": "if (!s) return '';"
           },
           {
-            "line": 1473,
+            "line": 1477,
             "text": "return r;"
           },
           {
-            "line": 1478,
+            "line": 1482,
             "text": "if (!s) return '';"
           },
           {
-            "line": 1479,
+            "line": 1483,
             "text": "return s.replace(/%20/g, ' ');"
           },
           {
-            "line": 1512,
+            "line": 1516,
             "text": "return h;"
           },
           {
-            "line": 1560,
+            "line": 1564,
             "text": "return s;"
           }
         ]
       },
       "namespaceUrls": [
         {
-          "line": 437,
+          "line": 441,
           "text": "var html = '<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\\n';"
         },
         {
-          "line": 438,
+          "line": 442,
           "text": "html += '<html xmlns=\"http://www.w3.org/1999/xhtml\">\\n';"
         }
       ],
@@ -65071,33 +65212,33 @@
           "name": "defaultThumbSize",
           "declarations": [
             {
-              "line": 102,
+              "line": 106,
               "text": "var defaultThumbSize = \"medium\";  // \"small\", \"medium\", \"large\""
             }
           ],
           "uses": [
             {
-              "line": 102,
+              "line": 106,
               "text": "var defaultThumbSize = \"medium\";  // \"small\", \"medium\", \"large\""
             },
             {
-              "line": 527,
+              "line": 531,
               "text": "html += generateThumbsHTML(allImages, unlinkedFiles, coverImage, defaultThumbSize, defaultSortOrder, blockCount, inlineCount);"
             },
             {
-              "line": 545,
+              "line": 549,
               "text": "html += '<label><input type=\"radio\" name=\"thumbSize\" value=\"small\" onclick=\"changeSize(\\'small\\')\"'; if (defaultThumbSize == 'small') html += ' checked'; html += '> Мелко</label> '"
             },
             {
-              "line": 546,
+              "line": 550,
               "text": "html += '<label><input type=\"radio\" name=\"thumbSize\" value=\"medium\" onclick=\"changeSize(\\'medium\\')\"'; if (defaultThumbSize == 'medium') html += ' checked'; html += '> Средне</labe"
             },
             {
-              "line": 547,
+              "line": 551,
               "text": "html += '<label><input type=\"radio\" name=\"thumbSize\" value=\"large\" onclick=\"changeSize(\\'large\\')\"'; if (defaultThumbSize == 'large') html += ' checked'; html += '> Крупно</label> "
             },
             {
-              "line": 586,
+              "line": 590,
               "text": "html += 'var currentSize = \"' + defaultThumbSize + '\";\\n';     // Текущий размер миниатюр"
             }
           ],
@@ -65108,29 +65249,29 @@
           "name": "defaultSortOrder",
           "declarations": [
             {
-              "line": 103,
+              "line": 107,
               "text": "var defaultSortOrder = \"mixed\";   // \"mixed\" - по порядку, \"blockfirst\" - блочные → инлайн"
             }
           ],
           "uses": [
             {
-              "line": 103,
+              "line": 107,
               "text": "var defaultSortOrder = \"mixed\";   // \"mixed\" - по порядку, \"blockfirst\" - блочные → инлайн"
             },
             {
-              "line": 527,
+              "line": 531,
               "text": "html += generateThumbsHTML(allImages, unlinkedFiles, coverImage, defaultThumbSize, defaultSortOrder, blockCount, inlineCount);"
             },
             {
-              "line": 550,
+              "line": 554,
               "text": "html += '<label><input type=\"radio\" name=\"sortOrder\" value=\"mixed\" onclick=\"changeOrder(\\'mixed\\')\"'; if (defaultSortOrder == 'mixed') html += ' checked'; html += '> По порядку</la"
             },
             {
-              "line": 551,
+              "line": 555,
               "text": "html += '<label><input type=\"radio\" name=\"sortOrder\" value=\"blockfirst\" onclick=\"changeOrder(\\'blockfirst\\')\"'; if (defaultSortOrder == 'blockfirst') html += ' checked'; html += '>"
             },
             {
-              "line": 587,
+              "line": 591,
               "text": "html += 'var currentOrder = \"' + defaultSortOrder + '\";\\n';    // Текущий режим сортировки"
             }
           ],
@@ -65140,29 +65281,37 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 71,
+          "line": 75,
           "text": "// version 6.4"
         },
         {
-          "line": 90,
+          "line": 94,
           "text": "// version 6.4, 10.07.2026"
         },
         {
-          "line": 96,
+          "line": 100,
           "text": "var scriptVersion = \"6.4\";"
         },
         {
-          "line": 121,
+          "line": 125,
           "text": "MsgBox(scriptName + \"\\nver. \" + scriptVersion + \"\\n\\nНе удалось определить путь к папке редактора.\");"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Файловые операции не отменяются обычным Ctrl+Z в книге.",
+          "text": "При запуске скрипт очищает существующую папку temp_thumbs в каталоге редактора и записывает туда изображения, HTML и служебные файлы. При закрытии окна пытается удалить папку; отмена в книге не восстанавливает эти файлы.",
           "verification": "requires_review"
         },
         {
-          "text": "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия.",
+          "text": "Подтверждённые в окне перестановки меняют ссылки на изображения, а пометки удаления удаляют элементы из текста книги. Бинарные вложения при этом сохраняются.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Удаление сопоставляет изображения по отображаемому имени; при одинаковых именах возможна обработка нескольких вхождений. Проверяйте результат перед сохранением.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке после начала применения правок операция отмены может остаться открытой; полный откат не проверен.",
           "verification": "requires_review"
         }
       ],
@@ -65183,62 +65332,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 1292,
-              "text": "window.external.BeginUndoUnit(document, scriptName + ' v.' + scriptVersion);"
-            },
-            {
-              "line": 1378,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/51_Коррекция jpg-png.js",
