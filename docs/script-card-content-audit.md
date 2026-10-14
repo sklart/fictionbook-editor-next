@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **137**.
+Карточек без автоматических замечаний: **140**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **269**. Исполняемый код не изменён.
+Изменено карточек: **273**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 233
-- `generic_usage`: 214
-- `inaccurate_description`: 434
+- `false_warning`: 237
+- `generic_usage`: 218
+- `inaccurate_description`: 442
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 213
+- `incorrect_dependency`: 217
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 208
+- `incorrect_scope`: 214
 - `incorrect_selection`: 17
-- `incorrect_setting`: 108
-- `incorrect_undo`: 213
+- `incorrect_setting`: 111
+- `incorrect_undo`: 217
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 96
+- `dependenciesVerified`: 100
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 212
-- `scopeClarified`: 198
+- `purposeClarified`: 216
+- `scopeClarified`: 202
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 416
-- `undoDescriptionsClarified`: 205
-- `usageCorrected`: 214
-- `warningsClarified`: 145
+- `settingsClarified`: 424
+- `undoDescriptionsClarified`: 209
+- `usageCorrected`: 218
+- `warningsClarified`: 149
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **121**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **123**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -276,13 +276,15 @@
 - `18_Мелочи редактирования/40_Сделать выделенный текст ссылкой на MIDI-файл (для AlReader'а).js:53` — При пустом HTML-выделении выполняется return после открытия группы отмены; закрытие группы пропускается.
 - `30_'Числовые' скрипты/45_Расширенная нумерация абзацев.js:152` — Значение 0 для начального номера или шага заменяется на 1 из-за оператора ||.
 - `30_'Числовые' скрипты/45_Расширенная нумерация абзацев.js:197` — processP возвращает успех даже без вставки текста; счётчик обработанных абзацев может завышаться.
+- `99_Прочее/01_Текст документа продублировать во втором фрейме.js:237` — После замены DOM проверка fbw_body может завершиться return внутри открытой группы отмены.
+- `99_Прочее/03_Закрыть второй фрейм.js:57` — После замены outerHTML вызов InflateIt получает старый containerEl, а не вновь вставленный fbw_body; восстановление нового узла этим вызовом сомнительно.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1476
+- `generic_usage`: 1465
 - `inaccurate_description`: 99
-- `incorrect_undo`: 245
-- `requires_review`: 442
+- `incorrect_undo`: 243
+- `requires_review`: 440
 
 ## Границы проверки
 

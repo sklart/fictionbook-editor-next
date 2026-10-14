@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 442,
-    "generic_usage": 1476,
-    "incorrect_undo": 245,
+    "requires_review": 440,
+    "generic_usage": 1465,
+    "incorrect_undo": 243,
     "inaccurate_description": 99
   },
   "reviewedChanges": [
@@ -30021,17 +30021,466 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "99_Прочее/01_Текст документа продублировать во втором фрейме.js",
+      "codeSha256": "8c5ed24cf6a038d584f78a36d10f0f97b32180f4e75d0ed958bc2fa0aefdebf1",
+      "evidence": "Вариант 99/01: allowEditingInSecondFrame=1; Run проверяет отсутствие уже открытого контейнера, затем заменяет fbwBody.outerHTML на DIV.container с исходным fbw_body, разделителем и fbw_body_2, копируя innerHTML с удалением id. После замены повторно ищет fbw_body и может вернуть управление до EndUndoUnit. SplitManager управляет высотой и перетаскиванием.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Создаёт вторую область с копией визуального текста.",
+          "after": "Создаёт под основным текстом вторую редактируемую копию.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Перестраивает DOM контейнера, добавляет разделитель и второй iframe, настраивает размеры и обработчики. Редактируемость второго фрейма задаётся allowEditingInSecondFrame; это не автоматически синхронизированные две вкладки одной книги.",
+          "after": "Заменяет оболочку основного текста контейнером с разделителем и вторым DIV, содержащим копию HTML книги без атрибутов id. По умолчанию редактирование копии разрешено; её содержимое не синхронизируется автоматически с основным текстом. Разделитель можно перетаскивать.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Сеанс и интерфейс редактора.",
+          "after": "Визуальный DOM текущей книги и её интерфейс; скрипт запускается один раз, пока второй контейнер закрыт.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "modifiesDocument",
+          "before": null,
+          "after": true,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Откройте книгу и запустите команду для создания второго поля под основным текстом.",
+            "Перетащите разделитель для изменения высоты полей.",
+            "Для возврата к одному полю используйте отдельную команду закрытия; изменения в копии не считайте автоматически перенесёнными в книгу."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Второе поле — отдельная копия HTML; изменения в нём не синхронизируются с основным текстом.",
+            "Копия создаётся без атрибутов id, поэтому внутренние ссылки и элементы с идентификаторами в ней могут работать иначе.",
+            "Если основной текст не удастся найти после перестройки DOM, скрипт выйдет до закрытия группы отмены."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "allowEditingInSecondFrame",
+              "value": 1,
+              "expression": "1",
+              "description": "Значение 1 — разрешить редактирование",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "allowEditingInSecondFrame",
+              "title": "Редактирование второго поля",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — разрешить редактирование копии; 0 — показать её только для чтения.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Перестройка DOM начинается внутри группы отмены и штатно завершается её закрытием. После повторной проверки основного поля возможен ранний выход без закрытия; восстановление интерфейса и содержимого через отмену не проверено."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 237,
+          "issue": "После замены DOM проверка fbw_body может завершиться return внутри открытой группы отмены."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "99_Прочее/03_Закрыть второй фрейм.js",
+      "codeSha256": "57a99e659ac870f54c16aca95c01c40f91d203167ec70cc646d3d0f1dcca7000",
+      "evidence": "Вариант 99/03: Run требует fbw_body и container, открывает группу отмены, устанавливает размеры основного поля и заменяет containerEl.outerHTML на fbwBody.outerHTML. Затем вызывает общую функцию InflateIt со старой ссылкой containerEl и закрывает группу. Копия fbw_body_2 в результат не включается.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Удаляет вторую область и возвращает основной контейнер текста.",
+          "after": "Удаляет второе поле и оставляет основной текст.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Находит созданные вторым фреймом контейнеры, заменяет оболочку основным fbw_body и восстанавливает её через InflateIt. Изменения, сделанные только в несинхронизированной копии, не следует считать перенесёнными в основной текст.",
+          "after": "Берёт текущий основной fbw_body из двухпанельного контейнера и заменяет весь контейнер его HTML. Второе поле и разделитель удаляются; изменения, сделанные только в копии, не переносятся в основной текст.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Сеанс и интерфейс редактора.",
+          "after": "Текущий двухпанельный DOM после запуска команды создания второго поля.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "modifiesDocument",
+          "before": null,
+          "after": true,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "После работы с двумя полями запустите эту команду для возврата к одному основному полю.",
+            "Проверьте основной текст: содержимое нижней копии в него не переносится."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Содержимое нижней копии удаляется вместе с контейнером и не объединяется с основным текстом.",
+            "После замены контейнера скрипт вызывает восстановление отображения на старом узле; эффект этого вызова для нового основного поля не подтверждён."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Штатная замена контейнера находится внутри группы отмены. Корректное восстановление двухполосного интерфейса и содержимого нижней копии через отмену не проверено."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 57,
+          "issue": "После замены outerHTML вызов InflateIt получает старый containerEl, а не вновь вставленный fbw_body; восстановление нового узла этим вызовом сомнительно."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 0,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "95_Для программистов/12_Проверить readonly для недавних fb2 файлов.js",
+      "codeSha256": "9e0158fd7b56bbfc32e25d271c89ea3eb93301852cd2a848ed49f2b8e3fbb979",
+      "evidence": "Вариант 95/12: foldersToCheck содержит три значения, searchSubfolders=1, maxDepth=0, maxAgeMinutes=10. ActiveX FileSystemObject перечисляет файлы и вложенные папки; WScript.Shell раскрывает переменные окружения. Фильтр проверяет расширение tmp, префикс fbe и DateLastModified. Ошибки GetFolder/обхода вложений перехватываются без учёта непроверенных папок. Нет записи файлов или книги.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Ищет недавно появившиеся fbe*.tmp в заданных папках.",
+          "after": "Ищет свежие временные файлы fbe*.tmp в заданных папках.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Рекурсивно обходит указанные каталоги, фильтрует имена временных файлов и сравнивает время изменения с порогом. Это поиск возможных следов проблемы сохранения, а не прямой контроль атрибута read-only открытого FB2.",
+          "after": "Через файловую систему Windows обходит заданные папки и при включённой рекурсии их вложения. Показывает fbe*.tmp с временем изменения не старше заданного порога. Атрибут «Только чтение» у открытого FB2 не проверяет и документ не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Файлы и каталоги вне текущего документа.",
+          "after": "Три указанные в исходнике папки и, по умолчанию, все доступные вложенные папки; открытый документ не анализируется.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Укажите в настройке исходного скрипта папки, где FBE может оставить временные файлы.",
+            "Запустите команду и прочитайте список найденных fbe*.tmp и отсутствующих исходных папок.",
+            "При проблемах сохранения дополнительно проверьте права на исходный FB2 и результат последнего сохранения."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Наличие fbe*.tmp не доказывает атрибут «Только чтение», а отсутствие таких файлов не гарантирует успешное сохранение."
+          ],
+          "after": [
+            "Наличие fbe*.tmp не доказывает атрибут «Только чтение», а отсутствие файлов не подтверждает успешное сохранение.",
+            "Недоступные вложенные папки пропускаются без отдельного сообщения; проверка может быть неполной."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "searchSubfolders",
+              "value": 1,
+              "expression": "1",
+              "description": "Проверять вложенные папки: 0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "maxDepth",
+              "value": 0,
+              "expression": "0",
+              "description": "Максимальная глубина вложенности (0 = без ограничений)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "foldersToCheck",
+              "title": "Папки для проверки",
+              "value": "D:\\Work\\!!2026; D:\\Ваш путь к папке; %USERPROFILE%\\Desktop",
+              "expression": "[\"D:\\\\Work\\\\!!2026\", \"D:\\\\Ваш путь к папке\", \"%USERPROFILE%\\\\Desktop\"]",
+              "description": "Список исходных папок; путь с шаблонным названием замените на свой.",
+              "source": "script"
+            },
+            {
+              "name": "searchSubfolders",
+              "title": "Проверять вложенные папки",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — обходить вложенные папки; 0 — только указанные папки.",
+              "source": "script"
+            },
+            {
+              "name": "maxDepth",
+              "title": "Максимальная глубина",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — без ограничения глубины; иначе число уровней рекурсии.",
+              "source": "script"
+            },
+            {
+              "name": "maxAgeMinutes",
+              "title": "Возраст временного файла",
+              "value": 10,
+              "expression": "10",
+              "description": "Файлы старше этого числа минут не показываются.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт только читает сведения о файлах и показывает результат; содержимое книги и внешние файлы не меняет. Отмена правок содержимого здесь неприменима."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 4,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "95_Для программистов/13_Проверка записи во внешний txt отчет.js",
+      "codeSha256": "53b09569a8bee14530adfb9a2f5c5e87fd0773206c4d283b08ed8a4eb719e26c",
+      "evidence": "Вариант 95/13: при наличии WriteFile вызывается запись _test_writefile.txt; FileSystemObject.CreateTextFile(testPath2, true) записывает _test_fso.txt с перезаписью. SaveFile и ReadFile только проверяются по typeof, ADODB.Stream только создаётся. Ошибки отражаются в сообщении. Нет операций над книгой и сетевых вызовов.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Проверяет несколько способов записи текстового файла.",
+          "after": "Проверяет доступность файловых методов и записывает два пробных файла.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Пробует доступность/вызов WriteFile, FileSystemObject и ADODB.Stream, записывает тестовые данные и выводит результаты. Это реальная запись внешних файлов, не проверка только наличия методов.",
+          "after": "Проверяет методы записи и чтения среды редактора, создание файлового объекта и потока. При доступности методов пытается записать два тестовых TXT-файла в D:\\FBE_Compare; результат каждого шага показывает в сообщении. Поток ADODB.Stream только создаёт, без записи. Книгу не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Файлы и каталоги вне текущего документа.",
+          "after": "Внешняя папка D:\\FBE_Compare и файловые интерфейсы Windows; открытая книга не изменяется.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Перед запуском проверьте папку D:\\FBE_Compare и существующие файлы _test_writefile.txt и _test_fso.txt.",
+            "Запустите диагностическую команду и прочитайте сообщение о доступности методов и результатах записи.",
+            "Проверьте содержимое тестовых файлов отдельно: отсутствие исключения не подтверждает запись на диск."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Файловые операции не отменяются обычным Ctrl+Z в книге."
+          ],
+          "after": [
+            "Скрипт пытается создать два файла в D:\\FBE_Compare. Запись через файловый объект открывает _test_fso.txt с разрешением перезаписи существующего файла.",
+            "Внешние файлы не входят в отмену книги; результат без ошибки ещё не доказывает сохранение содержимого на диске."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "testPath2",
+              "value": "D:\\FBE_Compare\\_test_fso.txt",
+              "expression": "\"D:\\\\FBE_Compare\\\\_test_fso.txt\"",
+              "description": "Пробуем записать",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "testPath1",
+              "title": "Файл для проверки метода редактора",
+              "value": "D:\\FBE_Compare\\_test_writefile.txt",
+              "expression": "\"D:\\\\FBE_Compare\\\\_test_writefile.txt\"",
+              "description": "Путь первой пробной записи.",
+              "source": "script"
+            },
+            {
+              "name": "testPath2",
+              "title": "Файл для проверки файлового объекта",
+              "value": "D:\\FBE_Compare\\_test_fso.txt",
+              "expression": "\"D:\\\\FBE_Compare\\\\_test_fso.txt\"",
+              "description": "Путь второй пробной записи; существующий файл может быть перезаписан.",
+              "source": "script"
+            },
+            {
+              "name": "showStatistics",
+              "title": "Показывать отчёт",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — показать итоговое сообщение; 0 — скрыть его.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Книга не изменяется, но пробные файлы могут быть созданы или перезаписаны вне её. Отмена действий в книге на внешние файлы не распространяется."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 3,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 434,
-    "generic_usage": 214,
-    "false_warning": 233,
-    "incorrect_setting": 108,
-    "incorrect_scope": 208,
-    "incorrect_undo": 213,
+    "inaccurate_description": 442,
+    "generic_usage": 218,
+    "false_warning": 237,
+    "incorrect_setting": 111,
+    "incorrect_scope": 214,
+    "incorrect_undo": 217,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 213,
+    "incorrect_dependency": 217,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -30044,16 +30493,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 205,
-    "usageCorrected": 214,
-    "purposeClarified": 212,
-    "warningsClarified": 145,
-    "scopeClarified": 198,
-    "settingsClarified": 416,
+    "undoDescriptionsClarified": 209,
+    "usageCorrected": 218,
+    "purposeClarified": 216,
+    "warningsClarified": 149,
+    "scopeClarified": 202,
+    "settingsClarified": 424,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 96,
+    "dependenciesVerified": 100,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -233684,8 +234133,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Проверить readonly для недавних fb2 файлов",
-        "summary": "Ищет недавно появившиеся fbe*.tmp в заданных папках.",
-        "description": "Рекурсивно обходит указанные каталоги, фильтрует имена временных файлов и сравнивает время изменения с порогом. Это поиск возможных следов проблемы сохранения, а не прямой контроль атрибута read-only открытого FB2.",
+        "summary": "Ищет свежие временные файлы fbe*.tmp в заданных папках.",
+        "description": "Через файловую систему Windows обходит заданные папки и при включённой рекурсии их вложения. Показывает fbe*.tmp с временем изменения не старше заданного порога. Атрибут «Только чтение» у открытого FB2 не проверяет и документ не меняет.",
         "authors": [
           {
             "name": "TaKir",
@@ -233702,37 +234151,56 @@
           }
         ],
         "version": "1.2",
-        "scope": "Файлы и каталоги вне текущего документа.",
+        "scope": "Три указанные в исходнике папки и, по умолчанию, все доступные вложенные папки; открытый документ не анализируется.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Укажите в настройке исходного скрипта папки, где FBE может оставить временные файлы.",
+          "Запустите команду и прочитайте список найденных fbe*.tmp и отсутствующих исходных папок.",
+          "При проблемах сохранения дополнительно проверьте права на исходный FB2 и результат последнего сохранения."
         ],
         "warnings": [
-          "Наличие fbe*.tmp не доказывает атрибут «Только чтение», а отсутствие таких файлов не гарантирует успешное сохранение."
+          "Наличие fbe*.tmp не доказывает атрибут «Только чтение», а отсутствие файлов не подтверждает успешное сохранение.",
+          "Недоступные вложенные папки пропускаются без отдельного сообщения; проверка может быть неполной."
         ],
         "settings": [
           {
+            "name": "foldersToCheck",
+            "title": "Папки для проверки",
+            "value": "D:\\Work\\!!2026; D:\\Ваш путь к папке; %USERPROFILE%\\Desktop",
+            "expression": "[\"D:\\\\Work\\\\!!2026\", \"D:\\\\Ваш путь к папке\", \"%USERPROFILE%\\\\Desktop\"]",
+            "description": "Список исходных папок; путь с шаблонным названием замените на свой.",
+            "source": "script"
+          },
+          {
             "name": "searchSubfolders",
+            "title": "Проверять вложенные папки",
             "value": 1,
             "expression": "1",
-            "description": "Проверять вложенные папки: 0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — обходить вложенные папки; 0 — только указанные папки.",
+            "source": "script"
           },
           {
             "name": "maxDepth",
+            "title": "Максимальная глубина",
             "value": 0,
             "expression": "0",
-            "description": "Максимальная глубина вложенности (0 = без ограничений)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — без ограничения глубины; иначе число уровней рекурсии.",
+            "source": "script"
+          },
+          {
+            "name": "maxAgeMinutes",
+            "title": "Возраст временного файла",
+            "value": 10,
+            "expression": "10",
+            "description": "Файлы старше этого числа минут не показываются.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт только читает сведения о файлах и показывает результат; содержимое книги и внешние файлы не меняет. Отмена правок содержимого здесь неприменима."
         },
         "examples": null,
         "tags": [
@@ -233753,15 +234221,15 @@
         "file": [],
         "return": [
           {
-            "line": 120,
+            "line": 139,
             "text": "if (!rawPath) return rawPath;"
           },
           {
-            "line": 125,
+            "line": 144,
             "text": "return path;"
           },
           {
-            "line": 130,
+            "line": 149,
             "text": "if (!rawPath) return rawPath;"
           }
         ]
@@ -233770,34 +234238,68 @@
       "settingEvidence": [
         {
           "index": 0,
-          "name": "searchSubfolders",
+          "name": "foldersToCheck",
           "declarations": [
             {
-              "line": 106,
-              "text": "var searchSubfolders = 1;"
+              "line": 118,
+              "text": "var foldersToCheck = ["
             }
           ],
           "uses": [
             {
-              "line": 106,
-              "text": "var searchSubfolders = 1;"
+              "line": 118,
+              "text": "var foldersToCheck = ["
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 1,
+          "name": "searchSubfolders",
+          "declarations": [
+            {
+              "line": 125,
+              "text": "var searchSubfolders = 1;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 125,
+              "text": "var searchSubfolders = 1;"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
           "name": "maxDepth",
           "declarations": [
             {
-              "line": 109,
+              "line": 128,
               "text": "var maxDepth = 0;"
             }
           ],
           "uses": [
             {
-              "line": 109,
+              "line": 128,
               "text": "var maxDepth = 0;"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "maxAgeMinutes",
+          "declarations": [
+            {
+              "line": 131,
+              "text": "var maxAgeMinutes = 10;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 131,
+              "text": "var maxAgeMinutes = 10;"
             }
           ],
           "classification": "requires_review"
@@ -233806,25 +234308,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 70,
+          "line": 89,
           "text": "// version 1.2"
         },
         {
-          "line": 85,
+          "line": 104,
           "text": "// version 1.2, 29.06.2026"
         },
         {
-          "line": 90,
+          "line": 109,
           "text": "var version = \"1.2\";"
         },
         {
-          "line": 209,
+          "line": 228,
           "text": "var msg = scriptName + \"\\nver. \" + version + \"\\n\\n\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Наличие fbe*.tmp не доказывает атрибут «Только чтение», а отсутствие таких файлов не гарантирует успешное сохранение.",
+          "text": "Наличие fbe*.tmp не доказывает атрибут «Только чтение», а отсутствие файлов не подтверждает успешное сохранение.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Недоступные вложенные папки пропускаются без отдельного сообщения; проверка может быть неполной.",
           "verification": "requires_review"
         }
       ],
@@ -233845,35 +234351,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "95_Для программистов/13_Проверка записи во внешний txt отчет.js",
@@ -233885,8 +234363,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Проверка записи во внешний txt отчет",
-        "summary": "Проверяет несколько способов записи текстового файла.",
-        "description": "Пробует доступность/вызов WriteFile, FileSystemObject и ADODB.Stream, записывает тестовые данные и выводит результаты. Это реальная запись внешних файлов, не проверка только наличия методов.",
+        "summary": "Проверяет доступность файловых методов и записывает два пробных файла.",
+        "description": "Проверяет методы записи и чтения среды редактора, создание файлового объекта и потока. При доступности методов пытается записать два тестовых TXT-файла в D:\\FBE_Compare; результат каждого шага показывает в сообщении. Поток ADODB.Stream только создаёт, без записи. Книгу не меняет.",
         "authors": [
           {
             "name": "TaKir",
@@ -233903,30 +234381,48 @@
           }
         ],
         "version": "1.0",
-        "scope": "Файлы и каталоги вне текущего документа.",
+        "scope": "Внешняя папка D:\\FBE_Compare и файловые интерфейсы Windows; открытая книга не изменяется.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Перед запуском проверьте папку D:\\FBE_Compare и существующие файлы _test_writefile.txt и _test_fso.txt.",
+          "Запустите диагностическую команду и прочитайте сообщение о доступности методов и результатах записи.",
+          "Проверьте содержимое тестовых файлов отдельно: отсутствие исключения не подтверждает запись на диск."
         ],
         "warnings": [
-          "Файловые операции не отменяются обычным Ctrl+Z в книге."
+          "Скрипт пытается создать два файла в D:\\FBE_Compare. Запись через файловый объект открывает _test_fso.txt с разрешением перезаписи существующего файла.",
+          "Внешние файлы не входят в отмену книги; результат без ошибки ещё не доказывает сохранение содержимого на диске."
         ],
         "settings": [
           {
+            "name": "testPath1",
+            "title": "Файл для проверки метода редактора",
+            "value": "D:\\FBE_Compare\\_test_writefile.txt",
+            "expression": "\"D:\\\\FBE_Compare\\\\_test_writefile.txt\"",
+            "description": "Путь первой пробной записи.",
+            "source": "script"
+          },
+          {
             "name": "testPath2",
+            "title": "Файл для проверки файлового объекта",
             "value": "D:\\FBE_Compare\\_test_fso.txt",
             "expression": "\"D:\\\\FBE_Compare\\\\_test_fso.txt\"",
-            "description": "Пробуем записать",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Путь второй пробной записи; существующий файл может быть перезаписан.",
+            "source": "script"
+          },
+          {
+            "name": "showStatistics",
+            "title": "Показывать отчёт",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — показать итоговое сообщение; 0 — скрыть его.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Книга не изменяется, но пробные файлы могут быть созданы или перезаписаны вне её. Отмена действий в книге на внешние файлы не распространяется."
         },
         "examples": null,
         "tags": [
@@ -233946,7 +234442,7 @@
         "local_window": [],
         "file": [
           {
-            "line": 141,
+            "line": 159,
             "text": "var file = fso.CreateTextFile(testPath2, true);"
           }
         ],
@@ -233956,25 +234452,71 @@
       "settingEvidence": [
         {
           "index": 0,
+          "name": "testPath1",
+          "declarations": [
+            {
+              "line": 106,
+              "text": "var testPath1 = \"D:\\\\FBE_Compare\\\\_test_writefile.txt\";"
+            }
+          ],
+          "uses": [
+            {
+              "line": 106,
+              "text": "var testPath1 = \"D:\\\\FBE_Compare\\\\_test_writefile.txt\";"
+            },
+            {
+              "line": 108,
+              "text": "window.external.WriteFile(testPath1, testContent1);"
+            },
+            {
+              "line": 110,
+              "text": "result.push(\"  Проверь файл: \" + testPath1);"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
           "name": "testPath2",
           "declarations": [
             {
-              "line": 139,
+              "line": 157,
               "text": "var testPath2 = \"D:\\\\FBE_Compare\\\\_test_fso.txt\";"
             }
           ],
           "uses": [
             {
-              "line": 139,
+              "line": 157,
               "text": "var testPath2 = \"D:\\\\FBE_Compare\\\\_test_fso.txt\";"
             },
             {
-              "line": 141,
+              "line": 159,
               "text": "var file = fso.CreateTextFile(testPath2, true);"
             },
             {
-              "line": 145,
+              "line": 163,
               "text": "result.push(\"  Проверь файл: \" + testPath2);"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "showStatistics",
+          "declarations": [
+            {
+              "line": 90,
+              "text": "var showStatistics = 1;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 90,
+              "text": "var showStatistics = 1;"
+            },
+            {
+              "line": 219,
+              "text": "if (showStatistics == 1) {"
             }
           ],
           "classification": "requires_review"
@@ -233983,25 +234525,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 62,
+          "line": 80,
           "text": "// version 1.0"
         },
         {
-          "line": 66,
+          "line": 84,
           "text": "// version 1.0, 30.06.2026"
         },
         {
-          "line": 71,
+          "line": 89,
           "text": "var version = \"1.0\";"
         },
         {
-          "line": 76,
+          "line": 94,
           "text": "result.push(\"ver. \" + version);"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Файловые операции не отменяются обычным Ctrl+Z в книге.",
+          "text": "Скрипт пытается создать два файла в D:\\FBE_Compare. Запись через файловый объект открывает _test_fso.txt с разрешением перезаписи существующего файла.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Внешние файлы не входят в отмену книги; результат без ошибки ещё не доказывает сохранение содержимого на диске.",
           "verification": "requires_review"
         }
       ],
@@ -234022,35 +234568,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "95_Для программистов/14_Оглавление fb2 в буфер.js",
@@ -235291,8 +235809,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Текст документа продублировать во втором фрейме",
-        "summary": "Создаёт вторую область с копией визуального текста.",
-        "description": "Перестраивает DOM контейнера, добавляет разделитель и второй iframe, настраивает размеры и обработчики. Редактируемость второго фрейма задаётся allowEditingInSecondFrame; это не автоматически синхронизированные две вкладки одной книги.",
+        "summary": "Создаёт под основным текстом вторую редактируемую копию.",
+        "description": "Заменяет оболочку основного текста контейнером с разделителем и вторым DIV, содержащим копию HTML книги без атрибутов id. По умолчанию редактирование копии разрешено; её содержимое не синхронизируется автоматически с основным текстом. Разделитель можно перетаскивать.",
         "authors": [
           {
             "name": "Sclex",
@@ -235304,30 +235822,33 @@
           }
         ],
         "version": "1.1",
-        "scope": "Сеанс и интерфейс редактора.",
-        "modifiesDocument": null,
+        "scope": "Визуальный DOM текущей книги и её интерфейс; скрипт запускается один раз, пока второй контейнер закрыт.",
+        "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Откройте книгу и запустите команду для создания второго поля под основным текстом.",
+          "Перетащите разделитель для изменения высоты полей.",
+          "Для возврата к одному полю используйте отдельную команду закрытия; изменения в копии не считайте автоматически перенесёнными в книгу."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Второе поле — отдельная копия HTML; изменения в нём не синхронизируются с основным текстом.",
+          "Копия создаётся без атрибутов id, поэтому внутренние ссылки и элементы с идентификаторами в ней могут работать иначе.",
+          "Если основной текст не удастся найти после перестройки DOM, скрипт выйдет до закрытия группы отмены."
         ],
         "settings": [
           {
             "name": "allowEditingInSecondFrame",
+            "title": "Редактирование второго поля",
             "value": 1,
             "expression": "1",
-            "description": "Значение 1 — разрешить редактирование",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — разрешить редактирование копии; 0 — показать её только для чтения.",
+            "source": "script"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Перестройка DOM начинается внутри группы отмены и штатно завершается её закрытием. После повторной проверки основного поля возможен ранний выход без закрытия; восстановление интерфейса и содержимого через отмену не проверено."
         },
         "examples": null,
         "tags": [
@@ -235338,13 +235859,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 236,
+            "line": 239,
             "text": "window.external.BeginUndoUnit(document,\"добавление второго фрейма\");"
           }
         ],
         "undo_end": [
           {
-            "line": 253,
+            "line": 256,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -235352,19 +235873,19 @@
         "selection": [],
         "write": [
           {
-            "line": 198,
+            "line": 201,
             "text": "if (topInd) topInd.innerHTML = topPercent + '%';"
           },
           {
-            "line": 199,
+            "line": 202,
             "text": "if (bottomInd) bottomInd.innerHTML = bottomPercent + '%';"
           },
           {
-            "line": 242,
+            "line": 245,
             "text": "fbwBody.outerHTML=\"<DIV id='container'>\"+fbwBody.outerHTML+"
           },
           {
-            "line": 242,
+            "line": 245,
             "text": "fbwBody.outerHTML=\"<DIV id='container'>\"+fbwBody.outerHTML+"
           }
         ],
@@ -235375,39 +235896,39 @@
         "file": [],
         "return": [
           {
-            "line": 96,
+            "line": 99,
             "text": "return false;"
           },
           {
-            "line": 103,
+            "line": 106,
             "text": "return false;"
           },
           {
-            "line": 109,
+            "line": 112,
             "text": "return false;"
           },
           {
-            "line": 119,
+            "line": 122,
             "text": "return false;"
           },
           {
-            "line": 148,
+            "line": 151,
             "text": "if (!this.isDragging) return;"
           },
           {
-            "line": 223,
+            "line": 226,
             "text": "return;"
           },
           {
-            "line": 230,
+            "line": 233,
             "text": "return;"
           },
           {
-            "line": 234,
+            "line": 237,
             "text": "if (!fbwBody) return;"
           },
           {
-            "line": 248,
+            "line": 251,
             "text": "if (!fbwBody) return;"
           }
         ]
@@ -235419,25 +235940,25 @@
           "name": "allowEditingInSecondFrame",
           "declarations": [
             {
-              "line": 64,
+              "line": 67,
               "text": "var"
             }
           ],
           "uses": [
             {
-              "line": 65,
+              "line": 68,
               "text": "allowEditingInSecondFrame=1;"
             },
             {
-              "line": 221,
+              "line": 224,
               "text": "if (allowEditingInSecondFrame!=0 && allowEditingInSecondFrame!=1) {"
             },
             {
-              "line": 221,
+              "line": 224,
               "text": "if (allowEditingInSecondFrame!=0 && allowEditingInSecondFrame!=1) {"
             },
             {
-              "line": 244,
+              "line": 247,
               "text": "\"<DIV id='fbw_body_2' contentEditable='\"+(allowEditingInSecondFrame==1?true:false)+\"' style='display: block;'>\"+fbwBody.innerHTML.replace(re0,re0_)+\"</DIV>\"+"
             }
           ],
@@ -235447,17 +235968,25 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 57,
+          "line": 60,
           "text": "// Версия 1.1"
         },
         {
-          "line": 58,
+          "line": 61,
           "text": "// Автор Sclex (также при создании скрипта использовался ИИ DeepSeek)"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Второе поле — отдельная копия HTML; изменения в нём не синхронизируются с основным текстом.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Копия создаётся без атрибутов id, поэтому внутренние ссылки и элементы с идентификаторами в ней могут работать иначе.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если основной текст не удастся найти после перестройки DOM, скрипт выйдет до закрытия группы отмены.",
           "verification": "requires_review"
         }
       ],
@@ -235480,80 +236009,26 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 236,
-              "text": "window.external.BeginUndoUnit(document,\"добавление второго фрейма\");"
-            },
-            {
-              "line": 253,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Перестройка DOM начинается внутри группы отмены и штатно завершается её закрытием. После повторной проверки основного поля возможен ранний выход без закрытия; восстановление интерфейса и содержимого через отмену не проверено."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 236,
+              "line": 239,
               "text": "window.external.BeginUndoUnit(document,\"добавление второго фрейма\");"
             },
             {
-              "line": 248,
+              "line": 251,
               "text": "if (!fbwBody) return;"
             },
             {
-              "line": 253,
+              "line": 256,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
@@ -235570,8 +236045,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Закрыть второй фрейм",
-        "summary": "Удаляет вторую область и возвращает основной контейнер текста.",
-        "description": "Находит созданные вторым фреймом контейнеры, заменяет оболочку основным fbw_body и восстанавливает её через InflateIt. Изменения, сделанные только в несинхронизированной копии, не следует считать перенесёнными в основной текст.",
+        "summary": "Удаляет второе поле и оставляет основной текст.",
+        "description": "Берёт текущий основной fbw_body из двухпанельного контейнера и заменяет весь контейнер его HTML. Второе поле и разделитель удаляются; изменения, сделанные только в копии, не переносятся в основной текст.",
         "authors": [
           {
             "name": "Sclex",
@@ -235579,21 +236054,22 @@
           }
         ],
         "version": "1.1",
-        "scope": "Сеанс и интерфейс редактора.",
-        "modifiesDocument": null,
+        "scope": "Текущий двухпанельный DOM после запуска команды создания второго поля.",
+        "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "После работы с двумя полями запустите эту команду для возврата к одному основному полю.",
+          "Проверьте основной текст: содержимое нижней копии в него не переносится."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Содержимое нижней копии удаляется вместе с контейнером и не объединяется с основным текстом.",
+          "После замены контейнера скрипт вызывает восстановление отображения на старом узле; эффект этого вызова для нового основного поля не подтверждён."
         ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Штатная замена контейнера находится внутри группы отмены. Корректное восстановление двухполосного интерфейса и содержимого нижней копии через отмену не проверено."
         },
         "examples": null,
         "tags": [
@@ -235603,13 +236079,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 52,
+            "line": 53,
             "text": "window.external.BeginUndoUnit(document,\"закрытие второго фрейма\");"
           }
         ],
         "undo_end": [
           {
-            "line": 57,
+            "line": 58,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -235617,11 +236093,11 @@
         "selection": [],
         "write": [
           {
-            "line": 55,
+            "line": 56,
             "text": "containerEl.outerHTML=fbwBody.outerHTML;"
           },
           {
-            "line": 55,
+            "line": 56,
             "text": "containerEl.outerHTML=fbwBody.outerHTML;"
           }
         ],
@@ -235632,7 +236108,7 @@
         "file": [],
         "return": [
           {
-            "line": 50,
+            "line": 51,
             "text": "return;"
           }
         ]
@@ -235642,17 +236118,21 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 42,
+          "line": 43,
           "text": "// Версия 1.1"
         },
         {
-          "line": 43,
+          "line": 44,
           "text": "// Автор Sclex"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Содержимое нижней копии удаляется вместе с контейнером и не объединяется с основным текстом.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "После замены контейнера скрипт вызывает восстановление отображения на старом узле; эффект этого вызова для нового основного поля не подтверждён.",
           "verification": "requires_review"
         }
       ],
@@ -235673,53 +236153,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 52,
-              "text": "window.external.BeginUndoUnit(document,\"закрытие второго фрейма\");"
-            },
-            {
-              "line": 57,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "99_Прочее/09_Цитатный фразотрон.js",
