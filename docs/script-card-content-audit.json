@@ -3,8 +3,8 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 451,
-    "generic_usage": 1640,
-    "incorrect_undo": 286,
+    "generic_usage": 1598,
+    "incorrect_undo": 272,
     "inaccurate_description": 103
   },
   "reviewedChanges": [
@@ -25294,22 +25294,1429 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "16_Поиск форматирования/145_Выделить предыдущую аннотацию.js",
+      "codeSha256": "9ce7be0b29cd18134c4dfe528cae2a0212d49599ef7dce9ed44134e4e1ec81a9",
+      "evidence": "Вариант 145: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.annotation, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущую аннотацию.",
+          "after": "Выделяет предыдущую аннотацию целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущую аннотацию. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.annotation с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок аннотации целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.annotation внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит аннотацию целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/146_Выделить следующую аннотацию.js",
+      "codeSha256": "69481601152e5356fdf9d5d3b1a9fd5c6b0c51e64619f1c03123394535a34754",
+      "evidence": "Вариант 146: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.annotation, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующую аннотацию.",
+          "after": "Выделяет следующую аннотацию целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующую аннотацию. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.annotation с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок аннотации целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.annotation внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит аннотацию целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/147_Выделить предыдущий заголовок.js",
+      "codeSha256": "75f068edc4417d8dac478f93acef160b9d8fe7be393062f8b5946d5eb79eff40",
+      "evidence": "Вариант 147: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.title, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущий заголовок.",
+          "after": "Выделяет предыдущий заголовок целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущий заголовок. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.title с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.title внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит заголовок целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/148_Выделить следующий заголовок.js",
+      "codeSha256": "5712afe339b0d784e1bfc8bda5bbab20c02312aa5c2ae176264e89746c970e56",
+      "evidence": "Вариант 148: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.title, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующий заголовок.",
+          "after": "Выделяет следующий заголовок целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующий заголовок. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.title с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.title внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит заголовок целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/149_Выделить предыдущий эпиграф.js",
+      "codeSha256": "e02f8db76821faa73cef0f1ec43ababc315ae0f0330e4f6b64f093af6d22a6ef",
+      "evidence": "Вариант 149: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.epigraph, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущий эпиграф.",
+          "after": "Выделяет предыдущий эпиграф целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущий эпиграф. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.epigraph с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок эпиграфа целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.epigraph внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит эпиграф целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/150_Выделить следующий эпиграф.js",
+      "codeSha256": "30b144f881045f2789b0bc93d181885cdc81b8b78461de6284d8453745b0a750",
+      "evidence": "Вариант 150: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.epigraph, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующий эпиграф.",
+          "after": "Выделяет следующий эпиграф целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующий эпиграф. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.epigraph с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок эпиграфа целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.epigraph внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит эпиграф целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/151_Выделить предыдущую цитату.js",
+      "codeSha256": "bf186aa8cf42227a04459e696182205cd6844a89dd25e4aa7bbc327304116ed7",
+      "evidence": "Вариант 151: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.cite, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущую цитату.",
+          "after": "Выделяет предыдущую цитату целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущую цитату. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.cite с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок цитаты целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.cite внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит цитату целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/152_Выделить следующую цитату.js",
+      "codeSha256": "eab4c3a9a4292ed368e945c9f139485c65baa40b5e436ae8d8bab3b5ae96f909",
+      "evidence": "Вариант 152: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.cite, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующую цитату.",
+          "after": "Выделяет следующую цитату целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующую цитату. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.cite с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок цитаты целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.cite внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит цитату целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/153_Выделить предыдущий стих (poem).js",
+      "codeSha256": "b3381f4e709e62f0af52206ce8cf846cea7a81f8c21bfbd3b523d398c7b77e2d",
+      "evidence": "Вариант 153: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.poem, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущий стих (poem).",
+          "after": "Выделяет предыдущий стих целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущий стих (poem). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.poem с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.poem внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит стих целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/154_Выделить следующий стих (poem).js",
+      "codeSha256": "3268a6a82a1f2277d977f29a6fdc86b8ad69cb85a5786e10537a3d3ccf96007a",
+      "evidence": "Вариант 154: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.poem, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующий стих (poem).",
+          "after": "Выделяет следующий стих целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующий стих (poem). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.poem с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.poem внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит стих целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/155_Выделить предыдущий заголовок стиха.js",
+      "codeSha256": "2cb7f727bd36056e892363b9dfe92aacf3d37f38f2ff87539b88be8616e0aefd",
+      "evidence": "Вариант 155: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.title внутри DIV.poem, но не внутри DIV.stanza, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущий заголовок стиха.",
+          "after": "Выделяет предыдущий заголовок стиха целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущий заголовок стиха. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.title внутри DIV.poem, но не внутри DIV.stanza с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.title внутри DIV.poem, но не внутри DIV.stanza внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит заголовок стиха целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/156_Выделить следующий заголовок стиха.js",
+      "codeSha256": "532e11827b19485cf201335520accaafa024619d55b02ddbbc810c7615834aaa",
+      "evidence": "Вариант 156: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.title внутри DIV.poem, но не внутри DIV.stanza, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующий заголовок стиха.",
+          "after": "Выделяет следующий заголовок стиха целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующий заголовок стиха. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.title внутри DIV.poem, но не внутри DIV.stanza с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.title внутри DIV.poem, но не внутри DIV.stanza внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит заголовок стиха целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/157_Выделить предыдущую строфу (stanza).js",
+      "codeSha256": "b3603dda42e4bac9dbc5b5166ddbcedfdc942985cfc829aa06bb65548bfeb829",
+      "evidence": "Вариант 157: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.stanza, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет предыдущую строфу (stanza).",
+          "after": "Выделяет предыдущую строфу целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет предыдущую строфу (stanza). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.stanza с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок строфы целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск назад от конца текущего диапазона среди DIV.stanza внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит строфу целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск.",
+            "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "16_Поиск форматирования/158_Выделить следующую строфу (stanza).js",
+      "codeSha256": "de3b99dcc637600de1125244f3b44648bb443b5350fb5daa0448431bdb4e9146",
+      "evidence": "Вариант 158: поиск стартует после tr3.collapse(false), проверяет наличие P внутри DIV.stanza, исключает blockElementAtStart и при успехе выделяет родительский DIV целиком. Run не пишет содержимое документа. Автор Sclex, сборка TaKir указаны в комментарии.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "rules_compiler"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "assembly"
+            }
+          ],
+          "category": "incorrect_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующую строфу (stanza).",
+          "after": "Выделяет следующую строфу целиком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующую строфу (stanza). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего диапазона ищет DIV.stanza с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок строфы целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Поиск вперёд от конца текущего диапазона среди DIV.stanza внутри fbw_body.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+            "Запустите команду; при успехе редактор выделит строфу целиком и прокрутит окно к результату.",
+            "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Блок без абзацев P не попадёт в поиск."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 332,
-    "generic_usage": 163,
-    "false_warning": 182,
+    "inaccurate_description": 360,
+    "generic_usage": 177,
+    "false_warning": 196,
     "incorrect_setting": 104,
-    "incorrect_scope": 156,
-    "incorrect_undo": 162,
+    "incorrect_scope": 170,
+    "incorrect_undo": 176,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 160,
+    "incorrect_dependency": 174,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "incorrect_attribution": 28,
+    "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
     "incorrect_selection": 17
@@ -25317,16 +26724,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 154,
-    "usageCorrected": 163,
-    "purposeClarified": 161,
-    "warningsClarified": 94,
-    "scopeClarified": 147,
+    "undoDescriptionsClarified": 168,
+    "usageCorrected": 177,
+    "purposeClarified": 175,
+    "warningsClarified": 108,
+    "scopeClarified": 161,
     "settingsClarified": 397,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 45,
+    "dependenciesVerified": 59,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -164968,8 +166375,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить предыдущую аннотацию",
-        "summary": "Выделяет предыдущую аннотацию.",
-        "description": "Выделяет предыдущую аннотацию. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет предыдущую аннотацию целиком.",
+        "description": "От конца текущего диапазона ищет DIV.annotation с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок аннотации целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -164978,24 +166385,27 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.1",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.annotation внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит аннотацию целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -165007,38 +166417,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 142,
+            "line": 145,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 179,
+            "line": 182,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 111,
+            "line": 114,
             "text": "if (selection) {"
           },
           {
-            "line": 112,
+            "line": 115,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -165049,47 +166459,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 67,
             "text": "if (hasAmongParents(elem1,\"annotation\")) return true;"
           },
           {
-            "line": 65,
+            "line": 68,
             "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
             "line": 73,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 76,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 81,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 84,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 102,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 109,
             "text": "return el;"
           },
           {
-            "line": 140,
+            "line": 143,
             "text": "return;"
           },
           {
-            "line": 180,
+            "line": 183,
             "text": "return scriptResult;"
           }
         ]
@@ -165099,19 +166509,28 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 51,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 52,
           "text": "// Версия 1.1"
         },
         {
-          "line": 63,
+          "line": 66,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -165129,53 +166548,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 142,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 179,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/146_Выделить следующую аннотацию.js",
@@ -165187,8 +166560,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующую аннотацию",
-        "summary": "Выделяет следующую аннотацию.",
-        "description": "Выделяет следующую аннотацию. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет следующую аннотацию целиком.",
+        "description": "От конца текущего диапазона ищет DIV.annotation с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок аннотации целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -165197,24 +166570,26 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.2",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.annotation внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит аннотацию целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -165226,38 +166601,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 130,
+            "line": 132,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 167,
+            "line": 169,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 112,
             "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
           },
           {
             "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -165268,47 +166643,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 66,
             "text": "if (hasAmongParents(elem1,\"annotation\")) return true;"
           },
           {
-            "line": 65,
+            "line": 67,
             "text": "return false;"
           },
           {
-            "line": 70,
+            "line": 72,
             "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
-            "line": 73,
+            "line": 75,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 80,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 83,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 101,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 108,
             "text": "return el;"
           },
           {
-            "line": 128,
+            "line": 130,
             "text": "return;"
           },
           {
-            "line": 168,
+            "line": 170,
             "text": "return scriptResult;"
           }
         ]
@@ -165318,19 +166693,24 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 50,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 51,
           "text": "// Версия 1.2"
         },
         {
-          "line": 63,
+          "line": 65,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -165348,53 +166728,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 130,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 167,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/147_Выделить предыдущий заголовок.js",
@@ -165406,8 +166740,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить предыдущий заголовок",
-        "summary": "Выделяет предыдущий заголовок.",
-        "description": "Выделяет предыдущий заголовок. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет предыдущий заголовок целиком.",
+        "description": "От конца текущего диапазона ищет DIV.title с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -165416,24 +166750,27 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.2",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.title внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит заголовок целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -165445,38 +166782,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 142,
+            "line": 145,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 179,
+            "line": 182,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 111,
+            "line": 114,
             "text": "if (selection) {"
           },
           {
-            "line": 112,
+            "line": 115,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -165487,47 +166824,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 67,
             "text": "if (hasAmongParents(elem1,\"title\")) return true;"
           },
           {
-            "line": 65,
+            "line": 68,
             "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
             "line": 73,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 76,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 81,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 84,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 102,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 109,
             "text": "return el;"
           },
           {
-            "line": 140,
+            "line": 143,
             "text": "return;"
           },
           {
-            "line": 180,
+            "line": 183,
             "text": "return scriptResult;"
           }
         ]
@@ -165537,19 +166874,28 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 51,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 52,
           "text": "// Версия 1.2"
         },
         {
-          "line": 63,
+          "line": 66,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -165567,53 +166913,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 142,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 179,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/148_Выделить следующий заголовок.js",
@@ -165625,8 +166925,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующий заголовок",
-        "summary": "Выделяет следующий заголовок.",
-        "description": "Выделяет следующий заголовок. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет следующий заголовок целиком.",
+        "description": "От конца текущего диапазона ищет DIV.title с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -165635,24 +166935,26 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.title внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит заголовок целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -165664,38 +166966,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 130,
+            "line": 132,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 167,
+            "line": 169,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 112,
             "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
           },
           {
             "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -165706,47 +167008,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 66,
             "text": "if (hasAmongParents(elem1,\"title\")) return true;"
           },
           {
-            "line": 65,
+            "line": 67,
             "text": "return false;"
           },
           {
-            "line": 70,
+            "line": 72,
             "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
-            "line": 73,
+            "line": 75,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 80,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 83,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 101,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 108,
             "text": "return el;"
           },
           {
-            "line": 128,
+            "line": 130,
             "text": "return;"
           },
           {
-            "line": 168,
+            "line": 170,
             "text": "return scriptResult;"
           }
         ]
@@ -165756,19 +167058,24 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 50,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 51,
           "text": "// Версия 1.3"
         },
         {
-          "line": 63,
+          "line": 65,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -165786,53 +167093,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 130,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 167,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/149_Выделить предыдущий эпиграф.js",
@@ -165844,8 +167105,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить предыдущий эпиграф",
-        "summary": "Выделяет предыдущий эпиграф.",
-        "description": "Выделяет предыдущий эпиграф. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет предыдущий эпиграф целиком.",
+        "description": "От конца текущего диапазона ищет DIV.epigraph с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок эпиграфа целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -165854,24 +167115,27 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.epigraph внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит эпиграф целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -165883,38 +167147,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 142,
+            "line": 145,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 179,
+            "line": 182,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 111,
+            "line": 114,
             "text": "if (selection) {"
           },
           {
-            "line": 112,
+            "line": 115,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -165925,47 +167189,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 67,
             "text": "if (hasAmongParents(elem1,\"epigraph\")) return true;"
           },
           {
-            "line": 65,
+            "line": 68,
             "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
             "line": 73,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 76,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 81,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 84,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 102,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 109,
             "text": "return el;"
           },
           {
-            "line": 140,
+            "line": 143,
             "text": "return;"
           },
           {
-            "line": 180,
+            "line": 183,
             "text": "return scriptResult;"
           }
         ]
@@ -165975,19 +167239,28 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 51,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 52,
           "text": "// Версия 1.3"
         },
         {
-          "line": 63,
+          "line": 66,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -166005,53 +167278,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 142,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 179,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/150_Выделить следующий эпиграф.js",
@@ -166063,8 +167290,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующий эпиграф",
-        "summary": "Выделяет следующий эпиграф.",
-        "description": "Выделяет следующий эпиграф. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет следующий эпиграф целиком.",
+        "description": "От конца текущего диапазона ищет DIV.epigraph с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок эпиграфа целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -166073,24 +167300,26 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.4",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.epigraph внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит эпиграф целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -166102,38 +167331,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 130,
+            "line": 132,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 167,
+            "line": 169,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 112,
             "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
           },
           {
             "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -166144,47 +167373,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 66,
             "text": "if (hasAmongParents(elem1,\"epigraph\")) return true;"
           },
           {
-            "line": 65,
+            "line": 67,
             "text": "return false;"
           },
           {
-            "line": 70,
+            "line": 72,
             "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
-            "line": 73,
+            "line": 75,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 80,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 83,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 101,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 108,
             "text": "return el;"
           },
           {
-            "line": 128,
+            "line": 130,
             "text": "return;"
           },
           {
-            "line": 169,
+            "line": 171,
             "text": "return scriptResult;"
           }
         ]
@@ -166194,19 +167423,24 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 50,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 51,
           "text": "// Версия 1.4"
         },
         {
-          "line": 63,
+          "line": 65,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -166224,53 +167458,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 130,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 167,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/151_Выделить предыдущую цитату.js",
@@ -166282,8 +167470,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить предыдущую цитату",
-        "summary": "Выделяет предыдущую цитату.",
-        "description": "Выделяет предыдущую цитату. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет предыдущую цитату целиком.",
+        "description": "От конца текущего диапазона ищет DIV.cite с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок цитаты целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -166292,24 +167480,27 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.cite внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит цитату целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -166321,38 +167512,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 142,
+            "line": 145,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 179,
+            "line": 182,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 111,
+            "line": 114,
             "text": "if (selection) {"
           },
           {
-            "line": 112,
+            "line": 115,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -166363,47 +167554,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 67,
             "text": "if (hasAmongParents(elem1,\"cite\")) return true;"
           },
           {
-            "line": 65,
+            "line": 68,
             "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
             "line": 73,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 76,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 81,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 84,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 102,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 109,
             "text": "return el;"
           },
           {
-            "line": 140,
+            "line": 143,
             "text": "return;"
           },
           {
-            "line": 180,
+            "line": 183,
             "text": "return scriptResult;"
           }
         ]
@@ -166413,19 +167604,28 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 51,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 52,
           "text": "// Версия 1.3"
         },
         {
-          "line": 63,
+          "line": 66,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -166443,53 +167643,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 142,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 179,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/152_Выделить следующую цитату.js",
@@ -166501,8 +167655,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующую цитату",
-        "summary": "Выделяет следующую цитату.",
-        "description": "Выделяет следующую цитату. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет следующую цитату целиком.",
+        "description": "От конца текущего диапазона ищет DIV.cite с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок цитаты целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -166511,24 +167665,26 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.5",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.cite внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит цитату целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -166540,38 +167696,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 130,
+            "line": 132,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 167,
+            "line": 169,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 112,
             "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
           },
           {
             "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -166582,43 +167738,769 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 66,
             "text": "if (hasAmongParents(elem1,\"cite\")) return true;"
           },
           {
-            "line": 65,
+            "line": 67,
             "text": "return false;"
           },
           {
-            "line": 70,
+            "line": 72,
             "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
-            "line": 73,
+            "line": 75,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 80,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 83,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 101,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 108,
             "text": "return el;"
           },
           {
-            "line": 128,
+            "line": 130,
+            "text": "return;"
+          },
+          {
+            "line": 171,
+            "text": "return scriptResult;"
+          }
+        ]
+      },
+      "namespaceUrls": [],
+      "settingEvidence": [],
+      "dependencyEvidence": [],
+      "authorshipEvidence": [
+        {
+          "line": 50,
+          "text": "// Автор Sclex, сборка TaKir"
+        },
+        {
+          "line": 51,
+          "text": "// Версия 1.5"
+        },
+        {
+          "line": 65,
+          "text": "//if (elem1.className==\"text-author\") return true;"
+        }
+      ],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
+      "unverifiedFields": [
+        "title",
+        "summary",
+        "description",
+        "authors",
+        "version",
+        "scope",
+        "modifiesDocument",
+        "requiresSelection",
+        "usage",
+        "warnings",
+        "settings",
+        "dependencies",
+        "undo",
+        "examples",
+        "tags"
+      ],
+      "findings": []
+    },
+    {
+      "path": "16_Поиск форматирования/153_Выделить предыдущий стих (poem).js",
+      "result": "requires_review",
+      "codeSha256": "b3381f4e709e62f0af52206ce8cf846cea7a81f8c21bfbd3b523d398c7b77e2d",
+      "encoding": "utf-8",
+      "bomBytes": 0,
+      "codeBytes": 4787,
+      "lineEnding": "CRLF",
+      "claims": {
+        "title": "Выделить предыдущий стих (poem)",
+        "summary": "Выделяет предыдущий стих целиком.",
+        "description": "От конца текущего диапазона ищет DIV.poem с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+        "authors": [
+          {
+            "name": "Sclex",
+            "role": "author"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "assembly"
+          }
+        ],
+        "version": "1.3",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.poem внутри fbw_body.",
+        "modifiesDocument": false,
+        "requiresSelection": false,
+        "usage": [
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит стих целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+        ],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
+        "settings": null,
+        "dependencies": [],
+        "undo": {
+          "status": "explicit_calls_found",
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+        },
+        "examples": null,
+        "tags": [
+          "Поиск форматирования",
+          "поиск",
+          "навигация"
+        ]
+      },
+      "evidence": {
+        "undo_begin": [
+          {
+            "line": 145,
+            "text": "window.external.BeginUndoUnit(document,undoMsg);"
+          }
+        ],
+        "undo_end": [
+          {
+            "line": 182,
+            "text": "window.external.EndUndoUnit(document);"
+          }
+        ],
+        "dialog": [],
+        "selection": [
+          {
+            "line": 113,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 114,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 115,
+            "text": "var range = selection.createRange();"
+          }
+        ],
+        "write": [
+          {
+            "line": 90,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          }
+        ],
+        "external": [],
+        "network": [],
+        "process": [],
+        "local_window": [],
+        "file": [],
+        "return": [
+          {
+            "line": 67,
+            "text": "if (hasAmongParents(elem1,\"poem\")) return true;"
+          },
+          {
+            "line": 68,
+            "text": "return false;"
+          },
+          {
+            "line": 73,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 76,
+            "text": "return false;"
+          },
+          {
+            "line": 81,
+            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
+          },
+          {
+            "line": 84,
+            "text": "return null;"
+          },
+          {
+            "line": 90,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          },
+          {
+            "line": 102,
+            "text": "return el;"
+          },
+          {
+            "line": 109,
+            "text": "return el;"
+          },
+          {
+            "line": 143,
+            "text": "return;"
+          },
+          {
+            "line": 183,
+            "text": "return scriptResult;"
+          }
+        ]
+      },
+      "namespaceUrls": [],
+      "settingEvidence": [],
+      "dependencyEvidence": [],
+      "authorshipEvidence": [
+        {
+          "line": 51,
+          "text": "// Автор Sclex, сборка TaKir"
+        },
+        {
+          "line": 52,
+          "text": "// Версия 1.3"
+        },
+        {
+          "line": 66,
+          "text": "//if (elem1.className==\"text-author\") return true;"
+        }
+      ],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
+      "unverifiedFields": [
+        "title",
+        "summary",
+        "description",
+        "authors",
+        "version",
+        "scope",
+        "modifiesDocument",
+        "requiresSelection",
+        "usage",
+        "warnings",
+        "settings",
+        "dependencies",
+        "undo",
+        "examples",
+        "tags"
+      ],
+      "findings": []
+    },
+    {
+      "path": "16_Поиск форматирования/154_Выделить следующий стих (poem).js",
+      "result": "requires_review",
+      "codeSha256": "3268a6a82a1f2277d977f29a6fdc86b8ad69cb85a5786e10537a3d3ccf96007a",
+      "encoding": "utf-8",
+      "bomBytes": 0,
+      "codeBytes": 4231,
+      "lineEnding": "CRLF",
+      "claims": {
+        "title": "Выделить следующий стих (poem)",
+        "summary": "Выделяет следующий стих целиком.",
+        "description": "От конца текущего диапазона ищет DIV.poem с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+        "authors": [
+          {
+            "name": "Sclex",
+            "role": "author"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "assembly"
+          }
+        ],
+        "version": "1.3",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.poem внутри fbw_body.",
+        "modifiesDocument": false,
+        "requiresSelection": false,
+        "usage": [
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит стих целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+        ],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
+        "settings": null,
+        "dependencies": [],
+        "undo": {
+          "status": "explicit_calls_found",
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+        },
+        "examples": null,
+        "tags": [
+          "Поиск форматирования",
+          "поиск",
+          "навигация"
+        ]
+      },
+      "evidence": {
+        "undo_begin": [
+          {
+            "line": 132,
+            "text": "window.external.BeginUndoUnit(document,undoMsg);"
+          }
+        ],
+        "undo_end": [
+          {
+            "line": 169,
+            "text": "window.external.EndUndoUnit(document);"
+          }
+        ],
+        "dialog": [],
+        "selection": [
+          {
+            "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
+            "text": "var range = selection.createRange();"
+          }
+        ],
+        "write": [
+          {
+            "line": 89,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          }
+        ],
+        "external": [],
+        "network": [],
+        "process": [],
+        "local_window": [],
+        "file": [],
+        "return": [
+          {
+            "line": 66,
+            "text": "if (hasAmongParents(elem1,\"poem\")) return true;"
+          },
+          {
+            "line": 67,
+            "text": "return false;"
+          },
+          {
+            "line": 72,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 75,
+            "text": "return false;"
+          },
+          {
+            "line": 80,
+            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
+          },
+          {
+            "line": 83,
+            "text": "return null;"
+          },
+          {
+            "line": 89,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          },
+          {
+            "line": 101,
+            "text": "return el;"
+          },
+          {
+            "line": 108,
+            "text": "return el;"
+          },
+          {
+            "line": 130,
+            "text": "return;"
+          },
+          {
+            "line": 170,
+            "text": "return scriptResult;"
+          }
+        ]
+      },
+      "namespaceUrls": [],
+      "settingEvidence": [],
+      "dependencyEvidence": [],
+      "authorshipEvidence": [
+        {
+          "line": 50,
+          "text": "// Автор Sclex, сборка TaKir"
+        },
+        {
+          "line": 51,
+          "text": "// Версия 1.3"
+        },
+        {
+          "line": 65,
+          "text": "//if (elem1.className==\"text-author\") return true;"
+        }
+      ],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
+      "unverifiedFields": [
+        "title",
+        "summary",
+        "description",
+        "authors",
+        "version",
+        "scope",
+        "modifiesDocument",
+        "requiresSelection",
+        "usage",
+        "warnings",
+        "settings",
+        "dependencies",
+        "undo",
+        "examples",
+        "tags"
+      ],
+      "findings": []
+    },
+    {
+      "path": "16_Поиск форматирования/155_Выделить предыдущий заголовок стиха.js",
+      "result": "requires_review",
+      "codeSha256": "2cb7f727bd36056e892363b9dfe92aacf3d37f38f2ff87539b88be8616e0aefd",
+      "encoding": "utf-8",
+      "bomBytes": 0,
+      "codeBytes": 4886,
+      "lineEnding": "CRLF",
+      "claims": {
+        "title": "Выделить предыдущий заголовок стиха",
+        "summary": "Выделяет предыдущий заголовок стиха целиком.",
+        "description": "От конца текущего диапазона ищет DIV.title внутри DIV.poem, но не внутри DIV.stanza с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+        "authors": [
+          {
+            "name": "Sclex",
+            "role": "author"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "assembly"
+          }
+        ],
+        "version": "1.4",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.title внутри DIV.poem, но не внутри DIV.stanza внутри fbw_body.",
+        "modifiesDocument": false,
+        "requiresSelection": false,
+        "usage": [
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит заголовок стиха целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+        ],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
+        "settings": null,
+        "dependencies": [],
+        "undo": {
+          "status": "explicit_calls_found",
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+        },
+        "examples": null,
+        "tags": [
+          "Поиск форматирования",
+          "поиск",
+          "навигация"
+        ]
+      },
+      "evidence": {
+        "undo_begin": [
+          {
+            "line": 144,
+            "text": "window.external.BeginUndoUnit(document,undoMsg);"
+          }
+        ],
+        "undo_end": [
+          {
+            "line": 181,
+            "text": "window.external.EndUndoUnit(document);"
+          }
+        ],
+        "dialog": [],
+        "selection": [
+          {
+            "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
+            "text": "var range = selection.createRange();"
+          }
+        ],
+        "write": [
+          {
+            "line": 89,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          }
+        ],
+        "external": [],
+        "network": [],
+        "process": [],
+        "local_window": [],
+        "file": [],
+        "return": [
+          {
+            "line": 66,
+            "text": "if (hasAmongParents(elem1,\"title\") && hasAmongParents(elem1,\"poem\") && !hasAmongParents(elem1,\"stanza\")) return true;"
+          },
+          {
+            "line": 67,
+            "text": "return false;"
+          },
+          {
+            "line": 72,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 75,
+            "text": "return false;"
+          },
+          {
+            "line": 80,
+            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
+          },
+          {
+            "line": 83,
+            "text": "return null;"
+          },
+          {
+            "line": 89,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          },
+          {
+            "line": 101,
+            "text": "return el;"
+          },
+          {
+            "line": 108,
+            "text": "return el;"
+          },
+          {
+            "line": 142,
+            "text": "return;"
+          },
+          {
+            "line": 182,
+            "text": "return scriptResult;"
+          }
+        ]
+      },
+      "namespaceUrls": [],
+      "settingEvidence": [],
+      "dependencyEvidence": [],
+      "authorshipEvidence": [
+        {
+          "line": 51,
+          "text": "// Автор Sclex, сборка TaKir"
+        },
+        {
+          "line": 52,
+          "text": "// Версия 1.4"
+        }
+      ],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
+      "unverifiedFields": [
+        "title",
+        "summary",
+        "description",
+        "authors",
+        "version",
+        "scope",
+        "modifiesDocument",
+        "requiresSelection",
+        "usage",
+        "warnings",
+        "settings",
+        "dependencies",
+        "undo",
+        "examples",
+        "tags"
+      ],
+      "findings": []
+    },
+    {
+      "path": "16_Поиск форматирования/156_Выделить следующий заголовок стиха.js",
+      "result": "requires_review",
+      "codeSha256": "532e11827b19485cf201335520accaafa024619d55b02ddbbc810c7615834aaa",
+      "encoding": "utf-8",
+      "bomBytes": 0,
+      "codeBytes": 4348,
+      "lineEnding": "CRLF",
+      "claims": {
+        "title": "Выделить следующий заголовок стиха",
+        "summary": "Выделяет следующий заголовок стиха целиком.",
+        "description": "От конца текущего диапазона ищет DIV.title внутри DIV.poem, но не внутри DIV.stanza с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок заголовка стиха целиком. Прокручивает окно к результату; содержимое книги не меняет.",
+        "authors": [
+          {
+            "name": "Sclex",
+            "role": "author"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "assembly"
+          }
+        ],
+        "version": "1.4",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.title внутри DIV.poem, но не внутри DIV.stanza внутри fbw_body.",
+        "modifiesDocument": false,
+        "requiresSelection": false,
+        "usage": [
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит заголовок стиха целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
+        ],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
+        "settings": null,
+        "dependencies": [],
+        "undo": {
+          "status": "explicit_calls_found",
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
+        },
+        "examples": null,
+        "tags": [
+          "Поиск форматирования",
+          "поиск",
+          "навигация"
+        ]
+      },
+      "evidence": {
+        "undo_begin": [
+          {
+            "line": 131,
+            "text": "window.external.BeginUndoUnit(document,undoMsg);"
+          }
+        ],
+        "undo_end": [
+          {
+            "line": 168,
+            "text": "window.external.EndUndoUnit(document);"
+          }
+        ],
+        "dialog": [],
+        "selection": [
+          {
+            "line": 111,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 111,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 112,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 113,
+            "text": "var range = selection.createRange();"
+          }
+        ],
+        "write": [
+          {
+            "line": 88,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          }
+        ],
+        "external": [],
+        "network": [],
+        "process": [],
+        "local_window": [],
+        "file": [],
+        "return": [
+          {
+            "line": 65,
+            "text": "if (hasAmongParents(elem1,\"title\") && hasAmongParents(elem1,\"poem\") && !hasAmongParents(elem1,\"stanza\")) return true;"
+          },
+          {
+            "line": 66,
+            "text": "return false;"
+          },
+          {
+            "line": 71,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 74,
+            "text": "return false;"
+          },
+          {
+            "line": 79,
+            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
+          },
+          {
+            "line": 82,
+            "text": "return null;"
+          },
+          {
+            "line": 88,
+            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
+          },
+          {
+            "line": 100,
+            "text": "return el;"
+          },
+          {
+            "line": 107,
+            "text": "return el;"
+          },
+          {
+            "line": 129,
             "text": "return;"
           },
           {
@@ -166632,672 +168514,20 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 50,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
-          "text": "// Версия 1.5"
-        },
-        {
-          "line": 63,
-          "text": "//if (elem1.className==\"text-author\") return true;"
-        }
-      ],
-      "warningEvidence": [],
-      "unverifiedFields": [
-        "title",
-        "summary",
-        "description",
-        "authors",
-        "version",
-        "scope",
-        "modifiesDocument",
-        "requiresSelection",
-        "usage",
-        "warnings",
-        "settings",
-        "dependencies",
-        "undo",
-        "examples",
-        "tags"
-      ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 130,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 167,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "16_Поиск форматирования/153_Выделить предыдущий стих (poem).js",
-      "result": "requires_review",
-      "codeSha256": "b3381f4e709e62f0af52206ce8cf846cea7a81f8c21bfbd3b523d398c7b77e2d",
-      "encoding": "utf-8",
-      "bomBytes": 0,
-      "codeBytes": 4787,
-      "lineEnding": "CRLF",
-      "claims": {
-        "title": "Выделить предыдущий стих (poem)",
-        "summary": "Выделяет предыдущий стих (poem).",
-        "description": "Выделяет предыдущий стих (poem). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
-        "authors": [
-          {
-            "name": "Sclex",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "rules_compiler"
-          }
-        ],
-        "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
-        "modifiesDocument": false,
-        "requiresSelection": false,
-        "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
-        ],
-        "warnings": [],
-        "settings": null,
-        "dependencies": [],
-        "undo": {
-          "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
-        },
-        "examples": null,
-        "tags": [
-          "Поиск форматирования",
-          "поиск",
-          "навигация"
-        ]
-      },
-      "evidence": {
-        "undo_begin": [
-          {
-            "line": 142,
-            "text": "window.external.BeginUndoUnit(document,undoMsg);"
-          }
-        ],
-        "undo_end": [
-          {
-            "line": 179,
-            "text": "window.external.EndUndoUnit(document);"
-          }
-        ],
-        "dialog": [],
-        "selection": [
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
-          },
-          {
-            "line": 112,
-            "text": "var range = selection.createRange();"
-          }
-        ],
-        "write": [
-          {
-            "line": 87,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          }
-        ],
-        "external": [],
-        "network": [],
-        "process": [],
-        "local_window": [],
-        "file": [],
-        "return": [
-          {
-            "line": 64,
-            "text": "if (hasAmongParents(elem1,\"poem\")) return true;"
-          },
-          {
-            "line": 65,
-            "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
-          },
-          {
-            "line": 73,
-            "text": "return false;"
-          },
-          {
-            "line": 78,
-            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
-          },
-          {
-            "line": 81,
-            "text": "return null;"
-          },
-          {
-            "line": 87,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          },
-          {
-            "line": 99,
-            "text": "return el;"
-          },
-          {
-            "line": 106,
-            "text": "return el;"
-          },
-          {
-            "line": 140,
-            "text": "return;"
-          },
-          {
-            "line": 180,
-            "text": "return scriptResult;"
-          }
-        ]
-      },
-      "namespaceUrls": [],
-      "settingEvidence": [],
-      "dependencyEvidence": [],
-      "authorshipEvidence": [
-        {
-          "line": 48,
-          "text": "// Автор Sclex, сборка TaKir"
-        },
-        {
-          "line": 49,
-          "text": "// Версия 1.3"
-        },
-        {
-          "line": 63,
-          "text": "//if (elem1.className==\"text-author\") return true;"
-        }
-      ],
-      "warningEvidence": [],
-      "unverifiedFields": [
-        "title",
-        "summary",
-        "description",
-        "authors",
-        "version",
-        "scope",
-        "modifiesDocument",
-        "requiresSelection",
-        "usage",
-        "warnings",
-        "settings",
-        "dependencies",
-        "undo",
-        "examples",
-        "tags"
-      ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 142,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 179,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "16_Поиск форматирования/154_Выделить следующий стих (poem).js",
-      "result": "requires_review",
-      "codeSha256": "3268a6a82a1f2277d977f29a6fdc86b8ad69cb85a5786e10537a3d3ccf96007a",
-      "encoding": "utf-8",
-      "bomBytes": 0,
-      "codeBytes": 4231,
-      "lineEnding": "CRLF",
-      "claims": {
-        "title": "Выделить следующий стих (poem)",
-        "summary": "Выделяет следующий стих (poem).",
-        "description": "Выделяет следующий стих (poem). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
-        "authors": [
-          {
-            "name": "Sclex",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "rules_compiler"
-          }
-        ],
-        "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
-        "modifiesDocument": false,
-        "requiresSelection": false,
-        "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
-        ],
-        "warnings": [],
-        "settings": null,
-        "dependencies": [],
-        "undo": {
-          "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
-        },
-        "examples": null,
-        "tags": [
-          "Поиск форматирования",
-          "поиск",
-          "навигация"
-        ]
-      },
-      "evidence": {
-        "undo_begin": [
-          {
-            "line": 130,
-            "text": "window.external.BeginUndoUnit(document,undoMsg);"
-          }
-        ],
-        "undo_end": [
-          {
-            "line": 167,
-            "text": "window.external.EndUndoUnit(document);"
-          }
-        ],
-        "dialog": [],
-        "selection": [
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
-          },
-          {
-            "line": 112,
-            "text": "var range = selection.createRange();"
-          }
-        ],
-        "write": [
-          {
-            "line": 87,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          }
-        ],
-        "external": [],
-        "network": [],
-        "process": [],
-        "local_window": [],
-        "file": [],
-        "return": [
-          {
-            "line": 64,
-            "text": "if (hasAmongParents(elem1,\"poem\")) return true;"
-          },
-          {
-            "line": 65,
-            "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
-          },
-          {
-            "line": 73,
-            "text": "return false;"
-          },
-          {
-            "line": 78,
-            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
-          },
-          {
-            "line": 81,
-            "text": "return null;"
-          },
-          {
-            "line": 87,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          },
-          {
-            "line": 99,
-            "text": "return el;"
-          },
-          {
-            "line": 106,
-            "text": "return el;"
-          },
-          {
-            "line": 128,
-            "text": "return;"
-          },
-          {
-            "line": 168,
-            "text": "return scriptResult;"
-          }
-        ]
-      },
-      "namespaceUrls": [],
-      "settingEvidence": [],
-      "dependencyEvidence": [],
-      "authorshipEvidence": [
-        {
-          "line": 48,
-          "text": "// Автор Sclex, сборка TaKir"
-        },
-        {
-          "line": 49,
-          "text": "// Версия 1.3"
-        },
-        {
-          "line": 63,
-          "text": "//if (elem1.className==\"text-author\") return true;"
-        }
-      ],
-      "warningEvidence": [],
-      "unverifiedFields": [
-        "title",
-        "summary",
-        "description",
-        "authors",
-        "version",
-        "scope",
-        "modifiesDocument",
-        "requiresSelection",
-        "usage",
-        "warnings",
-        "settings",
-        "dependencies",
-        "undo",
-        "examples",
-        "tags"
-      ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 130,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 167,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "16_Поиск форматирования/155_Выделить предыдущий заголовок стиха.js",
-      "result": "requires_review",
-      "codeSha256": "2cb7f727bd36056e892363b9dfe92aacf3d37f38f2ff87539b88be8616e0aefd",
-      "encoding": "utf-8",
-      "bomBytes": 0,
-      "codeBytes": 4886,
-      "lineEnding": "CRLF",
-      "claims": {
-        "title": "Выделить предыдущий заголовок стиха",
-        "summary": "Выделяет предыдущий заголовок стиха.",
-        "description": "Выделяет предыдущий заголовок стиха. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
-        "authors": [
-          {
-            "name": "Sclex",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "rules_compiler"
-          }
-        ],
-        "version": "1.4",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
-        "modifiesDocument": false,
-        "requiresSelection": false,
-        "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
-        ],
-        "warnings": [],
-        "settings": null,
-        "dependencies": [],
-        "undo": {
-          "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
-        },
-        "examples": null,
-        "tags": [
-          "Поиск форматирования",
-          "поиск",
-          "навигация"
-        ]
-      },
-      "evidence": {
-        "undo_begin": [
-          {
-            "line": 141,
-            "text": "window.external.BeginUndoUnit(document,undoMsg);"
-          }
-        ],
-        "undo_end": [
-          {
-            "line": 178,
-            "text": "window.external.EndUndoUnit(document);"
-          }
-        ],
-        "dialog": [],
-        "selection": [
-          {
-            "line": 109,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 109,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "if (selection) {"
-          },
-          {
-            "line": 111,
-            "text": "var range = selection.createRange();"
-          }
-        ],
-        "write": [
-          {
-            "line": 86,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          }
-        ],
-        "external": [],
-        "network": [],
-        "process": [],
-        "local_window": [],
-        "file": [],
-        "return": [
-          {
-            "line": 63,
-            "text": "if (hasAmongParents(elem1,\"title\") && hasAmongParents(elem1,\"poem\") && !hasAmongParents(elem1,\"stanza\")) return true;"
-          },
-          {
-            "line": 64,
-            "text": "return false;"
-          },
-          {
-            "line": 69,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
-          },
-          {
-            "line": 72,
-            "text": "return false;"
-          },
-          {
-            "line": 77,
-            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
-          },
-          {
-            "line": 80,
-            "text": "return null;"
-          },
-          {
-            "line": 86,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          },
-          {
-            "line": 98,
-            "text": "return el;"
-          },
-          {
-            "line": 105,
-            "text": "return el;"
-          },
-          {
-            "line": 139,
-            "text": "return;"
-          },
-          {
-            "line": 179,
-            "text": "return scriptResult;"
-          }
-        ]
-      },
-      "namespaceUrls": [],
-      "settingEvidence": [],
-      "dependencyEvidence": [],
-      "authorshipEvidence": [
-        {
-          "line": 48,
-          "text": "// Автор Sclex, сборка TaKir"
-        },
-        {
-          "line": 49,
+          "line": 51,
           "text": "// Версия 1.4"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -167315,268 +168545,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 141,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 178,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "16_Поиск форматирования/156_Выделить следующий заголовок стиха.js",
-      "result": "requires_review",
-      "codeSha256": "532e11827b19485cf201335520accaafa024619d55b02ddbbc810c7615834aaa",
-      "encoding": "utf-8",
-      "bomBytes": 0,
-      "codeBytes": 4348,
-      "lineEnding": "CRLF",
-      "claims": {
-        "title": "Выделить следующий заголовок стиха",
-        "summary": "Выделяет следующий заголовок стиха.",
-        "description": "Выделяет следующий заголовок стиха. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
-        "authors": [
-          {
-            "name": "Sclex",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "rules_compiler"
-          }
-        ],
-        "version": "1.4",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
-        "modifiesDocument": false,
-        "requiresSelection": false,
-        "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
-        ],
-        "warnings": [],
-        "settings": null,
-        "dependencies": [],
-        "undo": {
-          "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
-        },
-        "examples": null,
-        "tags": [
-          "Поиск форматирования",
-          "поиск",
-          "навигация"
-        ]
-      },
-      "evidence": {
-        "undo_begin": [
-          {
-            "line": 129,
-            "text": "window.external.BeginUndoUnit(document,undoMsg);"
-          }
-        ],
-        "undo_end": [
-          {
-            "line": 166,
-            "text": "window.external.EndUndoUnit(document);"
-          }
-        ],
-        "dialog": [],
-        "selection": [
-          {
-            "line": 109,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 109,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "if (selection) {"
-          },
-          {
-            "line": 111,
-            "text": "var range = selection.createRange();"
-          }
-        ],
-        "write": [
-          {
-            "line": 86,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          }
-        ],
-        "external": [],
-        "network": [],
-        "process": [],
-        "local_window": [],
-        "file": [],
-        "return": [
-          {
-            "line": 63,
-            "text": "if (hasAmongParents(elem1,\"title\") && hasAmongParents(elem1,\"poem\") && !hasAmongParents(elem1,\"stanza\")) return true;"
-          },
-          {
-            "line": 64,
-            "text": "return false;"
-          },
-          {
-            "line": 69,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
-          },
-          {
-            "line": 72,
-            "text": "return false;"
-          },
-          {
-            "line": 77,
-            "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
-          },
-          {
-            "line": 80,
-            "text": "return null;"
-          },
-          {
-            "line": 86,
-            "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
-          },
-          {
-            "line": 98,
-            "text": "return el;"
-          },
-          {
-            "line": 105,
-            "text": "return el;"
-          },
-          {
-            "line": 127,
-            "text": "return;"
-          },
-          {
-            "line": 167,
-            "text": "return scriptResult;"
-          }
-        ]
-      },
-      "namespaceUrls": [],
-      "settingEvidence": [],
-      "dependencyEvidence": [],
-      "authorshipEvidence": [
-        {
-          "line": 48,
-          "text": "// Автор Sclex, сборка TaKir"
-        },
-        {
-          "line": 49,
-          "text": "// Версия 1.4"
-        }
-      ],
-      "warningEvidence": [],
-      "unverifiedFields": [
-        "title",
-        "summary",
-        "description",
-        "authors",
-        "version",
-        "scope",
-        "modifiesDocument",
-        "requiresSelection",
-        "usage",
-        "warnings",
-        "settings",
-        "dependencies",
-        "undo",
-        "examples",
-        "tags"
-      ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 129,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 166,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/157_Выделить предыдущую строфу (stanza).js",
@@ -167588,8 +168557,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить предыдущую строфу (stanza)",
-        "summary": "Выделяет предыдущую строфу (stanza).",
-        "description": "Выделяет предыдущую строфу (stanza). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет предыдущую строфу целиком.",
+        "description": "От конца текущего диапазона ищет DIV.stanza с абзацем P. Обходит абзацы назад, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок строфы целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -167598,24 +168567,27 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск назад от конца текущего диапазона среди DIV.stanza внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит строфу целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск.",
+          "При непустом выделении обратный поиск начинается от его конца, а не от начала."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -167627,38 +168599,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 142,
+            "line": 145,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 179,
+            "line": 182,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 110,
+            "line": 113,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 111,
+            "line": 114,
             "text": "if (selection) {"
           },
           {
-            "line": 112,
+            "line": 115,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -167669,47 +168641,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 67,
             "text": "if (hasAmongParents(elem1,\"stanza\")) return true;"
           },
           {
-            "line": 65,
+            "line": 68,
             "text": "return false;"
-          },
-          {
-            "line": 70,
-            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
             "line": 73,
+            "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
+          },
+          {
+            "line": 76,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 81,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 84,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 90,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 102,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 109,
             "text": "return el;"
           },
           {
-            "line": 140,
+            "line": 143,
             "text": "return;"
           },
           {
-            "line": 180,
+            "line": 183,
             "text": "return scriptResult;"
           }
         ]
@@ -167719,19 +168691,28 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 51,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 52,
           "text": "// Версия 1.3"
         },
         {
-          "line": 63,
+          "line": 66,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При непустом выделении обратный поиск начинается от его конца, а не от начала.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -167749,53 +168730,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 142,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 179,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/158_Выделить следующую строфу (stanza).js",
@@ -167807,8 +168742,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующую строфу (stanza)",
-        "summary": "Выделяет следующую строфу (stanza).",
-        "description": "Выделяет следующую строфу (stanza). Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Выделяет следующую строфу целиком.",
+        "description": "От конца текущего диапазона ищет DIV.stanza с абзацем P. Обходит абзацы вперёд, пропускает контейнер, в котором находится исходная позиция, и выделяет найденный блок строфы целиком. Прокручивает окно к результату; содержимое книги не меняет.",
         "authors": [
           {
             "name": "Sclex",
@@ -167817,24 +168752,26 @@
           {
             "name": "TaKir",
             "role": "contributor",
-            "contribution": "rules_compiler"
+            "contribution": "assembly"
           }
         ],
         "version": "1.3",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Поиск вперёд от конца текущего диапазона среди DIV.stanza внутри fbw_body.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в книге или выделите фрагмент, от конца которого нужно начать поиск.",
+          "Запустите команду; при успехе редактор выделит строфу целиком и прокрутит окно к результату.",
+          "Если подходящего блока дальше нет, скрипт покажет сообщение; текст книги он не меняет."
         ],
-        "warnings": [],
+        "warnings": [
+          "Блок без абзацев P не попадёт в поиск."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути меняются только выделение и положение прокрутки; содержимое книги не меняется. Формальная группа отмены открывается и закрывается, но откат содержимого здесь неприменим."
         },
         "examples": null,
         "tags": [
@@ -167846,38 +168783,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 130,
+            "line": 132,
             "text": "window.external.BeginUndoUnit(document,undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 167,
+            "line": 169,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 110,
+            "line": 112,
             "text": "var selection = document.selection;"
-          },
-          {
-            "line": 110,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 111,
-            "text": "if (selection) {"
           },
           {
             "line": 112,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 113,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 114,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -167888,47 +168825,47 @@
         "file": [],
         "return": [
           {
-            "line": 64,
+            "line": 66,
             "text": "if (hasAmongParents(elem1,\"stanza\")) return true;"
           },
           {
-            "line": 65,
+            "line": 67,
             "text": "return false;"
           },
           {
-            "line": 70,
+            "line": 72,
             "text": "if (elem2.nodeName==\"DIV\" && elem2.className==nameOfClass) return true;"
           },
           {
-            "line": 73,
+            "line": 75,
             "text": "return false;"
           },
           {
-            "line": 78,
+            "line": 80,
             "text": "if (elem3.nodeName==\"DIV\" && elem3.className==nameOfClass) return elem3;"
           },
           {
-            "line": 81,
+            "line": 83,
             "text": "return null;"
           },
           {
-            "line": 87,
+            "line": 89,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 99,
+            "line": 101,
             "text": "return el;"
           },
           {
-            "line": 106,
+            "line": 108,
             "text": "return el;"
           },
           {
-            "line": 128,
+            "line": 130,
             "text": "return;"
           },
           {
-            "line": 168,
+            "line": 170,
             "text": "return scriptResult;"
           }
         ]
@@ -167938,19 +168875,24 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 48,
+          "line": 50,
           "text": "// Автор Sclex, сборка TaKir"
         },
         {
-          "line": 49,
+          "line": 51,
           "text": "// Версия 1.3"
         },
         {
-          "line": 63,
+          "line": 65,
           "text": "//if (elem1.className==\"text-author\") return true;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Блок без абзацев P не попадёт в поиск.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -167968,53 +168910,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 130,
-              "text": "window.external.BeginUndoUnit(document,undoMsg);"
-            },
-            {
-              "line": 167,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "16_Поиск форматирования/159_Выделить предыдущую таблицу.js",
