@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **333**. Исполняемый код не изменён.
+Изменено карточек: **334**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 297
-- `generic_usage`: 278
-- `inaccurate_description`: 562
+- `false_warning`: 298
+- `generic_usage`: 279
+- `inaccurate_description`: 564
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 284
+- `incorrect_dependency`: 285
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 279
+- `incorrect_scope`: 281
 - `incorrect_selection`: 17
-- `incorrect_setting`: 134
-- `incorrect_undo`: 277
+- `incorrect_setting`: 135
+- `incorrect_undo`: 278
 - `incorrect_version`: 5
 - `uncertain_attribution`: 7
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 9
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 160
+- `dependenciesVerified`: 161
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 276
-- `scopeClarified`: 262
+- `purposeClarified`: 277
+- `scopeClarified`: 263
 - `serviceSettingsRemoved`: 149
-- `settingsClarified`: 447
-- `undoDescriptionsClarified`: 269
-- `usageCorrected`: 278
-- `warningsClarified`: 209
+- `settingsClarified`: 448
+- `undoDescriptionsClarified`: 270
+- `usageCorrected`: 279
+- `warningsClarified`: 210
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **172**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **173**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -344,13 +344,16 @@
 - `06_Чистка/65_Дроби, степени, интервалы, габариты.js:883` — return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body.
 - `06_Чистка/73_Пост-корректор.js:662` — Все FONT снимаются даже без найденных правил; это изменение не учитывается в changeBook и не отражается в статистике.
 - `06_Чистка/71_Кириллица-латиница.js:300` — Без фигурных скобок после проверки длины новой версии VersionUp отмечается даже когда запись нового значения версии не выполнялась.
+- `06_Чистка/72_Объединить разорванные абзацы (автоматически).js:1715` — Пустой набор абзацев после текстового выделения приводит к обходу всей книги, хотя пользователь мог рассчитывать на ограничение выделением.
+- `06_Чистка/72_Объединить разорванные абзацы (автоматически).js:1864` — Ветка через пустую строку требует строчную первую букву второго абзаца до проверки вариантов с заглавной буквой и открывающей кавычкой; часть объявленных правил здесь недостижима.
+- `06_Чистка/72_Объединить разорванные абзацы (автоматически).js:2002` — Ряд общих функций проверяет переключатели обычного и ПС-режима вместе, поэтому отключение правила только для обычных соседних абзацев не всегда препятствует его срабатыванию.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1257
+- `generic_usage`: 1252
 - `inaccurate_description`: 88
-- `incorrect_undo`: 192
-- `requires_review`: 421
+- `incorrect_undo`: 191
+- `requires_review`: 420
 
 ## Границы проверки
 
