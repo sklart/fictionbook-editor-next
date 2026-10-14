@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 357,
-    "generic_usage": 895,
-    "incorrect_undo": 133,
+    "requires_review": 356,
+    "generic_usage": 891,
+    "incorrect_undo": 132,
     "inaccurate_description": 50
   },
   "reviewedChanges": [
@@ -51295,18 +51295,135 @@
         "dependenciesVerified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/580_Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками.js",
+      "codeSha256": "cc9715483d4a20d509cb299e95bdda3d46de9e1b31951f2e94b9e038c50b8f03",
+      "evidence": "Строки 1–8 задают цель и авторство; 49–61 спрашивают варианты; 70–79 открывают группу отмены и проверяют корень; 82–148 собирают и удаляют P.subtitle; 194–198 завершают группу лишь на успешном пути; 202–217 распознают звёздочки; 272–349 и 354–429 проверяют соседство. Внешних программ, файловых и сетевых операций нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для удаления стандартных подзаголовков-\"звёздочек\" (* * *),",
+          "after": "Удаляет подзаголовки из одних звёздочек рядом с заголовками и обычными подзаголовками по выбранным условиям.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для удаления стандартных подзаголовков-\"звёздочек\" (* * *),",
+          "after": "После двух вопросов о видах соседства просматривает абзацы P.subtitle во всём тексте книги. Подзаголовок считается звёздочкой, если после удаления пробелов и неразрывных пробелов в нём остаются только символы *. Удаляет такие абзацы непосредственно после заголовка внутри секции, в конце секции перед заголовком следующей секции либо рядом с обычным подзаголовком в той же секции — только для выбранных вариантов. В конце показывает количество удалений по позициям.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все P.subtitle внутри fbw_body, включая разделы примечаний и комментариев. Соседство с заголовком проверяется внутри секции либо между соседними секциями; с обычным подзаголовком — среди соседних элементов одной секции.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Выберите отдельно, удалять ли звёздочки рядом с заголовками и рядом с обычными подзаголовками. Если оба ответа отрицательные, книга не меняется.",
+            "После выполнения проверьте удалённые разделители и структуру книги до сохранения."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Скрипт удаляет сами абзацы-звёздочки; в книгах, где они обозначают смысловой разделитель, проверьте результат перед сохранением.",
+            "При отсутствии корневого элемента книги после открытия группы отмены либо при ошибке выполнения группа может остаться незакрытой."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Изменения объединяются в одну группу отмены при обычном завершении. При раннем выходе или ошибке после её открытия завершение группы не вызывается; надёжность отката в этих случаях не проверена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 78,
+          "issue": "После BeginUndoUnit (строка 70) при отсутствии fbw_body выполняется return без EndUndoUnit; группа отмены остаётся открытой."
+        },
+        {
+          "line": 196,
+          "issue": "Общий обработчик ошибки после BeginUndoUnit сообщает об ошибке, но не закрывает группу отмены; исключение в обработке или выводе результата оставляет её открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 676,
-    "generic_usage": 364,
+    "inaccurate_description": 677,
+    "generic_usage": 365,
     "false_warning": 319,
     "incorrect_setting": 195,
-    "incorrect_scope": 371,
-    "incorrect_undo": 363,
-    "uncertain_attribution": 56,
-    "generic_summary": 59,
-    "incorrect_dependency": 379,
+    "incorrect_scope": 372,
+    "incorrect_undo": 364,
+    "uncertain_attribution": 57,
+    "generic_summary": 60,
+    "incorrect_dependency": 380,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -51320,20 +51437,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 2,
+    "missing_warning": 3,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 355,
-    "usageCorrected": 364,
-    "purposeClarified": 362,
-    "warningsClarified": 296,
-    "scopeClarified": 348,
+    "undoDescriptionsClarified": 356,
+    "usageCorrected": 365,
+    "purposeClarified": 363,
+    "warningsClarified": 297,
+    "scopeClarified": 349,
     "settingsClarified": 509,
-    "attributionClarified": 58,
-    "dependenciesVerified": 246,
+    "attributionClarified": 59,
+    "dependenciesVerified": 247,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -141233,40 +141350,37 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками",
-        "summary": "Скрипт предназначен для удаления стандартных подзаголовков-\"звёздочек\" (* * *),",
-        "description": "Скрипт предназначен для удаления стандартных подзаголовков-\"звёздочек\" (* * *),",
+        "summary": "Удаляет подзаголовки из одних звёздочек рядом с заголовками и обычными подзаголовками по выбранным условиям.",
+        "description": "После двух вопросов о видах соседства просматривает абзацы P.subtitle во всём тексте книги. Подзаголовок считается звёздочкой, если после удаления пробелов и неразрывных пробелов в нём остаются только символы *. Удаляет такие абзацы непосредственно после заголовка внутри секции, в конце секции перед заголовком следующей секции либо рядом с обычным подзаголовком в той же секции — только для выбранных вариантов. В конце показывает количество удалений по позициям.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "3.4",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все P.subtitle внутри fbw_body, включая разделы примечаний и комментариев. Соседство с заголовком проверяется внутри секции либо между соседними секциями; с обычным подзаголовком — среди соседних элементов одной секции.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Выберите отдельно, удалять ли звёздочки рядом с заголовками и рядом с обычными подзаголовками. Если оба ответа отрицательные, книга не меняется.",
+          "После выполнения проверьте удалённые разделители и структуру книги до сохранения."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Скрипт удаляет сами абзацы-звёздочки; в книгах, где они обозначают смысловой разделитель, проверьте результат перед сохранением.",
+          "При отсутствии корневого элемента книги после открытия группы отмены либо при ошибке выполнения группа может остаться незакрытой."
         ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Изменения объединяются в одну группу отмены при обычном завершении. При раннем выходе или ошибке после её открытия завершение группы не вызывается; надёжность отката в этих случаях не проверена."
         },
         "examples": null,
         "tags": [
@@ -141276,13 +141390,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 120,
+            "line": 117,
             "text": "window.external.BeginUndoUnit(document, undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 244,
+            "line": 241,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -141290,7 +141404,7 @@
         "selection": [],
         "write": [
           {
-            "line": 184,
+            "line": 181,
             "text": "item.element.parentNode.removeChild(item.element);"
           }
         ],
@@ -141301,123 +141415,123 @@
         "file": [],
         "return": [
           {
-            "line": 111,
+            "line": 108,
             "text": "return;"
           },
           {
-            "line": 128,
+            "line": 125,
             "text": "return;"
           },
           {
-            "line": 253,
+            "line": 250,
             "text": "if (!text) return false;"
           },
           {
-            "line": 259,
+            "line": 256,
             "text": "if (cleanText.length === 0) return false;"
           },
           {
-            "line": 263,
+            "line": 260,
             "text": "return false;"
           },
           {
-            "line": 267,
+            "line": 264,
             "text": "return true;"
           },
           {
-            "line": 273,
+            "line": 270,
             "text": "return element.textContent;"
           },
           {
-            "line": 275,
+            "line": 272,
             "text": "return element.innerText;"
           },
           {
-            "line": 285,
+            "line": 282,
             "text": "return text;"
           },
           {
-            "line": 291,
+            "line": 288,
             "text": "if (!text) return \"\";"
           },
           {
-            "line": 315,
+            "line": 312,
             "text": "if (end < start) return \"\";"
           },
           {
-            "line": 318,
+            "line": 315,
             "text": "return text.substring(start, end + 1);"
           },
           {
-            "line": 324,
+            "line": 321,
             "text": "if (!parentSection) return 'none';"
           },
           {
-            "line": 331,
+            "line": 328,
             "text": "return 'above';"
+          },
+          {
+            "line": 335,
+            "text": "return 'below';"
           },
           {
             "line": 338,
-            "text": "return 'below';"
-          },
-          {
-            "line": 341,
             "text": "return 'none';"
           },
           {
-            "line": 347,
+            "line": 344,
             "text": "if (!parentSection) return 'none';"
           },
           {
-            "line": 369,
+            "line": 366,
             "text": "if (starIndex === -1) return 'none';"
           },
           {
-            "line": 380,
+            "line": 377,
             "text": "return 'above';"
           },
           {
-            "line": 394,
+            "line": 391,
             "text": "return 'below';"
           },
           {
-            "line": 399,
+            "line": 396,
             "text": "return 'none';"
           },
           {
-            "line": 409,
+            "line": 406,
             "text": "return parent;"
           },
           {
-            "line": 424,
+            "line": 421,
             "text": "return lastElement === element;"
           },
           {
-            "line": 443,
+            "line": 440,
             "text": "return true;"
           },
           {
-            "line": 446,
+            "line": 443,
             "text": "return false;"
           },
           {
-            "line": 451,
+            "line": 448,
             "text": "return false;"
           },
           {
-            "line": 459,
+            "line": 456,
             "text": "return next;"
           },
           {
-            "line": 471,
+            "line": 468,
             "text": "return true;"
           },
           {
-            "line": 474,
+            "line": 471,
             "text": "return false;"
           },
           {
-            "line": 478,
+            "line": 475,
             "text": "return false;"
           }
         ]
@@ -141427,25 +141541,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 52,
+          "line": 49,
           "text": "// version 3.4"
         },
         {
-          "line": 60,
+          "line": 57,
           "text": "// version 3.4, 18.01.2026"
         },
         {
-          "line": 64,
+          "line": 61,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 66,
+          "line": 63,
           "text": "var version = \"3.4\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Скрипт удаляет сами абзацы-звёздочки; в книгах, где они обозначают смысловой разделитель, проверьте результат перед сохранением.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При отсутствии корневого элемента книги после открытия группы отмены либо при ошибке выполнения группа может остаться незакрытой.",
           "verification": "requires_review"
         }
       ],
@@ -141468,89 +141586,26 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 120,
-              "text": "window.external.BeginUndoUnit(document, undoMsg);"
-            },
-            {
-              "line": 244,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Изменения объединяются в одну группу отмены при обычном завершении. При раннем выходе или ошибке после её открытия завершение группы не вызывается; надёжность отката в этих случаях не проверена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 120,
+              "line": 117,
               "text": "window.external.BeginUndoUnit(document, undoMsg);"
             },
             {
-              "line": 128,
+              "line": 125,
               "text": "return;"
             },
             {
-              "line": 244,
+              "line": 241,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]

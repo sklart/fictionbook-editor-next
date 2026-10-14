@@ -16,54 +16,54 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **418**. Исполняемый код не изменён.
+Изменено карточек: **419**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 59
-- `generic_usage`: 364
+- `generic_summary`: 60
+- `generic_usage`: 365
 - `generic_warning`: 62
-- `inaccurate_description`: 676
+- `inaccurate_description`: 677
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 379
+- `incorrect_dependency`: 380
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 371
+- `incorrect_scope`: 372
 - `incorrect_selection`: 36
 - `incorrect_setting`: 195
-- `incorrect_undo`: 363
+- `incorrect_undo`: 364
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 2
-- `uncertain_attribution`: 56
+- `missing_warning`: 3
+- `uncertain_attribution`: 57
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 58
+- `attributionClarified`: 59
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 246
+- `dependenciesVerified`: 247
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 362
-- `scopeClarified`: 348
+- `purposeClarified`: 363
+- `scopeClarified`: 349
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `undoDescriptionsClarified`: 355
-- `usageCorrected`: 364
+- `undoDescriptionsClarified`: 356
+- `usageCorrected`: 365
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 296
+- `warningsClarified`: 297
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **258**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **259**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -573,13 +573,15 @@
 - `13_Заголовки, подзаголовки, пустые строки/570_Поиск возможных заголовков по ключевым словам.js:194` — Сообщение о неподдерживаемом типе выделения содержит буквальный текст sel.type вместо значения переменной; дублирующая проверка на строке 204 повторяет ту же ошибку.
 - `13_Заголовки, подзаголовки, пустые строки/570_Поиск возможных заголовков по ключевым словам.js:658` — После подъёма от курсора код обращается к el2.nodeName без проверки el2 на null. При курсоре вне абзаца/документа возможна ошибка вместо сообщения о неподходящей позиции.
 - `13_Заголовки, подзаголовки, пустые строки/570_Поиск возможных заголовков по ключевым словам.js:158` — Однословные ключевые шаблоны привязаны к самому началу строки без допуска начальных пробелов и без общего режима i; строки с отступом или смешанным регистром не находятся, хотя числовые шаблоны допускают пробелы.
+- `13_Заголовки, подзаголовки, пустые строки/580_Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками.js:78` — После BeginUndoUnit (строка 70) при отсутствии fbw_body выполняется return без EndUndoUnit; группа отмены остаётся открытой.
+- `13_Заголовки, подзаголовки, пустые строки/580_Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками.js:196` — Общий обработчик ошибки после BeginUndoUnit сообщает об ошибке, но не закрывает группу отмены; исключение в обработке или выводе результата оставляет её открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 895
+- `generic_usage`: 891
 - `inaccurate_description`: 50
-- `incorrect_undo`: 133
-- `requires_review`: 357
+- `incorrect_undo`: 132
+- `requires_review`: 356
 
 ## Границы проверки
 
