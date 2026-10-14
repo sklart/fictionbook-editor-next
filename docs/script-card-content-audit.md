@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **159**.
+Карточек без автоматических замечаний: **160**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **325**. Исполняемый код не изменён.
+Изменено карточек: **328**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 289
-- `generic_usage`: 270
-- `inaccurate_description`: 546
+- `false_warning`: 292
+- `generic_usage`: 273
+- `inaccurate_description`: 552
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 274
+- `incorrect_dependency`: 277
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 267
+- `incorrect_scope`: 272
 - `incorrect_selection`: 17
-- `incorrect_setting`: 127
-- `incorrect_undo`: 269
+- `incorrect_setting`: 130
+- `incorrect_undo`: 272
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 152
+- `dependenciesVerified`: 155
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 268
-- `scopeClarified`: 254
+- `purposeClarified`: 271
+- `scopeClarified`: 257
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 440
-- `undoDescriptionsClarified`: 261
-- `usageCorrected`: 270
-- `warningsClarified`: 201
+- `settingsClarified`: 443
+- `undoDescriptionsClarified`: 264
+- `usageCorrected`: 273
+- `warningsClarified`: 204
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **164**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **167**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -330,13 +330,20 @@
 - `06_Чистка/12_Удалить возвратные ссылки, созданные FBD.js:122` — При CheckSimpleLinks=false массив NotNotesA не создаётся, но далее используется без проверки; вариант настройки приводит к ошибке.
 - `06_Чистка/55_Удалить ссылки 'bookmark', созданные FBD.js:119` — Проверка не различает bookmark и обычные ссылки: любой подходящий первый A в абзаце может быть удалён.
 - `06_Чистка/19_Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв)....js:212` — В coll не передан nbspChar, хотя общий HTML-диалог использует его при нормализации ручной замены.
+- `06_Чистка/03_Латиница в Кириллице.js:400` — HTML каждого P записывается заново даже без найденных замен; это может пересоздать вложенные DOM-элементы.
+- `06_Чистка/03_Латиница в Кириллице.js:416` — Подъём к следующему узлу не ограничен fbw_body; на последнем узле возможно продолжение обхода за пределами контейнера.
+- `06_Чистка/04_Фамилия И. О..js:472` — return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен.
+- `06_Чистка/04_Фамилия И. О..js:475` — return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body.
+- `06_Чистка/04_Фамилия И. О..js:240` — В ветвях повторного решения k<10 и k>10 индекс 10 не обрабатывается, хотя цикл продолжает проверять тот же шаблон.
+- `06_Чистка/07_10.000.000.000.js:476` — return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен.
+- `06_Чистка/07_10.000.000.000.js:479` — return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1289
-- `inaccurate_description`: 94
-- `incorrect_undo`: 199
-- `requires_review`: 429
+- `generic_usage`: 1276
+- `inaccurate_description`: 91
+- `incorrect_undo`: 197
+- `requires_review`: 426
 
 ## Границы проверки
 
