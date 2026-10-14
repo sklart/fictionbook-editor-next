@@ -16,43 +16,45 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **355**. Исполняемый код не изменён.
+Изменено карточек: **356**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_usage`: 300
-- `inaccurate_description`: 612
+- `generic_summary`: 1
+- `generic_usage`: 301
+- `generic_warning`: 1
+- `inaccurate_description`: 613
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 309
+- `incorrect_dependency`: 310
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 307
+- `incorrect_scope`: 308
 - `incorrect_selection`: 17
-- `incorrect_setting`: 151
-- `incorrect_undo`: 299
+- `incorrect_setting`: 152
+- `incorrect_undo`: 300
 - `incorrect_version`: 5
-- `uncertain_attribution`: 25
+- `uncertain_attribution`: 26
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 25
+- `attributionClarified`: 26
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 182
+- `dependenciesVerified`: 183
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 298
-- `scopeClarified`: 284
+- `purposeClarified`: 299
+- `scopeClarified`: 285
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 464
-- `undoDescriptionsClarified`: 291
-- `usageCorrected`: 300
-- `warningsClarified`: 231
+- `settingsClarified`: 465
+- `undoDescriptionsClarified`: 292
+- `usageCorrected`: 301
+- `warningsClarified`: 232
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **193**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **194**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -396,13 +398,16 @@
 - `08_Структура разделов/56_Произвести вложенность однотипных разделов.js:804` — Нетипичные секции между родителями вкладываются даже если не совпадают с выбранным типом дочерних; флажок includeBeforeNext влияет только на последнюю такую секцию.
 - `08_Структура разделов/56_Произвести вложенность однотипных разделов.js:982` — При removeEmptySections очистка пустых строк рекурсивно проходит по всему первому основному body, включая разделы, не выбранные для вложения.
 - `08_Структура разделов/56_Произвести вложенность однотипных разделов.js:630` — Перестройка DOM между открытием и закрытием группы отмены не защищена обработчиком исключений; ошибка может оставить группу открытой.
+- `08_Структура разделов/13_Почистить структуру.js:392` — Без фигурных скобок условие длины новой версии относится только к присваиванию diVersion.value; VersionUp выставляется и текст новой версии создаётся даже при отклонённом слишком длинном значении.
+- `08_Структура разделов/13_Почистить структуру.js:1408` — Имя body вставляется в новый заголовок через innerHTML без экранирования; символы разметки в имени могут превратиться в HTML-элементы или изменить содержимое заголовка.
+- `08_Структура разделов/13_Почистить структуру.js:453` — Многоэтапная модификация DOM не защищена finally между открытием и закрытием группы отмены; исключение может оставить её открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1166
-- `inaccurate_description`: 78
-- `incorrect_undo`: 175
-- `requires_review`: 403
+- `generic_usage`: 1162
+- `inaccurate_description`: 77
+- `incorrect_undo`: 174
+- `requires_review`: 402
 
 ## Границы проверки
 
