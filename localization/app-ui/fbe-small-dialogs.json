@@ -2457,7 +2457,7 @@
         "pt-PT": "Tamanho da letra:",
         "nl-NL": "Tekengrootte:",
         "cs-CZ": "Velikost písma:",
-        "bg-BG": "Размер на шрифта:"
+        "bg-BG": "Размер:"
       }
     },
     "fbe.dialog.idd_options.interface": {
@@ -2514,7 +2514,7 @@
         "pt-PT": "Realce de sintaxe",
         "nl-NL": "Syntaxisaccentuering",
         "cs-CZ": "Zvýraznění syntaxe",
-        "bg-BG": "Оцветяване на синтаксиса"
+        "bg-BG": "Оцветяване на кода"
       }
     },
     "fbe.dialog.idd_options.show_eol": {
@@ -2855,7 +2855,7 @@
         "bg-BG": "Осветявай текущия таг"
       }
     },
-    "fbe.dialog.idd_options.tag_highlight_mode": { "resource": "IDD_SETTINGS_SOURCE", "kind": "LTEXT", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE_LABEL", "translations": { "en-US": "Matched tag mode:", "ru-RU": "Режим подсветки тега:", "uk-UA": "Режим відповідного тегу:", "de-DE": "Modus für übereinstimmende Tags:", "fr-FR": "Mode de balise correspondante :", "es-ES": "Modo de etiqueta coincidente:", "it-IT": "Modalità del tag corrispondente:", "pl-PL": "Tryb dopasowanego znacznika:", "pt-PT": "Modo da etiqueta correspondente:", "nl-NL": "Modus voor overeenkomende tag:", "cs-CZ": "Režim odpovídajícího tagu:", "bg-BG": "Режим на съответстващия таг:" } },
+    "fbe.dialog.idd_options.tag_highlight_mode": { "resource": "IDD_SETTINGS_SOURCE", "kind": "LTEXT", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE_LABEL", "translations": { "en-US": "Matched tag mode:", "ru-RU": "Режим подсветки тега:", "uk-UA": "Режим підсвітки тегу:", "de-DE": "Tag-Modus:", "fr-FR": "Mode de balise :", "es-ES": "Modo de etiqueta:", "it-IT": "Modalità tag:", "pl-PL": "Tryb znacznika:", "pt-PT": "Modo da etiqueta:", "nl-NL": "Tagmodus:", "cs-CZ": "Režim tagu:", "bg-BG": "Режим на таг:" } },
     "fbe.dialog.idd_options.tag_highlight_attributes": { "resource": "IDD_SETTINGS_SOURCE", "kind": "CONTROL", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES", "translations": { "en-US": "Highlight attributes", "ru-RU": "Подсвечивать атрибуты", "uk-UA": "Підсвічувати атрибути", "de-DE": "Attribute hervorheben", "fr-FR": "Surligner les attributs", "es-ES": "Resaltar atributos", "it-IT": "Evidenzia attributi", "pl-PL": "Podświetl atrybuty", "pt-PT": "Realçar atributos", "nl-NL": "Attributen markeren", "cs-CZ": "Zvýraznit atributy", "bg-BG": "Осветявай атрибутите" } },
     "fbe.dialog.idd_options.tag_highlight_errors": { "resource": "IDD_SETTINGS_SOURCE", "kind": "CONTROL", "targetId": "IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS", "translations": { "en-US": "Show structural tag errors", "ru-RU": "Показывать структурные ошибки тегов", "uk-UA": "Показувати структурні помилки тегів", "de-DE": "Strukturelle Tag-Fehler anzeigen", "fr-FR": "Afficher les erreurs structurelles de balises", "es-ES": "Mostrar errores estructurales de etiquetas", "it-IT": "Mostra errori strutturali dei tag", "pl-PL": "Pokaż błędy strukturalne znaczników", "pt-PT": "Mostrar erros estruturais das etiquetas", "nl-NL": "Structurele tagfouten tonen", "cs-CZ": "Zobrazit strukturální chyby tagů", "bg-BG": "Показвай структурни грешки в таговете" } },
     "fbe.dialog.idd_options.tag_highlight_name_only": { "resource": "IDD_SETTINGS_SOURCE", "kind": "VALUE", "targetId": "", "translations": { "en-US": "Tag name only", "ru-RU": "Только имя тега", "uk-UA": "Лише назва тегу", "de-DE": "Nur Tag-Name", "fr-FR": "Nom de balise uniquement", "es-ES": "Solo nombre de etiqueta", "it-IT": "Solo nome del tag", "pl-PL": "Tylko nazwa znacznika", "pt-PT": "Apenas nome da etiqueta", "nl-NL": "Alleen tagnaam", "cs-CZ": "Pouze název tagu", "bg-BG": "Само име на тага" } },

@@ -3,6 +3,7 @@
 param(
     [string]$FbeExe,
     [string]$ArtifactDirectory,
+    [switch]$ChangedPagesOnly,
     [ValidateSet('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')]
     [string[]]$Locales = @('ru-RU', 'en-US', 'de-DE', 'uk-UA', 'es-ES', 'bg-BG')
 )
@@ -215,7 +216,7 @@ try {
                     throw "Settings tooltip does not use its page DPI for maximum width ($expectedWidth px)."
                 }
             }
-            $expected = @(1120, 1154, 1160, 1053, 1603, 1051, 1128, 1130, 1158)
+            $expected = if ($ChangedPagesOnly) { @() } else { @(1120, 1154, 1160, 1053, 1603, 1051, 1128, 1130, 1158) }
             foreach ($id in $expected) {
                 $control = @($rows | Where-Object Id -eq $id)
                 if ($control.Count -ne 1 -or $control[0].TextMayClip) {
@@ -249,7 +250,7 @@ try {
                 }
             }
             Write-Host "$locale Hotkeys labels and action buttons fit."
-            if ($locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
+            if ($ChangedPagesOnly -or $locale -in @('ru-RU', 'en-US', 'de-DE', 'uk-UA')) {
                 $wideRect = New-Object SettingsGeneralLayoutWindow+Rect
                 [void][SettingsGeneralLayoutWindow]::GetWindowRect($settings, [ref]$wideRect)
                 $wideWidth = [Math]::Min(900, [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - 40)
@@ -257,7 +258,8 @@ try {
                     [SettingsGeneralLayoutWindow]::GetSystemMetrics(0) - $wideWidth - 20))
                 [void][SettingsGeneralLayoutWindow]::SetWindowPos($settings, [IntPtr]::Zero,
                     $wideLeft, $wideRect.Top, $wideWidth, ($wideRect.Bottom - $wideRect.Top), 0x14)
-                foreach ($pageIndex in 1, 2, 3, 4, 6, 7) {
+                $pageIndices = if ($ChangedPagesOnly) { @(1, 2) } else { @(1, 2, 3, 4, 6, 7) }
+                foreach ($pageIndex in $pageIndices) {
                     [SettingsGeneralLayoutWindow]::SelectPage($settings, $pageIndex)
                     Start-Sleep -Milliseconds 100
                     foreach ($id in 1, 2) {
