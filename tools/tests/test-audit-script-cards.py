@@ -44,6 +44,18 @@ def main() -> None:
         assert updated.sha256 == original_document.sha256
         assert updated.encoding == original_document.encoding and updated.bom_size == original_document.bom_size
         assert apply([proposal], [{"path": "example.js", "result": "requires_review"}]) == 0
+        reduced_card = copy.deepcopy(updated.card)
+        reduced_card.pop("settings")
+        start, end = updated.span
+        copied_script.write_bytes(updated.data[:start] +
+                                  card_tool["serialize"](reduced_card, updated.encoding, "\r\n") +
+                                  updated.data[end:])
+        added_field = {"path": "example.js", "codeSha256": original_document.sha256,
+                       "evidence": "Verified optional field addition",
+                       "changes": [{"field": "settings", "before": None, "after": []}]}
+        assert apply([added_field], [{"path": "example.js", "result": "requires_review"}]) == 1
+        assert card_tool["read_document"](copied_script.read_bytes()).card["settings"] == []
+        assert apply([added_field], [{"path": "example.js", "result": "requires_review"}]) == 0
         proposal["changes"][0]["after"] = "Different new value"
         try:
             apply([proposal], [{"path": "example.js", "result": "requires_review"}])

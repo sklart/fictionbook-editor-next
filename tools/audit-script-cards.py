@@ -284,11 +284,11 @@ def apply_proposals(proposals: list[dict], records: list[dict]) -> int:
         changed = False
         for change in proposal["changes"]:
             field = change["field"]
-            if field not in card:
+            if field not in card and change["before"] is not None:
                 raise ValueError(f"missing original {relative}: {field}")
-            if card[field] == change["after"]:
+            if field in card and card[field] == change["after"]:
                 continue
-            if card[field] != change["before"]:
+            if card.get(field) != change["before"]:
                 raise ValueError(f"stale original {relative}: {field}")
             card[field] = change["after"]
             changed = True
