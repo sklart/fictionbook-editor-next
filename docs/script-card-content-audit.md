@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **166**.
+Карточек без автоматических замечаний: **167**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **343**. Исполняемый код не изменён.
+Изменено карточек: **344**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 307
-- `generic_usage`: 288
-- `inaccurate_description`: 583
+- `false_warning`: 308
+- `generic_usage`: 289
+- `inaccurate_description`: 585
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 295
+- `incorrect_dependency`: 297
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 292
+- `incorrect_scope`: 293
 - `incorrect_selection`: 17
-- `incorrect_setting`: 142
-- `incorrect_undo`: 287
+- `incorrect_setting`: 143
+- `incorrect_undo`: 288
 - `incorrect_version`: 5
 - `uncertain_attribution`: 14
 
@@ -40,17 +40,17 @@
 - `attributionClarified`: 15
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 170
+- `dependenciesVerified`: 171
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 286
-- `scopeClarified`: 272
+- `purposeClarified`: 287
+- `scopeClarified`: 273
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 455
-- `undoDescriptionsClarified`: 279
-- `usageCorrected`: 288
-- `warningsClarified`: 219
+- `settingsClarified`: 456
+- `undoDescriptionsClarified`: 280
+- `usageCorrected`: 289
+- `warningsClarified`: 220
 
 Скриптов с подтверждёнными замечаниями к исполняемому коду: **182**.
 
@@ -368,10 +368,10 @@
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1214
+- `generic_usage`: 1210
 - `inaccurate_description`: 80
-- `incorrect_undo`: 184
-- `requires_review`: 411
+- `incorrect_undo`: 183
+- `requires_review`: 410
 
 ## Границы проверки
 
