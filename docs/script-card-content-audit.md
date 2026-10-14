@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **307**. Исполняемый код не изменён.
+Изменено карточек: **308**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 271
-- `generic_usage`: 252
-- `inaccurate_description`: 510
+- `false_warning`: 272
+- `generic_usage`: 253
+- `inaccurate_description`: 512
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 251
+- `incorrect_dependency`: 253
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 248
+- `incorrect_scope`: 250
 - `incorrect_selection`: 17
-- `incorrect_setting`: 117
-- `incorrect_undo`: 251
+- `incorrect_setting`: 118
+- `incorrect_undo`: 252
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 134
+- `dependenciesVerified`: 135
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 250
-- `scopeClarified`: 236
+- `purposeClarified`: 251
+- `scopeClarified`: 237
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 430
-- `undoDescriptionsClarified`: 243
-- `usageCorrected`: 252
-- `warningsClarified`: 183
+- `settingsClarified`: 431
+- `undoDescriptionsClarified`: 244
+- `usageCorrected`: 253
+- `warningsClarified`: 184
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **155**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **156**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -314,13 +314,15 @@
 - `16_Поиск форматирования/203_Перейти на следующий абзац с верхним или нижним индексом.js:311` — При выделении типа Control возврат выполняется после открытия группы отмены, до её закрытия.
 - `16_Поиск форматирования/169_Выделить заглавный заголовок или подзаголовок (КАПС).js:158` — Выражение с произвольным (.*?) до и после пары прописных букв не подтверждает заявленный поиск заголовка, целиком набранного прописными.
 - `16_Поиск форматирования/206_Выделить следующий ЦЕЛИКОМ ЗАГЛАВНЫЙ абзац.js:143` — Первое правило допускает строчные буквы вне своего русского и расширенного латинского набора; второе аналогично для других алфавитов. Название «целиком заглавный» следует читать с этим ограничением.
+- `05_Иллюстрации/30_Вставить ссылки на пустые картинки в началах и концах секций.js:379` — Условие hasNormalImg безусловно завершает обработку секции; skipStartWithImage и skipEndWithImage влияют только на счётчики, хотя диалог обещает управление пропуском.
+- `05_Иллюстрации/30_Вставить ссылки на пустые картинки в началах и концах секций.js:365` — В ветви вставки в начале секции без title пропускаются при обоих значениях skipNameless.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1359
+- `generic_usage`: 1356
 - `inaccurate_description`: 99
-- `incorrect_undo`: 211
-- `requires_review`: 440
+- `incorrect_undo`: 210
+- `requires_review`: 439
 
 ## Границы проверки
 

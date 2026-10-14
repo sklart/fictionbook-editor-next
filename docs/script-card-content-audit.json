@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 440,
-    "generic_usage": 1359,
-    "incorrect_undo": 211,
+    "requires_review": 439,
+    "generic_usage": 1356,
+    "incorrect_undo": 210,
     "inaccurate_description": 99
   },
   "reviewedChanges": [
@@ -33764,17 +33764,210 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/30_Вставить ссылки на пустые картинки в началах и концах секций.js",
+      "codeSha256": "1eb354e3e399f48f6e0ab0738668031f1390fadba860e0902d3aa51f64dbf296",
+      "evidence": "Run открывает showModalDialog с HTML/Вставить ссылки на пустые картинки - параметры.htm (SHA файла совпадает с карточкой), затем извлекает девять полей диалога. Выделение необязательно: выбираются секции в нём или все DIV.section. Начало требует title и размещает блок после эпиграфов; конец пропускает секции с вложенными секциями. Оба пути пропускают существующую обычную или пустую иллюстрацию независимо от флажков skip...WithImage; безымянные секции для начала пропускаются всегда. createFBEImage задаёт #undefined; изменения охвачены BeginUndoUnit/EndUndoUnit без общей обработки исключений.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для массовой расстановки пустых иллюстраций в началах и концах секций fb2 документа.",
+          "after": "Добавляет ссылки на пустые иллюстрации после заголовков и в концах подходящих секций.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для массовой расстановки пустых иллюстраций в началах и концах секций fb2 документа.",
+          "after": "Открывает диалог параметров и вставляет блоки image с href #undefined и внутренним адресом fbw-internal:#undefined. В начале секции помещает блок после первого title и следующих эпиграфов; в конце — только в секциях без вложенных секций. Может добавить пустой абзац в секцию, состоящую из заголовка и пустых иллюстраций.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "При непустом выделении — секции, собранные от его начала до конца; без выделения — секции всего документа. Раздел примечаний пропускается; режимы уровня и шаг вставки выбираются отдельно для начала и конца.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу и при необходимости выделите область нужных секций; без выделения скрипт рассматривает все секции.",
+            "В диалоге выберите вставку в начале, в конце либо в обоих местах, а также уровни секций и шаг чередования.",
+            "Проверьте вставленные ссылки #undefined, заголовки, эпиграфы и статистику перед сохранением книги."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Диалог параметров обязателен для запуска скрипта; при его отмене вставка не выполняется.",
+            "Секции с обычной картинкой в проверяемом начале или конце пропускаются независимо от переключателя «Пропускать, если есть обычная картинка»: этот переключатель влияет только на счётчик статистики.",
+            "Безымянные секции в начале пропускаются при обоих значениях переключателя; в конце учитываются только при снятом флажке и подходящей структуре.",
+            "Группа отмены закрывается на штатном пути. Исключение после её открытия в этом коде не перехватывается; полный откат такого случая не проверен."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Вставить ссылки на пустые картинки - параметры.htm",
+              "sha256": "ba86c0b3359dd5bda32770f385068bae7c1e9d5c724fd84eb56c700c7d91ad17",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Вставить ссылки на пустые картинки - параметры.htm",
+              "sha256": "ba86c0b3359dd5bda32770f385068bae7c1e9d5c724fd84eb56c700c7d91ad17",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "settings",
+          "before": null,
+          "after": [
+            {
+              "name": "insertStart",
+              "title": "Вставка в начале",
+              "value": true,
+              "expression": "true",
+              "description": "Вставлять пустую иллюстрацию после заголовка и следующих эпиграфов секции.",
+              "source": "dialog"
+            },
+            {
+              "name": "insertEnd",
+              "title": "Вставка в конце",
+              "value": true,
+              "expression": "true",
+              "description": "Вставлять пустую иллюстрацию в конце секции без дочерних секций.",
+              "source": "dialog"
+            },
+            {
+              "name": "stepStart",
+              "title": "Шаг для начала",
+              "value": -1,
+              "expression": "-1",
+              "description": "Пустое поле даёт вставку в каждую подходящую секцию; положительное число задаёт чередование.",
+              "source": "dialog"
+            },
+            {
+              "name": "stepEnd",
+              "title": "Шаг для конца",
+              "value": -1,
+              "expression": "-1",
+              "description": "Пустое поле даёт вставку в каждую подходящую секцию; положительное число задаёт чередование.",
+              "source": "dialog"
+            },
+            {
+              "name": "skipStartWithImage",
+              "title": "Пропуск при обычной иллюстрации в начале",
+              "value": false,
+              "expression": "false",
+              "description": "Флажок отображается в диалоге; код пропускает такую секцию при любом его значении.",
+              "source": "dialog"
+            },
+            {
+              "name": "skipEndWithImage",
+              "title": "Пропуск при обычной иллюстрации в конце",
+              "value": false,
+              "expression": "false",
+              "description": "Флажок отображается в диалоге; код пропускает такую секцию при любом его значении.",
+              "source": "dialog"
+            },
+            {
+              "name": "modeStart",
+              "title": "Уровень секций для начала",
+              "value": "all",
+              "expression": "\"all\"",
+              "description": "Все секции, только верхний или только нижний уровень.",
+              "source": "dialog"
+            },
+            {
+              "name": "modeEnd",
+              "title": "Уровень секций для конца",
+              "value": "all",
+              "expression": "\"all\"",
+              "description": "Все секции, только верхний или только нижний уровень.",
+              "source": "dialog"
+            },
+            {
+              "name": "skipNameless",
+              "title": "Пропуск секций без заголовка",
+              "value": true,
+              "expression": "true",
+              "description": "Для вставки в конец флажок управляет пропуском; для начала такие секции всегда пропускаются.",
+              "source": "dialog"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Вставки в книгу выполняются внутри группы отмены, закрываемой на штатном пути. Обработка исключений вокруг всего изменения отсутствует, поэтому полная отмена при аварийном выходе не подтверждена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 379,
+          "issue": "Условие hasNormalImg безусловно завершает обработку секции; skipStartWithImage и skipEndWithImage влияют только на счётчики, хотя диалог обещает управление пропуском."
+        },
+        {
+          "line": 365,
+          "issue": "В ветви вставки в начале секции без title пропускаются при обоих значениях skipNameless."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 510,
-    "generic_usage": 252,
-    "false_warning": 271,
-    "incorrect_setting": 117,
-    "incorrect_scope": 248,
-    "incorrect_undo": 251,
+    "inaccurate_description": 512,
+    "generic_usage": 253,
+    "false_warning": 272,
+    "incorrect_setting": 118,
+    "incorrect_scope": 250,
+    "incorrect_undo": 252,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 251,
+    "incorrect_dependency": 253,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -33787,16 +33980,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 243,
-    "usageCorrected": 252,
-    "purposeClarified": 250,
-    "warningsClarified": 183,
-    "scopeClarified": 236,
-    "settingsClarified": 430,
+    "undoDescriptionsClarified": 244,
+    "usageCorrected": 253,
+    "purposeClarified": 251,
+    "warningsClarified": 184,
+    "scopeClarified": 237,
+    "settingsClarified": 431,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 134,
+    "dependenciesVerified": 135,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -71587,8 +71780,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Вставить ссылки на пустые картинки в началах и концах секций",
-        "summary": "Скрипт предназначен для массовой расстановки пустых иллюстраций в началах и концах секций fb2 документа.",
-        "description": "Скрипт предназначен для массовой расстановки пустых иллюстраций в началах и концах секций fb2 документа.",
+        "summary": "Добавляет ссылки на пустые иллюстрации после заголовков и в концах подходящих секций.",
+        "description": "Открывает диалог параметров и вставляет блоки image с href #undefined и внутренним адресом fbw-internal:#undefined. В начале секции помещает блок после первого title и следующих эпиграфов; в конце — только в секциях без вложенных секций. Может добавить пустой абзац в секцию, состоящую из заголовка и пустых иллюстраций.",
         "authors": [
           {
             "name": "TaKir",
@@ -71605,29 +71798,104 @@
           }
         ],
         "version": "4.9",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "При непустом выделении — секции, собранные от его начала до конца; без выделения — секции всего документа. Раздел примечаний пропускается; режимы уровня и шаг вставки выбираются отдельно для начала и конца.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу и при необходимости выделите область нужных секций; без выделения скрипт рассматривает все секции.",
+          "В диалоге выберите вставку в начале, в конце либо в обоих местах, а также уровни секций и шаг чередования.",
+          "Проверьте вставленные ссылки #undefined, заголовки, эпиграфы и статистику перед сохранением книги."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Диалог параметров обязателен для запуска скрипта; при его отмене вставка не выполняется.",
+          "Секции с обычной картинкой в проверяемом начале или конце пропускаются независимо от переключателя «Пропускать, если есть обычная картинка»: этот переключатель влияет только на счётчик статистики.",
+          "Безымянные секции в начале пропускаются при обоих значениях переключателя; в конце учитываются только при снятом флажке и подходящей структуре.",
+          "Группа отмены закрывается на штатном пути. Исключение после её открытия в этом коде не перехватывается; полный откат такого случая не проверен."
         ],
-        "settings": null,
+        "settings": [
+          {
+            "name": "insertStart",
+            "title": "Вставка в начале",
+            "value": true,
+            "expression": "true",
+            "description": "Вставлять пустую иллюстрацию после заголовка и следующих эпиграфов секции.",
+            "source": "dialog"
+          },
+          {
+            "name": "insertEnd",
+            "title": "Вставка в конце",
+            "value": true,
+            "expression": "true",
+            "description": "Вставлять пустую иллюстрацию в конце секции без дочерних секций.",
+            "source": "dialog"
+          },
+          {
+            "name": "stepStart",
+            "title": "Шаг для начала",
+            "value": -1,
+            "expression": "-1",
+            "description": "Пустое поле даёт вставку в каждую подходящую секцию; положительное число задаёт чередование.",
+            "source": "dialog"
+          },
+          {
+            "name": "stepEnd",
+            "title": "Шаг для конца",
+            "value": -1,
+            "expression": "-1",
+            "description": "Пустое поле даёт вставку в каждую подходящую секцию; положительное число задаёт чередование.",
+            "source": "dialog"
+          },
+          {
+            "name": "skipStartWithImage",
+            "title": "Пропуск при обычной иллюстрации в начале",
+            "value": false,
+            "expression": "false",
+            "description": "Флажок отображается в диалоге; код пропускает такую секцию при любом его значении.",
+            "source": "dialog"
+          },
+          {
+            "name": "skipEndWithImage",
+            "title": "Пропуск при обычной иллюстрации в конце",
+            "value": false,
+            "expression": "false",
+            "description": "Флажок отображается в диалоге; код пропускает такую секцию при любом его значении.",
+            "source": "dialog"
+          },
+          {
+            "name": "modeStart",
+            "title": "Уровень секций для начала",
+            "value": "all",
+            "expression": "\"all\"",
+            "description": "Все секции, только верхний или только нижний уровень.",
+            "source": "dialog"
+          },
+          {
+            "name": "modeEnd",
+            "title": "Уровень секций для конца",
+            "value": "all",
+            "expression": "\"all\"",
+            "description": "Все секции, только верхний или только нижний уровень.",
+            "source": "dialog"
+          },
+          {
+            "name": "skipNameless",
+            "title": "Пропуск секций без заголовка",
+            "value": true,
+            "expression": "true",
+            "description": "Для вставки в конец флажок управляет пропуском; для начала такие секции всегда пропускаются.",
+            "source": "dialog"
+          }
+        ],
         "dependencies": [
           {
             "path": "HTML/Вставить ссылки на пустые картинки - параметры.htm",
             "sha256": "ba86c0b3359dd5bda32770f385068bae7c1e9d5c724fd84eb56c700c7d91ad17",
-            "optional": true
+            "optional": false
           }
         ],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Вставки в книгу выполняются внутри группы отмены, закрываемой на штатном пути. Обработка исключений вокруг всего изменения отсутствует, поэтому полная отмена при аварийном выходе не подтверждена."
         },
         "examples": null,
         "tags": [
@@ -71638,55 +71906,55 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 149,
+            "line": 225,
             "text": "window.external.BeginUndoUnit(document, \"вставка ссылок на пустые картинки\");"
           }
         ],
         "undo_end": [
           {
-            "line": 407,
+            "line": 483,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 101,
+            "line": 177,
             "text": "var settings = window.showModalDialog("
           }
         ],
         "selection": [
           {
-            "line": 159,
+            "line": 235,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 159,
+            "line": 235,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 194,
+            "line": 270,
             "text": "var trStart = document.selection.createRange();"
           },
           {
-            "line": 194,
+            "line": 270,
             "text": "var trStart = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 387,
+            "line": 463,
             "text": "sectionEnd.appendChild(imageDiv);"
           },
           {
-            "line": 392,
+            "line": 468,
             "text": "sectionEnd.appendChild(imageDiv2);"
           },
           {
-            "line": 492,
+            "line": 568,
             "text": "section.appendChild(imageDiv);"
           },
           {
-            "line": 605,
+            "line": 681,
             "text": "var imageDiv = document.createElement('div');"
           }
         ],
@@ -71697,169 +71965,555 @@
         "file": [],
         "return": [
           {
-            "line": 108,
+            "line": 184,
             "text": "if (!settings) return;"
           },
           {
-            "line": 115,
+            "line": 191,
             "text": "return;"
           },
           {
-            "line": 180,
+            "line": 256,
             "text": "return el;"
           },
           {
-            "line": 187,
+            "line": 263,
             "text": "return current;"
           },
           {
-            "line": 191,
+            "line": 267,
             "text": "return null;"
           },
           {
-            "line": 242,
+            "line": 318,
             "text": "return parent && parent.nodeName == \"DIV\" && parent.className == \"body\";"
           },
           {
-            "line": 246,
+            "line": 322,
             "text": "return !hasDirectNestedSections(section);"
           },
           {
-            "line": 417,
+            "line": 493,
             "text": "if (!element) return null;"
           },
           {
-            "line": 422,
+            "line": 498,
             "text": "return next;"
           },
           {
-            "line": 426,
+            "line": 502,
             "text": "return element && element.nodeName == \"DIV\" && element.className == className;"
           },
           {
-            "line": 432,
+            "line": 508,
             "text": "return false;"
           },
           {
-            "line": 434,
+            "line": 510,
             "text": "return true;"
-          },
-          {
-            "line": 441,
-            "text": "return lastChild;"
-          },
-          {
-            "line": 444,
-            "text": "return lastChild;"
-          },
-          {
-            "line": 449,
-            "text": "return null;"
-          },
-          {
-            "line": 454,
-            "text": "return bodyParent !== null;"
-          },
-          {
-            "line": 461,
-            "text": "return current;"
-          },
-          {
-            "line": 465,
-            "text": "return current;"
-          },
-          {
-            "line": 470,
-            "text": "return null;"
-          },
-          {
-            "line": 498,
-            "text": "return inserted;"
-          },
-          {
-            "line": 503,
-            "text": "if (!firstTitle) return false;"
           },
           {
             "line": 517,
-            "text": "return nextSibling && isEmptyImageElement(nextSibling);"
+            "text": "return lastChild;"
           },
           {
-            "line": 522,
-            "text": "if (!firstTitle) return false;"
+            "line": 520,
+            "text": "return lastChild;"
           },
           {
-            "line": 536,
-            "text": "return nextSibling && isNormalImageElement(nextSibling);"
-          },
-          {
-            "line": 545,
-            "text": "return lastChild && isEmptyImageElement(lastChild);"
-          },
-          {
-            "line": 554,
-            "text": "return lastChild && isNormalImageElement(lastChild);"
-          },
-          {
-            "line": 562,
-            "text": "return child;"
-          },
-          {
-            "line": 565,
+            "line": 525,
             "text": "return null;"
           },
           {
-            "line": 569,
-            "text": "if (element.nodeType != 1) return false;"
+            "line": 530,
+            "text": "return bodyParent !== null;"
           },
           {
-            "line": 570,
-            "text": "if (!element.className || element.className.indexOf('image') === -1) return false;"
+            "line": 537,
+            "text": "return current;"
           },
           {
-            "line": 571,
-            "text": "if (element.getAttribute('href') !== '#undefined') return false;"
+            "line": 541,
+            "text": "return current;"
+          },
+          {
+            "line": 546,
+            "text": "return null;"
           },
           {
             "line": 574,
-            "text": "return imgs.length > 0 && imgs[0].src.indexOf('#undefined') !== -1;"
-          },
-          {
-            "line": 578,
-            "text": "if (element.nodeType != 1) return false;"
+            "text": "return inserted;"
           },
           {
             "line": 579,
-            "text": "if (!element.className || element.className.indexOf('image') === -1) return false;"
+            "text": "if (!firstTitle) return false;"
           },
           {
-            "line": 582,
-            "text": "if (!href || href === '' || href === '#undefined') return false;"
-          },
-          {
-            "line": 587,
-            "text": "return true;"
-          },
-          {
-            "line": 590,
-            "text": "return false;"
+            "line": 593,
+            "text": "return nextSibling && isEmptyImageElement(nextSibling);"
           },
           {
             "line": 598,
+            "text": "if (!firstTitle) return false;"
+          },
+          {
+            "line": 612,
+            "text": "return nextSibling && isNormalImageElement(nextSibling);"
+          },
+          {
+            "line": 621,
+            "text": "return lastChild && isEmptyImageElement(lastChild);"
+          },
+          {
+            "line": 630,
+            "text": "return lastChild && isNormalImageElement(lastChild);"
+          },
+          {
+            "line": 638,
+            "text": "return child;"
+          },
+          {
+            "line": 641,
+            "text": "return null;"
+          },
+          {
+            "line": 645,
+            "text": "if (element.nodeType != 1) return false;"
+          },
+          {
+            "line": 646,
+            "text": "if (!element.className || element.className.indexOf('image') === -1) return false;"
+          },
+          {
+            "line": 647,
+            "text": "if (element.getAttribute('href') !== '#undefined') return false;"
+          },
+          {
+            "line": 650,
+            "text": "return imgs.length > 0 && imgs[0].src.indexOf('#undefined') !== -1;"
+          },
+          {
+            "line": 654,
+            "text": "if (element.nodeType != 1) return false;"
+          },
+          {
+            "line": 655,
+            "text": "if (!element.className || element.className.indexOf('image') === -1) return false;"
+          },
+          {
+            "line": 658,
+            "text": "if (!href || href === '' || href === '#undefined') return false;"
+          },
+          {
+            "line": 663,
             "text": "return true;"
           },
           {
-            "line": 601,
+            "line": 666,
             "text": "return false;"
           },
           {
-            "line": 615,
+            "line": 674,
+            "text": "return true;"
+          },
+          {
+            "line": 677,
+            "text": "return false;"
+          },
+          {
+            "line": 691,
             "text": "return imageDiv;"
           }
         ]
       },
       "namespaceUrls": [],
-      "settingEvidence": [],
+      "settingEvidence": [
+        {
+          "index": 0,
+          "name": "insertStart",
+          "declarations": [
+            {
+              "line": 187,
+              "text": "var insertStart = settings.insertStart;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 187,
+              "text": "var insertStart = settings.insertStart;"
+            },
+            {
+              "line": 187,
+              "text": "var insertStart = settings.insertStart;"
+            },
+            {
+              "line": 189,
+              "text": "if (!insertEnd && !insertStart) {"
+            },
+            {
+              "line": 214,
+              "text": "insertStart: insertStart,"
+            },
+            {
+              "line": 214,
+              "text": "insertStart: insertStart,"
+            },
+            {
+              "line": 354,
+              "text": "if (insertStart) {"
+            },
+            {
+              "line": 740,
+              "text": "if (stats.insertStart) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "insertEnd",
+          "declarations": [
+            {
+              "line": 186,
+              "text": "var insertEnd = settings.insertEnd;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 186,
+              "text": "var insertEnd = settings.insertEnd;"
+            },
+            {
+              "line": 186,
+              "text": "var insertEnd = settings.insertEnd;"
+            },
+            {
+              "line": 189,
+              "text": "if (!insertEnd && !insertStart) {"
+            },
+            {
+              "line": 215,
+              "text": "insertEnd: insertEnd,"
+            },
+            {
+              "line": 215,
+              "text": "insertEnd: insertEnd,"
+            },
+            {
+              "line": 417,
+              "text": "if (insertEnd) {"
+            },
+            {
+              "line": 764,
+              "text": "if (stats.insertEnd) {"
+            },
+            {
+              "line": 795,
+              "text": "if (stats.insertEnd) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "stepStart",
+          "declarations": [
+            {
+              "line": 194,
+              "text": "var stepStart = (settings.stepStart !== undefined) ? settings.stepStart : -1;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 194,
+              "text": "var stepStart = (settings.stepStart !== undefined) ? settings.stepStart : -1;"
+            },
+            {
+              "line": 194,
+              "text": "var stepStart = (settings.stepStart !== undefined) ? settings.stepStart : -1;"
+            },
+            {
+              "line": 194,
+              "text": "var stepStart = (settings.stepStart !== undefined) ? settings.stepStart : -1;"
+            },
+            {
+              "line": 216,
+              "text": "stepStart: stepStart,"
+            },
+            {
+              "line": 216,
+              "text": "stepStart: stepStart,"
+            },
+            {
+              "line": 393,
+              "text": "if (stepStart < 0) {"
+            },
+            {
+              "line": 401,
+              "text": "if (stepCounterStart > stepStart) {"
+            },
+            {
+              "line": 749,
+              "text": "if (stats.stepStart < 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "stepEnd",
+          "declarations": [
+            {
+              "line": 195,
+              "text": "var stepEnd = (settings.stepEnd !== undefined) ? settings.stepEnd : -1;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 195,
+              "text": "var stepEnd = (settings.stepEnd !== undefined) ? settings.stepEnd : -1;"
+            },
+            {
+              "line": 195,
+              "text": "var stepEnd = (settings.stepEnd !== undefined) ? settings.stepEnd : -1;"
+            },
+            {
+              "line": 195,
+              "text": "var stepEnd = (settings.stepEnd !== undefined) ? settings.stepEnd : -1;"
+            },
+            {
+              "line": 217,
+              "text": "stepEnd: stepEnd,"
+            },
+            {
+              "line": 217,
+              "text": "stepEnd: stepEnd,"
+            },
+            {
+              "line": 461,
+              "text": "if (stepEnd < 0) {"
+            },
+            {
+              "line": 473,
+              "text": "if (stepCounterEnd > stepEnd) {"
+            },
+            {
+              "line": 773,
+              "text": "if (stats.stepEnd < 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
+          "name": "skipStartWithImage",
+          "declarations": [
+            {
+              "line": 196,
+              "text": "var skipStartWithImage = (settings.skipStartWithImage !== undefined) ? settings.skipStartWithImage : false;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 196,
+              "text": "var skipStartWithImage = (settings.skipStartWithImage !== undefined) ? settings.skipStartWithImage : false;"
+            },
+            {
+              "line": 196,
+              "text": "var skipStartWithImage = (settings.skipStartWithImage !== undefined) ? settings.skipStartWithImage : false;"
+            },
+            {
+              "line": 196,
+              "text": "var skipStartWithImage = (settings.skipStartWithImage !== undefined) ? settings.skipStartWithImage : false;"
+            },
+            {
+              "line": 218,
+              "text": "skipStartWithImage: skipStartWithImage,"
+            },
+            {
+              "line": 218,
+              "text": "skipStartWithImage: skipStartWithImage,"
+            },
+            {
+              "line": 380,
+              "text": "if (skipStartWithImage) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "skipEndWithImage",
+          "declarations": [
+            {
+              "line": 197,
+              "text": "var skipEndWithImage = (settings.skipEndWithImage !== undefined) ? settings.skipEndWithImage : false;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 197,
+              "text": "var skipEndWithImage = (settings.skipEndWithImage !== undefined) ? settings.skipEndWithImage : false;"
+            },
+            {
+              "line": 197,
+              "text": "var skipEndWithImage = (settings.skipEndWithImage !== undefined) ? settings.skipEndWithImage : false;"
+            },
+            {
+              "line": 197,
+              "text": "var skipEndWithImage = (settings.skipEndWithImage !== undefined) ? settings.skipEndWithImage : false;"
+            },
+            {
+              "line": 219,
+              "text": "skipEndWithImage: skipEndWithImage,"
+            },
+            {
+              "line": 219,
+              "text": "skipEndWithImage: skipEndWithImage,"
+            },
+            {
+              "line": 448,
+              "text": "if (skipEndWithImage) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 6,
+          "name": "modeStart",
+          "declarations": [
+            {
+              "line": 198,
+              "text": "var modeStart = (settings.modeStart !== undefined) ? settings.modeStart : 'all';"
+            }
+          ],
+          "uses": [
+            {
+              "line": 198,
+              "text": "var modeStart = (settings.modeStart !== undefined) ? settings.modeStart : 'all';"
+            },
+            {
+              "line": 198,
+              "text": "var modeStart = (settings.modeStart !== undefined) ? settings.modeStart : 'all';"
+            },
+            {
+              "line": 198,
+              "text": "var modeStart = (settings.modeStart !== undefined) ? settings.modeStart : 'all';"
+            },
+            {
+              "line": 220,
+              "text": "modeStart: modeStart,"
+            },
+            {
+              "line": 220,
+              "text": "modeStart: modeStart,"
+            },
+            {
+              "line": 331,
+              "text": "if (modeStart == 'all') {"
+            },
+            {
+              "line": 333,
+              "text": "} else if (modeStart == 'top' && isTopLevelSection(sec)) {"
+            },
+            {
+              "line": 335,
+              "text": "} else if (modeStart == 'bottom' && isBottomLevelSection(sec)) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 7,
+          "name": "modeEnd",
+          "declarations": [
+            {
+              "line": 199,
+              "text": "var modeEnd = (settings.modeEnd !== undefined) ? settings.modeEnd : 'all';"
+            }
+          ],
+          "uses": [
+            {
+              "line": 199,
+              "text": "var modeEnd = (settings.modeEnd !== undefined) ? settings.modeEnd : 'all';"
+            },
+            {
+              "line": 199,
+              "text": "var modeEnd = (settings.modeEnd !== undefined) ? settings.modeEnd : 'all';"
+            },
+            {
+              "line": 199,
+              "text": "var modeEnd = (settings.modeEnd !== undefined) ? settings.modeEnd : 'all';"
+            },
+            {
+              "line": 221,
+              "text": "modeEnd: modeEnd,"
+            },
+            {
+              "line": 221,
+              "text": "modeEnd: modeEnd,"
+            },
+            {
+              "line": 339,
+              "text": "if (modeEnd == 'all') {"
+            },
+            {
+              "line": 341,
+              "text": "} else if (modeEnd == 'top' && isTopLevelSection(sec)) {"
+            },
+            {
+              "line": 343,
+              "text": "} else if (modeEnd == 'bottom' && isBottomLevelSection(sec)) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 8,
+          "name": "skipNameless",
+          "declarations": [
+            {
+              "line": 200,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 200,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            },
+            {
+              "line": 200,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            },
+            {
+              "line": 200,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            },
+            {
+              "line": 222,
+              "text": "skipNameless: skipNameless"
+            },
+            {
+              "line": 222,
+              "text": "skipNameless: skipNameless"
+            },
+            {
+              "line": 366,
+              "text": "if (skipNameless) {"
+            },
+            {
+              "line": 435,
+              "text": "if (skipNameless) {"
+            },
+            {
+              "line": 788,
+              "text": "if (stats.skipNameless) {"
+            }
+          ],
+          "classification": "requires_review"
+        }
+      ],
       "dependencyEvidence": [
         {
           "path": "HTML/Вставить ссылки на пустые картинки - параметры.htm",
@@ -71872,25 +72526,37 @@
       ],
       "authorshipEvidence": [
         {
-          "line": 60,
+          "line": 136,
           "text": "// version 4.9"
         },
         {
-          "line": 92,
+          "line": 168,
           "text": "// version 4.9, 15.08.2026"
         },
         {
-          "line": 99,
+          "line": 175,
           "text": "var scriptVersion = \"4.9\";"
         },
         {
-          "line": 103,
+          "line": 179,
           "text": "scriptVersion,"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Диалог параметров обязателен для запуска скрипта; при его отмене вставка не выполняется.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Секции с обычной картинкой в проверяемом начале или конце пропускаются независимо от переключателя «Пропускать, если есть обычная картинка»: этот переключатель влияет только на счётчик статистики.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Безымянные секции в начале пропускаются при обоих значениях переключателя; в конце учитываются только при снятом флажке и подходящей структуре.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Группа отмены закрывается на штатном пути. Исключение после её открытия в этом коде не перехватывается; полный откат такого случая не проверен.",
           "verification": "requires_review"
         }
       ],
@@ -71913,92 +72579,38 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 149,
-              "text": "window.external.BeginUndoUnit(document, \"вставка ссылок на пустые картинки\");"
-            },
-            {
-              "line": 407,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Вставки в книгу выполняются внутри группы отмены, закрываемой на штатном пути. Обработка исключений вокруг всего изменения отсутствует, поэтому полная отмена при аварийном выходе не подтверждена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 149,
+              "line": 225,
               "text": "window.external.BeginUndoUnit(document, \"вставка ссылок на пустые картинки\");"
             },
             {
-              "line": 180,
+              "line": 256,
               "text": "return el;"
             },
             {
-              "line": 187,
+              "line": 263,
               "text": "return current;"
             },
             {
-              "line": 191,
+              "line": 267,
               "text": "return null;"
             },
             {
-              "line": 242,
+              "line": 318,
               "text": "return parent && parent.nodeName == \"DIV\" && parent.className == \"body\";"
             },
             {
-              "line": 407,
+              "line": 483,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
