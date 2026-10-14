@@ -2799,6 +2799,9 @@ function StyleCode(check, cp, range)
 {
   if(check && cp && range)
   {
+    // Selecting a table by its MSHTML move handle yields a ControlRange,
+    // which has no duplicate() and cannot be formatted as text.
+    if (!('duplicate' in range)) return false;
     // That is due to MSHTML bug
     if(cp.tagName == "P")
     {

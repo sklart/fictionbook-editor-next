@@ -148,8 +148,21 @@ var plainSpanState=GetBodyCommandState(commandContainer, false, true);
 assert((plainSpanState & 16384)==0 && (plainSpanState & 32)==0 && (plainSpanState & 128)==0, "plain SPAN selection preserves image guard without latching Code");
 var plainState=GetBodyCommandState(commandContainer, false, false);
 assert((plainState & 32)!=0 && (plainState & 128)!=0, "plain caret keeps block image commands available");
+
+// MSHTML selects a table as a ControlRange when its move handle is clicked.
+// The Code command-state predicate must not call TextRange.duplicate() on it.
+var selectedSection={tagName:'DIV',className:'section'};
+var controlRange={length:1,item:function(){return {tagName:'TABLE'};}};
+StyleCode=savedStyleCode;
+assert(StyleCode(true,selectedSection,controlRange)===false, 'table ControlRange disables Code without a script error');
+var textRange={duplicate:function(){return {collapse:function(){},parentElement:function(){return {tagName:'P',parentElement:selectedSection};}};},collapse:function(){},parentElement:function(){return {tagName:'P',parentElement:selectedSection};}};
+assert(StyleCode(true,selectedSection,textRange)===true, 'text range retains the supported Code command');
+var createRangeBeforeControlSelection=document.selection.createRange;
+document.selection.createRange=function(){return controlRange;};
+assert((GetBodyCommandState(selectedSection,false,false) & 8192)===0, 'table ControlRange refresh leaves Code disabled');
+document.selection.createRange=createRangeBeforeControlSelection;
 AddTitle=savedAddTitle; CloneContainer=savedCloneContainer; StyleNormal=savedStyleNormal; StyleSubtitle=savedStyleSubtitle; StyleTextAuthor=savedStyleTextAuthor;
-InsImage=savedInsImage; InsInlineImage=savedInsInlineImage; AddImage=savedAddImage; AddEpigraph=savedAddEpigraph; AddAnnotation=savedAddAnnotation; AddTA=savedAddTA; MergeContainers=savedMergeContainers; RemoveOuterContainer=savedRemoveOuterContainer; StyleCode=savedStyleCode;
+InsImage=savedInsImage; InsInlineImage=savedInsInlineImage; AddImage=savedAddImage; AddEpigraph=savedAddEpigraph; AddAnnotation=savedAddAnnotation; AddTA=savedAddTA; MergeContainers=savedMergeContainers; RemoveOuterContainer=savedRemoveOuterContainer;
 
 // Distinct missing and malformed XSL errors fail inside apiLoadFB2 without a
 // second JS exception, restore CSS, and leave the rendered editor DOM intact.
