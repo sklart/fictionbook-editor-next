@@ -16,24 +16,25 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **374**. Исполняемый код не изменён.
+Изменено карточек: **375**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 19
-- `generic_usage`: 319
-- `generic_warning`: 19
-- `inaccurate_description`: 631
+- `generic_summary`: 20
+- `generic_usage`: 320
+- `generic_warning`: 20
+- `inaccurate_description`: 632
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 329
+- `incorrect_dependency`: 331
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 326
+- `incorrect_modification`: 1
+- `incorrect_scope`: 327
 - `incorrect_selection`: 24
-- `incorrect_setting`: 165
-- `incorrect_undo`: 318
+- `incorrect_setting`: 166
+- `incorrect_undo`: 319
 - `incorrect_version`: 5
 - `uncertain_attribution`: 39
 
@@ -42,19 +43,19 @@
 - `attributionClarified`: 36
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 201
+- `dependenciesVerified`: 202
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 317
-- `scopeClarified`: 303
+- `purposeClarified`: 318
+- `scopeClarified`: 304
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 479
-- `undoDescriptionsClarified`: 310
-- `usageCorrected`: 319
-- `warningsClarified`: 250
+- `settingsClarified`: 480
+- `undoDescriptionsClarified`: 311
+- `usageCorrected`: 320
+- `warningsClarified`: 251
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **212**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **213**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -445,12 +446,15 @@
 - `10_Статистика/03_Статистика документа.js:49` — cover объявляется только при наличии select с id=href; без такого поля обращение к cover.length вызывает ошибку.
 - `10_Статистика/03_Статистика документа.js:77` — Размер бинарников в FB2 вычисляется грубой формулой и затем показывается как точный размер; реальный объём сериализованного FB2 может отличаться.
 - `10_Статистика/07_Общая статистика.js:599` — Поиск контейнера image может дойти до fbw_body, после чего строка 600 вызывает replace для отсутствующего href; нештатная структура иллюстрации прерывает отчёт.
+- `10_Статистика/10_Статистика нецензурных слов.js:307` — Ветвь else return true выходит до EndUndoUnit на строке 309. Она срабатывает при отсутствии только Meta либо при наличии Facebook/Instagram; группа отмены остаётся открытой, в том числе после записи в аннотацию.
+- `10_Статистика/10_Статистика нецензурных слов.js:280` — Изменение аннотации и вызовы confirm внутри группы отмены не защищены finally; ошибка в диалоге или DOM-операции также оставляет группу открытой.
+- `10_Статистика/10_Статистика нецензурных слов.js:340` — Перед добавлением записей удаляются пустые P в начале и конце аннотации; изменение структуры превышает заявленное простое добавление уведомления.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1084
-- `inaccurate_description`: 70
-- `incorrect_undo`: 161
+- `generic_usage`: 1080
+- `inaccurate_description`: 69
+- `incorrect_undo`: 160
 - `requires_review`: 387
 
 ## Границы проверки
