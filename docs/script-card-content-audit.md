@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **425**. Исполняемый код не изменён.
+Изменено карточек: **426**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 66
-- `generic_usage`: 371
+- `generic_summary`: 67
+- `generic_usage`: 372
 - `generic_warning`: 62
-- `inaccurate_description`: 683
+- `inaccurate_description`: 684
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 387
+- `incorrect_dependency`: 388
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 378
-- `incorrect_selection`: 36
-- `incorrect_setting`: 200
-- `incorrect_undo`: 370
+- `incorrect_scope`: 379
+- `incorrect_selection`: 37
+- `incorrect_setting`: 201
+- `incorrect_undo`: 371
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 9
-- `uncertain_attribution`: 63
+- `missing_warning`: 10
+- `uncertain_attribution`: 64
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 64
+- `attributionClarified`: 65
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 253
+- `dependenciesVerified`: 254
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 369
-- `scopeClarified`: 355
+- `purposeClarified`: 370
+- `scopeClarified`: 356
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 5
-- `undoDescriptionsClarified`: 362
-- `usageCorrected`: 371
+- `settingsCorrected`: 6
+- `undoDescriptionsClarified`: 363
+- `usageCorrected`: 372
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 303
+- `warningsClarified`: 304
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **265**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **266**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -598,12 +598,17 @@
 - `13_Заголовки, подзаголовки, пустые строки/618_Создать таблицу (под)заголовков номерных разделов (с переходом).js:1167` — В обработчике клика используется не определённая в этом окне переменная clientHeight. При выполнении ветки с rect возникает исключение, поэтому дополнительная прокрутка не выполняется.
 - `13_Заголовки, подзаголовки, пустые строки/618_Создать таблицу (под)заголовков номерных разделов (с переходом).js:1201` — Удаление служебного первого столбца требует <tr> с дополнительными атрибутами. У окрашенных строк первый td удаляется, у обычных <tr> остаётся; после удаления заголовка столбца таблица получает несогласованную структуру.
 - `13_Заголовки, подзаголовки, пустые строки/618_Создать таблицу (под)заголовков номерных разделов (с переходом).js:1211` — Окно открывается из обязательного HTML/Таблица совпадений.html; если файл отсутствует либо окно заблокировано, MsgWindow может быть null, а обращение к MsgWindow.document на строке 1217 завершится ошибкой без сообщения пользователю.
+- `13_Заголовки, подзаголовки, пустые строки/620_Вставить пустые строки после каждых N абзацев.js:403` — shouldProcessBody сначала требует className=body, а затем проверяет className=annotation/history. Эти ветви недостижимы; общий обход проходит только по DIV.body с DIV.section, поэтому processAnnotation и processHistory не включают заявленные разделы.
+- `13_Заголовки, подзаголовки, пустые строки/620_Вставить пустые строки после каждых N абзацев.js:613` — Для выделения в пределах одного body stopNode=endNode.nextSibling, но цикл идёт лишь по siblings начального узла. Если границы выделения в разных родителях, конец диапазона не достигается, поэтому часть выделения пропускается либо обработка продолжается за ним.
+- `13_Заголовки, подзаголовки, пустые строки/620_Вставить пустые строки после каждых N абзацев.js:767` — Режим от курсора начинает со siblings первого найденного узла и после их конца переходит к следующей секции. Если курсор внутри вложенного DIV, остальные блоки той же секции после родительского DIV пропускаются.
+- `13_Заголовки, подзаголовки, пустые строки/620_Вставить пустые строки после каждых N абзацев.js:191` — После открытия группы отмены обход и вставки не защищены finally. Обычные ранние return закрывают группу, но исключение до EndUndoUnit на строке 855 оставит её открытой.
+- `13_Заголовки, подзаголовки, пустые строки/620_Вставить пустые строки после каждых N абзацев.js:30` — Настройка processSubtitles объявлена и показана пользователю, но isParagraphToCount всегда исключает P.subtitle на строках 351–355; включение настройки не меняет обработку подзаголовков.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 866
+- `generic_usage`: 862
 - `inaccurate_description`: 49
-- `incorrect_undo`: 128
+- `incorrect_undo`: 127
 - `requires_review`: 357
 
 ## Границы проверки
