@@ -8,6 +8,7 @@ class CSettingsSpellingPage : public CAxDialogImpl<CSettingsSpellingPage>, publi
 {
 	CButton m_enabled;
 	CButton m_highlight;
+	CButton m_checkYoUsage;
 	CEdit m_dictionary;
 	CSettingsTooltips m_tooltips;
 public:

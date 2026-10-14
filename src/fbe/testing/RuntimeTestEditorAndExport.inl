@@ -2099,6 +2099,74 @@
 		}
 		output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"spellcheck-russian-yo-usage"))
+	{
+		if (!m_doc || !m_doc->m_body.Document()) { output.Close(); ::PostQuitMessage(1); return 0; }
+		if (!m_Speller)
+		{
+			m_Speller = new CSpeller(U::GetProgDir() + L"Dict\\");
+			m_Speller->SetFrame(m_hWnd);
+			m_Speller->AttachDocument(m_doc->m_body.Document());
+		}
+		m_Speller->SetEnabled(true);
+		m_Speller->SetDocumentLanguage();
+		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document()->body);
+		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()) : MSHTML::IHTMLElementPtr());
+		if (!paragraph) { output.Close(); ::PostQuitMessage(1); return 0; }
+		const CString before(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML)));
+		const bool undoBefore = m_Speller->GetUndoState();
+		m_Speller->SetCheckRussianYoUsage(false);
+		const bool legacy = m_Speller->SpellCheck(L"газёта") == SPELL_OK &&
+			m_Speller->CheckWord(L"газёта") == SPELL_OK;
+		m_Speller->SetCheckRussianYoUsage(true);
+		CString accentCorrection, hyphenCorrection, titleCorrection;
+		const bool detected = m_Speller->CheckWord(L"газёта") == SPELL_YO_WARNING &&
+			m_Speller->CheckWord(L"дёлал") == SPELL_YO_WARNING &&
+			m_Speller->CheckRussianYoUsage(L"газёта\u0301", &accentCorrection) &&
+			m_Speller->CheckRussianYoUsage(L"газё\u00ADта", &hyphenCorrection) &&
+			m_Speller->CheckRussianYoUsage(L"Газёта", &titleCorrection) &&
+			accentCorrection == L"газета\u0301" && hyphenCorrection == L"газе\u00ADта" &&
+			titleCorrection == L"Газета";
+		bool correct = true;
+		for(LPCWSTR word : { L"ёжик", L"ёлка", L"ребёнок", L"сёстры", L"шёл" })
+			correct = correct && m_Speller->CheckWord(word) == SPELL_OK;
+		const bool ambiguous = m_Speller->CheckWord(L"всё") == SPELL_OK &&
+			m_Speller->CheckWord(L"все") == SPELL_OK &&
+			m_Speller->CheckWord(L"берёг") == SPELL_OK &&
+			m_Speller->CheckWord(L"берег") == SPELL_OK;
+		m_Speller->ClearAllMarks();
+		m_Speller->CheckElement(paragraph, -1);
+		const bool marked = m_Speller->GetTestHighlightCount() == 2;
+		m_Speller->SetCheckRussianYoUsage(false);
+		const bool cleared = m_Speller->GetTestHighlightCount() == 0 &&
+			m_Speller->CheckWord(L"газёта") == SPELL_OK;
+		m_Speller->SetCheckRussianYoUsage(true);
+		wchar_t customPath[MAX_PATH] = {};
+		const DWORD customLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_YO_CUSTOM_PATH",
+			customPath, _countof(customPath));
+		bool custom = false;
+		if(customLength > 0 && customLength < _countof(customPath))
+		{
+			m_Speller->SetCustomDictionary(customPath, 1251);
+			custom = m_Speller->CheckWord(L"газёта") == SPELL_OK &&
+				m_Speller->CheckWord(L"газёта\u0301") == SPELL_OK &&
+				m_Speller->CheckWord(L"дёлал") == SPELL_YO_WARNING;
+			m_Speller->SetCustomDictionary(L"", CP_UTF8);
+		}
+		m_Speller->IgnoreAll(L"газёта");
+		const bool ignored = m_Speller->CheckWord(L"газёта") == SPELL_OK &&
+			m_Speller->CheckWord(L"дёлал") == SPELL_YO_WARNING;
+		const bool unchanged = before == CString(static_cast<const wchar_t*>(_bstr_t(m_doc->m_body.Document()->body->outerHTML))) &&
+			undoBefore == m_Speller->GetUndoState();
+		CStringA report;
+		report.Format("legacy=%d\ndetected=%d\ncorrect=%d\nambiguous=%d\nmarked=%d\ncleared=%d\ncustom=%d\nignored=%d\nunchanged=%d\n",
+			legacy, detected, correct, ambiguous, marked, cleared, custom, ignored, unchanged);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
+		output.Close();
+		::PostQuitMessage(legacy && detected && correct && ambiguous && marked && cleared && custom && ignored && unchanged ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"toolbar-alpha-scale"))
 	{
 		const int sourceSize = 24;

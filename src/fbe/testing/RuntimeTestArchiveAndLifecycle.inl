@@ -659,7 +659,8 @@
 		const bool backupPersisted = _Settings.GetCreateBackupFile();
 		const bool nbspPersisted = _Settings.GetNBSPChar() == L"\x25AB";
 		const bool wrapPersisted = _Settings.XmlSrcWrap();
-		const bool persisted = backupPersisted && nbspPersisted && wrapPersisted;
+		const bool yoPersisted = _Settings.GetCheckRussianYoUsage();
+		const bool persisted = backupPersisted && nbspPersisted && wrapPersisted && yoPersisted;
 		const bool applied = verifyOnly || (m_source.SendMessage(SCI_GETWRAPMODE) != SC_WRAP_NONE);
 		const CaretPreferences caret = _Settings.GetCaretPreferences();
 		const bool caretPersisted = caret.mode == TextCaretMode::Custom && caret.width == 4 &&
@@ -670,7 +671,7 @@
 			m_source.SendMessage(SCI_GETCARETFORE) == static_cast<sptr_t>(ThemeManager::IsHighContrast() ?
 				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
-		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
+		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
 		::PostQuitMessage(persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged ? 0 : 1);
 		return 0;

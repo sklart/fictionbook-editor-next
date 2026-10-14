@@ -3908,6 +3908,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 		UIEnable(ID_TOOLS_SPELLCHECK, false, true);
 	else
 		UIEnable(ID_TOOLS_SPELLCHECK, true, true);
+	m_Speller->SetCheckRussianYoUsage(_Settings.GetCheckRussianYoUsage());
 	m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
   }
   else UIEnable(ID_TOOLS_SPELLCHECK, false, true);
@@ -7367,11 +7368,11 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 
 	if (m_doc && m_Speller && m_Speller->Enabled())
 	{
-		m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
-
 		const CString custDictName = U::GetUserDataFile(_Settings.GetCustomDict(), m_doc->m_body.m_file_path);
 
 		m_Speller->SetCustomDictionary(custDictName, _Settings.GetCustomDictCodepage());
+		m_Speller->SetCheckRussianYoUsage(_Settings.GetCheckRussianYoUsage());
+		m_Speller->SetHighlightMisspells(_Settings.GetHighlightMisspells());
 	}
 
 	// added by SeNS: issue 17: process nbsp change

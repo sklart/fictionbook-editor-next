@@ -14,26 +14,32 @@ namespace { void DictionaryError(HWND owner, LPCWSTR key, LPCWSTR fallback) { Me
 LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_SPELLING);
-	m_enabled = GetDlgItem(IDC_USESPELLCHECKER); m_highlight = GetDlgItem(IDC_BACKGROUNDSPELLCHECK); m_dictionary = GetDlgItem(IDC_CUSTOM_DICT);
+	m_enabled = GetDlgItem(IDC_USESPELLCHECKER); m_highlight = GetDlgItem(IDC_BACKGROUNDSPELLCHECK);
+	m_checkYoUsage = GetDlgItem(IDC_CHECK_RUSSIAN_YO_USAGE); m_dictionary = GetDlgItem(IDC_CUSTOM_DICT);
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_enabled, L"fbe.settings.tooltip.spelling.enabled", L"Enables spell checking.");
 	m_tooltips.Add(m_highlight, L"fbe.settings.tooltip.spelling.background", L"Marks possible spelling errors while editing.");
+	m_tooltips.Add(m_checkYoUsage, L"fbe.settings.spelling.yo.help", L"Checks confirmed Russian ё-for-е mistakes without changing text.");
 	m_tooltips.Add(m_dictionary, L"fbe.settings.tooltip.spelling.custom_dictionary", L"File of additional words that should be treated as correct.");
 	m_tooltips.Add(GetDlgItem(IDC_DICTPATH), L"fbe.settings.tooltip.spelling.browse", L"Choose a custom dictionary file.");
 	m_tooltips.Add(GetDlgItem(IDS_SPELL_CUSTOM_DICT), L"fbe.settings.tooltip.spelling.custom_dictionary", L"File of additional words that should be treated as correct.");
 	m_tooltips.AddDisabledControlArea(m_highlight, L"fbe.settings.tooltip.spelling.background", L"Marks possible spelling errors while editing.");
+	m_tooltips.AddDisabledControlArea(m_checkYoUsage, L"fbe.settings.spelling.yo.help", L"Checks confirmed Russian ё-for-е mistakes without changing text.");
 	m_tooltips.AddDisabledControlArea(m_dictionary, L"fbe.settings.tooltip.spelling.custom_dictionary", L"File of additional words that should be treated as correct.");
 	m_tooltips.AddDisabledControlArea(GetDlgItem(IDC_DICTPATH), L"fbe.settings.tooltip.spelling.browse", L"Choose a custom dictionary file.");
 	SetText(m_hWnd, IDC_OPTIONS_SPELLCHECK_GROUP, L"fbe.dialog.idd_options.spell_checking", L"Spelling");
 	SetText(m_hWnd, IDC_USESPELLCHECKER, L"fbe.dialog.idd_options.use_spellchecker", L"Use spellchecker");
 	SetText(m_hWnd, IDC_BACKGROUNDSPELLCHECK, L"fbe.dialog.idd_options.background_spell_check", L"Highlight misspelled words");
+	SetText(m_hWnd, IDC_CHECK_RUSSIAN_YO_USAGE, L"fbe.settings.spelling.yo.option", L"Also check use of the Russian letter ё");
+	SetText(m_hWnd, IDC_RUSSIAN_YO_USAGE_HELP, L"fbe.settings.spelling.yo.help", L"Finds possible ё-for-е mistakes. Never changes text automatically. Ambiguous cases need review.");
 	SetText(m_hWnd, IDS_SPELL_CUSTOM_DICT, L"fbe.dialog.idd_options.custom_dict", L"Custom dictionary:");
 	SetText(m_hWnd, IDC_DICTPATH, L"fbe.dialog.idd_options.dict_browse", L"Browse...");
 	m_enabled.SetCheck(_Settings.GetUseSpellChecker() ? BST_CHECKED : BST_UNCHECKED);
 	m_highlight.SetCheck(_Settings.GetHighlightMisspells() ? BST_CHECKED : BST_UNCHECKED);
+	m_checkYoUsage.SetCheck(_Settings.GetCheckRussianYoUsage() ? BST_CHECKED : BST_UNCHECKED);
 	m_dictionary.SetWindowText(_Settings.GetCustomDict()); UpdateDictionaryTooltip(); UpdateDependencies(); return 1;
 }
-void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enabled.GetCheck() == BST_CHECKED; m_highlight.EnableWindow(enabled); m_dictionary.EnableWindow(enabled); GetDlgItem(IDC_DICTPATH).EnableWindow(enabled); }
+void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enabled.GetCheck() == BST_CHECKED; m_highlight.EnableWindow(enabled); m_checkYoUsage.EnableWindow(enabled); m_dictionary.EnableWindow(enabled); GetDlgItem(IDC_DICTPATH).EnableWindow(enabled); }
 LRESULT CSettingsSpellingPage::OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&) { UpdateDependencies(); return 0; }
 LRESULT CSettingsSpellingPage::OnClickedOK(WORD, WORD, HWND, BOOL&) { if(Validate()) Commit(); return 0; }
 LRESULT CSettingsSpellingPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return CancelChanges() ? 0 : 1; }
@@ -66,7 +72,7 @@ bool CSettingsSpellingPage::Validate()
 	::CloseHandle(file);
 	return true;
 }
-void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); path.Trim(); _Settings.SetCustomDict(path); }
+void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); _Settings.SetCheckRussianYoUsage(m_checkYoUsage.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); path.Trim(); _Settings.SetCustomDict(path); }
 bool CSettingsSpellingPage::CancelChanges() { return true; }
 LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 {

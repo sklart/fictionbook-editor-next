@@ -69,6 +69,7 @@ void CSettings::SetDefaults()
 	// added by SeNS
 	m_usespell_check		= true;
 	m_highlght_check		= true;
+	m_check_russian_yo_usage = false;
 	m_custom_dict           = L"custom.dic";
 	m_custom_dict_codepage	= 1251;
 	m_nbsp_char				= L"\u00A0";

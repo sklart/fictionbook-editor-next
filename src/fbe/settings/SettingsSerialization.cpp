@@ -112,6 +112,7 @@ const wchar_t SEARCH_TEMPLATES_PANEL_PINNED_KEY[] = L"SearchTemplatesPanelPinned
 // Added by SeNS
 const wchar_t USESPELLER_CHECK_KEY[]	= L"UseSpellChecker";
 const wchar_t HIGHLIGHT_CHECK_KEY[]		= L"HighlightMisspells";
+const wchar_t RUSSIAN_YO_USAGE_KEY[]	= L"CheckRussianYoUsage";
 const wchar_t CUSTOM_DICT_KEY[]			= L"CustomDict";
 const wchar_t CUSTOM_DICT_CODEPAGE_KEY[]= L"CustomDictCodePage";
 const wchar_t NBSPCHAR_KEY[]			= L"NBSPChar";
@@ -197,6 +198,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	// SeNS
 	properties.push_back(USESPELLER_CHECK_KEY);
 	properties.push_back(HIGHLIGHT_CHECK_KEY);
+	properties.push_back(RUSSIAN_YO_USAGE_KEY);
 	properties.push_back(CUSTOM_DICT_KEY);
 	properties.push_back(CUSTOM_DICT_CODEPAGE_KEY);
 	properties.push_back(NBSPCHAR_KEY);
@@ -459,6 +461,11 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 	else if(sProperty == HIGHLIGHT_CHECK_KEY)
 	{
 		property = GetStringedProperty(&m_highlght_check, KEY_BOOL);
+		return true;
+	}
+	else if(sProperty == RUSSIAN_YO_USAGE_KEY)
+	{
+		property = GetStringedProperty(&m_check_russian_yo_usage, KEY_BOOL);
 		return true;
 	}
 	else if(sProperty == CUSTOM_DICT_KEY)
@@ -856,6 +863,11 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	else if(sProperty == HIGHLIGHT_CHECK_KEY)
 	{
 		m_highlght_check = StrToBool(sValue.GetStringValue());
+		return true;
+	}
+	else if(sProperty == RUSSIAN_YO_USAGE_KEY)
+	{
+		m_check_russian_yo_usage = StrToBool(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == CUSTOM_DICT_KEY)

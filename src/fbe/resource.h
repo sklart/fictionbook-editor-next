@@ -554,6 +554,8 @@
 #define IDC_EDITOR_CARET_PREVIEW         1791
 #define IDC_EDITOR_PREVIEW_GROUP         1792
 #define IDC_OPTIONS_SOURCE_PREVIEW_GROUP 1793
+#define IDC_CHECK_RUSSIAN_YO_USAGE       1794
+#define IDC_RUSSIAN_YO_USAGE_HELP        1795
 #define IDC_IMAGETYPE                   1101
 #define IDC_EDIT3                       1102
 #define IDC_IMAGETYPE2                  1102

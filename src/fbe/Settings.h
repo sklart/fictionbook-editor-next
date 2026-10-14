@@ -198,6 +198,7 @@ class CSettings : public ISerializable, public IObjectFactory
 	// added by SeNS
 	bool		m_usespell_check;
 	bool		m_highlght_check;
+	bool		m_check_russian_yo_usage;
 	CString		m_custom_dict;
 	DWORD		m_custom_dict_codepage;
 	CString		m_nbsp_char;
@@ -350,6 +351,7 @@ public:
 	// added by SeNS
 	bool    GetUseSpellChecker()const;
 	bool	GetHighlightMisspells()const;
+	bool	GetCheckRussianYoUsage()const;
 	CString GetCustomDict()const;
 	DWORD	GetCustomDictCodepage()const;
 	CString GetNBSPChar()const;
@@ -456,6 +458,7 @@ public:
 	// added by SeNS
 	void	SetUseSpellChecker(const bool value, bool apply = false);
 	void	SetHighlightMisspells(const bool value, bool apply = false);
+	void	SetCheckRussianYoUsage(const bool value, bool apply = false);
 	void	SetCustomDict(const ATL::CString &value, bool apply = false);
 	void	SetCustomDictCodepage(const DWORD value, bool apply = false);
 	void	SetNBSPChar(const ATL::CString &value, bool apply = false);

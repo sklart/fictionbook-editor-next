@@ -356,6 +356,11 @@ bool CSettings::GetHighlightMisspells()const
 	return m_highlght_check;
 }
 
+bool CSettings::GetCheckRussianYoUsage()const
+{
+	return m_check_russian_yo_usage;
+}
+
 CString CSettings::GetCustomDict()const
 {
 	return m_custom_dict;
@@ -1057,6 +1062,12 @@ void CSettings::SetUseSpellChecker(const bool value, bool apply)
 void CSettings::SetHighlightMisspells(const bool value, bool apply)
 {
 	m_highlght_check = value;
+	if (apply) Save();
+}
+
+void CSettings::SetCheckRussianYoUsage(const bool value, bool apply)
+{
+	m_check_russian_yo_usage = value;
 	if (apply) Save();
 }
 

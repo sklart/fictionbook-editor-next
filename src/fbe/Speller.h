@@ -3,6 +3,7 @@
 
 #include <map>
 #include <set>
+#include <string>
 #include <atlutil.h>
 #include "utils.h"
 #include "ModelessDialog.h"
@@ -29,7 +30,8 @@ enum SPELL_RESULT
 	SPELL_CHANGEALL,
 	SPELL_ADD,
 	SPELL_UNDO,
-	SPELL_CANCEL
+	SPELL_CANCEL,
+	SPELL_YO_WARNING
 };
 
 // TODO: hardcoded set of dictionaries should be changed
@@ -84,6 +86,7 @@ public:
 
 	CString m_sBadWord;
 	CString m_sReplacement;
+	bool m_isYoWarning = false;
 	CStrings* m_strSuggestions;
 
 	CSpellDialog(CSpeller* parent): m_strSuggestions(NULL), m_Speller(parent), m_RetCode(0), m_WasSuspended(false) {}
@@ -161,9 +164,25 @@ public:
 	}
 	void SetCustomDictionary(CString pathToDictionary, UINT codePage)
 	{
+		const bool changed = m_CustomDictPath.CompareNoCase(pathToDictionary) != 0 ||
+			m_CustomDictCodepage != codePage;
 		m_CustomDictPath = pathToDictionary;
 		m_CustomDictCodepage = codePage;
 		LoadCustomDict();
+		m_yoUsageCache.clear();
+		m_yoCustomExceptions.clear();
+		for(int index = 0; index < m_CustomDict.GetSize(); ++index)
+		{
+			CString canonical = FbePrepareDictionaryWord(m_CustomDict[index]);
+			canonical.Replace(L"\u0301", L"");
+			canonical.MakeLower();
+			if(canonical.Find(L'ё') >= 0) m_yoCustomExceptions.insert(canonical.GetString());
+		}
+		if(changed && m_checkRussianYoUsage && m_HighlightMisspells && m_ihrs)
+		{
+			ClearAllMarks();
+			HighlightMisspells();
+		}
 	}
 	
 	void StartDocumentCheck(MSHTML::IMarkupServices2Ptr undoSrv = NULL);
@@ -212,11 +231,16 @@ public:
 	long GetTestCheckElementCalls() const { return m_testCheckElementCalls; }
 	long GetTestVisitedParagraphs() const { return m_testVisitedParagraphs; }
 	long GetTestCheckScrollCalls() const { return m_testCheckScrollCalls; }
+	size_t GetTestHighlightCount() const { return m_ElementHighlights.size(); }
 	void CheckCurrentPage();
 	// main function
 	SPELL_RESULT SpellCheck(CString word);
+	SPELL_RESULT CheckWord(CString word);
+	void SetCheckRussianYoUsage(bool enabled);
+	bool CheckRussianYoUsage(CString word, CString* correction = nullptr);
 	CStrings* GetSuggestions(CString word);
-	void MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString word, int pos);
+	void MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString word, int pos,
+		SPELL_RESULT category = SPELL_MISSPELL);
 	void ClearMarks(int elemID);
 	void ClearAllMarks();
 	// SeNS
@@ -259,6 +283,7 @@ protected:
 	MSHTML::IHTMLElementPtr m_fbw_body;
 	MSHTML::IHTMLElement2Ptr m_scrollElement;
 	MSHTML::IHTMLRenderStylePtr m_irs;
+	MSHTML::IHTMLRenderStylePtr m_irsYo;
 	MSHTML::IMarkupContainer2Ptr m_mkc;
 	MSHTML::IMarkupServicesPtr m_ims;
 	MSHTML::IDisplayServicesPtr m_ids;
@@ -275,6 +300,10 @@ protected:
 
 	bool m_Enabled;
 	bool m_HighlightMisspells;
+	bool m_checkRussianYoUsage = false;
+	bool m_isRussianDocument = false;
+	std::map<std::wstring, bool> m_yoUsageCache;
+	std::set<std::wstring> m_yoCustomExceptions;
 	long m_testCheckElementCalls;
 	long m_testVisitedParagraphs;
 	long m_testCheckScrollCalls;

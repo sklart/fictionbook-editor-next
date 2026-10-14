@@ -6,7 +6,9 @@
 #include "FBE.h"
 #include "Speller.h"
 #include "SpellParagraphTraversal.h"
+#include "RussianYoUsage.h"
 #include "RuntimeLocalization.h"
+#include "ThemeManager.h"
 #include "UiMetrics.h"
 #include "StartupTrace.h"
 #include "utils.h"
@@ -139,6 +141,12 @@ LRESULT CSpellDialog::OnActivate(UINT, WPARAM wParam, LPARAM, BOOL&)
 
 LRESULT CSpellDialog::UpdateData()
 {
+	SetWindowText(FbeLoadRuntimeStringByKey(
+		m_isYoWarning ? L"fbe.spelling.yo.warning" : L"fbe.dialog.idd_spell_check.caption",
+		m_isYoWarning ? L"Possible incorrect use of ё" : L"Spell Check"));
+	SetRuntimeSpellText(m_hWnd, IDC_SPELL_NOT_IN_DICTIONARY,
+		m_isYoWarning ? L"fbe.spelling.yo.word_label" : L"fbe.dialog.idd_spell_check.not_in_dictionary",
+		m_isYoWarning ? L"Word:" : L"Not in dictionary:");
 	m_BadWord.SetWindowText (m_sBadWord);
 	m_Suggestions.ResetContent();
 	m_Replacement.SetWindowText(L"");
@@ -370,6 +378,7 @@ void CSpeller::AttachDocument(MSHTML::IHTMLDocumentPtr doc)
 	m_IgnoreWords.RemoveAll();
 	m_ChangeWords.RemoveAll();
 	m_ChangeWordsTo.RemoveAll();
+	m_yoUsageCache.clear();
 
 	// assign new document: all interfaces and variables
 	m_doc2 = MSHTML::IHTMLDocument2Ptr(doc);
@@ -397,6 +406,12 @@ void CSpeller::AttachDocument(MSHTML::IHTMLDocumentPtr doc)
 	m_irs->textDecoration = "underline";
 	m_irs->textDecorationColor = "red";
 	m_irs->textUnderlineStyle = "wave";
+	m_irsYo = m_doc4->createRenderStyle(b);
+	m_irsYo->defaultTextSelection = "false";
+	m_irsYo->textBackgroundColor = "transparent";
+	m_irsYo->textColor = "transparent";
+	m_irsYo->textDecoration = "underline";
+	m_irsYo->textUnderlineStyle = "wave";
 
 	// detect document language
 	SetDocumentLanguage();
@@ -404,7 +419,9 @@ void CSpeller::AttachDocument(MSHTML::IHTMLDocumentPtr doc)
 
 void CSpeller::SetDocumentLanguage()
 {
+	m_yoUsageCache.clear();
 	m_Lang = LANG_NONE;
+	m_isRussianDocument = false;
 	MSHTML::IHTMLSelectElementPtr elem = MSHTML::IHTMLDocument3Ptr(m_doc4)->getElementById(L"tiLang");
 	if (elem)
 	{
@@ -417,6 +434,7 @@ void CSpeller::SetDocumentLanguage()
 					m_Dictionaries[i].handle = LoadDictionary(m_DictPath, dicts[i].name);
 				m_Dictionaries[i].codepage = DetectDictionaryCodePage(m_Dictionaries[i].handle, m_Dictionaries[i].codepage);
 				m_Lang = dicts[i].lang;
+				m_isRussianDocument = m_Lang == LANG_RU;
 				// special hack: for the bilingual spell-check of Russian texts
 				// let's select English as a second language 
 				// Russian words will be detected automatically
@@ -468,9 +486,15 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 	CString word = GetSelWord();
 	if (word.IsEmpty()) return;
 	
-	if (SpellCheck(word) != SPELL_OK)
+	const SPELL_RESULT category = CheckWord(word);
+	if (category == SPELL_MISSPELL || category == SPELL_YO_WARNING)
 	{
-		CStrings* suggestions = GetSuggestions(word);
+		CStrings* suggestions = category == SPELL_YO_WARNING ? new CStrings() : GetSuggestions(word);
+		if(category == SPELL_YO_WARNING)
+		{
+			CString correction;
+			if(CheckRussianYoUsage(word, &correction)) suggestions->Add(correction);
+		}
 		delete m_menuSuggestions;
 		m_menuSuggestions = suggestions;
 		const int suggestionCount = m_menuSuggestions->GetSize();
@@ -484,6 +508,12 @@ void CSpeller::AppendSpellMenu (HMENU menu)
 		const int numSuggestions = suggestionCount;
 
 		::AppendMenu(menu, MF_SEPARATOR, 0, NULL);
+		if(category == SPELL_YO_WARNING)
+		{
+			const CString label = FbeLoadRuntimeStringByKey(L"fbe.spelling.yo.warning",
+				L"Possible incorrect use of ё");
+			::AppendMenu(menu, MF_STRING | MF_GRAYED, 0, label);
+		}
 		const int primarySuggestionCount = numSuggestions < 8 ? numSuggestions : 8;
 		for (int i=0; i<primarySuggestionCount; i++)
 			::AppendMenu(menu, MF_STRING, ID_SPELL_REPLACE_FIRST+i, (*m_menuSuggestions)[i]);
@@ -541,9 +571,10 @@ void CSpeller::Replace(CString word)
 void CSpeller::IgnoreAll(CString word)
 {
 	if (word.IsEmpty()) word = GetSelWord();
-	if (SpellCheck(word) != SPELL_OK)
+	if (CheckWord(word) != SPELL_OK)
 	{
 		m_IgnoreWords.Add(word);
+		m_yoUsageCache.clear();
 		// recheck page
 		ClearAllMarks();
 		HighlightMisspells();
@@ -553,7 +584,7 @@ void CSpeller::IgnoreAll(CString word)
 void CSpeller::AddToDictionary()
 {
 	CString word = GetSelWord();
-	if (SpellCheck(word) != SPELL_OK)
+	if (CheckWord(word) != SPELL_OK)
 	{
 		Hunhandle* currDict = GetDictionary(word);
 		// add to Hunspell's runtime dictionary
@@ -561,6 +592,10 @@ void CSpeller::AddToDictionary()
 		Hunspell_add(currDict, str);
 		// add to custom dictionary
 		m_CustomDict.Add(word);
+		m_yoUsageCache.clear();
+		CString canonical = FbePrepareDictionaryWord(word);
+		canonical.Replace(L"\u0301", L""); canonical.MakeLower();
+		if(canonical.Find(L'ё') >= 0) m_yoCustomExceptions.insert(canonical.GetString());
 		if(!SaveCustomDict()) U::MessageBox(m_frame, FbeLoadRuntimeStringByKey(L"fbe.spelling.custom_dictionary.save_failed", L"The word was added for this session, but the custom dictionary could not be saved."), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"), MB_OK | MB_ICONERROR);
 		// recheck page
 		ClearAllMarks();
@@ -576,6 +611,10 @@ void CSpeller::AddToDictionary(CString word)
 	Hunspell_add(currDict, str);
 	// add to custom dictionary
 	m_CustomDict.Add(word);
+	m_yoUsageCache.clear();
+	CString canonical = FbePrepareDictionaryWord(word);
+	canonical.Replace(L"\u0301", L""); canonical.MakeLower();
+	if(canonical.Find(L'ё') >= 0) m_yoCustomExceptions.insert(canonical.GetString());
 	if(!SaveCustomDict()) U::MessageBox(m_frame, FbeLoadRuntimeStringByKey(L"fbe.spelling.custom_dictionary.save_failed", L"The word was added for this session, but the custom dictionary could not be saved."), FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_spell_check.caption", L"Spell Check"), MB_OK | MB_ICONERROR);
 	// recheck page
 	ClearAllMarks();
@@ -701,10 +740,71 @@ SPELL_RESULT CSpeller::SpellCheck(CString word)
 	return spellResult;
 }
 
+void CSpeller::SetCheckRussianYoUsage(bool enabled)
+{
+	if(m_checkRussianYoUsage == enabled) return;
+	m_checkRussianYoUsage = enabled;
+	m_yoUsageCache.clear();
+	if(m_ihrs) ClearAllMarks();
+	HighlightMisspells();
+}
+
+bool CSpeller::CheckRussianYoUsage(CString word, CString* correction)
+{
+	if(!m_checkRussianYoUsage || !m_Enabled || !m_isRussianDocument ||
+		(word.Find(L'ё') < 0 && word.Find(L'Ё') < 0)) return false;
+	Hunhandle* dictionary = GetDictionary(word);
+	if(!dictionary || dictionary != m_Dictionaries[LANG_RU].handle ||
+		m_IgnoreWords.Find(word) >= 0 || FbeCustomDictionaryContains(m_CustomDict, word)) return false;
+	CString canonical = FbePrepareDictionaryWord(word);
+	canonical.Replace(L"\u0301", L"");
+	CString key(canonical);
+	key.MakeLower();
+	const std::wstring cacheKey(key.GetString());
+	if(m_yoCustomExceptions.find(cacheKey) != m_yoCustomExceptions.end()) return false;
+	auto cached = m_yoUsageCache.find(cacheKey);
+	bool warning = false;
+	if(cached != m_yoUsageCache.end()) warning = cached->second;
+	else
+	{
+		try
+		{
+			const CStringA original = FbeEncodeDictionaryWord(canonical, m_codePage);
+			if(Hunspell_spell(dictionary, original) == 0)
+			{
+				CString confirmed;
+				if(FbeConfirmedRussianYoCorrection(canonical, confirmed))
+				{
+					CString normalized(canonical);
+					normalized.Replace(L'ё', L'е');
+					normalized.Replace(L'Ё', L'Е');
+					if(normalized.CompareNoCase(confirmed) == 0)
+					{
+						const CStringA accepted = FbeEncodeDictionaryWord(normalized, m_codePage);
+						warning = Hunspell_spell(dictionary, accepted) != 0;
+					}
+				}
+			}
+		}
+		catch(...) { warning = false; }
+		if(m_yoUsageCache.size() >= 256) m_yoUsageCache.clear();
+		m_yoUsageCache.emplace(cacheKey, warning);
+	}
+	if(warning && correction) *correction = FbePreserveRussianYoCorrectionFormatting(word);
+	return warning;
+}
+
+SPELL_RESULT CSpeller::CheckWord(CString word)
+{
+	const SPELL_RESULT result = SpellCheck(word);
+	return result == SPELL_OK && CheckRussianYoUsage(word) ? SPELL_YO_WARNING : result;
+}
+
 //
 // Highlight word at the pos in the element
 // 
-void CSpeller::MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString word, int pos)
+void CSpeller::MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString word, int pos,
+	SPELL_RESULT category)
 {
 	MSHTML::IMarkupPointerPtr impStart;
 	MSHTML::IMarkupPointerPtr impEnd;
@@ -738,7 +838,11 @@ void CSpeller::MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString wo
 
 	// Add or remove the segment
 	MSHTML::IHighlightSegmentPtr ihs;
-	m_ihrs->AddSegment(idpStart, idpEnd, m_irs, &ihs);
+	if(category == SPELL_YO_WARNING && m_irsYo)
+		m_irsYo->textDecorationColor = ThemeManager::IsHighContrast() ? "WindowText" :
+			(ThemeManager::IsDark() ? "#d7ba72" : "#9a6b00");
+	m_ihrs->AddSegment(idpStart, idpEnd,
+		category == SPELL_YO_WARNING && m_irsYo ? m_irsYo : m_irs, &ihs);
 
 	m_ElementHighlights.emplace(uniqID, ihs);
 }
@@ -842,8 +946,9 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 		splitter->Split(&innerText, &words);
 		for (int i=0; i<words.GetSize(); i++)
 		{
-			if (SpellCheck(words.GetValueAt(i)) == SPELL_MISSPELL)
-				MarkElement (elem, uniqID, words.GetValueAt(i), words.GetKeyAt(i));
+			const SPELL_RESULT category = CheckWord(words.GetValueAt(i));
+			if (category == SPELL_MISSPELL || category == SPELL_YO_WARNING)
+				MarkElement(elem, uniqID, words.GetValueAt(i), words.GetKeyAt(i), category);
 		}
 	}
 }
@@ -925,8 +1030,9 @@ void CSpeller::CheckCurrentPage()
 			for (int i=0; i<words.GetSize(); i++)
 			{
 				CString wrd = words.GetValueAt(i);
-				if (SpellCheck(wrd) == SPELL_MISSPELL)
-					MarkElement(elem, currNum, wrd, words.GetKeyAt(i));
+				const SPELL_RESULT category = CheckWord(wrd);
+				if (category == SPELL_MISSPELL || category == SPELL_YO_WARNING)
+					MarkElement(elem, currNum, wrd, words.GetKeyAt(i), category);
 			}
 		}
 
@@ -1059,10 +1165,11 @@ void CSpeller::ContinueDocumentCheck()
 
 		// if word != words delimiter
 		if (word.FindOneOf(Tokens)==-1)
-			result = SpellCheck(word);
+			result = CheckWord(word);
 
 		// select exact word
-		if ((result == SPELL_CHANGE) || (result == SPELL_CHANGEALL) || (result == SPELL_MISSPELL))
+		if ((result == SPELL_CHANGE) || (result == SPELL_CHANGEALL) ||
+			(result == SPELL_MISSPELL) || (result == SPELL_YO_WARNING))
 		{
 			b = word.AllocSysString();
 			m_selRange->findText(b, 1073741824, 2);
@@ -1081,10 +1188,19 @@ void CSpeller::ContinueDocumentCheck()
 				break;
 			}
 			case SPELL_MISSPELL:
+			case SPELL_YO_WARNING:
 			{
 				m_spell_dlg->m_sBadWord = word;
+				m_spell_dlg->m_isYoWarning = result == SPELL_YO_WARNING;
 				delete m_spell_dlg->m_strSuggestions;
-				m_spell_dlg->m_strSuggestions = GetSuggestions(word);
+				if(result == SPELL_YO_WARNING)
+				{
+					m_spell_dlg->m_strSuggestions = new CStrings();
+					CString correction;
+					if(CheckRussianYoUsage(word, &correction))
+						m_spell_dlg->m_strSuggestions->Add(correction);
+				}
+				else m_spell_dlg->m_strSuggestions = GetSuggestions(word);
 				m_spell_dlg->UpdateData();
 				break;
 			}
@@ -1105,7 +1221,7 @@ void CSpeller::ContinueDocumentCheck()
 			compareEnd = m_selRange->compareEndPoints(L"StartToEnd", m_selRange);
 		}
 
-	} while (result != SPELL_MISSPELL && compareEnd != 0);
+	} while (result != SPELL_MISSPELL && result != SPELL_YO_WARNING && compareEnd != 0);
 
 	if (!compareEnd)
 		EndDocumentCheck(false);

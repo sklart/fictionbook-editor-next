@@ -169,6 +169,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_COLOR, CB_SETCURSEL, 3, 0);
 		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_BLINK, CB_SETCURSEL, 4, 0);
 		m_sourcePage->CheckDlgButton(IDC_WRAP, BST_CHECKED);
+		m_spellingPage->CheckDlgButton(IDC_CHECK_RUSSIAN_YO_USAGE, BST_CHECKED);
 		m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);
 		m_spellingPage->SetDlgItemText(IDC_CUSTOM_DICT, L"");
 		m_advancedPage->SendMessage(WM_COMMAND, MAKEWPARAM(IDC_DEFAULT_SCRIPTS_FOLDER, BN_CLICKED), 0);
@@ -775,6 +776,25 @@ bool CSettingsDlg::ProbeLayout()
 				!(::GetWindowLongPtrW(page, GWL_STYLE) & (WS_VSCROLL | WS_HSCROLL));
 		}
 	}
+	SelectPage(SettingsPageId::Spelling);
+	const HWND spellingGroup = m_spellingPage->GetDlgItem(IDC_OPTIONS_SPELLCHECK_GROUP);
+	const HWND yoOption = m_spellingPage->GetDlgItem(IDC_CHECK_RUSSIAN_YO_USAGE);
+	const HWND yoHelp = m_spellingPage->GetDlgItem(IDC_RUSSIAN_YO_USAGE_HELP);
+	const CRect spellingBounds = controlRect(spellingGroup);
+	const CRect optionBounds = controlRect(yoOption);
+	const CRect helpBounds = controlRect(yoHelp);
+	passed = passed && spellingBounds.left < optionBounds.left &&
+		optionBounds.bottom <= helpBounds.top && helpBounds.right < spellingBounds.right &&
+		helpBounds.bottom < spellingBounds.bottom;
+	const LRESULT spellingEnabled = m_spellingPage->SendDlgItemMessage(IDC_USESPELLCHECKER, BM_GETCHECK);
+	const HWND spellingToggle = m_spellingPage->GetDlgItem(IDC_USESPELLCHECKER);
+	m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);
+	::SendMessageW(m_spellingPage->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_USESPELLCHECKER, BN_CLICKED),
+		reinterpret_cast<LPARAM>(spellingToggle));
+	passed = passed && !::IsWindowEnabled(yoOption);
+	m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, spellingEnabled);
+	::SendMessageW(m_spellingPage->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_USESPELLCHECKER, BN_CLICKED),
+		reinterpret_cast<LPARAM>(spellingToggle));
 	SelectPage(SettingsPageId::Editor);
 	const CRect backgroundGroup = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_BACKGROUND_GROUP));
 	const CRect editorPreview = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW));
