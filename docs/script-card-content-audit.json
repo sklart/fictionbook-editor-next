@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 415,
-    "generic_usage": 1229,
+    "requires_review": 414,
+    "generic_usage": 1225,
     "incorrect_undo": 186,
-    "inaccurate_description": 84
+    "inaccurate_description": 83
   },
   "reviewedChanges": [
     {
@@ -39190,17 +39190,178 @@
         "serviceSettingsRemoved": 3,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/08_Дефис - Тире.js",
+      "codeSha256": "48645742745894f38f1726a55f38fe996ac41f8e1f336ea10ea2a384f02a2e4a",
+      "evidence": "Шапка называет jurgennt автором, Sclex автором движка и изменений для неразрывных пробелов, Alex2L автором переработки начала поиска и подсветки. В Run находятся четыре встроенные коллекции известных сочетаний и коллекция запомненных отказов. re10 ищет сочетания между русскими буквами, словарные варианты меняются автоматически, неизвестные идут в InputBox. createRange/collapse запускает обход с текущего абзаца без учёта длины выделения; history/annotation управляются двумя переключателями. При IDCANCEL HandleP возвращает false, Run выходит до отчёта; периодический вопрос также может завершить проход. BeginUndoUnit и EndUndoUnit оба закомментированы. Внешних файлов, программ и сетевых операций не найдено.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "jurgennt",
+              "role": "author"
+            },
+            {
+              "name": "Sclex",
+              "role": "original_author"
+            }
+          ],
+          "after": [
+            {
+              "name": "jurgennt",
+              "role": "author"
+            },
+            {
+              "name": "Sclex",
+              "role": "contributor",
+              "contribution": "движок и обработка неразрывных пробелов"
+            },
+            {
+              "name": "Alex2L",
+              "role": "modifier"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Дефис - Тире.",
+          "after": "Предлагает выбрать дефис или тире между русскими словами, используя встроенные словари для автоматических случаев.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Различает случаи дефиса и тире по правилам и спискам исключений. Обходит абзацы и применяет характерные для данного файла правила поиска/замены; точные выражения и условия сохранены в matchingRules и полном анализе. В сомнительных случаях показывает найденное место и диалог; при подтверждении записывает новый HTML абзаца. Не является неизменяющим документ отчётом.",
+          "after": "От абзаца у курсора до конца книги ищет дефис или тире между русскими буквами. Известные сочетания заменяет автоматически по встроенным словарям частей слов и словосочетаний; неизвестные подсвечивает и предлагает исправить в диалоге. Пропущенные сочетания запоминает на время запуска. Периодически спрашивает о продолжении и после штатного завершения показывает счётчики ручных и автоматических замен.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "От абзаца у начала текущего выделения или курсора до конца fbw_body. Длина выделенного текста не ограничивает обход. История по умолчанию исключена, аннотация включена; скрипт предназначен для сочетаний русских букв.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в абзац, с которого нужно начать проверку, и запустите скрипт.",
+            "Для неизвестных сочетаний проверьте подсветку и введите нужный вариант в диалоге; периодически отвечайте на вопрос о продолжении.",
+            "После штатного завершения просмотрите исправленные абзацы и итоговые счётчики перед сохранением книги."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Выделенный диапазон не ограничивает обработку: проверка продолжается от его начала до конца книги.",
+            "Встроенные словари выполняют автоматические замены; в неоднозначных сочетаниях проверьте дефис и тире по смыслу.",
+            "Отмена в диалоге или отказ продолжать прекращают обработку, сохраняя правки в уже записанных абзацах. Явная группа отмены отключена в коде, общий откат не установлен."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Оба вызова группировки отмены закомментированы. При досрочном выходе ранее изменённые абзацы сохраняются; возможность общего отката через редактор не установлена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": false,
+              "expression": "false",
+              "description": "обрабатывать ли history",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли annotation",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": false,
+              "expression": "false",
+              "description": "Обрабатывать историю изменений: false — нет, true — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "Обрабатывать аннотацию: false — нет, true — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 14989,
+          "issue": "Подъём по DOM не ограничен fbw_body и не проверяет null; у последней ветви возможен выход из дерева книги или ошибка."
+        },
+        {
+          "line": 14970,
+          "issue": "Выделение сворачивается до начала обхода; скрипт не ограничивает поиск выделенным диапазоном."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 575,
-    "generic_usage": 284,
-    "false_warning": 303,
-    "incorrect_setting": 140,
-    "incorrect_scope": 287,
-    "incorrect_undo": 283,
-    "uncertain_attribution": 13,
-    "incorrect_dependency": 291,
+    "inaccurate_description": 577,
+    "generic_usage": 285,
+    "false_warning": 304,
+    "incorrect_setting": 141,
+    "incorrect_scope": 289,
+    "incorrect_undo": 284,
+    "uncertain_attribution": 14,
+    "incorrect_dependency": 292,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -39213,16 +39374,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 275,
-    "usageCorrected": 284,
-    "purposeClarified": 282,
-    "warningsClarified": 215,
-    "scopeClarified": 268,
-    "settingsClarified": 453,
-    "attributionClarified": 14,
+    "undoDescriptionsClarified": 276,
+    "usageCorrected": 285,
+    "purposeClarified": 283,
+    "warningsClarified": 216,
+    "scopeClarified": 269,
+    "settingsClarified": 454,
+    "attributionClarified": 15,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 166,
+    "dependenciesVerified": 167,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -95761,8 +95922,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Дефис - Тире",
-        "summary": "Дефис - Тире.",
-        "description": "Различает случаи дефиса и тире по правилам и спискам исключений. Обходит абзацы и применяет характерные для данного файла правила поиска/замены; точные выражения и условия сохранены в matchingRules и полном анализе. В сомнительных случаях показывает найденное место и диалог; при подтверждении записывает новый HTML абзаца. Не является неизменяющим документ отчётом.",
+        "summary": "Предлагает выбрать дефис или тире между русскими словами, используя встроенные словари для автоматических случаев.",
+        "description": "От абзаца у курсора до конца книги ищет дефис или тире между русскими буквами. Известные сочетания заменяет автоматически по встроенным словарям частей слов и словосочетаний; неизвестные подсвечивает и предлагает исправить в диалоге. Пропущенные сочетания запоминает на время запуска. Периодически спрашивает о продолжении и после штатного завершения показывает счётчики ручных и автоматических замен.",
         "authors": [
           {
             "name": "jurgennt",
@@ -95770,42 +95931,48 @@
           },
           {
             "name": "Sclex",
-            "role": "original_author"
+            "role": "contributor",
+            "contribution": "движок и обработка неразрывных пробелов"
+          },
+          {
+            "name": "Alex2L",
+            "role": "modifier"
           }
         ],
         "version": "1.8",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "От абзаца у начала текущего выделения или курсора до конца fbw_body. Длина выделенного текста не ограничивает обход. История по умолчанию исключена, аннотация включена; скрипт предназначен для сочетаний русских букв.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в абзац, с которого нужно начать проверку, и запустите скрипт.",
+          "Для неизвестных сочетаний проверьте подсветку и введите нужный вариант в диалоге; периодически отвечайте на вопрос о продолжении.",
+          "После штатного завершения просмотрите исправленные абзацы и итоговые счётчики перед сохранением книги."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Выделенный диапазон не ограничивает обработку: проверка продолжается от его начала до конца книги.",
+          "Встроенные словари выполняют автоматические замены; в неоднозначных сочетаниях проверьте дефис и тире по смыслу.",
+          "Отмена в диалоге или отказ продолжать прекращают обработку, сохраняя правки в уже записанных абзацах. Явная группа отмены отключена в коде, общий откат не установлен."
         ],
         "settings": [
           {
             "name": "ObrabotkaHistory",
             "value": false,
             "expression": "false",
-            "description": "обрабатывать ли history",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать историю изменений: false — нет, true — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaAnnotation",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли annotation",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать аннотацию: false — нет, true — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Оба вызова группировки отмены закомментированы. При досрочном выходе ранее изменённые абзацы сохраняются; возможность общего отката через редактор не установлена."
         },
         "examples": null,
         "tags": [
@@ -95818,35 +95985,35 @@
         "undo_end": [],
         "dialog": [
           {
-            "line": 14923,
+            "line": 14929,
             "text": "if (InputBox(':: Тире - vs - Дефис ::                                       '+countt1+' … '+countt2+' … '+count+'\\n'+"
           }
         ],
         "selection": [
           {
-            "line": 14856,
+            "line": 14862,
             "text": "var range1=document.body.createTextRange();"
           },
           {
-            "line": 14970,
+            "line": 14976,
             "text": "var tr=document.selection.createRange();"
           },
           {
-            "line": 14970,
+            "line": 14976,
             "text": "var tr=document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 14848,
+            "line": 14854,
             "text": "ss=ptr.innerHTML;"
           },
           {
-            "line": 14867,
+            "line": 14873,
             "text": "s=ptr.innerHTML;"
           },
           {
-            "line": 14957,
+            "line": 14963,
             "text": "ptr.innerHTML=s;"
           }
         ],
@@ -95857,27 +96024,27 @@
         "file": [],
         "return": [
           {
-            "line": 14924,
+            "line": 14930,
             "text": "'Введите свой вариант:        ' +vis,vis, r) == IDCANCEL) return false;                                                // patch"
           },
           {
-            "line": 14958,
+            "line": 14964,
             "text": "return true;                    // patch"
           },
           {
-            "line": 14971,
+            "line": 14977,
             "text": "if (!tr) { alert(\"Отсутствие присутствия текста для проверки!\"); return;}"
           },
           {
-            "line": 14974,
+            "line": 14980,
             "text": "if (!body.contains(ptr)) { alert(\"Спозиционируйте курсор что ли!\"); return;}"
           },
           {
-            "line": 15005,
+            "line": 15011,
             "text": "if (!HandleP(ptr)) return;                    // patch"
           },
           {
-            "line": 15008,
+            "line": 15014,
             "text": "if (PoraNaVyhod) {return}"
           }
         ]
@@ -95889,17 +96056,17 @@
           "name": "ObrabotkaHistory",
           "declarations": [
             {
-              "line": 86,
+              "line": 92,
               "text": "var ObrabotkaHistory=false;"
             }
           ],
           "uses": [
             {
-              "line": 86,
+              "line": 92,
               "text": "var ObrabotkaHistory=false;"
             },
             {
-              "line": 14984,
+              "line": 14990,
               "text": "((SaveNext.className==\"history\" && !ObrabotkaHistory) ||"
             }
           ],
@@ -95910,17 +96077,17 @@
           "name": "ObrabotkaAnnotation",
           "declarations": [
             {
-              "line": 88,
+              "line": 94,
               "text": "var ObrabotkaAnnotation=true;"
             }
           ],
           "uses": [
             {
-              "line": 88,
+              "line": 94,
               "text": "var ObrabotkaAnnotation=true;"
             },
             {
-              "line": 14985,
+              "line": 14991,
               "text": "(SaveNext.className==\"annotation\" && !ObrabotkaAnnotation))))"
             }
           ],
@@ -95930,25 +96097,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 67,
+          "line": 73,
           "text": "//  Автор скрипта - jurgennt"
         },
         {
-          "line": 83,
+          "line": 89,
           "text": "var VersionNumber=\"1.8\";"
         },
         {
-          "line": 120,
+          "line": 126,
           "text": "preCol[\"авторско\"] = true;"
         },
         {
-          "line": 479,
+          "line": 485,
           "text": "preCol[\"диверсионно\"] = true;"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Выделенный диапазон не ограничивает обработку: проверка продолжается от его начала до конца книги.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Встроенные словари выполняют автоматические замены; в неоднозначных сочетаниях проверьте дефис и тире по смыслу.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Отмена в диалоге или отказ продолжать прекращают обработку, сохраняя правки в уже записанных абзацах. Явная группа отмены отключена в коде, общий откат не установлен.",
           "verification": "requires_review"
         }
       ],
@@ -95969,62 +96144,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Дефис - Тире.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js",

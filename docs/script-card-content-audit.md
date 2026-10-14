@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **164**.
+Карточек без автоматических замечаний: **165**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,43 +16,43 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **339**. Исполняемый код не изменён.
+Изменено карточек: **340**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 303
-- `generic_usage`: 284
-- `inaccurate_description`: 575
+- `false_warning`: 304
+- `generic_usage`: 285
+- `inaccurate_description`: 577
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 291
+- `incorrect_dependency`: 292
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 287
+- `incorrect_scope`: 289
 - `incorrect_selection`: 17
-- `incorrect_setting`: 140
-- `incorrect_undo`: 283
+- `incorrect_setting`: 141
+- `incorrect_undo`: 284
 - `incorrect_version`: 5
-- `uncertain_attribution`: 13
+- `uncertain_attribution`: 14
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 14
+- `attributionClarified`: 15
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 166
+- `dependenciesVerified`: 167
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 282
-- `scopeClarified`: 268
+- `purposeClarified`: 283
+- `scopeClarified`: 269
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 453
-- `undoDescriptionsClarified`: 275
-- `usageCorrected`: 284
-- `warningsClarified`: 215
+- `settingsClarified`: 454
+- `undoDescriptionsClarified`: 276
+- `usageCorrected`: 285
+- `warningsClarified`: 216
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **178**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **179**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -359,13 +359,15 @@
 - `06_Чистка/02_Генеральная уборка.js:1373` — Статистика для re165 называет U+2028, хотя активное правило заменяет U+2048.
 - `06_Чистка/02_Генеральная уборка (версия Александра Ка).js:355` — Все теги FONT снимаются до основного поиска; это изменение не входит в счётчик mChange/count_change и само по себе не запускает историю при histVers=1.
 - `06_Чистка/02_Генеральная уборка (версия Александра Ка).js:264` — Комментарий к percentSpace описывает другие значения; действующий код: 0 — удалить пробел перед %, 1 — добавить неразрывный.
+- `06_Чистка/08_Дефис - Тире.js:14989` — Подъём по DOM не ограничен fbw_body и не проверяет null; у последней ветви возможен выход из дерева книги или ошибка.
+- `06_Чистка/08_Дефис - Тире.js:14970` — Выделение сворачивается до начала обхода; скрипт не ограничивает поиск выделенным диапазоном.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1229
-- `inaccurate_description`: 84
+- `generic_usage`: 1225
+- `inaccurate_description`: 83
 - `incorrect_undo`: 186
-- `requires_review`: 415
+- `requires_review`: 414
 
 ## Границы проверки
 
