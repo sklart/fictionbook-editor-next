@@ -16,43 +16,43 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **330**. Исполняемый код не изменён.
+Изменено карточек: **331**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 294
-- `generic_usage`: 275
-- `inaccurate_description`: 556
+- `false_warning`: 295
+- `generic_usage`: 276
+- `inaccurate_description`: 558
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 280
+- `incorrect_dependency`: 281
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 275
+- `incorrect_scope`: 277
 - `incorrect_selection`: 17
-- `incorrect_setting`: 131
-- `incorrect_undo`: 274
+- `incorrect_setting`: 132
+- `incorrect_undo`: 275
 - `incorrect_version`: 5
-- `uncertain_attribution`: 3
+- `uncertain_attribution`: 4
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 6
+- `attributionClarified`: 7
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 157
+- `dependenciesVerified`: 158
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 273
-- `scopeClarified`: 259
+- `purposeClarified`: 274
+- `scopeClarified`: 260
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 444
-- `undoDescriptionsClarified`: 266
-- `usageCorrected`: 275
-- `warningsClarified`: 206
+- `settingsClarified`: 445
+- `undoDescriptionsClarified`: 267
+- `usageCorrected`: 276
+- `warningsClarified`: 207
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **169**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **170**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -340,13 +340,15 @@
 - `06_Чистка/05_Слипшиеся слова.js:925` — return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен.
 - `06_Чистка/05_Слипшиеся слова.js:928` — return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body.
 - `06_Чистка/06_Управляемое исправление разрывов абзацев....js:663` — return после BeginUndoUnit не вызывает EndUndoUnit при закрытии диалога выбора режимов без результата.
+- `06_Чистка/65_Дроби, степени, интервалы, габариты.js:880` — return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен.
+- `06_Чистка/65_Дроби, степени, интервалы, габариты.js:883` — return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1269
-- `inaccurate_description`: 90
-- `incorrect_undo`: 195
-- `requires_review`: 424
+- `generic_usage`: 1265
+- `inaccurate_description`: 89
+- `incorrect_undo`: 194
+- `requires_review`: 423
 
 ## Границы проверки
 

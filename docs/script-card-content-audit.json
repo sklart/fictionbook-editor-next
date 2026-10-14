@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 424,
-    "generic_usage": 1269,
-    "incorrect_undo": 195,
-    "inaccurate_description": 90
+    "requires_review": 423,
+    "generic_usage": 1265,
+    "incorrect_undo": 194,
+    "inaccurate_description": 89
   },
   "reviewedChanges": [
     {
@@ -36948,17 +36948,187 @@
         "settingsClarified": 0,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/65_Дроби, степени, интервалы, габариты.js",
+      "codeSha256": "9cb04a845194d424387b9993790ece9652f10f3ac9ef3fba2800bc5b799907ea",
+      "evidence": "Комментарии в начале исходника называют jurgennt автором, Sclex автором движка и улучшений, stokber автором части regex, TaKir автором идей. Run от абзаца курсора обходит P; HandleP предлагает через InputBox преобразование единиц м2/м3, размеров с x/х, ряда дробей 1/4–7/8 и дефисов/тире между числами; после обработки P обновляет innerHTML. BeginUndoUnit стоит до проверки tr и body.contains(ptr), поэтому оба ранних return обходят EndUndoUnit. Внешних файлов и сети нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "jurgennt",
+              "role": "author"
+            },
+            {
+              "name": "Sclex",
+              "role": "modifier"
+            },
+            {
+              "name": "Sclex",
+              "role": "original_author"
+            }
+          ],
+          "after": [
+            {
+              "name": "jurgennt",
+              "role": "author"
+            },
+            {
+              "name": "Sclex",
+              "role": "contributor",
+              "contribution": "движок и последующие улучшения"
+            },
+            {
+              "name": "stokber",
+              "role": "contributor",
+              "contribution": "часть регулярных выражений"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "идеи регулярных выражений"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Дроби, степени, интервалы, габариты.",
+          "after": "Предлагает исправить запись дробей, степеней, габаритов и числовых интервалов.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Нормализует запись дробей, степеней, интервалов, единиц измерения и габаритов. Обходит абзацы и применяет характерные для данного файла правила поиска/замены; точные выражения и условия сохранены в matchingRules и полном анализе. В сомнительных случаях показывает найденное место и диалог; при подтверждении записывает новый HTML абзаца. Не является неизменяющим документ отчётом.",
+          "after": "От абзаца с курсором ищет обозначения единиц площади и объёма с цифрой степени, размеры с латинским или кириллическим x, ряд простых дробей через слэш и знаки между числами. Предлагает верхний индекс, знак умножения, символ дроби либо интервальное тире; пользователь может подтвердить, изменить или отклонить каждый вариант.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзац с курсором и последующие P в fbw_body; history по умолчанию пропускается, annotation включена. Выделение текста не требуется.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в абзац, с которого нужно начать, и запустите скрипт.",
+            "Проверяйте предложения для единиц, размеров, дробей и интервалов, изменяя вариант в диалоге при необходимости.",
+            "После обработки проверьте математические записи и итоговое число замен."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Числовые шаблоны не различают математическую операцию, дату, номер и размер; подтверждайте замену по смыслу.",
+            "Если диапазон недоступен или курсор вне книги, скрипт выходит после открытия группы отмены, не закрыв её."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "На штатном пути группа отмены закрывается, включая прерывание диалога. Ранние выходы при недоступном диапазоне или курсоре вне книги оставляют её незакрытой; полный откат не подтверждён."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": false,
+              "expression": "false",
+              "description": "обрабатывать ли history",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли annotation",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": false,
+              "expression": "false",
+              "description": "Включать абзацы истории изменений после позиции курсора.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "Включать абзацы аннотации после позиции курсора.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 880,
+          "issue": "return после BeginUndoUnit не вызывает EndUndoUnit, если диапазон недоступен."
+        },
+        {
+          "line": 883,
+          "issue": "return после BeginUndoUnit не вызывает EndUndoUnit, если курсор вне fbw_body."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 556,
-    "generic_usage": 275,
-    "false_warning": 294,
-    "incorrect_setting": 131,
-    "incorrect_scope": 275,
-    "incorrect_undo": 274,
-    "uncertain_attribution": 3,
-    "incorrect_dependency": 280,
+    "inaccurate_description": 558,
+    "generic_usage": 276,
+    "false_warning": 295,
+    "incorrect_setting": 132,
+    "incorrect_scope": 277,
+    "incorrect_undo": 275,
+    "uncertain_attribution": 4,
+    "incorrect_dependency": 281,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -36971,16 +37141,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 266,
-    "usageCorrected": 275,
-    "purposeClarified": 273,
-    "warningsClarified": 206,
-    "scopeClarified": 259,
-    "settingsClarified": 444,
-    "attributionClarified": 6,
+    "undoDescriptionsClarified": 267,
+    "usageCorrected": 276,
+    "purposeClarified": 274,
+    "warningsClarified": 207,
+    "scopeClarified": 260,
+    "settingsClarified": 445,
+    "attributionClarified": 7,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 157,
+    "dependenciesVerified": 158,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -97306,8 +97476,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Дроби, степени, интервалы, габариты",
-        "summary": "Дроби, степени, интервалы, габариты.",
-        "description": "Нормализует запись дробей, степеней, интервалов, единиц измерения и габаритов. Обходит абзацы и применяет характерные для данного файла правила поиска/замены; точные выражения и условия сохранены в matchingRules и полном анализе. В сомнительных случаях показывает найденное место и диалог; при подтверждении записывает новый HTML абзаца. Не является неизменяющим документ отчётом.",
+        "summary": "Предлагает исправить запись дробей, степеней, габаритов и числовых интервалов.",
+        "description": "От абзаца с курсором ищет обозначения единиц площади и объёма с цифрой степени, размеры с латинским или кириллическим x, ряд простых дробей через слэш и знаки между числами. Предлагает верхний индекс, знак умножения, символ дроби либо интервальное тире; пользователь может подтвердить, изменить или отклонить каждый вариант.",
         "authors": [
           {
             "name": "jurgennt",
@@ -97315,46 +97485,53 @@
           },
           {
             "name": "Sclex",
-            "role": "modifier"
+            "role": "contributor",
+            "contribution": "движок и последующие улучшения"
           },
           {
-            "name": "Sclex",
-            "role": "original_author"
+            "name": "stokber",
+            "role": "contributor",
+            "contribution": "часть регулярных выражений"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "идеи регулярных выражений"
           }
         ],
         "version": "2.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзац с курсором и последующие P в fbw_body; history по умолчанию пропускается, annotation включена. Выделение текста не требуется.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в абзац, с которого нужно начать, и запустите скрипт.",
+          "Проверяйте предложения для единиц, размеров, дробей и интервалов, изменяя вариант в диалоге при необходимости.",
+          "После обработки проверьте математические записи и итоговое число замен."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Числовые шаблоны не различают математическую операцию, дату, номер и размер; подтверждайте замену по смыслу.",
+          "Если диапазон недоступен или курсор вне книги, скрипт выходит после открытия группы отмены, не закрыв её."
         ],
         "settings": [
           {
             "name": "ObrabotkaHistory",
             "value": false,
             "expression": "false",
-            "description": "обрабатывать ли history",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать абзацы истории изменений после позиции курсора.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaAnnotation",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли annotation",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать абзацы аннотации после позиции курсора.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "На штатном пути группа отмены закрывается, включая прерывание диалога. Ранние выходы при недоступном диапазоне или курсоре вне книги оставляют её незакрытой; полный откат не подтверждён."
         },
         "examples": null,
         "tags": [
@@ -97365,59 +97542,59 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 872,
+            "line": 879,
             "text": "window.external.BeginUndoUnit(document,\"«Большие числа»\");                               // ОТКАТ (UNDO) начало"
           }
         ],
         "undo_end": [
           {
-            "line": 910,
+            "line": 917,
             "text": "window.external.EndUndoUnit(document);                               // undo конец;"
           }
         ],
         "dialog": [
           {
-            "line": 385,
+            "line": 392,
             "text": "if (InputBox(\" :: Единицы площади и объёма ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 389,
+            "line": 396,
             "text": "if (InputBox(\" :: Единицы площади и объёма ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 405,
+            "line": 412,
             "text": "if (InputBox(\" :: Габариты ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 409,
+            "line": 416,
             "text": "if (InputBox(\" :: Габариты ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           }
         ],
         "selection": [
           {
-            "line": 357,
+            "line": 364,
             "text": "var range1=document.body.createTextRange();"
           },
           {
-            "line": 879,
+            "line": 886,
             "text": "var tr=document.selection.createRange();"
           },
           {
-            "line": 879,
+            "line": 886,
             "text": "var tr=document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 349,
+            "line": 356,
             "text": "ss=ptr.innerHTML;"
           },
           {
-            "line": 369,
+            "line": 376,
             "text": "s=ptr.innerHTML;"
           },
           {
-            "line": 868,
+            "line": 875,
             "text": "ptr.innerHTML=s;"
           }
         ],
@@ -97428,207 +97605,207 @@
         "file": [],
         "return": [
           {
-            "line": 385,
+            "line": 392,
             "text": "if (InputBox(\" :: Единицы площади и объёма ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 389,
+            "line": 396,
             "text": "if (InputBox(\" :: Единицы площади и объёма ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 405,
+            "line": 412,
             "text": "if (InputBox(\" :: Габариты ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 409,
+            "line": 416,
             "text": "if (InputBox(\" :: Габариты ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 426,
+            "line": 433,
             "text": "if (InputBox(\" :: Габариты ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 430,
+            "line": 437,
             "text": "if (InputBox(\" :: Габариты ::\\n > Замена:   \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 446,
+            "line": 453,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 450,
+            "line": 457,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 466,
+            "line": 473,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 470,
+            "line": 477,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 486,
+            "line": 493,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 490,
+            "line": 497,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 506,
+            "line": 513,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 510,
+            "line": 517,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 526,
+            "line": 533,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 530,
+            "line": 537,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 546,
+            "line": 553,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 550,
+            "line": 557,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 566,
+            "line": 573,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 570,
+            "line": 577,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 586,
+            "line": 593,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 590,
+            "line": 597,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 606,
+            "line": 613,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 610,
+            "line": 617,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 626,
+            "line": 633,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 630,
+            "line": 637,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 646,
+            "line": 653,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 650,
+            "line": 657,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 666,
+            "line": 673,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 670,
+            "line": 677,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 686,
+            "line": 693,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 690,
+            "line": 697,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 706,
+            "line": 713,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 710,
+            "line": 717,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 726,
+            "line": 733,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 730,
+            "line": 737,
             "text": "if (InputBox(\" :: Числа через слэш ::\\n > Предлагается замена:      \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 746,
+            "line": 753,
             "text": "if (InputBox(\" :: Дефис ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 750,
+            "line": 757,
             "text": "if (InputBox(\" :: Дефис ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 766,
+            "line": 773,
             "text": "if (InputBox(\" :: Тире ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 770,
+            "line": 777,
             "text": "if (InputBox(\" :: Тире ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 786,
+            "line": 793,
             "text": "if (InputBox(\" :: Пробел ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 790,
+            "line": 797,
             "text": "if (InputBox(\" :: Пробел ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 807,
+            "line": 814,
             "text": "if (InputBox(\" :: Дефис между числами ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 811,
+            "line": 818,
             "text": "if (InputBox(\" :: Дефис между числами ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 827,
+            "line": 834,
             "text": "if (InputBox(\" :: Тире между числами ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 831,
+            "line": 838,
             "text": "if (InputBox(\" :: Тире между числами ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 847,
+            "line": 854,
             "text": "if (InputBox(\" :: Короткое тире с пробелами между чисел ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 851,
+            "line": 858,
             "text": "if (InputBox(\" :: Короткое тире с пробелами между чисел ::\\n > Предлагается замена:                     \" +v1+ \" —> \" +v2,v2, r) == IDCANCEL) return \"exit\";"
           },
           {
-            "line": 869,
+            "line": 876,
             "text": "return true;"
           },
           {
-            "line": 880,
+            "line": 887,
             "text": "if (!tr) { alert(\"Отсутствие присутствия текста для проверки!\"); return;}"
           },
           {
-            "line": 883,
+            "line": 890,
             "text": "if (!body.contains(ptr)) { alert(\"Спозиционируйте курсор что ли!\"); return;}"
           }
         ]
@@ -97640,17 +97817,17 @@
           "name": "ObrabotkaHistory",
           "declarations": [
             {
-              "line": 110,
+              "line": 117,
               "text": "var ObrabotkaHistory=false;"
             }
           ],
           "uses": [
             {
-              "line": 110,
+              "line": 117,
               "text": "var ObrabotkaHistory=false;"
             },
             {
-              "line": 893,
+              "line": 900,
               "text": "((SaveNext.className==\"history\" && !ObrabotkaHistory) ||"
             }
           ],
@@ -97661,17 +97838,17 @@
           "name": "ObrabotkaAnnotation",
           "declarations": [
             {
-              "line": 112,
+              "line": 119,
               "text": "var ObrabotkaAnnotation=true;"
             }
           ],
           "uses": [
             {
-              "line": 112,
+              "line": 119,
               "text": "var ObrabotkaAnnotation=true;"
             },
             {
-              "line": 894,
+              "line": 901,
               "text": "(SaveNext.className==\"annotation\" && !ObrabotkaAnnotation))))"
             }
           ],
@@ -97681,21 +97858,25 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 72,
+          "line": 79,
           "text": "//     Автор скрипта - jurgennt."
         },
         {
-          "line": 107,
+          "line": 114,
           "text": "var VersionNumber=\"2.2\";"
         },
         {
-          "line": 928,
+          "line": 935,
           "text": "'  «Дроби, степени, интервалы, габариты» v.'+VersionNumber+'\t\\n\\n'+"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Числовые шаблоны не различают математическую операцию, дату, номер и размер; подтверждайте замену по смыслу.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если диапазон недоступен или курсор вне книги, скрипт выходит после открытия группы отмены, не закрыв её.",
           "verification": "requires_review"
         }
       ],
@@ -97718,102 +97899,30 @@
       ],
       "findings": [
         {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Дроби, степени, интервалы, габариты.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 872,
-              "text": "window.external.BeginUndoUnit(document,\"«Большие числа»\");                               // ОТКАТ (UNDO) начало"
-            },
-            {
-              "line": 910,
-              "text": "window.external.EndUndoUnit(document);                               // undo конец;"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "На штатном пути группа отмены закрывается, включая прерывание диалога. Ранние выходы при недоступном диапазоне или курсоре вне книги оставляют её незакрытой; полный откат не подтверждён."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 872,
+              "line": 879,
               "text": "window.external.BeginUndoUnit(document,\"«Большие числа»\");                               // ОТКАТ (UNDO) начало"
             },
             {
-              "line": 880,
+              "line": 887,
               "text": "if (!tr) { alert(\"Отсутствие присутствия текста для проверки!\"); return;}"
             },
             {
-              "line": 883,
+              "line": 890,
               "text": "if (!body.contains(ptr)) { alert(\"Спозиционируйте курсор что ли!\"); return;}"
             },
             {
-              "line": 910,
+              "line": 917,
               "text": "window.external.EndUndoUnit(document);                               // undo конец;"
             }
           ]
