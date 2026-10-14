@@ -3,8 +3,8 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 356,
-    "generic_usage": 874,
-    "incorrect_undo": 129,
+    "generic_usage": 870,
+    "incorrect_undo": 128,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -52021,22 +52021,221 @@
         "dependenciesVerified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/615_Проверить правильность нумерации заголовков.js",
+      "codeSha256": "671371f755adbffabd9b67b19bb33b95f2c4693fbfeebe85d1f0520f204c3e6b",
+      "evidence": "Строки 1–50 задают цель и четыре настройки; 656–875 распознают номера; 1083–1154 проверяют последовательность; 1192–1250 при включении ищут возможные заголовки в P; 1295–1343 пересоздают HTML исправляемого абзаца; 1413–1527 собирают заголовки и ошибки; 1539–1620 выводят отчёт, спрашивают подтверждение и выполняют изменения внутри группы отмены. Файловых, сетевых вызовов и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Проверяет последовательность номеров в заголовках.",
+          "after": "Проверяет последовательность номеров в заголовках и по подтверждению переписывает найденные отклонения.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Извлекает числа/римскую нумерацию из заголовков, ищет нарушения порядка и показывает отчёт/переходы. Проверка не доказывает ошибку авторской структуры и не должна автоматически перенумеровывать книгу.",
+          "after": "Собирает первый абзац каждого заголовка и распознаёт номер после маркера раздела, перед ним либо отдельное число. Сравнивает номера внутри групп по типу и формату, допускает некоторые перезапуски последовательности и выводит до десяти отклонений. При исходных настройках пропускает заголовки в примечаниях и комментариях и не ищет возможные заголовки среди обычных абзацев. Если ошибки найдены, предлагает автоматически заменить номера. При подтверждении пересоздаёт содержимое соответствующих абзацев заголовков обычным текстом и повторно добавляет только прямые ссылки-сноски; другое встроенное оформление и ссылки теряются.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Первый P каждого DIV.title во всех body документа; при исходных настройках исключены body с fbname=notes и comments. Дополнительный поиск потерянных заголовков по всем P запускается только при включённом searchLostTitles и найденных ошибках.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "modifiesDocument",
+          "before": false,
+          "after": true,
+          "category": "incorrect_effect"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Запустите проверку без выделения. При найденных отклонениях просмотрите ожидаемые номера и откажитесь от автоматического исправления, если нумерация отражает авторскую структуру.",
+            "Перед подтверждением исправления сохраните копию книги: переписываются абзацы заголовков и может пропасть встроенное оформление либо ссылки.",
+            "Настройки обработки примечаний, комментариев, поиска потерянных заголовков и показа статистики меняются в исходном JS."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+          ],
+          "after": [
+            "Подтверждённое исправление заменяет весь HTML абзаца обычным текстом; прямые ссылки-сноски восстанавливаются неполно, а остальное оформление и другие вложенные элементы теряются.",
+            "Алгоритм группировки и перезапуска номеров может ошибочно принять авторскую нумерацию за ошибку. Проверяйте предлагаемые номера перед изменением книги.",
+            "При ошибке во время исправления группа отмены может остаться открытой; полнота отката не проверена."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "После подтверждения исправления замены объединяются в группу отмены при штатном завершении. Между её открытием и закрытием нет обычного досрочного выхода, но исключение может оставить группу открытой; надёжность полного отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "searchLostTitles",
+              "value": 0,
+              "expression": "0",
+              "description": "1 - искать, 0 - не искать",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Показывать статистику и итоговое окно: 1 — да; 0 — тихий режим, но подтверждение исправления сохраняется.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Включать заголовки примечаний в проверку и исправление: 0 — нет; 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Включать заголовки комментариев: 0 — нет; 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "searchLostTitles",
+              "value": 0,
+              "expression": "0",
+              "description": "Искать похожие на заголовки обычные абзацы при ошибках нумерации: 0 — нет; 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 1330,
+          "issue": "fixTitle удаляет все дочерние узлы P и вставляет plain text. Сохраняются только прямые A.note, причём лишь href и innerHTML; курсив, жирность, обычные ссылки, изображения, вложенные сноски и другие атрибуты теряются вопреки заявленному сохранению оформления."
+        },
+        {
+          "line": 1118,
+          "issue": "Для поиска другого формата между заголовками передаются глобальные индексы всех DIV.title, а hasOtherFormatBetween индексирует ими массив только распознанных заголовков. При нераспознанных заголовках между ними проверяется неверный диапазон, что может исказить решение о перезапуске нумерации."
+        },
+        {
+          "line": 1096,
+          "issue": "Если первая группа начинается с номера не 1 и в книге нет маркера более высокого уровня, скрипт принудительно исправляет первый номер на 1, несмотря на заявленную возможность продолжать нумерацию от первого номера группы."
+        },
+        {
+          "line": 1602,
+          "issue": "Группа отмены для исправления открыта без защиты finally. Исключение в fixTitle или при обходе до EndUndoUnit на строке 1609 оставит группу открытой после возможных частичных изменений."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "effectCorrected": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 681,
-    "generic_usage": 369,
+    "inaccurate_description": 682,
+    "generic_usage": 370,
     "false_warning": 319,
-    "incorrect_setting": 198,
-    "incorrect_scope": 376,
-    "incorrect_undo": 368,
-    "uncertain_attribution": 62,
-    "generic_summary": 64,
-    "incorrect_dependency": 384,
+    "incorrect_setting": 199,
+    "incorrect_scope": 377,
+    "incorrect_undo": 369,
+    "uncertain_attribution": 63,
+    "generic_summary": 65,
+    "incorrect_dependency": 385,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
-    "incorrect_effect": 2,
+    "incorrect_effect": 3,
     "generic_warning": 62,
     "incorrect_attribution": 43,
     "incorrect_metadata": 10,
@@ -52046,20 +52245,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 7,
+    "missing_warning": 8,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 360,
-    "usageCorrected": 369,
-    "purposeClarified": 367,
-    "warningsClarified": 301,
-    "scopeClarified": 353,
+    "undoDescriptionsClarified": 361,
+    "usageCorrected": 370,
+    "purposeClarified": 368,
+    "warningsClarified": 302,
+    "scopeClarified": 354,
     "settingsClarified": 509,
-    "attributionClarified": 63,
-    "dependenciesVerified": 251,
+    "attributionClarified": 64,
+    "dependenciesVerified": 252,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -52067,7 +52266,8 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 3
+    "settingsCorrected": 4,
+    "effectCorrected": 1
   },
   "scripts": [
     {
@@ -143771,69 +143971,68 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Проверить правильность нумерации заголовков",
-        "summary": "Проверяет последовательность номеров в заголовках.",
-        "description": "Извлекает числа/римскую нумерацию из заголовков, ищет нарушения порядка и показывает отчёт/переходы. Проверка не доказывает ошибку авторской структуры и не должна автоматически перенумеровывать книгу.",
+        "summary": "Проверяет последовательность номеров в заголовках и по подтверждению переписывает найденные отклонения.",
+        "description": "Собирает первый абзац каждого заголовка и распознаёт номер после маркера раздела, перед ним либо отдельное число. Сравнивает номера внутри групп по типу и формату, допускает некоторые перезапуски последовательности и выводит до десяти отклонений. При исходных настройках пропускает заголовки в примечаниях и комментариях и не ищет возможные заголовки среди обычных абзацев. Если ошибки найдены, предлагает автоматически заменить номера. При подтверждении пересоздаёт содержимое соответствующих абзацев заголовков обычным текстом и повторно добавляет только прямые ссылки-сноски; другое встроенное оформление и ссылки теряются.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "3.4",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
-        "modifiesDocument": false,
+        "scope": "Первый P каждого DIV.title во всех body документа; при исходных настройках исключены body с fbname=notes и comments. Дополнительный поиск потерянных заголовков по всем P запускается только при включённом searchLostTitles и найденных ошибках.",
+        "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Запустите проверку без выделения. При найденных отклонениях просмотрите ожидаемые номера и откажитесь от автоматического исправления, если нумерация отражает авторскую структуру.",
+          "Перед подтверждением исправления сохраните копию книги: переписываются абзацы заголовков и может пропасть встроенное оформление либо ссылки.",
+          "Настройки обработки примечаний, комментариев, поиска потерянных заголовков и показа статистики меняются в исходном JS."
         ],
         "warnings": [
-          "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+          "Подтверждённое исправление заменяет весь HTML абзаца обычным текстом; прямые ссылки-сноски восстанавливаются неполно, а остальное оформление и другие вложенные элементы теряются.",
+          "Алгоритм группировки и перезапуска номеров может ошибочно принять авторскую нумерацию за ошибку. Проверяйте предлагаемые номера перед изменением книги.",
+          "При ошибке во время исправления группа отмены может остаться открытой; полнота отката не проверена."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать статистику и итоговое окно: 1 — да; 0 — тихий режим, но подтверждение исправления сохраняется.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processNotesSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать заголовки примечаний в проверку и исправление: 0 — нет; 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processCommentsSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать заголовки комментариев: 0 — нет; 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "searchLostTitles",
             "value": 0,
             "expression": "0",
-            "description": "1 - искать, 0 - не искать",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Искать похожие на заголовки обычные абзацы при ошибках нумерации: 0 — нет; 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "После подтверждения исправления замены объединяются в группу отмены при штатном завершении. Между её открытием и закрытием нет обычного досрочного выхода, но исключение может оставить группу открытой; надёжность полного отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -143844,13 +144043,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 1683,
+            "line": 1682,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" - исправление нумерации\");"
           }
         ],
         "undo_end": [
           {
-            "line": 1690,
+            "line": 1689,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -143858,19 +144057,19 @@
         "selection": [],
         "write": [
           {
-            "line": 1386,
+            "line": 1385,
             "text": "savedNotes.push({innerHTML: child.innerHTML, href: child.getAttribute('href') || ''});"
           },
           {
-            "line": 1386,
+            "line": 1385,
             "text": "savedNotes.push({innerHTML: child.innerHTML, href: child.getAttribute('href') || ''});"
           },
           {
-            "line": 1411,
+            "line": 1410,
             "text": "while (pElement.firstChild) pElement.removeChild(pElement.firstChild);"
           },
           {
-            "line": 1412,
+            "line": 1411,
             "text": "pElement.appendChild(document.createTextNode(newText));"
           }
         ],
@@ -143881,379 +144080,379 @@
         "file": [],
         "return": [
           {
-            "line": 248,
+            "line": 247,
             "text": "if (!word || typeof word != 'string') return;"
           },
           {
-            "line": 520,
+            "line": 519,
             "text": "if (!element) return \"\";"
           },
           {
-            "line": 534,
+            "line": 533,
             "text": "return text;"
           },
           {
-            "line": 539,
+            "line": 538,
             "text": "if (!text) return \"\";"
           },
           {
-            "line": 572,
+            "line": 571,
             "text": "return result;"
           },
           {
-            "line": 593,
+            "line": 592,
             "text": "return words;"
           },
           {
-            "line": 598,
+            "line": 597,
             "text": "if (!word) return false;"
           },
           {
-            "line": 601,
+            "line": 600,
             "text": "if (!cleanWord) return false;"
           },
           {
-            "line": 606,
+            "line": 605,
             "text": "return false;"
           },
           {
-            "line": 609,
+            "line": 608,
             "text": "return cleanWord.length > 0;"
           },
           {
-            "line": 614,
+            "line": 613,
             "text": "if (!word) return false;"
           },
           {
-            "line": 617,
+            "line": 616,
             "text": "if (!cleanWord) return false;"
           },
           {
-            "line": 628,
+            "line": 627,
             "text": "if (!found) return false;"
           },
           {
-            "line": 631,
+            "line": 630,
             "text": "return cleanWord.length > 0;"
           },
           {
-            "line": 636,
+            "line": 635,
             "text": "if (!word) return null;"
           },
           {
-            "line": 642,
+            "line": 641,
             "text": "return parseInt(cleanWord, 10);"
           },
           {
-            "line": 648,
+            "line": 647,
             "text": "return romanNumerals[upperWord];"
           },
           {
-            "line": 650,
+            "line": 649,
             "text": "return calculateRomanValue(cleanWord);"
           },
           {
-            "line": 656,
+            "line": 655,
             "text": "return russianNumerals[numeral];"
           },
           {
-            "line": 662,
+            "line": 661,
             "text": "return russianNumerals[cleanWordLower];"
           },
           {
-            "line": 666,
+            "line": 665,
             "text": "return englishNumerals[cleanWordLower];"
           },
           {
-            "line": 669,
+            "line": 668,
             "text": "return null;"
           },
           {
-            "line": 674,
+            "line": 673,
             "text": "if (!roman) return null;"
           },
           {
-            "line": 688,
+            "line": 687,
             "text": "if (!currentValue) return null;"
           },
           {
-            "line": 699,
+            "line": 698,
             "text": "return total;"
           },
           {
-            "line": 704,
+            "line": 703,
             "text": "if (!word) return 'unknown';"
           },
           {
-            "line": 709,
+            "line": 708,
             "text": "return 'arabic';"
           },
           {
-            "line": 713,
+            "line": 712,
             "text": "return 'roman';"
           },
           {
-            "line": 719,
+            "line": 718,
             "text": "return 'russian_word';"
           },
           {
-            "line": 723,
+            "line": 722,
             "text": "return 'english_word';"
           },
           {
-            "line": 726,
+            "line": 725,
             "text": "return 'unknown';"
           },
           {
-            "line": 731,
+            "line": 730,
             "text": "if (!text) return false;"
           },
           {
-            "line": 733,
+            "line": 732,
             "text": "return trimmed.charAt(0) == '-' || trimmed.charAt(0) == '—';"
           },
           {
-            "line": 741,
+            "line": 740,
             "text": "if (words.length < 1) return null;"
           },
           {
-            "line": 744,
+            "line": 743,
             "text": "return null;"
           },
           {
-            "line": 777,
+            "line": 776,
             "text": "return {"
           },
           {
-            "line": 811,
+            "line": 810,
             "text": "return {"
           },
           {
-            "line": 843,
+            "line": 842,
             "text": "return {"
           },
           {
-            "line": 909,
+            "line": 908,
             "text": "return {"
           },
           {
-            "line": 943,
+            "line": 942,
             "text": "return {"
           },
           {
-            "line": 956,
+            "line": 955,
             "text": "return null;"
           },
           {
-            "line": 961,
+            "line": 960,
             "text": "if (!originalForm) return number.toString();"
           },
           {
-            "line": 964,
+            "line": 963,
             "text": "return number.toString();"
           },
           {
-            "line": 970,
+            "line": 969,
             "text": "return roman;"
           },
           {
-            "line": 973,
+            "line": 972,
             "text": "return generateRomanNumber(number);"
           },
           {
-            "line": 991,
+            "line": 990,
             "text": "return candidates[c].charAt(0).toUpperCase() + candidates[c].slice(1);"
           },
           {
-            "line": 993,
+            "line": 992,
             "text": "return candidates[c];"
           },
           {
-            "line": 1013,
+            "line": 1012,
             "text": "return cand.charAt(0).toUpperCase() + cand.slice(1);"
           },
           {
-            "line": 1015,
+            "line": 1014,
             "text": "return cand;"
           },
           {
-            "line": 1025,
+            "line": 1024,
             "text": "return cand3.charAt(0).toUpperCase() + cand3.slice(1);"
           },
           {
-            "line": 1027,
+            "line": 1026,
             "text": "return cand3;"
           },
           {
-            "line": 1039,
+            "line": 1038,
             "text": "return cand4.charAt(0).toUpperCase() + cand4.slice(1);"
           },
           {
-            "line": 1041,
+            "line": 1040,
             "text": "return cand4;"
           },
           {
-            "line": 1049,
+            "line": 1048,
             "text": "return candidates[0].charAt(0).toUpperCase() + candidates[0].slice(1);"
           },
           {
-            "line": 1051,
+            "line": 1050,
             "text": "return candidates[0];"
           },
           {
-            "line": 1066,
+            "line": 1065,
             "text": "return engCandidates[ec].charAt(0).toUpperCase() + engCandidates[ec].slice(1);"
           },
           {
-            "line": 1068,
+            "line": 1067,
             "text": "return engCandidates[ec];"
           },
           {
-            "line": 1074,
+            "line": 1073,
             "text": "return engCandidates[0].charAt(0).toUpperCase() + engCandidates[0].slice(1);"
           },
           {
-            "line": 1076,
+            "line": 1075,
             "text": "return engCandidates[0];"
           },
           {
-            "line": 1080,
+            "line": 1079,
             "text": "return number.toString();"
           },
           {
-            "line": 1085,
+            "line": 1084,
             "text": "if (num < 1 || num > 3999) return num.toString();"
           },
           {
-            "line": 1104,
+            "line": 1103,
             "text": "return roman;"
           },
           {
-            "line": 1119,
+            "line": 1118,
             "text": "return arr;"
           },
           {
-            "line": 1124,
+            "line": 1123,
             "text": "if (count % 10 == 1 && count % 100 != 11) return \"заголовок\";"
           },
           {
-            "line": 1125,
+            "line": 1124,
             "text": "if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return \"заголовка\";"
           },
           {
-            "line": 1126,
+            "line": 1125,
             "text": "return \"заголовков\";"
           },
           {
-            "line": 1131,
+            "line": 1130,
             "text": "if (!marker) return 99;"
           },
           {
-            "line": 1133,
+            "line": 1132,
             "text": "if (markerHierarchy[lower] !== undefined) return markerHierarchy[lower];"
           },
           {
-            "line": 1134,
+            "line": 1133,
             "text": "return 99;"
           },
           {
-            "line": 1139,
+            "line": 1138,
             "text": "if (!group || group.length === 0) return false;"
           },
           {
-            "line": 1140,
+            "line": 1139,
             "text": "if (!allMarkersInDoc || allMarkersInDoc.length === 0) return false;"
           },
           {
-            "line": 1144,
+            "line": 1143,
             "text": "if (!groupMarker) return false;"
           },
           {
-            "line": 1148,
+            "line": 1147,
             "text": "if (getMarkerLevel(allMarkersInDoc[i]) < groupLevel) return true;"
           },
           {
-            "line": 1150,
+            "line": 1149,
             "text": "return false;"
           },
           {
-            "line": 1155,
+            "line": 1154,
             "text": "if (!allTitlesSorted || idx1 < 0 || idx2 <= idx1 || !currentFormat) return false;"
           },
           {
-            "line": 1158,
+            "line": 1157,
             "text": "if (t && t.analysis && t.analysis.numeralFormat && t.analysis.numeralFormat != currentFormat) return true;"
           },
           {
-            "line": 1160,
+            "line": 1159,
             "text": "return false;"
           },
           {
-            "line": 1168,
+            "line": 1167,
             "text": "if (group.length === 0) return {errors: [], corrections: []};"
           },
           {
-            "line": 1169,
+            "line": 1168,
             "text": "if (!group[0] || !group[0].analysis) return {errors: [], corrections: []};"
           },
           {
-            "line": 1234,
+            "line": 1233,
             "text": "return {errors: sequenceErrors, corrections: sequenceCorrections};"
           },
           {
-            "line": 1239,
+            "line": 1238,
             "text": "if (!titles || titles.length === 0) return null;"
           },
           {
-            "line": 1269,
+            "line": 1268,
             "text": "return dominantPattern;"
           },
           {
-            "line": 1275,
+            "line": 1274,
             "text": "if (!dominantPattern) return lostTitles;"
           },
           {
-            "line": 1330,
+            "line": 1329,
             "text": "return lostTitles;"
           },
           {
-            "line": 1351,
+            "line": 1350,
             "text": "return context;"
           },
           {
-            "line": 1356,
+            "line": 1355,
             "text": "if (lostTitles.length === 0) return \"\";"
           },
           {
-            "line": 1372,
+            "line": 1371,
             "text": "return report;"
           },
           {
-            "line": 1379,
+            "line": 1378,
             "text": "if (!pElement || !analysis || !analysis.words) return false;"
           },
           {
-            "line": 1423,
+            "line": 1422,
             "text": "return true;"
           },
           {
-            "line": 1429,
+            "line": 1428,
             "text": "if (!currentPattern) return foundInParagraphs;"
           },
           {
-            "line": 1487,
+            "line": 1486,
             "text": "return foundInParagraphs;"
           },
           {
-            "line": 1625,
+            "line": 1624,
             "text": "return;"
           },
           {
-            "line": 1632,
+            "line": 1631,
             "text": "return;"
           },
           {
-            "line": 1678,
+            "line": 1677,
             "text": "return;"
           }
         ]
@@ -144265,25 +144464,25 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 122,
+              "line": 121,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 122,
+              "line": 121,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             },
             {
-              "line": 1624,
+              "line": 1623,
               "text": "if (showStatistics == 1) MsgBox(message, \"FBE скрипт\");"
             },
             {
-              "line": 1677,
+              "line": 1676,
               "text": "if (showStatistics == 1) MsgBox(scriptName + \"\\nver. \" + scriptVersion + \"\\n\\nИсправление отменено пользователем.\", \"FBE скрипт\");"
             },
             {
-              "line": 1701,
+              "line": 1700,
               "text": "if (showStatistics == 1) MsgBox(resultMessage, \"FBE скрипт\");"
             }
           ],
@@ -144294,17 +144493,17 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 125,
+              "line": 124,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 125,
+              "line": 124,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 1513,
+              "line": 1512,
               "text": "if (inNotesSection && !processNotesSection) {"
             }
           ],
@@ -144315,17 +144514,17 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 128,
+              "line": 127,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 128,
+              "line": 127,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 1522,
+              "line": 1521,
               "text": "if (inCommentsSection && !processCommentsSection) {"
             }
           ],
@@ -144336,25 +144535,25 @@
           "name": "searchLostTitles",
           "declarations": [
             {
-              "line": 131,
+              "line": 130,
               "text": "var searchLostTitles = 0; // 1 - искать, 0 - не искать"
             }
           ],
           "uses": [
             {
-              "line": 131,
+              "line": 130,
               "text": "var searchLostTitles = 0; // 1 - искать, 0 - не искать"
             },
             {
-              "line": 1606,
+              "line": 1605,
               "text": "if (stats.errorsFound > 0 && searchLostTitles == 1) {"
             },
             {
-              "line": 1628,
+              "line": 1627,
               "text": "if (lostTitles.length > 0 && searchLostTitles == 1) {"
             },
             {
-              "line": 1650,
+              "line": 1649,
               "text": "if (allTitles.length > 0 && errors.length > 0 && searchLostTitles == 1) {"
             }
           ],
@@ -144364,25 +144563,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 83,
+          "line": 82,
           "text": "// version 3.4"
         },
         {
-          "line": 108,
+          "line": 107,
           "text": "// version 3.4, 01.08.2026"
         },
         {
-          "line": 113,
+          "line": 112,
           "text": "// Название и версия скрипта"
         },
         {
-          "line": 115,
+          "line": 114,
           "text": "var scriptVersion = \"3.4\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия.",
+          "text": "Подтверждённое исправление заменяет весь HTML абзаца обычным текстом; прямые ссылки-сноски восстанавливаются неполно, а остальное оформление и другие вложенные элементы теряются.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Алгоритм группировки и перезапуска номеров может ошибочно принять авторскую нумерацию за ошибку. Проверяйте предлагаемые номера перед изменением книги.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке во время исправления группа отмены может остаться открытой; полнота отката не проверена.",
           "verification": "requires_review"
         }
       ],
@@ -144403,62 +144610,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 1683,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" - исправление нумерации\");"
-            },
-            {
-              "line": 1690,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/616_Диагностика нумерации заголовков.js",
