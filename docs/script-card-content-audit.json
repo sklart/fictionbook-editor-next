@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 357,
-    "generic_usage": 882,
-    "incorrect_undo": 130,
+    "requires_review": 356,
+    "generic_usage": 877,
+    "incorrect_undo": 129,
     "inaccurate_description": 50
   },
   "reviewedChanges": [
@@ -51727,18 +51727,189 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/605_Разбить однострочные заголовки на 2 абзаца.js",
+      "codeSha256": "495358f121cc50390913f348b1dc153e94cd832aed7aa830ab46e2972d1e95ba",
+      "evidence": "Строки 1–32 задают назначение, авторство и два параметра; 92–152 находят заголовки и закрывают первую группу отмены; 211–275 показывают варианты и обрабатывают подходящие заголовки; 318–545 распознают шаблоны; 765–858 разбивают и целиком заменяют содержимое title; 865–897 обрабатывают точку. Файловых, сетевых вызовов и запуска внешних программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматического разделения однострочных заголовков на 2 строки в fb2 документах.",
+          "after": "Разделяет подходящие заголовки с обозначением главы или части и названием на два абзаца.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматического разделения однострочных заголовков на 2 строки в fb2 документах. Скрипт обрабатывает заголовки форматов: \"Глава 1 Название\", \"Часть первая Текст\". Позволяет настраивать удаление/сохранение точек в конце 1 абзаца заголовков после разбивки.",
+          "after": "Ищет DIV.title вне разделов notes и comments и анализирует первый абзац каждого заголовка. Подходят варианты с маркером раздела и числительным («Глава 1 Название»), с начальным арабским или римским числом и с точкой после числа. Для каждого подходящего заголовка создаёт два абзаца: обозначение раздела и остальной текст. Исходное оформление узлов копируется, но разделение внутри форматированного элемента может не сработать корректно. По исходной настройке удаляет точку с конца первого нового абзаца; второй параметр включает тихий режим без подтверждения и итогового окна.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV.title документа, кроме находящихся внутри body с fbname=notes или comments. Анализируется только первый вложенный P заголовка; при обработке заменяется всё содержимое DIV.title, включая остальные его абзацы, если они были.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "При обычной настройке проверьте предварительное число подходящих заголовков и подтвердите обработку. Тихий режим запускает обработку без подтверждения и итоговой статистики.",
+            "При необходимости измените в исходном JS showStatistics и keepDots. После выполнения проверьте многоабзацные заголовки, форматирование около места разбивки и точку в первом абзаце."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Если исходный заголовок содержит более одного абзаца, при обработке остальные абзацы удаляются. Проверьте такие заголовки до запуска.",
+            "Разбивка внутри форматированного элемента может дать неправильное распределение текста или оставить заголовок неразбитым; проверьте оформление на границе двух новых абзацев.",
+            "При ошибке анализа или обработки группа отмены может остаться открытой; полнота отката не проверена."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "При штатной работе анализ и обработка завершают свои группы отмены; до начала обработки пользователь может отказаться без изменений. При ошибке между открытием и завершением любой группы закрытие не гарантировано, а полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "keepDots",
+              "value": 0,
+              "expression": "0",
+              "description": "По умолчанию - 0 - удаляем точку",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "inNotesSection",
+              "value": false,
+              "expression": "false",
+              "description": "Проверяем, находится ли div в разделе примечаний",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Окна со статистикой и подтверждением: 1 — показывать; 0 — тихая обработка без подтверждения.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "keepDots",
+              "value": 0,
+              "expression": "0",
+              "description": "Сохранять точку в конце первого абзаца после разбивки: 0 — удалять; 1 — сохранять.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 132,
+          "issue": "Для DIV.title с несколькими P анализируется только первый P, а processTitle на строках 850–856 удаляет всё содержимое DIV.title. Остальные исходные абзацы заголовка безвозвратно исчезают из результата."
+        },
+        {
+          "line": 822,
+          "issue": "Если позиция разбиения попадает внутрь элемента оформления, его узел целиком копируется в первый абзац вместо разделения текста по позиции. Итог может быть неверным либо p2 окажется пустым и разбивка не произойдёт."
+        },
+        {
+          "line": 552,
+          "issue": "Пустое слово после удаления пунктуации считается числительным: проверка allDigits для пустой строки оставляет true на строке 564. Вариант вроде «Глава . Название» ошибочно допускается как заголовок с числом."
+        },
+        {
+          "line": 92,
+          "issue": "Группы отмены для анализа и обработки открываются без защиты finally; исключение до EndUndoUnit на строке 152 либо 275 оставит соответствующую группу открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 679,
-    "generic_usage": 367,
+    "inaccurate_description": 680,
+    "generic_usage": 368,
     "false_warning": 319,
-    "incorrect_setting": 197,
-    "incorrect_scope": 374,
-    "incorrect_undo": 366,
-    "uncertain_attribution": 59,
-    "generic_summary": 62,
-    "incorrect_dependency": 382,
+    "incorrect_setting": 198,
+    "incorrect_scope": 375,
+    "incorrect_undo": 367,
+    "uncertain_attribution": 60,
+    "generic_summary": 63,
+    "incorrect_dependency": 383,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -51752,20 +51923,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 5,
+    "missing_warning": 6,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 358,
-    "usageCorrected": 367,
-    "purposeClarified": 365,
-    "warningsClarified": 299,
-    "scopeClarified": 351,
+    "undoDescriptionsClarified": 359,
+    "usageCorrected": 368,
+    "purposeClarified": 366,
+    "warningsClarified": 300,
+    "scopeClarified": 352,
     "settingsClarified": 509,
-    "attributionClarified": 61,
-    "dependenciesVerified": 249,
+    "attributionClarified": 62,
+    "dependenciesVerified": 250,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -51773,7 +51944,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 2
+    "settingsCorrected": 3
   },
   "scripts": [
     {
@@ -142884,63 +143055,53 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Разбить однострочные заголовки на 2 абзаца",
-        "summary": "Скрипт предназначен для автоматического разделения однострочных заголовков на 2 строки в fb2 документах.",
-        "description": "Скрипт предназначен для автоматического разделения однострочных заголовков на 2 строки в fb2 документах. Скрипт обрабатывает заголовки форматов: \"Глава 1 Название\", \"Часть первая Текст\". Позволяет настраивать удаление/сохранение точек в конце 1 абзаца заголовков после разбивки.",
+        "summary": "Разделяет подходящие заголовки с обозначением главы или части и названием на два абзаца.",
+        "description": "Ищет DIV.title вне разделов notes и comments и анализирует первый абзац каждого заголовка. Подходят варианты с маркером раздела и числительным («Глава 1 Название»), с начальным арабским или римским числом и с точкой после числа. Для каждого подходящего заголовка создаёт два абзаца: обозначение раздела и остальной текст. Исходное оформление узлов копируется, но разделение внутри форматированного элемента может не сработать корректно. По исходной настройке удаляет точку с конца первого нового абзаца; второй параметр включает тихий режим без подтверждения и итогового окна.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "3.8",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV.title документа, кроме находящихся внутри body с fbname=notes или comments. Анализируется только первый вложенный P заголовка; при обработке заменяется всё содержимое DIV.title, включая остальные его абзацы, если они были.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "При обычной настройке проверьте предварительное число подходящих заголовков и подтвердите обработку. Тихий режим запускает обработку без подтверждения и итоговой статистики.",
+          "При необходимости измените в исходном JS showStatistics и keepDots. После выполнения проверьте многоабзацные заголовки, форматирование около места разбивки и точку в первом абзаце."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Если исходный заголовок содержит более одного абзаца, при обработке остальные абзацы удаляются. Проверьте такие заголовки до запуска.",
+          "Разбивка внутри форматированного элемента может дать неправильное распределение текста или оставить заголовок неразбитым; проверьте оформление на границе двух новых абзацев.",
+          "При ошибке анализа или обработки группа отмены может остаться открытой; полнота отката не проверена."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Окна со статистикой и подтверждением: 1 — показывать; 0 — тихая обработка без подтверждения.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "keepDots",
             "value": 0,
             "expression": "0",
-            "description": "По умолчанию - 0 - удаляем точку",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "inNotesSection",
-            "value": false,
-            "expression": "false",
-            "description": "Проверяем, находится ли div в разделе примечаний",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Сохранять точку в конце первого абзаца после разбивки: 0 — удалять; 1 — сохранять.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "При штатной работе анализ и обработка завершают свои группы отмены; до начала обработки пользователь может отказаться без изменений. При ошибке между открытием и завершением любой группы закрытие не гарантировано, а полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -142951,21 +143112,21 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 167,
+            "line": 157,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" - поиск\");"
           },
           {
-            "line": 337,
+            "line": 327,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" - обработка\");"
           }
         ],
         "undo_end": [
           {
-            "line": 227,
+            "line": 217,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 350,
+            "line": 340,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -142973,19 +143134,19 @@
         "selection": [],
         "write": [
           {
-            "line": 873,
+            "line": 863,
             "text": "var p1 = document.createElement('p');"
           },
           {
-            "line": 874,
+            "line": 864,
             "text": "var p2 = document.createElement('p');"
           },
           {
-            "line": 879,
+            "line": 869,
             "text": "p1.appendChild(childNodes[i].cloneNode(true));"
           },
           {
-            "line": 889,
+            "line": 879,
             "text": "p1.appendChild(document.createTextNode(part1));"
           }
         ],
@@ -142996,39 +143157,43 @@
         "file": [],
         "return": [
           {
-            "line": 304,
+            "line": 294,
             "text": "return;"
           },
           {
-            "line": 324,
+            "line": 314,
             "text": "return;"
           },
           {
-            "line": 330,
+            "line": 320,
             "text": "return;"
           },
           {
-            "line": 406,
+            "line": 396,
             "text": "if (!pElement) return result;"
           },
           {
-            "line": 416,
+            "line": 406,
             "text": "return result;"
           },
           {
-            "line": 429,
+            "line": 419,
             "text": "return result;"
           },
           {
-            "line": 453,
+            "line": 443,
             "text": "return result;"
           },
           {
-            "line": 486,
+            "line": 476,
             "text": "return result;"
           },
           {
-            "line": 491,
+            "line": 481,
+            "text": "return result;"
+          },
+          {
+            "line": 485,
             "text": "return result;"
           },
           {
@@ -143036,175 +143201,171 @@
             "text": "return result;"
           },
           {
-            "line": 505,
+            "line": 507,
             "text": "return result;"
           },
           {
-            "line": 517,
+            "line": 513,
             "text": "return result;"
           },
           {
-            "line": 523,
+            "line": 537,
             "text": "return result;"
           },
           {
-            "line": 547,
+            "line": 558,
             "text": "return result;"
           },
           {
-            "line": 568,
+            "line": 563,
             "text": "return result;"
           },
           {
-            "line": 573,
+            "line": 572,
             "text": "return result;"
           },
           {
-            "line": 582,
+            "line": 577,
             "text": "return result;"
           },
           {
-            "line": 587,
+            "line": 592,
             "text": "return result;"
           },
           {
-            "line": 602,
+            "line": 601,
             "text": "return result;"
           },
           {
-            "line": 611,
+            "line": 606,
             "text": "return result;"
           },
           {
-            "line": 616,
+            "line": 610,
             "text": "return result;"
           },
           {
-            "line": 620,
-            "text": "return result;"
-          },
-          {
-            "line": 639,
+            "line": 629,
             "text": "if (allDigits) return true;"
           },
           {
-            "line": 657,
+            "line": 647,
             "text": "if (isRoman) return true;"
           },
           {
-            "line": 662,
+            "line": 652,
             "text": "return true;"
           },
           {
-            "line": 669,
+            "line": 659,
             "text": "return true;"
           },
           {
-            "line": 673,
+            "line": 663,
             "text": "return false;"
           },
           {
-            "line": 677,
+            "line": 667,
             "text": "if (words.length < 2) return text.length;"
           },
           {
-            "line": 707,
+            "line": 697,
             "text": "return pos;"
           },
           {
-            "line": 711,
+            "line": 701,
             "text": "if (words.length < 1) return text.length;"
           },
           {
-            "line": 724,
+            "line": 714,
             "text": "return pos;"
           },
           {
-            "line": 732,
+            "line": 722,
             "text": "if (!element) return \"\";"
           },
           {
-            "line": 746,
+            "line": 736,
             "text": "return text;"
           },
           {
-            "line": 750,
+            "line": 740,
             "text": "if (!text) return \"\";"
           },
           {
-            "line": 783,
+            "line": 773,
             "text": "return result;"
           },
           {
-            "line": 803,
+            "line": 793,
             "text": "return words;"
           },
           {
-            "line": 807,
+            "line": 797,
             "text": "if (!word) return false;"
           },
           {
-            "line": 818,
+            "line": 808,
             "text": "if (allDigits) return true;"
           },
           {
-            "line": 830,
+            "line": 820,
             "text": "if (!found) return false;"
           },
           {
-            "line": 833,
+            "line": 823,
             "text": "return word.length > 0;"
           },
           {
-            "line": 841,
+            "line": 831,
             "text": "if (!titleInfo.isSuitable) return false;"
           },
           {
-            "line": 847,
+            "line": 837,
             "text": "if (splitPos <= 0 || splitPos >= text.length) return false;"
           },
           {
-            "line": 871,
+            "line": 861,
             "text": "if (targetNode == -1) return false;"
           },
           {
-            "line": 917,
+            "line": 907,
             "text": "return false;"
           },
           {
-            "line": 933,
+            "line": 923,
             "text": "return true;"
           },
           {
-            "line": 941,
+            "line": 931,
             "text": "if (!paragraph || paragraph.childNodes.length == 0) return;"
           },
           {
-            "line": 980,
+            "line": 970,
             "text": "if (!node) return \"\";"
           },
           {
-            "line": 981,
+            "line": 971,
             "text": "if (node.nodeType == 3) return node.nodeValue || \"\";"
           },
           {
-            "line": 987,
+            "line": 977,
             "text": "return text;"
           },
           {
-            "line": 989,
+            "line": 979,
             "text": "return \"\";"
           },
           {
-            "line": 993,
+            "line": 983,
             "text": "if (!node) return;"
           },
           {
-            "line": 1036,
+            "line": 1026,
             "text": "if (!p || p.childNodes.length == 0) return;"
           },
           {
-            "line": 1078,
+            "line": 1068,
             "text": "if (!node || node.nodeType != 1) return;"
           }
         ]
@@ -143216,21 +143377,21 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 103,
+              "line": 93,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 103,
+              "line": 93,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             },
             {
-              "line": 287,
+              "line": 277,
               "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 356,
+              "line": 346,
               "text": "if (showStatistics == 1) {"
             }
           ],
@@ -143241,51 +143402,26 @@
           "name": "keepDots",
           "declarations": [
             {
-              "line": 107,
+              "line": 97,
               "text": "var keepDots = 0; // По умолчанию - 0 - удаляем точку"
             }
           ],
           "uses": [
             {
-              "line": 107,
+              "line": 97,
               "text": "var keepDots = 0; // По умолчанию - 0 - удаляем точку"
             },
             {
-              "line": 342,
+              "line": 332,
               "text": "if (processTitle(title.div, title.pElement, title.info, nbspEntity, keepDots)) {"
             },
             {
-              "line": 840,
+              "line": 830,
               "text": "function processTitle(div, pElement, titleInfo, nbspEntity, keepDots) {"
             },
             {
-              "line": 921,
+              "line": 911,
               "text": "if (keepDots == 0) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 2,
-          "name": "inNotesSection",
-          "declarations": [
-            {
-              "line": 175,
-              "text": "var inNotesSection = false;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 175,
-              "text": "var inNotesSection = false;"
-            },
-            {
-              "line": 181,
-              "text": "inNotesSection = true;"
-            },
-            {
-              "line": 188,
-              "text": "if (inNotesSection) {"
             }
           ],
           "classification": "requires_review"
@@ -143294,25 +143430,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 77,
+          "line": 67,
           "text": "// version 3.8"
         },
         {
-          "line": 90,
+          "line": 80,
           "text": "// version 3.8, 21.12.2025"
         },
         {
-          "line": 94,
+          "line": 84,
           "text": "// Название и версия скрипта"
         },
         {
-          "line": 96,
+          "line": 86,
           "text": "var scriptVersion = \"3.8\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Если исходный заголовок содержит более одного абзаца, при обработке остальные абзацы удаляются. Проверьте такие заголовки до запуска.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Разбивка внутри форматированного элемента может дать неправильное распределение текста или оставить заголовок неразбитым; проверьте оформление на границе двух новых абзацев.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке анализа или обработки группа отмены может остаться открытой; полнота отката не проверена.",
           "verification": "requires_review"
         }
       ],
@@ -143335,114 +143479,34 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 167,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" - поиск\");"
-            },
-            {
-              "line": 337,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" - обработка\");"
-            },
-            {
-              "line": 227,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 350,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "При штатной работе анализ и обработка завершают свои группы отмены; до начала обработки пользователь может отказаться без изменений. При ошибке между открытием и завершением любой группы закрытие не гарантировано, а полнота отката не проверена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 167,
+              "line": 157,
               "text": "window.external.BeginUndoUnit(document, scriptName + \" - поиск\");"
             },
             {
-              "line": 304,
+              "line": 294,
               "text": "return;"
             },
             {
-              "line": 324,
+              "line": 314,
               "text": "return;"
             },
             {
-              "line": 330,
+              "line": 320,
               "text": "return;"
             },
             {
-              "line": 350,
+              "line": 340,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
