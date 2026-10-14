@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **157**.
+Карточек без автоматических замечаний: **159**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **323**. Исполняемый код не изменён.
+Изменено карточек: **325**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 287
-- `generic_usage`: 268
-- `inaccurate_description`: 542
+- `false_warning`: 289
+- `generic_usage`: 270
+- `inaccurate_description`: 546
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 270
+- `incorrect_dependency`: 274
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 265
+- `incorrect_scope`: 267
 - `incorrect_selection`: 17
 - `incorrect_setting`: 127
-- `incorrect_undo`: 267
+- `incorrect_undo`: 269
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 150
+- `dependenciesVerified`: 152
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 266
-- `scopeClarified`: 252
+- `purposeClarified`: 268
+- `scopeClarified`: 254
 - `serviceSettingsRemoved`: 143
 - `settingsClarified`: 440
-- `undoDescriptionsClarified`: 259
-- `usageCorrected`: 268
-- `warningsClarified`: 199
+- `undoDescriptionsClarified`: 261
+- `usageCorrected`: 270
+- `warningsClarified`: 201
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **163**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **164**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -329,13 +329,14 @@
 - `06_Чистка/12_Удалить возвратные ссылки, созданные FBD.js:179` — DelIdColl заполняется, но не используется при удалении ID; удаляются все подходящие ID абзацев без обычных локальных ссылок.
 - `06_Чистка/12_Удалить возвратные ссылки, созданные FBD.js:122` — При CheckSimpleLinks=false массив NotNotesA не создаётся, но далее используется без проверки; вариант настройки приводит к ошибке.
 - `06_Чистка/55_Удалить ссылки 'bookmark', созданные FBD.js:119` — Проверка не различает bookmark и обычные ссылки: любой подходящий первый A в абзаце может быть удалён.
+- `06_Чистка/19_Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв)....js:212` — В coll не передан nbspChar, хотя общий HTML-диалог использует его при нормализации ручной замены.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1295
-- `inaccurate_description`: 96
+- `generic_usage`: 1289
+- `inaccurate_description`: 94
 - `incorrect_undo`: 199
-- `requires_review`: 431
+- `requires_review`: 429
 
 ## Границы проверки
 

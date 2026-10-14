@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 431,
-    "generic_usage": 1295,
+    "requires_review": 429,
+    "generic_usage": 1289,
     "incorrect_undo": 199,
-    "inaccurate_description": 96
+    "inaccurate_description": 94
   },
   "reviewedChanges": [
     {
@@ -35981,17 +35981,265 @@
         "dependenciesVerified": 1,
         "settingsClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/19_Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв)....js",
+      "codeSha256": "bd083ee3417f0d55ec22788075c7186deee78a3cf65d117b269d7bab6447b759",
+      "evidence": "win1252_search начинает с конца выделения, идёт по P до конца fbw_body и ищет отдельный символ из списка кириллических двойников внутри смешанного латинского слова; возвращает длину 1. Run открывает общий HTML-диалог с тремя фреймами и CSS. Фрейм 3 строит предлагаемую замену по таблице соответствий, поддерживает ручной вариант и массовую обработку; каждую запись окружает BeginUndoUnit/EndUndoUnit. Run не передаёт coll['nbspChar'], хотя фрейм 3 использует этот параметр при ручной замене. DTD URL в HTML не является исполняемым сетевым запросом.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв).",
+          "after": "Находит подозрительные кириллические буквы внутри слов с латиницей и предлагает исправление.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Интерактивно ищет символы Windows-1252, ошибочно интерпретированные как Windows-1251, и позволяет заменять найденные фрагменты через HTML-инструмент. Это исправление текста, а не смена XML encoding всего файла.",
+          "after": "От конца выделения или курсора ищет в абзацах отдельные буквы, похожие на результат неверного прочтения Windows-1252 как Windows-1251. Диалог показывает исходный и предлагаемый символ, позволяет заменить его, ввести свой текст, пропустить или заменить все дальнейшие находки по таблице соответствий. Кодировка всего файла не меняется.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы от конца текущего выделения или позиции курсора до конца fbw_body; поиск одной подозрительной буквы в смешанном слове, выделение не обязательно.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор или конец выделения перед областью поиска и запустите скрипт.",
+            "В диалоге сравнивайте исходный и предлагаемый текст; замените находку, введите свой вариант либо пропустите её.",
+            "Массовую замену от текущей позиции запускайте только после проверки характерных находок; затем просмотрите результат."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию."
+          ],
+          "after": [
+            "Поиск строится на соседстве латиницы и отдельных кириллических символов; корректные смешанные слова тоже могут попасть в результаты.",
+            "Команда массовой замены изменяет все дальнейшие находки без отдельного подтверждения каждой.",
+            "При ручном вводе неразрывного пробела диалог не получает нужный символ от этого варианта скрипта; такой ввод требует отдельной проверки."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html",
+              "sha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html",
+              "sha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
+              "optional": false
+            },
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 1.html",
+              "sha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+              "optional": false
+            },
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 2.html",
+              "sha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+              "optional": false
+            },
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 3.html",
+              "sha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+              "optional": false
+            },
+            {
+              "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - main.css",
+              "sha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+              "optional": false
+            },
+            {
+              "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - add.css",
+              "sha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "may_be_delegated",
+            "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          },
+          "after": {
+            "status": "may_be_delegated",
+            "description": "Диалог открывает и закрывает группу отмены для каждой отдельной замены. Полный откат массовой серии не проверен."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 212,
+          "issue": "В coll не передан nbspChar, хотя общий HTML-диалог использует его при нормализации ручной замены."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
+    },
+    {
+      "path": "06_Чистка/20_Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск слов)....js",
+      "codeSha256": "f89d4de9a6bc40c3a9c8d7c9d030ebc5d55afdf22366d5cb52360b5bbaf82340",
+      "evidence": "win1252_search задаёт регулярное выражение для целых смешанных последовательностей кириллических двойников и латиницы, начиная с конца выделения и обходя P до конца fbw_body. Run открывает тот же HTML-диалог и передаёт nbspChar. Фрейм 3 предлагает перекодированное слово, ручную замену, пропуск и массовую замену от текущей позиции; каждую запись окружает BeginUndoUnit/EndUndoUnit. Внешних приложений и исполняемых сетевых запросов нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск слов).",
+          "after": "Находит смешанные слова с подозрительными символами неверной кодировки и предлагает исправление.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Интерактивно ищет символы Windows-1252, ошибочно интерпретированные как Windows-1251, и позволяет заменять найденные фрагменты через HTML-инструмент. Это исправление текста, а не смена XML encoding всего файла.",
+          "after": "От конца выделения или курсора ищет в абзацах слова, где рядом стоят латинские буквы и кириллические символы, похожие на результат неверного прочтения Windows-1252 как Windows-1251. Диалог показывает предлагаемый вариант слова, позволяет заменить его, ввести свой текст, пропустить или заменить все дальнейшие находки. Кодировка всего файла не меняется.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы от конца текущего выделения или позиции курсора до конца fbw_body; проверяется смешанное слово целиком, выделение не обязательно.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор или конец выделения перед областью поиска и запустите скрипт.",
+            "В диалоге сравнивайте исходный и предлагаемый текст; замените находку, введите свой вариант либо пропустите её.",
+            "Массовую замену от текущей позиции запускайте только после проверки характерных находок; затем просмотрите результат."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию."
+          ],
+          "after": [
+            "Шаблон смешанного слова не доказывает ошибку кодировки: заимствования и сознательное смешение алфавитов требуют проверки.",
+            "Команда массовой замены изменяет все дальнейшие находки без отдельного подтверждения каждой."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html",
+              "sha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html",
+              "sha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
+              "optional": false
+            },
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 1.html",
+              "sha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+              "optional": false
+            },
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 2.html",
+              "sha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+              "optional": false
+            },
+            {
+              "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 3.html",
+              "sha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+              "optional": false
+            },
+            {
+              "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - main.css",
+              "sha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+              "optional": false
+            },
+            {
+              "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - add.css",
+              "sha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "may_be_delegated",
+            "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          },
+          "after": {
+            "status": "may_be_delegated",
+            "description": "Диалог открывает и закрывает группу отмены для каждой отдельной замены. Полный откат массовой серии не проверен."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 542,
-    "generic_usage": 268,
-    "false_warning": 287,
+    "inaccurate_description": 546,
+    "generic_usage": 270,
+    "false_warning": 289,
     "incorrect_setting": 127,
-    "incorrect_scope": 265,
-    "incorrect_undo": 267,
+    "incorrect_scope": 267,
+    "incorrect_undo": 269,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 270,
+    "incorrect_dependency": 274,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -36004,16 +36252,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 259,
-    "usageCorrected": 268,
-    "purposeClarified": 266,
-    "warningsClarified": 199,
-    "scopeClarified": 252,
+    "undoDescriptionsClarified": 261,
+    "usageCorrected": 270,
+    "purposeClarified": 268,
+    "warningsClarified": 201,
+    "scopeClarified": 254,
     "settingsClarified": 440,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 150,
+    "dependenciesVerified": 152,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -95057,8 +95305,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв)",
-        "summary": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв).",
-        "description": "Интерактивно ищет символы Windows-1252, ошибочно интерпретированные как Windows-1251, и позволяет заменять найденные фрагменты через HTML-инструмент. Это исправление текста, а не смена XML encoding всего файла.",
+        "summary": "Находит подозрительные кириллические буквы внутри слов с латиницей и предлагает исправление.",
+        "description": "От конца выделения или курсора ищет в абзацах отдельные буквы, похожие на результат неверного прочтения Windows-1252 как Windows-1251. Диалог показывает исходный и предлагаемый символ, позволяет заменить его, ввести свой текст, пропустить или заменить все дальнейшие находки по таблице соответствий. Кодировка всего файла не меняется.",
         "authors": [
           {
             "name": "Sclex",
@@ -95066,29 +95314,55 @@
           }
         ],
         "version": "Не указана",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы от конца текущего выделения или позиции курсора до конца fbw_body; поиск одной подозрительной буквы в смешанном слове, выделение не обязательно.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор или конец выделения перед областью поиска и запустите скрипт.",
+          "В диалоге сравнивайте исходный и предлагаемый текст; замените находку, введите свой вариант либо пропустите её.",
+          "Массовую замену от текущей позиции запускайте только после проверки характерных находок; затем просмотрите результат."
         ],
         "warnings": [
-          "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию."
+          "Поиск строится на соседстве латиницы и отдельных кириллических символов; корректные смешанные слова тоже могут попасть в результаты.",
+          "Команда массовой замены изменяет все дальнейшие находки без отдельного подтверждения каждой.",
+          "При ручном вводе неразрывного пробела диалог не получает нужный символ от этого варианта скрипта; такой ввод требует отдельной проверки."
         ],
         "settings": null,
         "dependencies": [
           {
             "path": "HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html",
             "sha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
-            "optional": true
+            "optional": false
+          },
+          {
+            "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 1.html",
+            "sha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+            "optional": false
+          },
+          {
+            "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 2.html",
+            "sha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+            "optional": false
+          },
+          {
+            "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 3.html",
+            "sha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+            "optional": false
+          },
+          {
+            "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - main.css",
+            "sha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+            "optional": false
+          },
+          {
+            "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - add.css",
+            "sha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+            "optional": false
           }
         ],
         "undo": {
           "status": "may_be_delegated",
-          "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          "description": "Диалог открывает и закрывает группу отмены для каждой отдельной замены. Полный откат массовой серии не проверен."
         },
         "examples": null,
         "tags": [
@@ -95100,31 +95374,31 @@
         "undo_end": [],
         "dialog": [
           {
-            "line": 212,
+            "line": 238,
             "text": "window.showModalDialog(\"HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html\",coll,"
           }
         ],
         "selection": [
           {
-            "line": 105,
+            "line": 131,
             "text": "sel=document.selection;"
           },
           {
-            "line": 106,
+            "line": 132,
             "text": "tr=sel.createRange();"
           },
           {
-            "line": 115,
+            "line": 141,
             "text": "tr2=document.body.createTextRange();"
           }
         ],
         "write": [
           {
-            "line": 122,
+            "line": 148,
             "text": "s_html=el.innerHTML;"
           },
           {
-            "line": 194,
+            "line": 220,
             "text": "s_html=el.innerHTML;"
           }
         ],
@@ -95135,23 +95409,23 @@
         "file": [],
         "return": [
           {
-            "line": 70,
+            "line": 96,
             "text": "return false;"
           },
           {
-            "line": 75,
+            "line": 101,
             "text": "if (isEngChar) return true;"
           },
           {
-            "line": 76,
+            "line": 102,
             "text": "if (ch.search(re0)<0) return false;"
           },
           {
-            "line": 174,
+            "line": 200,
             "text": "return {\"p\":el, \"offset\":g, \"length\":1};"
           },
           {
-            "line": 198,
+            "line": 224,
             "text": "return null;"
           }
         ]
@@ -95166,29 +95440,77 @@
           "actualSha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
           "digestMatches": true,
           "contentReviewed": false
+        },
+        {
+          "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 1.html",
+          "exists": true,
+          "declaredSha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+          "actualSha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 2.html",
+          "exists": true,
+          "declaredSha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+          "actualSha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 3.html",
+          "exists": true,
+          "declaredSha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+          "actualSha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - main.css",
+          "exists": true,
+          "declaredSha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+          "actualSha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - add.css",
+          "exists": true,
+          "declaredSha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+          "actualSha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+          "digestMatches": true,
+          "contentReviewed": false
         }
       ],
       "authorshipEvidence": [
         {
-          "line": 50,
+          "line": 76,
           "text": "// Автор Sclex"
         },
         {
-          "line": 202,
+          "line": 228,
           "text": "var elementBrowser_versionNum=\"1.5\";"
         },
         {
-          "line": 210,
+          "line": 236,
           "text": "coll[\"versionNum\"]=elementBrowser_versionNum;"
         },
         {
-          "line": 210,
+          "line": 236,
           "text": "coll[\"versionNum\"]=elementBrowser_versionNum;"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
+          "text": "Поиск строится на соседстве латиницы и отдельных кириллических символов; корректные смешанные слова тоже могут попасть в результаты.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Команда массовой замены изменяет все дальнейшие находки без отдельного подтверждения каждой.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ручном вводе неразрывного пробела диалог не получает нужный символ от этого варианта скрипта; такой ввод требует отдельной проверки.",
           "verification": "requires_review"
         }
       ],
@@ -95209,53 +95531,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск отдельных букв).",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/20_Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск слов)....js",
@@ -95267,8 +95543,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск слов)",
-        "summary": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск слов).",
-        "description": "Интерактивно ищет символы Windows-1252, ошибочно интерпретированные как Windows-1251, и позволяет заменять найденные фрагменты через HTML-инструмент. Это исправление текста, а не смена XML encoding всего файла.",
+        "summary": "Находит смешанные слова с подозрительными символами неверной кодировки и предлагает исправление.",
+        "description": "От конца выделения или курсора ищет в абзацах слова, где рядом стоят латинские буквы и кириллические символы, похожие на результат неверного прочтения Windows-1252 как Windows-1251. Диалог показывает предлагаемый вариант слова, позволяет заменить его, ввести свой текст, пропустить или заменить все дальнейшие находки. Кодировка всего файла не меняется.",
         "authors": [
           {
             "name": "Sclex",
@@ -95276,29 +95552,54 @@
           }
         ],
         "version": "Не указана",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы от конца текущего выделения или позиции курсора до конца fbw_body; проверяется смешанное слово целиком, выделение не обязательно.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор или конец выделения перед областью поиска и запустите скрипт.",
+          "В диалоге сравнивайте исходный и предлагаемый текст; замените находку, введите свой вариант либо пропустите её.",
+          "Массовую замену от текущей позиции запускайте только после проверки характерных находок; затем просмотрите результат."
         ],
         "warnings": [
-          "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию."
+          "Шаблон смешанного слова не доказывает ошибку кодировки: заимствования и сознательное смешение алфавитов требуют проверки.",
+          "Команда массовой замены изменяет все дальнейшие находки без отдельного подтверждения каждой."
         ],
         "settings": null,
         "dependencies": [
           {
             "path": "HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html",
             "sha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
-            "optional": true
+            "optional": false
+          },
+          {
+            "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 1.html",
+            "sha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+            "optional": false
+          },
+          {
+            "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 2.html",
+            "sha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+            "optional": false
+          },
+          {
+            "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 3.html",
+            "sha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+            "optional": false
+          },
+          {
+            "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - main.css",
+            "sha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+            "optional": false
+          },
+          {
+            "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - add.css",
+            "sha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+            "optional": false
           }
         ],
         "undo": {
           "status": "may_be_delegated",
-          "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          "description": "Диалог открывает и закрывает группу отмены для каждой отдельной замены. Полный откат массовой серии не проверен."
         },
         "examples": null,
         "tags": [
@@ -95310,76 +95611,76 @@
         "undo_end": [],
         "dialog": [
           {
-            "line": 415,
+            "line": 440,
             "text": "window.showModalDialog(\"HTML/Символы win-1252, истолкованные как win-1251 - набор фреймов.html\",coll,"
           }
         ],
         "selection": [
           {
-            "line": 232,
+            "line": 257,
             "text": "var sel=document.selection;"
           },
           {
-            "line": 233,
+            "line": 258,
             "text": "tr=sel.createRange();"
           },
           {
-            "line": 242,
+            "line": 267,
             "text": "tr2=document.body.createTextRange();"
           }
         ],
         "write": [
           {
-            "line": 246,
+            "line": 271,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(ampRE,ampRE_).replace(nbspRE,nb"
           },
           {
-            "line": 247,
+            "line": 272,
             "text": "s_html=el.innerHTML;"
           },
           {
-            "line": 357,
+            "line": 382,
             "text": "elInnerText=el.innerHTML.substr(0,founds[currFound][\"pos\"]).replace(removeTagsRE,\"\");"
           },
           {
-            "line": 360,
+            "line": 385,
             "text": "selectionLength=el.innerHTML.substr(founds[currFound][\"pos\"],founds[currFound][\"len\"]).replace(removeTagsRE,\"\").length;"
           }
         ],
         "external": [
           {
-            "line": 102,
+            "line": 127,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 113,
+            "line": 138,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 274,
+            "line": 299,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 284,
+            "line": 309,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
         "network": [],
         "process": [
           {
-            "line": 102,
+            "line": 127,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 113,
+            "line": 138,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 274,
+            "line": 299,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 284,
+            "line": 309,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
@@ -95387,55 +95688,55 @@
         "file": [],
         "return": [
           {
-            "line": 59,
+            "line": 84,
             "text": "return macroses[full_match.toLowerCase()];"
           },
           {
-            "line": 61,
+            "line": 86,
             "text": "return full_match;"
           },
           {
-            "line": 65,
+            "line": 90,
             "text": "if (brackets1.length%2==1) return nbspChar;"
           },
           {
-            "line": 66,
+            "line": 91,
             "text": "else return full_match;"
           },
           {
-            "line": 70,
+            "line": 95,
             "text": "return a[\"pos\"]-b[\"pos\"];"
           },
           {
-            "line": 75,
+            "line": 100,
             "text": "return full_match;"
           },
           {
-            "line": 82,
+            "line": 107,
             "text": "return tagFlag;"
           },
           {
-            "line": 86,
+            "line": 111,
             "text": "if (!lookBehinds[reNum]) return true;"
           },
           {
-            "line": 120,
+            "line": 145,
             "text": "if (!rslt_ || rslt_.index+rslt_[0].length!=s_len) return false;"
           },
           {
-            "line": 123,
+            "line": 148,
             "text": "if (rslt_ && rslt_.index+rslt_[0].length==s_len) return false;"
           },
           {
-            "line": 126,
+            "line": 151,
             "text": "return true;"
           },
           {
-            "line": 372,
+            "line": 397,
             "text": "return {\"p\":el, \"offset\":founds[currFound][\"pos\"], \"length\":founds[currFound][\"len\"]};"
           },
           {
-            "line": 398,
+            "line": 423,
             "text": "return null;"
           }
         ]
@@ -95450,29 +95751,73 @@
           "actualSha256": "d726c3d060c6ecc3f7d6428f7579712ff263724d543b2a3e81bb5c0d6310053c",
           "digestMatches": true,
           "contentReviewed": false
+        },
+        {
+          "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 1.html",
+          "exists": true,
+          "declaredSha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+          "actualSha256": "cab9de589795ef3686d3ac28ad3ae36f96584105451e35cd733716777f886ae0",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 2.html",
+          "exists": true,
+          "declaredSha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+          "actualSha256": "99c741ad5119df182d9e7955a5f5128652761d78ddfe9c8ffeadea0b2ffff41c",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/Символы win-1252, истолкованные как win-1251 - фрейм 3.html",
+          "exists": true,
+          "declaredSha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+          "actualSha256": "4657b9c8c2b0553fa6bbc7d206bc38af687d38d1f8975a98b1cc03e230a5cc53",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - main.css",
+          "exists": true,
+          "declaredSha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+          "actualSha256": "f8ecd4b349c747d2430bfd6fa9a076114e50e86efeeaa188116110948d7e5c87",
+          "digestMatches": true,
+          "contentReviewed": false
+        },
+        {
+          "path": "HTML/css/Символы win-1252, истолкованные как win-1251 - add.css",
+          "exists": true,
+          "declaredSha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+          "actualSha256": "8d8be4c20543e386e92e8ff385102c46acc9f79226cba8745e786c493599a872",
+          "digestMatches": true,
+          "contentReviewed": false
         }
       ],
       "authorshipEvidence": [
         {
-          "line": 50,
+          "line": 75,
           "text": "// Автор Sclex"
         },
         {
-          "line": 140,
+          "line": 165,
           "text": "if (el.className==\"text-author\") inTags[\"text-author\"]=true;"
         },
         {
-          "line": 140,
+          "line": 165,
           "text": "if (el.className==\"text-author\") inTags[\"text-author\"]=true;"
         },
         {
-          "line": 141,
+          "line": 166,
           "text": "else inTags[\"text-author\"]=false;"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
+          "text": "Шаблон смешанного слова не доказывает ошибку кодировки: заимствования и сознательное смешение алфавитов требуют проверки.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Команда массовой замены изменяет все дальнейшие находки без отдельного подтверждения каждой.",
           "verification": "requires_review"
         }
       ],
@@ -95493,53 +95838,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Символы win-1252, истолкованные как win-1251 ('cafй' и т.п.) (поиск слов).",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт предусматривает изменение книги. Перед массовой обработкой сохраните отдельную копию.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/21_Удалить теги style.js",
