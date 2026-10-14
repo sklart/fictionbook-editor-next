@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 389,
-    "generic_usage": 1100,
-    "incorrect_undo": 163,
+    "requires_review": 387,
+    "generic_usage": 1091,
+    "incorrect_undo": 161,
     "inaccurate_description": 72
   },
   "reviewedChanges": [
@@ -44055,17 +44055,493 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "09_Стихи/59_Сформатировать абзац(ы) стихом (расширенная версия).js",
+      "codeSha256": "268eaf1029b54cd152b322377a78706e6113aa708a26adb05fe27bb10eaff3cd",
+      "evidence": "Шапка 1-19 задаёт авторство и назначение; настройки 31-48. Строки 590-612 отвергают некоторые неподходящие выделения до группы; 614 открывает группу; 617-706 размечают границы и проверяют обычные P одной секции; 708-832 создают poem/stanza/text-author и при необходимости снимают оформление; 834-846 заменяют исходные P и удаляют маркеры; 894-904 обрабатывают ошибку и закрывают группу. Внешних файлов, программ и сетевых вызовов нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация по указанию в шапке"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для форматирования выделенных абзацев стихом в fb2 документах.",
+          "after": "Преобразует обычные абзацы одной секции в стих с разбиением на строфы.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для форматирования выделенных абзацев стихом в fb2 документах.",
+          "after": "При курсоре или выделении берёт полные обычные абзацы одной section, исключая уже оформленные блоки, историю и аннотацию. Пустые абзацы превращает в границы строф, из остальных создаёт poem со stanza. Последнюю строку при заданном условии переносит в text-author; по настройке снимает исходное курсивное и полужирное оформление. Оригинальные абзацы заменяет новыми.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Один обычный P под курсором либо последовательность обычных P внутри одной section между границами выделения. Соседние оформленные блоки не принимаются; непустое выделение не обязательно.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в обычный абзац либо выделите нужные абзацы одной секции, включая пустые строки там, где должны проходить границы строф.",
+            "Проверьте исходные параметры снятия оформления и определения строки автора, затем запустите команду.",
+            "После работы проверьте строфы, возможную строку автора, ссылки на исходные ID и форматирование."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Скрипт заменяет исходные P новыми и не переносит их атрибуты, кроме содержимого; ID абзацев могут потеряться и ссылки на них нарушиться.",
+            "Строка с датой, кавычками или похожим на ФИО текстом по умолчанию может стать text-author; проверьте её вручную.",
+            "Ошибка после частичной перестройки не подтверждает полный откат через редактор."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Проверки до перестройки выполняются внутри группы и штатные выходы её закрывают. Обработчик ошибки удаляет маркеры и затем закрывает группу; полный откат уже заменённых абзацев не проверен."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 0,
+              "expression": "0",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "reformatMode",
+              "value": 1,
+              "expression": "1",
+              "description": "По умолчанию: только полное форматирование",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "authorParagraphMode",
+              "value": 2,
+              "expression": "2",
+              "description": "По умолчанию: условие 1 ИЛИ 2",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 0,
+              "expression": "0",
+              "description": "Показывать итоговое окно: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "reformatMode",
+              "value": 1,
+              "expression": "1",
+              "description": "Снимать исходные курсив и жирность: 0 — нет, 1 — только при полном одинаковом оформлении всего стиха, 2 — у каждого абзаца.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "authorParagraphMode",
+              "value": 2,
+              "expression": "2",
+              "description": "Превращать последнюю строку в text-author: 0 — никогда, 1 — при дате, 2 — при дате, кавычках или ФИО, 3 — всегда.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "maxNameLength",
+              "value": 100,
+              "expression": "100",
+              "description": "Максимальная длина строки для проверки на ФИО при выборе соответствующего режима.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 779,
+          "issue": "Новые P создаются только с innerHTML исходных абзацев; ID, style и другие атрибуты не переносятся, а оригиналы удаляются на строке 839. Это может разорвать ссылки на абзацы."
+        },
+        {
+          "line": 149,
+          "issue": "Обход getNextNode поднимается по parentNode без проверки достижения корня; при невозможности найти конечный P может обратиться к null.nextSibling."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
+    },
+    {
+      "path": "09_Стихи/60_Драма (расширенная версия).js",
+      "codeSha256": "6b2fb09d471bc0981d1d3618b9823786135063dca794222acad9c3f731d4a3ac",
+      "evidence": "Шапка 1-25 указывает исходный скрипт Sclex и доработку TaKir/DeepSeek. Настройки 36-67; 108-153 задают исключения; 148-270 выделяют имя; 274-355 собирают абзацы выделения; 365-410 обходят всю книгу; 413-439 запрашивают длину и выбирают режим; 444-450 открывают и закрывают группу без finally. Внешних файлов, приложений и сетевых операций нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "modifier"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            },
+            {
+              "role": "unknown"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "original_author",
+              "contribution": "исходный скрипт разметки имён"
+            },
+            {
+              "name": "TaKir",
+              "role": "modifier",
+              "contribution": "доработка расширенной версии"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "доработка по указанию в шапке"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "authorshipStatus",
+          "before": "partial_attribution",
+          "after": "declared",
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для разметки тэгами жирности имён говорящих в пьесах в fb2 документах.",
+          "after": "Выделяет полужирным предполагаемые имена говорящих в пьесе, в выделении или во всём документе.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для разметки тэгами жирности имён говорящих в пьесах в fb2 документах.",
+          "after": "После запроса предельной длины имени и удаления разрядки обрабатывает абзацы непосредственно внутри section. При подходящем непустом выделении берёт пересекающиеся абзацы, иначе обходит fbw_body. Ищет имя от начала абзаца до выбранного разделителя: по умолчанию точки или открывающей скобки. По исходным настройкам пропускает историю, аннотацию, сноски, комментарии и строки диалога с начальным тире; показывает статистику.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы P непосредственно внутри section: при распознанном текстовом/управляющем выделении — пересекающиеся с ним, иначе весь fbw_body. Неподходящее выделение может вызвать переход к обработке всей книги.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "При необходимости выделите только нужные реплики; без распознанного выделения скрипт обходит всю книгу.",
+            "В запросах задайте максимальную длину имени до разделителя (исходно 10) и выберите удаление разрядки.",
+            "После выполнения проверьте первые фразы реплик и указанную в отчёте область обработки."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "При нераспознанном выделении команда переходит на всю книгу; перед запуском проверьте область обработки и сохраните копию.",
+            "Поиск имени эвристический: короткая проза до точки или скобки может получить полужирное оформление.",
+            "Ввод длины исполняется как JS-выражение; используйте только число. При исключении во время обхода группа отмены может остаться открытой, полный откат не проверен."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Отмена запросов происходит до открытия группы отмены. Обход выбранных абзацев или всей книги помещён в группу, но исключения не защищены её закрытием; полный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaHistory",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processDialogs",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processDotsLeftRoundBrackets",
+              "value": 1,
+              "expression": "1",
+              "description": "1) Точка и левая круглая скобка: 0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processColonsLeftRoundBrackets",
+              "value": 0,
+              "expression": "0",
+              "description": "2) Двоеточие и левая круглая скобка: 0 - нет, 1 - да (НЕ включать одновременно с processColons)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processColons",
+              "value": 0,
+              "expression": "0",
+              "description": "3) Только двоеточие (без скобок): 0 - нет, 1 - да (НЕ включать одновременно с processColonsLeftRoundBrackets)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "isSelectionMode",
+              "value": 0,
+              "expression": "0",
+              "description": "Режим работы: 1 - выделенный фрагмент, 0 - весь документ",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Показывать итоговую статистику: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaHistory",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать историю книги: 0 — пропустить, 1 — включить.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать аннотацию: 0 — пропустить, 1 — включить.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать основной раздел сносок: 0 — пропустить, 1 — включить.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать основной раздел комментариев: 0 — пропустить, 1 — включить.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processDialogs",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать строки с начальным тире и пробелом: 0 — пропустить, 1 — включить.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processDotsLeftRoundBrackets",
+              "value": 1,
+              "expression": "1",
+              "description": "Считать точку и открывающую скобку разделителями имени: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processColonsLeftRoundBrackets",
+              "value": 0,
+              "expression": "0",
+              "description": "Считать двоеточие и открывающую скобку разделителями: 0 — нет, 1 — да; при включённом processColons сбрасывается.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processColons",
+              "value": 0,
+              "expression": "0",
+              "description": "Считать двоеточие разделителем: 0 — нет, 1 — да; имеет приоритет над processColonsLeftRoundBrackets.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "limit",
+              "value": 10,
+              "expression": "10",
+              "description": "Начальная максимальная длина имени до разделителя; запрашивается при запуске.",
+              "valueMeaning": "Начальное значение запроса, не сохранённый выбор."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 416,
+          "issue": "Ответ на запрос длины передаётся в eval; пользовательский текст исполняется как произвольный JS-код вместо безопасного числового разбора."
+        },
+        {
+          "line": 435,
+          "issue": "Если непустое выделение не даёт абзацев (например, выбран неподходящий контейнер), isSelectionMode остаётся 0 и скрипт без отдельного подтверждения обрабатывает весь документ."
+        },
+        {
+          "line": 400,
+          "issue": "На конце fbw_body цикл продолжает подъём по родителям после установки ProcessingEnding; при отсутствии следующего соседа у fbw_body возможен выход за корень и обращение к null.nextSibling."
+        },
+        {
+          "line": 444,
+          "issue": "Обход DOM после открытия группы отмены не защищён finally; ошибка может оставить группу открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 627,
-    "generic_usage": 315,
+    "inaccurate_description": 629,
+    "generic_usage": 317,
     "false_warning": 319,
-    "incorrect_setting": 162,
-    "incorrect_scope": 322,
-    "incorrect_undo": 314,
-    "uncertain_attribution": 36,
-    "incorrect_dependency": 325,
+    "incorrect_setting": 164,
+    "incorrect_scope": 324,
+    "incorrect_undo": 316,
+    "uncertain_attribution": 39,
+    "incorrect_dependency": 327,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -44073,23 +44549,23 @@
     "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 22,
-    "generic_summary": 15,
-    "generic_warning": 15
+    "incorrect_selection": 24,
+    "generic_summary": 17,
+    "generic_warning": 17
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 306,
-    "usageCorrected": 315,
-    "purposeClarified": 313,
-    "warningsClarified": 246,
-    "scopeClarified": 299,
-    "settingsClarified": 476,
-    "attributionClarified": 34,
+    "undoDescriptionsClarified": 308,
+    "usageCorrected": 317,
+    "purposeClarified": 315,
+    "warningsClarified": 248,
+    "scopeClarified": 301,
+    "settingsClarified": 478,
+    "attributionClarified": 36,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 197,
+    "dependenciesVerified": 199,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -118719,63 +119195,68 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Сформатировать абзац(ы) стихом (расширенная версия)",
-        "summary": "Скрипт предназначен для форматирования выделенных абзацев стихом в fb2 документах.",
-        "description": "Скрипт предназначен для форматирования выделенных абзацев стихом в fb2 документах.",
+        "summary": "Преобразует обычные абзацы одной секции в стих с разбиением на строфы.",
+        "description": "При курсоре или выделении берёт полные обычные абзацы одной section, исключая уже оформленные блоки, историю и аннотацию. Пустые абзацы превращает в границы строф, из остальных создаёт poem со stanza. Последнюю строку при заданном условии переносит в text-author; по настройке снимает исходное курсивное и полужирное оформление. Оригинальные абзацы заменяет новыми.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация по указанию в шапке"
           }
         ],
         "version": "1.5",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Один обычный P под курсором либо последовательность обычных P внутри одной section между границами выделения. Соседние оформленные блоки не принимаются; непустое выделение не обязательно.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в обычный абзац либо выделите нужные абзацы одной секции, включая пустые строки там, где должны проходить границы строф.",
+          "Проверьте исходные параметры снятия оформления и определения строки автора, затем запустите команду.",
+          "После работы проверьте строфы, возможную строку автора, ссылки на исходные ID и форматирование."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Скрипт заменяет исходные P новыми и не переносит их атрибуты, кроме содержимого; ID абзацев могут потеряться и ссылки на них нарушиться.",
+          "Строка с датой, кавычками или похожим на ФИО текстом по умолчанию может стать text-author; проверьте её вручную.",
+          "Ошибка после частичной перестройки не подтверждает полный откат через редактор."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 0,
             "expression": "0",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать итоговое окно: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "reformatMode",
             "value": 1,
             "expression": "1",
-            "description": "По умолчанию: только полное форматирование",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Снимать исходные курсив и жирность: 0 — нет, 1 — только при полном одинаковом оформлении всего стиха, 2 — у каждого абзаца.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "authorParagraphMode",
             "value": 2,
             "expression": "2",
-            "description": "По умолчанию: условие 1 ИЛИ 2",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Превращать последнюю строку в text-author: 0 — никогда, 1 — при дате, 2 — при дате, кавычках или ФИО, 3 — всегда.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "maxNameLength",
+            "value": 100,
+            "expression": "100",
+            "description": "Максимальная длина строки для проверки на ФИО при выборе соответствующего режима.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Проверки до перестройки выполняются внутри группы и штатные выходы её закрывают. Обработчик ошибки удаляет маркеры и затем закрывает группу; полный откат уже заменённых абзацев не проверен."
         },
         "examples": null,
         "tags": [
@@ -118789,17 +119270,17 @@
         "dialog": [],
         "selection": [
           {
-            "line": 249,
+            "line": 254,
             "text": "var tr = document.selection.createRange();"
           },
           {
-            "line": 249,
+            "line": 254,
             "text": "var tr = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 434,
+            "line": 439,
             "text": "var html = elem.innerHTML || '';"
           }
         ],
@@ -118810,171 +119291,171 @@
         "file": [],
         "return": [
           {
-            "line": 154,
+            "line": 159,
             "text": "return true;"
           },
           {
-            "line": 158,
+            "line": 163,
             "text": "return false;"
           },
           {
-            "line": 174,
+            "line": 179,
             "text": "return true;"
           },
           {
-            "line": 177,
+            "line": 182,
             "text": "return false;"
           },
           {
-            "line": 181,
+            "line": 186,
             "text": "return false;"
-          },
-          {
-            "line": 189,
-            "text": "return true;"
           },
           {
             "line": 194,
+            "text": "return true;"
+          },
+          {
+            "line": 199,
             "text": "return false;"
           },
           {
-            "line": 198,
+            "line": 203,
             "text": "if (!ptr) return false;"
           },
           {
-            "line": 208,
+            "line": 213,
             "text": "return true;"
           },
           {
-            "line": 213,
+            "line": 218,
             "text": "return false;"
           },
           {
-            "line": 228,
+            "line": 233,
             "text": "return el;"
           },
           {
-            "line": 235,
+            "line": 240,
             "text": "return el;"
-          },
-          {
-            "line": 262,
-            "text": "if (!p || p.nodeName != \"P\") return false;"
-          },
-          {
-            "line": 265,
-            "text": "if (className != \"\" && className != \"normal\") return false;"
           },
           {
             "line": 267,
-            "text": "if (isInHistory(p)) return false;"
-          },
-          {
-            "line": 268,
-            "text": "if (isInFirstAnnotation(p)) return false;"
-          },
-          {
-            "line": 269,
-            "text": "if (isInProtectedElement(p)) return false;"
+            "text": "if (!p || p.nodeName != \"P\") return false;"
           },
           {
             "line": 270,
-            "text": "if (isInsideBlockElement(p)) return false;"
+            "text": "if (className != \"\" && className != \"normal\") return false;"
           },
           {
             "line": 272,
+            "text": "if (isInHistory(p)) return false;"
+          },
+          {
+            "line": 273,
+            "text": "if (isInFirstAnnotation(p)) return false;"
+          },
+          {
+            "line": 274,
+            "text": "if (isInProtectedElement(p)) return false;"
+          },
+          {
+            "line": 275,
+            "text": "if (isInsideBlockElement(p)) return false;"
+          },
+          {
+            "line": 277,
             "text": "return true;"
           },
           {
-            "line": 280,
+            "line": 285,
             "text": "if (!str) return str;"
           },
           {
-            "line": 281,
+            "line": 286,
             "text": "return str.replace(/^\\s+|\\s+$/g, '');"
           },
           {
-            "line": 289,
+            "line": 294,
             "text": "if (!text) return text;"
           },
           {
-            "line": 290,
+            "line": 295,
             "text": "return trimStr(text.replace(/\\u00A0/g, ' '));"
           },
           {
-            "line": 298,
+            "line": 303,
             "text": "if (!text) return false;"
           },
           {
-            "line": 301,
+            "line": 306,
             "text": "if (normalized.length === 0) return false;"
           },
           {
-            "line": 309,
+            "line": 314,
             "text": "if (yearPattern.test(cleanText)) return true;"
           },
           {
-            "line": 313,
+            "line": 318,
             "text": "if (yearWithGPattern.test(cleanText)) return true;"
           },
           {
-            "line": 334,
+            "line": 339,
             "text": "return true;"
           },
           {
-            "line": 340,
+            "line": 345,
             "text": "if (datePattern.test(cleanText)) return true;"
           },
           {
-            "line": 342,
+            "line": 347,
             "text": "return false;"
           },
           {
-            "line": 350,
+            "line": 355,
             "text": "if (!text) return false;"
           },
           {
-            "line": 371,
+            "line": 376,
             "text": "if (openCount >= 2) return true;"
           },
           {
-            "line": 373,
+            "line": 378,
             "text": "if (openCount >= 1 && closeCount >= 1) return true;"
           },
           {
-            "line": 377,
+            "line": 382,
             "text": "return false;"
           },
           {
-            "line": 385,
+            "line": 390,
             "text": "if (!text || text.length > maxNameLength) return false;"
           },
           {
-            "line": 388,
+            "line": 393,
             "text": "if (normalized.length === 0) return false;"
           },
           {
-            "line": 392,
+            "line": 397,
             "text": "if (cleanText.length === 0) return false;"
           },
           {
-            "line": 416,
+            "line": 421,
             "text": "if (words.length > 4) return false;"
           },
           {
-            "line": 417,
+            "line": 422,
             "text": "if (capitalCount === 0) return false;"
           },
           {
-            "line": 423,
+            "line": 428,
             "text": "return variant1 || variant2 || variant3;"
           },
           {
-            "line": 432,
+            "line": 437,
             "text": "if (!elem) return \"none\";"
           },
           {
-            "line": 435,
+            "line": 440,
             "text": "if (!html) return \"none\";"
           }
         ]
@@ -118986,13 +119467,13 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 107,
+              "line": 112,
               "text": "var showStatistics = 0;"
             }
           ],
           "uses": [
             {
-              "line": 107,
+              "line": 112,
               "text": "var showStatistics = 0;"
             }
           ],
@@ -119003,13 +119484,13 @@
           "name": "reformatMode",
           "declarations": [
             {
-              "line": 113,
+              "line": 118,
               "text": "var reformatMode = 1; // По умолчанию: только полное форматирование"
             }
           ],
           "uses": [
             {
-              "line": 113,
+              "line": 118,
               "text": "var reformatMode = 1; // По умолчанию: только полное форматирование"
             }
           ],
@@ -119020,14 +119501,35 @@
           "name": "authorParagraphMode",
           "declarations": [
             {
-              "line": 120,
+              "line": 125,
               "text": "var authorParagraphMode = 2; // По умолчанию: условие 1 ИЛИ 2"
             }
           ],
           "uses": [
             {
-              "line": 120,
+              "line": 125,
               "text": "var authorParagraphMode = 2; // По умолчанию: условие 1 ИЛИ 2"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "maxNameLength",
+          "declarations": [
+            {
+              "line": 128,
+              "text": "var maxNameLength = 100;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 128,
+              "text": "var maxNameLength = 100;"
+            },
+            {
+              "line": 390,
+              "text": "if (!text || text.length > maxNameLength) return false;"
             }
           ],
           "classification": "requires_review"
@@ -119036,25 +119538,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 76,
+          "line": 81,
           "text": "// Скрипт \"Сформатировать абзац(ы) стихом (расширенная версия)\" для редактора FBE"
         },
         {
-          "line": 77,
+          "line": 82,
           "text": "// version 1.5"
         },
         {
-          "line": 86,
+          "line": 91,
           "text": "// Автоматическое создание строки \"автор текста\" (<p class=\"text-author\">)"
         },
         {
-          "line": 86,
+          "line": 91,
           "text": "// Автоматическое создание строки \"автор текста\" (<p class=\"text-author\">)"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Скрипт заменяет исходные P новыми и не переносит их атрибуты, кроме содержимого; ID абзацев могут потеряться и ссылки на них нарушиться.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Строка с датой, кавычками или похожим на ФИО текстом по умолчанию может стать text-author; проверьте её вручную.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Ошибка после частичной перестройки не подтверждает полный откат через редактор.",
           "verification": "requires_review"
         }
       ],
@@ -119075,71 +119585,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "09_Стихи/60_Драма (расширенная версия).js",
@@ -119151,110 +119597,115 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Драма (расширенная версия)",
-        "summary": "Скрипт предназначен для разметки тэгами жирности имён говорящих в пьесах в fb2 документах.",
-        "description": "Скрипт предназначен для разметки тэгами жирности имён говорящих в пьесах в fb2 документах.",
+        "summary": "Выделяет полужирным предполагаемые имена говорящих в пьесе, в выделении или во всём документе.",
+        "description": "После запроса предельной длины имени и удаления разрядки обрабатывает абзацы непосредственно внутри section. При подходящем непустом выделении берёт пересекающиеся абзацы, иначе обходит fbw_body. Ищет имя от начала абзаца до выбранного разделителя: по умолчанию точки или открывающей скобки. По исходным настройкам пропускает историю, аннотацию, сноски, комментарии и строки диалога с начальным тире; показывает статистику.",
         "authors": [
           {
+            "name": "Sclex",
+            "role": "original_author",
+            "contribution": "исходный скрипт разметки имён"
+          },
+          {
             "name": "TaKir",
-            "role": "modifier"
+            "role": "modifier",
+            "contribution": "доработка расширенной версии"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
-          },
-          {
-            "role": "unknown"
+            "role": "ai_assistance",
+            "contribution": "доработка по указанию в шапке"
           }
         ],
         "version": "1.7",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы P непосредственно внутри section: при распознанном текстовом/управляющем выделении — пересекающиеся с ним, иначе весь fbw_body. Неподходящее выделение может вызвать переход к обработке всей книги.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "При необходимости выделите только нужные реплики; без распознанного выделения скрипт обходит всю книгу.",
+          "В запросах задайте максимальную длину имени до разделителя (исходно 10) и выберите удаление разрядки.",
+          "После выполнения проверьте первые фразы реплик и указанную в отчёте область обработки."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "При нераспознанном выделении команда переходит на всю книгу; перед запуском проверьте область обработки и сохраните копию.",
+          "Поиск имени эвристический: короткая проза до точки или скобки может получить полужирное оформление.",
+          "Ввод длины исполняется как JS-выражение; используйте только число. При исключении во время обхода группа отмены может остаться открытой, полный откат не проверен."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать итоговую статистику: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaHistory",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать историю книги: 0 — пропустить, 1 — включить.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaAnnotation",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать аннотацию: 0 — пропустить, 1 — включить.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processNotesSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать основной раздел сносок: 0 — пропустить, 1 — включить.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processCommentsSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать основной раздел комментариев: 0 — пропустить, 1 — включить.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processDialogs",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать строки с начальным тире и пробелом: 0 — пропустить, 1 — включить.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processDotsLeftRoundBrackets",
             "value": 1,
             "expression": "1",
-            "description": "1) Точка и левая круглая скобка: 0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Считать точку и открывающую скобку разделителями имени: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processColonsLeftRoundBrackets",
             "value": 0,
             "expression": "0",
-            "description": "2) Двоеточие и левая круглая скобка: 0 - нет, 1 - да (НЕ включать одновременно с processColons)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Считать двоеточие и открывающую скобку разделителями: 0 — нет, 1 — да; при включённом processColons сбрасывается.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processColons",
             "value": 0,
             "expression": "0",
-            "description": "3) Только двоеточие (без скобок): 0 - нет, 1 - да (НЕ включать одновременно с processColonsLeftRoundBrackets)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Считать двоеточие разделителем: 0 — нет, 1 — да; имеет приоритет над processColonsLeftRoundBrackets.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
-            "name": "isSelectionMode",
-            "value": 0,
-            "expression": "0",
-            "description": "Режим работы: 1 - выделенный фрагмент, 0 - весь документ",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "limit",
+            "value": 10,
+            "expression": "10",
+            "description": "Начальная максимальная длина имени до разделителя; запрашивается при запуске.",
+            "valueMeaning": "Начальное значение запроса, не сохранённый выбор."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Отмена запросов происходит до открытия группы отмены. Обход выбранных абзацев или всей книги помещён в группу, но исключения не защищены её закрытием; полный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -119265,55 +119716,55 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 566,
+            "line": 571,
             "text": "window.external.BeginUndoUnit(document, \"Разметка имен говорящих в пьесах\");"
           }
         ],
         "undo_end": [
           {
-            "line": 572,
+            "line": 577,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 535,
+            "line": 540,
             "text": "limit = prompt(\"Сколько символов может быть до разделителя?\", limit);"
           }
         ],
         "selection": [
           {
-            "line": 398,
+            "line": 403,
             "text": "var sel = document.selection;"
           },
           {
-            "line": 403,
+            "line": 408,
             "text": "var controlRange = sel.createRange();"
           },
           {
-            "line": 412,
+            "line": 417,
             "text": "var range = document.selection.createRange();"
           },
           {
-            "line": 412,
+            "line": 417,
             "text": "var range = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 246,
+            "line": 251,
             "text": "function isDialogStart(innerHTML) {"
           },
           {
-            "line": 249,
+            "line": 254,
             "text": "while (idx < innerHTML.length && innerHTML.charAt(idx) == \"<\") {"
           },
           {
-            "line": 249,
+            "line": 254,
             "text": "while (idx < innerHTML.length && innerHTML.charAt(idx) == \"<\") {"
           },
           {
-            "line": 251,
+            "line": 256,
             "text": "while (idx < innerHTML.length && innerHTML.charAt(idx) != \">\") idx++;"
           }
         ],
@@ -119324,99 +119775,99 @@
         "file": [],
         "return": [
           {
-            "line": 237,
+            "line": 242,
             "text": "return true; // Узел внутри исключённого раздела"
           },
           {
-            "line": 242,
+            "line": 247,
             "text": "return false;"
           },
           {
-            "line": 254,
+            "line": 259,
             "text": "if (idx >= innerHTML.length) return false;"
           },
           {
-            "line": 263,
+            "line": 268,
             "text": "if (nextCh == \" \" || nextCh == nbspChar) return true;"
           },
           {
-            "line": 266,
+            "line": 271,
             "text": "return false;"
           },
           {
-            "line": 271,
+            "line": 276,
             "text": "if (ptr.parentNode.className != \"section\" || ptr.className == \"subtitle\") return;"
           },
           {
-            "line": 275,
+            "line": 280,
             "text": "if (!processDialogs && isDialogStart(s)) return;"
           },
           {
-            "line": 327,
+            "line": 332,
             "text": "if (ch == \"!\" || ch == \"?\" || ch == \"…\") return;"
           },
           {
-            "line": 341,
+            "line": 346,
             "text": "if (chCnt > limit) return;"
           },
           {
-            "line": 348,
+            "line": 353,
             "text": "if (chCnt > limit) return;"
           },
           {
-            "line": 356,
+            "line": 361,
             "text": "if (chCnt > limit) return;"
           },
           {
-            "line": 380,
+            "line": 385,
             "text": "return;"
           },
           {
-            "line": 389,
+            "line": 394,
             "text": "if (chCnt > limit + 1) return;"
           },
           {
-            "line": 399,
+            "line": 404,
             "text": "if (!sel) return paragraphs;"
           },
           {
-            "line": 413,
+            "line": 418,
             "text": "if (!range) return paragraphs;"
           },
           {
-            "line": 419,
+            "line": 424,
             "text": "return paragraphs;"
           },
           {
-            "line": 421,
+            "line": 426,
             "text": "if (!parentElement) return paragraphs;"
           },
           {
-            "line": 430,
+            "line": 435,
             "text": "if (!container) return paragraphs;"
           },
           {
-            "line": 443,
+            "line": 448,
             "text": "return paragraphs;"
           },
           {
-            "line": 453,
+            "line": 458,
             "text": "return;"
           },
           {
-            "line": 473,
+            "line": 478,
             "text": "return true;"
           },
           {
-            "line": 476,
+            "line": 481,
             "text": "return false;"
           },
           {
-            "line": 536,
+            "line": 541,
             "text": "if (!limit) return;"
           },
           {
-            "line": 539,
+            "line": 544,
             "text": "} catch (e) { return; }"
           }
         ]
@@ -119428,17 +119879,17 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 159,
+              "line": 164,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 159,
+              "line": 164,
               "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             },
             {
-              "line": 608,
+              "line": 613,
               "text": "if (showStatistics == 1) {"
             }
           ],
@@ -119449,21 +119900,21 @@
           "name": "ObrabotkaHistory",
           "declarations": [
             {
-              "line": 162,
+              "line": 167,
               "text": "var ObrabotkaHistory = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 162,
+              "line": 167,
               "text": "var ObrabotkaHistory = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 518,
+              "line": 523,
               "text": "((SaveNext.className == \"history\" && !ObrabotkaHistory) ||"
             },
             {
-              "line": 598,
+              "line": 603,
               "text": "settingsBlock += \"  • Обработка History: \" + (ObrabotkaHistory ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -119474,21 +119925,21 @@
           "name": "ObrabotkaAnnotation",
           "declarations": [
             {
-              "line": 165,
+              "line": 170,
               "text": "var ObrabotkaAnnotation = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 165,
+              "line": 170,
               "text": "var ObrabotkaAnnotation = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 519,
+              "line": 524,
               "text": "(SaveNext.className == \"annotation\" && !ObrabotkaAnnotation)))) {"
             },
             {
-              "line": 599,
+              "line": 604,
               "text": "settingsBlock += \"  • Обработка первой аннотации: \" + (ObrabotkaAnnotation ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -119499,25 +119950,25 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 168,
+              "line": 173,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 168,
+              "line": 173,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 235,
+              "line": 240,
               "text": "if ((fbname == \"notes\" && !processNotesSection) ||"
             },
             {
-              "line": 497,
+              "line": 502,
               "text": "if ((fbname == \"notes\" && !processNotesSection) ||"
             },
             {
-              "line": 600,
+              "line": 605,
               "text": "settingsBlock += \"  • Обработка раздела сносок (примечаний): \" + (processNotesSection ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -119528,25 +119979,25 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 171,
+              "line": 176,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 171,
+              "line": 176,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 236,
+              "line": 241,
               "text": "(fbname == \"comments\" && !processCommentsSection)) {"
             },
             {
-              "line": 498,
+              "line": 503,
               "text": "(fbname == \"comments\" && !processCommentsSection)) {"
             },
             {
-              "line": 601,
+              "line": 606,
               "text": "settingsBlock += \"  • Обработка раздела комментариев: \" + (processCommentsSection ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -119557,21 +120008,21 @@
           "name": "processDialogs",
           "declarations": [
             {
-              "line": 174,
+              "line": 179,
               "text": "var processDialogs = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 174,
+              "line": 179,
               "text": "var processDialogs = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 275,
+              "line": 280,
               "text": "if (!processDialogs && isDialogStart(s)) return;"
             },
             {
-              "line": 602,
+              "line": 607,
               "text": "settingsBlock += \"  • Обработка диалогов (тире/дефис): \" + (processDialogs ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -119582,33 +120033,33 @@
           "name": "processDotsLeftRoundBrackets",
           "declarations": [
             {
-              "line": 183,
+              "line": 188,
               "text": "var processDotsLeftRoundBrackets = 1;"
             }
           ],
           "uses": [
             {
-              "line": 183,
+              "line": 188,
               "text": "var processDotsLeftRoundBrackets = 1;"
             },
             {
-              "line": 337,
+              "line": 342,
               "text": "var bracketActive = (processDotsLeftRoundBrackets || processColonsLeftRoundBrackets);"
             },
             {
-              "line": 347,
+              "line": 352,
               "text": "if (!separatorFound && prevCh == \".\" && chCnt > 0 && processDotsLeftRoundBrackets) {"
             },
             {
-              "line": 581,
+              "line": 586,
               "text": "if (processDotsLeftRoundBrackets && processColonsLeftRoundBrackets) {"
             },
             {
-              "line": 583,
+              "line": 588,
               "text": "} else if (processDotsLeftRoundBrackets && processColons) {"
             },
             {
-              "line": 585,
+              "line": 590,
               "text": "} else if (processDotsLeftRoundBrackets) {"
             }
           ],
@@ -119619,37 +120070,37 @@
           "name": "processColonsLeftRoundBrackets",
           "declarations": [
             {
-              "line": 186,
+              "line": 191,
               "text": "var processColonsLeftRoundBrackets = 0;"
             }
           ],
           "uses": [
             {
-              "line": 186,
+              "line": 191,
               "text": "var processColonsLeftRoundBrackets = 0;"
             },
             {
-              "line": 206,
+              "line": 211,
               "text": "if (processColonsLeftRoundBrackets && processColons) {"
             },
             {
-              "line": 207,
+              "line": 212,
               "text": "processColonsLeftRoundBrackets = 0;"
             },
             {
-              "line": 337,
+              "line": 342,
               "text": "var bracketActive = (processDotsLeftRoundBrackets || processColonsLeftRoundBrackets);"
             },
             {
-              "line": 355,
+              "line": 360,
               "text": "if (processColonsLeftRoundBrackets || processColons) {"
             },
             {
-              "line": 581,
+              "line": 586,
               "text": "if (processDotsLeftRoundBrackets && processColonsLeftRoundBrackets) {"
             },
             {
-              "line": 587,
+              "line": 592,
               "text": "} else if (processColonsLeftRoundBrackets) {"
             }
           ],
@@ -119660,29 +120111,29 @@
           "name": "processColons",
           "declarations": [
             {
-              "line": 189,
+              "line": 194,
               "text": "var processColons = 0;"
             }
           ],
           "uses": [
             {
-              "line": 189,
+              "line": 194,
               "text": "var processColons = 0;"
             },
             {
-              "line": 206,
+              "line": 211,
               "text": "if (processColonsLeftRoundBrackets && processColons) {"
             },
             {
-              "line": 355,
+              "line": 360,
               "text": "if (processColonsLeftRoundBrackets || processColons) {"
             },
             {
-              "line": 583,
+              "line": 588,
               "text": "} else if (processDotsLeftRoundBrackets && processColons) {"
             },
             {
-              "line": 589,
+              "line": 594,
               "text": "} else if (processColons) {"
             }
           ],
@@ -119690,37 +120141,45 @@
         },
         {
           "index": 9,
-          "name": "isSelectionMode",
+          "name": "limit",
           "declarations": [
             {
-              "line": 227,
-              "text": "var isSelectionMode = 0;"
+              "line": 223,
+              "text": "var limit = 10;"
             }
           ],
           "uses": [
             {
-              "line": 227,
-              "text": "var isSelectionMode = 0;"
+              "line": 223,
+              "text": "var limit = 10;"
             },
             {
-              "line": 545,
-              "text": "isSelectionMode = 0;"
+              "line": 346,
+              "text": "if (chCnt > limit) return;"
             },
             {
-              "line": 558,
-              "text": "isSelectionMode = 1;"
+              "line": 353,
+              "text": "if (chCnt > limit) return;"
             },
             {
-              "line": 567,
-              "text": "if (isSelectionMode) {"
+              "line": 361,
+              "text": "if (chCnt > limit) return;"
             },
             {
-              "line": 614,
-              "text": "msg += \"Режим: \" + (isSelectionMode ? \"ВЫДЕЛЕННЫЙ ФРАГМЕНТ\" : \"ВЕСЬ ДОКУМЕНТ\") + \"\\n\\n\";"
+              "line": 394,
+              "text": "if (chCnt > limit + 1) return;"
             },
             {
-              "line": 635,
-              "text": "msg += \"Режим: \" + (isSelectionMode ? \"ВЫДЕЛЕННЫЙ ФРАГМЕНТ\" : \"ВЕСЬ ДОКУМЕНТ\") + \"\\n\\n\";"
+              "line": 540,
+              "text": "limit = prompt(\"Сколько символов может быть до разделителя?\", limit);"
+            },
+            {
+              "line": 540,
+              "text": "limit = prompt(\"Сколько символов может быть до разделителя?\", limit);"
+            },
+            {
+              "line": 541,
+              "text": "if (!limit) return;"
             }
           ],
           "classification": "requires_review"
@@ -119729,25 +120188,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 123,
+          "line": 128,
           "text": "// Скрипт \"Драма (расширенная версия)\" для редактора FBE"
         },
         {
-          "line": 124,
+          "line": 129,
           "text": "// version 1.7"
         },
         {
-          "line": 147,
+          "line": 152,
           "text": "// version 1.7, 20.05.2026"
         },
         {
-          "line": 151,
+          "line": 156,
           "text": "var scriptName = \"Драма (расширенная версия)\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "При нераспознанном выделении команда переходит на всю книгу; перед запуском проверьте область обработки и сохраните копию.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Поиск имени эвристический: короткая проза до точки или скобки может получить полужирное оформление.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Ввод длины исполняется как JS-выражение; используйте только число. При исключении во время обхода группа отмены может остаться открытой, полный откат не проверен.",
           "verification": "requires_review"
         }
       ],
@@ -119768,71 +120235,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 566,
-              "text": "window.external.BeginUndoUnit(document, \"Разметка имен говорящих в пьесах\");"
-            },
-            {
-              "line": 572,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "10_Статистика/01_Показать все ссылки.js",
