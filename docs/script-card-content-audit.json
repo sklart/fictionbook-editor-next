@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 359,
-    "generic_usage": 908,
-    "incorrect_undo": 135,
+    "requires_review": 358,
+    "generic_usage": 903,
+    "incorrect_undo": 134,
     "inaccurate_description": 50
   },
   "reviewedChanges": [
@@ -50788,30 +50788,192 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js",
+      "codeSha256": "e4c1ad003877614b1c16ddaf6378347491915647015a00aacf1e1b0b0dcbf884",
+      "evidence": "Строки 8–49 задают версию и шесть пользовательских параметров; 144–176 выбирают основной body; 179–222 создают body/title; 264–341 читают авторов и название; 366–429 добавляют строки и завершают группу. Строки 196, 221 и 410 содержат присваивания результату вызова. Авторы и версия подтверждены историей 505–519. Адреса пространств имён XML в атрибутах не являются сетевыми операциями; внешних приложений и сетевых вызовов нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Создаёт заголовок книги (в body) из названия (в описании документа).",
+          "after": "Пытается добавить название книги и до пяти авторов из описания в заголовок основного body.",
+          "category": "inaccurate_summary"
+        },
+        {
+          "field": "description",
+          "before": "Берёт название и при настройке имена авторов из description, создаёт title в основном body, при необходимости создаёт body/section. Проверяет неоднозначность нескольких body, существующий заголовок и лимит авторов. Это чтение метаданных и изменение основного текста.",
+          "after": "Читает название из title-info и имена авторов, по умолчанию не более пяти, при превышении дописывает «и др.». Если в книге один основной body, использует его; если нет ни одного, создаёт body и section; при нескольких отказывается. Добавляет строки к существующему title либо создаёт его, спрашивая при необходимости об отчестве. В трёх ветвях создания и дополнения текущий код содержит ошибочное присваивание результату вызова и может остановиться после частичного изменения структуры.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Описание книги title-info и единственный основной body: создаётся или изменяется его заголовок; несколько основных body не обрабатываются.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Сохраните копию книги. Проверьте название и имена авторов в описании документа; при нескольких основных body скрипт откажется работать.",
+            "Текущую редакцию проверьте на копии: создание body/title и дополнение непустого заголовка могут завершиться ошибкой до добавления строк. После запуска проверьте структуру книги."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "При отсутствии body или title код может создать часть структуры и прерваться до добавления заголовка; при дополнении непустого title ошибка возникает после вставки разделителя.",
+            "Ошибочные ветви прерывают выполнение до завершения группы отмены. Не рассчитывайте на подтверждённый полный откат частичного результата."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Явные отказы после начала обработки закрывают группу действий. Ошибка в ветвях создания body/title или дополнения непустого заголовка прерывает выполнение до её закрытия; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "TitlePlusTitle",
+              "value": 1,
+              "expression": "1",
+              "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "Emphasis",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "UpperCase",
+              "value": 0,
+              "expression": "0",
+              "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "TitlePlusTitle",
+              "value": 1,
+              "expression": "1",
+              "description": "Добавлять строки к существующему заголовку: 1 — да, 0 — только к пустому.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "MaxAuthor",
+              "value": 5,
+              "expression": "5",
+              "description": "Максимальное число имён авторов для заголовка.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "AuthorPlus",
+              "value": 1,
+              "expression": "1",
+              "description": "При превышении лимита авторов: 1 — взять первые MaxAuthor и добавить «и др.», 0 — не добавлять имена.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Emphasis",
+              "value": 0,
+              "expression": "0",
+              "description": "Выделять имена авторов курсивом: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "UpperCase",
+              "value": 0,
+              "expression": "0",
+              "description": "Переводить название книги в прописные буквы: 0 — нет, 1 — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "Porjadok_strok",
+              "value": 0,
+              "expression": "0",
+              "description": "Порядок строк: 0 — авторы перед названием, 1 — название перед авторами.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 196,
+          "issue": "При отсутствии body выражение window.external.inflateBlock(newSection.firstChild)=true присваивает значение результату вызова и вызывает ошибку после создания body и section, но до закрытия группы отмены."
+        },
+        {
+          "line": 221,
+          "issue": "При отсутствии title такое же присваивание результату вызова вызывает ошибку после создания контейнера title и P, но до добавления строк и EndUndoUnit."
+        },
+        {
+          "line": 410,
+          "issue": "При добавлении к существующему непустому title код вставляет разделительный P и затем ошибочно присваивает true результату inflateBlock; выполнение прерывается до добавления названия и авторов и до EndUndoUnit."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 673,
-    "generic_usage": 361,
+    "inaccurate_description": 674,
+    "generic_usage": 362,
     "false_warning": 319,
-    "incorrect_setting": 193,
-    "incorrect_scope": 368,
-    "incorrect_undo": 360,
+    "incorrect_setting": 194,
+    "incorrect_scope": 369,
+    "incorrect_undo": 361,
     "uncertain_attribution": 54,
     "generic_summary": 58,
-    "incorrect_dependency": 376,
+    "incorrect_dependency": 377,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "generic_warning": 60,
+    "generic_warning": 61,
     "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
     "incorrect_selection": 36,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
-    "inaccurate_summary": 3,
+    "inaccurate_summary": 4,
     "duplicate_attribution": 8,
     "missing_warning": 1,
     "missing_version": 4
@@ -50819,14 +50981,14 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 352,
-    "usageCorrected": 361,
-    "purposeClarified": 359,
-    "warningsClarified": 293,
-    "scopeClarified": 345,
-    "settingsClarified": 507,
+    "undoDescriptionsClarified": 353,
+    "usageCorrected": 362,
+    "purposeClarified": 360,
+    "warningsClarified": 294,
+    "scopeClarified": 346,
+    "settingsClarified": 508,
     "attributionClarified": 56,
-    "dependenciesVerified": 243,
+    "dependenciesVerified": 244,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -139732,8 +139894,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Создать заголовок книги (в body) из названия (в описании документа)",
-        "summary": "Создаёт заголовок книги (в body) из названия (в описании документа).",
-        "description": "Берёт название и при настройке имена авторов из description, создаёт title в основном body, при необходимости создаёт body/section. Проверяет неоднозначность нескольких body, существующий заголовок и лимит авторов. Это чтение метаданных и изменение основного текста.",
+        "summary": "Пытается добавить название книги и до пяти авторов из описания в заголовок основного body.",
+        "description": "Читает название из title-info и имена авторов, по умолчанию не более пяти, при превышении дописывает «и др.». Если в книге один основной body, использует его; если нет ни одного, создаёт body и section; при нескольких отказывается. Добавляет строки к существующему title либо создаёт его, спрашивая при необходимости об отчестве. В трёх ветвях создания и дополнения текущий код содержит ошибочное присваивание результату вызова и может остановиться после частичного изменения структуры.",
         "authors": [
           {
             "name": "Александр Ка",
@@ -139741,45 +139903,65 @@
           }
         ],
         "version": "1.3",
-        "scope": "Текущая книга или определённые кодом её разделы.",
+        "scope": "Описание книги title-info и единственный основной body: создаётся или изменяется его заголовок; несколько основных body не обрабатываются.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Сохраните копию книги. Проверьте название и имена авторов в описании документа; при нескольких основных body скрипт откажется работать.",
+          "Текущую редакцию проверьте на копии: создание body/title и дополнение непустого заголовка могут завершиться ошибкой до добавления строк. После запуска проверьте структуру книги."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "При отсутствии body или title код может создать часть структуры и прерваться до добавления заголовка; при дополнении непустого title ошибка возникает после вставки разделителя.",
+          "Ошибочные ветви прерывают выполнение до завершения группы отмены. Не рассчитывайте на подтверждённый полный откат частичного результата."
         ],
         "settings": [
           {
             "name": "TitlePlusTitle",
             "value": 1,
             "expression": "1",
-            "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Добавлять строки к существующему заголовку: 1 — да, 0 — только к пустому.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "MaxAuthor",
+            "value": 5,
+            "expression": "5",
+            "description": "Максимальное число имён авторов для заголовка.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "AuthorPlus",
+            "value": 1,
+            "expression": "1",
+            "description": "При превышении лимита авторов: 1 — взять первые MaxAuthor и добавить «и др.», 0 — не добавлять имена.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "Emphasis",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Выделять имена авторов курсивом: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "UpperCase",
             "value": 0,
             "expression": "0",
-            "description": "0 ; 1 // (\"0\" — НЕ добавлять, \"1\" — добавлять)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Переводить название книги в прописные буквы: 0 — нет, 1 — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "Porjadok_strok",
+            "value": 0,
+            "expression": "0",
+            "description": "Порядок строк: 0 — авторы перед названием, 1 — название перед авторами.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Явные отказы после начала обработки закрывают группу действий. Ошибка в ветвях создания body/title или дополнения непустого заголовка прерывает выполнение до её закрытия; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -139790,54 +139972,54 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 245,
+            "line": 265,
             "text": "window.external.BeginUndoUnit(document, ScriptName+\" v.\"+NumerusVersion);    // Начало записи в систему отмен."
           }
         ],
         "undo_end": [
           {
-            "line": 304,
+            "line": 324,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 421,
+            "line": 441,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 472,
+            "line": 492,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 495,
+            "line": 515,
             "text": "window.external.EndUndoUnit(document);    // Конец записи в систему отмен."
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 174,
+            "line": 194,
             "text": "var r=document.selection.createRange();"
           },
           {
-            "line": 174,
+            "line": 194,
             "text": "var r=document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 251,
+            "line": 271,
             "text": "Body = document.createElement(\"DIV\");"
           },
           {
-            "line": 258,
+            "line": 278,
             "text": "var newSection = document.createElement(\"DIV\");"
           },
           {
-            "line": 261,
+            "line": 281,
             "text": "newSection.insertAdjacentElement(\"afterBegin\", document.createElement(\"P\"));"
           },
           {
-            "line": 281,
+            "line": 301,
             "text": "Title = document.createElement(\"DIV\");"
           }
         ],
@@ -139848,35 +140030,35 @@
         "file": [],
         "return": [
           {
-            "line": 155,
+            "line": 175,
             "text": "return ok;"
           },
           {
-            "line": 175,
+            "line": 195,
             "text": "if (!r || !(\"compareEndPoints\" in r)) return;"
           },
           {
-            "line": 191,
+            "line": 211,
             "text": "return;"
           },
           {
-            "line": 237,
+            "line": 257,
             "text": "return;"
           },
           {
-            "line": 305,
+            "line": 325,
             "text": "return;"
           },
           {
-            "line": 376,
+            "line": 396,
             "text": "return vl;"
           },
           {
-            "line": 422,
+            "line": 442,
             "text": "return;"
           },
           {
-            "line": 473,
+            "line": 493,
             "text": "return;    }"
           }
         ]
@@ -139888,25 +140070,25 @@
           "name": "TitlePlusTitle",
           "declarations": [
             {
-              "line": 84,
+              "line": 104,
               "text": "var TitlePlusTitle = 1;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
             }
           ],
           "uses": [
             {
-              "line": 84,
+              "line": 104,
               "text": "var TitlePlusTitle = 1;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
             },
             {
-              "line": 298,
+              "line": 318,
               "text": "if (TitlePlusTitle != 1) {"
             },
             {
-              "line": 445,
+              "line": 465,
               "text": "if (TitlePlusTitle != 1)  Title.innerHTML = \"\";"
             },
             {
-              "line": 451,
+              "line": 471,
               "text": "if (TitlePlusTitle == 1) {"
             }
           ],
@@ -139914,42 +140096,121 @@
         },
         {
           "index": 1,
-          "name": "Emphasis",
+          "name": "MaxAuthor",
           "declarations": [
             {
-              "line": 100,
-              "text": "var Emphasis = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+              "line": 110,
+              "text": "var MaxAuthor = 5;      // 1 ; 2 ; 3 ; и т.д."
             }
           ],
           "uses": [
             {
-              "line": 100,
-              "text": "var Emphasis = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+              "line": 110,
+              "text": "var MaxAuthor = 5;      // 1 ; 2 ; 3 ; и т.д."
             },
             {
-              "line": 448,
-              "text": "if (authorNameS != \"\"  &&  Emphasis == 1)  authorNameS = \"<EM>\" + authorNameS + \"</EM>\";"
+              "line": 354,
+              "text": "if (mDiv.length <= MaxAuthor)  maximum = mDiv.length;"
+            },
+            {
+              "line": 355,
+              "text": "else { if (AuthorPlus ==1)  maximum = MaxAuthor;"
+            },
+            {
+              "line": 422,
+              "text": "if (AuthorPlus ==1  &&  authorNameS !=\"\"  &&  mDiv.length > MaxAuthor) {"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 2,
+          "name": "AuthorPlus",
+          "declarations": [
+            {
+              "line": 114,
+              "text": "var AuthorPlus = 1;      // 0 ; 1 //      (\"0\" — ничего не вписывать, \"1\" — вписывать максимум)"
+            }
+          ],
+          "uses": [
+            {
+              "line": 114,
+              "text": "var AuthorPlus = 1;      // 0 ; 1 //      (\"0\" — ничего не вписывать, \"1\" — вписывать максимум)"
+            },
+            {
+              "line": 355,
+              "text": "else { if (AuthorPlus ==1)  maximum = MaxAuthor;"
+            },
+            {
+              "line": 422,
+              "text": "if (AuthorPlus ==1  &&  authorNameS !=\"\"  &&  mDiv.length > MaxAuthor) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "Emphasis",
+          "declarations": [
+            {
+              "line": 120,
+              "text": "var Emphasis = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+            }
+          ],
+          "uses": [
+            {
+              "line": 120,
+              "text": "var Emphasis = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
+            },
+            {
+              "line": 468,
+              "text": "if (authorNameS != \"\"  &&  Emphasis == 1)  authorNameS = \"<EM>\" + authorNameS + \"</EM>\";"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
           "name": "UpperCase",
           "declarations": [
             {
-              "line": 106,
+              "line": 126,
               "text": "var UpperCase = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
             }
           ],
           "uses": [
             {
-              "line": 106,
+              "line": 126,
               "text": "var UpperCase = 0;      // 0 ; 1 //      (\"0\" — НЕ добавлять, \"1\" — добавлять)"
             },
             {
-              "line": 447,
+              "line": 467,
               "text": "if (bookTitle != \"\"  &&  UpperCase == 1)  bookTitle = bookTitle.toUpperCase();"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "Porjadok_strok",
+          "declarations": [
+            {
+              "line": 132,
+              "text": "var Porjadok_strok = 0;      // 0 ; 1 //"
+            }
+          ],
+          "uses": [
+            {
+              "line": 132,
+              "text": "var Porjadok_strok = 0;      // 0 ; 1 //"
+            },
+            {
+              "line": 499,
+              "text": "if (Porjadok_strok == 0)"
+            },
+            {
+              "line": 508,
+              "text": "if (Porjadok_strok != 0)"
             }
           ],
           "classification": "requires_review"
@@ -139958,25 +140219,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 76,
+          "line": 96,
           "text": "var NumerusVersion=\"1.3\";"
         },
         {
-          "line": 88,
+          "line": 108,
           "text": "//     Максимальное число авторов книги, имена которых можно вписать в заголовок"
         },
         {
-          "line": 90,
+          "line": 110,
           "text": "var MaxAuthor = 5;      // 1 ; 2 ; 3 ; и т.д."
         },
         {
-          "line": 94,
+          "line": 114,
           "text": "var AuthorPlus = 1;      // 0 ; 1 //      (\"0\" — ничего не вписывать, \"1\" — вписывать максимум)"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "При отсутствии body или title код может создать часть структуры и прерваться до добавления заголовка; при дополнении непустого title ошибка возникает после вставки разделителя.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Ошибочные ветви прерывают выполнение до завершения группы отмены. Не рассчитывайте на подтверждённый полный откат частичного результата.",
           "verification": "requires_review"
         }
       ],
@@ -139999,122 +140264,38 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 245,
-              "text": "window.external.BeginUndoUnit(document, ScriptName+\" v.\"+NumerusVersion);    // Начало записи в систему отмен."
-            },
-            {
-              "line": 304,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 421,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 472,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 495,
-              "text": "window.external.EndUndoUnit(document);    // Конец записи в систему отмен."
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Явные отказы после начала обработки закрывают группу действий. Ошибка в ветвях создания body/title или дополнения непустого заголовка прерывает выполнение до её закрытия; полнота отката не проверена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 245,
+              "line": 265,
               "text": "window.external.BeginUndoUnit(document, ScriptName+\" v.\"+NumerusVersion);    // Начало записи в систему отмен."
             },
             {
-              "line": 305,
+              "line": 325,
               "text": "return;"
             },
             {
-              "line": 376,
+              "line": 396,
               "text": "return vl;"
             },
             {
-              "line": 422,
+              "line": 442,
               "text": "return;"
             },
             {
-              "line": 473,
+              "line": 493,
               "text": "return;    }"
             },
             {
-              "line": 495,
+              "line": 515,
               "text": "window.external.EndUndoUnit(document);    // Конец записи в систему отмен."
             }
           ]

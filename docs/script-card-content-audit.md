@@ -16,28 +16,28 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **415**. Исполняемый код не изменён.
+Изменено карточек: **416**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
 - `generic_summary`: 58
-- `generic_usage`: 361
-- `generic_warning`: 60
-- `inaccurate_description`: 673
-- `inaccurate_summary`: 3
+- `generic_usage`: 362
+- `generic_warning`: 61
+- `inaccurate_description`: 674
+- `inaccurate_summary`: 4
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 376
+- `incorrect_dependency`: 377
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 368
+- `incorrect_scope`: 369
 - `incorrect_selection`: 36
-- `incorrect_setting`: 193
-- `incorrect_undo`: 360
+- `incorrect_setting`: 194
+- `incorrect_undo`: 361
 - `incorrect_version`: 8
 - `missing_version`: 4
 - `missing_warning`: 1
@@ -48,22 +48,22 @@
 - `attributionClarified`: 56
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 243
+- `dependenciesVerified`: 244
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 359
-- `scopeClarified`: 345
+- `purposeClarified`: 360
+- `scopeClarified`: 346
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 507
-- `undoDescriptionsClarified`: 352
-- `usageCorrected`: 361
+- `settingsClarified`: 508
+- `undoDescriptionsClarified`: 353
+- `usageCorrected`: 362
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 293
+- `warningsClarified`: 294
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **255**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **256**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -564,13 +564,16 @@
 - `13_Заголовки, подзаголовки, пустые строки/529_Удалить всё форматирование в заголовках и подзаголовках.js:155` — При включённом обновлении версии и отсутствии раздела истории код пытается присвоить true результату window.external.inflateBlock(...). Это вызывает ошибку выполнения после создания нового раздела истории и до завершения общей группы действий.
 - `13_Заголовки, подзаголовки, пустые строки/529_Удалить всё форматирование в заголовках и подзаголовках.js:490` — Поиск жирности и аналогичных видов начертания требует точного написания открывающего тега, например <STRONG>. Теги с атрибутами или иной сериализацией HTML не попадают в обработку, хотя форматирование присутствует.
 - `13_Заголовки, подзаголовки, пустые строки/529_Удалить всё форматирование в заголовках и подзаголовках.js:750` — Режим просмотра временно переписывает innerHTML найденной строки; при ошибке между вставкой и снятием подсветки временный SPAN останется в книге. Общая группа действий не закрывается через гарантированный завершающий блок.
+- `13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js:196` — При отсутствии body выражение window.external.inflateBlock(newSection.firstChild)=true присваивает значение результату вызова и вызывает ошибку после создания body и section, но до закрытия группы отмены.
+- `13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js:221` — При отсутствии title такое же присваивание результату вызова вызывает ошибку после создания контейнера title и P, но до добавления строк и EndUndoUnit.
+- `13_Заголовки, подзаголовки, пустые строки/550_Создать заголовок книги (в body) из названия (в описании документа).js:410` — При добавлении к существующему непустому title код вставляет разделительный P и затем ошибочно присваивает true результату inflateBlock; выполнение прерывается до добавления названия и авторов и до EndUndoUnit.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 908
+- `generic_usage`: 903
 - `inaccurate_description`: 50
-- `incorrect_undo`: 135
-- `requires_review`: 359
+- `incorrect_undo`: 134
+- `requires_review`: 358
 
 ## Границы проверки
 
