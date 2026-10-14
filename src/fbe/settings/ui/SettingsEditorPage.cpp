@@ -105,8 +105,10 @@ LRESULT CTextCaretPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 	RECT bounds = {};
 	GetClientRect(&bounds);
 	const bool highContrast = ThemeManager::IsHighContrast();
-	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) : ThemeManager::WindowColor();
-	const COLORREF foreground = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) : ThemeManager::TextColor();
+	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) :
+		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
+	const COLORREF foreground = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
+		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_FOREGROUND);
 	HBRUSH brush = ::CreateSolidBrush(background);
 	::FillRect(dc, &bounds, brush);
 	::DeleteObject(brush);
@@ -124,25 +126,12 @@ LRESULT CTextCaretPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
 	if(m_visible)
 	{
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		int width = m_preferences.mode == TextCaretMode::Enhanced ? 3 :
-			m_preferences.mode == TextCaretMode::Custom && m_preferences.width ? static_cast<int>(m_preferences.width) : 1;
-		width = (std::max)(1, UiMetrics::ScaleForDpi(width, dpi));
-		COLORREF color = foreground;
-		if(!highContrast && m_preferences.mode != TextCaretMode::System)
-		{
-			switch(m_preferences.mode == TextCaretMode::Enhanced ? TextCaretColor::Automatic : m_preferences.color)
-			{
-			case TextCaretColor::Automatic: color = (GetRValue(background) * 299 + GetGValue(background) * 587 +
-				GetBValue(background) * 114) >= 128000 ? RGB(0, 0, 0) : RGB(255, 255, 255); break;
-			case TextCaretColor::System: color = ::GetSysColor(COLOR_WINDOWTEXT); break;
-			case TextCaretColor::Black: color = RGB(0, 0, 0); break;
-			case TextCaretColor::White: color = RGB(255, 255, 255); break;
-			case TextCaretColor::Custom: color = m_preferences.customColor; break;
-			}
-		}
+		const ResolvedCaretAppearance appearance = ResolveCaretAppearance(m_preferences, dpi, background,
+			highContrast ? foreground : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET),
+			highContrast, SystemCaretWidth(), SystemCaretPeriod());
 		RECT caret = { left + text.cx + UiMetrics::ScaleForDpi(2, dpi), top,
-			left + text.cx + UiMetrics::ScaleForDpi(2, dpi) + width, top + metrics.tmHeight };
-		HBRUSH caretBrush = ::CreateSolidBrush(color);
+			left + text.cx + UiMetrics::ScaleForDpi(2, dpi) + appearance.width, top + metrics.tmHeight };
+		HBRUSH caretBrush = ::CreateSolidBrush(appearance.color);
 		::FillRect(dc, &caret, caretBrush);
 		::DeleteObject(caretBrush);
 	}
@@ -155,24 +144,29 @@ void CTextCaretPreview::SetPreview(const CaretPreferences& preferences, const CS
 {
 	m_preferences = preferences;
 	m_text = text;
+	RefreshAppearance();
+}
+
+void CTextCaretPreview::RefreshAppearance()
+{
 	m_visible = true;
 	KillTimer(1);
-	UINT period = ::GetCaretBlinkTime();
-	if(period == INFINITE || period == 0) period = 0;
-	if(preferences.mode == TextCaretMode::Enhanced) period = 800;
-	else if(preferences.mode == TextCaretMode::Custom)
-	{
-		switch(preferences.blink)
-		{
-		case TextCaretBlink::Slow: period = 800; break;
-		case TextCaretBlink::Normal: period = 500; break;
-		case TextCaretBlink::Fast: period = 300; break;
-		case TextCaretBlink::Solid: period = 0; break;
-		default: break;
-		}
-	}
-	if(period) SetTimer(1, (std::max)(100U, period));
+	const bool highContrast = ThemeManager::IsHighContrast();
+	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) :
+		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
+	const COLORREF themeCaret = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
+		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET);
+	const ResolvedCaretAppearance appearance = ResolveCaretAppearance(m_preferences,
+		UiMetrics::DpiForWindow(m_hWnd), background, themeCaret, highContrast,
+		SystemCaretWidth(), SystemCaretPeriod());
+	if(appearance.period) SetTimer(1, static_cast<UINT>((std::max)(100, appearance.period)));
 	Invalidate();
+}
+
+LRESULT CTextCaretPreview::OnAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	RefreshAppearance();
+	return 0;
 }
 
 LRESULT CTextCaretPreview::OnTimer(UINT, WPARAM timer, LPARAM, BOOL&)
@@ -341,6 +335,13 @@ LRESULT CSettingsEditorPage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
 	UpdateCaretPreview();
+	return 0;
+}
+
+LRESULT CSettingsEditorPage::OnSystemAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(m_caretPreview.IsWindow()) m_caretPreview.SetPreview(SelectedCaretPreferences(),
+		FbeLoadRuntimeStringByKey(L"fbe.settings.caret.preview", L"Sample text"));
 	return 0;
 }
 

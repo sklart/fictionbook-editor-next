@@ -16,71 +16,15 @@ bool IsHighContrastEnabled()
 }
 COLORREF Color(const SourceEditorConfig& config, SourceEditorColorRole role) { return config.colors[role]; }
 
-int SystemCaretWidth()
-{
-	DWORD width = 1;
-	if(!::SystemParametersInfo(SPI_GETCARETWIDTH, 0, &width, 0) || width == 0) width = 1;
-	return static_cast<int>((std::min)(width, static_cast<DWORD>(20)));
-}
-
-int SystemCaretPeriod()
-{
-	const UINT period = ::GetCaretBlinkTime();
-	return period == INFINITE ? 0 : period == 0 ? 500 : static_cast<int>((std::min)(period, 5000U));
-}
-
-int CaretWidthPixels(const CaretPreferences& preferences, UINT dpi, int systemWidth)
-{
-	int width = systemWidth;
-	if(preferences.mode == TextCaretMode::Enhanced)
-		width = (std::max)(width, UiMetrics::ScaleForDpi(3, dpi));
-	else if(preferences.mode == TextCaretMode::Custom && preferences.width != 0)
-		width = UiMetrics::ScaleForDpi(static_cast<int>(preferences.width), dpi);
-	return (std::min)(20, (std::max)(1, width));
-}
-
-COLORREF ContrastingCaretColor(COLORREF background)
-{
-	const int luminance = 299 * GetRValue(background) + 587 * GetGValue(background) + 114 * GetBValue(background);
-	return luminance >= 128000 ? RGB(0, 0, 0) : RGB(255, 255, 255);
-}
-
 void ApplyCaretPreferences(const SourceEditorControl& editor, const SourceEditorConfig& config,
 	COLORREF background, COLORREF themeCaret, bool highContrast)
 {
-	const CaretPreferences& preferences = config.caret;
-	const UINT dpi = UiMetrics::DpiForWindow(editor.m_hWnd);
-	const int width = CaretWidthPixels(preferences, dpi, SystemCaretWidth());
-	int period = SystemCaretPeriod();
-	COLORREF color = themeCaret;
-	if(preferences.mode == TextCaretMode::Enhanced)
-	{
-		color = ContrastingCaretColor(background);
-		period = 800;
-	}
-	else if(preferences.mode == TextCaretMode::Custom)
-	{
-		switch(preferences.color)
-		{
-		case TextCaretColor::Automatic: color = ContrastingCaretColor(background); break;
-		case TextCaretColor::System: color = ::GetSysColor(COLOR_WINDOWTEXT); break;
-		case TextCaretColor::Black: color = RGB(0, 0, 0); break;
-		case TextCaretColor::White: color = RGB(255, 255, 255); break;
-		case TextCaretColor::Custom: color = preferences.customColor; break;
-		}
-		switch(preferences.blink)
-		{
-		case TextCaretBlink::System: break;
-		case TextCaretBlink::Slow: period = 800; break;
-		case TextCaretBlink::Normal: period = 500; break;
-		case TextCaretBlink::Fast: period = 300; break;
-		case TextCaretBlink::Solid: period = 0; break;
-		}
-	}
-	if(highContrast) color = ::GetSysColor(COLOR_WINDOWTEXT);
-	editor.Send(SCI_SETCARETWIDTH, static_cast<uptr_t>(width));
-	editor.Send(SCI_SETCARETFORE, color);
-	editor.Send(SCI_SETCARETPERIOD, static_cast<uptr_t>(period));
+	const ResolvedCaretAppearance appearance = ResolveCaretAppearance(config.caret,
+		UiMetrics::DpiForWindow(editor.m_hWnd), background, themeCaret, highContrast,
+		SystemCaretWidth(), SystemCaretPeriod());
+	editor.Send(SCI_SETCARETWIDTH, static_cast<uptr_t>(appearance.width));
+	editor.Send(SCI_SETCARETFORE, appearance.color);
+	editor.Send(SCI_SETCARETPERIOD, static_cast<uptr_t>(appearance.period));
 }
 }
 
@@ -339,7 +283,7 @@ SourceEditorControlDiagnostics SourceEditorControl::RunDiagnostics()
 	exercise.caret.blink = TextCaretBlink::Solid;
 	ApplyConfiguration(exercise);
 	diagnostics.caretCustom = Send(SCI_GETCARETWIDTH) == CaretWidthPixels(exercise.caret, UiMetrics::DpiForWindow(m_hWnd), SystemCaretWidth()) &&
-		Send(SCI_GETCARETFORE) == (IsHighContrastEnabled() ? ::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255)) &&
+		Send(SCI_GETCARETFORE) == static_cast<sptr_t>(IsHighContrastEnabled() ? ::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255)) &&
 		Send(SCI_GETCARETPERIOD) == 0;
 	diagnostics.caretDpi = CaretWidthPixels(exercise.caret, 96, 1) == 4 &&
 		CaretWidthPixels(exercise.caret, 144, 1) == 6 && CaretWidthPixels(exercise.caret, 192, 1) == 8;

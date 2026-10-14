@@ -9,11 +9,16 @@
 #include "..\\EditorBackgrounds.h"
 #include "..\\..\\CaretPreferences.h"
 
+#ifndef WM_DPICHANGED_AFTERPARENT
+#define WM_DPICHANGED_AFTERPARENT 0x02E3
+#endif
+
 class CTextCaretPreview : public CWindowImpl<CTextCaretPreview, CStatic>
 {
 	CaretPreferences m_preferences;
 	CString m_text;
 	bool m_visible = true;
+	void RefreshAppearance();
 public:
 	DECLARE_WND_SUPERCLASS(NULL, WC_STATIC)
 	BEGIN_MSG_MAP(CTextCaretPreview)
@@ -21,12 +26,14 @@ public:
 		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
 		MESSAGE_HANDLER(WM_TIMER, OnTimer)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnAppearanceChanged)
 	END_MSG_MAP()
 	void SetPreview(const CaretPreferences& preferences, const CString& text);
 	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnEraseBackground(UINT, WPARAM, LPARAM, BOOL&) { return 1; }
 	LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&);
 };
 
 class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CStatic>
@@ -91,6 +98,9 @@ public:
 	BEGIN_MSG_MAP(CSettingsEditorPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
+		MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSystemAppearanceChanged)
+		MESSAGE_HANDLER(WM_SYSCOLORCHANGE, OnSystemAppearanceChanged)
+		MESSAGE_HANDLER(WM_THEMECHANGED, OnSystemAppearanceChanged)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_BROWSE, BN_CLICKED, OnBrowseBackground)
@@ -115,6 +125,7 @@ public:
 	END_MSG_MAP()
 	LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnSystemAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBrowseBackground(WORD, WORD, HWND, BOOL&);

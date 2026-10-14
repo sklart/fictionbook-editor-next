@@ -30,7 +30,7 @@ try {
 		if($designExitCode -ne 0 -or -not (Test-Path -LiteralPath $designReport)) { throw "Design caret scenario failed: exit $designExitCode." }
 	} finally { $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario }
 	$designRows = @{}; foreach($line in Get-Content -LiteralPath $designReport) { $parts = $line -split "`t|="; if($parts.Count -eq 2) { $designRows[$parts[0]] = $parts[1] } }
-	foreach($key in @('located','shown','unchanged','removed','source_ignored','focus_restored','shown_after_return')) { if($designRows[$key] -ne '1') { throw "Design caret runtime check failed: $key (value '$($designRows[$key])')." } }
+	foreach($key in @('located','shown','reused','unchanged','removed','focus_removed','scroll_removed','activation_removed','switch_removed','source_ignored','focus_restored','shown_after_return')) { if($designRows[$key] -ne '1') { throw "Design caret runtime check failed: $key (value '$($designRows[$key])')." } }
     $passed = $true
     Write-Host 'FBE SourceEditorControl runtime passed.'
 } finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }

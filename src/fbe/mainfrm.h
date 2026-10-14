@@ -174,6 +174,8 @@ public:
 	CReBarCtrl		m_rebar;			// toolbars
 	ContextAttributeBars m_contextAttributeBars;
 	SourceEditorControl m_source; // source editor presentation owner
+	HWND m_caret_marker = NULL;
+	HWND m_caret_marker_focus = NULL;
 	//bool			m_save_sp_mode;
   FbeRecentDocuments::Controller m_recentDocuments;
   FB::Doc		  *m_doc; // currently open document
@@ -480,6 +482,8 @@ public:
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+		MESSAGE_HANDLER(WM_ACTIVATEAPP, OnCaretMarkerActivation)
+		MESSAGE_HANDLER(WM_ACTIVATE, OnCaretMarkerActivation)
 		MESSAGE_HANDLER(WM_CLIPBOARDUPDATE, OnClipboardUpdate)
         MESSAGE_HANDLER(WM_TIMER, OnTimer)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
@@ -666,6 +670,8 @@ public:
   LRESULT OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
+	LRESULT OnCaretMarkerActivation(UINT, WPARAM, LPARAM, BOOL&);
+	void HideCaretMarker();
 	LRESULT OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnBodyScroll(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&);

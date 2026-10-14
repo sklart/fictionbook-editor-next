@@ -586,6 +586,9 @@
 		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
 		const HWND marker = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL);
 		const bool shown = marker != NULL;
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool reused = marker != NULL && m_caret_marker == marker &&
+			::FindWindowExW(NULL, marker, L"FBE.Next.CaretMarker", NULL) == NULL;
 		const bool unchanged = body && before == _bstr_t(body->outerHTML) && located &&
 			SUCCEEDED(caret->GetLocation(&afterPoint, true)) &&
 			beforePoint.x == afterPoint.x && beforePoint.y == afterPoint.y;
@@ -593,7 +596,24 @@
 		MSG pending = {};
 		while(::PeekMessageW(&pending, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&pending); ::DispatchMessageW(&pending); }
 		const bool removed = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) == NULL;
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool shownBeforeFocus = m_caret_marker != NULL;
+		const HWND focusedWindow = ::GetFocus();
+		if(focusedWindow) ::SendMessage(focusedWindow, WM_KILLFOCUS, 0, 0);
+		const bool focusRemoved = shownBeforeFocus && m_caret_marker == NULL;
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool shownBeforeScroll = m_caret_marker != NULL;
+		::SendMessage(m_hWnd, AU::WM_BODY_SCROLL, 0, 0);
+		const bool scrollRemoved = shownBeforeScroll && m_caret_marker == NULL;
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool shownBeforeActivation = m_caret_marker != NULL;
+		BOOL activationHandled = FALSE;
+		OnCaretMarkerActivation(WM_ACTIVATEAPP, FALSE, 0, activationHandled);
+		const bool activationRemoved = shownBeforeActivation && m_caret_marker == NULL;
+		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
+		const bool shownBeforeSwitch = m_caret_marker != NULL;
 		ShowView(SOURCE);
+		const bool switchRemoved = shownBeforeSwitch && m_caret_marker == NULL;
 		m_source.SetFocus();
 		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
 		const bool sourceIgnored = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) == NULL;
@@ -604,10 +624,12 @@
 		OnViewShowTextCaret(0, ID_VIEW_SHOW_TEXT_CARET, NULL, handled);
 		const bool shownAfterReturn = ::FindWindowExW(NULL, NULL, L"FBE.Next.CaretMarker", NULL) != NULL;
 		CStringA report;
-		report.Format("located=%d\nshown=%d\nunchanged=%d\nremoved=%d\nsource_ignored=%d\nfocus_restored=%d\nshown_after_return=%d\n",
-			located, shown, unchanged, removed, sourceIgnored, focusRestored, shownAfterReturn);
+		report.Format("located=%d\nshown=%d\nreused=%d\nunchanged=%d\nremoved=%d\nfocus_removed=%d\nscroll_removed=%d\nactivation_removed=%d\nswitch_removed=%d\nsource_ignored=%d\nfocus_restored=%d\nshown_after_return=%d\n",
+			located, shown, reused, unchanged, removed, focusRemoved, scrollRemoved, activationRemoved, switchRemoved,
+			sourceIgnored, focusRestored, shownAfterReturn);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(located && shown && unchanged && removed && sourceIgnored && focusRestored && shownAfterReturn ? 0 : 1);
+		::PostQuitMessage(located && shown && reused && unchanged && removed && focusRemoved && scrollRemoved &&
+			activationRemoved && switchRemoved && sourceIgnored && focusRestored && shownAfterReturn ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
@@ -631,7 +653,7 @@
 		const bool caretApplied = m_source.SendMessage(SCI_GETCARETWIDTH) ==
 			UiMetrics::ScaleForDpi(4, UiMetrics::DpiForWindow(m_source.m_hWnd)) &&
 			m_source.SendMessage(SCI_GETCARETPERIOD) == 0 &&
-			m_source.SendMessage(SCI_GETCARETFORE) == (ThemeManager::IsHighContrast() ?
+			m_source.SendMessage(SCI_GETCARETFORE) == static_cast<sptr_t>(ThemeManager::IsHighContrast() ?
 				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
 		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied, caretPersisted, caretApplied, initialSystem);

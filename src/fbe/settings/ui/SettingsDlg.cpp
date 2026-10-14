@@ -274,6 +274,14 @@ LRESULT CSettingsDlg::OnGetMinMaxInfo(UINT, WPARAM, LPARAM lParam, BOOL&)
 	return 0;
 }
 
+LRESULT CSettingsDlg::OnSystemAppearanceChanged(UINT message, WPARAM wParam, LPARAM lParam, BOOL&)
+{
+	ThemeManager::RefreshSystemTheme();
+	if(m_editorPage && ::IsWindow(m_editorPage->m_hWnd))
+		::SendMessage(m_editorPage->m_hWnd, message, wParam, lParam);
+	return 0;
+}
+
 LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 {
 	const UINT dpi = LOWORD(wParam);

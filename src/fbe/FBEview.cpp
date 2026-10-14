@@ -3204,7 +3204,7 @@ void CFBEView::OnScroll(IDispatch */* unused: evt */)
 	// MSHTML emits this only after its hosted document has updated scrollLeft /
 	// scrollTop, so popup coordinates are sampled from the final position.
 	UpdateSearchHighlightsForScroll();
-	::PostMessage(m_frame, AU::WM_BODY_SCROLL, 0, 0);
+	::SendMessage(m_frame, AU::WM_BODY_SCROLL, 0, 0);
 }
 
 bool CFBEView::DoSearchNative(bool fMore, AU::Search::SearchMode mode, bool fromScopeStart)

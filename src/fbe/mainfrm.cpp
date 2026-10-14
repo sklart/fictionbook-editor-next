@@ -73,6 +73,7 @@
 
 static const UINT_PTR RECOVERY_TIMER_ID = 0xFBE;
 static const UINT_PTR IMAGE_IMPORT_TEST_TIMER_ID = 0xFBF;
+static const UINT_PTR CARET_MARKER_TIMER_ID = 0xFC0;
 static const UINT RECOVERY_INTERVAL_MS = 2 * 60 * 1000;
 static const UINT RECOVERY_TYPING_DEBOUNCE_MS = 3 * 1000;
 static const UINT SCRIPT_TOOLBAR_BAND_ID_FIRST = 0x6000;
@@ -1347,6 +1348,7 @@ bool  CMainFrame::IsBandVisible(int id) {
 
 void CMainFrame::AttachDocument(FB::Doc *doc)
 {
+	HideCaretMarker();
 	if (!doc || !doc->m_body.HasDoc())
 	{
 		StartupTrace::Warning(L"mainframe", L"M125", L"document attach deferred: HTML document is not ready");
@@ -3955,6 +3957,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+	HideCaretMarker();
 	if(m_script_card_window.IsWindow()) m_script_card_window.DestroyWindow();
 	if (m_clipboard_listener_registered)
 	{
@@ -4003,6 +4006,7 @@ LRESULT CMainFrame::OnClipboardUpdate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnBodyScroll(UINT, WPARAM, LPARAM, BOOL&)
 {
+	HideCaretMarker();
 	// This notification comes from the real post-scroll MSHTML event.  Do not
 	// turn scrolling into a selection or command-state update.
 	InvalidateUi(UiDirtyScroll);
@@ -4021,6 +4025,7 @@ LRESULT CMainFrame::OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
 {
+	HideCaretMarker();
 	if (DocChanged())
 		SaveRecoveryNow();
 	return TRUE;
@@ -4028,6 +4033,7 @@ LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnEndSession(UINT, WPARAM wParam, LPARAM, BOOL&)
 {
+	if(wParam) HideCaretMarker();
 	if (wParam)
 	{
 		if (DocChanged())
@@ -4038,6 +4044,7 @@ LRESULT CMainFrame::OnEndSession(UINT, WPARAM wParam, LPARAM, BOOL&)
 }
 LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
+	HideCaretMarker();
   // Batch jobs have neither an operator nor an interactive close contract.
   // Their individual scenario handlers have already saved or recorded failure
   // before posting WM_CLOSE, so never let DiscardChanges() show a modal prompt.
@@ -4508,6 +4515,11 @@ LRESULT CMainFrame::OnDetachFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&)
 }
 LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
+	if(wParam == CARET_MARKER_TIMER_ID)
+	{
+		HideCaretMarker();
+		return 0;
+	}
 	if (wParam == IMAGE_IMPORT_TEST_TIMER_ID)
 	{
 		KillTimer(IMAGE_IMPORT_TEST_TIMER_ID);
@@ -5179,7 +5191,6 @@ LRESULT CALLBACK CaretMarkerWindowProc(HWND window, UINT message, WPARAM wParam,
 {
 	if(message == WM_NCHITTEST) return HTTRANSPARENT;
 	if(message == WM_MOUSEACTIVATE) return MA_NOACTIVATE;
-	if(message == WM_TIMER) { ::DestroyWindow(window); return 0; }
 	if(message == WM_PAINT)
 	{
 		PAINTSTRUCT paint = {};
@@ -5194,23 +5205,63 @@ LRESULT CALLBACK CaretMarkerWindowProc(HWND window, UINT message, WPARAM wParam,
 	}
 	return ::DefWindowProcW(window, message, wParam, lParam);
 }
+
+LRESULT CALLBACK CaretMarkerFocusProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam,
+	UINT_PTR, DWORD_PTR reference)
+{
+	if(message == WM_KILLFOCUS || message == WM_NCDESTROY)
+		static_cast<CMainFrame*>(reinterpret_cast<void*>(reference))->HideCaretMarker();
+	return ::DefSubclassProc(window, message, wParam, lParam);
+}
+}
+
+void CMainFrame::HideCaretMarker()
+{
+	KillTimer(CARET_MARKER_TIMER_ID);
+	if(m_caret_marker_focus)
+	{
+		::RemoveWindowSubclass(m_caret_marker_focus, CaretMarkerFocusProc, 1);
+		m_caret_marker_focus = NULL;
+	}
+	if(m_caret_marker)
+	{
+		::DestroyWindow(m_caret_marker);
+		m_caret_marker = NULL;
+	}
+}
+
+LRESULT CMainFrame::OnCaretMarkerActivation(UINT message, WPARAM wParam, LPARAM, BOOL& handled)
+{
+	if((message == WM_ACTIVATEAPP && !wParam) ||
+		(message == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE))
+		HideCaretMarker();
+	handled = FALSE;
+	return 0;
 }
 
 LRESULT CMainFrame::OnViewShowTextCaret(WORD, WORD, HWND, BOOL&)
 {
-	if(IsSourceActive() || !m_doc) return 0;
+	if(IsSourceActive() || !m_doc || ::GetForegroundWindow() != m_hWnd)
+	{
+		HideCaretMarker();
+		return 0;
+	}
 	HWND editorWindow = m_view.GetActiveWnd();
 	HWND focus = ::GetFocus();
-	if(!editorWindow || (focus != editorWindow && !::IsChild(editorWindow, focus))) return 0;
+	if(!editorWindow || !focus || (focus != editorWindow && !::IsChild(editorWindow, focus)))
+	{
+		HideCaretMarker();
+		return 0;
+	}
 	CFBEView* editor = &m_doc->m_body;
-	if(!editor->HasDoc()) return 0;
+	if(!editor->HasDoc()) { HideCaretMarker(); return 0; }
 	MSHTML::IDisplayServicesPtr display(editor->Document());
 	MSHTML::IHTMLCaretPtr caret;
-	if(!display || FAILED(display->GetCaret(&caret)) || !caret) return 0;
+	if(!display || FAILED(display->GetCaret(&caret)) || !caret) { HideCaretMarker(); return 0; }
 	long visible = 0;
 	MSHTML::tagPOINT point = {};
 	if(FAILED(caret->IsVisible(&visible)) || visible == 0 ||
-		FAILED(caret->GetLocation(&point, true))) return 0;
+		FAILED(caret->GetLocation(&point, true))) { HideCaretMarker(); return 0; }
 	static const wchar_t className[] = L"FBE.Next.CaretMarker";
 	WNDCLASSW windowClass = {};
 	windowClass.lpfnWndProc = CaretMarkerWindowProc;
@@ -5220,15 +5271,23 @@ LRESULT CMainFrame::OnViewShowTextCaret(WORD, WORD, HWND, BOOL&)
 	const UINT dpi = UiMetrics::DpiForWindow(editorWindow);
 	const int width = UiMetrics::ScaleForDpi(5, dpi);
 	const int height = UiMetrics::ScaleForDpi(24, dpi);
-	HWND marker = ::CreateWindowExW(WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
-		className, L"", WS_POPUP, point.x - width / 2, point.y, width, height,
-		m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
-	if(marker)
+	if(m_caret_marker && m_caret_marker_focus != focus) HideCaretMarker();
+	if(!m_caret_marker)
 	{
-		::SetWindowPos(marker, HWND_TOPMOST, 0, 0, 0, 0,
-			SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-		if(!::SetTimer(marker, 1, 1100, NULL)) ::DestroyWindow(marker);
+		m_caret_marker = ::CreateWindowExW(WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_TRANSPARENT,
+			className, L"", WS_POPUP, point.x - width / 2, point.y, width, height,
+			m_hWnd, NULL, _Module.GetModuleInstance(), NULL);
+		if(!m_caret_marker) return 0;
+		if(!::SetWindowSubclass(focus, CaretMarkerFocusProc, 1, reinterpret_cast<DWORD_PTR>(this)))
+		{
+			HideCaretMarker();
+			return 0;
+		}
+		m_caret_marker_focus = focus;
 	}
+	::SetWindowPos(m_caret_marker, HWND_TOPMOST, point.x - width / 2, point.y, width, height,
+		SWP_NOACTIVATE | SWP_SHOWWINDOW);
+	if(!SetTimer(CARET_MARKER_TIMER_ID, 1100)) HideCaretMarker();
 	return 0;
 }
 
@@ -6544,6 +6603,7 @@ void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& re
 void CMainFrame::ShowView(EditorView vt)
 {
 	const EditorView previous = m_editor_view_state.Current();
+	if(previous != vt) HideCaretMarker();
 	if (!m_editor_view_state.CtrlTabActive() && previous != vt)
 		m_editor_view_state.SetLastCtrlTabView(previous);
 	EditorViewPresentationContext presentationContext = {

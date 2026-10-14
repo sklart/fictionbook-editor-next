@@ -89,6 +89,9 @@ BEGIN_MSG_MAP(CSettingsDlg)
 	MESSAGE_HANDLER(WM_SIZING, OnSizing)
 	MESSAGE_HANDLER(WM_EXITSIZEMOVE, OnExitSizeMove)
 	MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
+	MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSystemAppearanceChanged)
+	MESSAGE_HANDLER(WM_SYSCOLORCHANGE, OnSystemAppearanceChanged)
+	MESSAGE_HANDLER(WM_THEMECHANGED, OnSystemAppearanceChanged)
 	MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
 	CHAIN_MSG_MAP(CAxDialogImpl<CSettingsDlg>)
 END_MSG_MAP()
@@ -104,6 +107,7 @@ END_MSG_MAP()
 	LRESULT OnExitSizeMove(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnGetMinMaxInfo(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnSystemAppearanceChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 private:
