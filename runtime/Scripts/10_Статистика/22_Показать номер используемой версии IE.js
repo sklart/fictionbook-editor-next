@@ -18,7 +18,9 @@
     "Запустите скрипт и прочитайте номер или метку браузера вместе со строкой User-Agent.",
     "Результат отражает строку User-Agent окна, а не независимую проверку установленного IE."
   ],
-  "warnings": [],
+  "warnings": [
+    "При строке User-Agent с Edge/ результат формулируется как «Internet Explorer версии Edge», хотя Edge не является версией IE; ориентируйтесь на показанную строку User-Agent."
+  ],
   "dependencies": [],
   "dependenciesComplete": true,
   "sourceRevision": {
