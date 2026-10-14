@@ -16,54 +16,55 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **419**. Исполняемый код не изменён.
+Изменено карточек: **420**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 60
-- `generic_usage`: 365
+- `generic_summary`: 61
+- `generic_usage`: 366
 - `generic_warning`: 62
-- `inaccurate_description`: 677
+- `inaccurate_description`: 678
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 380
+- `incorrect_dependency`: 381
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 372
+- `incorrect_scope`: 373
 - `incorrect_selection`: 36
-- `incorrect_setting`: 195
-- `incorrect_undo`: 364
+- `incorrect_setting`: 196
+- `incorrect_undo`: 365
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 3
-- `uncertain_attribution`: 57
+- `missing_warning`: 4
+- `uncertain_attribution`: 58
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 59
+- `attributionClarified`: 60
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 247
+- `dependenciesVerified`: 248
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 363
-- `scopeClarified`: 349
+- `purposeClarified`: 364
+- `scopeClarified`: 350
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `undoDescriptionsClarified`: 356
-- `usageCorrected`: 365
+- `settingsCorrected`: 1
+- `undoDescriptionsClarified`: 357
+- `usageCorrected`: 366
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 297
+- `warningsClarified`: 298
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **259**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **260**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -575,13 +576,16 @@
 - `13_Заголовки, подзаголовки, пустые строки/570_Поиск возможных заголовков по ключевым словам.js:158` — Однословные ключевые шаблоны привязаны к самому началу строки без допуска начальных пробелов и без общего режима i; строки с отступом или смешанным регистром не находятся, хотя числовые шаблоны допускают пробелы.
 - `13_Заголовки, подзаголовки, пустые строки/580_Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками.js:78` — После BeginUndoUnit (строка 70) при отсутствии fbw_body выполняется return без EndUndoUnit; группа отмены остаётся открытой.
 - `13_Заголовки, подзаголовки, пустые строки/580_Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками.js:196` — Общий обработчик ошибки после BeginUndoUnit сообщает об ошибке, но не закрывает группу отмены; исключение в обработке или выводе результата оставляет её открытой.
+- `13_Заголовки, подзаголовки, пустые строки/595_Разметить заголовки безымянных разделов из выделенного фрагмента.js:549` — Поиск безымянных секций идёт по всем DIV документа без ограничения основным body, хотя заголовок скрипта и инструкция обещают работу с основным body. Разделы примечаний и комментариев тоже могут получить заголовки.
+- `13_Заголовки, подзаголовки, пустые строки/595_Разметить заголовки безымянных разделов из выделенного фрагмента.js:263` — После открытия группы отмены цикл вставки и последующее удаление выделения не защищены finally. Исключение до EndUndoUnit на строке 326 оставит группу открытой.
+- `13_Заголовки, подзаголовки, пустые строки/595_Разметить заголовки безымянных разделов из выделенного фрагмента.js:397` — Временный контейнер добавляется в document.body, но удаляется только на успешном пути. При исключении между добавлением и удалением обработчик ошибки не удаляет контейнер из документа.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 891
+- `generic_usage`: 887
 - `inaccurate_description`: 50
-- `incorrect_undo`: 132
-- `requires_review`: 356
+- `incorrect_undo`: 131
+- `requires_review`: 358
 
 ## Границы проверки
 

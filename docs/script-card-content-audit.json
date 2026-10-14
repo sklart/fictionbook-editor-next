@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 356,
-    "generic_usage": 891,
-    "incorrect_undo": 132,
+    "requires_review": 358,
+    "generic_usage": 887,
+    "incorrect_undo": 131,
     "inaccurate_description": 50
   },
   "reviewedChanges": [
@@ -51412,18 +51412,179 @@
         "dependenciesVerified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/595_Разметить заголовки безымянных разделов из выделенного фрагмента.js",
+      "codeSha256": "f74bc0b6a131a78a02a9633262d240a10d5fbcd53588ebec78ce48e6d4d3d707",
+      "evidence": "Строки 1–44 задают сценарий; 55–65 — три пользовательских параметра; 81–109 проверяют и читают выделение; 112–176 выбирают безымянные секции; 214–259 показывают варианты; 263–326 вставляют заголовки, при согласии удаляют исходный фрагмент и завершают группу отмены; 387–465 извлекают строки; 545–585 ищут секции без прямого title; 589–661 вставляют title. Внешних программ, файловых и сетевых операций нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматической расстановки заголовков в БЕЗЫМЯННЫЕ разделы (секции)",
+          "after": "Создаёт заголовки безымянных секций по строкам выделенного текстового оглавления.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматической расстановки заголовков в БЕЗЫМЯННЫЕ разделы (секции)",
+          "after": "Из выделенного фрагмента берёт непустые абзацы и использует их как текст новых заголовков. По порядку находит секции без прямого дочернего элемента title, предлагает пропустить первые N секций, а затем сопоставляет число строк и секций. Если строк вдвое больше, предлагает делать двухабзацные заголовки; при другом несовпадении заполняет столько секций, сколько возможно. Вставляет title в начало каждой выбранной секции, нормализует пробелы и исправляет некоторые точки без пробела. По отдельному согласию удаляет исходное выделение; форматирование исходных строк в новых заголовках не сохраняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+          "after": "Источник заголовков — абзацы P из выделенного фрагмента. Целевые секции ищутся по всему документу, включая дополнительные body; секция считается безымянной, если прямого дочернего title нет. Секция с исходным оглавлением по умолчанию тоже входит в список.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Выделите абзацы текстового оглавления: каждый непустой абзац станет отдельной строкой заголовка.",
+            "В диалогах проверьте число пропускаемых секций, схему распределения строк и удаление исходного фрагмента. По умолчанию предлагается пропустить одну секцию и удалить исходное выделение.",
+            "После запуска проверьте порядок заголовков и структуру всех body до сохранения."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Поиск целевых секций не ограничен основным body: заголовки могут появиться также в примечаниях и комментариях. Проверьте список секций и результат перед сохранением.",
+            "Исходное форматирование теряется; некоторые точки без пробела исправляются автоматически. При согласии исходное выделение удаляется после вставки заголовков.",
+            "При ошибке после начала вставки группа отмены может остаться незакрытой; успешность отката в этом случае не проверена."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "При штатном завершении вставка заголовков и возможное удаление исходного фрагмента объединены в одну группу отмены. Между началом и завершением группы нет обычного досрочного выхода, но ошибка может оставить её открытой; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "scriptStartTime",
+              "expression": "null",
+              "description": "Замер времени начала РЕАЛЬНОЙ работы скрипта",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "processSectionWithSelection",
+              "value": 1,
+              "expression": "1",
+              "description": "Включать секцию с исходным оглавлением в обработку: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "skipFirstSectionsCount",
+              "value": 1,
+              "expression": "1",
+              "description": "Начальное число пропускаемых безымянных секций; перед обработкой скрипт предлагает изменить его в диалоге.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "deleteOriginalSelection",
+              "value": 1,
+              "expression": "1",
+              "description": "Предлагать удалить исходное выделение после расстановки: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 549,
+          "issue": "Поиск безымянных секций идёт по всем DIV документа без ограничения основным body, хотя заголовок скрипта и инструкция обещают работу с основным body. Разделы примечаний и комментариев тоже могут получить заголовки."
+        },
+        {
+          "line": 263,
+          "issue": "После открытия группы отмены цикл вставки и последующее удаление выделения не защищены finally. Исключение до EndUndoUnit на строке 326 оставит группу открытой."
+        },
+        {
+          "line": 397,
+          "issue": "Временный контейнер добавляется в document.body, но удаляется только на успешном пути. При исключении между добавлением и удалением обработчик ошибки не удаляет контейнер из документа."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 677,
-    "generic_usage": 365,
+    "inaccurate_description": 678,
+    "generic_usage": 366,
     "false_warning": 319,
-    "incorrect_setting": 195,
-    "incorrect_scope": 372,
-    "incorrect_undo": 364,
-    "uncertain_attribution": 57,
-    "generic_summary": 60,
-    "incorrect_dependency": 380,
+    "incorrect_setting": 196,
+    "incorrect_scope": 373,
+    "incorrect_undo": 365,
+    "uncertain_attribution": 58,
+    "generic_summary": 61,
+    "incorrect_dependency": 381,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -51437,27 +51598,28 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 3,
+    "missing_warning": 4,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 356,
-    "usageCorrected": 365,
-    "purposeClarified": 363,
-    "warningsClarified": 297,
-    "scopeClarified": 349,
+    "undoDescriptionsClarified": 357,
+    "usageCorrected": 366,
+    "purposeClarified": 364,
+    "warningsClarified": 298,
+    "scopeClarified": 350,
     "settingsClarified": 509,
-    "attributionClarified": 59,
-    "dependenciesVerified": 247,
+    "attributionClarified": 60,
+    "dependenciesVerified": 248,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15,
     "selectionClarified": 6,
     "versionCorrected": 3,
-    "versionsClarified": 4
+    "versionsClarified": 4,
+    "settingsCorrected": 1
   },
   "scripts": [
     {
@@ -141789,49 +141951,61 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Разметить заголовки безымянных разделов из выделенного фрагмента",
-        "summary": "Скрипт предназначен для автоматической расстановки заголовков в БЕЗЫМЯННЫЕ разделы (секции)",
-        "description": "Скрипт предназначен для автоматической расстановки заголовков в БЕЗЫМЯННЫЕ разделы (секции)",
+        "summary": "Создаёт заголовки безымянных секций по строкам выделенного текстового оглавления.",
+        "description": "Из выделенного фрагмента берёт непустые абзацы и использует их как текст новых заголовков. По порядку находит секции без прямого дочернего элемента title, предлагает пропустить первые N секций, а затем сопоставляет число строк и секций. Если строк вдвое больше, предлагает делать двухабзацные заголовки; при другом несовпадении заполняет столько секций, сколько возможно. Вставляет title в начало каждой выбранной секции, нормализует пробелы и исправляет некоторые точки без пробела. По отдельному согласию удаляет исходное выделение; форматирование исходных строк в новых заголовках не сохраняет.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "2.2",
-        "scope": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+        "scope": "Источник заголовков — абзацы P из выделенного фрагмента. Целевые секции ищутся по всему документу, включая дополнительные body; секция считается безымянной, если прямого дочернего title нет. Секция с исходным оглавлением по умолчанию тоже входит в список.",
         "modifiesDocument": true,
         "requiresSelection": true,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Выделите абзацы текстового оглавления: каждый непустой абзац станет отдельной строкой заголовка.",
+          "В диалогах проверьте число пропускаемых секций, схему распределения строк и удаление исходного фрагмента. По умолчанию предлагается пропустить одну секцию и удалить исходное выделение.",
+          "После запуска проверьте порядок заголовков и структуру всех body до сохранения."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Поиск целевых секций не ограничен основным body: заголовки могут появиться также в примечаниях и комментариях. Проверьте список секций и результат перед сохранением.",
+          "Исходное форматирование теряется; некоторые точки без пробела исправляются автоматически. При согласии исходное выделение удаляется после вставки заголовков.",
+          "При ошибке после начала вставки группа отмены может остаться незакрытой; успешность отката в этом случае не проверена."
         ],
         "settings": [
           {
-            "name": "scriptStartTime",
-            "expression": "null",
-            "description": "Замер времени начала РЕАЛЬНОЙ работы скрипта",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "processSectionWithSelection",
+            "value": 1,
+            "expression": "1",
+            "description": "Включать секцию с исходным оглавлением в обработку: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "skipFirstSectionsCount",
+            "value": 1,
+            "expression": "1",
+            "description": "Начальное число пропускаемых безымянных секций; перед обработкой скрипт предлагает изменить его в диалоге.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
+          {
+            "name": "deleteOriginalSelection",
+            "value": 1,
+            "expression": "1",
+            "description": "Предлагать удалить исходное выделение после расстановки: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "При штатном завершении вставка заголовков и возможное удаление исходного фрагмента объединены в одну группу отмены. Между началом и завершением группы нет обычного досрочного выхода, но ошибка может оставить её открытой; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -141842,55 +142016,55 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 324,
+            "line": 336,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 387,
+            "line": 399,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 199,
+            "line": 211,
             "text": "var userInput = prompt("
           }
         ],
         "selection": [
           {
-            "line": 143,
+            "line": 155,
             "text": "if (!document.selection || document.selection.type.toLowerCase() !== \"text\") {"
           },
           {
-            "line": 143,
+            "line": 155,
             "text": "if (!document.selection || document.selection.type.toLowerCase() !== \"text\") {"
           },
           {
-            "line": 149,
+            "line": 161,
             "text": "var selectionRange = document.selection.createRange();"
           },
           {
-            "line": 149,
+            "line": 161,
             "text": "var selectionRange = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 454,
+            "line": 466,
             "text": "var tempDiv = document.createElement('div');"
           },
           {
-            "line": 457,
+            "line": 469,
             "text": "tempDiv.innerHTML = html;"
           },
           {
-            "line": 458,
+            "line": 470,
             "text": "document.body.appendChild(tempDiv);"
           },
           {
-            "line": 490,
+            "line": 502,
             "text": "document.body.removeChild(tempDiv);"
           }
         ],
@@ -141901,127 +142075,127 @@
         "file": [],
         "return": [
           {
-            "line": 146,
+            "line": 158,
             "text": "return;"
           },
           {
-            "line": 152,
+            "line": 164,
             "text": "return;"
           },
           {
-            "line": 170,
+            "line": 182,
             "text": "return;"
           },
           {
-            "line": 207,
+            "line": 219,
             "text": "return;"
           },
           {
-            "line": 268,
+            "line": 280,
             "text": "return;"
           },
           {
-            "line": 279,
+            "line": 291,
             "text": "return;"
           },
           {
-            "line": 290,
+            "line": 302,
             "text": "return;"
           },
           {
-            "line": 300,
+            "line": 312,
             "text": "return;"
           },
           {
-            "line": 310,
+            "line": 322,
             "text": "return;"
           },
           {
-            "line": 433,
+            "line": 445,
             "text": "if (!element) return null;"
           },
           {
-            "line": 439,
+            "line": 451,
             "text": "return current;"
           },
           {
-            "line": 444,
+            "line": 456,
             "text": "return null;"
           },
           {
-            "line": 450,
+            "line": 462,
             "text": "if (!html) return headers;"
           },
           {
-            "line": 526,
+            "line": 538,
             "text": "return headers;"
           },
           {
-            "line": 531,
+            "line": 543,
             "text": "if (!element) return \"\";"
           },
           {
-            "line": 553,
+            "line": 565,
             "text": "return text;"
-          },
-          {
-            "line": 558,
-            "text": "if (!text) return \"\";"
           },
           {
             "line": 570,
+            "text": "if (!text) return \"\";"
+          },
+          {
+            "line": 582,
             "text": "return text;"
           },
           {
-            "line": 575,
+            "line": 587,
             "text": "if (!text) return text;"
           },
           {
-            "line": 586,
+            "line": 598,
             "text": "return match.replace('.' + p2, '. ' + p2);"
           },
           {
-            "line": 602,
+            "line": 614,
             "text": "return text;"
           },
           {
-            "line": 624,
+            "line": 636,
             "text": "return namelessSections;"
           },
           {
-            "line": 629,
+            "line": 641,
             "text": "if (!section) return false;"
           },
           {
-            "line": 640,
+            "line": 652,
             "text": "return true;"
           },
           {
-            "line": 646,
+            "line": 658,
             "text": "return false;"
           },
           {
-            "line": 651,
+            "line": 663,
             "text": "if (!section || !headerText) return false;"
           },
           {
-            "line": 677,
+            "line": 689,
             "text": "return true;"
           },
           {
-            "line": 680,
+            "line": 692,
             "text": "return false;"
           },
           {
-            "line": 686,
+            "line": 698,
             "text": "if (!section || !firstHeader || !secondHeader) return false;"
           },
           {
-            "line": 718,
+            "line": 730,
             "text": "return true;"
           },
           {
-            "line": 721,
+            "line": 733,
             "text": "return false;"
           }
         ]
@@ -142030,29 +142204,56 @@
       "settingEvidence": [
         {
           "index": 0,
-          "name": "scriptStartTime",
-          "declarations": [
-            {
-              "line": 130,
-              "text": "var scriptStartTime = null;"
-            }
-          ],
+          "name": "processSectionWithSelection",
+          "declarations": [],
           "uses": [
             {
-              "line": 130,
-              "text": "var scriptStartTime = null;"
+              "line": 131,
+              "text": "processSectionWithSelection: 1,"
             },
             {
-              "line": 327,
-              "text": "scriptStartTime = new Date();"
+              "line": 197,
+              "text": "if (isSelectionSection && SETTINGS.processSectionWithSelection === 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "skipFirstSectionsCount",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 135,
+              "text": "skipFirstSectionsCount: 1,"
             },
             {
-              "line": 391,
-              "text": "var timeDiff = scriptStartTime ? (scriptEndTime - scriptStartTime) : 0;"
+              "line": 209,
+              "text": "if (SETTINGS.skipFirstSectionsCount > 0 && sectionsToProcess.length > 0) {"
             },
             {
-              "line": 391,
-              "text": "var timeDiff = scriptStartTime ? (scriptEndTime - scriptStartTime) : 0;"
+              "line": 214,
+              "text": "SETTINGS.skipFirstSectionsCount"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "deleteOriginalSelection",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 138,
+              "text": "deleteOriginalSelection: 1"
+            },
+            {
+              "line": 329,
+              "text": "if (SETTINGS.deleteOriginalSelection === 1) {"
+            },
+            {
+              "line": 395,
+              "text": "} else if (SETTINGS.deleteOriginalSelection === 1) {"
             }
           ],
           "classification": "requires_review"
@@ -142061,25 +142262,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 63,
+          "line": 75,
           "text": "// version 2.2"
         },
         {
-          "line": 107,
+          "line": 119,
           "text": "// version 2.2, 17.12.2025"
         },
         {
-          "line": 111,
+          "line": 123,
           "text": "// Название и версия скрипта для сообщений"
         },
         {
-          "line": 113,
+          "line": 125,
           "text": "var scriptVersion = \"2.2\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Поиск целевых секций не ограничен основным body: заголовки могут появиться также в примечаниях и комментариях. Проверьте список секций и результат перед сохранением.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Исходное форматирование теряется; некоторые точки без пробела исправляются автоматически. При согласии исходное выделение удаляется после вставки заголовков.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке после начала вставки группа отмены может остаться незакрытой; успешность отката в этом случае не проверена.",
           "verification": "requires_review"
         }
       ],
@@ -142102,67 +142311,49 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "category": "requires_review",
+          "field": "settings[0]",
+          "previous": {
+            "name": "processSectionWithSelection",
+            "value": 1,
+            "expression": "1",
+            "description": "Включать секцию с исходным оглавлением в обработку: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
           "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
           "evidence": []
         },
         {
           "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "field": "settings[1]",
+          "previous": {
+            "name": "skipFirstSectionsCount",
+            "value": 1,
+            "expression": "1",
+            "description": "Начальное число пропускаемых безымянных секций; перед обработкой скрипт предлагает изменить его в диалоге.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
           "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
           "evidence": []
         },
         {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
+          "category": "requires_review",
+          "field": "settings[2]",
+          "previous": {
+            "name": "deleteOriginalSelection",
+            "value": 1,
+            "expression": "1",
+            "description": "Предлагать удалить исходное выделение после расстановки: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
+          },
           "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 324,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 387,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
+          "evidence": []
         }
       ]
     },
