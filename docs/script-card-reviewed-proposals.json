@@ -17826,5 +17826,427 @@
       "settingsClarified": 6,
       "undoDescriptionsClarified": 1
     }
+  },
+  {
+    "path": "95_Для программистов/01_Показать код.js",
+    "codeSha256": "b473e8690582632f654ca9d052129ecb645b7c2cb86ad3a8b47c5b0446fb36a3",
+    "evidence": "Run: строки 57-63 получают текущий диапазон, поднимаются к первому DIV или элементу с className=section и показывают его outerHTML. Записи в DOM, файлы и сеть отсутствуют; выделение текста не требуется. Автор и версия в исполняемом тексте не названы.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Показывает HTML ближайшего найденного контейнера около курсора.",
+        "after": "Показывает HTML ближайшего DIV у курсора в окне сообщения.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Поднимается от parentElement текущего диапазона по DOM и выводит outerHTML. Это HTML визуального редактора, не полный исходный XML FB2.",
+        "after": "Получает элемент под курсором, поднимается к первому DIV либо элементу с классом section и показывает его outerHTML. Это внутренний HTML визуального редактора, а не исходный XML книги.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "after": "Ближайший контейнер DIV у позиции курсора; весь документ не обходится.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "requiresSelection",
+        "before": null,
+        "after": false,
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+        ],
+        "after": [
+          "Поставьте курсор в нужный абзац или структурный блок и запустите скрипт.",
+          "Просмотрите HTML ближайшего контейнера в сообщении; для полного XML книги используйте другие средства."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт только читает HTML и показывает сообщение; изменений книги и операции отмены в нём нет."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "95_Для программистов/02_Показать весь код.js",
+    "codeSha256": "1f93a95ff568e912e4a625d0ad9e64f7a59f16088b61be3fa1d7eee4a154d8ef",
+    "evidence": "Run: строки 61-78 получают диапазон и ближайший DIV или section, затем открывают HTML/Показать весь код.html и записывают outerHTML в тело отдельного окна. Файл HTML — обязательный шаблон, его исходник содержит только стили и пустое body; правок книги и сетевых вызовов нет. Комментарий перед Run благодарит mkb (Konstantin Matveev) за идею.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Показывает HTML выбранного контейнера в отдельном окне.",
+        "after": "Открывает HTML ближайшего контейнера у курсора в отдельном окне.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Берёт outerHTML элемента, найденного относительно курсора, и помещает код в окно отчёта. Название «весь код» не означает, что получен полный XML с description и binary.",
+        "after": "Находит ближайший DIV или элемент с классом section у позиции курсора и выводит его outerHTML в отдельное окно по локальному HTML-шаблону. Несмотря на название, полный XML с описанием и бинарными вложениями не собирается.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Текущая книга или определённые кодом её разделы.",
+        "after": "Ближайший контейнер DIV у позиции курсора; весь документ не обходится.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "requiresSelection",
+        "before": null,
+        "after": false,
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+          "Запустите команду из меню или дерева скриптов."
+        ],
+        "after": [
+          "Поставьте курсор в интересующий контейнер книги и запустите скрипт.",
+          "Откроется локальное окно с HTML этого контейнера; файл HTML/Показать весь код.html должен находиться рядом с комплектом скриптов."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "warnings",
+        "before": [
+          "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+        ],
+        "after": [
+          "Если отдельное окно не откроется, скрипт не сможет вывести код; в исходнике это не проверяется."
+        ],
+        "category": "false_warning"
+      },
+      {
+        "field": "authors",
+        "before": [
+          {
+            "role": "unknown"
+          }
+        ],
+        "after": [
+          {
+            "role": "unknown"
+          },
+          {
+            "name": "mkb (Konstantin Matveev)",
+            "role": "contributor",
+            "contribution": "idea"
+          }
+        ],
+        "category": "incorrect_authorship"
+      },
+      {
+        "field": "authorshipStatus",
+        "before": "not_stated",
+        "after": "partial_attribution",
+        "category": "incorrect_authorship"
+      },
+      {
+        "field": "dependencies",
+        "before": [
+          {
+            "path": "HTML/Показать весь код.html",
+            "sha256": "9c1a17d59af89945467bd2a60fc66a6a2379b8beab22a2fa4cd197524bff21ee",
+            "optional": true
+          }
+        ],
+        "after": [
+          {
+            "path": "HTML/Показать весь код.html",
+            "sha256": "9c1a17d59af89945467bd2a60fc66a6a2379b8beab22a2fa4cd197524bff21ee",
+            "optional": false
+          }
+        ],
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "may_be_delegated",
+          "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт только читает HTML книги и записывает текст в отдельное окно; изменений книги и операции отмены в нём нет."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 77,
+        "issue": "После window.open нет проверки на null; при запрете отдельного окна запись в MsgWindow.document вызовет ошибку."
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "attributionClarified": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "95_Для программистов/03_Код в буфер.js",
+    "codeSha256": "0d16977493fc147cc3af837fd0d49ebaeac45460f5ce3803ff338f7453c9922d",
+    "evidence": "Run: строки 54-60 получают document.documentElement.outerHTML и вызывают clipboardData.setData(\"text\", s1). Выделение не используется, документ не меняется; автор и версия не указаны.",
+    "changes": [
+      {
+        "field": "scope",
+        "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "after": "Весь внутренний HTML-документ визуального редактора, включая его оболочку; выделение не используется.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Запустите команду из меню или дерева скриптов."
+        ],
+        "after": [
+          "Откройте книгу и запустите скрипт.",
+          "Вставьте содержимое буфера в текстовый редактор, чтобы посмотреть внутренний HTML редактора; это не сериализованный FB2/XML."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт читает HTML и заменяет содержимое буфера обмена. Книга не меняется; отмена в редакторе не восстанавливает буфер."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [],
+    "metrics": {
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "95_Для программистов/10_Показать номер используемой версии IE.js",
+    "codeSha256": "12a7846f580e7061b45966301e341f0f5feaa07ccbdee1fb5f9c0f4bd49bd4de",
+    "evidence": "Run: строки 66-94 читают navigator.userAgent, ищут MSIE, Trident/rv: или Edge/, затем выводят сообщение. Реальная версия установленного IE и режим совместимости отдельно не проверяются; изменений книги и внешних зависимостей нет.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Показывает сведения о версии/режиме встроенного IE/MSHTML.",
+        "after": "Показывает номер IE или метку Edge по строке User-Agent встроенного окна.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Читает доступные свойства браузерного окружения и показывает диагностическое сообщение. Книгу не преобразует.",
+        "after": "Разбирает navigator.userAgent: ищет MSIE, Trident с rv: или Edge/ и выводит найденный номер либо сообщение о другом браузере. Не проверяет установленную версию IE или режим совместимости редактора.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Сеанс и интерфейс редактора.",
+        "after": "Браузерное окружение текущего окна редактора; содержимое книги не читается.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+        ],
+        "after": [
+          "Запустите скрипт в редакторе и прочитайте диагностическое сообщение.",
+          "Результат основан на строке User-Agent окна и не является проверкой установленной версии браузера или режима совместимости."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт читает строку браузерного окружения и показывает сообщение; книгу не меняет."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "95_Для программистов/11_Совет по сохранению fb2 файлов.js",
+    "codeSha256": "dd75bab93d518a261fd2990eaab641bb941aef62c4130d7e58e6ecc3550a8f01",
+    "evidence": "Run: строки 57-69 содержат единственный вызов MsgBox со статической инструкцией. Никаких проверок прав доступа, атрибута read-only, наличия .tmp или состояния файла нет; книга не меняется.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Показывает текстовый совет о проблемах сохранения файлов.",
+        "after": "Показывает статическую памятку о проверке проблемы сохранения FB2.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Сеанс и интерфейс редактора.",
+        "after": "Только текст сообщения; текущая книга и файловая система не проверяются.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Запустите скрипт в FBE Next и следуйте сообщениям; требования к документу указаны в preconditions.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+        ],
+        "after": [
+          "Запустите скрипт, чтобы прочитать памятку о проблеме сохранения.",
+          "Проверяйте состояние файла отдельно: появление временного .tmp само по себе не подтверждает причину ошибки."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт только показывает текстовое сообщение; книгу и файлы не меняет."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "95_Для программистов/19_Диагностика позиции окна документа.js",
+    "codeSha256": "0432fc4d86adbcf9dbf3236df7a1d3b72625d57ec46cc84b610ac023df4f583a",
+    "evidence": "Run: строки 68-98 считывают screenLeft/screenTop, innerHeight, clientHeight/offsetHeight/scrollHeight body, documentElement и fbw_body, а также availHeight/height экрана; показывают MsgBox. Горизонтальные размеры не вычисляются, документ не меняется.",
+    "changes": [
+      {
+        "field": "summary",
+        "before": "Скрипт предназначен для определения реального положения и размеров окна открытого fb2 документа.",
+        "after": "Показывает координаты окна и вертикальные размеры области документа.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Скрипт предназначен для определения реального положения и размеров окна открытого fb2 документа.",
+        "after": "Считывает координаты окна, высоту внутренней области, вертикальные размеры body, documentElement и fbw_body, а также высоту экрана. Выводит значения в сообщении; ширину окна и положение документа внутри экрана отдельно не определяет.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Текущая книга или определённые кодом её разделы.",
+        "after": "Текущее окно редактора, HTML-область книги и экран; содержимое книги не изменяется.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+        ],
+        "after": [
+          "Запустите скрипт в нужном окне редактора.",
+          "Скопируйте или сравните показанные координаты и высоты; сведения о ширине в отчёте отсутствуют."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "no_explicit_grouping",
+          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+        },
+        "after": {
+          "status": "no_explicit_grouping",
+          "description": "Скрипт читает размеры и координаты окна и показывает сообщение; книгу не меняет."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "undoDescriptionsClarified": 1
+    }
   }
 ]

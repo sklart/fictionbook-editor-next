@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **53**.
+Карточек без автоматических замечаний: **59**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,36 +16,36 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **144**. Исполняемый код не изменён.
+Изменено карточек: **150**. Исполняемый код не изменён.
 
-- `false_warning`: 120
-- `generic_usage`: 89
-- `inaccurate_description`: 180
+- `false_warning`: 121
+- `generic_usage`: 95
+- `inaccurate_description`: 189
 - `inaccurate_version`: 1
-- `incorrect_authorship`: 37
-- `incorrect_dependency`: 75
+- `incorrect_authorship`: 39
+- `incorrect_dependency`: 82
 - `incorrect_effect`: 2
-- `incorrect_scope`: 79
+- `incorrect_scope`: 87
 - `incorrect_setting`: 100
-- `incorrect_undo`: 88
+- `incorrect_undo`: 94
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 3
+- `attributionClarified`: 4
 - `dependenciesClarified`: 29
 - `externalWarningsRefined`: 12
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 89
-- `scopeClarified`: 73
+- `purposeClarified`: 94
+- `scopeClarified`: 79
 - `serviceSettingsRemoved`: 142
 - `settingsClarified`: 397
-- `undoDescriptionsClarified`: 89
-- `usageCorrected`: 89
+- `undoDescriptionsClarified`: 95
+- `usageCorrected`: 95
 - `warningsClarified`: 29
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **65**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **66**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -169,10 +169,11 @@
 - `05_Иллюстрации/52_Вставить любые иллюстрации в началах и концах секций.js:473` — После вызова inflateBlock присваивание его результату вызывает исключение; catch подавляет ошибку, а итоговое состояние абзаца не проверяется.
 - `05_Иллюстрации/52_Вставить любые иллюстрации в началах и концах секций.js:294` — После начала операции отмены нет finally для её завершения при исключении.
 - `05_Иллюстрации/52_Вставить любые иллюстрации в началах и концах секций.js:310` — Проверяется только body notes; секции comments также могут попасть в обработку.
+- `95_Для программистов/02_Показать весь код.js:77` — После window.open нет проверки на null; при запрете отдельного окна запись в MsgWindow.document вызовет ошибку.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1916
+- `generic_usage`: 1902
 - `inaccurate_description`: 109
 - `incorrect_undo`: 340
 - `requires_review`: 506
