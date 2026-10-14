@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **62**.
+Карточек без автоматических замечаний: **65**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,18 +16,18 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **153**. Исполняемый код не изменён.
+Изменено карточек: **156**. Исполняемый код не изменён.
 
-- `false_warning`: 122
-- `generic_usage`: 98
-- `inaccurate_description`: 193
+- `false_warning`: 124
+- `generic_usage`: 101
+- `inaccurate_description`: 199
 - `inaccurate_version`: 1
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 85
+- `incorrect_dependency`: 88
 - `incorrect_effect`: 2
-- `incorrect_scope`: 90
+- `incorrect_scope`: 94
 - `incorrect_setting`: 101
-- `incorrect_undo`: 97
+- `incorrect_undo`: 100
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -37,15 +37,15 @@
 - `dependenciesClarified`: 29
 - `externalWarningsRefined`: 12
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 96
-- `scopeClarified`: 82
+- `purposeClarified`: 99
+- `scopeClarified`: 85
 - `serviceSettingsRemoved`: 143
 - `settingsClarified`: 397
-- `undoDescriptionsClarified`: 98
-- `usageCorrected`: 98
-- `warningsClarified`: 30
+- `undoDescriptionsClarified`: 101
+- `usageCorrected`: 101
+- `warningsClarified`: 32
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **67**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **69**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -171,13 +171,16 @@
 - `05_Иллюстрации/52_Вставить любые иллюстрации в началах и концах секций.js:310` — Проверяется только body notes; секции comments также могут попасть в обработку.
 - `95_Для программистов/02_Показать весь код.js:77` — После window.open нет проверки на null; при запрете отдельного окна запись в MsgWindow.document вызовет ошибку.
 - `98_Встроенный таймер.js:72` — При повторном запуске callback старого таймера обращается к общему id последнего таймера; отмена может оставить старый таймер активным.
+- `06_Чистка/21_Удалить теги style.js:57` — Условие выбирает все SPAN, кроме точных классов code и image; название и исходное описание ошибочно ограничивали действие тегами style.
+- `06_Чистка/21_Удалить теги style.js:59` — После открытия операции отмены обход не защищён finally.
+- `09_Стихи/03_Слить параграфы.js:59` — Между началом и завершением операции отмены вставка HTML не защищена finally.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1896
-- `inaccurate_description`: 109
-- `incorrect_undo`: 340
-- `requires_review`: 505
+- `generic_usage`: 1887
+- `inaccurate_description`: 108
+- `incorrect_undo`: 338
+- `requires_review`: 503
 
 ## Границы проверки
 
