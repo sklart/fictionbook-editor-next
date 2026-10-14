@@ -16,25 +16,25 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **385**. Исполняемый код не изменён.
+Изменено карточек: **386**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 31
-- `generic_usage`: 331
-- `generic_warning`: 31
-- `inaccurate_description`: 643
+- `generic_summary`: 32
+- `generic_usage`: 332
+- `generic_warning`: 32
+- `inaccurate_description`: 644
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 342
+- `incorrect_dependency`: 343
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
-- `incorrect_scope`: 338
-- `incorrect_selection`: 24
+- `incorrect_scope`: 339
+- `incorrect_selection`: 25
 - `incorrect_setting`: 177
-- `incorrect_undo`: 330
+- `incorrect_undo`: 331
 - `incorrect_version`: 5
 - `uncertain_attribution`: 46
 
@@ -43,19 +43,20 @@
 - `attributionClarified`: 43
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 213
+- `dependenciesVerified`: 214
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 329
-- `scopeClarified`: 315
+- `purposeClarified`: 330
+- `scopeClarified`: 316
+- `selectionClarified`: 1
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 491
-- `undoDescriptionsClarified`: 322
-- `usageCorrected`: 331
-- `warningsClarified`: 263
+- `undoDescriptionsClarified`: 323
+- `usageCorrected`: 332
+- `warningsClarified`: 264
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **225**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **226**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -471,13 +472,15 @@
 - `10_Статистика/39_Статистика решеток.js:197` — При ALLOW_PUNCTUATION_IN_HASHTAG=1 допустимы только буквы, цифры, подчёркивание и дефис; большинство знаков препинания внутри хэштега настройка не разрешает.
 - `10_Статистика/39_Статистика решеток.js:267` — При исходном ALLOW_PUNCTUATION_IN_HASHTAG=0 знак препинания сразу после слова помечает хэштег недопустимым; обычная запись '#слово,' не учитывается.
 - `10_Статистика/39_Статистика решеток.js:649` — Абзацы выбираются через document.getElementsByTagName('P') по всей странице, а не только в fbw_body; текст интерфейса может попасть в статистику основного текста.
+- `12_Обработка кавычек/001_Проставить елочки и лапки (от начала документа).js:462` — При отсутствии fbw_body выполняется return после BeginUndoUnit на строке 457, но до EndUndoUnit на строке 491: группа отмены остаётся незавершённой.
+- `12_Обработка кавычек/001_Проставить елочки и лапки (от начала документа).js:478` — Исключение между BeginUndoUnit и EndUndoUnit не перехватывается на уровне Run; обработка может прерваться с незавершённой группой отмены и уже внесёнными изменениями.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1036
-- `inaccurate_description`: 59
-- `incorrect_undo`: 159
-- `requires_review`: 385
+- `generic_usage`: 1032
+- `inaccurate_description`: 58
+- `incorrect_undo`: 158
+- `requires_review`: 384
 
 ## Границы проверки
 

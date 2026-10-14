@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 385,
-    "generic_usage": 1036,
-    "incorrect_undo": 159,
-    "inaccurate_description": 59
+    "requires_review": 384,
+    "generic_usage": 1032,
+    "incorrect_undo": 158,
+    "inaccurate_description": 58
   },
   "reviewedChanges": [
     {
@@ -46551,44 +46551,138 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "12_Обработка кавычек/001_Проставить елочки и лапки (от начала документа).js",
+      "codeSha256": "76d0e56b7f9e7a5bbcb495d5bcdbc9875c04e156e38cd48e216f9236bd356e72",
+      "evidence": "Шапка 1-4 указывает автора и справочные ссылки; 40-48 выбирают начальную позицию; 185-272 читают соседние текстовые узлы; 303-451 заменяют кавычки и сообщают об ошибках; 457 открывает группу отмены, 461-469 выбирают выделение или всю книгу, 473-476 ставят временные маркеры, 480-491 удаляют их и закрывают группу. Файловых и сетевых операций нет.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Проставить елочки и лапки (от начала документа).",
+          "after": "Расставляет кавычки-ёлочки и вложенные лапки в выделенном фрагменте или во всём тексте книги.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Обходит символы текста и назначает открывающие/закрывающие кавычки с учётом вложенности. Варианты старта от курсора задают исходный уровень незакрытых кавычек; он существенно влияет на результат. Проверяет сложные/неоднозначные случаи и выдаёт сообщения.",
+          "after": "Проходит текстовые узлы HTML-представления, распознаёт открывающие и закрывающие кавычки по соседним символам и уровню вложенности. Заменяет найденные кавычки на ёлочки и лапки; при неоднозначности или нарушенной вложенности показывает ошибку и выделяет проблемное место. Если есть текстовое выделение, обрабатывает его, иначе — всё содержимое fbw_body. Изменяет книгу.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Текстовое выделение, если оно есть; иначе всё содержимое fbw_body текущей книги, включая его разделы.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу; выделите нужный фрагмент, если обработка должна ограничиться им. Без выделения скрипт обойдёт весь текст книги.",
+            "Запустите команду и проверьте места, на которых скрипт сообщает о неоднозначных кавычках или нарушенной вложенности. При ошибке часть замен уже могла быть выполнена."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Скрипт изменяет текст и может остановиться после частичной замены кавычек; перед массовой обработкой сохраните копию книги.",
+            "При отсутствии fbw_body скрипт выходит после открытия группы отмены, не закрыв её. Исключение во время обработки также может оставить группу незавершённой.",
+            "Адреса в комментариях к коду служат справочными ссылками; сетевых обращений скрипт не выполняет."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Изменения объединяются для отмены, если выполнение дошло до завершения. При раннем выходе или ошибке завершение группы не гарантировано; проверьте результат до сохранения."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 462,
+          "issue": "При отсутствии fbw_body выполняется return после BeginUndoUnit на строке 457, но до EndUndoUnit на строке 491: группа отмены остаётся незавершённой."
+        },
+        {
+          "line": 478,
+          "issue": "Исключение между BeginUndoUnit и EndUndoUnit не перехватывается на уровне Run; обработка может прерваться с незавершённой группой отмены и уже внесёнными изменениями."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "selectionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 643,
-    "generic_usage": 331,
+    "inaccurate_description": 644,
+    "generic_usage": 332,
     "false_warning": 319,
     "incorrect_setting": 177,
-    "incorrect_scope": 338,
-    "incorrect_undo": 330,
+    "incorrect_scope": 339,
+    "incorrect_undo": 331,
     "uncertain_attribution": 46,
-    "generic_summary": 31,
-    "incorrect_dependency": 342,
+    "generic_summary": 32,
+    "incorrect_dependency": 343,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "generic_warning": 31,
+    "generic_warning": 32,
     "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 24,
+    "incorrect_selection": 25,
     "incorrect_modification": 1
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 322,
-    "usageCorrected": 331,
-    "purposeClarified": 329,
-    "warningsClarified": 263,
-    "scopeClarified": 315,
+    "undoDescriptionsClarified": 323,
+    "usageCorrected": 332,
+    "purposeClarified": 330,
+    "warningsClarified": 264,
+    "scopeClarified": 316,
     "settingsClarified": 491,
     "attributionClarified": 43,
-    "dependenciesVerified": 213,
+    "dependenciesVerified": 214,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
-    "attributionCorrected": 15
+    "attributionCorrected": 15,
+    "selectionClarified": 1
   },
   "scripts": [
     {
@@ -127244,8 +127338,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Проставить елочки и лапки (от начала документа)",
-        "summary": "Проставить елочки и лапки (от начала документа).",
-        "description": "Обходит символы текста и назначает открывающие/закрывающие кавычки с учётом вложенности. Варианты старта от курсора задают исходный уровень незакрытых кавычек; он существенно влияет на результат. Проверяет сложные/неоднозначные случаи и выдаёт сообщения.",
+        "summary": "Расставляет кавычки-ёлочки и вложенные лапки в выделенном фрагменте или во всём тексте книги.",
+        "description": "Проходит текстовые узлы HTML-представления, распознаёт открывающие и закрывающие кавычки по соседним символам и уровню вложенности. Заменяет найденные кавычки на ёлочки и лапки; при неоднозначности или нарушенной вложенности показывает ошибку и выделяет проблемное место. Если есть текстовое выделение, обрабатывает его, иначе — всё содержимое fbw_body. Изменяет книгу.",
         "authors": [
           {
             "name": "Sclex",
@@ -127253,22 +127347,23 @@
           }
         ],
         "version": "3.9",
-        "scope": "Текущая книга или определённые кодом её разделы.",
+        "scope": "Текстовое выделение, если оно есть; иначе всё содержимое fbw_body текущей книги, включая его разделы.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу; выделите нужный фрагмент, если обработка должна ограничиться им. Без выделения скрипт обойдёт весь текст книги.",
+          "Запустите команду и проверьте места, на которых скрипт сообщает о неоднозначных кавычках или нарушенной вложенности. При ошибке часть замен уже могла быть выполнена."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Скрипт изменяет текст и может остановиться после частичной замены кавычек; перед массовой обработкой сохраните копию книги.",
+          "При отсутствии fbw_body скрипт выходит после открытия группы отмены, не закрыв её. Исключение во время обработки также может оставить группу незавершённой.",
+          "Адреса в комментариях к коду служат справочными ссылками; сетевых обращений скрипт не выполняет."
         ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Изменения объединяются для отмены, если выполнение дошло до завершения. При раннем выходе или ошибке завершение группы не гарантировано; проверьте результат до сохранения."
         },
         "examples": null,
         "tags": [
@@ -127278,38 +127373,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 498,
+            "line": 499,
             "text": "window.external.BeginUndoUnit(document,\"проставление елочек и лапок (от начала документа)\");"
           }
         ],
         "undo_end": [
           {
-            "line": 532,
+            "line": 533,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 81,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 81,
+            "line": 82,
             "text": "var selection = document.selection;"
           },
           {
             "line": 82,
-            "text": "if (selection) {"
+            "text": "var selection = document.selection;"
           },
           {
             "line": 83,
+            "text": "if (selection) {"
+          },
+          {
+            "line": 84,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 234,
+            "line": 235,
             "text": "var tmpLabelNode=noteNode.parentNode.insertBefore(document.createElement(\"B\"),noteNode);"
           }
         ],
@@ -127320,198 +127415,198 @@
         "file": [],
         "return": [
           {
-            "line": 95,
+            "line": 96,
             "text": "return \"left quotes\";"
           },
           {
-            "line": 99,
+            "line": 100,
             "text": "return \"left quotes\";"
           },
           {
-            "line": 103,
+            "line": 104,
             "text": "return \"right quotes\";"
-          },
-          {
-            "line": 108,
-            "text": "if (el.className==\"annotation\") return \"аннотации документа\";"
           },
           {
             "line": 109,
-            "text": "if (el.className==\"history\") return \"истории документа\";"
-          },
-          {
-            "line": 110,
-            "text": "if (el.className==\"section\") return \"раздела\";"
-          },
-          {
-            "line": 114,
             "text": "if (el.className==\"annotation\") return \"аннотации документа\";"
           },
           {
-            "line": 115,
+            "line": 110,
             "text": "if (el.className==\"history\") return \"истории документа\";"
           },
           {
+            "line": 111,
+            "text": "if (el.className==\"section\") return \"раздела\";"
+          },
+          {
+            "line": 115,
+            "text": "if (el.className==\"annotation\") return \"аннотации документа\";"
+          },
+          {
             "line": 116,
+            "text": "if (el.className==\"history\") return \"истории документа\";"
+          },
+          {
+            "line": 117,
             "text": "if (el.className==\"section\") return \"разделе\";"
           },
           {
-            "line": 120,
+            "line": 121,
             "text": "if (el.className==\"annotation\") return \"ней\";"
           },
           {
-            "line": 121,
+            "line": 122,
             "text": "if (el.className==\"history\") return \"ней\";"
           },
           {
-            "line": 122,
+            "line": 123,
             "text": "if (el.className==\"section\") return \"нем\";"
           },
           {
-            "line": 126,
+            "line": 127,
             "text": "if (el.className==\"annotation\") return \"этой аннотации документа\";"
           },
           {
-            "line": 127,
+            "line": 128,
             "text": "if (el.className==\"history\") return \"этой истории документа\";"
           },
           {
-            "line": 128,
+            "line": 129,
             "text": "if (el.className==\"section\") return \"этого раздела\";"
           },
           {
-            "line": 144,
+            "line": 145,
             "text": "return \"right quotes\";"
           },
           {
-            "line": 148,
+            "line": 149,
             "text": "return \"right quotes\";"
           },
           {
-            "line": 152,
+            "line": 153,
             "text": "return \"left quotes\";"
           },
           {
-            "line": 195,
+            "line": 196,
             "text": "return;"
           },
           {
-            "line": 213,
+            "line": 214,
             "text": "return;"
           },
           {
-            "line": 219,
+            "line": 220,
             "text": "return;"
           },
           {
-            "line": 268,
+            "line": 269,
             "text": "if (collectedSymbolsCnt==howManySymbolsToCollect) return;"
           },
           {
-            "line": 277,
+            "line": 278,
             "text": "if (myNode==fbw_body || myNode.nodeName==\"P\" || myNode.nodeName==\"BR\") return;"
           },
           {
-            "line": 304,
+            "line": 305,
             "text": "if (collectedSymbolsCnt==howManySymbolsToCollect) return;"
           },
           {
-            "line": 313,
+            "line": 314,
             "text": "if (myNode==fbw_body || myNode.nodeName==\"P\" || myNode.nodeName==\"BR\") return;"
           },
           {
-            "line": 319,
+            "line": 320,
             "text": "return \"Проставлено кавычек:\\n\\n\"+"
           },
           {
-            "line": 331,
+            "line": 332,
             "text": "if (el.nodeName!=\"DIV\") return \"non-div\";"
           },
           {
-            "line": 332,
+            "line": 333,
             "text": "if (el.className==\"section\") return \"section\";"
           },
           {
-            "line": 333,
+            "line": 334,
             "text": "if (el.className==\"body\") return \"body\";"
           },
           {
-            "line": 334,
+            "line": 335,
             "text": "if (el.className==\"epigraph\") return \"epigraph\";"
           },
           {
-            "line": 335,
+            "line": 336,
             "text": "if (el.className==\"cite\") return \"cite\";"
           },
           {
-            "line": 336,
+            "line": 337,
             "text": "if (el.className==\"poem\") return \"poem\";"
           },
           {
-            "line": 337,
+            "line": 338,
             "text": "if (el.className==\"annotation\") return \"annotation\";"
           },
           {
-            "line": 338,
+            "line": 339,
             "text": "if (el.className==\"history\") return \"history\";"
           },
           {
-            "line": 339,
+            "line": 340,
             "text": "return \"unknown div\";"
           },
           {
-            "line": 379,
+            "line": 380,
             "text": "return \"error\";"
           },
           {
-            "line": 391,
+            "line": 392,
             "text": "return \"error\";"
           },
           {
-            "line": 403,
+            "line": 404,
             "text": "return \"error\";"
           },
           {
-            "line": 424,
+            "line": 425,
             "text": "return \"error\";"
           },
           {
-            "line": 435,
+            "line": 436,
             "text": "return \"error\";"
           },
           {
-            "line": 445,
+            "line": 446,
             "text": "return \"error\";"
           },
           {
-            "line": 453,
+            "line": 454,
             "text": "return \"error\";"
           },
           {
-            "line": 464,
+            "line": 465,
             "text": "return \"error\";"
           },
           {
-            "line": 474,
+            "line": 475,
             "text": "return \"error\";"
           },
           {
-            "line": 490,
+            "line": 491,
             "text": "return \"error\";"
           },
           {
-            "line": 503,
+            "line": 504,
             "text": "if (!fbw_body) {alert(versionStr+\"Ошибка! fbw_body не найдено.\"); return}"
           }
         ]
       },
       "namespaceUrls": [
         {
-          "line": 44,
+          "line": 45,
           "text": "//Подробности тут: http://www.fictionbook.org/forum/viewtopic.php?f=7&t=4412"
         },
         {
-          "line": 45,
+          "line": 46,
           "text": "//И тут: http://scripts.fictionbook.org"
         }
       ],
@@ -127519,25 +127614,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 43,
+          "line": 44,
           "text": "//Автор Sclex"
         },
         {
-          "line": 49,
+          "line": 50,
           "text": "var versionStr=\"Скрипт «Проставить елочки и лапки (от начала документа)» (версия 3.9)\\nАвтор Sclex.\\n\\n\";"
         },
         {
-          "line": 49,
+          "line": 50,
           "text": "var versionStr=\"Скрипт «Проставить елочки и лапки (от начала документа)» (версия 3.9)\\nАвтор Sclex.\\n\\n\";"
         },
         {
-          "line": 49,
+          "line": 50,
           "text": "var versionStr=\"Скрипт «Проставить елочки и лапки (от начала документа)» (версия 3.9)\\nАвтор Sclex.\\n\\n\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Скрипт изменяет текст и может остановиться после частичной замены кавычек; перед массовой обработкой сохраните копию книги.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При отсутствии fbw_body скрипт выходит после открытия группы отмены, не закрыв её. Исключение во время обработки также может оставить группу незавершённой.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Адреса в комментариях к коду служат справочными ссылками; сетевых обращений скрипт не выполняет.",
           "verification": "requires_review"
         }
       ],
@@ -127560,98 +127663,26 @@
       ],
       "findings": [
         {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Проставить елочки и лапки (от начала документа).",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 498,
-              "text": "window.external.BeginUndoUnit(document,\"проставление елочек и лапок (от начала документа)\");"
-            },
-            {
-              "line": 532,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Изменения объединяются для отмены, если выполнение дошло до завершения. При раннем выходе или ошибке завершение группы не гарантировано; проверьте результат до сохранения."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 498,
+              "line": 499,
               "text": "window.external.BeginUndoUnit(document,\"проставление елочек и лапок (от начала документа)\");"
             },
             {
-              "line": 503,
+              "line": 504,
               "text": "if (!fbw_body) {alert(versionStr+\"Ошибка! fbw_body не найдено.\"); return}"
             },
             {
-              "line": 532,
+              "line": 533,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
