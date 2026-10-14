@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **191**.
+Карточек без автоматических замечаний: **192**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,25 +16,25 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **381**. Исполняемый код не изменён.
+Изменено карточек: **382**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 26
-- `generic_usage`: 326
-- `generic_warning`: 27
-- `inaccurate_description`: 638
+- `generic_summary`: 27
+- `generic_usage`: 327
+- `generic_warning`: 28
+- `inaccurate_description`: 639
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 337
+- `incorrect_dependency`: 338
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
-- `incorrect_scope`: 333
+- `incorrect_scope`: 334
 - `incorrect_selection`: 24
-- `incorrect_setting`: 172
-- `incorrect_undo`: 325
+- `incorrect_setting`: 173
+- `incorrect_undo`: 326
 - `incorrect_version`: 5
 - `uncertain_attribution`: 42
 
@@ -43,19 +43,19 @@
 - `attributionClarified`: 39
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 208
+- `dependenciesVerified`: 209
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 324
-- `scopeClarified`: 310
+- `purposeClarified`: 325
+- `scopeClarified`: 311
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 486
-- `undoDescriptionsClarified`: 317
-- `usageCorrected`: 326
-- `warningsClarified`: 258
+- `settingsClarified`: 487
+- `undoDescriptionsClarified`: 318
+- `usageCorrected`: 327
+- `warningsClarified`: 259
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **220**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **221**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -459,11 +459,14 @@
 - `10_Статистика/26_Информацию о книге - в буфер обмена.js:205` — После превышения MaxAuthor счётчику авторов присваивается число всех DIV, в том числе потенциально пустых записей; число авторов в сводке может быть завышено.
 - `10_Статистика/34_Текстовая статистика.js:348` — При частичном выделении P структура абзаца и его инлайн-изображения учитываются по целому элементу, тогда как символы и слова берутся только из выделенного текста; отчёт смешивает разные области.
 - `10_Статистика/34_Текстовая статистика.js:317` — Непустое выделение вне fbw_body может оставить isSelection=true при пустом списке абзацев; текст выделения всё равно анализируется на строках 379-433 и выдаётся как статистика фрагмента книги.
+- `10_Статистика/35_Общая статистика+лингвистика.js:402` — Регулярное выражение для лингвистических слов исключает диакритические буквы; например, слово café разбивается, поэтому проверки диакритики в detectLanguage на строках 115-137 не могут работать для полного слова.
+- `10_Статистика/35_Общая статистика+лингвистика.js:803` — Поиск контейнера image может дойти до fbw_body; строка 804 затем вызывает replace для отсутствующего href, и отчёт прерывается на нештатной иллюстрации.
+- `10_Статистика/35_Общая статистика+лингвистика.js:158` — Вторая функция detectPartOfSpeech с тем же именем перекрывает первую со строки 92; ранняя реализация не используется и может вводить в заблуждение при доработке.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1056
-- `inaccurate_description`: 64
+- `generic_usage`: 1052
+- `inaccurate_description`: 63
 - `incorrect_undo`: 159
 - `requires_review`: 385
 
