@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **311**. Исполняемый код не изменён.
+Изменено карточек: **312**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 275
-- `generic_usage`: 256
-- `inaccurate_description`: 518
+- `false_warning`: 276
+- `generic_usage`: 257
+- `inaccurate_description`: 520
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 256
+- `incorrect_dependency`: 257
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 253
+- `incorrect_scope`: 254
 - `incorrect_selection`: 17
-- `incorrect_setting`: 121
-- `incorrect_undo`: 255
+- `incorrect_setting`: 122
+- `incorrect_undo`: 256
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,19 +40,19 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 138
+- `dependenciesVerified`: 139
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 254
-- `scopeClarified`: 240
+- `purposeClarified`: 255
+- `scopeClarified`: 241
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 434
-- `undoDescriptionsClarified`: 247
-- `usageCorrected`: 256
-- `warningsClarified`: 187
+- `settingsClarified`: 435
+- `undoDescriptionsClarified`: 248
+- `usageCorrected`: 257
+- `warningsClarified`: 188
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **159**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **160**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -321,13 +321,16 @@
 - `05_Иллюстрации/32_Расставить подписи к иллюстрациям из выделенного фрагмента.js:513` — Разбор addEmptyAfter как parseInt(parts[3]) || 1 заменяет явный 0 на 1, игнорируя снятый флажок.
 - `05_Иллюстрации/32_Расставить подписи к иллюстрациям из выделенного фрагмента.js:326` — При deleteOriginal достаточно successCount > 0 для удаления всего исходного выделения, в том числе подписей, которые не удалось вставить.
 - `05_Иллюстрации/32_Расставить подписи к иллюстрациям из выделенного фрагмента.js:389` — Общий catch после BeginUndoUnit не вызывает EndUndoUnit; при исключении группа отмены остаётся открытой.
+- `05_Иллюстрации/33_Переместить иллюстрации после заголовков.js:677` — Пустая строка после найденной иллюстрации удаляется без проверки moved; отказ в переносе всё равно может изменить исходную секцию.
+- `05_Иллюстрации/33_Переместить иллюстрации после заголовков.js:1734` — Очистка всех allSections удаляет и исходно пустые секции, хотя комментарий обещает только секции после переноса.
+- `05_Иллюстрации/33_Переместить иллюстрации после заголовков.js:1702` — При keepOldImages копия добавляется через appendChild; если родительская секция удалена до этого, копия остаётся вне книги.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1342
+- `generic_usage`: 1339
 - `inaccurate_description`: 99
-- `incorrect_undo`: 207
-- `requires_review`: 436
+- `incorrect_undo`: 206
+- `requires_review`: 442
 
 ## Границы проверки
 

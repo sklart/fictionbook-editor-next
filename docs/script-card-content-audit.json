@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 436,
-    "generic_usage": 1342,
-    "incorrect_undo": 207,
+    "requires_review": 442,
+    "generic_usage": 1339,
+    "incorrect_undo": 206,
     "inaccurate_description": 99
   },
   "reviewedChanges": [
@@ -34563,17 +34563,174 @@
         "undoDescriptionsClarified": 1,
         "dependenciesVerified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/33_Переместить иллюстрации после заголовков.js",
+      "codeSha256": "7696681b648666b25252017cacd7491ca4b31a9d450ea112c3314c8b84252d7f",
+      "evidence": "Run задаёт семь настроек: silentMode=1, keepOldImages=0, moveEmptyImages=1, insertIfImageExists=1, insertPosition=1, compactStats=1, processMode=0. findImageAndEmptyLineAtSectionEnd ищет последнюю картинку без содержимого после неё. findNextSection пропускает image-section; processImageElement требует заголовок цели и учитывает пустые/существующие изображения. После processImageElement код удаляет соседнюю пустую строку независимо от moved. moveImageToNextSection клонирует изображение, удаляет оригинал, может удалить опустевшую секцию-иллюстрацию, а при keepOldImages добавляет вторую копию в конец прежнего родителя. removeEmptySectionsAfterMoving проходит все allSections, а не только источники успешного переноса. EndUndoUnit только на штатном пути, showStatistics вызывается и при silentMode=1.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для переноса иллюстрации из конца предыдущих секций",
+          "after": "Переносит конечные иллюстрации секций после заголовков следующих секций.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для переноса иллюстрации из конца предыдущих секций",
+          "after": "Ищет в секциях основного текста иллюстрации, после которых нет непустого содержимого, и переносит их в следующую подходящую обычную секцию после заголовка и эпиграфа. По умолчанию берёт последнюю иллюстрацию, работает без предварительных вопросов, удаляет исходный узел и показывает статистику. Настройками можно выбрать все последние иллюстрации, сохранение копий, обработку пустых изображений и позицию рядом с уже существующей иллюстрацией.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Секции внутри основного body книги. При поиске цели пропускаются секции-иллюстрации, а следующая целевая секция должна иметь заголовок. Выделение не ограничивает обработку; после обхода дополнительно проверяются все пустые секции основного текста.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу с иллюстрациями в концах секций и проверьте значения settings в начале скрипта.",
+            "Если нужны вопросы перед переносом, установите silentMode=0; при стандартном режиме обработка начнётся без подтверждения.",
+            "После выполнения проверьте иллюстрации возле заголовков, пустые строки, исходные секции и итоговую статистику."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "В тихом режиме предварительные вопросы пропускаются, но итоговое окно статистики всё равно показывается.",
+            "Пустая строка непосредственно после найденной конечной иллюстрации может удалиться и тогда, когда перенос не состоялся.",
+            "Заключительная очистка удаляет все пустые секции основного текста, а не только секции с успешно перенесёнными иллюстрациями.",
+            "При keepOldImages=1 копия добавляется в конец прежнего родителя, а не на старое место. Если секция-иллюстрация удалена как пустая, копия может оказаться в уже отсоединённой от книги секции.",
+            "Штатный путь закрывает группу отмены, но исключения после её открытия не обработаны общим защищённым блоком; полный откат не подтверждён."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": null,
+          "after": [
+            {
+              "name": "silentMode",
+              "title": "Режим вопросов",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — выполнять без предварительных вопросов; итоговая статистика всё равно показывается.",
+              "source": "script"
+            },
+            {
+              "name": "keepOldImages",
+              "title": "Сохранить исходные иллюстрации",
+              "value": 0,
+              "expression": "0",
+              "description": "1 — добавить копию в конец исходного родителя; в удалённой секции-иллюстрации копия может остаться вне книги.",
+              "source": "script"
+            },
+            {
+              "name": "moveEmptyImages",
+              "title": "Переносить пустые иллюстрации",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — учитывать изображения с ссылкой #undefined.",
+              "source": "script"
+            },
+            {
+              "name": "insertIfImageExists",
+              "title": "Вставлять рядом с существующей иллюстрацией",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — разрешить вставку в секцию с иллюстрацией после заголовка или эпиграфа.",
+              "source": "script"
+            },
+            {
+              "name": "insertPosition",
+              "title": "Позиция относительно существующей",
+              "value": 1,
+              "expression": "1",
+              "description": "0 — перед существующей иллюстрацией; 1 — после неё.",
+              "source": "script"
+            },
+            {
+              "name": "compactStats",
+              "title": "Краткая статистика",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — скрыть нулевые строки отчёта; итоговое окно остаётся.",
+              "source": "script"
+            },
+            {
+              "name": "processMode",
+              "title": "Количество иллюстраций",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — последняя; 1 — все последние; 2 — спросить число в обычном режиме, в тихом режиме использовать одну.",
+              "source": "script"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Перенос, удаление пустых строк и секций выполняются внутри группы отмены, которая закрывается на штатном пути. При исключении после открытия группы закрытие и полнота отката не подтверждены."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 677,
+          "issue": "Пустая строка после найденной иллюстрации удаляется без проверки moved; отказ в переносе всё равно может изменить исходную секцию."
+        },
+        {
+          "line": 1734,
+          "issue": "Очистка всех allSections удаляет и исходно пустые секции, хотя комментарий обещает только секции после переноса."
+        },
+        {
+          "line": 1702,
+          "issue": "При keepOldImages копия добавляется через appendChild; если родительская секция удалена до этого, копия остаётся вне книги."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 518,
-    "generic_usage": 256,
-    "false_warning": 275,
-    "incorrect_setting": 121,
-    "incorrect_scope": 253,
-    "incorrect_undo": 255,
+    "inaccurate_description": 520,
+    "generic_usage": 257,
+    "false_warning": 276,
+    "incorrect_setting": 122,
+    "incorrect_scope": 254,
+    "incorrect_undo": 256,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 256,
+    "incorrect_dependency": 257,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -34586,16 +34743,16 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 247,
-    "usageCorrected": 256,
-    "purposeClarified": 254,
-    "warningsClarified": 187,
-    "scopeClarified": 240,
-    "settingsClarified": 434,
+    "undoDescriptionsClarified": 248,
+    "usageCorrected": 257,
+    "purposeClarified": 255,
+    "warningsClarified": 188,
+    "scopeClarified": 241,
+    "settingsClarified": 435,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 138,
+    "dependenciesVerified": 139,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -74001,8 +74158,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Переместить иллюстрации после заголовков",
-        "summary": "Скрипт предназначен для переноса иллюстрации из конца предыдущих секций",
-        "description": "Скрипт предназначен для переноса иллюстрации из конца предыдущих секций",
+        "summary": "Переносит конечные иллюстрации секций после заголовков следующих секций.",
+        "description": "Ищет в секциях основного текста иллюстрации, после которых нет непустого содержимого, и переносит их в следующую подходящую обычную секцию после заголовка и эпиграфа. По умолчанию берёт последнюю иллюстрацию, работает без предварительных вопросов, удаляет исходный узел и показывает статистику. Настройками можно выбрать все последние иллюстрации, сохранение копий, обработку пустых изображений и позицию рядом с уже существующей иллюстрацией.",
         "authors": [
           {
             "name": "TaKir",
@@ -74019,22 +74176,83 @@
           }
         ],
         "version": "5.1",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Секции внутри основного body книги. При поиске цели пропускаются секции-иллюстрации, а следующая целевая секция должна иметь заголовок. Выделение не ограничивает обработку; после обхода дополнительно проверяются все пустые секции основного текста.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу с иллюстрациями в концах секций и проверьте значения settings в начале скрипта.",
+          "Если нужны вопросы перед переносом, установите silentMode=0; при стандартном режиме обработка начнётся без подтверждения.",
+          "После выполнения проверьте иллюстрации возле заголовков, пустые строки, исходные секции и итоговую статистику."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "В тихом режиме предварительные вопросы пропускаются, но итоговое окно статистики всё равно показывается.",
+          "Пустая строка непосредственно после найденной конечной иллюстрации может удалиться и тогда, когда перенос не состоялся.",
+          "Заключительная очистка удаляет все пустые секции основного текста, а не только секции с успешно перенесёнными иллюстрациями.",
+          "При keepOldImages=1 копия добавляется в конец прежнего родителя, а не на старое место. Если секция-иллюстрация удалена как пустая, копия может оказаться в уже отсоединённой от книги секции.",
+          "Штатный путь закрывает группу отмены, но исключения после её открытия не обработаны общим защищённым блоком; полный откат не подтверждён."
         ],
-        "settings": null,
+        "settings": [
+          {
+            "name": "silentMode",
+            "title": "Режим вопросов",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — выполнять без предварительных вопросов; итоговая статистика всё равно показывается.",
+            "source": "script"
+          },
+          {
+            "name": "keepOldImages",
+            "title": "Сохранить исходные иллюстрации",
+            "value": 0,
+            "expression": "0",
+            "description": "1 — добавить копию в конец исходного родителя; в удалённой секции-иллюстрации копия может остаться вне книги.",
+            "source": "script"
+          },
+          {
+            "name": "moveEmptyImages",
+            "title": "Переносить пустые иллюстрации",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — учитывать изображения с ссылкой #undefined.",
+            "source": "script"
+          },
+          {
+            "name": "insertIfImageExists",
+            "title": "Вставлять рядом с существующей иллюстрацией",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — разрешить вставку в секцию с иллюстрацией после заголовка или эпиграфа.",
+            "source": "script"
+          },
+          {
+            "name": "insertPosition",
+            "title": "Позиция относительно существующей",
+            "value": 1,
+            "expression": "1",
+            "description": "0 — перед существующей иллюстрацией; 1 — после неё.",
+            "source": "script"
+          },
+          {
+            "name": "compactStats",
+            "title": "Краткая статистика",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — скрыть нулевые строки отчёта; итоговое окно остаётся.",
+            "source": "script"
+          },
+          {
+            "name": "processMode",
+            "title": "Количество иллюстраций",
+            "value": 0,
+            "expression": "0",
+            "description": "0 — последняя; 1 — все последние; 2 — спросить число в обычном режиме, в тихом режиме использовать одну.",
+            "source": "script"
+          }
+        ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Перенос, удаление пустых строк и секций выполняются внутри группы отмены, которая закрывается на штатном пути. При исключении после открытия группы закрытие и полнота отката не подтверждены."
         },
         "examples": null,
         "tags": [
@@ -74045,38 +74263,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 571,
+            "line": 633,
             "text": "window.external.BeginUndoUnit(document, \"Переместить иллюстрации ниже заголовков\");"
           }
         ],
         "undo_end": [
           {
-            "line": 741,
+            "line": 803,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 369,
+            "line": 431,
             "text": "var inputResult = window.external.InputBox(message, \"FBE скрипт\", defaultValue);"
           }
         ],
         "selection": [],
         "write": [
           {
-            "line": 617,
+            "line": 679,
             "text": "if (parent && parent.removeChild) {"
           },
           {
-            "line": 618,
+            "line": 680,
             "text": "parent.removeChild(imageAndEmptyLine.emptyLine);"
           },
           {
-            "line": 659,
+            "line": 721,
             "text": "if (parent && parent.removeChild) {"
           },
           {
-            "line": 660,
+            "line": 722,
             "text": "parent.removeChild(emptyLine);"
           }
         ],
@@ -74087,491 +74305,760 @@
         "file": [],
         "return": [
           {
-            "line": 75,
+            "line": 137,
             "text": "if (typeof str !== 'string') return str;"
           },
           {
-            "line": 76,
+            "line": 138,
             "text": "return str.replace(/^\\s+|\\s+$/g, '');"
           },
           {
-            "line": 81,
+            "line": 143,
             "text": "if (typeof str !== 'string' || typeof search !== 'string') return false;"
           },
           {
-            "line": 82,
+            "line": 144,
             "text": "return str.indexOf(search) !== -1;"
           },
           {
-            "line": 87,
+            "line": 149,
             "text": "if (!arr || arr.length === undefined) return false;"
           },
           {
-            "line": 89,
+            "line": 151,
             "text": "if (arr[i] === item) return true;"
           },
           {
-            "line": 91,
+            "line": 153,
             "text": "return false;"
           },
           {
-            "line": 100,
+            "line": 162,
             "text": "return arr;"
           },
           {
-            "line": 105,
+            "line": 167,
             "text": "return (arr && arr.length !== undefined) ? arr.length : 0;"
           },
           {
-            "line": 110,
+            "line": 172,
             "text": "if (!title) return \"Без заголовка\";"
           },
           {
-            "line": 112,
+            "line": 174,
             "text": "if (title.length <= maxLength) return title;"
           },
           {
-            "line": 113,
+            "line": 175,
             "text": "return title.substring(0, maxLength - 3) + \"...\";"
           },
           {
-            "line": 118,
+            "line": 180,
             "text": "if (typeof num !== 'number') return num;"
           },
           {
-            "line": 121,
+            "line": 183,
             "text": "return rounded.toString();"
           },
           {
-            "line": 126,
+            "line": 188,
             "text": "if (typeof str !== 'string' || typeof search !== 'string') return false;"
           },
           {
-            "line": 132,
+            "line": 194,
             "text": "if (searchLen > strLen) return false;"
           },
           {
-            "line": 142,
+            "line": 204,
             "text": "if (match) return true;"
           },
           {
-            "line": 145,
+            "line": 207,
             "text": "return false;"
           },
           {
-            "line": 150,
+            "line": 212,
             "text": "if (typeof str !== 'string' || typeof search !== 'string') return -1;"
           },
           {
-            "line": 156,
+            "line": 218,
             "text": "if (searchLen > strLen || startIndex < 0) return -1;"
           },
           {
-            "line": 166,
+            "line": 228,
             "text": "if (match) return i;"
           },
           {
-            "line": 169,
+            "line": 231,
             "text": "return -1;"
           },
           {
-            "line": 174,
+            "line": 236,
             "text": "if (!text) return true;"
           },
           {
-            "line": 182,
+            "line": 244,
             "text": "return trimmed === '';"
           },
           {
-            "line": 191,
+            "line": 253,
             "text": "return true;"
           },
           {
-            "line": 194,
+            "line": 256,
             "text": "return false;"
           },
           {
-            "line": 198,
+            "line": 260,
             "text": "return true; // По умолчанию считаем, что в основном разделе"
           },
           {
-            "line": 207,
+            "line": 269,
             "text": "return current;"
           },
           {
-            "line": 211,
+            "line": 273,
             "text": "return null;"
           },
           {
-            "line": 223,
+            "line": 285,
             "text": "return result;"
           },
           {
-            "line": 233,
+            "line": 295,
             "text": "return true;"
           },
           {
-            "line": 236,
+            "line": 298,
             "text": "return false;"
           },
           {
-            "line": 246,
+            "line": 308,
             "text": "return {"
           },
           {
-            "line": 268,
+            "line": 330,
             "text": "return {"
           },
           {
-            "line": 274,
+            "line": 336,
             "text": "return {"
           },
           {
-            "line": 288,
-            "text": "return {"
-          },
-          {
-            "line": 311,
-            "text": "return {"
-          },
-          {
-            "line": 317,
-            "text": "return {"
-          },
-          {
-            "line": 326,
+            "line": 350,
             "text": "return {"
           },
           {
             "line": 373,
+            "text": "return {"
+          },
+          {
+            "line": 379,
+            "text": "return {"
+          },
+          {
+            "line": 388,
+            "text": "return {"
+          },
+          {
+            "line": 435,
             "text": "return;"
           },
           {
-            "line": 418,
+            "line": 480,
             "text": "return;"
           },
           {
-            "line": 426,
+            "line": 488,
             "text": "return;"
           },
           {
-            "line": 533,
+            "line": 595,
             "text": "return;"
           },
           {
-            "line": 766,
+            "line": 828,
             "text": "if (!fbwBody) return null;"
           },
           {
-            "line": 777,
+            "line": 839,
             "text": "return div;"
           },
           {
-            "line": 782,
+            "line": 844,
             "text": "return null;"
           },
           {
-            "line": 791,
+            "line": 853,
             "text": "if (!node) return;"
           },
           {
-            "line": 808,
+            "line": 870,
             "text": "return sections;"
           },
           {
-            "line": 823,
+            "line": 885,
             "text": "if (!mainBody) return stats;"
           },
           {
-            "line": 873,
+            "line": 935,
             "text": "return stats;"
           },
           {
-            "line": 878,
+            "line": 940,
             "text": "if (element.nodeType != 1) return false;"
           },
           {
-            "line": 879,
+            "line": 941,
             "text": "if (element.tagName.toLowerCase() != 'div') return false;"
           },
           {
-            "line": 880,
+            "line": 942,
             "text": "if (!element.className) return false;"
           },
           {
-            "line": 883,
+            "line": 945,
             "text": "if (!containsStr(className, 'section')) return false;"
           },
           {
-            "line": 885,
+            "line": 947,
             "text": "return true;"
           },
           {
-            "line": 926,
+            "line": 988,
             "text": "return hasImage && !hasOtherContent;"
           },
           {
-            "line": 935,
+            "line": 997,
             "text": "return child;"
           },
           {
-            "line": 938,
+            "line": 1000,
             "text": "return null;"
           },
           {
-            "line": 944,
+            "line": 1006,
             "text": "return element.nodeValue || '';"
           },
           {
-            "line": 953,
+            "line": 1015,
             "text": "return text;"
           },
           {
-            "line": 956,
+            "line": 1018,
             "text": "return '';"
           },
           {
-            "line": 970,
+            "line": 1032,
             "text": "return trimmedTitle;"
           },
           {
-            "line": 981,
+            "line": 1043,
             "text": "return trimmedText || \"Без заголовка\";"
           },
           {
-            "line": 984,
+            "line": 1046,
             "text": "return \"Без заголовка\";"
           },
           {
-            "line": 989,
+            "line": 1051,
             "text": "if (element.nodeType != 1) return false;"
-          },
-          {
-            "line": 990,
-            "text": "if (element.tagName.toLowerCase() != 'p') return false;"
-          },
-          {
-            "line": 993,
-            "text": "if (!text) return true;"
-          },
-          {
-            "line": 995,
-            "text": "return isWhitespaceOnly(text);"
-          },
-          {
-            "line": 1008,
-            "text": "if (childCount === 0) return result;"
-          },
-          {
-            "line": 1018,
-            "text": "if (imageIndices.length === 0) return result;"
           },
           {
             "line": 1052,
-            "text": "return result;"
+            "text": "if (element.tagName.toLowerCase() != 'p') return false;"
           },
           {
-            "line": 1064,
-            "text": "return result;"
+            "line": 1055,
+            "text": "if (!text) return true;"
           },
           {
-            "line": 1077,
+            "line": 1057,
+            "text": "return isWhitespaceOnly(text);"
+          },
+          {
+            "line": 1070,
             "text": "if (childCount === 0) return result;"
           },
           {
-            "line": 1090,
-            "text": "if (allImages.length === 0) return result;"
+            "line": 1080,
+            "text": "if (imageIndices.length === 0) return result;"
           },
           {
-            "line": 1136,
-            "text": "if (lastImageGroupEnd === -1) return result;"
-          },
-          {
-            "line": 1198,
+            "line": 1114,
             "text": "return result;"
           },
           {
-            "line": 1207,
+            "line": 1126,
+            "text": "return result;"
+          },
+          {
+            "line": 1139,
+            "text": "if (childCount === 0) return result;"
+          },
+          {
+            "line": 1152,
+            "text": "if (allImages.length === 0) return result;"
+          },
+          {
+            "line": 1198,
+            "text": "if (lastImageGroupEnd === -1) return result;"
+          },
+          {
+            "line": 1260,
+            "text": "return result;"
+          },
+          {
+            "line": 1269,
             "text": "return child;"
           },
           {
-            "line": 1210,
+            "line": 1272,
             "text": "return null;"
           },
           {
-            "line": 1252,
+            "line": 1314,
             "text": "return false;"
           },
           {
-            "line": 1283,
+            "line": 1345,
             "text": "return false;"
-          },
-          {
-            "line": 1317,
-            "text": "return false;"
-          },
-          {
-            "line": 1326,
-            "text": "return false;"
-          },
-          {
-            "line": 1344,
-            "text": "return true;"
-          },
-          {
-            "line": 1347,
-            "text": "return false;"
-          },
-          {
-            "line": 1353,
-            "text": "if (!element || element.nodeType != 1) return images;"
-          },
-          {
-            "line": 1371,
-            "text": "return images;"
           },
           {
             "line": 1379,
-            "text": "return true;"
-          },
-          {
-            "line": 1383,
             "text": "return false;"
           },
           {
-            "line": 1392,
-            "text": "return child;"
+            "line": 1388,
+            "text": "return false;"
           },
           {
-            "line": 1395,
-            "text": "return null;"
+            "line": 1406,
+            "text": "return true;"
           },
           {
             "line": 1409,
-            "text": "return nextElement;"
+            "text": "return false;"
           },
           {
-            "line": 1424,
-            "text": "if (!title) return null;"
+            "line": 1415,
+            "text": "if (!element || element.nodeType != 1) return images;"
           },
           {
-            "line": 1430,
-            "text": "return nextElement;"
+            "line": 1433,
+            "text": "return images;"
           },
           {
-            "line": 1444,
-            "text": "return null;"
+            "line": 1441,
+            "text": "return true;"
           },
           {
-            "line": 1449,
-            "text": "if (element.nodeType != 1) return false;"
-          },
-          {
-            "line": 1450,
-            "text": "if (element.tagName.toLowerCase() != 'div') return false;"
-          },
-          {
-            "line": 1451,
-            "text": "if (!element.className) return false;"
+            "line": 1445,
+            "text": "return false;"
           },
           {
             "line": 1454,
-            "text": "if (!containsStr(className, 'image')) return false;"
+            "text": "return child;"
           },
           {
-            "line": 1456,
-            "text": "return true;"
-          },
-          {
-            "line": 1463,
-            "text": "return emptyLine;"
-          },
-          {
-            "line": 1470,
-            "text": "return existingImage;"
-          },
-          {
-            "line": 1478,
-            "text": "return nextSibling.nextSibling;"
-          },
-          {
-            "line": 1482,
-            "text": "return nextSibling;"
-          },
-          {
-            "line": 1492,
-            "text": "if (!startElement) return null;"
-          },
-          {
-            "line": 1506,
-            "text": "return nextElement;"
-          },
-          {
-            "line": 1514,
-            "text": "return nextElement;"
-          },
-          {
-            "line": 1520,
+            "line": 1457,
             "text": "return null;"
           },
           {
-            "line": 1636,
-            "text": "return false;"
+            "line": 1471,
+            "text": "return nextElement;"
           },
           {
-            "line": 1651,
+            "line": 1486,
+            "text": "if (!title) return null;"
+          },
+          {
+            "line": 1492,
+            "text": "return nextElement;"
+          },
+          {
+            "line": 1506,
+            "text": "return null;"
+          },
+          {
+            "line": 1511,
+            "text": "if (element.nodeType != 1) return false;"
+          },
+          {
+            "line": 1512,
+            "text": "if (element.tagName.toLowerCase() != 'div') return false;"
+          },
+          {
+            "line": 1513,
+            "text": "if (!element.className) return false;"
+          },
+          {
+            "line": 1516,
+            "text": "if (!containsStr(className, 'image')) return false;"
+          },
+          {
+            "line": 1518,
             "text": "return true;"
           },
           {
-            "line": 1657,
+            "line": 1525,
+            "text": "return emptyLine;"
+          },
+          {
+            "line": 1532,
+            "text": "return existingImage;"
+          },
+          {
+            "line": 1540,
+            "text": "return nextSibling.nextSibling;"
+          },
+          {
+            "line": 1544,
+            "text": "return nextSibling;"
+          },
+          {
+            "line": 1554,
+            "text": "if (!startElement) return null;"
+          },
+          {
+            "line": 1568,
+            "text": "return nextElement;"
+          },
+          {
+            "line": 1576,
+            "text": "return nextElement;"
+          },
+          {
+            "line": 1582,
+            "text": "return null;"
+          },
+          {
+            "line": 1698,
+            "text": "return false;"
+          },
+          {
+            "line": 1713,
+            "text": "return true;"
+          },
+          {
+            "line": 1719,
             "text": "if (href === '#undefined') return true;"
           },
           {
-            "line": 1664,
+            "line": 1726,
             "text": "return true;"
           },
           {
-            "line": 1668,
+            "line": 1730,
             "text": "return false;"
           },
           {
-            "line": 1693,
+            "line": 1755,
             "text": "return deletedCount;"
           },
           {
-            "line": 1699,
+            "line": 1761,
             "text": "if (safeLength(children) === 0) return true;"
           },
           {
-            "line": 1754,
+            "line": 1816,
             "text": "return !hasNonEmptyContent;"
           }
         ]
       },
       "namespaceUrls": [],
-      "settingEvidence": [],
+      "settingEvidence": [
+        {
+          "index": 0,
+          "name": "silentMode",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 401,
+              "text": "silentMode: 1,             // 0 - обычный режим с диалогами, 1 - молчаливый режим (без диалогов)"
+            },
+            {
+              "line": 418,
+              "text": "if (settings.processMode === 2 && settings.silentMode !== 1) {"
+            },
+            {
+              "line": 458,
+              "text": "var askDelete = (settings.silentMode === 1) ? 0 : 1;"
+            },
+            {
+              "line": 459,
+              "text": "var askEmpty = (settings.silentMode === 1) ? 0 : 1;"
+            },
+            {
+              "line": 460,
+              "text": "var askExisting = (settings.silentMode === 1) ? 0 : 1;"
+            },
+            {
+              "line": 492,
+              "text": "if (settings.silentMode !== 1) {"
+            },
+            {
+              "line": 590,
+              "text": "summary += \"• Режим работы: \" + (settings.silentMode === 1 ? \"МОЛЧАЛИВЫЙ\" : \"ОБЫЧНЫЙ\") + \"\\n\";"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "keepOldImages",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 402,
+              "text": "keepOldImages: 0,          // 0 - удалять старые иллюстрации, 1 - оставлять"
+            },
+            {
+              "line": 526,
+              "text": "settings.keepOldImages = deleteResponse ? 0 : 1;"
+            },
+            {
+              "line": 579,
+              "text": "summary += \"• Старые иллюстрации: \" + (settings.keepOldImages ? \"ОСТАВЛЯТЬ\" : \"УДАЛЯТЬ\") + \"\\n\";"
+            },
+            {
+              "line": 1661,
+              "text": "} else if (!settings.keepOldImages) {"
+            },
+            {
+              "line": 1702,
+              "text": "if (settings.keepOldImages && parent && parent.appendChild) {"
+            },
+            {
+              "line": 1933,
+              "text": "addedDeletedSection += \"• (настройка иллюстраций: \" + (settings.keepOldImages ? \"ОСТАВЛЯТЬ\" : \"УДАЛЯТЬ\") + \")\\n\";"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "moveEmptyImages",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 403,
+              "text": "moveEmptyImages: 1,        // 1 - переносить пустые иллюстрации, 0 - не переносить"
+            },
+            {
+              "line": 538,
+              "text": "settings.moveEmptyImages = emptyResponse ? 1 : 0;"
+            },
+            {
+              "line": 580,
+              "text": "summary += \"• Пустые иллюстрации: \" + (settings.moveEmptyImages ? \"ПЕРЕНОСИТЬ\" : \"НЕ переносить\") + \"\\n\";"
+            },
+            {
+              "line": 1386,
+              "text": "if (isEmpty && !settings.moveEmptyImages) {"
+            },
+            {
+              "line": 2042,
+              "text": "skippedSection += \"• (настройка пустых иллюстраций: \" + (settings.moveEmptyImages ? \"ПЕРЕНОСИТЬ\" : \"НЕ переносить\") + \")\\n\";"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "insertIfImageExists",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 404,
+              "text": "insertIfImageExists: 1,    // 0 - не вставлять рядом с уже имеющейся иллюстрацией, 1 - вставлять"
+            },
+            {
+              "line": 551,
+              "text": "settings.insertIfImageExists = existingResponse ? 1 : 0;"
+            },
+            {
+              "line": 554,
+              "text": "if (settings.insertIfImageExists) {"
+            },
+            {
+              "line": 583,
+              "text": "summary += (settings.insertIfImageExists ? \"ВСТАВЛЯТЬ\" : \"ПРОПУСКАТЬ\") + \"\\n\";"
+            },
+            {
+              "line": 584,
+              "text": "if (settings.insertIfImageExists) {"
+            },
+            {
+              "line": 1352,
+              "text": "if (existingImage && !settings.insertIfImageExists) {"
+            },
+            {
+              "line": 1592,
+              "text": "if (existingImage && settings.insertIfImageExists) {"
+            },
+            {
+              "line": 1968,
+              "text": "processedSection += \"• (настройка: \" + (settings.insertIfImageExists ? \"ВСТАВЛЯТЬ\" : \"ПРОПУСКАТЬ\") + \")\\n\";"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
+          "name": "insertPosition",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 405,
+              "text": "insertPosition: 1,         // 0 - перед существующей картинкой, 1 - после существующей картинки"
+            },
+            {
+              "line": 562,
+              "text": "settings.insertPosition = positionResponse ? 0 : 1;"
+            },
+            {
+              "line": 585,
+              "text": "summary += \"• Позиция вставки: \" + (settings.insertPosition ? \"ПОСЛЕ существующей\" : \"ПЕРЕД существующей\") + \"\\n\";"
+            },
+            {
+              "line": 1529,
+              "text": "function findInsertPositionForExistingImage(section, existingImage, insertPosition) {"
+            },
+            {
+              "line": 1530,
+              "text": "if (insertPosition === 0) {"
+            },
+            {
+              "line": 1594,
+              "text": "insertBeforeElement = findInsertPositionForExistingImage(targetSection, existingImage, settings.insertPosition);"
+            },
+            {
+              "line": 1597,
+              "text": "if (settings.insertPosition === 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "compactStats",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 406,
+              "text": "compactStats: 1,           // 0 - показывать все элементы статистики, 1 - скрывать строки с нулями"
+            },
+            {
+              "line": 571,
+              "text": "if (analysis.imagesAtEndOfSections > 0 || settings.compactStats === 0) summary += \"• Иллюстраций в концах секций: \" + analysis.imagesAtEndOfSections + \"\\n\";"
+            },
+            {
+              "line": 572,
+              "text": "if (analysis.imageSections > 0 || settings.compactStats === 0) summary += \"• Секций-иллюстраций: \" + analysis.imageSections + \"\\n\";"
+            },
+            {
+              "line": 573,
+              "text": "if (analysis.sectionsWithEpigraph > 0 || settings.compactStats === 0) summary += \"• Секций с эпиграфами: \" + (analysis.sectionsWithEpigraph || 0) + \"\\n\";"
+            },
+            {
+              "line": 574,
+              "text": "if ((analysis.sectionsWithImagesAfterTitle || 0) > 0 || settings.compactStats === 0) summary += \"• Секций с иллюстрациями ПОСЛЕ заголовков/эпиграфов: \" + (analysis.sectionsWithImag"
+            },
+            {
+              "line": 591,
+              "text": "summary += \"• Статистика: \" + (settings.compactStats === 1 ? \"КОМПАКТНАЯ\" : \"ПОЛНАЯ\") + \"\\n\";"
+            },
+            {
+              "line": 1827,
+              "text": "if ((analysis.imagesAtEndOfSections || 0) > 0 || settings.compactStats === 0) {"
+            },
+            {
+              "line": 1830,
+              "text": "if ((analysis.imageSections || 0) > 0 || settings.compactStats === 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 6,
+          "name": "processMode",
+          "declarations": [],
+          "uses": [
+            {
+              "line": 412,
+              "text": "processMode: 0            // По умолчанию 0 (только последняя иллюстрация)"
+            },
+            {
+              "line": 418,
+              "text": "if (settings.processMode === 2 && settings.silentMode !== 1) {"
+            },
+            {
+              "line": 449,
+              "text": "} else if (settings.processMode === 1) {"
+            },
+            {
+              "line": 495,
+              "text": "if (settings.processMode === 2) {"
+            },
+            {
+              "line": 503,
+              "text": "} else if (settings.processMode === 1) {"
+            },
+            {
+              "line": 660,
+              "text": "if (imagesToMoveCount === 1 || settings.processMode === 0) {"
+            },
+            {
+              "line": 685,
+              "text": "else if (imagesToMoveCount === 0 || settings.processMode === 1) {"
+            },
+            {
+              "line": 1844,
+              "text": "if (settings.processMode === 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        }
+      ],
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 53,
+          "line": 115,
           "text": "// version 5.1"
         },
         {
-          "line": 70,
+          "line": 132,
           "text": "// version 5.1, 31.12.2026"
         },
         {
-          "line": 239,
+          "line": 301,
           "text": "// Функция находит следующую секцию после указанного индекса - ОБНОВЛЕННАЯ ВЕРСИЯ 5.1"
         },
         {
-          "line": 561,
+          "line": 623,
           "text": "// Новая статистика для версии 5.1"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "В тихом режиме предварительные вопросы пропускаются, но итоговое окно статистики всё равно показывается.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Пустая строка непосредственно после найденной конечной иллюстрации может удалиться и тогда, когда перенос не состоялся.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Заключительная очистка удаляет все пустые секции основного текста, а не только секции с успешно перенесёнными иллюстрациями.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При keepOldImages=1 копия добавляется в конец прежнего родителя, а не на старое место. Если секция-иллюстрация удалена как пустая, копия может оказаться в уже отсоединённой от книги секции.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Штатный путь закрывает группу отмены, но исключения после её открытия не обработаны общим защищённым блоком; полный откат не подтверждён.",
           "verification": "requires_review"
         }
       ],
@@ -74594,58 +75081,116 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "category": "requires_review",
+          "field": "settings[0]",
+          "previous": {
+            "name": "silentMode",
+            "title": "Режим вопросов",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — выполнять без предварительных вопросов; итоговая статистика всё равно показывается.",
+            "source": "script"
+          },
           "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
           "evidence": []
         },
         {
           "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "field": "settings[1]",
+          "previous": {
+            "name": "keepOldImages",
+            "title": "Сохранить исходные иллюстрации",
+            "value": 0,
+            "expression": "0",
+            "description": "1 — добавить копию в конец исходного родителя; в удалённой секции-иллюстрации копия может остаться вне книги.",
+            "source": "script"
+          },
           "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
           "evidence": []
         },
         {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
+          "category": "requires_review",
+          "field": "settings[2]",
+          "previous": {
+            "name": "moveEmptyImages",
+            "title": "Переносить пустые иллюстрации",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — учитывать изображения с ссылкой #undefined.",
+            "source": "script"
+          },
           "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 571,
-              "text": "window.external.BeginUndoUnit(document, \"Переместить иллюстрации ниже заголовков\");"
-            },
-            {
-              "line": 741,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
+          "evidence": []
+        },
+        {
+          "category": "requires_review",
+          "field": "settings[3]",
+          "previous": {
+            "name": "insertIfImageExists",
+            "title": "Вставлять рядом с существующей иллюстрацией",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — разрешить вставку в секцию с иллюстрацией после заголовка или эпиграфа.",
+            "source": "script"
+          },
+          "proposed": null,
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
+          "evidence": []
+        },
+        {
+          "category": "requires_review",
+          "field": "settings[4]",
+          "previous": {
+            "name": "insertPosition",
+            "title": "Позиция относительно существующей",
+            "value": 1,
+            "expression": "1",
+            "description": "0 — перед существующей иллюстрацией; 1 — после неё.",
+            "source": "script"
+          },
+          "proposed": null,
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
+          "evidence": []
+        },
+        {
+          "category": "requires_review",
+          "field": "settings[5]",
+          "previous": {
+            "name": "compactStats",
+            "title": "Краткая статистика",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — скрыть нулевые строки отчёта; итоговое окно остаётся.",
+            "source": "script"
+          },
+          "proposed": null,
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
+          "evidence": []
+        },
+        {
+          "category": "requires_review",
+          "field": "settings[6]",
+          "previous": {
+            "name": "processMode",
+            "title": "Количество иллюстраций",
+            "value": 0,
+            "expression": "0",
+            "description": "0 — последняя; 1 — все последние; 2 — спросить число в обычном режиме, в тихом режиме использовать одну.",
+            "source": "script"
+          },
+          "proposed": null,
+          "reason": "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
+          "confidence": "low",
+          "evidence": []
         }
       ]
     },
