@@ -34,7 +34,7 @@ def main() -> None:
         assert read_document(checkout).sha256 == document.card["sourceRevision"]["sha256"], path
         authors[document.card["authorshipStatus"]] += 1
         dependencies[result["dependencyStatus"]] += 1
-    assert authors == Counter({"declared": 512, "partial_attribution": 35, "not_stated": 33}), authors
+    assert authors == Counter({"declared": 513, "partial_attribution": 34, "not_stated": 33}), authors
     index = runpy.run_path(str(ROOT / "tools" / "generate-script-card-index.py"))
     assert index["OUTPUT"].read_bytes() == index["build"](), "derived index is stale"
     print(f"Script cards: {len(files)} current; attribution {dict(authors)}; dependencies {dict(dependencies)}; index current.")
