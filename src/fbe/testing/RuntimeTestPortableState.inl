@@ -290,13 +290,13 @@ void CMainFrame::RunPortableStateTestScenario()
 			"\"usage\":[\"Open card\"],\"warnings\":[\"Review changes before running\"],\"dependencies\":[],"
 			"\"settings\":[{\"title\":\"Mode\",\"name\":\"ModeCode\",\"value\":\"safe\","
 			"\"expression\":\"+extracting(0)\",\"valueMeaning\":\"fallback value\",\"description\":\"Change mode\"},"
-			"{\"name\":\"Second\",\"value\":false,\"expression\":\"false\",\"description\":\"Selection enabled: \\u0434\\u0430\"},"
+			"{\"name\":\"Second\",\"value\":false,\"expression\":\"false\",\"description\":\"Selection enabled: false \\u2014 \\u043d\\u0435\\u0442, true \\u2014 \\u0434\\u0430.\"},"
 			"{\"name\":\"Empty\",\"value\":\"\",\"description\":\"Empty setting\"},"
 			"{\"name\":\"Computed\",\"expression\":\"N100(extracting(0))\",\"description\":\"Computed setting\"},"
 			"{\"name\":\"Count\",\"value\":42,\"description\":\"Numeric setting\"}],"
 			"\"examples\":[{\"before\":\"abc\",\"after\":\"ABC\"}],"
 			"\"undo\":{\"status\":\"explicit_calls_found\",\"description\":\"BeginUndoUnit/EndUndoUnit found\"},\"tags\":[\"case\"],"
-			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"},{\"name\":\"Modifier\",\"role\":\"modifier\"}],"
+			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Second author\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"},{\"name\":\"Modifier\",\"role\":\"modifier\"},{\"name\":\"Another\",\"role\":\"modifier\"}],"
 			"\"sourceRevision\":{\"algorithm\":\"sha256-exclude-fbe-card-v1\","
 			"\"reviewStatus\":\"generated\","
 			"\"sha256\":\"b93000a4f6aabe6d01c3db1f2b99000a48756d7181161e50dd4011758dc89c89\"}}"
@@ -310,8 +310,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool structured = openedCard && m_script_card_window.VisualBlockCount() >= 9 &&
 			m_script_card_window.HeaderRightText().Find(L"Helper") >= 0 &&
 			m_script_card_window.HeaderRightText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.coauthors", L"Co-authors")) >= 0 &&
-			m_script_card_window.HeaderRightText().Find(L"Modifier") < 0 &&
-			m_script_card_window.BodyText().Find(L"Modifier") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Tester, Second author") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Modifier, Another") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Modifier") < 0 &&
 			m_script_card_window.BodyText().Find(L"Review changes before running") >= 0;
 		RECT originalCardBounds = {};
 		::GetWindowRect(m_script_card_window.m_hWnd, &originalCardBounds);
@@ -346,10 +347,11 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool optionalRendered = openedCard &&
 			m_script_card_window.BodyText().Find(L"including every section, annotation, image caption and nested body") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Mode\r\nModeCode\r\nЗначение по умолчанию: safe") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Selection enabled\r\nSecond\r\nЗначение: Нет\r\nда") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Значение: Пустая строка") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Selection enabled\r\nSecond\r\nЗначение в исходном коде: Нет") >= 0 &&
+			m_script_card_window.BodyText().Find(L"false — нет") < 0 &&
+			m_script_card_window.BodyText().Find(L"Значение в исходном коде: Пустая строка") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Значение: Определяется при выполнении скрипта") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Значение: 42") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Значение в исходном коде: 42") >= 0 &&
 			m_script_card_window.BodyText().Find(L"+extracting(") < 0 &&
 			m_script_card_window.BodyText().Find(L"N100(") < 0 &&
 			m_script_card_window.BodyText().Find(L"Параметры задаются в общих настройках скриптов") >= 0 &&
@@ -364,15 +366,19 @@ void CMainFrame::RunPortableStateTestScenario()
 			return m_script_card_window.CharacteristicLayoutRows();
 		};
 		const int wideCharacteristics = layoutAtWidth(1200);
-		const int pairedCharacteristics = layoutAtWidth(650);
+		HWND characteristicViewport = m_script_card_window.ViewportWindow();
+		auto layoutAtViewportWidth = [&](int logicalWidth, UINT dpi) {
+			::SetWindowPos(characteristicViewport, NULL, 0, 0,
+				UiMetrics::ScaleForDpi(logicalWidth, dpi), UiMetrics::ScaleForDpi(100, dpi),
+				SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+			::SendMessageW(characteristicViewport, WM_VSCROLL, SB_TOP, 0);
+			::SendMessageW(characteristicViewport, WM_VSCROLL, SB_BOTTOM, 0);
+			return m_script_card_window.CharacteristicLayoutRows();
+		};
+		const int pairedCharacteristics = layoutAtViewportWidth(420, cardDpi);
 		// The dialog's minimum tracking width prevents a real 260 px window.
 		// Exercise the narrow content viewport directly, as can occur in a host pane.
-		HWND characteristicViewport = m_script_card_window.ViewportWindow();
-		::SetWindowPos(characteristicViewport, NULL, 0, 0,
-			UiMetrics::ScaleForDpi(260, cardDpi), UiMetrics::ScaleForDpi(100, cardDpi),
-			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-		::SendMessageW(characteristicViewport, WM_VSCROLL, SB_BOTTOM, 0);
-		const int narrowCharacteristics = m_script_card_window.CharacteristicLayoutRows();
+		const int narrowCharacteristics = layoutAtViewportWidth(260, cardDpi);
 		const bool characteristicLayout = wideCharacteristics == 1 && pairedCharacteristics == 2 &&
 			narrowCharacteristics == 3 &&
 			(::GetWindowLongPtrW(m_script_card_window.ViewportWindow(), GWL_STYLE) & WS_HSCROLL) == 0;
@@ -380,16 +386,11 @@ void CMainFrame::RunPortableStateTestScenario()
 		for(const UINT dpi : { 96U, 120U, 144U, 192U })
 		{
 			::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED, MAKELONG(dpi, dpi), 0);
-			for(const int logicalWidth : { 1200, 650, 260 })
+			for(const int logicalWidth : { 1200, 420, 260 })
 			{
-				::SetWindowPos(characteristicViewport, NULL, 0, 0,
-					UiMetrics::ScaleForDpi(logicalWidth, dpi), UiMetrics::ScaleForDpi(100, dpi),
-					SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-				::SendMessageW(characteristicViewport, WM_VSCROLL, SB_TOP, 0);
-				::SendMessageW(characteristicViewport, WM_VSCROLL, SB_BOTTOM, 0);
 				characteristicDpiMatrix = characteristicDpiMatrix &&
-					m_script_card_window.CharacteristicLayoutRows() ==
-					(logicalWidth == 1200 ? 1 : logicalWidth == 650 ? 2 : 3);
+					layoutAtViewportWidth(logicalWidth, dpi) ==
+					(logicalWidth == 1200 ? 1 : logicalWidth == 420 ? 2 : 3);
 			}
 		}
 		::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED,
@@ -425,7 +426,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
 		const CString copied = clipboardText();
 		const bool copiedDetails = copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
-			copied.Find(L"Tester") >= 0 && copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
+			copied.Find(L"Tester, Second author") >= 0 && copied.Find(L"Modifier, Another") >= 0 &&
+			copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
 			copied.Find(L"Значение по умолчанию: safe") >= 0 && copied.Find(L"+extracting(") < 0;
 		const bool uidUpdated = m_script_card_window.CurrentUid() == script.uid;
 		const bool altered = WritePortableStateTestText(cardPath, (cardSource + " ").c_str());
@@ -716,7 +718,12 @@ void CMainFrame::RunPortableStateTestScenario()
 				[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
 			cleaningValues = cleaningValues && shown && !parsed.settingRows.empty() &&
 				parsed.settingRows.front().valueKind == ScriptCards::Setting::ValueKind::Boolean &&
-				m_script_card_window.BodyText().Find(L"Значение: Да") >= 0;
+				m_script_card_window.BodyText().Find(L"Значение в исходном коде: Да") >= 0;
+			if(shown && wcscmp(filename, L"01_Генеральная уборка.js") == 0)
+			{
+				::SendMessageW(m_script_card_window.ViewportWindow(), WM_VSCROLL, SB_BOTTOM, 0);
+				cleaningValues = cleaningValues && captureWindow(m_script_card_window.m_hWnd, L"cleaning-card-settings.bmp");
+			}
 		}
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
 			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues &&

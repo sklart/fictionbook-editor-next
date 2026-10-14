@@ -82,6 +82,7 @@ public:
 
 	CSettingsHotkeysDlg();
 	~CSettingsHotkeysDlg();
+	void RefreshInfoScrollbars();
 
 	enum { IDD = IDD_HOTKEYS };
 

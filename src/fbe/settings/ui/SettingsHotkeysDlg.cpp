@@ -46,6 +46,38 @@ static CString GetHotkeyGroupDisplayName(const CHotkeysGroup& group)
 	return group.m_name_resource_id ? FbeLoadRuntimeString(group.m_name_resource_id, group.m_name) : group.m_name;
 }
 
+static void UpdateInfoScrollbar(HWND edit)
+{
+	if(!::IsWindow(edit)) return;
+	::ShowScrollBar(edit, SB_VERT, FALSE);
+	RECT client = {};
+	::GetClientRect(edit, &client);
+	HDC dc = ::GetDC(edit);
+	HFONT font = reinterpret_cast<HFONT>(::SendMessageW(edit, WM_GETFONT, 0, 0));
+	HFONT previous = dc && font ? reinterpret_cast<HFONT>(::SelectObject(dc, font)) : NULL;
+	TEXTMETRICW metrics = {};
+	if(dc) ::GetTextMetricsW(dc, &metrics);
+	if(dc) { if(previous) ::SelectObject(dc, previous); ::ReleaseDC(edit, dc); }
+	const int lines = static_cast<int>(::SendMessageW(edit, EM_GETLINECOUNT, 0, 0));
+	::ShowScrollBar(edit, SB_VERT,
+		lines * max(1, static_cast<int>(metrics.tmHeight + metrics.tmExternalLeading)) > client.bottom - client.top - 4);
+}
+
+static LRESULT CALLBACK ReadOnlyInfoSubclass(HWND edit, UINT message, WPARAM wParam, LPARAM lParam,
+	UINT_PTR, DWORD_PTR focusTarget)
+{
+	if(message == WM_LBUTTONDOWN) return 0;
+	if(message == WM_SETFOCUS)
+	{
+		if(::IsWindow(reinterpret_cast<HWND>(focusTarget))) ::SetFocus(reinterpret_cast<HWND>(focusTarget));
+		return 0;
+	}
+	if(message == WM_NCDESTROY) ::RemoveWindowSubclass(edit, ReadOnlyInfoSubclass, 1);
+	const LRESULT result = ::DefSubclassProc(edit, message, wParam, lParam);
+	if(message == WM_SETTEXT) UpdateInfoScrollbar(edit);
+	return result;
+}
+
 // CSettingsHotkeysDlg
 CSettingsHotkeysDlg::CSettingsHotkeysDlg(): m_count(0), m_accel(),
 											m_initHkGroups(_Settings.m_hotkey_groups),
@@ -106,6 +138,9 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 
 	m_hotkeys.SetCurSel(m_selHk);
+	for(const int id : { IDC_EDIT_HOTKEY_DESCRIPTION, IDC_EDIT_HOTKEY_COLLISION })
+		::SetWindowSubclass(GetDlgItem(id), ReadOnlyInfoSubclass, 1,
+			reinterpret_cast<DWORD_PTR>(m_hotkeys.m_hWnd));
 
 	m_editHotkey.SubclassWindow(GetDlgItem(IDC_EDIT_HOTKEY));
 	m_changeKeyb = GetDlgItem(IDC_CHANGE_KEYB);
@@ -150,6 +185,12 @@ LRESULT CSettingsHotkeysDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	ClearAndSet();
 
 	return 0;
+}
+
+void CSettingsHotkeysDlg::RefreshInfoScrollbars()
+{
+	UpdateInfoScrollbar(GetDlgItem(IDC_EDIT_HOTKEY_DESCRIPTION));
+	UpdateInfoScrollbar(GetDlgItem(IDC_EDIT_HOTKEY_COLLISION));
 }
 
 void CSettingsHotkeysDlg::UpdateKeyboardLayoutDependencies()

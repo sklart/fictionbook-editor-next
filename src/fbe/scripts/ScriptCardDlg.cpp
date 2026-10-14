@@ -348,9 +348,10 @@ void CScriptCardDlg::AddSettingsBlock(const std::vector<ScriptCards::Setting>& s
 				value = Label(L"fbe.script_card.empty_string", L"Empty string");
 			else if(setting.valueKind == ScriptCards::Setting::ValueKind::Missing)
 				value = Label(L"fbe.script_card.setting_dynamic", L"Value determined when the script runs");
-			const CString valueLabel = setting.defaultValue ?
+			const CString valueLabel = setting.valueKind == ScriptCards::Setting::ValueKind::Missing ?
+				Label(L"fbe.script_card.setting_value", L"Value") : setting.defaultValue ?
 				Label(L"fbe.script_card.setting_default", L"Default value") :
-				Label(L"fbe.script_card.setting_value", L"Value");
+				Label(L"fbe.script_card.setting_source", L"Value in source code");
 			block.content += L"\r\n" + valueLabel + L": ";
 			offset += 1 + valueLabel.GetLength() + 2;
 			if(setting.valueKind != ScriptCards::Setting::ValueKind::Missing)
@@ -423,7 +424,7 @@ void CScriptCardDlg::RebuildVisualBlocks()
 		block.heading = ::CreateWindowExW(0, L"RICHEDIT50W", block.title,
 			WS_CHILD | WS_VISIBLE | ES_READONLY | ES_MULTILINE, 0, 0, 1, 1,
 			m_viewport, NULL, _Module.GetModuleInstance(), NULL);
-		block.body = ::CreateWindowExW(block.settings ? 0 : WS_EX_CLIENTEDGE, L"RICHEDIT50W", block.content,
+		block.body = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"RICHEDIT50W", block.content,
 			WS_CHILD | WS_VISIBLE | ES_READONLY | ES_MULTILINE, 0, 0, 1, 1,
 			m_viewport, NULL, _Module.GetModuleInstance(), NULL);
 		for(HWND rich : { block.heading, block.body })
@@ -502,6 +503,13 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 		// Ask the actual RichEdit control to wrap at the final column width.
 		::SetWindowPos(block.body, NULL, 0, 0, columnWidth, (std::max)(1, height),
 			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
+		if(block.settings)
+		{
+			const int padding = UiMetrics::ScaleForDpi(10, m_dpi);
+			RECT interior = { padding, padding, (std::max)(padding + 1, columnWidth - padding),
+				(std::max)(padding + 1, height - padding) };
+			::SendMessageW(block.body, EM_SETRECT, 0, reinterpret_cast<LPARAM>(&interior));
+		}
 		const int lines = (std::max)(1, static_cast<int>(::SendMessageW(block.body, EM_GETLINECOUNT, 0, 0)));
 		RECT formatting = {}, client = {};
 		::SendMessageW(block.body, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&formatting));
@@ -543,17 +551,17 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 		{
 			const bool first = index == 0 || m_blocks[index - 1].layout != 3;
 			const int usable = (std::max)(1, available - 2 * scaleGap);
-			const int scopeWidth = usable * 3 / 5;
-			const int shortWidth = (usable - scopeWidth) / 2;
+			const int thirdWidth = usable / 3;
 			const int halfWidth = (available - scaleGap) / 2;
 			if(first && index + 2 < m_blocks.size() && m_blocks[index + 2].layout == 3 &&
-				shortWidth >= headingWidth(m_blocks[index + 1]) &&
-				usable - scopeWidth - shortWidth >= headingWidth(m_blocks[index + 2]))
+				thirdWidth >= headingWidth(m_blocks[index]) &&
+				thirdWidth >= headingWidth(m_blocks[index + 1]) &&
+				usable - 2 * thirdWidth >= headingWidth(m_blocks[index + 2]))
 			{
 				count = 3;
-				widths = { scopeWidth, shortWidth, usable - scopeWidth - shortWidth };
+				widths = { thirdWidth, thirdWidth, usable - 2 * thirdWidth };
 			}
-			else if(!first && index + 1 < m_blocks.size() && m_blocks[index + 1].layout == 3 &&
+			else if(first && index + 1 < m_blocks.size() && m_blocks[index + 1].layout == 3 &&
 				halfWidth >= headingWidth(m_blocks[index]) &&
 				available - scaleGap - halfWidth >= headingWidth(m_blocks[index + 1]))
 				count = 2;
@@ -611,6 +619,16 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 		for(const Placement& placement : placements)
 			::SetWindowPos(placement.window, NULL, placement.x, placement.y, placement.width, placement.height,
 				SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
+	for(const VisualBlock& block : m_blocks)
+		if(block.settings && ::IsWindow(block.body))
+		{
+			RECT client = {};
+			::GetClientRect(block.body, &client);
+			const int padding = UiMetrics::ScaleForDpi(10, m_dpi);
+			RECT interior = { padding, padding, (std::max)(padding + 1, static_cast<int>(client.right) - padding),
+				(std::max)(padding + 1, static_cast<int>(client.bottom) - padding) };
+			::SendMessageW(block.body, EM_SETRECT, 0, reinterpret_cast<LPARAM>(&interior));
+		}
 	::RedrawWindow(m_viewport, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 
@@ -628,12 +646,9 @@ int CScriptCardDlg::CharacteristicLayoutRows() const
 	const int widths[] = { rects[0].right - rects[0].left,
 		rects[1].right - rects[1].left, rects[2].right - rects[2].left };
 	if(rects[0].top == rects[1].top && rects[1].top == rects[2].top)
-	{
-		const int total = widths[0] + widths[1] + widths[2];
-		return abs(widths[0] * 5 - total * 3) <= 5 && abs(widths[1] - widths[2]) <= 1 ? 1 : -1;
-	}
-	if(rects[0].top < rects[1].top && rects[1].top == rects[2].top)
-		return abs(widths[1] - widths[2]) <= 1 && widths[0] > widths[1] ? 2 : -1;
+		return abs(widths[0] - widths[1]) <= 1 && abs(widths[1] - widths[2]) <= 1 ? 1 : -1;
+	if(rects[0].top == rects[1].top && rects[1].top < rects[2].top)
+		return abs(widths[0] - widths[1]) <= 1 && widths[2] > widths[0] ? 2 : -1;
 	return rects[0].top < rects[1].top && rects[1].top < rects[2].top ? 3 : -1;
 }
 
@@ -882,26 +897,29 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	const CString category = ScriptCategory(m_script.relativePath);
 	if(!category.IsEmpty()) header += L"\r\n" + Label(L"fbe.script_card.category", L"Category") + L": " + category;
 	if(!card.version.IsEmpty()) header += L"\r\n" + Label(L"fbe.script_card.version", L"Version") + L": " + card.version;
-	CString primaryAuthors, primaryRole, coauthors, allAuthors;
+	CString authorGroups[7];
 	for(const ScriptCards::Author& author : card.authors)
 	{
-		const CString name = author.name.IsEmpty() ?
-			Label(L"fbe.script_card.unknown_author", L"Unknown author") : author.name;
-		if(!allAuthors.IsEmpty()) allAuthors += L"\r\n";
-		allAuthors += AuthorRoleLabel(author.role) + L": " + name;
-		if(author.role == L"author" || author.role == L"original_author") {
-			if(primaryAuthors.IsEmpty()) { primaryAuthors = name; primaryRole = author.role; }
-		} else if(author.role == L"coauthor" && coauthors.IsEmpty()) coauthors = name;
+		if(author.name.IsEmpty()) continue;
+		const int group = author.role == L"author" ? 0 : author.role == L"original_author" ? 1 :
+			author.role == L"coauthor" ? 2 : author.role == L"modifier" ? 3 :
+			author.role == L"contributor" ? 4 : author.role == L"ai_assistance" ? 5 : 6;
+		if(!authorGroups[group].IsEmpty()) authorGroups[group] += L", ";
+		authorGroups[group] += author.name;
 	}
 	m_headerRightText.Empty();
-	if(!primaryAuthors.IsEmpty()) m_headerRightText += AuthorRoleLabel(primaryRole) + L": " + primaryAuthors;
-	if(!coauthors.IsEmpty()) {
+	const CString roleLabels[] = { AuthorRoleLabel(L"author"), AuthorRoleLabel(L"original_author"),
+		Label(L"fbe.script_card.coauthors", L"Co-authors"), AuthorRoleLabel(L"modifier"),
+		Label(L"fbe.script_card.role.contributors", L"Development contributors"),
+		AuthorRoleLabel(L"ai_assistance"), AuthorRoleLabel(L"unknown") };
+	for(int group = 0; group < _countof(authorGroups); ++group)
+	{
+		if(authorGroups[group].IsEmpty()) continue;
 		if(!m_headerRightText.IsEmpty()) m_headerRightText += L"\r\n";
-		m_headerRightText += Label(L"fbe.script_card.coauthors", L"Co-authors") + L": " + coauthors;
+		m_headerRightText += roleLabels[group] + L": " + authorGroups[group];
 	}
 	if(m_headerRightText.IsEmpty() && !card.authors.empty())
-		m_headerRightText = AuthorRoleLabel(card.authors.front().role) + L": " +
-			(card.authors.front().name.IsEmpty() ? Label(L"fbe.script_card.unknown_author", L"Unknown author") : card.authors.front().name);
+		m_headerRightText = AuthorRoleLabel(L"unknown");
 	CString state;
 	switch(card.state)
 	{
@@ -941,22 +959,16 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	}
 	else
 	{
-		if(card.authors.size() > 2 || (card.authors.size() == 1 && primaryAuthors.IsEmpty()) ||
-			(card.authors.size() == 2 && coauthors.IsEmpty()))
-			AddVisualBlock(Label(L"fbe.script_card.authors", L"Authors and contributors"), allAuthors);
 		AddVisualBlock(Label(L"fbe.script_card.summary", L"Purpose"), card.summary);
 		AddVisualBlock(Label(L"fbe.script_card.description", L"Description"), card.description);
 		AddVisualBlock(Label(L"fbe.script_card.usage", L"How to use"), NumberedText(card.usage));
-		AddVisualBlock(Label(L"fbe.script_card.scope", L"Scope"), card.scope, 3);
 		AddVisualBlock(Label(L"fbe.script_card.modifies_document", L"Changes document"), TriState(card.modifiesDocument), 3);
 		AddVisualBlock(Label(L"fbe.script_card.requires_selection", L"Selection required"), TriState(card.requiresSelection), 3);
-		if(!card.dependencies.empty() || !card.dependenciesComplete)
-		{
-			CString count;
-			if(card.dependencies.empty()) count = Label(L"fbe.script_card.dependencies_unverified", L"Not verified");
-			else count.Format(L"%u", static_cast<unsigned>(card.dependencies.size()));
-			AddVisualBlock(Label(L"fbe.script_card.dependencies", L"Linked files"), count, 1);
-		}
+		CString count;
+		if(!card.dependenciesComplete) count = Label(L"fbe.script_card.dependencies_unverified", L"Not verified");
+		else count.Format(L"%u", static_cast<unsigned>(card.dependencies.size()));
+		AddVisualBlock(Label(L"fbe.script_card.dependencies", L"Linked files"), count, 3);
+		AddVisualBlock(Label(L"fbe.script_card.scope", L"Scope"), card.scope);
 		CString undo = card.undo;
 		if(card.undoStatus == L"explicit_calls_found" &&
 			(undo.Find(L"BeginUndoUnit") >= 0 || undo.Find(L"EndUndoUnit") >= 0))
@@ -965,7 +977,7 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 		else if((card.undoStatus == L"no_explicit_grouping" || card.undoStatus == L"may_be_delegated") &&
 			undo.Find(L"Undo") >= 0)
 			undo = Label(L"fbe.script_card.undo_unverified", L"Undo of changes has not been established");
-		AddVisualBlock(Label(L"fbe.script_card.undo", L"Undo"), undo, 1);
+		AddVisualBlock(Label(L"fbe.script_card.undo", L"Undo"), undo);
 		AddVisualBlock(Label(L"fbe.script_card.warnings", L"Warnings"), ListText(card.warnings), 2, true);
 		AddVisualBlock(Label(L"fbe.script_card.examples", L"Examples"), ListText(card.examples), 2);
 		AddSettingsBlock(card.settingRows);

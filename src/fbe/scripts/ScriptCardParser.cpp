@@ -2,6 +2,7 @@
 #include "ScriptCardParser.h"
 #include "ScriptCardBlock.h"
 #include "..\..\common\RuntimeLocalizationCommon.h"
+#include <cwctype>
 #include <set>
 
 namespace ScriptCards {
@@ -253,14 +254,41 @@ bool OptionalSettings(const std::wstring& json, std::vector<Setting>& result)
 					meaning.Find(L"fallback") >= 0);
 			if(row.title.IsEmpty())
 			{
-				int separator = row.description.Find(L" — ");
-				int separatorLength = 3;
-				if(separator < 0) { separator = row.description.Find(L": "); separatorLength = 2; }
-				if(separator > 3 && separator < 100)
+				int separator = row.description.Find(L": ");
+				int separatorLength = 2;
+				if(separator < 0)
 				{
-					row.title = row.description.Left(separator);
-					row.description = row.description.Mid(separator + separatorLength);
+					separator = row.description.Find(L" — ");
+					separatorLength = 3;
 				}
+				if(separator > 3 && separator < 80)
+				{
+					CString candidate = row.description.Left(separator);
+					CString lower = candidate;
+					lower.MakeLower();
+					bool meaningful = lower.Find(L"true") < 0 && lower.Find(L"false") < 0;
+					bool hasLetter = false;
+					for(int index = 0; index < candidate.GetLength(); ++index)
+					{
+						if(iswdigit(candidate[index])) meaningful = false;
+						if(iswalpha(candidate[index])) hasLetter = true;
+					}
+					if(meaningful && hasLetter)
+					{
+						row.title = candidate;
+						row.description = row.description.Mid(separator + separatorLength);
+					}
+				}
+			}
+			if(row.valueKind == Setting::ValueKind::Boolean)
+			{
+				CString legend = row.description;
+				legend.MakeLower();
+				legend.Remove(L' ');
+				legend.TrimRight(L".。 ");
+				if(legend == L"false—нет,true—да" || legend == L"true—да,false—нет" ||
+					legend == L"false-нет,true-да" || legend == L"true-да,false-нет")
+					row.description.Empty();
 			}
 		}
 		else row.name = ValueText(json, cursor);

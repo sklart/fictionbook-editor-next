@@ -43,7 +43,7 @@ public:
 		COMMAND_HANDLER(IDC_BUTTON_REMOVESEL, BN_CLICKED, OnBnClickedButtonRemovesel)
 		NOTIFY_HANDLER(IDC_LIST_WORDS, NM_CLICK, OnListClick)
 		NOTIFY_HANDLER(IDC_LIST_WORDS, LVN_ITEMCHANGED, OnListChanged)
-		NOTIFY_HANDLER(IDC_EDIT_LV, EN_KILLFOCUS, OnEditLVDefocused)
+		COMMAND_HANDLER(IDC_EDIT_LV, EN_KILLFOCUS, OnEditLVDefocused)
 		COMMAND_ID_HANDLER(IDOK, OnOK)
 		COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
 	END_MSG_MAP()
@@ -53,7 +53,7 @@ public:
 	LRESULT OnListSort(int, NMHDR*, BOOL&);
 	LRESULT OnListClick(int, NMHDR*, BOOL&);
 	LRESULT OnListChanged(int, NMHDR*, BOOL&);
-	LRESULT OnEditLVDefocused(int, NMHDR*, BOOL&);
+	LRESULT OnEditLVDefocused(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCustomDraw(int id,NMHDR *hdr,BOOL&);
 	LRESULT OnOK(WORD, WORD wID, HWND, BOOL&);
 	LRESULT OnCancel(WORD, WORD wID, HWND, BOOL&);
@@ -61,6 +61,7 @@ public:
 //	void CreateStatBitmaps();
 	bool AddNewWord(CString&, bool test = false);
 	bool FinishInlineEdit();
+	void ResizeColumns();
 	bool FinishNewWord();
 	bool HandleDefaultAction();
 	void RemoveWord(int);

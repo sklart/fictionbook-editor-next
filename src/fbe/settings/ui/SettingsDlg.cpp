@@ -376,7 +376,11 @@ void CSettingsDlg::SelectPage(SettingsPageId page)
 	if(index < 0 || index >= _countof(m_pages) || !m_pages[index])
 		return;
 	if(m_currentPage != SettingsPageId::Count && m_pages[PageIndex(m_currentPage)] != m_pages[index])
+	{
+		if(::IsChild(m_pages[PageIndex(m_currentPage)]->m_hWnd, ::GetFocus()))
+			m_navigation.SetFocus();
 		m_pages[PageIndex(m_currentPage)]->ShowWindow(SW_HIDE);
+	}
 	m_currentPage = page;
 	if(page == SettingsPageId::Source && m_editorPage && m_sourcePage)
 		m_sourcePage->SetPreviewFontSize(m_editorPage->CurrentPreviewFontSize());
@@ -390,7 +394,7 @@ void CSettingsDlg::LayoutControls(int width, int height)
 {
 	if(!m_navigation.IsWindow())
 		return;
-	const int navigationHeight = max(0, height - m_navigationRect.top - m_buttonBottomMargin - m_buttonHeight - m_navigationBottomGap);
+	const int navigationHeight = max(0, GetPageRect().bottom - m_navigationRect.top);
 	const int cancelLeft = width - m_pageRightMargin - m_buttonWidth;
 	const int buttonTop = height - m_buttonBottomMargin - m_buttonHeight;
 	HDWP positions = ::BeginDeferWindowPos(3);
@@ -535,7 +539,8 @@ void CSettingsDlg::LayoutPage(int index)
 				control.id == IDC_EDITOR_CARET_GROUP || control.id == IDC_OPTIONS_SOURCE_PREVIEW_GROUP ||
 				control.id == IDC_OPTIONS_SOURCE_PREVIEW)) ||
 			(index == PageIndex(SettingsPageId::Spelling) && control.id == IDC_CUSTOM_DICT) ||
-			(index == PageIndex(SettingsPageId::Words) && control.id == IDC_EDIT_NEW) ||
+			(index == PageIndex(SettingsPageId::Words) && (control.id == IDC_EDIT_NEW ||
+				control.id == IDC_LIST_WORDS)) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SCRIPTS_FOLDER_PATH);
 		if((index == PageIndex(SettingsPageId::Words) && control.id == IDC_BUTTON_ADD) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SELECT_SCRIPTS_FOLDER_BUTTON))
@@ -576,12 +581,18 @@ void CSettingsDlg::LayoutPage(int index)
 	{
 		if(!positions) break;
 		positions = ::DeferWindowPos(positions, move.window, NULL, move.rect.left, move.rect.top,
-			max(0, move.rect.Width()), max(0, move.rect.Height()), flags);
+			max(0, move.rect.Width()), max(0, move.rect.Height()),
+			::GetFocus() == move.window ? flags & ~SWP_NOREDRAW : flags);
 	}
 	if(!positions || !::EndDeferWindowPos(positions))
 		for(const PageMove& move : moves)
 			::SetWindowPos(move.window, NULL, move.rect.left, move.rect.top,
-				max(0, move.rect.Width()), max(0, move.rect.Height()), flags);
+				max(0, move.rect.Width()), max(0, move.rect.Height()),
+				::GetFocus() == move.window ? flags & ~SWP_NOREDRAW : flags);
+	if(index == PageIndex(SettingsPageId::Words) && m_wordsPage)
+		m_wordsPage->ResizeColumns();
+	if(index == PageIndex(SettingsPageId::Keyboard) && m_hotkeysPage)
+		m_hotkeysPage->RefreshInfoScrollbars();
 	::RedrawWindow(page, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 }
 
@@ -665,6 +676,17 @@ bool CSettingsDlg::ProbeLayout()
 		return rect.left >= client.left && rect.top >= client.top &&
 			rect.right <= client.right && rect.bottom <= client.bottom;
 	};
+	auto wordsGeometry = [&]() {
+		RECT listClient = {};
+		m_wordsPage->m_list_words.GetClientRect(&listClient);
+		const CRect list = controlRect(m_wordsPage->m_list_words);
+		const CRect group = controlRect(m_wordsPage->GetDlgItem(IDC_STATIC_WORDS_CHEVRON));
+		const int columns = m_wordsPage->m_list_words.GetColumnWidth(0) +
+			m_wordsPage->m_list_words.GetColumnWidth(1);
+		return list.left > group.left && list.right < group.right && list.bottom < group.bottom &&
+			columns <= listClient.right - listClient.left &&
+			!(::GetWindowLongPtrW(m_wordsPage->m_list_words, GWL_STYLE) & WS_HSCROLL);
+	};
 	bool passed = true;
 	GetClientRect(client);
 	const CRect ok = controlRect(GetDlgItem(IDOK));
@@ -696,7 +718,9 @@ bool CSettingsDlg::ProbeLayout()
 		SelectPage(static_cast<SettingsPageId>(index));
 		const HWND page = m_pages[index]->m_hWnd;
 		const CRect pageRect = controlRect(page);
-		passed = passed && inside(pageRect) && navigation.right <= pageRect.left && pageRect.bottom <= ok.top;
+		passed = passed && inside(pageRect) && navigation.right <= pageRect.left && pageRect.bottom <= ok.top &&
+			controlRect(m_navigation).bottom == pageRect.bottom;
+		if(index == PageIndex(SettingsPageId::Words)) passed = passed && wordsGeometry();
 		if(index == PageIndex(SettingsPageId::Keyboard))
 		{
 			const HWND label = ::GetDlgItem(page, IDC_SETTINGS_OTHER_CHANGE_TO);
@@ -826,7 +850,8 @@ bool CSettingsDlg::ProbeLayout()
 		const HWND page = m_pages[index]->m_hWnd;
 		const CRect pageRect = controlRect(page);
 		passed = passed && inside(pageRect) && navigation.right <= pageRect.left &&
-			pageRect.bottom <= ok.top;
+			pageRect.bottom <= ok.top && controlRect(m_navigation).bottom == pageRect.bottom;
+		if(index == PageIndex(SettingsPageId::Words)) passed = passed && wordsGeometry();
 		RECT viewport = {};
 		::GetClientRect(page, &viewport);
 		const bool needsVerticalScroll = m_pageLayouts[index].contentSize.cy > viewport.bottom;
@@ -881,10 +906,32 @@ bool CSettingsDlg::ProbeLayout()
 			assign.left >= actions.left && assign.right <= actions.right && assign.bottom <= actions.bottom &&
 			collisionText.left >= collision.left && collisionText.right <= collision.right &&
 			descriptionText.left >= description.left && descriptionText.right <= description.right;
+		::SetFocus(m_hotkeysPage->GetDlgItem(IDC_EDIT_HOTKEY_DESCRIPTION));
+		passed = passed && ::GetFocus() == m_hotkeysPage->m_hotkeys;
+		::SetFocus(m_hotkeysPage->GetDlgItem(IDC_EDIT_HOTKEY_COLLISION));
+		passed = passed && ::GetFocus() == m_hotkeysPage->m_hotkeys;
+		::SetFocus(m_hotkeysPage->m_editHotkey);
+		passed = passed && ::GetFocus() == m_hotkeysPage->m_editHotkey;
 		GetClientRect(client);
 		passed = passed && inside(controlRect(GetDlgItem(IDOK))) && inside(controlRect(GetDlgItem(IDCANCEL))) &&
 			controlRect(GetDlgItem(IDOK)).right <= controlRect(GetDlgItem(IDCANCEL)).left;
 	}
+	SelectPage(SettingsPageId::Keyboard);
+	const HWND descriptionEdit = m_hotkeysPage->GetDlgItem(IDC_EDIT_HOTKEY_DESCRIPTION);
+	const int savedLength = ::GetWindowTextLengthW(descriptionEdit);
+	std::vector<wchar_t> savedDescription(static_cast<size_t>(savedLength) + 1);
+	::GetWindowTextW(descriptionEdit, savedDescription.data(), savedLength + 1);
+	::SetWindowTextW(descriptionEdit, L"Short description");
+	m_hotkeysPage->RefreshInfoScrollbars();
+	passed = passed && !(::GetWindowLongPtrW(descriptionEdit, GWL_STYLE) & WS_VSCROLL);
+	::SetWindowTextW(descriptionEdit,
+		L"A long description of the selected command wraps across several lines and remains readable "
+		L"when the settings window is narrow. Additional details keep the text longer than the edit field.");
+	m_hotkeysPage->RefreshInfoScrollbars();
+	passed = passed && ::SendMessageW(descriptionEdit, EM_GETLINECOUNT, 0, 0) > 1 &&
+		(::GetWindowLongPtrW(descriptionEdit, GWL_STYLE) & WS_VSCROLL) != 0;
+	::SetWindowTextW(descriptionEdit, savedDescription.data());
+	m_hotkeysPage->RefreshInfoScrollbars();
 	// Exercise the three main pages across repeated compact, original and
 	// expanded sizes. Measure preview rows using Scintilla's current font metrics.
 	const int expandedHeight = hasWorkArea ?
@@ -935,6 +982,21 @@ bool CSettingsDlg::ProbeLayout()
 	CRect restored;
 	GetWindowRect(restored);
 	passed = passed && restored == original;
+	SelectPage(SettingsPageId::Words);
+	m_wordsPage->m_editActive = true;
+	m_wordsPage->m_editidx = -1;
+	m_wordsPage->m_edit.ShowWindow(SW_SHOWNA);
+	::SetFocus(m_wordsPage->m_edit);
+	SelectPage(SettingsPageId::Editor);
+	passed = passed && !m_wordsPage->m_editActive && !::IsWindowVisible(m_wordsPage->m_edit) &&
+		::GetFocus() == m_navigation;
+	const UINT originalLayoutDpi = m_layoutDpi;
+	const UINT probeDpi = originalLayoutDpi == 144 ? 192 : 144;
+	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(probeDpi, probeDpi), 0);
+	SelectPage(SettingsPageId::Words);
+	passed = passed && controlRect(m_navigation).bottom == controlRect(m_wordsPage->m_hWnd).bottom &&
+		wordsGeometry();
+	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(originalLayoutDpi, originalLayoutDpi), 0);
 	SelectPage(SettingsPageId::General);
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_LAYOUT_PASSED", reinterpret_cast<HANDLE>(passed ? 1 : 2));
 	return passed;

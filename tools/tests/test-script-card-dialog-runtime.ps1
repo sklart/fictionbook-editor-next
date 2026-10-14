@@ -34,7 +34,7 @@ try {
             if($text -notmatch [regex]::Escape($line)) { throw "Script-card runtime scenario failed:`n$text" }
         }
         if($ArtifactDirectory) {
-            foreach($name in @('script-card.bmp', 'script-tree-info.bmp', 'script-card-dark.bmp', 'script-tree-info-dark.bmp', 'comment-card-narrow.bmp', 'comment-card-settings.bmp', 'comment-card-settings-dark.bmp', 'comment-card-changed.bmp', 'comment-card-changed-wide.bmp', 'comment-card-changed-dark.bmp')) {
+            foreach($name in @('script-card.bmp', 'script-tree-info.bmp', 'script-card-dark.bmp', 'script-tree-info-dark.bmp', 'comment-card-narrow.bmp', 'comment-card-settings.bmp', 'comment-card-settings-dark.bmp', 'comment-card-changed.bmp', 'comment-card-changed-wide.bmp', 'comment-card-changed-dark.bmp', 'cleaning-card-settings.bmp')) {
                 if(-not (Test-Path -LiteralPath (Join-Path $ArtifactDirectory $name))) { throw "Missing script-card screenshot: $name" }
             }
         }

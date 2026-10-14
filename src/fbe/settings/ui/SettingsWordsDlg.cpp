@@ -4,6 +4,7 @@
 #include "SettingsWordsDlg.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\RuntimeLocalization.h"
+#include "..\\..\\UiMetrics.h"
 
 #define IMG_STAT_WIDTH	40
 #define IMG_STAT_HEIGHT	10
@@ -81,10 +82,6 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT /* unused: uMsg */, WPARAM /* unuse
 	m_list_words = GetDlgItem(IDC_LIST_WORDS);
 	m_list_words.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
-	RECT rc;
-	m_list_words.GetClientRect(&rc);
-	int wcWidth = rc.right - rc.left - 80;
-
 	CString header;
 
 //	m_list_words.InsertColumn(0, L"%", LVCFMT_CENTER | LVCFMT_IMAGE, IMG_STAT_WIDTH + 10);
@@ -93,9 +90,10 @@ LRESULT CSettingsWordsDlg::OnInitDialog(UINT /* unused: uMsg */, WPARAM /* unuse
 	m_list_words.InsertColumn(0, header, LVCFMT_LEFT, 92);
 
 	header = FbeLoadCString(IDS_SETTINGS_WLIST_WORD);
-	m_list_words.InsertColumn(1, header, LVCFMT_LEFT, wcWidth);
+	m_list_words.InsertColumn(1, header, LVCFMT_LEFT, 180);
 	
 	m_list_words.SetItemCount(static_cast<int>(m_words.size()));
+	ResizeColumns();
 
 	m_edt_new = GetDlgItem(IDC_EDIT_NEW);
 	m_chk_all = GetDlgItem(IDC_CHECK_SELALL);
@@ -232,7 +230,8 @@ LRESULT CSettingsWordsDlg::OnListClick(int /* unused: id */, NMHDR *hdr, BOOL&)
 
 	if ((::GetTickCount() - m_ct) < 500 || ai->iItem < 0 || ai->iSubItem != 1)
 	{
-		m_edit.ShowWindow(SW_HIDE);
+		if(m_editActive && !FinishInlineEdit()) m_edit.SetFocus();
+		else if(!m_editActive) { m_editidx = -1; m_edit.ShowWindow(SW_HIDE); }
 		return 0;
 	}
 	if(m_editActive && !FinishInlineEdit())
@@ -259,10 +258,9 @@ LRESULT CSettingsWordsDlg::OnListClick(int /* unused: id */, NMHDR *hdr, BOOL&)
 	return 0;
 }
 
-LRESULT CSettingsWordsDlg::OnEditLVDefocused(int /* unused: id */, NMHDR */* unused: hdr */, BOOL&)
+LRESULT CSettingsWordsDlg::OnEditLVDefocused(WORD, WORD, HWND, BOOL&)
 {
-	m_edit.ShowWindow(SW_HIDE);
-
+	if(m_editActive) FinishInlineEdit();
 	return 0;
 }
 
@@ -342,6 +340,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 			// In owner-data mode the control owns no per-row items.  Changing the
 			// item count makes the new model row visible on demand.
 			m_list_words.SetItemCount(static_cast<int>(m_words.size()));
+			ResizeColumns();
 			m_list_words.RedrawItems(static_cast<int>(m_words.size()) - 1, static_cast<int>(m_words.size()) - 1);
 		}
 
@@ -442,6 +441,7 @@ LRESULT CSettingsWordsDlg::OnBnClickedButtonRemovesel(WORD /*wNotifyCode*/, WORD
 		m_words.swap(kept);
 		m_wordsDirty = true;
 		m_list_words.SetItemCount(static_cast<int>(m_words.size()));
+		ResizeColumns();
 		m_sel_all = false;
 		m_chk_all.SetCheck(BST_UNCHECKED);
 	}
@@ -456,6 +456,7 @@ void CSettingsWordsDlg::RemoveWord(int index)
 	m_words.erase(m_words.begin() + index);
 	m_wordsDirty = true;
 	m_list_words.SetItemCount(static_cast<int>(m_words.size()));
+	ResizeColumns();
 }
 
 LRESULT CSettingsWordsDlg::OnOK(WORD, WORD /* unused: wID */, HWND, BOOL&)
@@ -474,7 +475,12 @@ bool CSettingsWordsDlg::FinishInlineEdit()
 	if(!m_editActive)
 		return true;
 	if(m_editidx < 0 || m_editidx >= static_cast<int>(m_words.size()))
-		return false;
+	{
+		m_editActive = false;
+		m_editidx = -1;
+		m_edit.ShowWindow(SW_HIDE);
+		return true;
+	}
 
 	CString editedWord = U::GetWindowText(m_edit);
 	editedWord.Trim();
@@ -486,10 +492,26 @@ bool CSettingsWordsDlg::FinishInlineEdit()
 		if(!AddNewWord(editedWord))
 			return false;
 	}
-	m_edit.ShowWindow(SW_HIDE);
 	m_editActive = false;
 	m_editidx = -1;
+	m_edit.ShowWindow(SW_HIDE);
 	return true;
+}
+
+void CSettingsWordsDlg::ResizeColumns()
+{
+	if(!m_list_words.IsWindow()) return;
+	const UINT dpi = UiMetrics::DpiForWindow(m_list_words);
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		RECT client = {};
+		m_list_words.GetClientRect(&client);
+		const int available = max(0, static_cast<int>(client.right - client.left) - 1);
+		const int first = min(UiMetrics::ScaleForDpi(92, dpi),
+			max(UiMetrics::ScaleForDpi(58, dpi), available / 4));
+		m_list_words.SetColumnWidth(0, min(first, available));
+		m_list_words.SetColumnWidth(1, max(0, available - min(first, available)));
+	}
 }
 
 bool CSettingsWordsDlg::FinishNewWord()
@@ -546,9 +568,9 @@ bool CSettingsWordsDlg::CancelChanges()
 {
 	if(m_editActive && GetFocus() == m_edit)
 	{
-		m_edit.ShowWindow(SW_HIDE);
 		m_editActive = false;
 		m_editidx = -1;
+		m_edit.ShowWindow(SW_HIDE);
 		return false;
 	}
 	return true;
