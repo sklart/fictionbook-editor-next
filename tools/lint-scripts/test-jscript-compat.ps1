@@ -10,6 +10,7 @@ $temporary = Join-Path ([System.IO.Path]::GetTempPath()) ("fbe-jscript-" + [guid
 New-Item -ItemType Directory -Path $temporary | Out-Null
 try {
     Copy-Item -LiteralPath (Join-Path $fixtures 'jscript-valid.js') -Destination (Join-Path $temporary 'valid.js')
+    [System.IO.File]::WriteAllText((Join-Path $temporary 'utf16.js'), 'var unicodeValue = 1;', [System.Text.Encoding]::Unicode)
     & cscript.exe //nologo $parser $temporary
     if($LASTEXITCODE -ne 0) { throw 'The compatible ES3 fixture was rejected by Microsoft JScript.' }
     Copy-Item -LiteralPath (Join-Path $fixtures 'jscript-modern-syntax.js') -Destination (Join-Path $temporary 'modern.js')

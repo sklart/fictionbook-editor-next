@@ -12,27 +12,24 @@
     function read(path) {
         // OpenTextFile defaults to the host ANSI code page, which changes the
         // token stream on CI machines. Most runtime sources are UTF-8, but a
-        // bundled settings script has a UTF-16LE BOM.
-        var binary = new ActiveXObject("ADODB.Stream"), prefix, stream, text;
-        binary.Type = 1;
-        binary.Open();
-        binary.LoadFromFile(path);
-        try {
-            prefix = new VBArray(binary.Read(2)).toArray();
-        } catch (error) {
-            // Some Windows Script Host installations return a scalar for a
-            // short UTF-8 fixture. It cannot contain the UTF-16LE BOM.
-            prefix = [];
-        }
-        binary.Close();
-        stream = new ActiveXObject("ADODB.Stream");
+        // bundled settings script is UTF-16LE. Decoding it as UTF-8 leaves
+        // NULs between ASCII characters, so retry that case as Unicode.
+        var stream = new ActiveXObject("ADODB.Stream"), text;
         stream.Type = 2;
-        stream.Charset = prefix.length === 2 && prefix[0] === 0xff && prefix[1] === 0xfe
-            ? "unicode" : "utf-8";
+        stream.Charset = "utf-8";
         stream.Open();
         stream.LoadFromFile(path);
         text = stream.ReadText();
         stream.Close();
+        if (text.substr(0, 32).indexOf(String.fromCharCode(0)) >= 0) {
+            stream = new ActiveXObject("ADODB.Stream");
+            stream.Type = 2;
+            stream.Charset = "unicode";
+            stream.Open();
+            stream.LoadFromFile(path);
+            text = stream.ReadText();
+            stream.Close();
+        }
         if (text.charCodeAt(0) === 0xfeff) text = text.substr(1);
         return text;
     }
