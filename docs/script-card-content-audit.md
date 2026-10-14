@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **312**. Исполняемый код не изменён.
+Изменено карточек: **313**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 276
-- `generic_usage`: 257
-- `inaccurate_description`: 520
+- `false_warning`: 277
+- `generic_usage`: 258
+- `inaccurate_description`: 522
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 257
+- `incorrect_dependency`: 258
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 254
+- `incorrect_scope`: 255
 - `incorrect_selection`: 17
-- `incorrect_setting`: 122
-- `incorrect_undo`: 256
+- `incorrect_setting`: 123
+- `incorrect_undo`: 257
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,17 +40,17 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 139
+- `dependenciesVerified`: 140
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 255
-- `scopeClarified`: 241
+- `purposeClarified`: 256
+- `scopeClarified`: 242
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 435
-- `undoDescriptionsClarified`: 248
-- `usageCorrected`: 257
-- `warningsClarified`: 188
+- `settingsClarified`: 436
+- `undoDescriptionsClarified`: 249
+- `usageCorrected`: 258
+- `warningsClarified`: 189
 
 Скриптов с подтверждёнными замечаниями к исполняемому коду: **160**.
 
@@ -327,10 +327,10 @@
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1339
+- `generic_usage`: 1335
 - `inaccurate_description`: 99
-- `incorrect_undo`: 206
-- `requires_review`: 442
+- `incorrect_undo`: 205
+- `requires_review`: 441
 
 ## Границы проверки
 
