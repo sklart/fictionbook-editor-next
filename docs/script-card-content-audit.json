@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 358,
-    "generic_usage": 887,
-    "incorrect_undo": 131,
+    "requires_review": 357,
+    "generic_usage": 882,
+    "incorrect_undo": 130,
     "inaccurate_description": 50
   },
   "reviewedChanges": [
@@ -51573,18 +51573,172 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/600_Три звёздочки на концах абзацев - в абзацы или подзаголовки.js",
+      "codeSha256": "be7282803f905cb2f70b272afa94dfd4dfb42579f809cb43d3cbcdf6ab43fca9",
+      "evidence": "Строки 1–21 задают назначение, авторство и настройку; 24–42 показывают параметры и строят шаблон; 117–653 анализируют все P; 661–707 ищут целевые P; 709–823 удаляют завершающие звёздочки; 825–897 создают и вставляют новый P внутри группы отмены; 930–975 выбирают режим. Файловых, сетевых вызовов и запуска внешних программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для поиска в основном разделе (без боди сносок)",
+          "after": "Подсчитывает звёздочки в книге и по выбору отделяет три звёздочки на концах абзацев в новые абзацы или подзаголовки.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для поиска в основном разделе (без боди сносок)",
+          "after": "Сначала показывает настройку полноты статистики и предлагает только анализ либо анализ с преобразованием. Анализирует все абзацы книги, разделяя сноски и остальные части, и подсчитывает звёздочки в заголовках, подзаголовках и обычных абзацах. В режиме преобразования с отдельным подтверждением ищет обычные абзацы вне сносок и заголовков, текст которых заканчивается как минимум тремя звёздочками. Удаляет завершающие звёздочки и пробелы из последнего найденного текстового узла и вставляет после абзаца новый P с «* * *» — обычный или с классом subtitle по выбору.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Анализ — все P документа; отдельно учитывается body с fbname=notes, остальные части попадают в общую категорию. Преобразование — P вне сносок, кроме P.subtitle и P внутри title; комментарии и другие дополнительные body также могут попасть в преобразование.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Выберите «только анализ» для отчёта без изменений либо «анализ и преобразование» для работы со звёздочками в конце абзацев.",
+            "Во втором режиме подтвердите преобразование и выберите, создавать обычные абзацы или подзаголовки. Проверьте получившиеся разделители и итоговое число ошибок до сохранения.",
+            "Для краткого отчёта измените SHOW_FULL_STATISTICS в исходном JS с 1 на 0."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Преобразование не ограничено основным body: абзацы комментариев также могут быть изменены.",
+            "Если три завершающие звёздочки разбиты между несколькими текстовыми узлами, скрипт может удалить лишь часть исходных звёздочек и всё равно добавить новый разделитель.",
+            "Если вставка нового абзаца ошибётся после удаления звёздочек, исходный абзац может остаться изменённым; число таких ошибок выводится в результате. Проверьте книгу до сохранения."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "При обычном завершении преобразования изменения объединены в группу отмены; в режиме анализа книга не меняется. Между открытием и завершением группы нет обычного досрочного выхода, но полнота отката при ошибках не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "SHOW_FULL_STATISTICS",
+              "value": 1,
+              "expression": "1",
+              "description": "<- ИЗМЕНИТЕ ЗДЕСЬ 1 или 0",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "settingsInfo",
+              "value": "Настройки скрипта:\n",
+              "expression": "\"Настройки скрипта:\\n\"",
+              "description": "Показываем текущие настройки",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "SHOW_FULL_STATISTICS",
+              "value": 1,
+              "expression": "1",
+              "description": "Полнота отчёта: 1 — показывать и нулевые строки; 0 — показывать только найденное.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 669,
+          "issue": "Из преобразования исключён только body с fbname=notes. Абзацы body с fbname=comments и других дополнительных body считаются основными и могут изменяться вопреки заявленной области работы."
+        },
+        {
+          "line": 715,
+          "issue": "После проверки шаблона на объединённом тексте удаление выполняется только в последнем текстовом узле со звёздочками. Если завершающие *** разбиты между узлами, часть звёздочек остаётся, но новый разделитель всё равно вставляется."
+        },
+        {
+          "line": 854,
+          "issue": "Звёздочки удаляются до создания и вставки нового абзаца. Если вставка бросит исключение, обработчик на строке 866 лишь увеличит счётчик ошибок, оставив исходный абзац частично изменённым."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 678,
-    "generic_usage": 366,
+    "inaccurate_description": 679,
+    "generic_usage": 367,
     "false_warning": 319,
-    "incorrect_setting": 196,
-    "incorrect_scope": 373,
-    "incorrect_undo": 365,
-    "uncertain_attribution": 58,
-    "generic_summary": 61,
-    "incorrect_dependency": 381,
+    "incorrect_setting": 197,
+    "incorrect_scope": 374,
+    "incorrect_undo": 366,
+    "uncertain_attribution": 59,
+    "generic_summary": 62,
+    "incorrect_dependency": 382,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -51598,20 +51752,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 4,
+    "missing_warning": 5,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 357,
-    "usageCorrected": 366,
-    "purposeClarified": 364,
-    "warningsClarified": 298,
-    "scopeClarified": 350,
+    "undoDescriptionsClarified": 358,
+    "usageCorrected": 367,
+    "purposeClarified": 365,
+    "warningsClarified": 299,
+    "scopeClarified": 351,
     "settingsClarified": 509,
-    "attributionClarified": 60,
-    "dependenciesVerified": 248,
+    "attributionClarified": 61,
+    "dependenciesVerified": 249,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -51619,7 +51773,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 1
+    "settingsCorrected": 2
   },
   "scripts": [
     {
@@ -142367,56 +142521,47 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Три звёздочки на концах абзацев - в абзацы или подзаголовки",
-        "summary": "Скрипт предназначен для поиска в основном разделе (без боди сносок)",
-        "description": "Скрипт предназначен для поиска в основном разделе (без боди сносок)",
+        "summary": "Подсчитывает звёздочки в книге и по выбору отделяет три звёздочки на концах абзацев в новые абзацы или подзаголовки.",
+        "description": "Сначала показывает настройку полноты статистики и предлагает только анализ либо анализ с преобразованием. Анализирует все абзацы книги, разделяя сноски и остальные части, и подсчитывает звёздочки в заголовках, подзаголовках и обычных абзацах. В режиме преобразования с отдельным подтверждением ищет обычные абзацы вне сносок и заголовков, текст которых заканчивается как минимум тремя звёздочками. Удаляет завершающие звёздочки и пробелы из последнего найденного текстового узла и вставляет после абзаца новый P с «* * *» — обычный или с классом subtitle по выбору.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "3.9",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Анализ — все P документа; отдельно учитывается body с fbname=notes, остальные части попадают в общую категорию. Преобразование — P вне сносок, кроме P.subtitle и P внутри title; комментарии и другие дополнительные body также могут попасть в преобразование.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Выберите «только анализ» для отчёта без изменений либо «анализ и преобразование» для работы со звёздочками в конце абзацев.",
+          "Во втором режиме подтвердите преобразование и выберите, создавать обычные абзацы или подзаголовки. Проверьте получившиеся разделители и итоговое число ошибок до сохранения.",
+          "Для краткого отчёта измените SHOW_FULL_STATISTICS в исходном JS с 1 на 0."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Преобразование не ограничено основным body: абзацы комментариев также могут быть изменены.",
+          "Если три завершающие звёздочки разбиты между несколькими текстовыми узлами, скрипт может удалить лишь часть исходных звёздочек и всё равно добавить новый разделитель.",
+          "Если вставка нового абзаца ошибётся после удаления звёздочек, исходный абзац может остаться изменённым; число таких ошибок выводится в результате. Проверьте книгу до сохранения."
         ],
         "settings": [
           {
             "name": "SHOW_FULL_STATISTICS",
             "value": 1,
             "expression": "1",
-            "description": "<- ИЗМЕНИТЕ ЗДЕСЬ 1 или 0",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "settingsInfo",
-            "value": "Настройки скрипта:\n",
-            "expression": "\"Настройки скрипта:\\n\"",
-            "description": "Показываем текущие настройки",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Полнота отчёта: 1 — показывать и нулевые строки; 0 — показывать только найденное.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "При обычном завершении преобразования изменения объединены в группу отмены; в режиме анализа книга не меняется. Между открытием и завершением группы нет обычного досрочного выхода, но полнота отката при ошибках не проверена."
         },
         "examples": null,
         "tags": [
@@ -142427,13 +142572,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 959,
+            "line": 950,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" v\" + scriptVersion);"
           }
         ],
         "undo_end": [
           {
-            "line": 965,
+            "line": 956,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -142441,19 +142586,19 @@
         "selection": [],
         "write": [
           {
-            "line": 856,
+            "line": 847,
             "text": "element.parentNode.removeChild(element);"
           },
           {
-            "line": 895,
+            "line": 886,
             "text": "var newP = document.createElement(\"P\");"
           },
           {
-            "line": 899,
+            "line": 890,
             "text": "newP.innerHTML = \"* * *\";"
           },
           {
-            "line": 930,
+            "line": 921,
             "text": "parent.appendChild(newP);"
           }
         ],
@@ -142464,167 +142609,167 @@
         "file": [],
         "return": [
           {
-            "line": 123,
+            "line": 114,
             "text": "return true;"
           },
           {
-            "line": 129,
+            "line": 120,
             "text": "return false;"
           },
           {
-            "line": 134,
+            "line": 125,
             "text": "if (!node) return \"\";"
           },
           {
-            "line": 137,
+            "line": 128,
             "text": "return node.nodeValue || \"\";"
           },
           {
-            "line": 141,
+            "line": 132,
             "text": "return \"\";"
           },
           {
-            "line": 149,
+            "line": 140,
             "text": "return text;"
           },
           {
-            "line": 159,
+            "line": 150,
             "text": "return true;"
           },
           {
-            "line": 163,
+            "line": 154,
             "text": "return true;"
+          },
+          {
+            "line": 157,
+            "text": "return false;"
           },
           {
             "line": 166,
-            "text": "return false;"
-          },
-          {
-            "line": 175,
             "text": "return count;"
           },
           {
-            "line": 180,
+            "line": 171,
             "text": "return c == ' ' || c == '\\t' || c == '\\n' || c == '\\r' || c == nbspChar;"
           },
           {
-            "line": 243,
+            "line": 234,
             "text": "if (!text) return result;"
           },
           {
-            "line": 253,
+            "line": 244,
             "text": "if (starsCount == 0) return result;"
           },
           {
-            "line": 294,
+            "line": 285,
             "text": "return result;"
           },
           {
-            "line": 340,
+            "line": 331,
             "text": "return stats; // Нет звёздочек"
           },
           {
-            "line": 432,
+            "line": 423,
             "text": "return stats;"
           },
           {
-            "line": 520,
+            "line": 511,
             "text": "return {"
           },
           {
-            "line": 715,
+            "line": 706,
             "text": "return {"
           },
           {
-            "line": 774,
+            "line": 765,
             "text": "return targets;"
           },
           {
-            "line": 780,
+            "line": 771,
             "text": "if (!text) return false;"
           },
           {
-            "line": 785,
+            "line": 776,
             "text": "return false;"
           },
           {
-            "line": 790,
+            "line": 781,
             "text": "return processTextNode(lastNodeWithStars);"
           },
           {
-            "line": 792,
+            "line": 783,
             "text": "return processElementNode(lastNodeWithStars);"
           },
           {
-            "line": 795,
+            "line": 786,
             "text": "return false;"
           },
           {
-            "line": 807,
+            "line": 798,
             "text": "return child;"
           },
           {
-            "line": 813,
+            "line": 804,
             "text": "return found;"
           },
           {
-            "line": 817,
+            "line": 808,
             "text": "return null;"
           },
           {
-            "line": 823,
+            "line": 814,
             "text": "if (!text) return false;"
+          },
+          {
+            "line": 823,
+            "text": "return true;"
+          },
+          {
+            "line": 826,
+            "text": "return false;"
           },
           {
             "line": 832,
-            "text": "return true;"
-          },
-          {
-            "line": 835,
-            "text": "return false;"
-          },
-          {
-            "line": 841,
             "text": "if (!text) return false;"
           },
           {
-            "line": 857,
+            "line": 848,
             "text": "return true;"
           },
           {
-            "line": 861,
+            "line": 852,
             "text": "return false;"
           },
           {
-            "line": 866,
+            "line": 857,
             "text": "if (!text) return text;"
           },
           {
-            "line": 890,
+            "line": 881,
             "text": "return result;"
           },
           {
-            "line": 900,
+            "line": 891,
             "text": "return newP;"
           },
           {
-            "line": 939,
+            "line": 930,
             "text": "return { transformed: transformed, errors: errors };"
           },
           {
-            "line": 946,
+            "line": 937,
             "text": "return {"
           },
           {
-            "line": 990,
+            "line": 981,
             "text": "return {"
           },
           {
-            "line": 1016,
+            "line": 1007,
             "text": "return \"Done\";"
           },
           {
-            "line": 1043,
+            "line": 1034,
             "text": "return \"Done\";"
           }
         ]
@@ -142636,71 +142781,42 @@
           "name": "SHOW_FULL_STATISTICS",
           "declarations": [
             {
-              "line": 89,
+              "line": 80,
               "text": "var SHOW_FULL_STATISTICS = 1; // <- ИЗМЕНИТЕ ЗДЕСЬ 1 или 0"
             }
           ],
           "uses": [
             {
-              "line": 89,
+              "line": 80,
               "text": "var SHOW_FULL_STATISTICS = 1; // <- ИЗМЕНИТЕ ЗДЕСЬ 1 или 0"
             },
             {
-              "line": 98,
+              "line": 89,
               "text": "settingsInfo += \"Полная статистика: \" + (SHOW_FULL_STATISTICS ? \"ВКЛ\" : \"ВЫКЛ\") + \"\\n\";"
             },
             {
-              "line": 531,
+              "line": 522,
               "text": "if (SHOW_FULL_STATISTICS || totalCleanStars > 0) {"
             },
             {
-              "line": 535,
+              "line": 526,
               "text": "if (SHOW_FULL_STATISTICS || mainCleanTotal > 0) {"
             },
             {
-              "line": 537,
+              "line": 528,
               "text": "if (SHOW_FULL_STATISTICS || mainCleanTitles > 0) {"
             },
             {
-              "line": 540,
+              "line": 531,
               "text": "if (SHOW_FULL_STATISTICS || mainCleanSubtitles > 0) {"
             },
             {
-              "line": 546,
+              "line": 537,
               "text": "if (SHOW_FULL_STATISTICS || notesCleanTotal > 0) {"
             },
             {
-              "line": 548,
+              "line": 539,
               "text": "if (SHOW_FULL_STATISTICS || notesCleanTitles > 0) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 1,
-          "name": "settingsInfo",
-          "declarations": [
-            {
-              "line": 97,
-              "text": "var settingsInfo = \"Настройки скрипта:\\n\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 97,
-              "text": "var settingsInfo = \"Настройки скрипта:\\n\";"
-            },
-            {
-              "line": 98,
-              "text": "settingsInfo += \"Полная статистика: \" + (SHOW_FULL_STATISTICS ? \"ВКЛ\" : \"ВЫКЛ\") + \"\\n\";"
-            },
-            {
-              "line": 99,
-              "text": "settingsInfo += \"(1 - все разделы, 0 - только найденное)\";"
-            },
-            {
-              "line": 1000,
-              "text": "MsgBox(settingsInfo, \"Настройки скрипта \" + scriptVersion);"
             }
           ],
           "classification": "requires_review"
@@ -142709,25 +142825,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 70,
+          "line": 61,
           "text": "// version 3.9"
         },
         {
-          "line": 82,
+          "line": 73,
           "text": "// version 3.9, 18.12.2025"
         },
         {
-          "line": 94,
+          "line": 85,
           "text": "var scriptVersion = \"3.9\";"
         },
         {
-          "line": 513,
+          "line": 504,
           "text": "message += \"ver. \" + scriptVersion + \"\\n\\n\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Преобразование не ограничено основным body: абзацы комментариев также могут быть изменены.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если три завершающие звёздочки разбиты между несколькими текстовыми узлами, скрипт может удалить лишь часть исходных звёздочек и всё равно добавить новый разделитель.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если вставка нового абзаца ошибётся после удаления звёздочек, исходный абзац может остаться изменённым; число таких ошибок выводится в результате. Проверьте книгу до сохранения.",
           "verification": "requires_review"
         }
       ],
@@ -142748,80 +142872,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 959,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" v\" + scriptVersion);"
-            },
-            {
-              "line": 965,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/605_Разбить однострочные заголовки на 2 абзаца.js",
