@@ -16459,5 +16459,393 @@
       "undoDescriptionsClarified": 1,
       "serviceSettingsRemoved": 1
     }
+  },
+  {
+    "path": "05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
+    "codeSha256": "724272c10ce3b24ea3efff2d4832c6670e8cebd3767e612a5e94a991954a3f54",
+    "evidence": "Исходник строки 102–138: имя файла и четыре других настройки; 144–258: проверка выделения и сбор целых секций; 350–480: поиск пустых DIV в выбранных секциях либо всех body и замена; 609–679: поиск источника в binobj с запасным поиском по href; 682–692: новые href и IMG src.",
+    "changes": [
+      {
+        "field": "authors",
+        "before": [
+          {
+            "name": "TaKir",
+            "role": "author"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "idea"
+          },
+          {
+            "name": "DeepSeek",
+            "role": "ai_assistance"
+          }
+        ],
+        "after": [
+          {
+            "name": "TaKir",
+            "role": "author",
+            "contribution": "идея и реализация"
+          },
+          {
+            "name": "DeepSeek",
+            "role": "ai_assistance",
+            "contribution": "реализация"
+          }
+        ],
+        "category": "incorrect_authorship"
+      },
+      {
+        "field": "summary",
+        "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок",
+        "after": "Заменяет пустые блочные изображения одной указанной иллюстрацией во всём документе или выбранных секциях.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок",
+        "after": "Находит JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. При отсутствии совпадения в binobj допускает совпадающий href другой блочной иллюстрации. Заменяет DIV с href #undefined или #nobin_undefined новыми DIV.image с одинаковым href и IMG src; бинарные файлы не копирует.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "after": "При непустом текстовом выделении обрабатывает собранные целиком секции от начала до конца выделения; без выделения — все body документа. По умолчанию только основной body; notes и comments включаются настройками.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "requiresSelection",
+        "before": null,
+        "after": false,
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+        ],
+        "after": [
+          "Задайте в исходном JS базовое имя уже присутствующей иллюстрации. Разместите пустые блочные изображения и, если нужна ограниченная область, выделите текст в нужных секциях.",
+          "Запустите скрипт и подтвердите число замен. При выделении проверьте всю секцию: заменяются также пустые изображения вне точных границ выделенного текста."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "warnings",
+        "before": [
+          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+        ],
+        "after": [
+          "Поиск запасного источника принимает существующий href блочной иллюстрации без проверки бинарного вложения; результат может ссылаться на отсутствующий файл.",
+          "При выделении областью служат целые найденные секции; изменения могут выйти за точные границы выделения."
+        ],
+        "category": "false_warning"
+      },
+      {
+        "field": "settings",
+        "before": [
+          {
+            "name": "showStatistics",
+            "value": 1,
+            "expression": "1",
+            "description": "Измените на 0 для тихого режима",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          },
+          {
+            "name": "processNotesSection",
+            "value": 0,
+            "expression": "0",
+            "description": "0 - нет, 1 - да",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          },
+          {
+            "name": "processCommentsSection",
+            "value": 0,
+            "expression": "0",
+            "description": "0 - нет, 1 - да",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          }
+        ],
+        "after": [
+          {
+            "name": "UserImageName",
+            "title": "Имя вставляемой иллюстрации",
+            "value": "1234567",
+            "expression": "\"1234567\"",
+            "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+            "source": "code"
+          },
+          {
+            "name": "showActualFileName",
+            "title": "Имя файла в сообщениях",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+            "source": "code"
+          },
+          {
+            "name": "showStatistics",
+            "title": "Подтверждение и итог",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+            "source": "code"
+          },
+          {
+            "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
+            "value": 0,
+            "expression": "0",
+            "description": "0 — пропустить body notes; 1 — включить.",
+            "source": "code"
+          },
+          {
+            "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
+            "value": 0,
+            "expression": "0",
+            "description": "0 — пропустить body comments; 1 — включить.",
+            "source": "code"
+          }
+        ],
+        "category": "incorrect_setting"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "explicit_calls_found",
+          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+        },
+        "after": {
+          "status": "explicit_calls_found",
+          "description": "Замена DOM на штатном пути группируется в одну операцию отмены редактора. Полнота отката и закрытие операции при ошибке не проверены."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 650,
+        "issue": "Запасной поиск источника принимает href существующей DIV.image без проверки, что бинарный файл существует."
+      },
+      {
+        "line": 350,
+        "issue": "После BeginUndoUnit обход и updateImages не защищены finally; исключение до EndUndoUnit оставит операцию открытой."
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "settingsClarified": 5,
+      "undoDescriptionsClarified": 1
+    }
+  },
+  {
+    "path": "05_Иллюстрации/45_Расставить одинаковые инлайн иллюстрации взамен пустых картинок.js",
+    "codeSha256": "da4f3da63e5e096960d18812b51ae91e4570f10e788ee065f696bb964ca38239",
+    "evidence": "Исходник строки 103–139: имя файла и четыре других настройки; 143–225: проверка наличия файла и подтверждение; 226–308: обход всех body и замена пустых SPAN; 408–483: поиск источника в binobj и запасной поиск по DIV href; 486–496: новый SPAN и IMG.",
+    "changes": [
+      {
+        "field": "authors",
+        "before": [
+          {
+            "name": "TaKir",
+            "role": "author"
+          },
+          {
+            "name": "TaKir",
+            "role": "contributor",
+            "contribution": "idea"
+          },
+          {
+            "name": "DeepSeek",
+            "role": "ai_assistance"
+          }
+        ],
+        "after": [
+          {
+            "name": "TaKir",
+            "role": "author",
+            "contribution": "идея и реализация"
+          },
+          {
+            "name": "DeepSeek",
+            "role": "ai_assistance",
+            "contribution": "реализация"
+          }
+        ],
+        "category": "incorrect_authorship"
+      },
+      {
+        "field": "summary",
+        "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых инлайн-картинок",
+        "after": "Заменяет пустые инлайн-изображения одной указанной иллюстрацией в выбранных разделах документа.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "description",
+        "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых инлайн-картинок",
+        "after": "Ищет JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. Если в binobj совпадения нет, принимает совпадающий href блочной иллюстрации. В выбранных body заменяет SPAN.image с href #undefined или #nobin_undefined новыми SPAN.image с одинаковым href и IMG src; бинарные файлы не копирует.",
+        "category": "inaccurate_description"
+      },
+      {
+        "field": "scope",
+        "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "after": "Все SPAN с классом, содержащим image, в основных body документа; notes и comments по умолчанию пропускаются и могут включаться настройками. Выделение не ограничивает обработку.",
+        "category": "incorrect_scope"
+      },
+      {
+        "field": "usage",
+        "before": [
+          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+        ],
+        "after": [
+          "Задайте в исходном JS базовое имя уже присутствующей иллюстрации и разместите пустые инлайн-изображения.",
+          "Запустите скрипт, проверьте количество замен и подтвердите выполнение; после проверьте ссылки в затронутых разделах."
+        ],
+        "category": "generic_usage"
+      },
+      {
+        "field": "warnings",
+        "before": [
+          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+        ],
+        "after": [
+          "Запасной поиск источника принимает href блочной иллюстрации без проверки бинарного вложения; новые SPAN могут ссылаться на отсутствующий файл.",
+          "Скрипт обрабатывает все подходящие изображения в включённых body, даже если выделен только фрагмент."
+        ],
+        "category": "false_warning"
+      },
+      {
+        "field": "settings",
+        "before": [
+          {
+            "name": "showStatistics",
+            "value": 1,
+            "expression": "1",
+            "description": "Измените на 0 для тихого режима",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          },
+          {
+            "name": "processNotesSection",
+            "value": 0,
+            "expression": "0",
+            "description": "0 - нет, 1 - да",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          },
+          {
+            "name": "processCommentsSection",
+            "value": 0,
+            "expression": "0",
+            "description": "0 - нет, 1 - да",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          },
+          {
+            "name": "settingsStr",
+            "value": "\n- Обработка разделов:\n",
+            "expression": "\"\\n- Обработка разделов:\\n\"",
+            "description": "Формируем строку с настройками разделов",
+            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+          }
+        ],
+        "after": [
+          {
+            "name": "UserImageName",
+            "title": "Имя вставляемой иллюстрации",
+            "value": "1234567",
+            "expression": "\"1234567\"",
+            "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+            "source": "code"
+          },
+          {
+            "name": "showActualFileName",
+            "title": "Имя файла в сообщениях",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+            "source": "code"
+          },
+          {
+            "name": "showStatistics",
+            "title": "Подтверждение и итог",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+            "source": "code"
+          },
+          {
+            "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
+            "value": 0,
+            "expression": "0",
+            "description": "0 — пропустить body notes; 1 — включить.",
+            "source": "code"
+          },
+          {
+            "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
+            "value": 0,
+            "expression": "0",
+            "description": "0 — пропустить body comments; 1 — включить.",
+            "source": "code"
+          }
+        ],
+        "category": "incorrect_setting"
+      },
+      {
+        "field": "dependenciesComplete",
+        "before": false,
+        "after": true,
+        "category": "incorrect_dependency"
+      },
+      {
+        "field": "undo",
+        "before": {
+          "status": "explicit_calls_found",
+          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+        },
+        "after": {
+          "status": "explicit_calls_found",
+          "description": "Замена DOM на штатном пути группируется в одну операцию отмены редактора. Полнота отката и закрытие операции при ошибке не проверены."
+        },
+        "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 189,
+        "issue": "settingsStr — служебная строка сообщения, ошибочно извлечённая как пользовательская настройка."
+      },
+      {
+        "line": 452,
+        "issue": "Запасной поиск источника принимает href существующей DIV.image без проверки наличия бинарного файла."
+      },
+      {
+        "line": 226,
+        "issue": "После BeginUndoUnit обход и updateImages не защищены finally; исключение до EndUndoUnit оставит операцию открытой."
+      }
+    ],
+    "metrics": {
+      "purposeClarified": 1,
+      "scopeClarified": 1,
+      "usageCorrected": 1,
+      "settingsClarified": 5,
+      "undoDescriptionsClarified": 1,
+      "serviceSettingsRemoved": 1
+    }
   }
 ]

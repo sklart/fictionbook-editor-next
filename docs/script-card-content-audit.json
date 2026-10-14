@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 513,
-    "generic_usage": 1952,
-    "incorrect_undo": 348,
+    "requires_review": 511,
+    "generic_usage": 1942,
+    "incorrect_undo": 346,
     "inaccurate_description": 109
   },
   "reviewedChanges": [
@@ -16468,31 +16468,419 @@
         "undoDescriptionsClarified": 1,
         "serviceSettingsRemoved": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/42_Расставить одинаковые блочные иллюстрации взамен пустых картинок.js",
+      "codeSha256": "724272c10ce3b24ea3efff2d4832c6670e8cebd3767e612a5e94a991954a3f54",
+      "evidence": "Исходник строки 102–138: имя файла и четыре других настройки; 144–258: проверка выделения и сбор целых секций; 350–480: поиск пустых DIV в выбранных секциях либо всех body и замена; 609–679: поиск источника в binobj с запасным поиском по href; 682–692: новые href и IMG src.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок",
+          "after": "Заменяет пустые блочные изображения одной указанной иллюстрацией во всём документе или выбранных секциях.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок",
+          "after": "Находит JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. При отсутствии совпадения в binobj допускает совпадающий href другой блочной иллюстрации. Заменяет DIV с href #undefined или #nobin_undefined новыми DIV.image с одинаковым href и IMG src; бинарные файлы не копирует.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "При непустом текстовом выделении обрабатывает собранные целиком секции от начала до конца выделения; без выделения — все body документа. По умолчанию только основной body; notes и comments включаются настройками.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Задайте в исходном JS базовое имя уже присутствующей иллюстрации. Разместите пустые блочные изображения и, если нужна ограниченная область, выделите текст в нужных секциях.",
+            "Запустите скрипт и подтвердите число замен. При выделении проверьте всю секцию: заменяются также пустые изображения вне точных границ выделенного текста."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Поиск запасного источника принимает существующий href блочной иллюстрации без проверки бинарного вложения; результат может ссылаться на отсутствующий файл.",
+            "При выделении областью служат целые найденные секции; изменения могут выйти за точные границы выделения."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "UserImageName",
+              "title": "Имя вставляемой иллюстрации",
+              "value": "1234567",
+              "expression": "\"1234567\"",
+              "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+              "source": "code"
+            },
+            {
+              "name": "showActualFileName",
+              "title": "Имя файла в сообщениях",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+              "source": "code"
+            },
+            {
+              "name": "showStatistics",
+              "title": "Подтверждение и итог",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+              "source": "code"
+            },
+            {
+              "name": "processNotesSection",
+              "title": "Обрабатывать примечания",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — пропустить body notes; 1 — включить.",
+              "source": "code"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Обрабатывать комментарии",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — пропустить body comments; 1 — включить.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Замена DOM на штатном пути группируется в одну операцию отмены редактора. Полнота отката и закрытие операции при ошибке не проверены."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 650,
+          "issue": "Запасной поиск источника принимает href существующей DIV.image без проверки, что бинарный файл существует."
+        },
+        {
+          "line": 350,
+          "issue": "После BeginUndoUnit обход и updateImages не защищены finally; исключение до EndUndoUnit оставит операцию открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "settingsClarified": 5,
+        "undoDescriptionsClarified": 1
+      }
+    },
+    {
+      "path": "05_Иллюстрации/45_Расставить одинаковые инлайн иллюстрации взамен пустых картинок.js",
+      "codeSha256": "da4f3da63e5e096960d18812b51ae91e4570f10e788ee065f696bb964ca38239",
+      "evidence": "Исходник строки 103–139: имя файла и четыре других настройки; 143–225: проверка наличия файла и подтверждение; 226–308: обход всех body и замена пустых SPAN; 408–483: поиск источника в binobj и запасной поиск по DIV href; 486–496: новый SPAN и IMG.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация"
+            }
+          ],
+          "category": "incorrect_authorship"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых инлайн-картинок",
+          "after": "Заменяет пустые инлайн-изображения одной указанной иллюстрацией в выбранных разделах документа.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для вставки заданной иллюстрации на место пустых инлайн-картинок",
+          "after": "Ищет JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. Если в binobj совпадения нет, принимает совпадающий href блочной иллюстрации. В выбранных body заменяет SPAN.image с href #undefined или #nobin_undefined новыми SPAN.image с одинаковым href и IMG src; бинарные файлы не копирует.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все SPAN с классом, содержащим image, в основных body документа; notes и comments по умолчанию пропускаются и могут включаться настройками. Выделение не ограничивает обработку.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Задайте в исходном JS базовое имя уже присутствующей иллюстрации и разместите пустые инлайн-изображения.",
+            "Запустите скрипт, проверьте количество замен и подтвердите выполнение; после проверьте ссылки в затронутых разделах."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Запасной поиск источника принимает href блочной иллюстрации без проверки бинарного вложения; новые SPAN могут ссылаться на отсутствующий файл.",
+            "Скрипт обрабатывает все подходящие изображения в включённых body, даже если выделен только фрагмент."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "settingsStr",
+              "value": "\n- Обработка разделов:\n",
+              "expression": "\"\\n- Обработка разделов:\\n\"",
+              "description": "Формируем строку с настройками разделов",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "UserImageName",
+              "title": "Имя вставляемой иллюстрации",
+              "value": "1234567",
+              "expression": "\"1234567\"",
+              "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+              "source": "code"
+            },
+            {
+              "name": "showActualFileName",
+              "title": "Имя файла в сообщениях",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+              "source": "code"
+            },
+            {
+              "name": "showStatistics",
+              "title": "Подтверждение и итог",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+              "source": "code"
+            },
+            {
+              "name": "processNotesSection",
+              "title": "Обрабатывать примечания",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — пропустить body notes; 1 — включить.",
+              "source": "code"
+            },
+            {
+              "name": "processCommentsSection",
+              "title": "Обрабатывать комментарии",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — пропустить body comments; 1 — включить.",
+              "source": "code"
+            }
+          ],
+          "category": "incorrect_setting"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Замена DOM на штатном пути группируется в одну операцию отмены редактора. Полнота отката и закрытие операции при ошибке не проверены."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 189,
+          "issue": "settingsStr — служебная строка сообщения, ошибочно извлечённая как пользовательская настройка."
+        },
+        {
+          "line": 452,
+          "issue": "Запасной поиск источника принимает href существующей DIV.image без проверки наличия бинарного файла."
+        },
+        {
+          "line": 226,
+          "issue": "После BeginUndoUnit обход и updateImages не защищены finally; исключение до EndUndoUnit оставит операцию открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "settingsClarified": 5,
+        "undoDescriptionsClarified": 1,
+        "serviceSettingsRemoved": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 164,
-    "generic_usage": 81,
-    "false_warning": 112,
-    "incorrect_setting": 92,
-    "incorrect_scope": 69,
-    "incorrect_undo": 80,
+    "inaccurate_description": 168,
+    "generic_usage": 83,
+    "false_warning": 114,
+    "incorrect_setting": 94,
+    "incorrect_scope": 72,
+    "incorrect_undo": 82,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 66,
-    "incorrect_authorship": 35,
+    "incorrect_dependency": 68,
+    "incorrect_authorship": 37,
     "incorrect_version": 5,
     "inaccurate_version": 1,
     "incorrect_effect": 1
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
-    "serviceSettingsRemoved": 140,
-    "undoDescriptionsClarified": 81,
-    "usageCorrected": 81,
-    "purposeClarified": 81,
+    "serviceSettingsRemoved": 141,
+    "undoDescriptionsClarified": 83,
+    "usageCorrected": 83,
+    "purposeClarified": 83,
     "warningsClarified": 23,
-    "scopeClarified": 65,
-    "settingsClarified": 361,
+    "scopeClarified": 67,
+    "settingsClarified": 371,
     "attributionClarified": 3,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29
@@ -59060,63 +59448,78 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Расставить одинаковые блочные иллюстрации взамен пустых картинок",
-        "summary": "Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок",
-        "description": "Скрипт предназначен для вставки заданной иллюстрации на место пустых картинок",
+        "summary": "Заменяет пустые блочные изображения одной указанной иллюстрацией во всём документе или выбранных секциях.",
+        "description": "Находит JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. При отсутствии совпадения в binobj допускает совпадающий href другой блочной иллюстрации. Заменяет DIV с href #undefined или #nobin_undefined новыми DIV.image с одинаковым href и IMG src; бинарные файлы не копирует.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.7",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "При непустом текстовом выделении обрабатывает собранные целиком секции от начала до конца выделения; без выделения — все body документа. По умолчанию только основной body; notes и comments включаются настройками.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Задайте в исходном JS базовое имя уже присутствующей иллюстрации. Разместите пустые блочные изображения и, если нужна ограниченная область, выделите текст в нужных секциях.",
+          "Запустите скрипт и подтвердите число замен. При выделении проверьте всю секцию: заменяются также пустые изображения вне точных границ выделенного текста."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Поиск запасного источника принимает существующий href блочной иллюстрации без проверки бинарного вложения; результат может ссылаться на отсутствующий файл.",
+          "При выделении областью служат целые найденные секции; изменения могут выйти за точные границы выделения."
         ],
         "settings": [
           {
-            "name": "showStatistics",
+            "name": "UserImageName",
+            "title": "Имя вставляемой иллюстрации",
+            "value": "1234567",
+            "expression": "\"1234567\"",
+            "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+            "source": "code"
+          },
+          {
+            "name": "showActualFileName",
+            "title": "Имя файла в сообщениях",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+            "source": "code"
+          },
+          {
+            "name": "showStatistics",
+            "title": "Подтверждение и итог",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+            "source": "code"
           },
           {
             "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — пропустить body notes; 1 — включить.",
+            "source": "code"
           },
           {
             "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — пропустить body comments; 1 — включить.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Замена DOM на штатном пути группируется в одну операцию отмены редактора. Полнота отката и закрытие операции при ошибке не проверены."
         },
         "examples": null,
         "tags": [
@@ -59128,50 +59531,50 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 350,
+            "line": 365,
             "text": "window.external.BeginUndoUnit(document, \"Замена пустых иллюстраций\");"
           }
         ],
         "undo_end": [
           {
-            "line": 480,
+            "line": 495,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 151,
+            "line": 166,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 151,
+            "line": 166,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 192,
+            "line": 207,
             "text": "var trStart = document.selection.createRange();"
           },
           {
-            "line": 192,
+            "line": 207,
             "text": "var trStart = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 470,
+            "line": 485,
             "text": "oldDiv.parentNode.replaceChild(newDiv, oldDiv);"
           },
           {
-            "line": 683,
+            "line": 698,
             "text": "var imageDiv = document.createElement('div');"
           },
           {
-            "line": 689,
+            "line": 704,
             "text": "var img = document.createElement('img');"
           },
           {
-            "line": 691,
+            "line": 706,
             "text": "imageDiv.appendChild(img);"
           }
         ],
@@ -59182,79 +59585,79 @@
         "file": [],
         "return": [
           {
-            "line": 178,
+            "line": 193,
             "text": "return el;"
           },
           {
-            "line": 185,
+            "line": 200,
             "text": "return current;"
           },
           {
-            "line": 189,
+            "line": 204,
             "text": "return null;"
           },
           {
-            "line": 273,
+            "line": 288,
             "text": "return;"
           },
           {
-            "line": 285,
+            "line": 300,
             "text": "return;"
           },
           {
-            "line": 296,
+            "line": 311,
             "text": "return;"
           },
           {
-            "line": 336,
+            "line": 351,
             "text": "return;"
           },
           {
-            "line": 525,
+            "line": 540,
             "text": "return current;"
           },
           {
-            "line": 529,
+            "line": 544,
             "text": "return null;"
           },
           {
-            "line": 552,
+            "line": 567,
             "text": "return count;"
           },
           {
-            "line": 591,
+            "line": 606,
             "text": "return result;"
           },
           {
-            "line": 596,
+            "line": 611,
             "text": "return countEmptyInContainer(bodyElement);"
           },
           {
-            "line": 603,
+            "line": 618,
             "text": "return filename.substring(0, lastDotIndex);"
           },
           {
-            "line": 605,
+            "line": 620,
             "text": "return filename;"
           },
           {
-            "line": 640,
+            "line": 655,
             "text": "return result;"
           },
           {
-            "line": 668,
-            "text": "return result;"
-          },
-          {
-            "line": 678,
+            "line": 683,
             "text": "return result;"
           },
           {
             "line": 693,
+            "text": "return result;"
+          },
+          {
+            "line": 708,
             "text": "return imageDiv;"
           },
           {
-            "line": 714,
+            "line": 729,
             "text": "return window.external.AskYesNo(str);"
           }
         ]
@@ -59263,106 +59666,160 @@
       "settingEvidence": [
         {
           "index": 0,
-          "name": "showStatistics",
+          "name": "UserImageName",
           "declarations": [
             {
-              "line": 132,
-              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
+              "line": 127,
+              "text": "var UserImageName = \"1234567\";"
             }
           ],
           "uses": [
             {
-              "line": 132,
-              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
+              "line": 127,
+              "text": "var UserImageName = \"1234567\";"
             },
             {
-              "line": 325,
-              "text": "if (showStatistics == 1) {"
+              "line": 160,
+              "text": "var imageCheckResult = checkImageExists(UserImageName);"
             },
             {
-              "line": 488,
-              "text": "if (showStatistics == 1) {"
+              "line": 286,
+              "text": "\"пустые картинки и одна иллюстрация с именем файла \" + UserImageName;"
+            },
+            {
+              "line": 297,
+              "text": "UserImageName + \" (jpg или png)\\n\" +"
+            },
+            {
+              "line": 315,
+              "text": "var displayImageName = (showActualFileName == 1) ? actualImageName : UserImageName;"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 1,
-          "name": "processNotesSection",
+          "name": "showActualFileName",
           "declarations": [
             {
-              "line": 135,
-              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
+              "line": 144,
+              "text": "var showActualFileName = 1; // по умолчанию 1"
             }
           ],
           "uses": [
             {
-              "line": 135,
-              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
+              "line": 144,
+              "text": "var showActualFileName = 1; // по умолчанию 1"
             },
             {
-              "line": 243,
-              "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
-            },
-            {
-              "line": 255,
-              "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
-            },
-            {
-              "line": 313,
-              "text": "if (processNotesSection == 1) {"
-            },
-            {
-              "line": 374,
-              "text": "} else if (fbname2 == \"notes\" && processNotesSection == 1) {"
-            },
-            {
-              "line": 425,
-              "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
-            },
-            {
-              "line": 503,
-              "text": "if (processNotesSection == 0 && stats.skippedNotes > 0) {"
+              "line": 315,
+              "text": "var displayImageName = (showActualFileName == 1) ? actualImageName : UserImageName;"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 2,
+          "name": "showStatistics",
+          "declarations": [
+            {
+              "line": 147,
+              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
+            }
+          ],
+          "uses": [
+            {
+              "line": 147,
+              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
+            },
+            {
+              "line": 340,
+              "text": "if (showStatistics == 1) {"
+            },
+            {
+              "line": 503,
+              "text": "if (showStatistics == 1) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "processNotesSection",
+          "declarations": [
+            {
+              "line": 150,
+              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
+            }
+          ],
+          "uses": [
+            {
+              "line": 150,
+              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
+            },
+            {
+              "line": 258,
+              "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
+            },
+            {
+              "line": 270,
+              "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
+            },
+            {
+              "line": 328,
+              "text": "if (processNotesSection == 1) {"
+            },
+            {
+              "line": 389,
+              "text": "} else if (fbname2 == \"notes\" && processNotesSection == 1) {"
+            },
+            {
+              "line": 440,
+              "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
+            },
+            {
+              "line": 518,
+              "text": "if (processNotesSection == 0 && stats.skippedNotes > 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 138,
+              "line": 153,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 138,
+              "line": 153,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 245,
+              "line": 260,
               "text": "} else if (fbname == \"comments\" && processCommentsSection == 1) {"
             },
             {
-              "line": 255,
+              "line": 270,
               "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
             },
             {
-              "line": 318,
+              "line": 333,
               "text": "if (processCommentsSection == 1) {"
             },
             {
-              "line": 376,
+              "line": 391,
               "text": "} else if (fbname2 == \"comments\" && processCommentsSection == 1) {"
             },
             {
-              "line": 427,
+              "line": 442,
               "text": "} else if (fbname == \"comments\" && processCommentsSection == 1) {"
             },
             {
-              "line": 506,
+              "line": 521,
               "text": "if (processCommentsSection == 0 && stats.skippedComments > 0) {"
             }
           ],
@@ -59372,25 +59829,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 78,
+          "line": 93,
           "text": "// version 1.7"
         },
         {
-          "line": 95,
+          "line": 110,
           "text": "// version 1.7, 24.07.2026"
         },
         {
-          "line": 103,
+          "line": 118,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 105,
+          "line": 120,
           "text": "var version = \"1.7\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Поиск запасного источника принимает существующий href блочной иллюстрации без проверки бинарного вложения; результат может ссылаться на отсутствующий файл.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При выделении областью служат целые найденные секции; изменения могут выйти за точные границы выделения.",
           "verification": "requires_review"
         }
       ],
@@ -59411,80 +59872,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 350,
-              "text": "window.external.BeginUndoUnit(document, \"Замена пустых иллюстраций\");"
-            },
-            {
-              "line": 480,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/43_Преобразовать инлайн иллюстрации в блочные.js",
@@ -60755,70 +61143,78 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Расставить одинаковые инлайн иллюстрации взамен пустых картинок",
-        "summary": "Скрипт предназначен для вставки заданной иллюстрации на место пустых инлайн-картинок",
-        "description": "Скрипт предназначен для вставки заданной иллюстрации на место пустых инлайн-картинок",
+        "summary": "Заменяет пустые инлайн-изображения одной указанной иллюстрацией в выбранных разделах документа.",
+        "description": "Ищет JPG/JPEG/PNG по заданному базовому имени среди бинарных вложений, с вариантами префиксов. Если в binobj совпадения нет, принимает совпадающий href блочной иллюстрации. В выбранных body заменяет SPAN.image с href #undefined или #nobin_undefined новыми SPAN.image с одинаковым href и IMG src; бинарные файлы не копирует.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация"
           }
         ],
         "version": "1.0",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все SPAN с классом, содержащим image, в основных body документа; notes и comments по умолчанию пропускаются и могут включаться настройками. Выделение не ограничивает обработку.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Задайте в исходном JS базовое имя уже присутствующей иллюстрации и разместите пустые инлайн-изображения.",
+          "Запустите скрипт, проверьте количество замен и подтвердите выполнение; после проверьте ссылки в затронутых разделах."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Запасной поиск источника принимает href блочной иллюстрации без проверки бинарного вложения; новые SPAN могут ссылаться на отсутствующий файл.",
+          "Скрипт обрабатывает все подходящие изображения в включённых body, даже если выделен только фрагмент."
         ],
         "settings": [
           {
-            "name": "showStatistics",
+            "name": "UserImageName",
+            "title": "Имя вставляемой иллюстрации",
+            "value": "1234567",
+            "expression": "\"1234567\"",
+            "description": "Базовое имя файла без расширения; ищет JPG, JPEG и PNG с вариантами префиксов _, unused_ и unused__.",
+            "source": "code"
+          },
+          {
+            "name": "showActualFileName",
+            "title": "Имя файла в сообщениях",
             "value": 1,
             "expression": "1",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — показывать фактическое имя вложения; 0 — заданное базовое имя.",
+            "source": "code"
+          },
+          {
+            "name": "showStatistics",
+            "title": "Подтверждение и итог",
+            "value": 1,
+            "expression": "1",
+            "description": "1 — запросить подтверждение и показать результат; 0 — выполнить без этих сообщений, сообщения об ошибках остаются.",
+            "source": "code"
           },
           {
             "name": "processNotesSection",
+            "title": "Обрабатывать примечания",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — пропустить body notes; 1 — включить.",
+            "source": "code"
           },
           {
             "name": "processCommentsSection",
+            "title": "Обрабатывать комментарии",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "settingsStr",
-            "value": "\n- Обработка разделов:\n",
-            "expression": "\"\\n- Обработка разделов:\\n\"",
-            "description": "Формируем строку с настройками разделов",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — пропустить body comments; 1 — включить.",
+            "source": "code"
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Замена DOM на штатном пути группируется в одну операцию отмены редактора. Полнота отката и закрытие операции при ошибке не проверены."
         },
         "examples": null,
         "tags": [
@@ -60830,13 +61226,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 226,
+            "line": 234,
             "text": "window.external.BeginUndoUnit(document, \"Замена пустых инлайн-иллюстраций\");"
           }
         ],
         "undo_end": [
           {
-            "line": 308,
+            "line": 316,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -60844,19 +61240,19 @@
         "selection": [],
         "write": [
           {
-            "line": 298,
+            "line": 306,
             "text": "oldSpan.parentNode.replaceChild(newSpan, oldSpan);"
           },
           {
-            "line": 487,
+            "line": 495,
             "text": "var imageSpan = document.createElement('SPAN');"
           },
           {
-            "line": 493,
+            "line": 501,
             "text": "var img = document.createElement('IMG');"
           },
           {
-            "line": 495,
+            "line": 503,
             "text": "imageSpan.appendChild(img);"
           }
         ],
@@ -60867,55 +61263,55 @@
         "file": [],
         "return": [
           {
-            "line": 161,
+            "line": 169,
             "text": "return;"
           },
           {
-            "line": 172,
+            "line": 180,
             "text": "return;"
           },
           {
-            "line": 182,
+            "line": 190,
             "text": "return;"
           },
           {
-            "line": 212,
+            "line": 220,
             "text": "return;"
           },
           {
-            "line": 372,
+            "line": 380,
             "text": "return result;"
           },
           {
-            "line": 395,
+            "line": 403,
             "text": "return count;"
           },
           {
-            "line": 402,
+            "line": 410,
             "text": "return filename.substring(0, lastDotIndex);"
           },
           {
-            "line": 404,
+            "line": 412,
             "text": "return filename;"
           },
           {
-            "line": 442,
+            "line": 450,
             "text": "return result;"
           },
           {
-            "line": 472,
+            "line": 480,
             "text": "return result;"
           },
           {
-            "line": 482,
+            "line": 490,
             "text": "return result;"
           },
           {
-            "line": 497,
+            "line": 505,
             "text": "return imageSpan;"
           },
           {
-            "line": 518,
+            "line": 526,
             "text": "return window.external.AskYesNo(str);"
           }
         ]
@@ -60924,132 +61320,145 @@
       "settingEvidence": [
         {
           "index": 0,
-          "name": "showStatistics",
+          "name": "UserImageName",
           "declarations": [
             {
-              "line": 133,
-              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
+              "line": 121,
+              "text": "var UserImageName = \"1234567\";"
             }
           ],
           "uses": [
             {
-              "line": 133,
-              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
+              "line": 121,
+              "text": "var UserImageName = \"1234567\";"
             },
             {
-              "line": 203,
-              "text": "if (showStatistics == 1) {"
+              "line": 154,
+              "text": "var imageCheckResult = checkImageExists(UserImageName);"
             },
             {
-              "line": 316,
-              "text": "if (showStatistics == 1) {"
+              "line": 168,
+              "text": "\"пустые инлайн-картинки и одна иллюстрация с именем файла \" + UserImageName);"
+            },
+            {
+              "line": 178,
+              "text": "UserImageName + \" (jpg или png)\\n\" +"
+            },
+            {
+              "line": 194,
+              "text": "var displayImageName = (showActualFileName == 1) ? actualImageName : UserImageName;"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 1,
-          "name": "processNotesSection",
+          "name": "showActualFileName",
           "declarations": [
             {
-              "line": 136,
-              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
+              "line": 138,
+              "text": "var showActualFileName = 1; // по умолчанию 1"
             }
           ],
           "uses": [
             {
-              "line": 136,
-              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
+              "line": 138,
+              "text": "var showActualFileName = 1; // по умолчанию 1"
             },
             {
-              "line": 149,
-              "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
-            },
-            {
-              "line": 191,
-              "text": "if (processNotesSection == 1) {"
-            },
-            {
-              "line": 254,
-              "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
-            },
-            {
-              "line": 322,
-              "text": "if (processNotesSection == 0 && stats.skippedNotes > 0) {"
+              "line": 194,
+              "text": "var displayImageName = (showActualFileName == 1) ? actualImageName : UserImageName;"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 2,
-          "name": "processCommentsSection",
+          "name": "showStatistics",
           "declarations": [
             {
-              "line": 139,
-              "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
+              "line": 141,
+              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 139,
-              "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
+              "line": 141,
+              "text": "var showStatistics = 1; // Измените на 0 для тихого режима"
             },
             {
-              "line": 149,
-              "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
+              "line": 211,
+              "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 196,
-              "text": "if (processCommentsSection == 1) {"
-            },
-            {
-              "line": 256,
-              "text": "} else if (fbname == \"comments\" && processCommentsSection == 1) {"
-            },
-            {
-              "line": 325,
-              "text": "if (processCommentsSection == 0 && stats.skippedComments > 0) {"
+              "line": 324,
+              "text": "if (showStatistics == 1) {"
             }
           ],
           "classification": "requires_review"
         },
         {
           "index": 3,
-          "name": "settingsStr",
+          "name": "processNotesSection",
           "declarations": [
             {
-              "line": 189,
-              "text": "var settingsStr = \"\\n- Обработка разделов:\\n\";"
+              "line": 144,
+              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 189,
-              "text": "var settingsStr = \"\\n- Обработка разделов:\\n\";"
+              "line": 144,
+              "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 190,
-              "text": "settingsStr += \"  • Основной раздел: ДА\\n\";"
-            },
-            {
-              "line": 192,
-              "text": "settingsStr += \"  • Раздел сносок (примечаний): ДА\\n\";"
-            },
-            {
-              "line": 194,
-              "text": "settingsStr += \"  • Раздел сносок (примечаний): НЕТ\\n\";"
-            },
-            {
-              "line": 197,
-              "text": "settingsStr += \"  • Раздел комментариев: ДА\\n\";"
+              "line": 157,
+              "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
             },
             {
               "line": 199,
-              "text": "settingsStr += \"  • Раздел комментариев: НЕТ\\n\";"
+              "text": "if (processNotesSection == 1) {"
             },
             {
-              "line": 208,
-              "text": "settingsStr + \"\\n\" +"
+              "line": 262,
+              "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
+            },
+            {
+              "line": 330,
+              "text": "if (processNotesSection == 0 && stats.skippedNotes > 0) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
+          "name": "processCommentsSection",
+          "declarations": [
+            {
+              "line": 147,
+              "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
+            }
+          ],
+          "uses": [
+            {
+              "line": 147,
+              "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
+            },
+            {
+              "line": 157,
+              "text": "var emptyCountResult = countEmptyImagesWithSettings(processNotesSection, processCommentsSection);"
+            },
+            {
+              "line": 204,
+              "text": "if (processCommentsSection == 1) {"
+            },
+            {
+              "line": 264,
+              "text": "} else if (fbname == \"comments\" && processCommentsSection == 1) {"
+            },
+            {
+              "line": 333,
+              "text": "if (processCommentsSection == 0 && stats.skippedComments > 0) {"
             }
           ],
           "classification": "requires_review"
@@ -61058,25 +61467,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 85,
+          "line": 93,
           "text": "// version 1.0"
         },
         {
-          "line": 100,
+          "line": 108,
           "text": "// version 1.0, 02.05.2026"
         },
         {
-          "line": 104,
+          "line": 112,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 106,
+          "line": 114,
           "text": "var version = \"1.0\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Запасной поиск источника принимает href блочной иллюстрации без проверки бинарного вложения; новые SPAN могут ссылаться на отсутствующий файл.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Скрипт обрабатывает все подходящие изображения в включённых body, даже если выделен только фрагмент.",
           "verification": "requires_review"
         }
       ],
@@ -61097,80 +61510,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 226,
-              "text": "window.external.BeginUndoUnit(document, \"Замена пустых инлайн-иллюстраций\");"
-            },
-            {
-              "line": 308,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/46_Заменить пустые строки на пустые картинки.js",
