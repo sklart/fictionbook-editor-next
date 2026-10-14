@@ -32,6 +32,14 @@ runtime/HTML/**/*.js text eol=crlf
 runtime/HTML/**/*.html text eol=crlf
 runtime/HTML/**/*.htm text eol=crlf
 runtime/HTML/**/*.css text eol=crlf
+# These linked resources were audited with LF bytes. Preserve their exact
+# dependency hashes in fresh checkouts and CI.
+"runtime/HTML/АК-скрипт - Результаты.html" text eol=lf
+"runtime/HTML/АК-скрипт - Сообщение.html" text eol=lf
+"runtime/HTML/Восстановление регистра заголовков и подзаголовков.html" text eol=lf
+"runtime/HTML/Дополнительные функции.js" text eol=lf
+"runtime/HTML/Настройка скриптов.html" text eol=lf
+"runtime/HTML/Сверка «Дизайна».html" text eol=lf
 runtime/Help/**/*.html text eol=lf
 runtime/Help/**/*.md text eol=lf
 runtime/Dict/*.aff -text
