@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **205**.
+Карточек без автоматических замечаний: **206**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,25 +16,27 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **401**. Исполняемый код не изменён.
+Изменено карточек: **403**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 47
-- `generic_usage`: 347
-- `generic_warning`: 47
-- `inaccurate_description`: 659
+- `generic_summary`: 48
+- `generic_usage`: 349
+- `generic_warning`: 49
+- `inaccurate_description`: 661
+- `inaccurate_summary`: 1
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 361
+- `incorrect_dependency`: 364
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
-- `incorrect_scope`: 354
-- `incorrect_selection`: 30
-- `incorrect_setting`: 180
-- `incorrect_undo`: 346
+- `incorrect_modifies_document`: 1
+- `incorrect_scope`: 356
+- `incorrect_selection`: 31
+- `incorrect_setting`: 181
+- `incorrect_undo`: 348
 - `incorrect_version`: 8
 - `uncertain_attribution`: 54
 
@@ -43,21 +45,21 @@
 - `attributionClarified`: 48
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 229
+- `dependenciesVerified`: 231
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 345
-- `scopeClarified`: 331
+- `purposeClarified`: 347
+- `scopeClarified`: 333
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 494
-- `undoDescriptionsClarified`: 338
-- `usageCorrected`: 347
+- `settingsClarified`: 495
+- `undoDescriptionsClarified`: 340
+- `usageCorrected`: 349
 - `versionCorrected`: 3
-- `warningsClarified`: 279
+- `warningsClarified`: 281
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **241**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **243**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -518,13 +520,16 @@
 - `13_Заголовки, подзаголовки, пустые строки/610_Поиск разделов без заголовков_stokber.js:25` — DIV выбираются через document.getElementsByTagName по всей странице без ограничения fbw_body, а className проверяется по подстроке section; могут попасть элементы интерфейса и классы с похожим именем.
 - `13_Заголовки, подзаголовки, пустые строки/610_Поиск разделов без заголовков_stokber.js:60` — Секция с firstChild==null вообще не попадает в ветку поиска, хотя у неё нет заголовка.
 - `13_Заголовки, подзаголовки, пустые строки/610_Поиск разделов без заголовков_stokber.js:66` — getElementsByTagName('P') ищет во всех потомках, поэтому выделенный первый абзац может принадлежать вложенной секции, а не самой найденной секции.
+- `13_Заголовки, подзаголовки, пустые строки/590_Расформатировать все заголовки_Комбо.js:173` — Если элемент userCmd отсутствует, функция выходит после переопределения window.Run в строке 170 и не восстанавливает прежний обработчик; дальнейшие запуски могут работать неверно.
+- `13_Заголовки, подзаголовки, пустые строки/705_Вставить пустую строку после структурного элемента или картинки.js:213` — Выражение window.external.inflateBlock(emptyLine) = true пытается присвоить значение результату вызова. Оно выбрасывает ошибку выполнения до вставки P и до EndUndoUnit; команда в текущей редакции не выполняет заявленную операцию.
+- `13_Заголовки, подзаголовки, пустые строки/705_Вставить пустую строку после структурного элемента или картинки.js:189` — Цикл пропускает любой текстовый узел, а не только пробельные. При значимом тексте между элементами проверка ошибочно считает следующий пустой P непосредственно соседним и не вставляет строку.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 974
+- `generic_usage`: 966
 - `inaccurate_description`: 54
-- `incorrect_undo`: 148
-- `requires_review`: 372
+- `incorrect_undo`: 147
+- `requires_review`: 371
 
 ## Границы проверки
 
