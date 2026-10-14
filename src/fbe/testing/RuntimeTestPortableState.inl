@@ -288,8 +288,12 @@ void CMainFrame::RunPortableStateTestScenario()
 			"\"description\":\"Card runtime description\",\"version\":\"1.0\","
 			"\"scope\":\"Current document\",\"modifiesDocument\":false,\"requiresSelection\":false,"
 			"\"usage\":[\"Open card\"],\"warnings\":[\"Review changes before running\"],\"dependencies\":[],"
-			"\"settings\":[{\"name\":\"Mode\",\"expression\":\"safe\",\"description\":\"Change mode\"},"
-			"{\"name\":\"Second\",\"expression\":\"false\",\"description\":\"\\u0434\\u0430\"}],"
+			"\"settings\":[{\"title\":\"Mode\",\"name\":\"ModeCode\",\"value\":\"safe\","
+			"\"expression\":\"+extracting(0)\",\"valueMeaning\":\"fallback value\",\"description\":\"Change mode\"},"
+			"{\"name\":\"Second\",\"value\":false,\"expression\":\"false\",\"description\":\"Selection enabled: \\u0434\\u0430\"},"
+			"{\"name\":\"Empty\",\"value\":\"\",\"description\":\"Empty setting\"},"
+			"{\"name\":\"Computed\",\"expression\":\"N100(extracting(0))\",\"description\":\"Computed setting\"},"
+			"{\"name\":\"Count\",\"value\":42,\"description\":\"Numeric setting\"}],"
 			"\"examples\":[{\"before\":\"abc\",\"after\":\"ABC\"}],"
 			"\"undo\":{\"status\":\"explicit_calls_found\",\"description\":\"BeginUndoUnit/EndUndoUnit found\"},\"tags\":[\"case\"],"
 			"\"authors\":[{\"name\":\"Tester\",\"role\":\"author\"},{\"name\":\"Helper\",\"role\":\"coauthor\"},{\"name\":\"Modifier\",\"role\":\"modifier\"}],"
@@ -339,12 +343,41 @@ void CMainFrame::RunPortableStateTestScenario()
 			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
 			SWP_NOZORDER | SWP_NOACTIVATE);
 		::SendMessageW(viewport, WM_VSCROLL, SB_TOP, 0);
-		const bool optionalRendered = openedCard && m_script_card_window.BodyText().Find(L"Mode  ·  safe") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Second  ·  Нет\r\nда") >= 0 &&
+		const bool optionalRendered = openedCard &&
+			m_script_card_window.BodyText().Find(L"Mode\r\nModeCode\r\nЗначение по умолчанию: safe") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Selection enabled\r\nSecond\r\nЗначение: Нет\r\nда") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Значение: Пустая строка") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Значение: Определяется при выполнении скрипта") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Значение: 42") >= 0 &&
+			m_script_card_window.BodyText().Find(L"+extracting(") < 0 &&
+			m_script_card_window.BodyText().Find(L"N100(") < 0 &&
+			m_script_card_window.BodyText().Find(L"Параметры задаются в общих настройках скриптов") >= 0 &&
 			m_script_card_window.BodyText().Find(L"\\u0434") < 0 &&
 			m_script_card_window.BodyText().Find(L"abc → ABC") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Скрипт предусматривает отмену изменений") >= 0 &&
 			m_script_card_window.BodyText().Find(L"BeginUndoUnit") < 0;
+		auto layoutAtWidth = [&](int logicalWidth) {
+			::SetWindowPos(m_script_card_window.m_hWnd, NULL, 0, 0,
+				UiMetrics::ScaleForDpi(logicalWidth, cardDpi), UiMetrics::ScaleForDpi(520, cardDpi),
+				SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+			return m_script_card_window.CharacteristicLayoutRows();
+		};
+		const int wideCharacteristics = layoutAtWidth(1200);
+		const int pairedCharacteristics = layoutAtWidth(650);
+		// The dialog's minimum tracking width prevents a real 260 px window.
+		// Exercise the narrow content viewport directly, as can occur in a host pane.
+		HWND characteristicViewport = m_script_card_window.ViewportWindow();
+		::SetWindowPos(characteristicViewport, NULL, 0, 0,
+			UiMetrics::ScaleForDpi(260, cardDpi), UiMetrics::ScaleForDpi(100, cardDpi),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+		::SendMessageW(characteristicViewport, WM_VSCROLL, SB_BOTTOM, 0);
+		const int narrowCharacteristics = m_script_card_window.CharacteristicLayoutRows();
+		const bool characteristicLayout = wideCharacteristics == 1 && pairedCharacteristics == 2 &&
+			narrowCharacteristics == 3 &&
+			(::GetWindowLongPtrW(m_script_card_window.ViewportWindow(), GWL_STYLE) & WS_HSCROLL) == 0;
+		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
+			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
+			SWP_NOZORDER | SWP_NOACTIVATE);
 		const bool hashesHidden = openedCard && m_script_card_window.BodyText().Find(L"b93000a4f6") < 0;
 		const bool originHidden = openedCard && m_script_card_window.OriginText().IsEmpty() &&
 			m_script_card_window.StatusText().IsEmpty() &&
@@ -373,7 +406,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
 		const CString copied = clipboardText();
 		const bool copiedDetails = copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
-			copied.Find(L"Tester") >= 0 && copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0;
+			copied.Find(L"Tester") >= 0 && copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
+			copied.Find(L"Значение по умолчанию: safe") >= 0 && copied.Find(L"+extracting(") < 0;
 		const bool uidUpdated = m_script_card_window.CurrentUid() == script.uid;
 		const bool altered = WritePortableStateTestText(cardPath, (cardSource + " ").c_str());
 		script.relativePath = L"Иллюстрации/Подраздел/card-present.js";
@@ -635,7 +669,38 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool fallbackText = tree.ScriptPreviewText() == FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_empty", L"No description is available yet.");
 		::SendMessageW(tree.m_hWnd, WM_VSCROLL, SB_LINEDOWN, 0);
 		const bool previewScrollHidden = !tree.ScriptPreviewVisible();
+		const CString standardPath = runtimePath + L"\\Scripts\\21_Поиск и замена\\36_Стандартизация символов.js";
+		const ScriptCards::Card standardCard = ScriptCards::LoadFile(standardPath);
+		ScriptDescriptor standard = {};
+		standard.name = L"Стандартизация символов";
+		standard.path = standardPath;
+		standard.uid = L"standard-card-runtime";
+		const bool standardOpened = m_script_card_window.ShowScript(m_hWnd, standard, runtimePath,
+			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+		const bool standardValues = standardOpened && !standardCard.settingRows.empty() &&
+			standardCard.settingRows.front().title == L"Выбор символа для апострофа" &&
+			standardCard.settingRows.front().value == L"1" &&
+			standardCard.settingRows.front().defaultValue && standardCard.settingRows.front().sharedSetting &&
+			m_script_card_window.BodyText().Find(L"Значение по умолчанию: 1") >= 0 &&
+			m_script_card_window.BodyText().Find(L"+extracting(") < 0 &&
+			m_script_card_window.BodyText().Find(L"N100(") < 0;
+		bool cleaningValues = true;
+		for(const wchar_t* filename : { L"01_Генеральная уборка.js", L"02_Генеральная уборка.js" })
+		{
+			const CString path = runtimePath + L"\\Scripts\\06_Чистка\\" + filename;
+			const ScriptCards::Card parsed = ScriptCards::LoadFile(path);
+			ScriptDescriptor cleaning = {};
+			cleaning.name = L"Генеральная уборка";
+			cleaning.path = path;
+			cleaning.uid = filename;
+			const bool shown = m_script_card_window.ShowScript(m_hWnd, cleaning, runtimePath,
+				[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+			cleaningValues = cleaningValues && shown && !parsed.settingRows.empty() &&
+				parsed.settingRows.front().valueKind == ScriptCards::Setting::ValueKind::Boolean &&
+				m_script_card_window.BodyText().Find(L"Значение: Да") >= 0;
+		}
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
+			characteristicLayout && standardValues && cleaningValues &&
 			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
 			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
@@ -656,6 +721,9 @@ void CMainFrame::RunPortableStateTestScenario()
 			infoUidMatched,
 			infoSelectionMatched, infoRunCount,
 			passed ? "pass" : "fail");
+		report.AppendFormat("characteristic-layout=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
+			characteristicLayout, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
+			standardValues, cleaningValues);
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);
 		return;

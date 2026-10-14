@@ -31,6 +31,7 @@ public:
 	int ScrollPosition() const { return m_scrollY; }
 	bool CanScroll() const { RECT bounds = {}; return m_viewport && ::GetClientRect(m_viewport, &bounds) &&
 		m_contentHeight > bounds.bottom - bounds.top; }
+	int CharacteristicLayoutRows() const;
 
 	BEGIN_MSG_MAP(CScriptCardDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInit)
@@ -67,7 +68,7 @@ private:
 	CString m_originText;
 	struct VisualBlock {
 		CString title, content;
-		int layout = 0; // 0: full width, 1: property grid, 2: paired blocks.
+		int layout = 0; // 0: full width, 1: property grid, 2: paired blocks, 3: characteristics.
 		bool warning = false;
 		bool settings = false;
 		struct Range { LONG begin, end; };

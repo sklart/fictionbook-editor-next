@@ -14,10 +14,16 @@ struct Author {
 };
 
 struct Setting {
+	enum class ValueKind { Missing, String, Number, Boolean };
 	CString title;
 	CString name;
 	CString value;
+	CString expression;
+	CString valueMeaning;
 	CString description;
+	ValueKind valueKind = ValueKind::Missing;
+	bool sharedSetting = false;
+	bool defaultValue = false;
 };
 
 struct Dependency {

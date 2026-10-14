@@ -314,8 +314,10 @@ void CScriptCardDlg::AddSettingsBlock(const std::vector<ScriptCards::Setting>& s
 	block.title = Label(L"fbe.script_card.settings", L"Settings");
 	block.settings = true;
 	LONG offset = 0;
+	bool hasSharedSetting = false;
 	for(const ScriptCards::Setting& setting : settings)
 	{
+		hasSharedSetting = hasSharedSetting || setting.sharedSetting;
 		if(!block.content.IsEmpty()) { block.content += L"\r\n\r\n"; offset += 2; }
 		if(!setting.title.IsEmpty())
 		{
@@ -324,35 +326,49 @@ void CScriptCardDlg::AddSettingsBlock(const std::vector<ScriptCards::Setting>& s
 			offset += setting.title.GetLength();
 			if(!setting.name.IsEmpty())
 			{
-				block.content += L"  ("; offset += 3;
+				block.content += L"\r\n"; ++offset;
 				block.names.push_back({ offset, offset + setting.name.GetLength() });
 				block.content += setting.name;
 				offset += setting.name.GetLength();
-				block.content += L")"; ++offset;
 			}
 		}
 		else
 		{
-			block.titles.push_back({ offset, offset + setting.name.GetLength() });
 			block.names.push_back({ offset, offset + setting.name.GetLength() });
 			block.content += setting.name;
 			offset += setting.name.GetLength();
 		}
-		if(!setting.value.IsEmpty())
+		if(setting.valueKind != ScriptCards::Setting::ValueKind::Missing || !setting.expression.IsEmpty())
 		{
 			CString value = setting.value;
-			if(value == L"true") value = Label(L"fbe.script_card.yes", L"Yes");
-			else if(value == L"false") value = Label(L"fbe.script_card.no", L"No");
-			else if(value == L"\"\"") value = Label(L"fbe.script_card.empty_string", L"Empty string");
-			block.content += L"  ·  "; offset += 5;
-			block.values.push_back({ offset, offset + value.GetLength() });
-			block.content += value; offset += value.GetLength();
+			if(setting.valueKind == ScriptCards::Setting::ValueKind::Boolean)
+				value = value == L"true" ? Label(L"fbe.script_card.yes", L"Yes") :
+					Label(L"fbe.script_card.no", L"No");
+			else if(setting.valueKind == ScriptCards::Setting::ValueKind::String && value.IsEmpty())
+				value = Label(L"fbe.script_card.empty_string", L"Empty string");
+			else if(setting.valueKind == ScriptCards::Setting::ValueKind::Missing)
+				value = Label(L"fbe.script_card.setting_dynamic", L"Value determined when the script runs");
+			const CString valueLabel = setting.defaultValue ?
+				Label(L"fbe.script_card.setting_default", L"Default value") :
+				Label(L"fbe.script_card.setting_value", L"Value");
+			block.content += L"\r\n" + valueLabel + L": ";
+			offset += 1 + valueLabel.GetLength() + 2;
+			if(setting.valueKind != ScriptCards::Setting::ValueKind::Missing)
+				block.values.push_back({ offset, offset + value.GetLength() });
+			block.content += value;
+			offset += value.GetLength();
 		}
 		if(!setting.description.IsEmpty())
 		{
 			block.content += L"\r\n" + setting.description;
 			offset += 1 + setting.description.GetLength();
 		}
+	}
+	if(hasSharedSetting)
+	{
+		block.content += L"\r\n\r\n";
+		block.content += Label(L"fbe.script_card.setting_shared_note",
+			L"This parameter is set in shared script settings. Its current value may differ from the default shown here.");
 	}
 	AppendSection(block.title, block.content);
 	m_blocks.push_back(block);
@@ -407,7 +423,7 @@ void CScriptCardDlg::RebuildVisualBlocks()
 		block.heading = ::CreateWindowExW(0, L"RICHEDIT50W", block.title,
 			WS_CHILD | WS_VISIBLE | ES_READONLY | ES_MULTILINE, 0, 0, 1, 1,
 			m_viewport, NULL, _Module.GetModuleInstance(), NULL);
-		block.body = ::CreateWindowExW(WS_EX_CLIENTEDGE, L"RICHEDIT50W", block.content,
+		block.body = ::CreateWindowExW(block.settings ? 0 : WS_EX_CLIENTEDGE, L"RICHEDIT50W", block.content,
 			WS_CHILD | WS_VISIBLE | ES_READONLY | ES_MULTILINE, 0, 0, 1, 1,
 			m_viewport, NULL, _Module.GetModuleInstance(), NULL);
 		for(HWND rich : { block.heading, block.body })
@@ -497,6 +513,21 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 		return (std::max)(UiMetrics::ScaleForDpi(30, m_dpi), lines * lineHeight + verticalInsets +
 			UiMetrics::ScaleForDpi(4, m_dpi));
 	};
+	auto headingWidth = [&](const VisualBlock& block) {
+		if(!dc) return UiMetrics::ScaleForDpi(180, m_dpi);
+		HFONT old = m_headingFont ? reinterpret_cast<HFONT>(::SelectObject(dc, m_headingFont)) : NULL;
+		SIZE size = {};
+		::GetTextExtentPoint32W(dc, block.title, block.title.GetLength(), &size);
+		if(old) ::SelectObject(dc, old);
+		return static_cast<int>(size.cx) + UiMetrics::ScaleForDpi(12, m_dpi);
+	};
+	auto measuredHeadingHeight = [&](const VisualBlock& block, int columnWidth) {
+		if(!::IsWindow(block.heading)) return headingHeight;
+		::SetWindowPos(block.heading, NULL, 0, 0, columnWidth, (std::max)(1, height),
+			SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
+		const int lines = (std::max)(1, static_cast<int>(::SendMessageW(block.heading, EM_GETLINECOUNT, 0, 0)));
+		return (std::max)(headingHeight, lines * headingHeight);
+	};
 	struct Placement { HWND window; int x, y, width, height; };
 	std::vector<Placement> placements;
 	placements.reserve(m_blocks.size() * 2);
@@ -504,24 +535,55 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 	for(size_t index = 0; index < m_blocks.size();)
 	{
 		const int type = m_blocks[index].layout;
-		const int count = type == 1 ? (available >= UiMetrics::ScaleForDpi(590, m_dpi) ? 3 :
+		int count = type == 1 ? (available >= UiMetrics::ScaleForDpi(590, m_dpi) ? 3 :
 			available >= UiMetrics::ScaleForDpi(385, m_dpi) ? 2 : 1) :
 			type == 2 && available >= UiMetrics::ScaleForDpi(460, m_dpi) ? 2 : 1;
+		std::vector<int> widths;
+		if(type == 3)
+		{
+			const bool first = index == 0 || m_blocks[index - 1].layout != 3;
+			const int usable = (std::max)(1, available - 2 * scaleGap);
+			const int scopeWidth = usable * 3 / 5;
+			const int shortWidth = (usable - scopeWidth) / 2;
+			const int halfWidth = (available - scaleGap) / 2;
+			if(first && index + 2 < m_blocks.size() && m_blocks[index + 2].layout == 3 &&
+				shortWidth >= headingWidth(m_blocks[index + 1]) &&
+				usable - scopeWidth - shortWidth >= headingWidth(m_blocks[index + 2]))
+			{
+				count = 3;
+				widths = { scopeWidth, shortWidth, usable - scopeWidth - shortWidth };
+			}
+			else if(!first && index + 1 < m_blocks.size() && m_blocks[index + 1].layout == 3 &&
+				halfWidth >= headingWidth(m_blocks[index]) &&
+				available - scaleGap - halfWidth >= headingWidth(m_blocks[index + 1]))
+				count = 2;
+		}
 		size_t end = index + 1;
 		while(end < m_blocks.size() && m_blocks[end].layout == type && end - index < static_cast<size_t>(count)) ++end;
 		const int columns = static_cast<int>(end - index);
 		const int columnWidth = (available - scaleGap * (columns - 1)) / columns;
+		if(widths.size() != static_cast<size_t>(columns))
+			widths.assign(static_cast<size_t>(columns), columnWidth);
 		int rowBody = 0;
+		int rowHeading = headingHeight;
 		for(size_t cell = index; cell < end; ++cell)
-			rowBody = (std::max)(rowBody, contentHeight(m_blocks[cell], columnWidth));
+		{
+			const int cellWidth = widths[cell - index];
+			rowBody = (std::max)(rowBody, contentHeight(m_blocks[cell], cellWidth));
+			if(type == 3)
+				rowHeading = (std::max)(rowHeading, measuredHeadingHeight(m_blocks[cell], cellWidth));
+		}
+		int x = inset;
 		for(size_t cell = index; cell < end; ++cell)
 		{
 			VisualBlock& block = m_blocks[cell];
-			const int x = inset + static_cast<int>(cell - index) * (columnWidth + scaleGap);
-			placements.push_back({ block.heading, x, y - m_scrollY, columnWidth, headingHeight });
-			placements.push_back({ block.body, x, y + headingHeight - m_scrollY, columnWidth, rowBody });
+			const int cellWidth = widths[cell - index];
+			placements.push_back({ block.heading, x, y - m_scrollY, cellWidth, rowHeading });
+			placements.push_back({ block.body, x, y + rowHeading - m_scrollY, cellWidth,
+				type == 3 ? contentHeight(block, cellWidth) : rowBody });
+			x += cellWidth + scaleGap;
 		}
-		y += headingHeight + rowBody + scaleGap;
+		y += rowHeading + rowBody + scaleGap;
 		index = end;
 	}
 	if(dc) { if(previous) ::SelectObject(dc, previous); ::ReleaseDC(m_viewport, dc); }
@@ -550,6 +612,29 @@ void CScriptCardDlg::LayoutVisualBlocks(int width, int height)
 			::SetWindowPos(placement.window, NULL, placement.x, placement.y, placement.width, placement.height,
 				SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
 	::RedrawWindow(m_viewport, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+}
+
+int CScriptCardDlg::CharacteristicLayoutRows() const
+{
+	RECT rects[3] = {};
+	int count = 0;
+	for(const VisualBlock& block : m_blocks)
+		if(block.layout == 3)
+		{
+			if(count >= 3 || !::IsWindow(block.heading) || !::GetWindowRect(block.heading, &rects[count])) return -1;
+			++count;
+		}
+	if(count != 3) return -1;
+	const int widths[] = { rects[0].right - rects[0].left,
+		rects[1].right - rects[1].left, rects[2].right - rects[2].left };
+	if(rects[0].top == rects[1].top && rects[1].top == rects[2].top)
+	{
+		const int total = widths[0] + widths[1] + widths[2];
+		return abs(widths[0] * 5 - total * 3) <= 5 && abs(widths[1] - widths[2]) <= 1 ? 1 : -1;
+	}
+	if(rects[0].top < rects[1].top && rects[1].top == rects[2].top)
+		return abs(widths[1] - widths[2]) <= 1 && widths[0] > widths[1] ? 2 : -1;
+	return rects[0].top < rects[1].top && rects[1].top < rects[2].top ? 3 : -1;
 }
 
 void CScriptCardDlg::ScrollTo(int offset)
@@ -862,9 +947,9 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 		AddVisualBlock(Label(L"fbe.script_card.summary", L"Purpose"), card.summary);
 		AddVisualBlock(Label(L"fbe.script_card.description", L"Description"), card.description);
 		AddVisualBlock(Label(L"fbe.script_card.usage", L"How to use"), NumberedText(card.usage));
-		AddVisualBlock(Label(L"fbe.script_card.scope", L"Scope"), card.scope, 1);
-		AddVisualBlock(Label(L"fbe.script_card.modifies_document", L"Changes document"), TriState(card.modifiesDocument), 1);
-		AddVisualBlock(Label(L"fbe.script_card.requires_selection", L"Selection required"), TriState(card.requiresSelection), 1);
+		AddVisualBlock(Label(L"fbe.script_card.scope", L"Scope"), card.scope, 3);
+		AddVisualBlock(Label(L"fbe.script_card.modifies_document", L"Changes document"), TriState(card.modifiesDocument), 3);
+		AddVisualBlock(Label(L"fbe.script_card.requires_selection", L"Selection required"), TriState(card.requiresSelection), 3);
 		if(!card.dependencies.empty() || !card.dependenciesComplete)
 		{
 			CString count;

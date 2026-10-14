@@ -170,8 +170,7 @@ bool OptionalDisplayArray(const std::wstring& json, size_t object, const wchar_t
 			if(wcscmp(key, L"settings") == 0)
 			{
 				display = ObjectField(json, cursor, L"name");
-				CString value = ObjectField(json, cursor, L"expression");
-				if(value.IsEmpty()) value = ObjectField(json, cursor, L"value");
+				const CString value = ObjectField(json, cursor, L"value");
 				if(!value.IsEmpty()) display += L" = " + value;
 				CString note = ObjectField(json, cursor, L"description");
 				if(!note.IsEmpty()) display += L" — " + note;
@@ -223,9 +222,46 @@ bool OptionalSettings(const std::wstring& json, std::vector<Setting>& result)
 		{
 			row.title = ObjectField(json, cursor, L"title");
 			row.name = ObjectField(json, cursor, L"name");
-			row.value = ObjectField(json, cursor, L"expression");
-			if(row.value.IsEmpty()) row.value = ObjectField(json, cursor, L"value");
+			row.expression = ObjectField(json, cursor, L"expression");
+			row.valueMeaning = ObjectField(json, cursor, L"valueMeaning");
 			row.description = ObjectField(json, cursor, L"description");
+			size_t value = 0;
+			if(Member(json, cursor, L"value", value))
+			{
+				std::wstring parsed;
+				if(FbeRuntimeLocalization::JsonParseString(json, value, parsed))
+				{
+					row.value = parsed.c_str();
+					row.valueKind = Setting::ValueKind::String;
+				}
+				else if(json.compare(value, 4, L"true") == 0 || json.compare(value, 5, L"false") == 0)
+				{
+					row.value = json[value] == L't' ? L"true" : L"false";
+					row.valueKind = Setting::ValueKind::Boolean;
+				}
+				else if(json[value] == L'-' || (json[value] >= L'0' && json[value] <= L'9'))
+				{
+					row.value = ValueText(json, value);
+					row.valueKind = Setting::ValueKind::Number;
+				}
+			}
+			row.sharedSetting = row.expression.Find(L"extracting(") >= 0;
+			CString meaning = row.valueMeaning;
+			meaning.MakeLower();
+			row.defaultValue = row.sharedSetting && row.valueKind != Setting::ValueKind::Missing &&
+				(meaning.Find(L"резерв") >= 0 || meaning.Find(L"default") >= 0 ||
+					meaning.Find(L"fallback") >= 0);
+			if(row.title.IsEmpty())
+			{
+				int separator = row.description.Find(L" — ");
+				int separatorLength = 3;
+				if(separator < 0) { separator = row.description.Find(L": "); separatorLength = 2; }
+				if(separator > 3 && separator < 100)
+				{
+					row.title = row.description.Left(separator);
+					row.description = row.description.Mid(separator + separatorLength);
+				}
+			}
 		}
 		else row.name = ValueText(json, cursor);
 		if(!FbeRuntimeLocalization::JsonSkipValue(json, cursor)) return false;
