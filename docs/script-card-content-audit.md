@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **188**.
+Карточек без автоматических замечаний: **190**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,46 +16,46 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **378**. Исполняемый код не изменён.
+Изменено карточек: **380**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 23
-- `generic_usage`: 323
-- `generic_warning`: 24
-- `inaccurate_description`: 635
+- `generic_summary`: 25
+- `generic_usage`: 325
+- `generic_warning`: 26
+- `inaccurate_description`: 637
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 334
+- `incorrect_dependency`: 336
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
-- `incorrect_scope`: 330
+- `incorrect_scope`: 332
 - `incorrect_selection`: 24
-- `incorrect_setting`: 169
-- `incorrect_undo`: 322
+- `incorrect_setting`: 171
+- `incorrect_undo`: 324
 - `incorrect_version`: 5
-- `uncertain_attribution`: 40
+- `uncertain_attribution`: 41
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 37
+- `attributionClarified`: 38
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 205
+- `dependenciesVerified`: 207
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 321
-- `scopeClarified`: 307
+- `purposeClarified`: 323
+- `scopeClarified`: 309
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 483
-- `undoDescriptionsClarified`: 314
-- `usageCorrected`: 323
-- `warningsClarified`: 255
+- `settingsClarified`: 485
+- `undoDescriptionsClarified`: 316
+- `usageCorrected`: 325
+- `warningsClarified`: 257
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **217**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **219**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -454,13 +454,16 @@
 - `10_Статистика/17_Информацию о книге - в буфер обмена.js:627` — Проверка fbwBody.firstChild.className предполагает наличие первого узла; в пустом контейнере fbw_body возможна ошибка до показа результата.
 - `10_Статистика/17_Информацию о книге - в буфер обмена.js:194` — После превышения MaxAuthor счётчику авторов присваивается общее число DIV, включая потенциально пустые записи; показываемое в сводке число авторов может быть завышено.
 - `10_Статистика/18_Показать жанры.js:94` — Временная вставка подписей, модальное сообщение и последующее удаление не защищены finally; ошибка или прерывание до строки 132 может оставить подписи и группу отмены открытыми.
+- `10_Статистика/25_Словарь книги - в буфер обмена.js:72` — После первого DIV.body цикл прерывается; все последующие основные body отсутствуют в словаре многотомной книги.
+- `10_Статистика/26_Информацию о книге - в буфер обмена.js:704` — При ShowAnnotation=1 проверка fbwBody.firstChild.className предполагает хотя бы один узел; пустой контейнер текста может вызвать ошибку до показа сводки.
+- `10_Статистика/26_Информацию о книге - в буфер обмена.js:205` — После превышения MaxAuthor счётчику авторов присваивается число всех DIV, в том числе потенциально пустых записей; число авторов в сводке может быть завышено.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1068
-- `inaccurate_description`: 67
+- `generic_usage`: 1060
+- `inaccurate_description`: 65
 - `incorrect_undo`: 159
-- `requires_review`: 386
+- `requires_review`: 385
 
 ## Границы проверки
 
