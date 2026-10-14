@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 503,
-    "generic_usage": 1887,
-    "incorrect_undo": 338,
+    "requires_review": 500,
+    "generic_usage": 1875,
+    "incorrect_undo": 335,
     "inaccurate_description": 108
   },
   "reviewedChanges": [
@@ -18731,17 +18731,245 @@
         "usageCorrected": 1,
         "undoDescriptionsClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/30_Удалить id абзацев.js",
+      "codeSha256": "504ae4c2186077eeed8de585ae947b683ba503f6ee422c697b4ee426795e952d",
+      "evidence": "Run: обход fbw_body выбирает DIV.body, затем элементы P с непустым id; при первом удалении открывает группу отмены, после обхода закрывает её и показывает счётчик.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Удаляет id абзацев.",
+          "after": "Удаляет непустые ID абзацев в обрабатываемых разделах книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Обходит указанные типы элементов и удаляет их атрибуты id; комбинированный вариант также снимает style-оболочки. Сопоставление всех входящих ссылок перед удалением не следует считать гарантированным: проверьте структуру и ссылки после операции.",
+          "after": "Удаляет непустые атрибуты id у абзацев во всех body книги, включая примечания и комментарии. Текст абзацев сохраняет, ссылки на удалённые ID заранее не проверяет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все P внутри всех body, включая notes и comments; выделение не учитывается.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу и запустите скрипт для удаления ID абзацев в указанной области.",
+            "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+            "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их."
+          ],
+          "after": [
+            "Ссылки на абзацы с удалёнными ID могут перестать работать; скрипт не ищет входящие ссылки.",
+            "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Удаление ID на штатном пути группируется в одну операцию отмены редактора. При исключении до завершения группа может остаться открытой; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1
+      }
+    },
+    {
+      "path": "06_Чистка/35_Удалить id разделов.js",
+      "codeSha256": "a2bc033ed540af3b44b419d9daccc9e67e706cc1f5e5f9135b9b188c2814efc6",
+      "evidence": "Run: обход fbw_body выбирает DIV.body вне notes/comments, затем DIV.section с непустым id; при первом удалении открывает группу отмены, после обхода закрывает её и показывает счётчик.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Удаляет id разделов.",
+          "after": "Удаляет непустые ID разделов в обрабатываемых разделах книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Обходит указанные типы элементов и удаляет их атрибуты id; комбинированный вариант также снимает style-оболочки. Сопоставление всех входящих ссылок перед удалением не следует считать гарантированным: проверьте структуру и ссылки после операции.",
+          "after": "Удаляет непустые атрибуты id у DIV.section в обычных body книги. Разделы notes и comments пропускает; входящие ссылки заранее не проверяет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV.section в body, кроме notes и comments; выделение не учитывается.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу и запустите скрипт для удаления ID разделов в указанной области.",
+            "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+            "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их."
+          ],
+          "after": [
+            "Ссылки на разделы с удалёнными ID могут перестать работать; примечания и комментарии пропускаются.",
+            "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Удаление ID на штатном пути группируется в одну операцию отмены редактора. При исключении до завершения группа может остаться открытой; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1
+      }
+    },
+    {
+      "path": "06_Чистка/38_Удалить id картинок.js",
+      "codeSha256": "769ff8dc89d7235651d6b7a721c3fefe174500036c21c6b60de87cfc88a5dcdb",
+      "evidence": "Run: обход fbw_body выбирает все DIV.body, затем DIV.image с непустым id; SPAN.image и бинарные ID не затрагиваются. При первом удалении открывает группу отмены, после обхода закрывает её и показывает счётчик.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Удаляет id картинок.",
+          "after": "Удаляет непустые ID блочных иллюстраций в обрабатываемых разделах книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Обходит указанные типы элементов и удаляет их атрибуты id; комбинированный вариант также снимает style-оболочки. Сопоставление всех входящих ссылок перед удалением не следует считать гарантированным: проверьте структуру и ссылки после операции.",
+          "after": "Удаляет непустые атрибуты id у блочных DIV.image во всех body книги. Внутриабзацные SPAN.image и имена бинарных вложений не меняет.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV.image внутри всех body, включая notes и comments; SPAN.image не обрабатываются.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу и запустите скрипт для удаления ID блочных иллюстраций в указанной области.",
+            "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+            "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их."
+          ],
+          "after": [
+            "Удаляются ID оболочек блочных изображений, а не имена бинарных вложений; ссылки на удалённые ID оболочек могут перестать работать.",
+            "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Удаление ID на штатном пути группируется в одну операцию отмены редактора. При исключении до завершения группа может остаться открытой; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 199,
-    "generic_usage": 101,
-    "false_warning": 124,
+    "inaccurate_description": 205,
+    "generic_usage": 104,
+    "false_warning": 127,
     "incorrect_setting": 101,
-    "incorrect_scope": 94,
-    "incorrect_undo": 100,
+    "incorrect_scope": 97,
+    "incorrect_undo": 103,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 88,
+    "incorrect_dependency": 91,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -18750,11 +18978,11 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 143,
-    "undoDescriptionsClarified": 101,
-    "usageCorrected": 101,
-    "purposeClarified": 99,
-    "warningsClarified": 32,
-    "scopeClarified": 85,
+    "undoDescriptionsClarified": 104,
+    "usageCorrected": 104,
+    "purposeClarified": 102,
+    "warningsClarified": 35,
+    "scopeClarified": 88,
     "settingsClarified": 397,
     "attributionClarified": 5,
     "externalWarningsRefined": 12,
@@ -77696,8 +77924,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Удалить id абзацев",
-        "summary": "Удаляет id абзацев.",
-        "description": "Обходит указанные типы элементов и удаляет их атрибуты id; комбинированный вариант также снимает style-оболочки. Сопоставление всех входящих ссылок перед удалением не следует считать гарантированным: проверьте структуру и ссылки после операции.",
+        "summary": "Удаляет непустые ID абзацев в обрабатываемых разделах книги.",
+        "description": "Удаляет непустые атрибуты id у абзацев во всех body книги, включая примечания и комментарии. Текст абзацев сохраняет, ссылки на удалённые ID заранее не проверяет.",
         "authors": [
           {
             "name": "Sclex",
@@ -77705,23 +77933,22 @@
           }
         ],
         "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все P внутри всех body, включая notes и comments; выделение не учитывается.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу и запустите скрипт для удаления ID абзацев в указанной области.",
+          "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их."
+          "Ссылки на абзацы с удалёнными ID могут перестать работать; скрипт не ищет входящие ссылки.",
+          "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена."
         ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Удаление ID на штатном пути группируется в одну операцию отмены редактора. При исключении до завершения группа может остаться открытой; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -77731,13 +77958,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 60,
+            "line": 59,
             "text": "window.external.BeginUndoUnit(document,\"удаление id абзацев\");"
           }
         ],
         "undo_end": [
           {
-            "line": 69,
+            "line": 68,
             "text": "if (!firstRemoving) window.external.EndUndoUnit(document);"
           }
         ],
@@ -77756,17 +77983,17 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 44,
+          "line": 43,
           "text": "// Автор Sclex"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Ссылки на абзацы с удалёнными ID могут перестать работать; скрипт не ищет входящие ссылки.",
           "verification": "requires_review"
         },
         {
-          "text": "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их.",
+          "text": "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена.",
           "verification": "requires_review"
         }
       ],
@@ -77787,71 +78014,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 60,
-              "text": "window.external.BeginUndoUnit(document,\"удаление id абзацев\");"
-            },
-            {
-              "line": 69,
-              "text": "if (!firstRemoving) window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/35_Удалить id разделов.js",
@@ -77863,8 +78026,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Удалить id разделов",
-        "summary": "Удаляет id разделов.",
-        "description": "Обходит указанные типы элементов и удаляет их атрибуты id; комбинированный вариант также снимает style-оболочки. Сопоставление всех входящих ссылок перед удалением не следует считать гарантированным: проверьте структуру и ссылки после операции.",
+        "summary": "Удаляет непустые ID разделов в обрабатываемых разделах книги.",
+        "description": "Удаляет непустые атрибуты id у DIV.section в обычных body книги. Разделы notes и comments пропускает; входящие ссылки заранее не проверяет.",
         "authors": [
           {
             "name": "Sclex",
@@ -77872,23 +78035,22 @@
           }
         ],
         "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV.section в body, кроме notes и comments; выделение не учитывается.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу и запустите скрипт для удаления ID разделов в указанной области.",
+          "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их."
+          "Ссылки на разделы с удалёнными ID могут перестать работать; примечания и комментарии пропускаются.",
+          "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена."
         ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Удаление ID на штатном пути группируется в одну операцию отмены редактора. При исключении до завершения группа может остаться открытой; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -77898,8 +78060,111 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 60,
+            "line": 59,
             "text": "window.external.BeginUndoUnit(document,\"удаление id разделов\");"
+          }
+        ],
+        "undo_end": [
+          {
+            "line": 68,
+            "text": "if (!firstRemoving) window.external.EndUndoUnit(document);"
+          }
+        ],
+        "dialog": [],
+        "selection": [],
+        "write": [],
+        "external": [],
+        "network": [],
+        "process": [],
+        "local_window": [],
+        "file": [],
+        "return": []
+      },
+      "namespaceUrls": [],
+      "settingEvidence": [],
+      "dependencyEvidence": [],
+      "authorshipEvidence": [
+        {
+          "line": 43,
+          "text": "// Автор Sclex"
+        }
+      ],
+      "warningEvidence": [
+        {
+          "text": "Ссылки на разделы с удалёнными ID могут перестать работать; примечания и комментарии пропускаются.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена.",
+          "verification": "requires_review"
+        }
+      ],
+      "unverifiedFields": [
+        "title",
+        "summary",
+        "description",
+        "authors",
+        "version",
+        "scope",
+        "modifiesDocument",
+        "requiresSelection",
+        "usage",
+        "warnings",
+        "settings",
+        "dependencies",
+        "undo",
+        "examples",
+        "tags"
+      ],
+      "findings": []
+    },
+    {
+      "path": "06_Чистка/38_Удалить id картинок.js",
+      "result": "requires_review",
+      "codeSha256": "769ff8dc89d7235651d6b7a721c3fefe174500036c21c6b60de87cfc88a5dcdb",
+      "encoding": "utf-8",
+      "bomBytes": 0,
+      "codeBytes": 1009,
+      "lineEnding": "CRLF",
+      "claims": {
+        "title": "Удалить id картинок",
+        "summary": "Удаляет непустые ID блочных иллюстраций в обрабатываемых разделах книги.",
+        "description": "Удаляет непустые атрибуты id у блочных DIV.image во всех body книги. Внутриабзацные SPAN.image и имена бинарных вложений не меняет.",
+        "authors": [
+          {
+            "name": "Sclex",
+            "role": "author"
+          }
+        ],
+        "version": "1.2",
+        "scope": "Все DIV.image внутри всех body, включая notes и comments; SPAN.image не обрабатываются.",
+        "modifiesDocument": true,
+        "requiresSelection": false,
+        "usage": [
+          "Откройте книгу и запустите скрипт для удаления ID блочных иллюстраций в указанной области.",
+          "После выполнения проверьте число удалений в сообщении и ссылки на обработанные элементы."
+        ],
+        "warnings": [
+          "Удаляются ID оболочек блочных изображений, а не имена бинарных вложений; ссылки на удалённые ID оболочек могут перестать работать.",
+          "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена."
+        ],
+        "settings": null,
+        "dependencies": [],
+        "undo": {
+          "status": "explicit_calls_found",
+          "description": "Удаление ID на штатном пути группируется в одну операцию отмены редактора. При исключении до завершения группа может остаться открытой; полнота отката не проверена."
+        },
+        "examples": null,
+        "tags": [
+          "Чистка",
+          "изображения"
+        ]
+      },
+      "evidence": {
+        "undo_begin": [
+          {
+            "line": 60,
+            "text": "window.external.BeginUndoUnit(document,\"удаление id картинок\");"
           }
         ],
         "undo_end": [
@@ -77929,179 +78194,11 @@
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Удаляются ID оболочек блочных изображений, а не имена бинарных вложений; ссылки на удалённые ID оболочек могут перестать работать.",
           "verification": "requires_review"
         },
         {
-          "text": "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их.",
-          "verification": "requires_review"
-        }
-      ],
-      "unverifiedFields": [
-        "title",
-        "summary",
-        "description",
-        "authors",
-        "version",
-        "scope",
-        "modifiesDocument",
-        "requiresSelection",
-        "usage",
-        "warnings",
-        "settings",
-        "dependencies",
-        "undo",
-        "examples",
-        "tags"
-      ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 60,
-              "text": "window.external.BeginUndoUnit(document,\"удаление id разделов\");"
-            },
-            {
-              "line": 69,
-              "text": "if (!firstRemoving) window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "06_Чистка/38_Удалить id картинок.js",
-      "result": "requires_review",
-      "codeSha256": "769ff8dc89d7235651d6b7a721c3fefe174500036c21c6b60de87cfc88a5dcdb",
-      "encoding": "utf-8",
-      "bomBytes": 0,
-      "codeBytes": 1009,
-      "lineEnding": "CRLF",
-      "claims": {
-        "title": "Удалить id картинок",
-        "summary": "Удаляет id картинок.",
-        "description": "Обходит указанные типы элементов и удаляет их атрибуты id; комбинированный вариант также снимает style-оболочки. Сопоставление всех входящих ссылок перед удалением не следует считать гарантированным: проверьте структуру и ссылки после операции.",
-        "authors": [
-          {
-            "name": "Sclex",
-            "role": "author"
-          }
-        ],
-        "version": "1.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
-        "modifiesDocument": true,
-        "requiresSelection": false,
-        "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
-        ],
-        "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их."
-        ],
-        "settings": null,
-        "dependencies": [],
-        "undo": {
-          "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
-        },
-        "examples": null,
-        "tags": [
-          "Чистка",
-          "изображения"
-        ]
-      },
-      "evidence": {
-        "undo_begin": [
-          {
-            "line": 61,
-            "text": "window.external.BeginUndoUnit(document,\"удаление id картинок\");"
-          }
-        ],
-        "undo_end": [
-          {
-            "line": 70,
-            "text": "if (!firstRemoving) window.external.EndUndoUnit(document);"
-          }
-        ],
-        "dialog": [],
-        "selection": [],
-        "write": [],
-        "external": [],
-        "network": [],
-        "process": [],
-        "local_window": [],
-        "file": [],
-        "return": []
-      },
-      "namespaceUrls": [],
-      "settingEvidence": [],
-      "dependencyEvidence": [],
-      "authorshipEvidence": [
-        {
-          "line": 45,
-          "text": "// Автор Sclex"
-        }
-      ],
-      "warningEvidence": [
-        {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "verification": "requires_review"
-        },
-        {
-          "text": "Удаление ID может разорвать ссылки на эти элементы. ID элемента image и ID binary — разные части структуры; не смешивайте их.",
+          "text": "При ошибке во время обхода операция отмены может остаться открытой; полнота отката не проверена.",
           "verification": "requires_review"
         }
       ],
@@ -78122,71 +78219,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 61,
-              "text": "window.external.BeginUndoUnit(document,\"удаление id картинок\");"
-            },
-            {
-              "line": 70,
-              "text": "if (!firstRemoving) window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/40_Удалить теги style, id разделов, id абзацев и id картинок.js",
