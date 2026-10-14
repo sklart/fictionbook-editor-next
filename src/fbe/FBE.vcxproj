@@ -817,5 +817,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
   <Target Name="GenerateFluentPinMasks" BeforeTargets="ClCompile" Condition="'$(Configuration)'=='Debug' Or '$(Configuration)'=='Release'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\tools\build\generate-fluent-pin-masks.ps1&quot; -OutputDirectory &quot;$(SolutionDir)build\generated\$(Platform)\$(Configuration)\pin-icons&quot;" />
   </Target>
+  <Target Name="ExportFbeRuntimeLanguages" AfterTargets="Build" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Exec Command="pwsh.exe -NoProfile -File &quot;$(MSBuildThisFileDirectory)..\..\tools\localization\export-runtime-lang.ps1&quot; -OutputDirectory &quot;$(TargetDir)Lang&quot;" />
+  </Target>
 </Project>
 

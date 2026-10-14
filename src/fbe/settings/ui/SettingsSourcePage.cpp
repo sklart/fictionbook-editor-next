@@ -392,6 +392,7 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	UpdateSourceColorTooltips();
 	UpdateSourceThemeDisplay();
+	UpdateTagHighlightDependencies();
 	m_preview.Initialize(GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW));
 	InvalidateSourcePreview();
 	return 1;
@@ -570,6 +571,21 @@ void CSettingsSourcePage::UpdateSpecialCharactersDependencies()
 	const BOOL enabled = IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED;
 	m_special_chars_style.EnableWindow(enabled);
 	GetDlgItem(IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE_LABEL).EnableWindow(enabled);
+}
+
+void CSettingsSourcePage::UpdateTagHighlightDependencies()
+{
+	const BOOL enabled = m_src_taghl.GetCheck() == BST_CHECKED;
+	m_tag_highlight_mode.EnableWindow(enabled);
+	GetDlgItem(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE_LABEL).EnableWindow(enabled);
+	m_src_taghl_attributes.EnableWindow(enabled);
+}
+
+LRESULT CSettingsSourcePage::OnTagHighlightChanged(WORD, WORD, HWND, BOOL&)
+{
+	UpdateTagHighlightDependencies();
+	InvalidateSourcePreview();
+	return 0;
 }
 
 LRESULT CSettingsSourcePage::OnSpecialCharactersChanged(WORD, WORD, HWND, BOOL&)

@@ -505,15 +505,15 @@ void CSettingsDlg::LayoutPage(int index)
 		const bool stretchField =
 			(index == PageIndex(SettingsPageId::General) && (control.id == IDC_LANG ||
 				control.id == IDC_GENRE_CATALOG || control.id == IDC_INTERFACE_THEME ||
-				control.id == IDC_UPDATE_CHANNEL)) ||
+				control.id == IDC_DEFAULT_ENC || control.id == IDC_UPDATE_CHANNEL)) ||
 			(index == PageIndex(SettingsPageId::Editor) && (control.id == IDC_EDITOR_BACKGROUND_IMAGE ||
-				control.id == IDC_EDITOR_BACKGROUND_LAYOUT || control.id == IDC_EDITOR_CARET_MODE ||
+				control.id == IDC_EDITOR_BACKGROUND_LAYOUT || control.id == IDC_EDITOR_BACKGROUND_PREVIEW ||
+				control.id == IDC_EDITOR_PREVIEW_GROUP || control.id == IDC_EDITOR_CARET_MODE ||
 				control.id == IDC_EDITOR_CARET_WIDTH || control.id == IDC_EDITOR_CARET_BLINK)) ||
 			(index == PageIndex(SettingsPageId::Source) && (control.id == IDC_SRCFONT ||
 				control.id == IDC_FBE_NEXT_SOURCE_CODE_GROUP || control.id == IDC_OPTIONS_SOURCE_GROUP ||
 				control.id == IDC_EDITOR_CARET_GROUP || control.id == IDC_OPTIONS_SOURCE_PREVIEW_GROUP ||
-				control.id == IDC_OPTIONS_SOURCE_PREVIEW ||
-				(control.rect.top < layout.templateSize.cy / 3 && control.rect.left >= layout.templateSize.cx / 2))) ||
+				control.id == IDC_OPTIONS_SOURCE_PREVIEW)) ||
 			(index == PageIndex(SettingsPageId::Spelling) && control.id == IDC_CUSTOM_DICT) ||
 			(index == PageIndex(SettingsPageId::Words) && control.id == IDC_EDIT_NEW) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SCRIPTS_FOLDER_PATH);

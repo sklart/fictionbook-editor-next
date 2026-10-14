@@ -74,7 +74,7 @@ BEGIN_MSG_MAP(CSettingsSourcePage)
 	COMMAND_HANDLER(IDC_SRCFONT, CBN_SELCHANGE, OnPreviewSettingsChanged)
 	COMMAND_HANDLER(IDC_WRAP, BN_CLICKED, OnPreviewSettingsChanged)
 	COMMAND_HANDLER(IDC_SYNTAXHL, BN_CLICKED, OnPreviewSettingsChanged)
-	COMMAND_HANDLER(IDC_TAGHL, BN_CLICKED, OnPreviewSettingsChanged)
+	COMMAND_HANDLER(IDC_TAGHL, BN_CLICKED, OnTagHighlightChanged)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE, CBN_SELCHANGE, OnPreviewSettingsChanged)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES, BN_CLICKED, OnPreviewSettingsChanged)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS, BN_CLICKED, OnPreviewSettingsChanged)
@@ -103,6 +103,8 @@ END_MSG_MAP()
 	LRESULT OnSystemAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnTagHighlightChanged(WORD, WORD, HWND, BOOL&);
+	void UpdateTagHighlightDependencies();
 	LRESULT OnSourcePaletteChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnSpecialCharactersChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnResetSourceColors(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);

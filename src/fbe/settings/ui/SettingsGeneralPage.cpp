@@ -188,8 +188,8 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	};
 	auto fitLabelCombo = [&](int labelId, int comboId, int comboLeft, int comboRight) {
 		CRect label = bounds(labelId), combo = bounds(comboId);
-		const CSize text = measure(labelId, 10000, false);
 		label.right = comboLeft - gap;
+		const CSize text = measure(labelId, label.Width(), true);
 		label.bottom = label.top + max(minimumTextHeight, max(label.Height(), text.cy + padding));
 		combo.left = comboLeft;
 		combo.right = max(comboLeft, comboRight);
@@ -213,14 +213,15 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	shift(IDC_OPTIONS_INTERFACE_GROUP, { IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG,
 		IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME });
 	const CRect interfaceGroup = bounds(IDC_OPTIONS_INTERFACE_GROUP);
-	int interfaceComboLeft = bounds(IDC_LANG).left;
-	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_INTERFACE_THEME_LABEL })
-		interfaceComboLeft = max(interfaceComboLeft, bounds(id).left + 2 * measure(id, 10000, false).cx + padding + gap);
-	interfaceComboLeft = min(interfaceComboLeft, interfaceGroup.right - margin - UiMetrics::ScaleForDpi(150, dpi));
+	int comboLeft = bounds(IDC_LANG).left;
+	for(int id : { IDC_OPTIONS_LANGUAGE_LABEL, IDC_OPTIONS_GENRE_CATALOG_LABEL,
+		IDC_INTERFACE_THEME_LABEL, IDC_SETTINGS_OTHER_ENCODING, IDC_UPDATE_CHANNEL_LABEL })
+		comboLeft = max(comboLeft, bounds(id).left + measure(id, 10000, false).cx + gap);
+	comboLeft = min(comboLeft, interfaceGroup.right - margin - UiMetrics::ScaleForDpi(130, dpi));
 	const int interfaceComboRight = interfaceGroup.right - margin;
-	fitLabelCombo(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, interfaceComboLeft, interfaceComboRight);
-	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, interfaceComboLeft, interfaceComboRight);
-	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, interfaceComboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, comboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, comboLeft, interfaceComboRight);
+	fitLabelCombo(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, comboLeft, interfaceComboRight);
 	separateRows(IDC_OPTIONS_LANGUAGE_LABEL, IDC_LANG, IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG);
 	separateRows(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME });
@@ -229,9 +230,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	grow(IDC_SETTINGS_OTHER_OPEN_GROUP, { IDC_RESTORE_POS });
 	shift(IDC_SETTINGS_OTHER_SAVE_GROUP, { IDC_SETTINGS_OTHER_ENCODING, IDC_DEFAULT_ENC, IDC_KEEP });
 	const CRect savingGroup = bounds(IDC_SETTINGS_OTHER_SAVE_GROUP);
-	const int encodingLeft = max(bounds(IDC_DEFAULT_ENC).left,
-		bounds(IDC_SETTINGS_OTHER_ENCODING).left + 2 * measure(IDC_SETTINGS_OTHER_ENCODING, 10000, false).cx + padding + gap);
-	fitLabelCombo(IDC_SETTINGS_OTHER_ENCODING, IDC_DEFAULT_ENC, encodingLeft, savingGroup.right - margin);
+	fitLabelCombo(IDC_SETTINGS_OTHER_ENCODING, IDC_DEFAULT_ENC, comboLeft, savingGroup.right - margin);
 	CRect keep = bounds(IDC_KEEP);
 	const int keepMove = max(0, max(bounds(IDC_SETTINGS_OTHER_ENCODING).bottom,
 		bounds(IDC_DEFAULT_ENC).bottom) + rowGap - keep.top);
@@ -246,9 +245,7 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	grow(IDC_FBE_NEXT_WINDOW_TITLE_GROUP, { IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE });
 	shift(IDC_FBE_NEXT_UPDATES_GROUP, { IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL });
 	const CRect updatesGroup = bounds(IDC_FBE_NEXT_UPDATES_GROUP);
-	const int updateComboLeft = min(updatesGroup.right - margin - UiMetrics::ScaleForDpi(150, dpi),
-		bounds(IDC_UPDATE_CHANNEL_LABEL).left + 2 * measure(IDC_UPDATE_CHANNEL_LABEL, 10000, false).cx + padding + gap);
-	fitLabelCombo(IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL, updateComboLeft, updatesGroup.right - margin);
+	fitLabelCombo(IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL, comboLeft, updatesGroup.right - margin);
 	grow(IDC_FBE_NEXT_UPDATES_GROUP, { IDC_UPDATE_CHANNEL_LABEL, IDC_UPDATE_CHANNEL });
 	RECT client = {}, window = {};
 	::GetClientRect(m_hWnd, &client); ::GetWindowRect(m_hWnd, &window);
