@@ -17,7 +17,13 @@
         binary.Type = 1;
         binary.Open();
         binary.LoadFromFile(path);
-        prefix = new VBArray(binary.Read(2)).toArray();
+        try {
+            prefix = new VBArray(binary.Read(2)).toArray();
+        } catch (error) {
+            // Some Windows Script Host installations return a scalar for a
+            // short UTF-8 fixture. It cannot contain the UTF-16LE BOM.
+            prefix = [];
+        }
         binary.Close();
         stream = new ActiveXObject("ADODB.Stream");
         stream.Type = 2;

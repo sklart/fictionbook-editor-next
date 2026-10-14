@@ -13,8 +13,11 @@ try {
     & cscript.exe //nologo $parser $temporary
     if($LASTEXITCODE -ne 0) { throw 'The compatible ES3 fixture was rejected by Microsoft JScript.' }
     Copy-Item -LiteralPath (Join-Path $fixtures 'jscript-modern-syntax.js') -Destination (Join-Path $temporary 'modern.js')
-    & cscript.exe //nologo $parser $temporary 2>$null
-    if($LASTEXITCODE -eq 0) { throw 'Microsoft JScript must reject the modern-syntax fixture.' }
+    $modernResult = & cscript.exe //nologo $parser $temporary --list
+    if($LASTEXITCODE -ne 0) { throw 'The JScript checker failed before analyzing the modern-syntax fixture.' }
+    if(-not ($modernResult | Where-Object { $_ -match '^FAIL ' })) {
+        throw 'Microsoft JScript must reject the modern-syntax fixture.'
+    }
 } finally {
     Remove-Item -LiteralPath $temporary -Recurse -Force -ErrorAction SilentlyContinue
 }
