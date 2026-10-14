@@ -10,10 +10,24 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const baselinePath = path.join(root, "tools/lint-scripts/baseline.json");
 const writeBaseline = process.argv.includes("--write-baseline");
 const eslint = new ESLint({ cwd: root });
-const jsResults = await eslint.lintFiles(["runtime/**/*.js"]);
-const htmlPaths = readdirSync(path.join(root, "runtime"), { recursive: true, withFileTypes: true })
-  .filter((entry) => entry.isFile() && /\.html?$/i.test(entry.name))
-  .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name))
+const runtimeFiles = readdirSync(path.join(root, "runtime"), { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name));
+const utf16Scripts = new Map(runtimeFiles
+  .filter((filePath) => /\.js$/i.test(filePath))
+  .flatMap((filePath) => {
+    const bytes = readFileSync(filePath);
+    return bytes[0] === 0xff && bytes[1] === 0xfe
+      ? [[filePath, bytes.toString("utf16le").replace(/^\uFEFF/, "")]]
+      : [];
+  }));
+const utf8Scripts = runtimeFiles.filter((filePath) => /\.js$/i.test(filePath) && !utf16Scripts.has(filePath));
+const jsResults = await eslint.lintFiles(utf8Scripts);
+for (const [filePath, source] of utf16Scripts) {
+  jsResults.push(...await eslint.lintText(source, { filePath }));
+}
+const htmlPaths = runtimeFiles
+  .filter((filePath) => /\.html?$/i.test(filePath))
   .filter((filePath) => !/[/\\](generated|vendor)[/\\]/i.test(filePath));
 const inlineScripts = htmlPaths.flatMap((filePath) => extractInlineScripts(filePath));
 const inlineResults = await Promise.all(inlineScripts.map(async (script) => {
@@ -26,7 +40,9 @@ function relative(filePath) {
   return path.relative(root, filePath).split(path.sep).join("/");
 }
 
-const sourceByFile = new Map(results.map((result) => [relative(result.filePath), readFileSync(result.filePath, "utf8")]));
+const sourceByFile = new Map(results.map((result) => [
+  relative(result.filePath), utf16Scripts.get(result.filePath) ?? readFileSync(result.filePath, "utf8")
+]));
 const rawMessages = results.flatMap((result) => result.messages.map((message) => ({ result, filePath: relative(result.filePath), message })));
 const entries = createFingerprintEntries(rawMessages, sourceByFile);
 const messages = rawMessages.map((item, index) => ({ ...item, entry: entries[index] }));
