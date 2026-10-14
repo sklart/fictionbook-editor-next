@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **194**.
+Карточек без автоматических замечаний: **196**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,46 +16,46 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **383**. Исполняемый код не изменён.
+Изменено карточек: **385**. Исполняемый код не изменён.
 
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 29
-- `generic_usage`: 329
-- `generic_warning`: 29
-- `inaccurate_description`: 641
+- `generic_summary`: 31
+- `generic_usage`: 331
+- `generic_warning`: 31
+- `inaccurate_description`: 643
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 340
+- `incorrect_dependency`: 342
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
-- `incorrect_scope`: 336
+- `incorrect_scope`: 338
 - `incorrect_selection`: 24
-- `incorrect_setting`: 175
-- `incorrect_undo`: 328
+- `incorrect_setting`: 177
+- `incorrect_undo`: 330
 - `incorrect_version`: 5
-- `uncertain_attribution`: 44
+- `uncertain_attribution`: 46
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 41
+- `attributionClarified`: 43
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 211
+- `dependenciesVerified`: 213
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 327
-- `scopeClarified`: 313
+- `purposeClarified`: 329
+- `scopeClarified`: 315
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 489
-- `undoDescriptionsClarified`: 320
-- `usageCorrected`: 329
-- `warningsClarified`: 261
+- `settingsClarified`: 491
+- `undoDescriptionsClarified`: 322
+- `usageCorrected`: 331
+- `warningsClarified`: 263
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **223**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **225**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -467,11 +467,15 @@
 - `10_Статистика/37_Статистика иллюстраций.js:678` — Пустой href классифицируется как непустая иллюстрация: isEmpty проверяет только подстроку undefined. Счётчик пустых изображений может быть занижен.
 - `10_Статистика/37_Статистика иллюстраций.js:668` — Изображения выбираются через document.getElementsByTagName('*'), а не fbw_body; элементы интерфейса с class, содержащим image, могут быть учтены как иллюстрации книги.
 - `10_Статистика/37_Статистика иллюстраций.js:495` — Размер Base64 вычисляется приближённой формулой и показывается как размер в FB2; запасная оценка на строках 497-499 ещё менее точна.
+- `10_Статистика/38_Статистика звездочек.js:386` — Абзацы выбираются через document.getElementsByTagName('P') по всей странице, а не только в fbw_body; текст интерфейса может попасть в статистику основного текста.
+- `10_Статистика/39_Статистика решеток.js:197` — При ALLOW_PUNCTUATION_IN_HASHTAG=1 допустимы только буквы, цифры, подчёркивание и дефис; большинство знаков препинания внутри хэштега настройка не разрешает.
+- `10_Статистика/39_Статистика решеток.js:267` — При исходном ALLOW_PUNCTUATION_IN_HASHTAG=0 знак препинания сразу после слова помечает хэштег недопустимым; обычная запись '#слово,' не учитывается.
+- `10_Статистика/39_Статистика решеток.js:649` — Абзацы выбираются через document.getElementsByTagName('P') по всей странице, а не только в fbw_body; текст интерфейса может попасть в статистику основного текста.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1044
-- `inaccurate_description`: 61
+- `generic_usage`: 1036
+- `inaccurate_description`: 59
 - `incorrect_undo`: 159
 - `requires_review`: 385
 
