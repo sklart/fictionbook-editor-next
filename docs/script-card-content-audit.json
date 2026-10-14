@@ -3,7 +3,7 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 357,
-    "generic_usage": 898,
+    "generic_usage": 895,
     "incorrect_undo": 133,
     "inaccurate_description": 50
   },
@@ -51153,18 +51153,160 @@
         "settingsClarified": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/570_Поиск возможных заголовков по ключевым словам.js",
+      "codeSha256": "ffb73be9677bf859ec39001364a51bc07c4744dd2fd1a7572227b884e61e7501",
+      "evidence": "Строки 1–16 задают назначение, версию и участников; 119–169 перечисляют активные шаблоны ключевых слов и чисел; 193–205 проверяют тип выделения; 322–381 определяют классы элементов; 495–647 обходят абзацы; 649–677 получают курсор и выделяют найденное. Присваиваний книге, файловых и сетевых вызовов нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "original_author"
+            },
+            {
+              "name": "TaKir",
+              "role": "original_author"
+            },
+            {
+              "name": "Александр Ка",
+              "role": "modifier"
+            },
+            {
+              "name": "stokber",
+              "role": "modifier"
+            },
+            {
+              "role": "unknown"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "original_author",
+              "contribution": "основа поиска и часть регулярных выражений"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "набор регулярных выражений от 28.12.2025"
+            },
+            {
+              "name": "Александр Ка",
+              "role": "modifier",
+              "contribution": "комментарии и исправления"
+            },
+            {
+              "name": "stokber",
+              "role": "contributor",
+              "contribution": "указал на недочёты поисковых команд"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "authorshipStatus",
+          "before": "partial_attribution",
+          "after": "declared",
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Ищет возможных заголовков по ключевым словам.",
+          "after": "Ищет следующий возможный неразмеченный заголовок по ключевым словам и числам.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Ищет возможных заголовков по ключевым словам. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически. Примеры предусмотренных сообщений: Найдено: Возможные главы; Найдено: Возможные части; Найдено: Возможные книги.",
+          "after": "От текущего курсора вниз по книге ищет абзацы, начинающиеся с типичных названий разделов, их сочетаний с порядковыми числительными, а также состоящие из арабского либо римского числа. Исключает P внутри размеченного title и P.subtitle. При совпадении выделяет найденный фрагмент, прокручивает окно и выводит тип находки в строку состояния. Это поиск кандидатов: разметку и текст книги не меняет; совпадения требуют проверки человеком.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Абзацы P внутри fbw_body после текущей позиции до конца книги, включая сноски и комментарии, кроме уже размеченных заголовков и подзаголовков.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор в текст книги перед ожидаемым заголовком и запустите поиск без выделения.",
+            "Проверьте найденный фрагмент: ключевое слово или число само по себе не доказывает, что абзац является заголовком. Повторный запуск ищет дальше."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Поиск может находить обычный текст, начинающийся с ключевого слова или числа; найденное требуется проверить перед разметкой.",
+            "В однословных и многословных шаблонах начальные пробелы не допускаются, а многие варианты регистра перечислены явно; подходящие строки с отступом или смешанным регистром могут быть пропущены.",
+            "Если курсор находится вне абзаца, скрипт может завершиться ошибкой при подготовке диапазона."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "no_explicit_grouping",
+            "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          },
+          "after": {
+            "status": "no_explicit_grouping",
+            "description": "Скрипт только ищет, выделяет текст и прокручивает окно; изменений книги для отмены нет."
+          },
+          "category": "incorrect_undo"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 194,
+          "issue": "Сообщение о неподдерживаемом типе выделения содержит буквальный текст sel.type вместо значения переменной; дублирующая проверка на строке 204 повторяет ту же ошибку."
+        },
+        {
+          "line": 658,
+          "issue": "После подъёма от курсора код обращается к el2.nodeName без проверки el2 на null. При курсоре вне абзаца/документа возможна ошибка вместо сообщения о неподходящей позиции."
+        },
+        {
+          "line": 158,
+          "issue": "Однословные ключевые шаблоны привязаны к самому началу строки без допуска начальных пробелов и без общего режима i; строки с отступом или смешанным регистром не находятся, хотя числовые шаблоны допускают пробелы."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 675,
-    "generic_usage": 363,
+    "inaccurate_description": 676,
+    "generic_usage": 364,
     "false_warning": 319,
     "incorrect_setting": 195,
-    "incorrect_scope": 370,
-    "incorrect_undo": 362,
-    "uncertain_attribution": 54,
-    "generic_summary": 58,
-    "incorrect_dependency": 378,
+    "incorrect_scope": 371,
+    "incorrect_undo": 363,
+    "uncertain_attribution": 56,
+    "generic_summary": 59,
+    "incorrect_dependency": 379,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -51178,20 +51320,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 1,
+    "missing_warning": 2,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 354,
-    "usageCorrected": 363,
-    "purposeClarified": 361,
-    "warningsClarified": 295,
-    "scopeClarified": 347,
+    "undoDescriptionsClarified": 355,
+    "usageCorrected": 364,
+    "purposeClarified": 362,
+    "warningsClarified": 296,
+    "scopeClarified": 348,
     "settingsClarified": 509,
-    "attributionClarified": 57,
-    "dependenciesVerified": 245,
+    "attributionClarified": 58,
+    "dependenciesVerified": 246,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -140819,44 +140961,48 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Поиск возможных заголовков по ключевым словам",
-        "summary": "Ищет возможных заголовков по ключевым словам.",
-        "description": "Ищет возможных заголовков по ключевым словам. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически. Примеры предусмотренных сообщений: Найдено: Возможные главы; Найдено: Возможные части; Найдено: Возможные книги.",
+        "summary": "Ищет следующий возможный неразмеченный заголовок по ключевым словам и числам.",
+        "description": "От текущего курсора вниз по книге ищет абзацы, начинающиеся с типичных названий разделов, их сочетаний с порядковыми числительными, а также состоящие из арабского либо римского числа. Исключает P внутри размеченного title и P.subtitle. При совпадении выделяет найденный фрагмент, прокручивает окно и выводит тип находки в строку состояния. Это поиск кандидатов: разметку и текст книги не меняет; совпадения требуют проверки человеком.",
         "authors": [
           {
             "name": "Sclex",
-            "role": "original_author"
+            "role": "original_author",
+            "contribution": "основа поиска и часть регулярных выражений"
           },
           {
             "name": "TaKir",
-            "role": "original_author"
+            "role": "contributor",
+            "contribution": "набор регулярных выражений от 28.12.2025"
           },
           {
             "name": "Александр Ка",
-            "role": "modifier"
+            "role": "modifier",
+            "contribution": "комментарии и исправления"
           },
           {
             "name": "stokber",
-            "role": "modifier"
-          },
-          {
-            "role": "unknown"
+            "role": "contributor",
+            "contribution": "указал на недочёты поисковых команд"
           }
         ],
         "version": "5.0",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Абзацы P внутри fbw_body после текущей позиции до конца книги, включая сноски и комментарии, кроме уже размеченных заголовков и подзаголовков.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор в текст книги перед ожидаемым заголовком и запустите поиск без выделения.",
+          "Проверьте найденный фрагмент: ключевое слово или число само по себе не доказывает, что абзац является заголовком. Повторный запуск ищет дальше."
         ],
-        "warnings": [],
+        "warnings": [
+          "Поиск может находить обычный текст, начинающийся с ключевого слова или числа; найденное требуется проверить перед разметкой.",
+          "В однословных и многословных шаблонах начальные пробелы не допускаются, а многие варианты регистра перечислены явно; подходящие строки с отступом или смешанным регистром могут быть пропущены.",
+          "Если курсор находится вне абзаца, скрипт может завершиться ошибкой при подготовке диапазона."
+        ],
         "settings": null,
         "dependencies": [],
         "undo": {
           "status": "no_explicit_grouping",
-          "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+          "description": "Скрипт только ищет, выделяет текст и прокручивает окно; изменений книги для отмены нет."
         },
         "examples": null,
         "tags": [
@@ -140871,74 +141017,74 @@
         "dialog": [],
         "selection": [
           {
-            "line": 233,
+            "line": 237,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 233,
+            "line": 237,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 234,
+            "line": 238,
             "text": "if (selection) {"
           },
           {
-            "line": 235,
+            "line": 239,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 556,
+            "line": 560,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(ampRE,ampRE_).replace(nbspRE,nb"
           },
           {
-            "line": 571,
+            "line": 575,
             "text": "var s2=el.innerHTML;"
           },
           {
-            "line": 579,
+            "line": 583,
             "text": "s_html=ptr.innerHTML;"
           },
           {
-            "line": 693,
+            "line": 697,
             "text": "s=el.innerHTML.replace(removeTagsRE,removeTagsRE_).replace(imgTagRE,imgTagRE_).replace(shyRE,shyRE_).replace(ltRE,ltRE_).replace(gtRE,gtRE_).replace(ampRE,ampRE_).replace(nbspRE,nb"
           }
         ],
         "external": [
           {
-            "line": 453,
+            "line": 457,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 455,
+            "line": 459,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 594,
+            "line": 598,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 599,
+            "line": 603,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
         "network": [],
         "process": [
           {
-            "line": 453,
+            "line": 457,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 455,
+            "line": 459,
             "text": "rslt_=lookBehinds[reNum][ff].exec(s);"
           },
           {
-            "line": 594,
+            "line": 598,
             "text": "rslt=regExps[i].exec(s);"
           },
           {
-            "line": 599,
+            "line": 603,
             "text": "rslt=regExps[i].exec(s);"
           }
         ],
@@ -140946,79 +141092,79 @@
         "file": [],
         "return": [
           {
-            "line": 251,
+            "line": 255,
             "text": "return;"
           },
           {
-            "line": 261,
+            "line": 265,
             "text": "return;"
           },
           {
-            "line": 282,
+            "line": 286,
             "text": "return macroses[full_match.toLowerCase()];"
           },
           {
-            "line": 284,
+            "line": 288,
             "text": "return full_match;"
           },
           {
-            "line": 288,
+            "line": 292,
             "text": "if (brackets1.length%2==1) return nbspChar;"
           },
           {
-            "line": 289,
+            "line": 293,
             "text": "else return full_match;"
           },
           {
-            "line": 318,
+            "line": 322,
             "text": "return;"
           },
           {
-            "line": 359,
+            "line": 363,
             "text": "return;"
           },
           {
-            "line": 375,
+            "line": 379,
             "text": "return a[\"pos\"]-b[\"pos\"];"
           },
           {
-            "line": 430,
+            "line": 434,
             "text": "return full_match;"
           },
           {
-            "line": 437,
+            "line": 441,
             "text": "return tagFlag;"
           },
           {
-            "line": 441,
+            "line": 445,
             "text": "if (!lookBehinds[reNum]) return true;"
           },
           {
-            "line": 458,
+            "line": 462,
             "text": "if (!rslt_ || rslt_.index+rslt_[0].length!=s_len) return false;"
           },
           {
-            "line": 461,
+            "line": 465,
             "text": "if (rslt_ && rslt_.index+rslt_[0].length==s_len) return false;"
           },
           {
-            "line": 464,
+            "line": 468,
             "text": "return true;"
           },
           {
-            "line": 476,
+            "line": 480,
             "text": "return;"
           },
           {
-            "line": 503,
+            "line": 507,
             "text": "return;"
           },
           {
-            "line": 670,
+            "line": 674,
             "text": "if (desc.indexOf(\"Пропустить\") == 0) return true; // (stokber)"
           },
           {
-            "line": 672,
+            "line": 676,
             "text": "return false;"
           }
         ]
@@ -141028,23 +141174,36 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 58,
+          "line": 62,
           "text": "// Версия 5.0"
         },
         {
-          "line": 60,
+          "line": 64,
           "text": "// Автор исходного скрипта Sclex, набор RegExp-ов - TaKir, Sclex, декабрь, 2025"
         },
         {
-          "line": 71,
+          "line": 75,
           "text": "// Версия регэкспов от 28.12.2025"
         },
         {
-          "line": 219,
+          "line": 223,
           "text": "addRegExp(\"^(Об авторе|ОБ АВТОРЕ|От автора|ОТ АВТОРА|От редакции|ОТ РЕДАКЦИИ|Рекомендуемая литература|РЕКОМЕНДУЕМАЯ ЛИТЕРАТУРА|Используемая литература|ИСПОЛЬЗУЕМАЯ ЛИТЕРАТУРА|Списо"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Поиск может находить обычный текст, начинающийся с ключевого слова или числа; найденное требуется проверить перед разметкой.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "В однословных и многословных шаблонах начальные пробелы не допускаются, а многие варианты регистра перечислены явно; подходящие строки с отступом или смешанным регистром могут быть пропущены.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если курсор находится вне абзаца, скрипт может завершиться ошибкой при подготовке диапазона.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -141062,35 +141221,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/580_Удалить подзаголовки-звёздочки рядом с заголовками и подзаголовками.js",
