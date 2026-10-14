@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 507,
-    "generic_usage": 1919,
-    "incorrect_undo": 341,
+    "requires_review": 506,
+    "generic_usage": 1916,
+    "incorrect_undo": 340,
     "inaccurate_description": 109
   },
   "reviewedChanges": [
@@ -17675,17 +17675,177 @@
         "settingsClarified": 2,
         "undoDescriptionsClarified": 1
       }
+    },
+    {
+      "path": "05_Иллюстрации/52_Вставить любые иллюстрации в началах и концах секций.js",
+      "codeSha256": "33229b9c760d3393bc272368a6f4cfe69427e90fe2dd5a9f28784bf869f0a74e",
+      "evidence": "Run: 81-90 обязательно открывает HTML-диалог; 146-232 отбирает неиспользуемые JPG/JPEG/PNG и распределяет по start/end; 239-287 выбирает секции; 294-352 в одной группе добавляет изображения, пропуская notes; 361-456 вставляет ссылки и строки. HTML: 109-140 задаёт шесть параметров. В insertEmptyLineBetween присваивание результату inflateBlock на строке 473 вызывает исключение, которое подавляет catch.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для расстановки реальных (прилинкованных) иллюстраций",
+          "after": "Расставляет неиспользуемые JPG/PNG-вложения в началах и концах выбранных секций книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для расстановки реальных (прилинкованных) иллюстраций",
+          "after": "Открывает диалог параметров, отбирает неиспользуемые JPG/JPEG/PNG-вложения и циклически расставляет их ссылки в секциях. Имена со start и end направляются к началу и концу; остальные используются по выбранным направлениям. Можно ограничить уровень секций, пропустить безымянные и управлять вставкой рядом с существующими изображениями. Секции примечаний пропускаются.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Секции открытой книги по выбранному уровню: все, верхние или конечные. Секции body notes пропускаются; секции других body, включая comments, могут обрабатываться.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Добавьте в книгу неиспользуемые JPG, JPEG или PNG-вложения; метки start и end в имени задают предпочтительное направление.",
+            "Запустите скрипт и в окне параметров выберите расстановку в начале, в конце или в обоих местах, уровень секций и правила соседства с изображениями.",
+            "После выполнения проверьте размещённые ссылки и пустые строки; одинаковое вложение может использоваться циклически в нескольких секциях."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Скрипт добавляет ссылки на неиспользуемые вложения; один и тот же файл может быть вставлен в несколько секций.",
+            "Секции примечаний пропускаются, но секции комментариев отдельным условием не исключены.",
+            "При ошибке после начала правки операция отмены может остаться открытой; полнота отката не проверена.",
+            "При добавлении пустой строки между иллюстрациями вызов установки свойства написан как присваивание результату функции. Возникшая ошибка подавляется, поэтому служебная обработка строки не выполняется."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "HTML/Вставить любые иллюстрации в началах и концах секций - параметры.htm",
+              "sha256": "e5af843128f2f6d9489383386cfe12c03e412e692bfd4bfd178979aeb82b8cc1",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "HTML/Вставить любые иллюстрации в началах и концах секций - параметры.htm",
+              "sha256": "e5af843128f2f6d9489383386cfe12c03e412e692bfd4bfd178979aeb82b8cc1",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Вставка ссылок на изображения на штатном пути сгруппирована в одну операцию отмены редактора. Досрочных выходов после начала группы не найдено, но исключение может оставить её открытой; полнота отката не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": null,
+          "after": [
+            {
+              "name": "insertStart",
+              "title": "Вставлять в начале",
+              "value": true,
+              "description": "Вставлять изображения после заголовка и эпиграфов секции; начальное состояние флажка — включено.",
+              "source": "dialog"
+            },
+            {
+              "name": "insertEnd",
+              "title": "Вставлять в конце",
+              "value": true,
+              "description": "Вставлять изображения в конце конечных секций; начальное состояние флажка — включено.",
+              "source": "dialog"
+            },
+            {
+              "name": "skipNameless",
+              "title": "Пропускать безымянные секции",
+              "value": true,
+              "description": "Не обрабатывать секции без заголовка; начальное состояние — включено.",
+              "source": "dialog"
+            },
+            {
+              "name": "insertBeforeAfter",
+              "title": "Рядом с существующими изображениями",
+              "value": true,
+              "description": "Разрешать вставку рядом с обычной иллюстрацией; начальное состояние — включено.",
+              "source": "dialog"
+            },
+            {
+              "name": "insertEmptyLine",
+              "title": "Строка между изображениями",
+              "value": true,
+              "description": "Добавлять пустую строку между соседними обычными иллюстрациями; начальное состояние — включено.",
+              "source": "dialog"
+            },
+            {
+              "name": "modeSection",
+              "title": "Уровень секций",
+              "value": "all",
+              "description": "all — все, top — вложенные непосредственно в body, bottom — без дочерних секций.",
+              "source": "dialog"
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 473,
+          "issue": "Присваивание результату inflateBlock вызывает исключение; catch подавляет ошибку, поэтому добавленный абзац не проходит ожидаемую служебную обработку."
+        },
+        {
+          "line": 294,
+          "issue": "После начала операции отмены нет finally для её завершения при исключении."
+        },
+        {
+          "line": 310,
+          "issue": "Проверяется только body notes; секции comments также могут попасть в обработку."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "settingsClarified": 6,
+        "undoDescriptionsClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 178,
-    "generic_usage": 88,
-    "false_warning": 119,
-    "incorrect_setting": 99,
-    "incorrect_scope": 78,
-    "incorrect_undo": 87,
+    "inaccurate_description": 180,
+    "generic_usage": 89,
+    "false_warning": 120,
+    "incorrect_setting": 100,
+    "incorrect_scope": 79,
+    "incorrect_undo": 88,
     "uncertain_attribution": 2,
-    "incorrect_dependency": 73,
+    "incorrect_dependency": 75,
     "incorrect_authorship": 37,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -17694,12 +17854,12 @@
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 142,
-    "undoDescriptionsClarified": 88,
-    "usageCorrected": 88,
-    "purposeClarified": 88,
-    "warningsClarified": 28,
-    "scopeClarified": 72,
-    "settingsClarified": 391,
+    "undoDescriptionsClarified": 89,
+    "usageCorrected": 89,
+    "purposeClarified": 89,
+    "warningsClarified": 29,
+    "scopeClarified": 73,
+    "settingsClarified": 397,
     "attributionClarified": 3,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29
@@ -65501,8 +65661,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Вставить любые иллюстрации в началах и концах секций",
-        "summary": "Скрипт предназначен для расстановки реальных (прилинкованных) иллюстраций",
-        "description": "Скрипт предназначен для расстановки реальных (прилинкованных) иллюстраций",
+        "summary": "Расставляет неиспользуемые JPG/PNG-вложения в началах и концах выбранных секций книги.",
+        "description": "Открывает диалог параметров, отбирает неиспользуемые JPG/JPEG/PNG-вложения и циклически расставляет их ссылки в секциях. Имена со start и end направляются к началу и концу; остальные используются по выбранным направлениям. Можно ограничить уровень секций, пропустить безымянные и управлять вставкой рядом с существующими изображениями. Секции примечаний пропускаются.",
         "authors": [
           {
             "name": "TaKir",
@@ -65519,29 +65679,74 @@
           }
         ],
         "version": "1.3",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Секции открытой книги по выбранному уровню: все, верхние или конечные. Секции body notes пропускаются; секции других body, включая comments, могут обрабатываться.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Добавьте в книгу неиспользуемые JPG, JPEG или PNG-вложения; метки start и end в имени задают предпочтительное направление.",
+          "Запустите скрипт и в окне параметров выберите расстановку в начале, в конце или в обоих местах, уровень секций и правила соседства с изображениями.",
+          "После выполнения проверьте размещённые ссылки и пустые строки; одинаковое вложение может использоваться циклически в нескольких секциях."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Скрипт добавляет ссылки на неиспользуемые вложения; один и тот же файл может быть вставлен в несколько секций.",
+          "Секции примечаний пропускаются, но секции комментариев отдельным условием не исключены.",
+          "При ошибке после начала правки операция отмены может остаться открытой; полнота отката не проверена.",
+          "При добавлении пустой строки между иллюстрациями вызов установки свойства написан как присваивание результату функции. Возникшая ошибка подавляется, поэтому служебная обработка строки не выполняется."
         ],
-        "settings": null,
+        "settings": [
+          {
+            "name": "insertStart",
+            "title": "Вставлять в начале",
+            "value": true,
+            "description": "Вставлять изображения после заголовка и эпиграфов секции; начальное состояние флажка — включено.",
+            "source": "dialog"
+          },
+          {
+            "name": "insertEnd",
+            "title": "Вставлять в конце",
+            "value": true,
+            "description": "Вставлять изображения в конце конечных секций; начальное состояние флажка — включено.",
+            "source": "dialog"
+          },
+          {
+            "name": "skipNameless",
+            "title": "Пропускать безымянные секции",
+            "value": true,
+            "description": "Не обрабатывать секции без заголовка; начальное состояние — включено.",
+            "source": "dialog"
+          },
+          {
+            "name": "insertBeforeAfter",
+            "title": "Рядом с существующими изображениями",
+            "value": true,
+            "description": "Разрешать вставку рядом с обычной иллюстрацией; начальное состояние — включено.",
+            "source": "dialog"
+          },
+          {
+            "name": "insertEmptyLine",
+            "title": "Строка между изображениями",
+            "value": true,
+            "description": "Добавлять пустую строку между соседними обычными иллюстрациями; начальное состояние — включено.",
+            "source": "dialog"
+          },
+          {
+            "name": "modeSection",
+            "title": "Уровень секций",
+            "value": "all",
+            "description": "all — все, top — вложенные непосредственно в body, bottom — без дочерних секций.",
+            "source": "dialog"
+          }
+        ],
         "dependencies": [
           {
             "path": "HTML/Вставить любые иллюстрации в началах и концах секций - параметры.htm",
             "sha256": "e5af843128f2f6d9489383386cfe12c03e412e692bfd4bfd178979aeb82b8cc1",
-            "optional": true
+            "optional": false
           }
         ],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Вставка ссылок на изображения на штатном пути сгруппирована в одну операцию отмены редактора. Досрочных выходов после начала группы не найдено, но исключение может оставить её открытой; полнота отката не проверена."
         },
         "examples": null,
         "tags": [
@@ -65552,38 +65757,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 294,
+            "line": 340,
             "text": "window.external.BeginUndoUnit(document, \"Расстановка иллюстраций\");"
           }
         ],
         "undo_end": [
           {
-            "line": 352,
+            "line": 398,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [
           {
-            "line": 83,
+            "line": 129,
             "text": "var settings = window.showModalDialog("
           }
         ],
         "selection": [],
         "write": [
           {
-            "line": 399,
+            "line": 445,
             "text": "section.appendChild(imageDiv);"
           },
           {
-            "line": 404,
+            "line": 450,
             "text": "section.appendChild(imageDiv);"
           },
           {
-            "line": 432,
+            "line": 478,
             "text": "section.appendChild(imageDiv);"
           },
           {
-            "line": 442,
+            "line": 488,
             "text": "section.appendChild(imageDiv);"
           }
         ],
@@ -65594,161 +65799,388 @@
         "file": [],
         "return": [
           {
-            "line": 90,
+            "line": 136,
             "text": "if (!settings) return;"
           },
           {
-            "line": 106,
+            "line": 152,
             "text": "if (!name || name.indexOf(\"#\") != 0) return null;"
           },
           {
-            "line": 107,
+            "line": 153,
             "text": "return name.substring(1).toLowerCase();"
           },
           {
-            "line": 152,
+            "line": 198,
             "text": "return;"
           },
           {
-            "line": 236,
+            "line": 282,
             "text": "return;"
           },
           {
-            "line": 258,
+            "line": 304,
             "text": "return parent && parent.nodeName == \"DIV\" && parent.className == \"body\";"
           },
           {
-            "line": 262,
+            "line": 308,
             "text": "return !hasDirectNestedSections(section);"
           },
           {
-            "line": 366,
+            "line": 412,
             "text": "if (!firstTitle) return 0;"
           },
           {
-            "line": 382,
+            "line": 428,
             "text": "return 1;"
           },
           {
-            "line": 391,
+            "line": 437,
             "text": "return 1;"
           },
           {
-            "line": 393,
+            "line": 439,
             "text": "return 0;"
           },
           {
-            "line": 401,
+            "line": 447,
             "text": "return 1;"
           },
           {
-            "line": 405,
+            "line": 451,
             "text": "return 1;"
           },
           {
-            "line": 408,
+            "line": 454,
             "text": "return 0;"
           },
           {
-            "line": 434,
+            "line": 480,
             "text": "return 1;"
           },
           {
-            "line": 443,
+            "line": 489,
             "text": "return 1;"
           },
           {
-            "line": 445,
+            "line": 491,
             "text": "return 0;"
           },
           {
-            "line": 449,
+            "line": 495,
             "text": "return 1;"
           },
           {
-            "line": 453,
+            "line": 499,
             "text": "return 1;"
           },
           {
-            "line": 456,
+            "line": 502,
             "text": "return 0;"
           },
           {
-            "line": 474,
+            "line": 520,
             "text": "return p;"
           },
           {
-            "line": 476,
+            "line": 522,
             "text": "return null;"
           },
           {
-            "line": 485,
+            "line": 531,
             "text": "if (!element) return null;"
           },
           {
-            "line": 490,
+            "line": 536,
             "text": "return next;"
           },
           {
-            "line": 494,
+            "line": 540,
             "text": "return element && element.nodeName == \"DIV\" && element.className == className;"
           },
           {
-            "line": 498,
+            "line": 544,
             "text": "return element && element.nodeType == 1 &&"
           },
           {
-            "line": 503,
+            "line": 549,
             "text": "if (!isImageElement(element)) return false;"
           },
           {
-            "line": 505,
+            "line": 551,
             "text": "return href === '#undefined';"
           },
           {
-            "line": 509,
+            "line": 555,
             "text": "if (!isImageElement(element)) return false;"
           },
           {
-            "line": 511,
+            "line": 557,
             "text": "return href && href !== '' && href !== '#undefined';"
           },
           {
-            "line": 518,
+            "line": 564,
             "text": "return true;"
           },
           {
-            "line": 522,
+            "line": 568,
             "text": "return true;"
           },
           {
-            "line": 527,
+            "line": 573,
             "text": "return false;"
           },
           {
-            "line": 535,
+            "line": 581,
             "text": "return child;"
           },
           {
-            "line": 538,
+            "line": 584,
             "text": "return null;"
           },
           {
-            "line": 546,
+            "line": 592,
             "text": "return true;"
           },
           {
-            "line": 549,
+            "line": 595,
             "text": "return false;"
           },
           {
-            "line": 563,
+            "line": 609,
             "text": "return imageDiv;"
           }
         ]
       },
       "namespaceUrls": [],
-      "settingEvidence": [],
+      "settingEvidence": [
+        {
+          "index": 0,
+          "name": "insertStart",
+          "declarations": [
+            {
+              "line": 138,
+              "text": "var insertStart = settings.insertStart;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 138,
+              "text": "var insertStart = settings.insertStart;"
+            },
+            {
+              "line": 138,
+              "text": "var insertStart = settings.insertStart;"
+            },
+            {
+              "line": 260,
+              "text": "if (insertStart) {"
+            },
+            {
+              "line": 267,
+              "text": "if (insertStart && startImages.length == 0) {"
+            },
+            {
+              "line": 277,
+              "text": "if (!insertStart && !insertEnd) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 1,
+          "name": "insertEnd",
+          "declarations": [
+            {
+              "line": 139,
+              "text": "var insertEnd = settings.insertEnd;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 139,
+              "text": "var insertEnd = settings.insertEnd;"
+            },
+            {
+              "line": 139,
+              "text": "var insertEnd = settings.insertEnd;"
+            },
+            {
+              "line": 263,
+              "text": "if (insertEnd) {"
+            },
+            {
+              "line": 270,
+              "text": "if (insertEnd && endImages.length == 0) {"
+            },
+            {
+              "line": 277,
+              "text": "if (!insertStart && !insertEnd) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 2,
+          "name": "skipNameless",
+          "declarations": [
+            {
+              "line": 140,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 140,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            },
+            {
+              "line": 140,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            },
+            {
+              "line": 140,
+              "text": "var skipNameless = (settings.skipNameless !== undefined) ? settings.skipNameless : true;"
+            },
+            {
+              "line": 364,
+              "text": "if (!hasTitle && skipNameless) {"
+            },
+            {
+              "line": 384,
+              "text": "if (hasTitle || !skipNameless) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 3,
+          "name": "insertBeforeAfter",
+          "declarations": [
+            {
+              "line": 141,
+              "text": "var insertBeforeAfter = (settings.insertBeforeAfter !== undefined) ? settings.insertBeforeAfter : true;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 141,
+              "text": "var insertBeforeAfter = (settings.insertBeforeAfter !== undefined) ? settings.insertBeforeAfter : true;"
+            },
+            {
+              "line": 141,
+              "text": "var insertBeforeAfter = (settings.insertBeforeAfter !== undefined) ? settings.insertBeforeAfter : true;"
+            },
+            {
+              "line": 141,
+              "text": "var insertBeforeAfter = (settings.insertBeforeAfter !== undefined) ? settings.insertBeforeAfter : true;"
+            },
+            {
+              "line": 372,
+              "text": "var insertResult = insertImageAtStart(section, imageName, insertBeforeAfter, insertEmptyLine);"
+            },
+            {
+              "line": 386,
+              "text": "var insertResultEnd = insertImageAtEnd(section, imageNameEnd, insertBeforeAfter, insertEmptyLine);"
+            },
+            {
+              "line": 407,
+              "text": "function insertImageAtStart(section, imageName, insertBeforeAfter, insertEmptyLine) {"
+            },
+            {
+              "line": 429,
+              "text": "} else if (isNormalImageElement(afterPoint) && insertBeforeAfter) {"
+            },
+            {
+              "line": 462,
+              "text": "function insertImageAtEnd(section, imageName, insertBeforeAfter, insertEmptyLine) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 4,
+          "name": "insertEmptyLine",
+          "declarations": [
+            {
+              "line": 142,
+              "text": "var insertEmptyLine = (settings.insertEmptyLine !== undefined) ? settings.insertEmptyLine : true;"
+            }
+          ],
+          "uses": [
+            {
+              "line": 142,
+              "text": "var insertEmptyLine = (settings.insertEmptyLine !== undefined) ? settings.insertEmptyLine : true;"
+            },
+            {
+              "line": 142,
+              "text": "var insertEmptyLine = (settings.insertEmptyLine !== undefined) ? settings.insertEmptyLine : true;"
+            },
+            {
+              "line": 142,
+              "text": "var insertEmptyLine = (settings.insertEmptyLine !== undefined) ? settings.insertEmptyLine : true;"
+            },
+            {
+              "line": 372,
+              "text": "var insertResult = insertImageAtStart(section, imageName, insertBeforeAfter, insertEmptyLine);"
+            },
+            {
+              "line": 386,
+              "text": "var insertResultEnd = insertImageAtEnd(section, imageNameEnd, insertBeforeAfter, insertEmptyLine);"
+            },
+            {
+              "line": 407,
+              "text": "function insertImageAtStart(section, imageName, insertBeforeAfter, insertEmptyLine) {"
+            },
+            {
+              "line": 434,
+              "text": "if (insertEmptyLine) {"
+            },
+            {
+              "line": 462,
+              "text": "function insertImageAtEnd(section, imageName, insertBeforeAfter, insertEmptyLine) {"
+            }
+          ],
+          "classification": "requires_review"
+        },
+        {
+          "index": 5,
+          "name": "modeSection",
+          "declarations": [
+            {
+              "line": 143,
+              "text": "var modeSection = (settings.modeSection !== undefined) ? settings.modeSection : 'all';"
+            }
+          ],
+          "uses": [
+            {
+              "line": 143,
+              "text": "var modeSection = (settings.modeSection !== undefined) ? settings.modeSection : 'all';"
+            },
+            {
+              "line": 143,
+              "text": "var modeSection = (settings.modeSection !== undefined) ? settings.modeSection : 'all';"
+            },
+            {
+              "line": 143,
+              "text": "var modeSection = (settings.modeSection !== undefined) ? settings.modeSection : 'all';"
+            },
+            {
+              "line": 316,
+              "text": "if (modeSection == 'all') {"
+            },
+            {
+              "line": 318,
+              "text": "} else if (modeSection == 'top' && isTopLevelSection(sec)) {"
+            },
+            {
+              "line": 320,
+              "text": "} else if (modeSection == 'bottom' && isBottomLevelSection(sec)) {"
+            }
+          ],
+          "classification": "requires_review"
+        }
+      ],
       "dependencyEvidence": [
         {
           "path": "HTML/Вставить любые иллюстрации в началах и концах секций - параметры.htm",
@@ -65761,25 +66193,37 @@
       ],
       "authorshipEvidence": [
         {
-          "line": 60,
+          "line": 106,
           "text": "// version 1.3"
         },
         {
-          "line": 73,
+          "line": 119,
           "text": "// version 1.3, 15.08.2026"
         },
         {
-          "line": 81,
+          "line": 127,
           "text": "var scriptVersion = \"1.3\";"
         },
         {
-          "line": 85,
+          "line": 131,
           "text": "scriptVersion,"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Скрипт добавляет ссылки на неиспользуемые вложения; один и тот же файл может быть вставлен в несколько секций.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Секции примечаний пропускаются, но секции комментариев отдельным условием не исключены.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При ошибке после начала правки операция отмены может остаться открытой; полнота отката не проверена.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При добавлении пустой строки между иллюстрациями вызов установки свойства написан как присваивание результату функции. Возникшая ошибка подавляется, поэтому служебная обработка строки не выполняется.",
           "verification": "requires_review"
         }
       ],
@@ -65800,62 +66244,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 294,
-              "text": "window.external.BeginUndoUnit(document, \"Расстановка иллюстраций\");"
-            },
-            {
-              "line": 352,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "05_Иллюстрации/53_Вставить N пустых блочных иллюстраций подряд по месту курсора.js",
