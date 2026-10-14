@@ -16,31 +16,31 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **89**. Исполняемый код не изменён.
+Изменено карточек: **93**. Исполняемый код не изменён.
 
-- `false_warning`: 66
-- `generic_usage`: 34
-- `inaccurate_description`: 70
+- `false_warning`: 70
+- `generic_usage`: 38
+- `inaccurate_description`: 78
 - `incorrect_authorship`: 6
-- `incorrect_dependency`: 13
-- `incorrect_scope`: 22
-- `incorrect_setting`: 58
-- `incorrect_undo`: 33
-- `incorrect_version`: 1
+- `incorrect_dependency`: 21
+- `incorrect_scope`: 26
+- `incorrect_setting`: 62
+- `incorrect_undo`: 37
+- `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
 Подтверждённые результаты:
 
 - `attributionClarified`: 3
-- `dependenciesClarified`: 21
+- `dependenciesClarified`: 29
 - `externalWarningsRefined`: 12
-- `falseWarningsRemoved`: 54
-- `purposeClarified`: 34
-- `scopeClarified`: 18
+- `falseWarningsRemoved`: 58
+- `purposeClarified`: 38
+- `scopeClarified`: 22
 - `serviceSettingsRemoved`: 128
-- `settingsClarified`: 246
-- `undoDescriptionsClarified`: 34
-- `usageCorrected`: 34
+- `settingsClarified`: 257
+- `undoDescriptionsClarified`: 38
+- `usageCorrected`: 38
 - `warningsClarified`: 23
 
 Скриптов с подтверждёнными замечаниями к исполняемому коду: **19**.
@@ -76,10 +76,10 @@
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 2148
+- `generic_usage`: 2132
 - `inaccurate_description`: 111
 - `incorrect_undo`: 372
-- `requires_review`: 522
+- `requires_review`: 529
 
 ## Границы проверки
 
