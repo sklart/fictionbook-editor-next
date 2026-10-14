@@ -2,10 +2,10 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 419,
-    "generic_usage": 1248,
-    "incorrect_undo": 190,
-    "inaccurate_description": 87
+    "requires_review": 418,
+    "generic_usage": 1243,
+    "incorrect_undo": 189,
+    "inaccurate_description": 86
   },
   "reviewedChanges": [
     {
@@ -38125,17 +38125,191 @@
         "serviceSettingsRemoved": 1,
         "attributionClarified": 1
       }
+    },
+    {
+      "path": "06_Чистка/01_Генеральная уборка.js",
+      "codeSha256": "e47715c9da2b27b7e259afd8f5ec8bb945a8e05a557f820c52de663bc0f70857",
+      "evidence": "В шапке Sclex указан как автор движка, Faiber и TaKir — авторы изменений; отдельный исходный автор не назван. Два активных переключателя находятся до Run, sIB/fIB/aIB — служебные шаблоны, Snoska и PromptSnoska закомментированы. HandleP применяет регулярные замены к innerHTML каждого P, удаляет отдельные ID и меняет некоторые ссылки. Обход начинается с fbw_body, история и аннотация по умолчанию включены. BeginUndoUnit и EndUndoUnit охватывают проход без явных return. URL reeed.ru находится только в закомментированных строках 528 и 581; сетевых операций и внешних зависимостей нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "Sclex",
+              "role": "original_author"
+            },
+            {
+              "name": "Faiber",
+              "role": "modifier"
+            },
+            {
+              "name": "TaKir",
+              "role": "modifier"
+            },
+            {
+              "role": "unknown"
+            }
+          ],
+          "after": [
+            {
+              "name": "Sclex",
+              "role": "contributor",
+              "contribution": "движок"
+            },
+            {
+              "name": "Faiber",
+              "role": "modifier"
+            },
+            {
+              "name": "TaKir",
+              "role": "modifier"
+            },
+            {
+              "role": "unknown"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Генеральная уборка.",
+          "after": "Массово исправляет пробелы, пунктуацию, тире, мусорные символы и некоторые элементы HTML-разметки книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "description",
+          "before": "Последовательно применяет наборы регулярных замен к абзацам: пробелы, знаки препинания, тире/дефисы, служебная разметка и другие типографские случаи. Проход по history и annotation управляется переменными. Варианты набора отличаются правилами; содержимое matchingRules и settings относится именно к этому файлу.",
+          "after": "Обходит абзацы книги и последовательно применяет большой набор регулярных замен к их HTML: нормализует пробелы, сокращения, тире, дефисы, пунктуацию, отдельные символы и разметку выделения. Удаляет некоторые служебные идентификаторы и исправляет или снимает отдельные некорректные ссылки. История и аннотация включены в обработку по умолчанию; старые правила работы со сносками в основном отключены. После прохода показывает статистику по части правил.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все абзацы P внутри fbw_body независимо от выделения. При исходных настройках обрабатываются также история и аннотация; отдельные правила учитывают тип родительского блока, например заголовок или стих.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Откройте книгу и при необходимости измените два переключателя обработки истории и аннотации в начале JS.",
+            "Запустите скрипт и проверьте результат на типичных местах книги: пробелах, пунктуации, тире, ссылках и сносках.",
+            "Просмотрите итоговый отчёт, затем проверьте навигацию по внутренним ссылкам и сохраните книгу."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+            "Массовые регулярные замены могут затронуть нестандартную авторскую пунктуацию. Просмотрите результат на характерных фрагментах книги."
+          ],
+          "after": [
+            "Массовые замены могут изменить авторскую пунктуацию и нестандартное форматирование; проверяйте текст после обработки.",
+            "Скрипт удаляет идентификаторы вида AutBody_ и часть разметки некорректных ссылок; проверьте внутренние переходы и сноски.",
+            "При исходных настройках правятся также история и аннотация. Статистика перечисляет лишь часть применяемых правил; полный откат не проверен."
+          ],
+          "category": "false_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Основной проход по абзацам открыт и закрыт как одна группа отмены; прямых выходов между этими вызовами нет. При ошибке во время обхода закрытие группы не защищено, полный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли history",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "обрабатывать ли annotation",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "sIB",
+              "value": "<EM>|<STRONG>|<EM><STRONG>|<STRONG><EM>",
+              "expression": "\"<EM>|<STRONG>|<EM><STRONG>|<STRONG><EM>\"",
+              "description": "var PromptSnoska=true;",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "ObrabotkaHistory",
+              "value": true,
+              "expression": "true",
+              "description": "Обрабатывать историю изменений: false — нет, true — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "ObrabotkaAnnotation",
+              "value": true,
+              "expression": "true",
+              "description": "Обрабатывать аннотацию: false — нет, true — да.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 1224,
+          "issue": "Подъём к следующему узлу не проверяет достижение fbw_body и null; на последней ветви возможен выход за пределы дерева книги или ошибка, которая оставит группу отмены открытой."
+        },
+        {
+          "line": 1020,
+          "issue": "Удаление идентификаторов AutBody_ может нарушить внутренние ссылки на соответствующие элементы; скрипт не проверяет входящие ссылки."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "serviceSettingsRemoved": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 566,
-    "generic_usage": 280,
-    "false_warning": 299,
-    "incorrect_setting": 136,
-    "incorrect_scope": 283,
-    "incorrect_undo": 279,
-    "uncertain_attribution": 8,
-    "incorrect_dependency": 286,
+    "inaccurate_description": 568,
+    "generic_usage": 281,
+    "false_warning": 300,
+    "incorrect_setting": 137,
+    "incorrect_scope": 284,
+    "incorrect_undo": 280,
+    "uncertain_attribution": 9,
+    "incorrect_dependency": 287,
     "incorrect_authorship": 40,
     "incorrect_version": 5,
     "inaccurate_version": 1,
@@ -38147,17 +38321,17 @@
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
-    "serviceSettingsRemoved": 150,
-    "undoDescriptionsClarified": 271,
-    "usageCorrected": 280,
-    "purposeClarified": 278,
-    "warningsClarified": 211,
-    "scopeClarified": 264,
-    "settingsClarified": 449,
-    "attributionClarified": 10,
+    "serviceSettingsRemoved": 151,
+    "undoDescriptionsClarified": 272,
+    "usageCorrected": 281,
+    "purposeClarified": 279,
+    "warningsClarified": 212,
+    "scopeClarified": 265,
+    "settingsClarified": 450,
+    "attributionClarified": 11,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
-    "dependenciesVerified": 162,
+    "dependenciesVerified": 163,
     "falseSettingsRemoved": 10,
     "attributionCorrected": 15
   },
@@ -91306,12 +91480,13 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Генеральная уборка",
-        "summary": "Генеральная уборка.",
-        "description": "Последовательно применяет наборы регулярных замен к абзацам: пробелы, знаки препинания, тире/дефисы, служебная разметка и другие типографские случаи. Проход по history и annotation управляется переменными. Варианты набора отличаются правилами; содержимое matchingRules и settings относится именно к этому файлу.",
+        "summary": "Массово исправляет пробелы, пунктуацию, тире, мусорные символы и некоторые элементы HTML-разметки книги.",
+        "description": "Обходит абзацы книги и последовательно применяет большой набор регулярных замен к их HTML: нормализует пробелы, сокращения, тире, дефисы, пунктуацию, отдельные символы и разметку выделения. Удаляет некоторые служебные идентификаторы и исправляет или снимает отдельные некорректные ссылки. История и аннотация включены в обработку по умолчанию; старые правила работы со сносками в основном отключены. После прохода показывает статистику по части правил.",
         "authors": [
           {
             "name": "Sclex",
-            "role": "original_author"
+            "role": "contributor",
+            "contribution": "движок"
           },
           {
             "name": "Faiber",
@@ -91326,46 +91501,39 @@
           }
         ],
         "version": "2.9",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все абзацы P внутри fbw_body независимо от выделения. При исходных настройках обрабатываются также история и аннотация; отдельные правила учитывают тип родительского блока, например заголовок или стих.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Откройте книгу и при необходимости измените два переключателя обработки истории и аннотации в начале JS.",
+          "Запустите скрипт и проверьте результат на типичных местах книги: пробелах, пунктуации, тире, ссылках и сносках.",
+          "Просмотрите итоговый отчёт, затем проверьте навигацию по внутренним ссылкам и сохраните книгу."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "Массовые регулярные замены могут затронуть нестандартную авторскую пунктуацию. Просмотрите результат на характерных фрагментах книги."
+          "Массовые замены могут изменить авторскую пунктуацию и нестандартное форматирование; проверяйте текст после обработки.",
+          "Скрипт удаляет идентификаторы вида AutBody_ и часть разметки некорректных ссылок; проверьте внутренние переходы и сноски.",
+          "При исходных настройках правятся также история и аннотация. Статистика перечисляет лишь часть применяемых правил; полный откат не проверен."
         ],
         "settings": [
           {
             "name": "ObrabotkaHistory",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли history",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать историю изменений: false — нет, true — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "ObrabotkaAnnotation",
             "value": true,
             "expression": "true",
-            "description": "обрабатывать ли annotation",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "sIB",
-            "value": "<EM>|<STRONG>|<EM><STRONG>|<STRONG><EM>",
-            "expression": "\"<EM>|<STRONG>|<EM><STRONG>|<STRONG><EM>\"",
-            "description": "var PromptSnoska=true;",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать аннотацию: false — нет, true — да.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Основной проход по абзацам открыт и закрыт как одна группа отмены; прямых выходов между этими вызовами нет. При ошибке во время обхода закрытие группы не защищено, полный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -91376,13 +91544,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 1210,
+            "line": 1204,
             "text": "window.external.BeginUndoUnit(document,\"«Генеральная уборка»\");                               // ОТКАТ (UNDO) начало"
           }
         ],
         "undo_end": [
           {
-            "line": 1235,
+            "line": 1229,
             "text": "window.external.EndUndoUnit(document);                                             // undo конец"
           }
         ],
@@ -91390,11 +91558,11 @@
         "selection": [],
         "write": [
           {
-            "line": 1023,
+            "line": 1017,
             "text": "s=ptr.innerHTML;"
           },
           {
-            "line": 1207,
+            "line": 1201,
             "text": "ptr.innerHTML=s;"
           }
         ],
@@ -91407,11 +91575,11 @@
       },
       "namespaceUrls": [
         {
-          "line": 528,
+          "line": 522,
           "text": "// var re59_ = '$1<a href=\"http://reeed.ru/\">$2</a> ';"
         },
         {
-          "line": 581,
+          "line": 575,
           "text": "// var re71_ = '<a href=\"http://reeed.ru/\">$1</a>$2';"
         }
       ],
@@ -91421,17 +91589,17 @@
           "name": "ObrabotkaHistory",
           "declarations": [
             {
-              "line": 184,
+              "line": 178,
               "text": "var ObrabotkaHistory=true;"
             }
           ],
           "uses": [
             {
-              "line": 184,
+              "line": 178,
               "text": "var ObrabotkaHistory=true;"
             },
             {
-              "line": 1219,
+              "line": 1213,
               "text": "((SaveNext.className==\"history\" && !ObrabotkaHistory) ||"
             }
           ],
@@ -91442,63 +91610,18 @@
           "name": "ObrabotkaAnnotation",
           "declarations": [
             {
-              "line": 186,
+              "line": 180,
               "text": "var ObrabotkaAnnotation=true;"
             }
           ],
           "uses": [
             {
-              "line": 186,
+              "line": 180,
               "text": "var ObrabotkaAnnotation=true;"
             },
             {
-              "line": 1220,
+              "line": 1214,
               "text": "(SaveNext.className==\"annotation\" && !ObrabotkaAnnotation))))"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 2,
-          "name": "sIB",
-          "declarations": [
-            {
-              "line": 191,
-              "text": "var sIB=\"<EM>|<STRONG>|<EM><STRONG>|<STRONG><EM>\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 191,
-              "text": "var sIB=\"<EM>|<STRONG>|<EM><STRONG>|<STRONG><EM>\";"
-            },
-            {
-              "line": 210,
-              "text": "var re01 = new RegExp(\"([А-Яа-яa-zё—](\"+aIB+\"){0,1}[\\\\\\?!\\\\\\.,:]{0,1})\"+nbspEntity+\"((\"+sIB+\"){0,1}[а-яa-zё])([^\\\\\\.])\",\"g\");"
-            },
-            {
-              "line": 247,
-              "text": "var re08 = new RegExp(\"^(\"+sIB+\"){0,1}([«\\\\\\\"]){0,1}[-–—~]{1,2}(\"+sIB+\"){0,1}(\\\\\\s|\"+nbspEntity+\"){0,1}\\\\\\.{0,1}(\"+sIB+\"){0,1}([\\\\\\wА-яЁё«\\\\\\\"„\\\\\\(\\\\\\?!…])\",\"gi\");"
-            },
-            {
-              "line": 247,
-              "text": "var re08 = new RegExp(\"^(\"+sIB+\"){0,1}([«\\\\\\\"]){0,1}[-–—~]{1,2}(\"+sIB+\"){0,1}(\\\\\\s|\"+nbspEntity+\"){0,1}\\\\\\.{0,1}(\"+sIB+\"){0,1}([\\\\\\wА-яЁё«\\\\\\\"„\\\\\\(\\\\\\?!…])\",\"gi\");"
-            },
-            {
-              "line": 247,
-              "text": "var re08 = new RegExp(\"^(\"+sIB+\"){0,1}([«\\\\\\\"]){0,1}[-–—~]{1,2}(\"+sIB+\"){0,1}(\\\\\\s|\"+nbspEntity+\"){0,1}\\\\\\.{0,1}(\"+sIB+\"){0,1}([\\\\\\wА-яЁё«\\\\\\\"„\\\\\\(\\\\\\?!…])\",\"gi\");"
-            },
-            {
-              "line": 252,
-              "text": "var re09 = new RegExp(\"(\"+sIB+\")([\\\\\\s,\\\\\\.\\\\\\-–—;!\\\\\\?:/~])(\\\\\\s|\"+nbspEntity+\"){0,1}(\"+fIB+\")\",\"gi\");"
-            },
-            {
-              "line": 257,
-              "text": "var re09a = new RegExp(\"(\"+sIB+\")((\\\\\\s|\"+nbspEntity+\"){0,1}[\\\\\\s\\\\\\-–—](\\\\\\s|\"+nbspEntity+\"){0,1})(\"+fIB+\")\",\"gi\");"
-            },
-            {
-              "line": 276,
-              "text": "var re13 = new RegExp(\"([a-zа-яё\\\\\\\"“»\\\\\\)\\\\\\? ])(\\\\\\s|\"+nbspEntity+\"){0,1}(\"+aIB+\"){0,1}([,!\\\\\\?…])(\\\\\\s|\"+nbspEntity+\"){0,1}(\"+aIB+\"){0,1}-{1,2}(\"+aIB+\"){0,1}(\\\\\\s|\"+nbspEntity+\""
             }
           ],
           "classification": "requires_review"
@@ -91507,25 +91630,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 80,
+          "line": 74,
           "text": "//             «Генеральная уборка» (версия 2.8)"
         },
         {
-          "line": 181,
+          "line": 175,
           "text": "var VersionNumber=\"2.9\";"
         },
         {
-          "line": 1373,
+          "line": 1367,
           "text": "' «Генеральная уборка» v.'+VersionNumber+' Golma+TaKir Edition 2026       \\n\\n'+"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Массовые замены могут изменить авторскую пунктуацию и нестандартное форматирование; проверяйте текст после обработки.",
           "verification": "requires_review"
         },
         {
-          "text": "Массовые регулярные замены могут затронуть нестандартную авторскую пунктуацию. Просмотрите результат на характерных фрагментах книги.",
+          "text": "Скрипт удаляет идентификаторы вида AutBody_ и часть разметки некорректных ссылок; проверьте внутренние переходы и сноски.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При исходных настройках правятся также история и аннотация. Статистика перечисляет лишь часть применяемых правил; полный откат не проверен.",
           "verification": "requires_review"
         }
       ],
@@ -91546,89 +91673,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "inaccurate_description",
-          "field": "summary",
-          "previous": "Генеральная уборка.",
-          "proposed": null,
-          "reason": "Краткое описание повторяет название без объяснения действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 1210,
-              "text": "window.external.BeginUndoUnit(document,\"«Генеральная уборка»\");                               // ОТКАТ (UNDO) начало"
-            },
-            {
-              "line": 1235,
-              "text": "window.external.EndUndoUnit(document);                                             // undo конец"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "06_Чистка/02_Генеральная уборка (версия Александра Ка).js",

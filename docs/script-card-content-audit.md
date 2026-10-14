@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **161**.
+Карточек без автоматических замечаний: **162**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,43 +16,43 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **335**. Исполняемый код не изменён.
+Изменено карточек: **336**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 299
-- `generic_usage`: 280
-- `inaccurate_description`: 566
+- `false_warning`: 300
+- `generic_usage`: 281
+- `inaccurate_description`: 568
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 286
+- `incorrect_dependency`: 287
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 283
+- `incorrect_scope`: 284
 - `incorrect_selection`: 17
-- `incorrect_setting`: 136
-- `incorrect_undo`: 279
+- `incorrect_setting`: 137
+- `incorrect_undo`: 280
 - `incorrect_version`: 5
-- `uncertain_attribution`: 8
+- `uncertain_attribution`: 9
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 10
+- `attributionClarified`: 11
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 162
+- `dependenciesVerified`: 163
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 278
-- `scopeClarified`: 264
-- `serviceSettingsRemoved`: 150
-- `settingsClarified`: 449
-- `undoDescriptionsClarified`: 271
-- `usageCorrected`: 280
-- `warningsClarified`: 211
+- `purposeClarified`: 279
+- `scopeClarified`: 265
+- `serviceSettingsRemoved`: 151
+- `settingsClarified`: 450
+- `undoDescriptionsClarified`: 272
+- `usageCorrected`: 281
+- `warningsClarified`: 212
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **174**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **175**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -349,13 +349,15 @@
 - `06_Чистка/72_Объединить разорванные абзацы (автоматически).js:2002` — Ряд общих функций проверяет переключатели обычного и ПС-режима вместе, поэтому отключение правила только для обычных соседних абзацев не всегда препятствует его срабатыванию.
 - `06_Чистка/10_Точка..js:1148` — Начало группы отмены закомментировано, но завершение группы вызывается; поведение отката и этого непарного вызова требует проверки в редакторе.
 - `06_Чистка/10_Точка..js:1277` — Выделение сворачивается, затем обрабатываются все последующие абзацы до конца книги; выбранный пользователем диапазон не ограничивает поиск.
+- `06_Чистка/01_Генеральная уборка.js:1224` — Подъём к следующему узлу не проверяет достижение fbw_body и null; на последней ветви возможен выход за пределы дерева книги или ошибка, которая оставит группу отмены открытой.
+- `06_Чистка/01_Генеральная уборка.js:1020` — Удаление идентификаторов AutBody_ может нарушить внутренние ссылки на соответствующие элементы; скрипт не проверяет входящие ссылки.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1248
-- `inaccurate_description`: 87
-- `incorrect_undo`: 190
-- `requires_review`: 419
+- `generic_usage`: 1243
+- `inaccurate_description`: 86
+- `incorrect_undo`: 189
+- `requires_review`: 418
 
 ## Границы проверки
 
