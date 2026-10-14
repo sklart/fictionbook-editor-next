@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 371,
-    "generic_usage": 966,
-    "incorrect_undo": 147,
+    "requires_review": 370,
+    "generic_usage": 957,
+    "incorrect_undo": 145,
     "inaccurate_description": 54
   },
   "reviewedChanges": [
@@ -48595,42 +48595,462 @@
         "dependenciesVerified": 1,
         "settingsClarified": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/750_Выделить (под)заголовок, содержащий форматирование.js",
+      "codeSha256": "858d38796d8b638e8c0ab273b0c2aee7564ee9b539391bf513dfde78d3dff6cd",
+      "evidence": "Строки 1-16 задают назначение и авторство; 25-53 — настройки; 68-94 фильтруют body; 96-132 ищут форматирование; 190-235 обходят абзацы, выделяют результат и закрывают группу действий. getParentBody в строках 87-93 возвращает fbw_body вместо вложенного DIV body, поэтому fbname на строке 72 всегда пуст. Внешних файлов и сети нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация по указанию в шапке"
+            }
+          ],
+          "category": "duplicate_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для обнаруженияв fb2 документах и выделения ближайшего найденного",
+          "after": "Находит следующий заголовок или подзаголовок с выбранным видом форматирования и выделяет его.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для обнаруженияв fb2 документах и выделения ближайшего найденного",
+          "after": "Начиная со следующего абзаца после позиции курсора, ищет P в документе. Подзаголовок либо заголовок раздела считается подходящим, если внутри есть жирность, курсив, зачёркивание, верхний или нижний индекс либо фрагмент кода, включённый настройками. Выделяет найденный P или весь DIV заголовка и прокручивает окно. Текст книги не изменяет. Переключатели для сносок и комментариев в текущей реализации не ограничивают область поиска.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Абзацы внутри fbw_body после текущей позиции до конца книги; настройки разделов сносок и комментариев фактически не фильтруют обход.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор перед нужным заголовком или подзаголовком и запустите поиск без выделения.",
+            "Настройками в исходном JS можно выбрать типы заголовков и форматирования. Повторный запуск продолжит поиск после выделенного элемента."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Переключатели сносок и комментариев не действуют: поиск может выделить элемент в этих разделах даже при значении 0.",
+            "Если fbw_body отсутствует, выполнение может прерваться после начала группы отмены."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Скрипт ищет и выделяет элемент, не меняя текст книги. При обычном завершении служебная группа действий закрывается; если область книги отсутствует, завершение не гарантировано."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processTITLES",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processSUBTITLES",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processSTRONG",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processEM",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processSTRIKE",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processSUP",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processSUB",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCODE",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Включать поиск в сносках: 1 — да, 0 — нет. В текущем коде переключатель не работает.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Включать поиск в комментариях: 1 — да, 0 — нет. В текущем коде переключатель не работает.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processTITLES",
+              "value": 1,
+              "expression": "1",
+              "description": "Искать заголовки разделов: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processSUBTITLES",
+              "value": 1,
+              "expression": "1",
+              "description": "Искать подзаголовки: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processSTRONG",
+              "value": 1,
+              "expression": "1",
+              "description": "Учитывать жирное начертание: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processEM",
+              "value": 1,
+              "expression": "1",
+              "description": "Учитывать курсив: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processSTRIKE",
+              "value": 1,
+              "expression": "1",
+              "description": "Учитывать зачёркивание: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processSUP",
+              "value": 1,
+              "expression": "1",
+              "description": "Учитывать верхний индекс: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processSUB",
+              "value": 1,
+              "expression": "1",
+              "description": "Учитывать нижний индекс: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            },
+            {
+              "name": "processCODE",
+              "value": 1,
+              "expression": "1",
+              "description": "Учитывать фрагменты кода: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 89,
+          "issue": "getParentBody возвращает корневой DIV fbw_body, а не ближайший DIV body. Его fbname обычно пуст, поэтому processNotesSection и processCommentsSection не работают: сноски и комментарии всегда проходят фильтр."
+        },
+        {
+          "line": 205,
+          "issue": "После BeginUndoUnit скрипт вызывает fbwBody.contains(ptr) без проверки fbwBody на null; при отсутствии корневого элемента ошибка оставит группу действий незавершённой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/755_Создать подзаголовок(-ки) из обычных выделенных абзацев.js",
+      "codeSha256": "2ed883795e8d102254443d5f2bb8b482798de50eafba893a9ab3903c1748928d",
+      "evidence": "Строки 1-14 задают назначение и авторство; 25-30 — настройку и запрещённые классы; 105-159 ставят маркеры и проверяют начало/конец диапазона; 161-205 собирают и фильтруют P; 208-236 заменяют каждый P, не удаляя пустые строки. Внешних файлов и сети нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "реализация по указанию в шапке"
+            }
+          ],
+          "category": "duplicate_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для разметки подзаголовков в fb2 документе из обычных абзацев.",
+          "after": "Преобразует обычные абзацы под курсором или в выделении в отдельные подзаголовки.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для разметки подзаголовков в fb2 документе из обычных абзацев.",
+          "after": "Вставляет временные маркеры в начало и конец диапазона, собирает пересечённые абзацы P и отклоняет обработку при непустых абзацах внутри заголовка, цитаты, стиха, таблицы, аннотации, эпиграфа или истории. Остальные абзацы заменяет на новые P с классом subtitle, сохраняя их HTML. При исходной настройке 0 пустые строки оставляет; при 1 также превращает их в подзаголовки, вопреки пояснению об удалении. Работает и с одним курсором, и с выделением.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+          "after": "Абзац под курсором или полные абзацы, пересечённые выделением; обход может затронуть абзацы между маркерами вне ожидаемой области при нарушенной структуре.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": true,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Поставьте курсор в обычный абзац либо выделите один или несколько абзацев и запустите команду.",
+            "Проверьте, какие абзацы получили класс subtitle. При значении removeEmptyLines=1 пустые строки не удаляются, а становятся подзаголовками."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Параметр removeEmptyLines=1 не удаляет пустые строки: код размечает их как подзаголовки.",
+            "Обход к следующему абзацу не ограничен концом книги и может завершиться ошибкой после начала группы отмены, если конечный маркер не найден."
+          ],
+          "category": "generic_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Все явные досрочные выходы после начала обработки закрывают группу отмены. Если обход абзацев завершится исключением, закрытие группы не гарантировано; проверьте результат перед сохранением."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "removeEmptyLines",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет (оставляем как есть), 1 - да, удаляем",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "removeEmptyLines",
+              "value": 0,
+              "expression": "0",
+              "description": "Обработка пустых строк: 0 — оставить, 1 — преобразовать в подзаголовки (ошибка текущей реализации, удаления нет).",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 212,
+          "issue": "При removeEmptyLines=1 пустые P не пропускаются и далее заменяются на P.subtitle; обещанное удаление пустых строк не выполняется."
+        },
+        {
+          "line": 90,
+          "issue": "getNextNode поднимается по parentNode без проверки конца fbw_body или null. Если конечный маркер не найден при сборе диапазона, обход может обратиться к nextSibling у null после BeginUndoUnit."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsClarified": 1,
+        "attributionClarified": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 661,
-    "generic_usage": 349,
+    "inaccurate_description": 663,
+    "generic_usage": 351,
     "false_warning": 319,
-    "incorrect_setting": 181,
-    "incorrect_scope": 356,
-    "incorrect_undo": 348,
+    "incorrect_setting": 183,
+    "incorrect_scope": 358,
+    "incorrect_undo": 350,
     "uncertain_attribution": 54,
-    "generic_summary": 48,
-    "incorrect_dependency": 364,
+    "generic_summary": 50,
+    "incorrect_dependency": 366,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
     "incorrect_effect": 2,
-    "generic_warning": 49,
+    "generic_warning": 50,
     "incorrect_attribution": 42,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 31,
+    "incorrect_selection": 33,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
-    "inaccurate_summary": 1
+    "inaccurate_summary": 1,
+    "duplicate_attribution": 2,
+    "missing_warning": 1
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 340,
-    "usageCorrected": 349,
-    "purposeClarified": 347,
-    "warningsClarified": 281,
-    "scopeClarified": 333,
-    "settingsClarified": 495,
-    "attributionClarified": 48,
-    "dependenciesVerified": 231,
+    "undoDescriptionsClarified": 342,
+    "usageCorrected": 351,
+    "purposeClarified": 349,
+    "warningsClarified": 283,
+    "scopeClarified": 335,
+    "settingsClarified": 497,
+    "attributionClarified": 50,
+    "dependenciesVerified": 233,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -156864,109 +157284,108 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить (под)заголовок, содержащий форматирование",
-        "summary": "Скрипт предназначен для обнаруженияв fb2 документах и выделения ближайшего найденного",
-        "description": "Скрипт предназначен для обнаруженияв fb2 документах и выделения ближайшего найденного",
+        "summary": "Находит следующий заголовок или подзаголовок с выбранным видом форматирования и выделяет его.",
+        "description": "Начиная со следующего абзаца после позиции курсора, ищет P в документе. Подзаголовок либо заголовок раздела считается подходящим, если внутри есть жирность, курсив, зачёркивание, верхний или нижний индекс либо фрагмент кода, включённый настройками. Выделяет найденный P или весь DIV заголовка и прокручивает окно. Текст книги не изменяет. Переключатели для сносок и комментариев в текущей реализации не ограничивают область поиска.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация по указанию в шапке"
           }
         ],
         "version": "1.4",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Абзацы внутри fbw_body после текущей позиции до конца книги; настройки разделов сносок и комментариев фактически не фильтруют обход.",
         "modifiesDocument": false,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор перед нужным заголовком или подзаголовком и запустите поиск без выделения.",
+          "Настройками в исходном JS можно выбрать типы заголовков и форматирования. Повторный запуск продолжит поиск после выделенного элемента."
         ],
-        "warnings": [],
+        "warnings": [
+          "Переключатели сносок и комментариев не действуют: поиск может выделить элемент в этих разделах даже при значении 0.",
+          "Если fbw_body отсутствует, выполнение может прерваться после начала группы отмены."
+        ],
         "settings": [
           {
             "name": "processNotesSection",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать поиск в сносках: 1 — да, 0 — нет. В текущем коде переключатель не работает.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processCommentsSection",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать поиск в комментариях: 1 — да, 0 — нет. В текущем коде переключатель не работает.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processTITLES",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Искать заголовки разделов: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processSUBTITLES",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Искать подзаголовки: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processSTRONG",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Учитывать жирное начертание: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processEM",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Учитывать курсив: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processSTRIKE",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Учитывать зачёркивание: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processSUP",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Учитывать верхний индекс: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processSUB",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Учитывать нижний индекс: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           },
           {
             "name": "processCODE",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Учитывать фрагменты кода: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Скрипт ищет и выделяет элемент, не меняя текст книги. При обычном завершении служебная группа действий закрывается; если область книги отсутствует, завершение не гарантировано."
         },
         "examples": null,
         "tags": [
@@ -156977,38 +157396,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 318,
+            "line": 317,
             "text": "window.external.BeginUndoUnit(document, undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 356,
+            "line": 355,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 297,
+            "line": 296,
+            "text": "var selection = document.selection;"
+          },
+          {
+            "line": 296,
             "text": "var selection = document.selection;"
           },
           {
             "line": 297,
-            "text": "var selection = document.selection;"
-          },
-          {
-            "line": 298,
             "text": "if (selection) {"
           },
           {
-            "line": 299,
+            "line": 298,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 275,
+            "line": 274,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           }
         ],
@@ -157019,111 +157438,111 @@
         "file": [],
         "return": [
           {
-            "line": 191,
+            "line": 190,
             "text": "if (!bodyElement) return false;"
           },
           {
-            "line": 196,
+            "line": 195,
             "text": "if (fbname == \"\") return true;"
           },
           {
-            "line": 199,
+            "line": 198,
             "text": "if (fbname == \"notes\" && processNotesSection == 1) return true;"
           },
           {
-            "line": 202,
+            "line": 201,
             "text": "if (fbname == \"comments\" && processCommentsSection == 1) return true;"
           },
           {
-            "line": 204,
+            "line": 203,
             "text": "return false;"
           },
           {
-            "line": 211,
+            "line": 210,
             "text": "return element;"
           },
           {
-            "line": 214,
+            "line": 213,
             "text": "return null;"
           },
           {
-            "line": 219,
+            "line": 218,
             "text": "if (!element) return false;"
           },
           {
-            "line": 229,
+            "line": 228,
             "text": "if (processSTRONG == 1 && nodeName == \"STRONG\") return true;"
           },
           {
-            "line": 230,
+            "line": 229,
             "text": "if (processEM == 1 && nodeName == \"EM\") return true;"
           },
           {
-            "line": 231,
+            "line": 230,
             "text": "if (processSTRIKE == 1 && nodeName == \"STRIKE\") return true;"
           },
           {
-            "line": 232,
+            "line": 231,
             "text": "if (processSUP == 1 && nodeName == \"SUP\") return true;"
           },
           {
-            "line": 233,
+            "line": 232,
             "text": "if (processSUB == 1 && nodeName == \"SUB\") return true;"
           },
           {
-            "line": 234,
+            "line": 233,
             "text": "if (processCODE == 1 && nodeName == \"SPAN\" && className == \"code\") return true;"
           },
           {
-            "line": 236,
+            "line": 235,
             "text": "if (hasFormatting(child)) return true;"
           },
           {
-            "line": 239,
+            "line": 238,
             "text": "return false;"
           },
           {
-            "line": 245,
+            "line": 244,
             "text": "if (hasFormatting(elem1)) return true;"
           },
           {
-            "line": 251,
+            "line": 250,
             "text": "if (titleDiv && hasFormatting(titleDiv)) return true;"
           },
           {
-            "line": 253,
+            "line": 252,
             "text": "return false;"
           },
           {
-            "line": 258,
+            "line": 257,
             "text": "if (elem2.nodeName == \"DIV\" && elem2.className == nameOfClass) return true;"
           },
           {
-            "line": 261,
+            "line": 260,
             "text": "return false;"
           },
           {
-            "line": 266,
+            "line": 265,
             "text": "if (elem3.nodeName == \"DIV\" && elem3.className == nameOfClass) return elem3;"
           },
           {
-            "line": 269,
+            "line": 268,
             "text": "return null;"
           },
           {
-            "line": 275,
+            "line": 274,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi,\"\"));"
           },
           {
-            "line": 286,
+            "line": 285,
             "text": "return el;"
           },
           {
-            "line": 293,
+            "line": 292,
             "text": "return el;"
           },
           {
-            "line": 315,
+            "line": 314,
             "text": "return;"
           }
         ]
@@ -157135,17 +157554,17 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 147,
+              "line": 146,
               "text": "var processNotesSection = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 147,
+              "line": 146,
               "text": "var processNotesSection = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 199,
+              "line": 198,
               "text": "if (fbname == \"notes\" && processNotesSection == 1) return true;"
             }
           ],
@@ -157156,17 +157575,17 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 150,
+              "line": 149,
               "text": "var processCommentsSection = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 150,
+              "line": 149,
               "text": "var processCommentsSection = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 202,
+              "line": 201,
               "text": "if (fbname == \"comments\" && processCommentsSection == 1) return true;"
             }
           ],
@@ -157177,21 +157596,21 @@
           "name": "processTITLES",
           "declarations": [
             {
-              "line": 153,
+              "line": 152,
               "text": "var processTITLES = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 153,
+              "line": 152,
               "text": "var processTITLES = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 248,
+              "line": 247,
               "text": "if (processTITLES == 1 && hasAmongParents(elem1, \"title\")) {"
             },
             {
-              "line": 340,
+              "line": 339,
               "text": "if (processTITLES == 1 && hasAmongParents(ptr, \"title\")) {"
             }
           ],
@@ -157202,17 +157621,17 @@
           "name": "processSUBTITLES",
           "declarations": [
             {
-              "line": 156,
+              "line": 155,
               "text": "var processSUBTITLES = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 156,
+              "line": 155,
               "text": "var processSUBTITLES = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 244,
+              "line": 243,
               "text": "if (processSUBTITLES == 1 && elem1.className == \"subtitle\") {"
             }
           ],
@@ -157223,17 +157642,17 @@
           "name": "processSTRONG",
           "declarations": [
             {
-              "line": 159,
+              "line": 158,
               "text": "var processSTRONG = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 159,
+              "line": 158,
               "text": "var processSTRONG = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 229,
+              "line": 228,
               "text": "if (processSTRONG == 1 && nodeName == \"STRONG\") return true;"
             }
           ],
@@ -157244,17 +157663,17 @@
           "name": "processEM",
           "declarations": [
             {
-              "line": 162,
+              "line": 161,
               "text": "var processEM = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 162,
+              "line": 161,
               "text": "var processEM = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 230,
+              "line": 229,
               "text": "if (processEM == 1 && nodeName == \"EM\") return true;"
             }
           ],
@@ -157265,17 +157684,17 @@
           "name": "processSTRIKE",
           "declarations": [
             {
-              "line": 165,
+              "line": 164,
               "text": "var processSTRIKE = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 165,
+              "line": 164,
               "text": "var processSTRIKE = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 231,
+              "line": 230,
               "text": "if (processSTRIKE == 1 && nodeName == \"STRIKE\") return true;"
             }
           ],
@@ -157286,17 +157705,17 @@
           "name": "processSUP",
           "declarations": [
             {
-              "line": 168,
+              "line": 167,
               "text": "var processSUP = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 168,
+              "line": 167,
               "text": "var processSUP = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 232,
+              "line": 231,
               "text": "if (processSUP == 1 && nodeName == \"SUP\") return true;"
             }
           ],
@@ -157307,17 +157726,17 @@
           "name": "processSUB",
           "declarations": [
             {
-              "line": 171,
+              "line": 170,
               "text": "var processSUB = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 171,
+              "line": 170,
               "text": "var processSUB = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 233,
+              "line": 232,
               "text": "if (processSUB == 1 && nodeName == \"SUB\") return true;"
             }
           ],
@@ -157328,17 +157747,17 @@
           "name": "processCODE",
           "declarations": [
             {
-              "line": 174,
+              "line": 173,
               "text": "var processCODE = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 174,
+              "line": 173,
               "text": "var processCODE = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 234,
+              "line": 233,
               "text": "if (processCODE == 1 && nodeName == \"SPAN\" && className == \"code\") return true;"
             }
           ],
@@ -157348,23 +157767,32 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 123,
+          "line": 122,
           "text": "// version 1.4"
         },
         {
-          "line": 137,
+          "line": 136,
           "text": "// version 1.4, 01.04.2026"
         },
         {
-          "line": 181,
+          "line": 180,
           "text": "var version = \"1.4\";"
         },
         {
-          "line": 307,
+          "line": 306,
           "text": "var fullMsg = scriptName + \"\\nver. \" + version + \"\\n\\n\" + msg;"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Переключатели сносок и комментариев не действуют: поиск может выделить элемент в этих разделах даже при значении 0.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если fbw_body отсутствует, выполнение может прерваться после начала группы отмены.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -157382,62 +157810,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 318,
-              "text": "window.external.BeginUndoUnit(document, undoMsg);"
-            },
-            {
-              "line": 356,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/755_Создать подзаголовок(-ки) из обычных выделенных абзацев.js",
@@ -157449,50 +157822,45 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Создать подзаголовок(-ки) из обычных выделенных абзацев",
-        "summary": "Скрипт предназначен для разметки подзаголовков в fb2 документе из обычных абзацев.",
-        "description": "Скрипт предназначен для разметки подзаголовков в fb2 документе из обычных абзацев.",
+        "summary": "Преобразует обычные абзацы под курсором или в выделении в отдельные подзаголовки.",
+        "description": "Вставляет временные маркеры в начало и конец диапазона, собирает пересечённые абзацы P и отклоняет обработку при непустых абзацах внутри заголовка, цитаты, стиха, таблицы, аннотации, эпиграфа или истории. Остальные абзацы заменяет на новые P с классом subtitle, сохраняя их HTML. При исходной настройке 0 пустые строки оставляет; при 1 также превращает их в подзаголовки, вопреки пояснению об удалении. Работает и с одним курсором, и с выделением.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "реализация по указанию в шапке"
           }
         ],
         "version": "1.2",
-        "scope": "Выделенный диапазон либо полные абзацы, которые он пересекает; см. описание варианта.",
+        "scope": "Абзац под курсором или полные абзацы, пересечённые выделением; обход может затронуть абзацы между маркерами вне ожидаемой области при нарушенной структуре.",
         "modifiesDocument": true,
-        "requiresSelection": true,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Подготовьте выделение, описанное в scope и условиях запуска; некоторые команды работают с целыми абзацами.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Поставьте курсор в обычный абзац либо выделите один или несколько абзацев и запустите команду.",
+          "Проверьте, какие абзацы получили класс subtitle. При значении removeEmptyLines=1 пустые строки не удаляются, а становятся подзаголовками."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Параметр removeEmptyLines=1 не удаляет пустые строки: код размечает их как подзаголовки.",
+          "Обход к следующему абзацу не ограничен концом книги и может завершиться ошибкой после начала группы отмены, если конечный маркер не найден."
         ],
         "settings": [
           {
             "name": "removeEmptyLines",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет (оставляем как есть), 1 - да, удаляем",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обработка пустых строк: 0 — оставить, 1 — преобразовать в подзаголовки (ошибка текущей реализации, удаления нет).",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Все явные досрочные выходы после начала обработки закрывают группу отмены. Если обход абзацев завершится исключением, закрытие группы не гарантировано; проверьте результат перед сохранением."
         },
         "examples": null,
         "tags": [
@@ -157503,62 +157871,62 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 174,
+            "line": 169,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 200,
+            "line": 195,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 218,
+            "line": 213,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 266,
+            "line": 261,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 298,
+            "line": 293,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 168,
+            "line": 163,
             "text": "var tr = document.selection.createRange();"
           },
           {
-            "line": 168,
+            "line": 163,
             "text": "var tr = document.selection.createRange();"
           },
           {
-            "line": 182,
+            "line": 177,
             "text": "var trStart = document.selection.createRange();"
           },
           {
-            "line": 182,
+            "line": 177,
             "text": "var trStart = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 127,
+            "line": 122,
             "text": "var text = p.innerHTML.replace(reTags, \"\");"
           },
           {
-            "line": 283,
+            "line": 278,
             "text": "var newP = document.createElement(\"P\");"
           },
           {
-            "line": 287,
+            "line": 282,
             "text": "newP.innerHTML = p.innerHTML;"
           },
           {
-            "line": 287,
+            "line": 282,
             "text": "newP.innerHTML = p.innerHTML;"
           }
         ],
@@ -157569,39 +157937,39 @@
         "file": [],
         "return": [
           {
-            "line": 128,
+            "line": 123,
             "text": "return reEmpty.test(text);"
           },
           {
-            "line": 138,
+            "line": 133,
             "text": "return true;"
           },
           {
-            "line": 144,
+            "line": 139,
             "text": "return false;"
           },
           {
-            "line": 156,
+            "line": 151,
             "text": "return el;"
           },
           {
-            "line": 164,
+            "line": 159,
             "text": "return el;"
           },
           {
-            "line": 171,
+            "line": 166,
             "text": "return;"
           },
           {
-            "line": 201,
+            "line": 196,
             "text": "return;"
           },
           {
-            "line": 219,
+            "line": 214,
             "text": "return;"
           },
           {
-            "line": 267,
+            "line": 262,
             "text": "return;"
           }
         ]
@@ -157613,21 +157981,21 @@
           "name": "removeEmptyLines",
           "declarations": [
             {
-              "line": 89,
+              "line": 84,
               "text": "var removeEmptyLines = 0;"
             }
           ],
           "uses": [
             {
-              "line": 89,
+              "line": 84,
               "text": "var removeEmptyLines = 0;"
             },
             {
-              "line": 250,
+              "line": 245,
               "text": "if (removeEmptyLines == 1 || !isEmptyParagraph(psArray[i])) {"
             },
             {
-              "line": 275,
+              "line": 270,
               "text": "if (removeEmptyLines == 0 && isEmptyParagraph(p)) {"
             }
           ],
@@ -157637,25 +158005,29 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 64,
+          "line": 59,
           "text": "// version 1.2"
         },
         {
-          "line": 76,
+          "line": 71,
           "text": "// version 1.2, 06.04.2026"
         },
         {
-          "line": 81,
+          "line": 76,
           "text": "var version = \"1.2\";"
         },
         {
-          "line": 101,
+          "line": 96,
           "text": "msg += \"ver. \" + version + \"\\n\\n\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Параметр removeEmptyLines=1 не удаляет пустые строки: код размечает их как подзаголовки.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Обход к следующему абзацу не ограничен концом книги и может завершиться ошибкой после начала группы отмены, если конечный маркер не найден.",
           "verification": "requires_review"
         }
       ],
@@ -157678,118 +158050,34 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 174,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 200,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 218,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 266,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 298,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Все явные досрочные выходы после начала обработки закрывают группу отмены. Если обход абзацев завершится исключением, закрытие группы не гарантировано; проверьте результат перед сохранением."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 174,
+              "line": 169,
               "text": "window.external.BeginUndoUnit(document, scriptName);"
             },
             {
-              "line": 201,
+              "line": 196,
               "text": "return;"
             },
             {
-              "line": 219,
+              "line": 214,
               "text": "return;"
             },
             {
-              "line": 267,
+              "line": 262,
               "text": "return;"
             },
             {
-              "line": 298,
+              "line": 293,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]

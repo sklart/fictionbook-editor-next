@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **206**.
+Карточек без автоматических замечаний: **207**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,50 +16,52 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **403**. Исполняемый код не изменён.
+Изменено карточек: **405**. Исполняемый код не изменён.
 
+- `duplicate_attribution`: 2
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 48
-- `generic_usage`: 349
-- `generic_warning`: 49
-- `inaccurate_description`: 661
+- `generic_summary`: 50
+- `generic_usage`: 351
+- `generic_warning`: 50
+- `inaccurate_description`: 663
 - `inaccurate_summary`: 1
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 364
+- `incorrect_dependency`: 366
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 356
-- `incorrect_selection`: 31
-- `incorrect_setting`: 181
-- `incorrect_undo`: 348
+- `incorrect_scope`: 358
+- `incorrect_selection`: 33
+- `incorrect_setting`: 183
+- `incorrect_undo`: 350
 - `incorrect_version`: 8
+- `missing_warning`: 1
 - `uncertain_attribution`: 54
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 48
+- `attributionClarified`: 50
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 231
+- `dependenciesVerified`: 233
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 347
-- `scopeClarified`: 333
+- `purposeClarified`: 349
+- `scopeClarified`: 335
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
-- `settingsClarified`: 495
-- `undoDescriptionsClarified`: 340
-- `usageCorrected`: 349
+- `settingsClarified`: 497
+- `undoDescriptionsClarified`: 342
+- `usageCorrected`: 351
 - `versionCorrected`: 3
-- `warningsClarified`: 281
+- `warningsClarified`: 283
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **243**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **245**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -523,13 +525,17 @@
 - `13_Заголовки, подзаголовки, пустые строки/590_Расформатировать все заголовки_Комбо.js:173` — Если элемент userCmd отсутствует, функция выходит после переопределения window.Run в строке 170 и не восстанавливает прежний обработчик; дальнейшие запуски могут работать неверно.
 - `13_Заголовки, подзаголовки, пустые строки/705_Вставить пустую строку после структурного элемента или картинки.js:213` — Выражение window.external.inflateBlock(emptyLine) = true пытается присвоить значение результату вызова. Оно выбрасывает ошибку выполнения до вставки P и до EndUndoUnit; команда в текущей редакции не выполняет заявленную операцию.
 - `13_Заголовки, подзаголовки, пустые строки/705_Вставить пустую строку после структурного элемента или картинки.js:189` — Цикл пропускает любой текстовый узел, а не только пробельные. При значимом тексте между элементами проверка ошибочно считает следующий пустой P непосредственно соседним и не вставляет строку.
+- `13_Заголовки, подзаголовки, пустые строки/750_Выделить (под)заголовок, содержащий форматирование.js:89` — getParentBody возвращает корневой DIV fbw_body, а не ближайший DIV body. Его fbname обычно пуст, поэтому processNotesSection и processCommentsSection не работают: сноски и комментарии всегда проходят фильтр.
+- `13_Заголовки, подзаголовки, пустые строки/750_Выделить (под)заголовок, содержащий форматирование.js:205` — После BeginUndoUnit скрипт вызывает fbwBody.contains(ptr) без проверки fbwBody на null; при отсутствии корневого элемента ошибка оставит группу действий незавершённой.
+- `13_Заголовки, подзаголовки, пустые строки/755_Создать подзаголовок(-ки) из обычных выделенных абзацев.js:212` — При removeEmptyLines=1 пустые P не пропускаются и далее заменяются на P.subtitle; обещанное удаление пустых строк не выполняется.
+- `13_Заголовки, подзаголовки, пустые строки/755_Создать подзаголовок(-ки) из обычных выделенных абзацев.js:90` — getNextNode поднимается по parentNode без проверки конца fbw_body или null. Если конечный маркер не найден при сборе диапазона, обход может обратиться к nextSibling у null после BeginUndoUnit.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 966
+- `generic_usage`: 957
 - `inaccurate_description`: 54
-- `incorrect_undo`: 147
-- `requires_review`: 371
+- `incorrect_undo`: 145
+- `requires_review`: 370
 
 ## Границы проверки
 
