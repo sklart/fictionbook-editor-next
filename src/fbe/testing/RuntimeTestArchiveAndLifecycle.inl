@@ -635,8 +635,22 @@
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
 	{
 		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");
+		auto sourceText = [&]() {
+			const sptr_t length = m_source.SendMessage(SCI_GETLENGTH);
+			std::vector<char> text(static_cast<size_t>(length) + 1);
+			m_source.SendMessage(SCI_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()));
+			return text;
+		};
+		const std::vector<char> originalText = sourceText();
+		const sptr_t originalPosition = m_source.SendMessage(SCI_GETCURRENTPOS);
+		const sptr_t originalAnchor = m_source.SendMessage(SCI_GETANCHOR);
+		const sptr_t originalUndo = m_source.SendMessage(SCI_CANUNDO);
 		if (!verifyOnly)
 			SendMessage(WM_COMMAND, MAKEWPARAM(ID_TOOLS_OPTIONS, 0), 0);
+		const bool sourceUnchanged = originalText == sourceText() &&
+			originalPosition == m_source.SendMessage(SCI_GETCURRENTPOS) &&
+			originalAnchor == m_source.SendMessage(SCI_GETANCHOR) &&
+			originalUndo == m_source.SendMessage(SCI_CANUNDO);
 		const bool layoutPassed = verifyOnly ||
 			::GetPropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED") == reinterpret_cast<HANDLE>(1);
 		::RemovePropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED");
@@ -656,9 +670,9 @@
 			m_source.SendMessage(SCI_GETCARETFORE) == static_cast<sptr_t>(ThemeManager::IsHighContrast() ?
 				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
-		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied, caretPersisted, caretApplied, initialSystem);
+		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(persisted && applied && layoutPassed && caretPersisted && caretApplied ? 0 : 1);
+		::PostQuitMessage(persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"spell-dialog-layout-runtime"))
@@ -1470,10 +1484,15 @@
 			_Settings.SetColorFG(foreground); _Settings.SetColorBG(background);
 			CSettingsEditorPage page;
 			const HWND window = page.Create(m_hWnd);
+			const bool lowContrast = EditorBackgrounds::HasLowTextContrast(expectedForeground, expectedBackground);
+			const CString expectedTitle = FbeLoadRuntimeStringByKey(
+				lowContrast ? L"fbe.settings.editor.low_contrast" : L"fbe.settings.editor.preview",
+				lowContrast ? L"Preview — low text contrast" : L"Preview");
 			const bool previewAndSwatches = window != NULL &&
 				page.m_backgroundPreview.m_foreground == expectedForeground && page.m_backgroundPreview.m_background == expectedBackground &&
 				(foreground != CLR_DEFAULT || page.m_foreground.GetDefaultColor() == expectedForeground) &&
-				(background != CLR_DEFAULT || page.m_background.GetDefaultColor() == expectedBackground);
+				(background != CLR_DEFAULT || page.m_background.GetDefaultColor() == expectedBackground) &&
+				U::GetWindowText(page.GetDlgItem(IDC_EDITOR_PREVIEW_GROUP)) == expectedTitle;
 			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
 			m_doc->ApplyConfChanges();
 			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
@@ -1488,9 +1507,9 @@
 			page.DestroyWindow();
 		};
 		verifyAutomaticPair("dark-white-background-auto-text", INTERFACE_THEME_DARK, L"none", L"", CLR_DEFAULT, RGB(255, 255, 255), RGB(0, 0, 0), RGB(255, 255, 255));
-		verifyAutomaticPair("dark-black-text-auto-background", INTERFACE_THEME_DARK, L"none", L"", RGB(0, 0, 0), CLR_DEFAULT, RGB(0, 0, 0), RGB(255, 255, 255));
+		verifyAutomaticPair("dark-black-text-auto-background", INTERFACE_THEME_DARK, L"none", L"", RGB(0, 0, 0), CLR_DEFAULT, RGB(0, 0, 0), RGB(32, 32, 32));
 		verifyAutomaticPair("light-black-background-auto-text", INTERFACE_THEME_LIGHT, L"none", L"", CLR_DEFAULT, RGB(0, 0, 0), RGB(255, 255, 255), RGB(0, 0, 0));
-		verifyAutomaticPair("light-white-text-auto-background", INTERFACE_THEME_LIGHT, L"none", L"", RGB(255, 255, 255), CLR_DEFAULT, RGB(255, 255, 255), RGB(0, 0, 0));
+		verifyAutomaticPair("light-white-text-auto-background", INTERFACE_THEME_LIGHT, L"none", L"", RGB(255, 255, 255), CLR_DEFAULT, RGB(255, 255, 255), RGB(255, 255, 255));
 		verifyAutomaticPair("explicit-body-colors", INTERFACE_THEME_DARK, L"none", L"", RGB(12, 34, 56), RGB(210, 190, 170), RGB(12, 34, 56), RGB(210, 190, 170));
 		verifyAutomaticPair("builtin-background-automatic", INTERFACE_THEME_DARK, L"builtin", L"12_graphite_dark", CLR_DEFAULT, CLR_DEFAULT, RGB(232, 232, 232), RGB(61, 61, 60));
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written);

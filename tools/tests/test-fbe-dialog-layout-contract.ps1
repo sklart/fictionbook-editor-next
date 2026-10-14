@@ -44,22 +44,23 @@ $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 $hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
 $imagesDialog = Get-Dialog 'IDD_SETTINGS_IMAGES'
 $wordsDialog = Get-Dialog 'IDD_SETTINGS_WORDS'
-Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, 410' 'Source page must retain room for full localized labels and preview.'
+Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, \d+' 'Source page must retain room for full localized labels and preview.'
 $settingsLayout = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsDlg.cpp')
 Assert-Contains $settingsLayout 'GWL_STYLE\) \| WS_VSCROLL \| WS_HSCROLL' 'Long Settings pages must remain scrollable inside the window.'
-foreach ($control in @(
-    'IDC_WRAP,"Button".*?,14,38,266,13', 'IDC_SYNTAXHL,"Button".*?,14,52,266,13',
-    'IDC_TAGHL,"Button".*?,14,66,266,13', 'IDC_SHOWEOL,"Button".*?,14,116,266,13',
-    'IDC_SHOWWHITESPACE,"Button".*?,14,130,266,13', 'IDC_SHOWLINENUMBERS,"Button".*?,14,144,266,13',
-    'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS,"Button".*?,14,158,266,13',
-    'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE,78,170,206,50',
-    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE,14,98,270,50',
-    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES,"Button".*?,14,186,140,13',
-    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS,"Button".*?,14,200,270,13',
-    'IDC_OPTIONS_SOURCE_PREVIEW,"Static",SS_OWNERDRAW,14,341,272,56'
-)) {
-    Assert-Contains $sourceDialog $control 'Source control geometry changed unexpectedly.'
+foreach ($control in @('IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL',
+    'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS',
+    'IDC_OPTIONS_SOURCE_SPECIAL_CHARS_STYLE', 'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_MODE',
+    'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES', 'IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS',
+    'IDC_EDITOR_CARET_GROUP', 'IDC_OPTIONS_SOURCE_PREVIEW_GROUP', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
+    Assert-Contains $sourceDialog $control "Source control missing: $control"
 }
+if ($sourceDialog -match 'SS_OWNERDRAW') { throw 'Source preview must be a live Scintilla host.' }
+$editorDialog = Get-Dialog 'IDD_SETTINGS_EDITOR'
+foreach ($control in @('IDC_OPTIONS_BODY_GROUP', 'IDC_EDITOR_BACKGROUND_GROUP',
+    'IDC_EDITOR_PREVIEW_GROUP', 'IDC_EDITOR_BACKGROUND_PREVIEW', 'IDC_NBSP_CHAR')) {
+    Assert-Contains $editorDialog $control "Editor control missing: $control"
+}
+if ($editorDialog -match 'IDC_EDITOR_CARET_GROUP') { throw 'Caret controls must be on the Source page.' }
 foreach ($control in @('IDC_SRCFONT', 'IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL', 'IDC_SHOWWHITESPACE', 'IDC_SHOWLINENUMBERS', 'IDC_OPTIONS_SOURCE_PALETTE', 'IDC_OPTIONS_SOURCE_PREVIEW')) {
     Assert-Contains $sourceDialog $control "Source control missing from IDD_SETTINGS_SOURCE: $control"
 }

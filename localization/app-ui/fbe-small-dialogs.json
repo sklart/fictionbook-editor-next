@@ -42,24 +42,30 @@
   ],
   "resourceType": "DIALOGEX",
   "strings": {
-    "fbe.settings.caret.group": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Text cursor (XML code)","ru-RU":"Текстовый курсор (режим Код)","uk-UA":"Текстовий курсор (режим Код)","de-DE":"Textcursor (XML-Code)","fr-FR":"Curseur de texte (code XML)","es-ES":"Cursor de texto (código XML)","it-IT":"Cursore di testo (codice XML)","pl-PL":"Kursor tekstowy (kod XML)","pt-PT":"Cursor de texto (código XML)","nl-NL":"Tekstcursor (XML-code)","cs-CZ":"Textový kurzor (kód XML)","bg-BG":"Текстов курсор (XML код)"}},
-    "fbe.settings.caret.note": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Design uses the Windows cursor. These settings apply to XML code.","ru-RU":"В режиме «Дизайн» используется курсор Windows. Настройки действуют в режиме «Код».","uk-UA":"У режимі «Дизайн» використовується курсор Windows. Параметри діють у режимі «Код».","de-DE":"Im Designmodus gilt der Windows-Cursor. Diese Einstellungen gelten für XML-Code.","fr-FR":"Le mode Design utilise le curseur Windows. Ces réglages s'appliquent au code XML.","es-ES":"Diseño usa el cursor de Windows. Estos ajustes se aplican al código XML.","it-IT":"Il modo Design usa il cursore di Windows. Queste impostazioni valgono per il codice XML.","pl-PL":"Tryb Projekt używa kursora Windows. Te ustawienia dotyczą kodu XML.","pt-PT":"O modo Design usa o cursor do Windows. Estas opções aplicam-se ao código XML.","nl-NL":"Ontwerp gebruikt de Windows-cursor. Deze instellingen gelden voor XML-code.","cs-CZ":"Režim Návrh používá kurzor Windows. Toto nastavení platí pro kód XML.","bg-BG":"Режимът Дизайн използва курсора на Windows. Тези настройки са за XML код."}},
-    "fbe.settings.caret.mode": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Mode:","ru-RU":"Режим:","uk-UA":"Режим:","de-DE":"Modus:","fr-FR":"Mode :","es-ES":"Modo:","it-IT":"Modalità:","pl-PL":"Tryb:","pt-PT":"Modo:","nl-NL":"Modus:","cs-CZ":"Režim:","bg-BG":"Режим:"}},
-    "fbe.settings.caret.width": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Width:","ru-RU":"Толщина:","uk-UA":"Товщина:","de-DE":"Breite:","fr-FR":"Épaisseur :","es-ES":"Grosor:","it-IT":"Spessore:","pl-PL":"Grubość:","pt-PT":"Espessura:","nl-NL":"Breedte:","cs-CZ":"Šířka:","bg-BG":"Дебелина:"}},
-    "fbe.settings.caret.color": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Color:","ru-RU":"Цвет:","uk-UA":"Колір:","de-DE":"Farbe:","fr-FR":"Couleur :","es-ES":"Color:","it-IT":"Colore:","pl-PL":"Kolor:","pt-PT":"Cor:","nl-NL":"Kleur:","cs-CZ":"Barva:","bg-BG":"Цвят:"}},
-    "fbe.settings.caret.blink": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Blink:","ru-RU":"Мигание:","uk-UA":"Блимання:","de-DE":"Blinken:","fr-FR":"Clignotement :","es-ES":"Parpadeo:","it-IT":"Lampeggio:","pl-PL":"Miganie:","pt-PT":"Intermitência:","nl-NL":"Knipperen:","cs-CZ":"Blikání:","bg-BG":"Мигане:"}},
-    "fbe.settings.caret.system": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"System","ru-RU":"Системный","uk-UA":"Системний","de-DE":"System","fr-FR":"Système","es-ES":"Sistema","it-IT":"Sistema","pl-PL":"Systemowy","pt-PT":"Sistema","nl-NL":"Systeem","cs-CZ":"Systémový","bg-BG":"Системен"}},
-    "fbe.settings.caret.enhanced": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Enhanced visibility","ru-RU":"Повышенная видимость","uk-UA":"Підвищена видимість","de-DE":"Erhöhte Sichtbarkeit","fr-FR":"Visibilité renforcée","es-ES":"Mayor visibilidad","it-IT":"Visibilità aumentata","pl-PL":"Większa widoczność","pt-PT":"Visibilidade aumentada","nl-NL":"Betere zichtbaarheid","cs-CZ":"Vyšší viditelnost","bg-BG":"Повишена видимост"}},
-    "fbe.settings.caret.custom": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Custom","ru-RU":"Пользовательский","uk-UA":"Власний","de-DE":"Benutzerdefiniert","fr-FR":"Personnalisé","es-ES":"Personalizado","it-IT":"Personalizzato","pl-PL":"Niestandardowy","pt-PT":"Personalizado","nl-NL":"Aangepast","cs-CZ":"Vlastní","bg-BG":"Потребителски"}},
-    "fbe.settings.caret.auto_color": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Automatic contrast","ru-RU":"Автоматический контраст","uk-UA":"Автоматичний контраст","de-DE":"Automatischer Kontrast","fr-FR":"Contraste automatique","es-ES":"Contraste automático","it-IT":"Contrasto automatico","pl-PL":"Automatyczny kontrast","pt-PT":"Contraste automático","nl-NL":"Automatisch contrast","cs-CZ":"Automatický kontrast","bg-BG":"Автоматичен контраст"}},
-    "fbe.settings.caret.black": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Black","ru-RU":"Чёрный","uk-UA":"Чорний","de-DE":"Schwarz","fr-FR":"Noir","es-ES":"Negro","it-IT":"Nero","pl-PL":"Czarny","pt-PT":"Preto","nl-NL":"Zwart","cs-CZ":"Černá","bg-BG":"Черен"}},
-    "fbe.settings.caret.white": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"White","ru-RU":"Белый","uk-UA":"Білий","de-DE":"Weiß","fr-FR":"Blanc","es-ES":"Blanco","it-IT":"Bianco","pl-PL":"Biały","pt-PT":"Branco","nl-NL":"Wit","cs-CZ":"Bílá","bg-BG":"Бял"}},
-    "fbe.settings.caret.slow": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Slow","ru-RU":"Медленное","uk-UA":"Повільне","de-DE":"Langsam","fr-FR":"Lent","es-ES":"Lento","it-IT":"Lento","pl-PL":"Wolne","pt-PT":"Lento","nl-NL":"Langzaam","cs-CZ":"Pomalé","bg-BG":"Бавно"}},
-    "fbe.settings.caret.normal": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Normal","ru-RU":"Обычное","uk-UA":"Звичайне","de-DE":"Normal","fr-FR":"Normal","es-ES":"Normal","it-IT":"Normale","pl-PL":"Zwykłe","pt-PT":"Normal","nl-NL":"Normaal","cs-CZ":"Normální","bg-BG":"Нормално"}},
-    "fbe.settings.caret.fast": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Fast","ru-RU":"Быстрое","uk-UA":"Швидке","de-DE":"Schnell","fr-FR":"Rapide","es-ES":"Rápido","it-IT":"Veloce","pl-PL":"Szybkie","pt-PT":"Rápido","nl-NL":"Snel","cs-CZ":"Rychlé","bg-BG":"Бързо"}},
-    "fbe.settings.caret.solid": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Do not blink","ru-RU":"Не мигать","uk-UA":"Не блимати","de-DE":"Nicht blinken","fr-FR":"Ne pas clignoter","es-ES":"No parpadear","it-IT":"Non lampeggiare","pl-PL":"Bez migania","pt-PT":"Não piscar","nl-NL":"Niet knipperen","cs-CZ":"Neblikat","bg-BG":"Без мигане"}},
-    "fbe.settings.caret.preview": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Sample text","ru-RU":"Пример текста","uk-UA":"Приклад тексту","de-DE":"Beispieltext","fr-FR":"Exemple de texte","es-ES":"Texto de ejemplo","it-IT":"Testo di esempio","pl-PL":"Przykładowy tekst","pt-PT":"Texto de exemplo","nl-NL":"Voorbeeldtekst","cs-CZ":"Ukázkový text","bg-BG":"Примерен текст"}},
-    "fbe.settings.caret.custom_only": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Choose Custom mode to change width, color and blinking.","ru-RU":"Выберите пользовательский режим для настройки толщины, цвета и мигания.","uk-UA":"Виберіть власний режим для налаштування товщини, кольору та блимання.","de-DE":"Im benutzerdefinierten Modus lassen sich Breite, Farbe und Blinken ändern.","fr-FR":"Choisissez le mode personnalisé pour régler l'épaisseur, la couleur et le clignotement.","es-ES":"Elija el modo personalizado para ajustar el grosor, el color y el parpadeo.","it-IT":"Scegliere la modalità personalizzata per regolare spessore, colore e lampeggio.","pl-PL":"Wybierz tryb niestandardowy, aby zmienić grubość, kolor i miganie.","pt-PT":"Escolha o modo personalizado para alterar espessura, cor e intermitência.","nl-NL":"Kies Aangepast om breedte, kleur en knipperen te wijzigen.","cs-CZ":"Zvolte vlastní režim pro změnu šířky, barvy a blikání.","bg-BG":"Изберете потребителски режим за дебелина, цвят и мигане."}},
+    "fbe.settings.editor.font_text": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Font and text","ru-RU":"Шрифт и текст","uk-UA":"Шрифт і текст","de-DE":"Schrift und Text","fr-FR":"Police et texte","es-ES":"Fuente y texto","it-IT":"Carattere e testo","pl-PL":"Czcionka i tekst","pt-PT":"Tipo de letra e texto","nl-NL":"Lettertype en tekst","cs-CZ":"Písmo a text","bg-BG":"Шрифт и текст"}},
+    "fbe.settings.editor.nbsp_label": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Display NBSP as:","ru-RU":"Неразрывный пробел:","uk-UA":"Нерозривний пробіл:","de-DE":"Geschütztes Leerzeichen:","fr-FR":"Espace insécable :","es-ES":"Espacio indivisible:","it-IT":"Spazio unificatore:","pl-PL":"Spacja nierozdzielająca:","pt-PT":"Espaço inquebrável:","nl-NL":"Vaste spatie:","cs-CZ":"Pevná mezera:","bg-BG":"Непрекъсваем интервал:"}},
+    "fbe.settings.editor.preview": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Preview","ru-RU":"Предпросмотр","uk-UA":"Попередній перегляд","de-DE":"Vorschau","fr-FR":"Aperçu","es-ES":"Vista previa","it-IT":"Anteprima","pl-PL":"Podgląd","pt-PT":"Pré-visualização","nl-NL":"Voorbeeld","cs-CZ":"Náhled","bg-BG":"Преглед"}},
+    "fbe.settings.editor.low_contrast": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Preview — low text contrast","ru-RU":"Предпросмотр — низкий контраст текста","uk-UA":"Попередній перегляд — низький контраст тексту","de-DE":"Vorschau — geringer Textkontrast","fr-FR":"Aperçu — faible contraste du texte","es-ES":"Vista previa — bajo contraste del texto","it-IT":"Anteprima — basso contrasto del testo","pl-PL":"Podgląd — niski kontrast tekstu","pt-PT":"Pré-visualização — baixo contraste do texto","nl-NL":"Voorbeeld — laag tekstcontrast","cs-CZ":"Náhled — nízký kontrast textu","bg-BG":"Преглед — нисък контраст на текста"}},
+    "fbe.settings.editor_background.preview_spaces": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Space: A B    Non-breaking: A\u00a0B","ru-RU":"Пробел: A B    Неразрывный: A\u00a0B","uk-UA":"Пробіл: A B    Нерозривний: A\u00a0B","de-DE":"Leerzeichen: A B    Geschützt: A\u00a0B","fr-FR":"Espace : A B    Insécable : A\u00a0B","es-ES":"Espacio: A B    Indivisible: A\u00a0B","it-IT":"Spazio: A B    Unificatore: A\u00a0B","pl-PL":"Spacja: A B    Nierozdzielająca: A\u00a0B","pt-PT":"Espaço: A B    Inquebrável: A\u00a0B","nl-NL":"Spatie: A B    Vast: A\u00a0B","cs-CZ":"Mezera: A B    Pevná: A\u00a0B","bg-BG":"Интервал: A B    Непрекъсваем: A\u00a0B"}},
+    "fbe.settings.source.code_display": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Code display","ru-RU":"Отображение кода","uk-UA":"Відображення коду","de-DE":"Codeanzeige","fr-FR":"Affichage du code","es-ES":"Visualización del código","it-IT":"Visualizzazione del codice","pl-PL":"Wyświetlanie kodu","pt-PT":"Apresentação do código","nl-NL":"Codeweergave","cs-CZ":"Zobrazení kódu","bg-BG":"Показване на кода"}},
+    "fbe.settings.source.theme_highlighting": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Theme and highlighting","ru-RU":"Тема и подсветка","uk-UA":"Тема і підсвічування","de-DE":"Design und Hervorhebung","fr-FR":"Thème et coloration","es-ES":"Tema y resaltado","it-IT":"Tema ed evidenziazione","pl-PL":"Motyw i wyróżnianie","pt-PT":"Tema e realce","nl-NL":"Thema en markering","cs-CZ":"Motiv a zvýraznění","bg-BG":"Тема и оцветяване"}},
+    "fbe.settings.source.preview": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"XML preview","ru-RU":"Предпросмотр XML","uk-UA":"Попередній перегляд XML","de-DE":"XML-Vorschau","fr-FR":"Aperçu XML","es-ES":"Vista previa XML","it-IT":"Anteprima XML","pl-PL":"Podgląd XML","pt-PT":"Pré-visualização XML","nl-NL":"XML-voorbeeld","cs-CZ":"Náhled XML","bg-BG":"Преглед на XML"}},
+    "fbe.settings.caret.group": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Text cursor","ru-RU":"Текстовый курсор","uk-UA":"Текстовий курсор","de-DE":"Textcursor","fr-FR":"Curseur de texte","es-ES":"Cursor de texto","it-IT":"Cursore di testo","pl-PL":"Kursor tekstowy","pt-PT":"Cursor de texto","nl-NL":"Tekstcursor","cs-CZ":"Textový kurzor","bg-BG":"Текстов курсор"}},
+    "fbe.settings.caret.mode": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Mode:","ru-RU":"Режим:","uk-UA":"Режим:","de-DE":"Modus:","fr-FR":"Mode :","es-ES":"Modo:","it-IT":"Modalità:","pl-PL":"Tryb:","pt-PT":"Modo:","nl-NL":"Modus:","cs-CZ":"Režim:","bg-BG":"Режим:"}},
+    "fbe.settings.caret.width": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Width:","ru-RU":"Толщина:","uk-UA":"Товщина:","de-DE":"Breite:","fr-FR":"Épaisseur :","es-ES":"Grosor:","it-IT":"Spessore:","pl-PL":"Grubość:","pt-PT":"Espessura:","nl-NL":"Breedte:","cs-CZ":"Šířka:","bg-BG":"Дебелина:"}},
+    "fbe.settings.caret.color": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Color:","ru-RU":"Цвет:","uk-UA":"Колір:","de-DE":"Farbe:","fr-FR":"Couleur :","es-ES":"Color:","it-IT":"Colore:","pl-PL":"Kolor:","pt-PT":"Cor:","nl-NL":"Kleur:","cs-CZ":"Barva:","bg-BG":"Цвят:"}},
+    "fbe.settings.caret.blink": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Blink:","ru-RU":"Мигание:","uk-UA":"Блимання:","de-DE":"Blinken:","fr-FR":"Clignotement :","es-ES":"Parpadeo:","it-IT":"Lampeggio:","pl-PL":"Miganie:","pt-PT":"Intermitência:","nl-NL":"Knipperen:","cs-CZ":"Blikání:","bg-BG":"Мигане:"}},
+    "fbe.settings.caret.system": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"System","ru-RU":"Системный","uk-UA":"Системний","de-DE":"System","fr-FR":"Système","es-ES":"Sistema","it-IT":"Sistema","pl-PL":"Systemowy","pt-PT":"Sistema","nl-NL":"Systeem","cs-CZ":"Systémový","bg-BG":"Системен"}},
+    "fbe.settings.caret.enhanced": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Enhanced visibility","ru-RU":"Повышенная видимость","uk-UA":"Підвищена видимість","de-DE":"Erhöhte Sichtbarkeit","fr-FR":"Visibilité renforcée","es-ES":"Mayor visibilidad","it-IT":"Visibilità aumentata","pl-PL":"Większa widoczność","pt-PT":"Visibilidade aumentada","nl-NL":"Betere zichtbaarheid","cs-CZ":"Vyšší viditelnost","bg-BG":"Повишена видимост"}},
+    "fbe.settings.caret.custom": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Custom","ru-RU":"Пользовательский","uk-UA":"Власний","de-DE":"Benutzerdefiniert","fr-FR":"Personnalisé","es-ES":"Personalizado","it-IT":"Personalizzato","pl-PL":"Niestandardowy","pt-PT":"Personalizado","nl-NL":"Aangepast","cs-CZ":"Vlastní","bg-BG":"Потребителски"}},
+    "fbe.settings.caret.auto_color": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Automatic contrast","ru-RU":"Автоматический контраст","uk-UA":"Автоматичний контраст","de-DE":"Automatischer Kontrast","fr-FR":"Contraste automatique","es-ES":"Contraste automático","it-IT":"Contrasto automatico","pl-PL":"Automatyczny kontrast","pt-PT":"Contraste automático","nl-NL":"Automatisch contrast","cs-CZ":"Automatický kontrast","bg-BG":"Автоматичен контраст"}},
+    "fbe.settings.caret.black": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Black","ru-RU":"Чёрный","uk-UA":"Чорний","de-DE":"Schwarz","fr-FR":"Noir","es-ES":"Negro","it-IT":"Nero","pl-PL":"Czarny","pt-PT":"Preto","nl-NL":"Zwart","cs-CZ":"Černá","bg-BG":"Черен"}},
+    "fbe.settings.caret.white": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"White","ru-RU":"Белый","uk-UA":"Білий","de-DE":"Weiß","fr-FR":"Blanc","es-ES":"Blanco","it-IT":"Bianco","pl-PL":"Biały","pt-PT":"Branco","nl-NL":"Wit","cs-CZ":"Bílá","bg-BG":"Бял"}},
+    "fbe.settings.caret.slow": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Slow","ru-RU":"Медленное","uk-UA":"Повільне","de-DE":"Langsam","fr-FR":"Lent","es-ES":"Lento","it-IT":"Lento","pl-PL":"Wolne","pt-PT":"Lento","nl-NL":"Langzaam","cs-CZ":"Pomalé","bg-BG":"Бавно"}},
+    "fbe.settings.caret.normal": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Normal","ru-RU":"Обычное","uk-UA":"Звичайне","de-DE":"Normal","fr-FR":"Normal","es-ES":"Normal","it-IT":"Normale","pl-PL":"Zwykłe","pt-PT":"Normal","nl-NL":"Normaal","cs-CZ":"Normální","bg-BG":"Нормално"}},
+    "fbe.settings.caret.fast": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Fast","ru-RU":"Быстрое","uk-UA":"Швидке","de-DE":"Schnell","fr-FR":"Rapide","es-ES":"Rápido","it-IT":"Veloce","pl-PL":"Szybkie","pt-PT":"Rápido","nl-NL":"Snel","cs-CZ":"Rychlé","bg-BG":"Бързо"}},
+    "fbe.settings.caret.solid": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Do not blink","ru-RU":"Не мигать","uk-UA":"Не блимати","de-DE":"Nicht blinken","fr-FR":"Ne pas clignoter","es-ES":"No parpadear","it-IT":"Non lampeggiare","pl-PL":"Bez migania","pt-PT":"Não piscar","nl-NL":"Niet knipperen","cs-CZ":"Neblikat","bg-BG":"Без мигане"}},
+    "fbe.settings.caret.custom_only": {"resource":"IDD_SETTINGS_SOURCE","kind":"VALUE","targetId":"","translations":{"en-US":"Choose Custom mode to change width, color and blinking.","ru-RU":"Выберите пользовательский режим для настройки толщины, цвета и мигания.","uk-UA":"Виберіть власний режим для налаштування товщини, кольору та блимання.","de-DE":"Im benutzerdefinierten Modus lassen sich Breite, Farbe und Blinken ändern.","fr-FR":"Choisissez le mode personnalisé pour régler l'épaisseur, la couleur et le clignotement.","es-ES":"Elija el modo personalizado para ajustar el grosor, el color y el parpadeo.","it-IT":"Scegliere la modalità personalizzata per regolare spessore, colore e lampeggio.","pl-PL":"Wybierz tryb niestandardowy, aby zmienić grubość, kolor i miganie.","pt-PT":"Escolha o modo personalizado para alterar espessura, cor e intermitência.","nl-NL":"Kies Aangepast om breedte, kleur en knipperen te wijzigen.","cs-CZ":"Zvolte vlastní režim pro změnu šířky, barvy a blikání.","bg-BG":"Изберете потребителски режим за дебелина, цвят и мигане."}},
     "fbe.quality.caption": {"resource":"IDD_FB2_QUALITY_RESULTS","kind":"VALUE","targetId":"","translations":{"en-US":"FB2 quality check","ru-RU":"Расширенная проверка FB2","uk-UA":"Розширена перевірка FB2","de-DE":"FB2-Qualitätsprüfung","fr-FR":"Contrôle de qualité FB2","es-ES":"Comprobación de calidad FB2","it-IT":"Controllo qualità FB2","pl-PL":"Kontrola jakości FB2","pt-PT":"Verificação de qualidade FB2","nl-NL":"FB2-kwaliteitscontrole","cs-CZ":"Kontrola kvality FB2","bg-BG":"Проверка на качеството на FB2"}},
     "fbe.quality.analysis.progress": {"resource":"IDD_FB2_QUALITY_RESULTS","kind":"VALUE","targetId":"","translations":{"en-US":"Analyzing the current document...","ru-RU":"Выполняется анализ текущего документа...","uk-UA":"Триває аналіз поточного документа...","de-DE":"Das aktuelle Dokument wird analysiert...","fr-FR":"Analyse du document en cours...","es-ES":"Analizando el documento actual...","it-IT":"Analisi del documento corrente...","pl-PL":"Trwa analiza bieżącego dokumentu...","pt-PT":"A analisar o documento atual...","nl-NL":"Het huidige document wordt geanalyseerd...","cs-CZ":"Probíhá analýza aktuálního dokumentu...","bg-BG":"Текущият документ се анализира..."}},
     "fbe.quality.analysis.cancelling": {"resource":"IDD_FB2_QUALITY_RESULTS","kind":"VALUE","targetId":"","translations":{"en-US":"Cancelling analysis...","ru-RU":"Анализ отменяется...","uk-UA":"Аналіз скасовується...","de-DE":"Analyse wird abgebrochen...","fr-FR":"Annulation de l'analyse...","es-ES":"Cancelando el análisis...","it-IT":"Annullamento dell'analisi...","pl-PL":"Anulowanie analizy...","pt-PT":"A cancelar a análise...","nl-NL":"Analyse wordt geannuleerd...","cs-CZ":"Rušení analýzy...","bg-BG":"Анализът се отменя..."}},
@@ -2264,44 +2270,6 @@
         "bg-BG": "Вмъквай празни изображения"
       }
     },
-    "fbe.dialog.idd_setting_other.nbsp": {
-      "resource": "IDD_SETTINGS_EDITOR",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_SETTINGS_OTHER_NBSP",
-      "translations": {
-        "en-US": "Non-breaking spaces",
-        "ru-RU": "Неразрывные пробелы",
-        "uk-UA": "Нерозривні пробіли",
-        "de-DE": "Geschützte Leerzeichen",
-        "fr-FR": "Espaces insécables",
-        "es-ES": "Espacios indivisibles",
-        "it-IT": "Spazi non separabili",
-        "pl-PL": "Spacje nierozdzielające",
-        "pt-PT": "Espaços inseparáveis",
-        "nl-NL": "Vaste spaties",
-        "cs-CZ": "Nezlomitelné mezery",
-        "bg-BG": "Неразделни интервали"
-      }
-    },
-    "fbe.dialog.idd_setting_other.nbsp_char": {
-      "resource": "IDD_SETTINGS_EDITOR",
-      "kind": "LTEXT",
-      "targetId": "IDC_SETTINGS_OTHER_NBSP_LABEL",
-      "translations": {
-        "en-US": "Display as:",
-        "ru-RU": "Отображать как:",
-        "uk-UA": "Відображуваний символ:",
-        "de-DE": "Anzuzeigendes Zeichen:",
-        "fr-FR": "Caractère à afficher :",
-        "es-ES": "Carácter mostrado:",
-        "it-IT": "Carattere visualizzato:",
-        "pl-PL": "Wyświetlany znak:",
-        "pt-PT": "Carácter a apresentar:",
-        "nl-NL": "Weergegeven teken:",
-        "cs-CZ": "Zobrazovaný znak:",
-        "bg-BG": "Показван символ:"
-      }
-    },
     "fbe.dialog.idd_setting_other.keyboard": {
       "resource": "IDD_HOTKEYS",
       "kind": "GROUPBOX",
@@ -2509,44 +2477,6 @@
         "nl-NL": "Interface",
         "cs-CZ": "Rozhraní",
         "bg-BG": "Интерфейс"
-      }
-    },
-    "fbe.dialog.idd_options.font_group": {
-      "resource": "IDD_SETTINGS_EDITOR",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_OPTIONS_BODY_GROUP",
-      "translations": {
-        "en-US": "Editor",
-        "ru-RU": "Редактор",
-        "uk-UA": "Шрифт",
-        "de-DE": "Schrift",
-        "fr-FR": "Police",
-        "es-ES": "Fuente",
-        "it-IT": "Carattere",
-        "pl-PL": "Czcionka",
-        "pt-PT": "Tipo de letra",
-        "nl-NL": "Lettertype",
-        "cs-CZ": "Písmo",
-        "bg-BG": "Шрифт"
-      }
-    },
-    "fbe.dialog.idd_settings_source.theme": {
-      "resource": "IDD_SETTINGS_SOURCE",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_OPTIONS_SOURCE_GROUP",
-      "translations": {
-        "en-US": "Theme",
-        "ru-RU": "Тема",
-        "uk-UA": "Тема",
-        "de-DE": "Thema",
-        "fr-FR": "Thème",
-        "es-ES": "Tema",
-        "it-IT": "Tema",
-        "pl-PL": "Motyw",
-        "pt-PT": "Tema",
-        "nl-NL": "Thema",
-        "cs-CZ": "Motiv",
-        "bg-BG": "Тема"
       }
     },
     "fbe.dialog.idd_options.wrap_lines": {
@@ -3052,25 +2982,6 @@
     "fbe.about.release_page_failed": {
       "resource": "IDD_ABOUTBOX", "kind": "CONTROL", "targetId": "IDC_TEXT_STATUS",
       "translations": { "en-US": "Unable to open release page", "ru-RU": "Не удалось открыть страницу релиза", "uk-UA": "Не вдалося відкрити сторінку випуску", "de-DE": "Unable to open release page", "fr-FR": "Impossible d’ouvrir la page de publication", "es-ES": "No se pudo abrir la página de publicación", "it-IT": "Impossibile aprire la pagina della release", "pl-PL": "Nie można otworzyć strony wydania", "pt-PT": "Não foi possível abrir a página da versão", "nl-NL": "Kan de releasepagina niet openen", "cs-CZ": "Nelze otevřít stránku vydání", "bg-BG": "Страницата на изданието не може да бъде отворена" }
-    },
-    "fbe.dialog.idd_setting_next.source_code": {
-      "resource": "IDD_SETTINGS_SOURCE",
-      "kind": "GROUPBOX",
-      "targetId": "IDC_FBE_NEXT_SOURCE_CODE_GROUP",
-      "translations": {
-        "en-US": "Source code",
-        "ru-RU": "Исходный код",
-        "uk-UA": "Вихідний код",
-        "de-DE": "Quellcode",
-        "fr-FR": "Code source",
-        "es-ES": "Código fuente",
-        "it-IT": "Codice sorgente",
-        "pl-PL": "Kod źródłowy",
-        "pt-PT": "Código-fonte",
-        "nl-NL": "Broncode",
-        "cs-CZ": "Zdrojový kód",
-        "bg-BG": "Изходен код"
-      }
     },
     "fbe.dialog.idd_options.show_whitespace": {
       "resource": "IDD_SETTINGS_SOURCE",

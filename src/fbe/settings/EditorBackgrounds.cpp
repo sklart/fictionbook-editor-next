@@ -154,11 +154,14 @@ EditorBackgroundColors EditorBackgrounds::ResolveBodyColors(DWORD configuredFore
 		// not inspect a custom image: it remains entirely user-controlled.
 		colors.foreground = AutomaticContrastColor(static_cast<COLORREF>(configuredBackground));
 	}
-	else if(configuredForeground != CLR_DEFAULT && configuredBackground == CLR_DEFAULT)
-	{
-		colors.background = AutomaticContrastColor(static_cast<COLORREF>(configuredForeground));
-	}
 	return colors;
+}
+
+bool EditorBackgrounds::HasLowTextContrast(COLORREF foreground, COLORREF background)
+{
+	const double light = (std::max)(RelativeLuminance(foreground), RelativeLuminance(background));
+	const double dark = (std::min)(RelativeLuminance(foreground), RelativeLuminance(background));
+	return (light + 0.05) / (dark + 0.05) < 4.5;
 }
 
 bool EditorBackgrounds::IsSupportedLocalImage(const CString& source)

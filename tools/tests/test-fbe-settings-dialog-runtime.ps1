@@ -16,6 +16,7 @@ try {
     $settingsFile = Join-Path $settingsDirectory 'Settings.xml'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><id>settings-dialog-test</id><version>1</version></document-info></description><body><section><p>BACKUP_RUNTIME_BEFORE</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
+    $originalFb2Hash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     function Invoke-Scenario([string]$Scenario, [string]$Path) {
         $oldMode,$oldScenario=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
         try {
@@ -28,13 +29,16 @@ try {
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
     if($LayoutOnly) {
-        foreach($line in 'settings_dialog=1','layout=1','persisted=1','applied=1','caret_persisted=1','caret_applied=1','caret_initial_system=1') {
+        foreach($line in 'settings_dialog=1','layout=1','persisted=1','applied=1','caret_persisted=1','caret_applied=1','caret_initial_system=1','source_unchanged=1') {
             if($first -notmatch [regex]::Escape($line)) { throw "Settings layout smoke is missing ${line}: $first" }
         }
 		$verification = Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport
-		foreach($line in 'settings_dialog=0','caret_persisted=1','caret_applied=1') {
+		foreach($line in 'settings_dialog=0','caret_persisted=1','caret_applied=1','source_unchanged=1') {
 			if($verification -notmatch [regex]::Escape($line)) { throw "Settings caret restart smoke is missing ${line}: $verification" }
 		}
+        if((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -ne $originalFb2Hash) {
+            throw 'Settings preview modified the opened FB2 file.'
+        }
         Write-Host 'FBE Settings dialog short layout and Keyboard resize smoke passed.'
         return
     }

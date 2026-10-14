@@ -7,34 +7,10 @@
 #include "SettingsPageLifecycle.h"
 #include "SettingsTooltips.h"
 #include "..\\EditorBackgrounds.h"
-#include "..\\..\\CaretPreferences.h"
 
 #ifndef WM_DPICHANGED_AFTERPARENT
 #define WM_DPICHANGED_AFTERPARENT 0x02E3
 #endif
-
-class CTextCaretPreview : public CWindowImpl<CTextCaretPreview, CStatic>
-{
-	CaretPreferences m_preferences;
-	CString m_text;
-	bool m_visible = true;
-	void RefreshAppearance();
-public:
-	DECLARE_WND_SUPERCLASS(NULL, WC_STATIC)
-	BEGIN_MSG_MAP(CTextCaretPreview)
-		MESSAGE_HANDLER(WM_PAINT, OnPaint)
-		MESSAGE_HANDLER(WM_ERASEBKGND, OnEraseBackground)
-		MESSAGE_HANDLER(WM_TIMER, OnTimer)
-		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
-		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnAppearanceChanged)
-	END_MSG_MAP()
-	void SetPreview(const CaretPreferences& preferences, const CString& text);
-	LRESULT OnPaint(UINT, WPARAM, LPARAM, BOOL&);
-	LRESULT OnEraseBackground(UINT, WPARAM, LPARAM, BOOL&) { return 1; }
-	LRESULT OnTimer(UINT, WPARAM, LPARAM, BOOL&);
-	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
-	LRESULT OnAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&);
-};
 
 class CEditorBackgroundPreview : public CWindowImpl<CEditorBackgroundPreview, CStatic>
 {
@@ -72,13 +48,11 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 	CColorButton m_background;
 	CComboBox m_fonts;
 	CComboBox m_fontSize;
+	int m_previewFontSize = 12;
 	CComboBox m_nbspCharacter;
 	CComboBox m_backgroundImage;
 	CComboBox m_backgroundLayout;
 	CEditorBackgroundPreview m_backgroundPreview;
-	CTextCaretPreview m_caretPreview;
-	CComboBox m_caretMode, m_caretWidth, m_caretColor, m_caretBlink;
-	CColorButton m_caretCustomColor;
 	std::vector<EditorBackgroundDescriptor> m_builtInBackgrounds;
 	CString m_customBackgroundPath;
 	CString m_cachedBackgroundPath;
@@ -94,6 +68,7 @@ class CSettingsEditorPage : public CAxDialogImpl<CSettingsEditorPage>, public IS
 
 public:
 	~CSettingsEditorPage();
+	int CurrentPreviewFontSize() const { return m_previewFontSize; }
 	enum { IDD = IDD_SETTINGS_EDITOR };
 	BEGIN_MSG_MAP(CSettingsEditorPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -101,6 +76,7 @@ public:
 		MESSAGE_HANDLER(WM_SETTINGCHANGE, OnSystemAppearanceChanged)
 		MESSAGE_HANDLER(WM_SYSCOLORCHANGE, OnSystemAppearanceChanged)
 		MESSAGE_HANDLER(WM_THEMECHANGED, OnSystemAppearanceChanged)
+		MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnSystemAppearanceChanged)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_BROWSE, BN_CLICKED, OnBrowseBackground)
@@ -108,18 +84,14 @@ public:
 		COMMAND_HANDLER(IDC_EDITOR_BACKGROUND_LAYOUT, CBN_SELCHANGE, OnBackgroundSelectionChanged)
 		COMMAND_HANDLER(IDC_FONT, CBN_SELCHANGE, OnPreviewSettingsChanged)
 		COMMAND_HANDLER(IDC_FONT_SIZE, CBN_SELCHANGE, OnPreviewSettingsChanged)
-		COMMAND_HANDLER(IDC_EDITOR_CARET_MODE, CBN_SELCHANGE, OnCaretSettingsChanged)
-		COMMAND_HANDLER(IDC_EDITOR_CARET_WIDTH, CBN_SELCHANGE, OnCaretSettingsChanged)
-		COMMAND_HANDLER(IDC_EDITOR_CARET_COLOR, CBN_SELCHANGE, OnCaretSettingsChanged)
-		COMMAND_HANDLER(IDC_EDITOR_CARET_BLINK, CBN_SELCHANGE, OnCaretSettingsChanged)
+		COMMAND_HANDLER(IDC_FONT_SIZE, CBN_EDITCHANGE, OnPreviewSettingsChanged)
+		COMMAND_HANDLER(IDC_NBSP_CHAR, CBN_SELCHANGE, OnPreviewSettingsChanged)
 		// CColorButton sends its changes as WM_NOTIFY, not WM_COMMAND.  Keep the
 		// click reflected to the control so its picker can open.
 		NOTIFY_HANDLER(IDC_FG, CPN_SELCHANGE, OnPreviewColorChanged)
 		NOTIFY_HANDLER(IDC_FG, CPN_SELENDOK, OnPreviewColorChanged)
 		NOTIFY_HANDLER(IDC_BG, CPN_SELCHANGE, OnPreviewColorChanged)
 		NOTIFY_HANDLER(IDC_BG, CPN_SELENDOK, OnPreviewColorChanged)
-		NOTIFY_HANDLER(IDC_EDITOR_CARET_CUSTOM_COLOR, CPN_SELCHANGE, OnCaretColorChanged)
-		NOTIFY_HANDLER(IDC_EDITOR_CARET_CUSTOM_COLOR, CPN_SELENDOK, OnCaretColorChanged)
 		REFLECT_NOTIFICATIONS()
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsEditorPage>)
 	END_MSG_MAP()
@@ -132,10 +104,6 @@ public:
 	LRESULT OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewColorChanged(int, LPNMHDR, BOOL&);
-	LRESULT OnCaretSettingsChanged(WORD, WORD, HWND, BOOL&);
-	LRESULT OnCaretColorChanged(int, LPNMHDR, BOOL&);
-	CaretPreferences SelectedCaretPreferences();
-	void UpdateCaretPreview();
 	void GetSelectedBackground(CString& kind, CString& id) const;
 	CString SelectedBackgroundLayout() const;
 	EditorBackgroundColors ResolvePreviewColors() const;

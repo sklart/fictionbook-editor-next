@@ -552,6 +552,8 @@
 #define IDC_EDITOR_CARET_BLINK_LABEL     1789
 #define IDC_EDITOR_CARET_BLINK           1790
 #define IDC_EDITOR_CARET_PREVIEW         1791
+#define IDC_EDITOR_PREVIEW_GROUP         1792
+#define IDC_OPTIONS_SOURCE_PREVIEW_GROUP 1793
 #define IDC_IMAGETYPE                   1101
 #define IDC_EDIT3                       1102
 #define IDC_IMAGETYPE2                  1102

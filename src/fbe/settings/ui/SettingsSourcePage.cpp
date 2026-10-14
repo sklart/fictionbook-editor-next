@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 #include "SettingsSourcePage.h"
+#include "EditorFontFamilies.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\XmlSourceThemes.h"
 #include "..\\..\\RuntimeLocalization.h"
@@ -10,15 +11,79 @@
 
 extern CSettings _Settings;
 
+bool CSourcePreviewHost::Initialize(HWND placeholder)
+{
+	if(!SubclassWindow(placeholder) || !m_editor.Create(m_hWnd)) return false;
+	static const char sample[] =
+		"<?xml version=\"1.0\"?>\r\n"
+		"<section id=\"main\">\r\n"
+		"\t<p class=\"body\">A  B &amp; \xc2\xa0</p>\r\n"
+		"\t<em note=\"A long attribute value for wrapping and highlighting\">Text</em>\r\n"
+		"\t<broken>\r\n"
+		"</section>";
+	m_editor.Send(SCI_SETUNDOCOLLECTION, FALSE);
+	m_editor.Send(SCI_SETTEXT, 0, reinterpret_cast<sptr_t>(sample));
+	m_editor.Send(SCI_EMPTYUNDOBUFFER);
+	m_editor.Send(SCI_SETREADONLY, TRUE);
+	const char* tag = strstr(sample, "<p class");
+	if(tag != NULL) m_editor.Send(SCI_GOTOPOS, static_cast<uptr_t>(tag - sample + 1));
+	RECT bounds = {};
+	GetClientRect(&bounds);
+	::SetWindowPos(m_editor.Handle(), NULL, 0, 0, bounds.right, bounds.bottom,
+		SWP_NOZORDER | SWP_NOACTIVATE);
+	::ShowWindow(m_editor.Handle(), SW_SHOWNA);
+	return true;
+}
+
+void CSourcePreviewHost::ApplyConfiguration(const SourceEditorConfig& config)
+{
+	m_config = config;
+	if(m_editor.Handle() == NULL) return;
+	m_editor.ApplyConfiguration(config);
+	// Logical focus displays the caret without moving Windows keyboard focus
+	// away from the settings controls.
+	m_editor.Send(SCI_SETFOCUS, TRUE);
+	UpdateTagHighlight();
+}
+
+void CSourcePreviewHost::UpdateTagHighlight()
+{
+	if(m_editor.Handle() == NULL) return;
+	m_editor.UpdateTagHighlight({ m_config.tagHighlight,
+		m_config.tagHighlightFullTag ? XmlTagHighlightMode::FullTag : XmlTagHighlightMode::NameOnly,
+		m_config.tagHighlightAttributes, m_config.tagHighlightErrors });
+}
+
+LRESULT CSourcePreviewHost::OnSize(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(m_editor.Handle() != NULL)
+	{
+		RECT bounds = {};
+		GetClientRect(&bounds);
+		::SetWindowPos(m_editor.Handle(), NULL, 0, 0, bounds.right, bounds.bottom,
+			SWP_NOZORDER | SWP_NOACTIVATE);
+	}
+	return 0;
+}
+
+LRESULT CSourcePreviewHost::OnNotify(UINT, WPARAM, LPARAM parameter, BOOL& handled)
+{
+	const NMHDR* notification = reinterpret_cast<const NMHDR*>(parameter);
+	if(notification != NULL && notification->hwndFrom == m_editor.Handle() &&
+		notification->code == SCN_UPDATEUI) UpdateTagHighlight();
+	handled = FALSE;
+	return 0;
+}
+
+LRESULT CSourcePreviewHost::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
+{
+	m_editor.Destroy();
+	return 0;
+}
+
 static CString ThemeString(LPCWSTR key, LPCWSTR fallback)
 {
 	return FbeLoadRuntimeStringByKey(key, fallback);
-}
-
-static int __stdcall EnumSourceFontProc(const ENUMLOGFONTEX* font, const NEWTEXTMETRICEX*, DWORD, LPARAM data)
-{
-	static_cast<CSimpleArray<CString>*>(reinterpret_cast<void*>(data))->Add(font->elfLogFont.lfFaceName);
-	return TRUE;
 }
 
 static CString GetThemeDisplayName(const XmlSourceThemeInfo& theme)
@@ -54,7 +119,7 @@ static const int kSourceColorControls[] = {
 	IDC_OPTIONS_SOURCE_COLOR_BACKGROUND,
 };
 
-static CString GetSelectedThemeId(CComboBox& combo, const std::vector<CString>& themeIds)
+static CString GetSelectedThemeId(const CComboBox& combo, const std::vector<CString>& themeIds)
 {
 	const int index = combo.GetCurSel();
 	return index >= 0 && index < static_cast<int>(themeIds.size())
@@ -172,36 +237,12 @@ static std::vector<wchar_t> MakeThemeFileFilter()
 	return filter;
 }
 
-enum XmlSourcePreviewVariant
-{
-	XML_SOURCE_PREVIEW_FULL,
-	XML_SOURCE_PREVIEW_COMPACT,
-	XML_SOURCE_PREVIEW_MINIMAL,
-	XML_SOURCE_PREVIEW_FALLBACK,
-	XML_SOURCE_PREVIEW_NONE,
-};
-
-static XmlSourcePreviewVariant SelectSourcePreviewVariant(bool fullFits, bool compactFits,
-	bool minimalFits, bool fallbackFits)
-{
-	if(fullFits) return XML_SOURCE_PREVIEW_FULL;
-	if(compactFits) return XML_SOURCE_PREVIEW_COMPACT;
-	if(minimalFits) return XML_SOURCE_PREVIEW_MINIMAL;
-	return fallbackFits ? XML_SOURCE_PREVIEW_FALLBACK : XML_SOURCE_PREVIEW_NONE;
-}
-static bool IsHighContrastEnabled()
-{
-	HIGHCONTRAST highContrast = {};
-	highContrast.cbSize = sizeof(highContrast);
-	return ::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(highContrast),
-		&highContrast, 0) && (highContrast.dwFlags & HCF_HIGHCONTRASTON) != 0;
-}
-
 LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsSourcePage>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_SOURCE);
-	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_settings_source.theme", L"Theme"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.settings.source.theme_highlighting", L"Theme and highlighting"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_PREVIEW_GROUP, FbeLoadRuntimeStringByKey(L"fbe.settings.source.preview", L"XML preview"));
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_FONT, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.source_font", L"Editor font:"));
 	::SetDlgItemText(m_hWnd, IDC_WRAP, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.wrap_lines", L"Wrap lines"));
 	::SetDlgItemText(m_hWnd, IDC_SYNTAXHL, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.syntax_highlight", L"Syntax highlighting"));
@@ -217,15 +258,8 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_tag_highlight_mode.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_name_only", L"Tag name only")); m_tag_highlight_mode.AddString(FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.tag_highlight_full_tag", L"Whole tag"));
 	m_tag_highlight_mode.SetCurSel(_Settings.XmlSrcTagHighlightMode() ? 1 : 0);
 	m_srcfonts = GetDlgItem(IDC_SRCFONT);
-	CSimpleArray<CString> fonts;
-	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
-	LOGFONT logFont = {}; logFont.lfCharSet = DEFAULT_CHARSET;
-	::EnumFontFamiliesEx(display, &logFont, reinterpret_cast<FONTENUMPROC>(EnumSourceFontProc), reinterpret_cast<LPARAM>(&fonts), 0);
-	::DeleteDC(display);
-	for(int i = 0; i < fonts.GetSize(); ++i) m_srcfonts.AddString(fonts[i]);
-	int sourceFont = m_srcfonts.FindStringExact(0, _Settings.GetSrcFont());
-	if(sourceFont < 0) sourceFont = m_srcfonts.AddString(_Settings.GetSrcFont());
-	m_srcfonts.SetCurSel(sourceFont);
+	m_previewFontSize = static_cast<int>(_Settings.GetFontSize());
+	EditorFontFamilies::Fill(m_srcfonts, _Settings.GetSrcFont());
 	m_src_wrap = GetDlgItem(IDC_WRAP); m_src_hl = GetDlgItem(IDC_SYNTAXHL); m_src_taghl = GetDlgItem(IDC_TAGHL);
 	m_src_taghl_attributes = GetDlgItem(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ATTRIBUTES); m_src_taghl_errors = GetDlgItem(IDC_OPTIONS_SOURCE_TAG_HIGHLIGHT_ERRORS);
 	m_src_eol = GetDlgItem(IDC_SHOWEOL); m_src_whitespace = GetDlgItem(IDC_SHOWWHITESPACE); m_src_line_numbers = GetDlgItem(IDC_SHOWLINENUMBERS);
@@ -264,7 +298,7 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	const CString paletteText = FbeLoadRuntimeStringByKey(
 		L"fbe.dialog.idd_setting_next.source_palette", L"Highlighting theme:");
 	const CString sourceCodeText = FbeLoadRuntimeStringByKey(
-		L"fbe.dialog.idd_setting_next.source_code", L"Source code");
+		L"fbe.settings.source.code_display", L"Code display");
 	const CString backgroundText = FbeLoadRuntimeStringByKey(
 		L"fbe.dialog.idd_setting_next.source_color_background", L"Background:");
 	if (!sourceCodeText.IsEmpty())
@@ -301,15 +335,50 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	::SendMessage(GetDlgItem(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS), BM_SETCHECK,
 		_Settings.XmlSrcShowSpecialChars() ? BST_CHECKED : BST_UNCHECKED, 0);
 	UpdateSpecialCharactersDependencies();
+	m_caretMode = GetDlgItem(IDC_EDITOR_CARET_MODE);
+	m_caretWidth = GetDlgItem(IDC_EDITOR_CARET_WIDTH);
+	m_caretColor = GetDlgItem(IDC_EDITOR_CARET_COLOR);
+	m_caretBlink = GetDlgItem(IDC_EDITOR_CARET_BLINK);
+	m_caretCustomColor.SubclassWindow(GetDlgItem(IDC_EDITOR_CARET_CUSTOM_COLOR));
+	::SetDlgItemText(m_hWnd, IDC_EDITOR_CARET_GROUP, ThemeString(L"fbe.settings.caret.group", L"Text cursor"));
+	::SetDlgItemText(m_hWnd, IDC_EDITOR_CARET_MODE_LABEL, ThemeString(L"fbe.settings.caret.mode", L"Mode:"));
+	::SetDlgItemText(m_hWnd, IDC_EDITOR_CARET_WIDTH_LABEL, ThemeString(L"fbe.settings.caret.width", L"Width:"));
+	::SetDlgItemText(m_hWnd, IDC_EDITOR_CARET_COLOR_LABEL, ThemeString(L"fbe.settings.caret.color", L"Color:"));
+	::SetDlgItemText(m_hWnd, IDC_EDITOR_CARET_BLINK_LABEL, ThemeString(L"fbe.settings.caret.blink", L"Blink:"));
+	m_caretMode.AddString(ThemeString(L"fbe.settings.caret.system", L"System"));
+	m_caretMode.AddString(ThemeString(L"fbe.settings.caret.enhanced", L"Enhanced visibility"));
+	m_caretMode.AddString(ThemeString(L"fbe.settings.caret.custom", L"Custom"));
+	m_caretWidth.AddString(ThemeString(L"fbe.settings.caret.system", L"System"));
+	for(int width = 1; width <= 5; ++width) { CString label; label.Format(L"%d", width); m_caretWidth.AddString(label); }
+	m_caretColor.AddString(ThemeString(L"fbe.settings.caret.auto_color", L"Automatic contrast"));
+	m_caretColor.AddString(ThemeString(L"fbe.settings.caret.system", L"System"));
+	m_caretColor.AddString(ThemeString(L"fbe.settings.caret.black", L"Black"));
+	m_caretColor.AddString(ThemeString(L"fbe.settings.caret.white", L"White"));
+	m_caretColor.AddString(ThemeString(L"fbe.settings.caret.custom", L"Custom"));
+	m_caretBlink.AddString(ThemeString(L"fbe.settings.caret.system", L"System"));
+	m_caretBlink.AddString(ThemeString(L"fbe.settings.caret.slow", L"Slow"));
+	m_caretBlink.AddString(ThemeString(L"fbe.settings.caret.normal", L"Normal"));
+	m_caretBlink.AddString(ThemeString(L"fbe.settings.caret.fast", L"Fast"));
+	m_caretBlink.AddString(ThemeString(L"fbe.settings.caret.solid", L"Do not blink"));
+	const CaretPreferences caret = _Settings.GetCaretPreferences();
+	m_caretMode.SetCurSel(static_cast<int>(caret.mode));
+	m_caretWidth.SetCurSel(static_cast<int>(caret.width));
+	m_caretColor.SetCurSel(static_cast<int>(caret.color));
+	m_caretBlink.SetCurSel(static_cast<int>(caret.blink));
+	const CString automaticColorText = ThemeString(L"fbe.dialog.idd_setting_next.color_automatic", L"Automatic");
+	const CString moreColorsText = ThemeString(L"fbe.dialog.idd_setting_next.color_more", L"More colors...");
+	m_caretCustomColor.SetDefaultText(automaticColorText);
+	m_caretCustomColor.SetCustomText(moreColorsText);
+	m_caretCustomColor.SetColor(caret.customColor);
+	m_source_tooltips.Add(m_caretWidth, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
+	m_source_tooltips.Add(m_caretColor, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
+	m_source_tooltips.Add(m_caretBlink, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
+	UpdateCaretDependencies();
 
 	const CString currentThemeId = _Settings.GetXmlSrcThemeId();
 
 	ReloadSourceThemes(currentThemeId);
 
-	const CString automaticColorText = FbeLoadRuntimeStringByKey(
-		L"fbe.dialog.idd_setting_next.color_automatic", L"Automatic");
-	const CString moreColorsText = FbeLoadRuntimeStringByKey(
-		L"fbe.dialog.idd_setting_next.color_more", L"More colors...");
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
 		if(i == XML_SRC_COLOR_COMMENT) continue;
@@ -323,6 +392,8 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	}
 	UpdateSourceColorTooltips();
 	UpdateSourceThemeDisplay();
+	m_preview.Initialize(GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW));
+	InvalidateSourcePreview();
 	return 1;
 }
 
@@ -330,6 +401,7 @@ void CSettingsSourcePage::LoadSourceThemeControlsFromSettings()
 {
 	const CString activeThemeId = _Settings.GetXmlSrcThemeId();
 	ReloadSourceThemes(activeThemeId);
+	m_updatingSourceColors = true;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
 		if(i == XML_SRC_COLOR_COMMENT) continue;
@@ -338,6 +410,7 @@ void CSettingsSourcePage::LoadSourceThemeControlsFromSettings()
 		m_source_colors[i].SetDefaultColor(GetThemeDefaultColor(activeThemeId, group));
 		m_source_colors[i].SetColor(m_source_color_custom[i] ? _Settings.GetXmlSrcColor(group) : CLR_DEFAULT);
 	}
+	m_updatingSourceColors = false;
 	UpdateSourceColorTooltips();
 	UpdateSourceThemeDisplay();
 	InvalidateSourcePreview();
@@ -357,6 +430,12 @@ LRESULT CSettingsSourcePage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 		m_source_colors[i].Invalidate();
 	}
 	InvalidateSourcePreview();
+	return 0;
+}
+
+LRESULT CSettingsSourcePage::OnSystemAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(m_preview.IsWindow()) InvalidateSourcePreview();
 	return 0;
 }
 
@@ -481,6 +560,7 @@ void CSettingsSourcePage::Commit()
 		_Settings.SetXmlSrcColor(static_cast<XmlSrcColorGroup>(i),
 			m_source_color_custom[i] ? m_source_colors[i].GetColor() : XML_SRC_COLOR_DEFAULT);
 	}
+	_Settings.SetCaretPreferences(SelectedCaretPreferences());
 }
 
 bool CSettingsSourcePage::CancelChanges() { return true; }
@@ -495,12 +575,53 @@ void CSettingsSourcePage::UpdateSpecialCharactersDependencies()
 LRESULT CSettingsSourcePage::OnSpecialCharactersChanged(WORD, WORD, HWND, BOOL&)
 {
 	UpdateSpecialCharactersDependencies();
+	InvalidateSourcePreview();
+	return 0;
+}
+
+LRESULT CSettingsSourcePage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&)
+{
+	InvalidateSourcePreview();
+	return 0;
+}
+
+CaretPreferences CSettingsSourcePage::SelectedCaretPreferences() const
+{
+	CaretPreferences preferences;
+	preferences.mode = static_cast<TextCaretMode>((std::max)(0, m_caretMode.GetCurSel()));
+	preferences.width = static_cast<DWORD>((std::max)(0, m_caretWidth.GetCurSel()));
+	preferences.color = static_cast<TextCaretColor>((std::max)(0, m_caretColor.GetCurSel()));
+	preferences.blink = static_cast<TextCaretBlink>((std::max)(0, m_caretBlink.GetCurSel()));
+	preferences.customColor = m_caretCustomColor.GetColor();
+	return preferences;
+}
+
+void CSettingsSourcePage::UpdateCaretDependencies()
+{
+	const bool custom = m_caretMode.GetCurSel() == static_cast<int>(TextCaretMode::Custom);
+	m_caretWidth.EnableWindow(custom);
+	m_caretColor.EnableWindow(custom);
+	m_caretBlink.EnableWindow(custom);
+	m_caretCustomColor.EnableWindow(custom && m_caretColor.GetCurSel() == static_cast<int>(TextCaretColor::Custom));
+}
+
+LRESULT CSettingsSourcePage::OnCaretSettingsChanged(WORD, WORD, HWND, BOOL&)
+{
+	UpdateCaretDependencies();
+	InvalidateSourcePreview();
+	return 0;
+}
+
+LRESULT CSettingsSourcePage::OnCaretColorChanged(int, LPNMHDR, BOOL&)
+{
+	InvalidateSourcePreview();
 	return 0;
 }
 
 LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 {
 	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
+	m_updatingSourceColors = true;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
 		if(i == XML_SRC_COLOR_COMMENT) continue;
@@ -510,6 +631,7 @@ LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 		m_source_colors[i].SetDefaultColor(color);
 		m_source_colors[i].SetColor(CLR_DEFAULT);
 	}
+	m_updatingSourceColors = false;
 	UpdateSourceColorTooltips();
 	UpdateSourceThemeDisplay();
 	InvalidateSourcePreview();
@@ -694,6 +816,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 LRESULT CSettingsSourcePage::OnResetSourceColors(WORD, WORD, HWND, BOOL&)
 {
 	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
+	m_updatingSourceColors = true;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
 		if(i == XML_SRC_COLOR_COMMENT) continue;
@@ -702,6 +825,7 @@ LRESULT CSettingsSourcePage::OnResetSourceColors(WORD, WORD, HWND, BOOL&)
 			static_cast<XmlSrcColorGroup>(i)));
 		m_source_colors[i].SetColor(CLR_DEFAULT);
 	}
+	m_updatingSourceColors = false;
 	UpdateSourceColorTooltips();
 	UpdateSourceThemeDisplay();
 	InvalidateSourcePreview();
@@ -709,6 +833,7 @@ LRESULT CSettingsSourcePage::OnResetSourceColors(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CSettingsSourcePage::OnSourceColorChanged(int idCtrl, LPNMHDR, BOOL&)
 {
+	if(m_updatingSourceColors) return 0;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
 		if(kSourceColorControls[i] == idCtrl)
@@ -723,94 +848,43 @@ LRESULT CSettingsSourcePage::OnSourceColorChanged(int idCtrl, LPNMHDR, BOOL&)
 	return 0;
 }
 
-void CSettingsSourcePage::InvalidateSourcePreview()
+void CSettingsSourcePage::SetPreviewFontSize(int size)
 {
-	HWND preview = GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW);
-	if(preview != NULL)
-		::InvalidateRect(preview, NULL, TRUE);
+	if(size == m_previewFontSize) return;
+	m_previewFontSize = size;
+	InvalidateSourcePreview();
 }
 
-LRESULT CSettingsSourcePage::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
+void CSettingsSourcePage::InvalidateSourcePreview()
 {
-	DRAWITEMSTRUCT* drawItem = reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
-	if(drawItem == NULL || drawItem->CtlID != IDC_OPTIONS_SOURCE_PREVIEW) { bHandled = FALSE; return 0; }
-	const bool highContrast = IsHighContrastEnabled();
-	const CString id = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
-	const auto colorFor = [&](XmlSrcStyleToken token) {
-		return highContrast ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOWTEXT)) :
-			ResolveSourceTokenColor(id, token, m_source_colors);
-	};
-	const DWORD background = highContrast ? static_cast<DWORD>(::GetSysColor(COLOR_WINDOW)) :
-		ResolveSourceTokenColor(id, XML_SRC_STYLE_EDITOR_BACKGROUND, m_source_colors);
-	HBRUSH brush = ::CreateSolidBrush(background);
-	::FillRect(drawItem->hDC, &drawItem->rcItem, brush); ::DeleteObject(brush);
-	::FrameRect(drawItem->hDC, &drawItem->rcItem, reinterpret_cast<HBRUSH>(::GetStockObject(highContrast ? BLACK_BRUSH : GRAY_BRUSH)));
-	LOGFONTW font = {};
-	font.lfHeight = -::MulDiv(static_cast<int>(_Settings.GetFontSize()), ::GetDeviceCaps(drawItem->hDC, LOGPIXELSY), 72);
-	wcsncpy_s(font.lfFaceName, _Settings.GetSrcFont(), _TRUNCATE);
-	HFONT createdFont = ::CreateFontIndirectW(&font);
-	HFONT oldFont = static_cast<HFONT>(::SelectObject(drawItem->hDC, createdFont ? createdFont : ::GetStockObject(DEFAULT_GUI_FONT)));
-	const int oldMode = ::SetBkMode(drawItem->hDC, TRANSPARENT);
-	TEXTMETRICW metrics = {}; ::GetTextMetricsW(drawItem->hDC, &metrics);
-	RECT bounds = drawItem->rcItem; ::InflateRect(&bounds, -4, -2);
-	const int lineHeight = metrics.tmHeight + 1;
-	const int availableWidth = bounds.right - bounds.left;
+	if(m_preview.IsWindow()) m_preview.ApplyConfiguration(SelectedPreviewConfiguration());
+}
 
-	// Each variant is measured as complete XML lines before anything is painted.
-	// This guarantees that a closing delimiter is never clipped at a DPI/font size.
-	static const wchar_t* fullLines[] = {
-		L"<?xml version=\"1.0\"?>", L"<section id=\"main\">",
-		L"  <p class=\"body\">Text &amp;</p>", L"</section>" };
-	static const wchar_t* compactLines[] = {
-		L"<section id=\"m\">", L"  <p>Text &amp;</p>", L"</section>" };
-	static const wchar_t* minimalLines[] = { L"<p id=\"x\">T&amp;</p>" };
-	static const wchar_t* fallbackLines[] = { L"<p/>" };
-	const auto fits = [&](const wchar_t* const* lines, int count) {
-		if(bounds.bottom - bounds.top < count * lineHeight) return false;
-		for(int i = 0; i < count; ++i) {
-			SIZE size = {}; ::GetTextExtentPoint32W(drawItem->hDC, lines[i], static_cast<int>(wcslen(lines[i])), &size);
-			if(size.cx > availableWidth) return false;
-		}
-		return true;
-	};
-	const XmlSourcePreviewVariant variant = SelectSourcePreviewVariant(
-		fits(fullLines, _countof(fullLines)), fits(compactLines, _countof(compactLines)),
-		fits(minimalLines, _countof(minimalLines)), fits(fallbackLines, _countof(fallbackLines)));
-	if(variant == XML_SOURCE_PREVIEW_NONE) {
-		::SetBkMode(drawItem->hDC, oldMode); ::SelectObject(drawItem->hDC, oldFont); if(createdFont) ::DeleteObject(createdFont);
-		bHandled = TRUE; return 0;
-	}
-
-	const DWORD text = colorFor(XML_SRC_STYLE_XML_TEXT);
-	const DWORD tag = colorFor(XML_SRC_STYLE_XML_TAG_NAME);
-	const DWORD delimiter = colorFor(XML_SRC_STYLE_XML_TAG_DELIMITER);
-	const DWORD attribute = colorFor(XML_SRC_STYLE_XML_ATTRIBUTE_NAME);
-	const DWORD value = colorFor(XML_SRC_STYLE_XML_ATTRIBUTE_VALUE);
-	const DWORD entity = colorFor(XML_SRC_STYLE_XML_ENTITY);
-	const DWORD pi = colorFor(XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION);
-	int x = bounds.left, y = bounds.top;
-	const auto nextLine = [&]() { x = bounds.left; y += lineHeight; };
-	const auto token = [&](const wchar_t* valueText, DWORD color) {
-		SIZE size = {}; ::GetTextExtentPoint32W(drawItem->hDC, valueText, static_cast<int>(wcslen(valueText)), &size);
-		ATLASSERT(x + size.cx <= bounds.right);
-		::SetTextColor(drawItem->hDC, color);
-		::ExtTextOutW(drawItem->hDC, x, y, 0, NULL, valueText, static_cast<UINT>(wcslen(valueText)), NULL);
-		x += size.cx;
-	};
-	if(variant == XML_SOURCE_PREVIEW_FULL) {
-		token(L"<?xml version", pi); token(L"=", delimiter); token(L"\"1.0\"", value); token(L"?>", pi); nextLine();
-		token(L"<", delimiter); token(L"section", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"main\"", value); token(L">", delimiter); nextLine();
-		token(L"  <", delimiter); token(L"p", tag); token(L" class", attribute); token(L"=", delimiter); token(L"\"body\"", value); token(L">", delimiter); token(L"Text ", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter); nextLine();
-		token(L"</", delimiter); token(L"section", tag); token(L">", delimiter);
-	} else if(variant == XML_SOURCE_PREVIEW_COMPACT) {
-		token(L"<", delimiter); token(L"section", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"m\"", value); token(L">", delimiter); nextLine();
-		token(L"  <", delimiter); token(L"p", tag); token(L">", delimiter); token(L"Text ", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter); nextLine();
-		token(L"</", delimiter); token(L"section", tag); token(L">", delimiter);
-	} else if(variant == XML_SOURCE_PREVIEW_MINIMAL) {
-		token(L"<", delimiter); token(L"p", tag); token(L" id", attribute); token(L"=", delimiter); token(L"\"x\"", value); token(L">", delimiter); token(L"T", text); token(L"&amp;", entity); token(L"</", delimiter); token(L"p", tag); token(L">", delimiter);
-	} else {
-		token(L"<", delimiter); token(L"p", tag); token(L"/>", delimiter);
-	}
-	::SetBkMode(drawItem->hDC, oldMode); ::SelectObject(drawItem->hDC, oldFont); if(createdFont) ::DeleteObject(createdFont);
-	bHandled = TRUE; return 0;
+SourceEditorConfig CSettingsSourcePage::SelectedPreviewConfiguration() const
+{
+	SourceEditorConfig config;
+	config.showEol = m_src_eol.GetCheck() != 0;
+	config.showWhitespace = m_src_whitespace.GetCheck() != 0;
+	config.wrap = m_src_wrap.GetCheck() != 0;
+	config.showLineNumbers = m_src_line_numbers.GetCheck() != 0;
+	config.syntaxHighlight = m_src_hl.GetCheck() != 0;
+	config.showSpecialCharacters = IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED;
+	config.specialCharactersStyle = m_special_chars_style.GetCurSel() == XML_SRC_SPECIAL_CHARS_TEXT_LABELS ?
+		XML_SRC_SPECIAL_CHARS_TEXT_LABELS : XML_SRC_SPECIAL_CHARS_WORD_LIKE;
+	config.undoSelectionHistory = false;
+	config.tagHighlight = m_src_taghl.GetCheck() != 0;
+	config.tagHighlightFullTag = m_tag_highlight_mode.GetCurSel() == 1;
+	config.tagHighlightAttributes = m_src_taghl_attributes.GetCheck() != 0;
+	config.tagHighlightErrors = m_src_taghl_errors.GetCheck() != 0;
+	const int fontIndex = m_srcfonts.GetCurSel();
+	if(fontIndex != CB_ERR) m_srcfonts.GetLBText(fontIndex, config.fontName);
+	if(config.fontName.IsEmpty()) config.fontName = _Settings.GetSrcFont();
+	config.fontSize = m_previewFontSize;
+	config.caret = SelectedCaretPreferences();
+	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
+	static_assert(SourceEditorColorCount == XML_SRC_STYLE_TOKEN_COUNT, "XML source colors must match the editor configuration");
+	for(int token = 0; token < XML_SRC_STYLE_TOKEN_COUNT; ++token)
+		config.colors[token] = ResolveSourceTokenColor(themeId,
+			static_cast<XmlSrcStyleToken>(token), m_source_colors);
+	return config;
 }

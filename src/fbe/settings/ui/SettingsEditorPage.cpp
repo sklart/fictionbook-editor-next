@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SettingsEditorPage.h"
+#include "EditorFontFamilies.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\ThemeManager.h"
@@ -85,100 +86,22 @@ HBITMAP LoadPreviewBitmap(const CString& path, bool& hasAlpha)
 	return bitmap;
 }
 
-int __stdcall EnumFontProc(const ENUMLOGFONTEX* logFont, const NEWTEXTMETRICEX*, DWORD, LPARAM data)
-{
-	static_cast<CSimpleArray<CString>*>(reinterpret_cast<void*>(data))->Add(logFont->elfLogFont.lfFaceName);
-	return TRUE;
-}
-
 void SetText(HWND window, int controlId, LPCWSTR key, LPCWSTR fallback)
 {
 	::SetDlgItemText(window, controlId, FbeLoadRuntimeStringByKey(key, fallback));
 }
 
+bool TryParseFontSize(const CString& value, int& size)
+{
+	CString trimmed(value); trimmed.Trim();
+	if(trimmed.IsEmpty()) return false;
+	wchar_t* end = NULL;
+	const long parsed = wcstol(trimmed, &end, 10);
+	if(end == trimmed.GetString() || *end != 0 || parsed < 6 || parsed > 72) return false;
+	size = static_cast<int>(parsed);
+	return true;
 }
 
-LRESULT CTextCaretPreview::OnPaint(UINT, WPARAM, LPARAM, BOOL&)
-{
-	PAINTSTRUCT paint = {};
-	HDC dc = BeginPaint(&paint);
-	RECT bounds = {};
-	GetClientRect(&bounds);
-	const bool highContrast = ThemeManager::IsHighContrast();
-	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) :
-		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
-	const COLORREF foreground = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
-		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_FOREGROUND);
-	HBRUSH brush = ::CreateSolidBrush(background);
-	::FillRect(dc, &bounds, brush);
-	::DeleteObject(brush);
-	::SetBkMode(dc, TRANSPARENT);
-	::SetTextColor(dc, foreground);
-	HFONT font = reinterpret_cast<HFONT>(::SendMessage(GetParent(), WM_GETFONT, 0, 0));
-	HFONT previous = font ? reinterpret_cast<HFONT>(::SelectObject(dc, font)) : NULL;
-	const int left = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(m_hWnd));
-	const int top = UiMetrics::ScaleForDpi(2, UiMetrics::DpiForWindow(m_hWnd));
-	::TextOutW(dc, left, top, m_text, m_text.GetLength());
-	SIZE text = {};
-	::GetTextExtentPoint32W(dc, m_text, m_text.GetLength(), &text);
-	TEXTMETRICW metrics = {};
-	::GetTextMetricsW(dc, &metrics);
-	if(m_visible)
-	{
-		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		const ResolvedCaretAppearance appearance = ResolveCaretAppearance(m_preferences, dpi, background,
-			highContrast ? foreground : _Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET),
-			highContrast, SystemCaretWidth(), SystemCaretPeriod());
-		RECT caret = { left + text.cx + UiMetrics::ScaleForDpi(2, dpi), top,
-			left + text.cx + UiMetrics::ScaleForDpi(2, dpi) + appearance.width, top + metrics.tmHeight };
-		HBRUSH caretBrush = ::CreateSolidBrush(appearance.color);
-		::FillRect(dc, &caret, caretBrush);
-		::DeleteObject(caretBrush);
-	}
-	if(previous) ::SelectObject(dc, previous);
-	EndPaint(&paint);
-	return 0;
-}
-
-void CTextCaretPreview::SetPreview(const CaretPreferences& preferences, const CString& text)
-{
-	m_preferences = preferences;
-	m_text = text;
-	RefreshAppearance();
-}
-
-void CTextCaretPreview::RefreshAppearance()
-{
-	m_visible = true;
-	KillTimer(1);
-	const bool highContrast = ThemeManager::IsHighContrast();
-	const COLORREF background = highContrast ? ::GetSysColor(COLOR_WINDOW) :
-		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_EDITOR_BACKGROUND);
-	const COLORREF themeCaret = highContrast ? ::GetSysColor(COLOR_WINDOWTEXT) :
-		_Settings.GetXmlSrcStyleColor(XML_SRC_STYLE_CARET);
-	const ResolvedCaretAppearance appearance = ResolveCaretAppearance(m_preferences,
-		UiMetrics::DpiForWindow(m_hWnd), background, themeCaret, highContrast,
-		SystemCaretWidth(), SystemCaretPeriod());
-	if(appearance.period) SetTimer(1, static_cast<UINT>((std::max)(100, appearance.period)));
-	Invalidate();
-}
-
-LRESULT CTextCaretPreview::OnAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&)
-{
-	RefreshAppearance();
-	return 0;
-}
-
-LRESULT CTextCaretPreview::OnTimer(UINT, WPARAM timer, LPARAM, BOOL&)
-{
-	if(timer == 1) { m_visible = !m_visible; Invalidate(); }
-	return 0;
-}
-
-LRESULT CTextCaretPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
-{
-	KillTimer(1);
-	return 0;
 }
 
 CSettingsEditorPage::~CSettingsEditorPage()
@@ -193,16 +116,11 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_background.SubclassWindow(GetDlgItem(IDC_BG));
 	m_fonts = GetDlgItem(IDC_FONT);
 	m_fontSize = GetDlgItem(IDC_FONT_SIZE);
+	m_previewFontSize = static_cast<int>(_Settings.GetFontSize());
 	m_nbspCharacter = GetDlgItem(IDC_NBSP_CHAR);
 	m_backgroundImage = GetDlgItem(IDC_EDITOR_BACKGROUND_IMAGE);
 	m_backgroundLayout = GetDlgItem(IDC_EDITOR_BACKGROUND_LAYOUT);
 	m_backgroundPreview.SubclassWindow(GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW));
-	m_caretPreview.SubclassWindow(GetDlgItem(IDC_EDITOR_CARET_PREVIEW));
-	m_caretMode = GetDlgItem(IDC_EDITOR_CARET_MODE);
-	m_caretWidth = GetDlgItem(IDC_EDITOR_CARET_WIDTH);
-	m_caretColor = GetDlgItem(IDC_EDITOR_CARET_COLOR);
-	m_caretBlink = GetDlgItem(IDC_EDITOR_CARET_BLINK);
-	m_caretCustomColor.SubclassWindow(GetDlgItem(IDC_EDITOR_CARET_CUSTOM_COLOR));
 	m_customBackgroundPath = _Settings.GetEditorBackgroundCustomPath();
 	m_tooltips.Initialize(m_hWnd);
 	m_tooltips.Add(m_fonts, L"fbe.settings.tooltip.editor.font", L"Font used in the visual editor.");
@@ -213,10 +131,6 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_backgroundImage, L"fbe.settings.tooltip.editor.background_image", L"An optional local image used behind the editor text.");
 	m_tooltips.Add(m_backgroundLayout, L"fbe.settings.tooltip.editor.background_layout", L"How the selected background image is placed.");
 	m_tooltips.Add(m_backgroundPreview, L"fbe.settings.tooltip.editor.background_preview", L"Preview of the selected editor background.");
-	m_tooltips.Add(m_caretMode, L"fbe.settings.caret.note", L"Design uses the Windows cursor. These settings apply to XML code.");
-	m_tooltips.Add(m_caretWidth, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
-	m_tooltips.Add(m_caretColor, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
-	m_tooltips.Add(m_caretBlink, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
 	const CString automaticColorText = FbeLoadRuntimeStringByKey(
 		L"fbe.dialog.idd_setting_next.color_automatic", L"Automatic");
 	const CString moreColorsText = FbeLoadRuntimeStringByKey(
@@ -228,57 +142,19 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_background.SetColor(_Settings.GetColorBG());
 	m_foreground.SetColor(_Settings.GetColorFG());
 
-	SetText(m_hWnd, IDC_OPTIONS_BODY_GROUP, L"fbe.dialog.idd_options.font_group", L"Editor");
+	SetText(m_hWnd, IDC_OPTIONS_BODY_GROUP, L"fbe.settings.editor.font_text", L"Font and text");
 	SetText(m_hWnd, IDC_OPTIONS_BODY_FONT, L"fbe.dialog.idd_options.font", L"Editor font:");
 	SetText(m_hWnd, IDC_OPTIONS_FONT_SIZE, L"fbe.dialog.idd_options.font_size", L"Font size:");
 	SetText(m_hWnd, IDC_OPTIONS_FOREGROUND_COLOR, L"fbe.dialog.idd_options.foreground_color", L"Text color:");
 	SetText(m_hWnd, IDC_OPTIONS_BACKGROUND_COLOR, L"fbe.dialog.idd_options.background_color", L"Background:");
-	SetText(m_hWnd, IDC_SETTINGS_OTHER_NBSP, L"fbe.dialog.idd_setting_other.nbsp", L"Non-breaking space");
-	SetText(m_hWnd, IDC_SETTINGS_OTHER_NBSP_LABEL, L"fbe.dialog.idd_setting_other.nbsp_char", L"Display as:");
+	SetText(m_hWnd, IDC_SETTINGS_OTHER_NBSP_LABEL, L"fbe.settings.editor.nbsp_label", L"Display NBSP as:");
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_GROUP, L"fbe.settings.editor_background.group", L"Editor background");
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_IMAGE_LABEL, L"fbe.settings.editor_background.image", L"Background image:");
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_BROWSE, L"fbe.settings.editor_background.browse", L"Browse...");
 	SetText(m_hWnd, IDC_EDITOR_BACKGROUND_LAYOUT_LABEL, L"fbe.settings.editor_background.layout", L"Layout:");
-	SetText(m_hWnd, IDC_EDITOR_CARET_GROUP, L"fbe.settings.caret.group", L"Text cursor (XML code)");
-	SetText(m_hWnd, IDC_EDITOR_CARET_NOTE, L"fbe.settings.caret.note", L"Design uses the Windows cursor. These settings apply to XML code.");
-	SetText(m_hWnd, IDC_EDITOR_CARET_MODE_LABEL, L"fbe.settings.caret.mode", L"Mode:");
-	SetText(m_hWnd, IDC_EDITOR_CARET_WIDTH_LABEL, L"fbe.settings.caret.width", L"Width:");
-	SetText(m_hWnd, IDC_EDITOR_CARET_COLOR_LABEL, L"fbe.settings.caret.color", L"Color:");
-	SetText(m_hWnd, IDC_EDITOR_CARET_BLINK_LABEL, L"fbe.settings.caret.blink", L"Blink:");
-	m_caretMode.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
-	m_caretMode.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.enhanced", L"Enhanced visibility"));
-	m_caretMode.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.custom", L"Custom"));
-	m_caretWidth.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
-	for(int logical = 1; logical <= 5; ++logical) { CString label; label.Format(L"%d", logical); m_caretWidth.AddString(label); }
-	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.auto_color", L"Automatic contrast"));
-	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
-	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.black", L"Black"));
-	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.white", L"White"));
-	m_caretColor.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.custom", L"Custom"));
-	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.system", L"System"));
-	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.slow", L"Slow"));
-	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.normal", L"Normal"));
-	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.fast", L"Fast"));
-	m_caretBlink.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.caret.solid", L"Do not blink"));
-	const CaretPreferences caret = _Settings.GetCaretPreferences();
-	m_caretMode.SetCurSel(static_cast<int>(caret.mode));
-	m_caretWidth.SetCurSel(static_cast<int>(caret.width));
-	m_caretColor.SetCurSel(static_cast<int>(caret.color));
-	m_caretBlink.SetCurSel(static_cast<int>(caret.blink));
-	m_caretCustomColor.SetDefaultText(automaticColorText);
-	m_caretCustomColor.SetCustomText(moreColorsText);
-	m_caretCustomColor.SetColor(caret.customColor);
+	SetText(m_hWnd, IDC_EDITOR_PREVIEW_GROUP, L"fbe.settings.editor.preview", L"Preview");
 
-	CSimpleArray<CString> installedFonts;
-	HDC display = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
-	LOGFONT logFont = {};
-	logFont.lfCharSet = DEFAULT_CHARSET;
-	::EnumFontFamiliesEx(display, &logFont, reinterpret_cast<FONTENUMPROC>(EnumFontProc), reinterpret_cast<LPARAM>(&installedFonts), 0);
-	::DeleteDC(display);
-	for(int i = 0; i < installedFonts.GetSize(); ++i) m_fonts.AddString(installedFonts[i]);
-	int fontIndex = m_fonts.FindStringExact(0, _Settings.GetFont());
-	if(fontIndex < 0) fontIndex = m_fonts.AddString(_Settings.GetFont());
-	m_fonts.SetCurSel(fontIndex);
+	EditorFontFamilies::Fill(m_fonts, _Settings.GetFont());
 	const int fontSizes[] = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72 };
 	CString value;
 	value.Format(_T("%lu"), static_cast<unsigned long>(_Settings.GetFontSize()));
@@ -323,7 +199,6 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_backgroundLayout.SetCurSel(layout == L"center" ? 1 : layout == L"contain" ? 2 : layout == L"cover" ? 3 : 0);
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
-	UpdateCaretPreview();
 	return 1;
 }
 
@@ -334,14 +209,13 @@ LRESULT CSettingsEditorPage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	// open.  Refresh defaults without changing an explicit user swatch.
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
-	UpdateCaretPreview();
 	return 0;
 }
 
 LRESULT CSettingsEditorPage::OnSystemAppearanceChanged(UINT, WPARAM, LPARAM, BOOL&)
 {
-	if(m_caretPreview.IsWindow()) m_caretPreview.SetPreview(SelectedCaretPreferences(),
-		FbeLoadRuntimeStringByKey(L"fbe.settings.caret.preview", L"Sample text"));
+	RefreshAutomaticColorDefaults();
+	UpdateBackgroundPreview();
 	return 0;
 }
 
@@ -356,7 +230,7 @@ bool CSettingsEditorPage::Validate()
 {
 	CString sizeText(U::GetWindowText(m_fontSize));
 	int size = 0;
-	if(_stscanf(sizeText, _T("%d"), &size) != 1 || size < 6 || size > 72)
+	if(!TryParseFontSize(sizeText, size))
 	{
 		MessageBeep(MB_ICONERROR);
 		m_fontSize.SetFocus();
@@ -370,7 +244,7 @@ void CSettingsEditorPage::Commit()
 {
 	CString sizeText(U::GetWindowText(m_fontSize));
 	int size = 0;
-	_stscanf(sizeText, _T("%d"), &size);
+	TryParseFontSize(sizeText, size);
 	_Settings.SetColorBG(m_background.GetColor());
 	_Settings.SetColorFG(m_foreground.GetColor());
 	_Settings.SetFont(U::GetWindowText(m_fonts));
@@ -390,7 +264,6 @@ void CSettingsEditorPage::Commit()
 	else _Settings.SetEditorBackgroundKind(L"custom");
 	_Settings.SetEditorBackgroundCustomPath(m_customBackgroundPath);
 	_Settings.SetEditorBackgroundLayout(SelectedBackgroundLayout());
-	_Settings.SetCaretPreferences(SelectedCaretPreferences());
 }
 
 LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
@@ -410,46 +283,28 @@ LRESULT CSettingsEditorPage::OnBackgroundSelectionChanged(WORD, WORD controlId, 
 	UpdateBackgroundPreview();
 	return 0;
 }
-LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&) { UpdateBackgroundPreview(); return 0; }
+LRESULT CSettingsEditorPage::OnPreviewSettingsChanged(WORD notification, WORD controlId, HWND, BOOL&)
+{
+	if(controlId == IDC_FONT_SIZE)
+	{
+		CString value;
+		if(notification == CBN_SELCHANGE)
+		{
+			const int index = m_fontSize.GetCurSel();
+			if(index != CB_ERR) m_fontSize.GetLBText(index, value);
+		}
+		else value = U::GetWindowText(m_fontSize);
+		int size = 0;
+		if(TryParseFontSize(value, size))
+			m_previewFontSize = size;
+	}
+	UpdateBackgroundPreview();
+	return 0;
+}
 LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&)
 {
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
-	return 0;
-}
-
-CaretPreferences CSettingsEditorPage::SelectedCaretPreferences()
-{
-	CaretPreferences preferences;
-	preferences.mode = static_cast<TextCaretMode>((std::max)(0, m_caretMode.GetCurSel()));
-	preferences.width = static_cast<DWORD>((std::max)(0, m_caretWidth.GetCurSel()));
-	preferences.color = static_cast<TextCaretColor>((std::max)(0, m_caretColor.GetCurSel()));
-	preferences.blink = static_cast<TextCaretBlink>((std::max)(0, m_caretBlink.GetCurSel()));
-	preferences.customColor = m_caretCustomColor.GetColor();
-	return preferences;
-}
-
-void CSettingsEditorPage::UpdateCaretPreview()
-{
-	const bool custom = m_caretMode.GetCurSel() == static_cast<int>(TextCaretMode::Custom);
-	m_caretWidth.EnableWindow(custom);
-	m_caretColor.EnableWindow(custom);
-	m_caretBlink.EnableWindow(custom);
-	m_caretCustomColor.EnableWindow(custom && m_caretColor.GetCurSel() == static_cast<int>(TextCaretColor::Custom));
-	if(m_caretPreview.IsWindow())
-		m_caretPreview.SetPreview(SelectedCaretPreferences(),
-			FbeLoadRuntimeStringByKey(L"fbe.settings.caret.preview", L"Sample text"));
-}
-
-LRESULT CSettingsEditorPage::OnCaretSettingsChanged(WORD, WORD, HWND, BOOL&)
-{
-	UpdateCaretPreview();
-	return 0;
-}
-
-LRESULT CSettingsEditorPage::OnCaretColorChanged(int, LPNMHDR, BOOL&)
-{
-	UpdateCaretPreview();
 	return 0;
 }
 
@@ -537,11 +392,25 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	const HBITMAP bitmap = ThemeManager::IsHighContrast() ? NULL : m_cachedBackgroundBitmap;
 	const bool bitmapHasAlpha = !ThemeManager::IsHighContrast() && m_cachedBackgroundHasAlpha;
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
-	CString sizeText(U::GetWindowText(m_fontSize)); int size = 12; _stscanf(sizeText, L"%d", &size);
+	text += L"\r\n";
+	text += FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_spaces", L"Space: A B    Non-breaking: A\u00a0B");
+	CString nbsp;
+	const int nbspIndex = m_nbspCharacter.GetCurSel();
+	if(nbspIndex != CB_ERR) m_nbspCharacter.GetLBText(nbspIndex, nbsp);
+	if(nbsp.IsEmpty()) nbsp = _Settings.GetNBSPChar();
+	text.Replace(L"\u00a0", nbsp);
+	CString font;
+	const int fontIndex = m_fonts.GetCurSel();
+	if(fontIndex != CB_ERR) m_fonts.GetLBText(fontIndex, font);
+	if(font.IsEmpty()) font = U::GetWindowText(m_fonts);
 	const EditorBackgroundColors colors = ResolvePreviewColors();
-	m_backgroundPreview.SetPreview(bitmap, bitmapHasAlpha, U::GetWindowText(m_fonts), size, colors.foreground, colors.background,
+	const bool lowContrast = !ThemeManager::IsHighContrast() &&
+		EditorBackgrounds::HasLowTextContrast(colors.foreground, colors.background);
+	SetText(m_hWnd, IDC_EDITOR_PREVIEW_GROUP,
+		lowContrast ? L"fbe.settings.editor.low_contrast" : L"fbe.settings.editor.preview",
+		lowContrast ? L"Preview — low text contrast" : L"Preview");
+	m_backgroundPreview.SetPreview(bitmap, bitmapHasAlpha, font, m_previewFontSize, colors.foreground, colors.background,
 		SelectedBackgroundLayout(), text);
-	m_backgroundPreview.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 }
 
 void CEditorBackgroundPreview::EnsureFontForDpi()
@@ -557,6 +426,9 @@ void CEditorBackgroundPreview::EnsureFontForDpi()
 void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, bool bitmapHasAlpha, const CString& face, int size, COLORREF foreground,
 	COLORREF background, const CString& layout, const CString& text)
 {
+	if(m_bitmap == bitmap && m_bitmapHasAlpha == bitmapHasAlpha && m_face == face && m_size == size &&
+		m_foreground == foreground && m_background == background && m_layout == layout && m_text == text) return;
+	const bool fontChanged = m_face != face || m_size != size;
 	m_bitmap = bitmap;
 	m_bitmapHasAlpha = bitmapHasAlpha;
 	m_face = face;
@@ -565,8 +437,7 @@ void CEditorBackgroundPreview::SetPreview(HBITMAP bitmap, bool bitmapHasAlpha, c
 	m_foreground = foreground;
 	m_background = background;
 	m_text = text;
-	if(m_font) { ::DeleteObject(m_font); m_font = NULL; }
-	m_fontDpi = 0;
+	if(fontChanged) { if(m_font) ::DeleteObject(m_font); m_font = NULL; m_fontDpi = 0; }
 	Invalidate();
 }
 

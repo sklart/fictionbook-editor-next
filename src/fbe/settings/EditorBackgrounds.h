@@ -34,5 +34,6 @@ public:
 	// Explicit foreground/background values are always preserved.
 	static EditorBackgroundColors ResolveBodyColors(DWORD configuredForeground, DWORD configuredBackground,
 		const CString& backgroundKind, const CString& backgroundId, bool highContrast);
+	static bool HasLowTextContrast(COLORREF foreground, COLORREF background);
 	static bool IsSupportedLocalImage(const CString& path);
 };

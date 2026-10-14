@@ -163,10 +163,10 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		// Use independent pages so ApplyConfChanges covers more than one category.
 		m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, IsBackupSettingsSaveRuntimeTest() ? BST_UNCHECKED : BST_CHECKED);
 		m_editorPage->SendDlgItemMessage(IDC_NBSP_CHAR, CB_SELECTSTRING, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(L"\x25AB"));
-		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_MODE, CB_SETCURSEL, 2, 0);
-		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_WIDTH, CB_SETCURSEL, 4, 0);
-		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_COLOR, CB_SETCURSEL, 3, 0);
-		m_editorPage->SendDlgItemMessage(IDC_EDITOR_CARET_BLINK, CB_SETCURSEL, 4, 0);
+		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_MODE, CB_SETCURSEL, 2, 0);
+		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_WIDTH, CB_SETCURSEL, 4, 0);
+		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_COLOR, CB_SETCURSEL, 3, 0);
+		m_sourcePage->SendDlgItemMessage(IDC_EDITOR_CARET_BLINK, CB_SETCURSEL, 4, 0);
 		m_sourcePage->CheckDlgButton(IDC_WRAP, BST_CHECKED);
 		m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);
 		m_spellingPage->SetDlgItemText(IDC_CUSTOM_DICT, L"");
@@ -377,6 +377,8 @@ void CSettingsDlg::SelectPage(SettingsPageId page)
 	if(m_currentPage != SettingsPageId::Count && m_pages[PageIndex(m_currentPage)] != m_pages[index])
 		m_pages[PageIndex(m_currentPage)]->ShowWindow(SW_HIDE);
 	m_currentPage = page;
+	if(page == SettingsPageId::Source && m_editorPage && m_sourcePage)
+		m_sourcePage->SetPreviewFontSize(m_editorPage->CurrentPreviewFontSize());
 	CRect rect = GetPageRect();
 	m_pages[index]->MoveWindow(rect);
 	LayoutPage(index);
@@ -508,15 +510,20 @@ void CSettingsDlg::LayoutPage(int index)
 				control.id == IDC_EDITOR_BACKGROUND_LAYOUT || control.id == IDC_EDITOR_CARET_MODE ||
 				control.id == IDC_EDITOR_CARET_WIDTH || control.id == IDC_EDITOR_CARET_BLINK)) ||
 			(index == PageIndex(SettingsPageId::Source) && (control.id == IDC_SRCFONT ||
-				control.id == IDC_OPTIONS_SOURCE_PALETTE)) ||
+				control.id == IDC_FBE_NEXT_SOURCE_CODE_GROUP || control.id == IDC_OPTIONS_SOURCE_GROUP ||
+				control.id == IDC_EDITOR_CARET_GROUP || control.id == IDC_OPTIONS_SOURCE_PREVIEW_GROUP ||
+				control.id == IDC_OPTIONS_SOURCE_PREVIEW ||
+				(control.rect.top < layout.templateSize.cy / 3 && control.rect.left >= layout.templateSize.cx / 2))) ||
 			(index == PageIndex(SettingsPageId::Spelling) && control.id == IDC_CUSTOM_DICT) ||
 			(index == PageIndex(SettingsPageId::Words) && control.id == IDC_EDIT_NEW) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SCRIPTS_FOLDER_PATH);
 		if((index == PageIndex(SettingsPageId::Words) && control.id == IDC_BUTTON_ADD) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SELECT_SCRIPTS_FOLDER_BUTTON))
 			rect.OffsetRect(extraWidth, 0);
-		else if(stretchField || (nearRight && rect.Width() > layout.templateSize.cx / 2)) rect.right += extraWidth;
-		else if(nearRight && rect.left > layout.templateSize.cx / 2) rect.OffsetRect(extraWidth, 0);
+		else if(stretchField || (nearRight && rect.Width() > layout.templateSize.cx / 2 &&
+			index != PageIndex(SettingsPageId::Source))) rect.right += extraWidth;
+		else if(nearRight && rect.left > layout.templateSize.cx / 2 &&
+			index != PageIndex(SettingsPageId::Source)) rect.OffsetRect(extraWidth, 0);
 		if(index == PageIndex(SettingsPageId::Keyboard))
 		{
 			if(control.id == IDC_LIST_HOTKEYS_GROUPS || control.id == IDC_LIST_HOTKEYS) rect.bottom += extraHeight;
@@ -528,7 +535,10 @@ void CSettingsDlg::LayoutPage(int index)
 			else if(rect.top >= layout.templateSize.cy / 2) rect.OffsetRect(0, extraHeight);
 		}
 		else if(index == PageIndex(SettingsPageId::Source) &&
-			(control.id == IDC_OPTIONS_SOURCE_PREVIEW || control.id == IDC_OPTIONS_SOURCE_GROUP))
+			(control.id == IDC_OPTIONS_SOURCE_PREVIEW || control.id == IDC_OPTIONS_SOURCE_PREVIEW_GROUP))
+			rect.bottom += extraHeight;
+		else if(index == PageIndex(SettingsPageId::Editor) &&
+			(control.id == IDC_EDITOR_BACKGROUND_PREVIEW || control.id == IDC_EDITOR_PREVIEW_GROUP))
 			rect.bottom += extraHeight;
 		rect.OffsetRect(-layout.scrollX, -layout.scrollY);
 		RECT current = {};
@@ -690,10 +700,51 @@ bool CSettingsDlg::ProbeLayout()
 	}
 	SelectPage(SettingsPageId::Editor);
 	const CRect backgroundGroup = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_BACKGROUND_GROUP));
-	const CRect caretGroup = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_CARET_GROUP));
-	const CRect caretPreview = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_CARET_PREVIEW));
-	passed = passed && caretGroup.top >= backgroundGroup.bottom &&
-		caretPreview.top > caretGroup.top && caretPreview.bottom <= caretGroup.bottom;
+	const CRect editorPreview = controlRect(m_editorPage->GetDlgItem(IDC_EDITOR_BACKGROUND_PREVIEW));
+	const CRect caretGroup = controlRect(m_sourcePage->GetDlgItem(IDC_EDITOR_CARET_GROUP));
+	const CRect sourcePreview = controlRect(m_sourcePage->GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW));
+	passed = passed && editorPreview.top >= backgroundGroup.bottom &&
+		caretGroup.bottom <= sourcePreview.top;
+	auto fontListValid = [](HWND combo) {
+		const int count = static_cast<int>(::SendMessageW(combo, CB_GETCOUNT, 0, 0));
+		if(count < 2 || !(::GetWindowLongPtrW(combo, GWL_STYLE) & CBS_SORT)) return false;
+		std::vector<CString> names;
+		for(int index = 0; index < count; ++index)
+		{
+			const int length = static_cast<int>(::SendMessageW(combo, CB_GETLBTEXTLEN, index, 0));
+			if(length <= 0 || length == CB_ERR) return false;
+			std::vector<wchar_t> value(static_cast<size_t>(length) + 1);
+			::SendMessageW(combo, CB_GETLBTEXT, index, reinterpret_cast<LPARAM>(value.data()));
+			const CString current(value.data());
+			if(current[0] == L'@' || std::find_if(names.begin(), names.end(), [&](const CString& existing) {
+				return existing.CompareNoCase(current) == 0;
+			}) != names.end()) return false;
+			names.push_back(current);
+		}
+		return true;
+	};
+	const HWND editorFonts = m_editorPage->GetDlgItem(IDC_FONT);
+	const HWND sourceFonts = m_sourcePage->GetDlgItem(IDC_SRCFONT);
+	passed = passed && fontListValid(editorFonts) && fontListValid(sourceFonts);
+	const HWND previewHost = m_sourcePage->GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW);
+	const HWND previewEditor = ::FindWindowExW(previewHost, NULL, L"Scintilla", NULL);
+	if(previewEditor && sourceFonts)
+	{
+		char originalFont[128] = {};
+		char selectedFont[128] = {};
+		::SendMessageW(previewEditor, SCI_STYLEGETFONT, STYLE_DEFAULT, reinterpret_cast<LPARAM>(originalFont));
+		const int originalIndex = static_cast<int>(::SendMessageW(sourceFonts, CB_GETCURSEL, 0, 0));
+		const int alternateIndex = originalIndex == 0 ? 1 : 0;
+		::SendMessageW(sourceFonts, CB_SETCURSEL, alternateIndex, 0);
+		::SendMessageW(m_sourcePage->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_SRCFONT, CBN_SELCHANGE),
+			reinterpret_cast<LPARAM>(sourceFonts));
+		::SendMessageW(previewEditor, SCI_STYLEGETFONT, STYLE_DEFAULT, reinterpret_cast<LPARAM>(selectedFont));
+		passed = passed && strcmp(originalFont, selectedFont) != 0;
+		::SendMessageW(sourceFonts, CB_SETCURSEL, originalIndex, 0);
+		::SendMessageW(m_sourcePage->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_SRCFONT, CBN_SELCHANGE),
+			reinterpret_cast<LPARAM>(sourceFonts));
+	}
+	else passed = false;
 	if(preferredFits && m_automaticSize)
 	{
 		const int deficit = UiMetrics::ScaleForDpi(20, m_layoutDpi);

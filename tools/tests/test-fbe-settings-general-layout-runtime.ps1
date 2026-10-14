@@ -39,6 +39,8 @@ public static class SettingsGeneralLayoutWindow
     [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr window);
     [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr window, uint command);
     [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll", EntryPoint = "SendMessageW", CharSet = CharSet.Unicode)]
+    static extern IntPtr SendMessageText(IntPtr window, uint message, IntPtr wParam, string text);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
@@ -105,8 +107,38 @@ public static class SettingsGeneralLayoutWindow
         return found;
     }
     public static IntPtr Parent(IntPtr window) { return GetParent(window); }
+    public static long Query(IntPtr window, uint message, int argument) {
+        return SendMessage(window, message, (IntPtr)argument, IntPtr.Zero).ToInt64();
+    }
+    public static void SelectCombo(IntPtr page, int id, int index) {
+        IntPtr combo = GetDlgItem(page, id);
+        SelectComboHandle(page, combo, id, index);
+    }
+    public static void SelectComboHandle(IntPtr page, IntPtr combo, int id, int index) {
+        SendMessage(combo, 0x014E, (IntPtr)index, IntPtr.Zero); // CB_SETCURSEL
+        SendMessage(page, 0x0111, (IntPtr)(id | (1 << 16)), combo); // CBN_SELCHANGE
+    }
+    public static void SelectComboText(IntPtr page, int id, string text) {
+        IntPtr combo = GetDlgItem(page, id);
+        int index = SendMessageText(combo, 0x0158, (IntPtr)(-1), text).ToInt32(); // CB_FINDSTRINGEXACT
+        if (index < 0) throw new Exception("Combo item missing: " + text);
+        SelectCombo(page, id, index);
+    }
+    public static void SetCheckboxHandle(IntPtr page, IntPtr checkbox, int id, bool selected) {
+        SendMessage(checkbox, 0x00F1, selected ? (IntPtr)1 : IntPtr.Zero, IntPtr.Zero); // BM_SETCHECK
+        SendMessage(page, 0x0111, (IntPtr)id, checkbox); // BN_CLICKED
+    }
+    public static void ScrollBottom(IntPtr page) {
+        SendMessage(page, 0x0115, (IntPtr)7, IntPtr.Zero); // WM_VSCROLL / SB_BOTTOM
+    }
 }
 '@
+function Get-AuditControlHandle($audit, [int]$id, [IntPtr]$parent) {
+    $parentHandle = '0x' + $parent.ToInt64().ToString('X')
+    $control = @($audit.controls | Where-Object { $_.Id -eq $id -and $_.Parent -eq $parentHandle })
+    if ($control.Count -ne 1) { throw "Expected one control $id, found $($control.Count)." }
+    return [IntPtr]::new([Convert]::ToInt64($control[0].Hwnd.Substring(2), 16))
+}
 $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
 try {
     & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\localization\export-runtime-lang.ps1') -OutputDirectory (Join-Path $isolation.Runtime 'Lang') -Clean | Out-Null
@@ -258,6 +290,79 @@ try {
                         throw "$locale Settings page $pageIndex has layout findings: $details"
                     }
                     Write-Host "$locale Settings page $pageIndex fits."
+                    if ($locale -eq 'ru-RU' -and $pageIndex -eq 1) {
+                        $sizeControl = @($pageAudit.controls | Where-Object Id -eq 1016)[0]
+                        $sizeHandle = [IntPtr]::new([Convert]::ToInt64($sizeControl.Hwnd.Substring(2), 16))
+                        $editorPage = [SettingsGeneralLayoutWindow]::Parent($sizeHandle)
+                        [SettingsGeneralLayoutWindow]::SelectComboText($editorPage, 1016, '20')
+                        [SettingsGeneralLayoutWindow]::SelectCombo($editorPage, 1100, 2)
+                        $changedBitmap = New-Object Drawing.Bitmap(($rect.Right - $rect.Left), ($rect.Bottom - $rect.Top))
+                        $changedGraphics = [Drawing.Graphics]::FromImage($changedBitmap)
+                        try {
+                            $changedDc = $changedGraphics.GetHdc()
+                            try { [void][SettingsGeneralLayoutWindow]::PrintWindow($settings, $changedDc, 0) }
+                            finally { $changedGraphics.ReleaseHdc($changedDc) }
+                            $changedBitmap.Save((Join-Path $ArtifactDirectory 'settings-editor-preview-changed-ru-RU.bmp'))
+                        }
+                        finally { $changedGraphics.Dispose(); $changedBitmap.Dispose() }
+                    }
+                    if ($locale -eq 'ru-RU' -and $pageIndex -eq 2) {
+                        $editors = @($pageAudit.controls | Where-Object { $_.Class -eq 'Scintilla' -and $_.Text -like '<?xml*' })
+                        if ($editors.Count -ne 1) { throw 'The XML preview must contain one independent Scintilla control.' }
+                        $editor = [IntPtr]::new([Convert]::ToInt64($editors[0].Hwnd.Substring(2), 16))
+                        $page = [SettingsGeneralLayoutWindow]::Parent([SettingsGeneralLayoutWindow]::Parent($editor))
+                        if ([SettingsGeneralLayoutWindow]::Query($editor, 2140, 0) -ne 1 -or
+                            [SettingsGeneralLayoutWindow]::Query($editor, 2154, 0) -lt 6) {
+                            throw 'The XML preview is editable or its sample is incomplete.'
+                        }
+                        if ([SettingsGeneralLayoutWindow]::Query($editor, 2485, 32) -ne 20) {
+                            throw 'The XML preview did not receive the newly selected Editor font size.'
+                        }
+                        [SettingsGeneralLayoutWindow]::SetCheckboxHandle($page, (Get-AuditControlHandle $pageAudit 1027 $page), 1027, $false) # Wrap lines
+                        if ([SettingsGeneralLayoutWindow]::Query($editor, 2269, 0) -ne 0) {
+                            throw 'The XML preview did not update line wrapping immediately.'
+                        }
+                        [SettingsGeneralLayoutWindow]::SetCheckboxHandle($page, (Get-AuditControlHandle $pageAudit 1029 $page), 1029, $true)
+                        [SettingsGeneralLayoutWindow]::SetCheckboxHandle($page, (Get-AuditControlHandle $pageAudit 1032 $page), 1032, $true)
+                        [SettingsGeneralLayoutWindow]::SetCheckboxHandle($page, (Get-AuditControlHandle $pageAudit 1030 $page), 1030, $true)
+                        if ([SettingsGeneralLayoutWindow]::Query($editor, 2355, 0) -ne 1 -or
+                            [SettingsGeneralLayoutWindow]::Query($editor, 2020, 0) -ne 1 -or
+                            [SettingsGeneralLayoutWindow]::Query($editor, 2243, 0) -le 0) {
+                            throw 'The XML preview did not update EOL, whitespace, or line numbers immediately.'
+                        }
+                        [SettingsGeneralLayoutWindow]::SelectComboHandle($page, (Get-AuditControlHandle $pageAudit 1783 $page), 1783, 2) # Custom caret
+                        [SettingsGeneralLayoutWindow]::SelectComboHandle($page, (Get-AuditControlHandle $pageAudit 1785 $page), 1785, 4) # 4 logical pixels
+                        [SettingsGeneralLayoutWindow]::SelectComboHandle($page, (Get-AuditControlHandle $pageAudit 1787 $page), 1787, 3) # White
+                        [SettingsGeneralLayoutWindow]::SelectComboHandle($page, (Get-AuditControlHandle $pageAudit 1790 $page), 1790, 4) # Do not blink
+                        if ([SettingsGeneralLayoutWindow]::Query($editor, 2189, 0) -lt 4 -or
+                            [SettingsGeneralLayoutWindow]::Query($editor, 2138, 0) -ne 0xFFFFFF -or
+                            [SettingsGeneralLayoutWindow]::Query($editor, 2075, 0) -ne 0) {
+                            throw 'The XML preview did not apply the custom caret immediately.'
+                        }
+                        [SettingsGeneralLayoutWindow]::ScrollBottom($page)
+                        Start-Sleep -Milliseconds 100
+                        $scrolledBitmap = New-Object Drawing.Bitmap(($rect.Right - $rect.Left), ($rect.Bottom - $rect.Top))
+                        $scrolledGraphics = [Drawing.Graphics]::FromImage($scrolledBitmap)
+                        try {
+                            $scrolledDc = $scrolledGraphics.GetHdc()
+                            try { [void][SettingsGeneralLayoutWindow]::PrintWindow($settings, $scrolledDc, 0) }
+                            finally { $scrolledGraphics.ReleaseHdc($scrolledDc) }
+                            $scrolledBitmap.Save((Join-Path $ArtifactDirectory 'settings-source-preview-ru-RU.bmp'))
+                        }
+                        finally { $scrolledGraphics.Dispose(); $scrolledBitmap.Dispose() }
+                        $editorRect = New-Object SettingsGeneralLayoutWindow+Rect
+                        [void][SettingsGeneralLayoutWindow]::GetWindowRect($editor, [ref]$editorRect)
+                        $editorBitmap = New-Object Drawing.Bitmap(($editorRect.Right - $editorRect.Left), ($editorRect.Bottom - $editorRect.Top))
+                        $editorGraphics = [Drawing.Graphics]::FromImage($editorBitmap)
+                        try {
+                            $editorDc = $editorGraphics.GetHdc()
+                            try { [void][SettingsGeneralLayoutWindow]::PrintWindow($editor, $editorDc, 2) }
+                            finally { $editorGraphics.ReleaseHdc($editorDc) }
+                            $editorBitmap.Save((Join-Path $ArtifactDirectory 'settings-source-scintilla-ru-RU.bmp'))
+                        }
+                        finally { $editorGraphics.Dispose(); $editorBitmap.Dispose() }
+                        Write-Host 'ru-RU XML preview is read-only and applies size, EOL, whitespace, line-number, wrapping, and caret changes.'
+                    }
                 }
             }
             [SettingsGeneralLayoutWindow]::Close($settings)
