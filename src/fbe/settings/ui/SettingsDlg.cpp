@@ -358,6 +358,14 @@ LRESULT CSettingsDlg::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wPara
 	return 0;
 }
 
+LRESULT CSettingsDlg::OnSourcePreviewLayout(UINT, WPARAM, LPARAM, BOOL&)
+{
+	if(m_sourcePage && m_currentPage == SettingsPageId::Source &&
+		!m_pageLayouts[PageIndex(SettingsPageId::Source)].controls.empty())
+		LayoutPage(PageIndex(SettingsPageId::Source));
+	return 0;
+}
+
 CRect CSettingsDlg::GetPageRect()
 {
 	CRect client;
@@ -468,13 +476,17 @@ void CSettingsDlg::UpdateSourcePreviewContentHeight()
 {
 	PageLayout& layout = m_pageLayouts[PageIndex(SettingsPageId::Source)];
 	const int lineHeight = m_sourcePage->PreviewLineHeight();
+	const int displayLines = m_sourcePage->PreviewDisplayLineCount();
 	layout.contentSize.cy = max(layout.templateSize.cy, layout.naturalContentHeight);
-	if(lineHeight <= 0) return;
+	if(lineHeight <= 0 || displayLines <= 0) return;
 	for(const PageControlLayout& control : layout.controls)
 		if(control.id == IDC_OPTIONS_SOURCE_PREVIEW)
 		{
-			// Measure rendered Scintilla rows, including the child window border.
-			const int minimum = 4 * lineHeight + 2 * ::GetSystemMetrics(SM_CYEDGE);
+			// Reserve four visible display rows. Wider windows can use their spare
+			// height for all wrapped rows without growing the startup dialog.
+			const int chrome = m_sourcePage->PreviewVerticalChromeHeight();
+			const int fullHeight = displayLines * lineHeight + chrome;
+			const int minimum = min(fullHeight, 4 * lineHeight + chrome);
 			layout.contentSize.cy += max(0, minimum - control.rect.Height());
 			break;
 		}
@@ -482,11 +494,32 @@ void CSettingsDlg::UpdateSourcePreviewContentHeight()
 
 void CSettingsDlg::LayoutPage(int index)
 {
+	if(index != PageIndex(SettingsPageId::Source))
+	{
+		if(LayoutPagePass(index))
+			::RedrawWindow(m_pages[index]->m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+		return;
+	}
+	bool moved = false;
+	for(int pass = 0; pass < 3; ++pass)
+	{
+		UpdateSourcePreviewContentHeight();
+		const int rowsBefore = m_sourcePage->PreviewDisplayLineCount();
+		const int chromeBefore = m_sourcePage->PreviewVerticalChromeHeight();
+		moved = LayoutPagePass(index) || moved;
+		if(rowsBefore == m_sourcePage->PreviewDisplayLineCount() &&
+			chromeBefore == m_sourcePage->PreviewVerticalChromeHeight()) break;
+	}
+	if(moved)
+		::RedrawWindow(m_pages[index]->m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+}
+
+bool CSettingsDlg::LayoutPagePass(int index)
+{
 	const HWND page = m_pages[index] ? m_pages[index]->m_hWnd : NULL;
-	if(!page || !::IsWindow(page)) return;
+	if(!page || !::IsWindow(page)) return false;
 	PageLayout& layout = m_pageLayouts[index];
-	if(index == PageIndex(SettingsPageId::Source)) UpdateSourcePreviewContentHeight();
-	if(layout.contentSize.cx <= 0 || layout.contentSize.cy <= 0) return;
+	if(layout.contentSize.cx <= 0 || layout.contentSize.cy <= 0) return false;
 	RECT client = {};
 	// Re-evaluate both axes until the viewport accounts for the other bar.
 	// Start without bars so an obsolete bar cannot keep its partner visible.
@@ -574,7 +607,7 @@ void CSettingsDlg::LayoutPage(int index)
 		}
 		moves.push_back({ control.window, rect });
 	}
-	if(moves.empty()) return;
+	if(moves.empty()) return false;
 	const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
 	HDWP positions = ::BeginDeferWindowPos(static_cast<int>(moves.size()));
 	for(const PageMove& move : moves)
@@ -593,7 +626,7 @@ void CSettingsDlg::LayoutPage(int index)
 		m_wordsPage->ResizeColumns();
 	if(index == PageIndex(SettingsPageId::Keyboard) && m_hotkeysPage)
 		m_hotkeysPage->RefreshInfoScrollbars();
-	::RedrawWindow(page, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+	return true;
 }
 
 void CSettingsDlg::ScrollPage(int index, WPARAM command, bool horizontal)
@@ -772,6 +805,7 @@ bool CSettingsDlg::ProbeLayout()
 	passed = passed && fontListValid(editorFonts) && fontListValid(sourceFonts);
 	const HWND previewHost = m_sourcePage->GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW);
 	const HWND previewEditor = ::FindWindowExW(previewHost, NULL, L"Scintilla", NULL);
+	const HWND wrapControl = m_sourcePage->GetDlgItem(IDC_WRAP);
 	if(previewEditor && sourceFonts)
 	{
 		char originalFont[128] = {};
@@ -940,6 +974,7 @@ bool CSettingsDlg::ProbeLayout()
 	int sourcePreviewBaselineHeight = 0;
 	for(const PageControlLayout& control : m_pageLayouts[PageIndex(SettingsPageId::Source)].controls)
 		if(control.id == IDC_OPTIONS_SOURCE_PREVIEW) sourcePreviewBaselineHeight = control.rect.Height();
+	const LRESULT originalWrap = ::SendMessageW(wrapControl, BM_GETCHECK, 0, 0);
 	for(int cycle = 0; cycle < 6; ++cycle)
 	{
 		const int targetHeight = cycle % 3 == 0 ? height :
@@ -957,25 +992,43 @@ bool CSettingsDlg::ProbeLayout()
 			for(const int fontSize : { 10, 12, 16 })
 			{
 				m_sourcePage->SetPreviewFontSize(fontSize);
-				LayoutPage(PageIndex(SettingsPageId::Source));
-				const int lineHeight = m_sourcePage->PreviewLineHeight();
-				RECT previewClient = {};
-				::GetClientRect(previewHost, &previewClient);
-				const CRect group = controlRect(m_sourcePage->GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW_GROUP));
-				const CRect preview = controlRect(previewHost);
-				const bool minimumRows = lineHeight > 0 && previewClient.bottom >= 4 * lineHeight;
-				const bool insideGroup = group.left < preview.left && group.top < preview.top &&
-					preview.right < group.right && preview.bottom < group.bottom;
-				passed = passed && minimumRows && insideGroup;
-				RECT pageClient = {};
-				::GetClientRect(m_sourcePage->m_hWnd, &pageClient);
-				if(pageClient.bottom >= max(m_pageLayouts[PageIndex(SettingsPageId::Source)].templateSize.cy,
-					m_pageLayouts[PageIndex(SettingsPageId::Source)].naturalContentHeight) +
-					max(0, 6 * lineHeight + 2 * ::GetSystemMetrics(SM_CYEDGE) - sourcePreviewBaselineHeight))
-					passed = passed && previewClient.bottom >= 6 * lineHeight;
+				for(const bool wrap : { false, true })
+				{
+					::SendMessageW(wrapControl, BM_SETCHECK, wrap ? BST_CHECKED : BST_UNCHECKED, 0);
+					::SendMessageW(m_sourcePage->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_WRAP, BN_CLICKED),
+						reinterpret_cast<LPARAM>(wrapControl));
+					LayoutPage(PageIndex(SettingsPageId::Source));
+					const int lineHeight = m_sourcePage->PreviewLineHeight();
+					const int displayLines = m_sourcePage->PreviewDisplayLineCount();
+					const int logicalLines = static_cast<int>(::SendMessageW(previewEditor, SCI_GETLINECOUNT, 0, 0));
+					const bool wrapApplied = (::SendMessageW(previewEditor, SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE) == wrap;
+					passed = passed && wrapApplied && logicalLines == 6;
+					RECT previewClient = {};
+					::GetClientRect(previewEditor, &previewClient);
+					const CRect group = controlRect(m_sourcePage->GetDlgItem(IDC_OPTIONS_SOURCE_PREVIEW_GROUP));
+					const CRect preview = controlRect(previewHost);
+					const bool minimumRows = lineHeight > 0 && displayLines >= 6 &&
+						previewClient.bottom >= 4 * lineHeight;
+					const bool insideGroup = group.left < preview.left && group.top < preview.top &&
+						preview.right < group.right && preview.bottom < group.bottom;
+					passed = passed && minimumRows && insideGroup;
+					RECT pageClient = {};
+					::GetClientRect(m_sourcePage->m_hWnd, &pageClient);
+					const int fullHeight = displayLines * lineHeight + m_sourcePage->PreviewVerticalChromeHeight();
+					if(pageClient.bottom >= max(m_pageLayouts[PageIndex(SettingsPageId::Source)].templateSize.cy,
+						m_pageLayouts[PageIndex(SettingsPageId::Source)].naturalContentHeight) +
+						max(0, fullHeight - sourcePreviewBaselineHeight))
+					{
+						passed = passed && previewClient.bottom >= displayLines * lineHeight &&
+							::SendMessageW(previewEditor, SCI_GETFIRSTVISIBLELINE, 0, 0) == 0;
+					}
+				}
 			}
 		}
 	}
+	::SendMessageW(wrapControl, BM_SETCHECK, originalWrap, 0);
+	::SendMessageW(m_sourcePage->m_hWnd, WM_COMMAND, MAKEWPARAM(IDC_WRAP, BN_CLICKED),
+		reinterpret_cast<LPARAM>(wrapControl));
 	m_sourcePage->SetPreviewFontSize(m_editorPage->CurrentPreviewFontSize());
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);

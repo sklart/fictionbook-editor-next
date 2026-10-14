@@ -84,7 +84,16 @@ foreach ($control in @('IDC_KEEP', 'IDC_DEFAULT_ENC', 'IDC_RESTORE_POS', 'IDC_SE
     if ($imagesDialog -match $control) { throw "General or Editor control must not be in IDD_SETTINGS_IMAGES: $control" }
 }
 if ($rc -match ('(?m)^IDD_SETTING' + '_OTHER DIALOGEX')) { throw 'Legacy Other dialog must be removed.' }
-Assert-Contains $generalDialog 'IDC_UPDATE_CHANNEL,82,239,180,55' 'Update-channel selector geometry changed in IDD_SETTINGS_GENERAL.'
+$comboGrid = @('IDC_LANG', 'IDC_GENRE_CATALOG', 'IDC_INTERFACE_THEME', 'IDC_DEFAULT_ENC', 'IDC_UPDATE_CHANNEL') | ForEach-Object {
+    $control = $_
+    $match = [regex]::Match($generalDialog, "(?m)^\s*COMBOBOX\s+$control,(\d+),\d+,(\d+),\d+")
+    if (-not $match.Success) { throw "General ComboBox missing: $control" }
+    [pscustomobject]@{ Id = $control; Left = [int]$match.Groups[1].Value; Right = [int]$match.Groups[1].Value + [int]$match.Groups[2].Value }
+}
+if (($comboGrid.Left | Select-Object -Unique).Count -ne 1 -or
+    ($comboGrid.Right | Select-Object -Unique).Count -ne 1) {
+    throw 'General ComboBox controls must share one left and right grid.'
+}
 Assert-Contains $wordsDialog 'IDD_SETTINGS_WORDS DIALOGEX 0, 0, 300, 227' 'Words page must use the Settings content width.'
 Assert-Contains $wordsDialog 'IDC_STATIC_WORDS_NEW_WORD,18,162,90,16' 'Words new-word label must stay aligned with the input row.'
 Assert-Contains $wordsDialog 'IDC_EDIT_NEW,112,160,104,14' 'Words input must follow its label on the same row.'

@@ -877,9 +877,31 @@ int CSettingsSourcePage::PreviewLineHeight() const
 		static_cast<int>(m_preview.Editor().Send(SCI_TEXTHEIGHT, 0)) : 0;
 }
 
+int CSettingsSourcePage::PreviewDisplayLineCount() const
+{
+	if(!m_preview.Editor().Handle()) return 0;
+	const SourceEditorControl& editor = m_preview.Editor();
+	const int lines = static_cast<int>(editor.Send(SCI_GETLINECOUNT));
+	int displayLines = 0;
+	for(int line = 0; line < lines; ++line)
+		displayLines += static_cast<int>(editor.Send(SCI_WRAPCOUNT, line));
+	return displayLines;
+}
+
+int CSettingsSourcePage::PreviewVerticalChromeHeight() const
+{
+	if(!m_preview.IsWindow() || !m_preview.Editor().Handle()) return 0;
+	RECT host = {}, editor = {};
+	::GetClientRect(m_preview.m_hWnd, &host);
+	::GetClientRect(m_preview.Editor().Handle(), &editor);
+	return max(0, host.bottom - editor.bottom) + 2 * ::GetSystemMetrics(SM_CYEDGE);
+}
+
 void CSettingsSourcePage::InvalidateSourcePreview()
 {
-	if(m_preview.IsWindow()) m_preview.ApplyConfiguration(SelectedPreviewConfiguration());
+	if(!m_preview.IsWindow()) return;
+	m_preview.ApplyConfiguration(SelectedPreviewConfiguration());
+	::PostMessageW(::GetParent(m_hWnd), WM_FBE_SOURCE_PREVIEW_LAYOUT, 0, 0);
 }
 
 SourceEditorConfig CSettingsSourcePage::SelectedPreviewConfiguration() const

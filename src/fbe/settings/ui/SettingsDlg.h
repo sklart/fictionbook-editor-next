@@ -82,6 +82,7 @@ BEGIN_MSG_MAP(CSettingsDlg)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 	MESSAGE_HANDLER(WM_TIMER, OnTimer)
 	MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+	MESSAGE_HANDLER(WM_FBE_SOURCE_PREVIEW_LAYOUT, OnSourcePreviewLayout)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 	COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 	COMMAND_HANDLER(IDC_SETTINGS_NAV, LBN_SELCHANGE, OnNavigationChanged)
@@ -110,6 +111,7 @@ END_MSG_MAP()
 	LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnSystemAppearanceChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnSourcePreviewLayout(UINT, WPARAM, LPARAM, BOOL&);
 
 private:
 	void SelectPage(SettingsPageId page);
@@ -117,6 +119,7 @@ private:
 	void CapturePageLayouts();
 	void UpdateSourcePreviewContentHeight();
 	void LayoutPage(int index);
+	bool LayoutPagePass(int index);
 	void ScrollPage(int index, WPARAM command, bool horizontal);
 	void RevealFocusedPageControl(int index);
 	bool ProbeLayout();

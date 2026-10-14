@@ -16,6 +16,8 @@
 #define WM_DPICHANGED_AFTERPARENT 0x02E3
 #endif
 
+constexpr UINT WM_FBE_SOURCE_PREVIEW_LAYOUT = WM_APP + 0x149;
+
 class CSourcePreviewHost : public CWindowImpl<CSourcePreviewHost, CStatic>
 {
 	SourceEditorControl m_editor;
@@ -61,6 +63,8 @@ public:
 	enum { IDD = IDD_SETTINGS_SOURCE };
 	void SetPreviewFontSize(int size);
 	int PreviewLineHeight() const;
+	int PreviewDisplayLineCount() const;
+	int PreviewVerticalChromeHeight() const;
 
 BEGIN_MSG_MAP(CSettingsSourcePage)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
