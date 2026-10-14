@@ -30,10 +30,9 @@ LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_OPTIONS_SPELLCHECK_GROUP, L"fbe.dialog.idd_options.spell_checking", L"Spelling");
 	SetText(m_hWnd, IDC_USESPELLCHECKER, L"fbe.dialog.idd_options.use_spellchecker", L"Use spellchecker");
 	SetText(m_hWnd, IDC_BACKGROUNDSPELLCHECK, L"fbe.dialog.idd_options.background_spell_check", L"Highlight misspelled words");
-	SetText(m_hWnd, IDC_CHECK_RUSSIAN_YO_USAGE, L"fbe.settings.spelling.yo.option", L"Also check use of the Russian letter ё");
-	SetText(m_hWnd, IDC_RUSSIAN_YO_USAGE_HELP, L"fbe.settings.spelling.yo.help", L"Finds possible ё-for-е mistakes. Never changes text automatically. Ambiguous cases need review.");
+	SetText(m_hWnd, IDC_CHECK_RUSSIAN_YO_USAGE, L"fbe.settings.spelling.yo.option", L"Check correct use of ё");
 	SetText(m_hWnd, IDS_SPELL_CUSTOM_DICT, L"fbe.dialog.idd_options.custom_dict", L"Custom dictionary:");
-	SetText(m_hWnd, IDC_DICTPATH, L"fbe.dialog.idd_options.dict_browse", L"Browse...");
+	SetText(m_hWnd, IDC_DICTPATH, L"fbe.dialog.idd_options.dict_browse", L"...");
 	m_enabled.SetCheck(_Settings.GetUseSpellChecker() ? BST_CHECKED : BST_UNCHECKED);
 	m_highlight.SetCheck(_Settings.GetHighlightMisspells() ? BST_CHECKED : BST_UNCHECKED);
 	m_checkYoUsage.SetCheck(_Settings.GetCheckRussianYoUsage() ? BST_CHECKED : BST_UNCHECKED);

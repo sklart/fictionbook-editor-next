@@ -42,8 +42,8 @@
   ],
   "resourceType": "DIALOGEX",
   "strings": {
-    "fbe.settings.spelling.yo.option": {"resource":"IDD_SETTINGS_SPELLING","kind":"CONTROL","targetId":"IDC_CHECK_RUSSIAN_YO_USAGE","translations":{"en-US":"Also check use of the Russian letter ё","ru-RU":"Дополнительно проверять правильность употребления буквы «ё»","uk-UA":"Додатково перевіряти вживання російської літери «ё»","de-DE":"Verwendung des russischen Buchstabens ё zusätzlich prüfen","fr-FR":"Vérifier aussi l’emploi de la lettre russe ё","es-ES":"Comprobar también el uso de la letra rusa ё","it-IT":"Controlla anche l’uso della lettera russa ё","pl-PL":"Sprawdzaj także użycie rosyjskiej litery ё","pt-PT":"Verificar também o uso da letra russa ё","nl-NL":"Controleer ook het gebruik van de Russische letter ё","cs-CZ":"Kontrolovat také použití ruského písmene ё","bg-BG":"Проверявай и употребата на руската буква ё"}},
-    "fbe.settings.spelling.yo.help": {"resource":"IDD_SETTINGS_SPELLING","kind":"LTEXT","targetId":"IDC_RUSSIAN_YO_USAGE_HELP","translations":{"en-US":"Finds possible ё-for-е mistakes. Never changes text automatically. Ambiguous cases need review.","ru-RU":"Выявляет возможные ошибки при использовании «ё» вместо «е». Не изменяет текст автоматически. Неоднозначные случаи требуют проверки вручную.","uk-UA":"Виявляє можливі помилки з «ё» замість «е». Не змінює текст автоматично. Неоднозначні випадки потребують перевірки.","de-DE":"Findet mögliche ё-statt-е-Fehler. Ändert Text nie automatisch. Zweifelsfälle bitte prüfen.","fr-FR":"Repère les erreurs possibles de ё à la place de е. Ne modifie jamais le texte automatiquement. Vérifiez les cas ambigus.","es-ES":"Detecta posibles errores de ё por е. No modifica el texto automáticamente. Revise los casos ambiguos.","it-IT":"Rileva possibili errori con ё al posto di е. Non cambia il testo automaticamente. Verificare i casi ambigui.","pl-PL":"Wykrywa możliwe błędy z ё zamiast е. Nie zmienia tekstu automatycznie. Sprawdź przypadki niejednoznaczne.","pt-PT":"Deteta possíveis erros de ё em vez de е. Nunca altera o texto automaticamente. Reveja casos ambíguos.","nl-NL":"Vindt mogelijke fouten met ё in plaats van е. Wijzigt tekst nooit automatisch. Controleer twijfelgevallen.","cs-CZ":"Hledá možné chyby s ё místo е. Text automaticky nemění. Nejasné případy zkontrolujte.","bg-BG":"Открива възможни грешки с ё вместо е. Не променя текста автоматично. Проверявайте неясните случаи."}},
+    "fbe.settings.spelling.yo.option": {"resource":"IDD_SETTINGS_SPELLING","kind":"CONTROL","targetId":"IDC_CHECK_RUSSIAN_YO_USAGE","translations":{"en-US":"Check correct use of ё","ru-RU":"Проверять правильность употребления „ё“","uk-UA":"Перевіряти правильність уживання «ё»","de-DE":"Verwendung von „ё“ prüfen","fr-FR":"Vérifier l’emploi de « ё »","es-ES":"Comprobar el uso correcto de «ё»","it-IT":"Controlla l’uso corretto di «ё»","pl-PL":"Sprawdzaj poprawne użycie „ё”","pt-PT":"Verificar o uso correto de «ё»","nl-NL":"Controleer het juiste gebruik van ё","cs-CZ":"Kontrolovat správné použití ё","bg-BG":"Проверявай правилната употреба на „ё“"}},
+    "fbe.settings.spelling.yo.help": {"resource":"IDD_SETTINGS_SPELLING","kind":"VALUE","targetId":"","translations":{"en-US":"Finds possible ё-for-е mistakes. Never changes text automatically. Ambiguous cases need review.","ru-RU":"Выявляет возможные ошибки при использовании «ё» вместо «е». Не изменяет текст автоматически. Неоднозначные случаи требуют проверки вручную.","uk-UA":"Виявляє можливі помилки з «ё» замість «е». Не змінює текст автоматично. Неоднозначні випадки потребують перевірки.","de-DE":"Findet mögliche ё-statt-е-Fehler. Ändert Text nie automatisch. Zweifelsfälle bitte prüfen.","fr-FR":"Repère les erreurs possibles de ё à la place de е. Ne modifie jamais le texte automatiquement. Vérifiez les cas ambigus.","es-ES":"Detecta posibles errores de ё por е. No modifica el texto automáticamente. Revise los casos ambiguos.","it-IT":"Rileva possibili errori con ё al posto di е. Non cambia il testo automaticamente. Verificare i casi ambigui.","pl-PL":"Wykrywa możliwe błędy z ё zamiast е. Nie zmienia tekstu automatycznie. Sprawdź przypadki niejednoznaczne.","pt-PT":"Deteta possíveis erros de ё em vez de е. Nunca altera o texto automaticamente. Reveja casos ambíguos.","nl-NL":"Vindt mogelijke fouten met ё in plaats van е. Wijzigt tekst nooit automatisch. Controleer twijfelgevallen.","cs-CZ":"Hledá možné chyby s ё místo е. Text automaticky nemění. Nejasné případy zkontrolujte.","bg-BG":"Открива възможни грешки с ё вместо е. Не променя текста автоматично. Проверявайте неясните случаи."}},
     "fbe.spelling.yo.warning": {"resource":"IDD_SPELL_CHECK","kind":"VALUE","targetId":"","translations":{"en-US":"Possible incorrect use of ё","ru-RU":"Возможно, неверно употреблена буква «ё»","uk-UA":"Можливо, неправильно вжито літеру «ё»","de-DE":"Möglicherweise falsche Verwendung von ё","fr-FR":"Emploi peut-être incorrect de ё","es-ES":"Posible uso incorrecto de ё","it-IT":"Possibile uso errato di ё","pl-PL":"Możliwe błędne użycie ё","pt-PT":"Possível uso incorreto de ё","nl-NL":"Mogelijk onjuist gebruik van ё","cs-CZ":"Možné nesprávné použití ё","bg-BG":"Възможна неправилна употреба на ё"}},
     "fbe.spelling.yo.word_label": {"resource":"IDD_SPELL_CHECK","kind":"VALUE","targetId":"","translations":{"en-US":"Word:","ru-RU":"Слово:","uk-UA":"Слово:","de-DE":"Wort:","fr-FR":"Mot :","es-ES":"Palabra:","it-IT":"Parola:","pl-PL":"Słowo:","pt-PT":"Palavra:","nl-NL":"Woord:","cs-CZ":"Slovo:","bg-BG":"Дума:"}},
     "fbe.settings.editor.font_text": {"resource":"IDD_SETTINGS_EDITOR","kind":"VALUE","targetId":"","translations":{"en-US":"Font and text","ru-RU":"Шрифт и текст","uk-UA":"Шрифт і текст","de-DE":"Schrift und Text","fr-FR":"Police et texte","es-ES":"Fuente y texto","it-IT":"Carattere e testo","pl-PL":"Czcionka i tekst","pt-PT":"Tipo de letra e texto","nl-NL":"Lettertype en tekst","cs-CZ":"Písmo a text","bg-BG":"Шрифт и текст"}},
@@ -2807,18 +2807,18 @@
       "kind": "PUSHBUTTON",
       "targetId": "IDC_DICTPATH",
       "translations": {
-        "en-US": "..",
-        "ru-RU": "..",
-        "uk-UA": "..",
-        "de-DE": "..",
-        "fr-FR": "..",
-        "es-ES": "..",
-        "it-IT": "..",
-        "pl-PL": "..",
-        "pt-PT": "..",
-        "nl-NL": "..",
-        "cs-CZ": "..",
-        "bg-BG": ".."
+        "en-US": "...",
+        "ru-RU": "...",
+        "uk-UA": "...",
+        "de-DE": "...",
+        "fr-FR": "...",
+        "es-ES": "...",
+        "it-IT": "...",
+        "pl-PL": "...",
+        "pt-PT": "...",
+        "nl-NL": "...",
+        "cs-CZ": "...",
+        "bg-BG": "..."
       }
     },
     "fbe.dialog.idd_options.show_line_numbers": {

@@ -577,6 +577,7 @@ bool CSettingsDlg::LayoutPagePass(int index)
 				control.id == IDC_LIST_WORDS)) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SCRIPTS_FOLDER_PATH);
 		if((index == PageIndex(SettingsPageId::Words) && control.id == IDC_BUTTON_ADD) ||
+			(index == PageIndex(SettingsPageId::Spelling) && control.id == IDC_DICTPATH) ||
 			(index == PageIndex(SettingsPageId::Advanced) && control.id == IDC_SELECT_SCRIPTS_FOLDER_BUTTON))
 			rect.OffsetRect(extraWidth, 0);
 		else if(stretchField || (nearRight && rect.Width() > layout.templateSize.cx / 2 &&
@@ -779,13 +780,23 @@ bool CSettingsDlg::ProbeLayout()
 	SelectPage(SettingsPageId::Spelling);
 	const HWND spellingGroup = m_spellingPage->GetDlgItem(IDC_OPTIONS_SPELLCHECK_GROUP);
 	const HWND yoOption = m_spellingPage->GetDlgItem(IDC_CHECK_RUSSIAN_YO_USAGE);
-	const HWND yoHelp = m_spellingPage->GetDlgItem(IDC_RUSSIAN_YO_USAGE_HELP);
-	const CRect spellingBounds = controlRect(spellingGroup);
-	const CRect optionBounds = controlRect(yoOption);
-	const CRect helpBounds = controlRect(yoHelp);
-	passed = passed && spellingBounds.left < optionBounds.left &&
-		optionBounds.bottom <= helpBounds.top && helpBounds.right < spellingBounds.right &&
-		helpBounds.bottom < spellingBounds.bottom;
+	const HWND dictionaryField = m_spellingPage->GetDlgItem(IDC_CUSTOM_DICT);
+	const HWND dictionaryButton = m_spellingPage->GetDlgItem(IDC_DICTPATH);
+	auto spellingGeometry = [&]() {
+		const CRect group = controlRect(spellingGroup);
+		const CRect option = controlRect(yoOption);
+		const CRect label = controlRect(m_spellingPage->GetDlgItem(IDS_SPELL_CUSTOM_DICT));
+		const CRect field = controlRect(dictionaryField);
+		const CRect browse = controlRect(dictionaryButton);
+		return group.left < option.left && option.right < group.right &&
+			option.bottom <= label.top && label.bottom <= field.top &&
+			field.left == option.left && field.top == browse.top &&
+			field.bottom == browse.bottom && field.right < browse.left &&
+			browse.right < group.right && browse.bottom < group.bottom;
+	};
+	passed = passed && spellingGeometry();
+	const int originalDictionaryWidth = controlRect(dictionaryField).Width();
+	const int originalButtonLeft = controlRect(dictionaryButton).left;
 	const LRESULT spellingEnabled = m_spellingPage->SendDlgItemMessage(IDC_USESPELLCHECKER, BM_GETCHECK);
 	const HWND spellingToggle = m_spellingPage->GetDlgItem(IDC_USESPELLCHECKER);
 	m_spellingPage->CheckDlgButton(IDC_USESPELLCHECKER, BST_UNCHECKED);
@@ -885,10 +896,19 @@ bool CSettingsDlg::ProbeLayout()
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top,
 		resizedWidth, original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
+	SelectPage(SettingsPageId::Spelling);
+	passed = passed && spellingGeometry();
+	if(resizedWidth > original.Width())
+		passed = passed && controlRect(dictionaryField).Width() > originalDictionaryWidth &&
+			controlRect(dictionaryButton).left > originalButtonLeft;
 	::SendMessageW(m_hWnd, WM_EXITSIZEMOVE, 0, 0);
 	if(resizedWidth != original.Width()) passed = passed && !m_automaticSize;
 	::SetWindowPos(m_hWnd, NULL, original.left, original.top, original.Width(), original.Height(),
 		SWP_NOZORDER | SWP_NOACTIVATE);
+	SelectPage(SettingsPageId::Spelling);
+	passed = passed && spellingGeometry() &&
+		controlRect(dictionaryField).Width() == originalDictionaryWidth &&
+		controlRect(dictionaryButton).left == originalButtonLeft;
 	m_automaticSize = originalAutomaticSize;
 	const int width = m_minimumWindowSize.cx + UiMetrics::ScaleForDpi(8, m_layoutDpi);
 	const int height = m_minimumWindowSize.cy + UiMetrics::ScaleForDpi(8, m_layoutDpi);
