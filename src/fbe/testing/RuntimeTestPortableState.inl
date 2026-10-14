@@ -286,7 +286,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			"/*<FBE-SCRIPT-CARD version=\"1\">\n"
 			"{\"schema\":1,\"title\":\"Card test\",\"summary\":\"Card runtime summary\","
 			"\"description\":\"Card runtime description\",\"version\":\"1.0\","
-			"\"scope\":\"Current document\",\"modifiesDocument\":false,\"requiresSelection\":false,"
+			"\"scope\":\"Current document, including every section, annotation, image caption and nested body selected for processing by this script\",\"modifiesDocument\":false,\"requiresSelection\":false,"
 			"\"usage\":[\"Open card\"],\"warnings\":[\"Review changes before running\"],\"dependencies\":[],"
 			"\"settings\":[{\"title\":\"Mode\",\"name\":\"ModeCode\",\"value\":\"safe\","
 			"\"expression\":\"+extracting(0)\",\"valueMeaning\":\"fallback value\",\"description\":\"Change mode\"},"
@@ -344,6 +344,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			SWP_NOZORDER | SWP_NOACTIVATE);
 		::SendMessageW(viewport, WM_VSCROLL, SB_TOP, 0);
 		const bool optionalRendered = openedCard &&
+			m_script_card_window.BodyText().Find(L"including every section, annotation, image caption and nested body") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Mode\r\nModeCode\r\nЗначение по умолчанию: safe") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Selection enabled\r\nSecond\r\nЗначение: Нет\r\nда") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Значение: Пустая строка") >= 0 &&
@@ -375,6 +376,24 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool characteristicLayout = wideCharacteristics == 1 && pairedCharacteristics == 2 &&
 			narrowCharacteristics == 3 &&
 			(::GetWindowLongPtrW(m_script_card_window.ViewportWindow(), GWL_STYLE) & WS_HSCROLL) == 0;
+		bool characteristicDpiMatrix = true;
+		for(const UINT dpi : { 96U, 120U, 144U, 192U })
+		{
+			::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED, MAKELONG(dpi, dpi), 0);
+			for(const int logicalWidth : { 1200, 650, 260 })
+			{
+				::SetWindowPos(characteristicViewport, NULL, 0, 0,
+					UiMetrics::ScaleForDpi(logicalWidth, dpi), UiMetrics::ScaleForDpi(100, dpi),
+					SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+				::SendMessageW(characteristicViewport, WM_VSCROLL, SB_TOP, 0);
+				::SendMessageW(characteristicViewport, WM_VSCROLL, SB_BOTTOM, 0);
+				characteristicDpiMatrix = characteristicDpiMatrix &&
+					m_script_card_window.CharacteristicLayoutRows() ==
+					(logicalWidth == 1200 ? 1 : logicalWidth == 650 ? 2 : 3);
+			}
+		}
+		::SendMessageW(m_script_card_window.m_hWnd, WM_DPICHANGED,
+			MAKELONG(cardDpi, cardDpi), 0);
 		::SetWindowPos(m_script_card_window.m_hWnd, NULL, originalCardBounds.left, originalCardBounds.top,
 			originalCardBounds.right - originalCardBounds.left, originalCardBounds.bottom - originalCardBounds.top,
 			SWP_NOZORDER | SWP_NOACTIVATE);
@@ -700,7 +719,7 @@ void CMainFrame::RunPortableStateTestScenario()
 				m_script_card_window.BodyText().Find(L"Значение: Да") >= 0;
 		}
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
-			characteristicLayout && standardValues && cleaningValues &&
+			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues &&
 			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
 			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
@@ -721,8 +740,8 @@ void CMainFrame::RunPortableStateTestScenario()
 			infoUidMatched,
 			infoSelectionMatched, infoRunCount,
 			passed ? "pass" : "fail");
-		report.AppendFormat("characteristic-layout=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
-			characteristicLayout, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
+		report.AppendFormat("characteristic-layout=%d\ncharacteristic-dpi-matrix=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
+			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);
