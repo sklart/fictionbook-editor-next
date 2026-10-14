@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **162**.
+Карточек без автоматических замечаний: **163**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,43 +16,43 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **336**. Исполняемый код не изменён.
+Изменено карточек: **337**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 300
-- `generic_usage`: 281
-- `inaccurate_description`: 568
+- `false_warning`: 301
+- `generic_usage`: 282
+- `inaccurate_description`: 570
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 287
+- `incorrect_dependency`: 288
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 284
+- `incorrect_scope`: 285
 - `incorrect_selection`: 17
-- `incorrect_setting`: 137
-- `incorrect_undo`: 280
+- `incorrect_setting`: 138
+- `incorrect_undo`: 281
 - `incorrect_version`: 5
-- `uncertain_attribution`: 9
+- `uncertain_attribution`: 10
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 11
+- `attributionClarified`: 12
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 163
+- `dependenciesVerified`: 164
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 279
-- `scopeClarified`: 265
-- `serviceSettingsRemoved`: 151
-- `settingsClarified`: 450
-- `undoDescriptionsClarified`: 272
-- `usageCorrected`: 281
-- `warningsClarified`: 212
+- `purposeClarified`: 280
+- `scopeClarified`: 266
+- `serviceSettingsRemoved`: 152
+- `settingsClarified`: 451
+- `undoDescriptionsClarified`: 273
+- `usageCorrected`: 282
+- `warningsClarified`: 213
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **175**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **176**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -351,13 +351,16 @@
 - `06_Чистка/10_Точка..js:1277` — Выделение сворачивается, затем обрабатываются все последующие абзацы до конца книги; выбранный пользователем диапазон не ограничивает поиск.
 - `06_Чистка/01_Генеральная уборка.js:1224` — Подъём к следующему узлу не проверяет достижение fbw_body и null; на последней ветви возможен выход за пределы дерева книги или ошибка, которая оставит группу отмены открытой.
 - `06_Чистка/01_Генеральная уборка.js:1020` — Удаление идентификаторов AutBody_ может нарушить внутренние ссылки на соответствующие элементы; скрипт не проверяет входящие ссылки.
+- `06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js:1246` — Подъём к следующему узлу не проверяет достижение fbw_body и null; на последней ветви возможен выход за пределы дерева книги или ошибка до закрытия группы отмены.
+- `06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js:1220` — Правило re160 активно, хотя шапка версии 2.10 объявляет его отключённым; замена также сохраняет U+E098 в захваченной группе и добавляет знак ударения.
+- `06_Чистка/09_Генеральная уборка_(ИНОСТРАНКА).js:1219` — Правило re159 меняет вложенные кавычки в названии издательства, хотя описание варианта обещает отключение обработки кавычек для иноязычных текстов.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1243
-- `inaccurate_description`: 86
-- `incorrect_undo`: 189
-- `requires_review`: 418
+- `generic_usage`: 1238
+- `inaccurate_description`: 85
+- `incorrect_undo`: 188
+- `requires_review`: 417
 
 ## Границы проверки
 
