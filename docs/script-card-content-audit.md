@@ -16,19 +16,19 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **75**. Исполняемый код не изменён.
+Изменено карточек: **79**. Исполняемый код не изменён.
 
 - `false_warning`: 51
 - `generic_usage`: 1
 - `inaccurate_description`: 2
-- `incorrect_setting`: 41
+- `incorrect_setting`: 47
 
 Подтверждённые результаты:
 
 - `externalWarningsRefined`: 12
 - `falseWarningsRemoved`: 39
 - `purposeClarified`: 1
-- `serviceSettingsRemoved`: 64
+- `serviceSettingsRemoved`: 85
 - `undoDescriptionsClarified`: 1
 - `usageCorrected`: 1
 

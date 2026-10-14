@@ -40,15 +40,7 @@
     "status": "explicit_calls_found",
     "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
   },
-  "settings": [
-    {
-      "name": "processingEnded",
-      "value": false,
-      "expression": "false",
-      "description": "true, когда обработка закончена и пора выходить",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-    }
-  ]
+  "settings": []
 }
 </FBE-SCRIPT-CARD>*/
 // Скрипт "Удалить все пробелы в выделении". Автор - Sclex

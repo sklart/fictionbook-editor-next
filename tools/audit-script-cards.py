@@ -403,6 +403,7 @@ def main() -> int:
     records = [inspect(path) for path in sorted(SCRIPTS.rglob("*.js"))]
     if args.baseline.is_file():
         baseline_data = json.loads(args.baseline.read_text(encoding="utf-8"))
+        baseline = baseline_data["baseCommit"]
         fields = ("path", "codeSha256", "encoding", "bomBytes", "codeBytes", "lineEnding")
         expected = [{field: item[field] for field in fields} for item in baseline_data["scripts"]]
         current = [{field: item[field] for field in fields} for item in records]
