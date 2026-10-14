@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **154**.
+Карточек без автоматических замечаний: **157**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,22 +16,22 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **320**. Исполняемый код не изменён.
+Изменено карточек: **323**. Исполняемый код не изменён.
 
 - `false_setting`: 9
-- `false_warning`: 284
-- `generic_usage`: 265
-- `inaccurate_description`: 536
+- `false_warning`: 287
+- `generic_usage`: 268
+- `inaccurate_description`: 542
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 42
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 265
+- `incorrect_dependency`: 270
 - `incorrect_effect`: 2
 - `incorrect_metadata`: 10
-- `incorrect_scope`: 262
+- `incorrect_scope`: 265
 - `incorrect_selection`: 17
-- `incorrect_setting`: 124
-- `incorrect_undo`: 264
+- `incorrect_setting`: 127
+- `incorrect_undo`: 267
 - `incorrect_version`: 5
 - `uncertain_attribution`: 2
 
@@ -40,17 +40,17 @@
 - `attributionClarified`: 5
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 147
+- `dependenciesVerified`: 150
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 263
-- `scopeClarified`: 249
+- `purposeClarified`: 266
+- `scopeClarified`: 252
 - `serviceSettingsRemoved`: 143
-- `settingsClarified`: 437
-- `undoDescriptionsClarified`: 256
-- `usageCorrected`: 265
-- `warningsClarified`: 196
+- `settingsClarified`: 440
+- `undoDescriptionsClarified`: 259
+- `usageCorrected`: 268
+- `warningsClarified`: 199
 
 Скриптов с подтверждёнными замечаниями к исполняемому коду: **163**.
 
@@ -332,10 +332,10 @@
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 1308
-- `inaccurate_description`: 99
+- `generic_usage`: 1295
+- `inaccurate_description`: 96
 - `incorrect_undo`: 199
-- `requires_review`: 434
+- `requires_review`: 431
 
 ## Границы проверки
 
