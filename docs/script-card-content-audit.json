@@ -5792,8 +5792,8 @@
     },
     {
       "path": "21_Поиск и замена/64_Замена символов по списку из буфера обмена.js",
-      "codeSha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
-      "evidence": "Проверены объявления и использования переменных в исполняемом коде: InsideP: 112 var InsideP = false; // true, если находимся внутри тэга P; 119 if (ptr.nodeType==1 && ptr.nodeName==\"P\") {InsideP=true};; 136 if (ptr.nodeType==3 && InsideP && InsideSelection) { | InsideSelection: 113 var InsideSelection = false; // true, когда текущая позиция внутри выделенного текста; 124 InsideSelection=true;; 131 InsideSelection=false;. Эти флаги отражают текущее положение обхода, а не настройку автора. Повторная ревизия: Исключены служебные или неиспользуемые параметры: help, ProcessingEnded. Непустое выделение проверяется до чтения clipboardData. help и ProcessingEnded служебные; ObrabotkaType фиксирует единственную ветвь замены. Дефект }; else сохранён отдельно от метаданных. Стандартный JavaScript-парсер отклонял else. Штатный 32-битный JScript принимает и исходную форму; вывод о блокировке запуска FBE отозван. Run в ходе проверки не вызывался. Фактический Run в FBE: обычная замена, спецсимволы слева, пустые/неверные данные и Ctrl+Z проверены. Набор a$, b\\, c\" в правой части вызывает ошибку до изменения книги. INPUT исключён ветвлением исходника; TEXTAREA отдельно не запускалась.",
+      "codeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
+      "evidence": "Точечная повторная проверка скрипта 64: свободные ID fbe-script64-, сохранённые DOM-ссылки и принадлежность текущему запуску; независимая очистка, приоритет исходной ошибки. Результаты MSHTML и TEXTAREA см. script64-runtime-results.json и script64-literal-pairs-report.md. Остальные записи не пересматривались.",
       "changes": [
         {
           "field": "settings",
@@ -5879,7 +5879,7 @@
           ],
           "after": [
             "Повтор исходного символа заменяет предыдущее значение, сохраняя место первого правила. Цифровые исходные символы обрабатываются первыми по возрастанию, как в прежнем JScript.",
-            "При ошибке во время изменения группа отмены закрывается, но автоматический откат частичных изменений не выполняется."
+            "При ошибке возможны частичные изменения. Скрипт пытается удалить каждый свой маркер и завершить свою группу отмены; автоматический откат не выполняется. При отказе обоих способов удаления DOM временная разметка может сохраниться."
           ],
           "category": "false_warning"
         },
@@ -5891,7 +5891,7 @@
           },
           "after": {
             "status": "explicit_calls_found",
-            "description": ""
+            "description": "Изменения выделения книги и TEXTAREA отменяются одним действием Ctrl+Z и возвращаются Ctrl+Y. Частичные изменения при исключении автоматически не отменяются."
           },
           "category": "incorrect_undo"
         },
@@ -5904,7 +5904,7 @@
           },
           "after": {
             "algorithm": "sha256-exclude-fbe-card-v1",
-            "sha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
+            "sha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
             "reviewStatus": "generated"
           },
           "category": "executable_repair"
@@ -246227,13 +246227,13 @@
     {
       "path": "21_Поиск и замена/64_Замена символов по списку из буфера обмена.js",
       "result": "requires_review",
-      "codeSha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
+      "codeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
       "structurallyValid": true,
       "sourceHashCurrent": true,
       "contentReview": "requires_review",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 9611,
+      "codeBytes": 11599,
       "lineEnding": "CRLF",
       "claims": {
         "title": "Замена символов по списку из буфера обмена",
@@ -246263,13 +246263,13 @@
         ],
         "warnings": [
           "Повтор исходного символа заменяет предыдущее значение, сохраняя место первого правила. Цифровые исходные символы обрабатываются первыми по возрастанию, как в прежнем JScript.",
-          "При ошибке во время изменения группа отмены закрывается, но автоматический откат частичных изменений не выполняется."
+          "При ошибке возможны частичные изменения. Скрипт пытается удалить каждый свой маркер и завершить свою группу отмены; автоматический откат не выполняется. При отказе обоих способов удаления DOM временная разметка может сохраниться."
         ],
         "settings": [],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": ""
+          "description": "Изменения выделения книги и TEXTAREA отменяются одним действием Ctrl+Z и возвращаются Ctrl+Y. Частичные изменения при исключении автоматически не отменяются."
         },
         "examples": null,
         "tags": [
@@ -246281,21 +246281,21 @@
         "dependenciesComplete": false,
         "sourceRevision": {
           "algorithm": "sha256-exclude-fbe-card-v1",
-          "sha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
+          "sha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
           "reviewStatus": "generated"
         }
       },
       "evidence": {
         "undo_begin": [
           {
-            "line": 124,
+            "line": 163,
             "text": "window.external.BeginUndoUnit(document,\"Замена символов по списку из буфера обмена\");"
           }
         ],
         "undo_end": [
           {
-            "line": 224,
-            "text": "window.external.EndUndoUnit(document);"
+            "line": 268,
+            "text": "try { window.external.EndUndoUnit(document); }"
           }
         ],
         "dialog": [],
@@ -246319,20 +246319,8 @@
         ],
         "write": [
           {
-            "line": 214,
-            "text": "BlockStartNode.parentNode.removeChild(BlockStartNode);"
-          },
-          {
-            "line": 215,
-            "text": "BlockEndNode.parentNode.removeChild(BlockEndNode);"
-          },
-          {
-            "line": 220,
-            "text": "if (BlockStartNode && BlockStartNode.parentNode) BlockStartNode.parentNode.removeChild(BlockStartNode);"
-          },
-          {
-            "line": 221,
-            "text": "if (BlockEndNode && BlockEndNode.parentNode) BlockEndNode.parentNode.removeChild(BlockEndNode);"
+            "line": 258,
+            "text": "try { markerNode.parentNode.removeChild(markerNode); }"
           }
         ],
         "external": [],
@@ -246376,6 +246364,18 @@
           {
             "line": 122,
             "text": "if (tr.parentElement().nodeName==\"INPUT\") { MsgBox(errMsg); return; }"
+          },
+          {
+            "line": 149,
+            "text": "return marker.node;"
+          },
+          {
+            "line": 154,
+            "text": "node.getAttribute(\"id\")==markers[i].id) return true;"
+          },
+          {
+            "line": 156,
+            "text": "return false;"
           }
         ]
       },
@@ -246395,7 +246395,7 @@
           "verification": "requires_review"
         },
         {
-          "text": "При ошибке во время изменения группа отмены закрывается, но автоматический откат частичных изменений не выполняется.",
+          "text": "При ошибке возможны частичные изменения. Скрипт пытается удалить каждый свой маркер и завершить свою группу отмены; автоматический откат не выполняется. При отказе обоих способов удаления DOM временная разметка может сохраниться.",
           "verification": "requires_review"
         }
       ],

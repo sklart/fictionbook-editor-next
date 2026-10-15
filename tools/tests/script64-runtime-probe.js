@@ -3,6 +3,37 @@ var messages = [];
 function MsgBox(text) { messages.push(String(text)); }
 function alert(text) { messages.push(String(text)); }
 var results = [];
+// Clipboard managers can briefly hold OpenClipboard between adjacent fixtures.
+// Retry only clipboard access errors; never replay a partially applied script.
+function clipboardRetry(action) {
+    var deadline = new Date().getTime() + 1000;
+    while (true) {
+        try { return action(); } catch (e) {
+            var message = String(e.message || e.description || e);
+            if (message.indexOf("OpenClipboard") < 0 || new Date().getTime() >= deadline) throw e;
+            var until = new Date().getTime() + 20;
+            while (new Date().getTime() < until) {}
+        }
+    }
+}
+function setClipboard(pairs) {
+    clipboardRetry(function () {
+        if (pairs === null) window.clipboardData.clearData();
+        else window.clipboardData.setData("Text", pairs);
+    });
+}
+function runCandidate() {
+    var root = document.getElementById("fbw_body"), before = root.innerHTML;
+    var field = document.getElementById("script64-field"), value = field ? field.value : null;
+    clipboardRetry(function () {
+        try { candidate(); } catch (e) {
+            if (String(e.message || e.description || e).indexOf("OpenClipboard") >= 0 &&
+                (root.innerHTML != before || (field && field.value != value)))
+                throw new Error("script64-changed-before-error: " + String(e.message || e.description || e).replace(/OpenClipboard/g, "clipboard"));
+            throw e;
+        }
+    });
+}
 function exercise(name, text, pairs, selected, expected, refusal, mode) {
     messages = [];
     var root = document.getElementById("fbw_body");
@@ -21,11 +52,10 @@ function exercise(name, text, pairs, selected, expected, refusal, mode) {
     if (mode == "textarea") { range.collapse(true); range.moveStart("character", 1); range.moveEnd("character", 2); }
     if (!selected) range.collapse(true);
     range.select();
-    if (pairs === null) window.clipboardData.clearData();
-    else window.clipboardData.setData("Text", pairs);
+    setClipboard(pairs);
     var beforeHTML = root.innerHTML;
     var error = "";
-    try { candidate(); } catch (e) { error = String(e.message || e.description || e); }
+    try { runCandidate(); } catch (e) { error = String(e.message || e.description || e); }
     p = document.getElementById(mode == "textarea" ? "script64-field" : "script64-probe");
     var actual = p ? (mode == "textarea" ? p.value : p.innerText) : "<missing>";
     var markers = document.getElementById("BlockStart") || document.getElementById("BlockEnd") || document.getElementById("CursorPosition");
@@ -63,6 +93,52 @@ exercise("cascade", "ab", "ab\r\nbc", true, "cc", false);
 // Prepare the last fixture, then let native code discard ALL previous undo units
 // before invoking the original candidate. Setup cannot impersonate script Undo.
 var ordinaryRoot = document.getElementById("fbw_body");
+var foreignNodes = [], foreignHTML = [], fixtureMode = 0;
+function noOwnedMarkers() {
+    var nodes = ordinaryRoot.getElementsByTagName("B");
+    for (var i = 0; i < nodes.length; i++)
+        if (nodes[i].getAttribute("data-fbe-script64")) return false;
+    return true;
+}
+function foreignPreserved() {
+    for (var i = 0; i < foreignNodes.length; i++)
+        if (document.getElementById(foreignNodes[i].id) !== foreignNodes[i] ||
+            foreignNodes[i].outerHTML !== foreignHTML[i]) return false;
+    return true;
+}
+window.__script64PrepareSafety = function (mode) {
+    fixtureMode = mode;
+    window.__script64PrepareOrdinary();
+    foreignNodes = []; foreignHTML = [];
+    var ids = mode == 0 ? ["BlockStart"] : mode == 1 ? ["BlockEnd"] :
+        mode == 2 ? ["CursorPosition"] : ["BlockStart", "BlockEnd", "CursorPosition"];
+    if (mode >= 4) ids.push("fbe-script64-1", "fbe-script64-2");
+    for (var i = 0; i < ids.length; i++) {
+        ordinaryRoot.insertAdjacentHTML("afterBegin", '<P id="'+ids[i]+'" title="keep-'+i+'"><EM>foreign</EM></P>');
+        var node = document.getElementById(ids[i]);
+        foreignNodes.push(node); foreignHTML.push(node.outerHTML);
+    }
+    if (mode == 5) {
+        ordinaryRoot.insertAdjacentHTML("beforeEnd", '<TEXTAREA id="script64-field">xaby</TEXTAREA>');
+        var field = document.getElementById("script64-field");
+        field.focus();
+        var range = field.createTextRange();
+        range.collapse(true); range.moveStart("character", 1); range.moveEnd("character", 2); range.select();
+    }
+    window.__script64Before = ordinaryRoot.innerHTML;
+    setClipboard("aA\nbB");
+};
+window.__script64SafetyRun = function () {
+    var error = null;
+    try { runCandidate(); } catch (e) { error = e; }
+    window.__script64After = ordinaryRoot.innerHTML;
+    var actual = fixtureMode == 5 ? document.getElementById("script64-field").value : document.getElementById("script64-probe").innerText;
+    window.external.SetStatusBarText(!error && noOwnedMarkers() && foreignPreserved() && actual == (fixtureMode == 5 ? "xABy" : "ABc AB") ? "1" : "0");
+};
+window.__script64FieldState = function () {
+    var field = document.getElementById("script64-field");
+    window.external.SetStatusBarText(field.value + "|" + (foreignPreserved() && noOwnedMarkers() && document.getElementById("script64-probe").innerText == "abc ab" ? "1" : "0"));
+};
 window.__script64PrepareOrdinary = function () {
     ordinaryRoot.innerHTML = '<DIV class="body"><DIV class="section"><P id="script64-probe">abc ab</P></DIV></DIV>';
     var range = document.body.createTextRange();
@@ -74,45 +150,60 @@ var refusalBefore = "";
 window.__script64RefusalSetup = function (index) {
     window.__script64PrepareOrdinary();
     if (index == 0) { var range = document.selection.createRange(); range.collapse(true); range.select(); }
-    if (index == 3) window.clipboardData.clearData();
-    else window.clipboardData.setData("Text", index == 1 ? "" : (index == 2 ? "aA\nbBB" : "aA"));
+    setClipboard(index == 3 ? null : (index == 1 ? "" : (index == 2 ? "aA\nbBB" : "aA")));
     refusalBefore = ordinaryRoot.innerHTML;
 };
 window.__script64RefusalRun = function () {
     messages = [];
     var failed = false;
-    try { candidate(); } catch (e) { failed = true; }
+    try { runCandidate(); } catch (e) { failed = true; }
     var ok = !failed && messages.length == 1 && ordinaryRoot.innerHTML == refusalBefore &&
         !document.getElementById("BlockStart") && !document.getElementById("BlockEnd");
     window.external.SetStatusBarText(ok ? "1" : "0");
 };
 window.__script64FaultSetup = function () {
-    window.__script64PrepareOrdinary();
+    window.__script64PrepareSafety(4);
     document.getElementById("script64-probe").innerHTML = 'a<EM>b<STRONG>c</STRONG></EM> ab';
     var range = document.body.createTextRange();
     range.moveToElementText(document.getElementById("script64-probe"));
     range.select();
-    window.clipboardData.setData("Text", "aA");
+    setClipboard("aA");
 };
-window.__script64FaultRun = function () {
+window.__script64FaultRun = function (cleanupMode) {
     var split = String.prototype.split, injected = false;
+    var p = document.getElementById("script64-probe"), removeChild = p.removeChild;
+    var removals = 0, failedNode = null, removeNode = null;
+    if (cleanupMode) p.removeChild = function (node) {
+        removals++;
+        if (removals == 1) {
+            if (cleanupMode == 2) {
+                failedNode = node; removeNode = node.removeNode;
+                node.removeNode = function () { throw new Error("script64-cleanup-failure"); };
+            }
+            throw new Error("script64-remove-failure");
+        }
+        return removeChild.call(p, node);
+    };
     String.prototype.split = function (separator) {
         if (String(this) == "b" && separator == "a") { injected = true; throw new Error("script64-injected-failure"); }
         return split.apply(this, arguments);
     };
-    var failed = false;
-    try { candidate(); } catch (e) { failed = true; }
-    finally { String.prototype.split = split; }
-    var p = document.getElementById("script64-probe");
-    var ok = injected && failed && p.innerText == "Abc ab" &&
-        !document.getElementById("BlockStart") && !document.getElementById("BlockEnd");
+    var original = false;
+    try { runCandidate(); } catch (e) { original = e.message == "script64-injected-failure"; }
+    finally { String.prototype.split = split; if (cleanupMode) p.removeChild = removeChild; }
+    var independent = !cleanupMode || removals == 2;
+    var survivor = cleanupMode != 2 || (failedNode && failedNode.parentNode &&
+        ordinaryRoot.getElementsByTagName("B").length == 1);
+    if (failedNode) { failedNode.removeNode = removeNode; removeChild.call(p, failedNode); }
+    var ok = injected && original && independent && survivor && p.innerText == "Abc ab" &&
+        noOwnedMarkers() && foreignPreserved();
     window.external.SetStatusBarText(ok ? "1" : "0");
 };
 window.__script64Ordinary = function () {
-    window.clipboardData.setData("Text", "aA\r\nbB");
+    setClipboard("aA\r\nbB");
     messages = [];
     var error = "";
-    try { candidate(); } catch (e) { error = String(e.message || e.description || e); }
+    try { runCandidate(); } catch (e) { error = String(e.message || e.description || e); }
     var actual = document.getElementById("script64-probe").innerText;
     window.__script64After = ordinaryRoot.innerHTML;
     results.push("ordinary=" + (!error && actual == "ABc AB" ? "1" : "0"));

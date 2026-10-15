@@ -12,19 +12,24 @@ function Read-Script64Report([string]$Text) {
         if($entries.ContainsKey($key)) { throw "Duplicate report key: $key" }
         $entries.Add($key, $line.Substring($equals + 1))
     }
-    foreach($key in @('harness-ran','parser-negative','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
+    foreach($key in @('harness-ran','parser-negative','id-collision-0','id-collision-1','id-collision-2','id-collision-3','id-collision-4',
+        'cleanup-mode-0','cleanup-mode-1','cleanup-mode-2','textarea-history-observed','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
         'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list',
         'mixed-special','newlines','cyrillic','no-text','invalid-late','nodes','textarea','numeric-order','duplicates','cascade','utf16-reject')) {
         if(!$entries.ContainsKey($key) -or $entries[$key] -cne '1') { throw "Failed/missing check: $key" }
+    }
+    foreach($key in @('textarea-undo','textarea-redo')) {
+        if(!$entries.ContainsKey($key) -or $entries[$key] -cnotmatch '^[01]$') { throw "Missing/invalid observation: $key" }
     }
     if(!$entries.ContainsKey('result') -or $entries['result'] -cne 'pass') { throw 'Runtime result is not pass.' }
     return $entries
 }
 if($ParserSelfTest) {
-    $good = (@('harness-ran','parser-negative','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
+    $good = (@('harness-ran','parser-negative','id-collision-0','id-collision-1','id-collision-2','id-collision-3','id-collision-4',
+        'cleanup-mode-0','cleanup-mode-1','cleanup-mode-2','textarea-history-observed','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
         'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list',
         'mixed-special','newlines','cyrillic','no-text','invalid-late','nodes','textarea','numeric-order','duplicates','cascade','utf16-reject') | ForEach-Object { "$_=1" }) -join "`n"
-    $good += "`nresult=pass`n"
+    $good += "`ntextarea-undo=0`ntextarea-redo=1`nresult=pass`n"
     $null = Read-Script64Report $good
     foreach($bad in @($good.Replace("`nspecial=1`n", "`nspecial=0`n"),
         $good.Replace("`nspecial=1`n", "`n"), ($good + "special=1`n"),
