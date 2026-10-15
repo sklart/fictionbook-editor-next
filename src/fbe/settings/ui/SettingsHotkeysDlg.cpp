@@ -365,7 +365,7 @@ bool CSettingsHotkeysDlg::Validate()
 	}
 	return true;
 }
-bool CSettingsHotkeysDlg::PrepareCommit(SettingsFileTransaction& files)
+bool CSettingsHotkeysDlg::PrepareCommit(SettingsFileTransaction& files, CString& error)
 {
 	bool changed = false;
 	for(size_t i = 0; i < m_initHkGroups.size(); ++i)
@@ -378,9 +378,11 @@ bool CSettingsHotkeysDlg::PrepareCommit(SettingsFileTransaction& files)
 	if(!changed) return true;
 	const CString path = FbeSettings::HotkeysFilePath();
 	const CString temporary = SettingsFileTransaction::Temporary(path);
-	if(temporary.IsEmpty()) return false;
+	if(temporary.IsEmpty()) return SettingsPreparationFailed(error, path);
 	files.Add(path, temporary);
-	return FbeSettings::Hotkeys::SaveToFile(_Settings.m_hotkey_groups, temporary);
+	::SetLastError(ERROR_SUCCESS);
+	if(FbeSettings::Hotkeys::SaveToFile(_Settings.m_hotkey_groups, temporary)) return true;
+	return SettingsPreparationFailed(error, path);
 }
 
 void CSettingsHotkeysDlg::Commit()

@@ -9,7 +9,7 @@ if($settingsHost -match 'MAKELONG\(IDOK|MAKELONG\(IDCANCEL|m_initial_scripts_fol
 $ok = [regex]::Match($settingsHost, '(?s)LRESULT CSettingsDlg::OnClickedOK.*?\n\}')
 $batch = [regex]::Match($settingsHost, '(?s)bool CSettingsDlg::TryCommit.*?\n\}')
 if($ok.Value -notmatch '(?s)->Validate\(\).*?SelectPage.*?return 0.*?TryCommit\(error\).*?return 0.*?EndDialog\(IDOK\)') { throw 'Settings OK must validate all pages and keep the dialog open when persistence fails.' }
-if($batch.Value -notmatch '(?s)->PrepareCommit\(files\).*?SettingsEditSession.*?->Commit\(\).*?HasChanges\(\).*?PrepareSave.*?files.Commit\(\).*?edit.Accept\(\)') { throw 'Settings persistence must stage related files and serialize the candidate before accepting the batch.' }
+if($batch.Value -notmatch '(?s)->PrepareCommit\(files, error\).*?SettingsEditSession.*?->Commit\(\).*?HasChanges\(\).*?PrepareSave.*?files.Commit\(\).*?edit.Accept\(\)') { throw 'Settings persistence must stage related files and serialize the candidate before accepting the batch.' }
 if($settingsHost -notmatch '(?s)hWndCtl\s*!=\s*globalOk.*?m_currentPage\s*==\s*SettingsPageId::Words.*?m_wordsPage->HandleDefaultAction\(\).*?return 0;\s*for\s*\([^)]*\).*?Validate\(\)') { throw 'Words local default action must return before the global transaction.' }
 foreach($path in @('SettingsGeneralPage.cpp','SettingsEditorPage.cpp','SettingsImagesPage.cpp','SettingsAdvancedPage.cpp','SettingsSpellingPage.cpp','SettingsSourcePage.cpp','SettingsHotkeysDlg.cpp','SettingsWordsDlg.cpp')) { $text = Get-Content -Raw -LiteralPath (Join-Path $root ('src\fbe\settings\ui\' + $path)); foreach($method in @('Validate','Commit','CancelChanges')) { if($text -notmatch ($method + '\s*\(')) { throw "$path lacks $method" } } }
 $words = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\SettingsWordsDlg.cpp')
@@ -60,3 +60,9 @@ foreach($name in 'AdvancedPage','GeneralPage','ImagesPage','EditorPage','Spellin
     if($page -notmatch 'ForwardSettingsDialogCommand\(m_hWnd, IDOK\)' -or $page -notmatch 'ForwardSettingsDialogCommand\(m_hWnd, IDCANCEL\)') { throw "Child page bypasses global transaction: $name" }
 }
 Write-Host 'Settings lifecycle contract passed.'
+
+foreach($name in 'SettingsSpellingPage','SettingsWordsDlg','SettingsHotkeysDlg','SettingsSourcePage') {
+    $page = Get-Content -Raw -LiteralPath (Join-Path $root ("src/fbe/settings/ui/$name.cpp"))
+    $prepareBody = [regex]::Match($page, ('(?s)bool ' + $name.Insert(0, 'C') + '::PrepareCommit.*?\n\}')).Value
+    if(-not $prepareBody -or $prepareBody -match 'MessageBox|DictionaryError') { throw "$name must return preparation errors to SettingsDlg." }
+}

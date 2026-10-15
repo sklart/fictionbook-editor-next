@@ -33,6 +33,7 @@ class CSettingsDlg : public CAxDialogImpl<CSettingsDlg>
 	CString m_legacyDictionaryDirectory;
 	bool TryCommit(CString& error);
 	bool ProbeFollowup();
+	int ProbeResidual();
 	CListBox m_navigation;
 	CSettingsAdvancedPage* m_advancedPage;
 	CSettingsGeneralPage* m_generalPage;

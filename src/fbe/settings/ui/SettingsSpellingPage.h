@@ -31,7 +31,7 @@ public:
 	LRESULT OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBrowseDictionary(WORD, WORD, HWND, BOOL&);
 	LRESULT OnDictionaryChanged(WORD, WORD, HWND, BOOL&);
-	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files); void Commit(); bool CancelChanges();
+	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files, CString& error); void Commit(); bool CancelChanges();
 private:
 	void UpdateDependencies();
 	void UpdateDictionaryTooltip();

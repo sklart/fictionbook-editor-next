@@ -552,7 +552,7 @@ bool CSettingsWordsDlg::Validate()
 }
 
 
-bool CSettingsWordsDlg::PrepareCommit(SettingsFileTransaction& files)
+bool CSettingsWordsDlg::PrepareCommit(SettingsFileTransaction& files, CString& error)
 {
 	if(!m_wordsDirty) return true;
 	const CString path(FbeSettings::WordsFilePath());
@@ -562,12 +562,12 @@ bool CSettingsWordsDlg::PrepareCommit(SettingsFileTransaction& files)
 		files.Add(path, temporary);
 		std::vector<WordsItem> persistentWords = m_words;
 		std::sort(persistentWords.begin(), persistentWords.end(), [](const WordsItem& left, const WordsItem& right) { return left.m_word.CompareNoCase(right.m_word) < 0; });
+		::SetLastError(ERROR_SUCCESS);
 		if(FbeSettings::Words::SaveToFile(persistentWords, temporary)) return true;
 	}
-	MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.save_failed", L"Could not save settings files. Check file access and free disk space. Your previous files have been retained."),
-		FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
-	return false;
+	return SettingsPreparationFailed(error, path);
 }
+
 void CSettingsWordsDlg::Commit()
 {
 	_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);

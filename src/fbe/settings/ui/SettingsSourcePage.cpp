@@ -536,13 +536,11 @@ LRESULT CSettingsSourcePage::OnClickedCancel(WORD /* unused: wNotifyCode */, WOR
 
 CSettingsSourcePage::~CSettingsSourcePage() { XmlSourceThemes::EndSettingsEdit(); }
 bool CSettingsSourcePage::Validate() { return true; }
-bool CSettingsSourcePage::PrepareCommit(SettingsFileTransaction& files)
+bool CSettingsSourcePage::PrepareCommit(SettingsFileTransaction& files, CString& error)
 {
-	CString error;
-	if(XmlSourceThemes::PrepareSettingsEdit(files, error)) return true;
-	U::MessageBox(m_hWnd, error, ThemeString(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
-	return false;
+	return XmlSourceThemes::PrepareSettingsEdit(files, error);
 }
+
 void CSettingsSourcePage::Commit()
 {
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);

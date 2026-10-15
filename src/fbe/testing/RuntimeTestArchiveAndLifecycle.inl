@@ -651,6 +651,17 @@
 			activationRemoved && switchRemoved && sourceIgnored && focusRestored && shownAfterReturn ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"settings-residual-runtime"))
+	{
+		SendMessage(WM_COMMAND, MAKEWPARAM(ID_TOOLS_OPTIONS, 0), 0);
+		const int result = static_cast<int>(reinterpret_cast<INT_PTR>(::GetPropW(m_hWnd, L"FBE_SETTINGS_RESIDUAL_RESULT")));
+		::RemovePropW(m_hWnd, L"FBE_SETTINGS_RESIDUAL_RESULT");
+		CStringA report;
+		report.Format("single_error=%d\nnbsp_rollback=%d\nnbsp_retry=%d\n", !!(result & 1), !!(result & 2), !!(result & 4));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(result == 7 ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"settings-dialog-runtime") || IsFbeTestScenario(L"settings-dialog-runtime-verify"))
 	{
 		const bool verifyOnly = IsFbeTestScenario(L"settings-dialog-runtime-verify");

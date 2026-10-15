@@ -137,5 +137,5 @@ END_MSG_MAP()
 	void UpdateCaretDependencies();
 	void UpdateSpecialCharactersDependencies();
 	~CSettingsSourcePage();
-	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files); void Commit(); bool CancelChanges();
+	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files, CString& error); void Commit(); bool CancelChanges();
 };

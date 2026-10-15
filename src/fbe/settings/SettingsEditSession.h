@@ -8,9 +8,11 @@ class SettingsEditSession
     struct Value { CString key; CProperty property; };
     std::vector<Value> m_values;
     std::vector<WordsItem> m_words;
+    CString m_nbspChar, m_oldNbsp;
     bool m_restart, m_previousSuppression, m_accepted = false;
 public:
     explicit SettingsEditSession(CSettings& settings) : m_settings(settings), m_words(settings.m_words),
+        m_nbspChar(settings.m_nbsp_char), m_oldNbsp(settings.m_old_nbsp),
         m_restart(settings.m_need_restart), m_previousSuppression(settings.m_saveSuppressed)
     {
         std::vector<CString> keys; settings.GetProperties(keys);
@@ -39,6 +41,8 @@ public:
         {
             for(auto& saved : m_values) m_settings.SetPropertyValue(saved.key, saved.property);
             m_settings.m_words = m_words;
+            m_settings.m_nbsp_char = m_nbspChar;
+            m_settings.m_old_nbsp = m_oldNbsp;
             m_settings.m_need_restart = m_restart;
             FbePublishRuntimeLocaleName(m_settings.GetInterfaceLocaleName());
             FbeResetRuntimeLocalization();

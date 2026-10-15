@@ -68,6 +68,6 @@ public:
 	LRESULT OnBnClickedButtonAdd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedCheckSelall(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 	LRESULT OnBnClickedButtonRemovesel(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files);
+	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files, CString& error);
 	void Commit(); bool CancelChanges();
 };

@@ -2,6 +2,7 @@
 // Called only by the isolated settings runtime scenario.
 namespace {
 int g_followupWarnings = 0;
+CString g_followupMessage;
 HWND g_followupDialog = NULL;
 BOOL CALLBACK FollowupCloseMessage(HWND window, LPARAM)
 {
@@ -11,6 +12,9 @@ BOOL CALLBACK FollowupCloseMessage(HWND window, LPARAM)
     {
         ::SetPropW(window, L"FBE_FOLLOWUP_CLOSED", reinterpret_cast<HANDLE>(1));
         ++g_followupWarnings;
+        wchar_t text[4096] = {};
+        ::GetDlgItemTextW(window, 65535, text, _countof(text));
+        g_followupMessage = text;
         ::PostMessageW(window, WM_COMMAND, ::GetDlgItem(window, IDOK) ? IDOK : IDCANCEL, 0);
     }
     return TRUE;
@@ -57,17 +61,17 @@ bool CSettingsDlg::ProbeFollowup()
     passed = FollowupWrite(source, "legacy-one\nlegacy-two\nlegacy-three\n") && passed;
     {
         SettingsFileTransaction files;
-        passed = m_spellingPage->PrepareCommit(files) && files.Commit() && passed;
+        passed = m_spellingPage->PrepareCommit(files, error) && files.Commit() && passed;
     }
     passed = !FollowupRead(target).empty() && FollowupRead(target) == FollowupRead(source) && passed;
     passed = FollowupWrite(target, "existing-user-word\n") && passed;
     {
         SettingsFileTransaction files;
-        passed = m_spellingPage->PrepareCommit(files) && files.Commit() && passed;
+        passed = m_spellingPage->PrepareCommit(files, error) && files.Commit() && passed;
     }
     passed = FollowupRead(target) != FollowupRead(source) && passed;
     ::DeleteFileW(target);
-    { SettingsFileTransaction files; passed = m_spellingPage->PrepareCommit(files) && passed; }
+    { SettingsFileTransaction files; passed = m_spellingPage->PrepareCommit(files, error) && passed; }
     passed = ::GetFileAttributesW(target) == INVALID_FILE_ATTRIBUTES && !FollowupRead(source).empty() && passed;
     // A read-only dictionary warns once per changed path, never for the initial unchanged path.
     ::SetFileAttributesW(source, FILE_ATTRIBUTE_READONLY);
@@ -165,4 +169,53 @@ bool CSettingsDlg::ProbeFollowup()
     m_sourcePage->LoadSourceThemeControlsFromSettings();
     ::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_FOLLOWUP_PASSED", reinterpret_cast<HANDLE>(passed ? 1 : 2));
     return passed;
+}
+
+// Focused regression: no theme or dictionary operations, no layout probe.
+int CSettingsDlg::ProbeResidual()
+{
+    SettingsEditSession restoreGlobals(_Settings);
+    int result = 0;
+    CString error;
+    const CString wordsPath = FbeSettings::WordsFilePath();
+    const auto words = m_wordsPage->m_words;
+    const bool dirty = m_wordsPage->m_wordsDirty;
+    // An unmatched tag makes the real Words PrepareCommit serialization fail.
+    m_wordsPage->m_words = { WordsItem(CString(L"<broken>"), 1) };
+    m_wordsPage->m_wordsDirty = true;
+    g_followupDialog = m_hWnd; g_followupWarnings = 0; g_followupMessage.Empty();
+    const UINT_PTR timer = ::SetTimer(NULL, 0, 20, FollowupMessageTimer);
+    if(timer)
+    {
+        BOOL handled = FALSE;
+        OnClickedOK(0, IDOK, GetDlgItem(IDOK), handled);
+        ::KillTimer(NULL, timer);
+        if(g_followupWarnings == 1 && g_followupMessage.Find(wordsPath) >= 0 && ::IsWindow(m_hWnd)) result |= 1;
+    }
+    CStringA diagnostic;
+    diagnostic.Format("messages=%d\nreason_path=%d\ndialog_open=%d\n", g_followupWarnings, g_followupMessage.Find(wordsPath) >= 0, ::IsWindow(m_hWnd));
+    FollowupWrite(U::GetSettingsDir() + L"settings-error-probe.txt", diagnostic);
+    m_wordsPage->m_words = words; m_wordsPage->m_wordsDirty = dirty;
+
+    // Keep the prior NBSP distinct from the current one to catch incomplete rollback.
+    _Settings.SetNBSPChar(L"\u00A0");
+    _Settings.SetNBSPChar(L"\u25A1");
+    const CString current = _Settings.GetNBSPChar(), previous = _Settings.GetOldNBSPChar();
+    m_editorPage->SendDlgItemMessage(IDC_NBSP_CHAR, CB_SETCURSEL, 1, 0); // small square
+    const CString settingsPath = FbeSettings::SettingsFilePath();
+    const bool saved = _Settings.TrySave(error);
+    const auto before = FollowupRead(settingsPath);
+    if(saved && ::SetFileAttributesW(settingsPath, FILE_ATTRIBUTE_READONLY))
+    {
+        if(!TryCommit(error) && !error.IsEmpty() && _Settings.GetNBSPChar() == current &&
+            _Settings.GetOldNBSPChar() == previous && FollowupRead(settingsPath) == before) result |= 2;
+        ::SetFileAttributesW(settingsPath, FILE_ATTRIBUTE_NORMAL);
+        if(TryCommit(error) && _Settings.GetNBSPChar() == L"\u25AB" && _Settings.GetOldNBSPChar() == current)
+        {
+            CString text = L"first" + current + L"second";
+            text.Replace(_Settings.GetOldNBSPChar(), _Settings.GetNBSPChar());
+            if(text == L"first\u25ABsecond" && FollowupRead(settingsPath) != before) result |= 4;
+        }
+    }
+    return result;
 }

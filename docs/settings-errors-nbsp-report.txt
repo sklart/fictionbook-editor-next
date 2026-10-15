@@ -1,0 +1,49 @@
+ОСТАТОЧНЫЕ ЗАМЕЧАНИЯ: СООБЩЕНИЯ ОБ ОШИБКАХ И NBSP
+База: master 7c9a86af. Ветка: codex/settings-errors-nbsp.
+
+1. ДУБЛИРОВАНИЕ ОШИБОК — ВЫПОЛНЕНО
+Внутренний ISettingsPage::PrepareCommit принимает выходной CString с причиной. Страницы орфографии, слов, горячих клавиш и XML-тем возвращают ошибку общему диалогу без собственных окон сообщений. SettingsDlg очищает причину перед попыткой и показывает единственное локализованное сообщение, добавляя сведения страницы. При отказе окно настроек остаётся открытым, ошибочная страница выбирается.
+Для файловых ошибок передаются путь и системная причина; при отсутствии доступного кода используется ERROR_WRITE_FAULT. Страница орфографии сохраняет прежние локализованные пояснения. XML-страница передаёт диагностическую строку существующего механизма тем. Новых строк локализации не требуется; прежние переводы и системный FormatMessage сохранены.
+Порядок и механизмы копирования словаря, подготовки хоткеев, редактирования тем, файловой транзакции и сериализации не изменены. Изменены только передача и вывод диагностики.
+
+2. ПОЛНЫЙ ОТКАТ NBSP — ВЫПОЛНЕНО
+SettingsEditSession явно запоминает m_nbsp_char и m_old_nbsp. При отказе оба поля восстанавливаются вместе с прежним снимком. При успехе сохраняется обычная работа CSettings::SetNBSPChar: прежний текущий символ становится предыдущим для замены. Сам SetNBSPChar в Settings.cpp, форматы пользовательских файлов и публичные COM/JavaScript API не менялись.
+
+ПРОВЕРКИ
+PASS — Release Win32 FBE.vcxproj, v143 / VC Tools 14.44.35207, C++17, FbeStrictWarnings=true (/W4 /WX).
+Команда: MSBuild.exe src/fbe/FBE.vcxproj /t:Build /m:2 /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /p:FbeStrictWarnings=true /v:minimal /nologo.
+Основной запуск сборки прошёл сразу; выполнена одна необходимая инкрементальная дособорка после исправления тестовых данных. Логи: out/tests/settings-errors-nbsp-build.log и out/tests/settings-errors-nbsp-build-test-fix.log.
+PASS — test-settings-errors-nbsp-runtime.ps1: один изолированный сценарий без layout, тем и словарных операций. Реальный PrepareCommit страницы слов получает некорректный XML; перехватчик считает ровно одно показанное сообщение, проверяет наличие пути Words.xml и открытое окно настроек. Отказ записи read-only Settings.xml после изменения NBSP сохраняет байты файла и восстанавливает различающиеся текущий и предыдущий символы. Повторная успешная попытка обновляет файл и оставляет правильную пару для последующей замены NBSP.
+Результат: single_error=1, nbsp_rollback=1, nbsp_retry=1.
+Первый запуск теста дал single_error=0 при успешных двух NBSP-проверках: управляющий символ не оказался надёжным XML-примером. Он заменён заведомо несогласованным тегом; итоговый запуск полностью прошёл.
+PASS — test-fbe-settings-lifecycle.ps1: расширен контроль отсутствия MessageBox/DictionaryError внутри PrepareCommit страниц.
+PASS — test-xml-source-themes.ps1: сохранены адресные контракты существующих тем.
+PASS — git diff --check.
+Длительные E2E, прежний расширенный followup-сценарий, корпусные проверки, verify-release и FullValidation не запускались.
+
+ГРАНИЦЫ
+Проверки выполнены на текущей Windows в изолированном portable-каталоге. Матрица Windows 7–11 заново не прогонялась. Новых зависимостей, WinAPI или форматов файлов нет. Несвязанные правки основной папки не затронуты. Merge и push в этой задаче не выполнялись.
+
+ТЕСТИРОВАННЫЙ БИНАРНИК
+out/Release/FBE.exe
+SHA256: 4970ab2792d64a464dbee96dc7b4edffd4a9b2d2f18c21e69d9e33e99c8e5a60
+Сборка до коммита на базе 7c9a86af; buildstamp содержит базовую ревизию и локальные изменения.
+
+ИЗМЕНЁННЫЕ ФАЙЛЫ
+docs/settings-errors-nbsp-report.txt
+src/fbe/settings/SettingsEditSession.h
+src/fbe/settings/ui/SettingsDlg.cpp
+src/fbe/settings/ui/SettingsDlg.h
+src/fbe/settings/ui/SettingsHotkeysDlg.cpp
+src/fbe/settings/ui/SettingsHotkeysDlg.h
+src/fbe/settings/ui/SettingsPageLifecycle.h
+src/fbe/settings/ui/SettingsSourcePage.cpp
+src/fbe/settings/ui/SettingsSourcePage.h
+src/fbe/settings/ui/SettingsSpellingPage.cpp
+src/fbe/settings/ui/SettingsSpellingPage.h
+src/fbe/settings/ui/SettingsWordsDlg.cpp
+src/fbe/settings/ui/SettingsWordsDlg.h
+src/fbe/testing/RuntimeTestArchiveAndLifecycle.inl
+src/fbe/testing/SettingsFollowupProbe.inl
+tools/tests/test-fbe-settings-lifecycle.ps1
+tools/tests/test-settings-errors-nbsp-runtime.ps1

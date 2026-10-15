@@ -87,31 +87,34 @@ bool CSettingsSpellingPage::Validate()
 	if(file != INVALID_HANDLE_VALUE) ::CloseHandle(file);
 	return true;
 }
-bool CSettingsSpellingPage::PrepareCommit(SettingsFileTransaction& files)
+bool CSettingsSpellingPage::PrepareCommit(SettingsFileTransaction& files, CString& error)
 {
 	if(m_enabled.GetCheck() != BST_CHECKED) return true;
 	CString storedPath; m_dictionary.GetWindowText(storedPath); storedPath.Trim();
 	if(storedPath.IsEmpty()) return true;
 	const CString path = U::ResolveUserDataFile(storedPath);
+	const auto failure = [&](LPCWSTR key, LPCWSTR fallback, DWORD reason) {
+		SettingsPreparationFailed(error, path, reason);
+		error = FbeLoadRuntimeStringByKey(key, fallback) + L"\n" + error;
+		return false;
+	};
 	if(::GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES) return true;
-	const DWORD error = ::GetLastError();
-	if(error != ERROR_FILE_NOT_FOUND) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read."); return false; }
+	const DWORD code = ::GetLastError();
+	if(code != ERROR_FILE_NOT_FOUND) { return failure(L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read.", code); }
 	const CString temporary = SettingsFileTransaction::Temporary(path);
-	if(temporary.IsEmpty()) { DictionaryError(m_hWnd, L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space."); return false; }
+	if(temporary.IsEmpty()) { return failure(L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space.", ::GetLastError()); }
 	files.Add(path, temporary, true);
 	const CString source = U::FindUserDataSource(storedPath, m_legacyDirectory);
 	if(!source.IsEmpty() && !::CopyFileW(source, temporary, FALSE))
 	{
-		DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read.");
-		return false;
+		return failure(L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read.", ::GetLastError());
 	}
 	if(!source.IsEmpty())
 	{
 		const DWORD attributes = ::GetFileAttributesW(temporary);
 		if(attributes == INVALID_FILE_ATTRIBUTES || !::SetFileAttributesW(temporary, attributes & ~FILE_ATTRIBUTE_READONLY))
 		{
-			DictionaryError(m_hWnd, L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space.");
-			return false;
+			return failure(L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space.", ::GetLastError());
 		}
 	}
 	return true;

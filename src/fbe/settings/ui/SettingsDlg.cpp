@@ -23,7 +23,8 @@ namespace
 		if (::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) != 1 || mode[0] != L'1')
 			return false;
 		const DWORD scenarioLength = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario));
-		return (scenarioLength == wcslen(L"settings-dialog-runtime") && wcscmp(scenario, L"settings-dialog-runtime") == 0) ||
+		return RuntimeTests::IsScenario(L"settings-residual-runtime") ||
+			(scenarioLength == wcslen(L"settings-dialog-runtime") && wcscmp(scenario, L"settings-dialog-runtime") == 0) ||
 			(scenarioLength == wcslen(L"backup-settings-save-runtime") && wcscmp(scenario, L"backup-settings-save-runtime") == 0);
 	}
 
@@ -187,6 +188,13 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
 	if (timerId != 0x53455454 || !IsSettingsDialogRuntimeTest()) return 0;
 	KillTimer(timerId);
+	if(RuntimeTests::IsScenario(L"settings-residual-runtime"))
+	{
+		const int result = ProbeResidual();
+		::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_RESIDUAL_RESULT", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(result)));
+		BOOL handled = FALSE;
+		return OnClickedCancel(0, IDCANCEL, NULL, handled);
+	}
 	bool behaviorPassed = !RuntimeTests::IsScenario(L"settings-dialog-runtime") || ProbeFollowup();
 	if(RuntimeTests::IsScenario(L"settings-dialog-runtime"))
 	{
@@ -250,9 +258,10 @@ LRESULT CSettingsDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused
 
 bool CSettingsDlg::TryCommit(CString& error)
 {
+	error.Empty();
 	SettingsFileTransaction files;
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
-		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->PrepareCommit(files)) { SelectPage(static_cast<SettingsPageId>(i)); return false; }
+		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->PrepareCommit(files, error)) { SelectPage(static_cast<SettingsPageId>(i)); return false; }
 	SettingsEditSession edit(_Settings);
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
 		if(m_pageLifecycle[i]) m_pageLifecycle[i]->Commit();
