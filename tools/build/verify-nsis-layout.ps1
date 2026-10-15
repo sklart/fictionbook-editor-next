@@ -7,6 +7,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $installerDir = Join-Path $repoRoot "packaging\nsis\Installer"
 $makeInstallerBat = Join-Path $installerDir "MakeInstaller.bat"
 $makeInstallerNsi = Join-Path $installerDir "MakeInstaller.nsi"
+$buildInstallerPs1 = Join-Path $PSScriptRoot "build-installer.ps1"
 $languageFallbackGenerator = Join-Path $repoRoot "tools\localization\export-nsis-installer-fallbacks.ps1"
 $legacyInputDir = Join-Path $installerDir "Input"
 
@@ -15,11 +16,8 @@ if (Test-Path -LiteralPath $legacyInputDir) {
 }
 
 $batText = Get-Content -Raw -LiteralPath $makeInstallerBat
-if (
-    $batText -notmatch 'SET "INPUTDIR=%REPO_ROOT%\\out\\package\\FictionBookEditor"' -and
-    $batText -notmatch 'SET "INPUTDIR=\.\.\\\.\.\\\.\.\\out\\package\\FictionBookEditor"'
-) {
-    throw "MakeInstaller.bat должен использовать out\\package\\FictionBookEditor как INPUTDIR."
+if ($batText -notmatch [regex]::Escape('tools\build\build-installer.ps1')) {
+    throw "MakeInstaller.bat должен делегировать сборку tools\\build\\build-installer.ps1."
 }
 
 if ($batText -match 'LegacyInput') {
@@ -27,8 +25,17 @@ if ($batText -match 'LegacyInput') {
 }
 
 $nsiText = Get-Content -Raw -LiteralPath $makeInstallerNsi
-if ($nsiText -notmatch [regex]::Escape('!define INPUTDIR "..\..\..\out\package\FictionBookEditor"')) {
-    throw "MakeInstaller.nsi должен по умолчанию направлять INPUTDIR в out\\package\\FictionBookEditor."
+$buildText = Get-Content -Raw -LiteralPath $buildInstallerPs1
+if ($buildText -notmatch [regex]::Escape("Join-Path `$repoRoot 'out\package\InstallerInput'") -or
+    $buildText -notmatch [regex]::Escape("'prepare-installer.ps1') -CoreDirectory `$CoreDirectory -IntegrationDirectory `$IntegrationDirectory -OutputDirectory `$OutputDirectory") -or
+    $buildText -notmatch [regex]::Escape('(Resolve-Path -LiteralPath $OutputDirectory).Path') -or
+    $buildText -notmatch [regex]::Escape('"/DINPUTDIR=$inputPath"') -or
+    $buildText -notmatch [regex]::Escape("`$arguments += 'MakeInstaller.nsi'")) {
+    throw "build-installer.ps1 должен передавать NSIS подготовленный InstallerInput через /DINPUTDIR."
+}
+if ($nsiText -notmatch [regex]::Escape('!ifndef INPUTDIR') -or
+    $nsiText -notmatch [regex]::Escape('${INPUTDIR}\FBE.exe')) {
+    throw "MakeInstaller.nsi должен принимать INPUTDIR и устанавливать из него обязательные файлы."
 }
 
 if ($nsiText -notmatch [regex]::Escape('!define MUI_STARTMENUPAGE_DEFAULTFOLDER "${PRODUCT_NAME}"')) {
@@ -69,8 +76,8 @@ foreach ($language in @("English", "Russian", "Ukrainian", "German", "French", "
     }
 }
 
-if ($batText -notmatch [regex]::Escape('tools\localization\export-nsis-installer-fallbacks.ps1')) {
-    throw "MakeInstaller.bat должен генерировать fallback продуктовых строк для дополнительных языков NSIS."
+if ($buildText -notmatch [regex]::Escape('export-nsis-installer-fallbacks.ps1')) {
+    throw "build-installer.ps1 должен генерировать fallback продуктовых строк для дополнительных языков NSIS."
 }
 if ($nsiText -notmatch [regex]::Escape('!include "Generated\EuropeanFallback.generated.nsh"')) {
     throw "MakeInstaller.nsi должен подключать generated fallback дополнительных языков NSIS."
