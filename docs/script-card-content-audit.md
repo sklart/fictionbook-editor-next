@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **451**. Исполняемый код не изменён.
+Изменено карточек: **452**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 92
-- `generic_usage`: 397
+- `generic_summary`: 93
+- `generic_usage`: 398
 - `generic_warning`: 62
-- `inaccurate_description`: 709
+- `inaccurate_description`: 710
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 413
+- `incorrect_dependency`: 414
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 404
-- `incorrect_selection`: 42
-- `incorrect_setting`: 226
-- `incorrect_undo`: 396
+- `incorrect_scope`: 405
+- `incorrect_selection`: 43
+- `incorrect_setting`: 227
+- `incorrect_undo`: 397
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 35
-- `uncertain_attribution`: 89
+- `missing_warning`: 36
+- `uncertain_attribution`: 90
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 90
+- `attributionClarified`: 91
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 279
+- `dependenciesVerified`: 280
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 395
-- `scopeClarified`: 381
+- `purposeClarified`: 396
+- `scopeClarified`: 382
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 31
-- `undoDescriptionsClarified`: 388
-- `usageCorrected`: 397
+- `settingsCorrected`: 32
+- `undoDescriptionsClarified`: 389
+- `usageCorrected`: 398
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 329
+- `warningsClarified`: 330
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **291**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **292**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -721,12 +721,18 @@
 - `13_Заголовки, подзаголовки, пустые строки/800_Удалить дубли пустых строк.js:405` — При каждом следующем основном body mainCount присваивается заново; notesCount/commentsCount также перезаписываются. Итоговая статистика не суммирует удаления по нескольким body одного типа.
 - `13_Заголовки, подзаголовки, пустые строки/800_Удалить дубли пустых строк.js:85` — Комментарий обещает приоритет body, но поиск родителей от P встречает вложенную DIV.annotation раньше body и сразу возвращает annotation. Внутренние аннотации зависят от processAnnotation, а не только от раздела body.
 - `13_Заголовки, подзаголовки, пустые строки/800_Удалить дубли пустых строк.js:192` — Между BeginUndoUnit и EndUndoUnit на строке 419 нет обычного return, но нет и finally. Исключение при обходе или удалении оставит операцию отмены открытой.
+- `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:590` — При наличии выделения вычисляется ближайший общий контейнер, затем countDuplicates/removeDuplicateEmpties/cleanEmptyLines вызываются для всего контейнера без проверки границ выделения. Изменения затрагивают соседние абзацы вне выделения.
+- `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:281` — removeDuplicateEmpties группирует P по плоскому allP и не проверяет родителя или границы секций. Пустой P из следующего блока может быть удалён как дубль предыдущего; подсчёт на строке 215 использует тот же критерий.
+- `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:288` — countDuplicates считает все повторные P, но removeDuplicateEmpties пропускает пустую строку сразу после эпиграфа. Итоговое число дублей не отражает фактическое удаление.
+- `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:631` — Для каждого очередного основного body mainCountDup и другие счётчики дублей присваиваются заново; при нескольких body статистика занижается. Аналогично notes/comments на строках 639/644.
+- `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:198` — Рекурсивный обход после достижения container продолжает поиск nextSibling выше его границы и при отсутствии соседа может обратиться к nextSibling у null. Аналогичный обход в removeDuplicateEmpties на строке 264.
+- `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:546` — Между BeginUndoUnit и EndUndoUnit на строке 652 нет обычного return, но нет и finally. Исключение при обходе или чистке оставит операцию отмены открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 739
+- `generic_usage`: 734
 - `inaccurate_description`: 49
-- `incorrect_undo`: 102
+- `incorrect_undo`: 101
 - `requires_review`: 337
 
 ## Границы проверки

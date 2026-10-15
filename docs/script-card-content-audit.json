@@ -3,8 +3,8 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 337,
-    "generic_usage": 739,
-    "incorrect_undo": 102,
+    "generic_usage": 734,
+    "incorrect_undo": 101,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -58833,18 +58833,231 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js",
+      "codeSha256": "548feb134ec47bed23ea5a00363bcc82db8373baf4859297bb3e9710365f849b",
+      "evidence": "Строки 1–17 описывают назначение и источник алгоритма; 29–39 задают четыре настройки; 94–129 определяют пустоту и раздел; 175–303 подсчитывают и удаляют дубли по плоскому списку P; 308–544 выполняют структурную чистку; 546–650 выбирают контейнер и обрабатывают его; 652–724 выводят статистику. Файловых, сетевых операций и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            },
+            {
+              "name": "Sclex",
+              "role": "contributor",
+              "contribution": "исходный алгоритм чистки пустых строк, указанный в коде"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для удаления лишних пустых строк (абзацев <P>) в fb2 документах.",
+          "after": "Удаляет повторные пустые абзацы и пустые строки рядом со структурными элементами книги.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для удаления лишних пустых строк (абзацев <P>) в fb2 документах.",
+          "after": "Сначала собирает все P в допущенном контейнере и удаляет повторные пустые абзацы, затем рекурсивно чистит пустые строки возле подзаголовков, стихов, цитат, заголовков, эпиграфов и на границах секций. При выделении выбирает ближайший DIV.section, DIV.body или DIV.annotation, содержащий обе границы; если такого нет, использует fbw_body. Обрабатывает весь выбранный контейнер, а не только выделенные абзацы. Без выделения обходит первую основную аннотацию и разделы body согласно настройкам. Группы пустых P определяются по плоскому списку без проверки границ вложенных блоков.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "При выделении — весь ближайший общий контейнер section/body/annotation либо весь fbw_body; часть вне выделения тоже может измениться. Без выделения — первая основная аннотация, основные DIV.body, notes и comments по настройкам. Внутренние аннотации зависят от processAnnotation. Таблицы первый проход пропускает; структурная чистка рекурсивно обходит section, body, poem, stanza, cite и epigraph.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "При необходимости измените четыре параметра в начале JS. Перед запуском сохраните копию книги.",
+            "Выделение ограничивает контейнер обработки, но не отдельные выбранные абзацы; для точной правки узкой области проверьте все соседние строки внутри секции.",
+            "После удаления просмотрите пустые строки у границ секций, заголовков, эпиграфов, стихов и цитат. Числа предварительно подсчитанных дублей могут не совпасть с фактическим удалением."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "При выделении скрипт может менять пустые строки за его границами в общей секции, body или даже всём fbw_body.",
+            "Дубликаты ищутся по плоскому списку P; строки в разных вложенных секциях могут считаться соседними и удаляться.",
+            "Число дублей подсчитывается до правки, а удаление учитывает исключение после эпиграфа; итоговое «всего удалено» может быть неточным. При нескольких body счётчики дублей перезаписываются.",
+            "Обход контейнера может выйти за его пределы и при некоторых расположениях узлов завершиться ошибкой. Проверьте результат перед сохранением."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Удаление абзацев сгруппировано в операцию отмены. Обычных досрочных return между открытием и закрытием нет, но закрытие при исключении не гарантировано; полнота отката отдельно не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processAnnotation",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать аннотацию",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел сносок (примечаний)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел комментариев",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Показывать итог: 1 — всегда, 0 — только если лишние строки не найдены.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processAnnotation",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать первую основную и внутренние аннотации: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел примечаний: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел комментариев: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 590,
+          "issue": "При наличии выделения вычисляется ближайший общий контейнер, затем countDuplicates/removeDuplicateEmpties/cleanEmptyLines вызываются для всего контейнера без проверки границ выделения. Изменения затрагивают соседние абзацы вне выделения."
+        },
+        {
+          "line": 281,
+          "issue": "removeDuplicateEmpties группирует P по плоскому allP и не проверяет родителя или границы секций. Пустой P из следующего блока может быть удалён как дубль предыдущего; подсчёт на строке 215 использует тот же критерий."
+        },
+        {
+          "line": 288,
+          "issue": "countDuplicates считает все повторные P, но removeDuplicateEmpties пропускает пустую строку сразу после эпиграфа. Итоговое число дублей не отражает фактическое удаление."
+        },
+        {
+          "line": 631,
+          "issue": "Для каждого очередного основного body mainCountDup и другие счётчики дублей присваиваются заново; при нескольких body статистика занижается. Аналогично notes/comments на строках 639/644."
+        },
+        {
+          "line": 198,
+          "issue": "Рекурсивный обход после достижения container продолжает поиск nextSibling выше его границы и при отсутствии соседа может обратиться к nextSibling у null. Аналогичный обход в removeDuplicateEmpties на строке 264."
+        },
+        {
+          "line": 546,
+          "issue": "Между BeginUndoUnit и EndUndoUnit на строке 652 нет обычного return, но нет и finally. Исключение при обходе или чистке оставит операцию отмены открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 709,
-    "generic_usage": 397,
+    "inaccurate_description": 710,
+    "generic_usage": 398,
     "false_warning": 319,
-    "incorrect_setting": 226,
-    "incorrect_scope": 404,
-    "incorrect_undo": 396,
-    "uncertain_attribution": 89,
-    "generic_summary": 92,
-    "incorrect_dependency": 413,
+    "incorrect_setting": 227,
+    "incorrect_scope": 405,
+    "incorrect_undo": 397,
+    "uncertain_attribution": 90,
+    "generic_summary": 93,
+    "incorrect_dependency": 414,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -58853,25 +59066,25 @@
     "incorrect_attribution": 43,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 42,
+    "incorrect_selection": 43,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 35,
+    "missing_warning": 36,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 388,
-    "usageCorrected": 397,
-    "purposeClarified": 395,
-    "warningsClarified": 329,
-    "scopeClarified": 381,
+    "undoDescriptionsClarified": 389,
+    "usageCorrected": 398,
+    "purposeClarified": 396,
+    "warningsClarified": 330,
+    "scopeClarified": 382,
     "settingsClarified": 509,
-    "attributionClarified": 90,
-    "dependenciesVerified": 279,
+    "attributionClarified": 91,
+    "dependenciesVerified": 280,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -58879,7 +59092,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 31,
+    "settingsCorrected": 32,
     "effectCorrected": 1
   },
   "scripts": [
@@ -169739,70 +169952,74 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Почистить лишние пустые строки",
-        "summary": "Скрипт предназначен для удаления лишних пустых строк (абзацев <P>) в fb2 документах.",
-        "description": "Скрипт предназначен для удаления лишних пустых строк (абзацев <P>) в fb2 документах.",
+        "summary": "Удаляет повторные пустые абзацы и пустые строки рядом со структурными элементами книги.",
+        "description": "Сначала собирает все P в допущенном контейнере и удаляет повторные пустые абзацы, затем рекурсивно чистит пустые строки возле подзаголовков, стихов, цитат, заголовков, эпиграфов и на границах секций. При выделении выбирает ближайший DIV.section, DIV.body или DIV.annotation, содержащий обе границы; если такого нет, использует fbw_body. Обрабатывает весь выбранный контейнер, а не только выделенные абзацы. Без выделения обходит первую основную аннотацию и разделы body согласно настройкам. Группы пустых P определяются по плоскому списку без проверки границ вложенных блоков.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
+          },
+          {
+            "name": "Sclex",
+            "role": "contributor",
+            "contribution": "исходный алгоритм чистки пустых строк, указанный в коде"
           }
         ],
         "version": "2.2",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "При выделении — весь ближайший общий контейнер section/body/annotation либо весь fbw_body; часть вне выделения тоже может измениться. Без выделения — первая основная аннотация, основные DIV.body, notes и comments по настройкам. Внутренние аннотации зависят от processAnnotation. Таблицы первый проход пропускает; структурная чистка рекурсивно обходит section, body, poem, stanza, cite и epigraph.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "При необходимости измените четыре параметра в начале JS. Перед запуском сохраните копию книги.",
+          "Выделение ограничивает контейнер обработки, но не отдельные выбранные абзацы; для точной правки узкой области проверьте все соседние строки внутри секции.",
+          "После удаления просмотрите пустые строки у границ секций, заголовков, эпиграфов, стихов и цитат. Числа предварительно подсчитанных дублей могут не совпасть с фактическим удалением."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "При выделении скрипт может менять пустые строки за его границами в общей секции, body или даже всём fbw_body.",
+          "Дубликаты ищутся по плоскому списку P; строки в разных вложенных секциях могут считаться соседними и удаляться.",
+          "Число дублей подсчитывается до правки, а удаление учитывает исключение после эпиграфа; итоговое «всего удалено» может быть неточным. При нескольких body счётчики дублей перезаписываются.",
+          "Обход контейнера может выйти за его пределы и при некоторых расположениях узлов завершиться ошибкой. Проверьте результат перед сохранением."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать итог: 1 — всегда, 0 — только если лишние строки не найдены.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processAnnotation",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать аннотацию",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать первую основную и внутренние аннотации: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processNotesSection",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать раздел сносок (примечаний)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать раздел примечаний: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processCommentsSection",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать раздел комментариев",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать раздел комментариев: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Удаление абзацев сгруппировано в операцию отмены. Обычных досрочных return между открытием и закрытием нет, но закрытие при исключении не гарантировано; полнота отката отдельно не проверена."
         },
         "examples": null,
         "tags": [
@@ -169813,38 +170030,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 628,
+            "line": 632,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 734,
+            "line": 738,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 631,
+            "line": 635,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 631,
+            "line": 635,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 645,
+            "line": 649,
             "text": "var trStart = document.selection.createRange();"
           },
           {
-            "line": 645,
+            "line": 649,
             "text": "var trStart = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 178,
+            "line": 182,
             "text": "return re0.test(p.innerHTML.replace(re2, \"\"));"
           }
         ],
@@ -169855,71 +170072,71 @@
         "file": [],
         "return": [
           {
-            "line": 178,
+            "line": 182,
             "text": "return re0.test(p.innerHTML.replace(re2, \"\"));"
           },
           {
-            "line": 188,
+            "line": 192,
             "text": "if (fbname == \"\") return \"main\";"
           },
           {
-            "line": 189,
+            "line": 193,
             "text": "if (fbname == \"notes\") return \"notes\";"
           },
           {
-            "line": 190,
+            "line": 194,
             "text": "if (fbname == \"comments\") return \"comments\";"
           },
           {
-            "line": 191,
+            "line": 195,
             "text": "return \"other\";"
           },
           {
-            "line": 194,
+            "line": 198,
             "text": "return \"annotation\";"
           },
           {
-            "line": 199,
+            "line": 203,
             "text": "return \"main\";"
           },
           {
-            "line": 206,
+            "line": 210,
             "text": "if (sectionType == \"main\") return true;"
           },
           {
-            "line": 207,
+            "line": 211,
             "text": "if (sectionType == \"annotation\" && processAnnotation == 1) return true;"
           },
           {
-            "line": 208,
+            "line": 212,
             "text": "if (sectionType == \"notes\" && processNotesSection == 1) return true;"
           },
           {
-            "line": 209,
+            "line": 213,
             "text": "if (sectionType == \"comments\" && processCommentsSection == 1) return true;"
           },
           {
-            "line": 211,
+            "line": 215,
             "text": "return false;"
           },
           {
-            "line": 218,
+            "line": 222,
             "text": "if (parent == container) return true;"
           },
           {
-            "line": 221,
+            "line": 225,
             "text": "return false;"
           },
           {
-            "line": 322,
+            "line": 326,
             "text": "return result;"
           },
           {
-            "line": 411,
+            "line": 415,
             "text": "if (elemName == \"section\" && a4 && a4.previousSibling && a4.previousSibling.className == \"image\") return;"
           },
           {
-            "line": 424,
+            "line": 428,
             "text": "if (savedPtr == null) return;"
           }
         ]
@@ -169931,17 +170148,17 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 112,
+              "line": 116,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 112,
+              "line": 116,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 794,
+              "line": 798,
               "text": "if (showStatistics == 1 || totalAll == 0) {"
             }
           ],
@@ -169952,25 +170169,25 @@
           "name": "processAnnotation",
           "declarations": [
             {
-              "line": 115,
+              "line": 119,
               "text": "var processAnnotation = 1;"
             }
           ],
           "uses": [
             {
-              "line": 115,
+              "line": 119,
               "text": "var processAnnotation = 1;"
             },
             {
-              "line": 207,
+              "line": 211,
               "text": "if (sectionType == \"annotation\" && processAnnotation == 1) return true;"
             },
             {
-              "line": 689,
+              "line": 693,
               "text": "if (processAnnotation == 1) {"
             },
             {
-              "line": 781,
+              "line": 785,
               "text": "if (processAnnotation == 1) {"
             }
           ],
@@ -169981,25 +170198,25 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 118,
+              "line": 122,
               "text": "var processNotesSection = 1;"
             }
           ],
           "uses": [
             {
-              "line": 118,
+              "line": 122,
               "text": "var processNotesSection = 1;"
             },
             {
-              "line": 208,
+              "line": 212,
               "text": "if (sectionType == \"notes\" && processNotesSection == 1) return true;"
             },
             {
-              "line": 719,
+              "line": 723,
               "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
             },
             {
-              "line": 784,
+              "line": 788,
               "text": "if (processNotesSection == 1) {"
             }
           ],
@@ -170010,25 +170227,25 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 121,
+              "line": 125,
               "text": "var processCommentsSection = 1;"
             }
           ],
           "uses": [
             {
-              "line": 121,
+              "line": 125,
               "text": "var processCommentsSection = 1;"
             },
             {
-              "line": 209,
+              "line": 213,
               "text": "if (sectionType == \"comments\" && processCommentsSection == 1) return true;"
             },
             {
-              "line": 724,
+              "line": 728,
               "text": "} else if (fbname == \"comments\" && processCommentsSection == 1) {"
             },
             {
-              "line": 787,
+              "line": 791,
               "text": "if (processCommentsSection == 1) {"
             }
           ],
@@ -170038,25 +170255,37 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 84,
+          "line": 88,
           "text": "// version 2.2"
         },
         {
-          "line": 99,
+          "line": 103,
           "text": "// version 2.2, 03.07.2026"
         },
         {
-          "line": 103,
+          "line": 107,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 105,
+          "line": 109,
           "text": "var version = \"2.2\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "При выделении скрипт может менять пустые строки за его границами в общей секции, body или даже всём fbw_body.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Дубликаты ищутся по плоскому списку P; строки в разных вложенных секциях могут считаться соседними и удаляться.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Число дублей подсчитывается до правки, а удаление учитывает исключение после эпиграфа; итоговое «всего удалено» может быть неточным. При нескольких body счётчики дублей перезаписываются.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Обход контейнера может выйти за его пределы и при некоторых расположениях узлов завершиться ошибкой. Проверьте результат перед сохранением.",
           "verification": "requires_review"
         }
       ],
@@ -170079,74 +170308,22 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
           "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "field": "settings[1]",
+          "previous": {
+            "name": "processAnnotation",
+            "value": 1,
+            "expression": "1",
+            "description": "Обрабатывать первую основную и внутренние аннотации: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+          },
           "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
+          "reason": "Похоже на служебный флаг, счётчик или промежуточную переменную; проверить использование",
           "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
           "evidence": [
             {
-              "line": 628,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 734,
-              "text": "window.external.EndUndoUnit(document);"
+              "line": 119,
+              "text": "var processAnnotation = 1;"
             }
           ]
         }
