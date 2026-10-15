@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import runpy
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -82,6 +83,22 @@ def main() -> None:
                    for item in result["findings"])
         assert any(item["field"] == "undo" and item["evidence"]
                    for item in result["findings"])
+
+    scripts_root = ROOT / "runtime" / "Scripts"
+    proposals = json.loads((ROOT / "docs" / "script-card-reviewed-proposals.json").read_text(encoding="utf-8"))
+    files = {path.relative_to(scripts_root).as_posix() for path in scripts_root.rglob("*.js")}
+    assert len(proposals) == len(files) == 580
+    assert {proposal["path"] for proposal in proposals} == files
+    for proposal in proposals:
+        assert isinstance(proposal["codeIssues"], list), proposal["path"]
+        document = card_tool["read_document"]((scripts_root / proposal["path"]).read_bytes())
+        assert proposal["codeSha256"] == document.sha256, proposal["path"]
+        # Older records can use physical file lines, while newer records use
+        # executable-code lines after the embedded card.
+        line_count = len(document.data.decode(document.encoding).splitlines())
+        for issue in proposal["codeIssues"]:
+            assert isinstance(issue["line"], int) and 1 <= issue["line"] <= line_count
+            assert isinstance(issue["issue"], str) and issue["issue"].strip()
     print("Script card audit tests passed.")
 
 

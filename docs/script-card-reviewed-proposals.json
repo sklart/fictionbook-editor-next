@@ -365,6 +365,7 @@
         "category": "inaccurate_description"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 3,
       "usageCorrected": 1,
@@ -486,6 +487,7 @@
         "category": "inaccurate_description"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 3,
       "usageCorrected": 1,
@@ -605,6 +607,7 @@
         "category": "inaccurate_description"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 5,
       "usageCorrected": 1,
@@ -723,6 +726,7 @@
         "category": "inaccurate_description"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 5,
       "usageCorrected": 1,
@@ -1014,6 +1018,16 @@
           "выделение"
         ],
         "category": "inaccurate_description"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 128,
+        "issue": "Условие дважды проверяет bigLetterFlag и досрочно останавливает анализ уже при первой прописной букве; строчные буквы в следующих узлах не учитываются при выборе режима регистра."
+      },
+      {
+        "line": 131,
+        "issue": "Опечатка в имени флага: присваивается ProcessindEnded вместо ProcessingEnded, поэтому предусмотренная остановка анализа односимвольных слов не срабатывает."
       }
     ],
     "metrics": {
@@ -5432,6 +5446,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 1
     }
@@ -5463,6 +5478,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5494,6 +5510,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5525,6 +5542,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5585,6 +5603,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5659,6 +5678,12 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 21,
+        "issue": "Перед else стоит точка с запятой после закрытия if (строка 20); исполняемый JS не проходит синтаксический разбор (Unexpected token 'else'), скрипт не запускается."
+      }
+    ],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5690,6 +5715,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5721,6 +5747,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5752,6 +5779,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5783,6 +5811,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5814,6 +5843,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5845,6 +5875,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5876,6 +5907,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5936,6 +5968,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5967,6 +6000,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -5998,6 +6032,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -6029,6 +6064,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -6060,6 +6096,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 2
     }
@@ -6081,6 +6118,16 @@
           "Текущее содержимое буфера обмена может быть заменено или очищено."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 355,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      },
+      {
+        "line": 464,
+        "issue": "Отмена ввода ограничителя возвращает управление после открытия операции отмены, не закрывая её; в других ветках ввода есть такие же досрочные выходы."
       }
     ],
     "metrics": {
@@ -6451,6 +6498,16 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 361,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      },
+      {
+        "line": 470,
+        "issue": "Отмена ввода ограничителя возвращает управление после открытия операции отмены, не закрывая её; в других ветках ввода есть такие же досрочные выходы."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6472,6 +6529,12 @@
           "Прежде чем обрабатывать всю книгу, проверьте выбранные ограничители: обычный текст в таких скобках тоже может попасть под преобразование."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 204,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
       }
     ],
     "metrics": {
@@ -6497,6 +6560,12 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 204,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6518,6 +6587,12 @@
           "Прежде чем обрабатывать всю книгу, проверьте выбранные ограничители: обычный текст в таких скобках тоже может попасть под преобразование."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 204,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
       }
     ],
     "metrics": {
@@ -6543,6 +6618,12 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 204,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6564,6 +6645,16 @@
           "Прежде чем обрабатывать всю книгу, проверьте выбранные ограничители: обычный текст в таких скобках тоже может попасть под преобразование."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 204,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      },
+      {
+        "line": 313,
+        "issue": "Отмена ввода ограничителя возвращает управление после открытия операции отмены, не закрывая её; в других ветках ввода есть такие же досрочные выходы."
       }
     ],
     "metrics": {
@@ -6589,6 +6680,16 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 204,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      },
+      {
+        "line": 313,
+        "issue": "Отмена ввода ограничителя возвращает управление после открытия операции отмены, не закрывая её; в других ветках ввода есть такие же досрочные выходы."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6610,6 +6711,12 @@
           "Прежде чем обрабатывать всю книгу, проверьте выбранные ограничители: обычный текст в таких скобках тоже может попасть под преобразование."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 207,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
       }
     ],
     "metrics": {
@@ -6635,6 +6742,12 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 207,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6656,6 +6769,12 @@
           "Прежде чем обрабатывать всю книгу, проверьте выбранные ограничители: обычный текст в таких скобках тоже может попасть под преобразование."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 207,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
       }
     ],
     "metrics": {
@@ -6681,6 +6800,12 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 207,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6702,6 +6827,16 @@
           "Прежде чем обрабатывать всю книгу, проверьте выбранные ограничители: обычный текст в таких скобках тоже может попасть под преобразование."
         ],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 207,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      },
+      {
+        "line": 316,
+        "issue": "Отмена ввода ограничителя возвращает управление после открытия операции отмены, не закрывая её; в других ветках ввода есть такие же досрочные выходы."
       }
     ],
     "metrics": {
@@ -6727,6 +6862,16 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 207,
+        "issue": "После удаления ссылки скрипт вновь обращается к document.links[j5] для прокрутки. Коллекция ссылок живая: будет выбрана следующая ссылка либо возникнет ошибка, если удалена последняя."
+      },
+      {
+        "line": 316,
+        "issue": "Отмена ввода ограничителя возвращает управление после открытия операции отмены, не закрывая её; в других ветках ввода есть такие же досрочные выходы."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6748,6 +6893,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6769,6 +6915,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6785,6 +6932,12 @@
         ],
         "after": [],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 62,
+        "issue": "Индекс i относится ко всем ссылкам, а не только к сноскам; при первой ошибочной ссылке после другой ссылки сообщение ошибочно показывает её как предыдущую сноску и номер 0."
       }
     ],
     "metrics": {
@@ -6805,6 +6958,12 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 45,
+        "issue": "Переменная type читается, но не используется для фильтрации: проверяются все локальные ссылки книги, включая обычные ссылки не на комментарии, что даёт ложные ошибки."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -6821,6 +6980,12 @@
         ],
         "after": [],
         "category": "false_warning"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 19,
+        "issue": "У A без атрибута href getAttribute может вернуть null; вызов indexOf прерывает построение списка ссылок."
       }
     ],
     "metrics": {
@@ -6985,6 +7150,12 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [
+      {
+        "line": 20,
+        "issue": "У A без атрибута href getAttribute может вернуть null; вызов indexOf прерывает построение списка ссылок."
+      }
+    ],
     "metrics": {
       "falseWarningsRemoved": 1
     }
@@ -7011,6 +7182,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7033,6 +7205,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7057,6 +7230,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7083,6 +7257,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7250,6 +7425,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1,
       "serviceSettingsRemoved": 1
@@ -7418,6 +7594,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1,
       "serviceSettingsRemoved": 1
@@ -7445,6 +7622,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7469,6 +7647,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7493,6 +7672,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7517,6 +7697,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7541,6 +7722,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7565,6 +7747,7 @@
         "category": "false_warning"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "externalWarningsRefined": 1
     }
@@ -7604,6 +7787,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 1
     }
@@ -7643,6 +7827,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 1
     }
@@ -7682,6 +7867,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 1
     }
@@ -7721,6 +7907,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "serviceSettingsRemoved": 1
     }
@@ -7867,6 +8054,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -8051,6 +8239,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -8161,6 +8350,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -8430,6 +8620,12 @@
           }
         ],
         "category": "incorrect_setting"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 686,
+        "issue": "В ветке непустого выделения заголовки берутся без фильтрации по processNotesSection, processCommentsSection и processFirstTitle; выделение может обработать разделы, отключённые настройками."
       }
     ],
     "metrics": {
@@ -8767,6 +8963,7 @@
         "category": "incorrect_dependency"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -9095,6 +9292,7 @@
         "category": "incorrect_dependency"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -9217,6 +9415,12 @@
           "description": "Подтверждённые замены объединены в одну операцию отмены. Досрочных выходов внутри неё нет; полный откат отдельно не проверен."
         },
         "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 68,
+        "issue": "Номер 1 уменьшается до 0, а наличие целевого раздела не проверяется; подтверждение может создать ссылку на несуществующий #n_0."
       }
     ],
     "metrics": {
@@ -9378,6 +9582,12 @@
           "description": "Перенос разделов оформлен как одна операция отмены. Проверки и отказ пользователя завершаются до неё; полный откат отдельно не проверен."
         },
         "category": "incorrect_undo"
+      }
+    ],
+    "codeIssues": [
+      {
+        "line": 202,
+        "issue": "Поиск заголовка допускает вложенный DIV.title, но позднейшее переименование выполняется только для прямого дочернего заголовка notesBody; отчёт и фактический результат могут расходиться."
       }
     ],
     "metrics": {
@@ -9700,6 +9910,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -9821,6 +10032,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -9942,6 +10154,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -10063,6 +10276,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -10233,6 +10447,7 @@
         "category": "incorrect_setting"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "falseWarningsRemoved": 1,
       "usageCorrected": 1,
@@ -11186,6 +11401,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -11285,6 +11501,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -11355,6 +11572,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -11597,6 +11815,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -12559,6 +12778,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -12716,6 +12936,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "usageCorrected": 1,
       "purposeClarified": 1,
@@ -18134,7 +18355,7 @@
     ],
     "codeIssues": [
       {
-        "line": 77,
+        "line": 22,
         "issue": "После window.open нет проверки на null; при запрете отдельного окна запись в MsgWindow.document вызовет ошибку."
       }
     ],
@@ -18249,6 +18470,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "purposeClarified": 1,
       "scopeClarified": 1,
@@ -18304,6 +18526,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "purposeClarified": 1,
       "scopeClarified": 1,
@@ -18365,6 +18588,7 @@
         "category": "incorrect_undo"
       }
     ],
+    "codeIssues": [],
     "metrics": {
       "purposeClarified": 1,
       "scopeClarified": 1,
@@ -18613,7 +18837,7 @@
     ],
     "codeIssues": [
       {
-        "line": 72,
+        "line": 9,
         "issue": "При повторном запуске callback старого таймера обращается к общему id последнего таймера; отмена может оставить старый таймер активным."
       }
     ],
