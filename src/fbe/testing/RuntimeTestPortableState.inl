@@ -1,5 +1,6 @@
 
 #include "../settings/hotkeys/HotkeyExport.h"
+#include "Script64ResultChecks.h"
 
 // Test-only OLE parent for the Split undo probe.  It is intentionally kept
 // outside production structural code until MSHTML proves this composition.

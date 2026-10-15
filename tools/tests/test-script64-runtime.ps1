@@ -1,7 +1,40 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$FbeExe, [int]$TimeoutSeconds = 30,
+param([string]$FbeExe, [int]$TimeoutSeconds = 30, [switch]$ParserSelfTest,
     [string]$ArtifactDirectory = (Join-Path $PSScriptRoot '..\..\out\tests\script64-runtime'))
 $ErrorActionPreference = 'Stop'
+function Read-Script64Report([string]$Text) {
+    $entries = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+    foreach($line in ($Text -split "`r?`n")) {
+        if($line.Length -eq 0) { continue }
+        $equals = $line.IndexOf('=')
+        if($equals -lt 1) { throw "Malformed report line: $line" }
+        $key = $line.Substring(0, $equals)
+        if($entries.ContainsKey($key)) { throw "Duplicate report key: $key" }
+        $entries.Add($key, $line.Substring($equals + 1))
+    }
+    foreach($key in @('harness-ran','parser-negative','undo','redo','undo-single','ordinary','special',
+        'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list')) {
+        if(!$entries.ContainsKey($key) -or $entries[$key] -cne '1') { throw "Failed/missing check: $key" }
+    }
+    if(!$entries.ContainsKey('result') -or $entries['result'] -cne 'pass') { throw 'Runtime result is not pass.' }
+    return $entries
+}
+if($ParserSelfTest) {
+    $good = (@('harness-ran','parser-negative','undo','redo','undo-single','ordinary','special',
+        'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list') | ForEach-Object { "$_=1" }) -join "`n"
+    $good += "`nresult=pass`n"
+    $null = Read-Script64Report $good
+    foreach($bad in @($good.Replace("`nspecial=1`n", "`nspecial=0`n"),
+        $good.Replace("`nspecial=1`n", "`n"), ($good + "special=1`n"),
+        $good.Replace("`nspecial=1`n", "`nspecial=10`n"))) {
+        $rejected = $false
+        try { $null = Read-Script64Report $bad } catch { $rejected = $true }
+        if(!$rejected) { throw 'Report parser accepted an invalid synthetic result.' }
+    }
+    Write-Host 'Script 64 report parser: PASS (positive, collision, missing, duplicate, exact value).'
+    return
+}
+if(!$FbeExe) { throw 'Specify -FbeExe or -ParserSelfTest.' }
 if([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run this test with pwsh -STA.' }
 Add-Type -AssemblyName System.Windows.Forms
 $clipboardSnapshot = $null
@@ -56,17 +89,21 @@ try {
     Copy-Item -LiteralPath $report -Destination (Join-Path $ArtifactDirectory 'script64-report.txt')
     $text = Get-Content -LiteralPath $report -Raw
     Write-Host $text
-    if($exitCode -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw 'Script 64 runtime functional check failed; see saved report.' }
+    if($exitCode -ne 0) { throw "FBE exited with code $exitCode" }
+    $null = Read-Script64Report $text
     $passed = $true
 } finally {
-    if($clipboardCaptured) {
-        [Windows.Forms.Clipboard]::SetDataObject($clipboardSnapshot, $true, 10, 100)
-        if(Test-Path -LiteralPath (Join-Path $ArtifactDirectory 'script64-report.txt')) {
-            Add-Content -LiteralPath (Join-Path $ArtifactDirectory 'script64-report.txt') -Value 'clipboard-restored=1'
+    try {
+        if($clipboardCaptured) {
+            [Windows.Forms.Clipboard]::SetDataObject($clipboardSnapshot, $true, 10, 100)
+            if(Test-Path -LiteralPath (Join-Path $ArtifactDirectory 'script64-report.txt')) {
+                Add-Content -LiteralPath (Join-Path $ArtifactDirectory 'script64-report.txt') -Value 'clipboard-restored=1'
+            }
         }
+    } finally {
+        $env:FBE_NEXT_TEST_MODE = $savedMode
+        $env:FBE_NEXT_TEST_SCENARIO = $savedScenario
+        $env:FBE_NEXT_TEST_SCRIPT64_PATH = $savedProbe
+        Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
     }
-    $env:FBE_NEXT_TEST_MODE = $savedMode
-    $env:FBE_NEXT_TEST_SCENARIO = $savedScenario
-    $env:FBE_NEXT_TEST_SCRIPT64_PATH = $savedProbe
-    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
 }

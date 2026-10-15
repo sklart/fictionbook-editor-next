@@ -1,0 +1,40 @@
+#pragma once
+
+// Exact line-oriented checks shared by the runtime gate and its negative probes.
+static bool Script64ResultIs(const CString& results, const wchar_t* key, const wchar_t* expected)
+{
+	int position = 0, count = 0;
+	bool matches = false;
+	while(position >= 0)
+	{
+		CString line = results.Tokenize(L"\n", position);
+		line.TrimRight(L"\r");
+		const int equals = line.Find(L'=');
+		if(equals >= 0 && line.Left(equals) == key)
+		{
+			++count;
+			matches = line.Mid(equals + 1) == expected;
+		}
+	}
+	return count == 1 && matches;
+}
+
+static bool Script64CasesPass(const CString& results)
+{
+	for(const wchar_t* key : { L"ordinary", L"special", L"backslash", L"quote",
+		L"replacement-special", L"empty-selection", L"empty-list", L"invalid-list" })
+		if(!Script64ResultIs(results, key, L"1")) return false;
+	return true;
+}
+
+static bool Script64ParserSelfTest()
+{
+	const CString good = L"ordinary=1\nspecial=1\nbackslash=1\nquote=1\nreplacement-special=1\nempty-selection=1\nempty-list=1\ninvalid-list=1\n";
+	CString bad(good);
+	bad.Replace(L"\nspecial=1\n", L"\nspecial=0\n");
+	CString missing(good);
+	missing.Replace(L"\nspecial=1\n", L"\n");
+	return Script64CasesPass(good) && !Script64CasesPass(bad) &&
+		!Script64CasesPass(missing) && !Script64CasesPass(good + L"special=1\n") &&
+		!Script64ResultIs(L"special=10\n", L"special", L"1");
+}

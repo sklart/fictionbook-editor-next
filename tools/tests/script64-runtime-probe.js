@@ -32,6 +32,30 @@ exercise("special", ".+*?()[]^$|/", ".A\r\n+B\r\n*C\r\n?D\r\n(E\r\n)F\r\n[G\r\n]
 exercise("backslash", "a\\b", "\\Z", true, "aZb", false);
 exercise("quote", 'a"b', '"Z', true, "aZb", false);
 exercise("replacement-special", "abc", 'a$\r\nb\\\r\nc"', true, '$\\"', false);
-// Last case supplies the real undo operation tested by the C++ command route.
-exercise("ordinary", "abc ab", "aA\r\nbB", true, "ABc AB", false);
+// Actual legacy JScript object enumeration: duplicate keys overwrite in place.
+var legacyObject = {"2":"B", "1":"A", "a":"x", "a":"y", "b":"z"};
+var legacyOrder = [];
+for (var legacyKey in legacyObject) legacyOrder.push(legacyKey + legacyObject[legacyKey]);
+results.push("legacy-order=" + legacyOrder.join(","));
+exercise("duplicates", "ab", "aA\r\nbB\r\naC", true, "CB", false);
+exercise("cascade", "ab", "ab\r\nbc", true, "cc", false);
+// Prepare the last fixture, then let native code discard ALL previous undo units
+// before invoking the original candidate. Setup cannot impersonate script Undo.
+var ordinaryRoot = document.getElementById("fbw_body");
+ordinaryRoot.innerHTML = '<DIV class="body"><DIV class="section"><P id="script64-probe">abc ab</P></DIV></DIV>';
+var ordinaryRange = document.body.createTextRange();
+ordinaryRange.moveToElementText(document.getElementById("script64-probe"));
+ordinaryRange.select();
+window.__script64Before = ordinaryRoot.innerHTML;
+window.__script64Ordinary = function () {
+    window.clipboardData.setData("Text", "aA\r\nbB");
+    messages = [];
+    var error = "";
+    try { candidate(); } catch (e) { error = String(e.message || e.description || e); }
+    var actual = document.getElementById("script64-probe").innerText;
+    window.__script64After = ordinaryRoot.innerHTML;
+    results.push("ordinary=" + (!error && actual == "ABc AB" ? "1" : "0"));
+    if (error) results.push("ordinary-error=" + encodeURIComponent(error));
+    window.external.SetStatusBarText(results.join("\n"));
+};
 window.external.SetStatusBarText(results.join("\n"));
