@@ -1,3 +1,164 @@
+	if (IsFbeTestScenario(L"drop-files-runtime"))
+	{
+		LegacyTodoTest::MessageProbe messages;
+		const CString originalFile(m_doc->m_filename);
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		auto drop = [&](const std::vector<CString>& files) {
+			size_t chars = 1;
+			for (const CString& file : files) chars += static_cast<size_t>(file.GetLength()) + 1;
+			HGLOBAL memory = ::GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, sizeof(DROPFILES) + chars * sizeof(wchar_t));
+			DROPFILES* data = memory ? static_cast<DROPFILES*>(::GlobalLock(memory)) : nullptr;
+			if (!data) { if (memory) ::GlobalFree(memory); return false; }
+			data->pFiles = sizeof(DROPFILES); data->fWide = TRUE;
+			wchar_t* target = reinterpret_cast<wchar_t*>(reinterpret_cast<BYTE*>(data) + sizeof(DROPFILES));
+			for (const CString& file : files) { wcscpy_s(target, file.GetLength() + 1, file); target += file.GetLength() + 1; }
+			::GlobalUnlock(memory);
+			BOOL handled = FALSE; OnDropFiles(WM_DROPFILES, reinterpret_cast<WPARAM>(memory), 0, handled);
+			return true; // OnDropFiles owns DragFinish, including all early returns.
+		};
+		auto bodyHtml = [&]() { return CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body"))->innerHTML)); };
+		auto imageOrder = [&]() {
+			CString order;
+			MSHTML::IHTMLElementPtr body(document->all->item(L"fbw_body"));
+			MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"DIV"));
+			for (long i = 0; elements && i < elements->length; ++i) {
+				MSHTML::IHTMLElementPtr element(elements->item(i));
+				if (element && U::scmp(element->className, L"image") == 0) order += CString(static_cast<LPCWSTR>(_bstr_t(element->getAttribute(L"href", 2)))) + L"|";
+			}
+			return order;
+		};
+		auto prepareCaret = [&]() {
+			m_doc->m_body.SetFocus();
+			MSHTML::IHTMLElementPtr editable(document->all->item(L"fbw_body"));
+			MSHTML::IHTMLElementCollectionPtr paragraphs(MSHTML::IHTMLElement2Ptr(editable)->getElementsByTagName(L"P"));
+			MSHTML::IHTMLElementPtr paragraph(paragraphs->item(paragraphs->length - 1));
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+			range->moveToElementText(paragraph); range->collapse(VARIANT_TRUE);
+			range->moveStart(L"character", 1); range->collapse(VARIANT_TRUE); range->select();
+		};
+		bool passed = messages.timer != 0;
+		CStringA details;
+		auto check = [&](const char* name, bool result) { CStringA row; row.Format("%s=%d\r\n", name, result); details += row; passed = result && passed; };
+		// Establish a real text caret as in the existing import runtime harness.
+		::ShowWindow(m_hWnd, SW_RESTORE);
+		::SetForegroundWindow(m_hWnd);
+		prepareCaret();
+		const CString before(bodyHtml());
+		check("two-files-dispatch", drop({originalFile + L".first.png", originalFile + L".second.png"}));
+		CString order(imageOrder());
+		check("order", order.Find(L".first.png") >= 0 && order.Find(L".second.png") > order.Find(L".first.png"));
+		const CString after(bodyHtml());
+		m_doc->m_body.ExecCommand(IDM_UNDO); check("undo", bodyHtml() == before);
+		m_doc->m_body.ExecCommand(IDM_REDO); check("redo", bodyHtml() == after);
+		const int warnings = LegacyTodoTest::messageCount;
+		check("unsupported", drop({originalFile + L".unsupported.txt"}) && bodyHtml() == after && LegacyTodoTest::messageCount == warnings + 1);
+		prepareCaret();
+		check("bad-then-valid", drop({originalFile + L".bad.png", originalFile + L".third.png"}) && LegacyTodoTest::messageCount == warnings + 2 && imageOrder().Find(L".third.png") >= 0);
+		prepareCaret();
+		check("single", drop({originalFile + L".single.png"}) && imageOrder().Find(L".single.png") >= 0);
+		const CString beforeMixed(bodyHtml());
+		check("mixed", drop({originalFile, originalFile + L".first.png"}) && bodyHtml() == beforeMixed && m_doc->m_filename == originalFile && LegacyTodoTest::messageCount == warnings + 3);
+		check("save", m_doc->Save());
+		check("reopen", LoadFile(originalFile) == OK);
+		document = m_doc->m_body.Document();
+		order = imageOrder();
+		check("saved-images", order.Find(L".first.png") >= 0 && order.Find(L".second.png") > order.Find(L".first.png") && order.Find(L".third.png") >= 0 && order.Find(L".single.png") >= 0);
+		// Exercise the established singleton open route from a clean book;
+		// the normal dirty-book confirmation remains owned by LoadFile.
+		m_doc->MarkSavePoint();
+		check("single-fb2", drop({originalFile + L".other.fb2"}) && m_doc->m_filename == originalFile + L".other.fb2");
+		CStringA report; report.Format("drop-files=%s\r\nmessages=%d\r\n", passed ? "pass" : "fail", LegacyTodoTest::messageCount);
+		report += details; report += CStringA(CW2A(LegacyTodoTest::messageText, CP_UTF8));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"source-regex-diagnostics-runtime"))
+	{
+		ShowView(SOURCE);
+		const bool passed = RunSourceRegexDiagnosticsForTest(&m_doc->m_body, m_source);
+		const CStringA report(passed ? "source-regex=pass\r\n" : "source-regex=fail\r\n");
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
+	if (IsFbeTestScenario(L"drop-normalization-runtime"))
+	{
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
+		auto script = [&](LPCWSTR text) { return SUCCEEDED(window->execScript(_bstr_t(text), _bstr_t(L"JScript"))); };
+		auto html = [&]() { return CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body"))->innerHTML)); };
+		auto finish = [&]() {
+			MSG message = {};
+			while (::PeekMessage(&message, m_doc->m_body.m_hWnd, AU::WM_FINALIZE_DROP, AU::WM_FINALIZE_DROP, PM_REMOVE))
+				::DispatchMessage(&message);
+		};
+		CStringA report("case\tresult\r\n");
+		bool passed = true;
+		for (int test = 0; test < 5; ++test)
+		{
+			script(L"document.all.fbw_body.innerHTML=\"<DIV class='body'><DIV class='section' id='source'><P id='drag'>move</P><P>remain</P></DIV><DIV class='section' id='target'><P id='drop'>target</P></DIV><DIV class='section' id='untouched'><P>keep<BR>this</P></DIV></DIV>\";");
+			const CString before(html());
+			const long version = m_doc->m_body.GetVersionNumber();
+			// Real MSHTML event dispatch exercises the production connection point.
+			// The controlled DOM mutation stands in for the browser's default drop;
+			// the separate GUI probe establishes the native event ordering.
+			if (test != 2) script(L"var r=document.body.createTextRange();r.moveToElementText(document.all.drag);r.select();document.all.drag.fireEvent('ondragstart');");
+			if (test != 3)
+			{
+				script(test == 0 ? L"document.all.drag.fireEvent('ondrop');" : L"document.all.drop.fireEvent('ondrop');");
+				if (test < 3)
+				{
+					// A native browser drop creates an editing undo unit. Give the
+					// controlled stand-in the same contract; unwrapped script DOM
+					// mutations are deliberately not undoable in MSHTML.
+					const CString mutation = test == 0
+						? L"document.all.source.insertAdjacentHTML('beforeEnd','<P>new<BR>line</P>');"
+						: L"document.all.target.insertAdjacentHTML('beforeEnd','<P>new<BR>line</P>');";
+					CString operation(L"window.external.BeginUndoUnit(document,'controlled drop');");
+					operation += mutation;
+					if (test == 1) operation += L"document.all.drag.removeNode(true);";
+					operation += L"window.external.EndUndoUnit(document);";
+					script(operation);
+				}
+			}
+			if (test < 3) script(test == 0 ? L"var p=document.all.source.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();" : L"var p=document.all.target.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();");
+			const CString selectedBefore(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
+			if (test != 2) script(L"document.body.fireEvent('ondragend');");
+			finish();
+			const CString after(html());
+			bool ok = true;
+			bool normalized = true, selectionKept = true, scoped = true, undoOk = true, redoOk = true;
+			if (test < 3)
+			{
+				const CString ownerHtml(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(test == 0 ? L"source" : L"target"))->innerHTML));
+				const CString untouched(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->innerHTML));
+				normalized = ownerHtml.Find(L"<BR") < 0 && ownerHtml.Find(L"new") >= 0 && ownerHtml.Find(L"line") >= 0;
+				ok = normalized;
+				selectionKept = CString(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text)) == selectedBefore;
+				ok = ok && selectionKept;
+				// Cross-section moves require the common body owner; local and
+				// external drops must leave the adjacent section untouched.
+				if (test != 1) { scoped = untouched.Find(L"<BR") >= 0; ok = ok && scoped; }
+				m_doc->m_body.ExecCommand(IDM_UNDO);
+				undoOk = html() == before; ok = ok && undoOk;
+
+				if (!undoOk) {
+					report += "undo-before: "; report += CStringA(before); report += "\r\nundo-after: "; report += CStringA(html()); report += "\r\n";
+				}
+				m_doc->m_body.ExecCommand(IDM_REDO);
+				redoOk = html() == after; ok = ok && redoOk;
+				const long finishedVersion = m_doc->m_body.GetVersionNumber();
+				finish();
+				ok = ok && m_doc->m_body.GetVersionNumber() == finishedVersion;
+			}
+			else ok = after == before && m_doc->m_body.GetVersionNumber() == version;
+			const char* names[] = { "local", "cross-section", "external", "cancel", "unchanged" };
+			CStringA row; row.Format("%s\t%s\r\n", names[test], ok ? "pass" : "fail"); report += row;
+			CStringA detail; detail.Format("checks: normalize=%d selection=%d scope=%d undo=%d redo=%d version-before=%ld version-after=%ld\r\n", normalized, selectionKept, scoped, undoOk, redoOk, version, m_doc->m_body.GetVersionNumber()); report += detail;
+			passed = passed && ok;
+		}
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"visual-dom-normalizer"))
 	{
 		CStringA header("case\tparagraphs\tempty_divs\tbrs\texact_paragraphs\tempty_line\tnbsp\tformatting\tscope_isolated\tresult\r\n");

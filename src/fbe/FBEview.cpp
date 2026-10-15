@@ -513,6 +513,7 @@ LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /* unu
 
 CFBEView::~CFBEView()
 {
+	ResetPendingDrop();
 	DestroySearchHighlightOverlay(m_search_highlight_overlay);
 	m_search_highlight_overlay = NULL;
 	if(HasDoc())
@@ -1847,6 +1848,210 @@ MSHTML::IHTMLElementPtr FindNormalizationOwner(MSHTML::IHTMLElementPtr element)
 		if (IsNormalizationOwner(current)) return current;
 	return MSHTML::IHTMLElementPtr();
 }
+
+MSHTML::IHTMLDOMNodePtr CommonDropScope(MSHTML::IHTMLDOMNodePtr source, MSHTML::IHTMLDOMNodePtr target)
+{
+	if (!source) return target;
+	for (MSHTML::IHTMLDOMNodePtr a(source); a; a = a->parentNode)
+		for (MSHTML::IHTMLDOMNodePtr b(target); b; b = b->parentNode)
+			if (a == b)
+			{
+				MSHTML::IHTMLElementPtr element(a);
+				if (element && (IsNormalizationOwner(element) || U::scmp(element->id, L"fbw_body") == 0))
+					return a;
+			}
+	return MSHTML::IHTMLDOMNodePtr();
+}
+
+// MSHTML ends markup undo units at script/event boundaries. An OLE parent
+// collects the native drop and the later normalization across those boundaries.
+class DropUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit
+{
+	std::vector<CComPtr<IOleUndoUnit>> m_units;
+	CComPtr<IOleParentUndoUnit> m_open;
+public:
+	BEGIN_COM_MAP(DropUndoUnit)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+		COM_INTERFACE_ENTRY(IOleParentUndoUnit)
+	END_COM_MAP()
+	STDMETHOD(Do)(IOleUndoManager* manager)
+	{
+		if (!manager) return E_POINTER;
+		CComObject<DropUndoUnit>* raw = nullptr;
+		HRESULT hr = CComObject<DropUndoUnit>::CreateInstance(&raw);
+		if (FAILED(hr)) return hr;
+		CComPtr<IOleParentUndoUnit> inverse(raw);
+		hr = manager->Open(inverse);
+		if (FAILED(hr)) return hr;
+		for (auto unit = m_units.rbegin(); unit != m_units.rend(); ++unit)
+		{
+			hr = (*unit)->Do(manager);
+			if (FAILED(hr)) break;
+		}
+		const HRESULT closed = manager->Close(inverse, !raw->m_units.empty());
+		return FAILED(hr) ? hr : closed;
+	}
+	STDMETHOD(GetDescription)(BSTR* text)
+	{
+		if (!text) return E_POINTER;
+		*text = ::SysAllocString(L"Drag and drop");
+		return *text ? S_OK : E_OUTOFMEMORY;
+	}
+	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id)
+	{
+		if (!clsid || !id) return E_POINTER;
+		*clsid = CLSID_NULL; *id = 0; return S_OK;
+	}
+	STDMETHOD(OnNextAdd)() { return m_units.empty() ? S_OK : m_units.back()->OnNextAdd(); }
+	STDMETHOD(Open)(IOleParentUndoUnit* unit)
+	{
+		if (!unit) return E_POINTER;
+		if (m_open) return m_open->Open(unit);
+		m_open = unit; return S_OK;
+	}
+	STDMETHOD(Close)(IOleParentUndoUnit* unit, BOOL commit)
+	{
+		// S_FALSE tells the containing manager/parent to close this unit.
+		// S_OK means a nested child handled the request and this unit stays open.
+		if (!m_open) return S_FALSE;
+		const HRESULT closed = m_open->Close(unit, commit);
+		if (closed != S_FALSE) return closed;
+		if (m_open.p != unit) return E_INVALIDARG;
+		try { if (commit) m_units.push_back(m_open.p); }
+		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+		m_open.Release(); return S_OK;
+	}
+	STDMETHOD(Add)(IOleUndoUnit* unit)
+	{
+		if (!unit) return E_POINTER;
+		if (m_open) return m_open->Add(unit);
+		try { m_units.push_back(unit); }
+		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+		return S_OK;
+	}
+	STDMETHOD(FindUnit)(IOleUndoUnit* unit)
+	{
+		if (m_open && (m_open.p == unit || m_open->FindUnit(unit) == S_OK)) return S_OK;
+		for (const auto& child : m_units)
+		{
+			if (child.p == unit) return S_OK;
+			CComQIPtr<IOleParentUndoUnit> parent(child);
+			if (parent && parent->FindUnit(unit) == S_OK) return S_OK;
+		}
+		return S_FALSE;
+	}
+	STDMETHOD(GetParentState)(DWORD* state)
+	{
+		if (!state) return E_POINTER;
+		if (m_open) return m_open->GetParentState(state);
+		*state = UAS_NORMAL; return S_OK;
+	}
+};
+}
+
+void CFBEView::OpenDropUndoGroup(CComPtr<IOleUndoManager>& manager, CComPtr<IOleParentUndoUnit>& parent)
+{
+	IServiceProviderPtr services(Document());
+	CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager,
+		reinterpret_cast<void**>(&manager)));
+	CComObject<DropUndoUnit>* unit = nullptr;
+	CheckError(CComObject<DropUndoUnit>::CreateInstance(&unit));
+	parent = unit;
+	CheckError(manager->Open(parent));
+}
+
+void CFBEView::ResetPendingDrop()
+{
+	bool changed = false;
+	try { changed = m_drop_version >= 0 && GetVersionNumber() != m_drop_version; } catch (const _com_error&) {}
+	++m_drop_generation;
+	m_pending_drop_normalization_scope = nullptr;
+	m_drag_source_scope = nullptr;
+	m_drop_version = -1;
+	if (m_drop_undo_open)
+	{
+		m_drop_undo_open = false;
+		m_drop_undo_manager->Close(m_drop_undo_parent, changed);
+	}
+	m_drop_undo_parent.Release();
+	m_drop_undo_manager.Release();
+}
+
+VARIANT_BOOL CFBEView::OnDragStart(IDispatch*)
+{
+	ResetPendingDrop();
+	if (m_normalize)
+		m_drag_source_scope = ResolveNormalizationScope();
+	return VARIANT_TRUE;
+}
+
+VARIANT_BOOL CFBEView::OnDragDrop(IDispatch* event)
+{
+	if (!m_normalize) return VARIANT_TRUE;
+	try
+	{
+		MSHTML::IHTMLEventObjPtr dropEvent(event);
+		MSHTML::IHTMLElementPtr origin(dropEvent ? dropEvent->srcElement : nullptr);
+		MSHTML::IHTMLElementPtr target(FindNormalizationOwner(origin));
+		if (!target && origin && U::scmp(origin->id, L"fbw_body") == 0) target = origin;
+		if (!target) { ResetPendingDrop(); return VARIANT_TRUE; }
+		m_pending_drop_normalization_scope = CommonDropScope(m_drag_source_scope, MSHTML::IHTMLDOMNodePtr(target));
+		if (!m_pending_drop_normalization_scope)
+			m_pending_drop_normalization_scope = MSHTML::IHTMLDOMNodePtr(Document()->body);
+		m_drop_version = GetVersionNumber();
+		// Keep the browser's insertion, source deletion and normalization in one
+		// undo unit. Neither drop nor dragend observes the final internal-move DOM.
+		OpenDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent);
+		m_drop_undo_open = true;
+		if (!PostMessage(AU::WM_FINALIZE_DROP, m_drop_generation)) ResetPendingDrop();
+	}
+	catch (const _com_error&)
+	{
+		ResetPendingDrop();
+	}
+	return VARIANT_TRUE; // Preserve MSHTML's standard drop operation.
+}
+
+void CFBEView::OnDragEnd(IDispatch*)
+{
+	// No drop in this view means cancellation or a drop outside the editor.
+	// The queued drop finalizer handles successful internal and external drops.
+	if (!m_drop_undo_open) ResetPendingDrop();
+}
+
+LRESULT CFBEView::OnFinalizeDrop(UINT, WPARAM generation, LPARAM, BOOL&)
+{
+	if (generation != m_drop_generation || !m_drop_undo_open) return 0;
+	try
+	{
+		if (m_drop_version >= 0 && GetVersionNumber() != m_drop_version)
+		{
+			MSHTML::IHTMLTxtRangePtr caret;
+			_bstr_t bookmark;
+			try
+			{
+				caret = Document()->selection->createRange();
+				if (caret) bookmark = caret->getBookmark();
+			}
+			catch (const _com_error&) {} // A control selection has no text range.
+			{
+				FbeDom::MarkupUndoUnitScope normalization(m_mk_srv, L"Normalize drop");
+				NormalizeWithoutUndo(m_pending_drop_normalization_scope);
+			}
+			if (caret)
+			{
+				// SplitBRs can replace the scope's outerHTML. A live range then
+				// expands to the removed container; its bookmark retains the text
+				// coordinates across this structural rewrite in MSHTML.
+				MSHTML::IHTMLTxtRangePtr restored(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+				if (bookmark.length() && restored->moveToBookmark(bookmark)) restored->select();
+				else caret->select();
+			}
+		}
+	}
+	catch (_com_error& error) { U::ReportError(error); }
+	ResetPendingDrop();
+	return 0;
 }
 
 MSHTML::IHTMLDOMNodePtr CFBEView::ResolveNormalizationScope()
@@ -3276,6 +3481,7 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
 
 bool CFBEView::Init()
 {
+	ResetPendingDrop();
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
 	// A full MSHTML rebuild invalidates every DOM-scoped navigation origin.
 	ClearLinkNavigationHistory();
@@ -4187,8 +4393,38 @@ static int ScintillaPositionBefore(HWND source, int position)
 	return static_cast<int>(::SendMessage(source, SCI_POSITIONBEFORE, position, 0));
 }
 
+void CFBEView::ResetScintillaSearchError(HWND src)
+{
+	m_last_search_error.Empty();
+	m_last_search_error_is_regexp = false;
+	::SendMessage(src, SCI_SETSTATUS, SC_STATUS_OK, 0);
+	if (!m_fo.fRegexp || m_fo.pattern.IsEmpty()) m_last_reported_source_error.Empty();
+}
+
+bool CFBEView::ReportScintillaRegexError(HWND src)
+{
+	const int status = static_cast<int>(::SendMessage(src, SCI_GETSTATUS, 0, 0));
+	if (status == SC_STATUS_OK)
+	{
+		m_last_reported_source_error.Empty();
+		return false;
+	}
+	const CString format = status == SC_STATUS_WARN_REGEX
+		? FbeLoadRuntimeStringByKey(L"fbe.regex.error.source.invalid", L"Code mode (Scintilla/C++11): invalid regular expression.\nExpression: %s\nStatus: %d. Scintilla does not provide an error position or a detailed reason.")
+		: FbeLoadRuntimeStringByKey(L"fbe.regex.error.source.status", L"Code mode (Scintilla/C++11): search failed.\nExpression: %s\nScintilla status: %d.");
+	m_last_search_error.Format(format, static_cast<LPCWSTR>(m_fo.pattern), status);
+	m_last_search_error_is_regexp = true;
+	if (m_last_reported_source_error != m_last_search_error)
+	{
+		m_last_reported_source_error = m_last_search_error;
+		U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+	}
+	return true;
+}
+
 bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrentZeroLength,
 	int zeroLengthGuardStart, int zeroLengthGuardEnd) {
+  ResetScintillaSearchError(src);
   if (m_fo.pattern.IsEmpty())
     return true;
 
@@ -4264,9 +4500,7 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 			if (!AU::Search::FindPreviousSkippingZeroLengthGuard(src, flags, tmp.data(), static_cast<int>(len),
 				zeroLengthGuardFirst, zeroLengthGuardLast, rangeEnd, m_fo.fRegexp, ret, nullptr))
 			{
-				m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-				m_last_search_error_is_regexp = true;
-				U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+				ReportScintillaRegexError(src);
 				return false;
 			}
 			return true;
@@ -4291,9 +4525,7 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 			ret = ::SendMessage(src, SCI_SEARCHINTARGET, len, (LPARAM)tmp.data());
 			if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
 			{
-				m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-				m_last_search_error_is_regexp = true;
-				U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+				ReportScintillaRegexError(src);
 				return false;
 			}
 		}
@@ -4301,11 +4533,13 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 	};
     if (!exhaustedZeroLengthPosition && p1 != p2)
         ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
+    else if (m_fo.fRegexp && p1 == p2 && p1 == p3)
+        // Validate the pattern's status on an empty document while retaining
+        // the existing no-match behavior for an empty search range.
+        ::SendMessage(src, SCI_SEARCHINTARGET, len, (LPARAM)tmp.data());
     if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
     {
-        m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-        m_last_search_error_is_regexp = true;
-        U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+        ReportScintillaRegexError(src);
         return false;
     }
 	if (!skipProtectedZeroLengthHits(p2)) return false;
@@ -4320,15 +4554,14 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 			ret=::SendMessage(src,SCI_SEARCHINTARGET,len,(LPARAM)tmp.data());
             if (ret == -1 && m_fo.fRegexp && ::SendMessage(src, SCI_GETSTATUS, 0, 0) != SC_STATUS_OK)
             {
-                m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-                m_last_search_error_is_regexp = true;
-                U::MessageBox(m_hWnd, m_last_search_error, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
+                ReportScintillaRegexError(src);
                 return false;
             }
 			if (!skipProtectedZeroLengthHits(p1)) return false;
 		}
 		if (ret==-1) 
 		{
+			m_last_reported_source_error.Empty();
 			if (fBarf)
 			{
 				U::MessageBox(MB_OK|MB_ICONEXCLAMATION, IDR_MAINFRAME, IDS_SEARCH_FAIL_MSG, static_cast<LPCWSTR>(m_fo.pattern));
@@ -4337,6 +4570,7 @@ bool CFBEView::SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrent
 		}
 		::MessageBeep(MB_ICONASTERISK);
     }
+    m_last_reported_source_error.Empty();
     p1=::SendMessage(src,SCI_GETTARGETSTART,0,0);
     p2=::SendMessage(src,SCI_GETTARGETEND,0,0);
     ::SendMessage(src,SCI_SETSELECTIONSTART,p1,0);
@@ -5044,8 +5278,9 @@ HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CStrin
 }
 
 // images
-void CFBEView::AddImage(const CString& filename, bool bInline)
+void CFBEView::AddImage(const CString& filename, bool bInline, MSHTML::IHTMLElementPtr* inserted)
 {
+	if (inserted) *inserted = nullptr;
 	ImageImportOptions options;
 	options.outputFormat = static_cast<ImageOutputFormat>(_Settings.GetImageImportFormat());
 	options.jpegQuality = static_cast<int>(_Settings.GetImageImportJpegQuality());
@@ -5058,7 +5293,7 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 		options.flattenTransparentJpeg = true;
 		hr = ImportImageForFb2(filename, options, imported, error);
 	}
-	if (FAILED(hr)) { if (!error.IsEmpty()) U::MessageBox(m_hWnd, error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
+	if (FAILED(hr)) { if (!error.IsEmpty()) U::MessageBox(m_hWnd, filename + L"\n\n" + error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
 	try
 	{
 		FbeImage::ImageInsertionResult result;
@@ -5070,6 +5305,7 @@ void CFBEView::AddImage(const CString& filename, bool bInline)
 		MSHTML::IHTMLDOMNodePtr node(result.insertedElement);
 		if(!bInline && node && !FbeVisualDom::IsDirectSectionImage(node))
 			FbeVisualDom::BubbleUp(node, L"DIV");
+		if (inserted) *inserted = result.insertedElement;
 	}
-	catch (_com_error&) { }
+	catch (_com_error& error) { U::ReportError(error); }
 }

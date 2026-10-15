@@ -1801,8 +1801,8 @@
 			L"id.value='cover-renamed.png';OnBinaryChange(id);var ok=id.value=='cover-renamed.png';var elements=document.all;for(var i=0;i<elements.length;i++){"
 			L"var h=elements[i].getAttribute?elements[i].getAttribute('href'):null;var s=elements[i].getAttribute?elements[i].getAttribute('src'):null;if(h=='#cover-old.png'||s=='fbw-internal:#cover-old.png')ok=false;}"
 			L"var lists=document.getElementsByTagName('SELECT');var selected=0;for(var j=0;j<lists.length;j++)if(lists[j].value=='#cover-renamed.png')selected++;"
-			L"var originalMsgBox=MsgBox,blocked=0;MsgBox=function(){blocked++;};other.value='cover-renamed.png';OnBinaryChange(other);var duplicate=(other.value!='cover-renamed.png');Remove(id.parentNode);var deletion=false;for(var d=0;d<bins.length;d++)if(bins[d].all.id==id)deletion=true;MsgBox=originalMsgBox;"
-			L"document.title=(ok&&selected>=2&&duplicate&&deletion&&blocked>=2)?'binary-rename-pass':('binary-rename-fail-'+(ok?1:0)+'-'+selected+'-'+duplicate+'-'+deletion+'-'+blocked);})();";
+			L"var originalMsgBox=MsgBox,blocked=0;MsgBox=function(){blocked++;};other.value='cover-renamed.png';OnBinaryChange(other);var duplicate=(other.value!='cover-renamed.png');Remove(id.parentNode);var deletion=false;for(var d=0;d<bins.length;d++)if(bins[d].all.id==id)deletion=true;var unusedId=other.value;Remove(other.parentNode);var unusedDeleted=true;for(var u=0;u<bins.length;u++)if(bins[u].all.id.value==unusedId)unusedDeleted=false;MsgBox=originalMsgBox;"
+			L"document.title=(ok&&selected>=2&&duplicate&&deletion&&unusedDeleted&&blocked>=2)?'binary-rename-pass':('binary-rename-fail-'+(ok?1:0)+'-'+selected+'-'+duplicate+'-'+deletion+'-'+blocked);})();";
 		const HRESULT scriptResult = window ? window->execScript(_bstr_t(renameScript), _bstr_t(L"JScript")) : E_NOINTERFACE;
 		const bool domRenamed = SUCCEEDED(scriptResult) && document && CString(static_cast<LPCWSTR>(document->title)) == L"binary-rename-pass";
 		bool sourceRoundTrip = false;

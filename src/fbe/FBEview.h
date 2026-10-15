@@ -362,7 +362,8 @@ enum : UINT {
 	WM_HIDE_FIND_RESULTS_PANE = WM_APP + 43,
 	WM_REFRESH_FIND_RESULTS_PANE = WM_APP + 44,
 	WM_DETACH_FIND_RESULTS_PANE = WM_APP + 45,
-	WM_FINALIZE_REPLACE_ALL_COMPLETION = WM_APP + 46
+	WM_FINALIZE_REPLACE_ALL_COMPLETION = WM_APP + 46,
+	WM_FINALIZE_DROP = WM_APP + 47
 };
 }
 class CSearchHighlightOverlay;
@@ -407,6 +408,12 @@ protected:
   int			    m_ignore_changes;
   int			    m_enable_paste;
 	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
+	MSHTML::IHTMLDOMNodePtr m_drag_source_scope;
+	long m_drop_version = -1;
+	UINT_PTR m_drop_generation = 0;
+	bool m_drop_undo_open = false;
+	CComPtr<IOleUndoManager> m_drop_undo_manager;
+	CComPtr<IOleParentUndoUnit> m_drop_undo_parent;
 
   bool			    m_normalize:1;
   bool			    m_complete:1;
@@ -470,6 +477,7 @@ protected:
 	FindReplaceOptions m_fo;
 	CString m_last_search_error;
 	bool m_last_search_error_is_regexp;
+	CString m_last_reported_source_error;
 	MSHTML::IHTMLTxtRangePtr m_is_start;
 	// Native Design search snapshots use transient offsets. A Selection scope
 	// also retains this live MSHTML range so it can be remapped after a replace.
@@ -571,6 +579,7 @@ public:
     MESSAGE_HANDLER(WM_SETFOCUS, OnFocus)
     MESSAGE_HANDLER(WM_SIZE, OnSize)
 	MESSAGE_HANDLER(AU::WM_FINALIZE_REPLACE_ALL_COMPLETION, OnFinalizeReplaceAllCompletion)
+	MESSAGE_HANDLER(AU::WM_FINALIZE_DROP, OnFinalizeDrop)
 
     // editing commands
     COMMAND_ID_HANDLER(ID_EDIT_UNDO, OnUndo)
@@ -645,7 +654,9 @@ public:
 		SINK_ENTRY_INFO(0, DIID_HTMLDocumentEvents2, DISPID_HTMLDOCUMENTEVENTS2_ONFOCUSIN, OnFocusIn, &VoidEventInfo)
 		SINK_ENTRY_INFO(1, DIID_FBEHTMLElementEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
-		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGEND, OnDrop, &VoidEventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGSTART, OnDragStart, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDROP, OnDragDrop, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGEND, OnDragEnd, &VoidEventInfo)
 	END_SINK_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
@@ -838,7 +849,7 @@ public:
 	// ImageImport deliberately stays independent of MSHTML and SAFEARRAYs.
 	HRESULT AddImportedBinary(const BYTE* data, size_t size, const CString& logicalFileName,
 		const CString& mimeType, _variant_t* checkedId = NULL);
-	void AddImage(const CString& filename,  bool bInline = false);
+	void AddImage(const CString& filename, bool bInline = false, MSHTML::IHTMLElementPtr* inserted = nullptr);
 
 	CString LastSearchPattern()
 	{
@@ -873,6 +884,9 @@ public:
 	}
 
   // searching in scintilla
+  void ResetScintillaSearchError(HWND src);
+  bool ReportScintillaRegexError(HWND src);
+  void OpenDropUndoGroup(CComPtr<IOleUndoManager>& manager, CComPtr<IOleParentUndoUnit>& parent);
   bool SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrentZeroLength = false,
     int zeroLengthGuardStart = -1, int zeroLengthGuardEnd = -1);
 
@@ -987,20 +1001,10 @@ public:
 
 	// HTMLTextContainerEvents2
 	VARIANT_BOOL __stdcall OnRealPaste(IDispatch *evt);
-	void __stdcall OnDrop(IDispatch*)
-	{
-		if(m_normalize) {
-			Normalize(m_pending_drop_normalization_scope ? m_pending_drop_normalization_scope : ResolveNormalizationScope());
-			m_pending_drop_normalization_scope = nullptr;
-		}
-	}
-
-   VARIANT_BOOL __stdcall OnDragDrop(IDispatch*)
-   {
-		if(m_normalize)
-			m_pending_drop_normalization_scope = ResolveNormalizationScope();
-	    return VARIANT_FALSE;
-   }
+	VARIANT_BOOL __stdcall OnDragStart(IDispatch*);
+	VARIANT_BOOL __stdcall OnDragDrop(IDispatch*);
+	void __stdcall OnDragEnd(IDispatch*);
+	LRESULT OnFinalizeDrop(UINT, WPARAM, LPARAM, BOOL&);
 
   // form changes
   bool	    IsFormChanged();
@@ -1018,6 +1022,7 @@ public:
 	void RefreshOpenSearchPresetPanels(FRBase* source);
 
 private:
+	void ResetPendingDrop();
 	void NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom);
 	// added by SeNS
 	int m_startMatch, m_endMatch;

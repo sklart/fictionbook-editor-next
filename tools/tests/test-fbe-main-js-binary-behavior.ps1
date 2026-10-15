@@ -34,11 +34,11 @@ function Input(value){this.value=value; this.attrs={}; this.setAttribute=functio
 var binaries=[]; var references=[]; var covers=[]; var allElements=[];
 var binobj={getElementsByTagName:function(){return binaries;},appendChild:function(binary){binaries.push(binary);}};
 allElements.binobj=binobj;
-var document={all:allElements,createElement:function(){return Binary('','');},getElementsByTagName:function(name){if(name=='*') return allElements; if(name=='SELECT') return covers; return [];}};
-var localized={"fbe.binary.id.empty":'empty',"fbe.binary.id.duplicate":'duplicate',"fbe.binary.delete.referenced":'referenced',"fbe.binary.processing_images":'Processing images: {0} / {1}'};
+var document={all:allElements,createElement:function(){return Binary('','');},getElementsByTagName:function(name){if(name=='*') throw new Error('Operation is not supported'); if(name=='SELECT') return covers; return [];}};
+var localized={"fbe.binary.id.empty":'empty',"fbe.binary.id.duplicate":'duplicate',"fbe.binary.delete.referenced":'referenced',"fbe.binary.delete.check_failed":'check failed',"fbe.binary.processing_images":'Processing images: {0} / {1}'};
 var window={event:null,external:{GetImageDimsByData:function(){return '2x3';},GetBinarySize:function(){return 4;},GetImageDimsByPath:function(){return '';},GetLocalizedString:function(key){return localized[key];}}};
 function Binary(id,type){var b={base64data:'AQID',all:{},parentNode:binobj,innerHTML:''}; b.all.id=new Input(id); b.all.type=new Input(type); b.all.id.setAttribute('oldId',id); b.all.id.parentNode=b; b.all.type.parentNode=b; b.getElementsByTagName=function(){return [b.all.id,b.all.type];}; b.removeNode=function(){for(var i=0;i<binaries.length;i++)if(binaries[i]===b)binaries.splice(i,1);}; return b;}
-function Ref(href,src){this.attrs={href:href,src:src}; this.href=href; this.src=src; this.tagName='IMG'; this.getAttribute=function(name){return this.attrs[name];}; this.setAttribute=function(name,value){this.attrs[name]=value; if(name=='href')this.href=value; if(name=='src')this.src=value;}; allElements.push(this);}
+function Ref(href,src){this.attrs={href:href,src:src}; this.href=href; this.src=src; this.tagName='IMG'; this.getAttribute=function(name){return name=="href" ? this.href : name=="src" ? this.src : this.attrs[name];}; this.setAttribute=function(name,value){this.attrs[name]=value; if(name=='href')this.href=value; if(name=='src')this.src=value;}; allElements.push(this);}
 function Cover(value){this.value=value; this.options=[]; this.tagName='SELECT'; this.getElementsByTagName=function(name){return name=='OPTION' ? this.options : [];}; allElements.push(this);}
 $helpers
 $controls
@@ -69,6 +69,21 @@ first.all.id.value='\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg'; window.
 assert(first.all.id.value=='\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg' && covers[0].value=='#\u041e\u0431\u043b\u043e\u0436\u043a\u0430_1-2.jpg', 'Unicode XML ID must be accepted and cover selection restored after list rebuild');
 first.all.id.value='renamed.jpg'; window.event={srcElement:first.all.id}; OnBinaryChange();
 Remove(first); assert(binaries.length==2 && messages.length==8, 'used binary must not be deleted');
+var beforeImages=ImagesInfo.length, beforeFills=fills;
+Remove(first); assert(binaries.length==2 && ImagesInfo.length==beforeImages && fills==beforeFills, 'rejected removal must not change image metadata or cover lists');
+var unused=Binary('unused.png','image/png'); binaries.push(unused); RebuildImagesInfo();
+Remove(unused); assert(binaries.length==2 && ImagesInfo.length==2 && fills==beforeFills+1, 'unused binary must be removed and cover lists updated');
+var savedElements=allElements.slice(0); allElements.length=0;
+allElements.push(covers[0]);
+assert(BinaryIsReferenced('renamed.jpg'), 'selected cover alone must protect binary');
+allElements.length=0; allElements.push(references[0]);
+assert(BinaryIsReferenced('renamed.jpg'), 'href alone must protect binary');
+allElements.length=0; allElements.push(references[1]);
+assert(BinaryIsReferenced('renamed.jpg'), 'src alone must protect binary');
+allElements.length=0; allElements.push({getAttribute:function(){throw new Error('DOM failure');}});
+beforeFills=fills; var beforeMessages=messages.length;
+Remove(other); assert(binaries.length==2 && ImagesInfo.length==2 && fills==beforeFills && messages.length==beforeMessages+1 && messages[messages.length-1]=='check failed', 'failed reference check must reject deletion without modifying document');
+allElements.length=0; for(var restore=0;restore<savedElements.length;restore++)allElements.push(savedElements[restore]);
 first.all.type.value='application/octet-stream'; window.event={srcElement:first.all.type}; OnBinaryChange();
 assert(first.innerHTML.indexOf('id="show"')==-1 && first.innerHTML.indexOf('id="save"')==-1 && first.innerHTML.indexOf('id="dims"')==-1 && first.all.id.onchange==OnBinaryChange && first.all.type.onchange==OnBinaryChange && ImagesInfo.length==1 && ImagesInfo[0].id=='other.jpg', 'image to non-image must remove image controls and retain handlers');
 first.all.type.value='image/png'; window.event={srcElement:first.all.type}; OnBinaryChange();

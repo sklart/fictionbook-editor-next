@@ -262,20 +262,20 @@ function RestoreBinaryReferenceSelects(selectedReferences)
 
 function BinaryIsReferenced(id)
 {
- var elements=document.getElementsByTagName("*");
+ // Use the same MSHTML-compatible collection as UpdateBinaryReferences.
+ var elements=document.all;
+ if(!elements) throw new Error("Binary reference collection unavailable");
  for(var i=0; i<elements.length; ++i)
  {
   var element=elements[i];
+  if(!element) continue;
   var href=element.getAttribute ? element.getAttribute("href") : null;
   var src=element.getAttribute ? element.getAttribute("src") : null;
   if(href == null && element.href) href=element.href;
   if(src == null && element.src) src=element.src;
   if(IsBinaryReferenceValue(href, id) || IsBinaryReferenceValue(src, id)) return true;
+  if(String(element.tagName).toUpperCase()=="SELECT" && element.value == "#"+id) return true;
  }
-
- var lists=document.getElementsByTagName("SELECT");
- for(var j=0; j<lists.length; ++j)
-  if(lists[j].value == "#"+id) return true;
  return false;
 }
 
@@ -2027,7 +2027,14 @@ function Remove(obj)
 	if(obj.base64data != null) // this is a binary object
 	{
 		pic_id = GetBinaryInput(obj, "id").value;
-		if(BinaryIsReferenced(pic_id))
+		var referenced;
+		try { referenced=BinaryIsReferenced(pic_id); }
+		catch(e)
+		{
+			MsgBox(LocalizedBinaryMessage("fbe.binary.delete.check_failed"));
+			return;
+		}
+		if(referenced)
 		{
 			MsgBox(LocalizedBinaryMessage("fbe.binary.delete.referenced"));
 			return;
