@@ -258,13 +258,12 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 
 LRESULT CSettingsGeneralPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
-	if(Validate()) Commit();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
 }
 
 LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 {
-	return CancelChanges() ? 0 : 1;
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
 }
 
 LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&)

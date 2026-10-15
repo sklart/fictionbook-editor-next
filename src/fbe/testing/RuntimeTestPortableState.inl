@@ -201,7 +201,19 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool htmlLocalized = html.Find(L"<h2>" + title + L"</h2>") >= 0 && html.Find(L"<th colspan=\"2\">" + scripts + L"</th>") >= 0 && html.Find(L"<th colspan=\"2\">" + plugins + L"</th>") >= 0 && html.Find(space) >= 0;
 		const bool htmlEscaping = html.Find(L"Test &lt;Fix&gt; &amp; &quot;Normalize&quot;") >= 0 && html.Find(L"Unassigned &lt;ignore&gt;") < 0;
 		const bool sameData = data.size() > 0 && html.Find(L"<kbd>Ctrl+F9</kbd>") >= 0 && text.Find(L"Ctrl+F9") >= 0;
-		const bool passed = header && localizedNames && scriptAndPluginGroups && specialKeys && tabs && noEmptyGroups && htmlStructure && htmlLocalized && htmlEscaping && sameData;
+		const CString exportPath = reportPath + L".txt";
+		bool atomicExport = FbeSettings::Hotkeys::WriteUtf8ExportFile(exportPath, L"original");
+		HANDLE locked = ::CreateFileW(exportPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		atomicExport = atomicExport && locked != INVALID_HANDLE_VALUE && !FbeSettings::Hotkeys::WriteUtf8ExportFile(exportPath, L"replacement");
+		if(locked != INVALID_HANDLE_VALUE)
+		{
+			char bytes[32] = {}; DWORD read = 0;
+			atomicExport = atomicExport && ::ReadFile(locked, bytes, sizeof(bytes), &read, NULL) && read == 11 && memcmp(bytes + 3, "original", 8) == 0;
+			::CloseHandle(locked);
+		}
+		atomicExport = atomicExport && FbeSettings::Hotkeys::WriteUtf8ExportFile(exportPath, L"replacement");
+		::DeleteFileW(exportPath);
+		const bool passed = atomicExport && header && localizedNames && scriptAndPluginGroups && specialKeys && tabs && noEmptyGroups && htmlStructure && htmlLocalized && htmlEscaping && sameData;
 		CStringA report;
 		report.Format("phase=hotkey-export\nlocale=%ls\nheader=%d\nlocalized-names=%d\nscripts-plugins=%d\nspecial-keys=%d\ntabs=%d\nno-empty-groups=%d\nhtml-structure=%d\nhtml-localized=%d\nhtml-escaping=%d\nsame-data=%d\nresult=%s\n",
 			locale, header, localizedNames, scriptAndPluginGroups, specialKeys, tabs, noEmptyGroups, htmlStructure, htmlLocalized, htmlEscaping, sameData, passed ? "pass" : "fail");

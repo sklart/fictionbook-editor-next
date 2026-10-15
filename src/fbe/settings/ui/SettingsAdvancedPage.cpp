@@ -28,6 +28,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_tooltips.Add(m_checkScriptsOnStartup, L"fbe.settings.tooltip.advanced.check_scripts_on_startup", L"Checks every script for syntax errors and a Run function before showing it.");
 	m_tooltips.Add(GetDlgItem(IDC_SETTINGS_OTHER_SCRIPTS), L"fbe.settings.tooltip.advanced.scripts_folder", L"Folder from which FictionBook Editor Next loads user scripts.");
 	m_initialScriptsFolder = _Settings.GetResolvedScriptsFolder();
+	m_customScriptsFolder = _Settings.GetScriptsFolderStored();
 	m_defaultScriptsFolder.SetCheck(_Settings.IsDefaultScriptsFolder());
 	m_scriptsFolder.SetWindowText(_Settings.GetScriptsFolderStored());
 	m_scriptsFolder.SetReadOnly(_Settings.IsDefaultScriptsFolder());
@@ -40,8 +41,7 @@ LRESULT CSettingsAdvancedPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 }
 LRESULT CSettingsAdvancedPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
-	if(Validate()) Commit();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
 }
 bool CSettingsAdvancedPage::Validate()
 {
@@ -76,12 +76,14 @@ void CSettingsAdvancedPage::Commit()
 	if(checkScriptsOnStartup != _Settings.CheckScriptsOnStartup()) _Settings.SetNeedRestart();
 	_Settings.SetCheckScriptsOnStartup(checkScriptsOnStartup, true);
 }
-LRESULT CSettingsAdvancedPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+LRESULT CSettingsAdvancedPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) {
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
+}
 bool CSettingsAdvancedPage::CancelChanges() { return true; }
 LRESULT CSettingsAdvancedPage::OnDefaultScriptsFolder(WORD, WORD, HWND, BOOL&)
 {
-	if(!m_scriptsSwitched) { m_scriptsFolder.SetWindowText(_Settings.GetDefaultScriptsFolderStored()); m_scriptsFolder.SetReadOnly(true); m_selectScriptsFolder.EnableWindow(false); }
-	else { m_scriptsFolder.SetReadOnly(false); m_selectScriptsFolder.EnableWindow(true); }
+	if(!m_scriptsSwitched) { m_scriptsFolder.GetWindowText(m_customScriptsFolder); m_scriptsFolder.SetWindowText(_Settings.GetDefaultScriptsFolderStored()); m_scriptsFolder.SetReadOnly(true); m_selectScriptsFolder.EnableWindow(false); }
+	else { m_scriptsFolder.SetWindowText(m_customScriptsFolder); m_scriptsFolder.SetReadOnly(false); m_selectScriptsFolder.EnableWindow(true); }
 	m_scriptsSwitched = !m_scriptsSwitched; UpdateScriptsFolderTooltip(); return 0;
 }
 LRESULT CSettingsAdvancedPage::OnSelectScriptsFolder(WORD, WORD, HWND, BOOL&)

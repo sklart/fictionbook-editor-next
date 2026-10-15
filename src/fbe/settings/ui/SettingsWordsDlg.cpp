@@ -1,6 +1,8 @@
 // SettingsWordsDlg.cpp : Implementation of CSettingsWordsDlg
 
 #include "stdafx.h"
+#include "../words/WordsStore.h"
+#include "../SettingsPaths.h"
 #include "SettingsWordsDlg.h"
 #include "..\\..\\Settings.h"
 #include "..\\..\\RuntimeLocalization.h"
@@ -319,7 +321,7 @@ bool CSettingsWordsDlg::AddNewWord(CString& word, bool test)
 	{
 		for(size_t i = 0; i < m_words.size(); ++i)
 		{
-			if(word.CompareNoCase(m_words[i].m_word) == 0)
+			if((!test || !m_editActive || static_cast<int>(i) != m_editidx) && word.CompareNoCase(m_words[i].m_word) == 0)
 			{
 				CString errMsg[2];
 				errMsg[0] = FbeLoadCString(IDS_SETTINGS_WORDS_ADD_ERR_TEXT);
@@ -467,7 +469,8 @@ LRESULT CSettingsWordsDlg::OnOK(WORD, WORD /* unused: wID */, HWND, BOOL&)
 
 LRESULT CSettingsWordsDlg::OnCancel(WORD, WORD /* unused: wID */, HWND, BOOL&)
 {
-	return CancelChanges() ? 1 : 0;
+	if(m_editActive && GetFocus() == m_edit) { CancelChanges(); return 0; }
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
 }
 
 bool CSettingsWordsDlg::FinishInlineEdit()
@@ -488,9 +491,9 @@ bool CSettingsWordsDlg::FinishInlineEdit()
 	{
 		if(!AddNewWord(editedWord, true))
 			return false;
-		RemoveWord(m_editidx);
-		if(!AddNewWord(editedWord))
-			return false;
+		m_words[m_editidx].m_word = editedWord.MakeLower();
+		m_wordsDirty = true;
+		m_list_words.RedrawItems(m_editidx, m_editidx);
 	}
 	m_editActive = false;
 	m_editidx = -1;
@@ -548,19 +551,30 @@ bool CSettingsWordsDlg::Validate()
 	return FinishInlineEdit() && FinishNewWord();
 }
 
+
+bool CSettingsWordsDlg::PrepareCommit(SettingsFileTransaction& files)
+{
+	if(!m_wordsDirty) return true;
+	const CString path(FbeSettings::WordsFilePath());
+	const CString temporary = SettingsFileTransaction::Temporary(path);
+	if(!temporary.IsEmpty())
+	{
+		files.Add(path, temporary);
+		std::vector<WordsItem> persistentWords = m_words;
+		std::sort(persistentWords.begin(), persistentWords.end(), [](const WordsItem& left, const WordsItem& right) { return left.m_word.CompareNoCase(right.m_word) < 0; });
+		if(FbeSettings::Words::SaveToFile(persistentWords, temporary)) return true;
+	}
+	MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.save_failed", L"Could not save settings files. Check file access and free disk space. Your previous files have been retained."),
+		FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+	return false;
+}
 void CSettingsWordsDlg::Commit()
 {
 	_Settings.SetShowWordsExcls(m_show_words_excls.GetCheck() != 0);
 	if(m_wordsDirty)
 	{
-		std::vector<WordsItem> persistentWords = m_words;
-		std::sort(persistentWords.begin(), persistentWords.end(), [](const WordsItem& left, const WordsItem& right)
-		{
-			const int comparison = left.m_word.CompareNoCase(right.m_word);
-			return comparison != 0 ? comparison < 0 : left.m_word < right.m_word;
-		});
-		_Settings.m_words = persistentWords;
-		_Settings.SaveWords();
+		std::sort(m_words.begin(), m_words.end(), [](const WordsItem& left, const WordsItem& right) { return left.m_word.CompareNoCase(right.m_word) < 0; });
+		_Settings.m_words = m_words;
 	}
 }
 

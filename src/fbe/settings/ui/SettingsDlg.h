@@ -81,6 +81,7 @@ public:
 BEGIN_MSG_MAP(CSettingsDlg)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 	MESSAGE_HANDLER(WM_TIMER, OnTimer)
+	MESSAGE_HANDLER(WM_CLOSE, OnClose)
 	MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 	MESSAGE_HANDLER(WM_FBE_SOURCE_PREVIEW_LAYOUT, OnSourcePreviewLayout)
 	COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
@@ -100,6 +101,7 @@ END_MSG_MAP()
 
 	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnClickedOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnNavigationChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
@@ -120,6 +122,7 @@ private:
 	void UpdateSourcePreviewContentHeight();
 	void LayoutPage(int index);
 	bool LayoutPagePass(int index);
+	void PublishLayoutAuditMetrics(int index);
 	void ScrollPage(int index, WPARAM command, bool horizontal);
 	void RevealFocusedPageControl(int index);
 	bool ProbeLayout();

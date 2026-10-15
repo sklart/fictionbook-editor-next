@@ -12,6 +12,7 @@ class CSettingsAdvancedPage : public CAxDialogImpl<CSettingsAdvancedPage>, publi
 	CButton m_selectScriptsFolder;
 	bool m_scriptsSwitched;
 	CString m_initialScriptsFolder;
+	CString m_customScriptsFolder;
 	CSettingsTooltips m_tooltips;
 public:
 	enum { IDD = IDD_SETTINGS_ADVANCED };

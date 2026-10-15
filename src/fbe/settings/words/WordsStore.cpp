@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../SettingsFileTransaction.h"
 #include "WordsStore.h"
 #include "..\SettingsPaths.h"
 #include <algorithm>
@@ -29,10 +30,11 @@ void Load(std::vector<WordsItem>& words)
 		word.Destroy(loadedWord);
 	}
 }
-void Save(const std::vector<WordsItem>& words)
+bool SaveToFile(const std::vector<WordsItem>& words, const CString& path)
 {
 	MSXML2::IXMLDOMDocument2Ptr document; HRESULT hr = document.CreateInstance(__uuidof(DOMDocument));
-	if(FAILED(hr)) return;
+	if(FAILED(hr)) return false;
+	try {
 	CString xml(L"<FBE>\n\t<Words>\n");
 	for(unsigned int i = 0; i < words.size(); ++i)
 	{
@@ -40,11 +42,19 @@ void Save(const std::vector<WordsItem>& words)
 		CString count; count.Format(L"%d", words[i].m_count);
 		xml += L"\t\t\t<Counted>" + count + L"</Counted>\n\t\t</Word>";
 	}
-	xml += L"\t</Words>\n</FBE>"; document->loadXML(xml.AllocSysString());
+	xml += L"\t</Words>\n</FBE>"; if(document->loadXML(_bstr_t(xml)) != VARIANT_TRUE) return false;
 	MSXML2::IXMLDOMElementPtr root = document->GetdocumentElement();
 	MSXML2::IXMLDOMProcessingInstructionPtr declaration = document->createProcessingInstruction(L"xml", L" version='1.0' encoding='UTF-8'");
 	_variant_t rootObject; rootObject.vt = VT_DISPATCH; rootObject.pdispVal = root; rootObject.pdispVal->AddRef(); document->insertBefore(declaration, rootObject);
-	CString fileName(FbeSettings::WordsFilePath()); CString temporaryFile(fileName + L".tmp"); ::DeleteFileW(temporaryFile);
-	if(document->save(temporaryFile.AllocSysString()) == S_OK && !::MoveFileExW(temporaryFile, fileName, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) ::DeleteFileW(temporaryFile);
+	return document->save(_variant_t(path)) == S_OK;
+	} catch(const _com_error&) { return false; }
+}
+bool Save(const std::vector<WordsItem>& words)
+{
+	const CString path(FbeSettings::WordsFilePath());
+	const CString temporary = SettingsFileTransaction::Temporary(path);
+	if(temporary.IsEmpty()) return false;
+	SettingsFileTransaction transaction; transaction.Add(path, temporary);
+	return SaveToFile(words, temporary) && transaction.Commit();
 }
 } }

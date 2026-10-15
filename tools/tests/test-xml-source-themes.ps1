@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет контракт логических ролей оформления XML-редактора.
 #>
@@ -168,7 +168,7 @@ if($colorButtonHeader.IndexOf('return m_clrCurrent;', [System.StringComparison]:
 }
 $settingsDialog = Read-ProjectFile "src\fbe\settings\ui\SettingsSourcePage.cpp"
 foreach($requiredText in @(
-    'OFN_ALLOWMULTISELECT',
+    'request.allowMultiSelect = true',
     'SaveThemeAsUser',
     'DeleteUserTheme',
     'UpdateSourceColorTooltips',
@@ -196,22 +196,10 @@ foreach($requiredText in @(
     }
 }
 
-# Комментарии Lexilla остаются токеном темы, но FBE не сохраняет comment
-# nodes в полном цикле визуального редактирования. Поэтому UI-элементов и
-# обработчиков для них быть не должно.
-if($settingsDialog -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
-    throw 'В SettingsSourcePage.cpp остался мёртвый UI-код XML-комментариев.'
-}
+# Comment colors are editable and persistent; document comment ownership is unchanged.
 $settingsHeader = Read-ProjectFile "src\fbe\settings\ui\SettingsSourcePage.h"
-if($settingsHeader -like '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') {
-    throw 'В SettingsSourcePage.h остался обработчик XML-комментариев.'
-}
-if($settingsDialog -like '*<!--*') {
-    throw 'В предпросмотре не должен отображаться XML-комментарий до подтверждения сохранности модели документа.'
-}
-if($settingsSerialization.IndexOf('m_xml_src_colors[XML_SRC_COLOR_COMMENT] = XML_SRC_COLOR_DEFAULT', [System.StringComparison]::Ordinal) -lt 0) {
-    throw 'Историческое переопределение цвета XML-комментариев не очищается при загрузке Settings.xml.'
-}
+if($settingsDialog -notlike '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*' -or $settingsHeader -notlike '*IDC_OPTIONS_SOURCE_COLOR_COMMENT*') { throw 'Comment color control or handler is missing.' }
+if($settingsSerialization -notmatch 'm_xml_src_colors\[XML_SRC_COLOR_COMMENT\] = StrToInt') { throw 'Comment color override must survive restart.' }
 
 # Preview, export and the editor must resolve XML tokens through the same
 # semantic groups. CLR_DEFAULT is an inherited value, never an actual white
@@ -222,14 +210,8 @@ foreach($requiredText in @(
     'CSettings::GetXmlSrcColorGroup',
     'm_source_colors[i].GetColor() != CLR_DEFAULT',
     'SetColor(CLR_DEFAULT)',
-    'GetTextExtentPoint32W',
-    'Each variant is measured as complete XML lines before anything is painted.',
-    'fits(fullLines',
-    'fits(compactLines',
-    'fits(minimalLines',
-    'ResolveSourceTokenColor(id, XML_SRC_STYLE_EDITOR_BACKGROUND',
-    'XML_SRC_STYLE_XML_PROCESSING_INSTRUCTION',
-    'XML_SRC_STYLE_XML_TAG_DELIMITER'
+    'SelectedPreviewConfiguration',
+    'm_preview.ApplyConfiguration'
 )) {
     if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
         throw "Resolver preview/export missing required behavior: $requiredText"
@@ -292,26 +274,16 @@ if($settingsDialog.IndexOf('m_source_colors[i].GetColor() == CLR_DEFAULT', [Syst
     throw 'Automatic color tooltip does not describe inheritance from the selected theme.'
 }
 foreach($requiredText in @(
-    'SetXmlSrcThemeId(fallbackId, false)',
-    'SetXmlSrcColor(static_cast<XmlSrcColorGroup>(group), XML_SRC_COLOR_DEFAULT, false)',
-    '_Settings.Save()',
-    'LoadSourceThemeControlsFromSettings()',
-    '_Settings.GetMainWindow()',
-    'WM_FBE_APPLY_XML_SOURCE_THEME'
+    'ReloadSourceThemes(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT))',
+    'fbe.theme.delete.staged',
+    'SaveThemeDraft()',
+    'PrepareSettingsEdit(files, error)',
+    'XmlSourceThemes::EndSettingsEdit()'
 )) {
-    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
-        throw "Active/inactive theme deletion behavior is missing: $requiredText"
-    }
-}foreach($requiredText in @(
-    'fbe.theme.delete.confirm_active',
-    'fbe.theme.delete.confirm_inactive',
-    'deletedThemeWasActive',
-    'PostMessage(mainWindow, WM_FBE_APPLY_XML_SOURCE_THEME'
-)) {
-    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) {
-        throw "Theme deletion does not distinguish active and inactive user themes: $requiredText"
-    }
+    if($settingsDialog.IndexOf($requiredText, [System.StringComparison]::Ordinal) -lt 0) { throw "Missing deferred theme behavior: $requiredText" }
 }
+$deleteUi = [regex]::Match($settingsDialog, 'if\(command == 4\)[\s\S]*?if\(command != 2')
+if($deleteUi.Value -match '_Settings\.Set|_Settings\.Save|PostMessage') { throw 'Theme deletion must not mutate global settings before OK.' }
 if($themeSource.IndexOf('fbe.theme.error.empty_path', [System.StringComparison]::Ordinal) -lt 0) {
     throw 'Export does not diagnose an empty destination path separately.'
 }

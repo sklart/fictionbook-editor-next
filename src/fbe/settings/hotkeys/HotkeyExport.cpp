@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../SettingsFileTransaction.h"
 #include "HotkeyExport.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\utils\\utils.h"
@@ -117,17 +118,23 @@ CString BuildHtmlExport(const std::vector<CHotkeysGroup>& groups, LPCWSTR locale
 	return BuildHtmlExport(BuildExportData(groups), localeName);
 }
 
-bool WriteUtf8ExportFile(const CString& path, const CString& text)
+bool WriteUtf8ExportFile(const CString& path, const CString& text, bool replaceExisting)
 {
 	const int size = ::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), NULL, 0, NULL, NULL);
 	if(size == 0 && !text.IsEmpty()) return false;
 	std::vector<char> bytes(static_cast<size_t>(size));
 	if(size && !::WideCharToMultiByte(CP_UTF8, 0, text, text.GetLength(), &bytes[0], size, NULL, NULL)) return false;
-	HANDLE file = ::CreateFile(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) return false;
+	const CString temporary = SettingsFileTransaction::Temporary(path);
+	if(temporary.IsEmpty()) return false;
+	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(file == INVALID_HANDLE_VALUE) { ::DeleteFileW(temporary); return false; }
 	const BYTE bom[] = { 0xEF, 0xBB, 0xBF }; DWORD written = 0;
-	const bool ok = ::WriteFile(file, bom, sizeof(bom), &written, NULL) != FALSE && written == sizeof(bom) &&
+	bool ok = ::WriteFile(file, bom, sizeof(bom), &written, NULL) != FALSE && written == sizeof(bom) &&
 		(size == 0 || (::WriteFile(file, &bytes[0], static_cast<DWORD>(bytes.size()), &written, NULL) != FALSE && written == bytes.size()));
-	::CloseHandle(file); return ok;
+	if(ok) ok = ::FlushFileBuffers(file) != FALSE;
+	if(!::CloseHandle(file)) ok = false;
+	if(ok) ok = ::MoveFileExW(temporary, path, MOVEFILE_WRITE_THROUGH | (replaceExisting ? MOVEFILE_REPLACE_EXISTING : 0)) != FALSE;
+	if(!ok) ::DeleteFileW(temporary);
+	return ok;
 }
 }}

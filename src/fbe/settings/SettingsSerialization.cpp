@@ -686,9 +686,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 	}
 	else if(sProperty == XML_SRC_COLOR_COMMENT_KEY)
 	{
-		// XML comments are not preserved by the document model.  A historical
-		// override therefore must not survive invisibly without a UI to edit it.
-		m_xml_src_colors[XML_SRC_COLOR_COMMENT] = XML_SRC_COLOR_DEFAULT;
+		m_xml_src_colors[XML_SRC_COLOR_COMMENT] = StrToInt(sValue.GetStringValue());
 		return true;
 	}
 	else if(sProperty == XML_SRC_COLOR_BACKGROUND_KEY)

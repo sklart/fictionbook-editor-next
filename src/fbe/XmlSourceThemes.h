@@ -26,6 +26,8 @@ struct XmlSourceThemeImport
 	DWORD colors[XML_SRC_STYLE_TOKEN_COUNT];
 };
 
+class SettingsFileTransaction;
+
 namespace XmlSourceThemes
 {
 	const CString& GetThemeIdForPalette(DWORD palette);
@@ -33,6 +35,9 @@ namespace XmlSourceThemes
 	CString NormalizeThemeId(const CString& id);
 	const std::vector<XmlSourceThemeInfo>& GetAvailableThemes();
 	void ReloadThemes();
+	void BeginSettingsEdit();
+	bool PrepareSettingsEdit(SettingsFileTransaction& files, CString& error);
+	void EndSettingsEdit();
 	bool LoadImportTheme(const CString& sourcePath, XmlSourceThemeImport& theme, CString& error);
 	bool IsUserTheme(const CString& id);
 	CString MakeAvailableThemeId(const CString& requestedId);

@@ -1,6 +1,7 @@
-﻿// SettingsDlg.cpp : Implementation of CSettingsDlg
+// SettingsDlg.cpp : Implementation of CSettingsDlg
 
 #include "stdafx.h"
+#include "../../utils/utils.h"
 #include "..\\..\\Settings.h"
 #include "SettingsDlg.h"
 #include "..\\..\\RuntimeLocalization.h"
@@ -182,7 +183,38 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
 	if (timerId != 0x53455454 || !IsSettingsDialogRuntimeTest()) return 0;
 	KillTimer(timerId);
-	if(RuntimeTests::IsScenario(L"settings-dialog-runtime") && !ProbeLayout())
+	bool behaviorPassed = true;
+	if(RuntimeTests::IsScenario(L"settings-dialog-runtime"))
+	{
+		const auto originalWords = m_wordsPage->m_words;
+		const bool dirty = m_wordsPage->m_wordsDirty;
+		m_wordsPage->m_words = { WordsItem(L"before-word", 37) };
+		m_wordsPage->m_words[0].m_percent = 19;
+		m_wordsPage->m_editidx = 0; m_wordsPage->m_editActive = true;
+		m_wordsPage->m_edit.SetWindowText(L"after-word");
+		behaviorPassed = m_wordsPage->FinishInlineEdit() && m_wordsPage->m_words.size() == 1 &&
+			m_wordsPage->m_words[0].m_word == L"after-word" && m_wordsPage->m_words[0].m_count == 37 &&
+			m_wordsPage->m_words[0].m_percent == 19;
+		const int originalThemeIndex = m_sourcePage->m_source_palette.GetCurSel();
+		const int otherThemeIndex = originalThemeIndex == 1 ? 2 : 1;
+		DWORD originalColors[XML_SRC_COLOR_GROUP_COUNT] = {};
+		for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i) originalColors[i] = m_sourcePage->m_source_colors[i].GetColor();
+		m_sourcePage->m_source_colors[XML_SRC_COLOR_COMMENT].SetColor(RGB(12, 34, 56));
+		m_sourcePage->m_source_palette.SetCurSel(otherThemeIndex);
+		BOOL handled = FALSE; m_sourcePage->OnSourcePaletteChanged(0, 0, NULL, handled);
+		m_sourcePage->m_source_palette.SetCurSel(originalThemeIndex);
+		m_sourcePage->OnSourcePaletteChanged(0, 0, NULL, handled);
+		behaviorPassed = behaviorPassed && m_sourcePage->m_source_colors[XML_SRC_COLOR_COMMENT].GetColor() == RGB(12, 34, 56);
+		for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
+		{
+			m_sourcePage->m_source_colors[i].SetColor(originalColors[i]);
+			m_sourcePage->m_source_color_custom[i] = originalColors[i] != CLR_DEFAULT;
+		}
+		m_sourcePage->m_themeDrafts.clear();
+		m_wordsPage->m_words = originalWords; m_wordsPage->m_wordsDirty = dirty;
+		m_wordsPage->m_list_words.SetItemCount(static_cast<int>(originalWords.size()));
+	}
+	if(RuntimeTests::IsScenario(L"settings-dialog-runtime") && (!behaviorPassed || !ProbeLayout()))
 	{
 		EndDialog(IDCANCEL);
 		return 0;
@@ -200,10 +232,25 @@ LRESULT CSettingsDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused
 
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
 		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->Validate()) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
+	SettingsFileTransaction files;
+	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
+		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->PrepareCommit(files)) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
+	if(!files.Commit())
+	{
+		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.save_failed", L"Could not save settings files. Check file access and free disk space. Your previous files have been retained."),
+			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+		return 0;
+	}
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
 		if(m_pageLifecycle[i]) m_pageLifecycle[i]->Commit();
 	EndDialog(IDOK);
 	return 0;
+}
+
+LRESULT CSettingsDlg::OnClose(UINT, WPARAM, LPARAM, BOOL&)
+{
+	BOOL handled = FALSE;
+	return OnClickedCancel(0, IDCANCEL, NULL, handled);
 }
 
 LRESULT CSettingsDlg::OnClickedCancel(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
@@ -609,7 +656,7 @@ bool CSettingsDlg::LayoutPagePass(int index)
 		}
 		moves.push_back({ control.window, rect });
 	}
-	if(moves.empty()) return false;
+	if(moves.empty()) { PublishLayoutAuditMetrics(index); return false; }
 	const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW;
 	HDWP positions = ::BeginDeferWindowPos(static_cast<int>(moves.size()));
 	for(const PageMove& move : moves)
@@ -624,11 +671,44 @@ bool CSettingsDlg::LayoutPagePass(int index)
 			::SetWindowPos(move.window, NULL, move.rect.left, move.rect.top,
 				max(0, move.rect.Width()), max(0, move.rect.Height()),
 				::GetFocus() == move.window ? flags & ~SWP_NOREDRAW : flags);
+	PublishLayoutAuditMetrics(index);
 	if(index == PageIndex(SettingsPageId::Words) && m_wordsPage)
 		m_wordsPage->ResizeColumns();
 	if(index == PageIndex(SettingsPageId::Keyboard) && m_hotkeysPage)
 		m_hotkeysPage->RefreshInfoScrollbars();
 	return true;
+}
+
+void CSettingsDlg::PublishLayoutAuditMetrics(int index)
+{
+	wchar_t enabled[4] = {};
+	if(::GetEnvironmentVariableW(L"FBE_NEXT_SETTINGS_LAYOUT_AUDIT", enabled, _countof(enabled)) != 1 || enabled[0] != L'1') return;
+	for(const auto& control : m_pageLayouts[index].controls)
+	{
+		wchar_t kind[32] = {}; ::GetClassNameW(control.window, kind, _countof(kind));
+		const bool button = _wcsicmp(kind, L"Button") == 0, label = _wcsicmp(kind, L"Static") == 0;
+		if(!button && !label) continue;
+		const DWORD style = static_cast<DWORD>(::GetWindowLongPtrW(control.window, GWL_STYLE));
+		if((button && (style & BS_TYPEMASK) == BS_GROUPBOX) || (label && ((style & SS_TYPEMASK) == SS_ICON || (style & SS_TYPEMASK) == SS_BITMAP))) continue;
+		const CString text = U::GetWindowText(control.window);
+		if(text.IsEmpty()) continue;
+		RECT bounds = {}; ::GetClientRect(control.window, &bounds);
+		const UINT dpi = UiMetrics::DpiForWindow(control.window);
+		const int inset = max(2, static_cast<int>(dpi / 48));
+		int width = max(1, static_cast<int>(bounds.right) - 2 * inset);
+		if(button && ((style & BS_TYPEMASK) == BS_CHECKBOX || (style & BS_TYPEMASK) == BS_AUTOCHECKBOX)) width = max(1, width - static_cast<int>(dpi / 5));
+		HDC dc = ::GetDC(control.window); if(!dc) continue;
+		HFONT font = reinterpret_cast<HFONT>(::SendMessageW(control.window, WM_GETFONT, 0, 0));
+		HGDIOBJ previous = font ? ::SelectObject(dc, font) : NULL;
+		RECT measured = { 0, 0, width, 0 };
+		UINT flags = DT_CALCRECT | ((label || (style & BS_MULTILINE)) ? DT_WORDBREAK : DT_SINGLELINE);
+		if(label && (style & SS_NOPREFIX)) flags |= DT_NOPREFIX;
+		::DrawTextW(dc, text, text.GetLength(), &measured, flags);
+		if(previous) ::SelectObject(dc, previous);
+		::ReleaseDC(control.window, dc);
+		::SetPropW(control.window, L"FBE_AUDIT_TEXT_WIDTH", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(measured.right + 1)));
+		::SetPropW(control.window, L"FBE_AUDIT_TEXT_HEIGHT", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(measured.bottom + 1)));
+	}
 }
 
 void CSettingsDlg::ScrollPage(int index, WPARAM command, bool horizontal)
@@ -1084,11 +1164,13 @@ bool CSettingsDlg::ProbeLayout()
 	passed = passed && !m_wordsPage->m_editActive && !::IsWindowVisible(m_wordsPage->m_edit) &&
 		::GetFocus() == m_navigation;
 	const UINT originalLayoutDpi = m_layoutDpi;
-	const UINT probeDpi = originalLayoutDpi == 144 ? 192 : 144;
+	for(const UINT probeDpi : { 96U, 120U, 144U })
+	{
 	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(probeDpi, probeDpi), 0);
 	SelectPage(SettingsPageId::Words);
 	passed = passed && controlRect(m_navigation).bottom == controlRect(m_wordsPage->m_hWnd).bottom &&
 		wordsGeometry();
+	}
 	::SendMessageW(m_hWnd, WM_DPICHANGED, MAKELONG(originalLayoutDpi, originalLayoutDpi), 0);
 	SelectPage(SettingsPageId::General);
 	::SetPropW(::GetParent(m_hWnd), L"FBE_SETTINGS_LAYOUT_PASSED", reinterpret_cast<HANDLE>(passed ? 1 : 2));

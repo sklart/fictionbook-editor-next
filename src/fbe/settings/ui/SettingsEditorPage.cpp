@@ -51,6 +51,9 @@ HBITMAP LoadPreviewBitmap(const CString& path, bool& hasAlpha)
 	hasAlpha = false;
 	if(!PreviewGdiplusReady()) return NULL;
 	Gdiplus::Bitmap source(path);
+	GUID format = {};
+	if(source.GetRawFormat(&format) != Gdiplus::Ok ||
+		(!IsEqualGUID(format, Gdiplus::ImageFormatJPEG) && !IsEqualGUID(format, Gdiplus::ImageFormatPNG))) return NULL;
 	const UINT width = source.GetWidth(), height = source.GetHeight();
 	if(source.GetLastStatus() != Gdiplus::Ok || width == 0 || height == 0 || width > INT_MAX || height > INT_MAX)
 		return NULL;
@@ -160,11 +163,15 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	value.Format(_T("%lu"), static_cast<unsigned long>(_Settings.GetFontSize()));
 	m_fontSize.SetWindowText(value);
 	for(int i = 0; i < _countof(fontSizes); ++i) { value.Format(_T("%d"), fontSizes[i]); m_fontSize.AddString(value); }
-	m_nbspCharacter.AddString(L"\u25A1");
-	m_nbspCharacter.AddString(L"\u25AB");
-	m_nbspCharacter.AddString(L"\u25E6");
-	m_nbspCharacter.AddString(L"\u00A0");
-	int nbspIndex = m_nbspCharacter.SelectString(0, _Settings.GetNBSPChar());
+	const wchar_t nbspCharacters[] = { L'\u25A1', L'\u25AB', L'\u25E6', L'\u00A0' };
+	const LPCWSTR nbspKeys[] = { L"fbe.settings.nbsp.square", L"fbe.settings.nbsp.small_square", L"fbe.settings.nbsp.circle", L"fbe.settings.nbsp.none" };
+	const LPCWSTR nbspLabels[] = { L"□ — square", L"▫ — small square", L"◦ — circle", L"Do not highlight" };
+	int nbspIndex = CB_ERR;
+	for(int i = 0; i < _countof(nbspCharacters); ++i)
+	{
+		m_nbspCharacter.AddString(FbeLoadRuntimeStringByKey(nbspKeys[i], nbspLabels[i]));
+		if(_Settings.GetNBSPChar() == CString(nbspCharacters[i])) nbspIndex = i;
+	}
 	if(nbspIndex == CB_ERR) nbspIndex = m_nbspCharacter.AddString(_Settings.GetNBSPChar());
 	m_nbspCharacter.SetCurSel(nbspIndex);
 	m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.none", L"None (color only)"));
@@ -190,6 +197,15 @@ LRESULT CSettingsEditorPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	{
 		backgroundIndex = static_cast<int>(m_builtInBackgrounds.size() + 1);
 	}
+	if(_Settings.GetEditorBackgroundKind() == L"builtin" && !m_missingSavedBackground)
+	{
+		CString path; bool alpha = false;
+		HBITMAP decoded = EditorBackgrounds::ResolveBuiltIn(_Settings.GetEditorBackgroundId(), path) ? LoadPreviewBitmap(path, alpha) : NULL;
+		if(decoded) ::DeleteObject(decoded);
+		else m_missingSavedBackground = true;
+	}
+	if(m_missingSavedBackground)
+		backgroundIndex = m_backgroundImage.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.unavailable", L"Unavailable background"));
 	m_backgroundImage.SetCurSel(backgroundIndex);
 	m_backgroundLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.tile", L"Tile"));
 	m_backgroundLayout.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.center", L"Center"));
@@ -221,9 +237,7 @@ LRESULT CSettingsEditorPage::OnSystemAppearanceChanged(UINT, WPARAM, LPARAM, BOO
 
 LRESULT CSettingsEditorPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
-	if(!Validate()) return 0;
-	Commit();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
 }
 
 bool CSettingsEditorPage::Validate()
@@ -235,6 +249,18 @@ bool CSettingsEditorPage::Validate()
 		MessageBeep(MB_ICONERROR);
 		m_fontSize.SetFocus();
 		return false;
+	}
+	if(m_backgroundImage.GetCurSel() == static_cast<int>(m_builtInBackgrounds.size() + 1) &&
+		(_Settings.GetEditorBackgroundKind() != L"custom" || m_customBackgroundPath != _Settings.GetEditorBackgroundCustomPath()))
+	{
+		bool alpha = false;
+		HBITMAP decoded = EditorBackgrounds::IsSupportedLocalImage(m_customBackgroundPath) ? LoadPreviewBitmap(m_customBackgroundPath, alpha) : NULL;
+		if(!decoded)
+		{
+			U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.invalid", L"Cannot read the background. Select an accessible JPEG or PNG image."), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+			m_backgroundImage.SetFocus(); return false;
+		}
+		::DeleteObject(decoded);
 	}
 	if(U::GetWindowText(m_nbspCharacter).IsEmpty()) { MessageBeep(MB_ICONERROR); m_nbspCharacter.SetFocus(); return false; }
 	return true;
@@ -249,11 +275,10 @@ void CSettingsEditorPage::Commit()
 	_Settings.SetColorFG(m_foreground.GetColor());
 	_Settings.SetFont(U::GetWindowText(m_fonts));
 	_Settings.SetFontSize(size);
-	CString character;
-	m_nbspCharacter.GetWindowText(character);
+	const CString character = SelectedNbspCharacter();
 	_Settings.SetNBSPChar(character);
 	const int backgroundIndex = m_backgroundImage.GetCurSel();
-	if(backgroundIndex <= 0)
+	if(backgroundIndex <= 0 || backgroundIndex > static_cast<int>(m_builtInBackgrounds.size() + 1))
 	{
 		// A removed/unavailable built-in preset may have no row in the current
 		// catalogue. Opening Settings and pressing OK must not erase its choice.
@@ -268,11 +293,26 @@ void CSettingsEditorPage::Commit()
 
 LRESULT CSettingsEditorPage::OnBrowseBackground(WORD, WORD, HWND, BOOL&)
 {
-	const COMDLG_FILTERSPEC filters[] = { { L"Images (*.png;*.jpg;*.jpeg)", L"*.png;*.jpg;*.jpeg" } };
+	const CString filterLabel = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.filter", L"Images (*.png;*.jpg;*.jpeg)");
+	const COMDLG_FILTERSPEC filters[] = { { filterLabel, L"*.png;*.jpg;*.jpeg" } };
 	ModernFileDialog::Request request; request.title = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.choose", L"Choose editor background").GetString();
 	request.defaultExtension = L"png"; request.fileMustExist = true; request.pathMustExist = true; request.filters = filters; request.filterCount = _countof(filters);
 	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
-	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty()) { m_customBackgroundPath = result.paths.front().c_str(); m_backgroundImage.SetCurSel(static_cast<int>(m_builtInBackgrounds.size() + 1)); RefreshAutomaticColorDefaults(); UpdateBackgroundPreview(); }
+	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty())
+	{
+		const CString path(result.paths.front().c_str());
+		bool alpha = false;
+		HBITMAP decoded = EditorBackgrounds::IsSupportedLocalImage(path) ? LoadPreviewBitmap(path, alpha) : NULL;
+		if(!decoded)
+		{
+			U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.invalid", L"Cannot read this background image. Select an accessible JPEG or PNG image."), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+			return 0;
+		}
+		::DeleteObject(decoded);
+		m_customBackgroundPath = path; m_backgroundSelectionChanged = true;
+		m_backgroundImage.SetCurSel(static_cast<int>(m_builtInBackgrounds.size() + 1));
+		RefreshAutomaticColorDefaults(); UpdateBackgroundPreview();
+	}
 	return 0;
 }
 
@@ -306,6 +346,13 @@ LRESULT CSettingsEditorPage::OnPreviewColorChanged(int, LPNMHDR, BOOL&)
 	RefreshAutomaticColorDefaults();
 	UpdateBackgroundPreview();
 	return 0;
+}
+
+CString CSettingsEditorPage::SelectedNbspCharacter() const
+{
+	const wchar_t characters[] = { L'\u25A1', L'\u25AB', L'\u25E6', L'\u00A0' };
+	const int index = m_nbspCharacter.GetCurSel();
+	return index >= 0 && index < _countof(characters) ? CString(characters[index]) : U::GetWindowText(m_nbspCharacter);
 }
 
 void CSettingsEditorPage::GetSelectedBackground(CString& kind, CString& id) const
@@ -392,11 +439,12 @@ void CSettingsEditorPage::UpdateBackgroundPreview()
 	const HBITMAP bitmap = ThemeManager::IsHighContrast() ? NULL : m_cachedBackgroundBitmap;
 	const bool bitmapHasAlpha = !ThemeManager::IsHighContrast() && m_cachedBackgroundHasAlpha;
 	CString text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_text", L"Sample editor text\r\nThe quick brown fox.");
+	const bool unavailable = (m_missingSavedBackground && !m_backgroundSelectionChanged) ||
+		(index == static_cast<int>(m_builtInBackgrounds.size() + 1) && !m_cachedBackgroundBitmap);
+	if(unavailable) text = FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.unavailable_warning", L"The saved background is unavailable. Its setting will be retained.");
 	text += L"\r\n";
 	text += FbeLoadRuntimeStringByKey(L"fbe.settings.editor_background.preview_spaces", L"Space: A B    Non-breaking: A\u00a0B");
-	CString nbsp;
-	const int nbspIndex = m_nbspCharacter.GetCurSel();
-	if(nbspIndex != CB_ERR) m_nbspCharacter.GetLBText(nbspIndex, nbsp);
+	CString nbsp = SelectedNbspCharacter();
 	if(nbsp.IsEmpty()) nbsp = _Settings.GetNBSPChar();
 	text.Replace(L"\u00a0", nbsp);
 	CString font;
@@ -521,5 +569,7 @@ LRESULT CEditorBackgroundPreview::OnDestroy(UINT, WPARAM, LPARAM, BOOL&)
 	return 0;
 }
 
-LRESULT CSettingsEditorPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+LRESULT CSettingsEditorPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) {
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
+}
 bool CSettingsEditorPage::CancelChanges() { return true; }

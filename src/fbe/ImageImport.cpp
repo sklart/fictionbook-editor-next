@@ -399,7 +399,9 @@ HRESULT ImportImageForFb2(const CString& sourceFile, const ImageImportOptions& o
 	switch (type) {
 	case SourceFormat::Jpeg:
 	case SourceFormat::Png:
-		if (options.keepSupportedImages) {
+		if (options.keepSupportedImages && (options.outputFormat == ImageOutputFormat::Auto ||
+            (options.outputFormat == ImageOutputFormat::Jpeg && type == SourceFormat::Jpeg) ||
+            (options.outputFormat == ImageOutputFormat::Png && type == SourceFormat::Png))) {
 			HRESULT hr = ValidatePassThroughGdi(source, result, errorMessage);
 			if (FAILED(hr)) return FinishImport(hr);
 			result.data.swap(source); result.mimeType=type==SourceFormat::Jpeg?L"image/jpeg":L"image/png";

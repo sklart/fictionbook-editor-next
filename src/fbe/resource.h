@@ -843,6 +843,11 @@
 #define IDC_ARCHIVE_ENTRY_LIST           1638
 #define IDC_ARCHIVE_ENTRY_MESSAGE        1639
 
+#define IDC_OPTIONS_SOURCE_COLOR_COMMENT 1703
+#define IDC_OPTIONS_SOURCE_COLOR_COMMENT_LABEL 1704
+#define IDC_SOURCE_MATCHED_TAGS_GROUP 1705
+#define IDC_SOURCE_INVISIBLE_GROUP 1706
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
@@ -850,7 +855,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        270
 #define _APS_NEXT_COMMAND_VALUE         58003
-#define _APS_NEXT_CONTROL_VALUE         1703
+#define _APS_NEXT_CONTROL_VALUE         1707
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif

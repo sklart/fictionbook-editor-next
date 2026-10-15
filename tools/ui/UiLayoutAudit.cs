@@ -38,9 +38,12 @@ public static class UiLayoutAudit
         public int MeasuredTextWidth { get; set; }
         public int MeasuredTextHeight { get; set; }
         public string FontHandle { get; set; }
+        public bool FontSelected { get; set; }
+        public bool InProcessTextMetrics { get; set; }
     }
 
     private delegate bool EnumProc(IntPtr hwnd, IntPtr data);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate IntPtr SetThreadDpiContextProc(IntPtr context);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] private delegate uint GetDpiProc(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr data);
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumProc callback, IntPtr data);
@@ -55,6 +58,7 @@ public static class UiLayoutAudit
     [DllImport("user32.dll")] private static extern bool GetScrollInfo(IntPtr hwnd, int bar, ref ScrollInfo info);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr GetProp(IntPtr hwnd, string key);
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hwnd, IntPtr dc);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int DrawText(IntPtr dc, string text, int count, ref Rect rect, uint flags);
@@ -139,9 +143,21 @@ public static class UiLayoutAudit
         IntPtr font;
         SendMessageTimeout(hwnd, 0x0031, IntPtr.Zero, IntPtr.Zero, 0x0002, 250, out font);
         row.FontHandle = Handle(font);
+        IntPtr nativeWidth = GetProp(hwnd, "FBE_AUDIT_TEXT_WIDTH"), nativeHeight = GetProp(hwnd, "FBE_AUDIT_TEXT_HEIGHT");
+        if (nativeWidth != IntPtr.Zero && nativeHeight != IntPtr.Zero) {
+            row.InProcessTextMetrics = true;
+            row.MeasuredTextWidth = nativeWidth.ToInt32() - 1; row.MeasuredTextHeight = nativeHeight.ToInt32() - 1;
+            int padding = Math.Max(2, row.Dpi / 48);
+            int availableWidth = Math.Max(1, bounds.Right - bounds.Left - 2 * padding);
+            if (kind.Equals("Button", StringComparison.OrdinalIgnoreCase) && ((style & 0xF) == 2 || (style & 0xF) == 3)) availableWidth = Math.Max(1, availableWidth - row.Dpi / 5);
+            int verticalPadding = kind.Equals("Static", StringComparison.OrdinalIgnoreCase) ? 0 : padding;
+            row.TextMayClip = row.MeasuredTextWidth > availableWidth || row.MeasuredTextHeight > bounds.Bottom - bounds.Top - 2 * verticalPadding;
+            return row;
+        }
         IntPtr dc = GetDC(hwnd);
         if (dc == IntPtr.Zero) return row;
         IntPtr old = font == IntPtr.Zero ? IntPtr.Zero : SelectObject(dc, font);
+        row.FontSelected = old != IntPtr.Zero && old != new IntPtr(-1);
         int inset = Math.Max(2, row.Dpi / 48);
         int available = Math.Max(1, bounds.Right - bounds.Left - 2 * inset);
         if (kind.Equals("Button", StringComparison.OrdinalIgnoreCase) && ((style & 0xF) == 2 || (style & 0xF) == 3))
@@ -167,8 +183,32 @@ public static class UiLayoutAudit
         row.TextMayClip = row.MeasuredTextWidth > available || row.MeasuredTextHeight > bounds.Bottom - bounds.Top - 2 * verticalInset;
         return row;
     }
+    public static IntPtr BeginPhysicalCoordinates()
+    {
+        IntPtr module = GetModuleHandle("user32.dll");
+        IntPtr function = module == IntPtr.Zero ? IntPtr.Zero : GetProcAddress(module, "SetThreadDpiAwarenessContext");
+        if (function == IntPtr.Zero) return IntPtr.Zero;
+        var setContext = (SetThreadDpiContextProc)Marshal.GetDelegateForFunctionPointer(function, typeof(SetThreadDpiContextProc));
+        IntPtr previous = setContext(new IntPtr(-4));
+        return previous == IntPtr.Zero ? setContext(new IntPtr(-3)) : previous;
+    }
+    public static void RestorePhysicalCoordinates(IntPtr previous)
+    {
+        if (previous == IntPtr.Zero) return;
+        IntPtr function = GetProcAddress(GetModuleHandle("user32.dll"), "SetThreadDpiAwarenessContext");
+        if (function != IntPtr.Zero) ((SetThreadDpiContextProc)Marshal.GetDelegateForFunctionPointer(function, typeof(SetThreadDpiContextProc)))(previous);
+    }
     public static Row[] Capture(int processId)
     {
+        // Window rectangles must use the same physical-pixel coordinate space
+        // as GetDC text metrics. An unaware PowerShell host virtualizes them.
+        IntPtr module = GetModuleHandle("user32.dll");
+        IntPtr function = module == IntPtr.Zero ? IntPtr.Zero : GetProcAddress(module, "SetThreadDpiAwarenessContext");
+        SetThreadDpiContextProc setContext = function == IntPtr.Zero ? null :
+            (SetThreadDpiContextProc)Marshal.GetDelegateForFunctionPointer(function, typeof(SetThreadDpiContextProc));
+        IntPtr previous = setContext == null ? IntPtr.Zero : setContext(new IntPtr(-4));
+        if (setContext != null && previous == IntPtr.Zero) previous = setContext(new IntPtr(-3));
+        try {
         var rows = new List<Row>();
         EnumWindows(delegate(IntPtr top, IntPtr unused) {
             uint owner;
@@ -192,5 +232,8 @@ public static class UiLayoutAudit
             return true;
         }, IntPtr.Zero);
         return rows.ToArray();
+        } finally {
+            if (setContext != null && previous != IntPtr.Zero) setContext(previous);
+        }
     }
 }

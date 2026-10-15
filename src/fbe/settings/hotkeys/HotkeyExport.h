@@ -12,5 +12,5 @@ CString BuildTextExport(const ExportData& data);
 CString BuildTextExport(const std::vector<CHotkeysGroup>& groups);
 CString BuildHtmlExport(const ExportData& data, LPCWSTR localeName);
 CString BuildHtmlExport(const std::vector<CHotkeysGroup>& groups, LPCWSTR localeName);
-bool WriteUtf8ExportFile(const CString& path, const CString& text);
+bool WriteUtf8ExportFile(const CString& path, const CString& text, bool replaceExisting = true);
 }}

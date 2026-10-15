@@ -1,4 +1,4 @@
-<# Audits every Settings page in priority locales, with General and Hotkeys in six locales. #>
+﻿<# Audits every Settings page in priority locales, with General and Hotkeys in six locales. #>
 [CmdletBinding()]
 param(
     [string]$FbeExe,
@@ -140,6 +140,10 @@ function Get-AuditControlHandle($audit, [int]$id, [IntPtr]$parent) {
     if ($control.Count -ne 1) { throw "Expected one control $id, found $($control.Count)." }
     return [IntPtr]::new([Convert]::ToInt64($control[0].Hwnd.Substring(2), 16))
 }
+if (-not ('UiLayoutAudit' -as [type])) { Add-Type -Path (Join-Path $PSScriptRoot '..\ui\UiLayoutAudit.cs') }
+$previousDpiContext = [UiLayoutAudit]::BeginPhysicalCoordinates()
+$previousAuditMode = $env:FBE_NEXT_SETTINGS_LAYOUT_AUDIT
+$env:FBE_NEXT_SETTINGS_LAYOUT_AUDIT = '1'
 $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
 try {
     & pwsh -NoProfile -File (Join-Path $PSScriptRoot '..\localization\export-runtime-lang.ps1') -OutputDirectory (Join-Path $isolation.Runtime 'Lang') -Clean | Out-Null
@@ -219,7 +223,7 @@ try {
             $expected = if ($ChangedPagesOnly) { @() } else { @(1120, 1154, 1160, 1053, 1603, 1051, 1128, 1130, 1158) }
             foreach ($id in $expected) {
                 $control = @($rows | Where-Object Id -eq $id)
-                if ($control.Count -ne 1 -or $control[0].TextMayClip) {
+                if ($control.Count -ne 1 -or -not $control[0].InProcessTextMetrics -or $control[0].TextMayClip) {
                     throw "$locale General control $id is missing or clips its text."
                 }
             }
@@ -379,6 +383,8 @@ try {
     $passed = $true
 }
 finally {
+    $env:FBE_NEXT_SETTINGS_LAYOUT_AUDIT = $previousAuditMode
+    [UiLayoutAudit]::RestorePhysicalCoordinates($previousDpiContext)
     # Windows can keep the just-exited executable open briefly (for example,
     # while a file-system scanner inspects it). Keep the isolated runtime until
     # the lock clears, then remove it rather than reporting a layout failure.

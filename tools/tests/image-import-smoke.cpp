@@ -1,4 +1,4 @@
-#include "../../src/fbe/stdafx.h"
+﻿#include "../../src/fbe/stdafx.h"
 #include "../../src/fbe/ImageImport.h"
 #include "../../src/fbe/RuntimeLocalization.h"
 
@@ -593,6 +593,19 @@ int wmain(int argc, wchar_t** argv)
 	CString error;
 	if (FAILED(ImportImageForFb2(argv[1], passThrough, result, error))) return 4;
 	if (result.converted || result.mimeType != L"image/png" || result.data != input || !result.width || !result.height) return 5;
+
+	ImageImportOptions explicitPng;
+	explicitPng.outputFormat = ImageOutputFormat::Png;
+	if(FAILED(ImportImageForFb2(argv[10], explicitPng, result, error)) || result.mimeType != L"image/png" || !HasPngMagic(result.data) || !result.converted) return 101;
+	if(FAILED(ImportImageForFb2(argv[1], explicitPng, result, error)) || result.data != input || result.converted) return 102;
+	ImageImportOptions explicitJpeg;
+	explicitJpeg.outputFormat = ImageOutputFormat::Jpeg;
+	explicitJpeg.flattenTransparentJpeg = true;
+	if(FAILED(ImportImageForFb2(argv[1], explicitJpeg, result, error)) || result.mimeType != L"image/jpeg" || !HasJpegMagic(result.data) || !result.converted) return 103;
+	explicitJpeg.flattenTransparentJpeg = false;
+	if(ImportImageForFb2(argv[13], explicitJpeg, result, error) != E_ABORT) return 104;
+	explicitJpeg.flattenTransparentJpeg = true;
+	if(FAILED(ImportImageForFb2(argv[13], explicitJpeg, result, error)) || !HasJpegMagic(result.data)) return 105;
 
 	ImageImportOptions forcePng;
 	forcePng.keepSupportedImages = false;

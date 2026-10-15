@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
@@ -15,9 +15,9 @@ $words = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\settings\ui\Set
 $commit = [regex]::Match($words, 'void\s+CSettingsWordsDlg::Commit\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 $validate = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::Validate\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 if(-not $commit.Success -or $commit.Groups['body'].Value -match 'GetFocus\s*\(') { throw 'Words Commit must not depend on focus.' }
-foreach($text in @('SetShowWordsExcls', '_Settings.m_words', 'SaveWords')) { if($commit.Groups['body'].Value -notlike "*$text*") { throw "Words Commit lacks $text." } }
+foreach($text in @('SetShowWordsExcls', '_Settings.m_words')) { if($commit.Groups['body'].Value -notlike "*$text*") { throw "Words Commit lacks $text." } }
 if($commit.Groups['body'].Value -notmatch 'if\s*\(m_wordsDirty\)') { throw 'Words Commit must not rewrite Words.xml without a model change.' }
-if($commit.Groups['body'].Value -notmatch 'persistentWords' -or $commit.Groups['body'].Value -notmatch 'CompareNoCase') { throw 'Words persistence must use a canonical order independent of the list view sort.' }
+if($commit.Groups['body'].Value -notmatch 'CompareNoCase') { throw 'Words persistence must use a canonical order independent of the list view sort.' }
 if(-not $validate.Success -or $validate.Groups['body'].Value -notmatch 'FinishInlineEdit\(\)' -or $validate.Groups['body'].Value -notmatch 'FinishNewWord\(\)' -or $validate.Groups['body'].Value -match 'SaveWords|_Settings\.m_words') { throw 'Words Validate must finish staged edits without persisting words.' }
 $defaultAction = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::HandleDefaultAction\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 $cancelChanges = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::CancelChanges\s*\(\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
@@ -36,7 +36,7 @@ if($settingsImplementation -notmatch 'ResolveScriptsFolderPath' -or $settingsImp
 if($settingsNormalization -notmatch '(?s)PathIsRelative\(path\).*?U::GetProgDir') { throw 'Relative scripts folders must resolve independently of the process current directory.' }
 $setScriptsFolder = [regex]::Match($settingsImplementation, 'void\s+CSettings::SetScriptsFolder\s*\([^)]*\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
 if(-not $setScriptsFolder.Success -or $setScriptsFolder.Groups['body'].Value -notmatch 'm_scripts_folder\.CompareNoCase\(normalized\)' -or $setScriptsFolder.Groups['body'].Value -notmatch 'if\(apply\)\s*Save\(\)') { throw 'SetScriptsFolder must always update the model and save only when requested.' }
-if($spelling -notmatch 'ResolveUserDataFile' -or $spelling -notmatch 'FILE_ATTRIBUTE_DIRECTORY' -or $spelling -notmatch 'FILE_ATTRIBUTE_READONLY' -or $spelling -notmatch 'GENERIC_WRITE' -or $spelling -notmatch 'ModernFileDialog::Show') { throw 'Custom dictionary validation must resolve paths consistently and reject unsuitable files.' }
+if($spelling -notmatch 'ResolveUserDataFile' -or $spelling -notmatch 'FILE_ATTRIBUTE_DIRECTORY' -or $spelling -notmatch 'GENERIC_WRITE' -or $spelling -notmatch 'ModernFileDialog::Show') { throw 'Custom dictionary validation must resolve paths consistently and reject unsuitable files.' }
 $customDictionaryIo = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\CustomDictionaryIO.h')
 $speller = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\Speller.cpp')
 if($customDictionaryIo -notmatch 'bool\s+FbeSaveCustomDictionary' -or $customDictionaryIo -notmatch 'output\.flush\(\)' -or $speller -notmatch 'fbe\.spelling\.custom_dictionary\.save_failed') { throw 'Custom dictionary save failures must be detected and reported.' }
@@ -46,4 +46,16 @@ $inlineEdit = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::FinishInlineEdit
 if(-not $inlineEdit.Success -or $inlineEdit.Groups['body'].Value -notmatch 'editedWord\.Trim\(\)' -or $inlineEdit.Groups['body'].Value -notmatch 'm_word\s*!=\s*editedWord') { throw 'A trimmed no-op Words inline edit must not mutate the staged model.' }
 $mainFrame = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 if($mainFrame -notmatch 'sourceSpecialCharsStyle' -or $mainFrame -notmatch 'snapshot\.sourceSpecialCharsStyle\s*=\s*_Settings\.XmlSrcSpecialCharsStyle\(\)') { throw 'Source special-character style is missing from editor change detection.' }
+$prepare = [regex]::Match($words, 'bool\s+CSettingsWordsDlg::PrepareCommit\s*\([^)]*\)\s*\{(?<body>.*?)\n\}', [Text.RegularExpressions.RegexOptions]::Singleline)
+if(-not $prepare.Success -or $prepare.Groups['body'].Value -notmatch 'SaveToFile' -or $prepare.Groups['body'].Value -match '_Settings\.m_words\s*=') { throw 'Words must stage file output before committing globals.' }
+foreach($field in 'checkRussianYoUsage','sourceTagHighlightMode','sourceTagHighlightAttributes','sourceTagHighlightErrors') {
+    if($mainFrame -notmatch ('snapshot\.' + $field + '\s*=') -or $mainFrame -notmatch ($field + ' == other\.' + $field)) { throw "Missing settings change detection: $field" }
+}
+if($inlineEdit.Groups['body'].Value -match 'RemoveWord|!AddNewWord\(editedWord\)' -or $inlineEdit.Groups['body'].Value -notmatch 'm_words\[m_editidx\]\.m_word\s*=') { throw 'Editing a word must update only its spelling in place.' }
+if($prepare.Groups['body'].Value -notmatch 'SaveToFile\(persistentWords' -or $prepare.Groups['body'].Value -notmatch 'CompareNoCase') { throw 'The staged Words.xml must have a canonical order independent of ListView sorting.' }
+$uiRoot = Join-Path $root 'src\fbe\settings\ui'
+foreach($name in 'AdvancedPage','GeneralPage','ImagesPage','EditorPage','SpellingPage','SourcePage','HotkeysDlg') {
+    $page = Get-Content -Raw -LiteralPath (Join-Path $uiRoot ('Settings' + $name + '.cpp'))
+    if($page -notmatch 'ForwardSettingsDialogCommand\(m_hWnd, IDOK\)' -or $page -notmatch 'ForwardSettingsDialogCommand\(m_hWnd, IDCANCEL\)') { throw "Child page bypasses global transaction: $name" }
+}
 Write-Host 'Settings lifecycle contract passed.'

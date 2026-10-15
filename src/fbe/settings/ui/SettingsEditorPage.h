@@ -104,6 +104,7 @@ public:
 	LRESULT OnBackgroundSelectionChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPreviewColorChanged(int, LPNMHDR, BOOL&);
+	CString SelectedNbspCharacter() const;
 	void GetSelectedBackground(CString& kind, CString& id) const;
 	CString SelectedBackgroundLayout() const;
 	EditorBackgroundColors ResolvePreviewColors() const;

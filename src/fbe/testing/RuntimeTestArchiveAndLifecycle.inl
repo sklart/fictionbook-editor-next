@@ -196,6 +196,25 @@
 			XmlSourceThemeImport rejected = {};
 			invalidValuesRejected = invalidValuesRejected && writeUtf8(sourcePath, makeTheme(false, NULL, L"xml.tag.name", invalidValues[index])) && !XmlSourceThemes::LoadImportTheme(sourcePath, rejected, error);
 		}
+		CString stagedId;
+		XmlSourceThemes::BeginSettingsEdit();
+		bool themeTransaction = importedMinimal && XmlSourceThemes::ImportThemeFile(imported, stagedId, error) && XmlSourceThemes::IsUserTheme(stagedId);
+		XmlSourceThemes::EndSettingsEdit();
+		themeTransaction = themeTransaction && !XmlSourceThemes::IsUserTheme(stagedId);
+		XmlSourceThemes::BeginSettingsEdit();
+		themeTransaction = themeTransaction && XmlSourceThemes::ImportThemeFile(imported, stagedId, error);
+		{ SettingsFileTransaction files; themeTransaction = themeTransaction && XmlSourceThemes::PrepareSettingsEdit(files, error) && files.Commit(); }
+		XmlSourceThemes::EndSettingsEdit();
+		themeTransaction = themeTransaction && XmlSourceThemes::IsUserTheme(stagedId);
+		XmlSourceThemes::BeginSettingsEdit();
+		themeTransaction = themeTransaction && XmlSourceThemes::DeleteUserTheme(stagedId, error) && !XmlSourceThemes::IsUserTheme(stagedId);
+		XmlSourceThemes::EndSettingsEdit();
+		themeTransaction = themeTransaction && XmlSourceThemes::IsUserTheme(stagedId);
+		XmlSourceThemes::BeginSettingsEdit();
+		themeTransaction = themeTransaction && XmlSourceThemes::DeleteUserTheme(stagedId, error);
+		{ SettingsFileTransaction files; themeTransaction = themeTransaction && XmlSourceThemes::PrepareSettingsEdit(files, error) && files.Commit(); }
+		XmlSourceThemes::EndSettingsEdit();
+		themeTransaction = themeTransaction && !XmlSourceThemes::IsUserTheme(stagedId);
 		const bool noSelfReference = reimported && roundTrip.metadata.baseThemeId.CompareNoCase(roundTrip.info.id) != 0;
 		HIGHCONTRAST highContrast = {};
 		highContrast.cbSize = sizeof(highContrast);
@@ -234,7 +253,7 @@
 			darkError == ::GetSysColor(COLOR_HOTLIGHT) && darkWarning == ::GetSysColor(COLOR_HOTLIGHT));
 		_Settings.SetXmlSrcThemeId(originalTheme, false);
 		ApplyXmlSourceEditorChanges(false);
-		const bool passed = importedMinimal && fallbacks && optionalRolesAccepted && exported && utf8Export && reimported && palettePreserved && metadataPreserved && missingRequiredRejected && invalidValuesRejected && noSelfReference && themeSwitchApplied && highContrastSystemColors;
+		const bool passed = themeTransaction && importedMinimal && fallbacks && optionalRolesAccepted && exported && utf8Export && reimported && palettePreserved && metadataPreserved && missingRequiredRejected && invalidValuesRejected && noSelfReference && themeSwitchApplied && highContrastSystemColors;
 		CStringA report;
 		report.Format("import=%d\nfallbacks=%d\noptional_roles=%d\nexport=%d\nutf8_export=%d\nreimport=%d\npalette=%d\nmetadata=%d\nmissing_required=%d\ninvalid_values=%d\nno_self_reference=%d\ntheme_switch=%d\nhigh_contrast_system_colors=%d\nresult=%s\n",
 			importedMinimal, fallbacks, optionalRolesAccepted, exported, utf8Export, reimported, palettePreserved, metadataPreserved, missingRequiredRejected, invalidValuesRejected, noSelfReference, themeSwitchApplied, highContrastSystemColors, passed ? "pass" : "fail");
@@ -1354,6 +1373,8 @@
 	}
 	if (IsFbeTestScenario(L"settings-editor-page-runtime"))
 	{
+		// Standalone page fixtures have a main-frame parent, not SettingsDlg.
+		// Exercise Validate/Commit explicitly; the full-dialog smoke covers OK.
 		CStringA report("case\tpassed\r\n");
 		auto append = [&](const char* name, bool passed)
 		{
@@ -1371,7 +1392,7 @@
 			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
 			const int count = static_cast<int>(::SendMessageW(picker, CB_GETCOUNT, 0, 0));
 			const bool selected = count >= 2 && ::SendMessageW(picker, CB_GETCURSEL, 0, 0) == count - 1;
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			if(page.Validate()) page.Commit();
 			append("missing-custom-ok", window != NULL && selected &&
 				_Settings.GetEditorBackgroundKind() == L"custom" && _Settings.GetEditorBackgroundCustomPath() == missingCustom &&
 				_Settings.GetColorBG() == CLR_DEFAULT && _Settings.GetColorFG() == CLR_DEFAULT);
@@ -1382,8 +1403,10 @@
 		{
 			CSettingsEditorPage page;
 			const HWND window = page.Create(m_hWnd);
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
-			append("missing-builtin-ok", window != NULL && _Settings.GetEditorBackgroundKind() == L"builtin" &&
+			if(page.Validate()) page.Commit();
+			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
+			const bool unavailableSelected = ::SendMessageW(picker, CB_GETCURSEL, 0, 0) == ::SendMessageW(picker, CB_GETCOUNT, 0, 0) - 1;
+			append("missing-builtin-ok", window != NULL && unavailableSelected && _Settings.GetEditorBackgroundKind() == L"builtin" &&
 				_Settings.GetEditorBackgroundId() == L"removed-preset");
 			page.DestroyWindow();
 		}
@@ -1393,7 +1416,7 @@
 			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
 			::SendMessageW(picker, CB_SETCURSEL, 0, 0);
 			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDC_EDITOR_BACKGROUND_IMAGE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(picker));
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			if(page.Validate()) page.Commit();
 			append("missing-builtin-select-none", window != NULL && _Settings.GetEditorBackgroundKind() == L"none");
 			page.DestroyWindow();
 		}
@@ -1405,7 +1428,7 @@
 			const HWND picker = ::GetDlgItem(window, IDC_EDITOR_BACKGROUND_IMAGE);
 			::SendMessageW(picker, CB_SETCURSEL, 0, 0);
 			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDC_EDITOR_BACKGROUND_IMAGE, CBN_SELCHANGE), reinterpret_cast<LPARAM>(picker));
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDCANCEL, BN_CLICKED), 0);
+			page.CancelChanges();
 			append("custom-cancel", window != NULL && _Settings.GetEditorBackgroundKind() == L"custom" &&
 				_Settings.GetEditorBackgroundCustomPath() == missingCustom);
 			page.DestroyWindow();
@@ -1444,7 +1467,7 @@
 				page.m_background.GetDefaultColor() == defaults.background &&
 				page.m_backgroundPreview.m_foreground == defaults.foreground &&
 				page.m_backgroundPreview.m_background == defaults.background);
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			if(page.Validate()) page.Commit();
 			m_doc->ApplyConfChanges();
 			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
 			MSHTML::IHTMLElementPtr style(document3 ? document3->getElementById(L"fbe-runtime-body-colors") : NULL);
@@ -1471,7 +1494,7 @@
 			page.OnPreviewColorChanged(0, NULL, handled);
 			const bool preview = page.m_backgroundPreview.m_foreground == RGB(230, 20, 20) &&
 				page.m_backgroundPreview.m_background == RGB(20, 40, 220);
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			if(page.Validate()) page.Commit();
 			append("automatic-to-explicit", window != NULL && preview &&
 				_Settings.GetColorFG() == RGB(230, 20, 20) && _Settings.GetColorBG() == RGB(20, 40, 220));
 			page.DestroyWindow();
@@ -1494,7 +1517,7 @@
 				(foreground != CLR_DEFAULT || page.m_foreground.GetDefaultColor() == expectedForeground) &&
 				(background != CLR_DEFAULT || page.m_background.GetDefaultColor() == expectedBackground) &&
 				U::GetWindowText(page.GetDlgItem(IDC_EDITOR_PREVIEW_GROUP)) == expectedTitle;
-			::SendMessageW(window, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
+			if(page.Validate()) page.Commit();
 			m_doc->ApplyConfChanges();
 			MSHTML::IHTMLDocument3Ptr document3(m_doc->m_body.Document());
 			MSHTML::IHTMLElementPtr style(document3 ? document3->getElementById(L"fbe-runtime-body-colors") : NULL);

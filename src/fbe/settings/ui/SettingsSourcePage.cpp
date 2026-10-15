@@ -1,6 +1,7 @@
 // SettingsSourcePage.cpp : Source settings page implementation.
 
 #include "stdafx.h"
+#include "../../../common/ModernFileDialog.h"
 #include "SettingsSourcePage.h"
 #include "EditorFontFamilies.h"
 #include "..\\..\\Settings.h"
@@ -114,7 +115,7 @@ static const int kSourceColorControls[] = {
 	IDC_OPTIONS_SOURCE_COLOR_TAG,
 	IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE,
 	IDC_OPTIONS_SOURCE_COLOR_STRING,
-	0, // XML comments remain a theme token, but have no editable UI control.
+	IDC_OPTIONS_SOURCE_COLOR_COMMENT,
 
 	IDC_OPTIONS_SOURCE_COLOR_BACKGROUND,
 };
@@ -224,23 +225,13 @@ static void FinalizeThemeMetadata(const CString& sourceId, const DWORD* colors,
 	metadata.baseThemeId = isSystemTheme ? (metadata.isDark ? L"fbe-dark" : L"fbe-light") : sourceId;
 }
 
-static std::vector<wchar_t> MakeThemeFileFilter()
-{
-	const CString label = ThemeString(L"fbe.theme.file_filter", L"FBE themes (*.fbetheme)");
-	const wchar_t* pattern = L"*.fbetheme";
-	std::vector<wchar_t> filter;
-	filter.insert(filter.end(), label.GetString(), label.GetString() + label.GetLength());
-	filter.push_back(L'\0');
-	filter.insert(filter.end(), pattern, pattern + wcslen(pattern));
-	filter.push_back(L'\0');
-	filter.push_back(L'\0');
-	return filter;
-}
-
 LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
 	CAxDialogImpl<CSettingsSourcePage>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 	FbeApplyRuntimeDialogLocalization(m_hWnd, IDD_SETTINGS_SOURCE);
+	::SetDlgItemText(m_hWnd, IDC_SOURCE_MATCHED_TAGS_GROUP, ThemeString(L"fbe.settings.source.matched_tags", L"Matched tags"));
+	::SetDlgItemText(m_hWnd, IDC_SOURCE_INVISIBLE_GROUP, ThemeString(L"fbe.settings.source.invisible", L"Invisible characters"));
+	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_COLOR_COMMENT_LABEL, ThemeString(L"fbe.settings.source.comment", L"Comments:"));
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_GROUP, FbeLoadRuntimeStringByKey(L"fbe.settings.source.theme_highlighting", L"Theme and highlighting"));
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_PREVIEW_GROUP, FbeLoadRuntimeStringByKey(L"fbe.settings.source.preview", L"XML preview"));
 	::SetDlgItemText(m_hWnd, IDC_OPTIONS_SOURCE_FONT, FbeLoadRuntimeStringByKey(L"fbe.dialog.idd_options.source_font", L"Editor font:"));
@@ -375,13 +366,14 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 	m_source_tooltips.Add(m_caretBlink, L"fbe.settings.caret.custom_only", L"Choose Custom mode to change width, color and blinking.");
 	UpdateCaretDependencies();
 
+	XmlSourceThemes::BeginSettingsEdit();
 	const CString currentThemeId = _Settings.GetXmlSrcThemeId();
+	m_draftThemeId = currentThemeId;
 
 	ReloadSourceThemes(currentThemeId);
 
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		m_source_colors[i].SubclassWindow(GetDlgItem(kSourceColorControls[i]));
 		m_source_colors[i].SetDefaultText(automaticColorText);
 		m_source_colors[i].SetCustomText(moreColorsText);
@@ -405,7 +397,6 @@ void CSettingsSourcePage::LoadSourceThemeControlsFromSettings()
 	m_updatingSourceColors = true;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		const XmlSrcColorGroup group = static_cast<XmlSrcColorGroup>(i);
 		m_source_color_custom[i] = _Settings.HasXmlSrcCustomColor(group);
 		m_source_colors[i].SetDefaultColor(GetThemeDefaultColor(activeThemeId, group));
@@ -425,7 +416,6 @@ LRESULT CSettingsSourcePage::OnThemeChanged(UINT, WPARAM, LPARAM, BOOL&)
 	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		m_source_colors[i].SetDefaultColor(GetThemeDefaultColor(themeId,
 			static_cast<XmlSrcColorGroup>(i)));
 		m_source_colors[i].Invalidate();
@@ -445,11 +435,10 @@ void CSettingsSourcePage::UpdateSourceColorTooltips()
 	static const int labels[XML_SRC_COLOR_GROUP_COUNT] = {
 		IDC_OPTIONS_SOURCE_COLOR_TEXT_LABEL, IDC_OPTIONS_SOURCE_COLOR_TAG_LABEL,
 		IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE_LABEL, IDC_OPTIONS_SOURCE_COLOR_STRING_LABEL,
-		0, IDC_OPTIONS_SOURCE_COLOR_BACKGROUND_LABEL,
+		IDC_OPTIONS_SOURCE_COLOR_COMMENT_LABEL, IDC_OPTIONS_SOURCE_COLOR_BACKGROUND_LABEL,
 	};
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		const DWORD color = ResolveSourceColor(m_source_colors[i],
 			GetSelectedThemeId(m_source_palette, m_source_theme_ids),
 			static_cast<XmlSrcColorGroup>(i));
@@ -514,7 +503,7 @@ void CSettingsSourcePage::UpdateSourceThemeDisplay()
 	bool hasCustomColor = false;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i != XML_SRC_COLOR_COMMENT && m_source_color_custom[i])
+		if(m_source_color_custom[i])
 		{
 			hasCustomColor = true;
 			break;
@@ -536,17 +525,23 @@ void CSettingsSourcePage::UpdateSourceThemeDisplay()
 }
 LRESULT CSettingsSourcePage::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
-	if(Validate()) Commit();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
 }
 
 LRESULT CSettingsSourcePage::OnClickedCancel(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
-	CancelChanges();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
 }
 
+CSettingsSourcePage::~CSettingsSourcePage() { XmlSourceThemes::EndSettingsEdit(); }
 bool CSettingsSourcePage::Validate() { return true; }
+bool CSettingsSourcePage::PrepareCommit(SettingsFileTransaction& files)
+{
+	CString error;
+	if(XmlSourceThemes::PrepareSettingsEdit(files, error)) return true;
+	U::MessageBox(m_hWnd, error, ThemeString(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+	return false;
+}
 void CSettingsSourcePage::Commit()
 {
 	_Settings.SetXmlSrcShowSpecialChars(IsDlgButtonChecked(IDC_OPTIONS_SOURCE_SHOW_SPECIAL_CHARS) == BST_CHECKED);
@@ -557,7 +552,6 @@ void CSettingsSourcePage::Commit()
 	_Settings.SetXmlSrcThemeId(GetSelectedThemeId(m_source_palette, m_source_theme_ids));
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		_Settings.SetXmlSrcColor(static_cast<XmlSrcColorGroup>(i),
 			m_source_color_custom[i] ? m_source_colors[i].GetColor() : XML_SRC_COLOR_DEFAULT);
 	}
@@ -634,18 +628,30 @@ LRESULT CSettingsSourcePage::OnCaretColorChanged(int, LPNMHDR, BOOL&)
 	return 0;
 }
 
+void CSettingsSourcePage::SaveThemeDraft()
+{
+	if(m_draftThemeId.IsEmpty()) return;
+	ThemeDraft* draft = NULL;
+	for(auto& item : m_themeDrafts) if(item.id.CompareNoCase(m_draftThemeId) == 0) { draft = &item; break; }
+	if(!draft) { m_themeDrafts.push_back(ThemeDraft()); draft = &m_themeDrafts.back(); draft->id = m_draftThemeId; }
+	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i) draft->colors[i] = m_source_colors[i].GetColor();
+}
+
 LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 {
+	SaveThemeDraft();
 	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
+	m_draftThemeId = themeId;
+	const ThemeDraft* draft = NULL;
+	for(const auto& item : m_themeDrafts) if(item.id.CompareNoCase(themeId) == 0) { draft = &item; break; }
 	m_updatingSourceColors = true;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		const DWORD color = GetThemeDefaultColor(themeId,
 			static_cast<XmlSrcColorGroup>(i));
-		m_source_color_custom[i] = false;
+		m_source_color_custom[i] = draft && draft->colors[i] != CLR_DEFAULT;
 		m_source_colors[i].SetDefaultColor(color);
-		m_source_colors[i].SetColor(CLR_DEFAULT);
+		m_source_colors[i].SetColor(draft ? draft->colors[i] : CLR_DEFAULT);
 	}
 	m_updatingSourceColors = false;
 	UpdateSourceColorTooltips();
@@ -677,19 +683,21 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		buttonRect.left, buttonRect.bottom, 0, m_hWnd, NULL);
 	if(command == 1)
 	{
-		const std::vector<wchar_t> filter = MakeThemeFileFilter();
-		WTL::CFileDialogEx dialog(TRUE, L"fbetheme", NULL,
-			OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_ALLOWMULTISELECT | OFN_EXPLORER | OFN_HIDEREADONLY,
-			filter.data(), m_hWnd);
-		if(dialog.DoModal() != IDOK) return 0;
+		const CString filterLabel = ThemeString(L"fbe.theme.file_filter", L"FBE themes (*.fbetheme)");
+		const COMDLG_FILTERSPEC filters[] = { { filterLabel, L"*.fbetheme" } };
+		ModernFileDialog::Request request; request.allowMultiSelect = true; request.fileMustExist = true; request.pathMustExist = true;
+		request.defaultExtension = L"fbetheme"; request.filters = filters; request.filterCount = _countof(filters);
+		const auto dialog = ModernFileDialog::Show(m_hWnd, request);
+		if(dialog.outcome != ModernFileDialog::Outcome::Accepted) return 0;
 		int imported = 0;
 		int failed = 0;
 		int cancelled = 0;
 		CString lastImportedId;
 		CString failures;
 		int shownFailures = 0;
-		const CSimpleArray<CString>& paths = dialog.GetFileNames();
-		for(int i = 0; i < paths.GetSize(); ++i)
+		std::vector<CString> paths;
+		for(const auto& path : dialog.paths) paths.push_back(path.c_str());
+		for(int i = 0; i < static_cast<int>(paths.size()); ++i)
 		{
 			CString importedId, error;
 			XmlSourceThemeImport parsedTheme = {};
@@ -746,34 +754,18 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		const int selectedIndex = m_source_palette.GetCurSel();
 		if(selectedIndex >= 0 && selectedIndex < static_cast<int>(m_source_theme_names.size()))
 			sourceName = m_source_theme_names[selectedIndex];
-		const bool deletedThemeWasActive = _Settings.GetStoredXmlSrcThemeId().CompareNoCase(sourceId) == 0;
 		CString confirmation;
-		confirmation.Format(ThemeString(deletedThemeWasActive ? L"fbe.theme.delete.confirm_active" : L"fbe.theme.delete.confirm_inactive",
-			deletedThemeWasActive ?
-			L"Delete active user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel. The editor will switch to FBE Light and manual colors will be reset." :
-			L"Delete user theme \"%s\"?\n\nThe file is deleted immediately and cannot be restored by Cancel."), static_cast<LPCWSTR>(sourceName));
-		if(U::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_ICONQUESTION) != IDYES)
-			return 0;
-		const CString fallbackId = XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT);
+		confirmation.Format(ThemeString(L"fbe.theme.delete.staged", L"Delete user theme \"%s\" when you click OK? Cancel will keep it."), static_cast<LPCWSTR>(sourceName));
+		if(U::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) != IDYES) return 0;
 		CString error;
 		if(!XmlSourceThemes::DeleteUserTheme(sourceId, error))
 			U::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
-		else if(deletedThemeWasActive)
-		{
-			_Settings.SetXmlSrcThemeId(fallbackId, false);
-			for(int group = 0; group < XML_SRC_COLOR_GROUP_COUNT; ++group)
-				_Settings.SetXmlSrcColor(static_cast<XmlSrcColorGroup>(group), XML_SRC_COLOR_DEFAULT, false);
-			_Settings.Save();
-			LoadSourceThemeControlsFromSettings();
-			const HWND mainWindow = _Settings.GetMainWindow();
-			if(::IsWindow(mainWindow))
-				::PostMessage(mainWindow, WM_FBE_APPLY_XML_SOURCE_THEME, 0, 0);
-		}
 		else
 		{
-			// An inactive file is removed immediately, without changing active settings.
-			LoadSourceThemeControlsFromSettings();
-		}		return 0;
+			ReloadSourceThemes(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT));
+			BOOL handled = FALSE; OnSourcePaletteChanged(0, 0, NULL, handled);
+		}
+		return 0;
 	}
 	if(command != 2 && command != 3) return 0;
 
@@ -811,10 +803,13 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 	}
 
 	CString exportId;
-	const std::vector<wchar_t> filter = MakeThemeFileFilter();
-	CFileDialog dialog(FALSE, L"fbetheme", MakeSafeThemeFileStem(sourceName) + L".fbetheme", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST,
-		filter.data(), m_hWnd);
-	if(dialog.DoModal() != IDOK) return 0;
+	const CString filterLabel = ThemeString(L"fbe.theme.file_filter", L"FBE themes (*.fbetheme)");
+	const COMDLG_FILTERSPEC filters[] = { { filterLabel, L"*.fbetheme" } };
+	ModernFileDialog::Request request; request.save = true; request.pathMustExist = true; request.overwritePrompt = true;
+	request.defaultExtension = L"fbetheme"; request.initialFileName = (MakeSafeThemeFileStem(sourceName) + L".fbetheme").GetString();
+	request.filters = filters; request.filterCount = _countof(filters);
+	const auto dialog = ModernFileDialog::Show(m_hWnd, request);
+	if(dialog.outcome != ModernFileDialog::Outcome::Accepted || dialog.paths.empty()) return 0;
 	XmlSourceThemeMetadata metadata = {};
 	const bool hasExistingMetadata = XmlSourceThemes::GetThemeMetadata(sourceId, metadata);
 	FinalizeThemeMetadata(sourceId, colors,
@@ -824,7 +819,7 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		XmlSourceThemes::MakeAvailableThemeId(L"custom-" + metadata.baseThemeId);
 	// Existing user themes retain optional metadata without a self-referential base id.
 	if(metadata.baseThemeId.CompareNoCase(exportId) == 0) metadata.baseThemeId.Empty();
-	if(!XmlSourceThemes::ExportThemeFile(exportId, sourceName, colors, dialog.m_szFileName, error, &metadata))
+	if(!XmlSourceThemes::ExportThemeFile(exportId, sourceName, colors, CString(dialog.paths.front().c_str()), error, &metadata))
 		U::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
 	return 0;
 }
@@ -835,7 +830,6 @@ LRESULT CSettingsSourcePage::OnResetSourceColors(WORD, WORD, HWND, BOOL&)
 	m_updatingSourceColors = true;
 	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
 	{
-		if(i == XML_SRC_COLOR_COMMENT) continue;
 		m_source_color_custom[i] = false;
 		m_source_colors[i].SetDefaultColor(GetThemeDefaultColor(themeId,
 			static_cast<XmlSrcColorGroup>(i)));

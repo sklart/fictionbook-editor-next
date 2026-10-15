@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "settings/SettingsFileTransaction.h"
 #include "XmlSourceThemes.h"
 #include "..\common\RuntimeLocalizationCommon.h"
 #include "RuntimeLocalization.h"
@@ -478,6 +479,17 @@ std::vector<ThemeRecord> g_externalThemes;
 bool g_externalThemesInitialized = false;
 std::vector<XmlSourceThemeInfo> g_availableThemes;
 bool g_availableThemesInitialized = false;
+bool g_settingsEdit = false;
+std::vector<CString> g_changedThemePaths;
+void StageTheme(const ThemeRecord& record)
+{
+	for(auto it = g_externalThemes.begin(); it != g_externalThemes.end(); ++it)
+		if(it->sourcePath.CompareNoCase(record.sourcePath) == 0) { g_externalThemes.erase(it); break; }
+	g_externalThemes.push_back(record);
+	if(std::find(g_changedThemePaths.begin(), g_changedThemePaths.end(), record.sourcePath) == g_changedThemePaths.end())
+		g_changedThemePaths.push_back(record.sourcePath);
+	g_availableThemes.clear(); g_availableThemesInitialized = false;
+}
 
 const std::vector<ThemeRecord>& GetExternalThemes()
 {
@@ -604,12 +616,41 @@ bool GetThemeMetadata(const CString& id, XmlSourceThemeMetadata& metadata)
 
 void ReloadThemes()
 {
+	if(g_settingsEdit) { g_availableThemes.clear(); g_availableThemesInitialized = false; return; }
 	// Re-read both directories after import, save, or deletion in this process.
 	// Settings dialogs may therefore show the changed list immediately.
 	if(g_externalThemesInitialized) g_externalThemes.clear();
 	if(g_availableThemesInitialized) g_availableThemes.clear();
 	 g_externalThemesInitialized = false;
 	 g_availableThemesInitialized = false;
+}
+
+void BeginSettingsEdit()
+{
+	GetExternalThemes();
+	g_changedThemePaths.clear();
+	g_settingsEdit = true;
+}
+void EndSettingsEdit()
+{
+	g_settingsEdit = false;
+	g_changedThemePaths.clear();
+	ReloadThemes();
+}
+bool PrepareSettingsEdit(SettingsFileTransaction& files, CString& error)
+{
+	for(const CString& path : g_changedThemePaths)
+	{
+		const ThemeRecord* edited = NULL;
+		for(const auto& record : g_externalThemes)
+			if(record.sourcePath.CompareNoCase(path) == 0) { edited = &record; break; }
+		if(!edited) { files.Add(path); continue; }
+		const CString temporary = SettingsFileTransaction::Temporary(path);
+		if(temporary.IsEmpty()) { error = ThemeString(L"fbe.theme.error.create_temporary", L"Cannot create temporary theme file."); return false; }
+		files.Add(path, temporary);
+		if(!ExportThemeFile(edited->info.id, edited->info.name, edited->colors, temporary, error, &edited->metadata)) return false;
+	}
+	return true;
 }
 
 bool GetThemeColor(const CString& id, XmlSrcStyleToken token, DWORD& color)
@@ -650,6 +691,12 @@ bool ImportThemeFile(const XmlSourceThemeImport& theme, CString& importedId, CSt
 	const CString destination = conflictMode == IMPORT_THEME_REPLACE_USER && existing != NULL && existing->info.isUser ? existing->sourcePath : directory + L"\\" + importedThemeId + L".fbetheme";
 	CString importedName(record.info.name);
 	if(copied) importedName += ThemeString(L"fbe.theme.import.copy_suffix", L" (imported)");
+	if(g_settingsEdit)
+	{
+		record.info.id = importedThemeId; record.info.name = importedName; record.info.isUser = true;
+		record.sourcePath = destination;
+		StageTheme(record); importedId = importedThemeId; return true;
+	}
 	const DWORD originalAttributes = ::GetFileAttributesW(destination);
 	const bool readOnly = originalAttributes != INVALID_FILE_ATTRIBUTES && (originalAttributes & FILE_ATTRIBUTE_READONLY) != 0;
 	if(readOnly && !::SetFileAttributesW(destination, originalAttributes & ~FILE_ATTRIBUTE_READONLY))
@@ -683,6 +730,13 @@ bool DeleteUserTheme(const CString& id, CString& error)
 		return false;
 	}
 	const CString path = record->sourcePath;
+	if(g_settingsEdit)
+	{
+		for(auto it = g_externalThemes.begin(); it != g_externalThemes.end(); ++it)
+			if(it->sourcePath.CompareNoCase(path) == 0) { g_externalThemes.erase(it); break; }
+		if(std::find(g_changedThemePaths.begin(), g_changedThemePaths.end(), path) == g_changedThemePaths.end()) g_changedThemePaths.push_back(path);
+		ReloadThemes(); return true;
+	}
 	const DWORD attributes = ::GetFileAttributesW(path);
 	if(attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_READONLY) != 0 &&
 		!::SetFileAttributesW(path, attributes & ~FILE_ATTRIBUTE_READONLY))
@@ -783,6 +837,14 @@ bool SaveThemeAsUser(const CString& name, const DWORD* colors, CString& savedId,
 	}
 	const CString id = MakeAvailableUserThemeId(L"user-theme");
 	const CString path = directory + L"\\" + id + L".fbetheme";
+	if(g_settingsEdit)
+	{
+		ThemeRecord record = {}; record.info = { id, displayName, true, false }; record.sourcePath = path;
+		if(metadata) record.metadata = *metadata;
+		for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i) record.colors[i] = colors[i];
+		record.info.isDark = metadata ? metadata->isDark : false;
+		StageTheme(record); savedId = id; return true;
+	}
 	if(!ExportThemeFile(id, displayName, colors, path, error, metadata)) return false;
 	savedId = id;
 	ReloadThemes();

@@ -1109,11 +1109,15 @@ struct EditorConfigurationSnapshot
 	CaretPreferences caret;
 	DWORD sourceColorPalette;
 	CString sourceThemeId;
-	DWORD sourceColors[XML_SRC_COLOR_GROUP_COUNT];
+	DWORD sourceColors[XML_SRC_STYLE_TOKEN_COUNT];
 	DWORD customDictionaryCodepage;
 	bool sourceWrap;
 	bool sourceSyntaxHighlight;
 	bool sourceTagHighlight;
+	DWORD sourceTagHighlightMode;
+	bool sourceTagHighlightAttributes;
+	bool sourceTagHighlightErrors;
+	bool checkRussianYoUsage;
 	bool sourceShowEol;
 	bool sourceShowWhitespace;
 	bool sourceShowSpecialChars;
@@ -1135,7 +1139,11 @@ struct EditorConfigurationSnapshot
 			memcmp(sourceColors, other.sourceColors, sizeof(sourceColors)) == 0 &&
 			customDictionaryCodepage == other.customDictionaryCodepage &&
 			sourceWrap == other.sourceWrap && sourceSyntaxHighlight == other.sourceSyntaxHighlight &&
-			sourceTagHighlight == other.sourceTagHighlight && sourceShowEol == other.sourceShowEol &&
+			sourceTagHighlight == other.sourceTagHighlight &&
+			sourceTagHighlightMode == other.sourceTagHighlightMode &&
+			sourceTagHighlightAttributes == other.sourceTagHighlightAttributes &&
+			sourceTagHighlightErrors == other.sourceTagHighlightErrors &&
+			checkRussianYoUsage == other.checkRussianYoUsage && sourceShowEol == other.sourceShowEol &&
 			sourceShowWhitespace == other.sourceShowWhitespace && sourceShowSpecialChars == other.sourceShowSpecialChars &&
 			sourceSpecialCharsStyle == other.sourceSpecialCharsStyle &&
 			sourceShowLineNumbers == other.sourceShowLineNumbers &&
@@ -1161,12 +1169,16 @@ static EditorConfigurationSnapshot CaptureEditorConfigurationSnapshot()
 	snapshot.caret = _Settings.GetCaretPreferences();
 	snapshot.sourceColorPalette = _Settings.GetXmlSrcColorPalette();
 	snapshot.sourceThemeId = _Settings.GetXmlSrcThemeId();
-	for(int i = 0; i < XML_SRC_COLOR_GROUP_COUNT; ++i)
-		snapshot.sourceColors[i] = _Settings.GetXmlSrcColor(static_cast<XmlSrcColorGroup>(i));
+	for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)
+		snapshot.sourceColors[i] = _Settings.GetXmlSrcStyleColor(static_cast<XmlSrcStyleToken>(i));
 	snapshot.customDictionaryCodepage = _Settings.GetCustomDictCodepage();
 	snapshot.sourceWrap = _Settings.XmlSrcWrap();
 	snapshot.sourceSyntaxHighlight = _Settings.XmlSrcSyntaxHL();
 	snapshot.sourceTagHighlight = _Settings.XmlSrcTagHL();
+	snapshot.sourceTagHighlightMode = _Settings.XmlSrcTagHighlightMode();
+	snapshot.sourceTagHighlightAttributes = _Settings.XmlSrcTagHighlightAttributes();
+	snapshot.sourceTagHighlightErrors = _Settings.XmlSrcTagHighlightErrors();
+	snapshot.checkRussianYoUsage = _Settings.GetCheckRussianYoUsage();
 	snapshot.sourceShowEol = _Settings.XmlSrcShowEOL();
 	snapshot.sourceShowWhitespace = _Settings.XmlSrcShowSpace();
 	snapshot.sourceShowSpecialChars = _Settings.XmlSrcShowSpecialChars();
@@ -1213,6 +1225,7 @@ static bool HasOnlySourceEditorConfigurationChanged(const EditorConfigurationSna
 		before.customDictionaryCodepage == after.customDictionaryCodepage &&
 		before.fastMode == after.fastMode && before.useSpellChecker == after.useSpellChecker &&
 		before.highlightMisspells == after.highlightMisspells &&
+		before.checkRussianYoUsage == after.checkRussianYoUsage &&
 		!(before == after);
 }
 static UINT GetWindowDpi(HWND window)

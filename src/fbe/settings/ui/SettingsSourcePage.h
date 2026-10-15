@@ -41,7 +41,12 @@ public:
 
 class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public ISettingsPage
 {
+	friend class CSettingsDlg; // Focused settings runtime regression.
     CComboBox m_source_palette;
+	struct ThemeDraft { CString id; DWORD colors[XML_SRC_COLOR_GROUP_COUNT]; };
+	std::vector<ThemeDraft> m_themeDrafts;
+	CString m_draftThemeId;
+	void SaveThemeDraft();
 	CComboBox m_tag_highlight_mode;
     CComboBox m_special_chars_style;
     CComboBox m_srcfonts;
@@ -94,6 +99,7 @@ BEGIN_MSG_MAP(CSettingsSourcePage)
 	COMMAND_HANDLER(IDC_EDITOR_CARET_BLINK, CBN_SELCHANGE, OnCaretSettingsChanged)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_COLORS_RESET, BN_CLICKED, OnResetSourceColors)
 	COMMAND_HANDLER(IDC_OPTIONS_SOURCE_THEME_ACTIONS, BN_CLICKED, OnThemeActions)
+	NOTIFY_HANDLER(IDC_OPTIONS_SOURCE_COLOR_COMMENT, CPN_SELENDOK, OnSourceColorChanged)
 	NOTIFY_HANDLER(IDC_OPTIONS_SOURCE_COLOR_TEXT, CPN_SELENDOK, OnSourceColorChanged)
 	NOTIFY_HANDLER(IDC_OPTIONS_SOURCE_COLOR_TAG, CPN_SELENDOK, OnSourceColorChanged)
 	NOTIFY_HANDLER(IDC_OPTIONS_SOURCE_COLOR_ATTRIBUTE, CPN_SELENDOK, OnSourceColorChanged)
@@ -128,5 +134,6 @@ END_MSG_MAP()
 	CaretPreferences SelectedCaretPreferences() const;
 	void UpdateCaretDependencies();
 	void UpdateSpecialCharactersDependencies();
-	bool Validate(); void Commit(); bool CancelChanges();
+	~CSettingsSourcePage();
+	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files); void Commit(); bool CancelChanges();
 };

@@ -1,4 +1,4 @@
-<# Contract for the Settings hotkey TXT/HTML export surface. #>
+﻿<# Contract for the Settings hotkey TXT/HTML export surface. #>
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
@@ -34,7 +34,7 @@ Require $dialogSource 'BuildHtmlExport\(data, _Settings\.GetInterfaceLocaleName\
 Require $dialogSource 'BuildTextExport\(data\)' 'TXT export must use same data.'
 Require $dialogSource 'WriteUtf8ExportFile' 'Both formats must use shared UTF-8 writer.'
 Require $dialogSource 'FBE-Next-Hotkeys\.html' 'HTML must be the default proposed file name.'
-Require $dialogSource 'nFilterIndex != 2' 'HTML filter must be first and TXT filter second.'
+Require $dialogSource 'result.filterIndex != 2' 'HTML filter must be first and TXT filter second.'
 Require $dialogSource 'fbe\.hotkey\.export\.error' 'Export error must use runtime localization.'
 Require $locale 'fbe\.dialog\.idd_hotkeys\.export' 'Export button localization is missing.'
 foreach($key in 'fbe.hotkey.export.title','fbe.hotkey.export.column.command','fbe.hotkey.export.column.shortcut','fbe.hotkey.export.filter.html','fbe.hotkey.export.filter.text','fbe.hotkey.export.error','fbe.hotkey.key.space','fbe.hotkey.key.backspace','fbe.hotkey.key.delete','fbe.hotkey.key.insert') {

@@ -1,6 +1,7 @@
 // SettingsHotkeysDlg.cpp : Implementation of CSettingsHotkeysDlg
 
 #include "stdafx.h"
+#include "../../../common/ModernFileDialog.h"
 #include "SettingsHotkeysDlg.h"
 #include "..\\..\\KeyboardLayoutSelection.h"
 #include "..\\..\\utils\\utils.h"
@@ -346,14 +347,12 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyDelete(WORD /* unused: wNoti
 
 LRESULT CSettingsHotkeysDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
-	if(Validate()) Commit();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
 }
 
 LRESULT CSettingsHotkeysDlg::OnClickedCancel(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
-	CancelChanges();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
 }
 
 bool CSettingsHotkeysDlg::Validate()
@@ -582,9 +581,17 @@ LRESULT CSettingsHotkeysDlg::OnKeyReleased(UINT /* unused: uMsg */, WPARAM /* un
 
 LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyAssign(WORD /* unused: wNotifyCode */, WORD /* unused: wID */, HWND /* unused: hWndCtl */, BOOL& /* unused: bHandled */)
 {
+	const hkIndex conflict = GetCollIndex(m_accel);
+	if(conflict.group >= 0 && conflict.hotkey >= 0)
+	{
+		CString prompt;
+		prompt.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.hotkeys.reassign", L"This shortcut is already assigned to \"%s\". Reassign it?"),
+			static_cast<LPCWSTR>(GetHotkeyGroupDisplayName(_Settings.m_hotkey_groups[conflict.group]) + L"\\" +
+			GetHotkeyDisplayName(_Settings.m_hotkey_groups[conflict.group].m_hotkeys[conflict.hotkey])));
+		if(MessageBox(prompt, FbeLoadCString(IDS_ERRMSGBOX_CAPTION), MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) != IDYES) return 0;
+	}
 	TestAndSet();
 	ClearAndSet();
-
 	return 0;
 }
 
@@ -592,18 +599,35 @@ LRESULT CSettingsHotkeysDlg::OnBnClickedButtonHotkeyExport(WORD, WORD, HWND, BOO
 {
 	const CString htmlFilterName(FbeLoadRuntimeStringByKey(L"fbe.hotkey.export.filter.html", L"HTML files (*.html)"));
 	const CString textFilterName(FbeLoadRuntimeStringByKey(L"fbe.hotkey.export.filter.text", L"Text files (*.txt)"));
-	std::vector<wchar_t> filter;
-	auto appendFilter = [&](const CString& name, LPCWSTR pattern) { filter.insert(filter.end(), name.GetString(), name.GetString() + name.GetLength()); filter.push_back(0); filter.insert(filter.end(), pattern, pattern + ::lstrlen(pattern)); filter.push_back(0); };
-	appendFilter(htmlFilterName, L"*.html"); appendFilter(textFilterName, L"*.txt"); filter.push_back(0);
-	CFileDialog dialog(FALSE, L"html", L"FBE-Next-Hotkeys.html", OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST, &filter[0], m_hWnd);
-	if(dialog.DoModal() != IDOK) return 0;
-	const bool html = dialog.m_ofn.nFilterIndex != 2;
-	CString path(dialog.m_szFileName); const int directorySeparator = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/')); const int extension = path.ReverseFind(L'.');
+	const COMDLG_FILTERSPEC filters[] = { {htmlFilterName, L"*.html"}, {textFilterName, L"*.txt"} };
+	ModernFileDialog::Request request;
+	request.save = true; request.pathMustExist = true;
+	request.customize = [](IFileDialogCustomize* custom) -> HRESULT {
+		CComQIPtr<IFileDialog> dialog(custom);
+		if(!dialog) return E_NOINTERFACE;
+		DWORD options = 0; const HRESULT hr = dialog->GetOptions(&options);
+		return FAILED(hr) ? hr : dialog->SetOptions(options & ~FOS_OVERWRITEPROMPT);
+	};
+	request.defaultExtension = L"html"; request.initialFileName = L"FBE-Next-Hotkeys.html";
+	request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
+	const auto result = ModernFileDialog::Show(m_hWnd, request);
+	if(result.outcome != ModernFileDialog::Outcome::Accepted || result.paths.empty()) return 0;
+	const bool html = result.filterIndex != 2;
+	CString path(result.paths.front().c_str());
+	const int directorySeparator = max(path.ReverseFind(L'\\'), path.ReverseFind(L'/'));
+	const int extension = path.ReverseFind(L'.');
 	if(extension > directorySeparator) path = path.Left(extension);
 	path += html ? L".html" : L".txt";
+	const bool replaceExisting = ::GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES;
+	if(replaceExisting)
+	{
+		CString prompt;
+		prompt.Format(FbeLoadRuntimeStringByKey(L"fbe.settings.file.replace", L"Replace the existing file?\n%s"), path.GetString());
+		if(U::MessageBox(m_hWnd, prompt, L"FictionBook Editor", MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) != IDYES) return 0;
+	}
 	const FbeSettings::Hotkeys::ExportData data(FbeSettings::Hotkeys::BuildExportData(_Settings.m_hotkey_groups));
 	const CString content = html ? FbeSettings::Hotkeys::BuildHtmlExport(data, _Settings.GetInterfaceLocaleName()) : FbeSettings::Hotkeys::BuildTextExport(data);
-	if(!FbeSettings::Hotkeys::WriteUtf8ExportFile(path, content))
+	if(!FbeSettings::Hotkeys::WriteUtf8ExportFile(path, content, replaceExisting))
 		U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.hotkey.export.error", L"Could not export hotkeys."), L"FictionBook Editor", MB_OK | MB_ICONERROR);
 	return 0;
 }

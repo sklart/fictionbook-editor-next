@@ -57,9 +57,7 @@ LRESULT CSettingsImagesPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CSettingsImagesPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
 {
-	if(!Validate()) return 0;
-	Commit();
-	return 0;
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
 }
 
 bool CSettingsImagesPage::Validate()
@@ -82,7 +80,9 @@ void CSettingsImagesPage::Commit()
 	_Settings.SetImageImportKeepSupported(m_imageImportKeepSupported.GetCheck() == BST_CHECKED);
 }
 
-LRESULT CSettingsImagesPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return 0; }
+LRESULT CSettingsImagesPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) {
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
+}
 bool CSettingsImagesPage::CancelChanges() { return true; }
 
 LRESULT CSettingsImagesPage::OnAskImage(WORD, WORD, HWND, BOOL&)

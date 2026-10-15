@@ -618,7 +618,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="settings\SettingsPaths.h" />
 	<ClInclude Include="settings\SettingsNormalization.h" />
 	<ClInclude Include="settings\SettingsDefaults.h" />
-	<ClInclude Include="settings\SettingsTypes.h" />
+	<ClInclude Include="settings\SettingsFileTransaction.h" />
+    <ClInclude Include="settings\SettingsTypes.h" />
 	<ClInclude Include="settings\SettingsStore.h" />
 	<ClInclude Include="settings\hotkeys\HotkeyStore.h" />
 	<ClInclude Include="settings\hotkeys\HotkeyDefaults.h" />

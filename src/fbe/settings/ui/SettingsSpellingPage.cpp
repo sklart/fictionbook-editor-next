@@ -40,8 +40,13 @@ LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 }
 void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enabled.GetCheck() == BST_CHECKED; m_highlight.EnableWindow(enabled); m_checkYoUsage.EnableWindow(enabled); m_dictionary.EnableWindow(enabled); GetDlgItem(IDC_DICTPATH).EnableWindow(enabled); }
 LRESULT CSettingsSpellingPage::OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&) { UpdateDependencies(); return 0; }
-LRESULT CSettingsSpellingPage::OnClickedOK(WORD, WORD, HWND, BOOL&) { if(Validate()) Commit(); return 0; }
-LRESULT CSettingsSpellingPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) { return CancelChanges() ? 0 : 1; }
+LRESULT CSettingsSpellingPage::OnClickedOK(WORD, WORD, HWND, BOOL&)
+{
+	return ForwardSettingsDialogCommand(m_hWnd, IDOK);
+}
+LRESULT CSettingsSpellingPage::OnClickedCancel(WORD, WORD, HWND, BOOL&) {
+	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
+}
 bool CSettingsSpellingPage::Validate()
 {
 	if(m_enabled.GetCheck() != BST_CHECKED)
@@ -62,13 +67,27 @@ bool CSettingsSpellingPage::Validate()
 	{
 		DictionaryError(m_hWnd, L"fbe.settings.spelling.path_is_directory", L"The selected custom dictionary path is a directory."); m_dictionary.SetFocus(); return false;
 	}
-	if(attributes & FILE_ATTRIBUTE_READONLY) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_only", L"The custom dictionary is read-only."); m_dictionary.SetFocus(); return false; }
 	HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(file == INVALID_HANDLE_VALUE) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read."); m_dictionary.SetFocus(); return false; }
 	::CloseHandle(file);
 	file = ::CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE) { DictionaryError(m_hWnd, L"fbe.settings.spelling.write_failed", L"The custom dictionary cannot be written."); m_dictionary.SetFocus(); return false; }
-	::CloseHandle(file);
+	if(file == INVALID_HANDLE_VALUE)
+		U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.read_only_warning", L"This dictionary can be used for checking, but new words cannot be saved to it."), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
+	else ::CloseHandle(file);
+	return true;
+}
+bool CSettingsSpellingPage::PrepareCommit(SettingsFileTransaction& files)
+{
+	if(m_enabled.GetCheck() != BST_CHECKED) return true;
+	CString storedPath; m_dictionary.GetWindowText(storedPath); storedPath.Trim();
+	if(storedPath.IsEmpty()) return true;
+	const CString path = U::ResolveUserDataFile(storedPath);
+	if(::GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES) return true;
+	const DWORD error = ::GetLastError();
+	if(error != ERROR_FILE_NOT_FOUND) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read."); return false; }
+	const CString temporary = SettingsFileTransaction::Temporary(path);
+	if(temporary.IsEmpty()) { DictionaryError(m_hWnd, L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space."); return false; }
+	files.Add(path, temporary);
 	return true;
 }
 void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); _Settings.SetCheckRussianYoUsage(m_checkYoUsage.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); path.Trim(); _Settings.SetCustomDict(path); }
