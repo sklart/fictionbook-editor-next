@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **263**.
+Карточек без автоматических замечаний: **266**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,32 +16,32 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **492**. Исполняемый код не изменён.
+Изменено карточек: **495**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 133
-- `generic_usage`: 438
+- `generic_summary`: 136
+- `generic_usage`: 441
 - `generic_warning`: 62
-- `inaccurate_description`: 750
+- `inaccurate_description`: 753
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_author`: 8
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 462
+- `incorrect_dependency`: 465
 - `incorrect_effect`: 9
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 445
+- `incorrect_scope`: 448
 - `incorrect_selection`: 51
 - `incorrect_setting`: 264
-- `incorrect_undo`: 437
+- `incorrect_undo`: 440
 - `incorrect_version`: 9
 - `missing_version`: 4
-- `missing_warning`: 76
+- `missing_warning`: 79
 - `uncertain_attribution`: 103
 
 Подтверждённые результаты:
@@ -49,24 +49,24 @@
 - `attributionClarified`: 104
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 320
+- `dependenciesVerified`: 323
 - `effectCorrected`: 7
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 436
-- `scopeClarified`: 422
+- `purposeClarified`: 439
+- `scopeClarified`: 425
 - `selectionClarified`: 11
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
 - `settingsCorrected`: 69
-- `undoDescriptionsClarified`: 429
-- `usageCorrected`: 438
+- `undoDescriptionsClarified`: 432
+- `usageCorrected`: 441
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 370
+- `warningsClarified`: 373
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **332**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **335**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -848,10 +848,13 @@
 - `19_Обработка форматирования/71_Сформатировать 'термины' жирным (по разделителю).js:804` — Между BeginUndoUnit и EndUndoUnit отсутствует try/finally; ошибка при обработке кандидата может оставить операцию незавершённой.
 - `21_Поиск и замена/04_Поиск (без замены) ошибок текста (регэкспы от wotti, Roxana, JonVic и др.).js:761` — После подъёма к BODY/P код сразу читает el2.nodeName без проверки el2 на null; при курсоре вне P и без подходящего родителя возможна ошибка.
 - `21_Поиск и замена/05_Поиск (без замены) ошибок текста (TaKir-Sclex).js:1091` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
+- `21_Поиск и замена/06_Поиск (без замены) ошибок текста (версия с исключениями) (TaKir-Sclex-stokber).js:1172` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
+- `21_Поиск и замена/07_Поиск (без замены) по набору регэкспов_Slovo.js:707` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
+- `21_Поиск и замена/08_Поиск (без замены) по набору регэкспов_Znak.js:612` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 565
+- `generic_usage`: 556
 - `inaccurate_description`: 39
 - `incorrect_undo`: 74
 - `requires_review`: 312
