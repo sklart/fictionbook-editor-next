@@ -78,6 +78,8 @@ LangString ErrNTCurrentVersion ${LANG_UKRAINIAN} "FictionBook Tools працює
 LangString ErrShellIntergation ${LANG_UKRAINIAN} "DLL-бібліотека інтеграції оболонки FB використовується і її неможливо перезаписати.$\r$\n\
 	Будь ласка, завершіть сеанс, після чого перезапустіть встановлення."
 LangString WarnModernPropertyHandlerInstall ${LANG_UKRAINIAN} "Не вдалося автоматично ввімкнути сучасні властивості .fb2 у Провіднику Windows. Основне встановлення FBE буде продовжено, а shell-інтеграцію можна буде ввімкнути пізніше вручну."
+LangString UacIpcInitializationFailed ${LANG_UKRAINIAN} "Не вдалося встановити захищений зв'язок із підвищеним екземпляром інсталятора. Встановлення буде зупинено. Код помилки:"
+LangString UnsafeShellPayloadLocation ${LANG_UKRAINIAN} "Не вдалося захистити каталог системної інтеграції. Встановлення буде зупинено без запуску адміністративних компонентів."
 LangString UacRetryInstaller ${LANG_UKRAINIAN} "Для встановлення для всіх користувачів або системної інтеграції потрібні права адміністратора. Повторити запит на підвищення прав?"
 LangString UacAbortInstaller ${LANG_UKRAINIAN} "Встановлення для всіх користувачів або системна інтеграція потребує прав адміністратора. Встановлення буде перервано."
 LangString UacLogonServiceInstaller ${LANG_UKRAINIAN} "Не вдалося запросити підвищення прав: служба входу в систему недоступна."

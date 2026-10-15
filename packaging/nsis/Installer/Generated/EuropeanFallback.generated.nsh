@@ -56,6 +56,8 @@ LangString ErrNTCurrentVersion ${LanguageId} "FictionBook Tools run only on Wind
 LangString ErrShellIntergation ${LanguageId} "FB shell intergation dll was in use and could not be overwritten.$\r$\n\
 	Please logout and logon again, and restart this installation."
 LangString WarnModernPropertyHandlerInstall ${LanguageId} "Could not enable modern .fb2 properties in Windows Explorer automatically. The main FBE installation will continue, and the shell integration can be enabled later manually."
+LangString UacIpcInitializationFailed ${LanguageId} "Secure communication with the elevated setup could not be initialized. Setup will stop. Error code:"
+LangString UnsafeShellPayloadLocation ${LanguageId} "The system integration directory cannot be secured. Setup will stop without running administrative helpers."
 LangString UacRetryInstaller ${LanguageId} "Administrator privileges are required to install for all users or complete system integration. Retry elevation?"
 LangString UacAbortInstaller ${LanguageId} "Installing for all users or system integration requires administrator privileges. Setup will be aborted."
 LangString UacLogonServiceInstaller ${LanguageId} "Could not request elevation because the logon service is unavailable."

@@ -38,7 +38,19 @@ Unicode true
 !define PRODUCT_SYSTEM_INTEGRATION_REGVAL "SystemIntegrationInstalled"
 !define FB2_PROPERTY_HANDLER_CLSID "{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}"
 !define FBE_SEQUENCE_SCHEMA_FILE "FBE.Sequence.propdesc"
-!define FBE_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor Next\Shell"
+!define FBE_SHELL_ROOT "$COMMONFILES\FictionBook Editor Next"
+!define FBE_SHELL_SHARED_DIR "${FBE_SHELL_ROOT}\Shell"
+!define FBE_INSTALLER_TOOLS_DIR "${FBE_SHELL_SHARED_DIR}\InstallerTools"
+!define FBE_PREVIOUS_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor Next\Shell"
+!ifndef FBE_SHELL_X86_SHA256
+!define FBE_SHELL_X86_SHA256 ""
+!endif
+!ifndef FBE_SHELL_X64_SHA256
+!define FBE_SHELL_X64_SHA256 ""
+!endif
+!ifndef FBE_SCHEMA_SHA256
+!define FBE_SCHEMA_SHA256 ""
+!endif
 !define FBE_LEGACY_SHELL_SHARED_DIR "$%ProgramData%\FictionBook Editor\Shell"
 !define FB2_INFOTIP_PROPERTIES "prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;System.Size"
 !define FB2_TILEINFO_PROPERTIES "prop:System.Author;System.Title"
@@ -212,6 +224,87 @@ Var CommandLineCurrentUser
 Var CommandLineAllUsers
 Var CommandLinePortable
 
+!macro FBE_RequireOrdinaryPath path
+  Push $9
+  System::Call 'kernel32::GetFileAttributesW(w "${path}") i .r9'
+  ${If} $9 != -1
+    IntOp $9 $9 & 0x400
+    ${If} $9 != 0
+      MessageBox MB_OK|MB_ICONSTOP "$(UnsafeShellPayloadLocation)"
+      SetErrorLevel 5
+      Quit
+    ${EndIf}
+  ${EndIf}
+  Pop $9
+!macroend
+
+Function AbortUnsafeShellPayload
+  MessageBox MB_OK|MB_ICONSTOP "$(UnsafeShellPayloadLocation)"
+  SetErrorLevel 5
+  Quit
+FunctionEnd
+
+!macro FBE_ResetPayloadAcl path suffix
+  Push $8
+  Push $9
+  IfFileExists "${path}" 0 fbe_acl_done_${suffix}
+  nsExec::ExecToStack '"$SYSDIR\icacls.exe" "${path}" /reset'
+  Pop $8
+  Pop $9
+  StrCmp $8 "0" fbe_acl_done_${suffix}
+  Call AbortUnsafeShellPayload
+fbe_acl_done_${suffix}:
+  Pop $9
+  Pop $8
+!macroend
+
+!macro FBE_DeleteOldPayload path suffix
+  Delete "${path}"
+  IfFileExists "${path}" 0 fbe_deleted_${suffix}
+  Call AbortUnsafeShellPayload
+fbe_deleted_${suffix}:
+!macroend
+
+Function EnsureProtectedShellDirectory
+  Push $8
+  Push $9
+  ; Common Files has an administrator-owned parent. Reset inherited ACLs before
+  ; extracting package resources, and reject links at every fixed path segment.
+  !insertmacro FBE_RequireOrdinaryPath "$PROGRAMFILES32"
+  !insertmacro FBE_RequireOrdinaryPath "$COMMONFILES"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_ROOT}"
+  ClearErrors
+  CreateDirectory "${FBE_SHELL_ROOT}"
+  IfErrors shell_directory_failed
+  nsExec::ExecToStack '"$SYSDIR\icacls.exe" "${FBE_SHELL_ROOT}" /reset'
+  Pop $8
+  Pop $9
+  StrCmp $8 "0" 0 shell_directory_failed
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}"
+  ClearErrors
+  CreateDirectory "${FBE_SHELL_SHARED_DIR}"
+  IfErrors shell_directory_failed
+  nsExec::ExecToStack '"$SYSDIR\icacls.exe" "${FBE_SHELL_SHARED_DIR}" /reset'
+  Pop $8
+  Pop $9
+  StrCmp $8 "0" 0 shell_directory_failed
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}"
+  ClearErrors
+  CreateDirectory "${FBE_INSTALLER_TOOLS_DIR}"
+  IfErrors shell_directory_failed
+  nsExec::ExecToStack '"$SYSDIR\icacls.exe" "${FBE_INSTALLER_TOOLS_DIR}" /reset'
+  Pop $8
+  Pop $9
+  StrCmp $8 "0" 0 shell_directory_failed
+  Pop $9
+  Pop $8
+  Return
+shell_directory_failed:
+  MessageBox MB_OK|MB_ICONSTOP "$(UnsafeShellPayloadLocation)"
+  SetErrorLevel 5
+  Quit
+FunctionEnd
+
 !macro FBE_RestoreElevationVar variable
   ClearErrors
   !insertmacro UAC_AsUser_GetGlobalVar ${variable}
@@ -233,7 +326,13 @@ Var CommandLinePortable
 !macroend
 
 Function .onInit
-  !insertmacro UAC_PageElevation_OnInit
+  ClearErrors
+  UAC::_ 5
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "$(UacIpcInitializationFailed) $0"
+    SetErrorLevel 31
+    Quit
+  ${EndIf}
   ${If} ${UAC_IsInnerInstance}
   ${AndIfNot} ${UAC_IsAdmin}
     SetErrorLevel 0x666666
@@ -605,7 +704,13 @@ FunctionEnd
 
 
 Function un.onInit
-  !insertmacro UAC_PageElevation_OnInit
+  ClearErrors
+  UAC::_ 5
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "$(UacIpcInitializationFailed) $0"
+    SetErrorLevel 31
+    Quit
+  ${EndIf}
   ${If} ${UAC_IsInnerInstance}
   ${AndIfNot} ${UAC_IsAdmin}
     SetErrorLevel 0x666666
@@ -740,15 +845,21 @@ Function RegisterFbePropertySchema
   StrCmp $0 "Admin" +2
   Goto rfps_skip_no_admin
 
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_ROOT}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
+
   IfFileExists "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" 0 rfps_done
-  IfFileExists "$INSTDIR\InstallerTools\register-sequence-property-schema.ps1" 0 rfps_no_helper
+  IfFileExists "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1" 0 rfps_no_helper
 
   Delete "$TEMP\FBE-register-schema-status.ini"
 
   ${If} ${RunningX64}
-    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\register-sequence-property-schema.ps1" -SchemaPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" -StatusFilePath "$TEMP\FBE-register-schema-status.ini" -NoRestartExplorer' $0
+    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1" -SchemaPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" -ExpectedSchemaSha256 "${FBE_SCHEMA_SHA256}" -StatusFilePath "$TEMP\FBE-register-schema-status.ini" -NoRestartExplorer' $0
   ${Else}
-    ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\register-sequence-property-schema.ps1" -SchemaPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" -StatusFilePath "$TEMP\FBE-register-schema-status.ini" -NoRestartExplorer' $0
+    ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1" -SchemaPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" -ExpectedSchemaSha256 "${FBE_SCHEMA_SHA256}" -StatusFilePath "$TEMP\FBE-register-schema-status.ini" -NoRestartExplorer' $0
   ${EndIf}
 
   ${If} $0 != 0
@@ -779,6 +890,7 @@ rfps_skip_no_admin:
 FunctionEnd
 
 Function un.UnregisterFbePropertySchema
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
   IfFileExists "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" 0 done
 
   ClearErrors
@@ -818,12 +930,19 @@ Function RegisterModernPropertyHandler
   StrCmp $0 "Admin" +2
   Goto rmph_skip_no_admin
 
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_ROOT}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+
   ${If} ${RunningX64}
     IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" 0 rmph_done
-    IfFileExists "$INSTDIR\InstallerTools\register-modern-property-handler.ps1" 0 rmph_no_helper
+    IfFileExists "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1" 0 rmph_no_helper
 
     Delete "$TEMP\FBE-register-shell-status.ini"
-    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\register-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -PropertyHandlerClsid "${FB2_PROPERTY_HANDLER_CLSID}" -StatusFilePath "$TEMP\FBE-register-shell-status.ini"' $0
+    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" -ExpectedDllSha256 "${FBE_SHELL_X64_SHA256}" -Platform x64 -PropertyHandlerClsid "${FB2_PROPERTY_HANDLER_CLSID}" -StatusFilePath "$TEMP\FBE-register-shell-status.ini"' $0
     ${If} $0 != 0
       ReadINIStr $1 "$TEMP\FBE-register-shell-status.ini" "Shell" "Step"
       ReadINIStr $2 "$TEMP\FBE-register-shell-status.ini" "Shell" "Code"
@@ -848,10 +967,10 @@ Function RegisterModernPropertyHandler
   ${EndIf}
 
   IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell.dll" 0 rmph_done
-  IfFileExists "$INSTDIR\InstallerTools\register-modern-property-handler.ps1" 0 rmph_no_helper
+  IfFileExists "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1" 0 rmph_no_helper
 
   Delete "$TEMP\FBE-register-shell-status.ini"
-  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\register-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -PropertyHandlerClsid "${FB2_PROPERTY_HANDLER_CLSID}" -StatusFilePath "$TEMP\FBE-register-shell-status.ini"' $0
+  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll" -ExpectedDllSha256 "${FBE_SHELL_X86_SHA256}" -Platform Win32 -PropertyHandlerClsid "${FB2_PROPERTY_HANDLER_CLSID}" -StatusFilePath "$TEMP\FBE-register-shell-status.ini"' $0
   ${If} $0 != 0
     ReadINIStr $1 "$TEMP\FBE-register-shell-status.ini" "Shell" "Step"
     ReadINIStr $2 "$TEMP\FBE-register-shell-status.ini" "Shell" "Code"
@@ -884,12 +1003,15 @@ rmph_skip_no_admin:
 FunctionEnd
 
 Function un.UnregisterModernPropertyHandler
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_ROOT}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1"
   ${If} ${RunningX64}
-    IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" 0 remove_key_x64
-    IfFileExists "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" 0 remove_key_x64
+    IfFileExists "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" 0 remove_key_x64
 
     Delete "$TEMP\FBE-unregister-shell-status.ini"
-    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -StatusFilePath "$TEMP\FBE-unregister-shell-status.ini"' $0
+    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -StatusFilePath "$TEMP\FBE-unregister-shell-status.ini"' $0
     ${If} $0 != 0
       DetailPrint "Не удалось снять регистрацию FBShell64.dll helper-скриптом, код $0."
     ${EndIf}
@@ -898,11 +1020,10 @@ remove_key_x64:
     Return
   ${EndIf}
 
-  IfFileExists "${FBE_SHELL_SHARED_DIR}\FBShell.dll" 0 remove_key_win32
-  IfFileExists "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" 0 remove_key_win32
+  IfFileExists "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" 0 remove_key_win32
 
   Delete "$TEMP\FBE-unregister-shell-status.ini"
-  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -StatusFilePath "$TEMP\FBE-unregister-shell-status.ini"' $0
+  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" -DllPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -StatusFilePath "$TEMP\FBE-unregister-shell-status.ini"' $0
   ${If} $0 != 0
     DetailPrint "Не удалось снять регистрацию FBShell.dll helper-скриптом, код $0."
   ${EndIf}
@@ -911,13 +1032,42 @@ remove_key_win32:
 FunctionEnd
 
 Function MigrateLegacySharedShell
+  ; The preceding FBE Next release stored the handler in ProgramData. Remove
+  ; only registrations still owned by that exact DLL, without loading it.
+  System::Call 'kernel32::GetFileAttributesW(w "${FBE_PREVIOUS_SHELL_SHARED_DIR}") i .r0'
+  IntOp $0 $0 & 0x400
+  StrCmp $0 "0" 0 previous_next_done
+  ${If} ${RunningX64}
+    IfFileExists "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell64.dll" 0 previous_next_done
+    Delete "$TEMP\FBE-migrate-next-shell-status.ini"
+    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" -DllPath "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -StatusFilePath "$TEMP\FBE-migrate-next-shell-status.ini"' $0
+    ReadINIStr $1 "$TEMP\FBE-migrate-next-shell-status.ini" "Shell" "Result"
+    StrCmp $1 "ok" 0 previous_next_done
+    Delete "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell64.dll"
+    Delete "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell.dll"
+    Delete "${FBE_PREVIOUS_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
+    RMDir "${FBE_PREVIOUS_SHELL_SHARED_DIR}"
+    Goto previous_next_done
+  ${EndIf}
+  IfFileExists "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell.dll" 0 previous_next_done
+  Delete "$TEMP\FBE-migrate-next-shell-status.ini"
+  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" -DllPath "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -StatusFilePath "$TEMP\FBE-migrate-next-shell-status.ini"' $0
+  ReadINIStr $1 "$TEMP\FBE-migrate-next-shell-status.ini" "Shell" "Result"
+  StrCmp $1 "ok" 0 previous_next_done
+  Delete "${FBE_PREVIOUS_SHELL_SHARED_DIR}\FBShell.dll"
+  Delete "${FBE_PREVIOUS_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
+  RMDir "${FBE_PREVIOUS_SHELL_SHARED_DIR}"
+previous_next_done:
   ; Builds before the Next namespace used the old ProgramData directory.  The
   ; unregister helper first proves that all relevant registry values still
   ; reference this legacy DLL; a foreign or newer registration is left alone.
+  System::Call 'kernel32::GetFileAttributesW(w "${FBE_LEGACY_SHELL_SHARED_DIR}") i .r0'
+  IntOp $0 $0 & 0x400
+  StrCmp $0 "0" 0 migrate_legacy_done
   ${If} ${RunningX64}
     IfFileExists "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll" 0 migrate_legacy_win32
     Delete "$TEMP\FBE-migrate-legacy-shell-status.ini"
-    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" -DllPath "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -StatusFilePath "$TEMP\FBE-migrate-legacy-shell-status.ini"' $0
+    ExecWait '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" -DllPath "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll" -Platform x64 -StatusFilePath "$TEMP\FBE-migrate-legacy-shell-status.ini"' $0
     ReadINIStr $1 "$TEMP\FBE-migrate-legacy-shell-status.ini" "Shell" "Result"
     StrCmp $1 "ok" 0 migrate_legacy_done
     Delete "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell64.dll"
@@ -929,7 +1079,7 @@ Function MigrateLegacySharedShell
 migrate_legacy_win32:
   IfFileExists "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll" 0 migrate_legacy_done
   Delete "$TEMP\FBE-migrate-legacy-shell-status.ini"
-  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\InstallerTools\unregister-modern-property-handler.ps1" -DllPath "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -StatusFilePath "$TEMP\FBE-migrate-legacy-shell-status.ini"' $0
+  ExecWait '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" -DllPath "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll" -Platform Win32 -StatusFilePath "$TEMP\FBE-migrate-legacy-shell-status.ini"' $0
   ReadINIStr $1 "$TEMP\FBE-migrate-legacy-shell-status.ini" "Shell" "Result"
   StrCmp $1 "ok" 0 migrate_legacy_done
   Delete "${FBE_LEGACY_SHELL_SHARED_DIR}\FBShell.dll"
@@ -1304,6 +1454,20 @@ Section /o $(FB2_Validate_Command) FB2_Validate_Command_id
 SectionEnd
 
 Section /o $(FB2_Explorer_Properties) FB2_Explorer_Properties_id
+  Call EnsureProtectedShellDirectory
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\FBShell.dll.new"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\FBShell64.dll.new"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1"
+  !insertmacro FBE_RequireOrdinaryPath "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1"
+  !insertmacro FBE_ResetPayloadAcl "${FBE_SHELL_SHARED_DIR}\FBShell.dll" dll32
+  !insertmacro FBE_ResetPayloadAcl "${FBE_SHELL_SHARED_DIR}\FBShell64.dll" dll64
+  !insertmacro FBE_ResetPayloadAcl "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}" schema
+  !insertmacro FBE_DeleteOldPayload "${FBE_SHELL_SHARED_DIR}\FBShell.dll.new" newdll32
+  !insertmacro FBE_DeleteOldPayload "${FBE_SHELL_SHARED_DIR}\FBShell64.dll.new" newdll64
   ; Создаём FB2 ProgID только для shell-строк метаданных; .fb2 здесь не ассоциируем.
   WriteRegStr SHCTX "Software\Classes\FictionBook.2" "" "FictionBook"
   WriteRegStr SHCTX "Software\Classes\FictionBook.2\CurVer" "" "FictionBook.2"
@@ -1353,10 +1517,13 @@ fbshell64_install:
     SetRebootFlag true
 fbshell64_done:
   File /nonfatal "${INPUTDIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
-  SetOutPath "$INSTDIR\InstallerTools"
-  File /nonfatal "${INPUTDIR}\InstallerTools\register-sequence-property-schema.ps1"
-  File /nonfatal "${INPUTDIR}\InstallerTools\register-modern-property-handler.ps1"
-  File /nonfatal "${INPUTDIR}\InstallerTools\unregister-modern-property-handler.ps1"
+  SetOutPath "${FBE_INSTALLER_TOOLS_DIR}"
+  !insertmacro FBE_DeleteOldPayload "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1" schemahelper
+  !insertmacro FBE_DeleteOldPayload "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1" registerhelper
+  !insertmacro FBE_DeleteOldPayload "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1" unregisterhelper
+  File "${INPUTDIR}\InstallerTools\register-sequence-property-schema.ps1"
+  File "${INPUTDIR}\InstallerTools\register-modern-property-handler.ps1"
+  File "${INPUTDIR}\InstallerTools\unregister-modern-property-handler.ps1"
   SetOutPath "$INSTDIR"
   Call MigrateLegacySharedShell
   Call RegisterFbePropertySchema
@@ -1740,7 +1907,12 @@ Section Uninstall
     Delete "${FBE_SHELL_SHARED_DIR}\FBShell.dll"
     Delete "${FBE_SHELL_SHARED_DIR}\FBShell64.dll"
     Delete "${FBE_SHELL_SHARED_DIR}\${FBE_SEQUENCE_SCHEMA_FILE}"
+    Delete "${FBE_INSTALLER_TOOLS_DIR}\register-sequence-property-schema.ps1"
+    Delete "${FBE_INSTALLER_TOOLS_DIR}\register-modern-property-handler.ps1"
+    Delete "${FBE_INSTALLER_TOOLS_DIR}\unregister-modern-property-handler.ps1"
+    RMDir "${FBE_INSTALLER_TOOLS_DIR}"
     RMDir "${FBE_SHELL_SHARED_DIR}"
+    RMDir "${FBE_SHELL_ROOT}"
   ${EndIf}
 
   ; Remove only associations and verbs that still belong to this instance.

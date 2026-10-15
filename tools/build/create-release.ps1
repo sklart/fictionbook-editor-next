@@ -378,12 +378,20 @@ Compress-Archive -Path (Join-Path $symbolsDir "*") -DestinationPath $symbolsZip 
 
     Push-Location $installerDir
     try {
+        $shellHashes = @{
+            FBE_SHELL_X86_SHA256 = (Get-FileHash -LiteralPath (Join-Path $installerInputDir 'FBShell.dll') -Algorithm SHA256).Hash
+            FBE_SHELL_X64_SHA256 = (Get-FileHash -LiteralPath (Join-Path $installerInputDir 'FBShell64.dll') -Algorithm SHA256).Hash
+            FBE_SCHEMA_SHA256 = (Get-FileHash -LiteralPath (Join-Path $installerInputDir 'FBE.Sequence.propdesc') -Algorithm SHA256).Hash
+        }
         $makensisArguments = @(
             '/X!addincludedir ..\NSIS',
             '/X!addplugindir /x86-unicode ..\NSIS',
             ('/DINPUTDIR=' + $installerInputDir),
             ('/DOUTPUTFILE=' + $setupArtifact)
         )
+        foreach ($name in @('FBE_SHELL_X86_SHA256', 'FBE_SHELL_X64_SHA256', 'FBE_SCHEMA_SHA256')) {
+            $makensisArguments += ('/D' + $name + '=' + $shellHashes[$name])
+        }
         $makensisArguments += 'MakeInstaller.nsi'
         & $makensis @makensisArguments
         if ($LASTEXITCODE -ne 0) {

@@ -75,42 +75,12 @@ function Test-IsAdministrator {
     return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Get-RegSvr32Path {
-    if ($Platform -eq "x64") {
-        if ([Environment]::Is64BitProcess) {
-            return "$env:WINDIR\System32\regsvr32.exe"
-        }
-
-        return "$env:WINDIR\sysnative\regsvr32.exe"
-    }
-
-    return "$env:WINDIR\SysWOW64\regsvr32.exe"
-}
-
 function Get-RegistryView {
     if ($Platform -eq "x64") {
         return [Microsoft.Win32.RegistryView]::Registry64
     }
 
     return [Microsoft.Win32.RegistryView]::Registry32
-}
-
-function Invoke-RegSvr32 {
-    param(
-        [Parameter(Mandatory)]
-        [string]$RegSvr32Path,
-        [Parameter(Mandatory)]
-        [string[]]$Arguments,
-        [Parameter(Mandatory)]
-        [string]$WorkingDirectory
-    )
-
-    $process = Start-Process -FilePath $RegSvr32Path -ArgumentList $Arguments -WorkingDirectory $workingDirectory -Wait -PassThru
-    if ($null -eq $process) {
-        return -1
-    }
-
-    return [int]$process.ExitCode
 }
 
 function Get-ComClassRegistryPath {
@@ -349,8 +319,6 @@ try {
 
     $propertyHandlerClsid = "{D4A47F38-1E5A-4F0D-B1C9-6D2A4A6B1F42}"
     $thumbnailProviderClsid = "{4F99D1F0-5D76-4B9C-9D3D-9E6B8B4C7E31}"
-    $regsvr32ExitCode = 0
-    $regsvr32FailureMessage = ""
 
     # A shared CLSID or extension may legitimately be replaced by a newer
     # instance.  Never let an older uninstaller erase that instance's shell
@@ -361,19 +329,8 @@ try {
         return
     }
 
-    if (Test-Path -LiteralPath $DllPath -PathType Leaf) {
-        $regsvr32 = Get-RegSvr32Path
-        $workingDirectory = Split-Path -Parent $DllPath
-        Write-Host "Unregistering modern property handler via regsvr32:"
-        Write-Host "  $regsvr32"
-        Write-Host "  $DllPath"
-        $regsvr32ExitCode = Invoke-RegSvr32 -RegSvr32Path $regsvr32 -Arguments @("/u", "/s", ('"{0}"' -f $DllPath)) -WorkingDirectory $workingDirectory
-        if ($regsvr32ExitCode -ne 0) {
-            $regsvr32FailureMessage = "regsvr32 /u failed. FilePath=$regsvr32; DllPath=$DllPath; ExitCode=$regsvr32ExitCode; Is64BitProcess=$([Environment]::Is64BitProcess); WorkingDirectory=$workingDirectory"
-            Write-Host "regsvr32 /u returned a non-zero exit code; finishing cleanup via direct registry removal."
-        }
-    }
-
+    # Registry ownership has been checked above. Removing those owned keys
+    # directly avoids loading a DLL from an older, possibly writable path.
     Remove-PropertyHandlerRegistration
     Remove-ThumbnailProviderRegistration
     Remove-ComClassRegistration -Clsid $propertyHandlerClsid
@@ -383,11 +340,6 @@ try {
         (Test-ThumbnailProviderRegistrationExists) -or
         (Test-ComClassRegistrationExists -Clsid $propertyHandlerClsid) -or
         (Test-ComClassRegistrationExists -Clsid $thumbnailProviderClsid)) {
-        if ($regsvr32ExitCode -ne 0 -and -not [string]::IsNullOrWhiteSpace($regsvr32FailureMessage)) {
-            Write-Status -Result "error" -Step "regsvr32" -Code ("EXIT_{0}" -f $regsvr32ExitCode) -Message $regsvr32FailureMessage
-            throw "regsvr32 /u failed with exit code $regsvr32ExitCode, and registry cleanup did not complete."
-        }
-
         Write-Status -Result "error" -Step "cleanup" -Code "REGISTRY_NOT_CLEANED" -Message "Modern shell registry entries are still present after cleanup."
         throw "Modern shell registry entries are still present after cleanup."
     }

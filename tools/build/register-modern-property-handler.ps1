@@ -3,6 +3,8 @@ param(
     [Parameter(Mandatory)]
     [string]$DllPath,
 
+    [string]$ExpectedDllSha256 = "",
+
     [ValidateSet("Win32", "x64")]
     [string]$Platform = "x64",
 
@@ -14,6 +16,21 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+function Assert-PackageHash {
+    param([string]$Path, [string]$Expected)
+    if ($Expected -notmatch '^[0-9a-fA-F]{64}$') { throw 'Missing package SHA-256 for shell DLL.' }
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $actual = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
+        finally { $sha.Dispose() }
+    }
+    finally { $stream.Dispose() }
+    if (-not [string]::Equals($actual, $Expected, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Shell DLL does not match the trusted installer package.'
+    }
+}
 
 function Write-Status {
     param(
@@ -292,14 +309,18 @@ function Ensure-ThumbnailProviderComRegistration {
 }
 
 try {
-    if (-not (Test-IsAdministrator)) {
-        Write-Status -Result "error" -Step "Test-IsAdministrator" -Code "ACCESS_DENIED" -Message "Administrator rights are required."
-        throw "Administrator rights are required to register the modern property handler."
-    }
-
     if (-not (Test-Path -LiteralPath $DllPath -PathType Leaf)) {
         Write-Status -Result "error" -Step "Test-Path" -Code "FILE_NOT_FOUND" -Message "Property handler DLL was not found."
         throw "Property handler DLL was not found: $DllPath"
+    }
+
+    if ($PSBoundParameters.ContainsKey('ExpectedDllSha256')) {
+        Assert-PackageHash -Path $DllPath -Expected $ExpectedDllSha256
+    }
+
+    if (-not (Test-IsAdministrator)) {
+        Write-Status -Result "error" -Step "Test-IsAdministrator" -Code "ACCESS_DENIED" -Message "Administrator rights are required."
+        throw "Administrator rights are required to register the modern property handler."
     }
 
     $regsvr32 = Get-RegSvr32Path

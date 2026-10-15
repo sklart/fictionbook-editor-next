@@ -352,6 +352,7 @@ UINT_PTR __cdecl NSISPluginCallback(enum NSPIM Event)
 		if (G().pShared) UnmapViewOfFile(G().pShared);
 		if (G().hSharedMap) CloseHandle(G().hSharedMap);
 		if (G().hOuterProcess) CloseHandle(G().hOuterProcess);
+		if (G().hOuterIPCThread) CloseHandle(G().hOuterIPCThread);
 		TRACEF("NSISPluginCallback:NSPIM_UNLOAD completed cleanup, ready to be unloaded...\n");
 		break;
 	}
@@ -385,34 +386,47 @@ BOOL CALLBACK ProcessThreadMessages(HWND hwndDlg=NULL,DWORD*pExitCode=NULL)
 
 bool Inner_DoOpInOuter(UINT opid,UINT Direction) 
 {
-	if (!G().pShared || !G().PerformOp || !G().CompletedOp || !G().hOuterProcess) return false;
+	if (G().ipcError || !G().pShared || !G().PerformOp || !G().CompletedOp ||
+		!G().hOuterProcess || !G().hOuterIPCThread) return false;
 	OP_HDR*pOP=(OP_HDR*)G().pShared;
 	pOP->Op=opid;
 	pOP->Direction=Direction;
 //	TRACEF("DoOp %d %d PID=%u\n",opid,Direction,GetCurrentProcessId());
 
-	if (SetEvent(G().PerformOp)) 
+	if (ResetEvent(G().CompletedOp) && SetEvent(G().PerformOp))
 	{
 		const DWORD started=GetTickCount();
+		// A code segment may perform a lengthy installation; register exchange is bounded.
+		const DWORD deadline=opid==OPID_CALLCODESEGMENT ? 30*60*1000 : 30*1000;
 		for(DWORD w;;) 
 		{
 			const DWORD elapsed=GetTickCount()-started;
-			if (elapsed>=120000) return false;
-			HANDLE waits[]={G().CompletedOp,G().hOuterProcess};
-			w=MsgWaitForMultipleObjects(ARRAYSIZE(waits),waits,false,120000-elapsed,QS_ALLINPUT);
+			if (elapsed>=deadline) { G().ipcError=WAIT_TIMEOUT; return false; }
+			HANDLE waits[]={G().CompletedOp,G().hOuterProcess,G().hOuterIPCThread};
+			w=MsgWaitForMultipleObjects(ARRAYSIZE(waits),waits,false,deadline-elapsed,QS_ALLINPUT);
 			switch(w) 
 			{
 			case WAIT_OBJECT_0:
-				return pOP->Op==opid;
+				if (pOP->Op==opid) return true;
+				G().ipcError=ERROR_INVALID_DATA;
+				return false;
+			case WAIT_OBJECT_0+1:
 			case WAIT_OBJECT_0+2:
-				if (ProcessThreadMessages()) return false;
+				G().ipcError=ERROR_BROKEN_PIPE;
+				return false;
+			case WAIT_OBJECT_0+3:
+				if (ProcessThreadMessages()) { G().ipcError=ERROR_CANCELLED; return false; }
 				continue;
 			default:
 				TRACEF("DoOp: outer exited, timed out, or wait failed (%u)\n",w);
+				G().ipcError=w==WAIT_TIMEOUT ? WAIT_TIMEOUT : GetLastError();
+				if (!G().ipcError) G().ipcError=ERROR_GEN_FAILURE;
 				return false;
 			}
 		}
 	}
+	G().ipcError=GetLastError();
+	if (!G().ipcError) G().ipcError=ERROR_GEN_FAILURE;
 	ASSERT(!"DoOp failed!");
 	return false;
 }
@@ -498,6 +512,19 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 				HANDLE* shared=(HANDLE*)G().pShared;
 				shared[0]=destEvents[0];
 				shared[1]=destEvents[1];
+				HANDLE destThread=NULL;
+				if (!DuplicateHandle(hThisProcess,OG().hOuterThread,hTargetProcess,&destThread,
+					SYNCHRONIZE,false,0)) {
+					for (int j=0;j<ARRAYSIZE(destEvents);++j)
+						CloseRemoteHandle(hTargetProcess,destEvents[j]);
+					CloseRemoteHandle(hTargetProcess,destMap);
+					return NULL;
+				}
+				WINDOW_SWITCH_STATE* state=(WINDOW_SWITCH_STATE*)
+					(G().pShared+G().SharedMapBytes-sizeof(WINDOW_SWITCH_STATE));
+				state->outerMainWindow=G().hwndNSIS;
+				state->pageJump=G().JumpPageOffset;
+				state->outerThreadHandle=destThread;
 				TRACEF("OuterWndProc:OWM_INITINNER duped handles, returning shared handle %X\n",destMap);
 				return (LRESULT)destMap;
 			}
@@ -511,7 +538,6 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 		return OG().expectedInnerPid && !OG().hInnerProcess ? 0x666 : false;
 	case OWM_PERFORMWINDOWSWITCH:
 		TRACEF("OuterWndProc:OWM_PERFORMWINDOWSWITCH %X:%X\n",wp,lp);
-#if 1
 		if (IsWindow((HWND)wp) && IsWindow((HWND)lp))
 		{
 			HWND hOuterNSIS=(HWND)wp;
@@ -521,12 +547,12 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 			GetWindowThreadProcessId(hInnerNSIS,&innerPid);
 			if (outerPid != GetCurrentProcessId() || !OG().expectedInnerPid ||
 				innerPid != OG().expectedInnerPid) return ERROR_INVALID_WINDOW_HANDLE;
-			ShowInstallerWindow(hInnerNSIS);
-			ShowWindow(hOuterNSIS,SW_HIDE);
+			if (hOuterNSIS!=G().hwndNSIS ||
+				!PostMessage(hOuterNSIS,OMWM_HIDEAFTERSWITCH,(WPARAM)hInnerNSIS,0))
+				return ERROR_INVALID_WINDOW_HANDLE;
 		}
 		else return ERROR_INVALID_WINDOW_HANDLE;
 		return NO_ERROR;
-#endif
 
 #ifdef FEAT_AUTOPAGEJUMP
 	case OWM_GETOUTERSTATE:
@@ -663,7 +689,8 @@ DWORD CALLBACK OuterWndThread(LPVOID param)
 FORCEINLINE DWORD Outer_InitShared(UINT NSIScchStr) 
 {
 	if (!NSIScchStr || NSIScchStr>65536) return ERROR_INVALID_PARAMETER;
-	UINT ec,cbMap=sizeof(OP_SYNCREG) + ((sizeof(NSISCH)*NSIScchStr)*10);
+	UINT ec,cbMap=sizeof(OP_SYNCREG) + ((sizeof(NSISCH)*NSIScchStr)*10) +
+		sizeof(WINDOW_SWITCH_STATE);
 	G().SharedMapBytes=cbMap;
 	if (true
 		&& (G().PerformOp=CreateEvent(/*&sa*/NULL,false,false,NULL))
@@ -701,14 +728,20 @@ DWORD Inner_InitSharedData()
 	if (!G().hOuterProcess) return GetLastError();
 	DWORD ec=NO_ERROR;
 	DWORD_PTR reply=0;
+	DWORD flags=0;
 	HANDLE remoteSelf=NULL;
+	WINDOW_SWITCH_STATE* state=NULL;
 	if (!SameExecutableImage(G().hOuterProcess)) { ec=ERROR_ACCESS_DENIED; goto failed; }
 	{
 		const DWORD started=GetTickCount();
 		for (;;) {
-			if (WaitForSingleObject(G().hOuterProcess,0)==WAIT_OBJECT_0) { ec=ERROR_BROKEN_PIPE; goto failed; }
+			DWORD peer=WaitForSingleObject(G().hOuterProcess,0);
+			if (peer==WAIT_OBJECT_0) { ec=ERROR_BROKEN_PIPE; goto failed; }
+			if (peer==WAIT_FAILED) { ec=GetLastError(); goto failed; }
 			if (!SendMessageTimeout(G().hwndOuter,OWM_ISREADYFORINIT,0,0,
-				SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&reply)) { ec=GetLastError(); goto failed; }
+				SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&reply)) {
+				ec=GetLastError(); if (!ec) ec=WAIT_TIMEOUT; goto failed;
+			}
 			if (reply==0x666) break;
 			if (GetTickCount()-started>=10000) { ec=WAIT_TIMEOUT; goto failed; }
 			Sleep(50);
@@ -739,17 +772,31 @@ DWORD Inner_InitSharedData()
 	G().hSharedMap=(HANDLE)reply;
 	G().pShared=(BYTE*)MapViewOfFile(G().hSharedMap,FILE_MAP_ALL_ACCESS,0,0,0);
 	if (!G().pShared) { ec=GetLastError(); goto failed; }
-	G().SharedMapBytes=sizeof(OP_SYNCREG)+sizeof(NSISCH)*G().NSIScchStr*10;
+	G().SharedMapBytes=sizeof(OP_SYNCREG)+sizeof(NSISCH)*G().NSIScchStr*10+
+		sizeof(WINDOW_SWITCH_STATE);
 	G().PerformOp=((HANDLE*)G().pShared)[0];
 	G().CompletedOp=((HANDLE*)G().pShared)[1];
-	if (!G().PerformOp || !G().CompletedOp) { ec=ERROR_INVALID_HANDLE; goto failed; }
+	state=(WINDOW_SWITCH_STATE*)
+		(G().pShared+G().SharedMapBytes-sizeof(WINDOW_SWITCH_STATE));
+	G().hOuterIPCThread=state->outerThreadHandle;
+	if (!G().PerformOp || !G().CompletedOp || !G().hOuterIPCThread) {
+		ec=ERROR_INVALID_HANDLE; goto failed;
+	}
+	if (!GetHandleInformation(G().PerformOp,&flags) ||
+		!GetHandleInformation(G().CompletedOp,&flags) ||
+		!GetHandleInformation(G().hOuterIPCThread,&flags)) {
+		ec=ERROR_INVALID_HANDLE; goto failed;
+	}
 	TRACEF("Inner_InitSharedData: IPC ready\n");
 	return NO_ERROR;
 failed:
 	TRACEF("Inner_InitSharedData failed: %u\n",ec);
+	if (G().PerformOp) { CloseHandle(G().PerformOp); G().PerformOp=NULL; }
+	if (G().CompletedOp) { CloseHandle(G().CompletedOp); G().CompletedOp=NULL; }
 	if (G().pShared) { UnmapViewOfFile(G().pShared); G().pShared=NULL; }
 	if (G().hSharedMap) { CloseHandle(G().hSharedMap); G().hSharedMap=NULL; }
 	if (G().hOuterProcess) { CloseHandle(G().hOuterProcess); G().hOuterProcess=NULL; }
+	if (G().hOuterIPCThread) { CloseHandle(G().hOuterIPCThread); G().hOuterIPCThread=NULL; }
 	return ec;
 }
 
@@ -763,6 +810,15 @@ LRESULT CALLBACK OuterMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 		G().JumpPageOffset += (WORD) wp;
 		TRACEF("WM_NOTIFY_OUTER_NEXT: now=%d change=%d\n",G().JumpPageOffset,wp);
 		break;
+	case OMWM_HIDEAFTERSWITCH:
+		{
+			DWORD innerPid=0;
+			GetWindowThreadProcessId((HWND)wp,&innerPid);
+			if (hwnd==G().hwndNSIS && innerPid==OG().expectedInnerPid &&
+				OG().hInnerProcess && WaitForSingleObject(OG().hInnerProcess,0)==WAIT_TIMEOUT)
+				ShowWindow(hwnd,SW_HIDE);
+			return 0;
+		}
 	}
 	return CallWindowProc(G().OrgMainWndProc,hwnd,msg,wp,lp);
 }
@@ -779,34 +835,24 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 			WINDOWPOS&wp=*(WINDOWPOS*)lp;
 			if (SWP_SHOWWINDOW&wp.flags && G().JumpPageOffset!=-1) 
 			{
-				TRACEF("InnerMainWndSubProc:WM_WINDOWPOSCHANGED: Performing delayed onGuiInit pagejump and OWM_PERFORMWINDOWSWITCH");
-				HWND hOuterMainWnd=Inner_GetOuterNSISMainWnd();
-				DWORD_PTR pageJump=0;
-				if (!SendMessageTimeout(G().hwndOuter,OWM_GETOUTERSTATE,GOSI_PAGEJUMP,0,
-					SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&pageJump)) pageJump=0;
-				G().JumpPageOffset=(WORD)pageJump;
-				
-				TRACEF("\tposting WM_NOTIFY_OUTER_NEXT %d to autojump\n",G().JumpPageOffset);
-				PostMessage(hwnd,WM_NOTIFY_OUTER_NEXT,G().JumpPageOffset,0);
-
-				RECT rect;
-				if (IsWindow(hOuterMainWnd) && GetWindowRect(hOuterMainWnd,&rect))
-					SetWindowPos(hwnd,hOuterMainWnd,rect.left,rect.top,0,0,SWP_NOSIZE);
-				
-/*#ifdef UAC_DELAYLOAD_CHANGEWINDOWMESSAGEFILTER
-				if (_ChangeWindowMessageFilter) 
-				{
-					VERIFY(_ChangeWindowMessageFilter(IWM_HELPWITHWINDOWSWITCH,MSGFLT_ADD));
-				}
-#endif
-*/				
-				TRACEF("\tSending OWM_PERFORMWINDOWSWITCH %X,%X\n",hOuterMainWnd,hwnd);
-				DWORD_PTR switchResult=ERROR_INVALID_WINDOW_HANDLE;
-				if (!SendMessageTimeout(G().hwndOuter,OWM_PERFORMWINDOWSWITCH,
-					(WPARAM)hOuterMainWnd,(LPARAM)hwnd,SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&switchResult) ||
-					switchResult!=NO_ERROR) ShowInstallerWindow(hwnd);
-
+				TRACEF("InnerMainWndSubProc:WM_WINDOWPOSCHANGED: completing GUI handoff from shared state");
 				G().JumpPageOffset=-1;
+				WINDOW_SWITCH_STATE* state=G().pShared ? (WINDOW_SWITCH_STATE*)
+					(G().pShared+G().SharedMapBytes-sizeof(WINDOW_SWITCH_STATE)) : NULL;
+				HWND hOuterMainWnd=state ? state->outerMainWindow : NULL;
+				DWORD outerPid=0;
+				if (IsWindow(hOuterMainWnd) &&
+					GetWindowThreadProcessId(hOuterMainWnd,&outerPid) &&
+					G().hOuterProcess && outerPid==GetProcessId(G().hOuterProcess)) {
+					RECT rect;
+					if (GetWindowRect(hOuterMainWnd,&rect))
+						SetWindowPos(hwnd,HWND_TOP,rect.left,rect.top,0,0,
+							SWP_NOSIZE|SWP_NOACTIVATE);
+					PostMessage(hwnd,WM_NOTIFY_OUTER_NEXT,state->pageJump,0);
+					ShowInstallerWindow(hwnd);
+					PostMessage(hOuterMainWnd,OMWM_HIDEAFTERSWITCH,(WPARAM)hwnd,0);
+				}
+				else ShowInstallerWindow(hwnd);
 			}
 		}
 		break;
@@ -1069,7 +1115,7 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 			}
 			if (IsOuterInstance()) 
 			{
-				SendMessage(G().hwndOuter,OWM_HIDESPLASH,0,0);
+				PostMessage(G().hwndOuter,OWM_HIDESPLASH,0,0);
 				if (ec || UACMode==3) ShowInstallerWindow(hwndNSIS);
 				if(G().JumpPageOffset)--G().JumpPageOffset;
 				CloseHandle(OG().hInnerProcess);
@@ -1118,7 +1164,7 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 						if (ok && SyncRegisters) ok=Inner_DoSyncRegisters(OPDIR_O2I);
 						if (ok) ok=Inner_SyncNSISVar(OPDIR_O2I,SyncInstDir,SyncOutDir);
 						if (ok && SyncOutDir) SetCurrentDirectory(NSIS_UNSAFE_GETVAR(INST_OUTDIR,G().NSISVars,G().NSIScchStr));
-						if (!ok) { ec=ERROR_BROKEN_PIPE; TRACEF("ExecCodeSegment: IPC operation failed\n"); }
+						if (!ok) { ec=G().ipcError?G().ipcError:ERROR_BROKEN_PIPE; TRACEF("ExecCodeSegment: IPC operation failed: %u\n",ec); }
 					}
 					else 
 					{
@@ -1175,6 +1221,7 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 			SendMessageTimeout(Inner_GetOuterIPCWND(),OWM_SETOUTERSTATE,
 				SOSI_ELEVATIONPAGE_GUIINITERRORCODE,ec,SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&ignored);
 		}
+		SetVarUINT(INST_0,ec);
 		break;
 #endif
 	case '6':/*** GetTokenIntegrityLevel ***/

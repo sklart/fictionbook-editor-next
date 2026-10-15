@@ -82,6 +82,10 @@ enum INNERWNDMSG {
 	IWM_HELPWITHWINDOWSWITCH=WM_APP,
 };
 
+enum OUTERMAINWNDMSG {
+	OMWM_HIDEAFTERSWITCH=WM_APP+32,
+};
+
 enum GETOUTERSTATEITEM {
 	GOSI_HWNDMAINWND,
 	GOSI_PAGEJUMP,
@@ -126,6 +130,12 @@ typedef struct {
 	INT_PTR var2;
 } OP_SYNCNSISVAR;
 
+typedef struct {
+	HWND outerMainWindow;
+	WORD pageJump;
+	HANDLE outerThreadHandle;
+} WINDOW_SWITCH_STATE;
+
 #define OPCCSF_SETOUTPATH 0x1
 typedef struct {
 	OP_HDR OpHdr;
@@ -161,6 +171,8 @@ typedef struct {
 	HANDLE CompletedOp;
 	HANDLE hSharedMap;
 	HANDLE hOuterProcess;
+	HANDLE hOuterIPCThread;
+	DWORD ipcError;
 	HWND hwndOuter;
 	NSISCH*NSISVars;
 	UINT NSIScchStr;

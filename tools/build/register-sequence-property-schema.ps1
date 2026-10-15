@@ -1,11 +1,27 @@
 [CmdletBinding()]
 param(
     [string]$SchemaPath,
+    [string]$ExpectedSchemaSha256 = "",
     [string]$StatusFilePath,
     [switch]$NoRestartExplorer
 )
 
 $ErrorActionPreference = "Stop"
+
+function Assert-PackageHash {
+    param([string]$Path, [string]$Expected)
+    if ($Expected -notmatch '^[0-9a-fA-F]{64}$') { throw 'Missing package SHA-256 for property schema.' }
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $actual = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
+        finally { $sha.Dispose() }
+    }
+    finally { $stream.Dispose() }
+    if (-not [string]::Equals($actual, $Expected, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Property schema does not match the trusted installer package.'
+    }
+}
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 if ([string]::IsNullOrWhiteSpace($SchemaPath)) {
@@ -49,14 +65,18 @@ function Test-IsAdministrator {
     return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-if (-not (Test-IsAdministrator)) {
-    Write-StatusIni -Result "error" -Step "Test-IsAdministrator" -Code "ACCESS_DENIED" -Message "administrator-rights-required"
-    throw "Administrator rights are required to register the property schema."
-}
-
 if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
     Write-StatusIni -Result "error" -Step "Test-Path" -Code "FILE_NOT_FOUND" -Message "schema-file-not-found"
     throw "Property schema file was not found: $schemaPath"
+}
+
+if ($PSBoundParameters.ContainsKey('ExpectedSchemaSha256')) {
+    Assert-PackageHash -Path $schemaPath -Expected $ExpectedSchemaSha256
+}
+
+if (-not (Test-IsAdministrator)) {
+    Write-StatusIni -Result "error" -Step "Test-IsAdministrator" -Code "ACCESS_DENIED" -Message "administrator-rights-required"
+    throw "Administrator rights are required to register the property schema."
 }
 
 if (-not ("FbePropertySchemaRegisterNative" -as [type])) {
