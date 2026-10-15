@@ -14,6 +14,8 @@ public:
   static bool MarkInternalCopy(HWND owner);
   static bool HasInternalCopyMarker(HWND owner);
   static bool IsSafeInternalFragment(const CString& html);
+  static bool IsSafeLegacyFbeFragment(const CString& html);
+  static CString NormalizeInternalLinks(const CString& html);
   static bool ReadClipboardFragment(HWND owner, CString& html);
   static HtmlPasteOutcome Sanitize(const CString& input,
                                    const CString& nbspReplacement,

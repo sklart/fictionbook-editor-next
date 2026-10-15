@@ -150,7 +150,8 @@
 		::GetEnvironmentVariable(L"FBE_NEXT_TEST_HTML_PASTE_CASE", caseName, _countof(caseName));
 		const bool singleLine = wcscmp(caseName, L"plain-single") == 0;
 		const bool middle = wcscmp(caseName, L"plain-middle") == 0;
-		const bool internal = wcscmp(caseName, L"internal") == 0;
+		const bool internalEnd = wcscmp(caseName, L"internal-end") == 0;
+		const bool internal = wcscmp(caseName, L"internal") == 0 || internalEnd;
 		const bool plain = wcscmp(caseName, L"plain") == 0 || singleLine || middle;
 		const bool title = wcscmp(caseName, L"title") == 0;
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
@@ -164,6 +165,11 @@
 		try
 		{
 			if (!body || !editable) throw _com_error(E_FAIL);
+			if (internal) {
+				MSHTML::IHTMLElementPtr sourceOwner(document->all->item(L"paste-target"));
+				if (!sourceOwner) throw _com_error(E_FAIL);
+				sourceOwner->insertAdjacentHTML(L"beforeEnd", L"<p id='paste-internal-target'>Paste target</p><p><span class='code'>Internal code</span> <a href='#paste-neighbor'>internal link</a></p>");
+			}
 			m_doc->MarkSavePoint();
 			m_doc->MarkDocCP();
 			const CString before(static_cast<LPCWSTR>(editable->innerHTML));
@@ -171,10 +177,26 @@
 			MSHTML::IHTMLElementPtr neighbor(document->all->item(L"paste-neighbor"));
 			const CString neighborBefore(neighbor ? static_cast<LPCWSTR>(neighbor->outerHTML) : L"");
 			MSHTML::IHTMLElementCollectionPtr ps(target ? MSHTML::IHTMLElement2Ptr(target)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-			MSHTML::IHTMLElementPtr pasteTarget(ps && ps->length > (title ? 0 : 1) ? ps->item(title ? 0L : 1L) : MSHTML::IHTMLElementPtr());
+			MSHTML::IHTMLElementPtr pasteTarget(internal ? document->all->item(L"paste-internal-target") :
+				ps && ps->length > (title ? 0 : 1) ? ps->item(title ? 0L : 1L) : MSHTML::IHTMLElementPtr());
 			if (!pasteTarget) throw _com_error(E_FAIL);
-			const CStringA fragment(internal ? "<p><span class=code>Internal code</span> <a href='#paste-neighbor'>internal link</a></p>" :
-				"<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
+			const CStringA fragment("<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
+			if (internal) {
+				MSHTML::IHTMLElementPtr source(ps && ps->length ? ps->item(ps->length - 1) : MSHTML::IHTMLElementPtr());
+				if (!source) throw _com_error(E_FAIL);
+				MSHTML::IHTMLTxtRangePtr copyRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+				m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
+				copyRange->moveToElementText(source); copyRange->select();
+				BOOL copied = FALSE;
+				m_doc->m_body.OnCopy(0, ID_EDIT_COPY, 0, copied);
+				CString copiedFragment;
+				const bool fragmentRead = FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_doc->m_body, copiedFragment);
+				const bool safe = FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+					FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(copiedFragment));
+				const bool marked = FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(m_doc->m_body);
+				if (!fragmentRead || !safe || !marked) throw _com_error(E_FAIL);
+			}
+			else {
 			const CStringA prefix("Version:0.9\r\nStartFragment:00000000\r\nEndFragment:00000000\r\n");
 			CStringA headerBytes;
 			headerBytes.Format("Version:0.9\r\nStartFragment:%08u\r\nEndFragment:%08u\r\n", static_cast<unsigned>(prefix.GetLength()), static_cast<unsigned>(prefix.GetLength() + fragment.GetLength()));
@@ -195,22 +217,12 @@
 			if (!textReady && textMemory) ::GlobalFree(textMemory);
 			::CloseClipboard();
 			if (!htmlReady || !textReady) throw _com_error(E_FAIL);
-			if (internal) {
-				static const wchar_t markerText[] = L"FBE Next internal HTML fragment v1";
-				const UINT markerFormat = ::RegisterClipboardFormat(L"FBE Next Internal HTML v1");
-				HGLOBAL markerMemory = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(markerText));
-				void* markerBytes = markerMemory ? ::GlobalLock(markerMemory) : NULL;
-				if (!markerBytes) throw _com_error(E_FAIL);
-				memcpy(markerBytes, markerText, sizeof(markerText)); ::GlobalUnlock(markerMemory);
-				if (!::OpenClipboard(NULL)) { ::GlobalFree(markerMemory); throw _com_error(E_FAIL); }
-				const bool marked = markerFormat && ::SetClipboardData(markerFormat, markerMemory);
-				::CloseClipboard();
-				if (!marked) { ::GlobalFree(markerMemory); throw _com_error(E_FAIL); }
 			}
 			const DWORD sequence = ::GetClipboardSequenceNumber();
 			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 			range->moveToElementText(pasteTarget); range->collapse(VARIANT_FALSE);
+			if (internal && !internalEnd) range->move(L"character", -1);
 			if (middle) range->move(L"character", -3);
 			range->select();
 			BOOL handled = FALSE;
@@ -221,7 +233,7 @@
 			editable = document->all->item(L"fbw_body");
 			const CString after(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 			const CString afterText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
-			textOk = internal ? (afterText.Find(L"Internal code") >= 0 && afterText.Find(L"internal link") > afterText.Find(L"Internal code")) : singleLine ? (afterText.Find(L"Ж") >= 0 && afterText.Find(L"Ω") > afterText.Find(L"Ж")) : plain ? (afterText.Find(L"Plain one") >= 0 && afterText.Find(L"Plain three") > afterText.Find(L"Plain one")) :
+			textOk = internal ? (afterText.Find(L"Internal code", afterText.Find(L"Internal code") + 1) > 0 && afterText.Find(L"internal link") > afterText.Find(L"Internal code")) : singleLine ? (afterText.Find(L"Ж") >= 0 && afterText.Find(L"Ω") > afterText.Find(L"Ж")) : plain ? (afterText.Find(L"Plain one") >= 0 && afterText.Find(L"Plain three") > afterText.Find(L"Plain one")) :
 				(afterText.Find(L"Bold italic") >= 0 && afterText.Find(L"Second") > afterText.Find(L"Bold italic"));
 			MSHTML::IHTMLElementPtr targetAfter(document->all->item(L"paste-target"));
 			const CString targetHtml(targetAfter ? static_cast<LPCWSTR>(targetAfter->innerHTML) : L"");
@@ -333,6 +345,9 @@
 			// Exercise the normal Ctrl+V route: MSHTML raises onpaste, OnRealPaste
 			// routes it through WM_COMMAND, and the editor runs CFBEView::OnPaste.
 			document->execCommand(L"Paste", VARIANT_FALSE, _variant_t());
+			MSG pendingPaste = {};
+			while (::PeekMessage(&pendingPaste, m_doc->m_body, WM_COMMAND, WM_COMMAND, PM_REMOVE))
+				::DispatchMessage(&pendingPaste);
 			editable = document->all->item(L"fbw_body"); targetSection = byId(emptyTarget ? L"title-target-empty" : L"title-target");
 			normalizedNested = countNestedTitle(targetSection) > 0;
 			normalizedDuplicate = countDirectTitles(targetSection) > 1;

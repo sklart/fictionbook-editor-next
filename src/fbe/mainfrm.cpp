@@ -2,6 +2,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
+#include "clipboard/HtmlPasteSanitizer.h"
 #include "scripts/ScriptCardBlock.h"
 #include "scripts/ScriptCardParser.h"
 #include "structure/BodyStructuralEditor.h"

@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <atlbase.h>
+#include <new>
 
 namespace FbeClipboard {
 namespace {
@@ -14,9 +16,113 @@ constexpr size_t kMaxNodes = 100000;
 constexpr wchar_t kInternalClipboardMarker[] = L"FBE Next internal HTML fragment v1";
 constexpr wchar_t kInternalClipboardFormat[] = L"FBE Next Internal HTML v1";
 
+// MSHTML owns its clipboard through OLE. Replacing that IDataObject preserves
+// delayed rendering and every original format while adding our marker.
+class MarkedDataObject final : public IDataObject {
+public:
+  MarkedDataObject(IDataObject* source, CLIPFORMAT marker) : source_(source), marker_(marker) {}
+  STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
+    if (!value) return E_POINTER;
+    *value = nullptr;
+    if (iid == IID_IUnknown || iid == IID_IDataObject) { *value = static_cast<IDataObject*>(this); AddRef(); return S_OK; }
+    return E_NOINTERFACE;
+  }
+  STDMETHOD_(ULONG, AddRef)() override { return static_cast<ULONG>(::InterlockedIncrement(&refs_)); }
+  STDMETHOD_(ULONG, Release)() override { const ULONG refs = static_cast<ULONG>(::InterlockedDecrement(&refs_)); if (!refs) delete this; return refs; }
+  STDMETHOD(GetData)(FORMATETC* format, STGMEDIUM* medium) override {
+    if (!format || !medium) return E_POINTER;
+    if (format->cfFormat != marker_) return source_->GetData(format, medium);
+    if (format->dwAspect != DVASPECT_CONTENT || format->lindex != -1 || !(format->tymed & TYMED_HGLOBAL)) return DV_E_FORMATETC;
+    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(kInternalClipboardMarker));
+    if (!data) return E_OUTOFMEMORY;
+    void* bytes = ::GlobalLock(data);
+    if (!bytes) { ::GlobalFree(data); return E_OUTOFMEMORY; }
+    memcpy(bytes, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
+    ::GlobalUnlock(data);
+    medium->tymed = TYMED_HGLOBAL; medium->hGlobal = data; medium->pUnkForRelease = nullptr;
+    return S_OK;
+  }
+  STDMETHOD(GetDataHere)(FORMATETC* format, STGMEDIUM* medium) override { return source_->GetDataHere(format, medium); }
+  STDMETHOD(QueryGetData)(FORMATETC* format) override {
+    if (!format) return E_POINTER;
+    return format->cfFormat == marker_ ?
+      (format->dwAspect == DVASPECT_CONTENT && format->lindex == -1 && (format->tymed & TYMED_HGLOBAL) ? S_OK : DV_E_FORMATETC) :
+      source_->QueryGetData(format);
+  }
+  STDMETHOD(GetCanonicalFormatEtc)(FORMATETC* format, FORMATETC* result) override { return source_->GetCanonicalFormatEtc(format, result); }
+  STDMETHOD(SetData)(FORMATETC* format, STGMEDIUM* medium, BOOL release) override { return source_->SetData(format, medium, release); }
+  STDMETHOD(EnumFormatEtc)(DWORD direction, IEnumFORMATETC** result) override {
+    if (!result) return E_POINTER;
+    *result = nullptr;
+    if (direction != DATADIR_GET) return source_->EnumFormatEtc(direction, result);
+    CComPtr<IEnumFORMATETC> sourceEnum;
+    HRESULT hr = source_->EnumFormatEtc(direction, &sourceEnum);
+    if (FAILED(hr)) return hr;
+    auto enumerator = new (std::nothrow) MarkedFormatEnum(sourceEnum, marker_);
+    if (!enumerator) return E_OUTOFMEMORY;
+    *result = enumerator;
+    return S_OK;
+  }
+  STDMETHOD(DAdvise)(FORMATETC* format, DWORD flags, IAdviseSink* sink, DWORD* connection) override { return source_->DAdvise(format, flags, sink, connection); }
+  STDMETHOD(DUnadvise)(DWORD connection) override { return source_->DUnadvise(connection); }
+  STDMETHOD(EnumDAdvise)(IEnumSTATDATA** result) override { return source_->EnumDAdvise(result); }
+private:
+  class MarkedFormatEnum final : public IEnumFORMATETC {
+  public:
+    MarkedFormatEnum(IEnumFORMATETC* source, CLIPFORMAT marker) : source_(source), marker_(marker) {}
+    STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
+      if (!value) return E_POINTER;
+      *value = nullptr;
+      if (iid == IID_IUnknown || iid == IID_IEnumFORMATETC) { *value = static_cast<IEnumFORMATETC*>(this); AddRef(); return S_OK; }
+      return E_NOINTERFACE;
+    }
+    STDMETHOD_(ULONG, AddRef)() override { return static_cast<ULONG>(::InterlockedIncrement(&refs_)); }
+    STDMETHOD_(ULONG, Release)() override { const ULONG refs = static_cast<ULONG>(::InterlockedDecrement(&refs_)); if (!refs) delete this; return refs; }
+    STDMETHOD(Next)(ULONG requested, FORMATETC* formats, ULONG* fetched) override {
+      if (!formats || (requested != 1 && !fetched)) return E_POINTER;
+      ULONG count = 0;
+      if (!marked_ && requested) {
+        formats[count++] = {marker_, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+        marked_ = true;
+      }
+      ULONG fromSource = 0;
+      if (count < requested) source_->Next(requested - count, formats + count, &fromSource);
+      count += fromSource;
+      if (fetched) *fetched = count;
+      return count == requested ? S_OK : S_FALSE;
+    }
+    STDMETHOD(Skip)(ULONG count) override { FORMATETC format; while (count--) if (Next(1, &format, nullptr) != S_OK) return S_FALSE; return S_OK; }
+    STDMETHOD(Reset)() override { marked_ = false; return source_->Reset(); }
+    STDMETHOD(Clone)(IEnumFORMATETC** result) override {
+      if (!result) return E_POINTER;
+      CComPtr<IEnumFORMATETC> sourceClone;
+      HRESULT hr = source_->Clone(&sourceClone);
+      if (FAILED(hr)) return hr;
+      auto clone = new (std::nothrow) MarkedFormatEnum(sourceClone, marker_);
+      if (!clone) return E_OUTOFMEMORY;
+      clone->marked_ = marked_;
+      *result = clone;
+      return S_OK;
+    }
+  private:
+    volatile LONG refs_ = 1;
+    CComPtr<IEnumFORMATETC> source_;
+    CLIPFORMAT marker_;
+    bool marked_ = false;
+  };
+  volatile LONG refs_ = 1;
+  CComPtr<IDataObject> source_;
+  CLIPFORMAT marker_;
+};
+
 class ClipboardScope {
 public:
-  explicit ClipboardScope(HWND owner) : open_(::OpenClipboard(owner) != FALSE) {}
+  explicit ClipboardScope(HWND owner) : open_(false) {
+    for (int attempt = 0; attempt < 8 && !open_; ++attempt) {
+      open_ = ::OpenClipboard(owner) != FALSE;
+      if (!open_) ::Sleep(2);
+    }
+  }
   ~ClipboardScope() { if (open_) ::CloseClipboard(); }
   bool Open() const { return open_; }
 private:
@@ -151,7 +257,7 @@ bool Discard(const CString& tag) {
   return tag == L"script" || tag == L"style" || tag == L"head" ||
     tag == L"template" || tag == L"noscript" || tag == L"iframe" ||
     tag == L"object" || tag == L"embed" || tag == L"svg" ||
-    tag == L"math" || tag == L"video" || tag == L"audio";
+    tag == L"video" || tag == L"audio";
 }
 
 void StyleFormat(const CString& style, unsigned& on, unsigned& off) {
@@ -205,17 +311,18 @@ bool InternalTag(const CString& tag) {
   return tag == L"div" || tag == L"p" || tag == L"span" || tag == L"a" ||
     tag == L"img" || tag == L"br" || tag == L"strong" || tag == L"em" ||
     tag == L"b" || tag == L"i" || tag == L"s" || tag == L"strike" ||
-    tag == L"sub" || tag == L"sup" || tag == L"table" || tag == L"tr" ||
+    tag == L"sub" || tag == L"sup" || tag == L"table" || tag == L"tbody" || tag == L"tr" ||
     tag == L"td" || tag == L"th" || tag == L"ul" || tag == L"ol" ||
     tag == L"li" || tag == L"hr";
 }
 
 bool SafeInternalAttribute(const CString& tag, const CString& attr, const CString& value) {
   if (attr.Left(2) == L"on")
-    return attr == L"onresizestart" && tag == L"div" && Lower(value) == L"return false";
+    return attr == L"onresizestart" && (tag == L"div" || tag == L"span") && Lower(value) == L"return false";
+  if (attr == L"contenteditable") return (tag == L"div" || tag == L"span") && Lower(value) == L"false";
   if (attr == L"src") return tag == L"img" && Lower(value).Left(13) == L"fbw-internal:";
   if (attr == L"href") return tag == L"a" ? SafeHref(value) :
-    tag == L"div" && !value.IsEmpty() && value[0] == L'#';
+    (tag == L"div" || tag == L"span") && !value.IsEmpty() && value[0] == L'#';
   if (attr == L"style") {
     const CString style(Lower(value));
     return style.Find(L"url") < 0 && style.Find(L"expression") < 0 &&
@@ -431,37 +538,106 @@ bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner) {
   const UINT html = ::RegisterClipboardFormat(L"HTML Format");
   const UINT marker = ::RegisterClipboardFormat(kInternalClipboardFormat);
   if (!html || !marker || !::IsClipboardFormatAvailable(html)) return false;
-  ClipboardScope clipboard(owner);
-  if (!clipboard.Open()) return false;
-  HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(kInternalClipboardMarker));
-  if (!data) return false;
-  void* target = ::GlobalLock(data);
-  if (!target) { ::GlobalFree(data); return false; }
-  memcpy(target, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
-  ::GlobalUnlock(data);
-  if (!::SetClipboardData(marker, data)) { ::GlobalFree(data); return false; }
-  return true;
+  const HWND clipboardOwner = ::GetClipboardOwner();
+  DWORD ownerProcess = 0;
+  if (clipboardOwner) ::GetWindowThreadProcessId(clipboardOwner, &ownerProcess);
+  if (ownerProcess == ::GetCurrentProcessId()) {
+    ClipboardScope clipboard(owner);
+    if (!clipboard.Open() || ::GetClipboardOwner() != clipboardOwner) return false;
+    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(kInternalClipboardMarker));
+    if (!data) return false;
+    void* bytes = ::GlobalLock(data);
+    if (!bytes) { ::GlobalFree(data); return false; }
+    memcpy(bytes, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
+    ::GlobalUnlock(data);
+    if (!::SetClipboardData(marker, data)) { ::GlobalFree(data); return false; }
+    return true;
+  }
+  CString renderedFragment;
+  if (!ReadClipboardFragment(owner, renderedFragment)) return false;
+  CComPtr<IDataObject> original;
+  if (FAILED(::OleGetClipboard(&original)) || !original) return false;
+  const DWORD sequence = ::GetClipboardSequenceNumber();
+  CComPtr<IDataObject> marked;
+  marked.Attach(new (std::nothrow) MarkedDataObject(original, static_cast<CLIPFORMAT>(marker)));
+  if (!marked || sequence != ::GetClipboardSequenceNumber()) return false;
+  return SUCCEEDED(::OleSetClipboard(marked));
 }
 
 bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
   const UINT marker = ::RegisterClipboardFormat(kInternalClipboardFormat);
   const UINT html = ::RegisterClipboardFormat(L"HTML Format");
-  if (!marker || !html || !::IsClipboardFormatAvailable(marker) || !::IsClipboardFormatAvailable(html)) return false;
-  ClipboardScope clipboard(owner);
-  if (!clipboard.Open()) return false;
-  HGLOBAL data = static_cast<HGLOBAL>(::GetClipboardData(marker));
-  if (!data || ::GlobalSize(data) != sizeof(kInternalClipboardMarker)) return false;
-  const void* value = ::GlobalLock(data);
-  if (!value) return false;
-  const bool valid = memcmp(value, kInternalClipboardMarker, sizeof(kInternalClipboardMarker)) == 0;
-  ::GlobalUnlock(data);
-  return valid;
+  if (!marker || !html) return false;
+  for (int attempt = 0; attempt < 4; ++attempt) {
+    if (!::IsClipboardFormatAvailable(marker) || !::IsClipboardFormatAvailable(html)) return false;
+    ClipboardScope clipboard(owner);
+    if (clipboard.Open()) {
+      HGLOBAL data = static_cast<HGLOBAL>(::GetClipboardData(marker));
+      if (!data || ::GlobalSize(data) != sizeof(kInternalClipboardMarker)) return false;
+      const void* value = ::GlobalLock(data);
+      if (!value) return false;
+      const bool valid = memcmp(value, kInternalClipboardMarker, sizeof(kInternalClipboardMarker)) == 0;
+      ::GlobalUnlock(data);
+      return valid;
+    }
+    ::Sleep(1);
+  }
+  return false;
 }
 
 bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html) {
   if (html.IsEmpty() || html.GetLength() > static_cast<int>(kMaxFragmentBytes)) return false;
   std::vector<Node> nodes;
   return Parse(html, nodes, true) == HtmlPasteOutcome::Sanitized;
+}
+
+bool HtmlPasteSanitizer::IsSafeLegacyFbeFragment(const CString& html) {
+  // A recognizable FBE structure is necessary, but never substitutes for the
+  // same element and attribute safety check applied to marked fragments.
+  const CString lower(Lower(html));
+  const bool recognizable = lower.Find(L"class=section") >= 0 || lower.Find(L"class=\"section\"") >= 0 ||
+    lower.Find(L"class='section'") >= 0 || lower.Find(L"class=image") >= 0 ||
+    lower.Find(L"class=\"image\"") >= 0 || lower.Find(L"class='image'") >= 0 ||
+    lower.Find(L"class=title") >= 0 || lower.Find(L"class=\"title\"") >= 0 ||
+    lower.Find(L"class='title'") >= 0 || lower.Find(L"class=subtitle") >= 0 ||
+    lower.Find(L"class=\"subtitle\"") >= 0 || lower.Find(L"class='subtitle'") >= 0 ||
+    lower.Find(L"class=code") >= 0 || lower.Find(L"class=\"code\"") >= 0 ||
+    lower.Find(L"class='code'") >= 0 || lower.Find(L"class=table") >= 0 ||
+    lower.Find(L"class=\"table\"") >= 0 || lower.Find(L"class='table'") >= 0 ||
+    lower.Find(L"class=note") >= 0 || lower.Find(L"class=\"note\"") >= 0 ||
+    lower.Find(L"class='note'") >= 0;
+  return recognizable && IsSafeInternalFragment(html);
+}
+
+CString HtmlPasteSanitizer::NormalizeInternalLinks(const CString& html) {
+  CString result(html);
+  int search = 0;
+  while (search < result.GetLength()) {
+    const CString lower(Lower(result));
+    const int attribute = lower.Find(L"href=", search);
+    if (attribute < 0) break;
+    const int start = attribute + 5;
+    if (start >= result.GetLength()) break;
+    const wchar_t quote = result[start] == L'\'' || result[start] == L'"' ? result[start] : 0;
+    const int valueStart = start + (quote ? 1 : 0);
+    int valueEnd = valueStart;
+    while (valueEnd < result.GetLength() && (quote ? result[valueEnd] != quote :
+      !Space(result[valueEnd]) && result[valueEnd] != L'>')) ++valueEnd;
+    const CString value(result.Mid(valueStart, valueEnd - valueStart));
+    const CString lowerValue(Lower(value));
+    const int anchor = lowerValue.Find(L"/main.html#");
+    if (lowerValue.Left(8) == L"file:///" && anchor >= 0 && anchor + 11 < value.GetLength()) {
+      const CString fragment(value.Mid(anchor + 10));
+      if (fragment[0] == L'#' && SafeHref(fragment)) {
+        result.Delete(valueStart, value.GetLength());
+        result.Insert(valueStart, fragment);
+        search = valueStart + fragment.GetLength();
+        continue;
+      }
+    }
+    search = valueEnd + (quote ? 1 : 0);
+  }
+  return result;
 }
 
 bool HtmlPasteSanitizer::ReadClipboardFragment(HWND owner, CString& html) {
