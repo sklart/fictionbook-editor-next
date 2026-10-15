@@ -167,9 +167,30 @@ def main() -> None:
     results = runtime["runtimeResults"]
     assert results["harness-ran"] == results["undo"] == results["clipboard-restored"] == "1"
     checks = ("ordinary", "special", "backslash", "quote", "replacement-special",
-              "empty-selection", "empty-list", "invalid-list")
+              "empty-selection", "empty-list", "invalid-list", "mixed-special", "newlines",
+              "cyrillic", "no-text", "invalid-late", "nodes", "textarea", "numeric-order",
+              "duplicates", "cascade", "utf16-reject", "parser-negative", "undo", "redo",
+              "undo-single", "refusal-no-undo", "exception-cleanup")
     expected_status = "pass" if all(results[key] == "1" for key in checks) else "fail"
     assert runtime["result"] == results["result"] == expected_status
+    assert expected_status == "pass"
+    assert runtime["probeSha256"] == hashlib.sha256((ROOT / "tools/tests/script64-runtime-probe.js").read_bytes()).hexdigest()
+    for path, digest in runtime["harnessSourceSha256"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest, path
+    from urllib.parse import unquote
+    assert unquote(results["replacement-special-actual"]) == '$\\"'
+    assert results["duplicates-actual"] == "CB" and results["cascade-actual"] == "cc"
+    assert results["numeric-order-actual"] == "1"
+    code64 = card_tool["read_document"](script64.read_bytes()).code_bytes.decode("utf-8")
+    assert not re.search(r"\b(?:eval|Function)\s*\(", audit["mask_non_code"](code64))
+    baseline = json.loads((ROOT / "docs/script-card-code-baseline.json").read_text(encoding="utf-8"))
+    update = baseline["executableChanges"][-1]
+    assert update["path"] == script64.relative_to(scripts_root).as_posix()
+    assert update["previousCodeSha256"] == "1f0c23c0fb935234675eb9b3c01a871065f66883ef399e17dc99f3ffcb36ff82"
+    assert update["codeSha256"] == runtime["sourceCodeSha256"]
+    for path in files:
+        card = card_tool["read_document"]((scripts_root / path).read_bytes()).card
+        assert not re.search(r"ссылк[аи] на (?:примечаний|комментариев)", str(card["usage"]) + str(card["warnings"])), path
     print("Script 64 runtime evidence hash and reported outcome are consistent.")
 
 

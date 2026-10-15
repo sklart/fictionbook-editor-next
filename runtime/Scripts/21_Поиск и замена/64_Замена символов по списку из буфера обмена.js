@@ -19,7 +19,7 @@
   ],
   "authorshipStatus": "declared",
   "summary": "Заменяет символы по парам из текста в буфере обмена.",
-  "description": "Заменяет символы в непустом выделении по парам из буфера обмена. Каждая строка задаёт исходный и новый символ, обычные пробелы удаляются из списка. Замены выполняются последовательно по списку.",
+  "description": "Заменяет символы в непустом выделении по буквальным парам из буфера обмена. Каждая непустая строка после удаления обычных пробелов должна содержать две кодовые единицы UTF-16. Поддерживаются CRLF, LF и CR. Замены выполняются последовательно с совместимым порядком правил.",
   "scope": "Непустое текстовое выделение в книге или многострочном текстовом поле. Однострочные поля ввода не обрабатываются.",
   "modifiesDocument": true,
   "requiresSelection": true,
@@ -28,14 +28,14 @@
     "Выделите текст, в котором нужно выполнить замены. Замены идут последовательно по списку, поэтому результат одной может участвовать в следующей."
   ],
   "warnings": [
-    "Список замен преобразуется в исполняемый код; используйте подготовленный вами список пар символов.",
-    "Список со спецсимволами в правой части пары может вызвать ошибку до начала обработки: например, строки a$, b\\ и c\" вместе дают ошибку «Незавершённая строковая константа»."
+    "Повтор исходного символа заменяет предыдущее значение, сохраняя место первого правила. Цифровые исходные символы обрабатываются первыми по возрастанию, как в прежнем JScript.",
+    "При ошибке во время изменения группа отмены закрывается, но автоматический откат частичных изменений не выполняется."
   ],
   "dependencies": [],
   "dependenciesComplete": false,
   "sourceRevision": {
     "algorithm": "sha256-exclude-fbe-card-v1",
-    "sha256": "1f0c23c0fb935234675eb9b3c01a871065f66883ef399e17dc99f3ffcb36ff82",
+    "sha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
     "reviewStatus": "generated"
   },
   "tags": [
@@ -62,45 +62,41 @@ function Run() {
 var rng=document.selection.createRange();
  if(rng.compareEndPoints("StartToEnd", rng)==0){ MsgBox("Выделите текст!\nСкрипт производит замену символов только в выделенном тексте!"+help); return false; }
 
- var key;
- var sumbol;
- var sumbolNew;
+ // Список остаётся данными: ровно две кодовые единицы UTF-16 в строке.
  var str = window.clipboardData.getData('Text');
-   if (str == null) {
-      alert("Буфер обмена пуст или в нем нет текстовых данных!"+help) ;
-      return;
-   }
-   else
-   {
-     str = str.replace(/ +/g, ""); // уд. пробелы.
-     str = str.replace(/\r\n(\r\n)+/gm, "\r\n"); // уд. пустые стр.
-     str = str.replace(/^\r\n|\r\n$/gm, ""); // нач. и кон. недопереводы строки.
-    // alert("после удаления пробелов:\n"+str);
-       if (str == false) {
-         alert("Буфер обмена пуст или в нем нет текстовых данных!"+help) ;
-         return;
-       };
-    // здесь добавить проверку правильного кол. (2) символов в одной строке.
-   // var regexp = new RegExp("^(.|...+)$","");
-   var regexp = new RegExp("^[^\\r\\n]$|^[^\\r\\n]{3,}$","m");
-       if (regexp.test(str)) {
-          alert("По меньшей мере одна строка в вашем списке из буфера обмена имеет меньше или больше чем два символа. Проверьте свой список."+help); 
-          return;
-       }
-
-   str = str.replace(/^(.)(.)$/gm, "\"$1\": \"$2\","); // формируем строки замен.
-   str = str.replace(/(\")(\.|\?|\-|\+|\*|\\|\/|\(|\)|\[|\]|\^|\$|\|)(\":)/gm, "$1\\\\$2$3"); //
-   str = str.replace(/\r\n/gm, ""); // уд. все переводы строк.
-   str = str.replace(/,$/g, ""); // уд. последнюю зап.
-   str = str.replace(/^.+$/gm, "var sumbol = {$&};"); // формируем строку переменной. 
-   str = str.replace(/"\"(?=\")"/g, "\"\\\"\""); // поправка для дв. комп. кавычек.
-   str = str.replace(/\"\\\\\\": /g, "\"\\\\\\\\\": "); //поправка для слэшей до.
-   
-   str = str.replace(/: \"\\\"/g, ": \"\\\\\""); //поправка для слэшей после.
-}
-   // alert(str);
-
-eval(str);
+ if (str == null) {
+  alert("Буфер обмена пуст или в нем нет текстовых данных!"+help);
+  return;
+ }
+ var lines = str.replace(/ +/g, "").replace(/\r\n|\r/g, "\n").split("\n");
+ var sumbol = [];
+ for (var lineIndex=0; lineIndex<lines.length; lineIndex++) {
+  var line = lines[lineIndex];
+  if (line.length==0) continue;
+  if (line.length!=2) {
+   alert("По меньшей мере одна строка в вашем списке из буфера обмена имеет меньше или больше чем два символа. Проверьте свой список."+help);
+   return;
+  }
+  var from = line.charAt(0), to = line.charAt(1), previous = -1;
+  for (var pairIndex=0; pairIndex<sumbol.length; pairIndex++) {
+   if (sumbol[pairIndex].from==from) { previous=pairIndex; break; }
+  }
+  if (previous>=0) sumbol[previous].to=to;
+  else sumbol.push({from:from, to:to, order:sumbol.length});
+ }
+ if (sumbol.length==0) {
+  alert("Буфер обмена пуст или в нем нет текстовых данных!"+help);
+  return;
+ }
+ // JScript перечислял собственные цифровые ключи объекта первыми, по возрастанию.
+ // Остальные ключи сохраняют место первого появления; дубль меняет только значение.
+ sumbol.sort(function(a,b) {
+  var aDigit = a.from>="0" && a.from<="9";
+  var bDigit = b.from>="0" && b.from<="9";
+  if (aDigit && bDigit) return a.from.charCodeAt(0)-b.from.charCodeAt(0);
+  if (aDigit!=bDigit) return aDigit ? -1 : 1;
+  return a.order-b.order;
+ });
 // ========================================================
 
  //вид обработки, которой подвергается выделенный текст
@@ -110,10 +106,9 @@ eval(str);
  
 // ----------------------------------------------------------------------------------
    function replacChar() {
-   for (var key in sumbol) {
-   var sumbolNew = sumbol[key] 
-   s = s.replace(new RegExp(key, "g"), sumbolNew);
-      }
+   for (var pairIndex=0; pairIndex<sumbol.length; pairIndex++) {
+    s = s.split(sumbol[pairIndex].from).join(sumbol[pairIndex].to);
+   }
    }
 // ================================================
 
@@ -124,26 +119,21 @@ eval(str);
   MsgBox(errMsg);
   return;
  }
+ if (tr.parentElement().nodeName=="INPUT") { MsgBox(errMsg); return; }
+ var BlockStartNode=null, BlockEndNode=null, cursorPos=null;
  window.external.BeginUndoUnit(document,"Замена символов по списку из буфера обмена");
+ try {
  if (tr.parentElement().nodeName=="TEXTAREA") {
-   //код для обработки выделения в INPUT'е
-  var tr1=document.body.createTextRange();
-  tr1.moveToElementText(tr.parentElement());
-  tr1.setEndPoint("EndToStart",tr);
-  var tr2=document.body.createTextRange();
-  tr2.moveToElementText(tr.parentElement());
-  tr2.setEndPoint("StartToEnd",tr);
   s=tr.text;
-  // if (ObrabotkaType==1) {rusLat();}
-  if (ObrabotkaType==2) {replacChar();}
-  tr.parentElement().value=tr1.text+s+tr2.text;
+  replacChar();
+  tr.text=s;
  }
  else if (tr.parentElement().nodeName!="INPUT") {
   var body=document.getElementById("fbw_body");
   var coll=tr.getClientRects();
   var ttr1 = body.document.selection.createRange();
   var el=body.document.elementFromPoint(coll[0].left, coll[0].top);
-  var cursorPos=null;
+  cursorPos=null;
   if (tr.compareEndPoints("StartToEnd",tr)==0) {
    var el2=document.getElementById("CursorPosition");
    if (el2) el2.removeAttribute("id");
@@ -155,17 +145,19 @@ eval(str);
   tr=ttr1.duplicate();
   tr.collapse();
   tr.pasteHTML("<"+MyTagName+" id=BlockStart></"+MyTagName+">");
+  BlockStartNode=document.getElementById("BlockStart");
   tr=ttr1.duplicate();
   tr.collapse(false);
   tr.pasteHTML("<"+MyTagName+" id=BlockEnd></"+MyTagName+">");
+  BlockEndNode=document.getElementById("BlockEnd");
   // поднимаемся вверх по дереву, пока не найдем DIV или P,
   // в который входит начало выделения
   while (el && el.nodeName!="DIV" && el.nodeName!="P") { el=el.parentNode; }
   var InsideP = false; // true, если находимся внутри тэга P
   var InsideSelection = false; // true, когда текущая позиция внутри выделенного текста
   var ProcessingEnded=false; // true, когда обработка закончена и пора выходить
-  ptr=el;
-  while (!ProcessingEnded) {
+  var ptr=el;
+  while (!ProcessingEnded && ptr) {
    // напомню: nodeType=1 для элемента (тэга) и nodeType=3 для текста
    // если встретили тэг P, меняем флаг, что мы внутри P
    if (ptr.nodeType==1 && ptr.nodeName=="P") {InsideP=true};
@@ -175,14 +167,14 @@ eval(str);
     // меняем флаг, т.к. попали внутрь выделения
     InsideSelection=true;
     // запомним ноду ссылки, чтобы потом удалить ее
-    var BlockStartNode=ptr;
+    BlockStartNode=ptr;
    }
    // аналогично для маркера конца выделения
    if (ptr.nodeType==1 && ptr.nodeName==MyTagName &&
        ptr.getAttribute("id")=="BlockEnd") {
     InsideSelection=false;
     ProcessingEnded=true;
-    var BlockEndNode=ptr;
+    BlockEndNode=ptr;
    }
    // если нашли текст и находимся внутри P и внутри выделения...
    if (ptr.nodeType==3 && InsideP && InsideSelection) {
@@ -194,16 +186,17 @@ eval(str);
      // и возвращаем на место
      ptr.nodeValue=s;
    }
+   if (ProcessingEnded) break;
    // теперь надо найти следующий по дереву узел для обработки
    if (ptr.firstChild!=null) {
      ptr=ptr.firstChild; // либо углубляемся...
    } else {
-     while (ptr.nextSibling==null) {
+     while (ptr && ptr.nextSibling==null) {
       ptr=ptr.parentNode; // ...либо поднимаемся (если уже сходили вглубь)
       // поднявшись до элемента P, не забудем поменять флаг
       if (ptr && ptr.nodeType==1 && ptr.nodeName=="P") {InsideP=false}
      }
-    ptr=ptr.nextSibling; //и переходим на соседний элемент
+    if (ptr) ptr=ptr.nextSibling; //и переходим на соседний элемент
    }
   }
   // удаляем маркеры блока
@@ -221,5 +214,14 @@ eval(str);
   BlockStartNode.parentNode.removeChild(BlockStartNode);
   BlockEndNode.parentNode.removeChild(BlockEndNode);
  }
- window.external.EndUndoUnit(document);
+ } finally {
+  // Закрываем только свою начатую группу даже при сбое и удаляем свои маркеры.
+  try {
+   if (BlockStartNode && BlockStartNode.parentNode) BlockStartNode.parentNode.removeChild(BlockStartNode);
+   if (BlockEndNode && BlockEndNode.parentNode) BlockEndNode.parentNode.removeChild(BlockEndNode);
+   if (cursorPos && cursorPos.parentNode) cursorPos.parentNode.removeChild(cursorPos);
+  } finally {
+   window.external.EndUndoUnit(document);
+  }
+ }
 }
