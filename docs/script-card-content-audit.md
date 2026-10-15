@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **266**.
+Карточек без автоматических замечаний: **267**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,32 +16,32 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **495**. Исполняемый код не изменён.
+Изменено карточек: **496**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
 - `generic_summary`: 136
-- `generic_usage`: 441
+- `generic_usage`: 442
 - `generic_warning`: 62
-- `inaccurate_description`: 753
-- `inaccurate_summary`: 5
+- `inaccurate_description`: 754
+- `inaccurate_summary`: 6
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_author`: 8
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 465
+- `incorrect_dependency`: 466
 - `incorrect_effect`: 9
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 448
+- `incorrect_scope`: 449
 - `incorrect_selection`: 51
 - `incorrect_setting`: 264
-- `incorrect_undo`: 440
+- `incorrect_undo`: 441
 - `incorrect_version`: 9
 - `missing_version`: 4
-- `missing_warning`: 79
+- `missing_warning`: 80
 - `uncertain_attribution`: 103
 
 Подтверждённые результаты:
@@ -49,24 +49,24 @@
 - `attributionClarified`: 104
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 323
+- `dependenciesVerified`: 324
 - `effectCorrected`: 7
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 439
-- `scopeClarified`: 425
+- `purposeClarified`: 440
+- `scopeClarified`: 426
 - `selectionClarified`: 11
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
 - `settingsCorrected`: 69
-- `undoDescriptionsClarified`: 432
-- `usageCorrected`: 441
+- `undoDescriptionsClarified`: 433
+- `usageCorrected`: 442
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 373
+- `warningsClarified`: 374
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **335**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **336**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -851,10 +851,11 @@
 - `21_Поиск и замена/06_Поиск (без замены) ошибок текста (версия с исключениями) (TaKir-Sclex-stokber).js:1172` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
 - `21_Поиск и замена/07_Поиск (без замены) по набору регэкспов_Slovo.js:707` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
 - `21_Поиск и замена/08_Поиск (без замены) по набору регэкспов_Znak.js:612` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
+- `21_Поиск и замена/10_Поиск (без замены) по набору регэкспов (версия с исключениями) (заготовка).js:629` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 556
+- `generic_usage`: 553
 - `inaccurate_description`: 39
 - `incorrect_undo`: 74
 - `requires_review`: 312
