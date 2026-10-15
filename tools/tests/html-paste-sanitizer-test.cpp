@@ -40,17 +40,26 @@ static void TestFormatting() {
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=section><div class=title><p>Title</p></div><p>Body</p></div>"), "safe internal section and title");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=annotation><p>Note</p></div><p class=subtitle>Subtitle</p>"), "safe internal annotation and subtitle");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<table><tr><td>Cell</td></tr></table><ul><li>Item</li></ul>"), "safe internal table and list");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<table class='table'><tbody><tr class='tr'><td class='td'>Cell</td></tr></tbody></table>"), "actual FBE table tbody");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=image href='#img'><img src='fbw-internal:#img'></div>"), "safe internal image");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span onresizestart='return false' contentEditable='false' class='image' href='#img'><img src='fbw-internal:#img'></span>"), "actual FBE inline image");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span contentEditable='true'>editable</span>"), "unexpected editable fragment rejected");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeLegacyFbeFragment(L"<div class='section'><p>Legacy</p></div>"), "legacy FBE section");
+  Check(FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(L"<P><A href=\"file:///D:/FBE/main.html#note\">note</A></P>") ==
+    L"<P><A href=\"#note\">note</A></P>", "MSHTML absolute internal link");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<P id=paste-copy-source><SPAN class=code>Internal code</SPAN> <A \r\nhref=\"#paste-neighbor\">internal \r\nlink</A></P>"), "MSHTML copied FBE paragraph");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeLegacyFbeFragment(L"<p>Generic external</p>"), "generic HTML is not legacy FBE");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=section><script>alert(1)</script></div>"), "internal script rejected");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<img src='https://example.org/track.png'>"), "external image rejected");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<p onclick='alert(1)'>x</p>"), "internal event rejected");
+  Check(Clean(L"<p>Formula <math><mi>x</mi><mo>+</mo><mn>1</mn></math></p>") == L"<p>Formula x+1</p>", "math text preserved");
   Check(FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(L"one\r\n\r\nthree\u00a0", L"_") == L"<p>one</p><p></p><p>three_</p>", "plain paragraphs");
   Check(FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(L"one & two \u00a0", L"_", true) == L"one &amp; two _", "inline plain text");
 }
 
 static void TestClipboard() {
   HWND owner = ::CreateWindowExW(0, L"STATIC", L"paste test", 0, 0, 0, 0, 0,
-                                HWND_MESSAGE, NULL, ::GetModuleHandleW(NULL), NULL);
+                                NULL, NULL, ::GetModuleHandleW(NULL), NULL);
   Check(owner != NULL, "clipboard owner window");
   const char* fragment = "<p>\xd0\x9f<strong>ok</strong></p>";
   const std::string prefix = "Version:0.9\r\nStartHTML:00000000\r\nEndHTML:00000000\r\nStartFragment:";
@@ -92,7 +101,13 @@ static void TestClipboard() {
 }
 
 int wmain(int argc, wchar_t** argv) {
-  if (argc == 2 && wcscmp(argv[1], L"--check-marker") == 0)
-    return FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(NULL) ? 0 : 1;
-  TestFormatting(); TestClipboard(); return 0;
+  Check(SUCCEEDED(::OleInitialize(nullptr)), "OleInitialize");
+  if (argc == 2 && wcscmp(argv[1], L"--check-marker") == 0) {
+    const bool marked = FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(NULL);
+    ::OleUninitialize();
+    return marked ? 0 : 1;
+  }
+  TestFormatting(); TestClipboard();
+  ::OleUninitialize();
+  return 0;
 }

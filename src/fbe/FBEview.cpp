@@ -74,6 +74,17 @@ static void CaptureClipboardTitlePasteDomForTest(MSHTML::IHTMLDocument2Ptr docum
 	::CloseHandle(trace);
 }
 
+static void WarnUnsupportedHtmlPaste(HWND owner)
+{
+	wchar_t testMode[4] = {}, scenario[64] = {};
+	const bool unattendedPasteTest = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE", testMode, _countof(testMode)) == 1 &&
+		testMode[0] == L'1' && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SCENARIO", scenario, _countof(scenario)) == wcslen(L"html-paste-runtime") &&
+		wcscmp(scenario, L"html-paste-runtime") == 0;
+	if (!unattendedPasteTest) U::MessageBox(owner, FbeLoadRuntimeStringByKey(L"fbe.paste.unsupported_html",
+		L"This HTML cannot be pasted safely without losing content. The document was not changed."),
+		L"FictionBook Editor", MB_OK | MB_ICONWARNING);
+}
+
 // normalization helpers
 static void NotifyTableStructureChanged(HWND frame, HWND view);
 
@@ -89,20 +100,30 @@ private:
 };
 
 struct PasteChildSnapshot {
+	MSHTML::IHTMLDOMNodePtr node;
 	MSHTML::IHTMLDOMNodePtr clone;
 	CString html;
 };
 
-static std::vector<PasteChildSnapshot> CapturePasteChildren(MSHTML::IHTMLDOMNodePtr parent) {
+static std::vector<PasteChildSnapshot> CapturePasteChildren(MSHTML::IHTMLDOMNodePtr parent,
+	MSHTML::IHTMLDOMNodePtr cloneOnly = MSHTML::IHTMLDOMNodePtr(), bool cloneAll = true) {
 	std::vector<PasteChildSnapshot> children;
 	for (MSHTML::IHTMLDOMNodePtr child(parent ? parent->firstChild : MSHTML::IHTMLDOMNodePtr()); child; child = child->nextSibling) {
 		PasteChildSnapshot snapshot;
-		snapshot.clone = child->cloneNode(VARIANT_TRUE);
+		snapshot.node = child;
+		if (cloneAll || (cloneOnly && (child == cloneOnly || child == cloneOnly->previousSibling ||
+			child == cloneOnly->nextSibling))) snapshot.clone = child->cloneNode(VARIANT_TRUE);
 		MSHTML::IHTMLElementPtr element(child);
 		snapshot.html = element ? CString(static_cast<LPCWSTR>(element->outerHTML)) : CString(static_cast<LPCWSTR>(_bstr_t(child->nodeValue)));
 		children.push_back(snapshot);
 	}
 	return children;
+}
+
+static void RestorePasteHtml(MSHTML::IHTMLElementPtr parent, const std::vector<PasteChildSnapshot>& children) {
+	CString html;
+	for (const PasteChildSnapshot& child : children) html += child.html;
+	parent->innerHTML = _bstr_t(html);
 }
 
 static void RestorePasteChildren(MSHTML::IHTMLDOMNodePtr parent, const std::vector<PasteChildSnapshot>& children) {
@@ -130,6 +151,14 @@ public:
 			m_before[m_before.size() - m_suffix - 1].html == m_after[m_after.size() - m_suffix - 1].html) ++m_suffix;
 	}
 	bool Changed() const { return m_before.size() - m_prefix - m_suffix || m_after.size() - m_prefix - m_suffix; }
+	const std::vector<PasteChildSnapshot>& Before() const { return m_before; }
+	bool PrepareChangedClones() {
+		for (size_t i = m_prefix; i < m_before.size() - m_suffix; ++i)
+			if (!m_before[i].clone) return false;
+		for (size_t i = m_prefix; i < m_after.size() - m_suffix; ++i)
+			m_after[i].clone = m_after[i].node->cloneNode(VARIANT_TRUE);
+		return true;
+	}
 	HRESULT Restore(bool before) {
 		if (!m_parent) return E_UNEXPECTED;
 		try {
@@ -1862,15 +1891,19 @@ void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
 
 LRESULT CFBEView::OnCopy(WORD, WORD, HWND, BOOL&)
 {
+	const DWORD clipboardBefore = ::GetClipboardSequenceNumber();
 	ExecCommand(IDM_COPY);
-	if (m_normalize) FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd);
+	if (m_normalize && ::GetClipboardSequenceNumber() != clipboardBefore)
+		FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd);
 	return 0;
 }
 
 LRESULT CFBEView::OnCut(WORD, WORD, HWND, BOOL&)
 {
+	const DWORD clipboardBefore = ::GetClipboardSequenceNumber();
 	ExecCommand(IDM_CUT);
-	if (m_normalize) FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd);
+	if (m_normalize && ::GetClipboardSequenceNumber() != clipboardBefore)
+		FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd);
 	return 0;
 }
 
@@ -1900,6 +1933,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		}
 		CString insertHtml;
 		bool preparedHtml = false;
+		bool htmlClipboardDetected = false;
 		if (m_normalize && command == ID_EDIT_PASTE_TEXT)
 		{
 			CString plainText;
@@ -1914,10 +1948,13 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			const bool internalPaste = FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(m_hWnd);
 			CString fragment;
 			const bool hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
+			htmlClipboardDetected = hasHtml;
 			const bool readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_hWnd, fragment);
+			if (readableHtml && internalPaste) fragment = FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(fragment);
 			FbeClipboard::HtmlPasteOutcome outcome = FbeClipboard::HtmlPasteOutcome::PlainText;
 			if (readableHtml) {
-				if (internalPaste && FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment)) {
+				if ((internalPaste || FbeClipboard::HtmlPasteSanitizer::IsSafeLegacyFbeFragment(fragment)) &&
+					FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment)) {
 					insertHtml = fragment;
 					outcome = FbeClipboard::HtmlPasteOutcome::Sanitized;
 				} else if (!internalPaste)
@@ -1926,22 +1963,24 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			preparedHtml = readableHtml && outcome == FbeClipboard::HtmlPasteOutcome::Sanitized;
 			if (hasHtml && outcome != FbeClipboard::HtmlPasteOutcome::Sanitized)
 			{
+				CString lower(fragment); lower.MakeLower();
+				const bool structuralHtml = !readableHtml || outcome == FbeClipboard::HtmlPasteOutcome::Legacy ||
+					lower.Find(L"<table") >= 0 || lower.Find(L"<img") >= 0 ||
+					lower.Find(L"<ul") >= 0 || lower.Find(L"<ol") >= 0 ||
+					lower.Find(L"<li") >= 0 || lower.Find(L"<math") >= 0;
 				CString plainText;
-				if (FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, plainText))
+				if (!structuralHtml && FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, plainText))
 				{
 					insertHtml = FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(plainText, options.nbspReplacement, insideParagraph);
 					preparedHtml = true;
 				}
-				else {
-					U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.paste.unsupported_html",
-						L"This HTML cannot be pasted safely and the clipboard has no plain text."),
-						L"FictionBook Editor", MB_OK | MB_ICONWARNING);
-					return 0;
-				}
+				else { WarnUnsupportedHtmlPaste(m_hWnd); return 0; }
 			}
 		}
-		if (!pasteRange)
+		if (!pasteRange) {
+			if (m_normalize && htmlClipboardDetected) { WarnUnsupportedHtmlPaste(m_hWnd); return 0; }
 			preparedHtml = false;
+		}
 		if (command == ID_EDIT_PASTE_TEXT && m_normalize && !preparedHtml)
 			return 0;
 
@@ -1958,7 +1997,51 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
 			if (!undoScope || !manager) return 0;
 			MSHTML::IHTMLDOMNodePtr parent(undoScope);
-			std::vector<PasteChildSnapshot> before(CapturePasteChildren(parent));
+			CString lowerInsert(insertHtml); lowerInsert.MakeLower();
+			const int firstParagraph = lowerInsert.Find(L"<p");
+			const bool smallPaste = (firstParagraph < 0 || lowerInsert.Find(L"<p", firstParagraph + 2) < 0) &&
+				lowerInsert.Find(L"<table") < 0 && lowerInsert.Find(L"<img") < 0 && lowerInsert.Find(L"<div") < 0;
+			MSHTML::IHTMLElementPtr paragraphAtEnd;
+			if (firstParagraph >= 0 || lowerInsert.Find(L"<table") >= 0 ||
+				lowerInsert.Find(L"<div") >= 0) {
+				for (MSHTML::IHTMLElementPtr element(pasteRange->parentElement()); element; element = element->parentElement) {
+					if (U::scmp(element->tagName, L"P") == 0) {
+						MSHTML::IHTMLTxtRangePtr endRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+						endRange->moveToElementText(element); endRange->collapse(VARIANT_FALSE);
+						if (pasteRange->compareEndPoints(L"StartToStart", endRange) == 0 &&
+							pasteRange->compareEndPoints(L"EndToEnd", endRange) == 0) paragraphAtEnd = element;
+						break;
+					}
+					if (element == undoScope) break;
+				}
+				if (!paragraphAtEnd) {
+					MSHTML::IHTMLTxtRangePtr preceding(pasteRange->duplicate());
+					if (preceding->move(L"character", -1) == -1) {
+						for (MSHTML::IHTMLElementPtr element(preceding->parentElement()); element; element = element->parentElement) {
+							if (U::scmp(element->tagName, L"P") == 0) {
+								MSHTML::IHTMLTxtRangePtr endRange(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+								endRange->moveToElementText(element); endRange->collapse(VARIANT_FALSE);
+								if (pasteRange->compareEndPoints(L"StartToStart", endRange) == 0 &&
+									pasteRange->compareEndPoints(L"EndToEnd", endRange) == 0) paragraphAtEnd = element;
+								if (!paragraphAtEnd && pasteRange->compareEndPoints(L"StartToEnd", pasteRange) == 0) {
+									MSHTML::IHTMLDOMNodePtr candidate(element), original(pasteRange->parentElement());
+									while (original && original->parentNode != candidate->parentNode) original = original->parentNode;
+									if (original && original == candidate->nextSibling) paragraphAtEnd = element;
+								}
+								break;
+							}
+							if (element == undoScope) break;
+						}
+					}
+				}
+			}
+			MSHTML::IHTMLDOMNodePtr changedChild;
+			if (smallPaste) {
+				changedChild = MSHTML::IHTMLDOMNodePtr(pasteRange->parentElement());
+				while (changedChild && changedChild->parentNode != parent) changedChild = changedChild->parentNode;
+			}
+			const bool targetedSnapshot = smallPaste && changedChild;
+			std::vector<PasteChildSnapshot> before(CapturePasteChildren(parent, changedChild, !targetedSnapshot));
 			MSHTML::IHTMLTxtRangePtr beforeSelection(pasteRange->duplicate());
 			const bool beforeWasClean = m_ownerDocument && !m_ownerDocument->DocChanged();
 			const bool beforeRecoveryClean = m_ownerDocument && !m_ownerDocument->DocRelChanged();
@@ -1971,12 +2054,27 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			if (!recording.Disabled()) return 0;
 			std::vector<PasteChildSnapshot> after;
 			try {
-				pasteRange->pasteHTML(_bstr_t(insertHtml));
+				if (paragraphAtEnd) {
+					MSHTML::IHTMLDOMNodePtr paragraphNode(paragraphAtEnd);
+					MSHTML::IHTMLDOMNodePtr nextOriginal(paragraphNode->nextSibling);
+					paragraphAtEnd->insertAdjacentHTML(L"afterEnd", _bstr_t(insertHtml));
+					MSHTML::IHTMLDOMNodePtr lastInserted;
+					for (MSHTML::IHTMLDOMNodePtr node(paragraphNode->nextSibling); node && node != nextOriginal; node = node->nextSibling)
+						if (node->nodeType == 1) lastInserted = node;
+					if (lastInserted) {
+						MSHTML::IHTMLTxtRangePtr placed(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
+						placed->moveToElementText(MSHTML::IHTMLElementPtr(lastInserted));
+						placed->collapse(VARIANT_FALSE); placed->select();
+					}
+				} else pasteRange->pasteHTML(_bstr_t(insertHtml));
+				CaptureClipboardTitlePasteDomForTest(Document());
 				pasteEnabled.Close();
 				NormalizeScope(normalizationScope);
-				after = CapturePasteChildren(parent);
+				after = CapturePasteChildren(parent, MSHTML::IHTMLDOMNodePtr(), false);
 			} catch (...) {
-				RestorePasteChildren(parent, before);
+				if (targetedSnapshot) RestorePasteHtml(undoScope, before);
+				else RestorePasteChildren(parent, before);
+				if (m_ownerDocument) m_ownerDocument->RestoreCleanAfterPasteUndo(saveVersion, beforeWasClean, beforeRecoveryClean);
 				throw;
 			}
 			recording.Close();
@@ -1984,6 +2082,12 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			unit->Initialize(parent, std::move(before), std::move(after), beforeSelection, afterSelection,
 				m_ownerDocument, beforeWasClean, beforeRecoveryClean, saveVersion, GetVersionNumber());
 			if (unit->Changed()) {
+				if (!unit->PrepareChangedClones()) {
+					PasteUndoRecordingScope rollback(manager);
+					RestorePasteHtml(undoScope, unit->Before());
+					if (m_ownerDocument) m_ownerDocument->RestoreCleanAfterPasteUndo(saveVersion, beforeWasClean, beforeRecoveryClean);
+					_com_issue_error(E_UNEXPECTED);
+				}
 				hr = manager->Add(unit);
 				if (FAILED(hr)) {
 					PasteUndoRecordingScope rollback(manager);
@@ -3941,8 +4045,9 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 	oe->cancelBubble = VARIANT_TRUE;
 	if(!m_enable_paste)
 	{
-		// Blocks first OnRealPaste to stop double-insertion
-		SendMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0);
+		// MSHTML can roll back DOM edits made inside the canceled paste event.
+		// Run the editor insertion after the event returns.
+		PostMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0);
 		oe->returnValue = VARIANT_FALSE;
 	}
 	else
