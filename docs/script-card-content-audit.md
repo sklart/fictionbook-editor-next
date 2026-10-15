@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **236**.
+Карточек без автоматических замечаний: **239**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,31 +16,31 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **460**. Исполняемый код не изменён.
+Изменено карточек: **463**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 101
-- `generic_usage`: 406
+- `generic_summary`: 104
+- `generic_usage`: 409
 - `generic_warning`: 62
-- `inaccurate_description`: 718
+- `inaccurate_description`: 721
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 423
-- `incorrect_effect`: 3
+- `incorrect_dependency`: 429
+- `incorrect_effect`: 6
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 413
+- `incorrect_scope`: 416
 - `incorrect_selection`: 44
-- `incorrect_setting`: 235
-- `incorrect_undo`: 405
+- `incorrect_setting`: 238
+- `incorrect_undo`: 408
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 44
+- `missing_warning`: 47
 - `uncertain_attribution`: 93
 
 Подтверждённые результаты:
@@ -48,24 +48,24 @@
 - `attributionClarified`: 94
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 288
-- `effectCorrected`: 1
+- `dependenciesVerified`: 291
+- `effectCorrected`: 4
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 404
-- `scopeClarified`: 390
+- `purposeClarified`: 407
+- `scopeClarified`: 393
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 40
-- `undoDescriptionsClarified`: 397
-- `usageCorrected`: 406
+- `settingsCorrected`: 43
+- `undoDescriptionsClarified`: 400
+- `usageCorrected`: 409
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 338
+- `warningsClarified`: 341
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **300**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **303**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -766,11 +766,14 @@
 - `14_Цитаты/056_Поиск предположительных цитат (без жирностей и курсивов).js:158` — Правила исключают ряд структурных элементов, но не проверяют body с fbname=notes/comments. Результаты возможны в примечаниях и комментариях.
 - `14_Цитаты/056_Поиск предположительных цитат (без жирностей и курсивов).js:704` — При стоп-слове Run1 вызывает Run2, а Run2 на исключённом абзаце вызывает Run1 (строка 1270). Длинная последовательность таких переходов накапливает вызовы и может переполнить стек.
 - `14_Цитаты/056_Поиск предположительных цитат (без жирностей и курсивов).js:193` — Проверка типа выделения и получение NBSP продублированы на строках 203–210; такой же повтор имеется во второй фазе на строках 760–778. Это усложняет диагностику и последующие правки.
+- `14_Цитаты/057_По очереди расформатировать все цитаты от жирности и курсива.js:127` — Результат поиска следующей цитаты игнорируется. Скрипты снятия жирности и курсива вызываются даже при NotFound или ошибке загрузки поиска и могут обработать прежнее выделение.
+- `14_Цитаты/058_Расформатировать все цитаты от жирности и курсива.js:129` — Результат команды перехода к началу документа не проверяется. При ошибке её загрузки цикл продолжится от текущей позиции, хотя команда обещает обработку всех цитат.
+- `14_Цитаты/059_По очереди сформатировать целиком жирные абзацы цитатой.js:127` — Результат поиска целиком жирного абзаца игнорируется. Форматирование цитатой вызывается и при NotFound или ошибке загрузки поиска, поэтому может изменить прежнее выделение.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 702
-- `inaccurate_description`: 45
+- `generic_usage`: 693
+- `inaccurate_description`: 43
 - `incorrect_undo`: 97
 - `requires_review`: 334
 
