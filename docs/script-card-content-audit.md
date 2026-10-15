@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **446**. Исполняемый код не изменён.
+Изменено карточек: **447**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 87
-- `generic_usage`: 392
+- `generic_summary`: 88
+- `generic_usage`: 393
 - `generic_warning`: 62
-- `inaccurate_description`: 704
+- `inaccurate_description`: 705
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 408
+- `incorrect_dependency`: 409
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 399
-- `incorrect_selection`: 39
-- `incorrect_setting`: 221
-- `incorrect_undo`: 391
+- `incorrect_scope`: 400
+- `incorrect_selection`: 40
+- `incorrect_setting`: 222
+- `incorrect_undo`: 392
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 30
-- `uncertain_attribution`: 84
+- `missing_warning`: 31
+- `uncertain_attribution`: 85
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 85
+- `attributionClarified`: 86
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 274
+- `dependenciesVerified`: 275
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 390
-- `scopeClarified`: 376
+- `purposeClarified`: 391
+- `scopeClarified`: 377
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 26
-- `undoDescriptionsClarified`: 383
-- `usageCorrected`: 392
+- `settingsCorrected`: 27
+- `undoDescriptionsClarified`: 384
+- `usageCorrected`: 393
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 324
+- `warningsClarified`: 325
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **286**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **287**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -696,13 +696,17 @@
 - `13_Заголовки, подзаголовки, пустые строки/770_Создать заголовки из заглавных абзацев.js:744` — Создание секций основано на текстовых маркерах и регулярной замене HTML всего body. Коллизия маркера с содержимым либо неожиданная сериализация P может нарушить границы разделов; переписывание outerHTML пересоздаёт все узлы и рискует потерять состояние/обработчики.
 - `13_Заголовки, подзаголовки, пустые строки/770_Создать заголовки из заглавных абзацев.js:729` — bodies — живая коллекция getElementsByTagName. В цикле body.outerHTML заменяет узел body, поэтому индексы и ссылки коллекции могут измениться; при нескольких body часть разделов может быть пропущена.
 - `13_Заголовки, подзаголовки, пустые строки/770_Создать заголовки из заглавных абзацев.js:547` — Между BeginUndoUnit и EndUndoUnit на строке 769 обычного return нет, но нет и finally. Исключение при вставке маркеров или переписывании HTML оставит операцию отмены открытой.
+- `13_Заголовки, подзаголовки, пустые строки/775_Оставить в заголовках только первый абзац.js:578` — При createSubtitles=0, addEmptyLines=1 и иллюстрации до вставленных абзацев код присваивает true результату вызова window.external.inflateBlock(emptyP). Это недопустимая цель присваивания и вызывает ошибку; аналогичный дефект на строке 589 для иллюстрации перед абзацами.
+- `13_Заголовки, подзаголовки, пустые строки/775_Оставить в заголовках только первый абзац.js:419` — normalizeSpaces(..., 'right') обрезает HTML после последнего непробельного текстового символа, включая закрывающие теги форматирования. Последующий innerHTML восстанавливает разметку браузером, но исходная структура может измениться.
+- `13_Заголовки, подзаголовки, пустые строки/775_Оставить в заголовках только первый абзац.js:684` — Если один из двух маркеров области не создан, функция выходит, не удаляя существующий маркер. Маркеры вставляются в документ до открытия операции отмены.
+- `13_Заголовки, подзаголовки, пустые строки/775_Оставить в заголовках только первый абзац.js:778` — При исключении внутри обработки EndUndoUnit вызывается в catch на строке 794, но удаление маркеров и закрытие при ошибке до try не гарантированы; маркеры области также вставляются до BeginUndoUnit.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 764
+- `generic_usage`: 759
 - `inaccurate_description`: 49
-- `incorrect_undo`: 107
-- `requires_review`: 341
+- `incorrect_undo`: 106
+- `requires_review`: 340
 
 ## Границы проверки
 

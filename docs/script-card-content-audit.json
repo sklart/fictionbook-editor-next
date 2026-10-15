@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 341,
-    "generic_usage": 764,
-    "incorrect_undo": 107,
+    "requires_review": 340,
+    "generic_usage": 759,
+    "incorrect_undo": 106,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -57723,18 +57723,231 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/775_Оставить в заголовках только первый абзац.js",
+      "codeSha256": "6c7fcb870afab6afb89614cb72e9630fbcd7812e10cd1e188414ba4a9ea093bf",
+      "evidence": "Строки 1–21 описывают замысел; 33–50 задают пять параметров; 223–343 выбирают заголовки по разделу, порядку и уровню; 363–423 нормализуют HTML; 428–597 переносят абзацы, учитывая эпиграф и иллюстрацию; 626–772 строят область маркерами и подтверждают анализ; 778–810 открывают и закрывают операцию отмены. Файловых, сетевых операций и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для обработки заголовков в fb2 документах, содержащих более одного абзаца.",
+          "after": "Выносит все абзацы после первого из многоабзацных заголовков секций в подзаголовки или обычные абзацы.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для обработки заголовков в fb2 документах, содержащих более одного абзаца.",
+          "after": "Ищет многоабзацные DIV.title в выделенном диапазоне либо от курсора до конца книги, только в основном DIV.body. По умолчанию выбирает заголовки секций без вложенных секций с заголовками; заголовок body и первый заголовок основного раздела исключает. Дополнительные P удаляет из title и вставляет после заголовка, после эпиграфа и, в зависимости от настройки, до или после ближайшей иллюстрации. Создаёт из них P.subtitle либо обычные P. Режим showStatistics=1 показывает анализ и запрашивает подтверждение до переноса; при 0 переносит без запроса.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Текстовое выделение либо участок от курсора до конца fbw_body; внутри него только DIV.title в основном body с пустым fbname. Заголовок body и первый найденный заголовок основного раздела исключены. При titleLevel=1 обрабатываются только заголовки секций, у которых нет вложенной секции с заголовком.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Выберите область текста; без выделения поставьте курсор перед нужными заголовками. При необходимости измените пять параметров в начале JS.",
+            "При showStatistics=1 проверьте анализ и подтвердите перенос; при 0 подтверждения не будет.",
+            "После переноса проверьте порядок абзацев около эпиграфов и иллюстраций, сохранность форматирования первого абзаца заголовка и результат в режиме обычных абзацев."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "При createSubtitles=0 и addEmptyLines=1 соседство с иллюстрацией вызывает ошибку на попытке присваивания результату inflateBlock; заголовок к этому моменту уже может быть частично изменён.",
+            "Нормализация первого абзаца может обрезать закрывающие HTML-теги после последнего непробельного символа; проверьте форматирование.",
+            "Для определения области скрипт временно вставляет маркеры в документ до открытия операции отмены; при ошибке создания маркеров ранний выход не гарантирует их удаление."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Перенос абзацев происходит внутри операции отмены; при перехваченной ошибке операция закрывается до выхода. Маркеры области вставляются до её открытия и удаляются после закрытия. Полнота отката этих изменений отдельно не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "titleLevel",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - обрабатывать любые, 1 - только вложенные",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "createSubtitles",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - создавать обычные абзацы, 1 - создавать подзаголовки",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "insertBeforeImage",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - вставлять до иллюстрации, 1 - вставлять после иллюстрации",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "addEmptyLines",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - не добавлять, 1 - добавлять",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Режим сообщений: 1 — показать анализ, запросить подтверждение и показать итог; 0 — выполнить найденные изменения без подтверждения, ошибки и отсутствие кандидатов всё равно показывать.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "titleLevel",
+              "value": 1,
+              "expression": "1",
+              "description": "Область по уровню: 1 — только заголовки секций без вложенных секций с заголовками; 0 — все допустимые заголовки, кроме первого защищённого.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "createSubtitles",
+              "value": 1,
+              "expression": "1",
+              "description": "Формат вынесенных абзацев: 1 — P.subtitle, 0 — обычный P.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "insertBeforeImage",
+              "value": 1,
+              "expression": "1",
+              "description": "Если сразу после заголовка или эпиграфа стоит иллюстрация: 0 — вставить перед ней, 1 — после неё. Название переменной соответствует варианту 0.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "addEmptyLines",
+              "value": 1,
+              "expression": "1",
+              "description": "При создании обычных P рядом с иллюстрацией добавить пустой разделитель: 1 — да, 0 — нет. В текущем коде этот путь может завершиться ошибкой.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 578,
+          "issue": "При createSubtitles=0, addEmptyLines=1 и иллюстрации до вставленных абзацев код присваивает true результату вызова window.external.inflateBlock(emptyP). Это недопустимая цель присваивания и вызывает ошибку; аналогичный дефект на строке 589 для иллюстрации перед абзацами."
+        },
+        {
+          "line": 419,
+          "issue": "normalizeSpaces(..., 'right') обрезает HTML после последнего непробельного текстового символа, включая закрывающие теги форматирования. Последующий innerHTML восстанавливает разметку браузером, но исходная структура может измениться."
+        },
+        {
+          "line": 684,
+          "issue": "Если один из двух маркеров области не создан, функция выходит, не удаляя существующий маркер. Маркеры вставляются в документ до открытия операции отмены."
+        },
+        {
+          "line": 778,
+          "issue": "При исключении внутри обработки EndUndoUnit вызывается в catch на строке 794, но удаление маркеров и закрытие при ошибке до try не гарантированы; маркеры области также вставляются до BeginUndoUnit."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 704,
-    "generic_usage": 392,
+    "inaccurate_description": 705,
+    "generic_usage": 393,
     "false_warning": 319,
-    "incorrect_setting": 221,
-    "incorrect_scope": 399,
-    "incorrect_undo": 391,
-    "uncertain_attribution": 84,
-    "generic_summary": 87,
-    "incorrect_dependency": 408,
+    "incorrect_setting": 222,
+    "incorrect_scope": 400,
+    "incorrect_undo": 392,
+    "uncertain_attribution": 85,
+    "generic_summary": 88,
+    "incorrect_dependency": 409,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -57743,25 +57956,25 @@
     "incorrect_attribution": 43,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 39,
+    "incorrect_selection": 40,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 30,
+    "missing_warning": 31,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 383,
-    "usageCorrected": 392,
-    "purposeClarified": 390,
-    "warningsClarified": 324,
-    "scopeClarified": 376,
+    "undoDescriptionsClarified": 384,
+    "usageCorrected": 393,
+    "purposeClarified": 391,
+    "warningsClarified": 325,
+    "scopeClarified": 377,
     "settingsClarified": 509,
-    "attributionClarified": 85,
-    "dependenciesVerified": 274,
+    "attributionClarified": 86,
+    "dependenciesVerified": 275,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -57769,7 +57982,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 26,
+    "settingsCorrected": 27,
     "effectCorrected": 1
   },
   "scripts": [
@@ -165805,77 +166018,75 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Оставить в заголовках только первый абзац",
-        "summary": "Скрипт предназначен для обработки заголовков в fb2 документах, содержащих более одного абзаца.",
-        "description": "Скрипт предназначен для обработки заголовков в fb2 документах, содержащих более одного абзаца.",
+        "summary": "Выносит все абзацы после первого из многоабзацных заголовков секций в подзаголовки или обычные абзацы.",
+        "description": "Ищет многоабзацные DIV.title в выделенном диапазоне либо от курсора до конца книги, только в основном DIV.body. По умолчанию выбирает заголовки секций без вложенных секций с заголовками; заголовок body и первый заголовок основного раздела исключает. Дополнительные P удаляет из title и вставляет после заголовка, после эпиграфа и, в зависимости от настройки, до или после ближайшей иллюстрации. Создаёт из них P.subtitle либо обычные P. Режим showStatistics=1 показывает анализ и запрашивает подтверждение до переноса; при 0 переносит без запроса.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "1.9",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Текстовое выделение либо участок от курсора до конца fbw_body; внутри него только DIV.title в основном body с пустым fbname. Заголовок body и первый найденный заголовок основного раздела исключены. При titleLevel=1 обрабатываются только заголовки секций, у которых нет вложенной секции с заголовком.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Выберите область текста; без выделения поставьте курсор перед нужными заголовками. При необходимости измените пять параметров в начале JS.",
+          "При showStatistics=1 проверьте анализ и подтвердите перенос; при 0 подтверждения не будет.",
+          "После переноса проверьте порядок абзацев около эпиграфов и иллюстраций, сохранность форматирования первого абзаца заголовка и результат в режиме обычных абзацев."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "При createSubtitles=0 и addEmptyLines=1 соседство с иллюстрацией вызывает ошибку на попытке присваивания результату inflateBlock; заголовок к этому моменту уже может быть частично изменён.",
+          "Нормализация первого абзаца может обрезать закрывающие HTML-теги после последнего непробельного символа; проверьте форматирование.",
+          "Для определения области скрипт временно вставляет маркеры в документ до открытия операции отмены; при ошибке создания маркеров ранний выход не гарантирует их удаление."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Режим сообщений: 1 — показать анализ, запросить подтверждение и показать итог; 0 — выполнить найденные изменения без подтверждения, ошибки и отсутствие кандидатов всё равно показывать.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "titleLevel",
             "value": 1,
             "expression": "1",
-            "description": "0 - обрабатывать любые, 1 - только вложенные",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Область по уровню: 1 — только заголовки секций без вложенных секций с заголовками; 0 — все допустимые заголовки, кроме первого защищённого.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "createSubtitles",
             "value": 1,
             "expression": "1",
-            "description": "0 - создавать обычные абзацы, 1 - создавать подзаголовки",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Формат вынесенных абзацев: 1 — P.subtitle, 0 — обычный P.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "insertBeforeImage",
             "value": 1,
             "expression": "1",
-            "description": "0 - вставлять до иллюстрации, 1 - вставлять после иллюстрации",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Если сразу после заголовка или эпиграфа стоит иллюстрация: 0 — вставить перед ней, 1 — после неё. Название переменной соответствует варианту 0.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "addEmptyLines",
             "value": 1,
             "expression": "1",
-            "description": "0 - не добавлять, 1 - добавлять",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "При создании обычных P рядом с иллюстрацией добавить пустой разделитель: 1 — да, 0 — нет. В текущем коде этот путь может завершиться ошибкой.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Перенос абзацев происходит внутри операции отмены; при перехваченной ошибке операция закрывается до выхода. Маркеры области вставляются до её открытия и удаляются после закрытия. Полнота отката этих изменений отдельно не проверена."
         },
         "examples": null,
         "tags": [
@@ -165886,54 +166097,54 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 867,
+            "line": 865,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" ver.\" + version);"
           }
         ],
         "undo_end": [
           {
-            "line": 883,
+            "line": 881,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 893,
+            "line": 891,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 716,
+            "line": 714,
             "text": "if (document.selection.type == \"Text\") {"
           },
           {
-            "line": 718,
+            "line": 716,
             "text": "range = document.selection.createRange();"
           },
           {
-            "line": 718,
+            "line": 716,
             "text": "range = document.selection.createRange();"
           },
           {
-            "line": 723,
+            "line": 721,
             "text": "var sel = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 178,
+            "line": 176,
             "text": "var html = element.innerHTML;"
           },
           {
-            "line": 193,
+            "line": 191,
             "text": "element.innerHTML = html;"
           },
           {
-            "line": 234,
+            "line": 232,
             "text": "parent.appendChild(item);"
           },
           {
-            "line": 545,
+            "line": 543,
             "text": "var html = next.innerHTML;"
           }
         ],
@@ -165944,163 +166155,163 @@
         "file": [],
         "return": [
           {
-            "line": 147,
+            "line": 145,
             "text": "if (!showStatistics && !isError) return;"
           },
           {
-            "line": 153,
+            "line": 151,
             "text": "if (!showStatistics && !isError) return;"
           },
           {
-            "line": 176,
+            "line": 174,
             "text": "if (!element) return;"
           },
           {
-            "line": 200,
+            "line": 198,
             "text": "if (!cp) return null;"
           },
           {
-            "line": 206,
+            "line": 204,
             "text": "if (cp.tagName != \"DIV\") return null;"
           },
           {
-            "line": 208,
+            "line": 206,
             "text": "return cp;"
           },
           {
-            "line": 224,
+            "line": 222,
             "text": "return np;"
           },
           {
-            "line": 246,
+            "line": 244,
             "text": "if (fbname == \"\") return \"main\";"
           },
           {
-            "line": 247,
+            "line": 245,
             "text": "return \"other\";"
           },
           {
-            "line": 251,
+            "line": 249,
             "text": "return \"main\";"
           },
           {
-            "line": 258,
+            "line": 256,
             "text": "if (!titleElement) return false;"
           },
           {
-            "line": 261,
+            "line": 259,
             "text": "return true;"
           },
           {
-            "line": 263,
+            "line": 261,
             "text": "return false;"
           },
           {
-            "line": 270,
+            "line": 268,
             "text": "if (!sectionElement) return false;"
           },
           {
-            "line": 281,
+            "line": 279,
             "text": "return true;"
           },
           {
-            "line": 286,
+            "line": 284,
             "text": "return true;"
           },
           {
-            "line": 290,
+            "line": 288,
             "text": "return false;"
           },
           {
-            "line": 301,
+            "line": 299,
             "text": "return false;"
           },
           {
-            "line": 306,
+            "line": 304,
             "text": "return !hasNestedSectionsWithTitles(parent);"
           },
           {
-            "line": 322,
+            "line": 320,
             "text": "return child;"
           },
           {
-            "line": 341,
+            "line": 339,
             "text": "return secChild;"
           },
           {
-            "line": 349,
+            "line": 347,
             "text": "return null;"
           },
           {
-            "line": 357,
+            "line": 355,
             "text": "return el.firstChild;"
           },
           {
-            "line": 361,
+            "line": 359,
             "text": "return el.nextSibling;"
           },
           {
-            "line": 365,
+            "line": 363,
             "text": "return null;"
           },
           {
-            "line": 432,
+            "line": 430,
             "text": "return titles;"
           },
           {
-            "line": 446,
+            "line": 444,
             "text": "return count;"
           },
           {
-            "line": 453,
+            "line": 451,
             "text": "if (html.length == 0) return html;"
           },
           {
-            "line": 486,
+            "line": 484,
             "text": "return result;"
           },
           {
-            "line": 508,
+            "line": 506,
             "text": "return html.substring(0, lastNonSpacePos + 1);"
           },
           {
-            "line": 510,
+            "line": 508,
             "text": "return \"\";"
           },
           {
-            "line": 519,
+            "line": 517,
             "text": "if (!parent) return { ref: null, hasImage: false, imageElement: null, hasEpigraph: false, epigraphElement: null };"
           },
           {
-            "line": 588,
+            "line": 586,
             "text": "return {"
           },
           {
-            "line": 611,
+            "line": 609,
             "text": "if (paragraphs.length <= 1) return 0;"
           },
           {
-            "line": 686,
+            "line": 684,
             "text": "return extractedParagraphs.length;"
           },
           {
-            "line": 698,
+            "line": 696,
             "text": "return;"
           },
           {
-            "line": 775,
+            "line": 773,
             "text": "return;"
           },
           {
-            "line": 814,
+            "line": 812,
             "text": "return;"
           },
           {
-            "line": 849,
+            "line": 847,
             "text": "return;"
           },
           {
-            "line": 890,
+            "line": 888,
             "text": "return;"
           }
         ]
@@ -166112,33 +166323,33 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 123,
+              "line": 121,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 123,
+              "line": 121,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 147,
+              "line": 145,
               "text": "if (!showStatistics && !isError) return;"
             },
             {
-              "line": 153,
+              "line": 151,
               "text": "if (!showStatistics && !isError) return;"
             },
             {
-              "line": 834,
+              "line": 832,
               "text": "analysisMsg += \"• Режим отображения: \" + (showStatistics == 1 ? \"АНАЛИЗ И СТАТИСТИКА\" : \"ТИХИЙ РЕЖИМ\") + \"\\n\";"
             },
             {
-              "line": 847,
+              "line": 845,
               "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 906,
+              "line": 904,
               "text": "if (showStatistics == 1) {"
             }
           ],
@@ -166149,21 +166360,21 @@
           "name": "titleLevel",
           "declarations": [
             {
-              "line": 127,
+              "line": 125,
               "text": "var titleLevel = 1;"
             }
           ],
           "uses": [
             {
-              "line": 127,
+              "line": 125,
               "text": "var titleLevel = 1;"
             },
             {
-              "line": 417,
+              "line": 415,
               "text": "if (titleLevel == 1) {"
             },
             {
-              "line": 836,
+              "line": 834,
               "text": "analysisMsg += \"• Обработка заголовков: \" + (titleLevel == 1 ? \"ТОЛЬКО ВЛОЖЕННЫЕ\" : \"ЛЮБОГО УРОВНЯ\") + \"\\n\";"
             }
           ],
@@ -166174,29 +166385,29 @@
           "name": "createSubtitles",
           "declarations": [
             {
-              "line": 131,
+              "line": 129,
               "text": "var createSubtitles = 1;"
             }
           ],
           "uses": [
             {
-              "line": 131,
+              "line": 129,
               "text": "var createSubtitles = 1;"
             },
             {
-              "line": 643,
+              "line": 641,
               "text": "if (createSubtitles == 1) {"
             },
             {
-              "line": 660,
+              "line": 658,
               "text": "if (createSubtitles == 0 && addEmptyLines == 1 && insertInfo.hasImage) {"
             },
             {
-              "line": 837,
+              "line": 835,
               "text": "analysisMsg += \"• Поведение: \" + (createSubtitles == 1 ? \"СОЗДАВАТЬ ПОДЗАГОЛОВКИ\" : \"СОЗДАВАТЬ ОБЫЧНЫЕ АБЗАЦЫ\") + \"\\n\";"
             },
             {
-              "line": 840,
+              "line": 838,
               "text": "if (createSubtitles == 0) {"
             }
           ],
@@ -166207,25 +166418,25 @@
           "name": "insertBeforeImage",
           "declarations": [
             {
-              "line": 135,
+              "line": 133,
               "text": "var insertBeforeImage = 1;"
             }
           ],
           "uses": [
             {
-              "line": 135,
+              "line": 133,
               "text": "var insertBeforeImage = 1;"
             },
             {
-              "line": 579,
+              "line": 577,
               "text": "if (insertBeforeImage == 0) {"
             },
             {
-              "line": 661,
+              "line": 659,
               "text": "if (insertBeforeImage == 0) {"
             },
             {
-              "line": 838,
+              "line": 836,
               "text": "analysisMsg += \"• Обработка иллюстраций после заголовка: \" + (insertBeforeImage == 0 ? \"ВСТАВЛЯТЬ ТЕКСТ ПЕРЕД\" : \"ВСТАВЛЯТЬ ТЕКСТ ПОСЛЕ\") + \"\\n\";"
             }
           ],
@@ -166236,21 +166447,21 @@
           "name": "addEmptyLines",
           "declarations": [
             {
-              "line": 139,
+              "line": 137,
               "text": "var addEmptyLines = 1;"
             }
           ],
           "uses": [
             {
-              "line": 139,
+              "line": 137,
               "text": "var addEmptyLines = 1;"
             },
             {
-              "line": 660,
+              "line": 658,
               "text": "if (createSubtitles == 0 && addEmptyLines == 1 && insertInfo.hasImage) {"
             },
             {
-              "line": 841,
+              "line": 839,
               "text": "analysisMsg += \"• Добавлять пустые строки к абзацам при соседстве с иллюстрациями: \" + (addEmptyLines == 1 ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -166260,25 +166471,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 91,
+          "line": 89,
           "text": "// version 1.9"
         },
         {
-          "line": 110,
+          "line": 108,
           "text": "// version 1.9, 20.04.2026"
         },
         {
-          "line": 114,
+          "line": 112,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 116,
+          "line": 114,
           "text": "var version = \"1.9\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "При createSubtitles=0 и addEmptyLines=1 соседство с иллюстрацией вызывает ошибку на попытке присваивания результату inflateBlock; заголовок к этому моменту уже может быть частично изменён.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Нормализация первого абзаца может обрезать закрывающие HTML-теги после последнего непробельного символа; проверьте форматирование.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Для определения области скрипт временно вставляет маркеры в документ до открытия операции отмены; при ошибке создания маркеров ранний выход не гарантирует их удаление.",
           "verification": "requires_review"
         }
       ],
@@ -166301,102 +166520,26 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 867,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" ver.\" + version);"
-            },
-            {
-              "line": 883,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 893,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Перенос абзацев происходит внутри операции отмены; при перехваченной ошибке операция закрывается до выхода. Маркеры области вставляются до её открытия и удаляются после закрытия. Полнота отката этих изменений отдельно не проверена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 867,
+              "line": 865,
               "text": "window.external.BeginUndoUnit(document, scriptName + \" ver.\" + version);"
             },
             {
-              "line": 890,
+              "line": 888,
               "text": "return;"
             },
             {
-              "line": 893,
+              "line": 891,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]
