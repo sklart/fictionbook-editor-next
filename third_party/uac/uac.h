@@ -142,6 +142,7 @@ typedef struct {
 typedef struct {
 	HANDLE hInnerProcess;
 	HANDLE hOuterThread;
+	DWORD expectedInnerPid;
 #ifdef UAC_HACK_FGNDWND2011
 	HWND hwndSplash;
 #endif
@@ -155,9 +156,11 @@ typedef struct {
 
 typedef struct {
 	BYTE* pShared;
+	DWORD SharedMapBytes;
 	HANDLE PerformOp;
 	HANDLE CompletedOp;
 	HANDLE hSharedMap;
+	HANDLE hOuterProcess;
 	HWND hwndOuter;
 	NSISCH*NSISVars;
 	UINT NSIScchStr;

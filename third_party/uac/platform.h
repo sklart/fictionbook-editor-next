@@ -4,7 +4,7 @@
 #	define _UNICODE
 #endif
 
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601 // Windows 7 is the oldest supported installer host.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <ShellAPI.h>

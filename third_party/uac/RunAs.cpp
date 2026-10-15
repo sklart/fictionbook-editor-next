@@ -16,6 +16,57 @@ extern CREATEPROCESSWITHLOGONW	_CreateProcessWithLogonW;
 #include "resource.h"
 using namespace NSIS;
 
+static WCHAR* CopyAsWide(LPCTSTR source)
+{
+	if (!source) source = _T("");
+#ifdef UNICODE
+	const SIZE_T chars = lstrlenW(source) + 1;
+	WCHAR* result = (WCHAR*)NSIS::MemAlloc(chars * sizeof(WCHAR));
+	if (result) MemCopy(result, (void*)source, chars * sizeof(WCHAR));
+#else
+	const int chars = MultiByteToWideChar(CP_ACP, 0, source, -1, NULL, 0);
+	if (!chars) return NULL;
+	WCHAR* result = (WCHAR*)NSIS::MemAlloc((SIZE_T)chars * sizeof(WCHAR));
+	if (result && !MultiByteToWideChar(CP_ACP, 0, source, -1, result, chars)) {
+		NSIS::MemFree(result);
+		return NULL;
+	}
+#endif
+	return result;
+}
+
+// lpApplicationName identifies the EXE; argv[0] still needs Windows quoting.
+// Existing lpParameters is already a command line, so append it unchanged.
+static WCHAR* BuildRunAsCommandLine(LPCWSTR file, LPCWSTR parameters)
+{
+	if (!file || !*file) return NULL;
+	const SIZE_T fileChars = lstrlenW(file);
+	const SIZE_T parameterChars = parameters ? lstrlenW(parameters) : 0;
+	if (parameterChars > (SIZE_T)-1 / sizeof(WCHAR) - 4 ||
+		fileChars > ((SIZE_T)-1 / sizeof(WCHAR) - parameterChars - 4) / 2) return NULL;
+	WCHAR* result = (WCHAR*)NSIS::MemAlloc((fileChars * 2 + parameterChars + 4) * sizeof(WCHAR));
+	if (!result) return NULL;
+	WCHAR* out = result;
+	*out++ = L'"';
+	SIZE_T slashes = 0;
+	for (LPCWSTR p = file; *p; ++p) {
+		if (*p == L'\\') { ++slashes; continue; }
+		if (*p == L'"') {
+			while (slashes) { *out++ = L'\\'; *out++ = L'\\'; --slashes; }
+			*out++ = L'\\';
+		} else {
+			while (slashes) { *out++ = L'\\'; --slashes; }
+		}
+		slashes = 0;
+		*out++ = *p;
+	}
+	while (slashes) { *out++ = L'\\'; *out++ = L'\\'; --slashes; }
+	*out++ = L'"';
+	if (parameterChars) { *out++ = L' '; MemCopy(out, (void*)parameters, parameterChars * sizeof(WCHAR)); out += parameterChars; }
+	*out = 0;
+	return result;
+}
+
 #define ERRAPP_TRYAGAIN (0x20000000|1)
 #define MYMAX_DOMAIN (2+max(GNLEN,MAX_COMPUTERNAME_LENGTH)+1)
 
@@ -204,21 +255,16 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 					SHELLEXECUTEINFO&sei=*pRADD->pSEI;
 					PROCESS_INFORMATION pi={0};
 					DWORD ec=NO_ERROR;
-					WCHAR*wszExec;//Also used as TCHAR buffer in AsSelf mode
-					bool PerformTCharFmt=pRADD->AsSelf;
-					//const DWORD CommonStartupInfoFlags=STARTF_FORCEONFEEDBACK;
-#ifdef UNICODE
-					PerformTCharFmt=true;
-#endif
-					wszExec=(WCHAR*)NSIS::MemAlloc( (pRADD->AsSelf?sizeof(TCHAR):sizeof(WCHAR)) *(lstrlen(sei.lpFile)+1+lstrlen(sei.lpParameters)+1));
-					if (!wszExec)ec=ERROR_OUTOFMEMORY;
-					if (PerformTCharFmt)wsprintf((TCHAR*)wszExec,_T("%s%s%s"),sei.lpFile,((sei.lpParameters&&*sei.lpParameters)?_T(" "):_T("")),sei.lpParameters);
+					WCHAR* wszFile = CopyAsWide(sei.lpFile);
+					WCHAR* wszParameters = CopyAsWide(sei.lpParameters);
+					WCHAR* wszExec = wszFile && wszParameters ? BuildRunAsCommandLine(wszFile, wszParameters) : NULL;
+					if (!wszExec) ec=ERROR_OUTOFMEMORY;
 					if (!ec) {
 						if (pRADD->AsSelf) {
-							STARTUPINFO si;
+							STARTUPINFOW si;
 							ZEROSTRUCT(si), si.cb = sizeof(si);
-							TRACEF("MyRunAs:CreateProcess:%s|\n",wszExec);
-							ec=(CreateProcess(0,(TCHAR*)wszExec,0,0,false,0,0,0,&si,&pi)?NO_ERROR:GetLastError());
+							TRACEF("MyRunAs:CreateProcessW\n");
+							ec=(CreateProcessW(wszFile,wszExec,0,0,false,0,0,0,&si,&pi)?NO_ERROR:GetLastError());
 						}
 						else {
 							//All Wide strings!
@@ -227,15 +273,6 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 							STARTUPINFOW siw;
 							ZEROSTRUCT(siw), siw.cb = sizeof(siw);
 							WCHAR*p;
-#ifndef UNICODE
-							//Build unicode string, we already know the buffer is big enough so no error handling
-							p=wszExec;
-							MultiByteToWideChar(CP_THREAD_ACP,0,sei.lpFile,-1,p,0xFFFFFF);
-							if (sei.lpParameters && *sei.lpParameters) {
-								p+=lstrlen(sei.lpFile);*p++=L' ';*p=0;
-								MultiByteToWideChar(CP_THREAD_ACP,0,sei.lpParameters,-1,p,0xFFFFFF);
-							}
-#endif
 							SendMessageW(GetDlgItem(hwnd,IDC_USERNAME),WM_GETTEXT,ARRAYSIZE(wszUName),(LPARAM)wszUName);
 							SendMessageW(GetDlgItem(hwnd,IDC_PASSWORD),WM_GETTEXT,ARRAYSIZE(wszPwd),(LPARAM)wszPwd);
 							
@@ -250,10 +287,10 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 								pUName=p+1;*p=0;
 							}
 
-							TRACEF("MyRunAs:CreateProcessWithLogonW:%ws|%ws|%ws|%ws|\n",pUName,pDomain?pDomain:L"NO?DOMAIN",wszPwd,wszExec);
-							ec=(_CreateProcessWithLogonW(pUName,pDomain?pDomain:0,wszPwd,LOGON_WITH_PROFILE,0,wszExec,0,0,0,&siw,&pi)?NO_ERROR:GetLastError());
+							TRACEF("MyRunAs:CreateProcessWithLogonW starting\n");
+							ec=(_CreateProcessWithLogonW(pUName,pDomain?pDomain:0,wszPwd,LOGON_WITH_PROFILE,wszFile,wszExec,0,0,0,&siw,&pi)?NO_ERROR:GetLastError());
 							TRACEF("MyRunAs:CreateProcessWithLogonW: ret=%u\n",ec);
-							MySecureZeroMemory(wszPwd,sizeof(wszPwd));//if (wszPwd) {volatile WCHAR*_p=wszPwd;for(;_p&&*_p;++_p)*_p=1;if (_p)*wszPwd=0;}//Burn password (And attempt to prevent compiler from removing it)	
+						SecureZeroMemory(wszPwd,sizeof(wszPwd));
 							if (ec && ErrorIsLogonError(ec)) {
 								LPTSTR szMsg;
 								DWORD ret=FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,0,ec,MAKELANGID(LANG_NEUTRAL,SUBLANG_DEFAULT),(LPTSTR)&szMsg,0,0);
@@ -267,7 +304,9 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 						}
 					}
 					NSIS::MemFree(wszExec);
-					CloseHandle(pi.hThread);
+					NSIS::MemFree(wszParameters);
+					NSIS::MemFree(wszFile);
+					if (pi.hThread) CloseHandle(pi.hThread);
 					if (ERRAPP_TRYAGAIN==ec)break;
 					exitcode=IDOK;
 					pRADD->LastErr=ec;
@@ -291,7 +330,7 @@ DWORD WINAPI MyRunAs(HINSTANCE hInstDll,SHELLEXECUTEINFO&sei)
 	MemZero(&radd,sizeof(radd));
 	radd.pSEI=&sei;
 	ec=DialogBoxParam(hInstDll,MAKEINTRESOURCE(IDD_MYRUNAS),sei.hwnd,MyRunAsDlgProc,(LPARAM)&radd);
-	TRACEF("MyRunAs returned %d (%s|%s)\n",ec,sei.lpFile,sei.lpParameters);
+	TRACEF("MyRunAs returned %d\n",ec);
 	switch(ec) {
 	case 0:
 		return ERROR_INVALID_HANDLE;//DialogBoxParam returns 0 on bad hwnd

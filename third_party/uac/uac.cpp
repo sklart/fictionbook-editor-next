@@ -20,7 +20,12 @@ FORCEINLINE UAC_GLOBALS_OUTER& OG()  {return G().outer;}
 FORCEINLINE bool IsInnerInstance()   {return G().RunMode==RUNMODE_INNER;}
 FORCEINLINE bool IsOuterInstance()   {return G().RunMode==RUNMODE_OUTER;}
 FORCEINLINE HWND xxxGetOuterIPCWND() {return G().hwndOuter;}
-FORCEINLINE HWND xxxGetOuterNSISMainWnd() {return(HWND)SendMessage(xxxGetOuterIPCWND(),OWM_GETOUTERSTATE,GOSI_HWNDMAINWND,0);}
+FORCEINLINE HWND xxxGetOuterNSISMainWnd() {
+	DWORD_PTR result=0;
+	if (!SendMessageTimeout(xxxGetOuterIPCWND(),OWM_GETOUTERSTATE,GOSI_HWNDMAINWND,0,
+		SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&result)) return NULL;
+	return (HWND)result;
+}
 
 #ifdef FEAT_AUTOPAGEJUMP
 #	define Outer_GetOuterNSISMainWnd() xxxGetOuterNSISMainWnd()
@@ -30,6 +35,81 @@ FORCEINLINE HWND xxxGetOuterNSISMainWnd() {return(HWND)SendMessage(xxxGetOuterIP
 #	define Inner_GetInnerNSISMainWnd() G().hwndNSIS
 #endif
 #define Inner_GetOuterIPCWND xxxGetOuterIPCWND
+
+static void FlashInstallerWindow(HWND hwnd)
+{
+	if (!IsWindow(hwnd)) return;
+	FLASHWINFO info = { sizeof(info), hwnd, FLASHW_TRAY | FLASHW_TIMERNOFG, 3, 0 };
+	FlashWindowEx(&info);
+	TRACEF("UAC: foreground activation denied; flashed installer taskbar button\n");
+}
+
+static void ShowInstallerWindow(HWND hwnd)
+{
+	if (!IsWindow(hwnd)) return;
+	if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+	else if (!IsWindowVisible(hwnd)) ShowWindow(hwnd, SW_SHOWNORMAL);
+	SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+		SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+	if (!SetForegroundWindow(hwnd) && GetForegroundWindow() != hwnd) FlashInstallerWindow(hwnd);
+}
+
+static bool SameExecutableImage(HANDLE other)
+{
+	WCHAR current[MAX_PATH * 4], candidate[MAX_PATH * 4];
+	DWORD currentLength=ARRAYSIZE(current), candidateLength=ARRAYSIZE(candidate);
+	return QueryFullProcessImageNameW(GetCurrentProcess(),0,current,&currentLength) &&
+		QueryFullProcessImageNameW(other,0,candidate,&candidateLength) &&
+		lstrcmpiW(current,candidate)==0;
+}
+
+static void CloseRemoteHandle(HANDLE process,HANDLE remote)
+{
+	if (!remote) return;
+	HANDLE local=NULL;
+	if (DuplicateHandle(process,remote,GetCurrentProcess(),&local,0,false,
+		DUPLICATE_SAME_ACCESS|DUPLICATE_CLOSE_SOURCE)) CloseHandle(local);
+}
+
+static bool BuildElevationParameters(TCHAR* target,SIZE_T capacity,HWND ipcWindow,LPCTSTR arguments)
+{
+	const SIZE_T argumentChars=lstrlen(arguments);
+	const SIZE_T fixedChars=5+sizeof(UINT_PTR)*2+6+1; // /UAC:, hex HWND, /NCRC, NUL
+	if (capacity<fixedChars || argumentChars>capacity-fixedChars) return false;
+	TCHAR* out=target;
+	for (LPCTSTR p=_T("/UAC:");*p;) *out++=*p++;
+	UINT_PTR value=(UINT_PTR)ipcWindow;
+	TCHAR reversed[sizeof(UINT_PTR)*2];
+	SIZE_T digits=0;
+	do {
+		const UINT nibble=(UINT)(value&15);
+		reversed[digits++]=(TCHAR)(nibble<10?_T('0')+nibble:_T('A')+nibble-10);
+		value>>=4;
+	} while(value);
+	while(digits) *out++=reversed[--digits];
+	for (LPCTSTR p=_T(" /NCRC");*p;) *out++=*p++;
+	while(*arguments) *out++=*arguments++;
+	*out=0;
+	return true;
+}
+
+static bool IsOriginalUser()
+{
+	if (!IsInnerInstance()) return true;
+	if (!G().hOuterProcess) return false;
+	HANDLE currentToken=NULL, outerToken=NULL;
+	BYTE currentUser[256], outerUser[256];
+	DWORD currentBytes=0, outerBytes=0;
+	bool same=false;
+	if (OpenProcessToken(GetCurrentProcess(),TOKEN_QUERY,&currentToken) &&
+		OpenProcessToken(G().hOuterProcess,TOKEN_QUERY,&outerToken) &&
+		GetTokenInformation(currentToken,TokenUser,currentUser,sizeof(currentUser),&currentBytes) &&
+		GetTokenInformation(outerToken,TokenUser,outerUser,sizeof(outerUser),&outerBytes))
+		same=EqualSid(((TOKEN_USER*)currentUser)->User.Sid,((TOKEN_USER*)outerUser)->User.Sid)!=FALSE;
+	if (outerToken) CloseHandle(outerToken);
+	if (currentToken) CloseHandle(currentToken);
+	return same;
+}
 
 
 bool SysQuery_IsServiceRunning(LPCTSTR servicename) 
@@ -242,7 +322,7 @@ bool GetOuterHwndFromCommandline(HWND&hwndOut)
 {
 	LPTSTR p=FindExePathEnd(GetCommandLine());
 	while(p && *p==' ')p=CharNext(p);
-	TRACEF("GetOuterHwndFromCommandline:%s|\n",p);
+	TRACEF("GetOuterHwndFromCommandline: checking IPC argument\n");
 	if (p && *p++=='/'&&*p++=='U'&&*p++=='A'&&*p++=='C'&&*p++==':') 
 	{
 		hwndOut=(HWND)StrToUIntPtr(p,true);
@@ -260,14 +340,18 @@ UINT_PTR __cdecl NSISPluginCallback(enum NSPIM Event)
 	case NSPIM_UNLOAD:
 		if (IsOuterInstance()) 
 		{
-			SendMessage(G().hwndOuter,WM_CLOSE,0,0);
-			WaitForSingleObject(OG().hOuterThread,INFINITE);
-			BUILDRLSCANLEAK(CloseHandle(OG().hOuterThread));
+			if (IsWindow(G().hwndOuter)) PostMessage(G().hwndOuter,WM_CLOSE,0,0);
+			if (OG().hOuterThread) {
+				WaitForSingleObject(OG().hOuterThread,10000);
+				CloseHandle(OG().hOuterThread);
+			}
+			if (OG().hInnerProcess) CloseHandle(OG().hInnerProcess);
 		}
-		BUILDRLSCANLEAK(CloseHandle(G().PerformOp));
-		BUILDRLSCANLEAK(CloseHandle(G().CompletedOp));
-		UnmapViewOfFile(G().pShared);
-		BUILDRLSCANLEAK(CloseHandle(G().hSharedMap));
+		if (G().PerformOp) CloseHandle(G().PerformOp);
+		if (G().CompletedOp) CloseHandle(G().CompletedOp);
+		if (G().pShared) UnmapViewOfFile(G().pShared);
+		if (G().hSharedMap) CloseHandle(G().hSharedMap);
+		if (G().hOuterProcess) CloseHandle(G().hOuterProcess);
 		TRACEF("NSISPluginCallback:NSPIM_UNLOAD completed cleanup, ready to be unloaded...\n");
 		break;
 	}
@@ -301,6 +385,7 @@ BOOL CALLBACK ProcessThreadMessages(HWND hwndDlg=NULL,DWORD*pExitCode=NULL)
 
 bool Inner_DoOpInOuter(UINT opid,UINT Direction) 
 {
+	if (!G().pShared || !G().PerformOp || !G().CompletedOp || !G().hOuterProcess) return false;
 	OP_HDR*pOP=(OP_HDR*)G().pShared;
 	pOP->Op=opid;
 	pOP->Direction=Direction;
@@ -308,19 +393,23 @@ bool Inner_DoOpInOuter(UINT opid,UINT Direction)
 
 	if (SetEvent(G().PerformOp)) 
 	{
+		const DWORD started=GetTickCount();
 		for(DWORD w;;) 
 		{
-			w=MsgWaitForMultipleObjects(1,&G().CompletedOp,false,INFINITE,QS_ALLINPUT);
+			const DWORD elapsed=GetTickCount()-started;
+			if (elapsed>=120000) return false;
+			HANDLE waits[]={G().CompletedOp,G().hOuterProcess};
+			w=MsgWaitForMultipleObjects(ARRAYSIZE(waits),waits,false,120000-elapsed,QS_ALLINPUT);
 			switch(w) 
 			{
 			case WAIT_OBJECT_0:
-				return true;
-			case WAIT_OBJECT_0+1:
-				if (ProcessThreadMessages())break;
+				return pOP->Op==opid;
+			case WAIT_OBJECT_0+2:
+				if (ProcessThreadMessages()) return false;
 				continue;
 			default:
-				ASSERT(!"DoOp>MsgWaitForMultipleObjects failed!");
-				break;
+				TRACEF("DoOp: outer exited, timed out, or wait failed (%u)\n",w);
+				return false;
 			}
 		}
 	}
@@ -329,7 +418,15 @@ bool Inner_DoOpInOuter(UINT opid,UINT Direction)
 }
 
 
-void OP_SYNCREG_CopyRegisters(bool VarToShared,UINT offset,const UINT count) 
+static bool ValidSyncRegisterRange(UINT offset,UINT count)
+{
+	if (!G().NSIScchStr || !count || count>10 || offset>=__INST_LAST || count>__INST_LAST-offset)
+		return false;
+	const SIZE_T cbOneVar=(SIZE_T)G().NSIScchStr*sizeof(NSISCH);
+	return sizeof(OP_SYNCREG)+cbOneVar*count<=G().SharedMapBytes;
+}
+
+void OP_SYNCREG_CopyRegisters(bool VarToShared,UINT offset,const UINT count)
 {
 	const UINT cbOneVar=G().NSIScchStr*sizeof(NSISCH);
 	offset*=cbOneVar;
@@ -347,6 +444,7 @@ bool Inner_DoSyncRegisters(UINT Dir,UINT regoffset=INST_0,UINT count=10)
 //	TRACEF("*** Inner_DoSyncRegisters BEGIN PID=%u\n",GetCurrentProcessId());
 	for (int i=0;i<2;++i) 
 	{
+		if (!ValidSyncRegisterRange(pOP->RegOffset,pOP->Count)) return false;
 		if (Dir==OPDIR_I2O)OP_SYNCREG_CopyRegisters(true,pOP->RegOffset,pOP->Count);//CopyRegisters(pSharedBaseOffset,G().NSISVars,pOP->RegOffset,pOP->Count);
 		if (!Inner_DoOpInOuter(OPID_SYNCREG,Dir))return false;
 		if (Dir==OPDIR_O2I)OP_SYNCREG_CopyRegisters(false,pOP->RegOffset,pOP->Count);//CopyRegisters(G().NSISVars,pSharedBaseOffset,pOP->RegOffset,pOP->Count);
@@ -357,10 +455,10 @@ bool Inner_DoSyncRegisters(UINT Dir,UINT regoffset=INST_0,UINT count=10)
 }
 
 
-inline void Inner_SyncNSISVar(UINT Dir,bool instdir,bool outdir) 
+inline bool Inner_SyncNSISVar(UINT Dir,bool instdir,bool outdir)
 {
 	const UINT first=instdir?INST_INSTDIR:INST_OUTDIR;
-	Inner_DoSyncRegisters(Dir,first,(INST_OUTDIR+1)-first);
+	return Inner_DoSyncRegisters(Dir,first,(INST_OUTDIR+1)-first);
 }
 
 
@@ -372,31 +470,34 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 #ifdef UAC_HACK_FGNDWND2011
 		SendMessage(hwnd,OWM_HIDESPLASH,0,0);
 #endif
-		PostMessage(NULL,WM_QUIT,0,NULL);
+		PostQuitMessage(0);
 		break;
 	case WM_CLOSE:
 		return DestroyWindow(hwnd);
 	case OWM_INITINNER:
 		TRACEF("OuterWndProc:OWM_INITINNER %X\n",OG().hInnerProcess);
-		if (OG().hInnerProcess)
+		if (OG().hInnerProcess && OG().expectedInnerPid &&
+			GetProcessId(OG().hInnerProcess)==OG().expectedInnerPid)
 		{
 			const HANDLE hThisProcess=GetCurrentProcess(),hTargetProcess=OG().hInnerProcess;
-			HANDLE destMap;
+			HANDLE destMap=NULL, destEvents[2]={NULL,NULL};
 			if (DuplicateHandle(hThisProcess,G().hSharedMap,hTargetProcess,&destMap,FILE_MAP_WRITE|FILE_MAP_READ,false,0))
 			{
-				BYTE*p=(BYTE*)G().pShared;
-				HANDLE dest,src[]={G().PerformOp,G().CompletedOp};
-				for (int i=0;i<ARRAYSIZE(src);++i) 
+				HANDLE src[]={G().PerformOp,G().CompletedOp};
+				for (int i=0;i<ARRAYSIZE(src);++i)
 				{
-					if (!DuplicateHandle(hThisProcess,src[i],hTargetProcess,&dest,SYNCHRONIZE|EVENT_MODIFY_STATE,false,/*DUPLICATE_SAME_ACCESS*/0)) 
+					if (!DuplicateHandle(hThisProcess,src[i],hTargetProcess,&destEvents[i],
+						SYNCHRONIZE|EVENT_MODIFY_STATE,false,0))
 					{
 						TRACEF("DuplicateHandle on src[%d] failed with %d\n",i,GetLastError());
-						ASSERT(dest);
+						for (int j=0;j<i;++j) CloseRemoteHandle(hTargetProcess,destEvents[j]);
+						CloseRemoteHandle(hTargetProcess,destMap);
 						return NULL;
 					}
-					*((HANDLE*)p)=dest;
-					p+=sizeof(HANDLE);
 				}
+				HANDLE* shared=(HANDLE*)G().pShared;
+				shared[0]=destEvents[0];
+				shared[1]=destEvents[1];
 				TRACEF("OuterWndProc:OWM_INITINNER duped handles, returning shared handle %X\n",destMap);
 				return (LRESULT)destMap;
 			}
@@ -407,31 +508,24 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 		}
 		return NULL;
 	case OWM_ISREADYFORINIT:
-		TRACEF("OuterWndProc:OWM_ISREADYFORINIT %X\n",OG().hInnerProcess);
-		return OG().hInnerProcess?0x666:false;
+		return OG().expectedInnerPid && !OG().hInnerProcess ? 0x666 : false;
 	case OWM_PERFORMWINDOWSWITCH:
 		TRACEF("OuterWndProc:OWM_PERFORMWINDOWSWITCH %X:%X\n",wp,lp);
 #if 1
-		if (GetWindowStyle((HWND)lp)&WS_VISIBLE) 
+		if (IsWindow((HWND)wp) && IsWindow((HWND)lp))
 		{
 			HWND hOuterNSIS=(HWND)wp;
 			HWND hInnerNSIS=(HWND)lp;
-			SetForegroundWindow(hInnerNSIS);
-			if (1)
-			{
-				//Just hiding the outer window works, but can cause focus problems with MessageBox in outer instance
-				ShowWindow(/*hInnerNSIS??*/hOuterNSIS,SW_HIDE);
-			}
-			else
-			{
-				SetWindowLongPtr(hOuterNSIS,GWL_STYLE,WS_CHILD|WS_VISIBLE);
-				if (!SendMessage(hInnerNSIS,IWM_HELPWITHWINDOWSWITCH,0,0)) ShowWindow(hOuterNSIS,SW_HIDE);
-				SetWindowPos(hOuterNSIS,HWND_BOTTOM,0,0,0,0,SWP_NOACTIVATE|SWP_ASYNCWINDOWPOS|SWP_FRAMECHANGED|SWP_NOOWNERZORDER);//SWP_NOSENDCHANGING
-			}
+			DWORD outerPid=0, innerPid=0;
+			GetWindowThreadProcessId(hOuterNSIS,&outerPid);
+			GetWindowThreadProcessId(hInnerNSIS,&innerPid);
+			if (outerPid != GetCurrentProcessId() || !OG().expectedInnerPid ||
+				innerPid != OG().expectedInnerPid) return ERROR_INVALID_WINDOW_HANDLE;
+			ShowInstallerWindow(hInnerNSIS);
+			ShowWindow(hOuterNSIS,SW_HIDE);
 		}
-		else
-			/*if (lp)*/PostMessage(hwnd,msg,wp,lp);//this is ugly, but we need to wait for the inner window
-		return 0;
+		else return ERROR_INVALID_WINDOW_HANDLE;
+		return NO_ERROR;
 #endif
 
 #ifdef FEAT_AUTOPAGEJUMP
@@ -451,7 +545,8 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 		switch(wp)
 		{
 		case SOSI_PROCESSDUPHANDLE:
-			if (!OG().hInnerProcess && lp)
+			if (!OG().hInnerProcess && lp && OG().expectedInnerPid &&
+				GetProcessId((HANDLE)lp)==OG().expectedInnerPid)
 			{
 				//TODO: Verfiy that this handle has the correct PID?
 				TRACEF("OWM_SETOUTERSTATE:SOSI_PROCESSDUPHANDLE got %X\n",lp);
@@ -482,8 +577,12 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 #ifdef UAC_HACK_FGNDWND2011
 	case OWM_HIDESPLASH:
 		TRACEF("OWM_HIDESPLASH %X\n",OG().hwndSplash);
-		ShowWindow(OG().hwndSplash,SW_HIDE);
-		DestroyWindow(OG().hwndSplash);
+		if (IsWindow(OG().hwndSplash)) {
+			ShowWindow(OG().hwndSplash,SW_HIDE);
+			// The dialog belongs to the NSIS thread, not this IPC window thread.
+			PostMessage(OG().hwndSplash,WM_CLOSE,0,0);
+		}
+		OG().hwndSplash=NULL;
 		break;
 #endif
 	}
@@ -516,19 +615,28 @@ DWORD CALLBACK OuterWndThread(LPVOID param)
 					case OPID_SYNCREG:
 						{
 							OP_SYNCREG*pSR=(OP_SYNCREG*)G().pShared;
-							OP_SYNCREG_CopyRegisters(pSR->OpHdr.Direction==OPDIR_O2I,pSR->RegOffset,pSR->Count);
+							if (pSR->OpHdr.Direction>OPDIR_O2I ||
+								!ValidSyncRegisterRange(pSR->RegOffset,pSR->Count)) pHdr->Op=OPID_NOP;
+							else OP_SYNCREG_CopyRegisters(pSR->OpHdr.Direction==OPDIR_O2I,pSR->RegOffset,pSR->Count);
 						}
 						break;
 					case OPID_CALLCODESEGMENT:
 						TRACEF("OPID_CALLCODESEGMENT: %u\n",((OP_CALLCODESEGMENT*)pHdr)->Pos);
-						if (((OP_CALLCODESEGMENT*)pHdr)->Flags&OPCCSF_SETOUTPATH)SetCurrentDirectory(NSIS_UNSAFE_GETVAR(INST_OUTDIR,G().NSISVars,G().NSIScchStr));
-						g_pXP->ExecuteCodeSegment(((OP_CALLCODESEGMENT*)pHdr)->Pos,NULL);
+						if (pHdr->Direction!=OPDIR_I2O ||
+							((OP_CALLCODESEGMENT*)pHdr)->Pos<0 ||
+							(((OP_CALLCODESEGMENT*)pHdr)->Flags & ~OPCCSF_SETOUTPATH)) pHdr->Op=OPID_NOP;
+						else {
+							if (((OP_CALLCODESEGMENT*)pHdr)->Flags&OPCCSF_SETOUTPATH)
+								SetCurrentDirectory(NSIS_UNSAFE_GETVAR(INST_OUTDIR,G().NSISVars,G().NSIScchStr));
+							g_pXP->ExecuteCodeSegment(((OP_CALLCODESEGMENT*)pHdr)->Pos,NULL);
+						}
 						break;
 /*					case OPID_GETOUTERSTATE:
 						MemCopy(G().pShared,&G(),sizeof(UAC_GLOBALS));
 						break;*/
 					default:
 						TRACEF("OPID_???\n");
+						pHdr->Op=OPID_NOP;
 					}
 				}
 				SetEvent(G().CompletedOp);
@@ -554,7 +662,9 @@ DWORD CALLBACK OuterWndThread(LPVOID param)
 
 FORCEINLINE DWORD Outer_InitShared(UINT NSIScchStr) 
 {
+	if (!NSIScchStr || NSIScchStr>65536) return ERROR_INVALID_PARAMETER;
 	UINT ec,cbMap=sizeof(OP_SYNCREG) + ((sizeof(NSISCH)*NSIScchStr)*10);
+	G().SharedMapBytes=cbMap;
 	if (true
 		&& (G().PerformOp=CreateEvent(/*&sa*/NULL,false,false,NULL))
 		&& (G().CompletedOp=CreateEvent(/*&sa*/NULL,false,false,NULL))
@@ -571,56 +681,76 @@ FORCEINLINE DWORD Outer_CreateOuterWindow()
 {
 	DWORD ec=NO_ERROR;
 	if ( !(OG().hOuterThread=CreateThread(0,1,OuterWndThread,NULL,0,NULL)) )return GetLastError();
-	if ( WAIT_OBJECT_0!=WaitForSingleObject(G().CompletedOp,INFINITE) )GetExitCodeThread(OG().hOuterThread,&ec);
+	HANDLE waits[]={G().CompletedOp,OG().hOuterThread};
+	DWORD wait=WaitForMultipleObjects(ARRAYSIZE(waits),waits,false,10000);
+	if (wait==WAIT_OBJECT_0+1) GetExitCodeThread(OG().hOuterThread,&ec);
+	else if (wait!=WAIT_OBJECT_0) ec=wait==WAIT_TIMEOUT?WAIT_TIMEOUT:GetLastError();
 	return ec;
 }
 
 
 DWORD Inner_InitSharedData() 
 {
-	ASSERT(G().hwndOuter);
-	TRACEF("Inner_InitSharedData() has=%X\n",G().hSharedMap);
-	if (!G().hSharedMap) 
+	if (G().pShared) return NO_ERROR;
+	if (!IsWindow(G().hwndOuter) || !G().NSIScchStr || G().NSIScchStr>65536)
+		return ERROR_INVALID_WINDOW_HANDLE;
+	DWORD pid=0;
+	GetWindowThreadProcessId(G().hwndOuter,&pid);
+	if (!pid || pid==GetCurrentProcessId()) return ERROR_INVALID_WINDOW_HANDLE;
+	G().hOuterProcess=OpenProcess(PROCESS_DUP_HANDLE|PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,false,pid);
+	if (!G().hOuterProcess) return GetLastError();
+	DWORD ec=NO_ERROR;
+	DWORD_PTR reply=0;
+	HANDLE remoteSelf=NULL;
+	if (!SameExecutableImage(G().hOuterProcess)) { ec=ERROR_ACCESS_DENIED; goto failed; }
 	{
-		HANDLE hOuterProcess,hThisProcess=GetCurrentProcess();
-		DWORD pid;
-		ASSERT(G().hwndOuter);
-		GetWindowThreadProcessId(G().hwndOuter,&pid);
-		ASSERT(pid);
-		BOOL HadDbgPriv;
-		EnablePrivilege(SE_DEBUG_NAME,true,&HadDbgPriv);
-		TRACEF("try to open process outer pid=%u\n",pid);
-		if (!(hOuterProcess=OpenProcess(PROCESS_DUP_HANDLE,false,pid)))goto dieGLE;
-		TRACEF("hOuterProcess with dup right =%X\n",hOuterProcess);
-		DuplicateHandle(hThisProcess,hThisProcess,hOuterProcess,&hOuterProcess,PROCESS_DUP_HANDLE,false,DUPLICATE_CLOSE_SOURCE);
-		EnablePrivilege(SE_DEBUG_NAME,HadDbgPriv,NULL);
-
-		
-		//The handle we get from ShExecEx can only be syncronized with (NT6+), so we give the outer process a handle with DUP_HANDLE rights so it can give us access to its shared memory
-		if (0x666!=SendMessage(G().hwndOuter,OWM_SETOUTERSTATE,SOSI_PROCESSDUPHANDLE,(LPARAM)hOuterProcess))return ERROR_INVALID_WINDOW_HANDLE;
-		//Wait for a very unlikely racecond.
-		while(SendMessage(G().hwndOuter,OWM_ISREADYFORINIT,0,0)!=0x666)Sleep(50);
-		
-		TRACEF("Inner_InitSharedData: Sending OWM_INITINNER to get hSharedMap...\n");
-		G().hSharedMap=(HANDLE)SendMessage(G().hwndOuter,OWM_INITINNER,0,0);
-		ASSERT(G().hSharedMap);
-		
-		if (G().pShared=(BYTE*)MapViewOfFile(G().hSharedMap,FILE_MAP_ALL_ACCESS,0,0,0)) 
-		{
-			HANDLE*p=(HANDLE*)G().pShared;
-			G().PerformOp=*p;
-			G().CompletedOp=*(++p);
-		}
-		if (!G().pShared) 
-		{
-			TRACEF("Inner_InitSharedData failed!\n");
-			ASSERT(G().pShared);
-			return ERROR_INVALID_PARAMETER;
+		const DWORD started=GetTickCount();
+		for (;;) {
+			if (WaitForSingleObject(G().hOuterProcess,0)==WAIT_OBJECT_0) { ec=ERROR_BROKEN_PIPE; goto failed; }
+			if (!SendMessageTimeout(G().hwndOuter,OWM_ISREADYFORINIT,0,0,
+				SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&reply)) { ec=GetLastError(); goto failed; }
+			if (reply==0x666) break;
+			if (GetTickCount()-started>=10000) { ec=WAIT_TIMEOUT; goto failed; }
+			Sleep(50);
 		}
 	}
+	if (!DuplicateHandle(GetCurrentProcess(),GetCurrentProcess(),G().hOuterProcess,&remoteSelf,
+		PROCESS_DUP_HANDLE|PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,false,0)) {
+		ec=GetLastError(); goto failed;
+	}
+	if (!SendMessageTimeout(G().hwndOuter,OWM_SETOUTERSTATE,SOSI_PROCESSDUPHANDLE,
+		(LPARAM)remoteSelf,SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&reply)) {
+		// The outer thread may have accepted the handle just before timeout.
+		// Leave its ownership to the outer process in this ambiguous case.
+		ec=GetLastError(); if (!ec) ec=WAIT_TIMEOUT;
+		goto failed;
+	}
+	if (reply!=0x666) {
+		ec=GetLastError(); if (!ec) ec=ERROR_INVALID_WINDOW_HANDLE;
+		CloseRemoteHandle(G().hOuterProcess,remoteSelf);
+		goto failed;
+	}
+	TRACEF("Inner_InitSharedData: process verified, requesting shared handles\n");
+	if (!SendMessageTimeout(G().hwndOuter,OWM_INITINNER,0,0,
+		SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&reply) || !reply) {
+		ec=GetLastError(); if (!ec) ec=ERROR_INVALID_HANDLE;
+		goto failed;
+	}
+	G().hSharedMap=(HANDLE)reply;
+	G().pShared=(BYTE*)MapViewOfFile(G().hSharedMap,FILE_MAP_ALL_ACCESS,0,0,0);
+	if (!G().pShared) { ec=GetLastError(); goto failed; }
+	G().SharedMapBytes=sizeof(OP_SYNCREG)+sizeof(NSISCH)*G().NSIScchStr*10;
+	G().PerformOp=((HANDLE*)G().pShared)[0];
+	G().CompletedOp=((HANDLE*)G().pShared)[1];
+	if (!G().PerformOp || !G().CompletedOp) { ec=ERROR_INVALID_HANDLE; goto failed; }
+	TRACEF("Inner_InitSharedData: IPC ready\n");
 	return NO_ERROR;
-dieGLE:
-	return GetLastError();
+failed:
+	TRACEF("Inner_InitSharedData failed: %u\n",ec);
+	if (G().pShared) { UnmapViewOfFile(G().pShared); G().pShared=NULL; }
+	if (G().hSharedMap) { CloseHandle(G().hSharedMap); G().hSharedMap=NULL; }
+	if (G().hOuterProcess) { CloseHandle(G().hOuterProcess); G().hOuterProcess=NULL; }
+	return ec;
 }
 
 
@@ -651,14 +781,17 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 			{
 				TRACEF("InnerMainWndSubProc:WM_WINDOWPOSCHANGED: Performing delayed onGuiInit pagejump and OWM_PERFORMWINDOWSWITCH");
 				HWND hOuterMainWnd=Inner_GetOuterNSISMainWnd();
-				G().JumpPageOffset=(WORD)SendMessage(G().hwndOuter,OWM_GETOUTERSTATE,GOSI_PAGEJUMP,0);
+				DWORD_PTR pageJump=0;
+				if (!SendMessageTimeout(G().hwndOuter,OWM_GETOUTERSTATE,GOSI_PAGEJUMP,0,
+					SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&pageJump)) pageJump=0;
+				G().JumpPageOffset=(WORD)pageJump;
 				
 				TRACEF("\tposting WM_NOTIFY_OUTER_NEXT %d to autojump\n",G().JumpPageOffset);
 				PostMessage(hwnd,WM_NOTIFY_OUTER_NEXT,G().JumpPageOffset,0);
 
 				RECT rect;
-				GetWindowRect(hOuterMainWnd,&rect);
-				SetWindowPos(hwnd,hOuterMainWnd,rect.left,rect.top,0,0,SWP_NOSIZE);
+				if (IsWindow(hOuterMainWnd) && GetWindowRect(hOuterMainWnd,&rect))
+					SetWindowPos(hwnd,hOuterMainWnd,rect.left,rect.top,0,0,SWP_NOSIZE);
 				
 /*#ifdef UAC_DELAYLOAD_CHANGEWINDOWMESSAGEFILTER
 				if (_ChangeWindowMessageFilter) 
@@ -667,8 +800,11 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 				}
 #endif
 */				
-				TRACEF("\tPosting OWM_PERFORMWINDOWSWITCH %X,%X\n",hOuterMainWnd,hwnd);
-				PostMessage(G().hwndOuter,OWM_PERFORMWINDOWSWITCH,(WPARAM)hOuterMainWnd,(LPARAM)hwnd);
+				TRACEF("\tSending OWM_PERFORMWINDOWSWITCH %X,%X\n",hOuterMainWnd,hwnd);
+				DWORD_PTR switchResult=ERROR_INVALID_WINDOW_HANDLE;
+				if (!SendMessageTimeout(G().hwndOuter,OWM_PERFORMWINDOWSWITCH,
+					(WPARAM)hOuterMainWnd,(LPARAM)hwnd,SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&switchResult) ||
+					switchResult!=NO_ERROR) ShowInstallerWindow(hwnd);
 
 				G().JumpPageOffset=-1;
 			}
@@ -692,6 +828,7 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 
 INT_PTR CALLBACK SplashDialogProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) 
 {
+	if (uMsg==WM_CLOSE) { DestroyWindow(hwnd); return TRUE; }
 	return false;
 }
 
@@ -814,7 +951,7 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 #endif
 					
 					p=FindExePathEnd(pCL);
-					len=(UINT)(p-pCL) / sizeof(TCHAR);
+					len=p?(UINT)(p-pCL):0;
 					ec=ERROR_FILE_NOT_FOUND;
 
 					if (p && len)
@@ -826,9 +963,11 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 								ec=ERROR_OUTOFMEMORY;
 							else
 							{
-								if ( GetModuleFileName(NULL,pszExePathBuf,len) < len ) //FUCKO: what if GetModuleFileName returns 0?
+								DWORD pathChars=GetModuleFileName(NULL,pszExePathBuf,len);
+								if (!pathChars) { ec=GetLastError(); break; }
+								if (pathChars < len)
 								{
-									TRACEF("module=%s|\n",pszExePathBuf);
+									TRACEF("RunElevated: executable path resolved\n");
 									ec=0;
 									break; 
 								}
@@ -844,8 +983,9 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 								ec=ERROR_OUTOFMEMORY;
 							else 
 							{
-								wsprintf(pszParamBuf,_T("/UAC:%X /NCRC%s"),G().hwndOuter,p);//NOTE: The argument parser depends on our special flag appearing first
-								sei.lpParameters=pszParamBuf;
+								if (!BuildElevationParameters(pszParamBuf,len,G().hwndOuter,p))
+									ec=ERROR_INSUFFICIENT_BUFFER;
+								sei.lpParameters=pszParamBuf;// The IPC argument must remain first.
 								
 								if (OSVMaj==5) 
 								{
@@ -856,7 +996,7 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 								if (!ec) 
 								{
 									SetForegroundWindow(sei.hwnd);
-									TRACEF("UAC:Elevate: Execute: %s|%s|\n",sei.lpFile,sei.lpParameters);
+									TRACEF("UAC:Elevate: starting child process\n");
 
 									#ifdef FEAT_CUSTOMRUNASDLG
 									if (OSVMaj>=6 && !SysQuery_UAC_IsActive()) //NOTE: v6 not hardcoded, will MS ever fix this?
@@ -880,6 +1020,12 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 									}
 
 									if (!ec) 
+									{
+										OG().expectedInnerPid=GetProcessId(sei.hProcess);
+										if (!OG().expectedInnerPid) ec=GetLastError();
+										if (!ec) AllowSetForegroundWindow(OG().expectedInnerPid);
+									}
+									if (!ec)
 									{
 										bool endWait=false;
 										TRACEF("RunElevated: %d:%d waiting for fork hP=%X\n",GetCurrentProcessId(),GetCurrentThreadId(),sei.hProcess);
@@ -907,12 +1053,14 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 										}
 										while(!endWait && NO_ERROR==ec);
 										CloseHandle(sei.hProcess);
+										sei.hProcess=NULL;
 										if (OG().ecInner_InitSharedData) 
 										{
 											TRACEF("inner process completed, but never got access to shared mem? ec=%u forkexit=%u ecInner_InitSharedData=%u\n",ec,ForkExitCode,OG().ecInner_InitSharedData);
 											ec=OG().ecInner_InitSharedData;
 										}
 									}
+									if (sei.hProcess) { CloseHandle(sei.hProcess); sei.hProcess=NULL; }
 								}
 							}
 						}
@@ -921,9 +1069,12 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 			}
 			if (IsOuterInstance()) 
 			{
+				SendMessage(G().hwndOuter,OWM_HIDESPLASH,0,0);
+				if (ec || UACMode==3) ShowInstallerWindow(hwndNSIS);
 				if(G().JumpPageOffset)--G().JumpPageOffset;
 				CloseHandle(OG().hInnerProcess);
 				OG().hInnerProcess=NULL;
+				OG().expectedInnerPid=0;
 			}
 
 			pXP->exec_flags->errlvl=ec?ec:ForkExitCode;//We now set the errlvl no matter what, is this a good idea?
@@ -956,17 +1107,18 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 						const bool SyncRegisters=(ecsflags&UAC_SYNCREGISTERS)!=0;
 						const bool SyncInstDir=(ecsflags&UAC_SYNCINSTDIR)!=0;
 						const bool SyncOutDir=(ecsflags&UAC_SYNCOUTDIR)!=0;
-						if (SyncRegisters)Inner_DoSyncRegisters(OPDIR_I2O);
-						Inner_SyncNSISVar(OPDIR_I2O,SyncInstDir,SyncOutDir);
-						
-						OP_CALLCODESEGMENT*pOP=(OP_CALLCODESEGMENT*)G().pShared;
-						pOP->Pos=pos;
-						pOP->Flags=SyncOutDir?OPCCSF_SETOUTPATH:NULL;
-						Inner_DoOpInOuter(OPID_CALLCODESEGMENT,OPDIR_I2O);
-						
-						if (SyncRegisters)Inner_DoSyncRegisters(OPDIR_O2I);
-						Inner_SyncNSISVar(OPDIR_O2I,SyncInstDir,SyncOutDir);
-						if (SyncOutDir)SetCurrentDirectory(NSIS_UNSAFE_GETVAR(INST_OUTDIR,G().NSISVars,G().NSIScchStr));
+						bool ok=!SyncRegisters || Inner_DoSyncRegisters(OPDIR_I2O);
+						if (ok) ok=Inner_SyncNSISVar(OPDIR_I2O,SyncInstDir,SyncOutDir);
+						if (ok) {
+							OP_CALLCODESEGMENT*pOP=(OP_CALLCODESEGMENT*)G().pShared;
+							pOP->Pos=pos;
+							pOP->Flags=SyncOutDir?OPCCSF_SETOUTPATH:0;
+							ok=Inner_DoOpInOuter(OPID_CALLCODESEGMENT,OPDIR_I2O);
+						}
+						if (ok && SyncRegisters) ok=Inner_DoSyncRegisters(OPDIR_O2I);
+						if (ok) ok=Inner_SyncNSISVar(OPDIR_O2I,SyncInstDir,SyncOutDir);
+						if (ok && SyncOutDir) SetCurrentDirectory(NSIS_UNSAFE_GETVAR(INST_OUTDIR,G().NSISVars,G().NSIScchStr));
+						if (!ok) { ec=ERROR_BROKEN_PIPE; TRACEF("ExecCodeSegment: IPC operation failed\n"); }
 					}
 					else 
 					{
@@ -1019,7 +1171,9 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 		if (IsInnerInstance()) 
 		{
 			ec=Inner_InitSharedData();
-			SendMessage(Inner_GetOuterIPCWND(),OWM_SETOUTERSTATE,SOSI_ELEVATIONPAGE_GUIINITERRORCODE,ec);
+			DWORD_PTR ignored=0;
+			SendMessageTimeout(Inner_GetOuterIPCWND(),OWM_SETOUTERSTATE,
+				SOSI_ELEVATIONPAGE_GUIINITERRORCODE,ec,SMTO_ABORTIFHUNG|SMTO_BLOCK,5000,&ignored);
 		}
 		break;
 #endif
@@ -1029,6 +1183,11 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 			wsprintf(p,_T("%u"),il);
 			freeSP1 = false;
 		}
+		break;
+	case '7':/*** IsOriginalUser ***/
+		wsprintf(p,_T("%u"),IsOriginalUser()?1:0);
+		freeSP1=false;
+		TRACEF("UAC:IsOriginalUser=%s\n",*p=='1'?"yes":"no/unknown");
 		break;
 /*	case '?':/*** FindCmdLineParams *** /
 		{

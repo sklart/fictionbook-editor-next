@@ -24,7 +24,7 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $repoRoot "packaging\nsis\Installer\Generated\EuropeanFallback.generated.nsh"
 }
 
-$englishLines = Get-Content -LiteralPath $englishPath
+$englishLines = Get-Content -LiteralPath $englishPath -Encoding UTF8
 $stringLines = New-Object System.Collections.Generic.List[string]
 for ($index = 0; $index -lt $englishLines.Count; $index++) {
     $line = $englishLines[$index]

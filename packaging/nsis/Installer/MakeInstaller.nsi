@@ -212,6 +212,26 @@ Var CommandLineCurrentUser
 Var CommandLineAllUsers
 Var CommandLinePortable
 
+!macro FBE_RestoreElevationVar variable
+  ClearErrors
+  !insertmacro UAC_AsUser_GetGlobalVar ${variable}
+  ${If} ${Errors}
+    Goto elevation_state_failed
+  ${EndIf}
+!macroend
+
+!macro FBE_RestoreElevationSection
+  ClearErrors
+  !insertmacro UAC_AsUser_GetSection Flags $R8 $R0
+  ${If} ${Errors}
+    Goto elevation_state_failed
+  ${EndIf}
+  SectionSetFlags $R8 $R0
+  ${If} ${Errors}
+    Goto elevation_state_failed
+  ${EndIf}
+!macroend
+
 Function .onInit
   !insertmacro UAC_PageElevation_OnInit
   ${If} ${UAC_IsInnerInstance}
@@ -219,6 +239,12 @@ Function .onInit
     SetErrorLevel 0x666666
     Quit
   ${EndIf}
+  !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+  ${If} ${UAC_IsInnerInstance}
+    Call RestoreElevatedInstallerState
+    Return
+  ${EndIf}
+  !endif
   SetShellVarContext current
   StrCpy $DeploymentMode "installed"
   StrCpy $InstallScope "current"
@@ -262,6 +288,7 @@ deployment_scope_detected:
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
 FunctionEnd
+
 
 Function ApplyDeploymentCommandLine
   ${GetParameters} $0
@@ -593,6 +620,15 @@ Function un.onInit
 un_current_scope:
   SetShellVarContext current
 un_scope_ready:
+  ${If} ${UAC_IsInnerInstance}
+  ${AndIf} $ExistingMachineInstall == ""
+    !insertmacro UAC_IsOriginalUser $0
+    ${If} $0 != 1
+      MessageBox MB_OK|MB_ICONSTOP $(UacDifferentUserUninstaller)
+      SetErrorLevel 5
+      Quit
+    ${EndIf}
+  ${EndIf}
   ${IfNot} ${UAC_IsInnerInstance}
     !insertmacro MUI_LANGDLL_DISPLAY
   ${EndIf}
@@ -910,6 +946,14 @@ Function CleanupLegacyArchHandlerRegistration
   ; Old releases placed only ArchHandler here.  Do not remove Utilities itself:
   ; it may contain other current or user-supplied utilities.
   RMDir /r "$INSTDIR\Utilities\ArchHandler"
+  ${If} ${UAC_IsInnerInstance}
+    !insertmacro UAC_AsUser_Call Function CleanupLegacyArchHandlerUserRegistration ${UAC_SYNCREGISTERS}
+  ${Else}
+    Call CleanupLegacyArchHandlerUserRegistration
+  ${EndIf}
+FunctionEnd
+
+Function CleanupLegacyArchHandlerUserRegistration
   DeleteRegValue HKCU "Software\Classes\.zip\OpenWithProgids" "FictionBookEditor.ArchHandler.zip"
   DeleteRegValue HKCU "Software\Classes\.rar\OpenWithProgids" "FictionBookEditor.ArchHandler.rar"
   DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.zip"
@@ -919,6 +963,14 @@ Function CleanupLegacyArchHandlerRegistration
 FunctionEnd
 
 Function un.CleanupLegacyArchHandlerRegistration
+  ${If} ${UAC_IsInnerInstance}
+    !insertmacro UAC_AsUser_Call Function un.CleanupLegacyArchHandlerUserRegistration ${UAC_SYNCREGISTERS}
+    Return
+  ${EndIf}
+  Call un.CleanupLegacyArchHandlerUserRegistration
+FunctionEnd
+
+Function un.CleanupLegacyArchHandlerUserRegistration
   DeleteRegValue HKCU "Software\Classes\.zip\OpenWithProgids" "FictionBookEditor.ArchHandler.zip"
   DeleteRegValue HKCU "Software\Classes\.rar\OpenWithProgids" "FictionBookEditor.ArchHandler.rar"
   DeleteRegKey HKCU "Software\Classes\FictionBookEditor.ArchHandler.zip"
@@ -1387,10 +1439,18 @@ FunctionEnd
 SectionGroup /e !$(ShCutGroup) ShCutGroup_id
 ; Shortcuts
 	Section $(Start_Menu_ShortCuts) Start_Menu_ShortCuts_id
-		!insertmacro UAC_AsUser_Call Function CreateStartMenuShortcuts ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
+		${If} $InstallScope == "allusers"
+			Call CreateStartMenuShortcuts
+		${Else}
+			!insertmacro UAC_AsUser_Call Function CreateStartMenuShortcuts ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
+		${EndIf}
 	SectionEnd	
 	Section /o $(Desktop_ShortCut) Desktop_ShortCut_id
-		!insertmacro UAC_AsUser_Call Function CreateDesktopShortcut ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
+		${If} $InstallScope == "allusers"
+			Call CreateDesktopShortcut
+		${Else}
+			!insertmacro UAC_AsUser_Call Function CreateDesktopShortcut ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
+		${EndIf}
 	SectionEnd
 SectionGroupEnd
 
@@ -1485,6 +1545,61 @@ SubSection !$(Dictionaries) Dictionaries_id
         SectionEnd
 
 SubSectionEnd
+
+!ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+Function RestoreElevatedInstallerState
+  ; Read from the original NSIS process before using HKCU, shell folders or
+  ; any defaults belonging to the administrator account entered at UAC.
+  !insertmacro FBE_RestoreElevationVar $LANGUAGE
+  !insertmacro FBE_RestoreElevationVar $DeploymentMode
+  !insertmacro FBE_RestoreElevationVar $InstallScope
+  !insertmacro FBE_RestoreElevationVar $SessionCurrentInstallLocation
+  !insertmacro FBE_RestoreElevationVar $SessionAllUsersInstallLocation
+  !insertmacro FBE_RestoreElevationVar $InstalledStateSaved
+  !insertmacro FBE_RestoreElevationVar $SavedInstallScope
+  !insertmacro FBE_RestoreElevationVar $SavedInstallDirectory
+  !insertmacro FBE_RestoreElevationVar $SavedSystemIntegrationFlags
+  !insertmacro FBE_RestoreElevationVar $SavedFb2AssociationFlags
+  !insertmacro FBE_RestoreElevationVar $SavedFbdAssociationFlags
+  !insertmacro FBE_RestoreElevationVar $SavedValidateFlags
+  !insertmacro FBE_RestoreElevationVar $SavedExplorerFlags
+  !insertmacro FBE_RestoreElevationVar $SavedShortcutsFlags
+  !insertmacro FBE_RestoreElevationVar $SavedStartMenuFlags
+  !insertmacro FBE_RestoreElevationVar $SavedDesktopFlags
+  !insertmacro FBE_RestoreElevationVar $CommandLineCurrentUser
+  !insertmacro FBE_RestoreElevationVar $CommandLineAllUsers
+  !insertmacro FBE_RestoreElevationVar $CommandLinePortable
+  !insertmacro FBE_RestoreElevationVar $ICONS_GROUP
+  !insertmacro FBE_RestoreElevationVar $INSTDIR
+
+  ${If} $InstallScope == "allusers"
+    SetShellVarContext all
+  ${Else}
+    SetShellVarContext current
+    !insertmacro UAC_IsOriginalUser $0
+    ${If} $0 != 1
+      MessageBox MB_OK|MB_ICONSTOP $(UacDifferentUserInstaller)
+      SetErrorLevel 5
+      Quit
+    ${EndIf}
+  ${EndIf}
+
+  ; Section indexes in this installer are contiguous, including groups and
+  ; generated language packs. Copy every selection made before elevation.
+  StrCpy $R8 ${MainSection_id}
+elevation_sections_next:
+  !insertmacro FBE_RestoreElevationSection
+  IntOp $R8 $R8 + 1
+  ${If} $R8 <= ${Dict08}
+    Goto elevation_sections_next
+  ${EndIf}
+  Return
+elevation_state_failed:
+  MessageBox MB_OK|MB_ICONSTOP $(UacStateRestoreFailed)
+  SetErrorLevel 13
+  Quit
+FunctionEnd
+!endif
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${MainSection_id} $(DESC_Main)
@@ -1791,12 +1906,11 @@ fbd_uninstall_done:
 
 ; Delete program settings only after the explicit, unchecked opt-in page.
   ${If} $UninstallUserData == "1"
-    Call un.GetUserAppData
-    Pop $0
-    Delete "$0\FBE Next\Words.xml"
-	RMDir /r "$0\FBE Next"
-
-	DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam\FictionBook Editor Next"
+    ${If} ${UAC_IsInnerInstance}
+      !insertmacro UAC_AsUser_Call Function un.DeleteOriginalUserData ${UAC_SYNCREGISTERS}
+    ${Else}
+      Call un.DeleteOriginalUserData
+    ${EndIf}
   ${EndIf}
 
   Call un.DeleteShortcuts
@@ -1809,3 +1923,11 @@ fbd_uninstall_done:
   SetAutoClose false
 SectionEnd
 !endif
+
+Function un.DeleteOriginalUserData
+  Call un.GetUserAppData
+  Pop $0
+  Delete "$0\FBE Next\Words.xml"
+  RMDir /r "$0\FBE Next"
+  DeleteRegKey HKEY_CURRENT_USER "SOFTWARE\FBETeam\FictionBook Editor Next"
+FunctionEnd

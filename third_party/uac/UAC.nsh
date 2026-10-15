@@ -74,6 +74,13 @@ UAC::_ 6
 !endif
 !macroend
 
+; Compare the elevated process token user with the original installer user.
+; Unknown identity fails closed and returns 0.
+!macro UAC_IsOriginalUser outvar
+UAC::_ 7
+Pop ${outvar}
+!macroend
+
 
 
 /* UAC_IsAdmin

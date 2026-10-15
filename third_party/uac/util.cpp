@@ -16,10 +16,17 @@ void WINAPI UACHlpr_MemZero(void*pMem,SIZE_T cb)
 	MemSet((BYTE*) pMem,cb,0);
 }
 
+// Keep the hand-written copy in this CRT-free plug-in; /O2 otherwise emits memcpy.
+#if defined(_MSC_VER)
+#pragma optimize("", off)
+#endif
 void WINAPI MemCopy(void*pD,void*pS,SIZE_T cb)
 {
 	for(SIZE_T i=0;i<cb;++i) ((BYTE*)pD)[i] = ((BYTE*)pS)[i];
 }
+#if defined(_MSC_VER)
+#pragma optimize("", on)
+#endif
 
 
 DWORD GetSysVer(bool Major) 
