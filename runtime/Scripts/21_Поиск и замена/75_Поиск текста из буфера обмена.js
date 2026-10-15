@@ -43,7 +43,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт читает буфер обмена, ищет и выделяет совпадение; текст документа не меняется."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

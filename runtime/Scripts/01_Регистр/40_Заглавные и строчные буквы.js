@@ -34,7 +34,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только выводит справочные списки и не изменяет книгу; отмена не требуется."
+    "description": ""
   },
   "settings": [
     {

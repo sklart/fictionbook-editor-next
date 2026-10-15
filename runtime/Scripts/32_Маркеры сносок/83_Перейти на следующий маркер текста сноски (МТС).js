@@ -49,86 +49,99 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только перемещает выделение и не меняет текст документа; отменять правку после его запуска не требуется."
+    "description": ""
   },
   "settings": [
     {
       "name": "searchSupDigits",
       "value": 1,
       "expression": "1",
-      "description": "Искать цифры в верхнем индексе."
+      "description": "Искать цифры в верхнем индексе.",
+      "title": "Искать надстрочные цифры"
     },
     {
       "name": "searchStar",
       "value": 1,
       "expression": "1",
-      "description": "Искать знак *."
+      "description": "Искать знак *.",
+      "title": "Искать звёздочки"
     },
     {
       "name": "searchHash",
       "value": 1,
       "expression": "1",
-      "description": "Искать знак #."
+      "description": "Искать знак #.",
+      "title": "Искать решётки"
     },
     {
       "name": "searchSquareBracket",
       "value": 1,
       "expression": "1",
-      "description": "Искать номер в квадратных скобках [1]."
+      "description": "Искать номер в квадратных скобках [1].",
+      "title": "Искать номера в квадратных скобках"
     },
     {
       "name": "searchCurlyBracket",
       "value": 1,
       "expression": "1",
-      "description": "Искать номер в фигурных скобках {1}."
+      "description": "Искать номер в фигурных скобках {1}.",
+      "title": "Искать номера в фигурных скобках"
     },
     {
       "name": "searchSquareTilde",
       "value": 1,
       "expression": "1",
-      "description": "Искать номер в виде [~1~]."
+      "description": "Искать номер в виде [~1~].",
+      "title": "Искать номера в квадратных скобках с тильдой"
     },
     {
       "name": "searchCurlyTilde",
       "value": 1,
       "expression": "1",
-      "description": "Искать номер в виде {~1~}."
+      "description": "Искать номер в виде {~1~}.",
+      "title": "Искать номера в фигурных скобках с тильдой"
     },
     {
       "name": "searchGluedDigit",
       "value": 1,
       "expression": "1",
-      "description": "Искать цифру, примыкающую к тексту."
+      "description": "Искать цифру, примыкающую к тексту.",
+      "title": "Искать цифры вплотную к тексту"
     },
     {
       "name": "searchDigitWithSpace",
       "value": 1,
       "expression": "1",
-      "description": "Искать цифру с пробелом перед текстом; исходное значение 1, поэтому поиск включён."
+      "description": "Искать цифру с пробелом перед текстом; исходное значение 1, поэтому поиск включён.",
+      "title": "Искать цифры с пробелом"
     },
     {
       "name": "searchUserMarker1",
       "value": 0,
       "expression": "0",
-      "description": "Включить поиск первого пользовательского маркера."
+      "description": "Включить поиск первого пользовательского маркера.",
+      "title": "Искать первый свой маркер"
     },
     {
       "name": "UserMarker_1",
       "value": "zzzz",
       "expression": "\"zzzz\"",
-      "description": "Текст первого пользовательского маркера; используется при включённом поиске."
+      "description": "Текст первого пользовательского маркера; используется при включённом поиске.",
+      "title": "Первый свой маркер"
     },
     {
       "name": "searchUserMarker2",
       "value": 0,
       "expression": "0",
-      "description": "Включить поиск второго пользовательского маркера."
+      "description": "Включить поиск второго пользовательского маркера.",
+      "title": "Искать второй свой маркер"
     },
     {
       "name": "UserMarker_2",
       "value": "gggg",
       "expression": "\"gggg\"",
-      "description": "Текст второго пользовательского маркера; используется при включённом поиске."
+      "description": "Текст второго пользовательского маркера; используется при включённом поиске.",
+      "title": "Второй свой маркер"
     }
   ]
 }

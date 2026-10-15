@@ -47,22 +47,24 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Оба вызова группировки отмены закомментированы. При досрочном выходе ранее изменённые абзацы сохраняются; возможность общего отката через редактор не установлена."
+    "description": ""
   },
   "settings": [
     {
       "name": "ObrabotkaHistory",
       "value": false,
       "expression": "false",
-      "description": "Обрабатывать историю изменений: false — нет, true — да.",
-      "valueMeaning": "Исходное значение в коде скрипта."
+      "description": "Обрабатывать историю изменений.",
+      "valueMeaning": "Исходное значение в коде скрипта.",
+      "title": "Обрабатывать историю"
     },
     {
       "name": "ObrabotkaAnnotation",
       "value": true,
       "expression": "true",
-      "description": "Обрабатывать аннотацию: false — нет, true — да.",
-      "valueMeaning": "Исходное значение в коде скрипта."
+      "description": "Обрабатывать аннотацию.",
+      "valueMeaning": "Исходное значение в коде скрипта.",
+      "title": "Обрабатывать аннотацию"
     }
   ]
 }

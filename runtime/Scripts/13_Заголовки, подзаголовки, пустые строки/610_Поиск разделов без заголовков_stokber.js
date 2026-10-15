@@ -42,7 +42,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только ищет и выделяет абзац; изменений текста книги для отмены нет."
+    "description": ""
   },
   "settings": []
 }

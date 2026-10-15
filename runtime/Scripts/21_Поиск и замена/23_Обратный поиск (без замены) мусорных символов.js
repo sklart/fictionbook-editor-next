@@ -39,7 +39,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только перемещает выделение и выводит сообщение; текст книги не меняется, операция отмены не требуется."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

@@ -41,7 +41,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только читает структуру книги и показывает отчёт; текст книги не меняет, отменять нечего."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

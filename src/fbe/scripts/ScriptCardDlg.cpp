@@ -919,30 +919,39 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 	CString header = m_script.name;
 	const CString category = ScriptCategory(m_script.relativePath);
 	if(!category.IsEmpty()) header += L"\r\n" + Label(L"fbe.script_card.category", L"Category") + L": " + category;
-	if(!card.version.IsEmpty()) header += L"\r\n" + Label(L"fbe.script_card.version", L"Version") + L": " + card.version;
-	CString authorGroups[7];
-	for(const ScriptCards::Author& author : card.authors)
-	{
-		if(author.name.IsEmpty()) continue;
-		const int group = author.role == L"author" ? 0 : author.role == L"original_author" ? 1 :
-			author.role == L"coauthor" ? 2 : author.role == L"modifier" ? 3 :
-			author.role == L"contributor" ? 4 : author.role == L"ai_assistance" ? 5 : 6;
-		if(!authorGroups[group].IsEmpty()) authorGroups[group] += L", ";
-		authorGroups[group] += author.name;
-	}
+	if(!card.version.IsEmpty() && card.version != L"Не указана") header += L"\r\n" + Label(L"fbe.script_card.version", L"Version") + L": " + card.version;
 	m_headerRightText.Empty();
-	const CString roleLabels[] = { AuthorRoleLabel(L"author"), AuthorRoleLabel(L"original_author"),
-		Label(L"fbe.script_card.coauthors", L"Co-authors"), AuthorRoleLabel(L"modifier"),
-		Label(L"fbe.script_card.role.contributors", L"Development contributors"),
-		AuthorRoleLabel(L"ai_assistance"), AuthorRoleLabel(L"unknown") };
-	for(int group = 0; group < _countof(authorGroups); ++group)
+	bool hasAuthor = false;
+	bool unknownAuthor = false;
+	for(size_t index = 0; index < card.authors.size(); ++index)
 	{
-		if(authorGroups[group].IsEmpty()) continue;
+		const ScriptCards::Author& author = card.authors[index];
+		unknownAuthor = unknownAuthor || author.role == L"unknown";
+		if(author.role == L"author" || author.role == L"original_author" || author.role == L"coauthor")
+			hasAuthor = hasAuthor || !author.name.IsEmpty();
+		if(author.name.IsEmpty() || author.role == L"unknown") continue;
+		bool alreadyShown = false;
+		for(size_t previous = 0; previous < index; ++previous)
+			if(card.authors[previous].name.CompareNoCase(author.name) == 0) alreadyShown = true;
+		if(alreadyShown) continue;
+		CString roles;
+		std::vector<CString> seenRoles;
+		for(const ScriptCards::Author& participant : card.authors)
+		{
+			if(participant.name.CompareNoCase(author.name) != 0) continue;
+			if(std::find(seenRoles.begin(), seenRoles.end(), participant.role) != seenRoles.end()) continue;
+			seenRoles.push_back(participant.role);
+			if(!roles.IsEmpty()) roles += L", ";
+			roles += AuthorRoleLabel(participant.role);
+		}
 		if(!m_headerRightText.IsEmpty()) m_headerRightText += L"\r\n";
-		m_headerRightText += roleLabels[group] + L": " + authorGroups[group];
+		m_headerRightText += author.name + L" — " + roles;
 	}
-	if(m_headerRightText.IsEmpty() && !card.authors.empty())
-		m_headerRightText = AuthorRoleLabel(L"unknown");
+	if(!hasAuthor || unknownAuthor || card.authorshipStatus == L"not_stated")
+	{
+		if(!m_headerRightText.IsEmpty()) m_headerRightText += L"\r\n";
+		m_headerRightText += AuthorRoleLabel(L"unknown");
+	}
 	CString state;
 	switch(card.state)
 	{
@@ -988,19 +997,21 @@ void CScriptCardDlg::ShowCard(const ScriptCards::Card& card)
 		AddVisualBlock(Label(L"fbe.script_card.modifies_document", L"Changes document"), TriState(card.modifiesDocument), 3);
 		AddVisualBlock(Label(L"fbe.script_card.requires_selection", L"Selection required"), TriState(card.requiresSelection), 3);
 		CString count;
-		if(!card.dependenciesComplete) count = Label(L"fbe.script_card.dependencies_unverified", L"Not verified");
+		if(card.dependencyState == ScriptCards::Card::DependenciesState::Changed ||
+			card.dependencyState == ScriptCards::Card::DependenciesState::Invalid)
+			count = Label(L"fbe.script_card.dependencies_changed", L"Linked files changed or are missing");
+		else if(!card.dependenciesComplete) count = Label(L"fbe.script_card.dependencies_unverified", L"Not verified");
 		else count.Format(L"%u", static_cast<unsigned>(card.dependencies.size()));
 		AddVisualBlock(Label(L"fbe.script_card.dependencies", L"Linked files"), count, 3);
 		AddVisualBlock(Label(L"fbe.script_card.scope", L"Scope"), card.scope);
-		CString undo = card.undo;
-		if(card.undoStatus == L"explicit_calls_found" &&
-			(undo.Find(L"BeginUndoUnit") >= 0 || undo.Find(L"EndUndoUnit") >= 0))
-			undo = Label(L"fbe.script_card.undo_group_unverified",
-				L"The script provides for undo, but a complete rollback has not been verified");
-		else if((card.undoStatus == L"no_explicit_grouping" || card.undoStatus == L"may_be_delegated") &&
-			undo.Find(L"Undo") >= 0)
-			undo = Label(L"fbe.script_card.undo_unverified", L"Undo of changes has not been established");
-		AddVisualBlock(Label(L"fbe.script_card.undo", L"Undo"), undo);
+		if(card.modifiesDocument != 0)
+		{
+			CString undo = card.undo;
+			if(card.undoStatus == L"verified_single_action")
+				undo = Label(L"fbe.script_card.undo_single_action",
+					L"Changes can be undone with one action (Ctrl+Z)");
+			AddVisualBlock(Label(L"fbe.script_card.undo", L"Undo"), undo);
+		}
 		AddVisualBlock(Label(L"fbe.script_card.warnings", L"Warnings"), ListText(card.warnings), 2, true);
 		AddVisualBlock(Label(L"fbe.script_card.examples", L"Examples"), ListText(card.examples), 2);
 		AddSettingsBlock(card.settingRows);

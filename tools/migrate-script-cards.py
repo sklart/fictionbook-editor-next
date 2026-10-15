@@ -127,7 +127,7 @@ def make_card(entry: dict, source: bytes) -> tuple[dict, int]:
                         if isinstance(entry["undo"].get(key), str)}
     if entry.get("settings"):
         card["settings"] = [
-            {key: setting[key] for key in ("name", "value", "expression", "description", "valueMeaning")
+            {key: setting[key] for key in ("title", "name", "value", "expression", "description", "valueMeaning")
              if key in setting and setting[key] is not None}
             for setting in entry["settings"]
         ]

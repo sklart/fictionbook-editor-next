@@ -20,6 +20,11 @@ def main() -> None:
                                     "/* XMLHTTP( */\nwindow.external.BeginUndoUnit(document);\n")
     assert "ShellExecute" not in masked and "http://" not in masked and "XMLHTTP" not in masked
     assert "BeginUndoUnit" in masked
+    regexp_mask = audit["mask_non_code"]('var re=/["\'/]/g; var option=true; if(option) use();')
+    assert 'option=true' in regexp_mask and 'if(option)' in regexp_mask
+    assert not audit["linked_resource_candidates"](audit["Source"](
+        ['// window.open("HTML/no.html")'], '// window.open("HTML/no.html")',
+        audit["mask_non_code"]('// window.open("HTML/no.html")'), 0))
     script = ROOT / "runtime" / "Scripts" / "03_Комментарии" / "01_Добавить комментарий, остаться на его ссылке.js"
     original = script.read_bytes()
     original_document = card_tool["read_document"](original)
@@ -83,6 +88,26 @@ def main() -> None:
                    for item in result["findings"])
         assert any(item["field"] == "undo" and item["evidence"]
                    for item in result["findings"])
+        assert result["structurallyValid"] and result["sourceHashCurrent"]
+        assert result["contentReview"] == "requires_review"
+        card["settings"] = [{"name": "ProcessingEnded", "value": False,
+                             "description": "Внутреннее состояние"}]
+        card["authors"] = [{"name": "Same", "role": "author"},
+                           {"name": "same", "role": "modifier"}]
+        card["undo"]["description"] = "Полный откат не проверен."
+        code = b'function Run(){var ProcessingEnded=false; window.open("HTML/input.html");}\n'
+        card["sourceRevision"]["sha256"] = hashlib.sha256(code).hexdigest()
+        synthetic.write_bytes(card_tool["insert_card"](code, card))
+        result = inspect(synthetic)
+        categories = {item["category"] for item in result["findings"]}
+        assert {"setting_title", "unused_setting", "internal_setting", "duplicate_author",
+                "incorrect_undo", "unlisted_dependency"} <= categories, categories
+        # The confirmed status is exempt from the technical API-name warning.
+        card["settings"] = []
+        card["undo"] = {"status": "verified_single_action",
+                        "description": "Изменения можно отменить одним действием (Ctrl+Z)"}
+        synthetic.write_bytes(card_tool["insert_card"](code, card))
+        assert not any(item["category"] == "incorrect_undo" for item in inspect(synthetic)["findings"])
 
     scripts_root = ROOT / "runtime" / "Scripts"
     proposals = json.loads((ROOT / "docs" / "script-card-reviewed-proposals.json").read_text(encoding="utf-8"))
@@ -93,6 +118,12 @@ def main() -> None:
         assert isinstance(proposal["codeIssues"], list), proposal["path"]
         document = card_tool["read_document"]((scripts_root / proposal["path"]).read_bytes())
         assert proposal["codeSha256"] == document.sha256, proposal["path"]
+        for setting in document.card.get("settings", []):
+            assert setting.get("title", "").strip(), (proposal["path"], setting)
+            assert setting["name"] not in audit["INTERNAL_SETTINGS"], (proposal["path"], setting)
+        assert not any(any(item.startswith(prefix) for prefix in audit["GENERIC_USAGE"])
+                       for item in document.card["usage"]), proposal["path"]
+        assert not audit["GENERIC_UNDO"].search(document.card.get("undo", {}).get("description", "")), proposal["path"]
         # Older records can use physical file lines, while newer records use
         # executable-code lines after the embedded card.
         line_count = len(document.data.decode(document.encoding).splitlines())

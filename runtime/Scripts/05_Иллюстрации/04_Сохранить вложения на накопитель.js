@@ -35,7 +35,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт не меняет книгу, но сохраняет файлы через редактор. Отмена в книге не удаляет созданные файлы."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

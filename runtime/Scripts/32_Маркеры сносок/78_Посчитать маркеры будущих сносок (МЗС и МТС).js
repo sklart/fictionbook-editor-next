@@ -51,7 +51,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Книга не изменяется, поэтому операция отмены для её текста не создаётся."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

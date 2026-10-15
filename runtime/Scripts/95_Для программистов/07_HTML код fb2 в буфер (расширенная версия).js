@@ -47,56 +47,64 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт не меняет книгу; запись в буфер обмена не относится к отмене правок документа."
+    "description": ""
   },
   "settings": [
     {
       "name": "showStatistics",
       "value": 1,
       "expression": "1",
-      "description": "1 — показать отчёт после копирования; 0 — тихий режим."
+      "description": "1 — показать отчёт после копирования; 0 — тихий режим.",
+      "title": "Показывать статистику"
     },
     {
       "name": "processMainSection",
       "value": 1,
       "expression": "1",
-      "description": "Включить основной раздел книги."
+      "description": "Включить основной раздел книги.",
+      "title": "Включать основной раздел"
     },
     {
       "name": "processNotesSection",
       "value": 1,
       "expression": "1",
-      "description": "Включить раздел сносок."
+      "description": "Включить раздел сносок.",
+      "title": "Обрабатывать примечания"
     },
     {
       "name": "processCommentsSection",
       "value": 1,
       "expression": "1",
-      "description": "Включить раздел комментариев."
+      "description": "Включить раздел комментариев.",
+      "title": "Обрабатывать комментарии"
     },
     {
       "name": "processDescriptionSection",
       "value": 0,
       "expression": "0",
-      "description": "Включить HTML-раздел description."
+      "description": "Включить HTML-раздел description.",
+      "title": "Включать описание книги"
     },
     {
       "name": "processAnnotationSection",
       "value": 1,
       "expression": "1",
-      "description": "Включить аннотацию."
+      "description": "Включить аннотацию.",
+      "title": "Включать аннотацию"
     },
     {
       "name": "processHistorySection",
       "value": 1,
       "expression": "1",
-      "description": "Включить историю изменений."
+      "description": "Включить историю изменений.",
+      "title": "Включать историю"
     },
     {
       "name": "processServiceFields",
       "value": 0,
       "expression": "0",
-      "description": "Добавить служебную шапку и концовку HTML."
+      "description": "Добавить служебную шапку и концовку HTML.",
+      "title": "Включать служебную шапку и концовку"
     }
   ]
 }

@@ -36,7 +36,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт читает размеры и координаты окна и показывает сообщение; книгу не меняет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

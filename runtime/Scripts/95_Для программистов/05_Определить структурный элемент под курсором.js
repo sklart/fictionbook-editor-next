@@ -44,7 +44,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только читает HTML-представление и показывает отчёт; правок документа для отмены нет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

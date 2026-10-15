@@ -43,7 +43,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только проверяет ссылки и показывает отчёт; текст книги не меняет, отменять нечего."
+    "description": ""
   },
   "settings": [
     {

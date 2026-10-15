@@ -321,9 +321,11 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool rendered = openedCard && m_script_card_window.BodyText().Find(L"Card runtime summary") >= 0;
 		const bool structured = openedCard && m_script_card_window.VisualBlockCount() >= 9 &&
 			m_script_card_window.HeaderRightText().Find(L"Helper") >= 0 &&
-			m_script_card_window.HeaderRightText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.coauthors", L"Co-authors")) >= 0 &&
-			m_script_card_window.HeaderRightText().Find(L"Tester, Second author") >= 0 &&
-			m_script_card_window.HeaderRightText().Find(L"Modifier, Another") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(FbeLoadRuntimeStringByKey(L"fbe.script_card.role.coauthor", L"Co-author")) >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Tester — ") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Second author — ") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Modifier — ") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Another — ") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Modifier") < 0 &&
 			m_script_card_window.BodyText().Find(L"Review changes before running") >= 0;
 		RECT originalCardBounds = {};
@@ -369,7 +371,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_script_card_window.BodyText().Find(L"Параметры задаются в общих настройках скриптов") >= 0 &&
 			m_script_card_window.BodyText().Find(L"\\u0434") < 0 &&
 			m_script_card_window.BodyText().Find(L"abc → ABC") >= 0 &&
-			m_script_card_window.BodyText().Find(L"Скрипт предусматривает отмену изменений") >= 0 &&
+			m_script_card_window.BodyText().Find(L"Отмена изменений") < 0 &&
 			m_script_card_window.BodyText().Find(L"BeginUndoUnit") < 0;
 		auto layoutAtWidth = [&](int logicalWidth) {
 			::SetWindowPos(m_script_card_window.m_hWnd, NULL, 0, 0,
@@ -438,7 +440,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		::SendMessageW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_COPY), BM_CLICK, 0, 0);
 		const CString copied = clipboardText();
 		const bool copiedDetails = copied.Find(L"Card test") >= 0 && copied.Find(L"Card runtime summary") >= 0 &&
-			copied.Find(L"Tester, Second author") >= 0 && copied.Find(L"Modifier, Another") >= 0 &&
+			copied.Find(L"Tester — ") >= 0 && copied.Find(L"Second author — ") >= 0 &&
+			copied.Find(L"Modifier — ") >= 0 && copied.Find(L"Another — ") >= 0 &&
 			copied.Find(cardPath) >= 0 && copied.Find(L"b93000a4f6") < 0 &&
 			copied.Find(L"Значение по умолчанию: safe") >= 0 && copied.Find(L"+extracting(") < 0;
 		const bool uidUpdated = m_script_card_window.CurrentUid() == script.uid;
@@ -716,7 +719,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			commentCard.reviewStatus == L"generated" && commentCard.settingRows.size() == 11 &&
 			commentCard.settingRows.front().title == L"Шаблон ID комментария" &&
 			commentCard.warnings.size() == 1 && commentCard.undo.Find(L"BeginUndoUnit") < 0 &&
-			m_script_card_window.HeaderRightText().Find(L"Автор: Sclex") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Sclex — Автор") >= 0 &&
 			m_script_card_window.BodyText().Find(L"InsideTag") < 0 &&
 			m_script_card_window.BodyText().Find(L"Пустая строка") >= 0 &&
 			m_script_card_window.BodyText().Find(L"Значение литерала/резервное значение") < 0 &&
@@ -806,7 +809,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool standardOpened = m_script_card_window.ShowScript(m_hWnd, standard, runtimePath,
 			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
 		const bool standardValues = standardOpened && !standardCard.settingRows.empty() &&
-			standardCard.settingRows.front().title == L"Выбор символа для апострофа" &&
+			standardCard.settingRows.front().title == L"Вид апострофа" &&
 			standardCard.settingRows.front().value == L"1" &&
 			standardCard.settingRows.front().defaultValue && standardCard.settingRows.front().sharedSetting &&
 			m_script_card_window.BodyText().Find(L"Значение по умолчанию: 1") >= 0 &&
@@ -818,7 +821,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			CString(formattedCategory).Find(L"21_") < 0;
 		bool cleaningCategory = true;
 		bool cleaningValues = true;
-		for(const wchar_t* filename : { L"01_Генеральная уборка.js", L"02_Генеральная уборка.js" })
+		for(const wchar_t* filename : { L"01_Генеральная уборка.js", L"02_Генеральная уборка (версия Александра Ка).js" })
 		{
 			const CString path = runtimePath + L"\\Scripts\\06_Чистка\\" + filename;
 			const ScriptCards::Card parsed = ScriptCards::LoadFile(path);
@@ -833,8 +836,12 @@ void CMainFrame::RunPortableStateTestScenario()
 			cleaningCategory = cleaningCategory && CString(formattedCategory).Find(L"Чистка") >= 0 &&
 				CString(formattedCategory).Find(L"06_") < 0;
 			cleaningValues = cleaningValues && shown && !parsed.settingRows.empty() &&
-				parsed.settingRows.front().valueKind == ScriptCards::Setting::ValueKind::Boolean &&
-				m_script_card_window.BodyText().Find(L"Значение в исходном коде: Да") >= 0;
+				((wcscmp(filename, L"01_Генеральная уборка.js") == 0 &&
+					parsed.settingRows.front().valueKind == ScriptCards::Setting::ValueKind::Boolean &&
+					m_script_card_window.BodyText().Find(L"Значение в исходном коде: Да") >= 0) ||
+					(wcscmp(filename, L"01_Генеральная уборка.js") != 0 &&
+					parsed.settingRows.front().sharedSetting && parsed.settingRows.front().defaultValue &&
+					m_script_card_window.BodyText().Find(L"Значение по умолчанию: 0") >= 0));
 			if(shown && wcscmp(filename, L"01_Генеральная уборка.js") == 0)
 			{
 				::SendMessageW(m_script_card_window.ViewportWindow(), WM_VSCROLL, SB_BOTTOM, 0);
@@ -851,7 +858,38 @@ void CMainFrame::RunPortableStateTestScenario()
 		::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), formattedCategory, _countof(formattedCategory));
 		const bool categoryFormatted = standardCategory && cleaningCategory && symbolsOpened &&
 			CString(formattedCategory).Find(L"Символы") >= 0 && CString(formattedCategory).Find(L"07_") < 0;
-		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
+		// Metadata-only variants keep the executable hash and exercise rendering
+		// without executing any bundled script.
+		std::string semanticSource = cardSource;
+		const size_t authorsBegin = semanticSource.find("\"authors\":[");
+		const size_t authorsEnd = semanticSource.find("],", authorsBegin) + 2;
+		semanticSource.replace(authorsBegin, authorsEnd - authorsBegin,
+			"\"authors\":[{\"name\":\"Helper\",\"role\":\"modifier\"},{\"name\":\"Helper\",\"role\":\"contributor\"},{\"role\":\"unknown\"}],");
+		auto showSemantic = [&](const std::string& source) {
+			return WritePortableStateTestText(cardPath, source.c_str()) &&
+				m_script_card_window.ShowScript(m_hWnd, script, resourceRoot,
+					[&runCount](const CString&) { ++runCount; }) && awaitCard();
+		};
+		const bool unknownShown = showSemantic(semanticSource) &&
+			m_script_card_window.HeaderRightText().Find(L"Автор не установлен") >= 0 &&
+			m_script_card_window.HeaderRightText().Find(L"Helper") == m_script_card_window.HeaderRightText().ReverseFind(L'H') &&
+			m_script_card_window.HeaderRightText().Find(L"Доработка, Участник разработки") >= 0 &&
+			m_script_card_window.BodyText().Find(L"BeginUndoUnit") < 0;
+		const size_t undoBegin = semanticSource.find("\"undo\":{");
+		const size_t undoEnd = semanticSource.find("},", undoBegin) + 2;
+		semanticSource.replace(undoBegin, undoEnd - undoBegin,
+			"\"undo\":{\"status\":\"explicit_calls_found\",\"description\":\"\"},");
+		const size_t modifiesAt = semanticSource.find("\"modifiesDocument\":false");
+		semanticSource.replace(modifiesAt, std::string("\"modifiesDocument\":false").size(), "\"modifiesDocument\":true");
+		const bool unverifiedHidden = showSemantic(semanticSource) &&
+			m_script_card_window.BodyText().Find(L"Отмена изменений") < 0 &&
+			m_script_card_window.BodyText().Find(L"explicit_calls_found") < 0;
+		const size_t statusAt = semanticSource.find("explicit_calls_found");
+		semanticSource.replace(statusAt, std::string("explicit_calls_found").size(), "verified_single_action");
+		const bool verifiedShown = showSemantic(semanticSource) &&
+			m_script_card_window.BodyText().Find(L"Изменения можно отменить одним действием (Ctrl+Z)") >= 0;
+		const bool metadataSemantics = unknownShown && unverifiedHidden && verifiedShown;
+		const bool passed = metadataSemantics && openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
 			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues && categoryFormatted &&
 			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
 			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewBridge &&
@@ -878,7 +916,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.AppendFormat("characteristic-layout=%d\ncharacteristic-dpi-matrix=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
 			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
-		report.AppendFormat("category-formatted=%d\n", categoryFormatted);
+		report.AppendFormat("category-formatted=%d\nmetadata-semantics=%d\nunknown-author=%d\nunverified-undo-hidden=%d\nverified-undo=%d\n", categoryFormatted, metadataSemantics, unknownShown, unverifiedHidden, verifiedShown);
 		report.AppendFormat("preview-bridge-timer=%d\npreview-bridge-exit=%d\npreview-pointer-link=%d\npreview-pointer-exit=%d\npreview-pointer-crossing=%d\npreview-deactivated=%d\n",
 			previewBridgeTimer, previewBridgeExit, previewPointerLink, previewPointerExit, previewPointerCrossing, previewDeactivated);
 		report.AppendFormat("preview-cursor-placed=%d\npreview-bridge-cursor=%d,%d\npreview-bridge-point=%d,%d\npreview-bridge-current=%d\n",

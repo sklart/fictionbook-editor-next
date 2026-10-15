@@ -44,7 +44,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только выделяет найденный абзац и показывает сообщения; правок документа для отмены нет."
+    "description": ""
   },
   "settings": []
 }

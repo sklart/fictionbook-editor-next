@@ -46,6 +46,7 @@ struct Card {
 	CString expectedSha256;
 	CString currentSha256;
 	CString reviewStatus;
+	CString authorshipStatus;
 	CString minFbeVersion;
 	CString undo;
 	CString undoStatus;

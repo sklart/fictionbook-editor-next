@@ -34,7 +34,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт читает HTML и заменяет содержимое буфера обмена. Книга не меняется; отмена в редакторе не восстанавливает буфер."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

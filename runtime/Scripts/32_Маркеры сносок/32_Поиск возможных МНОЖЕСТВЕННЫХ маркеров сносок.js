@@ -50,7 +50,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Поиск меняет положение курсора и выделение, но не текст книги; операция отмены не создаётся."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

@@ -33,7 +33,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только показывает текстовое сообщение; книгу и файлы не меняет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

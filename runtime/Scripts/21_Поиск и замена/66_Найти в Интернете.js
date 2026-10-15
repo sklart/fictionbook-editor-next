@@ -43,7 +43,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт не меняет текст книги; операция отмены не требуется."
+    "description": ""
   },
   "settings": []
 }

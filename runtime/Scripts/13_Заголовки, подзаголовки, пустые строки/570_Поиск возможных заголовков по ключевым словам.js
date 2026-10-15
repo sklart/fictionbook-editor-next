@@ -54,7 +54,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только ищет, выделяет текст и прокручивает окно; изменений книги для отмены нет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

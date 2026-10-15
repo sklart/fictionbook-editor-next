@@ -33,7 +33,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт читает браузерную строку и показывает сообщение; книгу не меняет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

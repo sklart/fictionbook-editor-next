@@ -39,6 +39,14 @@ GENERIC_WARNING = (
     "Перед массовой обработкой сохраните отдельную копию книги",
 )
 EXTERNAL_WARNING = "Есть запуск внешнего приложения или открытие сетевого адреса"
+GENERIC_UNDO = re.compile(
+    r"полн(?:ый|ая|ую|ого|ой|ые).{0,30}(?:откат|отмен)|полнота отката.{0,30}не проверен|"
+    r"(?:откат|отмена).{0,40}(?:не проверен|не подтвержд[её]н)|"
+    r"не доказывает корректный откат|гарантия отмены не установлена|"
+    r"явная группировка Undo|прямых Undo-вызовов нет", re.I)
+INTERNAL_SETTINGS = {"ProcessingEnded", "rememberedPoem", "InsideP", "InsideSelection",
+                     "help", "errMsg", "ScriptName", "NumerusVersion", "NazvanieSkripta",
+                     "ShablonName", "report", "ss"}
 API_PATTERNS = {
     "undo_begin": r"\bBeginUndoUnit\s*\(",
     "undo_end": r"\bEndUndoUnit\s*\(",
@@ -72,6 +80,7 @@ def mask_non_code(source: str) -> str:
     state = "code"
     quote = ""
     index = 0
+    regex_class = False
     while index < len(source):
         ch = source[index]
         nxt = source[index + 1] if index + 1 < len(source) else ""
@@ -87,6 +96,11 @@ def mask_non_code(source: str) -> str:
                 state = "block"
                 out.extend("  ")
                 index += 1
+            elif ch == "/" and (not "".join(out[-40:]).rstrip() or
+                                  "".join(out[-40:]).rstrip()[-1] in "=(:,[!&|?;{}" or
+                                  re.search(r"\b(?:return|case|throw)\s*$", "".join(out[-40:]))):
+                state, regex_class = "regex", False
+                out.append(" ")
             else:
                 out.append(ch)
         elif state == "string":
@@ -97,6 +111,15 @@ def mask_non_code(source: str) -> str:
                 state = "code"
                 out.append(" ")
             else:
+                out.append("\n" if ch == "\n" else " ")
+        elif state == "regex":
+            if ch == "\\" and nxt:
+                out.extend("  ")
+                index += 1
+            else:
+                if ch == "[": regex_class = True
+                elif ch == "]": regex_class = False
+                elif ch == "/" and not regex_class: state = "code"
                 out.append("\n" if ch == "\n" else " ")
         elif state == "line":
             if ch == "\n":
@@ -141,6 +164,23 @@ def finding(category: str, field: str, previous, proposed, reason: str,
             "evidence": proof or []}
 
 
+def linked_resource_candidates(source: Source) -> list[dict]:
+    """Literal input resources, excluding generated report filenames.
+
+    A call in a comment is ignored. Dynamic paths and transitive loads still
+    require review; this deliberately does not claim dependency completeness.
+    """
+    result = []
+    pattern = r'''\b(?:window\s*\.\s*open|showModalDialog|showModelessDialog|ShowDialog)\s*\(\s*(["'])(HTML/[^"']+\.(?:html?|js))\1'''
+    for match in re.finditer(pattern, source.executable, re.I):
+        if not source.masked[match.start():match.start()+6].strip():
+            continue
+        line = source.executable.count("\n", 0, match.start()) + 1
+        result.append({"path": match[2], "line": line + source.line_offset,
+                       "text": source.lines[line-1].strip()[:180]})
+    return result
+
+
 def inspect(path: Path) -> dict:
     relative = path.relative_to(SCRIPTS).as_posix()
     document = read_document(path.read_bytes())
@@ -151,6 +191,7 @@ def inspect(path: Path) -> dict:
     source = source_for(document)
     found: list[dict] = []
     schema_errors = validate_schema(card)
+    hash_current = card.get("sourceRevision", {}).get("sha256") == document.sha256
     for error in schema_errors:
         found.append(finding("requires_review", "schema", error, None, "Ошибка схемы", "high"))
     digest = card.get("sourceRevision", {}).get("sha256")
@@ -181,12 +222,34 @@ def inspect(path: Path) -> dict:
             found.append(finding("requires_review", "warnings", item, None,
                                  "Проверить достижимые внешние вызовы и связанные файлы; URL литерал не является сетевой операцией",
                                  "medium", facts["external"] or namespace_urls))
+    for field in ("description", "usage", "warnings"):
+        values = card.get(field, [])
+        if isinstance(values, str): values = [values]
+        for value in values:
+            if GENERIC_UNDO.search(value):
+                found.append(finding("generic_undo", field, value, None,
+                                     "Общее предупреждение не называет условие или конкретный дефект", "medium"))
+    participants = Counter(str(author.get("name", "")).strip().casefold()
+                           for author in card.get("authors", []) if author.get("name"))
+    for name, count in participants.items():
+        if count > 1:
+            found.append(finding("duplicate_author", "authors", name, None,
+                                 "Имя повторяется; при показе объединить роли без потери атрибуции", "high"))
     undo = card.get("undo") or {}
     description = undo.get("description", "")
-    if re.search(r"BeginUndoUnit|EndUndoUnit|Ctrl\+Z", description, re.I):
+    if re.search(r"BeginUndoUnit|EndUndoUnit", description, re.I) or GENERIC_UNDO.search(description):
         found.append(finding("incorrect_undo", "undo.description", description, None,
                              "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте", "high",
                              facts["undo_begin"] + facts["undo_end"]))
+    if card.get("requiresSelection") is True and re.search(
+            r"(?:выделени[ея] не требу|без выделения)", " ".join(card.get("usage", [])), re.I):
+        found.append(finding("selection_conflict", "usage", card.get("usage"), None,
+                             "Указано обязательное выделение, но инструкция допускает его отсутствие", "medium"))
+    if card.get("requiresSelection") is False and not re.search(
+            r"или слово|под курсором", card.get("scope", ""), re.I) and re.search(
+            r"только (?:в |по )?выделенн|необходимо выделить", card.get("scope", ""), re.I):
+        found.append(finding("selection_conflict", "scope", card.get("scope"), None,
+                             "Область ограничена выделением, которое объявлено необязательным", "medium"))
     if facts["undo_begin"] and facts["undo_end"]:
         begins = list(re.finditer(API_PATTERNS["undo_begin"], source.masked, re.I | re.M))
         ends = list(re.finditer(API_PATTERNS["undo_end"], source.masked, re.I | re.M))
@@ -205,6 +268,12 @@ def inspect(path: Path) -> dict:
                                  "medium", facts["undo_begin"][:1] + returns + facts["undo_end"][-1:]))
     settings = card.get("settings") or []
     setting_evidence = []
+    linked_text = []
+    for dep in card.get("dependencies", []):
+        target = (ROOT / "runtime" / str(dep.get("path", ""))).resolve()
+        if target.is_relative_to((ROOT / "runtime").resolve()) and target.is_file() and target.suffix.lower() in (".js", ".htm", ".html"):
+            linked = read_document(target.read_bytes())
+            linked_text.append(linked.code_bytes[linked.bom_size:].decode(linked.encoding))
     for index, item in enumerate(settings):
         if not isinstance(item, dict):
             continue
@@ -213,18 +282,40 @@ def inspect(path: Path) -> dict:
             continue
         declarations = evidence(source, rf"\b(?:var|let|const)\s+{re.escape(name)}\s*=", limit=3)
         uses = evidence(source, rf"\b{re.escape(name)}\b", limit=8)
+        linked_uses = sum(len(re.findall(rf"\b{re.escape(name)}\b", text)) for text in linked_text)
         setting_evidence.append({"index": index, "name": name, "declarations": declarations,
-                                 "uses": uses, "classification": "requires_review"})
+                                 "uses": uses, "linkedOccurrences": linked_uses,
+                                 "classification": "requires_review"})
+        if not isinstance(item.get("title"), str) or not re.search(r"[А-Яа-яЁё]", item["title"]):
+            found.append(finding("setting_title", f"settings[{index}].title", item.get("title"), None,
+                                 "Нужно явное человекочитаемое русское название", "high"))
+        # A single lexical occurrence is only a candidate: indirect access,
+        # HTML event handlers and legacy JScript constructs need source review.
+        if len(uses) <= max(1, len(declarations)) and not linked_uses:
+            found.append(finding("unused_setting", f"settings[{index}]", item, None,
+                                 "Не найдено чтение после объявления; проверить косвенный доступ и зависимости",
+                                 "medium", uses))
+        if name in INTERNAL_SETTINGS:
+            found.append(finding("internal_setting", f"settings[{index}]", item, None,
+                                 "Служебное состояние или текст сообщения вместо пользовательского параметра",
+                                 "medium", uses))
         descriptions = str(item.get("description", ""))
         if (re.search(r"^(?:Inside|cur|tmp|temp|cnt|count|idx|index|i$|j$)", name, re.I)
                 or re.search(r"если находимся|сч[её]тчик|внутренн|промежуточн", descriptions, re.I)):
             found.append(finding("requires_review", f"settings[{index}]", item, None,
                                  "Похоже на служебный флаг, счётчик или промежуточную переменную; проверить использование",
                                  "medium", declarations))
-        elif not declarations:
+        elif not declarations and not linked_uses:
             found.append(finding("requires_review", f"settings[{index}]", item, None,
                                  "Объявление параметра в исполняемом коде не найдено; проверить связанный файл или динамическую настройку",
                                  "low"))
+    resource_candidates = linked_resource_candidates(source)
+    declared_paths = {dep.get("path") for dep in card.get("dependencies", [])}
+    for candidate in resource_candidates:
+        if candidate["path"] not in declared_paths:
+            found.append(finding("unlisted_dependency", "dependencies", candidate["path"], None,
+                                 "Вызов открывает ресурс, не перечисленный в карточке; проверить назначение",
+                                 "medium", [candidate]))
     dependency_evidence = []
     for dependency in card.get("dependencies", []):
         relative_dependency = dependency.get("path", "")
@@ -241,16 +332,23 @@ def inspect(path: Path) -> dict:
         if not exists and not dependency.get("optional"):
             found.append(finding("incorrect_dependency", "dependencies", dependency, None,
                                  "Обязательный файл зависимости отсутствует", "high"))
+        elif exists and dependency.get("sha256") and actual_digest != dependency["sha256"]:
+            found.append(finding("incorrect_dependency", "dependencies", dependency, actual_digest,
+                                 "Хеш связанного ресурса отличается от карточки", "high"))
     # A static scan is not a proof of correctness for any unflagged field.
     unresolved_fields = ["title", "summary", "description", "authors", "version", "scope",
                          "modifiesDocument", "requiresSelection", "usage", "warnings",
                          "settings", "dependencies", "undo", "examples", "tags"]
     return {"path": relative, "result": "requires_review", "codeSha256": document.sha256,
+            "structurallyValid": not schema_errors, "sourceHashCurrent": hash_current,
+            "contentReview": "requires_review",
             "encoding": document.encoding, "bomBytes": document.bom_size,
             "codeBytes": len(document.code_bytes), "lineEnding": "CRLF" if b"\r\n" in document.code_bytes else "LF",
-            "claims": {key: card.get(key) for key in unresolved_fields},
+            "claims": {key: card.get(key) for key in unresolved_fields +
+                       ["authorshipStatus", "dependenciesComplete", "sourceRevision"]},
             "evidence": facts, "namespaceUrls": namespace_urls,
             "settingEvidence": setting_evidence, "dependencyEvidence": dependency_evidence,
+            "resourceCandidates": resource_candidates,
             "authorshipEvidence": evidence(source, r"(?:автор|написал|author|version|верси)", masked=False),
             "warningEvidence": [{"text": warning, "verification": "requires_review"}
                                 for warning in card.get("warnings", [])],
@@ -379,7 +477,7 @@ def write_reports(records: list[dict], output: Path, baseline: str,
     summary.extend(f"- `{key}`: {value}" for key, value in sorted(metrics.items()))
     code_issues = [(proposal["path"], issue) for proposal in reviewed
                    for issue in proposal.get("codeIssues", [])]
-    summary += ["", f"Скриптов с подтверждёнными замечаниями к исполняемому коду: **{len(set(path for path, _ in code_issues))}**.", ""]
+    summary += ["", f"Скриптов с записями анализа исполняемого кода (включая вопросы для проверки): **{len(set(path for path, _ in code_issues))}**.", ""]
     summary.extend(f"- `{path}:{issue['line']}` — {issue['issue']}" for path, issue in code_issues)
     summary += ["", "## Замечания автоматического прохода", ""]
     summary.extend(f"- `{key}`: {value}" for key, value in sorted(counts.items()))
@@ -387,6 +485,18 @@ def write_reports(records: list[dict], output: Path, baseline: str,
                 "но не доказывает достижимость функций, полноту внешних HTML/JS и все ветви Undo.",
                 "Поля без находок остаются в очереди содержательной проверки.", ""]
     write_utf8(output / "script-card-content-audit.md", "\n".join(summary))
+    concrete_undo = [(record["path"], record["claims"].get("undo", {}).get("description", ""))
+                     for record in records if record["claims"].get("modifiesDocument") is not False]
+    concrete_undo = [(path, text) for path, text in concrete_undo
+                     if text and text != "Изменения внешних файлов не отменяются через редактор."]
+    defect_lines = ["# Условия нарушения группировки отмены", "",
+                    "Список основан на анализе исходников и связанных HTML/JS, а не на запуске всех аварийных ветвей.",
+                    "Отсутствие finally само по себе сюда не включается. Эвристические return-кандидаты остаются в JSON-аудите.",
+                    "Технические подробности и исходные ссылки на строки сохранены в script-card-reviewed-proposals.json.", "",
+                    f"Скриптов с конкретными условиями: {len(concrete_undo)}.", ""]
+    defect_lines.extend(f"- `{path}` — {text}" for path, text in concrete_undo)
+    write_utf8(output / "script-card-undo-defects.md", "\n".join(defect_lines) + "\n")
+
 
 
 def main() -> int:

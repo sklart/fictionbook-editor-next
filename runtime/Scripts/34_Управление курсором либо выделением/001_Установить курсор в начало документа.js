@@ -32,7 +32,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт меняет только положение курсора и прокрутку окна; текст книги не меняется."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

@@ -47,14 +47,15 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Содержимое книги не правится; скрипт временно меняет подсветку и положение курсора без операции отмены."
+    "description": ""
   },
   "settings": [
     {
       "name": "HIGHLIGHT_COLOR",
       "value": "darkorange",
       "expression": "\"darkorange\"",
-      "description": "Цвет временной подсветки текущего маркера."
+      "description": "Цвет временной подсветки текущего маркера.",
+      "title": "Цвет подсветки маркера"
     }
   ]
 }

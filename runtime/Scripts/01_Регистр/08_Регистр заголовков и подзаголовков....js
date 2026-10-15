@@ -56,7 +56,7 @@
   ],
   "undo": {
     "status": "may_be_delegated",
-    "description": "Окно предусматривает отмену сохранённых изменений, однако полный откат не проверен."
+    "description": ""
   },
   "settings": [
     {

@@ -55,7 +55,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт перемещает выделение и прокручивает окно без правки текста; отдельной операции отмены нет."
+    "description": ""
   },
   "settings": [
     {

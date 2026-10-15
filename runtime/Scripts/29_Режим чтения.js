@@ -36,7 +36,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Сохранённый текст не изменяется; явная операция отмены не создаётся."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

@@ -42,7 +42,7 @@
   ],
   "undo": {
     "status": "explicit_calls_found",
-    "description": "Скрипт предусматривает отмену изменений, однако полный откат не проверен."
+    "description": ""
   },
   "settings": [
     {

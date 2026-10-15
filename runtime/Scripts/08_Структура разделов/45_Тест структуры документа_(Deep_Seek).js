@@ -31,7 +31,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только читает сведения об элементе и показывает сообщение; книгу не меняет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

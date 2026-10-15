@@ -45,146 +45,169 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт читает секцию и открывает окно с картой; правок документа для отмены нет."
+    "description": ""
   },
   "settings": [
     {
       "name": "SHOW_IN_IE_WINDOW",
       "value": 1,
       "expression": "1",
-      "description": "1 — отдельное окно с подсветкой; 0 — стандартное окно FBE."
+      "description": "1 — отдельное окно с подсветкой; 0 — стандартное окно FBE.",
+      "title": "Отдельное окно карты"
     },
     {
       "name": "SHOW_SHORT_TEXT",
       "value": 1,
       "expression": "1",
-      "description": "1 — сокращать текст абзацев; 0 — показывать полный текст."
+      "description": "1 — сокращать текст абзацев; 0 — показывать полный текст.",
+      "title": "Сокращать текст абзацев"
     },
     {
       "name": "MAX_TEXT_LENGTH",
       "value": 40,
       "expression": "40",
-      "description": "Лимит обычного сокращённого текста, символов."
+      "description": "Лимит обычного сокращённого текста, символов.",
+      "title": "Предел обычного сокращённого текста"
     },
     {
       "name": "MAX_LAST_PARAGRAPH_LENGTH",
       "value": 60,
       "expression": "60",
-      "description": "Лимит текста последнего абзаца секции, символов."
+      "description": "Лимит текста последнего абзаца секции, символов.",
+      "title": "Предел текста последнего абзаца"
     },
     {
       "name": "MAX_CONSECUTIVE_FULL_PARAGRAPHS",
       "value": 2,
       "expression": "2",
-      "description": "Число полных абзацев подряд перед сокращением."
+      "description": "Число полных абзацев подряд перед сокращением.",
+      "title": "Число полных абзацев подряд"
     },
     {
       "name": "UPDATE_EXISTING_WINDOW",
       "value": 1,
       "expression": "1",
-      "description": "1 — обновлять открытое окно; 0 — создавать новое."
+      "description": "1 — обновлять открытое окно; 0 — создавать новое.",
+      "title": "Обновлять открытое окно"
     },
     {
       "name": "MAX_WINDOWS",
       "value": 5,
       "expression": "5",
-      "description": "Максимум одновременно открытых окон карты."
+      "description": "Максимум одновременно открытых окон карты.",
+      "title": "Максимальное число окон"
     },
     {
       "name": "IE_WINDOW_WIDTH",
       "value": 900,
       "expression": "900",
-      "description": "Ширина отдельного окна, пикселей."
+      "description": "Ширина отдельного окна, пикселей.",
+      "title": "Ширина окна карты"
     },
     {
       "name": "IE_WINDOW_HEIGHT",
       "value": 700,
       "expression": "700",
-      "description": "Высота отдельного окна, пикселей."
+      "description": "Высота отдельного окна, пикселей.",
+      "title": "Высота окна карты"
     },
     {
       "name": "COLOR_TAG",
       "value": "#0000FF",
       "expression": "\"#0000FF\"",
-      "description": "Цвет тегов."
+      "description": "Цвет тегов.",
+      "title": "Цвет тегов"
     },
     {
       "name": "COLOR_ATTR_NAME",
       "value": "#FF4500",
       "expression": "\"#FF4500\"",
-      "description": "Цвет имён атрибутов."
+      "description": "Цвет имён атрибутов.",
+      "title": "Цвет имён атрибутов"
     },
     {
       "name": "COLOR_ATTR_VALUE",
       "value": "#008000",
       "expression": "\"#008000\"",
-      "description": "Цвет значений атрибутов."
+      "description": "Цвет значений атрибутов.",
+      "title": "Цвет значений атрибутов"
     },
     {
       "name": "COLOR_LINK",
       "value": "#8B008B",
       "expression": "\"#8B008B\"",
-      "description": "Цвет ссылок."
+      "description": "Цвет ссылок.",
+      "title": "Цвет ссылок"
     },
     {
       "name": "COLOR_TEXT",
       "value": "#000000",
       "expression": "\"#000000\"",
-      "description": "Цвет текста."
+      "description": "Цвет текста.",
+      "title": "Цвет текста"
     },
     {
       "name": "COLOR_STRIKE",
       "value": "#FF0000",
       "expression": "\"#FF0000\"",
-      "description": "Цвет зачёркивания."
+      "description": "Цвет зачёркивания.",
+      "title": "Цвет зачёркивания"
     },
     {
       "name": "COLOR_BUTTON",
       "value": "#4A90E2",
       "expression": "\"#4A90E2\"",
-      "description": "Цвет кнопки."
+      "description": "Цвет кнопки.",
+      "title": "Цвет кнопки"
     },
     {
       "name": "COLOR_BUTTON_HOVER",
       "value": "#357AE8",
       "expression": "\"#357AE8\"",
-      "description": "Цвет кнопки при наведении."
+      "description": "Цвет кнопки при наведении.",
+      "title": "Цвет кнопки при наведении"
     },
     {
       "name": "COLOR_SUCCESS",
       "value": "#4CAF50",
       "expression": "\"#4CAF50\"",
-      "description": "Цвет сообщения об успехе."
+      "description": "Цвет сообщения об успехе.",
+      "title": "Цвет сообщения об успехе"
     },
     {
       "name": "COLOR_INSTRUCTION",
       "value": "#FF0000",
       "expression": "\"#FF0000\"",
-      "description": "Цвет инструкции."
+      "description": "Цвет инструкции.",
+      "title": "Цвет инструкции"
     },
     {
       "name": "COLOR_WARNING",
       "value": "#FF4500",
       "expression": "\"#FF4500\"",
-      "description": "Цвет предупреждения."
+      "description": "Цвет предупреждения.",
+      "title": "Цвет предупреждения"
     },
     {
       "name": "SHOW_EMPTY_PARAGRAPHS",
       "value": false,
       "expression": "false",
-      "description": "Показывать пустые абзацы в карте."
+      "description": "Показывать пустые абзацы в карте.",
+      "title": "Показывать пустые абзацы"
     },
     {
       "name": "SHOW_FULL_LINKS",
       "value": true,
       "expression": "true",
-      "description": "Показывать адреса ссылок полностью."
+      "description": "Показывать адреса ссылок полностью.",
+      "title": "Показывать ссылки полностью"
     },
     {
       "name": "COMPACT_MODE",
       "value": true,
       "expression": "true",
-      "description": "Размещать теги компактно в одной строке."
+      "description": "Размещать теги компактно в одной строке.",
+      "title": "Компактное размещение тегов"
     }
   ]
 }

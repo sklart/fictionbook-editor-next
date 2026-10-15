@@ -42,7 +42,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт читает текст и показывает сообщение; изменений книги для отмены нет."
+    "description": ""
   },
   "settings": []
 }

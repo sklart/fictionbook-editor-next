@@ -250,7 +250,7 @@ bool OptionalSettings(const std::wstring& json, std::vector<Setting>& result)
 			CString meaning = row.valueMeaning;
 			meaning.MakeLower();
 			row.defaultValue = row.sharedSetting && row.valueKind != Setting::ValueKind::Missing &&
-				(meaning.Find(L"резерв") >= 0 || meaning.Find(L"default") >= 0 ||
+				(meaning.Find(L"резерв") >= 0 || meaning.Find(L"по умолчанию") >= 0 || meaning.Find(L"default") >= 0 ||
 					meaning.Find(L"fallback") >= 0);
 			if(row.title.IsEmpty())
 			{
@@ -444,7 +444,6 @@ Card Parse(const BYTE* bytes, size_t length)
 		if(json[complete] != L'{') { card.error = L"Undo description is invalid"; return card; }
 		card.undoStatus = ObjectField(json, complete, L"status");
 		card.undo = ObjectField(json, complete, L"description");
-		if(card.undo.IsEmpty()) card.undo = card.undoStatus;
 	}
 	if(!OptionalDisplayArray(json, 0, L"settings", card.settings) ||
 		!OptionalSettings(json, card.settingRows) ||
@@ -453,6 +452,7 @@ Card Parse(const BYTE* bytes, size_t length)
 		!OptionalDisplayArray(json, 0, L"links", card.links) ||
 		(Member(json, 0, L"tags", complete) && !StringArray(json, 0, L"tags", card.tags)))
 		{ card.error = L"Optional card fields are invalid"; return card; }
+	card.authorshipStatus = ObjectField(json, 0, L"authorshipStatus");
 	card.currentSha256 = ScriptCardBlock::Sha256WithoutCard(bytes, length);
 	if(json.compare(digest, 4, L"null") == 0)
 	{

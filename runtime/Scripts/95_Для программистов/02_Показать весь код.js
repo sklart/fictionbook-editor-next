@@ -44,7 +44,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт только читает HTML книги и записывает текст в отдельное окно; изменений книги и операции отмены в нём нет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

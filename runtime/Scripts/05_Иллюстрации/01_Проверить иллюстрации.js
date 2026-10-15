@@ -37,7 +37,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Скрипт лишь читает данные книги и показывает отчёт; отдельной операции отмены нет."
+    "description": ""
   }
 }
 </FBE-SCRIPT-CARD>*/

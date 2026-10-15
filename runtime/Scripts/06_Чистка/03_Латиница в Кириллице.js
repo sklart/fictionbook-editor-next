@@ -40,7 +40,7 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Явные вызовы группировки отмены в исполняемом коде отсутствуют. Полный откат автоматической обработки не проверен."
+    "description": ""
   },
   "settings": [
     {
@@ -48,14 +48,16 @@
       "value": true,
       "expression": "true",
       "description": "Обрабатывать абзацы раздела истории изменений.",
-      "valueMeaning": "Исходное значение в коде скрипта."
+      "valueMeaning": "Исходное значение в коде скрипта.",
+      "title": "Обрабатывать историю"
     },
     {
       "name": "ObrabotkaAnnotation",
       "value": true,
       "expression": "true",
       "description": "Обрабатывать абзацы аннотации.",
-      "valueMeaning": "Исходное значение в коде скрипта."
+      "valueMeaning": "Исходное значение в коде скрипта.",
+      "title": "Обрабатывать аннотацию"
     }
   ]
 }
