@@ -4638,6 +4638,38 @@ static bool HasPortableStateToolbarWidth(const CString& settings, UINT bandId, i
 	return false;
 }
 
+namespace LegacyTodoTest {
+static int messageCount = 0;
+static CString messageText;
+static BOOL CALLBACK CloseMessage(HWND dialog, LPARAM)
+{
+  wchar_t className[64] = {};
+  ::GetClassNameW(dialog, className, _countof(className));
+  const int button = ::GetDlgItem(dialog, IDOK) ? IDOK : IDCANCEL;
+  if ((wcscmp(className, L"#32770") == 0 || wcscmp(className, L"FBEThemedMessageDialog") == 0) &&
+      ::GetDlgItem(dialog, button) && !::GetPropW(dialog, L"FBE_LEGACY_TEST_CLOSED"))
+  {
+    ::SetPropW(dialog, L"FBE_LEGACY_TEST_CLOSED", reinterpret_cast<HANDLE>(1));
+    ++messageCount;
+    wchar_t text[4096] = {};
+    ::GetDlgItemTextW(dialog, 65535, text, _countof(text));
+    messageText += CString(text) + L"\r\n";
+    ::PostMessage(dialog, WM_COMMAND, button, 0);
+  }
+  return TRUE;
+}
+static void CALLBACK CloseMessages(HWND, UINT, UINT_PTR, DWORD)
+{
+  ::EnumThreadWindows(::GetCurrentThreadId(), CloseMessage, 0);
+}
+struct MessageProbe {
+  UINT_PTR timer;
+  MessageProbe() : timer(::SetTimer(nullptr, 0, 30, CloseMessages)) { messageCount = 0; messageText.Empty(); }
+  ~MessageProbe() { if (timer) ::KillTimer(nullptr, timer); }
+};
+}
+
+static bool RunSourceRegexDiagnosticsForTest(CFBEView* view, CWindow source);
 #include "testing\RuntimeTestScenarios.inl"
 
 #include "ui\MainFrameRuntimeUi.inl"
@@ -4689,11 +4721,6 @@ private:
   ScopedMallocChar& operator=(const ScopedMallocChar&);
 };
 
-static bool ScintillaRegexSearchFailed(CWindow source, int position, bool useRegexp)
-{
-  return useRegexp && position == -1 && source.SendMessage(SCI_GETSTATUS) != SC_STATUS_OK;
-}
-
 // Scintilla positions are UTF-8 byte offsets.  Advance only through Scintilla
 // so a zero-length regexp match can never split a multi-byte code point.
 static int ScintillaPositionAfter(CWindow source, int position)
@@ -4704,15 +4731,6 @@ static int ScintillaPositionAfter(CWindow source, int position)
 static int ScintillaPositionBefore(CWindow source, int position)
 {
   return static_cast<int>(source.SendMessage(SCI_POSITIONBEFORE, position));
-}
-
-static void ShowScintillaRegexError(CFBEView* view)
-{
-  const CString message = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-  if (view != NULL)
-  {
-    U::MessageBox(view->m_hWnd, message, L"FictionBook Editor", MB_OK | MB_ICONEXCLAMATION);
-  }
 }
 
 static bool PrepareScintillaRegexReplaceTarget(CWindow source, const CString& searchText, int findFlags) {
@@ -4764,6 +4782,7 @@ public:
 
 class CSciReplaceDlg : public CReplaceDlgBase {
 public:
+  static bool RunDiagnosticsForTest(CFBEView* view, CWindow source);
   CWindow	m_source;
   bool m_resume_after_zero_length = false;
 	int m_zero_length_guard_start = -1;
@@ -4802,6 +4821,7 @@ public:
     }
   }
   virtual void DoReplace() {
+    m_view->ResetScintillaSearchError(m_source);
     if (m_selvalid) { // replace
       bool readyToReplace = true;
       if (m_view->m_fo.fRegexp)
@@ -4842,10 +4862,12 @@ public:
         }
       }
       m_selvalid=false;
+      if (m_view->m_fo.fRegexp && m_view->ReportScintillaRegexError(m_source)) return;
     }
     DoFind();
   }
   virtual void DoReplaceAll() {
+    m_view->ResetScintillaSearchError(m_source);
     if (m_view->m_fo.pattern.IsEmpty())
       return;
 
@@ -4876,11 +4898,8 @@ public:
 
     m_source.SendMessage(SCI_SETSTATUS, SC_STATUS_OK);
     int pos = m_source.SendMessage(SCI_SEARCHINTARGET, patlen, (LPARAM)pattern.get());
-    if (ScintillaRegexSearchFailed(m_source, pos, m_view->m_fo.fRegexp))
+    if (m_view->m_fo.fRegexp && m_view->ReportScintillaRegexError(m_source))
     {
-      m_view->m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-      m_view->m_last_search_error_is_regexp = true;
-      ShowScintillaRegexError(m_view);
       return;
     }
 
@@ -4906,11 +4925,9 @@ public:
           m_source.SendMessage(SCI_SETTARGETEND, end);
           m_source.SendMessage(SCI_SETSTATUS, SC_STATUS_OK);
           pos = m_source.SendMessage(SCI_SEARCHINTARGET, patlen, (LPARAM)pattern.get());
-          if (ScintillaRegexSearchFailed(m_source, pos, m_view->m_fo.fRegexp)) {
+          if (m_view->m_fo.fRegexp && m_source.SendMessage(SCI_GETSTATUS) != SC_STATUS_OK) {
             m_source.SendMessage(SCI_ENDUNDOACTION);
-            m_view->m_last_search_error = FbeLoadRuntimeStringByKey(L"fbe.regex.error.source", L"Regular expression error");
-            m_view->m_last_search_error_is_regexp = true;
-            ShowScintillaRegexError(m_view);
+            m_view->ReportScintillaRegexError(m_source);
             return;
           }
         }
@@ -4930,6 +4947,50 @@ public:
     }
   }
 };
+
+bool CSciReplaceDlg::RunDiagnosticsForTest(CFBEView* view, CWindow source)
+{
+  LegacyTodoTest::MessageProbe messages;
+  if (!messages.timer) return false;
+  source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("aba"));
+  source.SendMessage(SCI_SETSEL, 0, 0);
+  view->m_fo.fRegexp = true;
+  view->m_fo.flags = 0;
+  view->m_fo.pattern = L"(";
+  bool passed = !view->SciFindNext(source, false, false) && view->LastSearchErrorIsRegexp() &&
+    view->LastSearchError().Find(L"(") >= 0 && view->LastSearchError().Find(L"1001") >= 0 && LegacyTodoTest::messageCount == 1;
+  passed = !view->SciFindNext(source, false, false) && LegacyTodoTest::messageCount == 1 && passed;
+  CSciReplaceDlg replace(view, source);
+  replace.m_selvalid = true;
+  replace.DoReplace();
+  replace.DoReplaceAll();
+  passed = view->LastSearchErrorIsRegexp() && LegacyTodoTest::messageCount == 1 && passed;
+  view->m_fo.pattern = L"a";
+  passed = view->SciFindNext(source, false, false) && view->LastSearchError().IsEmpty() && passed;
+  view->m_fo.pattern = L"absent";
+  passed = !view->SciFindNext(source, false, false) && !view->LastSearchErrorIsRegexp() && view->LastSearchError().IsEmpty() && LegacyTodoTest::messageCount == 1 && passed;
+  view->m_fo.pattern = L"(";
+  source.SendMessage(SCI_SETSEL, 3, 3);
+  passed = !view->SciFindNext(source, false, false) && LegacyTodoTest::messageCount == 2 && passed;
+  passed = !view->SciFindNext(source, false, false) && LegacyTodoTest::messageCount == 2 && passed;
+  replace.DoReplaceAll();
+  passed = LegacyTodoTest::messageCount == 2 && view->LastSearchErrorIsRegexp() && passed;
+  source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>(""));
+  passed = !view->SciFindNext(source, false, false) && view->LastSearchErrorIsRegexp() && LegacyTodoTest::messageCount == 2 && passed;
+  source.SendMessage(SCI_SETTEXT, 0, reinterpret_cast<LPARAM>("aba"));
+  view->m_fo.pattern = L"(a)";
+  view->m_fo.replacement = L"\\1x";
+  replace.DoReplaceAll();
+  char text[64] = {};
+  source.SendMessage(SCI_GETTEXT, _countof(text), reinterpret_cast<LPARAM>(text));
+  passed = strcmp(text, "axbax") == 0 && !view->LastSearchErrorIsRegexp() && view->LastSearchError().IsEmpty() && passed;
+  return passed;
+}
+
+static bool RunSourceRegexDiagnosticsForTest(CFBEView* view, CWindow source)
+{
+  return CSciReplaceDlg::RunDiagnosticsForTest(view, source);
+}
 
 CMainFrame::~CMainFrame()
 {
@@ -5041,35 +5102,108 @@ LRESULT CMainFrame::OnUnhandledCommand(UINT /* unused: uMsg */, WPARAM wParam, L
 	return 0;
 }
 
-LRESULT CMainFrame::OnDropFiles(UINT /* unused: uMsg */, WPARAM wParam, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
+LRESULT CMainFrame::OnDropFiles(UINT, WPARAM wParam, LPARAM, BOOL&)
 {
-  HDROP	  hDrop=(HDROP)wParam;
-  UINT	  nf=::DragQueryFile(hDrop,0xFFFFFFFF,NULL,0);
-  CString buf, ext;
-  if (nf>0) {
-    UINT    len=::DragQueryFile(hDrop,0,NULL,0);
-    TCHAR   *cp=buf.GetBuffer(len+1);
-    len=::DragQueryFile(hDrop,0,cp,len+1);
-    buf.ReleaseBuffer(len);
-  }
-  ::DragFinish(hDrop);
-  if (!buf.IsEmpty())
+  // Release the shell allocation even if a path allocation or COM call fails.
+  struct DropFilesScope {
+    HDROP handle;
+    ~DropFilesScope() { ::DragFinish(handle); }
+  } drop = { reinterpret_cast<HDROP>(wParam) };
+  try
   {
-	  ext.SetString(ATLPath::FindExtension(buf));
-	  if (IsSupportedFictionBookFile(buf) || DetectDocumentContainerKind(buf) != DocumentContainerKind::None)
-	  {
-		if (LoadFile(buf)==OK)
-		{
-			if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
-			else FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), m_doc->m_filename);
-		}
-	  }
-	  else if ((ext.CompareNoCase(L".JPG") == 0) || (ext.CompareNoCase(L".JPEG") == 0) || (ext.CompareNoCase(L".PNG") == 0))
-	  {
-		  m_doc->m_body.SetFocus();
-		  m_doc->m_body.AddImage(buf, false);
-	  }
+    const UINT count = ::DragQueryFileW(drop.handle, 0xFFFFFFFF, nullptr, 0);
+    std::vector<CString> paths;
+    bool hasDocument = false;
+    for (UINT index = 0; index < count; ++index)
+    {
+      const UINT length = ::DragQueryFileW(drop.handle, index, nullptr, 0);
+      CString path;
+      wchar_t* buffer = path.GetBuffer(length + 1);
+      const UINT copied = ::DragQueryFileW(drop.handle, index, buffer, length + 1);
+      path.ReleaseBuffer(copied);
+      if (path.IsEmpty()) continue;
+      hasDocument = hasDocument || IsSupportedFictionBookFile(path) ||
+        DetectDocumentContainerKind(path) != DocumentContainerKind::None;
+      paths.push_back(path);
+    }
+    if (paths.empty()) return 0;
+    if (hasDocument)
+    {
+      // A document drop keeps its established open/MRU behavior only when
+      // unambiguous. Never replace the current book as part of a batch.
+      if (paths.size() != 1)
+      {
+        U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.drop.documents_batch",
+          L"Drop one book or archive to open it, or drop images only. The current book has not been changed."),
+          L"FictionBook Editor", MB_OK | MB_ICONWARNING);
+        return 0;
+      }
+      if (LoadFile(paths.front()) == OK)
+      {
+        if (m_document_session.Location().IsArchive()) FbeRecentDocuments::RememberArchiveMruRecord(m_recentDocuments.List(), m_document_session.Location());
+        else FbeRecentDocuments::RememberNormalMruRecord(m_recentDocuments.List(), m_doc->m_filename);
+      }
+      return 0;
+    }
+    if (!m_doc) return 0;
+    const std::vector<ImageImportFileType> types = ImageImportFileTypes();
+    MSHTML::IHTMLTxtRangePtr insertionRange(m_doc->m_body.Document()->selection->createRange());
+    CComPtr<IOleUndoManager> undoManager;
+    CComPtr<IOleParentUndoUnit> undoParent;
+    m_doc->m_body.OpenDropUndoGroup(undoManager, undoParent);
+    struct EndDropUndo {
+      CFBEView& view;
+      IOleUndoManager* manager;
+      IOleParentUndoUnit* parent;
+      long version;
+      ~EndDropUndo() { try { manager->Close(parent, view.GetVersionNumber() != version); } catch (const _com_error&) {} }
+    } undo = { m_doc->m_body, undoManager, undoParent, m_doc->m_body.GetVersionNumber() };
+    MSHTML::IHTMLElementPtr previous;
+    for (const CString& path : paths)
+    {
+      bool supported = false;
+      for (const ImageImportFileType& type : types)
+        if (type.wildcard != L"*.*" && ::PathMatchSpecW(path, type.wildcard)) { supported = true; break; }
+      if (!supported)
+      {
+        const CString message = FbeLoadRuntimeStringByKey(L"fbe.drop.unsupported",
+          L"This file is not a supported image and was skipped:");
+        U::MessageBox(m_hWnd, message + L"\n" + path, L"FictionBook Editor", MB_OK | MB_ICONWARNING);
+        continue;
+      }
+      try
+      {
+        m_doc->m_body.SetFocus();
+        if (insertionRange) insertionRange->select();
+        if (!m_doc->m_body.bCall(L"InsImage"))
+        {
+          const CString message = FbeLoadRuntimeStringByKey(L"fbe.drop.image_position",
+            L"Place the caret in a section paragraph before inserting this image:");
+          U::MessageBox(m_hWnd, message + L"\n" + path, L"FictionBook Editor", MB_OK | MB_ICONWARNING);
+          continue;
+        }
+        MSHTML::IHTMLElementPtr inserted;
+        m_doc->m_body.AddImage(path, false, std::addressof(inserted));
+        // InsImage leaves the caret at the original paragraph end in one
+        // insertion branch. Place each successful image after the preceding
+        // batch image so this branch cannot reverse the shell's file order.
+        if (previous && inserted)
+        {
+          if (MSHTML::IHTMLDOMNodePtr(previous)->nextSibling != MSHTML::IHTMLDOMNodePtr(inserted))
+          {
+            m_doc->m_body.BeginUndoUnit(L"Order dropped images");
+            try { MSHTML::IHTMLElement2Ptr(previous)->insertAdjacentElement(L"afterEnd", inserted); }
+            catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
+            m_doc->m_body.EndUndoUnit();
+          }
+        }
+        if (inserted) { previous = inserted; insertionRange = m_doc->m_body.Document()->selection->createRange(); }
+      }
+      catch (_com_error& error) { U::ReportError(error); }
+    }
   }
+  catch (_com_error& error) { U::ReportError(error); }
+  catch (const std::bad_alloc&) { U::ReportError(E_OUTOFMEMORY); }
   return 0;
 }
 

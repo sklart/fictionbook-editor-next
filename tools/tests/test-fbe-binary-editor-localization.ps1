@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path $PSScriptRoot)
 $script = Get-Content -Raw -LiteralPath (Join-Path $root 'runtime\main.js')
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $root 'localization\app-ui\catalog.json') | ConvertFrom-Json
-$keys = @('fbe.binary.id.empty', 'fbe.binary.id.invalid', 'fbe.binary.id.duplicate', 'fbe.binary.delete.referenced')
+$keys = @('fbe.binary.id.empty', 'fbe.binary.id.invalid', 'fbe.binary.id.duplicate', 'fbe.binary.delete.referenced', 'fbe.binary.delete.check_failed')
 $languages = @('en-US', 'ru-RU', 'uk-UA', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'pl-PL', 'pt-PT', 'nl-NL', 'cs-CZ', 'bg-BG')
 foreach($key in $keys) {
     if($catalog.seedStrings.PSObject.Properties[$key] -eq $null) { throw "Localization key missing: $key" }

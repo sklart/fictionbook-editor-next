@@ -1,10 +1,13 @@
-<# Exercises binary rename through the production MSHTML document and validates Save/Reopen persistence. #>
+﻿<# Exercises binary rename through the production MSHTML document and validates Save/Reopen persistence. #>
 [CmdletBinding()]
 param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'), [int]$TimeoutSeconds = 120)
 $ErrorActionPreference = 'Stop'
-$FbeExe = (Resolve-Path -LiteralPath $FbeExe).Path
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-binary-rename-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $directory | Out-Null
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'binary-rename'
+New-IsolatedFbeSettingsSeed -Isolation $isolation | Out-Null
+$FbeExe = $isolation.Exe
+$directory = $isolation.Root
+$passed = $false
 try {
     $fixture = Join-Path $directory 'rename.fb2'; $report = Join-Path $directory 'rename.txt'; $reopen = Join-Path $directory 'reopen.txt'
     $bytes = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAF/gL+MZ7M0QAAAABJRU5ErkJggg=='
@@ -15,7 +18,7 @@ try {
     $oldMode,$oldScenario=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-rename-runtime'
-        $process=Start-Process -FilePath $FbeExe -ArgumentList @('-b',$report,$fixture) -PassThru
+        $process=Start-Process -FilePath $FbeExe -WorkingDirectory $isolation.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',$report,$fixture) -PassThru
         $deadline=[Diagnostics.Stopwatch]::StartNew()
         while(((-not (Test-Path -LiteralPath $report)) -or (Get-Item -LiteralPath $report).Length -eq 0) -and -not $process.HasExited -and $deadline.Elapsed.TotalSeconds -lt $TimeoutSeconds){Start-Sleep -Milliseconds 100}
         if((-not (Test-Path -LiteralPath $report)) -or (Get-Item -LiteralPath $report).Length -eq 0){if(-not $process.HasExited){Stop-Process -Id $process.Id -Force};throw 'FBE binary rename runtime did not write its report.'}
@@ -25,10 +28,11 @@ try {
     [xml]$xml=Get-Content -LiteralPath $fixture -Raw; $ns=[Xml.XmlNamespaceManager]::new($xml.NameTable);$ns.AddNamespace('fb','http://www.gribuser.ru/xml/fictionbook/2.0')
     foreach($path in @('//fb:title-info/fb:coverpage/fb:image','//fb:src-title-info/fb:coverpage/fb:image','//fb:body//fb:image')){foreach($image in @($xml.SelectNodes($path,$ns))){if($image.GetAttribute('href','http://www.w3.org/1999/xlink') -ne '#cover-renamed.png'){throw "Saved reference was not renamed: $path"}}}
     if($null -eq $xml.SelectSingleNode('/fb:FictionBook/fb:binary[@id="cover-renamed.png"]',$ns)){throw 'Saved binary with new ID is missing.'}
+    if($null -ne $xml.SelectSingleNode('/fb:FictionBook/fb:binary[@id="other.png"]',$ns)){throw 'Unused binary survived deletion and Save.'}
     if($xml.OuterXml -match 'cover-old\.png'){throw 'Old binary ID survived the save.'}
     try {
         $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TEST_SCENARIO='binary-rename-reopen-runtime'
-        $process=Start-Process -FilePath $FbeExe -ArgumentList @('-b',$reopen,$fixture) -PassThru
+        $process=Start-Process -FilePath $FbeExe -WorkingDirectory $isolation.Runtime -WindowStyle Hidden -ArgumentList @('--portable','-b',$reopen,$fixture) -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds*1000)){Stop-Process -Id $process.Id -Force;throw 'FBE binary rename reopen timed out.'}
     } finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_SCENARIO=$oldScenario}
     if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reopen)){
@@ -37,5 +41,6 @@ try {
     }
     $reopenRows=@{}; Get-Content -LiteralPath $reopen | ForEach-Object {$pair=$_ -split '=',2;if($pair.Count -eq 2){$reopenRows[$pair[0]]=$pair[1]}}
     if($reopenRows.dom_reopen -ne '1'){throw "FBE binary rename reopen DOM validation failed: $(Get-Content $reopen -Raw)"}
+    $passed = $true
     Write-Host 'FBE production binary rename -> Save -> reopen passed.'
-} finally {Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue}
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }
