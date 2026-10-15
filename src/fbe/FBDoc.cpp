@@ -678,8 +678,10 @@ void Doc::RunScript(LPCOLESTR filePath)
 					(read >= 3 && static_cast<BYTE>(bytes[0]) == 0xef &&
 					 static_cast<BYTE>(bytes[1]) == 0xbb && static_cast<BYTE>(bytes[2]) == 0xbf);
 				if(!bom && !::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(),
-					static_cast<int>(read), NULL, 0))
-					scriptCharset.Format(L"windows-%u", ::GetACP());
+					static_cast<int>(read), NULL, 0)) {
+					// Legacy script cards use Windows-1251 independently of the host ANSI code page.
+					scriptCharset = L"windows-1251";
+				}
 			}
 		}
 		::CloseHandle(scriptFile);
