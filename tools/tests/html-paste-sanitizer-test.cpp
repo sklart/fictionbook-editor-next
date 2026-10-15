@@ -29,12 +29,12 @@ static void TestFormatting() {
   Check(Clean(L"<p>\u041f\u0440\u0438\u0432\u0435\u0442&nbsp;\u2014 &ldquo;\u0442\u0435\u0441\u0442&rdquo;</p>") == L"<p>\u041f\u0440\u0438\u0432\u0435\u0442\u00a0\u2014 \u201c\u0442\u0435\u0441\u0442\u201d</p>", "unicode");
   Check(Clean(L"<p>&laquo;Price&raquo; &copy; &euro; &#x1f642; &unknown;</p>") ==
     L"<p>\u00abPrice\u00bb \u00a9 \u20ac \U0001f642 &amp;unknown;</p>", "named, numeric and unknown entities");
-  Check(Clean(L"<a href='javascript:alert(1)' onclick='x()'>Link</a>") == L"Link", "unsafe link");
+  CString output;
+  Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<a href='javascript:alert(1)' onclick='x()'>Link</a>", L"\u00a0", output) ==
+    FbeClipboard::HtmlPasteOutcome::Legacy, "unsafe link must not be silently discarded");
   Check(Clean(L"<a href='https://example.org/?a=1&amp;b=2'>Link</a>") == L"<a href=\"https://example.org/?a=1&amp;b=2\">Link</a>", "safe link");
   Check(Clean(L"<p>Keep<script>alert(1)</script>end</p>") == L"<p>Keepend</p>", "script");
-  CString output;
   Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<table><tr><td>Keep</td></tr></table>", L"\u00a0", output) == FbeClipboard::HtmlPasteOutcome::Legacy, "complex fallback");
-  Check(Clean(L"<div class='section'><p>untrusted</p></div>") == L"<p>untrusted</p>", "html attributes are not provenance");
   Check(Clean(L"<p>bad &unknown;</p>") == L"<p>bad &amp;unknown;</p>", "unknown entity preserved");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<p><span class=code>Code</span><a href='#note'>note</a></p>"), "safe internal structure");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=section><div class=title><p>Title</p></div><p>Body</p></div>"), "safe internal section and title");
@@ -44,15 +44,28 @@ static void TestFormatting() {
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=image href='#img'><img src='fbw-internal:#img'></div>"), "safe internal image");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span onresizestart='return false' contentEditable='false' class='image' href='#img'><img src='fbw-internal:#img'></span>"), "actual FBE inline image");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span contentEditable='true'>editable</span>"), "unexpected editable fragment rejected");
-  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeLegacyFbeFragment(L"<div class='section'><p>Legacy</p></div>"), "legacy FBE section");
-  Check(FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(L"<P><A href=\"file:///D:/FBE/main.html#note\">note</A></P>") ==
+  Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<div class='section'><p>Legacy</p></div>", L"\u00a0", output) ==
+    FbeClipboard::HtmlPasteOutcome::Legacy, "unmarked FBE structure must not lose structure");
+  Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<a class='note' href='file:///D:/FBE/main.html#note'>note</a>", L"\u00a0", output) ==
+    FbeClipboard::HtmlPasteOutcome::Legacy, "unmarked FBE link must not lose its target");
+  const CString base(L"file:///D:/FBE/main.html");
+  Check(FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(L"<P><A href=\"file:///D:/FBE/main.html#note\">note</A></P>", base) ==
     L"<P><A href=\"#note\">note</A></P>", "MSHTML absolute internal link");
+  Check(FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(
+    L"<p>href=file:///C:/FBE/main.html#note1</p>", L"file:///C:/FBE/main.html") ==
+    L"<p>href=file:///C:/FBE/main.html#note1</p>", "literal href text preserved");
+  Check(FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(
+    L"<p>href=file:///D:/FBE/main.html#note1</p><!-- href=file:///D:/FBE/main.html#note2 -->"
+    L"<a data-url='href=file:///D:/FBE/main.html#note3' href='file:///D:/Other/main.html#note4'>Other</a>", base) ==
+    L"<p>href=file:///D:/FBE/main.html#note1</p><!-- href=file:///D:/FBE/main.html#note2 -->"
+    L"<a data-url='href=file:///D:/FBE/main.html#note3' href='file:///D:/Other/main.html#note4'>Other</a>",
+    "normalization changes only matching anchor href attributes");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<P id=paste-copy-source><SPAN class=code>Internal code</SPAN> <A \r\nhref=\"#paste-neighbor\">internal \r\nlink</A></P>"), "MSHTML copied FBE paragraph");
-  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeLegacyFbeFragment(L"<p>Generic external</p>"), "generic HTML is not legacy FBE");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=section><script>alert(1)</script></div>"), "internal script rejected");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<img src='https://example.org/track.png'>"), "external image rejected");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<p onclick='alert(1)'>x</p>"), "internal event rejected");
-  Check(Clean(L"<p>Formula <math><mi>x</mi><mo>+</mo><mn>1</mn></math></p>") == L"<p>Formula x+1</p>", "math text preserved");
+  Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<p>Formula <math><mi>x</mi><mo>+</mo><mn>1</mn></math></p>", L"\u00a0", output) ==
+    FbeClipboard::HtmlPasteOutcome::Legacy, "complex formula cannot be flattened silently");
   Check(FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(L"one\r\n\r\nthree\u00a0", L"_") == L"<p>one</p><p></p><p>three_</p>", "plain paragraphs");
   Check(FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(L"one & two \u00a0", L"_", true) == L"one &amp; two _", "inline plain text");
 }

@@ -251,7 +251,9 @@ bool Void(const CString& tag) {
 }
 bool Complex(const CString& tag) {
   return tag == L"table" || tag == L"img" ||
-    tag == L"ol" || tag == L"ul" || tag == L"li";
+    tag == L"ol" || tag == L"ul" || tag == L"li" ||
+    tag == L"math" || tag == L"svg" || tag == L"object" ||
+    tag == L"video" || tag == L"audio" || tag == L"iframe";
 }
 bool Discard(const CString& tag) {
   return tag == L"script" || tag == L"style" || tag == L"head" ||
@@ -305,6 +307,23 @@ bool SafeHref(const CString& value) {
     if (href[i] < 0x20 || href[i] == 0x7f) return false;
   return href[0] == L'#' || href.Left(7) == L"http://" ||
     href.Left(8) == L"https://" || href.Left(7) == L"mailto:";
+}
+
+bool FbeStructureClass(const CString& value) {
+  CString lower(Lower(value));
+  int start = 0;
+  while (start < lower.GetLength()) {
+    while (start < lower.GetLength() && Space(lower[start])) ++start;
+    int end = start;
+    while (end < lower.GetLength() && !Space(lower[end])) ++end;
+    const CString token(lower.Mid(start, end - start));
+    if (token == L"section" || token == L"title" || token == L"subtitle" ||
+        token == L"annotation" || token == L"image" || token == L"table" ||
+        token == L"note" || token == L"code" || token == L"stanza" ||
+        token == L"poem" || token == L"cite" || token == L"epigraph") return true;
+    start = end;
+  }
+  return false;
 }
 
 bool InternalTag(const CString& tag) {
@@ -426,6 +445,8 @@ HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes, bool inte
       if (attr == L"style") StyleFormat(value, node.formatOn, node.formatOff);
       else if (attr == L"href" && tag == L"a" && SafeHref(value)) node.href = value;
       if (internal && !SafeInternalAttribute(tag, attr, value)) return HtmlPasteOutcome::PlainText;
+      if (!internal && ((attr == L"class" && FbeStructureClass(value)) ||
+          (attr == L"href" && !SafeHref(value)))) return HtmlPasteOutcome::Legacy;
     }
     nodes[stack.back()].children.push_back(nodes.size()); nodes.push_back(std::move(node));
     if (!selfClosing) {
@@ -591,55 +612,75 @@ bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html) {
   return Parse(html, nodes, true) == HtmlPasteOutcome::Sanitized;
 }
 
-bool HtmlPasteSanitizer::IsSafeLegacyFbeFragment(const CString& html) {
-  // A recognizable FBE structure is necessary, but never substitutes for the
-  // same element and attribute safety check applied to marked fragments.
-  const CString lower(Lower(html));
-  const bool recognizable = lower.Find(L"class=section") >= 0 || lower.Find(L"class=\"section\"") >= 0 ||
-    lower.Find(L"class='section'") >= 0 || lower.Find(L"class=image") >= 0 ||
-    lower.Find(L"class=\"image\"") >= 0 || lower.Find(L"class='image'") >= 0 ||
-    lower.Find(L"class=title") >= 0 || lower.Find(L"class=\"title\"") >= 0 ||
-    lower.Find(L"class='title'") >= 0 || lower.Find(L"class=subtitle") >= 0 ||
-    lower.Find(L"class=\"subtitle\"") >= 0 || lower.Find(L"class='subtitle'") >= 0 ||
-    lower.Find(L"class=code") >= 0 || lower.Find(L"class=\"code\"") >= 0 ||
-    lower.Find(L"class='code'") >= 0 || lower.Find(L"class=table") >= 0 ||
-    lower.Find(L"class=\"table\"") >= 0 || lower.Find(L"class='table'") >= 0 ||
-    lower.Find(L"class=note") >= 0 || lower.Find(L"class=\"note\"") >= 0 ||
-    lower.Find(L"class='note'") >= 0;
-  return recognizable && IsSafeInternalFragment(html);
-}
+CString HtmlPasteSanitizer::NormalizeInternalLinks(const CString& html, const CString& documentUrl) {
+  CString base(documentUrl);
+  const int hash = base.Find(L'#');
+  if (hash >= 0) base = base.Left(hash);
+  if (base.Left(8).CompareNoCase(L"file:///") != 0 ||
+      base.Right(10).CompareNoCase(L"/main.html") != 0) return html;
 
-CString HtmlPasteSanitizer::NormalizeInternalLinks(const CString& html) {
-  CString result(html);
-  int search = 0;
-  while (search < result.GetLength()) {
-    const CString lower(Lower(result));
-    const int attribute = lower.Find(L"href=", search);
-    if (attribute < 0) break;
-    const int start = attribute + 5;
-    if (start >= result.GetLength()) break;
-    const wchar_t quote = result[start] == L'\'' || result[start] == L'"' ? result[start] : 0;
-    const int valueStart = start + (quote ? 1 : 0);
-    int valueEnd = valueStart;
-    while (valueEnd < result.GetLength() && (quote ? result[valueEnd] != quote :
-      !Space(result[valueEnd]) && result[valueEnd] != L'>')) ++valueEnd;
-    const CString value(result.Mid(valueStart, valueEnd - valueStart));
-    const CString lowerValue(Lower(value));
-    const int anchor = lowerValue.Find(L"/main.html#");
-    if (lowerValue.Left(8) == L"file:///" && anchor >= 0 && anchor + 11 < value.GetLength()) {
-      const CString fragment(value.Mid(anchor + 10));
-      if (fragment[0] == L'#' && SafeHref(fragment)) {
-        result.Delete(valueStart, value.GetLength());
-        result.Insert(valueStart, fragment);
-        search = valueStart + fragment.GetLength();
-        continue;
-      }
+  CString result;
+  int copied = 0;
+  for (int i = 0; i < html.GetLength();) {
+    if (html[i] != L'<') { ++i; continue; }
+    if (html.Mid(i, 4) == L"<!--") {
+      const int end = html.Find(L"-->", i + 4);
+      if (end < 0) break;
+      i = end + 3;
+      continue;
     }
-    search = valueEnd + (quote ? 1 : 0);
+    int p = i + 1;
+    if (p >= html.GetLength() ||
+        !((html[p] >= L'A' && html[p] <= L'Z') || (html[p] >= L'a' && html[p] <= L'z'))) { ++i; continue; }
+    const int nameStart = p;
+    while (p < html.GetLength() && NameChar(html[p])) ++p;
+    const CString tag(Lower(html.Mid(nameStart, p - nameStart)));
+    int end = p;
+    wchar_t quote = 0;
+    for (; end < html.GetLength(); ++end) {
+      if (quote) { if (html[end] == quote) quote = 0; }
+      else if (html[end] == L'\'' || html[end] == L'"') quote = html[end];
+      else if (html[end] == L'>') break;
+    }
+    if (end >= html.GetLength()) break;
+    if (tag == L"script" || tag == L"style" || tag == L"textarea") {
+      const CString closing(L"</" + tag);
+      const int close = Lower(html).Find(closing, end + 1);
+      if (close < 0) break;
+      i = close;
+      continue;
+    }
+    while (p < end) {
+      while (p < end && Space(html[p])) ++p;
+      const int attrStart = p;
+      while (p < end && NameChar(html[p])) ++p;
+      if (p == attrStart) { ++p; continue; }
+      const CString attr(Lower(html.Mid(attrStart, p - attrStart)));
+      while (p < end && Space(html[p])) ++p;
+      if (p >= end || html[p] != L'=') continue;
+      ++p;
+      while (p < end && Space(html[p])) ++p;
+      const wchar_t valueQuote = p < end && (html[p] == L'\'' || html[p] == L'"') ? html[p++] : 0;
+      const int valueStart = p;
+      while (p < end && (valueQuote ? html[p] != valueQuote : !Space(html[p]))) ++p;
+      const int valueEnd = p;
+      if (valueQuote && p < end) ++p;
+      if (tag != L"a" || attr != L"href") continue;
+      const CString value(html.Mid(valueStart, valueEnd - valueStart));
+      if (value.GetLength() <= base.GetLength() ||
+          value.Left(base.GetLength()).CompareNoCase(base) != 0 ||
+          value[base.GetLength()] != L'#') continue;
+      const CString fragment(value.Mid(base.GetLength()));
+      if (!SafeHref(fragment) || fragment.GetLength() < 2) continue;
+      result += html.Mid(copied, valueStart - copied);
+      result += fragment;
+      copied = valueEnd;
+    }
+    i = end + 1;
   }
+  result += html.Mid(copied);
   return result;
 }
-
 bool HtmlPasteSanitizer::ReadClipboardFragment(HWND owner, CString& html) {
   html.Empty();
   const UINT format = ::RegisterClipboardFormat(L"HTML Format");

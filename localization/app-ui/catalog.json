@@ -3451,6 +3451,7 @@
         "pt-PT": "Código-fonte", "nl-NL": "Broncode", "cs-CZ": "Zdrojový kód", "bg-BG": "Изходен код"
       }
     },
+    "fbe.settings.source.code_display": { "component": "fbe.core", "runtimeOnly": true, "translations": { "en-US": "Code display", "ru-RU": "Отображение кода", "uk-UA": "Відображення коду", "de-DE": "Codeanzeige", "fr-FR": "Affichage du code", "es-ES": "Visualización del código", "it-IT": "Visualizzazione del codice", "pl-PL": "Wyświetlanie kodu", "pt-PT": "Exibição do código", "nl-NL": "Codeweergave", "cs-CZ": "Zobrazení kódu", "bg-BG": "Показване на кода" } },
     "fbe.settings.nav.images": {
       "resourceId": "",
       "runtimeOnly": true,

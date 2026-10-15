@@ -133,6 +133,53 @@ static void RestorePasteChildren(MSHTML::IHTMLDOMNodePtr parent, const std::vect
 		parent->appendChild(child.clone->cloneNode(VARIANT_TRUE));
 }
 
+class PasteBlockedUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
+public:
+	BEGIN_COM_MAP(PasteBlockedUndoUnit)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+		COM_INTERFACE_ENTRY(IOleParentUndoUnit)
+	END_COM_MAP()
+	STDMETHOD(Do)(IOleUndoManager*) { return E_UNEXPECTED; }
+	STDMETHOD(GetDescription)(BSTR* description) {
+		if (!description) return E_POINTER;
+		*description = ::SysAllocString(L"Paste internal changes");
+		return *description ? S_OK : E_OUTOFMEMORY;
+	}
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id) {
+		if (!classId || !id) return E_POINTER;
+		*classId = CLSID_NULL; *id = 0; return S_OK;
+	}
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+	STDMETHOD(Open)(IOleParentUndoUnit*) { return S_OK; }
+	STDMETHOD(Close)(IOleParentUndoUnit* child, BOOL) {
+		return child == static_cast<IOleParentUndoUnit*>(this) ? S_FALSE : S_OK;
+	}
+	STDMETHOD(Add)(IOleUndoUnit*) { return S_OK; }
+	STDMETHOD(FindUnit)(IOleUndoUnit*) { return S_FALSE; }
+	STDMETHOD(GetParentState)(DWORD* state) {
+		if (!state) return E_POINTER;
+		*state = UAS_BLOCKED; return S_OK;
+	}
+};
+
+class PasteUndoRecordingScope {
+public:
+	explicit PasteUndoRecordingScope(IOleUndoManager* manager) : m_manager(manager) {
+		CComObject<PasteBlockedUndoUnit>* unit = NULL;
+		if (m_manager && SUCCEEDED(CComObject<PasteBlockedUndoUnit>::CreateInstance(&unit))) {
+			m_block = unit;
+			m_open = SUCCEEDED(m_manager->Open(m_block));
+		}
+	}
+	~PasteUndoRecordingScope() { Close(); }
+	bool Blocked() const { return m_open; }
+	void Close() { if (m_open) { m_manager->Close(m_block, FALSE); m_open = false; } }
+private:
+	CComPtr<IOleUndoManager> m_manager;
+	CComPtr<IOleParentUndoUnit> m_block;
+	bool m_open = false;
+};
+
 class PasteDomUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
 public:
 	BEGIN_COM_MAP(PasteDomUndoUnit)
@@ -180,9 +227,7 @@ public:
 	STDMETHOD(Do)(IOleUndoManager* manager) {
 		if (!manager) return E_POINTER;
 		const bool unchangedSincePaste = m_document && m_document->m_editor.GetVersionNumber() == m_afterVersion;
-		const bool disabled = SUCCEEDED(manager->Enable(FALSE));
 		const HRESULT result = Restore(m_applyBefore);
-		if (disabled) manager->Enable(TRUE);
 		if (FAILED(result)) return result;
 		try {
 			MSHTML::IHTMLTxtRangePtr selection(m_applyBefore ? m_beforeSelection : m_afterSelection);
@@ -221,18 +266,6 @@ static CComPtr<IOleUndoManager> GetPasteUndoManager(MSHTML::IHTMLDocument2Ptr do
 	if (provider) provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager));
 	return manager;
 }
-
-class PasteUndoRecordingScope {
-public:
-	explicit PasteUndoRecordingScope(IOleUndoManager* manager)
-		: m_manager(manager), m_disabled(manager && SUCCEEDED(manager->Enable(FALSE))) {}
-	~PasteUndoRecordingScope() { Close(); }
-	bool Disabled() const { return m_disabled; }
-	void Close() { if (m_disabled) { m_manager->Enable(TRUE); m_disabled = false; } }
-private:
-	CComPtr<IOleUndoManager> m_manager;
-	bool m_disabled;
-};
 
 // В живой сборке FBE regex режима «Дизайн» всегда идёт через наш wrapper
 // поверх PCRE2, поэтому здесь больше не нужна развилка на VBScript.RegExp.
@@ -1950,11 +1983,11 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			const bool hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
 			htmlClipboardDetected = hasHtml;
 			const bool readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_hWnd, fragment);
-			if (readableHtml && internalPaste) fragment = FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(fragment);
+			if (readableHtml && internalPaste) fragment = FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(
+				fragment, U::UrlFromPath(U::GetProgDirFile(L"main.html")));
 			FbeClipboard::HtmlPasteOutcome outcome = FbeClipboard::HtmlPasteOutcome::PlainText;
 			if (readableHtml) {
-				if ((internalPaste || FbeClipboard::HtmlPasteSanitizer::IsSafeLegacyFbeFragment(fragment)) &&
-					FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment)) {
+				if (internalPaste && FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment)) {
 					insertHtml = fragment;
 					outcome = FbeClipboard::HtmlPasteOutcome::Sanitized;
 				} else if (!internalPaste)
@@ -2051,7 +2084,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			if (FAILED(hr)) _com_issue_error(hr);
 			CComPtr<IOleUndoUnit> unitOwner(unit);
 			PasteUndoRecordingScope recording(manager);
-			if (!recording.Disabled()) return 0;
+			if (!recording.Blocked()) return 0;
 			std::vector<PasteChildSnapshot> after;
 			try {
 				if (paragraphAtEnd) {
