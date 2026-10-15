@@ -12,6 +12,14 @@ $integration = (Resolve-Path -LiteralPath $IntegrationDirectory).Path
 $output = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory)
 & (Join-Path $PSScriptRoot 'verify-package-stage.ps1') -Kind Core -StageDirectory $core
 & (Join-Path $PSScriptRoot 'verify-package-stage.ps1') -Kind Integration -StageDirectory $integration
+# Never delete a source stage or an ancestor of one through a mistaken output path.
+foreach ($source in @($core, $integration, $repoRoot)) {
+    if ($source.Equals($output, [StringComparison]::OrdinalIgnoreCase) -or $source.StartsWith($output.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe installer output overlaps an input: $output" }
+}
+foreach ($source in @($core, $integration)) {
+    if ($output.StartsWith($source.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { throw "Installer output must not be inside an input stage: $output" }
+}
+if ((Test-Path -LiteralPath $output) -and ((Get-Item -LiteralPath $output -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Installer output is a reparse point: $output" }
 if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Recurse -Force }
 New-Item -ItemType Directory -Path $output | Out-Null
 Copy-Item -Path (Join-Path $core '*') -Destination $output -Recurse -Force

@@ -70,6 +70,7 @@ LangString UacDifferentUserUninstaller ${LanguageId} "The administrator account 
 LangString UacStateRestoreFailed ${LanguageId} "Could not restore the installation choices after elevation. Setup will stop before changing files."
 LangString UninstUserDataTitle ${LanguageId} "User data"
 LangString UninstUserDataCheckbox ${LanguageId} "Delete settings and user data for the current user"
+LangString ShellUpdatePending ${LanguageId} "Shell components are in use. Close Explorer or restart Windows, then run this installer again. The previous registration has been retained."
 !macroend
 
 !insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_GERMAN}

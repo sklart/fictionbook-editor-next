@@ -362,45 +362,11 @@ handler для 64-bit Explorer.
 )
 Compress-Archive -Path (Join-Path $symbolsDir "*") -DestinationPath $symbolsZip -CompressionLevel Optimal
 
-& (Join-Path $PSScriptRoot "prepare-installer.ps1") `
-        -CoreDirectory $coreDir `
-        -IntegrationDirectory $integrationDir `
-        -OutputDirectory $installerInputDir
-
-    $makensis = & (Join-Path $PSScriptRoot 'resolve-nsis.ps1')
-
-    $installerDir = Join-Path $repoRoot "packaging\nsis\Installer"
-    Get-ChildItem -LiteralPath $installerDir -Filter "FictionBook Editor Next Release $version*.exe" |
-        ForEach-Object { Remove-PathWithRetry -LiteralPath $_.FullName }
-    if (Test-Path -LiteralPath $setupArtifact) {
-        Remove-PathWithRetry -LiteralPath $setupArtifact
-    }
-
-    Push-Location $installerDir
-    try {
-        $shellHashes = @{
-            FBE_SHELL_X86_SHA256 = (Get-FileHash -LiteralPath (Join-Path $installerInputDir 'FBShell.dll') -Algorithm SHA256).Hash
-            FBE_SHELL_X64_SHA256 = (Get-FileHash -LiteralPath (Join-Path $installerInputDir 'FBShell64.dll') -Algorithm SHA256).Hash
-            FBE_SCHEMA_SHA256 = (Get-FileHash -LiteralPath (Join-Path $installerInputDir 'FBE.Sequence.propdesc') -Algorithm SHA256).Hash
-        }
-        $makensisArguments = @(
-            '/X!addincludedir ..\NSIS',
-            '/X!addplugindir /x86-unicode ..\NSIS',
-            ('/DINPUTDIR=' + $installerInputDir),
-            ('/DOUTPUTFILE=' + $setupArtifact)
-        )
-        foreach ($name in @('FBE_SHELL_X86_SHA256', 'FBE_SHELL_X64_SHA256', 'FBE_SCHEMA_SHA256')) {
-            $makensisArguments += ('/D' + $name + '=' + $shellHashes[$name])
-        }
-        $makensisArguments += 'MakeInstaller.nsi'
-        & $makensis @makensisArguments
-        if ($LASTEXITCODE -ne 0) {
-            throw "NSIS завершился с кодом $LASTEXITCODE."
-        }
-    }
-    finally {
-        Pop-Location
-    }
+& (Join-Path $PSScriptRoot 'build-installer.ps1') `
+    -CoreDirectory $coreDir `
+    -IntegrationDirectory $integrationDir `
+    -OutputDirectory $installerInputDir `
+    -OutputFile $setupArtifact
 
 if (-not (Test-Path -LiteralPath $setupArtifact)) {
     throw "NSIS завершился без создания инсталлятора по пути $setupArtifact."

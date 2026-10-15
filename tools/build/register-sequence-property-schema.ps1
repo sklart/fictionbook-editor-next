@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$SchemaPath,
     [string]$ExpectedSchemaSha256 = "",
@@ -8,6 +8,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Test-Blank { param([string]$Value) return (-not $Value -or $Value.Trim().Length -eq 0) }
+
+
 function Assert-PackageHash {
     param([string]$Path, [string]$Expected)
     if ($Expected -notmatch '^[0-9a-fA-F]{64}$') { throw 'Missing package SHA-256 for property schema.' }
@@ -15,16 +18,17 @@ function Assert-PackageHash {
     try {
         $sha = [Security.Cryptography.SHA256]::Create()
         try { $actual = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
-        finally { $sha.Dispose() }
+        finally { $sha.Clear() }
     }
-    finally { $stream.Dispose() }
+    finally { $stream.Close() }
     if (-not [string]::Equals($actual, $Expected, [StringComparison]::OrdinalIgnoreCase)) {
         throw 'Property schema does not match the trusted installer package.'
     }
 }
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-if ([string]::IsNullOrWhiteSpace($SchemaPath)) {
+$scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = (Resolve-Path (Join-Path $scriptDirectory '..\..')).Path
+if ((Test-Blank $SchemaPath)) {
     $schemaPath = Join-Path $repoRoot "packaging\property-schema\FBE.Sequence.propdesc"
 }
 else {
@@ -39,7 +43,7 @@ function Write-StatusIni {
         [string]$Message = ""
     )
 
-    if ([string]::IsNullOrWhiteSpace($StatusFilePath)) {
+    if ((Test-Blank $StatusFilePath)) {
         return
     }
 
@@ -52,11 +56,11 @@ function Write-StatusIni {
     )
 
     $directory = Split-Path -Parent $StatusFilePath
-    if (-not [string]::IsNullOrWhiteSpace($directory)) {
+    if (-not (Test-Blank $directory)) {
         New-Item -ItemType Directory -Path $directory -Force | Out-Null
     }
 
-    Set-Content -LiteralPath $StatusFilePath -Value $content -Encoding Ascii
+    [IO.File]::WriteAllLines($StatusFilePath, [string[]]$content, [Text.Encoding]::Unicode)
 }
 
 function Test-IsAdministrator {
@@ -135,9 +139,9 @@ try {
     Write-Host "FBE-specific property schema has been registered."
 }
 catch {
-    if ([string]::IsNullOrWhiteSpace($StatusFilePath) -eq $false -and -not (Test-Path -LiteralPath $StatusFilePath)) {
+    if ((Test-Blank $StatusFilePath) -eq $false -and -not (Test-Path -LiteralPath $StatusFilePath)) {
         $message = $_.Exception.Message
-        if ([string]::IsNullOrWhiteSpace($message)) {
+        if ((Test-Blank $message)) {
             $message = "unexpected-error"
         }
         Write-StatusIni -Result "error" -Step "exception" -Code "EXIT_1" -Message $message

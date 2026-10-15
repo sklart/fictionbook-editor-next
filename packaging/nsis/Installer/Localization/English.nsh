@@ -1,4 +1,4 @@
-; license 
+﻿; license
 LicenseLangString License ${LANG_ENGLISH} "${INPUTDIR}\LICENSE"
 
 ; components section strings
@@ -100,3 +100,5 @@ LangString UninstUserDataCheckbox ${LANG_ENGLISH} "Delete settings and user data
 ; Compatibility seed for historical European fallback overrides. This string is
 ; no longer referenced by the uninstaller UI.
 LangString UninstAskSettings ${LANG_ENGLISH} "Would you like to delete all application settings?"
+
+LangString ShellUpdatePending ${LANG_ENGLISH} "Shell components are in use. Close Explorer or restart Windows, then run this installer again. The previous registration has been retained."

@@ -16,6 +16,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$runtimeScript = $MyInvocation.MyCommand.Path
+
+function Test-Blank { param([string]$Value) return (-not $Value -or $Value.Trim().Length -eq 0) }
+
 
 function Assert-PackageHash {
     param([string]$Path, [string]$Expected)
@@ -24,9 +28,9 @@ function Assert-PackageHash {
     try {
         $sha = [Security.Cryptography.SHA256]::Create()
         try { $actual = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '') }
-        finally { $sha.Dispose() }
+        finally { $sha.Clear() }
     }
-    finally { $stream.Dispose() }
+    finally { $stream.Close() }
     if (-not [string]::Equals($actual, $Expected, [StringComparison]::OrdinalIgnoreCase)) {
         throw 'Shell DLL does not match the trusted installer package.'
     }
@@ -44,7 +48,7 @@ function Write-Status {
         [string]$Message
     )
 
-    if ([string]::IsNullOrWhiteSpace($StatusFilePath)) {
+    if ((Test-Blank $StatusFilePath)) {
         return
     }
 
@@ -60,7 +64,7 @@ function Write-Status {
         "Code=$Code"
         "Message=$Message"
     )
-    [IO.File]::WriteAllLines($StatusFilePath, $lines, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllLines($StatusFilePath, $lines, [Text.Encoding]::Unicode)
 }
 
 function Write-EmergencyStatus {
@@ -73,7 +77,7 @@ function Write-EmergencyStatus {
         [string]$Message
     )
 
-    if ([string]::IsNullOrWhiteSpace($StatusFilePath)) {
+    if ((Test-Blank $StatusFilePath)) {
         return
     }
 
@@ -84,7 +88,7 @@ function Write-EmergencyStatus {
         }
 
         $content = "[Shell]`r`nResult=error`r`nStep=$Step`r`nCode=$Code`r`nMessage=$Message`r`n"
-        [System.IO.File]::WriteAllText($StatusFilePath, $content, [System.Text.Encoding]::UTF8)
+        [System.IO.File]::WriteAllText($StatusFilePath, $content, [System.Text.Encoding]::Unicode)
     }
     catch {
     }
@@ -97,23 +101,27 @@ function Test-IsAdministrator {
 }
 
 function Get-RegSvr32Path {
-    if ($Platform -eq "x64") {
-        if ([Environment]::Is64BitProcess) {
-            return "$env:WINDIR\System32\regsvr32.exe"
-        }
-
-        return "$env:WINDIR\sysnative\regsvr32.exe"
-    }
-
-    return "$env:WINDIR\SysWOW64\regsvr32.exe"
+    param(
+        [bool]$Is64BitOS = ([IntPtr]::Size -eq 8 -or -not [string]::IsNullOrEmpty($env:PROCESSOR_ARCHITEW6432)),
+        [bool]$Is64BitProcess = ([IntPtr]::Size -eq 8),
+        [string]$WindowsDirectory = $env:WINDIR
+    )
+    if ($Platform -eq 'x64' -and -not $Is64BitOS) { throw 'Cannot register x64 DLL on 32-bit Windows.' }
+    $directory = 'System32'
+    if ($Is64BitOS -and $Platform -eq 'Win32') { $directory = 'SysWOW64' }
+    elseif ($Is64BitOS -and -not $Is64BitProcess) { $directory = 'Sysnative' }
+    $path = Join-Path $WindowsDirectory ($directory + '\regsvr32.exe')
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "COM registration executable missing: Path=$path; Platform=$Platform; OS64=$Is64BitOS; Process64=$Is64BitProcess" }
+    return $path
 }
 
-function Get-RegistryView {
-    if ($Platform -eq "x64") {
-        return [Microsoft.Win32.RegistryView]::Registry64
+function Open-MachineRegistry {
+    $os64 = [IntPtr]::Size -eq 8 -or -not [string]::IsNullOrEmpty($env:PROCESSOR_ARCHITEW6432)
+    if (($Platform -eq 'x64' -and [IntPtr]::Size -ne 8) -or ($Platform -eq 'Win32' -and [IntPtr]::Size -eq 8)) {
+        throw "Registry architecture mismatch: Platform=$Platform; ProcessBits=$([IntPtr]::Size * 8). Run the matching Windows PowerShell executable."
     }
-
-    return [Microsoft.Win32.RegistryView]::Registry32
+    if ($Platform -eq 'x64' -and -not $os64) { throw 'Cannot register x64 COM components on 32-bit Windows.' }
+    return [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('', $true)
 }
 
 function Invoke-RegSvr32 {
@@ -126,7 +134,7 @@ function Invoke-RegSvr32 {
         [string]$WorkingDirectory
     )
 
-    $process = Start-Process -FilePath $RegSvr32Path -ArgumentList $Arguments -WorkingDirectory $workingDirectory -Wait -PassThru
+    $process = Start-Process -FilePath $RegSvr32Path -ArgumentList $Arguments -WorkingDirectory $workingDirectory -Wait -PassThru -WindowStyle Hidden
     if ($null -eq $process) {
         return -1
     }
@@ -151,10 +159,7 @@ function Get-ComClassRegistrationState {
         [string]$ExpectedDllPath
     )
 
-    $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
-        [Microsoft.Win32.RegistryHive]::LocalMachine,
-        (Get-RegistryView)
-    )
+    $baseKey = Open-MachineRegistry
 
     try {
         $inprocPath = "{0}\InprocServer32" -f (Get-ComClassRegistryPath -Clsid $Clsid)
@@ -165,18 +170,18 @@ function Get-ComClassRegistrationState {
 
         try {
             $registeredDllPath = $inprocKey.GetValue("", "", [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
-            if ([string]::IsNullOrWhiteSpace($registeredDllPath)) {
+            if ((Test-Blank $registeredDllPath)) {
                 return $false
             }
 
             return [string]::Equals($registeredDllPath, $ExpectedDllPath, [System.StringComparison]::OrdinalIgnoreCase)
         }
         finally {
-            $inprocKey.Dispose()
+            $inprocKey.Close()
         }
     }
     finally {
-        $baseKey.Dispose()
+        $baseKey.Close()
     }
 }
 
@@ -192,10 +197,7 @@ function Set-ComClassRegistrationFallback {
         [string]$ModulePath
     )
 
-    $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
-        [Microsoft.Win32.RegistryHive]::LocalMachine,
-        (Get-RegistryView)
-    )
+    $baseKey = Open-MachineRegistry
 
     try {
         $clsidRegistryPath = Get-ComClassRegistryPath -Clsid $Clsid
@@ -205,7 +207,7 @@ function Set-ComClassRegistrationFallback {
 
             $programmableKey = $clsidKey.CreateSubKey("Programmable")
             if ($null -ne $programmableKey) {
-                $programmableKey.Dispose()
+                $programmableKey.Close()
             }
 
             $inprocKey = $clsidKey.CreateSubKey("InprocServer32")
@@ -214,29 +216,20 @@ function Set-ComClassRegistrationFallback {
                 $inprocKey.SetValue("ThreadingModel", $ThreadingModel, [Microsoft.Win32.RegistryValueKind]::String)
             }
             finally {
-                $inprocKey.Dispose()
+                $inprocKey.Close()
             }
         }
         finally {
-            $clsidKey.Dispose()
+            $clsidKey.Close()
         }
     }
     finally {
-        $baseKey.Dispose()
+        $baseKey.Close()
     }
 }
 
 function Set-PropertyHandlerRegistration {
-    $registryView = if ($Platform -eq "x64") {
-        [Microsoft.Win32.RegistryView]::Registry64
-    } else {
-        [Microsoft.Win32.RegistryView]::Registry32
-    }
-
-    $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
-        [Microsoft.Win32.RegistryHive]::LocalMachine,
-        $registryView
-    )
+    $baseKey = Open-MachineRegistry
 
     try {
         $propertyHandlersKey = $baseKey.CreateSubKey(
@@ -246,25 +239,16 @@ function Set-PropertyHandlerRegistration {
             $propertyHandlersKey.SetValue("", $PropertyHandlerClsid, [Microsoft.Win32.RegistryValueKind]::String)
         }
         finally {
-            $propertyHandlersKey.Dispose()
+            $propertyHandlersKey.Close()
         }
     }
     finally {
-        $baseKey.Dispose()
+        $baseKey.Close()
     }
 }
 
 function Set-ThumbnailProviderRegistration {
-    $registryView = if ($Platform -eq "x64") {
-        [Microsoft.Win32.RegistryView]::Registry64
-    } else {
-        [Microsoft.Win32.RegistryView]::Registry32
-    }
-
-    $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
-        [Microsoft.Win32.RegistryHive]::LocalMachine,
-        $registryView
-    )
+    $baseKey = Open-MachineRegistry
 
     try {
         $thumbnailHandlerPath = "SOFTWARE\Classes\.fb2\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}"
@@ -273,7 +257,7 @@ function Set-ThumbnailProviderRegistration {
             $thumbnailHandlerKey.SetValue("", $ThumbnailProviderClsid, [Microsoft.Win32.RegistryValueKind]::String)
         }
         finally {
-            $thumbnailHandlerKey.Dispose()
+            $thumbnailHandlerKey.Close()
         }
 
         $thumbnailHandlerProgIdPath = "SOFTWARE\Classes\FictionBook.2\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}"
@@ -282,11 +266,11 @@ function Set-ThumbnailProviderRegistration {
             $thumbnailHandlerProgIdKey.SetValue("", $ThumbnailProviderClsid, [Microsoft.Win32.RegistryValueKind]::String)
         }
         finally {
-            $thumbnailHandlerProgIdKey.Dispose()
+            $thumbnailHandlerProgIdKey.Close()
         }
     }
     finally {
-        $baseKey.Dispose()
+        $baseKey.Close()
     }
 }
 
@@ -308,29 +292,56 @@ function Ensure-ThumbnailProviderComRegistration {
     }
 }
 
+$registrationStep = 'validate-payload'
 try {
+    $os64 = [IntPtr]::Size -eq 8 -or -not [string]::IsNullOrEmpty($env:PROCESSOR_ARCHITEW6432)
+    $runtime = ''
+    if ($Platform -eq 'Win32' -and [IntPtr]::Size -eq 8) { $runtime = "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" }
+    if ($Platform -eq 'x64' -and [IntPtr]::Size -eq 4) {
+        if (-not $os64) { throw 'Cannot use x64 COM components on 32-bit Windows.' }
+        $runtime = "$env:WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe"
+    }
+    if ($runtime) {
+        $registrationStep = 'select-runtime'
+        if (-not (Test-Path -LiteralPath $runtime -PathType Leaf)) { throw "Matching Windows PowerShell runtime missing: $runtime" }
+        $relay = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$runtimeScript)
+        foreach ($parameter in $PSBoundParameters.GetEnumerator()) {
+            if ($parameter.Value -is [Management.Automation.SwitchParameter]) {
+                if ($parameter.Value.IsPresent) { $relay += '-' + $parameter.Key }
+            }
+            else { $relay += '-' + $parameter.Key; $relay += [string]$parameter.Value }
+        }
+        & $runtime @relay
+        if ($LASTEXITCODE -ne 0) { throw "COM helper failed: Platform=$Platform; Runtime=$runtime; ExitCode=$LASTEXITCODE" }
+        return
+    }
     if (-not (Test-Path -LiteralPath $DllPath -PathType Leaf)) {
         Write-Status -Result "error" -Step "Test-Path" -Code "FILE_NOT_FOUND" -Message "Property handler DLL was not found."
         throw "Property handler DLL was not found: $DllPath"
     }
 
+    $registrationStep = 'validate-package-hash'
     if ($PSBoundParameters.ContainsKey('ExpectedDllSha256')) {
         Assert-PackageHash -Path $DllPath -Expected $ExpectedDllSha256
     }
 
+    $registrationStep = 'administrator'
     if (-not (Test-IsAdministrator)) {
         Write-Status -Result "error" -Step "Test-IsAdministrator" -Code "ACCESS_DENIED" -Message "Administrator rights are required."
         throw "Administrator rights are required to register the modern property handler."
     }
 
+    $registrationStep = 'select-regsvr32'
     $regsvr32 = Get-RegSvr32Path
+    $registrationStep = 'regsvr32'
     $workingDirectory = Split-Path -Parent $DllPath
     Write-Host "Registering modern property handler via regsvr32:"
     Write-Host "  $regsvr32"
     Write-Host "  $DllPath"
     $regsvr32ExitCode = Invoke-RegSvr32 -RegSvr32Path $regsvr32 -Arguments @("/s", ('"{0}"' -f $DllPath)) -WorkingDirectory $workingDirectory
     if ($regsvr32ExitCode -ne 0) {
-        $message = "regsvr32 failed. FilePath=$regsvr32; DllPath=$DllPath; ExitCode=$regsvr32ExitCode; Is64BitProcess=$([Environment]::Is64BitProcess); WorkingDirectory=$workingDirectory"
+        $message = "regsvr32 failed. FilePath=$regsvr32; DllPath=$DllPath; ExitCode=$regsvr32ExitCode; Platform=$Platform; Is64BitProcess=$(([IntPtr]::Size -eq 8)); WorkingDirectory=$workingDirectory"
+        Write-Host $message
         if (Get-ComClassRegistrationState -Clsid $PropertyHandlerClsid -ExpectedDllPath $DllPath) {
             Write-Host "regsvr32 returned a non-zero exit code, but the COM class is already registered to the target DLL."
         }
@@ -345,6 +356,7 @@ try {
         }
     }
 
+    $registrationStep = 'registry'
     Set-PropertyHandlerRegistration
     Ensure-ThumbnailProviderComRegistration
     Set-ThumbnailProviderRegistration
@@ -353,8 +365,8 @@ try {
     Write-Host "Modern property handler and thumbnail provider have been registered."
 }
 catch {
-    if (-not [string]::IsNullOrWhiteSpace($StatusFilePath) -and -not (Test-Path -LiteralPath $StatusFilePath)) {
-        Write-EmergencyStatus -Step "exception" -Code "EXIT_1" -Message $_.Exception.Message
+    if (-not (Test-Blank $StatusFilePath)) {
+        Write-EmergencyStatus -Step $registrationStep -Code "EXIT_1" -Message ("Platform=$Platform; DllPath=$DllPath; " + $_.Exception.Message)
     }
     throw
 }

@@ -1,4 +1,4 @@
-; license 
+﻿; license
 LangString FBD_File_Association ${LANG_UKRAINIAN} "Використовувати FBE Next для файлів опису .fbd"
 LangString DESC_FBD_File_Association ${LANG_UKRAINIAN} "Відкриває файли опису .fbd у FBE Next і змінює їхній значок."
 LicenseLangString License ${LANG_UKRAINIAN} "${INPUTDIR}\gpl-3.0.ua.txt"
@@ -99,3 +99,5 @@ LangString UninstUserDataTitle ${LANG_UKRAINIAN} "Дані користувач�
 LangString UninstUserDataCheckbox ${LANG_UKRAINIAN} "Видалити налаштування та дані поточного користувача"
 ; Compatibility seed for historical European fallback overrides; no longer used by UI.
 LangString UninstAskSettings ${LANG_UKRAINIAN} "Бажаєте видалити файли налаштувань програми?"
+
+LangString ShellUpdatePending ${LANG_UKRAINIAN} "Компоненти Провідника зайняті. Закрийте Провідник або перезавантажте Windows, потім повторно запустіть інсталятор. Попередню реєстрацію збережено."

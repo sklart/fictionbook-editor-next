@@ -1,4 +1,4 @@
-<# Exercises NSIS' test-only deployment branches without installing FBE. #>
+﻿<# Exercises NSIS' test-only deployment branches without installing FBE. #>
 [CmdletBinding()]
 param()
 
@@ -41,6 +41,10 @@ function Invoke-ScopeProbe([string]$Name, [string[]]$Defines, [string[]]$RunArgu
         '/X!addplugindir /x86-unicode ..\NSIS',
         ('/DINPUTDIR=' + $inputDirectory),
         ('/DOUTPUTFILE=' + $setup),
+        # Scope probes embed no shell payload; these valid-format placeholders are unused.
+        ('/DFBE_SHELL_X86_SHA256=' + ('0' * 64)),
+        ('/DFBE_SHELL_X64_SHA256=' + ('0' * 64)),
+        ('/DFBE_SCHEMA_SHA256=' + ('0' * 64)),
         '/DFBE_DEPLOYMENT_TEST_SCOPE_PROBE=1',
         ('/DFBE_DEPLOYMENT_TEST_ROOT=' + $directory)
     ) + $Defines + @('MakeInstaller.nsi')
