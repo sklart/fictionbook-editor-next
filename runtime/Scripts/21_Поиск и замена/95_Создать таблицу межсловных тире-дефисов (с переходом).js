@@ -14,21 +14,23 @@
     }
   ],
   "authorshipStatus": "declared",
-  "summary": "Создаёт таблицу межсловных тире-дефисов (с переходом).",
-  "description": "Собирает сочетания слов с тире/дефисом, группирует их и строит HTML-таблицу с переходами. Предназначен для анализа употреблений; не заменяет все межсловные дефисы автоматически.",
-  "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+  "summary": "Строит отдельный отчёт по дефисам и тире между словами и числами с переходами к найденным местам.",
+  "description": "Читает всю книгу и применяет 62 группы регулярных выражений к словам, числам, пробелам, дефисам и тире, включая сочетания в начале и конце абзаца. Открывает отдельное окно с числами совпадений и контекстом; щелчок по позиции пытается выделить соответствующее место в редакторе. Правок текста книги скрипт не выполняет. Каждая группа может независимо скрывать пустые результаты или показывать только число совпадений.",
+  "scope": "Весь текст внутри fbw_body после преобразования HTML в текст по абзацам. Выделение и курсор область поиска не ограничивают; переход из отчёта меняет выделение и прокрутку редактора.",
   "modifiesDocument": false,
   "requiresSelection": false,
   "usage": [
-    "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-    "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-    "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+    "Запустите скрипт в открытой книге; он проверяет всю книгу без выделения.",
+    "Просмотрите группы результатов в отдельном окне. Нажмите на «Позиция:Длина», чтобы перейти к предполагаемому месту в редакторе, и сверяйте его с контекстом.",
+    "Для изменения вида отчёта настройте положение и размер окна, а также флаги onlyCount и skipIfEmpty нужных групп в исходном JS."
   ],
   "warnings": [
-    "Записи в DOM могут относиться к временным маркерам, интерфейсу или отчёту; отсутствие постоянных правок книги — результат статического разбора, не runtime-гарантия."
+    "Для отчёта требуется открытие отдельного окна; если всплывающее окно заблокировано, скрипт сообщает об ошибке.",
+    "При большом числе совпадений построение таблицы может занять время.",
+    "Отчёт группирует совпадения по шаблонам; одно место может появиться в нескольких группах. Позиции перехода вычисляются из преобразованного HTML и требуют проверки в редакторе."
   ],
   "dependencies": [],
-  "dependenciesComplete": false,
+  "dependenciesComplete": true,
   "sourceRevision": {
     "algorithm": "sha256-exclude-fbe-card-v1",
     "sha256": "a32f1897b216833a1e5aaa13a1206e8ed8faa9f9a17afb32698898ac5116a44b",
@@ -40,113 +42,782 @@
   ],
   "undo": {
     "status": "no_explicit_grouping",
-    "description": "Явная группировка Undo в этом файле не найдена. Это не означает ни гарантированное отсутствие Undo, ни безопасное выполнение."
+    "description": "Скрипт читает книгу и формирует отдельный отчёт; щелчок в отчёте меняет выделение и прокрутку, но не текст книги."
   },
   "settings": [
     {
       "name": "headerBgColor",
       "value": "orange",
       "expression": "\"orange\"",
-      "description": "НАСТРОЙКИ",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Цвет фона заголовков групп в отдельном окне отчёта."
     },
     {
       "name": "singleHeader",
       "value": true,
       "expression": "true",
-      "description": "НАСТРОЙКИ var singleHeader = false;",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "true — показать заголовок столбцов один раз вверху; false — повторять его в каждой таблице группы."
     },
     {
       "name": "windowPosition",
       "value": "left",
       "expression": "\"left\"",
-      "description": "\"left\" - левая половина экрана, \"right\" - правая половина",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Положение окна отчёта: left — слева, right — справа."
     },
     {
       "name": "windowWidthPercent",
       "value": 0.49,
       "expression": "0.49",
-      "description": "доля ширины экрана (0.5 = половина)",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Доля доступной ширины экрана для окна отчёта."
     },
     {
       "name": "windowHeightPercent",
       "value": 0.95,
       "expression": "0.95",
-      "description": "доля высоты экрана (0.5 = половина)",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Доля доступной высоты экрана для окна отчёта."
     },
     {
-      "name": "helpText",
-      "value": "<small><strong>СПРАВКА:</strong></small><br><small>При большом количестве совпадений, открытие таблицы может занять некоторое время.<br>Для перехода к совпадению кликните по соответствующей ячейке <strong>Позиция:Длина</strong>.</small>",
-      "expression": "\"<small><strong>СПРАВКА:</strong></small><br><small>При большом количестве совпадений, открытие таблицы может занять некоторое время.<br>Для перехода к совпадению кликните по соответствующей ячейке <strong>Позиция:Длина</strong>.</small>\"",
-      "description": "================================================",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "name": "rg1_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ДЕФИС-слово»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg1_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "если совпадений нет, то true — не показывать заголовок группы совпадений, true — показывать.",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «слово-ДЕФИС-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg2_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ДЕФИС-пробел-слово»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg2_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «слово-пробел-ДЕФИС-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg3_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ДЕФИС-слово»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg3_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «слово-пробел-ДЕФИС-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg4_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ДЕФИС-пробел-слово»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg4_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «слово-ДЕФИС-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg5_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg5_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg6_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg6_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg7_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg7_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg8_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg8_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg9_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg9_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg10_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg10_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg11_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg11_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg12_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg12_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg13_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ДЕФИС-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg13_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ДЕФИС-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg14_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ДЕФИС-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg14_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ДЕФИС-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg15_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ДЕФИС-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg15_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-ДЕФИС-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg16_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ДЕФИС-пробел-число»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg16_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «число-пробел-ДЕФИС-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg17_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ДЕФИС-пробел-слово»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg17_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «число-пробел-ДЕФИС-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg18_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ДЕФИС-пробел-число»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg18_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «слово-пробел-ДЕФИС-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg19_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ДЕФИС-число»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg19_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «число-пробел-ДЕФИС-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg20_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ДЕФИС-слово»: true — показать только количество, false — также показать совпадения."
     },
     {
       "name": "rg20_skipIfEmpty",
       "value": true,
       "expression": "true",
-      "description": "",
-      "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+      "description": "Группа «число-пробел-ДЕФИС-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg21_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ДЕФИС-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg21_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-ДЕФИС-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg22_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ДЕФИС-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg22_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ДЕФИС-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg23_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ДЕФИС-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg23_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ДЕФИС-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg24_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ДЕФИС-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg24_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-ДЕФИС-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg25_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg25_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg26_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg26_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg27_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg27_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg28_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg28_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg29_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg29_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg30_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg30_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg31_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg31_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg32_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg32_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg33_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg33_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg34_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg34_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg35_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg35_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg36_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg36_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg37_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg37_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg38_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg38_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg39_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg39_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg40_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg40_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg41_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg41_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg42_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg42_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg43_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg43_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg44_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg44_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-пробел-КОРОТКОЕ ТИРЕ-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg45_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg45_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-пробел-КОРОТКОЕ ТИРЕ-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg46_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg46_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg47_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-пробел-слово»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg47_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «число-КОРОТКОЕ ТИРЕ-пробел-слово»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg48_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-пробел-число»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg48_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «слово-КОРОТКОЕ ТИРЕ-пробел-число»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg49_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «начало строки-ДЕФИС-текст»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg49_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «начало строки-ДЕФИС-текст»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg50_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «начало строки-ДЕФИС-пробел»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg50_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «начало строки-ДЕФИС-пробел»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg51_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «начало строки-ТИРЕ-текст»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg51_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «начало строки-ТИРЕ-текст»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg52_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «начало строки-ТИРЕ-пробел»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg52_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «начало строки-ТИРЕ-пробел»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg53_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «начало строки-КОРОТКОЕ ТИРЕ-текст»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg53_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «начало строки-КОРОТКОЕ ТИРЕ-текст»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg54_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «начало строки-КОРОТКОЕ ТИРЕ-пробел»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg54_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «начало строки-КОРОТКОЕ ТИРЕ-пробел»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg55_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «текст-ДЕФИС-конец строки»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg55_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «текст-ДЕФИС-конец строки»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg56_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «пробел-ДЕФИС-конец строки»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg56_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «пробел-ДЕФИС-конец строки»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg57_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «текст-ТИРЕ-конец строки»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg57_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «текст-ТИРЕ-конец строки»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg58_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «пробел-ТИРЕ-конец строки»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg58_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «пробел-ТИРЕ-конец строки»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg59_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «текст-КОРОТКОЕ ТИРЕ-конец строки»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg59_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «текст-КОРОТКОЕ ТИРЕ-конец строки»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg60_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «пробел-КОРОТКОЕ ТИРЕ-конец строки»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg60_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «пробел-КОРОТКОЕ ТИРЕ-конец строки»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg100_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «ДЕФИС или (КОРОТКОЕ) ТИРЕ в пустой строке»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg100_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «ДЕФИС или (КОРОТКОЕ) ТИРЕ в пустой строке»: true — скрыть пустую группу, false — показать её с нулём совпадений."
+    },
+    {
+      "name": "rg101_onlyCount",
+      "value": false,
+      "expression": "false",
+      "description": "Группа «Группы дефисов-тире подряд»: true — показать только количество, false — также показать совпадения."
+    },
+    {
+      "name": "rg101_skipIfEmpty",
+      "value": true,
+      "expression": "true",
+      "description": "Группа «Группы дефисов-тире подряд»: true — скрыть пустую группу, false — показать её с нулём совпадений."
     }
   ]
 }
