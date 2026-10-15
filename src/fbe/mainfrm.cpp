@@ -5235,7 +5235,11 @@ LRESULT CMainFrame::OnCaretMarkerActivation(UINT message, WPARAM wParam, LPARAM,
 {
 	if((message == WM_ACTIVATEAPP && !wParam) ||
 		(message == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE))
+	{
 		HideCaretMarker();
+		if(m_document_tree.m_tree.m_tree.IsWindow())
+			m_document_tree.m_tree.m_tree.HideScriptPreviewOnDeactivate();
+	}
 	handled = FALSE;
 	return 0;
 }

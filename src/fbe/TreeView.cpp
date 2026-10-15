@@ -377,9 +377,9 @@ void CTreeView::UpdateScriptInfoHover(HTREEITEM item)
 		if(item == NULL && m_script_preview.IsVisible())
 		{
 			POINT cursor = {};
-			if(::GetCursorPos(&cursor) && m_script_preview.ContainsTransition(cursor))
+			if(::GetCursorPos(&cursor) && m_script_preview.Contains(cursor))
 				KillTimer(kScriptPreviewHideTimer);
-			else if(!m_script_preview.Contains(cursor))
+			else
 				SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
 		}
 		return;
@@ -395,7 +395,7 @@ void CTreeView::UpdateScriptInfoHover(HTREEITEM item)
 	else if(m_script_preview.IsVisible())
 	{
 		POINT cursor = {};
-		if(!::GetCursorPos(&cursor) || (!m_script_preview.ContainsTransition(cursor) && !m_script_preview.Contains(cursor)))
+		if(!::GetCursorPos(&cursor) || !m_script_preview.Contains(cursor))
 			SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
 	}
 	if(previous) { RECT bounds = {}; if(ScriptInfoRect(previous, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE); }
@@ -407,6 +407,12 @@ void CTreeView::HideScriptPreview()
 	KillTimer(kScriptPreviewShowTimer);
 	KillTimer(kScriptPreviewHideTimer);
 	m_script_preview.Hide();
+}
+
+void CTreeView::HideScriptPreviewOnDeactivate()
+{
+	HideScriptPreview();
+	UpdateScriptInfoHover(NULL);
 }
 
 CString CTreeView::ScriptPreviewSummary(const ScriptDescriptor& script)
@@ -470,8 +476,17 @@ LRESULT CTreeView::OnScriptPreviewTimer(UINT, WPARAM timer, LPARAM, BOOL& bHandl
 	{
 		KillTimer(timer);
 		POINT cursor = {};
-		if(::GetCursorPos(&cursor) &&
-			(m_script_preview.Contains(cursor) || m_script_preview.ContainsTransition(cursor))) return 0;
+		if(::GetCursorPos(&cursor))
+		{
+			if(m_script_preview.Contains(cursor)) return 0;
+			if(m_script_preview.ContainsTransition(cursor))
+			{
+				// The pointer may pause in the bridge without another mouse event.
+				// Recheck until it reaches the popup or leaves the bridge.
+				SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
+				return 0;
+			}
+		}
 		POINT local = cursor; ScreenToClient(&local);
 		if(ScriptInfoAt(local) == NULL) m_script_preview.Hide();
 		return 0;

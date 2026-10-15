@@ -520,9 +520,79 @@ void CMainFrame::RunPortableStateTestScenario()
 			previewBounds.top > infoPoint.y ? previewBounds.top - UiMetrics::ScaleForDpi(2, previewDpi) :
 				previewBounds.bottom + UiMetrics::ScaleForDpi(2, previewDpi) };
 		const bool previewBridge = previewBoundsValid && tree.ScriptPreviewTransitionContains(bridgePoint);
+		const POINT popupPoint = { previewBounds.right - UiMetrics::ScaleForDpi(20, previewDpi),
+			previewBounds.top + UiMetrics::ScaleForDpi(23, previewDpi) };
+		const POINT emptyPoint = { previewBounds.left - UiMetrics::ScaleForDpi(20, previewDpi),
+			(previewBounds.top + previewBounds.bottom) / 2 };
+		auto pumpPreviewFor = [](DWORD milliseconds) {
+			const DWORD deadline = ::GetTickCount() + milliseconds;
+			while(::GetTickCount() < deadline) {
+				MSG message = {};
+				while(::PeekMessageW(&message, NULL, 0, 0, PM_REMOVE)) {
+					::TranslateMessage(&message);
+					::DispatchMessageW(&message);
+				}
+				::Sleep(10);
+			}
+		};
+		::SetCursorPos(bridgePoint.x, bridgePoint.y);
+		POINT bridgeCursor = {};
+		::GetCursorPos(&bridgeCursor);
+		::SendMessageW(tree.m_hWnd, WM_MOUSELEAVE, 0, 0);
+		pumpPreviewFor(320);
+		const bool previewBridgeTimer = previewBridge && bridgeCursor.x == bridgePoint.x &&
+			bridgeCursor.y == bridgePoint.y && tree.ScriptPreviewVisible() && tree.ScriptPreviewUid() == infoUid;
+		::SetCursorPos(emptyPoint.x, emptyPoint.y);
+		pumpPreviewFor(320);
+		POINT exitCursor = {};
+		::GetCursorPos(&exitCursor);
+		const bool previewBridgeExit = previewBridgeTimer && exitCursor.x == emptyPoint.x &&
+			exitCursor.y == emptyPoint.y && !tree.ScriptPreviewVisible();
+		::SetCursorPos(infoPoint.x, infoPoint.y);
+		::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+		::Sleep(470);
+		::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+		::SetCursorPos(bridgePoint.x, bridgePoint.y);
+		::SendMessageW(tree.m_hWnd, WM_MOUSELEAVE, 0, 0);
+		::SetCursorPos(popupPoint.x, popupPoint.y);
+		::SendMessageW(previewWindow, WM_MOUSEMOVE, 0, MAKELPARAM(popupPoint.x - previewBounds.left, popupPoint.y - previewBounds.top));
+		const bool previewPointerLink = previewBridgeExit && tree.ScriptPreviewVisible() &&
+			tree.ScriptPreviewUid() == infoUid && ::WindowFromPoint(popupPoint) == previewWindow;
+		::SetCursorPos(emptyPoint.x, emptyPoint.y);
+		::SendMessageW(previewWindow, WM_MOUSELEAVE, 0, 0);
+		pumpPreviewFor(320);
+		::GetCursorPos(&exitCursor);
+		const bool previewPointerExit = previewPointerLink && exitCursor.x == emptyPoint.x &&
+			exitCursor.y == emptyPoint.y && !tree.ScriptPreviewVisible();
+		::SetCursorPos(infoPoint.x, infoPoint.y);
+		::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+		::Sleep(470);
+		::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+		const bool previewReopened = tree.ScriptPreviewVisible() && tree.ScriptPreviewUid() == infoUid;
 		RECT neighborRow = {};
 		const bool neighborVisible = selectedItem != NULL && tree.GetItemRect(selectedItem, &neighborRow, FALSE);
 		const int neighborY = (neighborRow.top + neighborRow.bottom) / 2;
+		POINT neighborPoint = { infoX, neighborY };
+		tree.ClientToScreen(&neighborPoint);
+		if(neighborVisible) {
+			::SetCursorPos(neighborPoint.x, neighborPoint.y);
+			::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, neighborY));
+			::SetCursorPos(bridgePoint.x, bridgePoint.y);
+			::SendMessageW(tree.m_hWnd, WM_MOUSELEAVE, 0, 0);
+			::Sleep(470);
+			::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+			::SetCursorPos(popupPoint.x, popupPoint.y);
+			::SendMessageW(previewWindow, WM_MOUSEMOVE, 0, MAKELPARAM(popupPoint.x - previewBounds.left, popupPoint.y - previewBounds.top));
+		}
+		const bool previewPointerCrossing = previewReopened && neighborVisible && tree.ScriptPreviewVisible() &&
+			tree.ScriptPreviewUid() == infoUid && tree.ScriptPreviewWindow() == previewWindow;
+		BOOL activationHandled = FALSE;
+		OnCaretMarkerActivation(WM_ACTIVATEAPP, FALSE, 0, activationHandled);
+		const bool previewDeactivated = previewPointerCrossing && !tree.ScriptPreviewVisible();
+		::SetCursorPos(infoPoint.x, infoPoint.y);
+		::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+		::Sleep(470);
+		::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
 		if(neighborVisible) ::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, neighborY));
 		const bool previewCrossing = neighborVisible && tree.ScriptPreviewVisible() &&
 			tree.ScriptPreviewUid() == infoUid && tree.ScriptPreviewWindow() == previewWindow;
@@ -772,7 +842,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
 			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues && categoryFormatted &&
 			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
-			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewBridge && previewCrossing && previewSwitch && previewSurface && previewLink &&
+			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewBridge &&
+			previewBridgeTimer && previewBridgeExit && previewPointerLink && previewPointerExit && previewPointerCrossing && previewDeactivated &&
+			previewCrossing && previewSwitch && previewSurface && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
 			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
 			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot &&
@@ -795,6 +867,10 @@ void CMainFrame::RunPortableStateTestScenario()
 			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
 		report.AppendFormat("category-formatted=%d\n", categoryFormatted);
+		report.AppendFormat("preview-bridge-timer=%d\npreview-bridge-exit=%d\npreview-pointer-link=%d\npreview-pointer-exit=%d\npreview-pointer-crossing=%d\npreview-deactivated=%d\n",
+			previewBridgeTimer, previewBridgeExit, previewPointerLink, previewPointerExit, previewPointerCrossing, previewDeactivated);
+		report.AppendFormat("preview-cursor-placed=%d\npreview-bridge-cursor=%d,%d\npreview-bridge-point=%d,%d\npreview-bridge-current=%d\n",
+			cursorPlaced, bridgeCursor.x, bridgeCursor.y, bridgePoint.x, bridgePoint.y, tree.ScriptPreviewTransitionContains(bridgeCursor));
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);
 		return;

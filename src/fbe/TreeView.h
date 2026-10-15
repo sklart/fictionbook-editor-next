@@ -177,6 +177,7 @@ public:
 	HTREEITEM ScriptInfoAt(POINT point);
 	void UpdateScriptInfoHover(HTREEITEM item);
 	void HideScriptPreview();
+	void HideScriptPreviewOnDeactivate();
 	CString ScriptPreviewSummary(const ScriptDescriptor& script);
 	bool OpenScriptCardUid(const CString& uid);
 
