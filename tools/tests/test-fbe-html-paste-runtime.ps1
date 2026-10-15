@@ -2,6 +2,7 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
+    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked'),
     [switch]$KeepArtifacts
 )
 
@@ -15,7 +16,7 @@ try {
     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Paste</first-name><last-name>Test</last-name></author><book-title>HTML paste</book-title><lang>en</lang></title-info><document-info><author><first-name>Paste</first-name><last-name>Test</last-name></author><date value="2026-10-15">2026-10-15</date><id>html-paste-test</id><version>1.0</version></document-info></description><body><section id="paste-target"><title><p>Heading</p></title><p>Before</p></section><section id="paste-neighbor"><p>Neighbor</p></section></body></FictionBook>'
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = 'html-paste-runtime'
-    foreach($case in @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-end', 'legacy-unmarked')) {
+    foreach($case in $Cases) {
         [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
         $report = Join-Path $directory "$case.tsv"
         $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $case
@@ -26,10 +27,13 @@ try {
         if($row.Count -ne 1 -or $row[0].result -ne 'pass') { throw "HTML paste runtime failed: $case; report: $(Get-Content $report -Raw)" }
         [xml]$saved = Get-Content -LiteralPath $fixture -Raw
         $savedXml = $saved.OuterXml
-        if($case -eq 'legacy-unmarked') {
+        if($case -in @('internal-missing-link', 'internal-missing-image')) {
+            if($savedXml -match 'Missing note|absent-image' -or $savedXml -notmatch 'Before') { throw "Unsafe internal fragment changed the saved document: $case" }
+        }
+        elseif($case -eq 'legacy-unmarked') {
             if($savedXml -match 'Legacy link' -or $savedXml -notmatch 'Before') { throw 'Unmarked FBE HTML changed the saved document.' }
         }
-        elseif($case -in @('internal', 'internal-end')) {
+        elseif($case -in @('internal', 'internal-dirty', 'internal-end')) {
             if($savedXml -notmatch 'Internal code' -or $savedXml -notmatch 'internal link') { throw "Internal fragment missing after save: $case" }
         }
         elseif($case -eq 'plain-single') {
@@ -40,7 +44,7 @@ try {
         }
         elseif($savedXml -notmatch 'Bold italic' -or $savedXml -notmatch 'Second') { throw "Formatted text missing after save: $case" }
     }
-    Write-Host 'HTML paste runtime passed: Word/body, Word/title, plain text, internal fragment, unmarked legacy refusal, two paste/undo cycles, save and reopen.'
+    Write-Host "HTML paste runtime passed: $($Cases -join ', '); FB2 parse."
 }
 finally {
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $oldMode, $oldScenario, $oldCase

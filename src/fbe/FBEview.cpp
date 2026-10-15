@@ -187,12 +187,11 @@ public:
 	END_COM_MAP()
 	void Initialize(MSHTML::IHTMLDOMNodePtr parent, std::vector<PasteChildSnapshot> before, std::vector<PasteChildSnapshot> after,
 		MSHTML::IHTMLTxtRangePtr beforeSelection, MSHTML::IHTMLTxtRangePtr afterSelection,
-		FB::Doc* document, bool beforeWasClean, bool beforeRecoveryClean, long saveVersion, long afterVersion) {
+		FB::Doc* document, bool beforeWasClean, bool beforeRecoveryClean, long saveVersion) {
 		m_parent = parent; m_before = std::move(before); m_after = std::move(after);
 		m_beforeSelection = beforeSelection; m_afterSelection = afterSelection;
 		m_document = document; m_beforeWasClean = beforeWasClean;
 		m_beforeRecoveryClean = beforeRecoveryClean; m_saveVersion = saveVersion;
-		m_afterVersion = afterVersion;
 		while (m_prefix < m_before.size() && m_prefix < m_after.size() && m_before[m_prefix].html == m_after[m_prefix].html) ++m_prefix;
 		while (m_suffix < m_before.size() - m_prefix && m_suffix < m_after.size() - m_prefix &&
 			m_before[m_before.size() - m_suffix - 1].html == m_after[m_after.size() - m_suffix - 1].html) ++m_suffix;
@@ -226,14 +225,13 @@ public:
 	}
 	STDMETHOD(Do)(IOleUndoManager* manager) {
 		if (!manager) return E_POINTER;
-		const bool unchangedSincePaste = m_document && m_document->m_editor.GetVersionNumber() == m_afterVersion;
 		const HRESULT result = Restore(m_applyBefore);
 		if (FAILED(result)) return result;
 		try {
 			MSHTML::IHTMLTxtRangePtr selection(m_applyBefore ? m_beforeSelection : m_afterSelection);
 			if (selection) selection->select();
 		} catch (const _com_error&) {}
-		if (m_applyBefore && unchangedSincePaste)
+		if (m_applyBefore && m_document)
 			m_document->RestoreCleanAfterPasteUndo(m_saveVersion, m_beforeWasClean, m_beforeRecoveryClean);
 		m_applyBefore = !m_applyBefore;
 		return manager->Add(this);
@@ -254,7 +252,6 @@ private:
 	bool m_beforeWasClean = false;
 	bool m_beforeRecoveryClean = false;
 	long m_saveVersion = -1;
-	long m_afterVersion = -1;
 	std::vector<PasteChildSnapshot> m_before, m_after;
 	size_t m_prefix = 0, m_suffix = 0;
 	bool m_applyBefore = true;
@@ -1987,7 +1984,16 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 				fragment, U::UrlFromPath(U::GetProgDirFile(L"main.html")));
 			FbeClipboard::HtmlPasteOutcome outcome = FbeClipboard::HtmlPasteOutcome::PlainText;
 			if (readableHtml) {
-				if (internalPaste && FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment)) {
+				if (internalPaste && FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment,
+					[this](const CString& id, bool image) {
+						if (image) {
+							_variant_t binary;
+							const CString binaryRef(L"#" + id);
+							return m_ownerDocument && m_ownerDocument->GetBinary(binaryRef, binary) &&
+								binary.vt != VT_EMPTY && binary.vt != VT_NULL;
+						}
+						return !!FBELinkNavigation::FindTargetElement(Document(), id);
+					})) {
 					insertHtml = fragment;
 					outcome = FbeClipboard::HtmlPasteOutcome::Sanitized;
 				} else if (!internalPaste)
@@ -1997,7 +2003,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			if (hasHtml && outcome != FbeClipboard::HtmlPasteOutcome::Sanitized)
 			{
 				CString lower(fragment); lower.MakeLower();
-				const bool structuralHtml = !readableHtml || outcome == FbeClipboard::HtmlPasteOutcome::Legacy ||
+				const bool structuralHtml = internalPaste || !readableHtml || outcome == FbeClipboard::HtmlPasteOutcome::Legacy ||
 					lower.Find(L"<table") >= 0 || lower.Find(L"<img") >= 0 ||
 					lower.Find(L"<ul") >= 0 || lower.Find(L"<ol") >= 0 ||
 					lower.Find(L"<li") >= 0 || lower.Find(L"<math") >= 0;
@@ -2113,7 +2119,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 			recording.Close();
 			MSHTML::IHTMLTxtRangePtr afterSelection(Document()->selection->createRange());
 			unit->Initialize(parent, std::move(before), std::move(after), beforeSelection, afterSelection,
-				m_ownerDocument, beforeWasClean, beforeRecoveryClean, saveVersion, GetVersionNumber());
+				m_ownerDocument, beforeWasClean, beforeRecoveryClean, saveVersion);
 			if (unit->Changed()) {
 				if (!unit->PrepareChangedClones()) {
 					PasteUndoRecordingScope rollback(manager);

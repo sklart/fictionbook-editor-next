@@ -151,7 +151,10 @@
 		const bool singleLine = wcscmp(caseName, L"plain-single") == 0;
 		const bool middle = wcscmp(caseName, L"plain-middle") == 0;
 		const bool internalEnd = wcscmp(caseName, L"internal-end") == 0;
-		const bool internal = wcscmp(caseName, L"internal") == 0 || internalEnd;
+		const bool preDirty = wcscmp(caseName, L"internal-dirty") == 0;
+		const bool missingLink = wcscmp(caseName, L"internal-missing-link") == 0;
+		const bool missingImage = wcscmp(caseName, L"internal-missing-image") == 0;
+		const bool internal = wcscmp(caseName, L"internal") == 0 || internalEnd || preDirty || missingLink || missingImage;
 		const bool legacy = wcscmp(caseName, L"legacy-unmarked") == 0;
 		const bool plain = wcscmp(caseName, L"plain") == 0 || singleLine || middle;
 		const bool title = wcscmp(caseName, L"title") == 0;
@@ -172,10 +175,13 @@
 				MSHTML::IHTMLElementPtr sourceOwner(document->all->item(L"paste-target"));
 				if (!sourceOwner) throw _com_error(E_FAIL);
 				sourceOwner->insertAdjacentHTML(L"beforeEnd", L"<p id='paste-internal-target'>Paste target</p><p><span class='code'>Internal code</span> <a href='#paste-neighbor'>internal link</a></p>");
+				if (missingLink) sourceOwner->insertAdjacentHTML(L"beforeEnd", L"<p><a class='note' href='#absent-note'>Missing note</a></p>");
+				if (missingImage) sourceOwner->insertAdjacentHTML(L"beforeEnd", L"<p><span class='image' href='#absent-image'><img src='fbw-internal:#absent-image'></span></p>");
 			}
 			m_doc->MarkSavePoint();
 			m_doc->MarkDocCP();
-			const CString before(static_cast<LPCWSTR>(editable->innerHTML));
+			if (m_doc->DocChanged() || m_doc->DocRelChanged()) throw _com_error(E_FAIL);
+			CString before(static_cast<LPCWSTR>(editable->innerHTML));
 			MSHTML::IHTMLElementPtr target(document->all->item(L"paste-target"));
 			MSHTML::IHTMLElementPtr neighbor(document->all->item(L"paste-neighbor"));
 			const CString neighborBefore(neighbor ? static_cast<LPCWSTR>(neighbor->outerHTML) : L"");
@@ -183,6 +189,11 @@
 			MSHTML::IHTMLElementPtr pasteTarget(internal ? document->all->item(L"paste-internal-target") :
 				ps && ps->length > (title ? 0 : 1) ? ps->item(title ? 0L : 1L) : MSHTML::IHTMLElementPtr());
 			if (!pasteTarget) throw _com_error(E_FAIL);
+			if (preDirty) {
+				pasteTarget->insertAdjacentText(L"beforeEnd", L" Prior change");
+				if (!m_doc->DocChanged() || !m_doc->DocRelChanged()) throw _com_error(E_FAIL);
+				before = static_cast<LPCWSTR>(editable->innerHTML);
+			}
 			const CStringA fragment(legacy ?
 				"<div class='section'><p><a class='note' href='file:///C:/OldFBE/main.html#note1'>Legacy link</a></p></div>" :
 				"<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
@@ -239,6 +250,17 @@
 			range->select();
 			BOOL handled = FALSE;
 			m_doc->m_body.OnPaste(0, plain ? ID_EDIT_PASTE_TEXT : ID_EDIT_PASTE, 0, handled);
+			if (missingLink || missingImage) {
+				editable = document->all->item(L"fbw_body");
+				const bool unchanged = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before &&
+					!m_doc->DocChanged() && !m_doc->DocRelChanged();
+				const bool clipboardUnchanged = ::GetClipboardSequenceNumber() == sequence;
+				CStringA row; row.Format("%S\t%d\t0\t0\t0\t%d\t0\t0\t0\t%d\t%d\t0\t0\t%s\r\n",
+					caseName, unchanged, clipboardUnchanged, unchanged, unchanged,
+					unchanged && clipboardUnchanged ? "pass" : "fail");
+				output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+				output.Flush(); output.Close(); ::PostQuitMessage(unchanged && clipboardUnchanged ? 0 : 1); return 0;
+			}
 			if (legacy) {
 				editable = document->all->item(L"fbw_body");
 				const bool unchanged = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before &&
@@ -267,32 +289,35 @@
 			paragraphs = paragraphsAfter && (singleLine ? paragraphsAfter->length == 2 : paragraphsAfter->length >= (plain ? 4 : 3));
 			neighbor = document->all->item(L"paste-neighbor");
 			neighborOk = neighbor && CString(static_cast<LPCWSTR>(neighbor->outerHTML)) == neighborBefore;
-			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
-			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
-			editable = document->all->item(L"fbw_body");
-			undoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before;
-			cleanAfterUndo = !m_doc->DocChanged();
-			const bool recoveryCleanAfterUndo = !m_doc->DocRelChanged();
+			const bool twoPasteCase = internal && !internalEnd;
 			auto selectionInTarget = [&]() -> bool {
 			MSHTML::IHTMLTxtRangePtr selected(document->selection->createRange());
 			for (MSHTML::IHTMLElementPtr element(selected ? selected->parentElement() : MSHTML::IHTMLElementPtr()); element; element = element->parentElement)
 				if (U::scmp(element->id, L"paste-target") == 0) return true;
 			return false;
 		};
-			const bool undoSelection = selectionInTarget();
-			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
-			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
-			editable = document->all->item(L"fbw_body");
-			redoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == after;
-			dirtyAfterRedo = m_doc->DocChanged();
-			dirtyOk = dirtyAfterPaste && cleanAfterUndo && dirtyAfterRedo;
-			recoveryOk = recoveryAfterPaste && recoveryCleanAfterUndo && m_doc->DocRelChanged();
-			selectionOk = undoSelection && selectionInTarget();
+			if (!twoPasteCase) {
+				m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
+				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
+				editable = document->all->item(L"fbw_body");
+				undoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before;
+				cleanAfterUndo = preDirty ? m_doc->DocChanged() : !m_doc->DocChanged();
+				const bool recoveryCleanAfterUndo = preDirty ? m_doc->DocRelChanged() : !m_doc->DocRelChanged();
+				const bool undoSelection = selectionInTarget();
+				m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
+				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
+				editable = document->all->item(L"fbw_body");
+				redoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == after;
+				dirtyAfterRedo = m_doc->DocChanged();
+				dirtyOk = dirtyAfterPaste && cleanAfterUndo && dirtyAfterRedo;
+				recoveryOk = recoveryAfterPaste && recoveryCleanAfterUndo && m_doc->DocRelChanged();
+				selectionOk = undoSelection && selectionInTarget();
+			}
 			int line = 0, column = 0;
-			if (internal && !internalEnd && redoOk) {
+			if (twoPasteCase) {
 				twoPasteOk = false;
 				editable = document->all->item(L"fbw_body");
-				const CString afterFirst(static_cast<LPCWSTR>(editable->innerHTML));
+				const CString afterFirst(after);
 				MSHTML::IHTMLElementPtr secondTarget(document->all->item(L"paste-internal-target"));
 				MSHTML::IHTMLTxtRangePtr secondRange(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
 				secondRange->moveToElementText(secondTarget); secondRange->collapse(VARIANT_FALSE); secondRange->select();
@@ -300,23 +325,41 @@
 				m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, handled);
 				editable = document->all->item(L"fbw_body");
 				const CString afterSecond(static_cast<LPCWSTR>(editable->innerHTML));
-				twoPasteOk = afterSecond != afterFirst && m_doc->DocChanged();
-				twoPasteTrace.Format("second=%d", twoPasteOk);
+				const bool secondDirty = m_doc->DocChanged() && m_doc->DocRelChanged();
+				twoPasteOk = afterSecond != afterFirst && secondDirty;
+				twoPasteTrace.Format("second=%d,dirty2=%d", afterSecond != afterFirst, secondDirty);
 				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
 				editable = document->all->item(L"fbw_body");
-				const bool firstUndo = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == afterFirst;
-				twoPasteTrace.AppendFormat(",undo1=%d", firstUndo);
+				const bool firstUndo = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == afterFirst &&
+					m_doc->DocChanged() && m_doc->DocRelChanged();
+				twoPasteTrace.AppendFormat(",undo1_dirty=%d", firstUndo);
+				undoOk = firstUndo;
 				twoPasteOk = twoPasteOk && firstUndo;
 				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
 				editable = document->all->item(L"fbw_body");
-				const bool secondUndo = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before;
-				twoPasteTrace.AppendFormat(",undo2=%d", secondUndo);
-				twoPasteOk = twoPasteOk && secondUndo;
+				const bool secondHtml = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before;
+				const bool secondChanged = m_doc->DocChanged(), secondRecovery = m_doc->DocRelChanged();
+				const bool secondUndo = secondHtml && secondChanged == preDirty && secondRecovery == preDirty;
+				CComPtr<IOleUndoManager> remainingUndo;
+				IServiceProviderPtr undoProvider(document);
+				if (undoProvider) undoProvider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager,
+					reinterpret_cast<void**>(&remainingUndo));
+				CComBSTR priorDescription;
+				const bool priorUndoAvailable = !preDirty ||
+					(remainingUndo && SUCCEEDED(remainingUndo->GetLastUndoDescription(&priorDescription)));
+				twoPasteTrace.AppendFormat(",undo2_html=%d,dirty=%d,recovery=%d", secondHtml, secondChanged, secondRecovery);
+				dirtyOk = dirtyAfterPaste && secondDirty && firstUndo && secondUndo;
+				recoveryOk = recoveryAfterPaste && secondDirty && firstUndo && secondUndo;
+				selectionOk = selectionInTarget();
+				twoPasteOk = twoPasteOk && secondUndo && priorUndoAvailable;
 				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
 				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
 				editable = document->all->item(L"fbw_body");
-				const bool bothRedo = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == afterSecond;
-				twoPasteTrace.AppendFormat(",redo2=%d", bothRedo);
+				const bool bothRedo = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == afterSecond &&
+					m_doc->DocChanged() && m_doc->DocRelChanged();
+				twoPasteTrace.AppendFormat(",redo2_dirty=%d", bothRedo);
+				redoOk = bothRedo;
+				selectionOk = selectionOk && selectionInTarget();
 				twoPasteOk = twoPasteOk && bothRedo;
 			}
 			validated = redoOk && twoPasteOk && m_doc->Validate(line, column);

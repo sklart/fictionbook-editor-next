@@ -43,6 +43,19 @@ static void TestFormatting() {
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<table class='table'><tbody><tr class='tr'><td class='td'>Cell</td></tr></tbody></table>"), "actual FBE table tbody");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=image href='#img'><img src='fbw-internal:#img'></div>"), "safe internal image");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span onresizestart='return false' contentEditable='false' class='image' href='#img'><img src='fbw-internal:#img'></span>"), "actual FBE inline image");
+  const auto referencesInBook = [](const CString& id, bool image) {
+    return image ? id == L"present-image" : id == L"present-note";
+  };
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<p><a class='note' href='#present-note'>note</a></p>", referencesInBook), "existing note accepted");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<p><a class='note' href='#missing-note'>note</a></p>", referencesInBook), "missing note rejected");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<p id='local'><a href='#local'>self link</a></p>", referencesInBook), "fragment-local target accepted");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<div class='image' href='#present-image'><img src='fbw-internal:#present-image'></div>", referencesInBook), "existing block image accepted");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<span class='image' href='#missing-image'><img src='fbw-internal:#missing-image'></span>", referencesInBook), "missing inline image rejected");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span contentEditable='true'>editable</span>"), "unexpected editable fragment rejected");
   Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<div class='section'><p>Legacy</p></div>", L"\u00a0", output) ==
     FbeClipboard::HtmlPasteOutcome::Legacy, "unmarked FBE structure must not lose structure");

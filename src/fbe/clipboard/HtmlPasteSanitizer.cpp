@@ -133,6 +133,8 @@ struct Node {
   CString tag;
   CString text;
   CString href;
+  CString src;
+  CString id;
   unsigned formatOn = 0;
   unsigned formatOff = 0;
   std::vector<size_t> children;
@@ -443,7 +445,10 @@ HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes, bool inte
         if (q) ++p;
       }
       if (attr == L"style") StyleFormat(value, node.formatOn, node.formatOff);
-      else if (attr == L"href" && tag == L"a" && SafeHref(value)) node.href = value;
+      else if (attr == L"href" && ((tag == L"a" && SafeHref(value)) ||
+          (internal && (tag == L"div" || tag == L"span")))) node.href = value;
+      if (internal && attr == L"src" && tag == L"img") node.src = value;
+      if (internal && attr == L"id") node.id = value;
       if (internal && !SafeInternalAttribute(tag, attr, value)) return HtmlPasteOutcome::PlainText;
       if (!internal && ((attr == L"class" && FbeStructureClass(value)) ||
           (attr == L"href" && !SafeHref(value)))) return HtmlPasteOutcome::Legacy;
@@ -606,10 +611,28 @@ bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
   return false;
 }
 
-bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html) {
+bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html,
+    const std::function<bool(const CString&, bool image)>& referenceExists) {
   if (html.IsEmpty() || html.GetLength() > static_cast<int>(kMaxFragmentBytes)) return false;
   std::vector<Node> nodes;
-  return Parse(html, nodes, true) == HtmlPasteOutcome::Sanitized;
+  if (Parse(html, nodes, true) != HtmlPasteOutcome::Sanitized) return false;
+  if (!referenceExists) return true;
+  for (const Node& node : nodes) {
+    if (!node.href.IsEmpty() && node.href[0] == L'#') {
+      const CString id(node.href.Mid(1));
+      const bool image = node.tag == L"div" || node.tag == L"span";
+      bool inFragment = false;
+      if (!image) for (const Node& target : nodes)
+        if (target.id == id) { inFragment = true; break; }
+      if (id.IsEmpty() || (!inFragment && !referenceExists(id, image))) return false;
+    }
+    if (!node.src.IsEmpty()) {
+      const CString prefix(L"fbw-internal:#");
+      if (node.src.Left(prefix.GetLength()).CompareNoCase(prefix) != 0 ||
+          !referenceExists(node.src.Mid(prefix.GetLength()), true)) return false;
+    }
+  }
+  return true;
 }
 
 CString HtmlPasteSanitizer::NormalizeInternalLinks(const CString& html, const CString& documentUrl) {

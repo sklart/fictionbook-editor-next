@@ -2,6 +2,7 @@
 
 #include <atlstr.h>
 #include <windows.h>
+#include <functional>
 
 namespace FbeClipboard {
 
@@ -13,7 +14,8 @@ class HtmlPasteSanitizer {
 public:
   static bool MarkInternalCopy(HWND owner);
   static bool HasInternalCopyMarker(HWND owner);
-  static bool IsSafeInternalFragment(const CString& html);
+  static bool IsSafeInternalFragment(const CString& html,
+                                    const std::function<bool(const CString&, bool image)>& referenceExists = {});
   static CString NormalizeInternalLinks(const CString& html, const CString& documentUrl);
   static bool ReadClipboardFragment(HWND owner, CString& html);
   static HtmlPasteOutcome Sanitize(const CString& input,

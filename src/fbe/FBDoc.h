@@ -100,8 +100,10 @@ public:
 	  m_editor.ResetFormChanged();
   }
 	void RestoreCleanAfterPasteUndo(long originalVersion, bool saveClean, bool recoveryClean) {
-		if (saveClean && m_body_ver == originalVersion) MarkSavePoint();
-		if (recoveryClean && m_body_cp == originalVersion) MarkDocCP();
+		if (saveClean && (m_body_ver == originalVersion || m_body_ver == -1)) MarkSavePoint();
+		else if (!saveClean) ResetSavePoint();
+		if (recoveryClean && (m_body_cp == originalVersion || m_body_cp == -1)) MarkDocCP();
+		else if (!recoveryClean) m_body_cp = -1;
 	}
   void	  ResetSavePoint() { m_body_ver=-1; }
 
