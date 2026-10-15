@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 334,
-    "generic_usage": 693,
-    "incorrect_undo": 97,
+    "requires_review": 333,
+    "generic_usage": 685,
+    "incorrect_undo": 96,
     "inaccurate_description": 43
   },
   "reviewedChanges": [
@@ -60587,22 +60587,369 @@
         "settingsCorrected": 1,
         "effectCorrected": 1
       }
+    },
+    {
+      "path": "14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатами (вариант TaKir).js",
+      "codeSha256": "89dbf0b661ac9372298a07d3fdceb3ba387b67d3ac0f806c90b487cb82af4940",
+      "evidence": "Строки 1–13 заявляют назначение и участников; 24–42 задают пять рабочих параметров; 61–65 — внутренние списки классов; 139–165 и 231–297 снимают все STRONG/B, включая сноски; 301–383 создают цитаты; 390–525 анализируют книгу и запрашивают подтверждение; 539–645 группируют изменения, 548–598 собирают только непосредственно соседние P, 655–675 показывают итог. Дочерних файлов, сетевых вызовов и запуска приложений нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "помощь с реализацией"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматического превращения в цитаты полностью жирных абзацев в fb2 документах.",
+          "after": "Преобразует целиком жирные обычные абзацы в цитаты; по умолчанию объединяет соседние и снимает жирность.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматического превращения в цитаты полностью жирных абзацев в fb2 документах. Скрипт преобразует найденные подходящие абзацы в цитаты, опционально удаляя внешние теги жирности.",
+          "after": "Анализирует все абзацы fbw_body, пропускает заголовки, аннотацию, стихи, цитаты, таблицы, подписи и подзаголовки, а также содержимое ссылок на сноски при проверке жирности. По умолчанию обрабатывает только основной раздел; примечания и комментарии включаются отдельными параметрами. Перед изменением показывает количество найденных абзацев и запрашивает подтверждение. Затем создаёт DIV.cite для каждого абзаца или группы непосредственно соседних абзацев. При включённом снятии жирности удаляет все вложенные STRONG/B в обрабатываемом абзаце, в том числе внутри ссылок на сноски, и показывает итоговую статистику.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "Весь fbw_body независимо от положения курсора и выделения. Основной раздел включён всегда; notes и comments по умолчанию выключены. Абзацы в структурных DIV и P исключаются. Объединение работает только для соседних P с одним родителем, без промежуточных узлов.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Перед запуском проверьте пять параметров в начале JS, если нужно изменить разделы, снятие жирности, объединение или режим запросов.",
+            "В обычном режиме просмотрите предварительное количество абзацев и подтвердите преобразование.",
+            "После выполнения проверьте созданные цитаты, снятие жирности и итоговую статистику, особенно вокруг сносок и пустых строк."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "При processBold=1 удаляются все STRONG/B внутри обрабатываемых абзацев и ссылок на сноски, а не только внешние теги.",
+            "Пустые абзацы разрывают группу: соседние жирные абзацы через пустую строку будут оформлены отдельными цитатами.",
+            "Изменения группируются для отката, но исключение во время обработки может прервать завершение группы; гарантированную отмену через Ctrl+Z не следует предполагать без проверки."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Изменения обрамлены одной операцией отмены. Досрочных выходов между началом и завершением в основном потоке нет; исключение при обработке может прервать завершение, поэтому результат отката не гарантирован без проверки."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 0,
+              "expression": "0",
+              "description": "1 - показывать только статистику в конце (без предварительного анализа и запросов)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processBold",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processJoinBold",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "structuralDivClasses",
+              "value": " annotation title epigraph cite poem stanza table ",
+              "expression": "\" annotation title epigraph cite poem stanza table \"",
+              "description": "Список структурных DIV классов (в которых НЕ нужно обрабатывать абзацы)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "structuralPClasses",
+              "value": " text-author subtitle ",
+              "expression": "\" text-author subtitle \"",
+              "description": "Список структурных P классов",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — показать анализ и запросить подтверждение; 1 — выполнить без предварительного запроса и показать итог."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — не обрабатывать раздел примечаний; 1 — включить его."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 — не обрабатывать раздел комментариев; 1 — включить его."
+            },
+            {
+              "name": "processBold",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — убрать теги жирности в обрабатываемых абзацах, включая вложенные теги и сноски; 0 — сохранить."
+            },
+            {
+              "name": "processJoinBold",
+              "value": 1,
+              "expression": "1",
+              "description": "1 — объединять непосредственно соседние жирные абзацы в одну цитату; 0 — создавать отдельную цитату для каждого."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 585,
+          "issue": "Режим объединения требует index==lastIndex+1, поэтому жирные абзацы через пустой P не попадают в одну группу; ветка переноса пустых абзацев в createCiteFromParagraphs фактически не применяется для таких случаев."
+        },
+        {
+          "line": 270,
+          "issue": "Параметр и сообщения обещают удаление внешних тегов жирности, но рекурсивная копия удаляет все STRONG/B в абзаце. removeBoldFromFootnote дополнительно убирает жирность внутри ссылок на сноски (строки 139–165)."
+        },
+        {
+          "line": 539,
+          "issue": "После начала общей операции отмены нет try/finally. Досрочных return в основном потоке нет, но исключение при создании цитаты может оставить операцию незавершённой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
+    },
+    {
+      "path": "14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатой.js",
+      "codeSha256": "fc246bfa7ec869956513ce96cdc780a36b1ca5177d22599ff606ea255cedc331",
+      "evidence": "Строки 129–133 сначала ставят курсор в начало, затем повторяют поиск до ответа, отличного от Found, и оформляют найденное цитатой; 151–180 загружают дочерние JS; 183 планирует выполнение. Три файла существуют, хеши кодовых частей совпадают.",
+      "changes": [
+        {
+          "field": "summary",
+          "before": "Форматирует все целиком жирные абзацы цитатой.",
+          "after": "От начала книги оформляет каждый найденный целиком жирный абзац отдельной цитатой через дочерние скрипты.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Запускает цепочку других скриптов через runScriptInFolder и отложенные вызовы. Соединяет поиск подходящего элемента со снятием/добавлением форматирования; варианты отличаются однократной, пошаговой или циклической обработкой. Суммарный результат зависит от доступности файлов по точным путям и успешного завершения каждой команды.",
+          "after": "После запуска с задержкой ставит курсор в начало документа и повторяет поиск следующего целиком жирного абзаца. Пока поиск возвращает Found, запускает отдельный скрипт оформления выделенного абзаца цитатой. Изменения книги выполняет дочерний скрипт; объединения соседних жирных абзацев в одну цитату этот вариант не задаёт.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Текущая книга или определённые кодом её разделы.",
+          "after": "От начала текущей книги до конца документа через последовательный поиск. Если переход в начало не выполнится, проход начнётся от текущего курсора.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "modifiesDocument",
+          "before": null,
+          "after": true,
+          "category": "incorrect_effect"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Запустите команду в открытой книге для обработки всех следующих целиком жирных абзацев.",
+            "Проверьте границы созданных цитат и сообщение об окончании поиска; при ошибке начального перехода проверьте также часть книги до исходного курсора."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Действия и возможность отката зависят от запускаемых дочерних скриптов.",
+            "Сначала проверьте список дочерних скриптов и остановку цикла; единой гарантии Undo для всей цепочки нет."
+          ],
+          "after": [
+            "Требуются три дочерних скрипта по точным путям. Отсутствие команды перехода к началу не останавливает цикл.",
+            "Если поиск или оформление цитаты завершатся ошибкой, часть абзацев может остаться без обработки.",
+            "Гарантированная отмена всей последовательности не установлена; возможность отката зависит от дочерней команды."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependencies",
+          "before": [
+            {
+              "path": "Scripts/34_Управление курсором либо выделением/001_Установить курсор в начало документа.js",
+              "sha256": "605cb9150cdbbaebabfd6974d423c69d839c7e235ec9427b62953f62ee26bb85",
+              "optional": true
+            },
+            {
+              "path": "Scripts/16_Поиск форматирования/138_Выделить следующий целиком жирный абзац.js",
+              "sha256": "a37cb7f60c66198b96388ecb77af7441ef3dbf85b83b7ed240429f2b2f9b3fe2",
+              "optional": true
+            },
+            {
+              "path": "Scripts/14_Цитаты/052_Сформатировать абзац(ы) цитатой.js",
+              "sha256": "653aca4065bf3412d78adeeac7a513b0d4b7447064141359a37eb61b8e23083a",
+              "optional": true
+            }
+          ],
+          "after": [
+            {
+              "path": "Scripts/34_Управление курсором либо выделением/001_Установить курсор в начало документа.js",
+              "sha256": "605cb9150cdbbaebabfd6974d423c69d839c7e235ec9427b62953f62ee26bb85",
+              "optional": false
+            },
+            {
+              "path": "Scripts/16_Поиск форматирования/138_Выделить следующий целиком жирный абзац.js",
+              "sha256": "a37cb7f60c66198b96388ecb77af7441ef3dbf85b83b7ed240429f2b2f9b3fe2",
+              "optional": false
+            },
+            {
+              "path": "Scripts/14_Цитаты/052_Сформатировать абзац(ы) цитатой.js",
+              "sha256": "653aca4065bf3412d78adeeac7a513b0d4b7447064141359a37eb61b8e23083a",
+              "optional": false
+            }
+          ],
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "may_be_delegated",
+            "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          },
+          "after": {
+            "status": "may_be_delegated",
+            "description": "Постоянные изменения выполняет дочерняя команда. Общая гарантированная отмена всего прохода не установлена; проверяйте результат и возможность отката после выполнения."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": null,
+          "after": [],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 129,
+          "issue": "Результат команды перехода в начало документа игнорируется. При ошибке её загрузки цикл начнётся от текущего курсора, хотя команда обещает проход по всей книге."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "settingsCorrected": 1,
+        "effectCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 721,
-    "generic_usage": 409,
+    "inaccurate_description": 723,
+    "generic_usage": 411,
     "false_warning": 319,
-    "incorrect_setting": 238,
-    "incorrect_scope": 416,
-    "incorrect_undo": 408,
-    "uncertain_attribution": 93,
-    "generic_summary": 104,
-    "incorrect_dependency": 429,
+    "incorrect_setting": 240,
+    "incorrect_scope": 418,
+    "incorrect_undo": 410,
+    "uncertain_attribution": 94,
+    "generic_summary": 106,
+    "incorrect_dependency": 432,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
-    "incorrect_effect": 6,
+    "incorrect_effect": 7,
     "generic_warning": 62,
     "incorrect_attribution": 43,
     "incorrect_metadata": 10,
@@ -60612,20 +60959,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 47,
+    "missing_warning": 49,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 400,
-    "usageCorrected": 409,
-    "purposeClarified": 407,
-    "warningsClarified": 341,
-    "scopeClarified": 393,
+    "undoDescriptionsClarified": 402,
+    "usageCorrected": 411,
+    "purposeClarified": 409,
+    "warningsClarified": 343,
+    "scopeClarified": 395,
     "settingsClarified": 509,
-    "attributionClarified": 94,
-    "dependenciesVerified": 291,
+    "attributionClarified": 95,
+    "dependenciesVerified": 293,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -60633,8 +60980,8 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 43,
-    "effectCorrected": 4
+    "settingsCorrected": 45,
+    "effectCorrected": 5
   },
   "scripts": [
     {
@@ -173988,91 +174335,70 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Сформатировать все целиком жирные абзацы цитатами (вариант TaKir)",
-        "summary": "Скрипт предназначен для автоматического превращения в цитаты полностью жирных абзацев в fb2 документах.",
-        "description": "Скрипт предназначен для автоматического превращения в цитаты полностью жирных абзацев в fb2 документах. Скрипт преобразует найденные подходящие абзацы в цитаты, опционально удаляя внешние теги жирности.",
+        "summary": "Преобразует целиком жирные обычные абзацы в цитаты; по умолчанию объединяет соседние и снимает жирность.",
+        "description": "Анализирует все абзацы fbw_body, пропускает заголовки, аннотацию, стихи, цитаты, таблицы, подписи и подзаголовки, а также содержимое ссылок на сноски при проверке жирности. По умолчанию обрабатывает только основной раздел; примечания и комментарии включаются отдельными параметрами. Перед изменением показывает количество найденных абзацев и запрашивает подтверждение. Затем создаёт DIV.cite для каждого абзаца или группы непосредственно соседних абзацев. При включённом снятии жирности удаляет все вложенные STRONG/B в обрабатываемом абзаце, в том числе внутри ссылок на сноски, и показывает итоговую статистику.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "помощь с реализацией"
           }
         ],
         "version": "1.0",
-        "scope": "Текущая книга или определённые кодом её разделы.",
+        "scope": "Весь fbw_body независимо от положения курсора и выделения. Основной раздел включён всегда; notes и comments по умолчанию выключены. Абзацы в структурных DIV и P исключаются. Объединение работает только для соседних P с одним родителем, без промежуточных узлов.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Перед запуском проверьте пять параметров в начале JS, если нужно изменить разделы, снятие жирности, объединение или режим запросов.",
+          "В обычном режиме просмотрите предварительное количество абзацев и подтвердите преобразование.",
+          "После выполнения проверьте созданные цитаты, снятие жирности и итоговую статистику, особенно вокруг сносок и пустых строк."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "При processBold=1 удаляются все STRONG/B внутри обрабатываемых абзацев и ссылок на сноски, а не только внешние теги.",
+          "Пустые абзацы разрывают группу: соседние жирные абзацы через пустую строку будут оформлены отдельными цитатами.",
+          "Изменения группируются для отката, но исключение во время обработки может прервать завершение группы; гарантированную отмену через Ctrl+Z не следует предполагать без проверки."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 0,
             "expression": "0",
-            "description": "1 - показывать только статистику в конце (без предварительного анализа и запросов)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — показать анализ и запросить подтверждение; 1 — выполнить без предварительного запроса и показать итог."
           },
           {
             "name": "processNotesSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — не обрабатывать раздел примечаний; 1 — включить его."
           },
           {
             "name": "processCommentsSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "0 — не обрабатывать раздел комментариев; 1 — включить его."
           },
           {
             "name": "processBold",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — убрать теги жирности в обрабатываемых абзацах, включая вложенные теги и сноски; 0 — сохранить."
           },
           {
             "name": "processJoinBold",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "structuralDivClasses",
-            "value": " annotation title epigraph cite poem stanza table ",
-            "expression": "\" annotation title epigraph cite poem stanza table \"",
-            "description": "Список структурных DIV классов (в которых НЕ нужно обрабатывать абзацы)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "structuralPClasses",
-            "value": " text-author subtitle ",
-            "expression": "\" text-author subtitle \"",
-            "description": "Список структурных P классов",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "1 — объединять непосредственно соседние жирные абзацы в одну цитату; 0 — создавать отдельную цитату для каждого."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Изменения обрамлены одной операцией отмены. Досрочных выходов между началом и завершением в основном потоке нет; исключение при обработке может прервать завершение, поэтому результат отката не гарантирован без проверки."
         },
         "examples": null,
         "tags": [
@@ -174083,13 +174409,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 642,
+            "line": 621,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" \" + version);"
           }
         ],
         "undo_end": [
           {
-            "line": 748,
+            "line": 727,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -174097,19 +174423,19 @@
         "selection": [],
         "write": [
           {
-            "line": 257,
+            "line": 236,
             "text": "parent.removeChild(strong);"
           },
           {
-            "line": 267,
+            "line": 246,
             "text": "parent.removeChild(bTag);"
           },
           {
-            "line": 358,
+            "line": 337,
             "text": "var tempDiv = document.createElement(\"DIV\");"
           },
           {
-            "line": 365,
+            "line": 344,
             "text": "target.appendChild(node.cloneNode(false));"
           }
         ],
@@ -174120,135 +174446,135 @@
         "file": [],
         "return": [
           {
-            "line": 177,
+            "line": 156,
             "text": "return true;"
+          },
+          {
+            "line": 161,
+            "text": "return false;"
+          },
+          {
+            "line": 166,
+            "text": "if (!pElement || pElement.nodeName != \"P\") return false;"
+          },
+          {
+            "line": 170,
+            "text": "return true;"
+          },
+          {
+            "line": 173,
+            "text": "return false;"
           },
           {
             "line": 182,
-            "text": "return false;"
-          },
-          {
-            "line": 187,
-            "text": "if (!pElement || pElement.nodeName != \"P\") return false;"
-          },
-          {
-            "line": 191,
-            "text": "return true;"
-          },
-          {
-            "line": 194,
-            "text": "return false;"
-          },
-          {
-            "line": 203,
             "text": "if (className == \"note\") return true;"
           },
           {
-            "line": 206,
+            "line": 185,
             "text": "if (href.length > 0 && href.charAt(0) == \"#\") return true;"
           },
           {
-            "line": 210,
+            "line": 189,
             "text": "return false;"
           },
           {
-            "line": 219,
+            "line": 198,
             "text": "if (fbname == \"notes\") return \"notes\";"
           },
           {
-            "line": 220,
+            "line": 199,
             "text": "if (fbname == \"comments\") return \"comments\";"
           },
           {
-            "line": 221,
+            "line": 200,
             "text": "return \"main\";"
           },
           {
-            "line": 225,
+            "line": 204,
             "text": "return \"main\";"
           },
           {
-            "line": 230,
+            "line": 209,
             "text": "if (!node || node.nodeType != 1) return false;"
           },
           {
-            "line": 236,
+            "line": 215,
             "text": "return true;"
           },
           {
-            "line": 239,
+            "line": 218,
             "text": "return false;"
           },
           {
-            "line": 244,
+            "line": 223,
             "text": "if (!footnote) return;"
           },
           {
-            "line": 273,
+            "line": 252,
             "text": "if (!pElement || pElement.nodeName != \"P\") return false;"
           },
           {
-            "line": 276,
+            "line": 255,
             "text": "if (isStructuralParagraph(pElement)) return false;"
           },
           {
-            "line": 279,
+            "line": 258,
             "text": "if (isInsideStructuralDiv(pElement)) return false;"
           },
           {
-            "line": 282,
+            "line": 261,
             "text": "if (isInsideNoteOrComment(pElement)) return false;"
           },
           {
-            "line": 289,
+            "line": 268,
             "text": "if (!node) return;"
           },
           {
-            "line": 293,
+            "line": 272,
             "text": "return;"
           },
           {
-            "line": 331,
+            "line": 310,
             "text": "return hasText && allTextInBold;"
           },
           {
-            "line": 336,
+            "line": 315,
             "text": "if (!pElement) return;"
+          },
+          {
+            "line": 320,
+            "text": "if (!node) return;"
           },
           {
             "line": 341,
             "text": "if (!node) return;"
           },
           {
-            "line": 362,
-            "text": "if (!node) return;"
-          },
-          {
-            "line": 370,
+            "line": 349,
             "text": "return;"
           },
           {
-            "line": 405,
+            "line": 384,
             "text": "if (!paragraphs || paragraphs.length == 0) return null;"
           },
           {
-            "line": 486,
+            "line": 465,
             "text": "return citeDiv;"
           },
           {
-            "line": 497,
+            "line": 476,
             "text": "return;"
           },
           {
-            "line": 561,
+            "line": 540,
             "text": "return;"
           },
           {
-            "line": 606,
+            "line": 585,
             "text": "return;"
           },
           {
-            "line": 628,
+            "line": 607,
             "text": "return;"
           }
         ]
@@ -174260,17 +174586,17 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 133,
+              "line": 112,
               "text": "var showStatistics = 0;"
             }
           ],
           "uses": [
             {
-              "line": 133,
+              "line": 112,
               "text": "var showStatistics = 0;"
             },
             {
-              "line": 610,
+              "line": 589,
               "text": "if (showStatistics == 0) {"
             }
           ],
@@ -174281,21 +174607,21 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 136,
+              "line": 115,
               "text": "var processNotesSection = 0;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 136,
+              "line": 115,
               "text": "var processNotesSection = 0;     // 0 - нет, 1 - да"
             },
             {
-              "line": 566,
+              "line": 545,
               "text": "var processNotes = (processNotesSection == 1);"
             },
             {
-              "line": 571,
+              "line": 550,
               "text": "var notesSetting = (processNotesSection == 1) ? \"ДА\" : \"НЕТ\";"
             }
           ],
@@ -174306,21 +174632,21 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 139,
+              "line": 118,
               "text": "var processCommentsSection = 0;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 139,
+              "line": 118,
               "text": "var processCommentsSection = 0;     // 0 - нет, 1 - да"
             },
             {
-              "line": 567,
+              "line": 546,
               "text": "var processComments = (processCommentsSection == 1);"
             },
             {
-              "line": 572,
+              "line": 551,
               "text": "var commentsSetting = (processCommentsSection == 1) ? \"ДА\" : \"НЕТ\";"
             }
           ],
@@ -174331,25 +174657,25 @@
           "name": "processBold",
           "declarations": [
             {
-              "line": 142,
+              "line": 121,
               "text": "var processBold = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 142,
+              "line": 121,
               "text": "var processBold = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 419,
+              "line": 398,
               "text": "if (processBold == 1) {"
             },
             {
-              "line": 573,
+              "line": 552,
               "text": "var boldSetting = (processBold == 1) ? \"ДА\" : \"НЕТ\";"
             },
             {
-              "line": 766,
+              "line": 745,
               "text": "if (processBold == 1) {"
             }
           ],
@@ -174360,64 +174686,22 @@
           "name": "processJoinBold",
           "declarations": [
             {
-              "line": 145,
+              "line": 124,
               "text": "var processJoinBold = 1;     // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 145,
+              "line": 124,
               "text": "var processJoinBold = 1;     // 0 - нет, 1 - да"
             },
             {
-              "line": 574,
+              "line": 553,
               "text": "var joinSetting = (processJoinBold == 1) ? \"ДА (в одну цитату)\" : \"НЕТ (отдельные цитаты)\";"
             },
             {
-              "line": 651,
+              "line": 630,
               "text": "if (processJoinBold == 1) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 5,
-          "name": "structuralDivClasses",
-          "declarations": [
-            {
-              "line": 165,
-              "text": "var structuralDivClasses = \" annotation title epigraph cite poem stanza table \";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 165,
-              "text": "var structuralDivClasses = \" annotation title epigraph cite poem stanza table \";"
-            },
-            {
-              "line": 176,
-              "text": "if (structuralDivClasses.indexOf(\" \" + className + \" \") != -1) {"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 6,
-          "name": "structuralPClasses",
-          "declarations": [
-            {
-              "line": 168,
-              "text": "var structuralPClasses = \" text-author subtitle \";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 168,
-              "text": "var structuralPClasses = \" text-author subtitle \";"
-            },
-            {
-              "line": 190,
-              "text": "if (structuralPClasses.indexOf(\" \" + className + \" \") != -1) {"
             }
           ],
           "classification": "requires_review"
@@ -174426,25 +174710,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 105,
+          "line": 84,
           "text": "// version 1.0"
         },
         {
-          "line": 118,
+          "line": 97,
           "text": "// version 1.0, 08.03.2026"
         },
         {
-          "line": 122,
+          "line": 101,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 124,
+          "line": 103,
           "text": "var version = \"1.0\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "При processBold=1 удаляются все STRONG/B внутри обрабатываемых абзацев и ссылок на сноски, а не только внешние теги.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Пустые абзацы разрывают группу: соседние жирные абзацы через пустую строку будут оформлены отдельными цитатами.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Изменения группируются для отката, но исключение во время обработки может прервать завершение группы; гарантированную отмену через Ctrl+Z не следует предполагать без проверки.",
           "verification": "requires_review"
         }
       ],
@@ -174465,80 +174757,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 642,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" \" + version);"
-            },
-            {
-              "line": 748,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатой.js",
@@ -174550,8 +174769,8 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Сформатировать все целиком жирные абзацы цитатой",
-        "summary": "Форматирует все целиком жирные абзацы цитатой.",
-        "description": "Запускает цепочку других скриптов через runScriptInFolder и отложенные вызовы. Соединяет поиск подходящего элемента со снятием/добавлением форматирования; варианты отличаются однократной, пошаговой или циклической обработкой. Суммарный результат зависит от доступности файлов по точным путям и успешного завершения каждой команды.",
+        "summary": "От начала книги оформляет каждый найденный целиком жирный абзац отдельной цитатой через дочерние скрипты.",
+        "description": "После запуска с задержкой ставит курсор в начало документа и повторяет поиск следующего целиком жирного абзаца. Пока поиск возвращает Found, запускает отдельный скрипт оформления выделенного абзаца цитатой. Изменения книги выполняет дочерний скрипт; объединения соседних жирных абзацев в одну цитату этот вариант не задаёт.",
         "authors": [
           {
             "name": "Sclex",
@@ -174559,39 +174778,39 @@
           }
         ],
         "version": "1.5",
-        "scope": "Текущая книга или определённые кодом её разделы.",
-        "modifiesDocument": null,
+        "scope": "От начала текущей книги до конца документа через последовательный поиск. Если переход в начало не выполнится, проход начнётся от текущего курсора.",
+        "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Сохраняйте структуру Scripts/HTML и связанные файлы; один JS может быть недостаточен для работы.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Запустите команду в открытой книге для обработки всех следующих целиком жирных абзацев.",
+          "Проверьте границы созданных цитат и сообщение об окончании поиска; при ошибке начального перехода проверьте также часть книги до исходного курсора."
         ],
         "warnings": [
-          "Действия и возможность отката зависят от запускаемых дочерних скриптов.",
-          "Сначала проверьте список дочерних скриптов и остановку цикла; единой гарантии Undo для всей цепочки нет."
+          "Требуются три дочерних скрипта по точным путям. Отсутствие команды перехода к началу не останавливает цикл.",
+          "Если поиск или оформление цитаты завершатся ошибкой, часть абзацев может остаться без обработки.",
+          "Гарантированная отмена всей последовательности не установлена; возможность отката зависит от дочерней команды."
         ],
-        "settings": null,
+        "settings": [],
         "dependencies": [
           {
             "path": "Scripts/34_Управление курсором либо выделением/001_Установить курсор в начало документа.js",
             "sha256": "605cb9150cdbbaebabfd6974d423c69d839c7e235ec9427b62953f62ee26bb85",
-            "optional": true
+            "optional": false
           },
           {
             "path": "Scripts/16_Поиск форматирования/138_Выделить следующий целиком жирный абзац.js",
             "sha256": "a37cb7f60c66198b96388ecb77af7441ef3dbf85b83b7ed240429f2b2f9b3fe2",
-            "optional": true
+            "optional": false
           },
           {
             "path": "Scripts/14_Цитаты/052_Сформатировать абзац(ы) цитатой.js",
             "sha256": "653aca4065bf3412d78adeeac7a513b0d4b7447064141359a37eb61b8e23083a",
-            "optional": true
+            "optional": false
           }
         ],
         "undo": {
           "status": "may_be_delegated",
-          "description": "Прямых Undo-вызовов нет; действия могут выполняться связанным HTML/JS. Гарантия отмены не установлена."
+          "description": "Постоянные изменения выполняет дочерняя команда. Общая гарантированная отмена всего прохода не установлена; проверяйте результат и возможность отката после выполнения."
         },
         "examples": null,
         "tags": [
@@ -174611,23 +174830,23 @@
         "file": [],
         "return": [
           {
-            "line": 213,
+            "line": 214,
             "text": "return;"
           },
           {
-            "line": 218,
+            "line": 219,
             "text": "return myRunCmd(fullPath);"
           },
           {
-            "line": 222,
+            "line": 223,
             "text": "return myRunCmd(path);"
           },
           {
-            "line": 232,
+            "line": 233,
             "text": "if(!script)\treturn;"
           },
           {
-            "line": 238,
+            "line": 239,
             "text": "return runResult;"
           }
         ]
@@ -174662,25 +174881,29 @@
       ],
       "authorshipEvidence": [
         {
-          "line": 60,
+          "line": 61,
           "text": "// Версия 1.5"
         },
         {
-          "line": 61,
+          "line": 62,
           "text": "// Автор Sclex"
         },
         {
-          "line": 73,
+          "line": 74,
           "text": "// Пошаговая версия более удобна для постепенной контролируемой обработки"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Действия и возможность отката зависят от запускаемых дочерних скриптов.",
+          "text": "Требуются три дочерних скрипта по точным путям. Отсутствие команды перехода к началу не останавливает цикл.",
           "verification": "requires_review"
         },
         {
-          "text": "Сначала проверьте список дочерних скриптов и остановку цикла; единой гарантии Undo для всей цепочки нет.",
+          "text": "Если поиск или оформление цитаты завершатся ошибкой, часть абзацев может остаться без обработки.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Гарантированная отмена всей последовательности не установлена; возможность отката зависит от дочерней команды.",
           "verification": "requires_review"
         }
       ],
@@ -174701,35 +174924,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        }
-      ]
+      "findings": []
     },
     {
       "path": "14_Цитаты/061_По очереди сформатировать целиком курсивные абзацы цитатой.js",

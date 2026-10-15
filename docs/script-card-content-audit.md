@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **239**.
+Карточек без автоматических замечаний: **241**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **463**. Исполняемый код не изменён.
+Изменено карточек: **465**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 104
-- `generic_usage`: 409
+- `generic_summary`: 106
+- `generic_usage`: 411
 - `generic_warning`: 62
-- `inaccurate_description`: 721
+- `inaccurate_description`: 723
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 429
-- `incorrect_effect`: 6
+- `incorrect_dependency`: 432
+- `incorrect_effect`: 7
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 416
+- `incorrect_scope`: 418
 - `incorrect_selection`: 44
-- `incorrect_setting`: 238
-- `incorrect_undo`: 408
+- `incorrect_setting`: 240
+- `incorrect_undo`: 410
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 47
-- `uncertain_attribution`: 93
+- `missing_warning`: 49
+- `uncertain_attribution`: 94
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 94
+- `attributionClarified`: 95
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 291
-- `effectCorrected`: 4
+- `dependenciesVerified`: 293
+- `effectCorrected`: 5
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 407
-- `scopeClarified`: 393
+- `purposeClarified`: 409
+- `scopeClarified`: 395
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 43
-- `undoDescriptionsClarified`: 400
-- `usageCorrected`: 409
+- `settingsCorrected`: 45
+- `undoDescriptionsClarified`: 402
+- `usageCorrected`: 411
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 341
+- `warningsClarified`: 343
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **303**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **305**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -769,13 +769,17 @@
 - `14_Цитаты/057_По очереди расформатировать все цитаты от жирности и курсива.js:127` — Результат поиска следующей цитаты игнорируется. Скрипты снятия жирности и курсива вызываются даже при NotFound или ошибке загрузки поиска и могут обработать прежнее выделение.
 - `14_Цитаты/058_Расформатировать все цитаты от жирности и курсива.js:129` — Результат команды перехода к началу документа не проверяется. При ошибке её загрузки цикл продолжится от текущей позиции, хотя команда обещает обработку всех цитат.
 - `14_Цитаты/059_По очереди сформатировать целиком жирные абзацы цитатой.js:127` — Результат поиска целиком жирного абзаца игнорируется. Форматирование цитатой вызывается и при NotFound или ошибке загрузки поиска, поэтому может изменить прежнее выделение.
+- `14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатами (вариант TaKir).js:585` — Режим объединения требует index==lastIndex+1, поэтому жирные абзацы через пустой P не попадают в одну группу; ветка переноса пустых абзацев в createCiteFromParagraphs фактически не применяется для таких случаев.
+- `14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатами (вариант TaKir).js:270` — Параметр и сообщения обещают удаление внешних тегов жирности, но рекурсивная копия удаляет все STRONG/B в абзаце. removeBoldFromFootnote дополнительно убирает жирность внутри ссылок на сноски (строки 139–165).
+- `14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатами (вариант TaKir).js:539` — После начала общей операции отмены нет try/finally. Досрочных return в основном потоке нет, но исключение при создании цитаты может оставить операцию незавершённой.
+- `14_Цитаты/060_Сформатировать все целиком жирные абзацы цитатой.js:129` — Результат команды перехода в начало документа игнорируется. При ошибке её загрузки цикл начнётся от текущего курсора, хотя команда обещает проход по всей книге.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 693
+- `generic_usage`: 685
 - `inaccurate_description`: 43
-- `incorrect_undo`: 97
-- `requires_review`: 334
+- `incorrect_undo`: 96
+- `requires_review`: 333
 
 ## Границы проверки
 
