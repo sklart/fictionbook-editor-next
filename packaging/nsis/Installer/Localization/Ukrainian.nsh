@@ -109,3 +109,5 @@ LangString ShellMaintenanceRetry ${LANG_UKRAINIAN} "Для завершення 
 LangString ShellMaintenanceFailed ${LANG_UKRAINIAN} "Не вдалося завершити зміну системної інтеграції. Дані для відновлення збережено. Перед повторним запуском перевірте журнал встановлення."
 
 LangString ShellForeignRetained ${LANG_UKRAINIAN} "Системна інтеграція належить іншому встановленню та збережена."
+
+LangString ShellMaintenancePrepareFailed ${LANG_UKRAINIAN} "Не вдалося підготувати засоби обслуговування. Стан системної інтеграції збережено. Закрийте програми, що використовують тимчасові файли, і повторіть запуск. Подробиці — у журналі встановлення."

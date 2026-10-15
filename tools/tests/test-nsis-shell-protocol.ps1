@@ -12,6 +12,56 @@ $installer=Get-Content -Raw -LiteralPath (Join-Path $repo 'packaging\nsis\Instal
 $cleanupFunction=[regex]::Match($installer,'(?s)Function \$\{prefix\}CleanupShellMaintenance.*?FunctionEnd').Value.Replace('${prefix}','').Replace('  !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE','').Replace('  !endif','')
 Assert ([bool]$cleanupFunction) 'Production cleanup function missing.'
 $cleanupFunction=$cleanupFunction.Replace('  DetailPrint "Maintenance cleanup exit=$0: $1"','  WriteINIStr "@WORK@\proof.ini" "Proof" "CleanupExit" "$0"')
+$stageFunction=[regex]::Match($installer,'(?s)Function \$\{prefix\}StageShellMaintenance.*?FunctionEnd').Value.Replace('${prefix}','').Replace('  !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE','')
+$stageFunction=[regex]::Replace($stageFunction,'(?m)^  !endif\r?\n(?=FunctionEnd)','')
+$ordinaryMacro=[regex]::Match($installer,'(?s)!macro FBE_RequireOrdinaryPath .*?!macroend').Value
+Assert ([bool]$stageFunction -and [bool]$ordinaryMacro) 'Production stage function missing.'
+$input=Join-Path $work 'Input';$null=[IO.Directory]::CreateDirectory((Join-Path $input 'InstallerTools'))
+foreach($name in @('manage-shell-integration.ps1','shell-integration-lifecycle.ps1','update-shell-files.ps1','register-modern-property-handler.ps1','register-sequence-property-schema.ps1','unregister-modern-property-handler.ps1')){[IO.File]::WriteAllText((Join-Path $input ('InstallerTools\'+$name)),'fixture')}
+foreach($name in $script:ShellPayloadNames){[IO.File]::WriteAllText((Join-Path $input $name),'fixture')}
+# The injected branches create concrete I/O failures around the actual stage instructions.
+$stageFunction=$stageFunction.Replace('  GetTempFileName $ShellToolsDirectory "${FBE_SHELL_ROOT}\Maintenance"',@"
+  `${If} `$StageFault == "locked-temp"
+    StrCpy `$ShellToolsDirectory "@WORK@\Maintenance\locked.tmp"
+  `${ElseIf} `$StageFault == "temp-failure"
+    GetTempFileName `$ShellToolsDirectory "@WORK@\missing\parent"
+  `${Else}
+    GetTempFileName `$ShellToolsDirectory "`${FBE_SHELL_ROOT}\Maintenance"
+  `${EndIf}
+"@)
+$stageFunction=$stageFunction.Replace("  System::Call 'kernel32::CreateDirectoryW(w `"`$ShellToolsDirectory`", p 0) i .r0'",@"
+  `${If} `$StageFault == "directory-failure"
+    FileOpen `$0 "`$ShellToolsDirectory" w
+    FileWrite `$0 "foreign sentinel"
+    FileClose `$0
+  `${EndIf}
+  System::Call 'kernel32::CreateDirectoryW(w "`$ShellToolsDirectory", p 0) i .r0'
+"@)
+$stageFunction=$stageFunction.Replace('  FileOpen $ShellStageHandle "$ShellToolsDirectory\Session.ini.next" w',@"
+  `${If} `$StageFault == "open-marker"
+    FileOpen `$ShellStageHandle "@WORK@\locked-marker.ini" w
+  `${ElseIf} `$StageFault == "write-marker"
+    FileOpen `$0 "`$ShellToolsDirectory\Session.ini.next" w
+    FileClose `$0
+    FileOpen `$ShellStageHandle "`$ShellToolsDirectory\Session.ini.next" r
+  `${Else}
+    FileOpen `$ShellStageHandle "`$ShellToolsDirectory\Session.ini.next" w
+  `${EndIf}
+"@)
+$stageFunction=$stageFunction.Replace('  StrCpy $ShellStageStep "close session marker"',@"
+  `${If} `$StageFault == "close-marker"
+    FileClose `$ShellStageHandle
+  `${EndIf}
+  StrCpy `$ShellStageStep "close session marker"
+"@)
+$stageFunction=$stageFunction.Replace('  File "${INPUTDIR}\FBE.Sequence.propdesc"',@"
+  File "`${INPUTDIR}\FBE.Sequence.propdesc"
+  `${If} `$StageFault == "extract-failure"
+    SetErrors
+  `${EndIf}
+"@)
+# The message is suppressed only in the isolated harness.
+$stageFunction=$stageFunction.Replace('  MessageBox MB_OK|MB_ICONEXCLAMATION "$(ShellMaintenancePrepareFailed)" /SD IDOK','')
 $harness=@'
 Unicode true
 RequestExecutionLevel user
@@ -20,6 +70,9 @@ SilentInstall silent
 !include FileFunc.nsh
 !include x64.nsh
 !define FBE_SHELL_ROOT "@WORK@"
+!define INPUTDIR "@WORK@\Input"
+LangString UnsafeShellPayloadLocation 1033 "Unsafe maintenance path"
+@ORDINARY_MACRO@
 !include "@INCLUDE@"
 !define PRODUCT_UNINST_ROOT_KEY HKCU
 !define PRODUCT_UNINST_KEY "@HIVE@"
@@ -33,9 +86,28 @@ Var ShellEffectiveInstalled
 Var ShellCleanupPending
 Var ShellRecoveryPending
 Var ShellSystemInstalled
+Var ShellStageReady
+Var ShellStageCreated
+Var ShellStageHandle
+Var ShellStageStep
+Var ShellRetainUninstaller
+Var ShellPreviousLocation
+Var ShellPreviousProperty
+Var ShellPreviousSystem
+Var StageFault
 Section
   StrCpy $ShellToolsDirectory "@WORK@"
   ${GetParameters} $0
+  ${GetOptions} $0 "/STAGE=" $StageFault
+  ${IfNot} ${Errors}
+    StrCpy $INSTDIR "@WORK@"
+    Call StageShellMaintenance
+    WriteINIStr "@WORK@\proof.ini" "Stage" "Ready" "$ShellStageReady"
+    WriteINIStr "@WORK@\proof.ini" "Stage" "Path" "$ShellToolsDirectory"
+    WriteINIStr "@WORK@\proof.ini" "Stage" "Step" "$ShellStageStep"
+    WriteINIStr "@WORK@\proof.ini" "Stage" "Retain" "$ShellRetainUninstaller"
+    Goto protocol_done
+  ${EndIf}
   ${GetOptions} $0 "/EXIT=" $9
   !insertmacro FBE_ReadShellMaintenanceStatus
   !insertmacro FBE_ApplyShellMaintenanceStatus
@@ -50,10 +122,12 @@ Section
     WriteINIStr "@WORK@\proof.ini" "Proof" "PreservedExit" "$2"
     SetErrorLevel 0
   ${EndIf}
+protocol_done:
 SectionEnd
+@STAGE_FUNCTION@
 @CLEANUP_FUNCTION@
 '@
-$harness=$harness.Replace('@CLEANUP_FUNCTION@',$cleanupFunction).Replace('@INCLUDE@',$include).Replace('@HIVE@',$hive).Replace('@WORK@',$work)
+$harness=$harness.Replace('@STAGE_FUNCTION@',$stageFunction).Replace('@ORDINARY_MACRO@',$ordinaryMacro).Replace('@CLEANUP_FUNCTION@',$cleanupFunction).Replace('@INCLUDE@',$include).Replace('@HIVE@',$hive).Replace('@WORK@',$work)
 $source=Join-Path $work 'protocol.nsi';[IO.File]::WriteAllText($source,$harness,[Text.Encoding]::UTF8)
 & $compiler /V2 $source
 Assert ($LASTEXITCODE -eq 0) 'Protocol harness compile failed.'
@@ -109,13 +183,19 @@ try {
     Copy-Item -LiteralPath $cliStatus -Destination $status;Check-Reply 'actual CLI final error' 0 $true
 
     $maintenance=Join-Path $work 'Maintenance';$null=[IO.Directory]::CreateDirectory($maintenance)
-    function New-Session([string]$Name,[int]$Launcher=2147483647){
+    function New-Session([string]$Name,[int]$Launcher=2147483647,[string]$Created=''){
+        if(-not $Created){if($Launcher -eq $PID){$Created=[Diagnostics.Process]::GetCurrentProcess().StartTime.ToUniversalTime().ToFileTimeUtc().ToString()}else{$Created=[DateTime]::UtcNow.ToFileTimeUtc().ToString()}}
         $dir=Join-Path $maintenance $Name;$null=[IO.Directory]::CreateDirectory($dir)
-        [IO.File]::WriteAllLines((Join-Path $dir 'Session.ini'),[string[]]@('[Maintenance]','Version=1',('Directory='+$dir),'Owner=FBE Next Shell Maintenance',('LauncherPid='+$Launcher)),[Text.Encoding]::Unicode)
+        [IO.File]::WriteAllLines((Join-Path $dir 'Session.ini'),[string[]]@('[Maintenance]','Version=2','Phase=complete',('LaunchId='+[Guid]::NewGuid().ToString('B')),('LauncherCreatedUtcFileTime='+$Created),('Directory='+$dir),'Owner=FBE Next Shell Maintenance',('LauncherPid='+$Launcher)),[Text.Encoding]::Unicode)
         [IO.File]::WriteAllText((Join-Path $dir 'Status.ini'),'test');return $dir
     }
     $success=New-Session 'complete';Remove-ShellMaintenanceSessions $maintenance $success;Assert (-not [IO.Directory]::Exists($success)) 'Completed session retained.'
     $stale=New-Session 'crashed';Remove-ShellMaintenanceSessions $maintenance;Assert (-not [IO.Directory]::Exists($stale)) 'Crashed session retained.'
+    $reused=New-Session 'reused-pid' $PID ([DateTime]::UtcNow.AddDays(-1).ToFileTimeUtc().ToString());Remove-ShellMaintenanceSessions $maintenance;Assert (-not [IO.Directory]::Exists($reused)) 'Reused PID kept a completed session.'
+    $legacy=New-Session 'legacy';$legacyMarker=Join-Path $legacy 'Session.ini';[IO.File]::WriteAllLines($legacyMarker,[string[]]@('[Maintenance]','Version=1',('Directory='+$legacy),'Owner=FBE Next Shell Maintenance','LauncherPid=2147483647'),[Text.Encoding]::Unicode)
+    Remove-ShellMaintenanceSessions $maintenance $legacy;Assert ([IO.Directory]::Exists($legacy)) 'Old marker without process creation time was deleted.'
+    $partial=New-Session 'partial';$partialMarker=Join-Path $partial 'Session.ini';[IO.File]::WriteAllText($partialMarker,[IO.File]::ReadAllText($partialMarker).Replace('Phase=complete','Phase=preparing'),[Text.Encoding]::Unicode)
+    Remove-ShellMaintenanceSessions $maintenance $partial;Assert ([IO.Directory]::Exists($partial)) 'Partial session marker was accepted.'
     $active=New-Session 'active' $PID;Remove-ShellMaintenanceSessions $maintenance;Assert ([IO.Directory]::Exists($active)) 'Active launcher session deleted.'
     $lease=Open-ShellMaintenanceLease $active
     try {Remove-ShellMaintenanceSessions $maintenance $active;Assert ([IO.File]::Exists((Join-Path $active 'Status.ini'))) 'Running worker files deleted.'}finally{$lease.Close()}
@@ -139,5 +219,40 @@ try {
     $process=Start-Process -FilePath (Join-Path $work 'protocol.exe') -ArgumentList @('/S','/EXIT=0','/CLEANUP') -Wait -PassThru -WindowStyle Hidden
     Assert ($process.ExitCode -eq 0 -and -not [IO.Directory]::Exists($current)) 'Actual NSIS cleanup command failed.'
     Assert ([IO.File]::Exists($journal)) 'Actual NSIS cleanup touched the recovery journal.'
+    $owner=Join-Path $work 'Shell\Owner.ini';[IO.File]::WriteAllText($owner,'confirmed owner');$ownerHash=Get-ShellHash $owner;$journalHash=Get-ShellHash $journal
+    function Check-Stage([string]$Fault,[bool]$Ready){
+        $key=[Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($hive)
+        try{foreach($field in @('PropertyHandlerInstalled','SystemIntegrationInstalled','ShellCleanupPending','ShellRecoveryPending')){$key.SetValue($field,1,[Microsoft.Win32.RegistryValueKind]::DWord)}}finally{$key.Close()}
+        $process=Start-Process -FilePath (Join-Path $work 'protocol.exe') -ArgumentList @('/S',('/STAGE='+$Fault)) -Wait -PassThru -WindowStyle Hidden
+        Assert ($process.ExitCode -eq $(if($Ready){0}else{5})) "Wrong stage result: $Fault / $($process.ExitCode)"
+        $proof=@{};foreach($line in [IO.File]::ReadAllLines((Join-Path $work 'proof.ini'))){$i=$line.IndexOf('=');if($i -gt 0){$proof[$line.Substring(0,$i)]=$line.Substring($i+1)}}
+        Assert ($proof.Ready -eq [string][int]$Ready) "Stage readiness mismatch: $Fault"
+        if($Ready){
+            $marker=Join-Path $proof.Path 'Session.ini';$record=@{};foreach($line in [IO.File]::ReadAllLines($marker)){$i=$line.IndexOf('=');if($i -gt 0){$record[$line.Substring(0,$i)]=$line.Substring($i+1)}}
+            Assert ($record.Phase -eq 'complete' -and $record.Version -eq '2' -and $record.LauncherPid -eq [string]$process.Id) 'Native stage did not publish a complete launcher identity.'
+            Assert ([long]$record.LauncherCreatedUtcFileTime -eq $process.StartTime.ToUniversalTime().ToFileTimeUtc()) 'Native launcher creation time differs from the actual process.'
+            Assert ([Guid]$record.LaunchId -ne [Guid]::Empty) 'Native launch identifier missing.'
+            Remove-ShellMaintenanceSessions $maintenance
+            Assert (-not [IO.Directory]::Exists($proof.Path)) 'Completed native stage could not be cleaned.'
+        }else{
+            Assert ($proof.Retain -eq '1') 'Stage failure did not retain the uninstaller.'
+            if($proof.Path){Assert (-not [IO.File]::Exists((Join-Path $proof.Path 'Session.ini'))) "Partial stage published a valid marker: $Fault"}
+            if($Fault -ne 'locked-temp' -and $Fault -ne 'directory-failure' -and $Fault -ne 'temp-failure'){Assert (-not [IO.Directory]::Exists($proof.Path)) "Owned failed stage was not cleaned: $Fault"}
+        }
+        $key=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($hive)
+        try{foreach($field in @('PropertyHandlerInstalled','SystemIntegrationInstalled','ShellCleanupPending','ShellRecoveryPending')){Assert ($key.GetValue($field) -eq 1) "Preparation modified confirmed state: $field"}}finally{$key.Close()}
+        Assert ((Get-ShellHash $owner) -eq $ownerHash -and (Get-ShellHash $journal) -eq $journalHash) 'Preparation changed Owner or recovery state.'
+        return $proof.Path
+    }
+    $null=Check-Stage 'success' $true
+    $null=Check-Stage 'temp-failure' $false
+    $collision=Check-Stage 'directory-failure' $false;Assert ([IO.File]::ReadAllText($collision) -eq 'foreign sentinel') 'Stage deleted an unconfirmed collision file.'
+    $lockedMarker=Join-Path $work 'locked-marker.ini';[IO.File]::WriteAllText($lockedMarker,'foreign marker');$markerLock=[IO.File]::OpenRead($lockedMarker)
+    try{$null=Check-Stage 'open-marker' $false}finally{$markerLock.Close()}
+    Assert ([IO.File]::ReadAllText($lockedMarker) -eq 'foreign marker') 'Failed marker write changed a foreign file.'
+    foreach($fault in @('write-marker','close-marker','extract-failure')){$null=Check-Stage $fault $false}
+    $lockedTemp=Join-Path $maintenance 'locked.tmp';[IO.File]::WriteAllText($lockedTemp,'reserved');$tempLock=[IO.File]::OpenRead($lockedTemp)
+    try{$null=Check-Stage 'locked-temp' $false;Assert ([IO.File]::Exists($lockedTemp)) 'Locked reserved file was lost.'}finally{$tempLock.Close()}
+    $null=Check-Stage 'locked-temp' $true
     Write-Host "Shell protocol and maintenance cleanup checks passed. Artifacts: $work"
 }finally{[Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($hive)}

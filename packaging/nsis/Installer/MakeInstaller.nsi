@@ -215,6 +215,10 @@ Var SavedInstallDirectory
 Var ShellStatusValid
 Var ShellSystemInstalled
 Var ShellToolsDirectory
+Var ShellStageReady
+Var ShellStageCreated
+Var ShellStageHandle
+Var ShellStageStep
 Var ShellOperation
 Var ShellOperationCode
 Var ShellEffectiveInstalled
@@ -797,66 +801,207 @@ FunctionEnd
 
 !macro FBE_MaintenanceFunctions prefix
 Function ${prefix}StageShellMaintenance
+  StrCpy $ShellStageReady 0
+  StrCpy $ShellStageCreated ""
+  StrCpy $ShellStageHandle ""
+  StrCpy $ShellToolsDirectory ""
   !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
   !insertmacro FBE_RequireOrdinaryPath "$PROGRAMFILES32"
   !insertmacro FBE_RequireOrdinaryPath "$COMMONFILES"
   !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_ROOT}"
+  StrCpy $ShellStageStep "create maintenance root"
+  ClearErrors
   CreateDirectory "${FBE_SHELL_ROOT}"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "protect maintenance directory"
   nsExec::ExecToStack '"$SYSDIR\icacls.exe" "${FBE_SHELL_ROOT}" /reset'
   Pop $0
   Pop $1
-  StrCmp $0 "0" +3
-    SetErrorLevel 5
-    Quit
+  StrCmp $0 "0" +2
+    Goto stage_failed
   !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_ROOT}\Maintenance"
+  StrCpy $ShellStageStep "create maintenance parent"
+  ClearErrors
   CreateDirectory "${FBE_SHELL_ROOT}\Maintenance"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "protect maintenance directory"
   nsExec::ExecToStack '"$SYSDIR\icacls.exe" "${FBE_SHELL_ROOT}\Maintenance" /reset'
   Pop $0
   Pop $1
-  StrCmp $0 "0" +3
-    SetErrorLevel 5
-    Quit
+  StrCmp $0 "0" +2
+    Goto stage_failed
+  StrCpy $ShellStageStep "reserve temporary name"
+  ClearErrors
   GetTempFileName $ShellToolsDirectory "${FBE_SHELL_ROOT}\Maintenance"
+  IfErrors stage_failed
+  StrCmp $ShellToolsDirectory "" stage_failed
+  StrCpy $ShellStageCreated "file"
+  !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory"
+  StrCpy $ShellStageStep "remove reserved temporary file"
+  ClearErrors
   Delete "$ShellToolsDirectory"
-  CreateDirectory "$ShellToolsDirectory"
+  IfErrors stage_failed
+  StrCpy $ShellStageCreated ""
+  StrCpy $ShellStageStep "create session directory"
+  System::Call 'kernel32::CreateDirectoryW(w "$ShellToolsDirectory", p 0) i .r0'
+  StrCmp $0 "1" +2
+    Goto stage_failed
+  StrCpy $ShellStageCreated "directory"
+  StrCpy $ShellStageStep "protect maintenance directory"
   nsExec::ExecToStack '"$SYSDIR\icacls.exe" "$ShellToolsDirectory" /reset'
   Pop $0
   Pop $1
-  StrCmp $0 "0" +3
-    SetErrorLevel 5
-    Quit
-  FileOpen $0 "$ShellToolsDirectory\Session.ini" w
-  FileWriteByte $0 255
-  FileWriteByte $0 254
-  FileClose $0
-  System::Call 'kernel32::GetCurrentProcessId() i .r0'
-  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "Version" "1"
-  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "Directory" "$ShellToolsDirectory"
-  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "LauncherPid" "$0"
-  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "Owner" "FBE Next Shell Maintenance"
+  StrCmp $0 "0" +2
+    Goto stage_failed
+  StrCpy $ShellStageStep "identify launcher"
+  System::Call 'kernel32::GetCurrentProcess() p .r2'
+  System::Call 'kernel32::GetProcessTimes(p r2, *l .r4, *l .r5, *l .r6, *l .r7) i .r3'
+  StrCmp $3 "1" +2
+    Goto stage_failed
+  System::Call 'ole32::CoCreateGuid(g .r5) i .r3'
+  StrCmp $3 "0" +2
+    Goto stage_failed
+  System::Call 'kernel32::GetCurrentProcessId() i .r6'
+  IntCmp $6 0 stage_failed stage_failed
+  SetOverwrite try
+  StrCpy $ShellStageStep "open extraction directory"
+  ClearErrors
   SetOutPath "$ShellToolsDirectory"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract manage-shell-integration.ps1"
+  ClearErrors
   File "${INPUTDIR}\InstallerTools\manage-shell-integration.ps1"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract shell-integration-lifecycle.ps1"
+  ClearErrors
   File "${INPUTDIR}\InstallerTools\shell-integration-lifecycle.ps1"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract update-shell-files.ps1"
+  ClearErrors
   File "${INPUTDIR}\InstallerTools\update-shell-files.ps1"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract register-modern-property-handler.ps1"
+  ClearErrors
   File "${INPUTDIR}\InstallerTools\register-modern-property-handler.ps1"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract register-sequence-property-schema.ps1"
+  ClearErrors
   File "${INPUTDIR}\InstallerTools\register-sequence-property-schema.ps1"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract unregister-modern-property-handler.ps1"
+  ClearErrors
   File "${INPUTDIR}\InstallerTools\unregister-modern-property-handler.ps1"
+  IfErrors stage_failed
   !if "${prefix}" == ""
-    SetOutPath "$ShellToolsDirectory\Payload"
-    File "${INPUTDIR}\FBShell.dll"
-    File "${INPUTDIR}\FBShell64.dll"
-    File "${INPUTDIR}\FBE.Sequence.propdesc"
+  StrCpy $ShellStageStep "open payload directory"
+  ClearErrors
+  SetOutPath "$ShellToolsDirectory\Payload"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract FBShell.dll"
+  ClearErrors
+  File "${INPUTDIR}\FBShell.dll"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract FBShell64.dll"
+  ClearErrors
+  File "${INPUTDIR}\FBShell64.dll"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "extract FBE.Sequence.propdesc"
+  ClearErrors
+  File "${INPUTDIR}\FBE.Sequence.propdesc"
+  IfErrors stage_failed
   !endif
-  FileOpen $0 "$ShellToolsDirectory\Previous.ini" w
-  FileWriteByte $0 255
-  FileWriteByte $0 254
-  FileClose $0
+  StrCpy $ShellStageStep "open previous state"
+  ClearErrors
+  FileOpen $ShellStageHandle "$ShellToolsDirectory\Previous.ini" w
+  IfErrors stage_failed
   ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ShellRecoveryPending"
-  WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "RecoveryPending" "$0"
-  WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "InstallLocation" "$ShellPreviousLocation"
-  WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "PropertyHandlerInstalled" "$ShellPreviousProperty"
-  WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "SystemIntegrationInstalled" "$ShellPreviousSystem"
+  StrCpy $ShellStageStep "write previous state"
+  ClearErrors
+  FileWriteUTF16LE /BOM $ShellStageHandle "[Markers]$\r$\nRecoveryPending=$0$\r$\nInstallLocation=$ShellPreviousLocation$\r$\nPropertyHandlerInstalled=$ShellPreviousProperty$\r$\nSystemIntegrationInstalled=$ShellPreviousSystem$\r$\n"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "close previous state"
+  System::Call 'kernel32::FlushFileBuffers(p $ShellStageHandle) i .r0'
+  StrCmp $0 "1" +2
+    Goto stage_failed
+  System::Call 'kernel32::CloseHandle(p $ShellStageHandle) i .r0'
+  StrCpy $ShellStageHandle ""
+  StrCmp $0 "1" +2
+    Goto stage_failed
+  StrCpy $ShellStageStep "open session marker"
+  ClearErrors
+  FileOpen $ShellStageHandle "$ShellToolsDirectory\Session.ini.next" w
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "write session marker"
+  ClearErrors
+  FileWriteUTF16LE /BOM $ShellStageHandle "[Maintenance]$\r$\nVersion=2$\r$\nPhase=complete$\r$\nDirectory=$ShellToolsDirectory$\r$\nOwner=FBE Next Shell Maintenance$\r$\nLauncherPid=$6$\r$\nLauncherCreatedUtcFileTime=$4$\r$\nLaunchId=$5$\r$\n"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "close session marker"
+  System::Call 'kernel32::FlushFileBuffers(p $ShellStageHandle) i .r0'
+  StrCmp $0 "1" +2
+    Goto stage_failed
+  System::Call 'kernel32::CloseHandle(p $ShellStageHandle) i .r0'
+  StrCpy $ShellStageHandle ""
+  StrCmp $0 "1" +2
+    Goto stage_failed
+  StrCpy $ShellStageStep "restore installation directory"
+  ClearErrors
   SetOutPath "$INSTDIR"
+  IfErrors stage_failed
+  StrCpy $ShellStageStep "publish session marker"
+  ClearErrors
+  Rename "$ShellToolsDirectory\Session.ini.next" "$ShellToolsDirectory\Session.ini"
+  IfErrors stage_failed
+  SetOverwrite on
+  StrCpy $ShellStageReady 1
+  Return
+stage_failed:
+  DetailPrint "Maintenance preparation failed at $ShellStageStep; no helper launched; confirmed integration state retained."
+  ${If} $ShellStageHandle != ""
+    FileClose $ShellStageHandle
+    StrCpy $ShellStageHandle ""
+  ${EndIf}
+  SetOverwrite on
+  SetOutPath "$INSTDIR"
+  ${If} $ShellStageCreated == "file"
+    Delete "$ShellToolsDirectory"
+  ${ElseIf} $ShellStageCreated == "directory"
+    ; Only this invocation's fixed extraction targets are eligible for cleanup.
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Payload"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\manage-shell-integration.ps1"
+    Delete "$ShellToolsDirectory\manage-shell-integration.ps1"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\shell-integration-lifecycle.ps1"
+    Delete "$ShellToolsDirectory\shell-integration-lifecycle.ps1"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\update-shell-files.ps1"
+    Delete "$ShellToolsDirectory\update-shell-files.ps1"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\register-modern-property-handler.ps1"
+    Delete "$ShellToolsDirectory\register-modern-property-handler.ps1"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\register-sequence-property-schema.ps1"
+    Delete "$ShellToolsDirectory\register-sequence-property-schema.ps1"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\unregister-modern-property-handler.ps1"
+    Delete "$ShellToolsDirectory\unregister-modern-property-handler.ps1"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Previous.ini"
+    Delete "$ShellToolsDirectory\Previous.ini"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Session.ini.next"
+    Delete "$ShellToolsDirectory\Session.ini.next"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Session.ini"
+    Delete "$ShellToolsDirectory\Session.ini"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Payload\FBShell.dll"
+    Delete "$ShellToolsDirectory\Payload\FBShell.dll"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Payload\FBShell64.dll"
+    Delete "$ShellToolsDirectory\Payload\FBShell64.dll"
+    !insertmacro FBE_RequireOrdinaryPath "$ShellToolsDirectory\Payload\FBE.Sequence.propdesc"
+    Delete "$ShellToolsDirectory\Payload\FBE.Sequence.propdesc"
+    RMDir "$ShellToolsDirectory\Payload"
+    RMDir "$ShellToolsDirectory"
+  ${EndIf}
+  ${If} ${FileExists} "$ShellToolsDirectory"
+    DetailPrint "Maintenance preparation cleanup incomplete; current path retained: $ShellToolsDirectory"
+  ${EndIf}
+  StrCpy $ShellRetainUninstaller 1
+  StrCpy $ShellPayloadResult "error"
+  StrCpy $ShellOperationCode "PREPARATION_FAILED"
+  SetErrorLevel 5
+  MessageBox MB_OK|MB_ICONEXCLAMATION "$(ShellMaintenancePrepareFailed)" /SD IDOK
   !endif
 FunctionEnd
 
@@ -950,6 +1095,8 @@ Function un.UnregisterModernPropertyHandler
     StrCpy $ShellPreviousSystem 0
   ${EndIf}
   Call un.StageShellMaintenance
+  StrCmp $ShellStageReady 1 +2
+    Return
   StrCpy $0 -1
   ClearErrors
   ${If} ${RunningX64}
@@ -1355,6 +1502,8 @@ Function MaintainShellIntegration
     StrCpy $ShellOperation "Recover"
   ${EndIf}
   Call StageShellMaintenance
+  StrCmp $ShellStageReady 1 +2
+    Return
   StrCpy $0 -1
   ClearErrors
   ${If} ${RunningX64}

@@ -110,3 +110,5 @@ LangString ShellMaintenanceRetry ${LANG_ENGLISH} "System integration needs anoth
 LangString ShellMaintenanceFailed ${LANG_ENGLISH} "System integration could not be completed. Recovery information has been retained. See the installation log before retrying."
 
 LangString ShellForeignRetained ${LANG_ENGLISH} "System integration belongs to another installation and has been retained."
+
+LangString ShellMaintenancePrepareFailed ${LANG_ENGLISH} "System integration tools could not be prepared. Existing integration state was retained. Close programs using the temporary files and retry. See the installation log."

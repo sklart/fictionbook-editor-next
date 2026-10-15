@@ -326,14 +326,21 @@ function Remove-ShellMaintenanceSessions([string]$MaintenanceRoot,[string]$Compl
                 $marker=Join-Path $directory 'Session.ini';Assert-ShellOrdinaryPath $marker
                 if(-not [IO.File]::Exists($marker)){Write-Host "Maintenance warning: unmarked directory retained: $directory";continue}
                 $record=@{};foreach($line in [IO.File]::ReadAllLines($marker)){$i=$line.IndexOf('=');if($i -gt 0){$record[$line.Substring(0,$i)]=$line.Substring($i+1)}}
-                if($record['Version'] -ne '1' -or $record['Directory'] -ine $directory -or $record['Owner'] -ne 'FBE Next Shell Maintenance' -or $record['LauncherPid'] -notmatch '^[1-9][0-9]*$'){throw 'Unknown session ownership.'}
+                if($record['Version'] -ne '2' -or $record['Phase'] -ne 'complete' -or $record['LaunchId'] -notmatch '^\{[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\}$' -or $record['LauncherCreatedUtcFileTime'] -notmatch '^[1-9][0-9]{0,18}$' -or $record['Directory'] -ine $directory -or $record['Owner'] -ne 'FBE Next Shell Maintenance' -or $record['LauncherPid'] -notmatch '^[1-9][0-9]*$'){throw 'Unknown session ownership.'}
+                $created=[DateTime]::FromFileTimeUtc([long]$record['LauncherCreatedUtcFileTime'])
                 if($directory -ine $CompletedDirectory){
                     $launcher=$null;try {$launcher=[Diagnostics.Process]::GetProcessById([int]$record['LauncherPid'])}catch [ArgumentException]{}
-                    if($null -ne $launcher){$launcher.Close();Write-Host "Maintenance active launcher retained: $directory";continue}
+                    if($null -ne $launcher){
+                        try {
+                            $sameLaunch=$launcher.StartTime.ToUniversalTime().ToFileTimeUtc() -eq $created.ToFileTimeUtc()
+                        }catch {throw ('Cannot verify launcher creation time: '+$_.Exception.Message)}finally{$launcher.Close()}
+                        if($sameLaunch){Write-Host "Maintenance active launcher retained: $directory";continue}
+                        Write-Host "Maintenance reused PID detected; original launcher has exited: $directory"
+                    }
                 }
                 $lock=Join-Path $directory 'Active.lock';Assert-ShellOrdinaryPath $lock
                 $lease=[IO.File]::Open($lock,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
-                $allowed=@('Session.ini','Active.lock','Previous.ini','Status.ini','Status.ini.next','Status.ini.previous','child-Payload.ini','child-Schema.ini','child-Shell.ini','manage-shell-integration.ps1','shell-integration-lifecycle.ps1','update-shell-files.ps1','register-modern-property-handler.ps1','register-sequence-property-schema.ps1','unregister-modern-property-handler.ps1')
+                $allowed=@('Session.ini','Session.ini.next','Active.lock','Previous.ini','Status.ini','Status.ini.next','Status.ini.previous','child-Payload.ini','child-Schema.ini','child-Shell.ini','manage-shell-integration.ps1','shell-integration-lifecycle.ps1','update-shell-files.ps1','register-modern-property-handler.ps1','register-sequence-property-schema.ps1','unregister-modern-property-handler.ps1')
                 $files=@([IO.Directory]::GetFiles($directory));$payload=Join-Path $directory 'Payload'
                 foreach($file in $files){Assert-ShellOrdinaryPath $file;if($allowed -notcontains [IO.Path]::GetFileName($file)){throw ('Unknown session file: '+$file)}}
                 foreach($child in [IO.Directory]::GetDirectories($directory)){if($child -ine $payload){throw ('Unknown session subdirectory: '+$child)};Assert-ShellOrdinaryPath (Join-Path $child 'probe');if([IO.Directory]::GetDirectories($child).Length){throw 'Nested session payload rejected.'}}

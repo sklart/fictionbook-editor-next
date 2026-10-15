@@ -109,3 +109,5 @@ LangString ShellMaintenanceRetry ${LANG_RUSSIAN} "Для завершения с
 LangString ShellMaintenanceFailed ${LANG_RUSSIAN} "Не удалось завершить изменение системной интеграции. Данные для восстановления сохранены. Перед повторным запуском проверьте журнал установки."
 
 LangString ShellForeignRetained ${LANG_RUSSIAN} "Системная интеграция принадлежит другой установке и сохранена."
+
+LangString ShellMaintenancePrepareFailed ${LANG_RUSSIAN} "Не удалось подготовить средства обслуживания. Состояние системной интеграции сохранено. Закройте программы, использующие временные файлы, и повторите запуск. Подробности — в журнале установки."
