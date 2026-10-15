@@ -458,27 +458,26 @@ CString GetBuiltInResourceFile(const CString& filename)
 	return GetProgDir() + filename;
 }
 
+CString FindUserDataSource(const CString& filename, const CString& legacyDir, const CString& builtInSeed)
+{
+    if(filename.IsEmpty() || !PathIsRelative(filename)) return CString();
+    CString source;
+    if(!legacyDir.IsEmpty()) source = legacyDir + filename;
+    if(!ATLPath::FileExists(source) && builtInSeed.IsEmpty()) source = GetProgDir() + filename;
+    if(!ATLPath::FileExists(source)) source = builtInSeed.IsEmpty() ? GetProgDir() + L"defaults\\" + filename : builtInSeed;
+    return ATLPath::FileExists(source) ? source : CString();
+}
+
 CString GetUserDataFile(const CString& filename, const CString& legacyDir, const CString& builtInSeed)
 {
-	if (filename.IsEmpty() || !PathIsRelative(filename))
-		return filename;
-
-	const CString destination = GetSettingsDir() + filename;
-	if (!ATLPath::FileExists(destination))
-	{
-		CString legacyFile;
-		if (!legacyDir.IsEmpty())
-			legacyFile = legacyDir + filename;
-		if (!ATLPath::FileExists(legacyFile) && builtInSeed.IsEmpty())
-			legacyFile = GetProgDir() + filename;
-		// Built-in defaults are immutable program resources.  User data always
-		// lives in GetSettingsDir(), including portable Data\Settings.
-		if (!ATLPath::FileExists(legacyFile))
-			legacyFile = builtInSeed.IsEmpty() ? GetProgDir() + L"defaults\\" + filename : builtInSeed;
-		if (ATLPath::FileExists(legacyFile))
-			::CopyFile(legacyFile, destination, TRUE);
-	}
-	return destination;
+    if(filename.IsEmpty() || !PathIsRelative(filename)) return filename;
+    const CString destination = GetSettingsDir() + filename;
+    if(!ATLPath::FileExists(destination))
+    {
+        const CString source = FindUserDataSource(filename, legacyDir, builtInSeed);
+        if(!source.IsEmpty()) ::CopyFileW(source, destination, TRUE);
+    }
+    return destination;
 }
 
 CString ResolveUserDataFile(const CString& filename)

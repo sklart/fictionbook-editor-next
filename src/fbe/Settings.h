@@ -231,6 +231,8 @@ class CSettings : public ISerializable, public IObjectFactory
 	GenreCatalog	m_genre_catalog;
 
 	bool		m_need_restart;
+	bool m_saveSuppressed = false;
+	friend class SettingsEditSession;
 
 	CString		m_scripts_folder;
 	bool		m_check_scripts_on_startup;
@@ -283,6 +285,7 @@ public:
 
 	void Load();
 	void Save();
+	bool TrySave(CString& error);
 
 	void LoadHotkeyGroups();
 	void SaveHotkeyGroups();

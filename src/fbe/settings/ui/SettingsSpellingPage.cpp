@@ -36,7 +36,9 @@ LRESULT CSettingsSpellingPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	m_enabled.SetCheck(_Settings.GetUseSpellChecker() ? BST_CHECKED : BST_UNCHECKED);
 	m_highlight.SetCheck(_Settings.GetHighlightMisspells() ? BST_CHECKED : BST_UNCHECKED);
 	m_checkYoUsage.SetCheck(_Settings.GetCheckRussianYoUsage() ? BST_CHECKED : BST_UNCHECKED);
-	m_dictionary.SetWindowText(_Settings.GetCustomDict()); UpdateDictionaryTooltip(); UpdateDependencies(); return 1;
+	m_dictionary.SetWindowText(_Settings.GetCustomDict()); UpdateDictionaryTooltip(); UpdateDependencies();
+	m_initialDictionaryPath = m_currentDictionaryPath = U::ResolveUserDataFile(_Settings.GetCustomDict());
+	return 1;
 }
 void CSettingsSpellingPage::UpdateDependencies() { const BOOL enabled = m_enabled.GetCheck() == BST_CHECKED; m_highlight.EnableWindow(enabled); m_checkYoUsage.EnableWindow(enabled); m_dictionary.EnableWindow(enabled); GetDlgItem(IDC_DICTPATH).EnableWindow(enabled); }
 LRESULT CSettingsSpellingPage::OnSpellcheckerChanged(WORD, WORD, HWND, BOOL&) { UpdateDependencies(); return 0; }
@@ -54,7 +56,12 @@ bool CSettingsSpellingPage::Validate()
 	CString storedPath; m_dictionary.GetWindowText(storedPath); storedPath.Trim();
 	if(storedPath.IsEmpty())
 		return true;
-	const CString path = U::ResolveUserDataFile(storedPath);
+	CString path = U::ResolveUserDataFile(storedPath);
+	if(::GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES && ::GetLastError() == ERROR_FILE_NOT_FOUND)
+	{
+		const CString source = U::FindUserDataSource(storedPath, m_legacyDirectory);
+		if(!source.IsEmpty()) path = source;
+	}
 	const DWORD attributes = ::GetFileAttributes(path);
 	if(attributes == INVALID_FILE_ATTRIBUTES)
 	{
@@ -71,9 +78,13 @@ bool CSettingsSpellingPage::Validate()
 	if(file == INVALID_HANDLE_VALUE) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read."); m_dictionary.SetFocus(); return false; }
 	::CloseHandle(file);
 	file = ::CreateFile(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if(file == INVALID_HANDLE_VALUE)
+	if(file == INVALID_HANDLE_VALUE && m_currentDictionaryPath.CompareNoCase(m_initialDictionaryPath) != 0 &&
+		m_warnedDictionaryPath.CompareNoCase(m_currentDictionaryPath) != 0)
+	{
+		m_warnedDictionaryPath = m_currentDictionaryPath;
 		U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.settings.spelling.read_only_warning", L"This dictionary can be used for checking, but new words cannot be saved to it."), FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONWARNING);
-	else ::CloseHandle(file);
+	}
+	if(file != INVALID_HANDLE_VALUE) ::CloseHandle(file);
 	return true;
 }
 bool CSettingsSpellingPage::PrepareCommit(SettingsFileTransaction& files)
@@ -87,7 +98,22 @@ bool CSettingsSpellingPage::PrepareCommit(SettingsFileTransaction& files)
 	if(error != ERROR_FILE_NOT_FOUND) { DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read."); return false; }
 	const CString temporary = SettingsFileTransaction::Temporary(path);
 	if(temporary.IsEmpty()) { DictionaryError(m_hWnd, L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space."); return false; }
-	files.Add(path, temporary);
+	files.Add(path, temporary, true);
+	const CString source = U::FindUserDataSource(storedPath, m_legacyDirectory);
+	if(!source.IsEmpty() && !::CopyFileW(source, temporary, FALSE))
+	{
+		DictionaryError(m_hWnd, L"fbe.settings.spelling.read_failed", L"The custom dictionary cannot be read.");
+		return false;
+	}
+	if(!source.IsEmpty())
+	{
+		const DWORD attributes = ::GetFileAttributesW(temporary);
+		if(attributes == INVALID_FILE_ATTRIBUTES || !::SetFileAttributesW(temporary, attributes & ~FILE_ATTRIBUTE_READONLY))
+		{
+			DictionaryError(m_hWnd, L"fbe.settings.spelling.create_failed", L"Cannot create the dictionary. Check write access to its folder and free disk space.");
+			return false;
+		}
+	}
 	return true;
 }
 void CSettingsSpellingPage::Commit() { _Settings.SetUseSpellChecker(m_enabled.GetCheck() == BST_CHECKED); _Settings.SetHighlightMisspells(m_highlight.GetCheck() == BST_CHECKED); _Settings.SetCheckRussianYoUsage(m_checkYoUsage.GetCheck() == BST_CHECKED); CString path; m_dictionary.GetWindowText(path); path.Trim(); _Settings.SetCustomDict(path); }
@@ -104,12 +130,16 @@ LRESULT CSettingsSpellingPage::OnBrowseDictionary(WORD, WORD, HWND, BOOL&)
 	request.filters = filters; request.filterCount = _countof(filters); request.filterIndex = 1;
 	request.initialFileName = current.GetString();
 	const ModernFileDialog::Result result = ModernFileDialog::Show(m_hWnd, request);
-	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty()) { m_dictionary.SetWindowText(result.paths.front().c_str()); UpdateDictionaryTooltip(); }
+	if(result.outcome == ModernFileDialog::Outcome::Accepted && !result.paths.empty()) { m_dictionary.SetWindowText(result.paths.front().c_str()); UpdateDictionaryTooltip(); Validate(); }
 	else if(result.outcome == ModernFileDialog::Outcome::Failed) StartupTrace::HResult(L"file-dialog", L"FD106", result.error, L"Browse custom dictionary");
 	return 0;
 }
 LRESULT CSettingsSpellingPage::OnDictionaryChanged(WORD, WORD, HWND, BOOL&)
 {
+	CString stored; m_dictionary.GetWindowText(stored); stored.Trim();
+	const CString resolved = U::ResolveUserDataFile(stored);
+	if(resolved.CompareNoCase(m_currentDictionaryPath) != 0) m_warnedDictionaryPath.Empty();
+	m_currentDictionaryPath = resolved;
 	UpdateDictionaryTooltip();
 	return 0;
 }

@@ -147,6 +147,7 @@ namespace U // place all utilities into their own namespace
 	// Resolves an immutable program resource.  Resources is the current layout;
 	// defaults and the program root are retained for pre-3.0.9 deployments.
 	CString GetBuiltInResourceFile(const CString& filename);
+  CString FindUserDataSource(const CString& filename, const CString& legacyDir = CString(), const CString& builtInSeed = CString());
   CString GetUserDataFile(const CString& filename, const CString& legacyDir = CString(), const CString& builtInSeed = CString());
 	CString ResolveUserDataFile(const CString& filename);
   CString GetDocTReeScriptsDir();

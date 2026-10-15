@@ -5556,22 +5556,16 @@ LRESULT CMainFrame::OnToolsOptions(WORD, WORD, HWND, BOOL&)
 		{
 			if (HasOnlyEditorBackgroundConfigurationChanged(previousConfiguration, currentConfiguration))
 			{
-				ApplyEditorBackgroundChanges();
+				ApplyEditorBackgroundChanges(false);
 			}
 			else if (HasOnlySourceEditorConfigurationChanged(previousConfiguration, currentConfiguration))
 			{
-				ApplyXmlSourceEditorChanges();
+				ApplyXmlSourceEditorChanges(false);
 			}
 			else
 			{
-				ApplyConfChanges(HasDocumentStyleConfigurationChanged(previousConfiguration, currentConfiguration));
+				ApplyConfChanges(HasDocumentStyleConfigurationChanged(previousConfiguration, currentConfiguration), false);
 			}
-		}
-		else
-		{
-			// См. аналогичный путь OnViewOptions: сохраняем собственно
-			// настройки, но не сериализуем не затронутые этим диалогом XML-коллекции.
-			_Settings.Save();
 		}
 	}
 
@@ -7342,7 +7336,7 @@ void CMainFrame::GoTo(int selected_pos)
 
 bool CMainFrame::ShowSettingsDialog(HWND parent)
 {
-	CSettingsDlg dlg;
+	CSettingsDlg dlg(m_doc ? m_doc->m_body.m_file_path : CString());
 	return dlg.DoModal(parent) == IDOK;
 }
 
@@ -7364,7 +7358,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 	if(saveSettings)
 		_Settings.Save();
 }
-void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
+void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 {
 	const EditorView activeView = m_editor_view_state.Current();
 	CWaitCursor hourglass;
@@ -7460,9 +7454,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 		}
 	}
 
-	_Settings.SaveHotkeyGroups();
-	_Settings.Save();
-	_Settings.SaveWords();
+	if(saveSettings) { _Settings.SaveHotkeyGroups(); _Settings.Save(); _Settings.SaveWords(); }
 	// Rebuilding source-editor styles must not replace the active visual editor.
 	if(activeView == BODY && m_doc)
 		m_view.ActivateWnd(m_doc->m_body);
@@ -7475,13 +7467,13 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles)
 	}
 }
 
-void CMainFrame::ApplyEditorBackgroundChanges()
+void CMainFrame::ApplyEditorBackgroundChanges(bool saveSettings)
 {
 	// A background-only change is visual-editor CSS.  Avoid rebuilding
 	// Scintilla styles, spell-check state and NBSP display for this path.
 	if(m_doc)
 		m_doc->ApplyConfChanges();
-	_Settings.Save();
+	if(saveSettings) _Settings.Save();
 }
 
 void CMainFrame::RestartProgram()

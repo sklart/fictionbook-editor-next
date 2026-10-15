@@ -1144,8 +1144,8 @@ public:
 	bool ReloadFile();
 	void UpdateFileTimeStamp();
 	bool ShowSettingsDialog(HWND parent = ::GetActiveWindow());
-	void ApplyConfChanges(bool applyDocumentStyles = true);
-	void ApplyEditorBackgroundChanges();
+	void ApplyConfChanges(bool applyDocumentStyles = true, bool saveSettings = true);
+	void ApplyEditorBackgroundChanges(bool saveSettings = true);
 	void ApplyXmlSourceEditorChanges(bool saveSettings = true);
 	void RestartProgram();
 	void FillMenuWithHkeys(HMENU);

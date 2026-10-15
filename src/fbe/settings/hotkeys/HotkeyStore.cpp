@@ -2,7 +2,17 @@
 #include "HotkeyStore.h"
 #include "..\\SettingsPaths.h"
 namespace FbeSettings { namespace Hotkeys {
-void Save(const std::vector<CHotkeysGroup>& groups) { CXMLSerializer serializer(FbeSettings::HotkeysFilePath(), L"FBE", false); std::vector<void*> pointers; for(size_t index = 0; index < groups.size(); ++index) pointers.push_back(const_cast<CHotkeysGroup*>(&groups[index])); serializer.Serialize(pointers); }
+bool SaveToFile(const std::vector<CHotkeysGroup>& groups, const CString& path)
+{
+    try {
+        CXMLSerializer serializer(path, L"FBE", false);
+        std::vector<void*> pointers;
+        for(const auto& group : groups) pointers.push_back(const_cast<CHotkeysGroup*>(&group));
+        return serializer.Serialize(pointers);
+    } catch(const _com_error&) { return false; }
+}
+void Save(const std::vector<CHotkeysGroup>& groups) { SaveToFile(groups, FbeSettings::HotkeysFilePath()); }
+
 CHotkeysGroup* FindGroup(std::vector<CHotkeysGroup>& groups, const CString& name)
 {
 	for(unsigned int i = 0; i < groups.size(); ++i) if(groups[i].m_reg_name == name) return &groups[i];

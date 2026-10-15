@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "utils.h"
+#include "../settings/SettingsFileTransaction.h"
 
 const wchar_t* XML_SAVE_ENCODING = L"utf-8";
 
@@ -28,18 +29,9 @@ CXMLSerializer::CXMLSerializer(const CString& sFile, const CString& sAppName, bo
 	}
 }
 
- CXMLSerializer::~CXMLSerializer()
+CXMLSerializer::~CXMLSerializer()
 {
-	if(!m_sFile.IsEmpty())
-	try {
-		_bstr_t bsFile(m_sFile);
-		m_doc->save(bsFile);
-	}
-	catch(_com_error& err)
-	{
-		U::ReportError(err);
-	}
-	m_doc = NULL;
+    m_doc = NULL;
 }
 
 void CXMLSerializer::ReadFile()
@@ -137,13 +129,16 @@ bool CXMLSerializer::SaveResults(const _variant_t& xml)
 	// Settings and hotkey files are mutable user state.  Write a complete
 	// document beside the destination first, then atomically publish it so an
 	// interrupted save cannot leave a truncated XML file behind.
-	const CString temporaryFile = m_sFile + L".tmp";
-	::DeleteFileW(temporaryFile);
-	if(m_doc->save(_bstr_t(temporaryFile)) != S_OK)
-		return false;
+	const CString temporaryFile = SettingsFileTransaction::Temporary(m_sFile);
+	if(temporaryFile.IsEmpty()) return false;
+	try {
+		if(m_doc->save(_bstr_t(temporaryFile)) != S_OK) { ::DeleteFileW(temporaryFile); return false; }
+	} catch(...) { ::DeleteFileW(temporaryFile); throw; }
 	if(!::MoveFileExW(temporaryFile, m_sFile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
+		const DWORD error = ::GetLastError();
 		::DeleteFileW(temporaryFile);
+		::SetLastError(error);
 		return false;
 	}
 

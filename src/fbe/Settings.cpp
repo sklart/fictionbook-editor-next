@@ -8,6 +8,7 @@
 #include "settings\\SettingsStore.h"
 
 #include "Settings.h"
+#include "RuntimeLocalization.h"
 
 CSettings::CSettings():m_need_restart(false), keycodes(0)
 {
@@ -45,7 +46,21 @@ void CSettings::Close()
 
 void CSettings::Save()
 {
-	FbeSettings::Store::Save(*this);
+	if(!m_saveSuppressed)
+	{
+		CString error;
+		if(!TrySave(error))
+		{
+			CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.save_failed", L"Could not save settings files. Check file access and free disk space.");
+			if(!error.IsEmpty()) message += L"\n\n" + error;
+			U::MessageBox(::GetActiveWindow(), message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+		}
+	}
+}
+
+bool CSettings::TrySave(CString& error)
+{
+	return FbeSettings::Store::Save(*this, error);
 }
 
 void CSettings::Load()

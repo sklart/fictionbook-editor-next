@@ -128,5 +128,5 @@ public:
 	bool	Test();
 	void	ClearAndSet();
 	void UpdateKeyboardLayoutDependencies();
-	bool Validate(); void Commit(); bool CancelChanges();
+	bool Validate(); bool PrepareCommit(SettingsFileTransaction& files); void Commit(); bool CancelChanges();
 };

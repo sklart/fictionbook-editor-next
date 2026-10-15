@@ -4,6 +4,9 @@
 #include "../../utils/utils.h"
 #include "..\\..\\Settings.h"
 #include "SettingsDlg.h"
+#include "../SettingsEditSession.h"
+#include "../SettingsStore.h"
+#include "../SettingsPaths.h"
 #include "..\\..\\RuntimeLocalization.h"
 #include "..\\..\\res1.h"
 #include "..\\..\\ThemeManager.h"
@@ -29,7 +32,8 @@ namespace
 
 // CSettingsDlg
 
-CSettingsDlg::CSettingsDlg() :
+CSettingsDlg::CSettingsDlg(const CString& legacyDictionaryDirectory) :
+	m_legacyDictionaryDirectory(legacyDictionaryDirectory),
 	m_advancedPage(NULL), m_generalPage(NULL), m_editorPage(NULL), m_spellingPage(NULL), m_imagesPage(NULL), m_sourcePage(NULL),
 	m_hotkeysPage(NULL), m_wordsPage(NULL), m_currentPage(SettingsPageId::Count),
 	m_automaticSize(false), m_sizeMoveDpi(0), m_sizeMoveDpiChanged(false), m_sizingDuringMove(false),
@@ -72,7 +76,7 @@ LRESULT CSettingsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_advancedPage->Create(m_hWnd);
 	m_editorPage = new CSettingsEditorPage;
 	m_editorPage->Create(m_hWnd);
-	m_spellingPage = new CSettingsSpellingPage;
+	m_spellingPage = new CSettingsSpellingPage(m_legacyDictionaryDirectory);
 	m_spellingPage->Create(m_hWnd);
 	m_imagesPage = new CSettingsImagesPage;
 	m_imagesPage->Create(m_hWnd);
@@ -183,7 +187,7 @@ LRESULT CSettingsDlg::OnTimer(UINT, WPARAM timerId, LPARAM, BOOL&)
 {
 	if (timerId != 0x53455454 || !IsSettingsDialogRuntimeTest()) return 0;
 	KillTimer(timerId);
-	bool behaviorPassed = true;
+	bool behaviorPassed = !RuntimeTests::IsScenario(L"settings-dialog-runtime") || ProbeFollowup();
 	if(RuntimeTests::IsScenario(L"settings-dialog-runtime"))
 	{
 		const auto originalWords = m_wordsPage->m_words;
@@ -232,19 +236,36 @@ LRESULT CSettingsDlg::OnClickedOK(WORD /* unused: wNotifyCode */, WORD /* unused
 
 	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
 		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->Validate()) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
-	SettingsFileTransaction files;
-	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
-		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->PrepareCommit(files)) { SelectPage(static_cast<SettingsPageId>(i)); return 0; }
-	if(!files.Commit())
+	CString error;
+	if(!TryCommit(error))
 	{
-		MessageBox(FbeLoadRuntimeStringByKey(L"fbe.settings.save_failed", L"Could not save settings files. Check file access and free disk space. Your previous files have been retained."),
-			FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
+		CString message = FbeLoadRuntimeStringByKey(L"fbe.settings.save_failed", L"Could not save settings files. Check file access and free disk space.");
+		if(!error.IsEmpty()) message += L"\n\n" + error;
+		MessageBox(message, FbeLoadRuntimeStringByKey(L"fbe.settings.validation.caption", L"Settings"), MB_OK | MB_ICONERROR);
 		return 0;
 	}
-	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
-		if(m_pageLifecycle[i]) m_pageLifecycle[i]->Commit();
 	EndDialog(IDOK);
 	return 0;
+}
+
+bool CSettingsDlg::TryCommit(CString& error)
+{
+	SettingsFileTransaction files;
+	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
+		if(m_pageLifecycle[i] && !m_pageLifecycle[i]->PrepareCommit(files)) { SelectPage(static_cast<SettingsPageId>(i)); return false; }
+	SettingsEditSession edit(_Settings);
+	for(int i = 0; i < _countof(m_pageLifecycle); ++i)
+		if(m_pageLifecycle[i]) m_pageLifecycle[i]->Commit();
+	SaveGeometry();
+	if(edit.HasChanges() && !FbeSettings::Store::PrepareSave(_Settings, files, error)) return false;
+	if(!files.Commit())
+	{
+		error = U::Win32ErrMsg(files.Error());
+		if(files.RollbackFailed()) error += L"\n" + FbeLoadRuntimeStringByKey(L"fbe.settings.rollback_failed", L"Some files could not be restored. Their recovery copies have been retained beside the original files.");
+		return false;
+	}
+	edit.Accept();
+	return true;
 }
 
 LRESULT CSettingsDlg::OnClose(UINT, WPARAM, LPARAM, BOOL&)
@@ -391,7 +412,6 @@ LRESULT CSettingsDlg::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
 
 LRESULT CSettingsDlg::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& /* unused: bHandled */)
 {	
-	SaveGeometry();
 	for(int index = 0; index < PageIndex(SettingsPageId::Count); ++index)
 		if(m_pages[index] && ::IsWindow(m_pages[index]->m_hWnd))
 			::RemoveWindowSubclass(m_pages[index]->m_hWnd, PageSubclassProc, static_cast<UINT_PTR>(index));
@@ -1218,5 +1238,7 @@ void CSettingsDlg::SaveGeometry()
 	if(!m_initialDpi || ::IsIconic(m_hWnd)) return;
 	RECT rect = {};
 	if(::GetWindowRect(m_hWnd, &rect))
-		_Settings.SetSettingsDialogGeometry(rect, UiMetrics::DpiForWindow(m_hWnd), !m_automaticSize, true);
+		_Settings.SetSettingsDialogGeometry(rect, UiMetrics::DpiForWindow(m_hWnd), !m_automaticSize, false);
 }
+
+#include "../../testing/SettingsFollowupProbe.inl"

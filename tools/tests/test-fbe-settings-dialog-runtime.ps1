@@ -29,7 +29,7 @@ try {
     }
     $first=Invoke-Scenario 'settings-dialog-runtime' $report
     if($LayoutOnly) {
-        foreach($line in 'settings_dialog=1','layout=1','persisted=1','yo_usage=1','applied=1','caret_persisted=1','caret_applied=1','caret_initial_system=1','source_unchanged=1') {
+        foreach($line in 'followup=1','settings_dialog=1','layout=1','persisted=1','yo_usage=1','applied=1','caret_persisted=1','caret_applied=1','caret_initial_system=1','source_unchanged=1') {
             if($first -notmatch [regex]::Escape($line)) { throw "Settings layout smoke is missing ${line}: $first" }
         }
 		$verification = Invoke-Scenario 'settings-dialog-runtime-verify' $verifyReport

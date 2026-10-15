@@ -675,6 +675,8 @@
 		::RemovePropW(m_hWnd, L"FBE_SETTINGS_LAYOUT_PASSED");
 		const bool initialSystem = ::GetPropW(m_hWnd, L"FBE_CARET_INITIAL_SYSTEM") == reinterpret_cast<HANDLE>(1);
 		::RemovePropW(m_hWnd, L"FBE_CARET_INITIAL_SYSTEM");
+		const bool followupPassed = verifyOnly || ::GetPropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PASSED") == reinterpret_cast<HANDLE>(1);
+		::RemovePropW(m_hWnd, L"FBE_SETTINGS_FOLLOWUP_PASSED");
 		const bool backupPersisted = _Settings.GetCreateBackupFile();
 		const bool nbspPersisted = _Settings.GetNBSPChar() == L"\x25AB";
 		const bool wrapPersisted = _Settings.XmlSrcWrap();
@@ -690,9 +692,9 @@
 			m_source.SendMessage(SCI_GETCARETFORE) == static_cast<sptr_t>(ThemeManager::IsHighContrast() ?
 				::GetSysColor(COLOR_WINDOWTEXT) : RGB(255, 255, 255));
 		CStringA report;
-		report.Format("settings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
+		report.Format("followup=%d\nsettings_dialog=%d\nlayout=%d\npersisted=%d\nbackup=%d\nnbsp=%d\nwrap=%d\nyo_usage=%d\napplied=%d\ncaret_persisted=%d\ncaret_applied=%d\ncaret_initial_system=%d\nsource_unchanged=%d\n", followupPassed, !verifyOnly, layoutPassed, persisted, backupPersisted, nbspPersisted, wrapPersisted, yoPersisted, applied, caretPersisted, caretApplied, initialSystem, sourceUnchanged);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged ? 0 : 1);
+		::PostQuitMessage(followupPassed && persisted && applied && layoutPassed && caretPersisted && caretApplied && sourceUnchanged ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"spell-dialog-layout-runtime"))

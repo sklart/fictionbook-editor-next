@@ -368,7 +368,8 @@ LRESULT CSettingsSourcePage::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lPara
 
 	XmlSourceThemes::BeginSettingsEdit();
 	const CString currentThemeId = _Settings.GetXmlSrcThemeId();
-	m_draftThemeId = currentThemeId;
+	m_draftThemeId = m_openingThemeId = currentThemeId;
+	m_themeSelectionHistory.push_back(currentThemeId);
 
 	ReloadSourceThemes(currentThemeId);
 
@@ -642,6 +643,7 @@ LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 	SaveThemeDraft();
 	const CString themeId = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
 	m_draftThemeId = themeId;
+	m_themeSelectionHistory.push_back(themeId);
 	const ThemeDraft* draft = NULL;
 	for(const auto& item : m_themeDrafts) if(item.id.CompareNoCase(themeId) == 0) { draft = &item; break; }
 	m_updatingSourceColors = true;
@@ -660,6 +662,35 @@ LRESULT CSettingsSourcePage::OnSourcePaletteChanged(WORD, WORD, HWND, BOOL&)
 	return 0;
 }
 
+
+bool CSettingsSourcePage::DeleteTheme(const CString& id, CString& error)
+{
+	SaveThemeDraft();
+	CString selected = GetSelectedThemeId(m_source_palette, m_source_theme_ids);
+	const DWORD background = GetThemeDefaultColor(id, XML_SRC_COLOR_BACKGROUND);
+	if(!XmlSourceThemes::DeleteUserTheme(id, error)) return false;
+	m_themeDrafts.erase(std::remove_if(m_themeDrafts.begin(), m_themeDrafts.end(), [&](const ThemeDraft& draft) {
+		return draft.id.CompareNoCase(id) == 0;
+	}), m_themeDrafts.end());
+	if(selected.CompareNoCase(id) == 0)
+	{
+		selected.Empty();
+		if(id.CompareNoCase(m_openingThemeId) != 0)
+		{
+			const auto& available = XmlSourceThemes::GetAvailableThemes();
+			for(auto it = m_themeSelectionHistory.rbegin(); it != m_themeSelectionHistory.rend() && selected.IsEmpty(); ++it)
+				for(const auto& theme : available)
+					if(theme.id.CompareNoCase(*it) == 0 && theme.id.CompareNoCase(id) != 0) { selected = theme.id; break; }
+		}
+		if(selected.IsEmpty()) selected = XmlSourceThemes::GetThemeIdForPalette(
+			GetRValue(background) + GetGValue(background) + GetBValue(background) < 384 ?
+			XML_SRC_COLOR_PALETTE_FBE_DARK : XML_SRC_COLOR_PALETTE_FBE_LIGHT);
+	}
+	m_draftThemeId.Empty(); // Never save deleted controls as another theme's draft.
+	ReloadSourceThemes(selected);
+	BOOL handled = FALSE; OnSourcePaletteChanged(0, 0, NULL, handled);
+	return true;
+}
 
 LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 {
@@ -758,13 +789,9 @@ LRESULT CSettingsSourcePage::OnThemeActions(WORD, WORD, HWND, BOOL&)
 		confirmation.Format(ThemeString(L"fbe.theme.delete.staged", L"Delete user theme \"%s\" when you click OK? Cancel will keep it."), static_cast<LPCWSTR>(sourceName));
 		if(U::MessageBox(m_hWnd, confirmation, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) != IDYES) return 0;
 		CString error;
-		if(!XmlSourceThemes::DeleteUserTheme(sourceId, error))
+		if(!DeleteTheme(sourceId, error))
 			U::MessageBox(m_hWnd, error, ThemeString(L"fbe.theme.dialog.caption", L"FictionBook Editor"), MB_OK | MB_ICONERROR);
-		else
-		{
-			ReloadSourceThemes(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT));
-			BOOL handled = FALSE; OnSourcePaletteChanged(0, 0, NULL, handled);
-		}
+
 		return 0;
 	}
 	if(command != 2 && command != 3) return 0;

@@ -45,7 +45,8 @@ class CSettingsSourcePage : public CAxDialogImpl<CSettingsSourcePage>, public IS
     CComboBox m_source_palette;
 	struct ThemeDraft { CString id; DWORD colors[XML_SRC_COLOR_GROUP_COUNT]; };
 	std::vector<ThemeDraft> m_themeDrafts;
-	CString m_draftThemeId;
+	CString m_draftThemeId, m_openingThemeId;
+	std::vector<CString> m_themeSelectionHistory;
 	void SaveThemeDraft();
 	CComboBox m_tag_highlight_mode;
     CComboBox m_special_chars_style;
@@ -125,6 +126,7 @@ END_MSG_MAP()
 	LRESULT OnPreviewSettingsChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCaretSettingsChanged(WORD, WORD, HWND, BOOL&);
 	LRESULT OnCaretColorChanged(int, LPNMHDR, BOOL&);
+	bool DeleteTheme(const CString& id, CString& error);
 	void ReloadSourceThemes(const CString& selectedThemeId);
 	void LoadSourceThemeControlsFromSettings();
 	void UpdateSourceColorTooltips();

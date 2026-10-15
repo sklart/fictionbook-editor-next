@@ -6,12 +6,15 @@
 
 class CSettingsSpellingPage : public CAxDialogImpl<CSettingsSpellingPage>, public ISettingsPage
 {
+	friend class CSettingsDlg;
+	CString m_legacyDirectory, m_initialDictionaryPath, m_currentDictionaryPath, m_warnedDictionaryPath;
 	CButton m_enabled;
 	CButton m_highlight;
 	CButton m_checkYoUsage;
 	CEdit m_dictionary;
 	CSettingsTooltips m_tooltips;
 public:
+	explicit CSettingsSpellingPage(const CString& legacyDirectory = CString()) : m_legacyDirectory(legacyDirectory) {}
 	enum { IDD = IDD_SETTINGS_SPELLING };
 	BEGIN_MSG_MAP(CSettingsSpellingPage)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)

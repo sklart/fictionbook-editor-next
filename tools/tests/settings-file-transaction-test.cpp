@@ -58,6 +58,14 @@ int wmain(int argc, wchar_t** argv)
         if(files.Commit() || !Equals(first, "old-first")) return 15;
     }
     if(!::SetFileAttributesW(first, FILE_ATTRIBUTE_NORMAL)) return 16;
+    // A dictionary destination appearing after staging must never be replaced.
+    {
+        SettingsFileTransaction files;
+        CString temporary = SettingsFileTransaction::Temporary(first);
+        if(temporary.IsEmpty() || !Write(temporary, "migrated")) return 17;
+        files.Add(first, temporary, true);
+        if(files.Commit() || files.Error() != ERROR_FILE_EXISTS || !Equals(first, "old-first")) return 18;
+    }
     // Replacement and deletion form one successful batch.
     {
         SettingsFileTransaction files;

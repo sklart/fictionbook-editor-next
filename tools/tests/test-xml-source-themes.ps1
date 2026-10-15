@@ -88,7 +88,7 @@ foreach($legacyPalette in @( "XML_SRC_COLOR_PALETTE_LEGACY_CONTRAST", "XML_SRC_C
 if($mainFrame -like "*_Settings.GetXmlSrcColor(styles[i].*") {
     throw "mainfrm.cpp использует устаревшие группы цветов вместо логических ролей темы."
 }
-foreach($requiredText in @('HasDocumentStyleConfigurationChanged', 'ApplyConfChanges(bool applyDocumentStyles)', 'ApplyConfChanges(HasDocumentStyleConfigurationChanged', 'HasOnlySourceEditorConfigurationChanged', 'ApplyXmlSourceEditorChanges', 'sourceThemeId', 'activeView == BODY')) {
+foreach($requiredText in @('HasDocumentStyleConfigurationChanged', 'ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)', 'ApplyConfChanges(HasDocumentStyleConfigurationChanged', 'HasOnlySourceEditorConfigurationChanged', 'ApplyXmlSourceEditorChanges', 'sourceThemeId', 'activeView == BODY')) {
     if($mainFrame -notlike "*$requiredText*") {
         throw "В mainfrm.cpp отсутствует разделение применения XML-темы и стилей редактора Тело: $requiredText"
     }
@@ -274,7 +274,8 @@ if($settingsDialog.IndexOf('m_source_colors[i].GetColor() == CLR_DEFAULT', [Syst
     throw 'Automatic color tooltip does not describe inheritance from the selected theme.'
 }
 foreach($requiredText in @(
-    'ReloadSourceThemes(XmlSourceThemes::GetThemeIdForPalette(XML_SRC_COLOR_PALETTE_FBE_LIGHT))',
+    'DeleteTheme(sourceId, error)',
+    'm_themeSelectionHistory',
     'fbe.theme.delete.staged',
     'SaveThemeDraft()',
     'PrepareSettingsEdit(files, error)',

@@ -1,6 +1,8 @@
 // SettingsHotkeysDlg.cpp : Implementation of CSettingsHotkeysDlg
 
 #include "stdafx.h"
+#include "../hotkeys/HotkeyStore.h"
+#include "../SettingsPaths.h"
 #include "../../../common/ModernFileDialog.h"
 #include "SettingsHotkeysDlg.h"
 #include "..\\..\\KeyboardLayoutSelection.h"
@@ -363,6 +365,24 @@ bool CSettingsHotkeysDlg::Validate()
 	}
 	return true;
 }
+bool CSettingsHotkeysDlg::PrepareCommit(SettingsFileTransaction& files)
+{
+	bool changed = false;
+	for(size_t i = 0; i < m_initHkGroups.size(); ++i)
+		for(size_t j = 0; j < m_initHkGroups[i].m_hotkeys.size(); ++j)
+		{
+			const ACCEL& old = m_initHkGroups[i].m_hotkeys[j].m_accel;
+			const ACCEL& now = _Settings.m_hotkey_groups[i].m_hotkeys[j].m_accel;
+			changed = changed || old.fVirt != now.fVirt || old.key != now.key || old.cmd != now.cmd;
+		}
+	if(!changed) return true;
+	const CString path = FbeSettings::HotkeysFilePath();
+	const CString temporary = SettingsFileTransaction::Temporary(path);
+	if(temporary.IsEmpty()) return false;
+	files.Add(path, temporary);
+	return FbeSettings::Hotkeys::SaveToFile(_Settings.m_hotkey_groups, temporary);
+}
+
 void CSettingsHotkeysDlg::Commit()
 {
 	_Settings.SetChangeKeybLayout(m_changeKeyb.GetCheck() == BST_CHECKED);
