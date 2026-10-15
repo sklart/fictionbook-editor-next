@@ -200,6 +200,15 @@ def inspect(path: Path) -> dict:
                              "Код отличается от описанной редакции", "high"))
     facts = {key: evidence(source, pattern, limit=1000 if key == "return" else 4)
              for key, pattern in API_PATTERNS.items()}
+    if re.search(r"window\.external\.inflateBlock\s*\([^;\n]+\)\s*=", source.executable):
+        for field in ("description", "warnings", "usage"):
+            values = card.get(field, [])
+            if isinstance(values, str): values = [values]
+            for value in values:
+                if re.search(r"результату вызова|ошибочн[^.]*присваив", value, re.I):
+                    found.append(finding("incorrect_jscript_claim", field, value, None,
+                                         "inflateBlock — индексируемое COM-свойство с propput; отказ обычного JS-парсера не доказывает ошибку JScript",
+                                         "medium"))
     # String contents are kept only for this diagnostic. A namespace URL alone
     # must never be interpreted as an executed network operation.
     namespace_urls = evidence(source, r"https?://[^\s'\"]+", masked=False)

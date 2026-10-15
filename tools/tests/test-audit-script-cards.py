@@ -108,6 +108,11 @@ def main() -> None:
                         "description": "Изменения можно отменить одним действием (Ctrl+Z)"}
         synthetic.write_bytes(card_tool["insert_card"](code, card))
         assert not any(item["category"] == "incorrect_undo" for item in inspect(synthetic)["findings"])
+        code = b'function Run(){window.external.inflateBlock(element)=true;}\n'
+        card["warnings"] = ["Ошибочное присваивание результату вызова прерывает выполнение."]
+        card["sourceRevision"]["sha256"] = hashlib.sha256(code).hexdigest()
+        synthetic.write_bytes(card_tool["insert_card"](code, card))
+        assert any(item["category"] == "incorrect_jscript_claim" for item in inspect(synthetic)["findings"])
 
     scripts_root = ROOT / "runtime" / "Scripts"
     proposals = json.loads((ROOT / "docs" / "script-card-reviewed-proposals.json").read_text(encoding="utf-8"))
