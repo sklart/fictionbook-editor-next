@@ -193,9 +193,11 @@ def main() -> None:
     code64 = card_tool["read_document"](script64.read_bytes()).code_bytes.decode("utf-8")
     assert not re.search(r"\b(?:eval|Function)\s*\(", audit["mask_non_code"](code64))
     baseline = json.loads((ROOT / "docs/script-card-code-baseline.json").read_text(encoding="utf-8"))
-    update = baseline["executableChanges"][-1]
+    script64_changes = [item for item in baseline["executableChanges"]
+                        if item["path"] == script64.relative_to(scripts_root).as_posix()]
+    update = script64_changes[-1]
     assert update["path"] == script64.relative_to(scripts_root).as_posix()
-    assert update["previousCodeSha256"] == baseline["executableChanges"][-2]["codeSha256"]
+    assert update["previousCodeSha256"] == script64_changes[-2]["codeSha256"]
     assert update["previousCodeSha256"] == "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96"
     assert update["codeSha256"] == runtime["sourceCodeSha256"]
     for path in files:

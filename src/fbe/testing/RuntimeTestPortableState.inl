@@ -63,6 +63,7 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 void CMainFrame::RunPortableStateTestScenario()
 {
 #include "RuntimeTestScript64.inl"
+#include "RuntimeTestNoteCreation.inl"
 	const bool ordinaryWrite = IsFbeTestScenario(L"portable-state-write");
 	const bool ordinaryRead = IsFbeTestScenario(L"portable-state-read");
 	const bool emptyToolbarWrite = IsFbeTestScenario(L"portable-toolbar-empty-write");

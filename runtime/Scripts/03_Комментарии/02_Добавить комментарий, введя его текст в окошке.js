@@ -21,14 +21,13 @@
     "Проверьте новый раздел и связанные ссылки, особенно если в книге уже есть комментарии."
   ],
   "warnings": [
-    "При некорректной структуре ссылок или разделов скрипт может остановиться после частичных изменений.",
-    "Отмена ввода текста может оставить временную ссылку или созданный раздел."
+    "При исключении во время применения или перенумерации возможен частичный результат; его можно отменить одной операцией. При отказе DOM/COM в самой очистке возможно сохранение созданной разметки."
   ],
   "dependencies": [],
   "dependenciesComplete": false,
   "sourceRevision": {
     "algorithm": "sha256-exclude-fbe-card-v1",
-    "sha256": "a643da1623c38cd689df220846c578b2ee22280b74794541d9efef8f3646484b",
+    "sha256": "97e5d5d239f6d45e2ebdb8640ebdfb9ae27342dba506cf8a37e4448d98a684a2",
     "reviewStatus": "generated"
   },
   "tags": [
@@ -38,7 +37,7 @@
   ],
   "undo": {
     "status": "explicit_calls_found",
-    "description": "При отмене ввода текста уже внесённые изменения остаются в книге, а группа отмены не закрывается."
+    "description": "Штатное создание отменяется одним Ctrl+Z и возвращается Ctrl+Y. Отмена ввода и отказы проверок не создают операцию отмены; при исключении своя группа завершается без автоматического отката."
   },
   "settings": [
     {
@@ -125,7 +124,7 @@
       "name": "forsazh",
       "value": false,
       "expression": "false",
-      "description": "Отключает часть проверок и нумерацию; менять только при понимании структуры документа.",
+      "description": "Отключает перенумерацию, использует случайный ID; проверки безопасной вставки сохраняются.",
       "title": "Ускоренный режим",
       "source": "script"
     }
@@ -297,293 +296,256 @@ function Run () {
   return s;
  } 
  
- window.external.BeginUndoUnit(document,strConst7);
+ // Подготовка не изменяет книгу и не открывает Undo.
+ if (typeof document=="undefined" || !document || !document.body || !document.selection) { MsgBox("Нет доступного документа книги."); return; }
  var body=document.getElementById("fbw_body");
- var whileFlag,hhh,nashliBodyNotes,bodyNotes,el,insertN,uic,i3,newSnoskaNum,tmpVar;
- if (!body) {MsgBox("ошибка. body не найден!"); return;}
- var insertCnt=1;
-//следующие строки нужно раскомментировать, чтобы восстановить
-//запрос параметров для вставки сноски
-//ОТСЮДА
-/*
- strConst1=prompt("Шаблон ID раздела примечания. Используйте макрос %N"+
-                  " для указания номера раздела.",strConst1);
- strConst4=prompt("Шаблон текста ссылки. Используйте макрос %N"+
-                  " для указания номера раздела.",strConst4);
- strConst2=prompt("Шаблон заголовка примечания. Используйте макрос %N"+
-                  " для указания номера раздела.",strConst2);
- strConst3=prompt("Шаблон содержания новых разделов примечаний. Используйте макрос %N"+
-                  " для указания номера раздела.",strConst3);
-*/
-//ДОСЮДА
- el=body.firstChild;
- nashliBodyNotes=false;
- whileFlag=true;
- while (el)
-  if (el.className=="body" && el.getAttribute("fbname")==strConst6) {
-   nashliBodyNotes=true;    
-   bodyNotes=el;    
-   break;
-  } else el=el.nextSibling;
- //вставляем ссылку на наше примечание
- if (addSnoska) document.selection.createRange().pasteHTML('<A href="A">Sclex_Note</A>');
-//если нет боди нотесов, создадим его
- if (!nashliBodyNotes) {
-  el=document.createElement("DIV");
-  el.className="body";
-  el.setAttribute("xlmns:l","http://www.w3.org/1999/xlink");
-  el.setAttribute("xlmns:f","http://www.gribuser.ru/xml/fictionbook/2.0");
-  el.setAttribute("fbname",strConst6);
-  el.innerHTML="<DIV class=title><P>"+strConst5+"</P></DIV>";
-  bodyNotes=body.appendChild(el);
- } 
-//создадим заголовок боди нотесов, если нет его
- if (!forsazh) {
-  var bbb=bodyNotes.firstChild;
-  var flag4=true;
-  while (flag4 && !(bbb.nodeName=="DIV" && (bbb.className=="section" || bbb.className=="epigraph" || bbb.className=="title")))
-   if (bbb.nextSibling) bbb=bbb.nextSibling;
-   else flag4=false;
-  if (flag4) { 
-   if (bbb.className!="title") {
-    el=document.createElement("DIV");
-    el.className="title";
-    el.innerHTML="<P>"+strConst5+"</P>";
-    bbb.parentNode.insertBefore(el,bbb);
-   }
-  } else {
-   if (bbb.className!="title") {
-    el=document.createElement("DIV");
-    el.className="title";
-    el.innerHTML="<P>"+strConst5+"</P>";   
-    bodyNotes.appendChild(el);
-   }
-  }
-  bbb=undefined;
- }
-//прочитаем в массив SectID ID-ы разделов примечаний
- var sectsColl=new Object();
- var sectIds=new Object();
- var sectNumById=new Object();
- var sectNum=0;
- if (!forsazh) {
-  var ccc=bodyNotes.firstChild;
-  while (ccc!=null) {
-   if (ccc.nodeName=="DIV" && ccc.className=="section") {
-    sectNum++;
-    sectsColl[sectNum]=ccc;  
-    sectIds[sectNum]=ccc.id;
-    sectNumById[ccc.id]=sectNum;
-   }
-   ccc=ccc.nextSibling;
-  }
- } 
- //определяем номер нашей сноски
+ if (!body) { MsgBox("Ошибка. body не найден!"); return; }
+ var range=null, parent=null;
  if (addSnoska) {
-  j5=0;
-  while (true)
-   if (j5<document.links.length)
-    if (document.links[j5].innerHTML!="Sclex_Note") j5++;
-    else break;
-   else break; 
-  if (j5==document.links.length) {
-   MsgBox("Ошибка. Вставленная временная ссылка сноски не найдена.");
-   return;
-  }
-  newSnoskaNum=j5;
-  if (lastSnoskaMode) {
-   var it7=newSnoskaNum+1;
-   while (it7<document.links.length)
-    if (isItNote(document.links[it7])==false) it7++;
-    else break;
-   if (it7<document.links.length) {
-    document.links[newSnoskaNum].removeNode(true);
-    MsgBox("Ошибка. Это получается не последняя сноска в документе!");
-    return;
+  try { range=document.selection.createRange().duplicate(); parent=range.parentElement(); }
+  catch (rangeError) { MsgBox("Поставьте курсор в текст книги."); return; }
+  var paragraph=null, ancestor=parent;
+  while (ancestor && ancestor!==body) {
+   if (ancestor.nodeName=="A" || ancestor.nodeName=="INPUT" || ancestor.nodeName=="TEXTAREA" ||
+       (ancestor.className=="body" && (ancestor.getAttribute("fbname")=="notes" || ancestor.getAttribute("fbname")=="comments"))) {
+    MsgBox("Ссылку нужно вставлять в текст книги вне ссылки и разделов примечаний/комментариев."); return;
    }
+   if (ancestor.nodeName=="P") paragraph=ancestor;
+   ancestor=ancestor.parentNode;
   }
-  var j6=newSnoskaNum-1;
-  while (j6>=0 && isItNote(document.links[j6])==false) j6--;
-  if (!forsazh && j6>=0) {
-   var abc=getLocalHref(document.links[j6].href);
-   if (abc!=-1) insertN=sectNumById[abc];
-   if (abc==-1 || insertN==undefined) {
-    document.links[newSnoskaNum].removeNode(true);
-    MsgBox("Не удалось создать комментарий.\n\n"+
-        "Чтобы определить, с каким разделом в body комментариев "+
-        "связать сноску, которую пользователь хочет вставить, "+
-        "скрипт смотрит, с каким разделом в body комментариев "+
-        "связана определенная ранее созданная сноска. А именно – "+
-        "скрипт смотрит на ближайшую сноску вверх по документу "+
-        "от той сноски, которую пытается создать и вставить. "+
-        "Но в этот раз оказалось, что эта ближайшая сверху "+
-        "сноска не связана корректным образом с разделом в body "+
-        "комментариев. Поэтому, чтобы вставить новую сноску, "+
-        "исправьте, пожалуйста, сноску, которая идет перед ней.");
-    return;
-   }
-   insertN++;
-  } else insertN=1;
-  if (insertN==0) {insertN=1}
-  makeNoteFromHref(document.links[newSnoskaNum]);
-  if (!forsazh) {
-   document.links[newSnoskaNum].innerHTML=PoShablonu(strConst4,insertN)
-   document.links[newSnoskaNum].href="#"+PoShablonu(strConst1,insertN);
-  } else {
-   insertN=""; 
-   newSnoskaId=getRandomNum(32);  
-   document.links[newSnoskaNum].innerHTML=PoShablonu(strConst4,"*");
-   document.links[newSnoskaNum].href="#"+PoShablonu(strConst1,newSnoskaId);
+  if (ancestor!==body || !paragraph) { MsgBox("Поставьте курсор в абзац книги."); return; }
+ }
+ var bodyNotes=null, child=body.firstChild;
+ while (child) {
+  if (child.nodeName=="DIV" && child.className=="body" && child.getAttribute("fbname")==strConst6) {
+   if (bodyNotes) { MsgBox("Найдено несколько body одного типа. Исправьте структуру книги."); return; }
+   bodyNotes=child;
   }
- } else {insertN=1000000; insertCnt=0}
-//проверим, нет ли в боди нотесов разделов второго уровня вложения
- if (!forsazh) {
-  var ptr1=bodyNotes.firstChild
-  var ptr2;
-  while (ptr1) {
-   if (ptr1.nodeName=="DIV" && ptr1.className=="section") {
-     ptr2=ptr1.firstChild;
-     while (ptr2) {
-      if (ptr2.nodeName=="DIV") {
-        if (ptr2.className=="section") {
-         MsgBox("В body комментариев есть разделы второго уровня вложения. Такие файлы не обрабатываются данным скриптом. Работа скрипта завершена.");
-         document.links[newSnoskaNum].removeNode(true);
-         return;
-        }
-      }
-      ptr2 = ptr2.nextSibling;
-     }
+  child=child.nextSibling;
+ }
+ var sections=[], ids=[], idToIndex={}, sectionPlans=[], linkPlans=[], insertN=1, previous=-1, newSnoskaId="";
+ function has(map,key) { return Object.prototype.hasOwnProperty.call(map,"$"+key); }
+ function sectionIndex(id) {
+  return has(idToIndex,id) ? idToIndex["$"+id] : -1;
+ }
+ if (bodyNotes) {
+  var divs=bodyNotes.getElementsByTagName("DIV");
+  for (var i=0; i<divs.length; i++) if (divs[i].className=="section") {
+   if (divs[i].parentNode!==bodyNotes || !divs[i].id || sectionIndex(divs[i].id)>=0) {
+    MsgBox("В body есть вложенные разделы, пустые или повторяющиеся ID. Исправьте структуру книги."); return;
    }
-   ptr1 = ptr1.nextSibling;
+   idToIndex["$"+divs[i].id]=sections.length;
+   sections.push(divs[i]); ids.push(divs[i].id);
   }
  }
- //введем, если надо, текст примечания
- if (InputSnoskaText) {
-  var promptText="Текст комментария. Используйте <b>...</b> <i>...</i> <br> <strong>...</strong> <emphasis>...</emphasis> <em>...</em>";
-  var snoskaTextSrc=prompt(promptText,"&nbsp;");
-  if (snoskaTextSrc==null) {return;}
-  snoskaText=makeGoodSnoska(snoskaTextSrc);
-  var code=miniValidate(snoskaText);
-  while (code!=0) {
-   if (code==1) {
-     MsgBox("Ошибка. Недопустимый символ в имени тэга.");
+ var links=[];
+ for (var i=0; i<document.links.length; i++) links.push(document.links[i]);
+ for (var i=0; i<links.length; i++) {
+  var index=sectionIndex(getLocalHref(links[i].href)), note=isItNote(links[i]);
+  if (note && index<0) { MsgBox("Ссылка не связана с разделом в body "+strConst6+". Исправьте ссылку."); return; }
+  if (addSnoska) {
+   var linkRange=document.body.createTextRange(); linkRange.moveToElementText(links[i]);
+   var before=range.compareEndPoints("StartToEnd",linkRange)>=0;
+   if (!before && range.compareEndPoints("EndToStart",linkRange)>0) {
+    MsgBox("Выделение пересекает существующую ссылку. Поставьте курсор вне ссылки."); return;
    }
-   if (code==2) {
-     MsgBox("Ошибка. Неразрешенное имя тэга.");
-   }
-   if (code==3) {
-    MsgBox("Ошибка. Имя закрывающего тэга не соответствует имени открывающего.");
-   }
-   if (code==4) {
-     MsgBox("Ошибка. Не закрыт тэг правой угловой скобкой, как уже начинается новый, либо не закрыт последний тэг в строке.");
-   }
-   if (code==5) {
-     MsgBox("Ошибка. Для открытого тэга нет соответствующего закрывающего.");
-   }
-   var snoskaTextSrc=prompt(promptText,snoskaTextSrc);
-   if (snoskaTextSrc==null) {return;}
-   snoskaText=makeGoodSnoska(snoskaTextSrc);
-   var code=miniValidate(snoskaText);
-  }
- }
- //поменяем ID у разделов примечаний
- if (nashliBodyNotes && !lastSnoskaMode) {
-  //for (var j1=1; j1<=sectNum; j1++)
-  // sectsColl[j1].id=undefined; 
-  for (var j1=1; j1<=sectNum; j1++) {
-   tmpVar=PoShablonu(strConst1,j1>=insertN ? j1+insertCnt : j1);
-   if (sectsColl[j1].id!=tmpVar) sectsColl[j1].id=tmpVar;
-  }
- }  
- //анализируем все ссылки документа
- if (!lastSnoskaMode) {
-  for (j2=0; j2<document.links.length; j2++) {
-  //if (document.links[j2].className=="note") {
-    //MsgBox("Свойство href: "+document.links[j2].href+"\n"+
-    //"findNum: "+findNum(document.links[j2].href));
-   if (addSnoska && j2==newSnoskaNum) {uic=insertN}
-   else uic=sectNumById[getLocalHref(document.links[j2].href)];
-   if (uic!=undefined && j2!=newSnoskaNum) {
-     //меняем адрес ссылки
-     if (uic>=insertN) uic++;
-     tmpVar="#"+PoShablonu(strConst1,uic);
-     if (document.links[j2].href!=tmpVar && document.links[j2].href!=window.location.href+tmpVar)
-      document.links[j2].href=tmpVar;
-     //меняем текст ссылки
-     tmpVar=PoShablonu(strConst4,uic);
-     if (document.links[j2].innerHTML!=tmpVar)
-      document.links[j2].innerHTML=tmpVar;
+   if (note) {
+    if (before) previous=index;
+    else if (lastSnoskaMode) { MsgBox("Ошибка. Это получается не последняя сноска в документе!"); return; }
    }
   }
  }
- // поменяем заголовки разделов примечаний
- if (nashliBodyNotes && !lastSnoskaMode) 
-  for (i2=1;i2<=sectNum;i2++) {
-   if (sectsColl[i2].firstChild!=null) 
-    if (sectsColl[i2].firstChild.nodeName=="DIV" && sectsColl[i2].firstChild.className=="title") {
-     var tmpVar="<P>"+PoShablonu(strConst2,i2>=insertN ? i2+insertCnt : i2)+"</P>";
-     if (sectsColl[i2].firstChild.innerHTML!=tmpVar) sectsColl[i2].firstChild.innerHTML=tmpVar;
-    }
-    else {
-     el=document.createElement("DIV");
-     el.className="title";
-     el.innerHTML="<P>"+PoShablonu(strConst2,i2>=insertN ? i2+insertCnt : i2)+"</P>";
-     sectsColl[i2].insertBefore(el,sectsColl[i2].firstChild);
-    } 
-   else {
-    el=document.createElement("DIV");
-    el.className="title";
-    el.innerHTML="<P>"+PoShablonu(strConst2,i2>=insertN ? i2+insertCnt : i2)+"</P>";   
-    sectsColl[i2].appendChild(el);
-   } 
-  }
- if (!forsazh) {
-  var MyTitle=PoShablonu(strConst2,insertN);
-  var MyId1=PoShablonu(strConst1,insertN);
- } else {
-  var MyTitle="&nbsp;";
-  var MyId1=PoShablonu(strConst1,newSnoskaId);
- };
- //вставим новый раздел примечания
- el=document.createElement("DIV");
- el.id=MyId1;
- el.className="section";
- if (InputSnoskaText) el.innerHTML="<DIV class=title><P>"+MyTitle+"</P></DIV>"+snoskaText;
- else el.innerHTML="<DIV class=title><P>"+MyTitle+"</P></DIV><P>"+PoShablonu(strConst3,insertN)+"</P>";
- if (addSnoska) 
-  if (!lastSnoskaMode)
-   if (sectNum>0) 
-    if (insertN>1) el=bodyNotes.insertBefore(el,sectsColl[insertN-1].nextSibling);
-    else el=bodyNotes.insertBefore(el,sectsColl[1]);
-   else el=bodyNotes.appendChild(el); 
-  else el=bodyNotes.appendChild(el);
- if (strConst3=="") window.external.inflateBlock(el.lastChild)=true;     
- if (MoveFocusToNote) {
-  var NewSectCnt=0;
-  var j7=0;
-  el2=el.firstChild;
-  whileFlag=true;
-  while (whileFlag)
-   if (el2) 
-    if (el2.nodeName=="P") { 
-     GoTo(el2);
-     whileFlag=false;
-    } else el2=el2.nextSibling;
-   else whileFlag=false;
-  if (el2=null && el.firstChild!=null) GoTo(el.firstChild);
+ if (addSnoska && !forsazh) insertN=previous+2;
+ var renumber=!forsazh && !lastSnoskaMode;
+ for (var i=0; i<sections.length; i++) {
+  var number=i+1+(addSnoska && i+1>=insertN ? 1 : 0);
+  sectionPlans.push({node:sections[i], id:renumber ? PoShablonu(strConst1,number) : ids[i],
+   title:"<P>"+PoShablonu(strConst2,number)+"</P>"});
  }
- var Tf=new Date().getTime();
- var Tmin = Math.floor((Tf-Ts)/60000);
- var Tsek = Math.ceil(10*((Tf-Ts)/1000-Tmin*60))/10;
- if (Tmin>0) {var TimeStr=Tmin+" мин. "+Tsek+" с"}
- else {var TimeStr=Tsek+" с"}
+ var finalIds=[];
+ for (var i=0; i<sectionPlans.length; i++) finalIds.push(sectionPlans[i].id);
+ if (forsazh && addSnoska) {
+  var randomAttempts=0;
+  do {
+   if (++randomAttempts>100) { MsgBox("Не удалось выбрать свободный ID сноски."); return; }
+   newSnoskaId=PoShablonu(strConst1,getRandomNum(32));
+  } while (document.getElementById(newSnoskaId));
+  insertN="";
+ } else if (addSnoska) newSnoskaId=PoShablonu(strConst1,insertN);
+ if (addSnoska) finalIds.push(newSnoskaId);
+ var all=document.getElementsByTagName("*"), occupiedIds={}, futureIds={};
+ for (var i=0; i<all.length; i++) if (all[i].id) {
+  var key="$"+all[i].id;
+  if (!has(occupiedIds,all[i].id)) occupiedIds[key]=[];
+  occupiedIds[key].push(all[i]);
+ }
+ for (var i=0; i<finalIds.length; i++) {
+  var id=finalIds[i];
+  if (!id) { MsgBox("Пустой ID сноски. Проверьте шаблон ID."); return; }
+  if (has(futureIds,id)) { MsgBox("Шаблон создаёт повторяющиеся ID сносок."); return; }
+  futureIds["$"+id]=true;
+  if (has(occupiedIds,id)) {
+   var matches=occupiedIds["$"+id];
+   for (var j=0; j<matches.length; j++) {
+    var index=sectionIndex(matches[j].id);
+    if (index<0 || sections[index]!==matches[j]) { MsgBox("Будущий ID сноски уже занят другим элементом книги."); return; }
+   }
+  }
+ }
+ for (var i=0; i<ids.length; i++) {
+  var matches=occupiedIds["$"+ids[i]];
+  if (!matches || matches.length!=1 || matches[0]!==sections[i]) { MsgBox("ID раздела сноски повторяется в книге."); return; }
+ }
+ if (renumber) for (var i=0; i<links.length; i++) {
+  var index=sectionIndex(getLocalHref(links[i].href));
+  if (index>=0) linkPlans.push({node:links[i], href:"#"+sectionPlans[index].id,
+   html:PoShablonu(strConst4,index+1+(addSnoska && index+1>=insertN ? 1 : 0))});
+ }
+ // Ввод, нормализация и miniValidate полностью завершаются до первой мутации.
+ var snoskaText="";
+ if (addSnoska && InputSnoskaText) {
+  var promptText="Текст "+(strConst6=="comments" ? "комментария" : "примечания")+
+   ". Используйте <b>...</b> <i>...</i> <br> <strong>...</strong> <emphasis>...</emphasis> <em>...</em>";
+  var entered="&nbsp;", code=0;
+  do {
+   entered=prompt(promptText,entered);
+   if (entered==null) { range.select(); return; }
+   snoskaText=makeGoodSnoska(entered);
+   code=miniValidate(snoskaText);
+   if (code) MsgBox("Ошибка разметки текста сноски ("+code+"). Исправьте текст или отмените ввод.");
+  } while (code);
+ }
+ if (!addSnoska && !bodyNotes) return;
+ // Новые элементы готовятся отсоединёнными: до Begin книга остаётся прежней.
+ var ownedNodes=[], newBody=null, newSection=null, newLink=null, bodyTitle=null, titleBefore=null;
+ if (!bodyNotes) {
+  newBody=document.createElement("DIV"); ownedNodes.push(newBody);
+  newBody.className="body"; newBody.setAttribute("fbname",strConst6);
+  newBody.setAttribute("xlmns:l","http://www.w3.org/1999/xlink");
+  newBody.setAttribute("xlmns:f","http://www.gribuser.ru/xml/fictionbook/2.0");
+  newBody.innerHTML="<DIV class=title><P>"+strConst5+"</P></DIV>";
+  bodyNotes=newBody;
+ } else if (!forsazh) {
+  var first=bodyNotes.firstChild;
+  while (first && !(first.nodeName=="DIV" && (first.className=="title" || first.className=="epigraph" || first.className=="section"))) first=first.nextSibling;
+  if (!first || first.className!="title") {
+   bodyTitle=document.createElement("DIV"); bodyTitle.className="title";
+   bodyTitle.innerHTML="<P>"+strConst5+"</P>"; titleBefore=first;
+  }
+ }
+ for (var i=0; i<sectionPlans.length && renumber; i++) {
+  var first=sectionPlans[i].node.firstChild;
+  if (first && first.nodeName=="DIV" && first.className=="title") sectionPlans[i].titleNode=first;
+  else {
+   var title=document.createElement("DIV"); title.className="title";
+   title.innerHTML=sectionPlans[i].title; sectionPlans[i].newTitle=title;
+  }
+ }
+ var markerId="", serial=0, markerAttribute="data-fbe-note-create";
+ if (addSnoska) {
+  var occupied;
+  do {
+   markerId="fbe-note-create-"+(++serial); occupied=!!document.getElementById(markerId);
+   if (has(futureIds,markerId)) occupied=true;
+  } while (occupied);
+  newSection=document.createElement("DIV"); ownedNodes.push(newSection);
+  newSection.id=newSnoskaId; newSection.className="section";
+  newSection.innerHTML="<DIV class=title><P>"+(forsazh ? "&nbsp;" : PoShablonu(strConst2,insertN))+"</P></DIV>"+
+   (InputSnoskaText ? snoskaText : "<P>"+PoShablonu(strConst3,insertN)+"</P>");
+  if (newBody) newBody.appendChild(newSection);
+  var link=document.createElement("A"); link.id=markerId; link.setAttribute(markerAttribute,markerId);
+  link.setAttribute("href","#"+newSnoskaId); makeNoteFromHref(link);
+  link.innerHTML=PoShablonu(strConst4,forsazh ? "*" : insertN);
+  var linkHTML=link.outerHTML;
+ }
+ var opened=false, failed=false, failure=null, cleanupFailed=false, cleanupFailure=null;
+ function cleanupError(error) { if (!cleanupFailed) { cleanupFailed=true; cleanupFailure=error; } }
+ function removeOwn(node) {
+  var own=false;
+  for (var i=0; i<ownedNodes.length; i++) if (ownedNodes[i]===node) own=true;
+  if (own && node.parentNode) {
+   try { node.parentNode.removeChild(node); }
+   catch (removeError) { node.removeNode(true); }
+  }
+ }
  try {
-  if (addSnoska)
-   window.external.SetStatusBarText("Добавлена сноска № " +insertN+ ". Время работы скрипта: "+TimeStr);
-  else
-    window.external.SetStatusBarText("Перенумерация сносок успешно завершена. Время работы скрипта: "+TimeStr);
+  window.external.BeginUndoUnit(document,strConst7); opened=true;
+  if (addSnoska) {
+   // Свободный ID и признак вставки, затем только сохранённая ссылка.
+   var pasteFailed=false, pasteFailure=null;
+   try { range.pasteHTML(linkHTML); }
+   catch (pasteError) { pasteFailed=true; pasteFailure=pasteError; }
+   try {
+    var inserted=document.getElementById(markerId);
+    if (inserted && inserted.nodeName=="A" && inserted.getAttribute("id")===markerId && inserted.getAttribute(markerAttribute)===markerId) {
+     newLink=inserted; ownedNodes.push(newLink);
+    }
+   } catch (captureError) { if (!pasteFailed) throw captureError; }
+   if (pasteFailed) throw pasteFailure;
+   if (!newLink) throw new Error("Созданная ссылка сноски не найдена.");
+   if (newBody) body.appendChild(newBody);
+   else if (!lastSnoskaMode && !forsazh && insertN<=sections.length) bodyNotes.insertBefore(newSection,sections[insertN-1]);
+   else bodyNotes.appendChild(newSection);
+  }
+  if (bodyTitle) bodyNotes.insertBefore(bodyTitle,titleBefore || (newSection && newSection.parentNode===bodyNotes ? newSection : null));
+  if (renumber) {
+   for (var i=0; i<sectionPlans.length; i++) {
+    var plan=sectionPlans[i];
+    if (plan.node.id!==plan.id) plan.node.id=plan.id;
+   }
+   for (var i=0; i<linkPlans.length; i++) {
+    var plan=linkPlans[i];
+    if (plan.node.getAttribute("href")!==plan.href) plan.node.setAttribute("href",plan.href);
+    if (plan.node.innerHTML!==plan.html) plan.node.innerHTML=plan.html;
+   }
+   for (var i=0; i<sectionPlans.length; i++) {
+    var plan=sectionPlans[i];
+    if (plan.newTitle) plan.node.insertBefore(plan.newTitle,plan.node.firstChild);
+    else if (plan.titleNode.innerHTML!==plan.title) plan.titleNode.innerHTML=plan.title;
+   }
+  }
+  if (addSnoska && strConst3=="") window.external.inflateBlock(newSection.lastChild)=true;
+  if (addSnoska && MoveFocusToNote) {
+   var target=newSection.firstChild;
+   while (target && target.nodeName!="P") target=target.nextSibling;
+   if (target) GoTo(target);
+   else if (newSection.firstChild) GoTo(newSection.firstChild);
+  }
+ } catch (error) { failed=true; failure=error; }
+ finally {
+  try {
+  // Сохраняем завершённую пару для Ctrl+Z; незавершённую пару убираем по ссылкам.
+  if (addSnoska) {
+   var paired=false;
+   try {
+    paired=newLink && newLink.parentNode && newSection.parentNode && body.contains(newSection);
+    if (failed && paired) {
+     var matches=0, nodes=document.getElementsByTagName("*");
+     for (var i=0; i<nodes.length; i++) if (nodes[i].id===newSnoskaId) matches++;
+     paired=matches==1 && getLocalHref(newLink.href)===newSnoskaId;
+    }
+   }
+   catch (error) { cleanupError(error); }
+   if (!paired) {
+    try { removeOwn(newLink); } catch (error) { cleanupError(error); }
+    try { removeOwn(newSection); } catch (error) { cleanupError(error); }
+    try { removeOwn(newBody); } catch (error) { cleanupError(error); }
+   }
+   if (newLink) {
+    try { if (newLink.id===markerId) newLink.removeAttribute("id"); } catch (error) { cleanupError(error); }
+    try { if (newLink.getAttribute(markerAttribute)===markerId) newLink.removeAttribute(markerAttribute); } catch (error) { cleanupError(error); }
+   }
+  }
+  } catch (error) { cleanupError(error); }
+  finally {
+  if (opened) {
+   opened=false;
+   try { window.external.EndUndoUnit(document); } catch (error) { cleanupError(error); }
+  }
+  }
  }
- catch (e)
- {}
- window.external.EndUndoUnit(document);  
+ if (failed) throw failure;
+ if (cleanupFailed) throw cleanupFailure;
+ var seconds=Math.ceil((new Date().getTime()-Ts)/100)/10;
+ window.external.SetStatusBarText(addSnoska ? "Добавлена сноска № "+insertN+". Время работы скрипта: "+seconds+" с" : "Перенумерация сносок успешно завершена.");
 }

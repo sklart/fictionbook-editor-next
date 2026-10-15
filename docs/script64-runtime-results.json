@@ -114,7 +114,7 @@
     "src/fbe/testing/RuntimeTestScript64.inl": "a36da3fc18236a6816d95e1556532ac61e4883218f26ffb63cb4b8a3ca64624a",
     "src/fbe/testing/Script64ResultChecks.h": "5ecaa5eb0ec899cc526ceb8c7532478781d472003591f765c0babed2db1e1e90",
     "tools/tests/test-script64-runtime.ps1": "90ba6a233d071667444a1173bffeebef26717874a3b190ac57bfe9ffcc750f8f",
-    "tools/tests/test-audit-script-cards.py": "2379817bc99aaf3daad4398e27b19d6fb39c18ebad8b363fbdafa4481b0b8cab"
+    "tools/tests/test-audit-script-cards.py": "b7660d153ceffb2d3141514e7f332b2f9efdbe3457f310ad7bc94cbe3f74a89b"
   },
   "buildLogSha256": "27a31cbe7930423895cfa64d0668ec9bc0972695b96dfacf6d1f12c738baa726",
   "textareaUndoRedo": {

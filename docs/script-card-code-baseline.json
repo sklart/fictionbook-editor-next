@@ -100,50 +100,50 @@
     },
     {
       "path": "02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
-      "codeSha256": "ce5aaafa8c1553294a27c5bd1f8c9b5ebe18451815a735d8f98f30cb53e1d17b",
+      "codeSha256": "1ffb0ab10dc5d58596ca72f2274a98dea368445952ca89593ab4800321c1887b",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19880,
+      "codeBytes": 20681,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
-      "codeSha256": "f825370f34e558b0580bd84b6def1d8b6098aa7111f44b2a2b11c329f85415bb",
+      "codeSha256": "eaea5bfe01d0b0a92854c55a0b54baf8561edb0eec21af0bf206277f4b0643b6",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19834,
+      "codeBytes": 20680,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/03_Добавить примечание, перейти на его раздел.js",
-      "codeSha256": "e756e46c1acb1457a9f713acdd7bc0cee6b2756fd0ee90c40cf9c59da51a9fc7",
+      "codeSha256": "11636b5d430fa28a300478f2f20a313a8761a9a72617099d883c1a92f2a55e46",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19885,
+      "codeBytes": 20681,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
-      "codeSha256": "452cb7496cdc6852ef0a01a5d4d2ff38bd7c448da2212f6d646db3d50ce63a3b",
+      "codeSha256": "580c70ddfd370078dfdf84ce64c10221eeb7d31d8066d8e54cfca847439d137f",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19884,
+      "codeBytes": 20680,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
-      "codeSha256": "22094fdea67420db9a567db348e02ec428b5d8cafe842c944088a02bcce91b8a",
+      "codeSha256": "44ef64fbbdc2df6d45cdc92cd3d443ae34f2e9f7d4b1758478d4b0776f6cd7b4",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19883,
+      "codeBytes": 20679,
       "lineEnding": "CRLF"
     },
     {
       "path": "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
-      "codeSha256": "53da6256161cfc75681c0c7fcc74bf8ef79daab444f9d5ba85e2faff2089d5d2",
+      "codeSha256": "b19424d27a69a247018193269c9a5a8db7fdfba4a11ee8ded6b394ca76b1895a",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19876,
+      "codeBytes": 20680,
       "lineEnding": "CRLF"
     },
     {
@@ -324,50 +324,50 @@
     },
     {
       "path": "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
-      "codeSha256": "9a465bf9003ef9f92d37b5d359999c69cdeeed8b1506852d81a72620ba838b65",
+      "codeSha256": "0af15d9f6dbf5e0d213b1c667e87d6e4d7354563f0d8633649368310f6fb59ff",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19913,
+      "codeBytes": 20694,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
-      "codeSha256": "a643da1623c38cd689df220846c578b2ee22280b74794541d9efef8f3646484b",
+      "codeSha256": "97e5d5d239f6d45e2ebdb8640ebdfb9ae27342dba506cf8a37e4448d98a684a2",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19867,
+      "codeBytes": 20693,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
-      "codeSha256": "6b284a96cee37cbd8b1ca699f6a12d9a3839c457c2a4cc0a6fb62d34dc0901db",
+      "codeSha256": "1c9d9e8b0d9fdbc03e4fd40b87f170c36228729ae0655569e11af1c95d952afa",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19917,
+      "codeBytes": 20693,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
-      "codeSha256": "f6947585987e2fde6dfccb1838d7775ffe64646c8160dcdafabeb340de185a64",
+      "codeSha256": "afd2dc38d9c296e9d5159aea932d21257ee65bace616e1d174bb2ee6c57d695b",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19916,
+      "codeBytes": 20692,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
-      "codeSha256": "c99e1ee1ddc27bc780bf427fb413690be97e033f86963184f91d1b658d507a19",
+      "codeSha256": "03e0146c6e152df0347610175de534c9681e75ddb84997ba9822140b5b7c47cc",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19915,
+      "codeBytes": 20691,
       "lineEnding": "CRLF"
     },
     {
       "path": "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
-      "codeSha256": "9d73993a84553f2abc8ba1d0709fb3e7078cf02470daaca572c27c121fb5211f",
+      "codeSha256": "550b52b2fdcd816929ddb2a4fc6fcd49e584f457bcca7cea6835a462e4ac818c",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 19908,
+      "codeBytes": 20692,
       "lineEnding": "CRLF"
     },
     {
@@ -4659,6 +4659,90 @@
       "codeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
       "basisCommit": "d71995e1247fd2336c7fca2ea174ca2a832768a1",
       "reason": "Исправление конфликта DOM-маркеров скрипта 64 и независимой очистки при исключениях."
+    },
+    {
+      "path": "02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
+      "previousCodeSha256": "ce5aaafa8c1553294a27c5bd1f8c9b5ebe18451815a735d8f98f30cb53e1d17b",
+      "codeSha256": "1ffb0ab10dc5d58596ca72f2274a98dea368445952ca89593ab4800321c1887b",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
+      "previousCodeSha256": "f825370f34e558b0580bd84b6def1d8b6098aa7111f44b2a2b11c329f85415bb",
+      "codeSha256": "eaea5bfe01d0b0a92854c55a0b54baf8561edb0eec21af0bf206277f4b0643b6",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "02_Примечания/03_Добавить примечание, перейти на его раздел.js",
+      "previousCodeSha256": "e756e46c1acb1457a9f713acdd7bc0cee6b2756fd0ee90c40cf9c59da51a9fc7",
+      "codeSha256": "11636b5d430fa28a300478f2f20a313a8761a9a72617099d883c1a92f2a55e46",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
+      "previousCodeSha256": "452cb7496cdc6852ef0a01a5d4d2ff38bd7c448da2212f6d646db3d50ce63a3b",
+      "codeSha256": "580c70ddfd370078dfdf84ce64c10221eeb7d31d8066d8e54cfca847439d137f",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
+      "previousCodeSha256": "22094fdea67420db9a567db348e02ec428b5d8cafe842c944088a02bcce91b8a",
+      "codeSha256": "44ef64fbbdc2df6d45cdc92cd3d443ae34f2e9f7d4b1758478d4b0776f6cd7b4",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
+      "previousCodeSha256": "53da6256161cfc75681c0c7fcc74bf8ef79daab444f9d5ba85e2faff2089d5d2",
+      "codeSha256": "b19424d27a69a247018193269c9a5a8db7fdfba4a11ee8ded6b394ca76b1895a",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
+      "previousCodeSha256": "9a465bf9003ef9f92d37b5d359999c69cdeeed8b1506852d81a72620ba838b65",
+      "codeSha256": "0af15d9f6dbf5e0d213b1c667e87d6e4d7354563f0d8633649368310f6fb59ff",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
+      "previousCodeSha256": "a643da1623c38cd689df220846c578b2ee22280b74794541d9efef8f3646484b",
+      "codeSha256": "97e5d5d239f6d45e2ebdb8640ebdfb9ae27342dba506cf8a37e4448d98a684a2",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
+      "previousCodeSha256": "6b284a96cee37cbd8b1ca699f6a12d9a3839c457c2a4cc0a6fb62d34dc0901db",
+      "codeSha256": "1c9d9e8b0d9fdbc03e4fd40b87f170c36228729ae0655569e11af1c95d952afa",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
+      "previousCodeSha256": "f6947585987e2fde6dfccb1838d7775ffe64646c8160dcdafabeb340de185a64",
+      "codeSha256": "afd2dc38d9c296e9d5159aea932d21257ee65bace616e1d174bb2ee6c57d695b",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
+      "previousCodeSha256": "c99e1ee1ddc27bc780bf427fb413690be97e033f86963184f91d1b658d507a19",
+      "codeSha256": "03e0146c6e152df0347610175de534c9681e75ddb84997ba9822140b5b7c47cc",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
+    },
+    {
+      "path": "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
+      "previousCodeSha256": "9d73993a84553f2abc8ba1d0709fb3e7078cf02470daaca572c27c121fb5211f",
+      "codeSha256": "550b52b2fdcd816929ddb2a4fc6fcd49e584f457bcca7cea6835a462e4ac818c",
+      "basisCommit": "8d3080e502b875fdf4903779137d6f91dd35f113",
+      "reason": "Этап 1 Undo: подготовка и ввод до мутаций, план ссылок/ID, закрытие своей группы и очистка созданных элементов."
     }
   ]
 }
