@@ -139,7 +139,7 @@ try {
     Write-Host "FBE-specific property schema has been registered."
 }
 catch {
-    if ((Test-Blank $StatusFilePath) -eq $false -and -not (Test-Path -LiteralPath $StatusFilePath)) {
+    if (-not (Test-Blank $StatusFilePath)) {
         $message = $_.Exception.Message
         if ((Test-Blank $message)) {
             $message = "unexpected-error"

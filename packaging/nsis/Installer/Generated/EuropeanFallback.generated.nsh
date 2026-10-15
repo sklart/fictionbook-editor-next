@@ -71,6 +71,10 @@ LangString UacStateRestoreFailed ${LanguageId} "Could not restore the installati
 LangString UninstUserDataTitle ${LanguageId} "User data"
 LangString UninstUserDataCheckbox ${LanguageId} "Delete settings and user data for the current user"
 LangString ShellUpdatePending ${LanguageId} "Shell components are in use. Close Explorer or restart Windows, then run this installer again. The previous registration has been retained."
+LangString ShellCleanupRetry ${LanguageId} "Some system components are still in use. Close applications or restart Windows, then run uninstall again. Ownership information has been retained."
+LangString ShellMaintenanceRetry ${LanguageId} "System integration needs another attempt. Close Explorer or restart Windows, then run this installer again."
+LangString ShellMaintenanceFailed ${LanguageId} "System integration could not be completed. Recovery information has been retained. See the installation log before retrying."
+LangString ShellForeignRetained ${LanguageId} "System integration belongs to another installation and has been retained."
 !macroend
 
 !insertmacro FBE_DEFINE_ENGLISH_INSTALLER_FALLBACK ${LANG_GERMAN}

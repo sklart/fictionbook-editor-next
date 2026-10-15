@@ -101,3 +101,11 @@ LangString UninstUserDataCheckbox ${LANG_UKRAINIAN} "Видалити налаш
 LangString UninstAskSettings ${LANG_UKRAINIAN} "Бажаєте видалити файли налаштувань програми?"
 
 LangString ShellUpdatePending ${LANG_UKRAINIAN} "Компоненти Провідника зайняті. Закрийте Провідник або перезавантажте Windows, потім повторно запустіть інсталятор. Попередню реєстрацію збережено."
+
+LangString ShellCleanupRetry ${LANG_UKRAINIAN} "Деякі системні компоненти зайняті. Закрийте програми або перезавантажте Windows, потім повторіть видалення. Відомості про власника збережено."
+
+LangString ShellMaintenanceRetry ${LANG_UKRAINIAN} "Для завершення системної інтеграції потрібен повторний запуск. Закрийте Провідник або перезавантажте Windows, потім знову запустіть інсталятор."
+
+LangString ShellMaintenanceFailed ${LANG_UKRAINIAN} "Не вдалося завершити зміну системної інтеграції. Дані для відновлення збережено. Перед повторним запуском перевірте журнал встановлення."
+
+LangString ShellForeignRetained ${LANG_UKRAINIAN} "Системна інтеграція належить іншому встановленню та збережена."

@@ -101,3 +101,11 @@ LangString UninstUserDataCheckbox ${LANG_RUSSIAN} "Удалить настрой
 LangString UninstAskSettings ${LANG_RUSSIAN} "Вы желаете удалить файлы настроек программы?"
 
 LangString ShellUpdatePending ${LANG_RUSSIAN} "Компоненты Проводника заняты. Закройте Проводник или перезагрузите Windows, затем повторно запустите установщик. Прежняя регистрация сохранена."
+
+LangString ShellCleanupRetry ${LANG_RUSSIAN} "Некоторые системные компоненты заняты. Закройте программы или перезагрузите Windows, затем повторите удаление. Сведения о владельце сохранены."
+
+LangString ShellMaintenanceRetry ${LANG_RUSSIAN} "Для завершения системной интеграции нужен повторный запуск. Закройте Проводник или перезагрузите Windows, затем снова запустите установщик."
+
+LangString ShellMaintenanceFailed ${LANG_RUSSIAN} "Не удалось завершить изменение системной интеграции. Данные для восстановления сохранены. Перед повторным запуском проверьте журнал установки."
+
+LangString ShellForeignRetained ${LANG_RUSSIAN} "Системная интеграция принадлежит другой установке и сохранена."

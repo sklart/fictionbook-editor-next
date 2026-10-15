@@ -48,6 +48,8 @@
       "InstallerTools\\register-modern-property-handler.ps1",
       "InstallerTools\\unregister-modern-property-handler.ps1",
       "InstallerTools\\update-shell-files.ps1",
+      "InstallerTools\\shell-integration-lifecycle.ps1",
+      "InstallerTools\\manage-shell-integration.ps1",
       "Lang\\Shell\\FBVVerbResources.dll"
     ],
     "optional": []

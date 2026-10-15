@@ -107,7 +107,7 @@ $verifier=Join-Path $repoRoot 'tools\build\verify-installer-payload.ps1'
 $rejected=$false;try {& $verifier -InputDirectory $payload -X86Sha256 $hashes[0] -X64Sha256 $hashes[1] -SchemaSha256 $hashes[2]} catch {$rejected=$true}
 Assert $rejected 'Build accepted a changed payload with a correctly formatted old digest.'
 
-foreach($name in @('register-modern-property-handler.ps1','unregister-modern-property-handler.ps1','register-sequence-property-schema.ps1','update-shell-files.ps1')) {
+foreach($name in @('register-modern-property-handler.ps1','unregister-modern-property-handler.ps1','register-sequence-property-schema.ps1','update-shell-files.ps1','manage-shell-integration.ps1','shell-integration-lifecycle.ps1')) {
     $text=Get-Content -LiteralPath (Join-Path $repoRoot "tools\build\$name") -Raw
     Assert ($text -notmatch '::new\(|::IsNullOrWhiteSpace\(|RegistryView|::OpenBaseKey\(|\$PSScriptRoot|\[pscustomobject\]|\s-Raw\b|\?\?|\?\.') "Unsupported baseline construct remains: $name"
 }

@@ -53,6 +53,8 @@
       { "sourceRoot": "tools", "source": "register-modern-property-handler.ps1", "destination": "InstallerTools/register-modern-property-handler.ps1", "kind": "installerTool", "required": true },
       { "sourceRoot": "tools", "source": "unregister-modern-property-handler.ps1", "destination": "InstallerTools/unregister-modern-property-handler.ps1", "kind": "installerTool", "required": true },
       { "sourceRoot": "tools", "source": "update-shell-files.ps1", "destination": "InstallerTools/update-shell-files.ps1", "kind": "installerTool", "required": true },
+      { "sourceRoot": "tools", "source": "shell-integration-lifecycle.ps1", "destination": "InstallerTools/shell-integration-lifecycle.ps1", "kind": "installerTool", "required": true },
+      { "sourceRoot": "tools", "source": "manage-shell-integration.ps1", "destination": "InstallerTools/manage-shell-integration.ps1", "kind": "installerTool", "required": true },
       { "sourceRoot": "build", "source": "Lang/Shell", "destination": "Lang/Shell", "recursive": true, "kind": "compiledArtifact", "required": true }
     ]
   }

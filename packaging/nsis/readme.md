@@ -1,139 +1,63 @@
-﻿# Инструкция по созданию setup-версии FBE
+﻿# Сборка setup FBE Next
 
-## Пререквизиты:
+## Готовые Core и Integration
 
-1. Установите систему инсталляции NSIS 3.13 или новее. Точный компилятор
-   выбирается `tools\build\resolve-nsis.ps1`; при необходимости задайте путь
-   к нему через переменную окружения `FBE_MAKENSIS`.
-2. UAC-плагин теперь хранится прямо в репозитории:
-   - рабочие файлы для сборки лежат в `packaging\nsis\NSIS`;
-   - полный комплект исходников и примеров лежит в `third_party\uac`.
+Требуется NSIS 3.13 или новее. `tools/build/resolve-nsis.ps1` выбирает компилятор;
+для явного выбора можно задать `FBE_MAKENSIS`. Рабочие UAC-файлы синхронизируются
+из `third_party/uac` автоматически; устанавливать плагин в системный NSIS не нужно.
 
-При вызове `.\tools\build\prepare-installer.ps1` нужные рабочие файлы
-`UAC.nsh` и `UAC.dll` автоматически синхронизируются из `third_party\uac`
-в `packaging\nsis\NSIS`, поэтому вручную раскладывать их по системной папке
-NSIS больше не нужно.
-
-Подготовка NSIS и контрольные суммы объединены в `tools/build/build-installer.ps1`.
-BAT и release-процесс используют эту общую команду; подробности обслуживания
-системной интеграции: `docs/installer-shell-maintenance.md`.
-
-## Актуальный поток сборки
-
-Папка `packaging\nsis\Installer\Input` больше не используется и удалена из
-репозитория. Основной поток использует `out\package\FictionBookEditor`
-напрямую. Официальный поток такой:
-
-1. Собрать и проверить релиз:
+Основная команда сборки из подготовленных stages:
 
 ```powershell
-.\tools\build\verify-release.ps1 -Configuration Release
+.\tools\build\build-installer.ps1 -CoreDirectory .\out\stage\Core -IntegrationDirectory .\out\stage\Integration
 ```
 
-2. Подготовить Core и portable staging:
+Она проверяет версии и stages, экспортирует NSIS-ресурсы, формирует input,
+вычисляет SHA-256 его DLL/схемы и запускает NSIS с независимой проверкой payload.
+Параметры `-OutputDirectory` и `-OutputFile` задают отдельные input и setup.
+По умолчанию input — `out/package/InstallerInput`, setup — `out/artifacts`.
+`packaging/nsis/Installer/MakeInstaller.bat` — оболочка той же команды и принимает
+те же параметры. Отдельно запускать `prepare-installer.ps1` перед сборкой не нужно.
+
+Если stages ещё не подготовлены, после соответствующих сборок Core и обоих
+вариантов shell handler:
 
 ```powershell
 .\tools\build\stage-core.ps1 -Configuration Release -OutputDirectory .\out\stage\Core
-.\tools\build\package-portable.ps1 -CoreDirectory .\out\stage\Core -OutputDirectory .\out\stage\Portable
-```
-
-Portable содержит только Core и создаёт `portable.ini` с локальной структурой `Data`. Shell/property-handler Integration в него не попадает.
-
-Дополнительно в staging автоматически попадает:
-
-- основной `Win32`-набор приложения;
-- `ShellExtensions\x64\FBShell.dll` для современного `64-bit Explorer`.
-
-3. Подготовить Integration и NSIS input:
-
-```powershell
 .\tools\build\stage-integration.ps1 -Configuration Release -OutputDirectory .\out\stage\Integration
-.\tools\build\prepare-installer.ps1 -CoreDirectory .\out\stage\Core -IntegrationDirectory .\out\stage\Integration -OutputDirectory .\out\package\FictionBookEditor
 ```
 
-Эта команда:
+`stage-integration.ps1` использует готовые x86/x64 shell artifacts и ресурсы FBV;
+он не собирает их сам. Для полного выпуска используется
+`tools/build/create-release.ps1 -Configuration Release -Platform Win32`.
+Короткая пересборка setup из готовых stages не требует полного release gate.
 
-- проверяет, что staging-папка `out\package\FictionBookEditor` уже готова для
-  прямого чтения NSIS-скриптом;
-- синхронизирует UAC-плагин из `third_party\uac` в
-  `packaging\nsis\NSIS`.
+## Режимы
 
-4. Собрать установщик:
+- **Current User** — Core в `%LOCALAPPDATA%\Programs\FictionBook Editor Next`.
+  Системная интеграция запрашивает повышение прав, включая её удаление при обновлении.
+- **All Users** — Core в Program Files (x86), требуется повышение прав.
+- **Portable** — автономный Core с `portable.ini` и Data; без системной интеграции,
+  uninstall-записей и ярлыков.
 
-```powershell
-.\packaging\nsis\Installer\MakeInstaller.bat
-```
+Для тихого режима передать `/S` и один из `/CURRENTUSER`, `/ALLUSERS`, `/PORTABLE`.
+Для смены scope сначала удалить существующую установленную копию. Обычное
+удаление сохраняет пользовательские настройки.
 
-`MakeInstaller.bat` сам:
+## Обновление и удаление интеграции
 
-- валидирует версии через `sync-version.ps1`;
-- вызывает `prepare-installer.ps1`;
-- запускает `makensis` с `INPUTDIR=..\..\..\out\package\FictionBookEditor`.
+Общие DLL и схема находятся в защищённом Common Files. Обновление сохраняет
+снимок файлов, Owner, COM/schema и маркеров до подтверждённой регистрации.
+Новый деинсталлятор использует фактически установленный пакет, включая старые
+хеши после неудачного обновления. При блокировке файлов сведения о владельце
+и возможность повторного удаления сохраняются. Чужие пакеты не удаляются.
 
-## Полный релизный сценарий
+Порядок операций, статусы `ok/pending/skipped/error`, действия при занятых DLL,
+явное восстановление и границы выполненных проверок:
+[Обслуживание системной интеграции](../../docs/installer-shell-maintenance.md).
 
-Для обычного выпуска версии лучше использовать не ручные шаги выше, а единый
-сценарий:
-
-```powershell
-.\tools\build\create-release.ps1 -Configuration Release -Platform Win32
-```
-
-Он автоматически:
-
-- собирает проект;
-- отдельно собирает `x64 FBShell.dll` для modern property handler в Проводнике;
-- проверяет релизные smoke/regression-тесты;
-- создаёт portable ZIP;
-- создаёт setup.exe;
-- собирает symbols ZIP;
-- записывает `SHA256SUMS.txt`;
-- синхронизирует поля в `update.xml`.
-
-Текущий `setup.exe` также включает bundled `x64 FBShell.dll` и на
-`64-bit Windows` пытается автоматически зарегистрировать modern property
-handler для `.fb2`.
-
-Повышение прав запрашивается при выборе установки **All Users**, а для
-Current User — только если пользователь включает системную интеграцию.
-
-Installer предлагает три режима: **Current User** устанавливает Win32-сборку в
-`%LOCALAPPDATA%\Programs\FictionBook Editor Next` без прав администратора;
-**All Users** — в `Program Files (x86)\FictionBook Editor Next` и запрашивает
-права администратора; **Portable** распаковывает переносимую копию рядом с
-setup и не создаёт uninstall-записей, ассоциаций либо другой системной
-интеграции. Для автоматизации используйте с обычным ключом NSIS `/S` ровно
-один ключ режима: `/CURRENTUSER`, `/ALLUSERS` или `/PORTABLE`.
-
-Installer Portable удобен, когда нужно выбрать переносимую папку через setup.
-Отдельный `portable.zip` — тот же автономный тип поставки для ручной распаковки
-без запуска installer. Установленные копии разных scope не устанавливаются
-параллельно: для смены области сначала удалите существующую установленную копию;
-обычное удаление не удаляет пользовательские настройки. Uninstall удаляет
-shell/COM registrations только когда они всё ещё указывают на текущую установку.
-
-Перед выпуском обязательно выполнить на чистой Windows VM
-`tools\tests\test-nsis-install-lifecycle-e2e.ps1 -InstallerPath <setup.exe>`
-из elevated PowerShell. Отдельный ручной UAC smoke начинается из обычного
-неповышенного PowerShell: на чистой системе отмените consent dialog для
-`/S /ALLUSERS`, получите `1223` и убедитесь в отсутствии файлов в
-`Program Files (x86)` и HKLM-записей. Затем отдельным запуском подтвердите
-повышение прав, установку All Users и её обычное удаление.
-
-Итоговые артефакты попадают в `out\artifacts`.
-
-## Что больше не нужно делать вручную
-
-- вручную синхронизировать `update.xml` перед обычным локальным релизом;
-- вручную собирать portable-набор из `out\Release`.
-
-## Примечание
-
-Утилита `update_fbe.exe` остаётся историческим вспомогательным инструментом.
-Программку `update_fbe.cs` можно скомпилировать в исполняемый файл командой:
-
-```powershell
-C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe update_fbe.cs
-```
-
-Visual Studio для этого не нужна
+Перед выпуском настоящую установку/обновление/удаление проверять на чистой VM.
+Для широкого lifecycle-теста предназначен
+`tools/tests/test-nsis-install-lifecycle-e2e.ps1 -InstallerPath <setup.exe>`;
+он требует elevated PowerShell и не является обязательной короткой проверкой
+при каждой правке установщика.

@@ -102,3 +102,11 @@ LangString UninstUserDataCheckbox ${LANG_ENGLISH} "Delete settings and user data
 LangString UninstAskSettings ${LANG_ENGLISH} "Would you like to delete all application settings?"
 
 LangString ShellUpdatePending ${LANG_ENGLISH} "Shell components are in use. Close Explorer or restart Windows, then run this installer again. The previous registration has been retained."
+
+LangString ShellCleanupRetry ${LANG_ENGLISH} "Some system components are still in use. Close applications or restart Windows, then run uninstall again. Ownership information has been retained."
+
+LangString ShellMaintenanceRetry ${LANG_ENGLISH} "System integration needs another attempt. Close Explorer or restart Windows, then run this installer again."
+
+LangString ShellMaintenanceFailed ${LANG_ENGLISH} "System integration could not be completed. Recovery information has been retained. See the installation log before retrying."
+
+LangString ShellForeignRetained ${LANG_ENGLISH} "System integration belongs to another installation and has been retained."

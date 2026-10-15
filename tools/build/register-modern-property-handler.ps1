@@ -292,6 +292,17 @@ function Ensure-ThumbnailProviderComRegistration {
     }
 }
 
+function Set-ShellMetadata {
+    $values=@{
+        'InfoTip'='prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;System.Size'
+        'TileInfo'='prop:System.Author;System.Title'
+        'Details'='prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size'
+        'PreviewDetails'='prop:System.ItemTypeText;System.Author;System.Title;System.Language;FBE.Genre;FBE.Sequence;FBE.DocumentVersion;FBE.DocumentDate;FBE.Keywords;FBE.DocumentId;System.Size'
+    }
+    $root=Open-MachineRegistry
+    try {$key=$root.CreateSubKey('SOFTWARE\Classes\FictionBook.2');try {foreach($name in $values.Keys){$key.SetValue($name,$values[$name],[Microsoft.Win32.RegistryValueKind]::String)}}finally{$key.Close()}}finally{$root.Close()}
+}
+
 $registrationStep = 'validate-payload'
 try {
     $os64 = [IntPtr]::Size -eq 8 -or -not [string]::IsNullOrEmpty($env:PROCESSOR_ARCHITEW6432)
@@ -360,6 +371,7 @@ try {
     Set-PropertyHandlerRegistration
     Ensure-ThumbnailProviderComRegistration
     Set-ThumbnailProviderRegistration
+    Set-ShellMetadata
 
     Write-Status -Result "ok" -Step "done" -Code "0x00000000" -Message "Modern property handler and thumbnail provider have been registered."
     Write-Host "Modern property handler and thumbnail provider have been registered."
