@@ -212,6 +212,8 @@ Var ScopeTransitionResult
 Var InstalledStateSaved
 Var SavedInstallScope
 Var SavedInstallDirectory
+Var ShellStatusValid
+Var ShellSystemInstalled
 Var ShellToolsDirectory
 Var ShellOperation
 Var ShellOperationCode
@@ -236,6 +238,7 @@ Var UninstallUserDataCheckbox
 Var CommandLineCurrentUser
 Var CommandLineAllUsers
 Var CommandLinePortable
+Var ShellRecoveryRequested
 
 !macro FBE_RequireOrdinaryPath path
   Push $9
@@ -340,6 +343,12 @@ Function ApplyDeploymentCommandLine
   StrCpy $CommandLineCurrentUser "0"
   StrCpy $CommandLineAllUsers "0"
   StrCpy $CommandLinePortable "0"
+  StrCpy $ShellRecoveryRequested "0"
+  ClearErrors
+  ${GetOptions} $0 "/RECOVERSHELL" $1
+  ${IfNot} ${Errors}
+    StrCpy $ShellRecoveryRequested "1"
+  ${EndIf}
   ClearErrors
   ${GetOptions} $0 "/CURRENTUSER" $1
   ${IfNot} ${Errors}
@@ -784,6 +793,8 @@ Function FinishPageShow
   System::Call 'user32::SetWindowPos(p $mui.FinishPage.Run, p 0, i 205, i 241, i 320, i 34, i 0x0004)'
 FunctionEnd
 
+!include "ShellMaintenanceStatus.nsh"
+
 !macro FBE_MaintenanceFunctions prefix
 Function ${prefix}StageShellMaintenance
   !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
@@ -814,6 +825,15 @@ Function ${prefix}StageShellMaintenance
   StrCmp $0 "0" +3
     SetErrorLevel 5
     Quit
+  FileOpen $0 "$ShellToolsDirectory\Session.ini" w
+  FileWriteByte $0 255
+  FileWriteByte $0 254
+  FileClose $0
+  System::Call 'kernel32::GetCurrentProcessId() i .r0'
+  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "Version" "1"
+  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "Directory" "$ShellToolsDirectory"
+  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "LauncherPid" "$0"
+  WriteINIStr "$ShellToolsDirectory\Session.ini" "Maintenance" "Owner" "FBE Next Shell Maintenance"
   SetOutPath "$ShellToolsDirectory"
   File "${INPUTDIR}\InstallerTools\manage-shell-integration.ps1"
   File "${INPUTDIR}\InstallerTools\shell-integration-lifecycle.ps1"
@@ -827,6 +847,12 @@ Function ${prefix}StageShellMaintenance
     File "${INPUTDIR}\FBShell64.dll"
     File "${INPUTDIR}\FBE.Sequence.propdesc"
   !endif
+  FileOpen $0 "$ShellToolsDirectory\Previous.ini" w
+  FileWriteByte $0 255
+  FileWriteByte $0 254
+  FileClose $0
+  ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ShellRecoveryPending"
+  WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "RecoveryPending" "$0"
   WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "InstallLocation" "$ShellPreviousLocation"
   WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "PropertyHandlerInstalled" "$ShellPreviousProperty"
   WriteINIStr "$ShellToolsDirectory\Previous.ini" "Markers" "SystemIntegrationInstalled" "$ShellPreviousSystem"
@@ -836,42 +862,22 @@ FunctionEnd
 
 Function ${prefix}ReadShellMaintenanceResult
   StrCpy $9 $0
-  ReadINIStr $ShellPayloadResult "$ShellToolsDirectory\Status.ini" "Shell" "Result"
-  ReadINIStr $ShellOperationCode "$ShellToolsDirectory\Status.ini" "Shell" "Code"
-  ReadINIStr $ShellEffectiveInstalled "$ShellToolsDirectory\Status.ini" "Shell" "EffectiveInstalled"
-  ReadINIStr $ShellCleanupPending "$ShellToolsDirectory\Status.ini" "Shell" "CleanupPending"
-  ReadINIStr $ShellRecoveryPending "$ShellToolsDirectory\Status.ini" "Shell" "RecoveryPending"
-  ReadINIStr $1 "$ShellToolsDirectory\Status.ini" "Shell" "Message"
-  ${If} $9 != 0
-  ${AndIf} $ShellPayloadResult == "ok"
-    StrCpy $ShellPayloadResult "error"
-    StrCpy $ShellOperationCode "HELPER_EXIT_FAILED"
-    StrCpy $ShellRecoveryPending 1
-  ${EndIf}
+  !insertmacro FBE_ReadShellMaintenanceStatus
   DetailPrint "Shell operation=$ShellOperation result=$ShellPayloadResult code=$ShellOperationCode exit=$9: $1"
-  ${If} $ShellPayloadResult != "ok"
-  ${AndIf} $ShellPayloadResult != "pending"
-  ${AndIf} $ShellPayloadResult != "skipped"
-  ${AndIf} $ShellPayloadResult != "error"
-    StrCpy $ShellPayloadResult "error"
-    StrCpy $ShellEffectiveInstalled $ShellPreviousProperty
-    StrCpy $ShellRecoveryPending 1
+  !insertmacro FBE_ApplyShellMaintenanceStatus
+  ${If} $ShellStatusValid == 0
+    !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}"
+    CreateDirectory "${FBE_SHELL_SHARED_DIR}"
+    !insertmacro FBE_RequireOrdinaryPath "${FBE_SHELL_SHARED_DIR}\UncertainOperation.ini"
+    ${IfNot} ${FileExists} "${FBE_SHELL_SHARED_DIR}\UncertainOperation.ini"
+      FileOpen $0 "${FBE_SHELL_SHARED_DIR}\UncertainOperation.ini" w
+      FileWriteByte $0 255
+      FileWriteByte $0 254
+      FileClose $0
+      WriteINIStr "${FBE_SHELL_SHARED_DIR}\UncertainOperation.ini" "Recovery" "InstallDirectory" "$INSTDIR"
+    ${EndIf}
+    DetailPrint "Uncertain helper outcome: confirmed markers retained; explicit recovery required."
   ${EndIf}
-  ${If} $ShellEffectiveInstalled != 1
-    StrCpy $ShellEffectiveInstalled 0
-  ${EndIf}
-  ${If} $ShellCleanupPending != 1
-    StrCpy $ShellCleanupPending 0
-  ${EndIf}
-  ${If} $ShellRecoveryPending != 1
-    StrCpy $ShellRecoveryPending 0
-  ${EndIf}
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "PropertyHandlerInstalled" $ShellEffectiveInstalled
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ShellCleanupPending" $ShellCleanupPending
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ShellRecoveryPending" $ShellRecoveryPending
-  IntOp $1 $ShellEffectiveInstalled | $ShellCleanupPending
-  IntOp $1 $1 | $ShellRecoveryPending
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "${PRODUCT_SYSTEM_INTEGRATION_REGVAL}" $1
   StrCpy $ShellRetainUninstaller 0
   ${If} $ShellPayloadResult == "pending"
     StrCpy $ShellRetainUninstaller 1
@@ -889,6 +895,28 @@ Function ${prefix}ReadShellMaintenanceResult
     SetErrorLevel 2
     MessageBox MB_OK|MB_ICONINFORMATION "$(ShellForeignRetained)" /SD IDOK
   ${EndIf}
+  Call ${prefix}CleanupShellMaintenance
+FunctionEnd
+
+Function ${prefix}CleanupShellMaintenance
+  !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
+  GetErrorLevel $8
+  System::Call 'kernel32::SetEnvironmentVariableW(w "FBE_SHELL_CLEANUP_ROOT", w "${FBE_SHELL_ROOT}\Maintenance")'
+  System::Call 'kernel32::SetEnvironmentVariableW(w "FBE_SHELL_CLEANUP_LOADER", w "$ShellToolsDirectory\shell-integration-lifecycle.ps1")'
+  System::Call 'kernel32::SetEnvironmentVariableW(w "FBE_SHELL_CLEANUP_CURRENT", w "$ShellToolsDirectory")'
+  ${If} ${RunningX64}
+    nsExec::ExecToStack '"$WINDIR\sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "& { $$ErrorActionPreference=1; . $$env:FBE_SHELL_CLEANUP_LOADER; Remove-ShellMaintenanceSessions -MaintenanceRoot $$env:FBE_SHELL_CLEANUP_ROOT -CompletedDirectory $$env:FBE_SHELL_CLEANUP_CURRENT }"'
+  ${Else}
+    nsExec::ExecToStack '"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "& { $$ErrorActionPreference=1; . $$env:FBE_SHELL_CLEANUP_LOADER; Remove-ShellMaintenanceSessions -MaintenanceRoot $$env:FBE_SHELL_CLEANUP_ROOT -CompletedDirectory $$env:FBE_SHELL_CLEANUP_CURRENT }"'
+  ${EndIf}
+  Pop $0
+  Pop $1
+  DetailPrint "Maintenance cleanup exit=$0: $1"
+  System::Call 'kernel32::SetEnvironmentVariableW(w "FBE_SHELL_CLEANUP_ROOT", p 0)'
+  System::Call 'kernel32::SetEnvironmentVariableW(w "FBE_SHELL_CLEANUP_LOADER", p 0)'
+  System::Call 'kernel32::SetEnvironmentVariableW(w "FBE_SHELL_CLEANUP_CURRENT", p 0)'
+  SetErrorLevel $8
+  !endif
 FunctionEnd
 !macroend
 !insertmacro FBE_MaintenanceFunctions ""
@@ -978,7 +1006,7 @@ Function WriteDeploymentScopeTestProbe
   !endif
   CreateDirectory "$INSTDIR"
   FileOpen $0 "$INSTDIR\deployment-scope.txt" w
-  FileWrite $0 "DeploymentMode=$DeploymentMode$\r$\nInstallScope=$InstallScope$\r$\nInstallPath=$INSTDIR$\r$\n"
+  FileWrite $0 "DeploymentMode=$DeploymentMode$\r$\nInstallScope=$InstallScope$\r$\nInstallPath=$INSTDIR$\r$\nShellRecoveryRequested=$ShellRecoveryRequested$\r$\n"
   !ifdef FBE_DEPLOYMENT_TEST_SCOPE_TRANSITIONS
     FileWrite $0 "ScopeTransitions=$ScopeTransitionResult$\r$\n"
   !endif
@@ -1311,8 +1339,10 @@ Section "-ReconcileShellIntegration"
   IntOp $0 $0 & ${SF_SELECTED}
   StrCmp $0 0 0 reconcile_shell_done
   ReadINIStr $0 "${FBE_SHELL_SHARED_DIR}\Owner.ini" "Owner" "InstallDirectory"
+  ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ShellRecoveryPending"
   ${If} $ShellPreviousProperty == 1
   ${OrIf} $ShellPreviousSystem == 1
+  ${OrIf} $1 == 1
   ${OrIf} $0 == $INSTDIR
     StrCpy $ShellOperation "Remove"
     Call MaintainShellIntegration
@@ -1321,6 +1351,9 @@ reconcile_shell_done:
 SectionEnd
 
 Function MaintainShellIntegration
+  ${If} $ShellRecoveryRequested == "1"
+    StrCpy $ShellOperation "Recover"
+  ${EndIf}
   Call StageShellMaintenance
   StrCpy $0 -1
   ClearErrors
@@ -1342,6 +1375,8 @@ Function ComponentsPageLeave
   IntOp $0 $0 & ${SF_SELECTED}
   ${If} $0 = 0
     ReadRegDWORD $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "${PRODUCT_SYSTEM_INTEGRATION_REGVAL}"
+    ReadRegDWORD $1 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ShellRecoveryPending"
+    IntOp $0 $0 | $1
     ReadINIStr $1 "${FBE_SHELL_SHARED_DIR}\Owner.ini" "Owner" "InstallDirectory"
     ${If} $0 != 1
     ${AndIf} $1 != $INSTDIR
@@ -1541,6 +1576,7 @@ Function RestoreElevatedInstallerState
   !insertmacro FBE_RestoreElevationVar $CommandLineCurrentUser
   !insertmacro FBE_RestoreElevationVar $CommandLineAllUsers
   !insertmacro FBE_RestoreElevationVar $CommandLinePortable
+  !insertmacro FBE_RestoreElevationVar $ShellRecoveryRequested
   !insertmacro FBE_RestoreElevationVar $ICONS_GROUP
   !insertmacro FBE_RestoreElevationVar $INSTDIR
 

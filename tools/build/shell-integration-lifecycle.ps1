@@ -97,13 +97,16 @@ function Get-ShellReceipt($Context) {
         $allowed=@();foreach($dir in @($Context.Directory)+@($Context.LegacyDirectories)){$allowed+=Join-Path $dir $Context.NativeName}
         $registration=Get-ShellRegistration $allowed
         if($registration.Foreign){return @{Foreign=$true}}
-        if(-not $registration.Present){foreach($name in $script:ShellPayloadNames){if([IO.File]::Exists((Join-Path $directory $name))){return @{Foreign=$true}}};if((Get-ShellSchemaPaths).Count){return @{Foreign=$true}};return @{Version=1;InstallationDirectory=$Context.InstallationDirectory;Directory=$directory;Files=@{};Installed=$false;Cleanup=$false}}
+        if(-not $registration.Present){$oldTools=Join-Path $directory 'InstallerTools';if([IO.Directory]::Exists($oldTools) -and [IO.Directory]::GetFileSystemEntries($oldTools).Length){return @{Foreign=$true}};foreach($name in $script:ShellPayloadNames){if([IO.File]::Exists((Join-Path $directory $name))){return @{Foreign=$true}}};if((Get-ShellSchemaPaths).Count){return @{Foreign=$true}};return @{Version=1;InstallationDirectory=$Context.InstallationDirectory;Directory=$directory;Files=@{};Installed=$false;Cleanup=$false}}
         if($Context.PreviousProperty -ne 1 -or -not $registration.Complete -or -not $registration.DllPath){return @{Foreign=$true}}
         $directory=Split-Path -Parent $registration.DllPath
     }
     $files=@{}
     foreach($name in $script:ShellPayloadNames){$file=Join-Path $directory $name;Assert-ShellOrdinaryPath $file;if([IO.File]::Exists($file)){$files[$name]=Get-ShellHash $file}}
-    if($owner.Count){foreach($pair in @(@('FBShell.dll','X86Sha256'),@('FBShell64.dll','X64Sha256'),@('FBE.Sequence.propdesc','SchemaSha256'))){if($owner[$pair[1]] -notmatch '^[0-9a-fA-F]{64}$' -or $files[$pair[0]] -ine $owner[$pair[1]]){throw 'Installed owner hashes do not match the payload.'}}}
+    if($owner.Count){foreach($pair in @(@('FBShell.dll','X86Sha256'),@('FBShell64.dll','X64Sha256'),@('FBE.Sequence.propdesc','SchemaSha256'))){
+        if($owner[$pair[1]] -notmatch '^[0-9a-fA-F]{64}$' -or ($files.ContainsKey($pair[0]) -and $files[$pair[0]] -ine $owner[$pair[1]])){throw 'Installed owner hashes do not match the payload.'}
+        $files[$pair[0]]=$owner[$pair[1]]
+    }}
     $registration=Get-ShellRegistration @((Join-Path $directory $Context.NativeName))
     if($registration.Foreign){return @{Foreign=$true}}
     $schemas=Get-ShellSchemaPaths
@@ -111,7 +114,8 @@ function Get-ShellReceipt($Context) {
     return @{Version=1;InstallationDirectory=$Context.InstallationDirectory;Directory=$directory;Files=$files;Installed=[bool]$registration.Present;Cleanup=$false;Schemas=$schemas}
 }
 function Test-ShellReceiptFiles($Receipt,[bool]$AllowMissing) {
-    foreach($name in $Receipt.Files.Keys){$path=Join-Path $Receipt.Directory $name;Assert-ShellOrdinaryPath $path;if(-not [IO.File]::Exists($path)){if($AllowMissing){continue};throw "Installed payload is missing: $path"};if((Get-ShellHash $path) -ine $Receipt.Files[$name]){throw "Installed payload changed: $path"}}
+    foreach($name in $Receipt.Files.Keys){if($script:ShellPayloadNames -notcontains $name -or $Receipt.Files[$name] -notmatch '^[0-9a-fA-F]{64}$'){throw 'Invalid installed payload receipt.'};$path=Join-Path $Receipt.Directory $name;Assert-ShellOrdinaryPath $path;if(-not [IO.File]::Exists($path)){if($AllowMissing){continue};throw "Installed payload is missing: $path"};if((Get-ShellHash $path) -ine $Receipt.Files[$name]){throw "Installed payload changed: $path"}}
+    foreach($name in $script:ShellPayloadNames){if([IO.File]::Exists((Join-Path $Receipt.Directory $name)) -and -not $Receipt.Files.ContainsKey($name)){throw ('Unconfirmed residual payload retained: '+$name)}}
 }
 function New-ShellSnapshot($Context,$Receipt) {
     $state=Join-Path $Context.Directory 'State';$null=[IO.Directory]::CreateDirectory($state)
@@ -185,7 +189,7 @@ function Complete-ShellRemoval($Context,$Receipt) {
     $registration=Get-ShellRegistration @((Join-Path $Receipt.Directory $Context.NativeName))
     if($registration.Present -or (Get-ShellSchemaPaths).Count){return New-ShellResult 'skipped' 'REGISTRATION_CHANGED' $false $false $false 'Registration changed during cleanup; files retained.'}
     try {
-        foreach($name in $script:ShellPayloadNames){[IO.File]::Delete((Join-Path $Receipt.Directory $name))}
+        foreach($name in $script:ShellPayloadNames){$file=Join-Path $Receipt.Directory $name;if([IO.File]::Exists($file)){[IO.File]::Delete($file)}}
         # Legacy helper files are removed only after all owned DLLs and the schema.
         $oldTools=Join-Path $Receipt.Directory 'InstallerTools'
         foreach($name in @('register-modern-property-handler.ps1','register-sequence-property-schema.ps1','unregister-modern-property-handler.ps1','update-shell-files.ps1')){$path=Join-Path $oldTools $name;Assert-ShellOrdinaryPath $path;if([IO.File]::Exists($path)){[IO.File]::Delete($path)}}
@@ -209,7 +213,7 @@ function Protect-ShellDirectory($Context) {
     }
 }
 function Invoke-ShellLifecycle($Context,[string]$Operation) {
-    $snapshot=$null;$receipt=$null;$changed=$false;$lock=$null
+    $snapshot=$null;$receipt=$null;$changed=$false;$lock=$null;$preparingSnapshot=$false
     try {
         $lockPath=Join-Path (Split-Path -Parent $Context.Directory) 'ShellLifecycle.lock';Assert-ShellOrdinaryPath $lockPath
         $lock=[IO.File]::Open($lockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
@@ -217,36 +221,44 @@ function Invoke-ShellLifecycle($Context,[string]$Operation) {
         $receipt=Get-ShellReceipt $Context
         if($receipt.Foreign){return New-ShellResult 'skipped' 'FOREIGN_REGISTRATION' $false $false $false 'System integration belongs to another installation; retained.'}
         if($Operation -ne 'Inspect'){Protect-ShellDirectory $Context;$receipt=Get-ShellReceipt $Context;if($receipt.Foreign){return New-ShellResult 'skipped' 'FOREIGN_PACKAGE' $false $false $false 'Package owner changed; retained.'}}
+        $uncertain=Join-Path $Context.Directory 'UncertainOperation.ini';Assert-ShellOrdinaryPath $uncertain
+        if([IO.File]::Exists($uncertain)){if([IO.File]::ReadAllLines($uncertain) -notcontains ('InstallDirectory='+$Context.InstallationDirectory)){return New-ShellResult 'error' 'RECOVERY_REQUIRED' ([bool]$receipt.Installed) ([bool]$receipt.Cleanup) $true 'Uncertainty record belongs to another installation.'}}
+        if(($Context.RequireRecovery -or [IO.File]::Exists($uncertain)) -and $Operation -ne 'Recover'){return New-ShellResult 'error' 'RECOVERY_REQUIRED' ([bool]$receipt.Installed) ([bool]$receipt.Cleanup) $true 'The previous helper outcome is unknown. Run explicit recovery before retrying.'}
         $journal=Join-Path $Context.Directory 'State\Transaction.clixml';Assert-ShellOrdinaryPath $journal
         if([IO.File]::Exists($journal)){
             $saved=Import-Clixml -LiteralPath $journal
             if($saved.Version -ne 1 -or $saved.Directory -ine $Context.Directory -or $saved.InstallationDirectory -ine $Context.InstallationDirectory){throw 'Recovery snapshot belongs to another installation.'}
-            if($saved.Phase -eq 'cleanup' -and $receipt.Cleanup){if($Operation -eq 'Remove'){return Complete-ShellRemoval $Context $receipt};return New-ShellResult 'pending' 'CLEANUP_PENDING' $false $true $false 'Complete the pending removal before reinstalling integration.'}
+            if($saved.Phase -eq 'cleanup' -and $receipt.Cleanup){if($Operation -eq 'Recover'){return Confirm-ShellCleanupRecovery $Context $receipt $uncertain};if($Operation -eq 'Remove'){return Complete-ShellRemoval $Context $receipt};return New-ShellResult 'pending' 'CLEANUP_PENDING' $false $true $false 'Complete the pending removal before reinstalling integration.'}
             if($saved.Phase -eq 'committed' -or $saved.Phase -eq 'rolled-back'){try {Remove-ShellState $Context}catch{return New-ShellResult 'pending' 'BACKUP_CLEANUP_PENDING' ([bool]$receipt.Installed) $false $false 'Confirmed integration state retained; release the backup files and retry.'}}
-            elseif($Operation -eq 'Recover'){$snapshot=$saved;Restore-ShellSnapshot $Context $snapshot;return New-ShellResult 'ok' 'RECOVERED' ([bool]$snapshot.Receipt.Installed) $false $false 'Previous integration restored.'}
+            elseif($Operation -eq 'Recover'){$snapshot=$saved;Restore-ShellSnapshot $Context $snapshot;if([IO.File]::Exists($uncertain)){[IO.File]::Delete($uncertain)};return New-ShellResult 'ok' 'RECOVERED' ([bool]$snapshot.Receipt.Installed) $false $false 'Previous integration restored.'}
             else{return New-ShellResult 'error' 'RECOVERY_REQUIRED' ([bool]$receipt.Installed) $false $true 'An interrupted integration operation requires explicit recovery.'}
         }
-        if($receipt.Cleanup){if($Operation -eq 'Remove'){return Complete-ShellRemoval $Context $receipt};return New-ShellResult 'pending' 'CLEANUP_PENDING' $false $true $false 'Complete the pending removal first.'}
-        Test-ShellReceiptFiles $receipt $false
+        if($receipt.Cleanup){if($Operation -eq 'Recover'){return Confirm-ShellCleanupRecovery $Context $receipt $uncertain};if($Operation -eq 'Remove'){return Complete-ShellRemoval $Context $receipt};return New-ShellResult 'pending' 'CLEANUP_PENDING' $false $true $false 'Complete the pending removal first.'}
         $allowed=@((Join-Path $Context.Directory $Context.NativeName),(Join-Path $receipt.Directory $Context.NativeName))
         $registration=Get-ShellRegistration $allowed
         if($registration.Foreign){return New-ShellResult 'skipped' 'FOREIGN_REGISTRATION' $false $false $false 'Foreign registration retained.'}
-        if($receipt.Installed -and -not $registration.Complete){throw 'Owned registration is incomplete; no changes were made.'}
+        Test-ShellReceiptFiles $receipt ($Operation -eq 'Remove' -and -not $registration.Present)
+        $receipt.Installed=[bool]$registration.Present
+        if($registration.Present -and -not $registration.Complete){throw 'Owned registration is incomplete; no changes were made.'}
         if($Operation -eq 'Update' -and $receipt.Installed -and $receipt.Directory -ieq $Context.Directory -and $registration.Complete){
             $same=$true;for($i=0;$i -lt 3;++$i){if($receipt.Files[$script:ShellPayloadNames[$i]] -ine $Context.Hashes[$i]){$same=$false}}
             if($same -and [IO.File]::Exists((Join-Path $Context.Directory 'Owner.ini')) -and (Get-ShellSchemaPaths).Count -eq 1){return New-ShellResult 'ok' 'ALREADY_CURRENT' $true $false $false 'Installed package is already registered.'}
         }
+        $state=Join-Path $Context.Directory 'State'
+        if([IO.Directory]::Exists($state) -and [IO.Directory]::GetFileSystemEntries($state).Length){return New-ShellResult 'error' 'RECOVERY_REQUIRED' ([bool]$receipt.Installed) $false $true 'Unjournaled recovery files retained for diagnosis.'}
         if($Operation -eq 'Inspect'){return New-ShellResult 'ok' 'INSPECTED' ([bool]$receipt.Installed) $false $false 'Installed integration inspected.'}
-        if($Operation -eq 'Recover'){return New-ShellResult 'ok' 'NO_RECOVERY_NEEDED' ([bool]$receipt.Installed) $false $false 'No unfinished transaction.'}
-        if($Operation -eq 'Remove' -and -not $receipt.Installed){return New-ShellResult 'ok' 'NOT_INSTALLED' $false $false $false 'No owned integration is installed.'}
+        if($Operation -eq 'Recover'){if([IO.File]::Exists($uncertain)){[IO.File]::Delete($uncertain)};return New-ShellResult 'ok' 'NO_RECOVERY_NEEDED' ([bool]$receipt.Installed) $false $false 'No unfinished transaction.'}
+        $residual=[IO.File]::Exists((Join-Path $Context.Directory 'Owner.ini')) -or [IO.File]::Exists((Join-Path $Context.Directory 'InstalledState.clixml'))
+        foreach($name in $script:ShellPayloadNames){if([IO.File]::Exists((Join-Path $receipt.Directory $name))){$residual=$true}}
+        if($Operation -eq 'Remove' -and -not $registration.Present -and -not $residual -and (Get-ShellSchemaPaths).Count -eq 0){return New-ShellResult 'ok' 'NOT_INSTALLED' $false $false $false 'No registration or owned residual components remain.'}
         $null=[IO.Directory]::CreateDirectory($Context.Directory)
         # Adopt the observed installed package before a newer uninstaller replaces the old one.
         Save-ShellData (Join-Path $Context.Directory 'InstalledState.clixml') $receipt
         Remove-ShellState $Context
-        $snapshot=New-ShellSnapshot $Context $receipt;Save-ShellJournal $Context $snapshot
+        $preparingSnapshot=$true;$snapshot=New-ShellSnapshot $Context $receipt;Save-ShellJournal $Context $snapshot;$preparingSnapshot=$false
         if($Operation -eq 'Remove'){
             $snapshot.Phase='unregistering';Save-ShellJournal $Context $snapshot;$changed=$true
-            Remove-ShellRegistration $Context $receipt
+            if($registration.Present){Remove-ShellRegistration $Context $receipt}else{foreach($path in $snapshot.Schemas.Keys){Unregister-ShellSchema $path}}
             $receipt.Installed=$false;$receipt.Cleanup=$true
             Save-ShellData (Join-Path $Context.Directory 'InstalledState.clixml') $receipt
             $snapshot.Phase='cleanup';Save-ShellJournal $Context $snapshot
@@ -277,12 +289,70 @@ function Invoke-ShellLifecycle($Context,[string]$Operation) {
             try {Restore-ShellSnapshot $Context $snapshot}
             catch {return New-ShellResult 'error' 'RECOVERY_REQUIRED' $installed $false $true ($failure.Message+'; recovery failed: '+$_.Exception.Message)}
         }
-        if($null -eq $snapshot -and -not $changed){try {if(-not [IO.File]::Exists((Join-Path $Context.Directory 'State\Transaction.clixml'))){Remove-ShellState $Context}}catch{}}
+        if($null -eq $snapshot -and $preparingSnapshot){try {Remove-ShellState $Context}catch{}}
         while($null -ne $failure.InnerException){$failure=$failure.InnerException}
         $code=[Runtime.InteropServices.Marshal]::GetHRForException($failure) -band 65535
         if($code -eq 32 -or $code -eq 33 -or $code -eq 1224 -or $failure.Message -like '*Result=pending*'){return New-ShellResult 'pending' 'FILES_IN_USE' $installed $false $false 'Previous integration retained. Close Explorer or restart Windows and retry.'}
-        if([IO.File]::Exists((Join-Path $Context.Directory 'State\Transaction.clixml'))){return New-ShellResult 'error' 'RECOVERY_REQUIRED' $installed $false $true $failure.Message}
+        if($Context.RequireRecovery -or [IO.File]::Exists((Join-Path $Context.Directory 'UncertainOperation.ini')) -or [IO.File]::Exists((Join-Path $Context.Directory 'State\Transaction.clixml'))){return New-ShellResult 'error' 'RECOVERY_REQUIRED' $installed $false $true $failure.Message}
         return New-ShellResult 'error' 'UPDATE_FAILED' $installed $false $false $failure.Message
     }
     finally {if($null -ne $lock){$lock.Close()}}
+}
+function Write-ShellFinalStatus([string]$Path,$Result) {
+    $lines=@('[Shell]','Protocol=1','Phase=complete','ProcessExitCode=0')
+    foreach($name in @('Result','Code','EffectiveInstalled','CleanupPending','RecoveryPending','SystemIntegrationInstalled','Message')){$lines+=($name+'='+$Result[$name])}
+    $next=$Path+'.next';Assert-ShellOrdinaryPath $next;Assert-ShellOrdinaryPath $Path
+    [IO.File]::WriteAllLines($next,[string[]]$lines,[Text.Encoding]::Unicode)
+    if([IO.File]::Exists($Path)){$previous=$Path+'.previous';Assert-ShellOrdinaryPath $previous;[IO.File]::Delete($previous);[IO.File]::Replace($next,$Path,$previous);[IO.File]::Delete($previous)}else{[IO.File]::Move($next,$Path)}
+}
+function Open-ShellMaintenanceLease([string]$Directory) {
+    $marker=Join-Path $Directory 'Session.ini'
+    if(-not [IO.File]::Exists($marker)){return $null}
+    Assert-ShellOrdinaryPath $marker
+    return [IO.File]::Open((Join-Path $Directory 'Active.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)
+}
+function Remove-ShellMaintenanceSessions([string]$MaintenanceRoot,[string]$CompletedDirectory='') {
+    try {
+        $MaintenanceRoot=[IO.Path]::GetFullPath($MaintenanceRoot).TrimEnd('\')
+        if([IO.Path]::GetFileName($MaintenanceRoot) -ine 'Maintenance'){throw 'Unexpected maintenance root.'}
+        Assert-ShellOrdinaryPath (Join-Path $MaintenanceRoot 'probe')
+        if(-not [IO.Directory]::Exists($MaintenanceRoot)){return}
+        foreach($candidate in [IO.Directory]::GetDirectories($MaintenanceRoot)){
+            $lease=$null
+            try {
+                $directory=[IO.Path]::GetFullPath($candidate)
+                if([IO.Path]::GetDirectoryName($directory) -ine $MaintenanceRoot){throw 'Session is outside the maintenance root.'}
+                Assert-ShellOrdinaryPath (Join-Path $directory 'probe')
+                $marker=Join-Path $directory 'Session.ini';Assert-ShellOrdinaryPath $marker
+                if(-not [IO.File]::Exists($marker)){Write-Host "Maintenance warning: unmarked directory retained: $directory";continue}
+                $record=@{};foreach($line in [IO.File]::ReadAllLines($marker)){$i=$line.IndexOf('=');if($i -gt 0){$record[$line.Substring(0,$i)]=$line.Substring($i+1)}}
+                if($record['Version'] -ne '1' -or $record['Directory'] -ine $directory -or $record['Owner'] -ne 'FBE Next Shell Maintenance' -or $record['LauncherPid'] -notmatch '^[1-9][0-9]*$'){throw 'Unknown session ownership.'}
+                if($directory -ine $CompletedDirectory){
+                    $launcher=$null;try {$launcher=[Diagnostics.Process]::GetProcessById([int]$record['LauncherPid'])}catch [ArgumentException]{}
+                    if($null -ne $launcher){$launcher.Close();Write-Host "Maintenance active launcher retained: $directory";continue}
+                }
+                $lock=Join-Path $directory 'Active.lock';Assert-ShellOrdinaryPath $lock
+                $lease=[IO.File]::Open($lock,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+                $allowed=@('Session.ini','Active.lock','Previous.ini','Status.ini','Status.ini.next','Status.ini.previous','child-Payload.ini','child-Schema.ini','child-Shell.ini','manage-shell-integration.ps1','shell-integration-lifecycle.ps1','update-shell-files.ps1','register-modern-property-handler.ps1','register-sequence-property-schema.ps1','unregister-modern-property-handler.ps1')
+                $files=@([IO.Directory]::GetFiles($directory));$payload=Join-Path $directory 'Payload'
+                foreach($file in $files){Assert-ShellOrdinaryPath $file;if($allowed -notcontains [IO.Path]::GetFileName($file)){throw ('Unknown session file: '+$file)}}
+                foreach($child in [IO.Directory]::GetDirectories($directory)){if($child -ine $payload){throw ('Unknown session subdirectory: '+$child)};Assert-ShellOrdinaryPath (Join-Path $child 'probe');if([IO.Directory]::GetDirectories($child).Length){throw 'Nested session payload rejected.'}}
+                $payloadFiles=@();if([IO.Directory]::Exists($payload)){$payloadFiles=@([IO.Directory]::GetFiles($payload));foreach($file in $payloadFiles){Assert-ShellOrdinaryPath $file;if($script:ShellPayloadNames -notcontains [IO.Path]::GetFileName($file)){throw 'Unknown session payload.'}}}
+                foreach($file in $payloadFiles){[IO.File]::Delete($file)}
+                if([IO.Directory]::Exists($payload)){[IO.Directory]::Delete($payload,$false)}
+                foreach($file in @($files | Sort-Object {if([IO.Path]::GetFileName($_) -eq 'shell-integration-lifecycle.ps1'){1}else{0}})){if($file -ine $lock -and $file -ine $marker){[IO.File]::Delete($file)}}
+                $lease.Close();$lease=$null
+                [IO.File]::Delete($lock);[IO.File]::Delete($marker);[IO.Directory]::Delete($directory,$false)
+                Write-Host "Maintenance directory removed: $directory"
+            }catch {Write-Host ('Maintenance warning: retained '+$candidate+': '+$_.Exception.Message)}
+            finally {if($null -ne $lease){$lease.Close()}}
+        }
+    }catch {Write-Host ('Maintenance warning: '+$_.Exception.Message)}
+}
+
+function Confirm-ShellCleanupRecovery($Context,$Receipt,[string]$UncertainPath) {
+    Test-ShellReceiptFiles $Receipt $true
+    if((Get-ShellRegistration @((Join-Path $Receipt.Directory $Context.NativeName))).Present -or (Get-ShellSchemaPaths).Count){throw 'Cleanup recovery refused: registration is present.'}
+    if([IO.File]::Exists($UncertainPath)){[IO.File]::Delete($UncertainPath)}
+    return New-ShellResult 'pending' 'CLEANUP_PENDING' $false $true $false 'Unregistration confirmed; retry removal to finish file cleanup.'
 }

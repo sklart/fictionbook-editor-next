@@ -142,10 +142,37 @@ try {
 
     $ctx=New-Case 'migration' -Legacy;$legacy=$ctx.LegacyDirectories[0];$result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.Result -eq 'ok') ('Migration failed: '+($result | Out-String));Assert ([IO.File]::Exists((Join-Path $legacy $ctx.NativeName))) 'Migration loaded/deleted old legacy DLL.'
     $ctx=New-Case 'migration-failure' -Legacy;$legacy=$ctx.LegacyDirectories[0];$script:failure='com';$result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.RecoveryPending -eq 0 -and $result.EffectiveInstalled -eq 1) 'Migration rollback failed.';Assert-Old $ctx $legacy
+    foreach($variant in @('owner','receipt','locked','partial','empty-owner','schema')){
+        $ctx=New-Case ('residual-'+$variant)
+        if($variant -eq 'receipt'){$result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.Result -eq 'ok') 'Receipt fixture failed.'}
+        $root=Open-ShellRegistry;foreach($path in $script:ShellRegistryPaths){$root.DeleteSubKeyTree($path)};$root.Close();if($variant -ne 'schema'){$script:schemas=@()}
+        if($variant -eq 'partial'){[IO.File]::Delete((Join-Path $ctx.Directory 'FBShell.dll'))}
+        if($variant -eq 'empty-owner'){foreach($name in $script:ShellPayloadNames){[IO.File]::Delete((Join-Path $ctx.Directory $name))}}
+        $locked=$null;if($variant -eq 'locked'){$locked=[IO.File]::OpenRead((Join-Path $ctx.Directory $ctx.NativeName))}
+        try {$result=Invoke-ShellLifecycle $ctx 'Remove'}finally{if($null -ne $locked){$locked.Close()}}
+        if($variant -eq 'locked'){
+            Assert ($result.Result -eq 'pending' -and $result.CleanupPending -eq 1 -and [IO.File]::Exists((Join-Path $ctx.Directory 'Owner.ini'))) 'Locked residual lost ownership.'
+            $result=Invoke-ShellLifecycle $ctx 'Remove'
+        }
+        Assert ($result.Code -eq 'REMOVED' -and $script:removeCount -eq 0) ('Residual not cleaned safely: '+$variant+': '+($result | Out-String))
+        Assert (-not [IO.File]::Exists((Join-Path $ctx.Directory 'Owner.ini')) -and -not [IO.File]::Exists((Join-Path $ctx.Directory 'InstalledState.clixml'))) 'Residual metadata remains.'
+        $result=Invoke-ShellLifecycle $ctx 'Remove';Assert ($result.Code -eq 'NOT_INSTALLED') 'Empty integration not identified.'
+    }
+    $ctx=New-Case 'uncertain-outcome';$guard=Join-Path $ctx.Directory 'UncertainOperation.ini';[IO.File]::WriteAllLines($guard,[string[]]@('[Recovery]',('InstallDirectory='+$ctx.InstallationDirectory)))
+    foreach($operation in @('Update','Remove')){$result=Invoke-ShellLifecycle $ctx $operation;Assert ($result.Code -eq 'RECOVERY_REQUIRED' -and $script:registerCount -eq 0 -and $script:removeCount -eq 0) 'Uncertain operation was repeated.'}
+    $result=Invoke-ShellLifecycle $ctx 'Recover';Assert ($result.Result -eq 'ok' -and -not [IO.File]::Exists($guard)) 'Explicit diagnosis did not clear uncertainty.';Assert-Old $ctx
+    $ctx=New-Case 'incomplete-receipt';$root=Open-ShellRegistry;foreach($path in $script:ShellRegistryPaths){$root.DeleteSubKeyTree($path)};$root.Close();$script:schemas=@();[IO.File]::Delete((Join-Path $ctx.Directory 'Owner.ini'))
+    $unconfirmed=@{Version=1;InstallationDirectory=$ctx.InstallationDirectory;Directory=$ctx.Directory;Files=@{};Installed=$false;Cleanup=$false};Save-ShellData (Join-Path $ctx.Directory 'InstalledState.clixml') $unconfirmed
+    $result=Invoke-ShellLifecycle $ctx 'Remove';Assert ($result.Result -eq 'error' -and [IO.File]::Exists((Join-Path $ctx.Directory $ctx.NativeName))) 'An empty receipt authorized deletion of unconfirmed DLLs.'
+    $ctx=New-Case 'orphan-state';$orphan=Join-Path $ctx.Directory 'State\old-FBShell.dll';[IO.File]::WriteAllText($orphan,'unconfirmed recovery data')
+    foreach($operation in @('Remove','Recover')){$result=Invoke-ShellLifecycle $ctx $operation;Assert ($result.RecoveryPending -eq 1 -and [IO.File]::Exists($orphan)) 'Unjournaled recovery files removed.'}
     $ctx=New-Case 'native-payload-helper'
     Copy-Item -LiteralPath (Join-Path $repo 'tools\build\update-shell-files.ps1') -Destination $ctx.ToolsDirectory
+    Copy-Item -LiteralPath (Join-Path $repo 'tools\build\shell-integration-lifecycle.ps1') -Destination $ctx.ToolsDirectory
+    [IO.File]::WriteAllLines((Join-Path $ctx.ToolsDirectory 'Session.ini'),[string[]]@('[Maintenance]','Version=1',('Directory='+$ctx.ToolsDirectory),'Owner=FBE Next Shell Maintenance',('LauncherPid='+$PID)),[Text.Encoding]::Unicode)
     foreach($name in $script:ShellPayloadNames){[IO.File]::Copy((Join-Path $ctx.PayloadDirectory $name),(Join-Path $ctx.Directory ($name+'.new')))}
     & $realShellChild $ctx 'update-shell-files.ps1' @('-Directory',$ctx.Directory,'-ExpectedX86Sha256',$ctx.Hashes[0],'-ExpectedX64Sha256',$ctx.Hashes[1],'-ExpectedSchemaSha256',$ctx.Hashes[2]) 'Payload'
+    $released=[IO.File]::Open((Join-Path $ctx.ToolsDirectory 'Active.lock'),[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None);$released.Close()
     Assert ((Get-ShellHash (Join-Path $ctx.Directory $ctx.NativeName)) -eq $ctx.Hashes[1]) 'Native child helper arguments/status failed.'
     Write-Host "Shell lifecycle checks passed. Actual file locks and isolated HKCU snapshots; COM/schema calls simulated. Artifacts: $work"
 }finally{if($null -ne $script:held){$script:held.Close()};[Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($hive)}

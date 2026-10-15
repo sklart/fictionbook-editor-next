@@ -14,6 +14,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$sessionDirectory=Split-Path -Parent $MyInvocation.MyCommand.Path
+$sessionLease=$null
+if([IO.File]::Exists((Join-Path $sessionDirectory 'Session.ini'))){
+    . (Join-Path $sessionDirectory 'shell-integration-lifecycle.ps1')
+    $sessionLease=Open-ShellMaintenanceLease $sessionDirectory
+}
+
 $runtimeScript = $MyInvocation.MyCommand.Path
 
 function Test-Blank { param([string]$Value) return (-not $Value -or $Value.Trim().Length -eq 0) }

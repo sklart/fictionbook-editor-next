@@ -70,12 +70,16 @@ New-Item -ItemType Directory -Path $inputDirectory -Force | Out-Null
 foreach ($license in @('LICENSE', 'gpl-3.0.ru.txt', 'gpl-3.0.ua.txt')) {
     Set-Content -LiteralPath (Join-Path $inputDirectory $license) -Value 'NSIS deployment scope test fixture.' -Encoding ASCII
 }
-$current = Invoke-ScopeProbe 'current' @() @('/S', '/CURRENTUSER')
+$current = Invoke-ScopeProbe 'current' @() @('/S', '/CURRENTUSER', '/RECOVERSHELL')
 if ($current.State.DeploymentMode -ne 'installed' -or $current.State.InstallScope -ne 'current' -or
     $current.State.UninstallRegistryRoot -ne 'HKCU' -or $current.State.ProductionPath -notmatch '\\Programs\\FictionBook Editor Next$') {
     throw "Current User scope probe returned an unexpected state: $($current.State | Out-String)"
 }
 if ($current.State.ProductionPath -match 'Program Files') { throw 'Current User scope selected Program Files semantics.' }
+
+if ($current.State.ShellRecoveryRequested -ne '1') { throw 'Explicit shell recovery request was lost.' }
+$installerSource=Get-Content -Raw -LiteralPath (Join-Path $installerDirectory 'MakeInstaller.nsi')
+if (-not $installerSource.Contains('!insertmacro FBE_RestoreElevationVar $ShellRecoveryRequested')) { throw 'Shell recovery request is not transferred through existing elevation state restoration.' }
 
 $allUsers = Invoke-ScopeProbe 'allusers' @() @('/S', '/ALLUSERS')
 if ($allUsers.State.DeploymentMode -ne 'installed' -or $allUsers.State.InstallScope -ne 'allusers' -or

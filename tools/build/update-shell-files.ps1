@@ -7,6 +7,13 @@ param(
     [Parameter(Mandatory)][string]$StatusFilePath
 )
 $ErrorActionPreference = 'Stop'
+$sessionDirectory=Split-Path -Parent $MyInvocation.MyCommand.Path
+$sessionLease=$null
+if([IO.File]::Exists((Join-Path $sessionDirectory 'Session.ini'))){
+    . (Join-Path $sessionDirectory 'shell-integration-lifecycle.ps1')
+    $sessionLease=Open-ShellMaintenanceLease $sessionDirectory
+}
+
 function Write-UpdateStatus([string]$Result, [string]$Message) {
     [IO.File]::WriteAllLines($StatusFilePath, [string[]]@('[Payload]', "Result=$Result", "Message=$Message"), [Text.Encoding]::Unicode)
 }
