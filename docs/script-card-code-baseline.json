@@ -3724,10 +3724,10 @@
     },
     {
       "path": "21_Поиск и замена/64_Замена символов по списку из буфера обмена.js",
-      "codeSha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
+      "codeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 9611,
+      "codeBytes": 11599,
       "lineEnding": "CRLF"
     },
     {
@@ -4652,6 +4652,13 @@
       "codeSha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
       "basisCommit": "3b094cd3",
       "reason": "Разрешённое исправление скрипта 64: буквальные пары вместо eval, закрытие Undo при ошибке."
+    },
+    {
+      "path": "21_Поиск и замена/64_Замена символов по списку из буфера обмена.js",
+      "previousCodeSha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
+      "codeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
+      "basisCommit": "d71995e1247fd2336c7fca2ea174ca2a832768a1",
+      "reason": "Исправление конфликта DOM-маркеров скрипта 64 и независимой очистки при исключениях."
     }
   ]
 }

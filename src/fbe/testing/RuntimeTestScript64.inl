@@ -6,6 +6,8 @@ if(IsFbeTestScenario(L"script64-runtime"))
     const bool parserNegative = Script64ParserSelfTest();
     bool ran = false, undone = false, redone = false, single = false;
     bool refusalNoUndo = true, exceptionCleanup = false;
+    bool safety = true;
+    CString safetyResults;
     CString results;
     try
     {
@@ -55,21 +57,77 @@ if(IsFbeTestScenario(L"script64-runtime"))
                 const HRESULT afterState = manager->GetOpenParentState(&after);
                 refusalNoUndo = refusalNoUndo && correctRefusal && noUnits() && beforeState == afterState && before == after;
             }
+            for(int fault = 0; fault < 3; ++fault)
+            {
             execute(L"window.__script64FaultSetup();");
             pump();
             if(FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
             DWORD beforeFault = 0, afterFault = 0;
             const HRESULT beforeFaultState = manager->GetOpenParentState(&beforeFault);
-            execute(L"window.__script64FaultRun();");
+            CString faultRun;
+            faultRun.Format(L"window.__script64FaultRun(%d);", fault);
+            execute(faultRun);
             const bool partialAndClean = m_status_state.EffectiveMainText(false, false, CString()) == L"1";
             const HRESULT afterFaultState = manager->GetOpenParentState(&afterFault);
-            exceptionCleanup = partialAndClean && beforeFaultState == afterFaultState && beforeFault == afterFault;
+            const bool faultPassed = partialAndClean && beforeFaultState == afterFaultState && beforeFault == afterFault;
+            exceptionCleanup = (fault == 0 ? true : exceptionCleanup) && faultPassed;
+            safetyResults.AppendFormat(L"cleanup-mode-%d=%d\n", fault, faultPassed);
+            }
+            // Each fixture gets a fresh history. Undo cannot consume setup or an older edit.
+            for(int fixture = 0; fixture < 6; ++fixture)
+            {
+                CString setup;
+                setup.Format(L"window.__script64PrepareSafety(%d);", fixture);
+                ::SetForegroundWindow(m_hWnd);
+                m_doc->m_body.SetFocus();
+                execute(setup);
+                pump();
+                if(FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
+                execute(L"window.__script64SafetyRun();");
+                const bool changed = m_status_state.EffectiveMainText(false, false, CString()) == L"1";
+                pump();
+                // Keep TEXTAREA focus for the actual editor Undo/Redo command route.
+                ::SetForegroundWindow(m_hWnd);
+                m_doc->m_body.SetFocus();
+                if(fixture == 5) execute(L"document.getElementById('script64-field').focus();");
+                SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
+                pump();
+                execute(fixture == 5 ? L"window.__script64FieldState();" :
+                    L"window.external.SetStatusBarText(document.getElementById('fbw_body').innerHTML===window.__script64Before?'1':'0');");
+                const CString undoResult = m_status_state.EffectiveMainText(false, false, CString());
+                const bool undoOk = undoResult == (fixture == 5 ? L"xaby|1" : L"1");
+                ::SetForegroundWindow(m_hWnd);
+                m_doc->m_body.SetFocus();
+                if(fixture == 5) execute(L"document.getElementById('script64-field').focus();");
+                SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
+                pump();
+                execute(fixture == 5 ? L"window.__script64FieldState();" :
+                    L"window.external.SetStatusBarText(document.getElementById('fbw_body').innerHTML===window.__script64After?'1':'0');");
+                const CString redoResult = m_status_state.EffectiveMainText(false, false, CString());
+                const bool redoOk = redoResult == (fixture == 5 ? L"xABy|1" : L"1");
+                if(fixture == 5)
+                {
+                    // A documented lack of native field history is an observed result too.
+                    const bool observed = changed && (undoOk || undoResult == L"xABy|1") && redoOk;
+                    safetyResults.AppendFormat(L"textarea-history-observed=%d\ntextarea-undo=%d\ntextarea-redo=%d\ntextarea-after-undo=%s\ntextarea-after-redo=%s\n",
+                        observed, undoOk, redoOk, static_cast<LPCWSTR>(undoResult), static_cast<LPCWSTR>(redoResult));
+                    safety = safety && observed;
+                }
+                else
+                {
+                    const bool correct = changed && undoOk && redoOk;
+                    safetyResults.AppendFormat(L"id-collision-%d=%d\nid-collision-%d-run=%d\nid-collision-%d-undo=%d\nid-collision-%d-redo=%d\n",
+                        fixture, correct, fixture, changed, fixture, undoOk, fixture, redoOk);
+                    safety = safety && correct;
+                }
+            }
             execute(L"window.__script64PrepareOrdinary();");
             pump();
             // Discard fixture construction and all previous cases before Run.
             if(FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
             window->execScript(_bstr_t(L"window.__script64Ordinary();"), _bstr_t(L"JScript"));
             results = m_status_state.EffectiveMainText(false, false, CString());
+            results += L"\n" + safetyResults;
             ran = Script64ResultIs(results, L"ordinary", L"1");
             pump();
             BSTR description = NULL;
@@ -107,7 +165,7 @@ if(IsFbeTestScenario(L"script64-runtime"))
     {
         results.AppendFormat(L"\nnative-error=0x%08lx\n", static_cast<unsigned long>(error.Error()));
     }
-    const bool passed = parserNegative && ran && undone && redone && single && refusalNoUndo && exceptionCleanup && Script64CasesPass(results);
+    const bool passed = parserNegative && ran && undone && redone && single && refusalNoUndo && exceptionCleanup && safety && Script64CasesPass(results);
     CStringA output;
     output.Format("phase=script64\nharness-ran=%d\nparser-negative=%d\nundo=%d\nredo=%d\nundo-single=%d\nrefusal-no-undo=%d\nexception-cleanup=%d\n%s\nresult=%s\n", ran, parserNegative, undone, redone, single, refusalNoUndo, exceptionCleanup,
         static_cast<LPCSTR>(CW2A(results, CP_UTF8)), passed ? "pass" : "fail");

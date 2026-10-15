@@ -29,13 +29,13 @@
   ],
   "warnings": [
     "Повтор исходного символа заменяет предыдущее значение, сохраняя место первого правила. Цифровые исходные символы обрабатываются первыми по возрастанию, как в прежнем JScript.",
-    "При ошибке во время изменения группа отмены закрывается, но автоматический откат частичных изменений не выполняется."
+    "При ошибке возможны частичные изменения. Скрипт пытается удалить каждый свой маркер и завершить свою группу отмены; автоматический откат не выполняется. При отказе обоих способов удаления DOM временная разметка может сохраниться."
   ],
   "dependencies": [],
   "dependenciesComplete": false,
   "sourceRevision": {
     "algorithm": "sha256-exclude-fbe-card-v1",
-    "sha256": "3d38de988b6294c81d63edc9af50b9f341474289417b11e2c4aee28f7a0cab96",
+    "sha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
     "reviewStatus": "generated"
   },
   "tags": [
@@ -45,7 +45,7 @@
   ],
   "undo": {
     "status": "explicit_calls_found",
-    "description": ""
+    "description": "Изменения выделения книги и TEXTAREA отменяются одним действием Ctrl+Z и возвращаются Ctrl+Y. Частичные изменения при исключении автоматически не отменяются."
   },
   "settings": []
 }
@@ -121,8 +121,47 @@ var rng=document.selection.createRange();
  }
  if (tr.parentElement().nodeName=="INPUT") { MsgBox(errMsg); return; }
  var BlockStartNode=null, BlockEndNode=null, cursorPos=null;
- window.external.BeginUndoUnit(document,"Замена символов по списку из буфера обмена");
+ // Записи и ссылки принадлежат только этому запуску, ID заранее свободны.
+ var markers=[], markerOwner={}, markerSequence=0;
+ function insertMarker(range) {
+  var id;
+  do {
+   if (++markerSequence>10000) throw new Error("Не удалось выделить ID маркера скрипта 64.");
+   id="fbe-script64-"+markerSequence;
+  } while (document.getElementById(id));
+  var marker={id:id, node:null};
+  markers.push(marker);
+  // Даже если pasteHTML выбросит исключение после вставки, сохраним ссылку.
+  var pasteFailed=false, pasteFailure=null;
+  try {
+   range.pasteHTML('<'+MyTagName+' id="'+id+'" data-fbe-script64="'+id+'"></'+MyTagName+'>');
+  } catch (pasteError) { pasteFailed=true; pasteFailure=pasteError; }
+  try {
+   var node=document.getElementById(id);
+   if (node && node.nodeName==MyTagName && node.getAttribute("id")==id &&
+       node.getAttribute("data-fbe-script64")==id) {
+    marker.node=node;
+    node.__fbeScript64Owner=markerOwner;
+   }
+  } catch (captureError) { if (!pasteFailed) throw captureError; }
+  if (pasteFailed) throw pasteFailure;
+  if (!marker.node) throw new Error("Не удалось определить маркер скрипта 64.");
+  return marker.node;
+ }
+ function ownsMarker(node) {
+  for (var i=0; i<markers.length; i++) {
+   if (markers[i].node===node && node.__fbeScript64Owner===markerOwner &&
+       node.getAttribute("id")==markers[i].id) return true;
+  }
+  return false;
+ }
+ var undoOpened=false, failed=false, failure=null, cleanupFailed=false, cleanupFailure=null;
+ function rememberCleanupError(error) {
+  if (!cleanupFailed) { cleanupFailed=true; cleanupFailure=error; }
+ }
  try {
+ window.external.BeginUndoUnit(document,"Замена символов по списку из буфера обмена");
+ undoOpened=true;
  if (tr.parentElement().nodeName=="TEXTAREA") {
   s=tr.text;
   replacChar();
@@ -135,21 +174,16 @@ var rng=document.selection.createRange();
   var el=body.document.elementFromPoint(coll[0].left, coll[0].top);
   cursorPos=null;
   if (tr.compareEndPoints("StartToEnd",tr)==0) {
-   var el2=document.getElementById("CursorPosition");
-   if (el2) el2.removeAttribute("id");
-   ttr1.pasteHTML("<"+MyTagName+" id=CursorPosition></"+MyTagName+">");
-   cursorPos=document.getElementById("CursorPosition");
+   cursorPos=insertMarker(ttr1);
    ttr1.expand("word");
   } 
   // поставим маркеры блока в виде пустых ссылок
   tr=ttr1.duplicate();
   tr.collapse();
-  tr.pasteHTML("<"+MyTagName+" id=BlockStart></"+MyTagName+">");
-  BlockStartNode=document.getElementById("BlockStart");
+  BlockStartNode=insertMarker(tr);
   tr=ttr1.duplicate();
   tr.collapse(false);
-  tr.pasteHTML("<"+MyTagName+" id=BlockEnd></"+MyTagName+">");
-  BlockEndNode=document.getElementById("BlockEnd");
+  BlockEndNode=insertMarker(tr);
   // поднимаемся вверх по дереву, пока не найдем DIV или P,
   // в который входит начало выделения
   while (el && el.nodeName!="DIV" && el.nodeName!="P") { el=el.parentNode; }
@@ -162,16 +196,14 @@ var rng=document.selection.createRange();
    // если встретили тэг P, меняем флаг, что мы внутри P
    if (ptr.nodeType==1 && ptr.nodeName=="P") {InsideP=true};
    // если встретили маркер начала блока, ...
-   if (ptr.nodeType==1 && ptr.nodeName==MyTagName &&
-       ptr.getAttribute("id")=="BlockStart") {
+   if (ptr===BlockStartNode && ownsMarker(ptr)) {
     // меняем флаг, т.к. попали внутрь выделения
     InsideSelection=true;
     // запомним ноду ссылки, чтобы потом удалить ее
     BlockStartNode=ptr;
    }
    // аналогично для маркера конца выделения
-   if (ptr.nodeType==1 && ptr.nodeName==MyTagName &&
-       ptr.getAttribute("id")=="BlockEnd") {
+   if (ptr===BlockEndNode && ownsMarker(ptr)) {
     InsideSelection=false;
     ProcessingEnded=true;
     BlockEndNode=ptr;
@@ -200,6 +232,8 @@ var rng=document.selection.createRange();
    }
   }
   // удаляем маркеры блока
+  if (!ownsMarker(BlockStartNode) || !ownsMarker(BlockEndNode) ||
+      (cursorPos && !ownsMarker(cursorPos))) throw new Error("Потерян маркер скрипта 64.");
   var tr1=document.body.createTextRange();
   if (!cursorPos) {
    tr1.moveToElementText(BlockStartNode);
@@ -211,17 +245,31 @@ var rng=document.selection.createRange();
    tr1.moveToElementText(cursorPos);
    tr1.select();
   }
-  BlockStartNode.parentNode.removeChild(BlockStartNode);
-  BlockEndNode.parentNode.removeChild(BlockEndNode);
  }
+ } catch (error) {
+  failed=true;
+  failure=error;
  } finally {
-  // Закрываем только свою начатую группу даже при сбое и удаляем свои маркеры.
-  try {
-   if (BlockStartNode && BlockStartNode.parentNode) BlockStartNode.parentNode.removeChild(BlockStartNode);
-   if (BlockEndNode && BlockEndNode.parentNode) BlockEndNode.parentNode.removeChild(BlockEndNode);
-   if (cursorPos && cursorPos.parentNode) cursorPos.parentNode.removeChild(cursorPos);
-  } finally {
-   window.external.EndUndoUnit(document);
+  // Каждый собственный элемент очищается независимо. Чужие ID не трогаем.
+  for (var markerIndex=0; markerIndex<markers.length; markerIndex++) {
+   try {
+    var markerNode=markers[markerIndex].node;
+    if (markerNode && ownsMarker(markerNode) && markerNode.parentNode) {
+     try { markerNode.parentNode.removeChild(markerNode); }
+     catch (removeError) {
+      // MSHTML: резервное удаление оболочки сохраняет возможных потомков.
+      markerNode.removeNode(false);
+     }
+    }
+   } catch (cleanupError) { rememberCleanupError(cleanupError); }
+  }
+  if (undoOpened) {
+   undoOpened=false;
+   try { window.external.EndUndoUnit(document); }
+   catch (undoError) { rememberCleanupError(undoError); }
   }
  }
+ // Ошибка обработки имеет приоритет над ошибкой очистки, без Ctrl+Z.
+ if (failed) throw failure;
+ if (cleanupFailed) throw cleanupFailure;
 }
