@@ -16,31 +16,31 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **452**. Исполняемый код не изменён.
+Изменено карточек: **453**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 93
-- `generic_usage`: 398
+- `generic_summary`: 94
+- `generic_usage`: 399
 - `generic_warning`: 62
-- `inaccurate_description`: 710
+- `inaccurate_description`: 711
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 414
+- `incorrect_dependency`: 416
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 405
+- `incorrect_scope`: 406
 - `incorrect_selection`: 43
-- `incorrect_setting`: 227
-- `incorrect_undo`: 397
+- `incorrect_setting`: 228
+- `incorrect_undo`: 398
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 36
+- `missing_warning`: 37
 - `uncertain_attribution`: 90
 
 Подтверждённые результаты:
@@ -48,24 +48,24 @@
 - `attributionClarified`: 91
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 280
+- `dependenciesVerified`: 281
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 396
-- `scopeClarified`: 382
+- `purposeClarified`: 397
+- `scopeClarified`: 383
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 32
-- `undoDescriptionsClarified`: 389
-- `usageCorrected`: 398
+- `settingsCorrected`: 33
+- `undoDescriptionsClarified`: 390
+- `usageCorrected`: 399
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 330
+- `warningsClarified`: 331
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **292**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **293**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -727,13 +727,18 @@
 - `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:631` — Для каждого очередного основного body mainCountDup и другие счётчики дублей присваиваются заново; при нескольких body статистика занижается. Аналогично notes/comments на строках 639/644.
 - `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:198` — Рекурсивный обход после достижения container продолжает поиск nextSibling выше его границы и при отсутствии соседа может обратиться к nextSibling у null. Аналогичный обход в removeDuplicateEmpties на строке 264.
 - `13_Заголовки, подзаголовки, пустые строки/805_Почистить лишние пустые строки.js:546` — Между BeginUndoUnit и EndUndoUnit на строке 652 нет обычного return, но нет и finally. Исключение при обходе или чистке оставит операцию отмены открытой.
+- `13_Заголовки, подзаголовки, пустые строки/810_Создать таблицу (под)заголовков номерных разделов (с переходом)_stokber.js:1164` — В onclick-коде сравнение использует clientHeight без объявления или квалификатора. При наличии rect условие вызывает ReferenceError, перехватывается внешним catch и показывает пользователю ошибку выделения после попытки перехода.
+- `13_Заголовки, подзаголовки, пустые строки/810_Создать таблицу (под)заголовков номерных разделов (с переходом)_stokber.js:981` — Позиция рассчитывается как match.index+2 в преобразованном тексте с временными метками, удалёнными тегами и служебными заменами. Это не гарантирует соответствия смещению в исходном fbw_body, поэтому клики могут выделять другой фрагмент.
+- `13_Заголовки, подзаголовки, пустые строки/810_Создать таблицу (под)заголовков номерных разделов (с переходом)_stokber.js:576` — Удаление notes/comments из строки HTML требует точного порядка атрибутов, регистра и кавычек у DIV.body. Если сериализация отличается, служебные body остаются в тексте для анализа.
+- `13_Заголовки, подзаголовки, пустые строки/810_Создать таблицу (под)заголовков номерных разделов (с переходом)_stokber.js:450` — Первая составная нумерация сравнивается со строкой '1.1.' целиком. Форма '1.1' без последней точки отмечается ошибкой независимо от одинаковых числовых компонентов.
+- `13_Заголовки, подзаголовки, пустые строки/810_Создать таблицу (под)заголовков номерных разделов (с переходом)_stokber.js:1208` — Результат window.open/showModelessDialog не проверяется. Если локальный шаблон отсутствует или открытие окна отклонено, строка 1214 обращается к document у null и аварийно завершает построение отчёта.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 734
+- `generic_usage`: 730
 - `inaccurate_description`: 49
 - `incorrect_undo`: 101
-- `requires_review`: 337
+- `requires_review`: 338
 
 ## Границы проверки
 
