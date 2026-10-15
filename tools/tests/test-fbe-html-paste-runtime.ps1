@@ -2,7 +2,7 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
-    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked'),
+    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked'),
     [switch]$KeepArtifacts
 )
 
@@ -33,7 +33,7 @@ try {
         elseif($case -eq 'legacy-unmarked') {
             if($savedXml -match 'Legacy link' -or $savedXml -notmatch 'Before') { throw 'Unmarked FBE HTML changed the saved document.' }
         }
-        elseif($case -in @('internal', 'internal-dirty', 'internal-end')) {
+        elseif($case -in @('internal', 'internal-dirty', 'internal-history', 'internal-end')) {
             if($savedXml -notmatch 'Internal code' -or $savedXml -notmatch 'internal link') { throw "Internal fragment missing after save: $case" }
         }
         elseif($case -eq 'plain-single') {

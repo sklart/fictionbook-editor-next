@@ -43,19 +43,29 @@ static void TestFormatting() {
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<table class='table'><tbody><tr class='tr'><td class='td'>Cell</td></tr></tbody></table>"), "actual FBE table tbody");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<div class=image href='#img'><img src='fbw-internal:#img'></div>"), "safe internal image");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span onresizestart='return false' contentEditable='false' class='image' href='#img'><img src='fbw-internal:#img'></span>"), "actual FBE inline image");
-  const auto referencesInBook = [](const CString& id, bool image) {
-    return image ? id == L"present-image" : id == L"present-note";
+  const auto referencesInBook = [](const CString& id, FbeClipboard::InternalReferenceKind kind) {
+    return kind == FbeClipboard::InternalReferenceKind::Image ? id == L"present-image" : id == L"present-note";
   };
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
-    L"<p><a class='note' href='#present-note'>note</a></p>", referencesInBook), "existing note accepted");
+    L"<p><a class='note' href='#present-note'>note</a></p>", true, referencesInBook), "existing note accepted");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
-    L"<p><a class='note' href='#missing-note'>note</a></p>", referencesInBook), "missing note rejected");
+    L"<p><a class='note' href='#missing-note'>note</a></p>", true, referencesInBook), "missing note rejected");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
-    L"<p id='local'><a href='#local'>self link</a></p>", referencesInBook), "fragment-local target accepted");
+    L"<p id='local'><a href='#local'>self link</a></p>", false, referencesInBook), "fragment-local target accepted");
   Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
-    L"<div class='image' href='#present-image'><img src='fbw-internal:#present-image'></div>", referencesInBook), "existing block image accepted");
+    L"<div class='image' href='#present-image'><img src='fbw-internal:#present-image'></div>", true, referencesInBook), "existing block image accepted");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
-    L"<span class='image' href='#missing-image'><img src='fbw-internal:#missing-image'></span>", referencesInBook), "missing inline image rejected");
+    L"<span class='image' href='#missing-image'><img src='fbw-internal:#missing-image'></span>", true, referencesInBook), "missing inline image rejected");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<p><a href='#present-note'>link</a></p>", false, referencesInBook), "cross-book matching link ID rejected");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<div class='image' href='#present-image'><img src='fbw-internal:#present-image'></div>", false, referencesInBook),
+    "cross-book image ID rejected even when destination has a binary");
+  Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<p id='present-note'><a href='#present-note'>link</a></p>", false, referencesInBook,
+    [](const CString& id) { return id == L"present-note"; }), "fragment-local ID collision rejected");
+  Check(FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(
+    L"<p><strong>Text</strong> <em>format</em></p>", false, referencesInBook), "cross-book independent formatting accepted");
   Check(!FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(L"<span contentEditable='true'>editable</span>"), "unexpected editable fragment rejected");
   Check(FbeClipboard::HtmlPasteSanitizer::Sanitize(L"<div class='section'><p>Legacy</p></div>", L"\u00a0", output) ==
     FbeClipboard::HtmlPasteOutcome::Legacy, "unmarked FBE structure must not lose structure");
@@ -109,8 +119,13 @@ static void TestClipboard() {
   Check(extracted == L"<p>\u041f<strong>ok</strong></p>", "UTF-8 byte offsets");
   Check(::GetClipboardSequenceNumber() == sequence, "clipboard changed");
   Check(!FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(owner), "external html has no internal marker");
-  Check(FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(owner), "mark internal copy");
+  GUID sourceIdentity = GUID_NULL;
+  Check(SUCCEEDED(::CoCreateGuid(&sourceIdentity)), "source identity");
+  Check(FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(owner, sourceIdentity), "mark internal copy");
   Check(FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(owner), "read internal marker");
+  GUID copiedIdentity = GUID_NULL;
+  Check(FbeClipboard::HtmlPasteSanitizer::GetInternalCopyOrigin(owner, copiedIdentity) &&
+    ::IsEqualGUID(sourceIdentity, copiedIdentity), "origin survives clipboard round-trip");
   wchar_t executable[MAX_PATH] = {};
   Check(::GetModuleFileNameW(NULL, executable, _countof(executable)) != 0, "test executable path");
   std::wstring command = L"\"" + std::wstring(executable) + L"\" --check-marker";

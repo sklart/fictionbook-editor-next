@@ -264,6 +264,7 @@ Doc::Doc(HWND hWndFrame) :
 	     m_serialization_unsafe(false),
 	     m_save_transaction_active(false)
 {
+	  ::CoCreateGuid(&m_clipboard_identity);
 	  m_editor.SetDocumentFilePathSource(&m_filename, &m_namevalid);
 	  m_body.SetOwningDocument(this);
   m_active_docs.Add(this,this);
@@ -277,6 +278,42 @@ Doc::~Doc() {
   if (m_editor.IsWindow())
 	 m_editor.DestroyWindow();
   m_active_docs.Remove(this);
+}
+
+bool Doc::CaptureBodyHtml(CString& html) {
+	try {
+		MSHTML::IHTMLDocument2Ptr document(m_editor.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		if (!body) return false;
+		html = static_cast<LPCWSTR>(body->innerHTML);
+		return true;
+	} catch (const _com_error&) { return false; }
+}
+
+void Doc::MarkSavePoint() {
+	m_body_ver = m_editor.GetVersionNumber();
+	m_hasSavedBodyHtml = CaptureBodyHtml(m_savedBodyHtml);
+	m_reconcilePasteHistoryClean = false;
+	m_editor.ResetFormChanged();
+}
+
+void Doc::MarkDocCP() {
+	m_body_cp = m_editor.GetVersionNumber();
+	m_hasRecoveryBodyHtml = CaptureBodyHtml(m_recoveryBodyHtml);
+	m_editor.ResetFormCP();
+}
+
+void Doc::RestoreCleanIfBodyMatches() {
+	if (!m_reconcilePasteHistoryClean) return;
+	CString current;
+	if (!CaptureBodyHtml(current)) return;
+	if (m_hasSavedBodyHtml && !m_editor.IsFormChanged() && current == m_savedBodyHtml)
+		MarkSavePoint();
+	if (m_hasRecoveryBodyHtml && !m_editor.IsFormCP() && current == m_recoveryBodyHtml)
+		MarkDocCP();
+	if ((!m_hasSavedBodyHtml || current == m_savedBodyHtml) &&
+		(!m_hasRecoveryBodyHtml || current == m_recoveryBodyHtml))
+		m_reconcilePasteHistoryClean = false;
 }
 
 bool  Doc::GetBinary(const wchar_t *id,_variant_t& vt) {

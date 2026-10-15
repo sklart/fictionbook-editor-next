@@ -30,6 +30,7 @@ public:
   //CFBEView		m_desc;
   CFBEView		m_body;
 	DocumentEditorHost m_editor;
+	const GUID& ClipboardIdentity() const { return m_clipboard_identity; }
 
   // filename
   CString		m_filename;
@@ -94,23 +95,16 @@ public:
 	  m_body_ver += delta;
   }
 
-  void	  MarkSavePoint() { 
-	  m_body_ver=m_editor.GetVersionNumber();
-	  //m_desc_ver=m_desc.GetVersionNumber(); 
-	  m_editor.ResetFormChanged();
-  }
+	void MarkSavePoint();
 	void RestoreCleanAfterPasteUndo(long originalVersion, bool saveClean, bool recoveryClean) {
 		if (saveClean && (m_body_ver == originalVersion || m_body_ver == -1)) MarkSavePoint();
-		else if (!saveClean) ResetSavePoint();
 		if (recoveryClean && (m_body_cp == originalVersion || m_body_cp == -1)) MarkDocCP();
-		else if (!recoveryClean) m_body_cp = -1;
+		m_reconcilePasteHistoryClean = !saveClean || !recoveryClean;
 	}
-  void	  ResetSavePoint() { m_body_ver=-1; }
+  void	  ResetSavePoint() { m_body_ver=-1; m_reconcilePasteHistoryClean = false; }
 
-  void	  MarkDocCP() { 
-	  m_body_cp=m_editor.GetVersionNumber();
-	  //m_desc_cp=m_desc.GetVersionNumber(); 
-	  m_editor.ResetFormCP(); }
+	void MarkDocCP();
+	void RestoreCleanIfBodyMatches();
   bool	  DocRelChanged() { 
 	  return m_body_cp!=m_editor.GetVersionNumber() ||
 //		  m_desc_cp!=m_desc.GetVersionNumber() || 
@@ -160,10 +154,15 @@ public:
 	void GetWordList(int flags, CSimpleArray<Word>& words, CString tagName);
 
 private:
+	GUID m_clipboard_identity = GUID_NULL;
   //long		    m_desc_ver;
   long		    m_body_ver;
   //long		    m_desc_cp;
   long		    m_body_cp;
+	CString m_savedBodyHtml, m_recoveryBodyHtml;
+	bool m_hasSavedBodyHtml = false, m_hasRecoveryBodyHtml = false;
+	bool m_reconcilePasteHistoryClean = false;
+	bool CaptureBodyHtml(CString& html);
 
   // Последняя ошибка операции сохранения. Нужна, чтобы интерфейс мог
   // предложить «Сохранить как» при отказе в доступе к исходному файлу.

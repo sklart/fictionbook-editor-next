@@ -152,9 +152,10 @@
 		const bool middle = wcscmp(caseName, L"plain-middle") == 0;
 		const bool internalEnd = wcscmp(caseName, L"internal-end") == 0;
 		const bool preDirty = wcscmp(caseName, L"internal-dirty") == 0;
+		const bool priorHistory = wcscmp(caseName, L"internal-history") == 0;
 		const bool missingLink = wcscmp(caseName, L"internal-missing-link") == 0;
 		const bool missingImage = wcscmp(caseName, L"internal-missing-image") == 0;
-		const bool internal = wcscmp(caseName, L"internal") == 0 || internalEnd || preDirty || missingLink || missingImage;
+		const bool internal = wcscmp(caseName, L"internal") == 0 || internalEnd || preDirty || priorHistory || missingLink || missingImage;
 		const bool legacy = wcscmp(caseName, L"legacy-unmarked") == 0;
 		const bool plain = wcscmp(caseName, L"plain") == 0 || singleLine || middle;
 		const bool title = wcscmp(caseName, L"title") == 0;
@@ -180,6 +181,7 @@
 			}
 			m_doc->MarkSavePoint();
 			m_doc->MarkDocCP();
+			const long initialVersion = m_doc->m_body.GetVersionNumber();
 			if (m_doc->DocChanged() || m_doc->DocRelChanged()) throw _com_error(E_FAIL);
 			CString before(static_cast<LPCWSTR>(editable->innerHTML));
 			MSHTML::IHTMLElementPtr target(document->all->item(L"paste-target"));
@@ -193,6 +195,14 @@
 				pasteTarget->insertAdjacentText(L"beforeEnd", L" Prior change");
 				if (!m_doc->DocChanged() || !m_doc->DocRelChanged()) throw _com_error(E_FAIL);
 				before = static_cast<LPCWSTR>(editable->innerHTML);
+			}
+			CString beforeAfterEdit;
+			if (priorHistory) {
+				m_doc->m_body.MarkupServices()->BeginUndoUnit(L"Prior edit");
+				pasteTarget->insertAdjacentText(L"beforeEnd", L" Prior change");
+				m_doc->m_body.MarkupServices()->EndUndoUnit();
+				beforeAfterEdit = static_cast<LPCWSTR>(editable->innerHTML);
+				if (beforeAfterEdit == before || !m_doc->DocChanged() || !m_doc->DocRelChanged()) throw _com_error(E_FAIL);
 			}
 			const CStringA fragment(legacy ?
 				"<div class='section'><p><a class='note' href='file:///C:/OldFBE/main.html#note1'>Legacy link</a></p></div>" :
@@ -250,6 +260,43 @@
 			range->select();
 			BOOL handled = FALSE;
 			m_doc->m_body.OnPaste(0, plain ? ID_EDIT_PASTE_TEXT : ID_EDIT_PASTE, 0, handled);
+			if (priorHistory) {
+				const CString afterPaste(static_cast<LPCWSTR>(editable->innerHTML));
+				const bool pasted = afterPaste != beforeAfterEdit && m_doc->DocChanged() && m_doc->DocRelChanged();
+				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
+				const CString afterUndo1(static_cast<LPCWSTR>(editable->innerHTML));
+				const bool firstUndo = afterUndo1 == beforeAfterEdit &&
+					m_doc->DocChanged() && m_doc->DocRelChanged();
+				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
+				const CString afterUndo2(static_cast<LPCWSTR>(editable->innerHTML));
+				const long afterUndo2Version = m_doc->m_body.GetVersionNumber();
+				const bool afterUndo2Changed = m_doc->DocChanged(), afterUndo2Recovery = m_doc->DocRelChanged();
+				const bool secondUndo = afterUndo2 == before &&
+					!afterUndo2Changed && !afterUndo2Recovery;
+				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
+				const CString afterRedo1(static_cast<LPCWSTR>(editable->innerHTML));
+				const bool firstRedo = afterRedo1 == beforeAfterEdit &&
+					m_doc->DocChanged() && m_doc->DocRelChanged();
+				SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
+				const bool secondRedo = CString(static_cast<LPCWSTR>(editable->innerHTML)) == afterPaste &&
+					m_doc->DocChanged() && m_doc->DocRelChanged();
+				int line = 0, column = 0;
+				const bool valid = pasted && firstUndo && secondUndo && firstRedo && secondRedo &&
+					m_doc->Validate(line, column) && m_doc->Save();
+				if (!valid) {
+					CStringA trace;
+					trace.Format("history: paste=%d undo1=%d undo2=%d redo1=%d redo2=%d initialVersion=%ld undo2Version=%ld undo2Changed=%d undo2Recovery=%d; before=%S; edit=%S; undo1=%S; undo2=%S; redo1=%S; final=%S\r\n",
+						pasted, firstUndo, secondUndo, firstRedo, secondRedo, initialVersion, afterUndo2Version, afterUndo2Changed, afterUndo2Recovery,
+						static_cast<LPCWSTR>(before), static_cast<LPCWSTR>(beforeAfterEdit), static_cast<LPCWSTR>(afterUndo1), static_cast<LPCWSTR>(afterUndo2), static_cast<LPCWSTR>(afterRedo1), static_cast<LPCWSTR>(editable->innerHTML));
+					output.Write(trace, static_cast<DWORD>(trace.GetLength()), &written);
+				}
+				CStringA row; row.Format("%S\t%d\t1\t1\t1\t1\t%d\t%d\t1\t%d\t%d\t%d\t%d\t%s\r\n",
+					caseName, pasted, firstUndo && secondUndo, firstRedo && secondRedo, secondUndo && secondRedo,
+					secondUndo && secondRedo, valid, valid, valid ? "pass" : "fail");
+				output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+				if (originalClipboard) ::OleSetClipboard(originalClipboard);
+				output.Flush(); output.Close(); ::PostQuitMessage(valid ? 0 : 1); return 0;
+			}
 			if (missingLink || missingImage) {
 				editable = document->all->item(L"fbw_body");
 				const bool unchanged = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before &&

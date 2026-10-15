@@ -1919,12 +1919,20 @@ void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
 	NormalizeWithoutUndo(dom);
 }
 
+LRESULT CFBEView::OnUndo(WORD, WORD, HWND, BOOL&)
+{
+	LRESULT result = ExecCommand(IDM_UNDO);
+	if (m_ownerDocument) m_ownerDocument->RestoreCleanIfBodyMatches();
+	::SendMessage(m_frame, WM_COMMAND, static_cast<WPARAM>(MAKELONG(0, IDN_TREE_RESTORE)), 0);
+	return result;
+}
+
 LRESULT CFBEView::OnCopy(WORD, WORD, HWND, BOOL&)
 {
 	const DWORD clipboardBefore = ::GetClipboardSequenceNumber();
 	ExecCommand(IDM_COPY);
-	if (m_normalize && ::GetClipboardSequenceNumber() != clipboardBefore)
-		FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd);
+	if (m_normalize && m_ownerDocument && ::GetClipboardSequenceNumber() != clipboardBefore)
+		FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd, m_ownerDocument->ClipboardIdentity());
 	return 0;
 }
 
@@ -1932,8 +1940,8 @@ LRESULT CFBEView::OnCut(WORD, WORD, HWND, BOOL&)
 {
 	const DWORD clipboardBefore = ::GetClipboardSequenceNumber();
 	ExecCommand(IDM_CUT);
-	if (m_normalize && ::GetClipboardSequenceNumber() != clipboardBefore)
-		FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd);
+	if (m_normalize && m_ownerDocument && ::GetClipboardSequenceNumber() != clipboardBefore)
+		FbeClipboard::HtmlPasteSanitizer::MarkInternalCopy(m_hWnd, m_ownerDocument->ClipboardIdentity());
 	return 0;
 }
 
@@ -1975,7 +1983,10 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		}
 		else if (m_normalize && command != ID_EDIT_PASTE_TEXT)
 		{
-			const bool internalPaste = FbeClipboard::HtmlPasteSanitizer::HasInternalCopyMarker(m_hWnd);
+			GUID clipboardOrigin = GUID_NULL;
+			const bool internalPaste = FbeClipboard::HtmlPasteSanitizer::GetInternalCopyOrigin(m_hWnd, clipboardOrigin);
+			const bool sameDocument = internalPaste && m_ownerDocument &&
+				::IsEqualGUID(clipboardOrigin, m_ownerDocument->ClipboardIdentity());
 			CString fragment;
 			const bool hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
 			htmlClipboardDetected = hasHtml;
@@ -1984,15 +1995,27 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 				fragment, U::UrlFromPath(U::GetProgDirFile(L"main.html")));
 			FbeClipboard::HtmlPasteOutcome outcome = FbeClipboard::HtmlPasteOutcome::PlainText;
 			if (readableHtml) {
-				if (internalPaste && FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment,
-					[this](const CString& id, bool image) {
-						if (image) {
+				if (internalPaste && FbeClipboard::HtmlPasteSanitizer::IsSafeInternalFragment(fragment, sameDocument,
+					[this](const CString& id, FbeClipboard::InternalReferenceKind kind) {
+						if (kind == FbeClipboard::InternalReferenceKind::Image) {
 							_variant_t binary;
 							const CString binaryRef(L"#" + id);
 							return m_ownerDocument && m_ownerDocument->GetBinary(binaryRef, binary) &&
 								binary.vt != VT_EMPTY && binary.vt != VT_NULL;
 						}
-						return !!FBELinkNavigation::FindTargetElement(Document(), id);
+						MSHTML::IHTMLElementPtr target(FBELinkNavigation::FindTargetElement(Document(), id));
+						if (!target) return false;
+						if (kind != FbeClipboard::InternalReferenceKind::Note) return true;
+						if (U::scmp(target->tagName, L"DIV") != 0 || U::scmp(target->className, L"section") != 0) return false;
+						for (MSHTML::IHTMLElementPtr parent(target->parentElement); parent; parent = parent->parentElement)
+							if (U::scmp(parent->className, L"body") == 0) {
+								const CString name(AU::GetAttrCS(parent, L"fbname"));
+								return name.CompareNoCase(L"notes") == 0 || name.CompareNoCase(L"comments") == 0;
+							}
+						return false;
+					},
+					[document = Document()](const CString& id) {
+						return !!FBELinkNavigation::FindTargetElement(document, id);
 					})) {
 					insertHtml = fragment;
 					outcome = FbeClipboard::HtmlPasteOutcome::Sanitized;

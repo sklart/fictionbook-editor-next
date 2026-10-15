@@ -13,14 +13,24 @@ namespace {
 constexpr SIZE_T kMaxFragmentBytes = 2 * 1024 * 1024;
 constexpr int kMaxDepth = 128;
 constexpr size_t kMaxNodes = 100000;
-constexpr wchar_t kInternalClipboardMarker[] = L"FBE Next internal HTML fragment v1";
-constexpr wchar_t kInternalClipboardFormat[] = L"FBE Next Internal HTML v1";
+constexpr wchar_t kInternalClipboardMarker[] = L"FBE Next internal HTML fragment v2";
+constexpr wchar_t kInternalClipboardFormat[] = L"FBE Next Internal HTML v2";
+struct InternalMarkerPayload {
+  wchar_t signature[_countof(kInternalClipboardMarker)];
+  GUID origin;
+};
+InternalMarkerPayload MarkerPayload(const GUID& origin) {
+  InternalMarkerPayload payload = {};
+  memcpy(payload.signature, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
+  payload.origin = origin;
+  return payload;
+}
 
 // MSHTML owns its clipboard through OLE. Replacing that IDataObject preserves
 // delayed rendering and every original format while adding our marker.
 class MarkedDataObject final : public IDataObject {
 public:
-  MarkedDataObject(IDataObject* source, CLIPFORMAT marker) : source_(source), marker_(marker) {}
+  MarkedDataObject(IDataObject* source, CLIPFORMAT marker, const GUID& origin) : source_(source), marker_(marker), origin_(origin) {}
   STDMETHOD(QueryInterface)(REFIID iid, void** value) override {
     if (!value) return E_POINTER;
     *value = nullptr;
@@ -33,11 +43,12 @@ public:
     if (!format || !medium) return E_POINTER;
     if (format->cfFormat != marker_) return source_->GetData(format, medium);
     if (format->dwAspect != DVASPECT_CONTENT || format->lindex != -1 || !(format->tymed & TYMED_HGLOBAL)) return DV_E_FORMATETC;
-    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(kInternalClipboardMarker));
+    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(InternalMarkerPayload));
     if (!data) return E_OUTOFMEMORY;
     void* bytes = ::GlobalLock(data);
     if (!bytes) { ::GlobalFree(data); return E_OUTOFMEMORY; }
-    memcpy(bytes, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
+    const InternalMarkerPayload payload = MarkerPayload(origin_);
+    memcpy(bytes, &payload, sizeof(payload));
     ::GlobalUnlock(data);
     medium->tymed = TYMED_HGLOBAL; medium->hGlobal = data; medium->pUnkForRelease = nullptr;
     return S_OK;
@@ -113,6 +124,7 @@ private:
   volatile LONG refs_ = 1;
   CComPtr<IDataObject> source_;
   CLIPFORMAT marker_;
+  GUID origin_;
 };
 
 class ClipboardScope {
@@ -135,6 +147,7 @@ struct Node {
   CString href;
   CString src;
   CString id;
+  CString cssClass;
   unsigned formatOn = 0;
   unsigned formatOff = 0;
   std::vector<size_t> children;
@@ -328,6 +341,19 @@ bool FbeStructureClass(const CString& value) {
   return false;
 }
 
+bool HasClass(const CString& value, const wchar_t* wanted) {
+  CString lower(Lower(value));
+  int start = 0;
+  while (start < lower.GetLength()) {
+    while (start < lower.GetLength() && Space(lower[start])) ++start;
+    int end = start;
+    while (end < lower.GetLength() && !Space(lower[end])) ++end;
+    if (lower.Mid(start, end - start) == wanted) return true;
+    start = end;
+  }
+  return false;
+}
+
 bool InternalTag(const CString& tag) {
   return tag == L"div" || tag == L"p" || tag == L"span" || tag == L"a" ||
     tag == L"img" || tag == L"br" || tag == L"strong" || tag == L"em" ||
@@ -449,6 +475,7 @@ HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes, bool inte
           (internal && (tag == L"div" || tag == L"span")))) node.href = value;
       if (internal && attr == L"src" && tag == L"img") node.src = value;
       if (internal && attr == L"id") node.id = value;
+      if (internal && attr == L"class") node.cssClass = value;
       if (internal && !SafeInternalAttribute(tag, attr, value)) return HtmlPasteOutcome::PlainText;
       if (!internal && ((attr == L"class" && FbeStructureClass(value)) ||
           (attr == L"href" && !SafeHref(value)))) return HtmlPasteOutcome::Legacy;
@@ -560,7 +587,8 @@ void Render(const std::vector<Node>& nodes, size_t index,
 
 } // namespace
 
-bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner) {
+bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner, const GUID& origin) {
+  if (::IsEqualGUID(origin, GUID_NULL)) return false;
   const UINT html = ::RegisterClipboardFormat(L"HTML Format");
   const UINT marker = ::RegisterClipboardFormat(kInternalClipboardFormat);
   if (!html || !marker || !::IsClipboardFormatAvailable(html)) return false;
@@ -570,11 +598,12 @@ bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner) {
   if (ownerProcess == ::GetCurrentProcessId()) {
     ClipboardScope clipboard(owner);
     if (!clipboard.Open() || ::GetClipboardOwner() != clipboardOwner) return false;
-    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(kInternalClipboardMarker));
+    HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(InternalMarkerPayload));
     if (!data) return false;
     void* bytes = ::GlobalLock(data);
     if (!bytes) { ::GlobalFree(data); return false; }
-    memcpy(bytes, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
+    const InternalMarkerPayload payload = MarkerPayload(origin);
+    memcpy(bytes, &payload, sizeof(payload));
     ::GlobalUnlock(data);
     if (!::SetClipboardData(marker, data)) { ::GlobalFree(data); return false; }
     return true;
@@ -585,12 +614,13 @@ bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner) {
   if (FAILED(::OleGetClipboard(&original)) || !original) return false;
   const DWORD sequence = ::GetClipboardSequenceNumber();
   CComPtr<IDataObject> marked;
-  marked.Attach(new (std::nothrow) MarkedDataObject(original, static_cast<CLIPFORMAT>(marker)));
+  marked.Attach(new (std::nothrow) MarkedDataObject(original, static_cast<CLIPFORMAT>(marker), origin));
   if (!marked || sequence != ::GetClipboardSequenceNumber()) return false;
   return SUCCEEDED(::OleSetClipboard(marked));
 }
 
-bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
+bool HtmlPasteSanitizer::GetInternalCopyOrigin(HWND owner, GUID& origin) {
+  origin = GUID_NULL;
   const UINT marker = ::RegisterClipboardFormat(kInternalClipboardFormat);
   const UINT html = ::RegisterClipboardFormat(L"HTML Format");
   if (!marker || !html) return false;
@@ -599,10 +629,13 @@ bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
     ClipboardScope clipboard(owner);
     if (clipboard.Open()) {
       HGLOBAL data = static_cast<HGLOBAL>(::GetClipboardData(marker));
-      if (!data || ::GlobalSize(data) != sizeof(kInternalClipboardMarker)) return false;
+      if (!data || ::GlobalSize(data) != sizeof(InternalMarkerPayload)) return false;
       const void* value = ::GlobalLock(data);
       if (!value) return false;
-      const bool valid = memcmp(value, kInternalClipboardMarker, sizeof(kInternalClipboardMarker)) == 0;
+      const InternalMarkerPayload* payload = static_cast<const InternalMarkerPayload*>(value);
+      const bool valid = memcmp(payload->signature, kInternalClipboardMarker, sizeof(kInternalClipboardMarker)) == 0 &&
+        !::IsEqualGUID(payload->origin, GUID_NULL);
+      if (valid) origin = payload->origin;
       ::GlobalUnlock(data);
       return valid;
     }
@@ -611,25 +644,41 @@ bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
   return false;
 }
 
-bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html,
-    const std::function<bool(const CString&, bool image)>& referenceExists) {
+bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
+  GUID origin = GUID_NULL;
+  return GetInternalCopyOrigin(owner, origin);
+}
+
+bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html, bool sameDocument,
+    const std::function<bool(const CString&, InternalReferenceKind)>& referenceExists,
+    const std::function<bool(const CString&)>& idExists) {
   if (html.IsEmpty() || html.GetLength() > static_cast<int>(kMaxFragmentBytes)) return false;
   std::vector<Node> nodes;
   if (Parse(html, nodes, true) != HtmlPasteOutcome::Sanitized) return false;
-  if (!referenceExists) return true;
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    if (nodes[i].id.IsEmpty()) continue;
+    if (idExists && idExists(nodes[i].id)) return false;
+    for (size_t j = 0; j < i; ++j)
+      if (nodes[j].id == nodes[i].id) return false;
+  }
   for (const Node& node : nodes) {
     if (!node.href.IsEmpty() && node.href[0] == L'#') {
       const CString id(node.href.Mid(1));
-      const bool image = node.tag == L"div" || node.tag == L"span";
-      bool inFragment = false;
-      if (!image) for (const Node& target : nodes)
-        if (target.id == id) { inFragment = true; break; }
-      if (id.IsEmpty() || (!inFragment && !referenceExists(id, image))) return false;
+      const InternalReferenceKind kind = node.tag == L"a" ?
+        (HasClass(node.cssClass, L"note") ? InternalReferenceKind::Note : InternalReferenceKind::Link) :
+        InternalReferenceKind::Image;
+      if (id.IsEmpty()) return false;
+      const Node* localTarget = nullptr;
+      for (const Node& target : nodes) if (target.id == id) { localTarget = &target; break; }
+      if (localTarget && kind != InternalReferenceKind::Image) {
+        // The fragment does not prove that a copied section belongs to a notes body.
+        if (kind == InternalReferenceKind::Note) return false;
+      } else if (!sameDocument || (referenceExists && !referenceExists(id, kind))) return false;
     }
     if (!node.src.IsEmpty()) {
       const CString prefix(L"fbw-internal:#");
       if (node.src.Left(prefix.GetLength()).CompareNoCase(prefix) != 0 ||
-          !referenceExists(node.src.Mid(prefix.GetLength()), true)) return false;
+          !sameDocument || (referenceExists && !referenceExists(node.src.Mid(prefix.GetLength()), InternalReferenceKind::Image))) return false;
     }
   }
   return true;
