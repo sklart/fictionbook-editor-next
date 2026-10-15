@@ -114,7 +114,7 @@
     "src/fbe/testing/RuntimeTestScript64.inl": "3fef3da537fefd10ebdf3659c4dd38ed3e31f10365b7c1fc7e4ef9368483e8a1",
     "src/fbe/testing/Script64ResultChecks.h": "cdc8a8faa87f89367e51ceef356cef25c05b75f0136d02c699f6740d990fdaac",
     "tools/tests/test-script64-runtime.ps1": "527422e474a7c944cd0e8c25c51aeea47831a3d95e122cc44cec7de6e578b8be",
-    "tools/tests/test-audit-script-cards.py": "38e1fb164022054327711c6533d775a3d3b407431d653533d35f254c74b723de"
+    "tools/tests/test-audit-script-cards.py": "d502d007f4db5e1ee85211163e18bf554ba77e2208090f3096a9ead1a5ef2747"
   },
   "buildLogSha256": "a7aa4fbc6560a1254a4b33fade1bb752733aea7f039eb78c4fc6054fb93753e1",
   "textareaUndoRedo": {
@@ -134,5 +134,6 @@
     "buildLogSha256": "786fdc6441be285d2fe2b82b10a163c444c566cecc10b24d8d70a84fe3dd040a",
     "difference": "Только отступы C++-стенда и сборочная метка; для итоговой проверки сохранён точный EXE полного PASS."
   },
-  "runtimeTimeoutSeconds": 60
+  "runtimeTimeoutSeconds": 60,
+  "checkoutHashVerification": "При переносе в master проверка источников стенда допускает только преобразование LF/CRLF. Исходные SHA прогона сохранены; содержимое кода обязано совпадать."
 }

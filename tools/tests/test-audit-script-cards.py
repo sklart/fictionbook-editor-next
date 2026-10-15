@@ -179,7 +179,13 @@ def main() -> None:
     assert expected_status == "pass"
     assert runtime["probeSha256"] == hashlib.sha256((ROOT / "tools/tests/script64-runtime-probe.js").read_bytes()).hexdigest()
     for path, digest in runtime["harnessSourceSha256"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest, path
+        source = (ROOT / path).read_bytes()
+        # Git can materialize the same tested source with LF or CRLF. Keep the
+        # original runtime hash, accepting only that checkout transformation.
+        lf = source.replace(b"\r\n", b"\n")
+        checkout_hashes = {hashlib.sha256(data).hexdigest()
+                           for data in (source, lf, lf.replace(b"\n", b"\r\n"))}
+        assert digest in checkout_hashes, path
     from urllib.parse import unquote
     assert unquote(results["replacement-special-actual"]) == '$\\"'
     assert results["duplicates-actual"] == "CB" and results["cascade-actual"] == "cc"
