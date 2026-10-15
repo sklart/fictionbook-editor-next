@@ -22,14 +22,16 @@ static bool Script64ResultIs(const CString& results, const wchar_t* key, const w
 static bool Script64CasesPass(const CString& results)
 {
 	for(const wchar_t* key : { L"ordinary", L"special", L"backslash", L"quote",
-		L"replacement-special", L"empty-selection", L"empty-list", L"invalid-list" })
+		L"replacement-special", L"empty-selection", L"empty-list", L"invalid-list",
+		L"mixed-special", L"newlines", L"cyrillic", L"no-text", L"invalid-late",
+		L"nodes", L"textarea", L"numeric-order", L"duplicates", L"cascade", L"utf16-reject" })
 		if(!Script64ResultIs(results, key, L"1")) return false;
 	return true;
 }
 
 static bool Script64ParserSelfTest()
 {
-	const CString good = L"ordinary=1\nspecial=1\nbackslash=1\nquote=1\nreplacement-special=1\nempty-selection=1\nempty-list=1\ninvalid-list=1\n";
+	const CString good = L"ordinary=1\nspecial=1\nbackslash=1\nquote=1\nreplacement-special=1\nempty-selection=1\nempty-list=1\ninvalid-list=1\nmixed-special=1\nnewlines=1\ncyrillic=1\nno-text=1\ninvalid-late=1\nnodes=1\ntextarea=1\nnumeric-order=1\nduplicates=1\ncascade=1\nutf16-reject=1\n";
 	CString bad(good);
 	bad.Replace(L"\nspecial=1\n", L"\nspecial=0\n");
 	CString missing(good);

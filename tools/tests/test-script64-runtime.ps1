@@ -12,16 +12,18 @@ function Read-Script64Report([string]$Text) {
         if($entries.ContainsKey($key)) { throw "Duplicate report key: $key" }
         $entries.Add($key, $line.Substring($equals + 1))
     }
-    foreach($key in @('harness-ran','parser-negative','undo','redo','undo-single','ordinary','special',
-        'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list')) {
+    foreach($key in @('harness-ran','parser-negative','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
+        'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list',
+        'mixed-special','newlines','cyrillic','no-text','invalid-late','nodes','textarea','numeric-order','duplicates','cascade','utf16-reject')) {
         if(!$entries.ContainsKey($key) -or $entries[$key] -cne '1') { throw "Failed/missing check: $key" }
     }
     if(!$entries.ContainsKey('result') -or $entries['result'] -cne 'pass') { throw 'Runtime result is not pass.' }
     return $entries
 }
 if($ParserSelfTest) {
-    $good = (@('harness-ran','parser-negative','undo','redo','undo-single','ordinary','special',
-        'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list') | ForEach-Object { "$_=1" }) -join "`n"
+    $good = (@('harness-ran','parser-negative','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
+        'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list',
+        'mixed-special','newlines','cyrillic','no-text','invalid-late','nodes','textarea','numeric-order','duplicates','cascade','utf16-reject') | ForEach-Object { "$_=1" }) -join "`n"
     $good += "`nresult=pass`n"
     $null = Read-Script64Report $good
     foreach($bad in @($good.Replace("`nspecial=1`n", "`nspecial=0`n"),

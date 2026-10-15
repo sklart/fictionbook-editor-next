@@ -5,6 +5,7 @@ if(IsFbeTestScenario(L"script64-runtime"))
     const DWORD probeLength = ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SCRIPT64_PATH", probePath, _countof(probePath));
     const bool parserNegative = Script64ParserSelfTest();
     bool ran = false, undone = false, redone = false, single = false;
+    bool refusalNoUndo = true, exceptionCleanup = false;
     CString results;
     try
     {
@@ -32,9 +33,41 @@ if(IsFbeTestScenario(L"script64-runtime"))
             IServiceProviderPtr service(m_doc->m_body.Document());
             CComPtr<IOleUndoManager> manager;
             if(service) service->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager));
-            // Discard fixture construction and all previous cases before Run.
-            if(!manager || FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
+            if(!manager) _com_issue_error(E_NOINTERFACE);
             MSHTML::IHTMLWindow2Ptr window = m_doc->m_body.Document()->parentWindow;
+            auto execute = [&](const CString& code) { window->execScript(_bstr_t(code), _bstr_t(L"JScript")); };
+            auto noUnits = [&]() {
+                CComPtr<IEnumOleUndoUnits> units;
+                CComPtr<IOleUndoUnit> unit;
+                return SUCCEEDED(manager->EnumUndoable(&units)) && units && units->Next(1, &unit, NULL) == S_FALSE;
+            };
+            for(int index = 0; index < 4; ++index)
+            {
+                CString setup;
+                setup.Format(L"window.__script64RefusalSetup(%d);", index);
+                execute(setup);
+                pump();
+                if(FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
+                DWORD before = 0, after = 0;
+                const HRESULT beforeState = manager->GetOpenParentState(&before);
+                execute(L"window.__script64RefusalRun();");
+                const bool correctRefusal = m_status_state.EffectiveMainText(false, false, CString()) == L"1";
+                const HRESULT afterState = manager->GetOpenParentState(&after);
+                refusalNoUndo = refusalNoUndo && correctRefusal && noUnits() && beforeState == afterState && before == after;
+            }
+            execute(L"window.__script64FaultSetup();");
+            pump();
+            if(FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
+            DWORD beforeFault = 0, afterFault = 0;
+            const HRESULT beforeFaultState = manager->GetOpenParentState(&beforeFault);
+            execute(L"window.__script64FaultRun();");
+            const bool partialAndClean = m_status_state.EffectiveMainText(false, false, CString()) == L"1";
+            const HRESULT afterFaultState = manager->GetOpenParentState(&afterFault);
+            exceptionCleanup = partialAndClean && beforeFaultState == afterFaultState && beforeFault == afterFault;
+            execute(L"window.__script64PrepareOrdinary();");
+            pump();
+            // Discard fixture construction and all previous cases before Run.
+            if(FAILED(manager->DiscardFrom(NULL))) _com_issue_error(E_FAIL);
             window->execScript(_bstr_t(L"window.__script64Ordinary();"), _bstr_t(L"JScript"));
             results = m_status_state.EffectiveMainText(false, false, CString());
             ran = Script64ResultIs(results, L"ordinary", L"1");
@@ -74,9 +107,9 @@ if(IsFbeTestScenario(L"script64-runtime"))
     {
         results.AppendFormat(L"\nnative-error=0x%08lx\n", static_cast<unsigned long>(error.Error()));
     }
-    const bool passed = parserNegative && ran && undone && redone && single && Script64CasesPass(results);
+    const bool passed = parserNegative && ran && undone && redone && single && refusalNoUndo && exceptionCleanup && Script64CasesPass(results);
     CStringA output;
-    output.Format("phase=script64\nharness-ran=%d\nparser-negative=%d\nundo=%d\nredo=%d\nundo-single=%d\n%s\nresult=%s\n", ran, parserNegative, undone, redone, single,
+    output.Format("phase=script64\nharness-ran=%d\nparser-negative=%d\nundo=%d\nredo=%d\nundo-single=%d\nrefusal-no-undo=%d\nexception-cleanup=%d\n%s\nresult=%s\n", ran, parserNegative, undone, redone, single, refusalNoUndo, exceptionCleanup,
         static_cast<LPCSTR>(CW2A(results, CP_UTF8)), passed ? "pass" : "fail");
     WritePortableStateTestText(script64Report, output);
     PostMessage(WM_CLOSE);
