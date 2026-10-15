@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 354,
-    "generic_usage": 839,
-    "incorrect_undo": 122,
+    "requires_review": 353,
+    "generic_usage": 834,
+    "incorrect_undo": 121,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -54090,18 +54090,293 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/650_Расформатировать заголовки.js",
+      "codeSha256": "c0623a2995622a9ad79d259e4a7887e6a68632011cf4eb6d8540b8a0d256dbea",
+      "evidence": "Строки 1–43 описывают назначение и риски; 54–84 задают девять пользовательских параметров, а isMainAnnotation на 116 — временная переменная; 93–142 собирают эпиграфы и аннотации; 144–263 их преобразуют; 265–323 выбирают body; 427–429 отменяют до правки; 447–643 выполняют изменения в группе отмены; 650–744 строят отчёт. Файловых, сетевых операций и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для расформатирования заголовков в документах fb2.",
+          "after": "Преобразует структурные заголовки секций в абзацы; также может преобразовывать эпиграфы и аннотации.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для расформатирования заголовков в документах fb2. Скрипт удаляет структурное оформление заголовков, преобразуя их в обычные параграфы.",
+          "after": "Обходит разделы книги и заменяет заголовки секций обычными абзацами, оставляя сами секции. По умолчанию пропускает заголовок основного раздела, разделы примечаний и комментариев; при этом преобразует эпиграфы и аннотации внутри обрабатываемых разделов, добавляя к их абзацам текстовые маркеры. Перед преобразованием эпиграфов и аннотаций предупреждает о возможной невалидной структуре. В текущем коде есть операция, которая может прервать обработку при создании абзаца; результат требуется внимательно проверять.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Разделы body внутри fbw_body. По умолчанию обрабатываются заголовки вложенных section основного и иных body, кроме notes и comments; заголовок первого body остаётся. Эпиграфы и аннотации в обрабатываемых body преобразуются по умолчанию. Непосредственно вложенные в основной body аннотации считаются основными и пропускаются независимо от их порядкового номера.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Перед запуском задайте в начале исходного JS, какие разделы, эпиграфы и аннотации обрабатывать и нужны ли текстовые маркеры.",
+            "Сохраните копию книги и запустите скрипт. Если найдены эпиграфы или аннотации, внимательно прочитайте предупреждение и подтвердите обработку либо отмените её.",
+            "После запуска проверьте заголовки, содержимое абзацев, маркеры и валидность структуры. При ошибке выполнения не считайте частично изменённый документ обработанным."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Изменение структуры книги может нарушить допустимый порядок элементов; после обработки проверьте валидность FB2 и связанные ссылки.",
+            "В текущем коде присваивается значение результату вызова inflateBlock. При достижении такой строки выполнение может прерваться после частичных изменений.",
+            "Если заголовок содержит несколько абзацев, их копии вкладываются в один P, что может исказить текст или структуру.",
+            "По умолчанию преобразуются также эпиграфы и аннотации внутри обрабатываемых разделов; маркеры добавляются прямо в текст."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Скрипт открывает операцию отмены перед изменением DOM и закрывает её после обхода. Обычные ранние выходы до открытия операции; внутри неё их нет. Ошибка выполнения, в том числе при создании абзаца, может оставить операцию незавершённой; полноценный откат не проверен."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "processFirstTitle",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesBody",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsBody",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да.",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processEpigraphs",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processAnnotations",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processMarkers",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "epigraphMarker",
+              "value": "zzz_epigr_",
+              "expression": "\"zzz_epigr_\"",
+              "description": "Будет дополняться номером: zzz_epigr_1, zzz_epigr_2...",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "epigraphAuthorMarker",
+              "value": "zzz_epigrauthor_",
+              "expression": "\"zzz_epigrauthor_\"",
+              "description": "Будет дополняться номером: zzz_epigrauthor_1...",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "annotationMarker",
+              "value": "zzz_anno_",
+              "expression": "\"zzz_anno_\"",
+              "description": "Будет дополняться номером: zzz_anno_1, zzz_anno_2...",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "isMainAnnotation",
+              "value": false,
+              "expression": "false",
+              "description": "Проверяем, не является ли это основной аннотацией (первой в документе)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "processFirstTitle",
+              "value": 0,
+              "expression": "0",
+              "description": "Расформатировать заголовок основного раздела: 1 — да, 0 — оставить.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processNotesBody",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать заголовки, эпиграфы и аннотации раздела примечаний: 1 — да, 0 — пропускать раздел.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processCommentsBody",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать заголовки, эпиграфы и аннотации раздела комментариев: 1 — да, 0 — пропускать раздел.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processEpigraphs",
+              "value": 1,
+              "expression": "1",
+              "description": "Преобразовать эпиграфы в обычные абзацы: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processAnnotations",
+              "value": 1,
+              "expression": "1",
+              "description": "Преобразовать аннотации внутри разделов в обычные абзацы: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processMarkers",
+              "value": 1,
+              "expression": "1",
+              "description": "Добавлять текстовые маркеры в преобразованные абзацы эпиграфов и аннотаций: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "epigraphMarker",
+              "value": "zzz_epigr_",
+              "expression": "\"zzz_epigr_\"",
+              "description": "Префикс текстового маркера для абзацев эпиграфа; дополняется номером внутри каждого эпиграфа.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "epigraphAuthorMarker",
+              "value": "zzz_epigrauthor_",
+              "expression": "\"zzz_epigrauthor_\"",
+              "description": "Префикс текстового маркера для абзацев автора эпиграфа; дополняется номером внутри каждого эпиграфа.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "annotationMarker",
+              "value": "zzz_anno_",
+              "expression": "\"zzz_anno_\"",
+              "description": "Префикс текстового маркера для абзацев аннотации; дополняется номером внутри каждой аннотации.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 193,
+          "issue": "Выражение 'window.external.inflateBlock(clonedParagraph) = true' присваивает значение результату функции и вызывает ошибку выполнения при обработке эпиграфа. Аналогичное выражение есть на строках 247, 545 и 620 для аннотаций и заголовков; к этому моменту DOM уже может быть частично изменён."
+        },
+        {
+          "line": 116,
+          "issue": "Основной аннотацией считается любая annotation, непосредственно вложенная в первый body, а не только первая в документе. Такие дополнительные аннотации всегда пропускаются."
+        },
+        {
+          "line": 533,
+          "issue": "Все дочерние узлы DIV.title, включая несколько P, копируются внутрь одного нового P. Для многоабзацного заголовка получается вложение P в P или браузерская перестройка DOM, из-за чего текст и структура могут измениться. Та же схема повторяется на строках 607–610."
+        },
+        {
+          "line": 651,
+          "issue": "Итоговое сообщение опирается только на число преобразованных заголовков. Если преобразованы эпиграфы или аннотации, но заголовков нет, выводится 'Заголовков в документе не обнаружено!' без сведений о состоявшихся изменениях."
+        },
+        {
+          "line": 447,
+          "issue": "Между BeginUndoUnit и EndUndoUnit нет обычных return, но нет и finally. Исключение при изменении DOM, в частности от присваивания результату inflateBlock, оставит группу отмены открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 689,
-    "generic_usage": 377,
+    "inaccurate_description": 690,
+    "generic_usage": 378,
     "false_warning": 319,
-    "incorrect_setting": 206,
-    "incorrect_scope": 384,
-    "incorrect_undo": 376,
-    "uncertain_attribution": 69,
-    "generic_summary": 72,
-    "incorrect_dependency": 393,
+    "incorrect_setting": 207,
+    "incorrect_scope": 385,
+    "incorrect_undo": 377,
+    "uncertain_attribution": 70,
+    "generic_summary": 73,
+    "incorrect_dependency": 394,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -54115,20 +54390,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 15,
+    "missing_warning": 16,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 368,
-    "usageCorrected": 377,
-    "purposeClarified": 375,
-    "warningsClarified": 309,
-    "scopeClarified": 361,
+    "undoDescriptionsClarified": 369,
+    "usageCorrected": 378,
+    "purposeClarified": 376,
+    "warningsClarified": 310,
+    "scopeClarified": 362,
     "settingsClarified": 509,
-    "attributionClarified": 70,
-    "dependenciesVerified": 259,
+    "attributionClarified": 71,
+    "dependenciesVerified": 260,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -54136,7 +54411,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 11,
+    "settingsCorrected": 12,
     "effectCorrected": 1
   },
   "scripts": [
@@ -150922,112 +151197,104 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Расформатировать заголовки",
-        "summary": "Скрипт предназначен для расформатирования заголовков в документах fb2.",
-        "description": "Скрипт предназначен для расформатирования заголовков в документах fb2. Скрипт удаляет структурное оформление заголовков, преобразуя их в обычные параграфы.",
+        "summary": "Преобразует структурные заголовки секций в абзацы; также может преобразовывать эпиграфы и аннотации.",
+        "description": "Обходит разделы книги и заменяет заголовки секций обычными абзацами, оставляя сами секции. По умолчанию пропускает заголовок основного раздела, разделы примечаний и комментариев; при этом преобразует эпиграфы и аннотации внутри обрабатываемых разделов, добавляя к их абзацам текстовые маркеры. Перед преобразованием эпиграфов и аннотаций предупреждает о возможной невалидной структуре. В текущем коде есть операция, которая может прервать обработку при создании абзаца; результат требуется внимательно проверять.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "2.1",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Разделы body внутри fbw_body. По умолчанию обрабатываются заголовки вложенных section основного и иных body, кроме notes и comments; заголовок первого body остаётся. Эпиграфы и аннотации в обрабатываемых body преобразуются по умолчанию. Непосредственно вложенные в основной body аннотации считаются основными и пропускаются независимо от их порядкового номера.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Перед запуском задайте в начале исходного JS, какие разделы, эпиграфы и аннотации обрабатывать и нужны ли текстовые маркеры.",
+          "Сохраните копию книги и запустите скрипт. Если найдены эпиграфы или аннотации, внимательно прочитайте предупреждение и подтвердите обработку либо отмените её.",
+          "После запуска проверьте заголовки, содержимое абзацев, маркеры и валидность структуры. При ошибке выполнения не считайте частично изменённый документ обработанным."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Изменение структуры книги может нарушить допустимый порядок элементов; после обработки проверьте валидность FB2 и связанные ссылки.",
+          "В текущем коде присваивается значение результату вызова inflateBlock. При достижении такой строки выполнение может прерваться после частичных изменений.",
+          "Если заголовок содержит несколько абзацев, их копии вкладываются в один P, что может исказить текст или структуру.",
+          "По умолчанию преобразуются также эпиграфы и аннотации внутри обрабатываемых разделов; маркеры добавляются прямо в текст."
         ],
         "settings": [
           {
             "name": "processFirstTitle",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Расформатировать заголовок основного раздела: 1 — да, 0 — оставить.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processNotesBody",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать заголовки, эпиграфы и аннотации раздела примечаний: 1 — да, 0 — пропускать раздел.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processCommentsBody",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да.",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать заголовки, эпиграфы и аннотации раздела комментариев: 1 — да, 0 — пропускать раздел.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processEpigraphs",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Преобразовать эпиграфы в обычные абзацы: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processAnnotations",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Преобразовать аннотации внутри разделов в обычные абзацы: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processMarkers",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Добавлять текстовые маркеры в преобразованные абзацы эпиграфов и аннотаций: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "epigraphMarker",
             "value": "zzz_epigr_",
             "expression": "\"zzz_epigr_\"",
-            "description": "Будет дополняться номером: zzz_epigr_1, zzz_epigr_2...",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Префикс текстового маркера для абзацев эпиграфа; дополняется номером внутри каждого эпиграфа.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "epigraphAuthorMarker",
             "value": "zzz_epigrauthor_",
             "expression": "\"zzz_epigrauthor_\"",
-            "description": "Будет дополняться номером: zzz_epigrauthor_1...",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Префикс текстового маркера для абзацев автора эпиграфа; дополняется номером внутри каждого эпиграфа.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "annotationMarker",
             "value": "zzz_anno_",
             "expression": "\"zzz_anno_\"",
-            "description": "Будет дополняться номером: zzz_anno_1, zzz_anno_2...",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "isMainAnnotation",
-            "value": false,
-            "expression": "false",
-            "description": "Проверяем, не является ли это основной аннотацией (первой в документе)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Префикс текстового маркера для абзацев аннотации; дополняется номером внутри каждой аннотации.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Скрипт открывает операцию отмены перед изменением DOM и закрывает её после обхода. Обычные ранние выходы до открытия операции; внутри неё их нет. Ошибка выполнения, в том числе при создании абзаца, может оставить операцию незавершённой; полноценный откат не проверен."
         },
         "examples": null,
         "tags": [
@@ -151038,13 +151305,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 571,
+            "line": 563,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" (v\" + version + \")\");"
           }
         ],
         "undo_end": [
           {
-            "line": 767,
+            "line": 759,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -151052,19 +151319,19 @@
         "selection": [],
         "write": [
           {
-            "line": 303,
+            "line": 295,
             "text": "clonedParagraph.appendChild(markerText);"
           },
           {
-            "line": 319,
+            "line": 311,
             "text": "fragment.appendChild(clonedParagraph);"
           },
           {
-            "line": 326,
+            "line": 318,
             "text": "parent.appendChild(fragment);"
           },
           {
-            "line": 363,
+            "line": 355,
             "text": "clonedParagraph.appendChild(markerText);"
           }
         ],
@@ -151075,23 +151342,23 @@
         "file": [],
         "return": [
           {
-            "line": 214,
+            "line": 206,
             "text": "return;"
           },
           {
-            "line": 259,
+            "line": 251,
             "text": "return {"
           },
           {
-            "line": 332,
+            "line": 324,
             "text": "return {"
           },
           {
-            "line": 386,
+            "line": 378,
             "text": "return annoCounter;"
           },
           {
-            "line": 552,
+            "line": 544,
             "text": "return;"
           }
         ]
@@ -151103,21 +151370,21 @@
           "name": "processFirstTitle",
           "declarations": [
             {
-              "line": 181,
+              "line": 173,
               "text": "var processFirstTitle = 0;     // 0 - нет, 1 - да."
             }
           ],
           "uses": [
             {
-              "line": 181,
+              "line": 173,
               "text": "var processFirstTitle = 0;     // 0 - нет, 1 - да."
             },
             {
-              "line": 643,
+              "line": 635,
               "text": "if (bodyType == \"main\" && processFirstTitle == 0) {"
             },
             {
-              "line": 845,
+              "line": 837,
               "text": "message += \"• Заголовок основного раздела: \" + (processFirstTitle ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -151128,21 +151395,21 @@
           "name": "processNotesBody",
           "declarations": [
             {
-              "line": 184,
+              "line": 176,
               "text": "var processNotesBody = 0;      // 0 - нет, 1 - да."
             }
           ],
           "uses": [
             {
-              "line": 184,
+              "line": 176,
               "text": "var processNotesBody = 0;      // 0 - нет, 1 - да."
             },
             {
-              "line": 418,
+              "line": 410,
               "text": "if (bodyType == \"notes\" && processNotesBody == 0) {"
             },
             {
-              "line": 846,
+              "line": 838,
               "text": "message += \"• Заголовки раздела сносок: \" + (processNotesBody ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -151153,21 +151420,21 @@
           "name": "processCommentsBody",
           "declarations": [
             {
-              "line": 187,
+              "line": 179,
               "text": "var processCommentsBody = 0;   // 0 - нет, 1 - да."
             }
           ],
           "uses": [
             {
-              "line": 187,
+              "line": 179,
               "text": "var processCommentsBody = 0;   // 0 - нет, 1 - да."
             },
             {
-              "line": 421,
+              "line": 413,
               "text": "if (bodyType == \"comments\" && processCommentsBody == 0) {"
             },
             {
-              "line": 847,
+              "line": 839,
               "text": "message += \"• Заголовки раздела комментариев: \" + (processCommentsBody ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -151178,21 +151445,21 @@
           "name": "processEpigraphs",
           "declarations": [
             {
-              "line": 190,
+              "line": 182,
               "text": "var processEpigraphs = 1;      // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 190,
+              "line": 182,
               "text": "var processEpigraphs = 1;      // 0 - нет, 1 - да"
             },
             {
-              "line": 504,
+              "line": 496,
               "text": "if (processEpigraphs == 1) {"
             },
             {
-              "line": 848,
+              "line": 840,
               "text": "message += \"• Автоматически расформатировать эпиграфы: \" + (processEpigraphs ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -151203,21 +151470,21 @@
           "name": "processAnnotations",
           "declarations": [
             {
-              "line": 193,
+              "line": 185,
               "text": "var processAnnotations = 1;    // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 193,
+              "line": 185,
               "text": "var processAnnotations = 1;    // 0 - нет, 1 - да"
             },
             {
-              "line": 478,
+              "line": 470,
               "text": "if (processAnnotations == 1) {"
             },
             {
-              "line": 849,
+              "line": 841,
               "text": "message += \"• Автоматически расформатировать аннотации: \" + (processAnnotations ? \"ДА\" : \"НЕТ\") + \"\\n\";"
             }
           ],
@@ -151228,41 +151495,41 @@
           "name": "processMarkers",
           "declarations": [
             {
-              "line": 196,
+              "line": 188,
               "text": "var processMarkers = 1;        // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 196,
+              "line": 188,
               "text": "var processMarkers = 1;        // 0 - нет, 1 - да"
             },
             {
-              "line": 289,
+              "line": 281,
               "text": "if (processMarkers == 1) {"
             },
             {
-              "line": 356,
+              "line": 348,
               "text": "if (processMarkers == 1) {"
             },
             {
-              "line": 530,
+              "line": 522,
               "text": "if (processMarkers == 1) {"
             },
             {
-              "line": 600,
+              "line": 592,
               "text": "if (processMarkers == 1) {"
             },
             {
-              "line": 610,
+              "line": 602,
               "text": "if (processMarkers == 1) {"
             },
             {
-              "line": 812,
+              "line": 804,
               "text": "if (processMarkers == 1 && (totalEpigrMarkers > 0 || totalAuthorMarkers > 0 || totalAnnoMarkers > 0)) {"
             },
             {
-              "line": 850,
+              "line": 842,
               "text": "message += \"• Автоматически добавлять маркеры: \" + (processMarkers ? \"ДА\" : \"НЕТ\") + \"\\n\\n\";"
             }
           ],
@@ -151273,37 +151540,37 @@
           "name": "epigraphMarker",
           "declarations": [
             {
-              "line": 202,
+              "line": 194,
               "text": "var epigraphMarker = \"zzz_epigr_\";      // Будет дополняться номером: zzz_epigr_1, zzz_epigr_2..."
             }
           ],
           "uses": [
             {
-              "line": 202,
+              "line": 194,
               "text": "var epigraphMarker = \"zzz_epigr_\";      // Будет дополняться номером: zzz_epigr_1, zzz_epigr_2..."
             },
             {
-              "line": 295,
+              "line": 287,
               "text": "marker = epigraphMarker + epigrCounter + \" \";"
             },
             {
-              "line": 533,
+              "line": 525,
               "text": "autoProcessMessage += \"• Для эпиграфов: \" + epigraphMarker + \"1, \" + epigraphMarker + \"2...\\n\";"
             },
             {
-              "line": 533,
+              "line": 525,
               "text": "autoProcessMessage += \"• Для эпиграфов: \" + epigraphMarker + \"1, \" + epigraphMarker + \"2...\\n\";"
             },
             {
-              "line": 816,
+              "line": 808,
               "text": "message += \"• Для эпиграфов: \" + epigraphMarker + \"1... (\" + totalEpigrMarkers + \" шт)\\n\";"
             },
             {
-              "line": 856,
+              "line": 848,
               "text": "message += \"• Эпиграфы: \" + epigraphMarker + \"1, \" + epigraphMarker + \"2...\\n\";"
             },
             {
-              "line": 856,
+              "line": 848,
               "text": "message += \"• Эпиграфы: \" + epigraphMarker + \"1, \" + epigraphMarker + \"2...\\n\";"
             }
           ],
@@ -151314,37 +151581,37 @@
           "name": "epigraphAuthorMarker",
           "declarations": [
             {
-              "line": 205,
+              "line": 197,
               "text": "var epigraphAuthorMarker = \"zzz_epigrauthor_\"; // Будет дополняться номером: zzz_epigrauthor_1..."
             }
           ],
           "uses": [
             {
-              "line": 205,
+              "line": 197,
               "text": "var epigraphAuthorMarker = \"zzz_epigrauthor_\"; // Будет дополняться номером: zzz_epigrauthor_1..."
             },
             {
-              "line": 292,
+              "line": 284,
               "text": "marker = epigraphAuthorMarker + authorCounter + \" \";"
             },
             {
-              "line": 534,
+              "line": 526,
               "text": "autoProcessMessage += \"• Для авторов эпиграфов: \" + epigraphAuthorMarker + \"1, \" + epigraphAuthorMarker + \"2...\\n\";"
             },
             {
-              "line": 534,
+              "line": 526,
               "text": "autoProcessMessage += \"• Для авторов эпиграфов: \" + epigraphAuthorMarker + \"1, \" + epigraphAuthorMarker + \"2...\\n\";"
             },
             {
-              "line": 819,
+              "line": 811,
               "text": "message += \"• Для авторов эпиграфов: \" + epigraphAuthorMarker + \"1... (\" + totalAuthorMarkers + \" шт)\\n\";"
             },
             {
-              "line": 857,
+              "line": 849,
               "text": "message += \"• Авторы эпиграфов: \" + epigraphAuthorMarker + \"1, \" + epigraphAuthorMarker + \"2...\\n\";"
             },
             {
-              "line": 857,
+              "line": 849,
               "text": "message += \"• Авторы эпиграфов: \" + epigraphAuthorMarker + \"1, \" + epigraphAuthorMarker + \"2...\\n\";"
             }
           ],
@@ -151355,63 +151622,38 @@
           "name": "annotationMarker",
           "declarations": [
             {
-              "line": 208,
+              "line": 200,
               "text": "var annotationMarker = \"zzz_anno_\";     // Будет дополняться номером: zzz_anno_1, zzz_anno_2..."
             }
           ],
           "uses": [
             {
-              "line": 208,
+              "line": 200,
               "text": "var annotationMarker = \"zzz_anno_\";     // Будет дополняться номером: zzz_anno_1, zzz_anno_2..."
             },
             {
-              "line": 358,
+              "line": 350,
               "text": "var marker = annotationMarker + annoCounter + \" \";"
             },
             {
-              "line": 537,
+              "line": 529,
               "text": "autoProcessMessage += \"• Для аннотаций: \" + annotationMarker + \"1, \" + annotationMarker + \"2...\\n\";"
             },
             {
-              "line": 537,
+              "line": 529,
               "text": "autoProcessMessage += \"• Для аннотаций: \" + annotationMarker + \"1, \" + annotationMarker + \"2...\\n\";"
             },
             {
-              "line": 822,
+              "line": 814,
               "text": "message += \"• Для аннотаций: \" + annotationMarker + \"1... (\" + totalAnnoMarkers + \" шт)\\n\";"
             },
             {
-              "line": 858,
+              "line": 850,
               "text": "message += \"• Аннотации: \" + annotationMarker + \"1, \" + annotationMarker + \"2...\\n\\n\";"
             },
             {
-              "line": 858,
+              "line": 850,
               "text": "message += \"• Аннотации: \" + annotationMarker + \"1, \" + annotationMarker + \"2...\\n\\n\";"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 9,
-          "name": "isMainAnnotation",
-          "declarations": [
-            {
-              "line": 240,
-              "text": "var isMainAnnotation = false;"
-            }
-          ],
-          "uses": [
-            {
-              "line": 240,
-              "text": "var isMainAnnotation = false;"
-            },
-            {
-              "line": 245,
-              "text": "isMainAnnotation = true;"
-            },
-            {
-              "line": 249,
-              "text": "if (!isMainAnnotation) {"
             }
           ],
           "classification": "requires_review"
@@ -151420,25 +151662,37 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 126,
+          "line": 118,
           "text": "// version 2.1"
         },
         {
-          "line": 148,
+          "line": 140,
           "text": "// - Маркеры для авторов эпиграфов: zzz_epigrauthor_1, zzz_epigrauthor_2..."
         },
         {
-          "line": 148,
+          "line": 140,
           "text": "// - Маркеры для авторов эпиграфов: zzz_epigrauthor_1, zzz_epigrauthor_2..."
         },
         {
-          "line": 148,
+          "line": 140,
           "text": "// - Маркеры для авторов эпиграфов: zzz_epigrauthor_1, zzz_epigrauthor_2..."
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Изменение структуры книги может нарушить допустимый порядок элементов; после обработки проверьте валидность FB2 и связанные ссылки.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "В текущем коде присваивается значение результату вызова inflateBlock. При достижении такой строки выполнение может прерваться после частичных изменений.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Если заголовок содержит несколько абзацев, их копии вкладываются в один P, что может исказить текст или структуру.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "По умолчанию преобразуются также эпиграфы и аннотации внутри обрабатываемых разделов; маркеры добавляются прямо в текст.",
           "verification": "requires_review"
         }
       ],
@@ -151459,80 +151713,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 571,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" (v\" + version + \")\");"
-            },
-            {
-              "line": 767,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/655_Нормализовать регистр заголовков и подзаголовков.js",
