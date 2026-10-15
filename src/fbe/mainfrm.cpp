@@ -3510,6 +3510,10 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
   const HINSTANCE applicationModule = ATL::_AtlBaseModule.GetModuleInstance();
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
     IDB_TOOLS_REFRESH_SCRIPTS, ID_TOOLS_REFRESH_SCRIPTS);
+  AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,
+    IDB_PASTE_TEXT, ID_EDIT_PASTE_TEXT);
+  RegisterOwnedNativeMenuBitmap(applicationModule, IDB_PASTE_TEXT,
+    ID_EDIT_PASTE_TEXT, UiMetrics::DpiForWindow(m_hWnd));
   RegisterOwnedNativeMenuBitmap(applicationModule, IDB_TOOLS_REFRESH_SCRIPTS,
     ID_TOOLS_REFRESH_SCRIPTS, UiMetrics::DpiForWindow(m_hWnd));
   AddCommandBarBitmapFromModule(m_MenuBar, applicationModule,

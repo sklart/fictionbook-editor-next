@@ -679,6 +679,12 @@
     <None Include="res\document.bmp">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\paste_text.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\paste_text.svg">
+      <Filter>Resource Files</Filter>
+    </None>
     <None Include="res\error.bmp">
       <Filter>Resource Files</Filter>
     </None>

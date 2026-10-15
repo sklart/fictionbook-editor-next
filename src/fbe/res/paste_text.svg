@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <title>Paste as plain text</title>
+  <path fill="#263b59" d="M5 1h6v2h2v12H3V3h2z"/>
+  <path fill="#fffdf5" d="M4 4h8v10H4z"/>
+  <path fill="#263b59" d="M5 1h6v4H5z"/>
+  <path fill="#79aed0" d="M6 2h4v2H6z"/>
+  <path fill="#2867a1" d="M5 6h6v2H9v3H7V8H5z"/>
+  <path fill="#9babb8" d="M5 12h6v1H5z"/>
+</svg>

@@ -688,6 +688,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <None Include="res\center.bmp" />
     <None Include="res\doc.bmp" />
     <None Include="res\document.bmp" />
+    <None Include="res\paste_text.bmp" />
+    <None Include="res\paste_text.svg" />
     <None Include="res\error.bmp" />
     <None Include="res\imgph.png" />
     <None Include="res\Fb2-shema.bmp" />
