@@ -18,6 +18,7 @@ if ($WarnOnUpdate -and $FailOnUpdate) {
 
 . (Join-Path $PSScriptRoot 'ThirdPartySources.ps1')
 . (Join-Path $PSScriptRoot 'DictionarySources.ps1')
+. (Join-Path $PSScriptRoot 'ThirdPartyUpdateReport.ps1')
 
 function Resolve-ItemsToCheck {
     param([string[]]$Selected)
@@ -83,31 +84,29 @@ $notInstalled = @($results | Where-Object { $_.Status -eq 'NotInstalled' })
 
 Write-Host ''
 if ($updates.Count -gt 0) { Write-Host ('Updates available: {0}' -f (($updates.DisplayName) -join ', ')) }
-else { Write-Host 'No stable upstream updates found for installed dependencies.' }
+else { Write-Host 'No upstream updates found for installed dependencies.' }
 
 if ($reviews.Count -gt 0) {
-    Write-Warning ('Manual review required: {0}' -f (($reviews.DisplayName) -join ', '))
+    $reviewSummary = 'Manual review required: {0}' -f (($reviews.DisplayName) -join ', ')
+    if ($WarnOnUpdate) { Write-Host $reviewSummary }
+    else { Write-Warning $reviewSummary }
 }
 
 if ($notInstalled.Count -gt 0) {
     Write-Host ('Optional/not installed: {0}' -f (($notInstalled.DisplayName) -join ', '))
 }
 
+if ($Dependency -contains 'all') {
+    Write-Host 'Not version-checked snapshot: UAC plugin helper (https://nsis.sourceforge.io/UAC_plug-in).'
+}
+
 if ($WarnOnUpdate) {
     foreach ($item in $updates) {
-        $message = '{0}: local {1}, latest {2} ({3})' -f $item.DisplayName,$item.LocalVersion,$item.RemoteVersion,$item.RemoteTag
-        Write-Warning $message
-        if ($env:GITHUB_ACTIONS -eq 'true') {
-            Write-Host ('::warning title=Third-party update available::{0}' -f $message)
-        }
+        Write-ThirdPartyUpdateNotice -Item $item
     }
 
     foreach ($item in $reviews) {
-        $message = '{0}: manual review required (local {1}, upstream {2}, tag {3})' -f $item.DisplayName,$item.LocalVersion,$item.RemoteVersion,$item.RemoteTag
-        Write-Warning $message
-        if ($env:GITHUB_ACTIONS -eq 'true') {
-            Write-Host ('::warning title=Third-party manual review::{0}' -f $message)
-        }
+        Write-ThirdPartyUpdateNotice -Item $item -ManualReview
     }
 }
 

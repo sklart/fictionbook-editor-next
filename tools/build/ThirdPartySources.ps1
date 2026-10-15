@@ -8,6 +8,7 @@ The catalog supports three dependency types:
   * GitSubmodule  - repository gitlink is compared with the latest stable upstream tag;
   * VendoredTree  - vendored source tree checked in place; updates are applied manually when FBE-specific files must be preserved.
   * OptionalTree  - optional vendored dependency; absence is reported as NotInstalled.
+  * AssetSet      - selected vendored assets compared with their upstream blob hashes.
 #>
 
 [CmdletBinding()]
@@ -328,6 +329,51 @@ function New-GitSubmoduleDependency {
     }
 }
 
+function Get-GitBlobSha1 {
+    param([Parameter(Mandatory)][byte[]]$Bytes)
+
+    $header = [Text.Encoding]::ASCII.GetBytes("blob $($Bytes.Length)`0")
+    $blob = New-Object byte[] ($header.Length + $Bytes.Length)
+    [Array]::Copy($header, 0, $blob, 0, $header.Length)
+    [Array]::Copy($Bytes, 0, $blob, $header.Length, $Bytes.Length)
+    $sha1 = [Security.Cryptography.SHA1]::Create()
+    try { return ([BitConverter]::ToString($sha1.ComputeHash($blob))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha1.Dispose() }
+}
+
+function Get-FluentPinUpdateInfo {
+    param(
+        [Parameter(Mandatory)]$Dependency,
+        [object[]]$RemoteFiles
+    )
+
+    if ($null -eq $RemoteFiles) {
+        $url = 'https://api.github.com/repos/microsoft/fluentui-system-icons/contents/assets/Pin/SVG?ref=main'
+        $RemoteFiles = @(Get-RemoteTextContent -Uri $url | ConvertFrom-Json)
+    }
+    $remoteByName = @{}
+    foreach ($file in $RemoteFiles) { $remoteByName[[string]$file.name] = $file }
+
+    $changed = @(
+        foreach ($name in $Dependency.AssetFiles) {
+            $path = Join-Path $Dependency.LocalPath $name
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing local Fluent Pin SVG: $path" }
+            if (-not $remoteByName.ContainsKey($name)) { throw "Missing upstream Fluent Pin SVG: $name" }
+            $localSha = Get-GitBlobSha1 -Bytes ([IO.File]::ReadAllBytes($path))
+            if ($localSha -ne [string]$remoteByName[$name].sha) { $name }
+        }
+    )
+
+    return [pscustomobject]@{
+        Name=$Dependency.Name; DisplayName=$Dependency.DisplayName; Repository=$Dependency.Repository; LocalPath=$Dependency.LocalPath
+        LocalVersion=$Dependency.PinnedCommit.Substring(0,12); LocalCommit=$Dependency.PinnedCommit
+        RemoteVersion='main'; RemoteTag='Pin/SVG'; RemoteCommit=$null
+        RemoteZipUrl=$null; RemoteSource='GitHub contents API'
+        Status=$(if ($changed.Count -gt 0) { 'UpdateAvailable' } else { 'UpToDate' })
+        Kind=$Dependency.Kind; UpdateMode=$Dependency.UpdateMode; ChangedFiles=$changed
+    }
+}
+
 function Get-DependencyCatalog {
     $repoRoot = Get-ThirdPartyRepoRoot
 
@@ -440,6 +486,20 @@ function Get-DependencyCatalog {
         (New-GitSubmoduleDependency -Name 'libarchive' -DisplayName 'libarchive' -RelativePath 'third_party\libarchive' -RepositoryUrl 'https://github.com/libarchive/libarchive.git' -TagPattern '^v?(\d+\.\d+\.\d+)$' -ValidationPaths @('CMakeLists.txt','libarchive\archive.h'))
 
         [pscustomobject]@{
+            Name = 'fluent-pin'
+            DisplayName = 'Fluent Pin SVGs'
+            Repository = 'https://github.com/microsoft/fluentui-system-icons'
+            RepositoryUrl = $null
+            LocalPath = Join-Path $repoRoot 'src\fbe\res\icons\fluent-pin'
+            RelativePath = 'src\fbe\res\icons\fluent-pin'
+            Kind = 'AssetSet'
+            UpdateMode = 'Manual'
+            Optional = $false
+            PinnedCommit = 'a347af95478f989038cccbf085978865264c048a'
+            AssetFiles = @(foreach ($size in 16,20,24,28,32) { foreach ($style in 'regular','filled') { "ic_fluent_pin_${size}_${style}.svg" } })
+        }
+
+        [pscustomobject]@{
             Name = 'lunasvg'
             DisplayName = 'LunaSVG'
             Repository = 'sammycage/lunasvg'
@@ -538,6 +598,8 @@ function Get-RemoteDependencyRelease {
 
 function Get-DependencyUpdateInfo {
     param([Parameter(Mandatory)]$Dependency)
+
+    if ($Dependency.Kind -eq 'AssetSet') { return Get-FluentPinUpdateInfo -Dependency $Dependency }
 
     $remote = Get-RemoteDependencyRelease -Dependency $Dependency
 
