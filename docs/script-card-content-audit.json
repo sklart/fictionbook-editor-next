@@ -3,8 +3,8 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 337,
-    "generic_usage": 744,
-    "incorrect_undo": 103,
+    "generic_usage": 739,
+    "incorrect_undo": 102,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -58630,18 +58630,221 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/800_Удалить дубли пустых строк.js",
+      "codeSha256": "475d7af00008f339bf1e726c06ec2be1a78b9e05caf76e1cb01e7915ae0de19c",
+      "evidence": "Строки 1–14 описывают назначение; 26–36 задают четыре параметра; 57–105 определяют пустоту и раздел; 117–190 плоско собирают P и удаляют повторы; 192–374 разбирают выделение; 380–417 обходят аннотацию и body; 419–470 выводят итог. Файловых, сетевых операций и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для удаления дубликатов пустых строк (абзацев <P>) в fb2 документах,",
+          "after": "Удаляет повторяющиеся пустые абзацы, оставляя первый в каждой найденной группе.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для удаления дубликатов пустых строк (абзацев <P>) в fb2 документах,",
+          "after": "При непустом выделении собирает абзацы в его границах; без выделения обходит основную аннотацию и DIV.body основного текста, примечаний и комментариев согласно настройкам. Считает P пустым, если после удаления HTML-тегов, кроме img, остаются только пробелы и неразрывные пробелы. В последовательности собранных P оставляет первый пустой и удаляет остальные до следующего непустого. Список формируется без проверки одинакового родителя или границы секции, поэтому отдельные пустые абзацы разных блоков могут быть объединены ошибочно.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Выделенные абзацы либо первая основная аннотация и DIV.body с пустым fbname, notes и comments по параметрам. Внутренние DIV.annotation относятся к типу annotation. Таблицы обходом пропускаются. В последовательность P могут попасть абзацы из разных вложенных секций и структурных блоков.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "requiresSelection",
+          "before": null,
+          "after": false,
+          "category": "incorrect_selection"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "При необходимости измените четыре параметра в начале JS. Выделите нужный фрагмент либо снимите выделение для обхода допущенных разделов целиком.",
+            "Запустите скрипт. При showStatistics=1 появится итоговое сообщение; при 0 сообщение остаётся только если дубли не найдены.",
+            "После удаления проверьте пустые строки на границах секций, стихов, цитат и аннотаций, а также итоговые числа при нескольких body."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Пустые P собираются в один плоский список без сохранения границ секций: строка в начале следующего блока может быть удалена как дубль предыдущего.",
+            "При нескольких DIV.body одного типа итоговые счётчики перезаписываются и могут быть меньше фактического числа удалений.",
+            "Обход контейнера может выйти за его пределы и при некоторых расположениях узлов завершиться ошибкой; перед запуском сохраните копию книги."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Удаление абзацев выполняется внутри операции отмены. Обычных досрочных return между открытием и закрытием нет, но закрытие при исключении не гарантировано; полнота отката отдельно не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processAnnotation",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать основную аннотацию",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел сносок (примечаний)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел комментариев",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Показывать итоговый отчёт: 1 — всегда, 0 — только если дубли не найдены.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processAnnotation",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать основную аннотацию и разрешать пустые абзацы во внутренних DIV.annotation: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел примечаний: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать раздел комментариев: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 159,
+          "issue": "Проверка соседства пустых P идёт по плоскому allP, не сравнивает родителя или секцию. Пустой P в конце одной секции и в начале следующей считаются дублями; второй удаляется. Аналогичный алгоритм для selectedP на строке 348."
+        },
+        {
+          "line": 140,
+          "issue": "Обход processContainer после достижения container продолжает поиск nextSibling у предков. Если контейнер и предки не имеют следующего соседа, saveNext становится null и обращение к nextSibling вызывает исключение; дублирующий обход выделения имеет тот же дефект на строке 256."
+        },
+        {
+          "line": 405,
+          "issue": "При каждом следующем основном body mainCount присваивается заново; notesCount/commentsCount также перезаписываются. Итоговая статистика не суммирует удаления по нескольким body одного типа."
+        },
+        {
+          "line": 85,
+          "issue": "Комментарий обещает приоритет body, но поиск родителей от P встречает вложенную DIV.annotation раньше body и сразу возвращает annotation. Внутренние аннотации зависят от processAnnotation, а не только от раздела body."
+        },
+        {
+          "line": 192,
+          "issue": "Между BeginUndoUnit и EndUndoUnit на строке 419 нет обычного return, но нет и finally. Исключение при обходе или удалении оставит операцию отмены открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 708,
-    "generic_usage": 396,
+    "inaccurate_description": 709,
+    "generic_usage": 397,
     "false_warning": 319,
-    "incorrect_setting": 225,
-    "incorrect_scope": 403,
-    "incorrect_undo": 395,
-    "uncertain_attribution": 88,
-    "generic_summary": 91,
-    "incorrect_dependency": 412,
+    "incorrect_setting": 226,
+    "incorrect_scope": 404,
+    "incorrect_undo": 396,
+    "uncertain_attribution": 89,
+    "generic_summary": 92,
+    "incorrect_dependency": 413,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -58650,25 +58853,25 @@
     "incorrect_attribution": 43,
     "incorrect_metadata": 10,
     "false_setting": 9,
-    "incorrect_selection": 41,
+    "incorrect_selection": 42,
     "incorrect_modification": 1,
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 34,
+    "missing_warning": 35,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 387,
-    "usageCorrected": 396,
-    "purposeClarified": 394,
-    "warningsClarified": 328,
-    "scopeClarified": 380,
+    "undoDescriptionsClarified": 388,
+    "usageCorrected": 397,
+    "purposeClarified": 395,
+    "warningsClarified": 329,
+    "scopeClarified": 381,
     "settingsClarified": 509,
-    "attributionClarified": 89,
-    "dependenciesVerified": 278,
+    "attributionClarified": 90,
+    "dependenciesVerified": 279,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -58676,7 +58879,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 30,
+    "settingsCorrected": 31,
     "effectCorrected": 1
   },
   "scripts": [
@@ -169110,70 +169313,68 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Удалить дубли пустых строк",
-        "summary": "Скрипт предназначен для удаления дубликатов пустых строк (абзацев <P>) в fb2 документах,",
-        "description": "Скрипт предназначен для удаления дубликатов пустых строк (абзацев <P>) в fb2 документах,",
+        "summary": "Удаляет повторяющиеся пустые абзацы, оставляя первый в каждой найденной группе.",
+        "description": "При непустом выделении собирает абзацы в его границах; без выделения обходит основную аннотацию и DIV.body основного текста, примечаний и комментариев согласно настройкам. Считает P пустым, если после удаления HTML-тегов, кроме img, остаются только пробелы и неразрывные пробелы. В последовательности собранных P оставляет первый пустой и удаляет остальные до следующего непустого. Список формируется без проверки одинакового родителя или границы секции, поэтому отдельные пустые абзацы разных блоков могут быть объединены ошибочно.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "1.5",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Выделенные абзацы либо первая основная аннотация и DIV.body с пустым fbname, notes и comments по параметрам. Внутренние DIV.annotation относятся к типу annotation. Таблицы обходом пропускаются. В последовательность P могут попасть абзацы из разных вложенных секций и структурных блоков.",
         "modifiesDocument": true,
-        "requiresSelection": null,
+        "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "При необходимости измените четыре параметра в начале JS. Выделите нужный фрагмент либо снимите выделение для обхода допущенных разделов целиком.",
+          "Запустите скрипт. При showStatistics=1 появится итоговое сообщение; при 0 сообщение остаётся только если дубли не найдены.",
+          "После удаления проверьте пустые строки на границах секций, стихов, цитат и аннотаций, а также итоговые числа при нескольких body."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Пустые P собираются в один плоский список без сохранения границ секций: строка в начале следующего блока может быть удалена как дубль предыдущего.",
+          "При нескольких DIV.body одного типа итоговые счётчики перезаписываются и могут быть меньше фактического числа удалений.",
+          "Обход контейнера может выйти за его пределы и при некоторых расположениях узлов завершиться ошибкой; перед запуском сохраните копию книги."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "Настройка: 1 - показывать статистику, 0 - не показывать (тихий режим)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать итоговый отчёт: 1 — всегда, 0 — только если дубли не найдены.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processAnnotation",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать основную аннотацию",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать основную аннотацию и разрешать пустые абзацы во внутренних DIV.annotation: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processNotesSection",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать раздел сносок (примечаний)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать раздел примечаний: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processCommentsSection",
             "value": 1,
             "expression": "1",
-            "description": "Обрабатывать раздел комментариев",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать раздел комментариев: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Удаление абзацев выполняется внутри операции отмены. Обычных досрочных return между открытием и закрытием нет, но закрытие при исключении не гарантировано; полнота отката отдельно не проверена."
         },
         "examples": null,
         "tags": [
@@ -169184,38 +169385,38 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 274,
+            "line": 272,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 501,
+            "line": 499,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 277,
+            "line": 275,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 277,
+            "line": 275,
             "text": "var selRange = document.selection.createRange();"
           },
           {
-            "line": 291,
+            "line": 289,
             "text": "var trStart = document.selection.createRange();"
           },
           {
-            "line": 291,
+            "line": 289,
             "text": "var trStart = document.selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 151,
+            "line": 149,
             "text": "return re0.test(p.innerHTML.replace(re2, \"\"));"
           }
         ],
@@ -169226,83 +169427,83 @@
         "file": [],
         "return": [
           {
-            "line": 151,
+            "line": 149,
             "text": "return re0.test(p.innerHTML.replace(re2, \"\"));"
           },
           {
-            "line": 162,
+            "line": 160,
             "text": "if (fbname == \"\") return \"main\";"
           },
           {
-            "line": 163,
+            "line": 161,
             "text": "if (fbname == \"notes\") return \"notes\";"
           },
           {
-            "line": 164,
+            "line": 162,
             "text": "if (fbname == \"comments\") return \"comments\";"
           },
           {
-            "line": 165,
+            "line": 163,
             "text": "return \"other\";"
           },
           {
-            "line": 169,
+            "line": 167,
             "text": "return \"annotation\";"
           },
           {
-            "line": 174,
+            "line": 172,
             "text": "return \"main\";"
           },
           {
-            "line": 181,
+            "line": 179,
             "text": "if (sectionType == \"main\") return true;"
           },
           {
-            "line": 182,
+            "line": 180,
             "text": "if (sectionType == \"annotation\" && processAnnotation == 1) return true;"
           },
           {
-            "line": 183,
+            "line": 181,
             "text": "if (sectionType == \"notes\" && processNotesSection == 1) return true;"
           },
           {
-            "line": 184,
+            "line": 182,
             "text": "if (sectionType == \"comments\" && processCommentsSection == 1) return true;"
           },
           {
-            "line": 186,
+            "line": 184,
             "text": "return false;"
           },
           {
-            "line": 193,
+            "line": 191,
             "text": "if (parent == container) return true;"
           },
           {
-            "line": 196,
+            "line": 194,
             "text": "return false;"
           },
           {
-            "line": 271,
+            "line": 269,
             "text": "return result;"
           },
           {
-            "line": 414,
+            "line": 412,
             "text": "if (!parentEl || !targetEl) return false;"
           },
           {
-            "line": 415,
+            "line": 413,
             "text": "if (parentEl == targetEl) return true;"
           },
           {
-            "line": 419,
+            "line": 417,
             "text": "if (children[ci] == targetEl) return true;"
           },
           {
-            "line": 420,
+            "line": 418,
             "text": "if (children[ci].nodeType == 1 && containsElement(children[ci], targetEl)) return true;"
           },
           {
-            "line": 422,
+            "line": 420,
             "text": "return false;"
           }
         ]
@@ -169314,17 +169515,17 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 109,
+              "line": 107,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 109,
+              "line": 107,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 540,
+              "line": 538,
               "text": "if (showStatistics == 1 || totalCount == 0) {"
             }
           ],
@@ -169335,25 +169536,25 @@
           "name": "processAnnotation",
           "declarations": [
             {
-              "line": 112,
+              "line": 110,
               "text": "var processAnnotation = 1;"
             }
           ],
           "uses": [
             {
-              "line": 112,
+              "line": 110,
               "text": "var processAnnotation = 1;"
             },
             {
-              "line": 182,
+              "line": 180,
               "text": "if (sectionType == \"annotation\" && processAnnotation == 1) return true;"
             },
             {
-              "line": 463,
+              "line": 461,
               "text": "if (processAnnotation == 1) {"
             },
             {
-              "line": 526,
+              "line": 524,
               "text": "if (processAnnotation == 1) {"
             }
           ],
@@ -169364,25 +169565,25 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 115,
+              "line": 113,
               "text": "var processNotesSection = 1;"
             }
           ],
           "uses": [
             {
-              "line": 115,
+              "line": 113,
               "text": "var processNotesSection = 1;"
             },
             {
-              "line": 183,
+              "line": 181,
               "text": "if (sectionType == \"notes\" && processNotesSection == 1) return true;"
             },
             {
-              "line": 490,
+              "line": 488,
               "text": "} else if (fbname == \"notes\" && processNotesSection == 1) {"
             },
             {
-              "line": 529,
+              "line": 527,
               "text": "if (processNotesSection == 1) {"
             }
           ],
@@ -169393,25 +169594,25 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 118,
+              "line": 116,
               "text": "var processCommentsSection = 1;"
             }
           ],
           "uses": [
             {
-              "line": 118,
+              "line": 116,
               "text": "var processCommentsSection = 1;"
             },
             {
-              "line": 184,
+              "line": 182,
               "text": "if (sectionType == \"comments\" && processCommentsSection == 1) return true;"
             },
             {
-              "line": 493,
+              "line": 491,
               "text": "} else if (fbname == \"comments\" && processCommentsSection == 1) {"
             },
             {
-              "line": 532,
+              "line": 530,
               "text": "if (processCommentsSection == 1) {"
             }
           ],
@@ -169421,25 +169622,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 84,
+          "line": 82,
           "text": "// version 1.5"
         },
         {
-          "line": 96,
+          "line": 94,
           "text": "// version 1.5, 03.07.2026"
         },
         {
-          "line": 100,
+          "line": 98,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 102,
+          "line": 100,
           "text": "var version = \"1.5\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Пустые P собираются в один плоский список без сохранения границ секций: строка в начале следующего блока может быть удалена как дубль предыдущего.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "При нескольких DIV.body одного типа итоговые счётчики перезаписываются и могут быть меньше фактического числа удалений.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Обход контейнера может выйти за его пределы и при некоторых расположениях узлов завершиться ошибкой; перед запуском сохраните копию книги.",
           "verification": "requires_review"
         }
       ],
@@ -169462,111 +169671,59 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 274,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 501,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Удаление абзацев выполняется внутри операции отмены. Обычных досрочных return между открытием и закрытием нет, но закрытие при исключении не гарантировано; полнота отката отдельно не проверена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 274,
+              "line": 272,
               "text": "window.external.BeginUndoUnit(document, scriptName);"
             },
             {
-              "line": 414,
+              "line": 412,
               "text": "if (!parentEl || !targetEl) return false;"
             },
             {
-              "line": 415,
+              "line": 413,
               "text": "if (parentEl == targetEl) return true;"
             },
             {
-              "line": 419,
+              "line": 417,
               "text": "if (children[ci] == targetEl) return true;"
             },
             {
-              "line": 420,
+              "line": 418,
               "text": "if (children[ci].nodeType == 1 && containsElement(children[ci], targetEl)) return true;"
             },
             {
-              "line": 501,
+              "line": 499,
               "text": "window.external.EndUndoUnit(document);"
+            }
+          ]
+        },
+        {
+          "category": "requires_review",
+          "field": "settings[1]",
+          "previous": {
+            "name": "processAnnotation",
+            "value": 1,
+            "expression": "1",
+            "description": "Обрабатывать основную аннотацию и разрешать пустые абзацы во внутренних DIV.annotation: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+          },
+          "proposed": null,
+          "reason": "Похоже на служебный флаг, счётчик или промежуточную переменную; проверить использование",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "line": 110,
+              "text": "var processAnnotation = 1;"
             }
           ]
         }
