@@ -161,6 +161,7 @@
     <ClCompile Include="table\TableStructuralEditor.cpp"><Filter>Source Files\Table</Filter></ClCompile>
     <ClCompile Include="image\ImageDocumentInserter.cpp"><Filter>Source Files\Image</Filter></ClCompile>
 	<ClCompile Include="clipboard\ClipboardPastePreparer.cpp"><Filter>Source Files</Filter></ClCompile>
+	<ClCompile Include="clipboard\HtmlPasteSanitizer.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="navigation\LinkDomNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
 	<ClCompile Include="navigation\ReferenceNavigation.cpp"><Filter>Source Files\Navigation</Filter></ClCompile>
     <ClCompile Include="FindResultsPane.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -412,6 +413,7 @@
 	<ClInclude Include="dom\SelectionRangeMapper.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="search\DesignSearchController.h"><Filter>Header Files</Filter></ClInclude>
 	<ClInclude Include="clipboard\ClipboardPastePreparer.h"><Filter>Header Files</Filter></ClInclude>
+	<ClInclude Include="clipboard\HtmlPasteSanitizer.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="navigation\LinkDomNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>
 	<ClInclude Include="navigation\LinkNavigationState.h"><Filter>Header Files\Navigation</Filter></ClInclude>
 	<ClInclude Include="navigation\ReferenceNavigation.h"><Filter>Header Files\Navigation</Filter></ClInclude>

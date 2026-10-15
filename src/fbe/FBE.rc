@@ -915,6 +915,7 @@ BEGIN
         MENUITEM "Cu&t",                        ID_EDIT_CUT
         MENUITEM "&Copy",                       ID_EDIT_COPY
         MENUITEM "&Paste",                      ID_EDIT_PASTE
+        MENUITEM "Paste as plain text",          ID_EDIT_PASTE_TEXT
         MENUITEM SEPARATOR
         MENUITEM "&Find...",                    ID_EDIT_FIND
         MENUITEM "Find &Next",                  ID_EDIT_FINDNEXT
@@ -1212,6 +1213,7 @@ BEGIN
     ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
     ID_EDIT_FIND            "Find the specified text\nFind"
     ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
+    ID_EDIT_PASTE_TEXT      "Insert Clipboard text without formatting\nPaste as plain text"
     ID_EDIT_REPLACE         "Replace specific text with different text\nReplace"
     ID_EDIT_UNDO            "Undo the last action\nUndo"
     ID_EDIT_REDO            "Redo the previously undone action\nRedo"
@@ -1238,6 +1240,7 @@ BEGIN
                             "Script\n%s\n returned a virtual-key that conflicts with previously loaded script\n %s"
     IDS_HOTKEY_EDIT_MERGE   "Merge"
     IDS_HOTKEY_EDIT_PASTE   "Paste"
+    IDS_HOTKEY_EDIT_PASTE_TEXT "Paste as plain text"
     IDS_HOTKEY_EDIT_REDO    "Redo"
     IDS_HOTKEY_EDIT_REPLACE "Replace"
     IDS_HOTKEY_EDIT_SPLIT   "Split"
@@ -1300,6 +1303,7 @@ STRINGTABLE
 BEGIN
     IDS_CTXMENU_COPY        "Copy"
     IDS_CTXMENU_PASTE       "Paste"
+    IDS_CTXMENU_PASTE_TEXT  "Paste as plain text"
     IDS_CTXMENU_SELECT      "Select"
     IDS_CTXMENU_IMG_SAVEAS  "Save image as..."
     IDS_UPDATE_CONNECTING   "Connecting to server..."

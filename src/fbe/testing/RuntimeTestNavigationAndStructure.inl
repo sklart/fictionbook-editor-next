@@ -141,6 +141,91 @@
 		output.Flush(); output.Close();
 		::PostQuitMessage(allPassed && saved ? 0 : 1); return 0;
 	}
+	if (IsFbeTestScenario(L"html-paste-runtime"))
+	{
+		DWORD written = 0;
+		CStringA header("case\ttext\tformatting\tparagraphs\tneighbor\tclipboard\tundo\tredo\tvalidate\tsave\tresult\r\n");
+		output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
+		wchar_t caseName[32] = {};
+		::GetEnvironmentVariable(L"FBE_NEXT_TEST_HTML_PASTE_CASE", caseName, _countof(caseName));
+		const bool plain = wcscmp(caseName, L"plain") == 0;
+		const bool title = wcscmp(caseName, L"title") == 0;
+		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
+		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
+		bool textOk = false, formatting = false, paragraphs = false, neighborOk = false;
+		bool clipboardOk = false, undoOk = false, redoOk = false, validated = false, saved = false;
+		CComPtr<IDataObject> originalClipboard;
+		::OleGetClipboard(&originalClipboard);
+		try
+		{
+			if (!body || !editable) throw _com_error(E_FAIL);
+			const CString before(static_cast<LPCWSTR>(editable->innerHTML));
+			MSHTML::IHTMLElementPtr target(document->all->item(L"paste-target"));
+			MSHTML::IHTMLElementPtr neighbor(document->all->item(L"paste-neighbor"));
+			const CString neighborBefore(neighbor ? static_cast<LPCWSTR>(neighbor->outerHTML) : L"");
+			MSHTML::IHTMLElementCollectionPtr ps(target ? MSHTML::IHTMLElement2Ptr(target)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+			MSHTML::IHTMLElementPtr pasteTarget(ps && ps->length > (title ? 0 : 1) ? ps->item(title ? 0L : 1L) : MSHTML::IHTMLElementPtr());
+			if (!pasteTarget) throw _com_error(E_FAIL);
+			const CStringA fragment("<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
+			const CStringA prefix("Version:0.9\r\nStartFragment:00000000\r\nEndFragment:00000000\r\n");
+			CStringA headerBytes;
+			headerBytes.Format("Version:0.9\r\nStartFragment:%08u\r\nEndFragment:%08u\r\n", static_cast<unsigned>(prefix.GetLength()), static_cast<unsigned>(prefix.GetLength() + fragment.GetLength()));
+			const CStringA payload(headerBytes + fragment);
+			const CString plainText(L"Plain one\r\n\r\nPlain three");
+			if (!::OpenClipboard(NULL)) throw _com_error(E_FAIL);
+			::EmptyClipboard();
+			const UINT format = ::RegisterClipboardFormat(L"HTML Format");
+			HGLOBAL htmlMemory = ::GlobalAlloc(GMEM_MOVEABLE, payload.GetLength() + 1);
+			HGLOBAL textMemory = ::GlobalAlloc(GMEM_MOVEABLE, (plainText.GetLength() + 1) * sizeof(wchar_t));
+			char* htmlBytes = htmlMemory ? static_cast<char*>(::GlobalLock(htmlMemory)) : NULL;
+			wchar_t* textBytes = textMemory ? static_cast<wchar_t*>(::GlobalLock(textMemory)) : NULL;
+			if (htmlBytes) { memcpy(htmlBytes, static_cast<LPCSTR>(payload), payload.GetLength() + 1); ::GlobalUnlock(htmlMemory); }
+			if (textBytes) { wcscpy_s(textBytes, plainText.GetLength() + 1, plainText); ::GlobalUnlock(textMemory); }
+			const bool htmlReady = htmlBytes && ::SetClipboardData(format, htmlMemory);
+			const bool textReady = textBytes && ::SetClipboardData(CF_UNICODETEXT, textMemory);
+			if (!htmlReady && htmlMemory) ::GlobalFree(htmlMemory);
+			if (!textReady && textMemory) ::GlobalFree(textMemory);
+			::CloseClipboard();
+			if (!htmlReady || !textReady) throw _com_error(E_FAIL);
+			const DWORD sequence = ::GetClipboardSequenceNumber();
+			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
+			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
+			range->moveToElementText(pasteTarget); range->collapse(VARIANT_FALSE); range->select();
+			BOOL handled = FALSE;
+			m_doc->m_body.OnPaste(0, plain ? ID_EDIT_PASTE_TEXT : ID_EDIT_PASTE, 0, handled);
+			clipboardOk = ::GetClipboardSequenceNumber() == sequence;
+			editable = document->all->item(L"fbw_body");
+			const CString after(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
+			const CString afterText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
+			textOk = plain ? (afterText.Find(L"Plain one") >= 0 && afterText.Find(L"Plain three") > afterText.Find(L"Plain one")) :
+				(afterText.Find(L"Bold italic") >= 0 && afterText.Find(L"Second") > afterText.Find(L"Bold italic"));
+			MSHTML::IHTMLElementPtr targetAfter(document->all->item(L"paste-target"));
+			const CString targetHtml(targetAfter ? static_cast<LPCWSTR>(targetAfter->innerHTML) : L"");
+			formatting = plain ? targetHtml.Find(L"<STRONG") < 0 :
+				(targetHtml.Find(L"<STRONG") >= 0 && targetHtml.Find(L"<EM") >= 0 && targetHtml.Find(L"MsoNormal") < 0 && targetHtml.Find(L"color") < 0);
+			MSHTML::IHTMLElementCollectionPtr paragraphsAfter(targetAfter ? MSHTML::IHTMLElement2Ptr(targetAfter)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
+			paragraphs = paragraphsAfter && paragraphsAfter->length >= (plain ? 4 : 3);
+			neighbor = document->all->item(L"paste-neighbor");
+			neighborOk = neighbor && CString(static_cast<LPCWSTR>(neighbor->outerHTML)) == neighborBefore;
+			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
+			editable = document->all->item(L"fbw_body");
+			undoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before;
+			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
+			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
+			editable = document->all->item(L"fbw_body");
+			redoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == after;
+			int line = 0, column = 0;
+			validated = redoOk && m_doc->Validate(line, column);
+			saved = validated && m_doc->Save();
+		}
+		catch (const _com_error&) {}
+		if (originalClipboard) ::OleSetClipboard(originalClipboard);
+		const bool passed = textOk && formatting && paragraphs && neighborOk && clipboardOk && undoOk && redoOk && validated && saved;
+		CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", caseName, textOk, formatting, paragraphs, neighborOk, clipboardOk, undoOk, redoOk, validated, saved, passed ? "pass" : "fail");
+		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"clipboard-title-paste"))
 	{
 		CStringA header("case\tnormalized_nested_title\tnormalized_direct_titles\ttext_order\tformatting\tneighbor_unchanged\tundo\tredo\tvalidate\tvalidation_line\tvalidation_column\tsave\tresult\r\n");

@@ -148,6 +148,9 @@ void BuildDefaults(std::vector<CHotkeysGroup>& groups, DWORD interfaceLanguageId
 	// Paste : changed by SeNS
 	CHotkey EditPaste(L"Paste", IDS_HOTKEY_EDIT_PASTE, FSHIFT, ID_EDIT_PASTE, VK_INSERT);
 	edit_hotkeys_group.m_hotkeys.push_back(EditPaste);
+	CHotkey EditPasteText(L"PasteText", IDS_HOTKEY_EDIT_PASTE_TEXT,
+		FCONTROL | FSHIFT, ID_EDIT_PASTE_TEXT, U::StringToKeycode(L"V"));
+	edit_hotkeys_group.m_hotkeys.push_back(EditPasteText);
 
 	// Redo
 	CHotkey EditRedo(L"Redo", IDS_HOTKEY_EDIT_REDO, FCONTROL, ID_EDIT_REDO, U::StringToKeycode(L"Y"));

@@ -1430,6 +1430,7 @@
         "bg-BG": "Поставяне"
       }
     },
+    "fbe.hotkey.edit.paste_text": { "resourceId": "IDS_HOTKEY_EDIT_PASTE_TEXT", "component": "fbe.core", "translations": { "en-US": "Paste as plain text", "ru-RU": "Вставить только текст", "uk-UA": "Вставити лише текст", "de-DE": "Als reinen Text einfügen", "fr-FR": "Coller en texte brut", "es-ES": "Pegar solo texto", "it-IT": "Incolla solo testo", "pl-PL": "Wklej tylko tekst", "pt-PT": "Colar apenas texto", "nl-NL": "Als platte tekst plakken", "cs-CZ": "Vložit pouze text", "bg-BG": "Поставяне само на текст" } },
     "fbe.hotkey.edit.redo": {
       "resourceId": "IDS_HOTKEY_EDIT_REDO",
       "component": "fbe.core",
@@ -1880,6 +1881,7 @@
         "bg-BG": "Поставяне"
       }
     },
+    "fbe.context.paste_text": { "resourceId": "IDS_CTXMENU_PASTE_TEXT", "component": "fbe.core", "translations": { "en-US": "Paste as plain text", "ru-RU": "Вставить только текст", "uk-UA": "Вставити лише текст", "de-DE": "Als reinen Text einfügen", "fr-FR": "Coller en texte brut", "es-ES": "Pegar solo texto", "it-IT": "Incolla solo testo", "pl-PL": "Wklej tylko tekst", "pt-PT": "Colar apenas texto", "nl-NL": "Als platte tekst plakken", "cs-CZ": "Vložit pouze text", "bg-BG": "Поставяне само на текст" } },
     "fbe.context.select": {
       "resourceId": "IDS_CTXMENU_SELECT",
       "component": "fbe.core",

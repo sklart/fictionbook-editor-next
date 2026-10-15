@@ -627,6 +627,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_EDIT_CUT, L"fbe.menu.idr_mainframe.edit.cut" },
 	{ ID_EDIT_COPY, L"fbe.menu.idr_mainframe.edit.copy" },
 	{ ID_EDIT_PASTE, L"fbe.menu.idr_mainframe.edit.paste" },
+	{ ID_EDIT_PASTE_TEXT, L"fbe.menu.idr_mainframe.edit.paste_text" },
 	{ ID_EDIT_FIND, L"fbe.menu.idr_mainframe.edit.find" },
 	{ ID_EDIT_FINDNEXT, L"fbe.menu.idr_mainframe.edit.find_next" },
 	{ ID_EDIT_REPLACE, L"fbe.menu.idr_mainframe.edit.replace" },
@@ -1938,6 +1939,7 @@ BOOL CMainFrame::OnIdle()
 		UIEnable(ID_EDIT_COPY, fCanCC);
 		UIEnable(ID_EDIT_CUT, fCanCC);
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE));
+		UIEnable(ID_EDIT_PASTE_TEXT, m_source.SendMessage(SCI_CANPASTE));
 		UIEnable(ID_EDIT_PASTE2, m_source.SendMessage(SCI_CANPASTE));
 
 		UIEnable(ID_GOTO_WRONGTAG, true);
@@ -2055,6 +2057,7 @@ BOOL CMainFrame::OnIdle()
 		UIEnable(ID_GOTO_WRONGTAG, false);
 
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
+		UIEnable(ID_EDIT_PASTE_TEXT, ::IsClipboardFormatAvailable(CF_UNICODETEXT));
 
 		if (m_sel_changed && /*GetCurView()*/m_editor_view_state.Current() != DESC)
 		{
@@ -4919,6 +4922,11 @@ CMainFrame::~CMainFrame()
 
 LRESULT CMainFrame::OnUnhandledCommand(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& /* unused: bHandled */)
 {
+	if (LOWORD(wParam) == ID_EDIT_PASTE_TEXT && IsSourceActive())
+	{
+		m_source.SendMessage(SCI_PASTE);
+		return 0;
+	}
 	HWND hFocus = ::GetFocus();
 	UINT idCtl = HIWORD(wParam);
 
@@ -7232,11 +7240,13 @@ void CMainFrame::UpdateClipboardCommands()
 	{
 		const bool canPaste = m_source.SendMessage(SCI_CANPASTE) != 0;
 		UIEnable(ID_EDIT_PASTE, canPaste);
+		UIEnable(ID_EDIT_PASTE_TEXT, canPaste);
 		UIEnable(ID_EDIT_PASTE2, canPaste);
 	}
 	else if (m_editor_view_state.Current() == BODY)
 	{
 		UIEnable(ID_EDIT_PASTE, m_source.SendMessage(SCI_CANPASTE) || m_clipboard_has_bitmap);
+		UIEnable(ID_EDIT_PASTE_TEXT, ::IsClipboardFormatAvailable(CF_UNICODETEXT));
 	}
 }
 

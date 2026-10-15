@@ -765,6 +765,7 @@
 #define ID_STATUS_PANE_VALIDATION         32930
 #define ID_STATUS_PANE_INSERT_MODE        32931
 #define ID_VIEW_SHOW_TEXT_CARET           32932
+#define ID_EDIT_PASTE_TEXT                32933
 #define ID_EDIT_PASTE2                  0xE525
 #define IDS_ENCODINGS                   61403
 #define IDS_DOCUMENT_TREE_CAPTION       61404
@@ -774,6 +775,8 @@
 #define IDS_SCRIPT_COPY_DETAILS         61408
 #define IDS_SCRIPT_CLOSE_DETAILS        61409
 #define IDS_STATUS_LOADING              61410
+#define IDS_CTXMENU_PASTE_TEXT           61411
+#define IDS_HOTKEY_EDIT_PASTE_TEXT       61412
 #define IDC_CREATE_BACKUP_FILE          1128
 #define IDC_FBE_NEXT_SAVING_GROUP       1129
 #define IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE 1130

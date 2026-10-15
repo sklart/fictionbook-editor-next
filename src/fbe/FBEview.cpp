@@ -32,6 +32,7 @@
 #include "dom/SelectionRangeMapper.h"
 #include "image/ImageDocumentInserter.h"
 #include "clipboard/ClipboardPastePreparer.h"
+#include "clipboard/HtmlPasteSanitizer.h"
 #include <vector>
 using FbeTable::Grid;
 
@@ -84,6 +85,59 @@ public:
 private:
 	int& m_counter;
 	bool m_active;
+};
+
+class PasteHtmlUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
+public:
+	BEGIN_COM_MAP(PasteHtmlUndoUnit)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+	END_COM_MAP()
+	void Initialize(MSHTML::IHTMLElementPtr scope, const CString& before, const CString& after) {
+		m_scope = scope; m_before = before; m_after = after; m_applyBefore = true;
+	}
+	STDMETHOD(Do)(IOleUndoManager* manager) {
+		if (!m_scope || !manager) return E_UNEXPECTED;
+		const bool disabled = SUCCEEDED(manager->Enable(FALSE));
+		HRESULT result = S_OK;
+		try { m_scope->innerHTML = _bstr_t(m_applyBefore ? m_before : m_after); }
+		catch (const _com_error& error) { result = error.Error(); }
+		if (disabled) manager->Enable(TRUE);
+		if (FAILED(result)) return result;
+		m_applyBefore = !m_applyBefore;
+		return manager->Add(this);
+	}
+	STDMETHOD(GetDescription)(BSTR* description) {
+		if (!description) return E_POINTER;
+		*description = ::SysAllocString(L"Paste"); return *description ? S_OK : E_OUTOFMEMORY;
+	}
+	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id) {
+		if (!classId || !id) return E_POINTER;
+		*classId = CLSID_NULL; *id = 0; return S_OK;
+	}
+	STDMETHOD(OnNextAdd)() { return S_OK; }
+private:
+	MSHTML::IHTMLElementPtr m_scope;
+	CString m_before, m_after;
+	bool m_applyBefore = true;
+};
+
+static CComPtr<IOleUndoManager> GetPasteUndoManager(MSHTML::IHTMLDocument2Ptr document) {
+	CComPtr<IOleUndoManager> manager;
+	IServiceProviderPtr provider(document);
+	if (provider) provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager));
+	return manager;
+}
+
+class PasteUndoRecordingScope {
+public:
+	explicit PasteUndoRecordingScope(IOleUndoManager* manager)
+		: m_manager(manager), m_disabled(manager && SUCCEEDED(manager->Enable(FALSE))) {}
+	~PasteUndoRecordingScope() { Close(); }
+	bool Disabled() const { return m_disabled; }
+	void Close() { if (m_disabled) { m_manager->Enable(TRUE); m_disabled = false; } }
+private:
+	CComPtr<IOleUndoManager> m_manager;
+	bool m_disabled;
 };
 
 
@@ -1742,11 +1796,10 @@ void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
 	NormalizeWithoutUndo(dom);
 }
 
-LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
+LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 {
 	try
 	{
-		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste");
 		PasteEnableScope pasteEnabled(m_enable_paste);
 
 		FbeClipboard::ClipboardPasteOptions options;
@@ -1755,16 +1808,87 @@ LRESULT CFBEView::OnPaste(WORD, WORD, HWND, BOOL&)
 			? FbeClipboard::ClipboardBitmapOutput::Png
 			: FbeClipboard::ClipboardBitmapOutput::Jpeg;
 		options.jpegQuality = _Settings.GetJpegQuality();
-		const FbeClipboard::ClipboardPastePreparationResult preparation =
-			FbeClipboard::ClipboardPastePreparer::Prepare(m_hWnd, options);
-		if (preparation.HasPreparedBitmap())
-			AddImage(preparation.temporaryImagePath, true);
+		CString insertHtml;
+		bool preparedHtml = false;
+		if (m_normalize && command == ID_EDIT_PASTE_TEXT)
+		{
+			CString plainText;
+			if (FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, plainText))
+			{
+				insertHtml = FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(plainText, options.nbspReplacement);
+				preparedHtml = true;
+			}
+		}
+		else if (m_normalize && command != ID_EDIT_PASTE_TEXT)
+		{
+			DWORD clipboardOwnerProcess = 0;
+			::GetWindowThreadProcessId(::GetClipboardOwner(), &clipboardOwnerProcess);
+			const bool internalPaste = clipboardOwnerProcess == ::GetCurrentProcessId();
+			CString fragment;
+			const bool hasHtml = !internalPaste && ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
+			const bool readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_hWnd, fragment);
+			const FbeClipboard::HtmlPasteOutcome outcome = readableHtml
+				? FbeClipboard::HtmlPasteSanitizer::Sanitize(fragment, options.nbspReplacement, insertHtml)
+				: FbeClipboard::HtmlPasteOutcome::PlainText;
+			preparedHtml = readableHtml && outcome == FbeClipboard::HtmlPasteOutcome::Sanitized;
+			if (hasHtml && outcome == FbeClipboard::HtmlPasteOutcome::PlainText)
+			{
+				CString plainText;
+				if (FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, plainText))
+				{
+					insertHtml = FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(plainText, options.nbspReplacement);
+					preparedHtml = true;
+				}
+				else return 0;
+			}
+		}
+		MSHTML::IHTMLTxtRangePtr pasteRange;
+		if (preparedHtml)
+			pasteRange = MSHTML::IHTMLTxtRangePtr(Document()->selection->createRange());
+		if (!pasteRange)
+			preparedHtml = false;
+		if (command == ID_EDIT_PASTE_TEXT && m_normalize && !preparedHtml)
+			return 0;
 
 		// MSHTML moves the live selection while pasting. Keep the pre-paste
 		// endpoints so a cross-owner insertion cannot be normalized too narrowly.
 		MSHTML::IHTMLDOMNodePtr normalizationScope;
 		if (m_normalize)
 			normalizationScope = ResolveNormalizationScope();
+		if (preparedHtml)
+		{
+			MSHTML::IHTMLElementPtr undoScope(normalizationScope);
+			if (!undoScope || (!IsNormalizationOwner(undoScope) && U::scmp(undoScope->id, L"fbw_body") != 0))
+				undoScope = Document()->all->item(L"fbw_body");
+			CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
+			if (!undoScope || !manager) return 0;
+			const CString before(static_cast<LPCWSTR>(undoScope->innerHTML));
+			{
+				PasteUndoRecordingScope recording(manager);
+				if (!recording.Disabled()) return 0;
+				pasteRange->pasteHTML(_bstr_t(insertHtml));
+				pasteEnabled.Close();
+				if (m_normalize) NormalizeScope(normalizationScope);
+			}
+			const CString after(static_cast<LPCWSTR>(undoScope->innerHTML));
+			if (before != after)
+			{
+				CComObject<PasteHtmlUndoUnit>* unit = NULL;
+				HRESULT hr = CComObject<PasteHtmlUndoUnit>::CreateInstance(&unit);
+				if (FAILED(hr)) _com_issue_error(hr);
+				unit->AddRef();
+				unit->Initialize(undoScope, before, after);
+				hr = manager->Add(unit);
+				unit->Release();
+				if (FAILED(hr)) _com_issue_error(hr);
+			}
+			return 0;
+		}
+		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste");
+		const FbeClipboard::ClipboardPastePreparationResult preparation =
+			FbeClipboard::ClipboardPastePreparer::Prepare(m_hWnd, options);
+		if (preparation.HasPreparedBitmap())
+			AddImage(preparation.temporaryImagePath, true);
 		IOleCommandTargetPtr(m_browser)->Exec(&CGID_MSHTML, IDM_PASTE, 0, NULL, NULL);
 		CaptureClipboardTitlePasteDomForTest(Document());
 		pasteEnabled.Close();
@@ -3137,6 +3261,8 @@ VARIANT_BOOL  CFBEView::OnContextMenu(IDispatch *evt)
 
 	itemName = FbeLoadCString(IDS_CTXMENU_PASTE);
 	menu.AppendMenu(MF_STRING, ID_EDIT_PASTE, itemName);
+	itemName = FbeLoadCString(IDS_CTXMENU_PASTE_TEXT);
+	menu.AppendMenu(MF_STRING, ID_EDIT_PASTE_TEXT, itemName);
 
 	// The table commands must be available where the user edits a cell, not
 	// only in the main menu.  The source element may be an inline child, so
