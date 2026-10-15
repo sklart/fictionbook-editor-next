@@ -53,12 +53,30 @@ bool Check(bool value)
     return value;
 }
 
+struct BlurSelection { int start = 0; int end = 0; bool captured = false; };
+
+LRESULT CALLBACK CaptureSelectionOnBlur(HWND edit, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR data)
+{
+    if (message == WM_KILLFOCUS)
+    {
+        BlurSelection* selection = reinterpret_cast<BlurSelection*>(data);
+        DWORD start = 0, end = 0;
+        ::SendMessage(edit, EM_GETSEL, reinterpret_cast<WPARAM>(&start), reinterpret_cast<LPARAM>(&end));
+        selection->start = static_cast<int>(start);
+        selection->end = static_cast<int>(end);
+        selection->captured = true;
+    }
+    return ::DefSubclassProc(edit, message, wParam, lParam);
+}
+
 bool TestComboInsertion(HWND owner)
 {
     HWND combo = ::CreateWindowEx(0, WC_COMBOBOX, L"abcdef", WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | WS_VSCROLL,
         0, 0, 160, 120, owner, NULL, _Module.GetModuleInstance(), NULL);
     COMBOBOXINFO comboInfo = { sizeof(comboInfo) };
     if (!::GetComboBoxInfo(combo, &comboInfo) || !comboInfo.hwndItem) return false;
+    BlurSelection blur;
+    ::SetWindowSubclass(comboInfo.hwndItem, CaptureSelectionOnBlur, 1, reinterpret_cast<DWORD_PTR>(&blur));
     FbeComboBoxEdit::SetText(combo, L"abcdef");
     ::SetFocus(comboInfo.hwndItem);
     if (!combo || !FbeComboBoxEdit::SetSelection(combo, 3, 3)) return false;
@@ -85,7 +103,40 @@ bool TestComboInsertion(HWND owner)
     const FbeSearchPresets::RegexQuickReferenceInsertion replacement = FbeSearchPresets::InsertRegexQuickReference(FbeComboBoxEdit::GetText(combo), start, end, entry);
     FbeComboBoxEdit::SetText(combo, replacement.text);
     FbeComboBoxEdit::SetSelection(combo, replacement.selectionStart, replacement.selectionStart + replacement.selectionLength);
-    const bool valid = FbeComboBoxEdit::GetText(combo) == L"a(...)ef" && FbeComboBoxEdit::GetSelection(combo, start, end) && start == 2 && end == 2;
+    bool valid = FbeComboBoxEdit::GetText(combo) == L"a(...)ef" && FbeComboBoxEdit::GetSelection(combo, start, end) && start == 2 && end == 2;
+    FbeComboBoxEdit::SetText(combo, L"");
+    ::SetFocus(combo);
+    FbeComboBoxEdit::SetSelection(combo, 0, 0);
+    const wchar_t* expressions[] = { L"\\S", L"\\d", L"\\r" };
+    CString expected;
+    for (const wchar_t* expression : expressions)
+    {
+        blur.captured = false;
+        ::SetFocus(owner); // The help button takes focus before its click handler runs.
+        if (!blur.captured || blur.start != expected.GetLength() || blur.end != blur.start) { valid = false; break; }
+        entry.insertionText = expression;
+        entry.caretOffset = 2;
+        entry.selectionStart = 2;
+        entry.selectionLength = 0;
+        const FbeSearchPresets::RegexQuickReferenceInsertion next =
+            FbeSearchPresets::InsertRegexQuickReference(FbeComboBoxEdit::GetText(combo), blur.start, blur.end, entry);
+        FbeComboBoxEdit::SetText(combo, next.text);
+        ::SetFocus(combo);
+        FbeComboBoxEdit::SetSelection(combo, next.selectionStart, next.selectionStart + next.selectionLength);
+        expected += expression;
+        valid = valid && FbeComboBoxEdit::GetText(combo) == expected &&
+            FbeComboBoxEdit::GetSelection(combo, start, end) && start == expected.GetLength() && end == start;
+    }
+    ::SetFocus(combo);
+    FbeComboBoxEdit::SetSelection(combo, 2, 4);
+    blur.captured = false;
+    ::SetFocus(owner);
+    valid = valid && blur.captured && blur.start == 2 && blur.end == 4;
+    entry.insertionText = L"\\w";
+    const FbeSearchPresets::RegexQuickReferenceInsertion selected =
+        FbeSearchPresets::InsertRegexQuickReference(FbeComboBoxEdit::GetText(combo), blur.start, blur.end, entry);
+    valid = valid && selected.text == L"\\S\\w\\r";
+    ::RemoveWindowSubclass(comboInfo.hwndItem, CaptureSelectionOnBlur, 1);
     ::DestroyWindow(combo);
     return valid;
 }

@@ -58,6 +58,10 @@ public:
     bool m_presetPinHot;
     bool m_presetPinPressed;
     int m_lastRegexTarget;
+    int m_regexSelectionTarget;
+    int m_regexSelectionStart;
+    int m_regexSelectionEnd;
+    CString m_regexSelectionText;
     int m_compactDialogWidth;
     int m_compactDialogHeight;
     int m_presetPanelHeight;
@@ -78,12 +82,14 @@ public:
     {
         HWND pin = GetDlgItem(IDC_FIND_PRESETS_PIN);
         if (pin) ::RemoveWindowSubclass(pin, PresetPinButtonSubclassProc, 1);
+        RemoveRegexEditSubclass(IDC_TEXT);
+        RemoveRegexEditSubclass(IDC_REPLACE);
         std::vector<FRBase*>& panels = OpenPresetPanels();
         panels.erase(std::remove(panels.begin(), panels.end(), this), panels.end());
         return 0;
     }
 
-    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_presetPinHot(false), m_presetPinPressed(false), m_lastRegexTarget(IDC_TEXT), m_compactDialogWidth(0), m_compactDialogHeight(0), m_presetPanelHeight(0) { }
+    FRBase(CFBEView* view) : m_view(view), m_whole(0), m_case(0), m_regexp(0), m_dir(1), m_unicode(0), m_scope(0), m_templatesExpanded(false), m_presetPinHot(false), m_presetPinPressed(false), m_lastRegexTarget(IDC_TEXT), m_regexSelectionTarget(0), m_regexSelectionStart(0), m_regexSelectionEnd(0), m_compactDialogWidth(0), m_compactDialogHeight(0), m_presetPanelHeight(0) { }
 
   HWND	GetDlgItem(int id) { return X_GetDlgItem(id); }
   virtual HWND X_GetDlgItem(int id) = 0;
@@ -823,22 +829,58 @@ public:
     {
         NMTVKEYDOWN* key = reinterpret_cast<NMTVKEYDOWN*>(header); if (key && key->wVKey == VK_RETURN) ApplySelectedPreset(); return 0;
     }
+    static LRESULT CALLBACK RegexEditSubclassProc(HWND edit, UINT message, WPARAM wParam, LPARAM lParam,
+        UINT_PTR targetId, DWORD_PTR data)
+    {
+        if (message == WM_KILLFOCUS)
+        {
+            FRBase* dialog = reinterpret_cast<FRBase*>(data);
+            DWORD start = 0, end = 0;
+            ::SendMessage(edit, EM_GETSEL, reinterpret_cast<WPARAM>(&start), reinterpret_cast<LPARAM>(&end));
+            dialog->m_regexSelectionTarget = static_cast<int>(targetId);
+            dialog->m_regexSelectionStart = static_cast<int>(start);
+            dialog->m_regexSelectionEnd = static_cast<int>(end);
+            dialog->m_regexSelectionText = FbeComboBoxEdit::GetText(dialog->GetDlgItem(static_cast<int>(targetId)));
+        }
+        return ::DefSubclassProc(edit, message, wParam, lParam);
+    }
+    void SetRegexEditSubclass(int targetId)
+    {
+        COMBOBOXINFO info = { sizeof(info) };
+        if (::GetComboBoxInfo(GetDlgItem(targetId), &info) && info.hwndItem)
+            ::SetWindowSubclass(info.hwndItem, RegexEditSubclassProc, static_cast<UINT_PTR>(targetId), reinterpret_cast<DWORD_PTR>(this));
+    }
+    void RemoveRegexEditSubclass(int targetId)
+    {
+        COMBOBOXINFO info = { sizeof(info) };
+        if (::GetComboBoxInfo(GetDlgItem(targetId), &info) && info.hwndItem)
+            ::RemoveWindowSubclass(info.hwndItem, RegexEditSubclassProc, static_cast<UINT_PTR>(targetId));
+    }
     LRESULT OnShowRegexHelp(WORD, WORD, HWND, BOOL&)
     {
         HWND target = GetDlgItem(IDC_TEXT);
         FbeSearchPresets::RegexQuickReferenceMode mode = FbeSearchPresets::RegexQuickReferenceMode::Search;
         if(IsReplaceDialog() && (m_lastRegexTarget == IDC_REPLACE || ::GetFocus() == GetDlgItem(IDC_REPLACE))) { target = GetDlgItem(IDC_REPLACE); mode = FbeSearchPresets::RegexQuickReferenceMode::Replacement; }
+        // The combo edit clears its selection as focus moves to the help button.
+        // Use the position captured when the edit lost focus.
+        int first = 0, last = 0;
+        FbeComboBoxEdit::GetSelection(target, first, last);
+        COMBOBOXINFO info = { sizeof(info) };
+        const bool editFocused = ::GetComboBoxInfo(target, &info) && ::GetFocus() == info.hwndItem;
+        if (!editFocused && m_regexSelectionTarget == ::GetDlgCtrlID(target) && m_regexSelectionText == FbeComboBoxEdit::GetText(target))
+        {
+            first = m_regexSelectionStart;
+            last = m_regexSelectionEnd;
+        }
         RegexQuickReferencePopup* popup = new RegexQuickReferencePopup();
         // Show(false) means no HWND was created; on success the popup self-owns until WM_NCDESTROY.
         if(!popup->Show(DialogWindow(), GetDlgItem(IDC_FIND_REGEX_HELP), SearchContext(), mode,
-            [this, target, mode](const FbeSearchPresets::RegexQuickReferenceEntry& entry) {
-                int first = 0, last = 0;
-                FbeComboBoxEdit::GetSelection(target, first, last);
+            [this, target, mode, first, last](const FbeSearchPresets::RegexQuickReferenceEntry& entry) {
                 const CString current = FbeComboBoxEdit::GetText(target);
                 const FbeSearchPresets::RegexQuickReferenceInsertion result = FbeSearchPresets::InsertRegexQuickReference(current, first, last, entry);
                 FbeComboBoxEdit::SetText(target, result.text);
-                FbeComboBoxEdit::SetSelection(target, result.selectionStart, result.selectionStart + result.selectionLength);
                 ::SetFocus(target);
+                FbeComboBoxEdit::SetSelection(target, result.selectionStart, result.selectionStart + result.selectionLength);
                 if(!m_view->m_fo.fRegexp) { m_view->m_fo.fRegexp = true; ::CheckDlgButton(DialogWindow(), IDC_REGEXP, BST_CHECKED); UpdateUnicodeControl(); m_view->SyncSearchOptionsToOpenDialogs(this); }
                 if(mode == FbeSearchPresets::RegexQuickReferenceMode::Search) m_view->m_fo.pattern = result.text; else m_view->m_fo.replacement = result.text;
                 InvalidateSearchSelectionState();
@@ -1041,6 +1083,8 @@ public:
 		// Set fields
 		ExpandDialogForAvailableWidth();
 		PutData();
+		SetRegexEditSubclass(IDC_TEXT);
+		SetRegexEditSubclass(IDC_REPLACE);
 		UpdateUnicodeControl();        SetPresetPanelVisible(_Settings.SearchTemplatesPanelPinned());
         SetRuntimeText(IDC_FIND_REGEX_HELP, L"fbe.search_preset.regex_help", L"?");
         SetRuntimeText(IDC_FIND_PRESETS_LABEL, L"fbe.search_preset.caption", L"Templates");

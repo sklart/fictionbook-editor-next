@@ -57,6 +57,8 @@ src/export-docx/ExportDOCX_i.h -text
 src/export-epub/ExportEPUB_i.c -text
 src/export-epub/ExportEPUB_i.h -text
 third_party/** -text
+# These pinned SVGs are compared byte-for-byte with upstream Git blobs in CI.
+src/fbe/res/icons/fluent-pin/*.svg text eol=lf
 src/fbe/generated/Fb2SchemaMetadata.h text eol=lf
 runtime/languages.txt -text
 runtime/root_genres.xml -text
