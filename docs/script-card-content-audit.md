@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **432**. Исполняемый код не изменён.
+Изменено карточек: **433**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 73
-- `generic_usage`: 378
+- `generic_summary`: 74
+- `generic_usage`: 379
 - `generic_warning`: 62
-- `inaccurate_description`: 690
+- `inaccurate_description`: 691
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 394
+- `incorrect_dependency`: 395
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 385
+- `incorrect_scope`: 386
 - `incorrect_selection`: 38
-- `incorrect_setting`: 207
-- `incorrect_undo`: 377
+- `incorrect_setting`: 208
+- `incorrect_undo`: 378
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 16
-- `uncertain_attribution`: 70
+- `missing_warning`: 17
+- `uncertain_attribution`: 71
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 71
+- `attributionClarified`: 72
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 260
+- `dependenciesVerified`: 261
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 376
-- `scopeClarified`: 362
+- `purposeClarified`: 377
+- `scopeClarified`: 363
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 12
-- `undoDescriptionsClarified`: 369
-- `usageCorrected`: 378
+- `settingsCorrected`: 13
+- `undoDescriptionsClarified`: 370
+- `usageCorrected`: 379
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 310
+- `warningsClarified`: 311
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **272**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **273**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -628,13 +628,17 @@
 - `13_Заголовки, подзаголовки, пустые строки/650_Расформатировать заголовки.js:533` — Все дочерние узлы DIV.title, включая несколько P, копируются внутрь одного нового P. Для многоабзацного заголовка получается вложение P в P или браузерская перестройка DOM, из-за чего текст и структура могут измениться. Та же схема повторяется на строках 607–610.
 - `13_Заголовки, подзаголовки, пустые строки/650_Расформатировать заголовки.js:651` — Итоговое сообщение опирается только на число преобразованных заголовков. Если преобразованы эпиграфы или аннотации, но заголовков нет, выводится 'Заголовков в документе не обнаружено!' без сведений о состоявшихся изменениях.
 - `13_Заголовки, подзаголовки, пустые строки/650_Расформатировать заголовки.js:447` — Между BeginUndoUnit и EndUndoUnit нет обычных return, но нет и finally. Исключение при изменении DOM, в частности от присваивания результату inflateBlock, оставит группу отмены открытой.
+- `13_Заголовки, подзаголовки, пустые строки/655_Нормализовать регистр заголовков и подзаголовков.js:713` — После выборочного findBodyTitles выполняется общий findAllElements без проверки notes/comments. Затем первый обход и общий список объединяются; заголовки и подзаголовки примечаний и комментариев могут попасть в обработку даже при processNotesSection=0 и processCommentsSection=0.
+- `13_Заголовки, подзаголовки, пустые строки/655_Нормализовать регистр заголовков и подзаголовков.js:497` — normalizeText вызывается отдельно для каждого текстового узла. После вложенного тега начальное слово узла может считаться началом предложения и получить прописную букву, хотя находится в середине заголовка.
+- `13_Заголовки, подзаголовки, пустые строки/655_Нормализовать регистр заголовков и подзаголовков.js:310` — Доля заглавных букв округляется до целого перед сравнением с порогом. При пороге 100% фактическая доля от 99,5% может ошибочно считаться полностью заглавной.
+- `13_Заголовки, подзаголовки, пустые строки/655_Нормализовать регистр заголовков и подзаголовков.js:983` — Вызовы BeginUndoUnit/EndUndoUnit не защищены finally. Обычных досрочных выходов между ними нет, но исключение при обходе текстовых узлов оставит группу отмены открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 834
+- `generic_usage`: 829
 - `inaccurate_description`: 49
-- `incorrect_undo`: 121
-- `requires_review`: 353
+- `incorrect_undo`: 120
+- `requires_review`: 354
 
 ## Границы проверки
 

@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 353,
-    "generic_usage": 834,
-    "incorrect_undo": 121,
+    "requires_review": 354,
+    "generic_usage": 829,
+    "incorrect_undo": 120,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -54365,18 +54365,266 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/655_Нормализовать регистр заголовков и подзаголовков.js",
+      "codeSha256": "8f02d4ab382980895ea89615cbc7c27ff3c3bf6b6ce47bca692ae31cc07a1137",
+      "evidence": "Строки 1–25 описывают задачу; 35–62 задают восемь параметров; 221–310 считают долю прописных; 330–512 нормализуют текст по узлам; 538–625 выполняют выборочный обход, 713–733 запускают ещё один общий обход и объединяют результаты; 782–835 выбирают кандидатов; 842–867 и 967–969 выходят до правки; 971–1025 выполняют тихую или подтверждённую обработку в группе отмены. Файловых, сетевых операций и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматической нормализации регистра заголовков и подзаголовков в документах fb2.",
+          "after": "Приводит полностью заглавные слова в заголовках и подзаголовках к обычному регистру с порогом доли прописных букв.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматической нормализации регистра заголовков и подзаголовков в документах fb2.",
+          "after": "Ищет DIV.title и P.subtitle в книге, считает долю заглавных кириллических и латинских букв, для многоабзацных заголовков анализирует абзацы отдельно. При достижении порога меняет регистр полностью заглавных слов в текстовых узлах, стараясь сохранить римские числа и аббревиатуры из встроенных списков, разметку и смешанный регистр. По умолчанию работает тихо, без подтверждений. В текущей реализации обход может захватить заголовки примечаний и комментариев даже при отключённых настройках их обработки; результат надо проверить.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV.title и P.subtitle внутри fbw_body, включая заголовок основного body по умолчанию. Параметры исключения notes и comments применяются к одному из проходов поиска, но второй обход снова добавляет их элементы; фактическая обработка этих разделов возможна и при значении 0. Элементы без букв не выбираются при обычном пороге 80%.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "Перед запуском при необходимости измените порог, списки исключений и параметры разделов в начале исходного JS. Для просмотра предварительной статистики и подтверждения установите showStatistics=1; исходное значение 0 запускает обработку без диалога.",
+            "Сохраните копию книги и запустите скрипт. После завершения проверьте названия, имена собственные, текст у границ форматирования и заголовки в примечаниях и комментариях."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "При showStatistics=0 скрипт меняет найденные заголовки без подтверждения и итогового сообщения.",
+            "Отключение обработки примечаний и комментариев не гарантирует их пропуск из-за второго обхода DOM.",
+            "Каждый текстовый узел обрабатывается отдельно: после тега форматирования слово может получить ошибочную прописную букву. Имена собственные вне встроенных списков требуют ручной проверки."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Скрипт объединяет изменения текста в одну операцию отмены. Обычные ранние выходы происходят до её открытия; между открытием и закрытием нет return, но при исключении закрытие не гарантировано. Полнота отката отдельно не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 0,
+              "expression": "0",
+              "description": "Измените на 0 для тихого режима",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "percentThreshold",
+              "value": 80,
+              "expression": "80",
+              "description": "80% по умолчанию",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "keepRomanNumerals",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - преобразовывать в нижний регистр, 1 - оставить как есть",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "keepAbbreviations",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - преобразовывать в нижний регистр, 1 - оставить как есть",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processFirstTitle",
+              "value": 1,
+              "expression": "1",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "sentenceEndChars",
+              "value": ".!?…",
+              "expression": "\".!?…\"",
+              "description": "U+2026 - многоточие как один символ, ... - три точки",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 0,
+              "expression": "0",
+              "description": "Показывать статистику и запрашивать подтверждение для групп заголовков: 1 — да, 0 — тихая автоматическая обработка.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "percentThreshold",
+              "value": 80,
+              "expression": "80",
+              "description": "Минимальная округлённая доля заглавных кириллических и латинских букв для отбора абзаца, в процентах.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "keepRomanNumerals",
+              "value": 1,
+              "expression": "1",
+              "description": "Сохранять совпадающие с внутренним списком римские числа в верхнем регистре: 1 — да, 0 — нормализовать.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "keepAbbreviations",
+              "value": 1,
+              "expression": "1",
+              "description": "Сохранять совпадающие с внутренним списком аббревиатуры в верхнем регистре: 1 — да, 0 — нормализовать.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Включать заголовки и подзаголовки примечаний: 1 — да, 0 — исключать; исключение в текущем коде ненадёжно.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Включать заголовки и подзаголовки комментариев: 1 — да, 0 — исключать; исключение в текущем коде ненадёжно.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processFirstTitle",
+              "value": 1,
+              "expression": "1",
+              "description": "Обрабатывать заголовок основного body: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "sentenceEndChars",
+              "value": ".!?…",
+              "expression": "\".!?…\"",
+              "description": "Знаки конца предложения, после которых полностью заглавное слово сохраняет начальную прописную букву.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 713,
+          "issue": "После выборочного findBodyTitles выполняется общий findAllElements без проверки notes/comments. Затем первый обход и общий список объединяются; заголовки и подзаголовки примечаний и комментариев могут попасть в обработку даже при processNotesSection=0 и processCommentsSection=0."
+        },
+        {
+          "line": 497,
+          "issue": "normalizeText вызывается отдельно для каждого текстового узла. После вложенного тега начальное слово узла может считаться началом предложения и получить прописную букву, хотя находится в середине заголовка."
+        },
+        {
+          "line": 310,
+          "issue": "Доля заглавных букв округляется до целого перед сравнением с порогом. При пороге 100% фактическая доля от 99,5% может ошибочно считаться полностью заглавной."
+        },
+        {
+          "line": 983,
+          "issue": "Вызовы BeginUndoUnit/EndUndoUnit не защищены finally. Обычных досрочных выходов между ними нет, но исключение при обходе текстовых узлов оставит группу отмены открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 690,
-    "generic_usage": 378,
+    "inaccurate_description": 691,
+    "generic_usage": 379,
     "false_warning": 319,
-    "incorrect_setting": 207,
-    "incorrect_scope": 385,
-    "incorrect_undo": 377,
-    "uncertain_attribution": 70,
-    "generic_summary": 73,
-    "incorrect_dependency": 394,
+    "incorrect_setting": 208,
+    "incorrect_scope": 386,
+    "incorrect_undo": 378,
+    "uncertain_attribution": 71,
+    "generic_summary": 74,
+    "incorrect_dependency": 395,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -54390,20 +54638,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 16,
+    "missing_warning": 17,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 369,
-    "usageCorrected": 378,
-    "purposeClarified": 376,
-    "warningsClarified": 310,
-    "scopeClarified": 362,
+    "undoDescriptionsClarified": 370,
+    "usageCorrected": 379,
+    "purposeClarified": 377,
+    "warningsClarified": 311,
+    "scopeClarified": 363,
     "settingsClarified": 509,
-    "attributionClarified": 71,
-    "dependenciesVerified": 260,
+    "attributionClarified": 72,
+    "dependenciesVerified": 261,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -54411,7 +54659,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 12,
+    "settingsCorrected": 13,
     "effectCorrected": 1
   },
   "scripts": [
@@ -151725,98 +151973,95 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Нормализовать регистр заголовков и подзаголовков",
-        "summary": "Скрипт предназначен для автоматической нормализации регистра заголовков и подзаголовков в документах fb2.",
-        "description": "Скрипт предназначен для автоматической нормализации регистра заголовков и подзаголовков в документах fb2.",
+        "summary": "Приводит полностью заглавные слова в заголовках и подзаголовках к обычному регистру с порогом доли прописных букв.",
+        "description": "Ищет DIV.title и P.subtitle в книге, считает долю заглавных кириллических и латинских букв, для многоабзацных заголовков анализирует абзацы отдельно. При достижении порога меняет регистр полностью заглавных слов в текстовых узлах, стараясь сохранить римские числа и аббревиатуры из встроенных списков, разметку и смешанный регистр. По умолчанию работает тихо, без подтверждений. В текущей реализации обход может захватить заголовки примечаний и комментариев даже при отключённых настройках их обработки; результат надо проверить.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "2.7",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV.title и P.subtitle внутри fbw_body, включая заголовок основного body по умолчанию. Параметры исключения notes и comments применяются к одному из проходов поиска, но второй обход снова добавляет их элементы; фактическая обработка этих разделов возможна и при значении 0. Элементы без букв не выбираются при обычном пороге 80%.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "Перед запуском при необходимости измените порог, списки исключений и параметры разделов в начале исходного JS. Для просмотра предварительной статистики и подтверждения установите showStatistics=1; исходное значение 0 запускает обработку без диалога.",
+          "Сохраните копию книги и запустите скрипт. После завершения проверьте названия, имена собственные, текст у границ форматирования и заголовки в примечаниях и комментариях."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "При showStatistics=0 скрипт меняет найденные заголовки без подтверждения и итогового сообщения.",
+          "Отключение обработки примечаний и комментариев не гарантирует их пропуск из-за второго обхода DOM.",
+          "Каждый текстовый узел обрабатывается отдельно: после тега форматирования слово может получить ошибочную прописную букву. Имена собственные вне встроенных списков требуют ручной проверки."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 0,
             "expression": "0",
-            "description": "Измените на 0 для тихого режима",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Показывать статистику и запрашивать подтверждение для групп заголовков: 1 — да, 0 — тихая автоматическая обработка.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "percentThreshold",
             "value": 80,
             "expression": "80",
-            "description": "80% по умолчанию",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Минимальная округлённая доля заглавных кириллических и латинских букв для отбора абзаца, в процентах.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "keepRomanNumerals",
             "value": 1,
             "expression": "1",
-            "description": "0 - преобразовывать в нижний регистр, 1 - оставить как есть",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Сохранять совпадающие с внутренним списком римские числа в верхнем регистре: 1 — да, 0 — нормализовать.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "keepAbbreviations",
             "value": 1,
             "expression": "1",
-            "description": "0 - преобразовывать в нижний регистр, 1 - оставить как есть",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Сохранять совпадающие с внутренним списком аббревиатуры в верхнем регистре: 1 — да, 0 — нормализовать.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processNotesSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать заголовки и подзаголовки примечаний: 1 — да, 0 — исключать; исключение в текущем коде ненадёжно.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processCommentsSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Включать заголовки и подзаголовки комментариев: 1 — да, 0 — исключать; исключение в текущем коде ненадёжно.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processFirstTitle",
             "value": 1,
             "expression": "1",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать заголовок основного body: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "sentenceEndChars",
             "value": ".!?…",
             "expression": "\".!?…\"",
-            "description": "U+2026 - многоточие как один символ, ... - три точки",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Знаки конца предложения, после которых полностью заглавное слово сохраняет начальную прописную букву.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Скрипт объединяет изменения текста в одну операцию отмены. Обычные ранние выходы происходят до её открытия; между открытием и закрытием нет return, но при исключении закрытие не гарантировано. Полнота отката отдельно не проверена."
         },
         "examples": null,
         "tags": [
@@ -151827,13 +152072,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 1093,
+            "line": 1090,
             "text": "window.external.BeginUndoUnit(document, scriptName);"
           }
         ],
         "undo_end": [
           {
-            "line": 1135,
+            "line": 1132,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -151847,151 +152092,151 @@
         "file": [],
         "return": [
           {
-            "line": 254,
+            "line": 251,
             "text": "return ch == ' ' || ch == '\\t' || ch == '\\n' || ch == '\\r' || ch.charCodeAt(0) == 160;"
           },
           {
-            "line": 273,
+            "line": 270,
             "text": "return \"\";"
           },
           {
-            "line": 276,
+            "line": 273,
             "text": "return str.substring(start, end + 1);"
           },
           {
-            "line": 315,
+            "line": 312,
             "text": "return paragraphs;"
           },
           {
-            "line": 328,
+            "line": 325,
             "text": "return text;"
           },
           {
-            "line": 334,
+            "line": 331,
             "text": "return (code >= 1040 && code <= 1103) || // Кириллица"
           },
           {
-            "line": 342,
+            "line": 339,
             "text": "if (!isLetter(ch)) return false;"
           },
           {
-            "line": 344,
+            "line": 341,
             "text": "return (code >= 1040 && code <= 1071) || // Кириллица заглавные"
           },
           {
-            "line": 351,
+            "line": 348,
             "text": "if (!isLetter(ch)) return false;"
           },
           {
-            "line": 353,
+            "line": 350,
             "text": "return (code >= 1072 && code <= 1103) || // Кириллица строчные"
           },
           {
-            "line": 360,
+            "line": 357,
             "text": "if (!word) return false;"
           },
           {
-            "line": 368,
+            "line": 365,
             "text": "return false; // Нашли строчную букву - слово не полностью заглавное"
           },
           {
-            "line": 373,
+            "line": 370,
             "text": "return hasLetters; // Возвращаем true только если есть хотя бы одна буква и все они заглавные"
           },
           {
-            "line": 378,
+            "line": 375,
             "text": "if (!word) return false;"
+          },
+          {
+            "line": 380,
+            "text": "return true;"
           },
           {
             "line": 383,
-            "text": "return true;"
-          },
-          {
-            "line": 386,
             "text": "return false;"
           },
           {
-            "line": 391,
+            "line": 388,
             "text": "if (!word) return false;"
           },
           {
-            "line": 396,
+            "line": 393,
             "text": "return true;"
           },
           {
-            "line": 399,
+            "line": 396,
             "text": "return false;"
           },
           {
-            "line": 404,
+            "line": 401,
             "text": "if (!text) return 0;"
           },
           {
-            "line": 419,
+            "line": 416,
             "text": "if (totalLetters == 0) return 0;"
           },
           {
-            "line": 420,
+            "line": 417,
             "text": "return Math.round((upperLetters / totalLetters) * 100);"
           },
           {
-            "line": 427,
+            "line": 424,
             "text": "return true;"
           },
           {
-            "line": 433,
+            "line": 430,
             "text": "return true;"
           },
           {
-            "line": 437,
+            "line": 434,
             "text": "return false;"
           },
           {
-            "line": 442,
+            "line": 439,
             "text": "if (!text) return \"\";"
           },
           {
-            "line": 557,
+            "line": 554,
             "text": "return result;"
           },
           {
-            "line": 622,
+            "line": 619,
             "text": "return changed;"
           },
           {
-            "line": 627,
+            "line": 624,
             "text": "if (!parent || !parent.childNodes) return;"
           },
           {
-            "line": 650,
+            "line": 647,
             "text": "if (!parent || !parent.childNodes) return;"
           },
           {
-            "line": 685,
+            "line": 682,
             "text": "if (!parent || !parent.childNodes) return;"
           },
           {
-            "line": 745,
+            "line": 742,
             "text": "return count;"
           },
           {
-            "line": 774,
+            "line": 771,
             "text": "return {"
           },
           {
-            "line": 815,
+            "line": 812,
             "text": "return;"
           },
           {
-            "line": 853,
+            "line": 850,
             "text": "return;"
           },
           {
-            "line": 977,
+            "line": 974,
             "text": "return;"
           },
           {
-            "line": 1079,
+            "line": 1076,
             "text": "return;"
           }
         ]
@@ -152003,29 +152248,29 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 149,
+              "line": 146,
               "text": "var showStatistics = 0; // Измените на 0 для тихого режима"
             }
           ],
           "uses": [
             {
-              "line": 149,
+              "line": 146,
               "text": "var showStatistics = 0; // Измените на 0 для тихого режима"
             },
             {
-              "line": 850,
+              "line": 847,
               "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 954,
+              "line": 951,
               "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 982,
+              "line": 979,
               "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 1138,
+              "line": 1135,
               "text": "if (showStatistics == 1) {"
             }
           ],
@@ -152036,41 +152281,41 @@
           "name": "percentThreshold",
           "declarations": [
             {
-              "line": 152,
+              "line": 149,
               "text": "var percentThreshold = 80; // 80% по умолчанию"
             }
           ],
           "uses": [
             {
-              "line": 152,
+              "line": 149,
               "text": "var percentThreshold = 80; // 80% по умолчанию"
             },
             {
-              "line": 769,
+              "line": 766,
               "text": "if (percent >= percentThreshold) {"
             },
             {
-              "line": 886,
+              "line": 883,
               "text": "} else if (percent >= percentThreshold) {"
             },
             {
-              "line": 942,
+              "line": 939,
               "text": "} else if (percent >= percentThreshold) {"
             },
             {
-              "line": 962,
+              "line": 959,
               "text": "} else if (stats.mainBodyTitlePercent >= percentThreshold) {"
             },
             {
-              "line": 963,
+              "line": 960,
               "text": "noElementsMsg += \"(>=\" + percentThreshold + \"% заглавных букв)\";"
             },
             {
-              "line": 1000,
+              "line": 997,
               "text": "\"• Заголовков (>=\" + percentThreshold + \"% заглавных букв): \" + stats.allTitlesPartial + \"\\n\" +"
             },
             {
-              "line": 1001,
+              "line": 998,
               "text": "\"• Подзаголовков (>=\" + percentThreshold + \"% заглавных букв): \" + stats.allSubtitlesPartial + \"\\n\";"
             }
           ],
@@ -152081,25 +152326,25 @@
           "name": "keepRomanNumerals",
           "declarations": [
             {
-              "line": 155,
+              "line": 152,
               "text": "var keepRomanNumerals = 1; // 0 - преобразовывать в нижний регистр, 1 - оставить как есть"
             }
           ],
           "uses": [
             {
-              "line": 155,
+              "line": 152,
               "text": "var keepRomanNumerals = 1; // 0 - преобразовывать в нижний регистр, 1 - оставить как есть"
             },
             {
-              "line": 474,
+              "line": 471,
               "text": "if ((wordIsRoman && keepRomanNumerals == 1) ||"
             },
             {
-              "line": 530,
+              "line": 527,
               "text": "if ((wordIsRoman && keepRomanNumerals == 1) ||"
             },
             {
-              "line": 1020,
+              "line": 1017,
               "text": "\"- Римские цифры: \" + (keepRomanNumerals == 1 ? \"не изменять\" : \"изменять\") + \"\\n\" +"
             }
           ],
@@ -152110,25 +152355,25 @@
           "name": "keepAbbreviations",
           "declarations": [
             {
-              "line": 158,
+              "line": 155,
               "text": "var keepAbbreviations = 1; // 0 - преобразовывать в нижний регистр, 1 - оставить как есть"
             }
           ],
           "uses": [
             {
-              "line": 158,
+              "line": 155,
               "text": "var keepAbbreviations = 1; // 0 - преобразовывать в нижний регистр, 1 - оставить как есть"
             },
             {
-              "line": 475,
+              "line": 472,
               "text": "(wordIsAbbrev && keepAbbreviations == 1)) {"
             },
             {
-              "line": 531,
+              "line": 528,
               "text": "(wordIsAbbrev && keepAbbreviations == 1)) {"
             },
             {
-              "line": 1021,
+              "line": 1018,
               "text": "\"- Аббревиатуры: \" + (keepAbbreviations == 1 ? \"не изменять\" : \"изменять\") + \"\\n\" +"
             }
           ],
@@ -152139,25 +152384,25 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 161,
+              "line": 158,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 161,
+              "line": 158,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 712,
+              "line": 709,
               "text": "if (fbname == \"notes\" && processNotesSection == 0) {"
             },
             {
-              "line": 903,
+              "line": 900,
               "text": "if (item.bodyType == \"notes\" && processNotesSection == 0) {"
             },
             {
-              "line": 1022,
+              "line": 1019,
               "text": "\"- Раздел сносок: \" + (processNotesSection == 1 ? \"обрабатывать\" : \"не обрабатывать\") + \"\\n\" +"
             }
           ],
@@ -152168,25 +152413,25 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 164,
+              "line": 161,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 164,
+              "line": 161,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 715,
+              "line": 712,
               "text": "if (fbname == \"comments\" && processCommentsSection == 0) {"
             },
             {
-              "line": 907,
+              "line": 904,
               "text": "if (item.bodyType == \"comments\" && processCommentsSection == 0) {"
             },
             {
-              "line": 1023,
+              "line": 1020,
               "text": "\"- Раздел комментариев: \" + (processCommentsSection == 1 ? \"обрабатывать\" : \"не обрабатывать\") + \"\\n\" +"
             }
           ],
@@ -152197,29 +152442,29 @@
           "name": "processFirstTitle",
           "declarations": [
             {
-              "line": 167,
+              "line": 164,
               "text": "var processFirstTitle = 1; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 167,
+              "line": 164,
               "text": "var processFirstTitle = 1; // 0 - нет, 1 - да"
             },
             {
-              "line": 899,
+              "line": 896,
               "text": "if (item.isBodyTitle && item.bodyType == \"main\" && processFirstTitle == 0) {"
             },
             {
-              "line": 957,
+              "line": 954,
               "text": "if (stats.mainBodyTitleFound && processFirstTitle == 0) {"
             },
             {
-              "line": 968,
+              "line": 965,
               "text": "} else if (stats.mainBodyTitleFound && processFirstTitle == 1) {"
             },
             {
-              "line": 1024,
+              "line": 1021,
               "text": "\"- Заголовок основного body: \" + (processFirstTitle == 1 ? \"обрабатывать\" : \"не обрабатывать\") + \"\\n\";"
             }
           ],
@@ -152230,17 +152475,17 @@
           "name": "sentenceEndChars",
           "declarations": [
             {
-              "line": 172,
+              "line": 169,
               "text": "var sentenceEndChars = \".!?…\";"
             }
           ],
           "uses": [
             {
-              "line": 172,
+              "line": 169,
               "text": "var sentenceEndChars = \".!?…\";"
             },
             {
-              "line": 426,
+              "line": 423,
               "text": "if (sentenceEndChars.indexOf(ch) != -1) {"
             }
           ],
@@ -152250,25 +152495,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 112,
+          "line": 109,
           "text": "// version 2.7"
         },
         {
-          "line": 137,
+          "line": 134,
           "text": "// version 2.7, 25.01.2026"
         },
         {
-          "line": 141,
+          "line": 138,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 143,
+          "line": 140,
           "text": "var version = \"2.7\";"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "При showStatistics=0 скрипт меняет найденные заголовки без подтверждения и итогового сообщения.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Отключение обработки примечаний и комментариев не гарантирует их пропуск из-за второго обхода DOM.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Каждый текстовый узел обрабатывается отдельно: после тега форматирования слово может получить ошибочную прописную букву. Имена собственные вне встроенных списков требуют ручной проверки.",
           "verification": "requires_review"
         }
       ],
@@ -152291,74 +152544,42 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+          "category": "requires_review",
+          "field": "settings[2]",
+          "previous": {
+            "name": "keepRomanNumerals",
+            "value": 1,
+            "expression": "1",
+            "description": "Сохранять совпадающие с внутренним списком римские числа в верхнем регистре: 1 — да, 0 — нормализовать.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+          },
           "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
+          "reason": "Похоже на служебный флаг, счётчик или промежуточную переменную; проверить использование",
           "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
+          "evidence": [
+            {
+              "line": 152,
+              "text": "var keepRomanNumerals = 1; // 0 - преобразовывать в нижний регистр, 1 - оставить как есть"
+            }
+          ]
         },
         {
           "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "field": "settings[3]",
+          "previous": {
+            "name": "keepAbbreviations",
+            "value": 1,
+            "expression": "1",
+            "description": "Сохранять совпадающие с внутренним списком аббревиатуры в верхнем регистре: 1 — да, 0 — нормализовать.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+          },
           "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
+          "reason": "Похоже на служебный флаг, счётчик или промежуточную переменную; проверить использование",
           "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
           "evidence": [
             {
-              "line": 1093,
-              "text": "window.external.BeginUndoUnit(document, scriptName);"
-            },
-            {
-              "line": 1135,
-              "text": "window.external.EndUndoUnit(document);"
+              "line": 155,
+              "text": "var keepAbbreviations = 1; // 0 - преобразовывать в нижний регистр, 1 - оставить как есть"
             }
           ]
         }
