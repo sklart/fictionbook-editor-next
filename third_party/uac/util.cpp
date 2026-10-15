@@ -49,9 +49,20 @@ UINT_PTR StrToUIntPtr(LPTSTR s,bool ForceHEX,BOOL*pFoundBadChar)
 	UINT_PTR v = 0;
 	BYTE base = ForceHEX ? 16 : 10;
 	if (pFoundBadChar)*pFoundBadChar = false;
-	if ( !ForceHEX && *s == '0' && ((*(s = StrNextChar(s)))&~0x20) == 'X' && (s = StrNextChar(s)) ) base = 16;
-	for (TCHAR c = *s; c; c = *(s=StrNextChar(s)) ) 
+	if (!s) {
+		if (pFoundBadChar)*pFoundBadChar = true;
+		return 0;
+	}
+	if (!ForceHEX && *s == '0') {
+		LPTSTR marker=StrNextChar(s);
+		if (marker && ((*marker)&~0x20)=='X') {
+			s=StrNextChar(marker);
+			base=16;
+		}
+	}
+	for (;s && *s;s=StrNextChar(s))
 	{
+		TCHAR c=*s;
 		if (c >= _T('0') && c <= _T('9')) c-='0';
 		else if (base == 16 && (c & ~0x20) >= 'A' && (c & ~0x20) <= 'F') c = (c & 7) +9;
 		else 

@@ -166,8 +166,8 @@ void MyRunAsTranslateDlg(HWND hDlg) {
 	MyRunAsTranslateDlgString(_T("OK"),buf,hDlg,IDOK);
 	MyRunAsTranslateDlgString(_T("Cancel"),buf,hDlg,IDCANCEL);
 	HWND h=GetDlgItem(hDlg,IDC_RUNASCURR);
-	if (MyGetPrivateProfileInt(_T("MyRunAsCfg"),_T("DisableCurrUserOpt"),false,buf))EnableWindow(h,false);
-	if (MyGetPrivateProfileInt(_T("MyRunAsCfg"),_T("HideCurrUserOpt"),false,buf))ShowWindow(h,false);
+	if (MyGetPrivateProfileInt(_T("MyRunAsCfg"),_T("DisableCurrUserOpt"),0,buf))EnableWindow(h,FALSE);
+	if (MyGetPrivateProfileInt(_T("MyRunAsCfg"),_T("HideCurrUserOpt"),0,buf))ShowWindow(h,SW_HIDE);
 }
 #endif
 
@@ -234,7 +234,7 @@ INT_PTR CALLBACK MyRunAsDlgProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) {
 			Sleep(1);PostMessage(hwnd,WM_COMMAND,IDOK,0);
 #endif
 		}
-		return true;
+		return TRUE;
 	case WM_COMMAND:
 		{
 			switch(HIWORD(wp)) {

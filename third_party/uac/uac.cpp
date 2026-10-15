@@ -98,7 +98,7 @@ static bool IsOriginalUser()
 	if (!IsInnerInstance()) return true;
 	if (!G().hOuterProcess) return false;
 	HANDLE currentToken=NULL, outerToken=NULL;
-	BYTE currentUser[256], outerUser[256];
+	alignas(TOKEN_USER) BYTE currentUser[256], outerUser[256];
 	DWORD currentBytes=0, outerBytes=0;
 	bool same=false;
 	if (OpenProcessToken(GetCurrentProcess(),TOKEN_QUERY,&currentToken) &&
@@ -160,7 +160,7 @@ BOOL QueryIsAdminOrGetIL(UINT32*pIL)
 		{
 			BYTE sidbuf[8+(sizeof(DWORD)*2)];
 			PSID psid = (PSID) sidbuf;
-			((UINT32*)psid)[0] = 1 | 2<<8;
+			((UINT32*)psid)[0] = 1 | (2<<8);
 			((UINT32*)psid)[1] = 5<<24;
 			((UINT32*)psid)[2] = SECURITY_BUILTIN_DOMAIN_RID;
 			((UINT32*)psid)[3] = DOMAIN_ALIAS_RID_ADMINS;
@@ -192,11 +192,14 @@ BOOL QueryIsAdminOrGetIL(UINT32*pIL)
 	UINT32 il = isAdmin ? 0x3000 : 0x2000;
 	if (OSAtleastVista)
 	{
-		BYTE bufTokMandLbl[30];
-		PTOKEN_MANDATORY_LABEL pTML=(PTOKEN_MANDATORY_LABEL)bufTokMandLbl;
+		struct {
+			TOKEN_MANDATORY_LABEL label;
+			BYTE sid[SECURITY_MAX_SID_SIZE];
+		} tokenIntegrity;
+		PTOKEN_MANDATORY_LABEL pTML=&tokenIntegrity.label;
 		DWORD RetLen;
 		il = 0;
-		if (GetTokenInformation(hToken,TokenIntegrityLevel,pTML,sizeof(bufTokMandLbl),&RetLen))
+		if (GetTokenInformation(hToken,TokenIntegrityLevel,pTML,sizeof(tokenIntegrity),&RetLen))
 		{
 			PSID psid = pTML->Label.Sid;
 			if ((1|1<<8) == ((UINT32*)psid)[0] && (16<<24) == ((UINT32*)psid)[1])
@@ -236,8 +239,9 @@ bool SysQuery_UAC_IsActive()
 
 LPTSTR FindExePathEnd(LPTSTR p) 
 {
-	if ( *p=='"' && *(++p) ) 
+	if (*p=='"')
 	{
+		if (!*(++p)) return 0;
 		while( *p && *p!='"' )p=StrNextChar(p);
 		if (*p)
 			p=StrNextChar(p);
@@ -504,7 +508,7 @@ LRESULT CALLBACK OuterWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 						SYNCHRONIZE|EVENT_MODIFY_STATE,false,0))
 					{
 						TRACEF("DuplicateHandle on src[%d] failed with %d\n",i,GetLastError());
-						for (int j=0;j<i;++j) CloseRemoteHandle(hTargetProcess,destEvents[j]);
+						if (i) CloseRemoteHandle(hTargetProcess,destEvents[0]);
 						CloseRemoteHandle(hTargetProcess,destMap);
 						return NULL;
 					}
@@ -620,7 +624,8 @@ DWORD CALLBACK OuterWndThread(LPVOID param)
 {
 	DWORD ec=NO_ERROR;
 	CoInitialize(NULL); // Why?
-	if ( G().hwndOuter=CreateWindowEx(WS_EX_TOOLWINDOW,_T("Static"),NULL,/*WS_VISIBLE*/0,0,0,0,0,NULL,0,g_hInst,NULL) )
+	G().hwndOuter=CreateWindowEx(WS_EX_TOOLWINDOW,_T("Static"),NULL,/*WS_VISIBLE*/0,0,0,0,0,NULL,0,g_hInst,NULL);
+	if (G().hwndOuter)
 	{
 		TRACEF("OuterWndThread: Created outer IPC window %X\n",G().hwndOuter);
 		SetWindowLongPtr(G().hwndOuter,GWLP_WNDPROC,(LONG_PTR)OuterWndProc);
@@ -833,7 +838,7 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 	case WM_WINDOWPOSCHANGED:
 		{
 			WINDOWPOS&wp=*(WINDOWPOS*)lp;
-			if (SWP_SHOWWINDOW&wp.flags && G().JumpPageOffset!=-1) 
+			if (SWP_SHOWWINDOW&wp.flags && G().JumpPageOffset!=0xFFFF)
 			{
 				TRACEF("InnerMainWndSubProc:WM_WINDOWPOSCHANGED: completing GUI handoff from shared state");
 				G().JumpPageOffset=-1;
@@ -841,7 +846,7 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 					(G().pShared+G().SharedMapBytes-sizeof(WINDOW_SWITCH_STATE)) : NULL;
 				HWND hOuterMainWnd=state ? state->outerMainWindow : NULL;
 				DWORD outerPid=0;
-				if (IsWindow(hOuterMainWnd) &&
+				if (state && IsWindow(hOuterMainWnd) &&
 					GetWindowThreadProcessId(hOuterMainWnd,&outerPid) &&
 					G().hOuterProcess && outerPid==GetProcessId(G().hOuterProcess)) {
 					RECT rect;
@@ -875,7 +880,7 @@ LRESULT CALLBACK InnerMainWndSubProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
 INT_PTR CALLBACK SplashDialogProc(HWND hwnd,UINT uMsg,WPARAM wp,LPARAM lp) 
 {
 	if (uMsg==WM_CLOSE) { DestroyWindow(hwnd); return TRUE; }
-	return false;
+	return FALSE;
 }
 
 
@@ -898,7 +903,8 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 		else
 		{
 			G().RunMode = GetOuterHwndFromCommandline(G().hwndOuter) ? RUNMODE_INNER : RUNMODE_OUTER ;
-			if ( !(ec=DelayLoadFunctions()) ) 
+			ec=DelayLoadFunctions();
+			if (!ec)
 			{
 				if ( G().RunMode==RUNMODE_OUTER && !(ec=Outer_InitShared(NSIScchStr)) ) ec=Outer_CreateOuterWindow();
 			}
@@ -977,12 +983,13 @@ extern "C" void __declspec(dllexport) __cdecl _(HWND hwndNSIS,UINT NSIScchStr,NS
 							LONG xs = WS_EX_TOOLWINDOW;
 							// Hacky invisible splash screen, 
 							// you can hex edit "runas" > "Runas" to remove this hack and display it.
-							if (*verb_runas=='r') xs |= WS_EX_TRANSPARENT|WS_EX_LAYERED;
+							xs |= WS_EX_TRANSPARENT|WS_EX_LAYERED;
 							WndModifyLong(sei.hwnd,GWL_EXSTYLE,xs,xs);
 							SetWindowPos(sei.hwnd,0,0,0,0,0,SWP_FRAMECHANGED|SWP_NOSIZE|SWP_NOMOVE|SWP_NOZORDER);
 							HICON hIcon=LoadIcon(hExeMod,MAKEINTRESOURCE(103));
 							HWND hCtl = NULL;
-							for(;hCtl = FindWindowEx(sei.hwnd,hCtl,NULL,NULL);) ShowWindow(hCtl,SW_HIDE);
+							while ((hCtl=FindWindowEx(sei.hwnd,hCtl,NULL,NULL))!=NULL)
+								ShowWindow(hCtl,SW_HIDE);
 							HWND hIcoCtl=GetDlgItem(sei.hwnd,1030);
 							ShowWindow(hIcoCtl,SW_SHOW);
 							RECT r;
