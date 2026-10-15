@@ -516,10 +516,34 @@ void CMainFrame::RunPortableStateTestScenario()
 		RECT previewBounds = {};
 		const bool previewBoundsValid = previewReusable && ::GetWindowRect(previewWindow, &previewBounds);
 		const int previewDpi = UiMetrics::DpiForWindow(tree.m_hWnd);
-		const int previewHeight = previewBounds.bottom - previewBounds.top;
-		const int linkY = previewHeight - UiMetrics::ScaleForDpi(23, previewDpi);
-		if(previewBoundsValid) ::SendMessageW(previewWindow, WM_LBUTTONUP, 0,
-			MAKELPARAM(UiMetrics::ScaleForDpi(24, previewDpi), linkY));
+		const POINT bridgePoint = { infoPoint.x,
+			previewBounds.top > infoPoint.y ? previewBounds.top - UiMetrics::ScaleForDpi(2, previewDpi) :
+				previewBounds.bottom + UiMetrics::ScaleForDpi(2, previewDpi) };
+		const bool previewBridge = previewBoundsValid && tree.ScriptPreviewTransitionContains(bridgePoint);
+		RECT neighborRow = {};
+		const bool neighborVisible = selectedItem != NULL && tree.GetItemRect(selectedItem, &neighborRow, FALSE);
+		const int neighborY = (neighborRow.top + neighborRow.bottom) / 2;
+		if(neighborVisible) ::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, neighborY));
+		const bool previewCrossing = neighborVisible && tree.ScriptPreviewVisible() &&
+			tree.ScriptPreviewUid() == infoUid && tree.ScriptPreviewWindow() == previewWindow;
+		if(neighborVisible) ::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+		if(neighborVisible) ::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, neighborY));
+		::Sleep(470);
+		if(neighborVisible) ::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+		const CString neighborUid = tree.ScriptPreviewUid();
+		const bool previewSwitch = previewCrossing && tree.ScriptPreviewVisible() &&
+			neighborUid != infoUid && tree.ScriptPreviewWindow() == previewWindow;
+		if(previewSwitch) ::SendMessageW(previewWindow, WM_LBUTTONUP, 0,
+			MAKELPARAM(UiMetrics::ScaleForDpi(35, previewDpi), UiMetrics::ScaleForDpi(48, previewDpi)));
+		const bool previewSurface = previewSwitch && awaitCard() &&
+			m_script_card_window.CurrentUid() == neighborUid &&
+			tree.GetSelectedItem() == selectedItem && runCount == 0;
+		if(rowVisible) ::SendMessageW(tree.m_hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(infoX, infoY));
+		::Sleep(470);
+		if(rowVisible) ::SendMessageW(tree.m_hWnd, WM_TIMER, 0x53435001, 0);
+		const int linkX = previewBounds.right - previewBounds.left - UiMetrics::ScaleForDpi(20, previewDpi);
+		const int linkY = UiMetrics::ScaleForDpi(23, previewDpi);
+		if(previewBoundsValid) ::SendMessageW(previewWindow, WM_LBUTTONUP, 0, MAKELPARAM(linkX, linkY));
 		const bool previewLink = previewBoundsValid && awaitCard() &&
 			m_script_card_window.CurrentUid() == infoUid && !tree.ScriptPreviewVisible();
 		::SetCursorPos(priorCursor.x, priorCursor.y);
@@ -695,6 +719,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		ScriptDescriptor standard = {};
 		standard.name = L"Стандартизация символов";
 		standard.path = standardPath;
+		standard.relativePath = L"21_Поиск и замена/36_Стандартизация символов.js";
 		standard.uid = L"standard-card-runtime";
 		const bool standardOpened = m_script_card_window.ShowScript(m_hWnd, standard, runtimePath,
 			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
@@ -705,6 +730,11 @@ void CMainFrame::RunPortableStateTestScenario()
 			m_script_card_window.BodyText().Find(L"Значение по умолчанию: 1") >= 0 &&
 			m_script_card_window.BodyText().Find(L"+extracting(") < 0 &&
 			m_script_card_window.BodyText().Find(L"N100(") < 0;
+		wchar_t formattedCategory[512] = {};
+		::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), formattedCategory, _countof(formattedCategory));
+		const bool standardCategory = CString(formattedCategory).Find(L"Поиск и замена") >= 0 &&
+			CString(formattedCategory).Find(L"21_") < 0;
+		bool cleaningCategory = true;
 		bool cleaningValues = true;
 		for(const wchar_t* filename : { L"01_Генеральная уборка.js", L"02_Генеральная уборка.js" })
 		{
@@ -713,9 +743,13 @@ void CMainFrame::RunPortableStateTestScenario()
 			ScriptDescriptor cleaning = {};
 			cleaning.name = L"Генеральная уборка";
 			cleaning.path = path;
+			cleaning.relativePath = CString(L"06_Чистка/") + filename;
 			cleaning.uid = filename;
 			const bool shown = m_script_card_window.ShowScript(m_hWnd, cleaning, runtimePath,
 				[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+			::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), formattedCategory, _countof(formattedCategory));
+			cleaningCategory = cleaningCategory && CString(formattedCategory).Find(L"Чистка") >= 0 &&
+				CString(formattedCategory).Find(L"06_") < 0;
 			cleaningValues = cleaningValues && shown && !parsed.settingRows.empty() &&
 				parsed.settingRows.front().valueKind == ScriptCards::Setting::ValueKind::Boolean &&
 				m_script_card_window.BodyText().Find(L"Значение в исходном коде: Да") >= 0;
@@ -725,10 +759,20 @@ void CMainFrame::RunPortableStateTestScenario()
 				cleaningValues = cleaningValues && captureWindow(m_script_card_window.m_hWnd, L"cleaning-card-settings.bmp");
 			}
 		}
+		ScriptDescriptor symbols = {};
+		symbols.name = L"Спецсимволы";
+		symbols.path = runtimePath + L"\\Scripts\\07_Символы\\01_Спецсимволы.js";
+		symbols.relativePath = L"07_Символы/01_Спецсимволы.js";
+		symbols.uid = L"symbols-category-runtime";
+		const bool symbolsOpened = m_script_card_window.ShowScript(m_hWnd, symbols, runtimePath,
+			[&commentRunCount](const CString&) { ++commentRunCount; }) && awaitCard();
+		::GetWindowTextW(m_script_card_window.GetDlgItem(IDC_SCRIPT_CARD_HEADER), formattedCategory, _countof(formattedCategory));
+		const bool categoryFormatted = standardCategory && cleaningCategory && symbolsOpened &&
+			CString(formattedCategory).Find(L"Символы") >= 0 && CString(formattedCategory).Find(L"07_") < 0;
 		const bool passed = openedMissing && missingFallback && reused && rendered && structured && responsive && optionalRendered &&
-			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues &&
+			characteristicLayout && characteristicDpiMatrix && standardValues && cleaningValues && categoryFormatted &&
 			hashesHidden && originHidden && originStates && technicalAbsent && windowIcons && boldHeading &&
-			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewLink &&
+			copiedDetails && categoryShown && previewDelayed && previewShown && previewReusable && previewBridge && previewCrossing && previewSwitch && previewSurface && previewLink &&
 			previewFallback && previewScrollHidden && uidUpdated &&
 			changedWarning && buttons && infoOpened && infoDoubleClickSafe && contextOpened && multiCardDisabled &&
 			cardScreenshot && treeScreenshot && darkCardScreenshot && darkTreeScreenshot &&
@@ -736,10 +780,10 @@ void CMainFrame::RunPortableStateTestScenario()
 			commentWarning && commentTooltip && commentWide && commentChangedDark &&
 			infoUidMatched && infoRunCount == 0 && commentRunCount == 0;
 		CStringA report;
-		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-hidden=%d\norigin-states-hidden=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ncomment-content=%d\ncomment-narrow=%d\ncomment-settings=%d\ncomment-dark=%d\ncomment-warning=%d\ncomment-tooltip=%d\ncomment-wide=%d\ncomment-changed-dark=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
+		report.Format("phase=script-card-dialog\nmissing=%d\nreused=%d\nrendered=%d\nstructured=%d\nresponsive=%d\noptional=%d\nhashes-hidden=%d\norigin-hidden=%d\norigin-states-hidden=%d\ntechnical-absent=%d\nwindow-icons=%d\nbold-heading=%d\ncopied-details=%d\ncategory=%d\npreview-delayed=%d\npreview-shown=%d\npreview-reusable=%d\npreview-bridge=%d\npreview-crossing=%d\npreview-switch=%d\npreview-surface=%d\npreview-link=%d\npreview-fallback=%d\nmissing-row=%d\nfallback-visible=%d\nfallback-window=%d\nfallback-text=%d\npreview-scroll-hidden=%d\nuid=%d\nchanged-warning=%d\nbuttons=%d\ninfo-click=%d\ninfo-double-click-safe=%d\ncontext-opens=%d\nmulti-card-disabled=%d\ncomment-content=%d\ncomment-narrow=%d\ncomment-settings=%d\ncomment-dark=%d\ncomment-warning=%d\ncomment-tooltip=%d\ncomment-wide=%d\ncomment-changed-dark=%d\ninfo-initialized=%d\ninfo-item=%d\ninfo-row=%d\ninfo-nodes=%u\ninfo-uid=%d\ninfo-selection=%d\nrun-count=%d\nresult=%s\n",
 			missingFallback, reused, rendered, structured, responsive, optionalRendered, hashesHidden, originHidden, originStates, technicalAbsent, windowIcons, boldHeading,
 			copiedDetails, categoryShown, previewDelayed, previewShown,
-			previewReusable, previewLink, previewFallback, missingRowVisible, fallbackVisible, fallbackWindow, fallbackText,
+			previewReusable, previewBridge, previewCrossing, previewSwitch, previewSurface, previewLink, previewFallback, missingRowVisible, fallbackVisible, fallbackWindow, fallbackText,
 			previewScrollHidden, uidUpdated, changedWarning, buttons, infoOpened,
 			infoDoubleClickSafe, contextOpened, multiCardDisabled,
 			commentContent, commentNarrow, commentSettings, commentDark, commentWarning, commentTooltip, commentWide, commentChangedDark,
@@ -750,6 +794,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.AppendFormat("characteristic-layout=%d\ncharacteristic-dpi-matrix=%d\ncharacteristic-wide=%d\ncharacteristic-paired=%d\ncharacteristic-narrow=%d\nstandard-values=%d\ncleaning-values=%d\n",
 			characteristicLayout, characteristicDpiMatrix, wideCharacteristics, pairedCharacteristics, narrowCharacteristics,
 			standardValues, cleaningValues);
+		report.AppendFormat("category-formatted=%d\n", categoryFormatted);
 		WritePortableStateTestText(reportPath, report);
 		PostMessage(WM_CLOSE);
 		return;

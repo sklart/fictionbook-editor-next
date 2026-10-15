@@ -17,6 +17,7 @@ public:
 	void RefreshTheme();
 	bool IsVisible() const;
 	bool Contains(POINT screenPoint) const;
+	bool ContainsTransition(POINT screenPoint) const;
 	HWND Window() const { return m_window; }
 	const CString& Uid() const { return m_uid; }
 	const CString& Summary() const { return m_summary; }
@@ -30,6 +31,8 @@ private:
 	HFONT m_titleFont = NULL;
 	HFONT m_linkFont = NULL;
 	RECT m_linkRect = {};
+	RECT m_anchor = {};
+	int m_headerHeight = 0;
 	int m_titleHeight = 0;
 	int m_summaryHeight = 0;
 	CString m_uid, m_title, m_summary, m_more;

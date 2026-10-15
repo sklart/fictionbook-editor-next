@@ -27,7 +27,6 @@ const int kScriptItemHeight = 24;
 const int kScriptIndent = 20;
 constexpr UINT_PTR kScriptPreviewShowTimer = 0x53435001;
 constexpr UINT_PTR kScriptPreviewHideTimer = 0x53435002;
-constexpr UINT kScriptPreviewBridgeDelayMs = 600;
 constexpr UINT kScriptPreviewExitDelayMs = 250;
 
 HBITMAP CreateScriptTreeGlyphBitmap(bool favorite, int size)
@@ -373,17 +372,32 @@ HTREEITEM CTreeView::ScriptInfoAt(POINT point)
 
 void CTreeView::UpdateScriptInfoHover(HTREEITEM item)
 {
-	if(item == m_script_info_hover) return;
+	if(item == m_script_info_hover)
+	{
+		if(item == NULL && m_script_preview.IsVisible())
+		{
+			POINT cursor = {};
+			if(::GetCursorPos(&cursor) && m_script_preview.ContainsTransition(cursor))
+				KillTimer(kScriptPreviewHideTimer);
+			else if(!m_script_preview.Contains(cursor))
+				SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
+		}
+		return;
+	}
 	const HTREEITEM previous = m_script_info_hover;
 	m_script_info_hover = item;
 	KillTimer(kScriptPreviewShowTimer);
 	KillTimer(kScriptPreviewHideTimer);
 	if(item != NULL)
 	{
-		m_script_preview.Hide();
 		SetTimer(kScriptPreviewShowTimer, 450);
 	}
-	else if(m_script_preview.IsVisible()) SetTimer(kScriptPreviewHideTimer, kScriptPreviewBridgeDelayMs);
+	else if(m_script_preview.IsVisible())
+	{
+		POINT cursor = {};
+		if(!::GetCursorPos(&cursor) || (!m_script_preview.ContainsTransition(cursor) && !m_script_preview.Contains(cursor)))
+			SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
+	}
 	if(previous) { RECT bounds = {}; if(ScriptInfoRect(previous, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE); }
 	if(item) { RECT bounds = {}; if(ScriptInfoRect(item, bounds)) ::InvalidateRect(m_hWnd, &bounds, FALSE); }
 }
@@ -445,7 +459,7 @@ LRESULT CTreeView::OnScriptPreviewTimer(UINT, WPARAM timer, LPARAM, BOOL& bHandl
 					FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_more", L"More details..."),
 					[this](const CString& uid) { OpenScriptCardUid(uid); },
 					[this](bool inside) {
-						if(inside) KillTimer(kScriptPreviewHideTimer);
+						if(inside) { KillTimer(kScriptPreviewShowTimer); KillTimer(kScriptPreviewHideTimer); UpdateScriptInfoHover(NULL); }
 						else SetTimer(kScriptPreviewHideTimer, kScriptPreviewExitDelayMs);
 					});
 			}
@@ -456,7 +470,8 @@ LRESULT CTreeView::OnScriptPreviewTimer(UINT, WPARAM timer, LPARAM, BOOL& bHandl
 	{
 		KillTimer(timer);
 		POINT cursor = {};
-		if(::GetCursorPos(&cursor) && m_script_preview.Contains(cursor)) return 0;
+		if(::GetCursorPos(&cursor) &&
+			(m_script_preview.Contains(cursor) || m_script_preview.ContainsTransition(cursor))) return 0;
 		POINT local = cursor; ScreenToClient(&local);
 		if(ScriptInfoAt(local) == NULL) m_script_preview.Hide();
 		return 0;

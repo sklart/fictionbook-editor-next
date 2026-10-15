@@ -49,8 +49,31 @@ CString TriState(int value)
 
 CString ScriptCategory(const CString& relativePath)
 {
-	const int slash = (std::max)(relativePath.ReverseFind(L'\\'), relativePath.ReverseFind(L'/'));
-	return slash >= 0 ? relativePath.Left(slash) : CString();
+	const int lastSlash = (std::max)(relativePath.ReverseFind(L'\\'), relativePath.ReverseFind(L'/'));
+	if(lastSlash < 0) return CString();
+	CString result;
+	int start = 0;
+	while(start < lastSlash)
+	{
+		int end = relativePath.Find(L'/', start);
+		const int backslash = relativePath.Find(L'\\', start);
+		if(end < 0 || (backslash >= 0 && backslash < end)) end = backslash;
+		if(end < 0 || end > lastSlash) end = lastSlash;
+		CString part = relativePath.Mid(start, end - start);
+		int prefix = 0;
+		while(prefix < part.GetLength() && part[prefix] >= L'0' && part[prefix] <= L'9') ++prefix;
+		if(prefix > 0 && prefix < part.GetLength() && part[prefix] == L'_')
+			part = part.Mid(prefix + 1);
+		if(!part.IsEmpty())
+		{
+			::CharUpperBuffW(part.GetBuffer(), 1);
+			part.ReleaseBuffer();
+			if(!result.IsEmpty()) result += L"/";
+			result += part;
+		}
+		start = end + 1;
+	}
+	return result;
 }
 
 CString AuthorRoleLabel(const CString& role)

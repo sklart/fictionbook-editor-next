@@ -53,7 +53,7 @@ bool ScriptCardPreviewPopup::Show(HWND owner, const RECT& anchor, const CString&
 		if(!m_window) return false;
 	}
 	m_uid = uid; m_title = title; m_summary = summary; m_more = more;
-	m_open = open; m_hover = hover; m_mouseInside = false;
+	m_open = open; m_hover = hover; m_mouseInside = false; m_anchor = anchor;
 	const UINT dpi = UiMetrics::DpiForWindow(owner);
 	UpdateFonts(dpi);
 	const int pad = UiMetrics::ScaleForDpi(12, dpi);
@@ -62,13 +62,17 @@ bool ScriptCardPreviewPopup::Show(HWND owner, const RECT& anchor, const CString&
 	const int contentWidth = width - 2 * pad;
 	HDC dc = ::GetDC(m_window);
 	if(!dc) return false;
-	HFONT old = static_cast<HFONT>(::SelectObject(dc, m_titleFont ? m_titleFont : m_font));
-	auto clipLines = [&](CString& value, int maxLines) {
+	HFONT old = static_cast<HFONT>(::SelectObject(dc, m_linkFont ? m_linkFont : m_font));
+	RECT linkSize = { 0, 0, contentWidth / 2, 0 };
+	::DrawTextW(dc, m_more, -1, &linkSize, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+	const int linkWidth = (std::min)(contentWidth / 2, static_cast<int>(linkSize.right) + gap);
+	::SelectObject(dc, m_titleFont ? m_titleFont : m_font);
+	auto clipLines = [&](CString& value, int maxLines, int lineWidth) {
 		TEXTMETRICW metrics = {};
 		::GetTextMetricsW(dc, &metrics);
 		const int limit = maxLines * (metrics.tmHeight + metrics.tmExternalLeading);
 		auto measuredHeight = [&](const CString& candidate) {
-			RECT rect = { 0, 0, contentWidth, 0 };
+			RECT rect = { 0, 0, lineWidth, 0 };
 			::DrawTextW(dc, candidate, -1, &rect, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
 			return static_cast<int>(rect.bottom);
 		};
@@ -85,21 +89,22 @@ bool ScriptCardPreviewPopup::Show(HWND owner, const RECT& anchor, const CString&
 		}
 		return (std::max)(static_cast<int>(metrics.tmHeight), measuredHeight(value));
 	};
-	m_titleHeight = clipLines(m_title, 2);
+	m_titleHeight = clipLines(m_title, 2, contentWidth - linkWidth - gap);
 	::SelectObject(dc, m_font);
-	m_summaryHeight = clipLines(m_summary, 5);
+	m_summaryHeight = clipLines(m_summary, 5, contentWidth);
 	if(old) ::SelectObject(dc, old);
 	::ReleaseDC(m_window, dc);
 	const int linkHeight = UiMetrics::ScaleForDpi(23, dpi);
-	const int height = 2 * pad + m_titleHeight + gap + m_summaryHeight + gap + linkHeight;
-	m_linkRect = { pad, height - pad - linkHeight, width - pad, height - pad };
+	m_headerHeight = (std::max)(m_titleHeight, linkHeight);
+	const int height = 2 * pad + m_headerHeight + gap + m_summaryHeight;
+	m_linkRect = { width - pad - linkWidth, pad, width - pad, pad + linkHeight };
 	MONITORINFO monitor = { sizeof(monitor) };
 	POINT point = { anchor.left, anchor.bottom };
 	if(!::GetMonitorInfoW(::MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST), &monitor))
 		return false;
-	int x = anchor.left;
+	int x = anchor.right - width;
 	int y = anchor.bottom + UiMetrics::ScaleForDpi(4, dpi);
-	if(x + width > monitor.rcWork.right) x = anchor.right - width;
+	if(x < monitor.rcWork.left) x = anchor.left;
 	if(y + height > monitor.rcWork.bottom) y = anchor.top - height - UiMetrics::ScaleForDpi(4, dpi);
 	x = (std::max)(static_cast<int>(monitor.rcWork.left), (std::min)(x, static_cast<int>(monitor.rcWork.right) - width));
 	y = (std::max)(static_cast<int>(monitor.rcWork.top), (std::min)(y, static_cast<int>(monitor.rcWork.bottom) - height));
@@ -131,6 +136,22 @@ bool ScriptCardPreviewPopup::Contains(POINT screenPoint) const
 	return IsVisible() && ::GetWindowRect(m_window, &rect) && ::PtInRect(&rect, screenPoint) != FALSE;
 }
 
+bool ScriptCardPreviewPopup::ContainsTransition(POINT screenPoint) const
+{
+	RECT popup = {};
+	if(!IsVisible() || !::GetWindowRect(m_window, &popup)) return false;
+	if(::PtInRect(&m_anchor, screenPoint)) return true;
+	const int sourceY = popup.top >= m_anchor.bottom ? m_anchor.bottom : m_anchor.top;
+	const int targetY = popup.top >= m_anchor.bottom ? popup.top : popup.bottom;
+	if(sourceY == targetY || (screenPoint.y < (std::min)(sourceY, targetY)) ||
+		screenPoint.y > (std::max)(sourceY, targetY)) return false;
+	const double progress = static_cast<double>(screenPoint.y - sourceY) / (targetY - sourceY);
+	const int margin = UiMetrics::ScaleForDpi(5, UiMetrics::DpiForWindow(m_window));
+	const int left = static_cast<int>(m_anchor.left + (popup.left - m_anchor.left) * progress) - margin;
+	const int right = static_cast<int>(m_anchor.right + (popup.right - m_anchor.right) * progress) + margin;
+	return screenPoint.x >= left && screenPoint.x <= right;
+}
+
 void ScriptCardPreviewPopup::Paint()
 {
 	PAINTSTRUCT paint = {};
@@ -149,15 +170,15 @@ void ScriptCardPreviewPopup::Paint()
 	::SetBkMode(dc, TRANSPARENT);
 	::SetTextColor(dc, foreground);
 	HFONT old = static_cast<HFONT>(::SelectObject(dc, m_titleFont ? m_titleFont : m_font));
-	RECT title = { pad, pad, client.right - pad, pad + m_titleHeight };
+	RECT title = { pad, pad, m_linkRect.left - gap, pad + m_titleHeight };
 	::DrawTextW(dc, m_title, -1, &title, DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX);
-	RECT summary = { pad, title.bottom + gap, client.right - pad, title.bottom + gap + m_summaryHeight };
+	RECT summary = { pad, pad + m_headerHeight + gap, client.right - pad, pad + m_headerHeight + gap + m_summaryHeight };
 	::SelectObject(dc, m_font);
 	::DrawTextW(dc, m_summary, -1, &summary, DT_WORDBREAK | DT_END_ELLIPSIS | DT_NOPREFIX);
 	::SetTextColor(dc, accent);
 	::SelectObject(dc, m_linkFont ? m_linkFont : m_font);
 	RECT link = m_linkRect;
-	::DrawTextW(dc, m_more, -1, &link, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+	::DrawTextW(dc, m_more, -1, &link, DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 	if(old) ::SelectObject(dc, old);
 	::EndPaint(m_window, &paint);
 }
@@ -191,20 +212,13 @@ LRESULT CALLBACK ScriptCardPreviewPopup::WindowProc(HWND window, UINT message, W
 		if(self->m_hover) self->m_hover(false);
 		return 0;
 	case WM_SETCURSOR:
-		{
-			POINT point = {}; ::GetCursorPos(&point); ::ScreenToClient(window, &point);
-			if(::PtInRect(&self->m_linkRect, point)) { ::SetCursor(::LoadCursorW(NULL, IDC_HAND)); return TRUE; }
-			break;
-		}
+		::SetCursor(::LoadCursorW(NULL, IDC_HAND));
+		return TRUE;
 	case WM_LBUTTONUP:
 		{
-			POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-			if(::PtInRect(&self->m_linkRect, point))
-			{
-				const CString uid(self->m_uid);
-				self->Hide();
-				if(self->m_open) self->m_open(uid);
-			}
+			const CString uid(self->m_uid);
+			self->Hide();
+			if(self->m_open) self->m_open(uid);
 			return 0;
 		}
 	case WM_DESTROY: self->m_window = NULL; return 0;

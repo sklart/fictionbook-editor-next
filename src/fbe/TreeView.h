@@ -242,6 +242,7 @@ public:
 	bool ExecuteScriptPopupCommand(UINT command);
 	bool ShowSelectedScriptCard();
 	bool ScriptPreviewVisible() const { return m_script_preview.IsVisible(); }
+	bool ScriptPreviewTransitionContains(POINT point) const { return m_script_preview.ContainsTransition(point); }
 	HWND ScriptPreviewWindow() const { return m_script_preview.Window(); }
 	const CString& ScriptPreviewUid() const { return m_script_preview.Uid(); }
 	const CString& ScriptPreviewText() const { return m_script_preview.Summary(); }
