@@ -9856,48 +9856,6 @@
     "occurrence": 1
   },
   {
-    "file": "runtime/Scripts/02_Примечания/01_Добавить примечание, остаться на его ссылке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/02_Примечания/02_Добавить примечание, введя его текст в окошке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/02_Примечания/03_Добавить примечание, перейти на его раздел.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
     "file": "runtime/Scripts/02_Примечания/07_Перенумеровать примечания.js",
     "ruleId": null,
     "message": "Parsing error: Assigning to rvalue",
@@ -11652,48 +11610,6 @@
     "ruleId": "no-redeclare",
     "message": "'secId' is already defined.",
     "sourceContext": "var secId = commentsSections[i].getAttribute(\"id\") || \"\";",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/03_Комментарии/03_Добавить комментарий, перейти на его раздел.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js",
-    "ruleId": null,
-    "message": "Parsing error: Assigning to rvalue",
-    "sourceContext": "if (strConst3==\"\") window.external.inflateBlock(el.lastChild)=true;",
     "occurrence": 1
   },
   {
@@ -201247,13 +201163,6 @@
     "ruleId": "no-undef",
     "message": "'s1_html_len' is not defined.",
     "sourceContext": "savedIndex=s1_html_len+(ignoreNullPosition?1:0);",
-    "occurrence": 1
-  },
-  {
-    "file": "runtime/Scripts/21_Поиск и замена/64_Замена символов по списку из буфера обмена.js",
-    "ruleId": null,
-    "message": "Parsing error: Unexpected token else",
-    "sourceContext": "else",
     "occurrence": 1
   },
   {

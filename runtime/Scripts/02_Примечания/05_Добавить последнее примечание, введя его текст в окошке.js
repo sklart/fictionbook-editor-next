@@ -28,7 +28,7 @@
   "dependenciesComplete": false,
   "sourceRevision": {
     "algorithm": "sha256-exclude-fbe-card-v1",
-    "sha256": "44ef64fbbdc2df6d45cdc92cd3d443ae34f2e9f7d4b1758478d4b0776f6cd7b4",
+    "sha256": "97d330d0a61daf7b18229bfab6c616440a5b3826e93d5135990522ad2e7b2dd9",
     "reviewStatus": "generated"
   },
   "tags": [
@@ -171,23 +171,6 @@ function Run () {
  var forsazh=false;
  //НАСТРОЙКИ - конец
  
- // функция находит номер комментария, соответствующего определенному имени раздела
- // в исходном документе. В name передаем имя раздела, перед ним символ #, если это
- // локальная ссылка. В SectID передаем массив имен разделов.
- function findNum(name) {
-   var i=1;
-   var name1=name;
-   var thg2=new RegExp("#");
-   if (name1.search(thg2)==-1) {return(-1)}
-   var thg=new RegExp("main\.html\#","i");
-   srch10=name1.search(thg);
-   if (srch10==-1) name1 = name1.substring(1);
-   else name1 = name1.substring(srch10+10);
-   while (i<=sectNum && sectIds[i]!=name1) i++;
-   if (i>sectNum) {return(-1)}
-   return(i);
- }
- 
  function PoShablonu(s,n) {
    var ttt3 = new RegExp("\%N");
    return(s.replace(ttt3,n));
@@ -199,7 +182,7 @@ function Run () {
    var thg2=new RegExp("#");
    if (name1.search(thg2)==-1) {return(-1)} //ссылка не может начинаться с 1
    var thg=new RegExp("main\.html\#","i");
-   srch10=name1.search(thg);
+   var srch10=name1.search(thg);
    if (srch10==-1) {
     name1 = name1.substring(1,name1.length);
    } else {
@@ -340,8 +323,8 @@ function Run () {
   }
  }
  var links=[];
- for (var i=0; i<document.links.length; i++) links.push(document.links[i]);
- for (var i=0; i<links.length; i++) {
+ for (i=0; i<document.links.length; i++) links.push(document.links[i]);
+ for (i=0; i<links.length; i++) {
   var index=sectionIndex(getLocalHref(links[i].href)), note=isItNote(links[i]);
   if (note && index<0) { MsgBox("Ссылка не связана с разделом в body "+strConst6+". Исправьте ссылку."); return; }
   if (addSnoska) {
@@ -358,13 +341,13 @@ function Run () {
  }
  if (addSnoska && !forsazh) insertN=previous+2;
  var renumber=!forsazh && !lastSnoskaMode;
- for (var i=0; i<sections.length; i++) {
+ for (i=0; i<sections.length; i++) {
   var number=i+1+(addSnoska && i+1>=insertN ? 1 : 0);
   sectionPlans.push({node:sections[i], id:renumber ? PoShablonu(strConst1,number) : ids[i],
    title:"<P>"+PoShablonu(strConst2,number)+"</P>"});
  }
  var finalIds=[];
- for (var i=0; i<sectionPlans.length; i++) finalIds.push(sectionPlans[i].id);
+ for (i=0; i<sectionPlans.length; i++) finalIds.push(sectionPlans[i].id);
  if (forsazh && addSnoska) {
   var randomAttempts=0;
   do {
@@ -375,12 +358,12 @@ function Run () {
  } else if (addSnoska) newSnoskaId=PoShablonu(strConst1,insertN);
  if (addSnoska) finalIds.push(newSnoskaId);
  var all=document.getElementsByTagName("*"), occupiedIds={}, futureIds={};
- for (var i=0; i<all.length; i++) if (all[i].id) {
+ for (i=0; i<all.length; i++) if (all[i].id) {
   var key="$"+all[i].id;
   if (!has(occupiedIds,all[i].id)) occupiedIds[key]=[];
   occupiedIds[key].push(all[i]);
  }
- for (var i=0; i<finalIds.length; i++) {
+ for (i=0; i<finalIds.length; i++) {
   var id=finalIds[i];
   if (!id) { MsgBox("Пустой ID сноски. Проверьте шаблон ID."); return; }
   if (has(futureIds,id)) { MsgBox("Шаблон создаёт повторяющиеся ID сносок."); return; }
@@ -388,17 +371,17 @@ function Run () {
   if (has(occupiedIds,id)) {
    var matches=occupiedIds["$"+id];
    for (var j=0; j<matches.length; j++) {
-    var index=sectionIndex(matches[j].id);
+    index=sectionIndex(matches[j].id);
     if (index<0 || sections[index]!==matches[j]) { MsgBox("Будущий ID сноски уже занят другим элементом книги."); return; }
    }
   }
  }
- for (var i=0; i<ids.length; i++) {
-  var matches=occupiedIds["$"+ids[i]];
+ for (i=0; i<ids.length; i++) {
+  matches=occupiedIds["$"+ids[i]];
   if (!matches || matches.length!=1 || matches[0]!==sections[i]) { MsgBox("ID раздела сноски повторяется в книге."); return; }
  }
- if (renumber) for (var i=0; i<links.length; i++) {
-  var index=sectionIndex(getLocalHref(links[i].href));
+ if (renumber) for (i=0; i<links.length; i++) {
+  index=sectionIndex(getLocalHref(links[i].href));
   if (index>=0) linkPlans.push({node:links[i], href:"#"+sectionPlans[index].id,
    html:PoShablonu(strConst4,index+1+(addSnoska && index+1>=insertN ? 1 : 0))});
  }
@@ -434,8 +417,8 @@ function Run () {
    bodyTitle.innerHTML="<P>"+strConst5+"</P>"; titleBefore=first;
   }
  }
- for (var i=0; i<sectionPlans.length && renumber; i++) {
-  var first=sectionPlans[i].node.firstChild;
+ for (i=0; i<sectionPlans.length && renumber; i++) {
+  first=sectionPlans[i].node.firstChild;
   if (first && first.nodeName=="DIV" && first.className=="title") sectionPlans[i].titleNode=first;
   else {
    var title=document.createElement("DIV"); title.className="title";
@@ -490,22 +473,22 @@ function Run () {
   }
   if (bodyTitle) bodyNotes.insertBefore(bodyTitle,titleBefore || (newSection && newSection.parentNode===bodyNotes ? newSection : null));
   if (renumber) {
-   for (var i=0; i<sectionPlans.length; i++) {
+   for (i=0; i<sectionPlans.length; i++) {
     var plan=sectionPlans[i];
     if (plan.node.id!==plan.id) plan.node.id=plan.id;
    }
-   for (var i=0; i<linkPlans.length; i++) {
-    var plan=linkPlans[i];
+   for (i=0; i<linkPlans.length; i++) {
+    plan=linkPlans[i];
     if (plan.node.getAttribute("href")!==plan.href) plan.node.setAttribute("href",plan.href);
     if (plan.node.innerHTML!==plan.html) plan.node.innerHTML=plan.html;
    }
-   for (var i=0; i<sectionPlans.length; i++) {
-    var plan=sectionPlans[i];
+   for (i=0; i<sectionPlans.length; i++) {
+    plan=sectionPlans[i];
     if (plan.newTitle) plan.node.insertBefore(plan.newTitle,plan.node.firstChild);
     else if (plan.titleNode.innerHTML!==plan.title) plan.titleNode.innerHTML=plan.title;
    }
   }
-  if (addSnoska && strConst3=="") window.external.inflateBlock(newSection.lastChild)=true;
+  if (addSnoska && strConst3=="") newSection.lastChild.inflateBlock=true;
   if (addSnoska && MoveFocusToNote) {
    var target=newSection.firstChild;
    while (target && target.nodeName!="P") target=target.nextSibling;
@@ -521,8 +504,8 @@ function Run () {
    try {
     paired=newLink && newLink.parentNode && newSection.parentNode && body.contains(newSection);
     if (failed && paired) {
-     var matches=0, nodes=document.getElementsByTagName("*");
-     for (var i=0; i<nodes.length; i++) if (nodes[i].id===newSnoskaId) matches++;
+     matches=0; var nodes=document.getElementsByTagName("*");
+     for (i=0; i<nodes.length; i++) if (nodes[i].id===newSnoskaId) matches++;
      paired=matches==1 && getLocalHref(newLink.href)===newSnoskaId;
     }
    }
