@@ -144,22 +144,28 @@
 	if (IsFbeTestScenario(L"html-paste-runtime"))
 	{
 		DWORD written = 0;
-		CStringA header("case\ttext\tformatting\tparagraphs\tneighbor\tclipboard\tundo\tredo\tvalidate\tsave\tresult\r\n");
+		CStringA header("case\ttext\tformatting\tparagraphs\tneighbor\tclipboard\tundo\tredo\tselection\tdirty\trecovery\tvalidate\tsave\tresult\r\n");
 		output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		wchar_t caseName[32] = {};
 		::GetEnvironmentVariable(L"FBE_NEXT_TEST_HTML_PASTE_CASE", caseName, _countof(caseName));
-		const bool plain = wcscmp(caseName, L"plain") == 0;
+		const bool singleLine = wcscmp(caseName, L"plain-single") == 0;
+		const bool middle = wcscmp(caseName, L"plain-middle") == 0;
+		const bool internal = wcscmp(caseName, L"internal") == 0;
+		const bool plain = wcscmp(caseName, L"plain") == 0 || singleLine || middle;
 		const bool title = wcscmp(caseName, L"title") == 0;
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLElementPtr body(document ? document->body : MSHTML::IHTMLElementPtr());
 		MSHTML::IHTMLElementPtr editable(document ? document->all->item(L"fbw_body") : MSHTML::IHTMLElementPtr());
 		bool textOk = false, formatting = false, paragraphs = false, neighborOk = false;
-		bool clipboardOk = false, undoOk = false, redoOk = false, validated = false, saved = false;
+		bool clipboardOk = false, undoOk = false, redoOk = false, selectionOk = false, dirtyOk = false, recoveryOk = false, validated = false, saved = false;
+		bool dirtyAfterPaste = false, cleanAfterUndo = false, dirtyAfterRedo = false;
 		CComPtr<IDataObject> originalClipboard;
 		::OleGetClipboard(&originalClipboard);
 		try
 		{
 			if (!body || !editable) throw _com_error(E_FAIL);
+			m_doc->MarkSavePoint();
+			m_doc->MarkDocCP();
 			const CString before(static_cast<LPCWSTR>(editable->innerHTML));
 			MSHTML::IHTMLElementPtr target(document->all->item(L"paste-target"));
 			MSHTML::IHTMLElementPtr neighbor(document->all->item(L"paste-neighbor"));
@@ -167,12 +173,13 @@
 			MSHTML::IHTMLElementCollectionPtr ps(target ? MSHTML::IHTMLElement2Ptr(target)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
 			MSHTML::IHTMLElementPtr pasteTarget(ps && ps->length > (title ? 0 : 1) ? ps->item(title ? 0L : 1L) : MSHTML::IHTMLElementPtr());
 			if (!pasteTarget) throw _com_error(E_FAIL);
-			const CStringA fragment("<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
+			const CStringA fragment(internal ? "<p><span class=code>Internal code</span> <a href='#paste-neighbor'>internal link</a></p>" :
+				"<p class='MsoNormal' style='margin-left:36pt'><span style='font-weight:700;font-style:italic;color:red'>Bold italic</span>&nbsp;one</p><p>Second</p>");
 			const CStringA prefix("Version:0.9\r\nStartFragment:00000000\r\nEndFragment:00000000\r\n");
 			CStringA headerBytes;
 			headerBytes.Format("Version:0.9\r\nStartFragment:%08u\r\nEndFragment:%08u\r\n", static_cast<unsigned>(prefix.GetLength()), static_cast<unsigned>(prefix.GetLength() + fragment.GetLength()));
 			const CStringA payload(headerBytes + fragment);
-			const CString plainText(L"Plain one\r\n\r\nPlain three");
+			const CString plainText(singleLine ? L" Ж Ω" : L"Plain one\r\n\r\nPlain three");
 			if (!::OpenClipboard(NULL)) throw _com_error(E_FAIL);
 			::EmptyClipboard();
 			const UINT format = ::RegisterClipboardFormat(L"HTML Format");
@@ -188,42 +195,71 @@
 			if (!textReady && textMemory) ::GlobalFree(textMemory);
 			::CloseClipboard();
 			if (!htmlReady || !textReady) throw _com_error(E_FAIL);
+			if (internal) {
+				static const wchar_t markerText[] = L"FBE Next internal HTML fragment v1";
+				const UINT markerFormat = ::RegisterClipboardFormat(L"FBE Next Internal HTML v1");
+				HGLOBAL markerMemory = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(markerText));
+				void* markerBytes = markerMemory ? ::GlobalLock(markerMemory) : NULL;
+				if (!markerBytes) throw _com_error(E_FAIL);
+				memcpy(markerBytes, markerText, sizeof(markerText)); ::GlobalUnlock(markerMemory);
+				if (!::OpenClipboard(NULL)) { ::GlobalFree(markerMemory); throw _com_error(E_FAIL); }
+				const bool marked = markerFormat && ::SetClipboardData(markerFormat, markerMemory);
+				::CloseClipboard();
+				if (!marked) { ::GlobalFree(markerMemory); throw _com_error(E_FAIL); }
+			}
 			const DWORD sequence = ::GetClipboardSequenceNumber();
 			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
 			MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(body)->createTextRange());
-			range->moveToElementText(pasteTarget); range->collapse(VARIANT_FALSE); range->select();
+			range->moveToElementText(pasteTarget); range->collapse(VARIANT_FALSE);
+			if (middle) range->move(L"character", -3);
+			range->select();
 			BOOL handled = FALSE;
 			m_doc->m_body.OnPaste(0, plain ? ID_EDIT_PASTE_TEXT : ID_EDIT_PASTE, 0, handled);
+			dirtyAfterPaste = m_doc->DocChanged();
+			const bool recoveryAfterPaste = m_doc->DocRelChanged();
 			clipboardOk = ::GetClipboardSequenceNumber() == sequence;
 			editable = document->all->item(L"fbw_body");
 			const CString after(editable ? static_cast<LPCWSTR>(editable->innerHTML) : L"");
 			const CString afterText(editable ? static_cast<LPCWSTR>(editable->innerText) : L"");
-			textOk = plain ? (afterText.Find(L"Plain one") >= 0 && afterText.Find(L"Plain three") > afterText.Find(L"Plain one")) :
+			textOk = internal ? (afterText.Find(L"Internal code") >= 0 && afterText.Find(L"internal link") > afterText.Find(L"Internal code")) : singleLine ? (afterText.Find(L"Ж") >= 0 && afterText.Find(L"Ω") > afterText.Find(L"Ж")) : plain ? (afterText.Find(L"Plain one") >= 0 && afterText.Find(L"Plain three") > afterText.Find(L"Plain one")) :
 				(afterText.Find(L"Bold italic") >= 0 && afterText.Find(L"Second") > afterText.Find(L"Bold italic"));
 			MSHTML::IHTMLElementPtr targetAfter(document->all->item(L"paste-target"));
 			const CString targetHtml(targetAfter ? static_cast<LPCWSTR>(targetAfter->innerHTML) : L"");
-			formatting = plain ? targetHtml.Find(L"<STRONG") < 0 :
+			formatting = internal ? (targetHtml.Find(L"class=code") >= 0 && targetHtml.Find(L"href=\"#paste-neighbor\"") >= 0) : plain ? targetHtml.Find(L"<STRONG") < 0 :
 				(targetHtml.Find(L"<STRONG") >= 0 && targetHtml.Find(L"<EM") >= 0 && targetHtml.Find(L"MsoNormal") < 0 && targetHtml.Find(L"color") < 0);
 			MSHTML::IHTMLElementCollectionPtr paragraphsAfter(targetAfter ? MSHTML::IHTMLElement2Ptr(targetAfter)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
-			paragraphs = paragraphsAfter && paragraphsAfter->length >= (plain ? 4 : 3);
+			paragraphs = paragraphsAfter && (singleLine ? paragraphsAfter->length == 2 : paragraphsAfter->length >= (plain ? 4 : 3));
 			neighbor = document->all->item(L"paste-neighbor");
 			neighborOk = neighbor && CString(static_cast<LPCWSTR>(neighbor->outerHTML)) == neighborBefore;
 			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
 			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_UNDO, 0), 0);
 			editable = document->all->item(L"fbw_body");
 			undoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == before;
+			cleanAfterUndo = !m_doc->DocChanged();
+			const bool recoveryCleanAfterUndo = !m_doc->DocRelChanged();
+			auto selectionInTarget = [&]() -> bool {
+			MSHTML::IHTMLTxtRangePtr selected(document->selection->createRange());
+			for (MSHTML::IHTMLElementPtr element(selected ? selected->parentElement() : MSHTML::IHTMLElementPtr()); element; element = element->parentElement)
+				if (U::scmp(element->id, L"paste-target") == 0) return true;
+			return false;
+		};
+			const bool undoSelection = selectionInTarget();
 			m_doc->m_body.SetFocus(); ::SetFocus(m_doc->m_body);
 			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0);
 			editable = document->all->item(L"fbw_body");
 			redoOk = editable && CString(static_cast<LPCWSTR>(editable->innerHTML)) == after;
+			dirtyAfterRedo = m_doc->DocChanged();
+			dirtyOk = dirtyAfterPaste && cleanAfterUndo && dirtyAfterRedo;
+			recoveryOk = recoveryAfterPaste && recoveryCleanAfterUndo && m_doc->DocRelChanged();
+			selectionOk = undoSelection && selectionInTarget();
 			int line = 0, column = 0;
 			validated = redoOk && m_doc->Validate(line, column);
 			saved = validated && m_doc->Save();
 		}
 		catch (const _com_error&) {}
 		if (originalClipboard) ::OleSetClipboard(originalClipboard);
-		const bool passed = textOk && formatting && paragraphs && neighborOk && clipboardOk && undoOk && redoOk && validated && saved;
-		CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", caseName, textOk, formatting, paragraphs, neighborOk, clipboardOk, undoOk, redoOk, validated, saved, passed ? "pass" : "fail");
+		const bool passed = textOk && formatting && paragraphs && neighborOk && clipboardOk && undoOk && redoOk && selectionOk && dirtyOk && recoveryOk && validated && saved;
+		CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n", caseName, textOk, formatting, paragraphs, neighborOk, clipboardOk, undoOk, redoOk, selectionOk, dirtyOk, recoveryOk, validated, saved, passed ? "pass" : "fail");
 		output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Flush(); output.Close(); ::PostQuitMessage(passed ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"clipboard-title-paste"))

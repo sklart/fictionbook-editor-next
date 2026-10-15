@@ -265,6 +265,7 @@ Doc::Doc(HWND hWndFrame) :
 	     m_save_transaction_active(false)
 {
 	  m_editor.SetDocumentFilePathSource(&m_filename, &m_namevalid);
+	  m_body.SetOwningDocument(this);
   m_active_docs.Add(this,this);
 }
 

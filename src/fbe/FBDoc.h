@@ -99,6 +99,10 @@ public:
 	  //m_desc_ver=m_desc.GetVersionNumber(); 
 	  m_editor.ResetFormChanged();
   }
+	void RestoreCleanAfterPasteUndo(long originalVersion, bool saveClean, bool recoveryClean) {
+		if (saveClean && m_body_ver == originalVersion) MarkSavePoint();
+		if (recoveryClean && m_body_cp == originalVersion) MarkDocCP();
+	}
   void	  ResetSavePoint() { m_body_ver=-1; }
 
   void	  MarkDocCP() { 

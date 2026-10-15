@@ -11,6 +11,8 @@ namespace {
 constexpr SIZE_T kMaxFragmentBytes = 2 * 1024 * 1024;
 constexpr int kMaxDepth = 128;
 constexpr size_t kMaxNodes = 100000;
+constexpr wchar_t kInternalClipboardMarker[] = L"FBE Next internal HTML fragment v1";
+constexpr wchar_t kInternalClipboardFormat[] = L"FBE Next Internal HTML v1";
 
 class ClipboardScope {
 public:
@@ -25,7 +27,8 @@ struct Node {
   CString tag;
   CString text;
   CString href;
-  unsigned format = 0;
+  unsigned formatOn = 0;
+  unsigned formatOff = 0;
   std::vector<size_t> children;
 };
 
@@ -70,41 +73,49 @@ bool AppendCodepoint(unsigned codepoint, CString& out) {
 }
 
 bool Decode(const CString& input, CString& output) {
+  static const struct { const wchar_t* name; unsigned codepoint; } named[] = {
+    {L"amp", 38}, {L"lt", 60}, {L"gt", 62}, {L"quot", 34}, {L"apos", 39},
+    {L"nbsp", 0xa0}, {L"laquo", 0xab}, {L"raquo", 0xbb}, {L"copy", 0xa9},
+    {L"reg", 0xae}, {L"trade", 0x2122}, {L"euro", 0x20ac}, {L"cent", 0xa2},
+    {L"pound", 0xa3}, {L"yen", 0xa5}, {L"sect", 0xa7}, {L"para", 0xb6},
+    {L"middot", 0xb7}, {L"bull", 0x2022}, {L"hellip", 0x2026},
+    {L"ndash", 0x2013}, {L"mdash", 0x2014}, {L"lsquo", 0x2018},
+    {L"rsquo", 0x2019}, {L"ldquo", 0x201c}, {L"rdquo", 0x201d},
+    {L"sbquo", 0x201a}, {L"bdquo", 0x201e}, {L"lsaquo", 0x2039},
+    {L"rsaquo", 0x203a}, {L"permil", 0x2030}, {L"prime", 0x2032},
+    {L"Prime", 0x2033}, {L"minus", 0x2212}, {L"plusmn", 0xb1},
+    {L"times", 0xd7}, {L"divide", 0xf7}, {L"deg", 0xb0}, {L"micro", 0xb5},
+    {L"frac14", 0xbc}, {L"frac12", 0xbd}, {L"frac34", 0xbe},
+    {L"sup1", 0xb9}, {L"sup2", 0xb2}, {L"sup3", 0xb3},
+    {L"larr", 0x2190}, {L"rarr", 0x2192},
+    {L"uarr", 0x2191}, {L"darr", 0x2193}, {L"harr", 0x2194},
+    {L"acute", 0xb4}, {L"cedil", 0xb8},
+    {L"iexcl", 0xa1}, {L"iquest", 0xbf}, {L"not", 0xac},
+    {L"shy", 0xad}, {L"brvbar", 0xa6}, {L"curren", 0xa4}
+  };
   for (int i = 0; i < input.GetLength(); ++i) {
     if (input[i] != L'&') { output.AppendChar(input[i]); continue; }
     const int end = input.Find(L';', i + 1);
-    if (end < 0 || end - i > 32) return false;
+    if (end < 0 || end - i > 32) { output.AppendChar(L'&'); continue; }
     const CString entity = input.Mid(i + 1, end - i - 1);
     unsigned codepoint = 0;
-    if (entity == L"amp") codepoint = L'&';
-    else if (entity == L"lt") codepoint = L'<';
-    else if (entity == L"gt") codepoint = L'>';
-    else if (entity == L"quot") codepoint = L'"';
-    else if (entity == L"apos") codepoint = L'\'';
-    else if (entity == L"nbsp") codepoint = 0xa0;
-    else if (entity == L"ndash") codepoint = 0x2013;
-    else if (entity == L"mdash") codepoint = 0x2014;
-    else if (entity == L"lsquo") codepoint = 0x2018;
-    else if (entity == L"rsquo") codepoint = 0x2019;
-    else if (entity == L"ldquo") codepoint = 0x201c;
-    else if (entity == L"rdquo") codepoint = 0x201d;
-    else if (entity == L"hellip") codepoint = 0x2026;
-    else if (entity == L"bull") codepoint = 0x2022;
-    else if (entity.GetLength() > 1 && entity[0] == L'#') {
+    for (const auto& item : named) if (entity == item.name) { codepoint = item.codepoint; break; }
+    bool valid = codepoint != 0;
+    if (!valid && entity.GetLength() > 1 && entity[0] == L'#') {
       const bool hex = entity.GetLength() > 2 && (entity[1] == L'x' || entity[1] == L'X');
       const int start = hex ? 2 : 1;
-      if (start == entity.GetLength()) return false;
+      valid = start < entity.GetLength();
       for (int j = start; j < entity.GetLength(); ++j) {
         const wchar_t c = entity[j];
         const int digit = c >= L'0' && c <= L'9' ? c - L'0' :
           hex && c >= L'a' && c <= L'f' ? c - L'a' + 10 :
           hex && c >= L'A' && c <= L'F' ? c - L'A' + 10 : -1;
-        if (digit < 0 || codepoint > 0x10ffff / (hex ? 16u : 10u)) return false;
+        if (digit < 0 || codepoint > 0x10ffff / (hex ? 16u : 10u)) { valid = false; break; }
         codepoint = codepoint * (hex ? 16u : 10u) + digit;
       }
-    } else return false; // Unknown entities use the plain-text clipboard fallback.
-    if (!AppendCodepoint(codepoint, output)) return false;
-    i = end;
+    }
+    if (valid && AppendCodepoint(codepoint, output)) i = end;
+    else output.AppendChar(L'&'); // Keep malformed/unknown entities as text.
   }
   return true;
 }
@@ -143,8 +154,7 @@ bool Discard(const CString& tag) {
     tag == L"math" || tag == L"video" || tag == L"audio";
 }
 
-unsigned StyleFormat(const CString& style) {
-  unsigned result = 0;
+void StyleFormat(const CString& style, unsigned& on, unsigned& off) {
   int start = 0;
   while (start < style.GetLength()) {
     const int separator = style.Find(L';', start);
@@ -153,17 +163,33 @@ unsigned StyleFormat(const CString& style) {
     if (colon > 0) {
       CString key = Lower(item.Left(colon)); key.Trim();
       CString value = Lower(item.Mid(colon + 1)); value.Trim();
-      if (key == L"font-weight" && (value == L"bold" || value == L"bolder" ||
-          (value.GetLength() == 3 && value[0] >= L'6' && value[0] <= L'9' && value.Mid(1) == L"00"))) result |= Strong;
-      if (key == L"font-style" && (value == L"italic" || value == L"oblique")) result |= Em;
-      if (key == L"text-decoration" && value.Find(L"line-through") >= 0) result |= Strike;
-      if (key == L"vertical-align" && value == L"super") result |= Sup;
-      if (key == L"vertical-align" && value == L"sub") result |= Sub;
+      auto set = [&](unsigned bit, bool enabled) {
+        if (enabled) { on |= bit; off &= ~bit; }
+        else { off |= bit; on &= ~bit; }
+      };
+      if (key == L"font-weight") {
+        if (value == L"bold" || value == L"bolder" ||
+            (value.GetLength() == 3 && value[0] >= L'6' && value[0] <= L'9' && value.Mid(1) == L"00")) set(Strong, true);
+        else if (value == L"normal" || value == L"lighter" ||
+            (value.GetLength() == 3 && value[0] >= L'1' && value[0] <= L'5' && value.Mid(1) == L"00")) set(Strong, false);
+      }
+      if (key == L"font-style") {
+        if (value == L"italic" || value == L"oblique") set(Em, true);
+        else if (value == L"normal") set(Em, false);
+      }
+      if (key == L"text-decoration" || key == L"text-decoration-line") {
+        if (value.Find(L"line-through") >= 0) set(Strike, true);
+        else if (value == L"none") set(Strike, false);
+      }
+      if (key == L"vertical-align") {
+        if (value == L"super") { set(Sup, true); set(Sub, false); }
+        else if (value == L"sub") { set(Sub, true); set(Sup, false); }
+        else if (value == L"baseline") { set(Sup, false); set(Sub, false); }
+      }
     }
     if (separator < 0) break;
     start = separator + 1;
   }
-  return result;
 }
 
 bool SafeHref(const CString& value) {
@@ -175,7 +201,34 @@ bool SafeHref(const CString& value) {
     href.Left(8) == L"https://" || href.Left(7) == L"mailto:";
 }
 
-HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes) {
+bool InternalTag(const CString& tag) {
+  return tag == L"div" || tag == L"p" || tag == L"span" || tag == L"a" ||
+    tag == L"img" || tag == L"br" || tag == L"strong" || tag == L"em" ||
+    tag == L"b" || tag == L"i" || tag == L"s" || tag == L"strike" ||
+    tag == L"sub" || tag == L"sup" || tag == L"table" || tag == L"tr" ||
+    tag == L"td" || tag == L"th" || tag == L"ul" || tag == L"ol" ||
+    tag == L"li" || tag == L"hr";
+}
+
+bool SafeInternalAttribute(const CString& tag, const CString& attr, const CString& value) {
+  if (attr.Left(2) == L"on")
+    return attr == L"onresizestart" && tag == L"div" && Lower(value) == L"return false";
+  if (attr == L"src") return tag == L"img" && Lower(value).Left(13) == L"fbw-internal:";
+  if (attr == L"href") return tag == L"a" ? SafeHref(value) :
+    tag == L"div" && !value.IsEmpty() && value[0] == L'#';
+  if (attr == L"style") {
+    const CString style(Lower(value));
+    return style.Find(L"url") < 0 && style.Find(L"expression") < 0 &&
+      style.Find(L"@import") < 0 && style.Find(L"behavior") < 0 &&
+      style.Find(L"binding") < 0 && style.Find(L"filter") < 0 &&
+      style.Find(L"progid") < 0;
+  }
+  return attr != L"srcset" && attr != L"background" && attr != L"action" &&
+    attr != L"data" && attr != L"dynsrc" && attr != L"lowsrc" &&
+    attr != L"poster" && attr != L"formaction";
+}
+
+HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes, bool internal = false) {
   nodes.emplace_back();
   std::vector<size_t> stack(1, 0);
   for (int i = 0; i < input.GetLength();) {
@@ -213,15 +266,17 @@ HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes) {
     while (p < content.GetLength() && NameChar(content[p])) ++p;
     if (p == nameStart) return HtmlPasteOutcome::PlainText;
     const CString tag = Lower(content.Mid(nameStart, p - nameStart));
+    if (internal && !InternalTag(tag)) return HtmlPasteOutcome::PlainText;
     if (closing) {
       for (size_t s = stack.size(); s > 1; --s) {
         if (nodes[stack[s - 1]].tag == tag) { stack.resize(s - 1); break; }
       }
       continue;
     }
-    if (Complex(tag)) return HtmlPasteOutcome::Legacy;
+    if (!internal && Complex(tag)) return HtmlPasteOutcome::Legacy;
     const bool selfClosing = Void(tag) || (content.GetLength() && content[content.GetLength() - 1] == L'/');
     if (Discard(tag)) {
+      if (internal) return HtmlPasteOutcome::PlainText;
       if (!selfClosing) {
         const CString ending = L"</" + tag;
         bool found = false;
@@ -238,11 +293,11 @@ HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes) {
       continue;
     }
     Node node; node.tag = tag;
-    if (tag == L"b" || tag == L"strong") node.format |= Strong;
-    if (tag == L"i" || tag == L"em") node.format |= Em;
-    if (tag == L"s" || tag == L"strike" || tag == L"del") node.format |= Strike;
-    if (tag == L"sup") node.format |= Sup;
-    if (tag == L"sub") node.format |= Sub;
+    if (tag == L"b" || tag == L"strong") node.formatOn |= Strong;
+    if (tag == L"i" || tag == L"em") node.formatOn |= Em;
+    if (tag == L"s" || tag == L"strike" || tag == L"del") node.formatOn |= Strike;
+    if (tag == L"sup") { node.formatOn |= Sup; node.formatOff |= Sub; }
+    if (tag == L"sub") { node.formatOn |= Sub; node.formatOff |= Sup; }
     while (p < content.GetLength()) {
       while (p < content.GetLength() && (Space(content[p]) || content[p] == L'/')) ++p;
       const int attrStart = p;
@@ -261,11 +316,9 @@ HtmlPasteOutcome Parse(const CString& input, std::vector<Node>& nodes) {
         if (!Decode(content.Mid(valueStart, p - valueStart), value)) return HtmlPasteOutcome::PlainText;
         if (q) ++p;
       }
-      if (attr == L"style") node.format |= StyleFormat(value);
+      if (attr == L"style") StyleFormat(value, node.formatOn, node.formatOff);
       else if (attr == L"href" && tag == L"a" && SafeHref(value)) node.href = value;
-      else if ((attr == L"id" && Lower(value) == L"fbw_body") ||
-          (attr == L"class" && (Lower(value) == L"section" || Lower(value) == L"title" || Lower(value) == L"annotation" || Lower(value) == L"image")) ||
-          (attr == L"href" && Lower(value).Find(L"fbw-internal:") >= 0)) return HtmlPasteOutcome::Legacy;
+      if (internal && !SafeInternalAttribute(tag, attr, value)) return HtmlPasteOutcome::PlainText;
     }
     nodes[stack.back()].children.push_back(nodes.size()); nodes.push_back(std::move(node));
     if (!selfClosing) {
@@ -281,28 +334,52 @@ const wchar_t* FormatTag(unsigned bit) {
     case Strike: return L"strike"; case Sup: return L"sup"; default: return L"sub"; }
 }
 
-CString Inline(const std::vector<Node>& nodes, size_t index,
-               const CString& nbspReplacement, unsigned active) {
-  const Node& node = nodes[index];
-  if (node.tag.IsEmpty()) return Escape(node.text, nbspReplacement);
-  if (node.tag == L"br" || node.tag == L"w:br") return L"<br>";
-  if (node.tag == L"meta" || node.tag == L"link" || node.tag == L"hr" || node.tag == L"input") return CString();
-  CString body;
-  unsigned own = node.format & ~active;
-  if ((own & Sup) && (active & Sub)) own &= ~Sup;
-  if ((own & Sub) && (active & Sup)) own &= ~Sub;
-  for (size_t child : node.children) body += Inline(nodes, child, nbspReplacement, active | own);
-  if (body.IsEmpty()) return body;
-  if (node.tag == L"a" && !node.href.IsEmpty())
-    body = L"<a href=\"" + Escape(node.href, L"\u00a0") + L"\">" + body + L"</a>";
-  const unsigned bits[] = {Sub, Sup, Strike, Em, Strong};
-  for (unsigned bit : bits) if (own & bit) body = CString(L"<") + FormatTag(bit) + L">" + body + L"</" + FormatTag(bit) + L">";
-  return body;
+struct InlineToken { CString text; CString href; unsigned format; };
+struct OpenTag { CString open; CString close; };
+
+unsigned ApplyFormat(unsigned inherited, const Node& node) {
+  return (inherited | node.formatOn) & ~node.formatOff;
 }
 
-bool HasBlockChild(const std::vector<Node>& nodes, size_t index) {
-  for (size_t child : nodes[index].children) if (Block(nodes[child].tag)) return true;
-  return false;
+void CollectInline(const std::vector<Node>& nodes, size_t index,
+                   const CString& nbspReplacement, unsigned inherited,
+                   const CString& inheritedHref, std::vector<InlineToken>& tokens) {
+  const Node& node = nodes[index];
+  if (node.tag.IsEmpty()) {
+    tokens.push_back({Escape(node.text, nbspReplacement), inheritedHref, inherited});
+    return;
+  }
+  const unsigned format = ApplyFormat(inherited, node);
+  const CString href = node.href.IsEmpty() ? inheritedHref : node.href;
+  if (node.tag == L"br" || node.tag == L"w:br") {
+    tokens.push_back({L"<br>", href, format}); return;
+  }
+  if (node.tag == L"meta" || node.tag == L"link" || node.tag == L"hr" || node.tag == L"input") return;
+  for (size_t child : node.children) CollectInline(nodes, child, nbspReplacement, format, href, tokens);
+}
+
+CString Inline(const std::vector<InlineToken>& tokens) {
+  CString out;
+  std::vector<OpenTag> active;
+  const unsigned bits[] = {Strong, Em, Strike, Sup, Sub};
+  for (const InlineToken& token : tokens) {
+    if (token.text.IsEmpty()) continue;
+    std::vector<OpenTag> wanted;
+    for (unsigned bit : bits) if (token.format & bit) {
+      const CString name(FormatTag(bit));
+      wanted.push_back({L"<" + name + L">", L"</" + name + L">"});
+    }
+    if (!token.href.IsEmpty())
+      wanted.push_back({L"<a href=\"" + Escape(token.href, L"\u00a0") + L"\">", L"</a>"});
+    size_t common = 0;
+    while (common < active.size() && common < wanted.size() && active[common].open == wanted[common].open) ++common;
+    for (size_t i = active.size(); i > common; --i) out += active[i - 1].close;
+    for (size_t i = common; i < wanted.size(); ++i) out += wanted[i].open;
+    active.swap(wanted);
+    out += token.text;
+  }
+  for (size_t i = active.size(); i > 0; --i) out += active[i - 1].close;
+  return out;
 }
 
 bool ContainsBlock(const std::vector<Node>& nodes, size_t index) {
@@ -311,32 +388,81 @@ bool ContainsBlock(const std::vector<Node>& nodes, size_t index) {
   return false;
 }
 
-bool HasVisibleContent(const CString& value) {
-  CString trimmed(value); trimmed.Trim(); return !trimmed.IsEmpty();
+bool HasVisibleContent(const std::vector<InlineToken>& tokens) {
+  for (const InlineToken& token : tokens) {
+    if (token.text == L"<br>") return true;
+    CString trimmed(token.text); trimmed.Trim();
+    if (!trimmed.IsEmpty()) return true;
+  }
+  return false;
 }
 
 void Render(const std::vector<Node>& nodes, size_t index,
-            const CString& nbspReplacement, CString& out) {
+            const CString& nbspReplacement, unsigned inherited,
+            const CString& inheritedHref, CString& out) {
   const Node& node = nodes[index];
-  if (Block(node.tag) && !HasBlockChild(nodes, index)) {
-    out += L"<p>" + Inline(nodes, index, nbspReplacement, 0) + L"</p>";
+  const unsigned format = ApplyFormat(inherited, node);
+  const CString href = node.href.IsEmpty() ? inheritedHref : node.href;
+  bool hasBlockDescendant = false;
+  for (size_t child : node.children) if (ContainsBlock(nodes, child)) { hasBlockDescendant = true; break; }
+  if (Block(node.tag) && !hasBlockDescendant) {
+    std::vector<InlineToken> tokens;
+    for (size_t child : node.children) CollectInline(nodes, child, nbspReplacement, format, href, tokens);
+    out += L"<p>" + Inline(tokens) + L"</p>";
     return;
   }
-  CString inlineRun;
+  std::vector<InlineToken> inlineRun;
   for (size_t child : node.children) {
     if (ContainsBlock(nodes, child)) {
-      if (HasVisibleContent(inlineRun)) out += L"<p>" + inlineRun + L"</p>";
-      inlineRun.Empty();
-      Render(nodes, child, nbspReplacement, out);
-    } else inlineRun += Inline(nodes, child, nbspReplacement, 0);
+      if (HasVisibleContent(inlineRun)) out += L"<p>" + Inline(inlineRun) + L"</p>";
+      inlineRun.clear();
+      Render(nodes, child, nbspReplacement, format, href, out);
+    } else CollectInline(nodes, child, nbspReplacement, format, href, inlineRun);
   }
   if (HasVisibleContent(inlineRun)) {
-    if (index == 0 && out.IsEmpty()) out += inlineRun;
-    else out += L"<p>" + inlineRun + L"</p>";
+    if (index == 0 && out.IsEmpty()) out += Inline(inlineRun);
+    else out += L"<p>" + Inline(inlineRun) + L"</p>";
   }
 }
 
 } // namespace
+
+bool HtmlPasteSanitizer::MarkInternalCopy(HWND owner) {
+  const UINT html = ::RegisterClipboardFormat(L"HTML Format");
+  const UINT marker = ::RegisterClipboardFormat(kInternalClipboardFormat);
+  if (!html || !marker || !::IsClipboardFormatAvailable(html)) return false;
+  ClipboardScope clipboard(owner);
+  if (!clipboard.Open()) return false;
+  HGLOBAL data = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(kInternalClipboardMarker));
+  if (!data) return false;
+  void* target = ::GlobalLock(data);
+  if (!target) { ::GlobalFree(data); return false; }
+  memcpy(target, kInternalClipboardMarker, sizeof(kInternalClipboardMarker));
+  ::GlobalUnlock(data);
+  if (!::SetClipboardData(marker, data)) { ::GlobalFree(data); return false; }
+  return true;
+}
+
+bool HtmlPasteSanitizer::HasInternalCopyMarker(HWND owner) {
+  const UINT marker = ::RegisterClipboardFormat(kInternalClipboardFormat);
+  const UINT html = ::RegisterClipboardFormat(L"HTML Format");
+  if (!marker || !html || !::IsClipboardFormatAvailable(marker) || !::IsClipboardFormatAvailable(html)) return false;
+  ClipboardScope clipboard(owner);
+  if (!clipboard.Open()) return false;
+  HGLOBAL data = static_cast<HGLOBAL>(::GetClipboardData(marker));
+  if (!data || ::GlobalSize(data) != sizeof(kInternalClipboardMarker)) return false;
+  const void* value = ::GlobalLock(data);
+  if (!value) return false;
+  const bool valid = memcmp(value, kInternalClipboardMarker, sizeof(kInternalClipboardMarker)) == 0;
+  ::GlobalUnlock(data);
+  return valid;
+}
+
+bool HtmlPasteSanitizer::IsSafeInternalFragment(const CString& html) {
+  if (html.IsEmpty() || html.GetLength() > static_cast<int>(kMaxFragmentBytes)) return false;
+  std::vector<Node> nodes;
+  return Parse(html, nodes, true) == HtmlPasteOutcome::Sanitized;
+}
 
 bool HtmlPasteSanitizer::ReadClipboardFragment(HWND owner, CString& html) {
   html.Empty();
@@ -374,7 +500,7 @@ HtmlPasteOutcome HtmlPasteSanitizer::Sanitize(const CString& input,
   std::vector<Node> nodes;
   const HtmlPasteOutcome parsed = Parse(input, nodes);
   if (parsed != HtmlPasteOutcome::Sanitized) return parsed;
-  Render(nodes, 0, nbspReplacement, output);
+  Render(nodes, 0, nbspReplacement, 0, CString(), output);
   return output.IsEmpty() ? HtmlPasteOutcome::PlainText : HtmlPasteOutcome::Sanitized;
 }
 
@@ -395,7 +521,10 @@ bool HtmlPasteSanitizer::ReadPlainText(HWND owner, CString& text) {
 }
 
 CString HtmlPasteSanitizer::PlainTextToHtml(const CString& text,
-                                            const CString& nbspReplacement) {
+                                            const CString& nbspReplacement,
+                                            bool insideParagraph) {
+  if (insideParagraph && text.FindOneOf(L"\r\n") < 0)
+    return Escape(text, nbspReplacement);
   CString html(L"<p>");
   for (int i = 0; i < text.GetLength(); ++i) {
     const wchar_t c = text[i];

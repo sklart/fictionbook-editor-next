@@ -23,6 +23,8 @@
 #include "navigation\\LinkNavigationState.h"
 #include "structure\\BodyStructuralEditor.h"
 
+namespace FB { class Doc; }
+
 extern CSettings _Settings;
 
 
@@ -388,6 +390,7 @@ protected:
   HWND			    m_frame;
   const CString		   *m_document_filename;
   const bool			   *m_document_namevalid;
+	FB::Doc* m_ownerDocument = NULL;
 
 public:
   CString m_file_name, m_file_path;
@@ -669,8 +672,8 @@ public:
 		return res;
 	}
 	LRESULT OnRedo(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_REDO); }
-	LRESULT OnCut(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_CUT); }
-	LRESULT OnCopy(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_COPY); }
+	LRESULT OnCut(WORD, WORD, HWND, BOOL&);
+	LRESULT OnCopy(WORD, WORD, HWND, BOOL&);
 	LRESULT OnPaste(WORD, WORD, HWND, BOOL&);
 	LRESULT OnBold(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_BOLD); }
 	LRESULT OnItalic(WORD, WORD, HWND, BOOL&) { return ExecCommand(IDM_ITALIC); }
@@ -966,6 +969,7 @@ public:
     m_document_filename = filename;
     m_document_namevalid = namevalid;
   }
+	void SetOwningDocument(FB::Doc* document) { m_ownerDocument = document; }
   IDispatchPtr         CreateHelper();
 
   // DWebBrowserEvents2
