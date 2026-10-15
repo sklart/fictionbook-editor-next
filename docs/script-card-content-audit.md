@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **427**. Исполняемый код не изменён.
+Изменено карточек: **428**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 68
-- `generic_usage`: 373
+- `generic_summary`: 69
+- `generic_usage`: 374
 - `generic_warning`: 62
-- `inaccurate_description`: 685
+- `inaccurate_description`: 686
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 389
+- `incorrect_dependency`: 390
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 380
+- `incorrect_scope`: 381
 - `incorrect_selection`: 38
-- `incorrect_setting`: 202
-- `incorrect_undo`: 372
+- `incorrect_setting`: 203
+- `incorrect_undo`: 373
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 11
-- `uncertain_attribution`: 65
+- `missing_warning`: 12
+- `uncertain_attribution`: 66
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 66
+- `attributionClarified`: 67
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 255
+- `dependenciesVerified`: 256
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 371
-- `scopeClarified`: 357
+- `purposeClarified`: 372
+- `scopeClarified`: 358
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 7
-- `undoDescriptionsClarified`: 364
-- `usageCorrected`: 373
+- `settingsCorrected`: 8
+- `undoDescriptionsClarified`: 365
+- `usageCorrected`: 374
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 305
+- `warningsClarified`: 306
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **267**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **268**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -609,12 +609,14 @@
 - `13_Заголовки, подзаголовки, пустые строки/635_Расформатировать подзаголовки (расширенная версия).js:393` — Пустой P добавляется перед и после каждого подзаголовка без проверки соседних пустых P и границ секции. Повторный запуск или соседние подзаголовки накапливают лишние пустые строки.
 - `13_Заголовки, подзаголовки, пустые строки/635_Расформатировать подзаголовки (расширенная версия).js:382` — Снятие класса subtitle и трёх свойств style не удаляет вложенные STRONG/EM и другие стили P. Название операции может создать ложное ожидание полного удаления форматирования.
 - `13_Заголовки, подзаголовки, пустые строки/635_Расформатировать подзаголовки (расширенная версия).js:362` — Группа отмены открыта без защиты finally; исключение при изменении P или вставке пустого абзаца до EndUndoUnit на строке 403 оставит её открытой после частичных изменений.
+- `13_Заголовки, подзаголовки, пустые строки/665_Выделить следующий заглавный заголовок.js:97` — Math.round округляет долю заглавных до целого. При percentThreshold=100 доля 99,5% округляется до 100%, поэтому заголовок со строчной буквой может ошибочно считаться полностью заглавным.
+- `13_Заголовки, подзаголовки, пустые строки/665_Выделить следующий заглавный заголовок.js:187` — Для операции поиска и выделения открывается группа отмены без защиты finally. Обычные ранние выходы закрывают её, но ошибка при поиске или выборе диапазона до EndUndoUnit на строке 295 оставит группу открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 857
+- `generic_usage`: 853
 - `inaccurate_description`: 49
-- `incorrect_undo`: 126
+- `incorrect_undo`: 125
 - `requires_review`: 356
 
 ## Границы проверки
