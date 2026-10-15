@@ -1,6 +1,6 @@
 {
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
-  "scriptCount": 580,
+  "scriptCount": 579,
   "scripts": [
     {
       "path": "01_Регистр/01_В верхний регистр.js",
@@ -924,10 +924,10 @@
     },
     {
       "path": "06_Чистка/01_Генеральная уборка.js",
-      "codeSha256": "e47715c9da2b27b7e259afd8f5ec8bb945a8e05a557f820c52de663bc0f70857",
+      "codeSha256": "bb53493213735dbd03d53238259e6699ed787a212defaa69e28ee6b4f6ce8729",
       "encoding": "utf-8",
       "bomBytes": 0,
-      "codeBytes": 75848,
+      "codeBytes": 76233,
       "lineEnding": "CRLF"
     },
     {
@@ -936,14 +936,6 @@
       "encoding": "utf-8",
       "bomBytes": 0,
       "codeBytes": 655229,
-      "lineEnding": "CRLF"
-    },
-    {
-      "path": "06_Чистка/02_Генеральная уборка.js",
-      "codeSha256": "bb53493213735dbd03d53238259e6699ed787a212defaa69e28ee6b4f6ce8729",
-      "encoding": "utf-8",
-      "bomBytes": 0,
-      "codeBytes": 76233,
       "lineEnding": "CRLF"
     },
     {

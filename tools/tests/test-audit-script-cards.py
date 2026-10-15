@@ -87,7 +87,7 @@ def main() -> None:
     scripts_root = ROOT / "runtime" / "Scripts"
     proposals = json.loads((ROOT / "docs" / "script-card-reviewed-proposals.json").read_text(encoding="utf-8"))
     files = {path.relative_to(scripts_root).as_posix() for path in scripts_root.rglob("*.js")}
-    assert len(proposals) == len(files) == 580
+    assert len(proposals) == len(files) == 579
     assert {proposal["path"] for proposal in proposals} == files
     for proposal in proposals:
         assert isinstance(proposal["codeIssues"], list), proposal["path"]

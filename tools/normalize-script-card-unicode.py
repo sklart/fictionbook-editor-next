@@ -108,8 +108,8 @@ def main() -> None:
     parser.add_argument("--write", action="store_true", help="update the script cards")
     args = parser.parse_args()
     paths = sorted(SCRIPTS.rglob("*.js"))
-    if len(paths) != 580:
-        raise SystemExit(f"expected 580 scripts, found {len(paths)}")
+    if len(paths) != 579:
+        raise SystemExit(f"expected 579 scripts, found {len(paths)}")
     changed = []
     for path in paths:
         original = path.read_bytes()
