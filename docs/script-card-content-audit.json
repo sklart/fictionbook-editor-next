@@ -2,9 +2,9 @@
   "baseCommit": "82db45a8e8b17ff860880975eedf5e732c5f0d41",
   "scriptCount": 580,
   "counts": {
-    "requires_review": 340,
-    "generic_usage": 759,
-    "incorrect_undo": 106,
+    "requires_review": 339,
+    "generic_usage": 754,
+    "incorrect_undo": 105,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -57936,18 +57936,257 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/780_Разметить подзаголовки из обычных абзацев без препинаний в конце.js",
+      "codeSha256": "b1db3c1499fcbb797d29b1f43e9f037eb20c8adca59126f4f306980514c49cc1",
+      "evidence": "Строки 1–17 задают назначение; 29–52 — семь пользовательских настроек, включая ранее пропущенную allowedEndChars; 119–147 проверяют последний символ, а punctuationMarks здесь служебный локальный список; 149–175 проверяют структурные блоки и тип body; 211–282 собирают кандидатов; 328–363 запрашивают подтверждение при режиме 1; 370–387 меняют класс и HTML в операции отмены. Файловых, сетевых операций и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Скрипт предназначен для автоматической разметки подзаголовков в fb2 документах.",
+          "after": "Отмечает короткие обычные абзацы без конечной пунктуации как подзаголовки.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Скрипт предназначен для автоматической разметки подзаголовков в fb2 документах. Находит обычные короткие абзацы без тэгов жирности или курсива Позволяет исключать абзацы внутри уже размеченных элементов (стихи, цитаты, эпиграфы),",
+          "after": "В DIV.body внутри fbw_body ищет непустые P длиной до maxLength. Исключает уже размеченные подзаголовки, абзацы с STRONG/EM, диалоги и структурные блоки по настройкам. Проверяет последний символ видимого текста: запрещает заданную пунктуацию, кроме разрешённой закрывающей скобки сноски. В режиме 1 показывает анализ и спрашивает подтверждение. Подходящим P ставит класс subtitle и заново присваивает их HTML, чтобы редактор увидел изменение. Режимы 0 и 2 выполняют правку без запроса.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "Область определяется условиями и обходом DOM в данном скрипте.",
+          "after": "Все DIV.body внутри fbw_body, включая body с нестандартным fbname; notes/comments исключены по умолчанию и включаются параметрами. Структурные блоки poem, stanza, epigraph, cite, annotation, table, title, subtitle исключены при processBlockElements=0.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
+            "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          ],
+          "after": [
+            "При необходимости настройте семь параметров в начале исходного JS, включая максимальную длину и разрешённые конечные знаки.",
+            "Запустите команду; при showStatistics=1 просмотрите найденные кандидаты и подтвердите изменение, при 0 или 2 предварительного запроса нет.",
+            "После разметки проверьте короткие абзацы с пробелом после знака препинания и содержимое разделов с нестандартным fbname."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [
+            "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          ],
+          "after": [
+            "Проверяется последний символ без удаления конечных пробелов: абзац с точкой и пробелом после неё может быть ошибочно размечен как подзаголовок.",
+            "DIV.body с нестандартным fbname тоже обрабатывается; включение processBlockElements может размечать абзацы внутри уже существующих заголовков и других структурных элементов.",
+            "После смены класса скрипт дважды переписывает innerHTML каждого P; сложная разметка может быть нормализована браузером."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Смена класса и переприсваивание HTML выполняются внутри операции отмены. Обычные ранние выходы находятся до её открытия; внутри нет return, но закрытие при исключении не гарантировано. Полнота отката отдельно не проверена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "2 - показывать только статистику в конце",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processBlockElements",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "maxLength",
+              "value": 30,
+              "expression": "30",
+              "description": "Максимальная длина абзаца в символах (при превышении не считаем подзаголовком)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "processDialogs",
+              "value": 0,
+              "expression": "0",
+              "description": "0 - нет, 1 - да",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "punctuationMarks",
+              "value": ".!?,:;-()[]{}«»\"'…",
+              "expression": "\".!?,:;-()[]{}«»\\\"'…\"",
+              "description": "Список знаков препинания, которые не допускаются в конце",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "showStatistics",
+              "value": 1,
+              "expression": "1",
+              "description": "Режим сообщений: 0 — без подтверждения и итога при заменах, 1 — анализ, подтверждение и итог, 2 — итог без подтверждения; отсутствие кандидатов показывается всегда.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processNotesSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать раздел примечаний: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processCommentsSection",
+              "value": 0,
+              "expression": "0",
+              "description": "Обрабатывать раздел комментариев: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processBlockElements",
+              "value": 0,
+              "expression": "0",
+              "description": "Допускать P внутри poem, stanza, epigraph, cite, annotation, table, title и subtitle: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "maxLength",
+              "value": 30,
+              "expression": "30",
+              "description": "Предельная длина видимого текста абзаца в символах, включая пробелы и знаки.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "processDialogs",
+              "value": 0,
+              "expression": "0",
+              "description": "Допускать абзацы, начинающиеся с дефиса либо короткого или длинного тире: 1 — да, 0 — нет.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            },
+            {
+              "name": "allowedEndChars",
+              "value": "]",
+              "expression": "\"]\"",
+              "description": "Знаки из списка запретной пунктуации, разрешённые в конце. Исходно только ] для ссылки на сноску.",
+              "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 218,
+          "issue": "Фильтрация пропускает только отключённые notes/comments. body с другим непустым fbname попадает в обработку, хотя исходное описание обещает основной раздел."
+        },
+        {
+          "line": 126,
+          "issue": "Проверяется последний символ ptr.innerText без удаления пробелов справа. 'ГЛАВА.' с завершающим пробелом проходит проверку отсутствия пунктуации."
+        },
+        {
+          "line": 266,
+          "issue": "При processBlockElements=1 P внутри уже размеченного DIV.title и других структурных блоков допускается к смене класса на subtitle, что может нарушить смысл структуры."
+        },
+        {
+          "line": 381,
+          "issue": "Два последовательных присваивания innerHTML ради уведомления редактора пересоздают дочерние DOM-узлы и могут нормализовать разметку абзаца без необходимости."
+        },
+        {
+          "line": 371,
+          "issue": "Между BeginUndoUnit и EndUndoUnit на строке 387 нет обычного return, но нет и finally. Исключение при изменении DOM оставит операцию отмены открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 705,
-    "generic_usage": 393,
+    "inaccurate_description": 706,
+    "generic_usage": 394,
     "false_warning": 319,
-    "incorrect_setting": 222,
-    "incorrect_scope": 400,
-    "incorrect_undo": 392,
-    "uncertain_attribution": 85,
-    "generic_summary": 88,
-    "incorrect_dependency": 409,
+    "incorrect_setting": 223,
+    "incorrect_scope": 401,
+    "incorrect_undo": 393,
+    "uncertain_attribution": 86,
+    "generic_summary": 89,
+    "incorrect_dependency": 410,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -57961,20 +58200,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 31,
+    "missing_warning": 32,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 384,
-    "usageCorrected": 393,
-    "purposeClarified": 391,
-    "warningsClarified": 325,
-    "scopeClarified": 377,
+    "undoDescriptionsClarified": 385,
+    "usageCorrected": 394,
+    "purposeClarified": 392,
+    "warningsClarified": 326,
+    "scopeClarified": 378,
     "settingsClarified": 509,
-    "attributionClarified": 86,
-    "dependenciesVerified": 275,
+    "attributionClarified": 87,
+    "dependenciesVerified": 276,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -57982,7 +58221,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 27,
+    "settingsCorrected": 28,
     "effectCorrected": 1
   },
   "scripts": [
@@ -166556,91 +166795,89 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Разметить подзаголовки из обычных абзацев без препинаний в конце",
-        "summary": "Скрипт предназначен для автоматической разметки подзаголовков в fb2 документах.",
-        "description": "Скрипт предназначен для автоматической разметки подзаголовков в fb2 документах. Находит обычные короткие абзацы без тэгов жирности или курсива Позволяет исключать абзацы внутри уже размеченных элементов (стихи, цитаты, эпиграфы),",
+        "summary": "Отмечает короткие обычные абзацы без конечной пунктуации как подзаголовки.",
+        "description": "В DIV.body внутри fbw_body ищет непустые P длиной до maxLength. Исключает уже размеченные подзаголовки, абзацы с STRONG/EM, диалоги и структурные блоки по настройкам. Проверяет последний символ видимого текста: запрещает заданную пунктуацию, кроме разрешённой закрывающей скобки сноски. В режиме 1 показывает анализ и спрашивает подтверждение. Подходящим P ставит класс subtitle и заново присваивает их HTML, чтобы редактор увидел изменение. Режимы 0 и 2 выполняют правку без запроса.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "1.5",
-        "scope": "Область определяется условиями и обходом DOM в данном скрипте.",
+        "scope": "Все DIV.body внутри fbw_body, включая body с нестандартным fbname; notes/comments исключены по умолчанию и включаются параметрами. Структурные блоки poem, stanza, epigraph, cite, annotation, table, title, subtitle исключены при processBlockElements=0.",
         "modifiesDocument": true,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки."
+          "При необходимости настройте семь параметров в начале исходного JS, включая максимальную длину и разрешённые конечные знаки.",
+          "Запустите команду; при showStatistics=1 просмотрите найденные кандидаты и подтвердите изменение, при 0 или 2 предварительного запроса нет.",
+          "После разметки проверьте короткие абзацы с пробелом после знака препинания и содержимое разделов с нестандартным fbname."
         ],
         "warnings": [
-          "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги."
+          "Проверяется последний символ без удаления конечных пробелов: абзац с точкой и пробелом после неё может быть ошибочно размечен как подзаголовок.",
+          "DIV.body с нестандартным fbname тоже обрабатывается; включение processBlockElements может размечать абзацы внутри уже существующих заголовков и других структурных элементов.",
+          "После смены класса скрипт дважды переписывает innerHTML каждого P; сложная разметка может быть нормализована браузером."
         ],
         "settings": [
           {
             "name": "showStatistics",
             "value": 1,
             "expression": "1",
-            "description": "2 - показывать только статистику в конце",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Режим сообщений: 0 — без подтверждения и итога при заменах, 1 — анализ, подтверждение и итог, 2 — итог без подтверждения; отсутствие кандидатов показывается всегда.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processNotesSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать раздел примечаний: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processCommentsSection",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Обрабатывать раздел комментариев: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processBlockElements",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Допускать P внутри poem, stanza, epigraph, cite, annotation, table, title и subtitle: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "maxLength",
             "value": 30,
             "expression": "30",
-            "description": "Максимальная длина абзаца в символах (при превышении не считаем подзаголовком)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Предельная длина видимого текста абзаца в символах, включая пробелы и знаки.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
             "name": "processDialogs",
             "value": 0,
             "expression": "0",
-            "description": "0 - нет, 1 - да",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Допускать абзацы, начинающиеся с дефиса либо короткого или длинного тире: 1 — да, 0 — нет.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           },
           {
-            "name": "punctuationMarks",
-            "value": ".!?,:;-()[]{}«»\"'…",
-            "expression": "\".!?,:;-()[]{}«»\\\"'…\"",
-            "description": "Список знаков препинания, которые не допускаются в конце",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "name": "allowedEndChars",
+            "value": "]",
+            "expression": "\"]\"",
+            "description": "Знаки из списка запретной пунктуации, разрешённые в конце. Исходно только ] для ссылки на сноску.",
+            "valueMeaning": "Исходное значение в коде скрипта; меняется редактированием JS."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Смена класса и переприсваивание HTML выполняются внутри операции отмены. Обычные ранние выходы находятся до её открытия; внутри нет return, но закрытие при исключении не гарантировано. Полнота отката отдельно не проверена."
         },
         "examples": null,
         "tags": [
@@ -166651,13 +166888,13 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 474,
+            "line": 472,
             "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
           }
         ],
         "undo_end": [
           {
-            "line": 490,
+            "line": 488,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
@@ -166665,19 +166902,19 @@
         "selection": [],
         "write": [
           {
-            "line": 179,
+            "line": 177,
             "text": "if (!ptr || !ptr.innerHTML) return true;"
           },
           {
-            "line": 180,
+            "line": 178,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi, \"\"));"
           },
           {
-            "line": 187,
+            "line": 185,
             "text": "var html = elem.innerHTML;"
           },
           {
-            "line": 483,
+            "line": 481,
             "text": "var oldHtml = p.innerHTML;"
           }
         ],
@@ -166688,131 +166925,131 @@
         "file": [],
         "return": [
           {
-            "line": 179,
+            "line": 177,
             "text": "if (!ptr || !ptr.innerHTML) return true;"
           },
           {
-            "line": 180,
+            "line": 178,
             "text": "return emptyLineRegExp.test(ptr.innerHTML.replace(/<[^>]*?>/gi, \"\"));"
           },
           {
-            "line": 185,
+            "line": 183,
             "text": "if (!elem) return false;"
           },
           {
-            "line": 188,
+            "line": 186,
             "text": "if (html.indexOf(\"<STRONG\") != -1) return true;"
           },
           {
-            "line": 189,
+            "line": 187,
             "text": "if (html.indexOf(\"</STRONG>\") != -1) return true;"
           },
           {
-            "line": 190,
+            "line": 188,
             "text": "if (html.indexOf(\"<EM\") != -1) return true;"
           },
           {
-            "line": 191,
+            "line": 189,
             "text": "if (html.indexOf(\"</EM>\") != -1) return true;"
           },
           {
-            "line": 193,
+            "line": 191,
             "text": "return false;"
           },
           {
-            "line": 198,
+            "line": 196,
             "text": "if (!elem) return false;"
           },
           {
-            "line": 199,
+            "line": 197,
             "text": "return (elem.className == \"subtitle\");"
           },
           {
-            "line": 204,
+            "line": 202,
             "text": "if (!ptr || !ptr.innerText) return false;"
           },
           {
-            "line": 207,
+            "line": 205,
             "text": "if (text.length == 0) return false;"
+          },
+          {
+            "line": 209,
+            "text": "return true;"
           },
           {
             "line": 211,
-            "text": "return true;"
-          },
-          {
-            "line": 213,
             "text": "return false;"
           },
           {
-            "line": 218,
+            "line": 216,
             "text": "if (!ptr || !ptr.innerText) return 0;"
           },
           {
-            "line": 219,
+            "line": 217,
             "text": "return ptr.innerText.length;"
           },
           {
-            "line": 224,
+            "line": 222,
             "text": "if (!ptr || !ptr.innerText) return false;"
           },
           {
-            "line": 227,
+            "line": 225,
             "text": "if (text.length == 0) return false;"
           },
           {
-            "line": 240,
+            "line": 238,
             "text": "return true;"
+          },
+          {
+            "line": 240,
+            "text": "return false;"
           },
           {
             "line": 242,
-            "text": "return false;"
-          },
-          {
-            "line": 244,
             "text": "return false; // Это знак препинания - не подходит"
           },
           {
-            "line": 249,
+            "line": 247,
             "text": "return true;"
           },
           {
-            "line": 254,
+            "line": 252,
             "text": "if (!ptr) return false;"
           },
           {
-            "line": 263,
+            "line": 261,
             "text": "return true;"
           },
           {
-            "line": 268,
+            "line": 266,
             "text": "return false;"
           },
           {
-            "line": 274,
+            "line": 272,
             "text": "if (fbname == \"\") return \"main\";"
           },
           {
-            "line": 275,
+            "line": 273,
             "text": "if (fbname == \"notes\") return \"notes\";"
           },
           {
-            "line": 276,
+            "line": 274,
             "text": "if (fbname == \"comments\") return \"comments\";"
           },
           {
-            "line": 277,
+            "line": 275,
             "text": "return \"other\";"
           },
           {
-            "line": 287,
+            "line": 285,
             "text": "return;"
           },
           {
-            "line": 409,
+            "line": 407,
             "text": "return msg;"
           },
           {
-            "line": 426,
+            "line": 424,
             "text": "return msg;"
           }
         ]
@@ -166824,41 +167061,41 @@
           "name": "showStatistics",
           "declarations": [
             {
-              "line": 136,
+              "line": 134,
               "text": "var showStatistics = 1;"
             }
           ],
           "uses": [
             {
-              "line": 136,
+              "line": 134,
               "text": "var showStatistics = 1;"
             },
             {
-              "line": 399,
+              "line": 397,
               "text": "if (showStatistics == 1) msg += \"показывать анализ и статистику\";"
             },
             {
-              "line": 400,
+              "line": 398,
               "text": "else if (showStatistics == 2) msg += \"только статистика\";"
             },
             {
-              "line": 432,
+              "line": 430,
               "text": "if (showStatistics == 1) {"
             },
             {
-              "line": 502,
+              "line": 500,
               "text": "if ((showStatistics == 1 || showStatistics == 2) && potentialSubtitles.length > 0 && userConfirmed) {"
             },
             {
-              "line": 502,
+              "line": 500,
               "text": "if ((showStatistics == 1 || showStatistics == 2) && potentialSubtitles.length > 0 && userConfirmed) {"
             },
             {
-              "line": 519,
+              "line": 517,
               "text": "if (showStatistics == 2 && stats.totalFound == 0) {"
             },
             {
-              "line": 524,
+              "line": 522,
               "text": "if (showStatistics == 0 && stats.totalFound == 0) {"
             }
           ],
@@ -166869,25 +167106,25 @@
           "name": "processNotesSection",
           "declarations": [
             {
-              "line": 139,
+              "line": 137,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 139,
+              "line": 137,
               "text": "var processNotesSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 321,
+              "line": 319,
               "text": "if (bodyType == \"notes\" && !processNotesSection) {"
             },
             {
-              "line": 403,
+              "line": 401,
               "text": "msg += \"• Обработка сносок: \" + (processNotesSection ? \"да\" : \"нет\") + \"\\n\";"
             },
             {
-              "line": 448,
+              "line": 446,
               "text": "msg += \"  • в сносках-примечаниях: \" + stats.notesSection + (processNotesSection ? \"\" : \" (исключены настройками)\") + \"\\n\";"
             }
           ],
@@ -166898,25 +167135,25 @@
           "name": "processCommentsSection",
           "declarations": [
             {
-              "line": 142,
+              "line": 140,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 142,
+              "line": 140,
               "text": "var processCommentsSection = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 324,
+              "line": 322,
               "text": "if (bodyType == \"comments\" && !processCommentsSection) {"
             },
             {
-              "line": 404,
+              "line": 402,
               "text": "msg += \"• Обработка комментариев: \" + (processCommentsSection ? \"да\" : \"нет\") + \"\\n\";"
             },
             {
-              "line": 449,
+              "line": 447,
               "text": "msg += \"  • в комментариях: \" + stats.commentsSection + (processCommentsSection ? \"\" : \" (исключены настройками)\") + \"\\n\\n\";"
             }
           ],
@@ -166927,21 +167164,21 @@
           "name": "processBlockElements",
           "declarations": [
             {
-              "line": 146,
+              "line": 144,
               "text": "var processBlockElements = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 146,
+              "line": 144,
               "text": "var processBlockElements = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 369,
+              "line": 367,
               "text": "if (!processBlockElements && isInsideBlockElement(p)) {"
             },
             {
-              "line": 405,
+              "line": 403,
               "text": "msg += \"• Обработка блочных элементов: \" + (processBlockElements ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -166952,25 +167189,25 @@
           "name": "maxLength",
           "declarations": [
             {
-              "line": 149,
+              "line": 147,
               "text": "var maxLength = 30;"
             }
           ],
           "uses": [
             {
-              "line": 149,
+              "line": 147,
               "text": "var maxLength = 30;"
             },
             {
-              "line": 357,
+              "line": 355,
               "text": "if (len > maxLength) {"
             },
             {
-              "line": 406,
+              "line": 404,
               "text": "msg += \"• Макс. длина: \" + maxLength + \" символов\\n\";"
             },
             {
-              "line": 455,
+              "line": 453,
               "text": "if (stats.excludedByLength > 0) msg += \"  • слишком длинные (> \" + maxLength + \"): \" + stats.excludedByLength + \"\\n\";"
             }
           ],
@@ -166981,21 +167218,21 @@
           "name": "processDialogs",
           "declarations": [
             {
-              "line": 155,
+              "line": 153,
               "text": "var processDialogs = 0; // 0 - нет, 1 - да"
             }
           ],
           "uses": [
             {
-              "line": 155,
+              "line": 153,
               "text": "var processDialogs = 0; // 0 - нет, 1 - да"
             },
             {
-              "line": 350,
+              "line": 348,
               "text": "if (!processDialogs && isDialogStart(p)) {"
             },
             {
-              "line": 408,
+              "line": 406,
               "text": "msg += \"• Обработка диалогов: \" + (processDialogs ? \"да\" : \"нет\") + \"\\n\";"
             }
           ],
@@ -167003,25 +167240,29 @@
         },
         {
           "index": 6,
-          "name": "punctuationMarks",
+          "name": "allowedEndChars",
           "declarations": [
             {
-              "line": 232,
-              "text": "var punctuationMarks = \".!?,:;-()[]{}«»\\\"'…\";"
+              "line": 150,
+              "text": "var allowedEndChars = \"]\";"
             }
           ],
           "uses": [
             {
-              "line": 232,
-              "text": "var punctuationMarks = \".!?,:;-()[]{}«»\\\"'…\";"
+              "line": 150,
+              "text": "var allowedEndChars = \"]\";"
             },
             {
-              "line": 234,
-              "text": "for (var i = 0; i < punctuationMarks.length; i++) {"
+              "line": 236,
+              "text": "for (var j = 0; j < allowedEndChars.length; j++) {"
             },
             {
-              "line": 235,
-              "text": "if (lastChar == punctuationMarks.charAt(i)) {"
+              "line": 237,
+              "text": "if (lastChar == allowedEndChars.charAt(j))"
+            },
+            {
+              "line": 405,
+              "text": "msg += \"• Разрешённые знаки в конце: \" + allowedEndChars + \"\\n\";"
             }
           ],
           "classification": "requires_review"
@@ -167030,25 +167271,33 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 105,
+          "line": 103,
           "text": "// version 1.5"
         },
         {
-          "line": 120,
+          "line": 118,
           "text": "// version 1.5, 13.05.2025"
         },
         {
-          "line": 126,
+          "line": 124,
           "text": "var version = \"1.5\";"
         },
         {
-          "line": 286,
+          "line": 284,
           "text": "MsgBox(\"Ошибка: не найден элемент fbw_body\", \"FBE скрипт\\n\" + scriptName + \"\\nver. \" + version);"
         }
       ],
       "warningEvidence": [
         {
-          "text": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
+          "text": "Проверяется последний символ без удаления конечных пробелов: абзац с точкой и пробелом после неё может быть ошибочно размечен как подзаголовок.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "DIV.body с нестандартным fbname тоже обрабатывается; включение processBlockElements может размечать абзацы внутри уже существующих заголовков и других структурных элементов.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "После смены класса скрипт дважды переписывает innerHTML каждого P; сложная разметка может быть нормализована браузером.",
           "verification": "requires_review"
         }
       ],
@@ -167069,80 +167318,7 @@
         "examples",
         "tags"
       ],
-      "findings": [
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Просмотрите результат до сохранения. Для структурной правки проверьте книгу и связанные ссылки.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "requires_review",
-          "field": "warnings",
-          "previous": "Скрипт содержит операции изменения документа. Перед массовой обработкой сохраните отдельную копию книги.",
-          "proposed": null,
-          "reason": "Общее предупреждение о массовой обработке требует проверки области действия",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 474,
-              "text": "window.external.BeginUndoUnit(document, scriptName + \" ver. \" + version);"
-            },
-            {
-              "line": 490,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        }
-      ]
+      "findings": []
     },
     {
       "path": "13_Заголовки, подзаголовки, пустые строки/785_Вставить пользовательский подзаголовок по месту курсора.js",
