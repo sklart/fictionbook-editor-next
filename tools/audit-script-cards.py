@@ -171,13 +171,58 @@ def linked_resource_candidates(source: Source) -> list[dict]:
     require review; this deliberately does not claim dependency completeness.
     """
     result = []
+    # Conservative direct-call graph for named legacy functions. Escaping
+    # references, dynamic code and duplicate bindings remain unknown. This is
+    # evidence about reachability, never automatic proof of a required input.
+    braces, stack = {}, []
+    for position, character in enumerate(source.masked):
+        if character == "{": stack.append(position)
+        elif character == "}" and stack: braces[stack.pop()] = position
+    functions = []
+    for declaration in re.finditer(r"\bfunction\s+([\w$]+)\s*\(", source.masked):
+        opening = source.masked.find("{", declaration.end())
+        if opening in braces:
+            functions.append({"name": declaration[1], "nameStart": declaration.start(1),
+                              "begin": opening, "end": braces[opening]})
+    def owner(position):
+        enclosing = [f for f in functions if f["begin"] < position < f["end"]]
+        return max(enclosing, key=lambda f: f["begin"])["name"] if enclosing else "<top>"
+    names = {f["name"] for f in functions}
+    graph = {name: set() for name in names | {"<top>"}}
+    uncertain = bool(stack) or len(names) != len(functions) or bool(re.search(
+        r"\b(?:eval|Function|setTimeout|setInterval)\s*\(|\bfunction\s*\(", source.masked))
+    for function in functions:
+        name = function["name"]
+        for reference in re.finditer(r"\b" + re.escape(name) + r"\b", source.masked):
+            if reference.start() == function["nameStart"]: continue
+            tail = source.masked[reference.end():]
+            prefix = source.masked[:reference.start()].rstrip()
+            if re.match(r"\s*\(", tail) and not prefix.endswith("."):
+                graph[owner(reference.start())].add(name)
+            else:
+                uncertain = True
+    reachable = {"<top>"} | ({"Run"} if "Run" in names else set())
+    pending = list(reachable)
+    while pending:
+        for called in graph[pending.pop()] - reachable:
+            reachable.add(called)
+            pending.append(called)
     pattern = r'''\b(?:window\s*\.\s*open|showModalDialog|showModelessDialog|ShowDialog)\s*\(\s*(["'])(HTML/[^"']+\.(?:html?|js))\1'''
     for match in re.finditer(pattern, source.executable, re.I):
         if not source.masked[match.start():match.start()+6].strip():
             continue
         line = source.executable.count("\n", 0, match.start()) + 1
+        enclosing = owner(match.start())
+        reachability = "unknown" if uncertain else "reachable" if enclosing in reachable else "not_referenced"
+        # A top-level exported helper can also be called by linked HTML/JS.
+        # Only a local unreferenced function can be ruled out in this file.
+        declaration = next((f for f in functions if f["name"] == enclosing), None)
+        if reachability == "not_referenced" and declaration and owner(declaration["nameStart"]) == "<top>":
+            reachability = "unknown"
         result.append({"path": match[2], "line": line + source.line_offset,
-                       "text": source.lines[line-1].strip()[:180]})
+                       "text": source.lines[line-1].strip()[:180],
+                       "ownerFunction": enclosing, "reachability": reachability,
+                       "required": None})
     return result
 
 
@@ -321,7 +366,13 @@ def inspect(path: Path) -> dict:
     resource_candidates = linked_resource_candidates(source)
     declared_paths = {dep.get("path") for dep in card.get("dependencies", [])}
     for candidate in resource_candidates:
-        if candidate["path"] not in declared_paths:
+        if candidate["reachability"] == "not_referenced":
+            if any(dep.get("path") == candidate["path"] and not dep.get("optional")
+                   for dep in card.get("dependencies", [])):
+                found.append(finding("unreachable_dependency", "dependencies", candidate["path"], None,
+                                     "Обязательный путь найден лишь в невызванной функции; проверить и исправить карточку",
+                                     "medium", [candidate]))
+        elif candidate["path"] not in declared_paths:
             found.append(finding("unlisted_dependency", "dependencies", candidate["path"], None,
                                  "Вызов открывает ресурс, не перечисленный в карточке; проверить назначение",
                                  "medium", [candidate]))

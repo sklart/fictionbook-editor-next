@@ -25,6 +25,17 @@ def main() -> None:
     assert not audit["linked_resource_candidates"](audit["Source"](
         ['// window.open("HTML/no.html")'], '// window.open("HTML/no.html")',
         audit["mask_non_code"]('// window.open("HTML/no.html")'), 0))
+    def resources(code):
+        return audit["linked_resource_candidates"](audit["Source"](
+            code.splitlines(), code, audit["mask_non_code"](code), 0))
+    dead = resources('function Run(){function dead(){window.open("HTML/dead.html");} /* dead(); */}')
+    assert dead[0]["reachability"] == "not_referenced" and dead[0]["required"] is None
+    live = resources('function Run(){load();} function load(){window.open("HTML/live.html");}')
+    assert live[0]["reachability"] == "reachable" and live[0]["required"] is None
+    dynamic = resources('function Run(){eval(input);} function load(){window.open("HTML/maybe.html");}')
+    assert dynamic[0]["reachability"] == "unknown"
+    escaped = resources('function Run(){var callback=load; callback();} function load(){window.open("HTML/maybe.html");}')
+    assert escaped[0]["reachability"] == "unknown"
     script = ROOT / "runtime" / "Scripts" / "03_Комментарии" / "01_Добавить комментарий, остаться на его ссылке.js"
     original = script.read_bytes()
     original_document = card_tool["read_document"](original)
@@ -136,6 +147,30 @@ def main() -> None:
             assert isinstance(issue["line"], int) and 1 <= issue["line"] <= line_count
             assert isinstance(issue["issue"], str) and issue["issue"].strip()
     print("Script card audit tests passed.")
+
+    classification = json.loads((ROOT / "docs" / "script-card-undo-classification.json").read_text(encoding="utf-8"))
+    undo_source = (ROOT / "docs" / "script-card-undo-defects.md").read_bytes()
+    assert classification["sourceSha256"] == hashlib.sha256(undo_source).hexdigest()
+    import re
+    source_paths = set(re.findall(r"^- `([^`]+)` —", undo_source.decode("utf-8"), re.M))
+    classified_paths = [item["path"] for item in classification["scripts"]]
+    assert len(classified_paths) == len(set(classified_paths)) == classification["scriptCount"] == 91
+    assert set(classified_paths) == source_paths
+    assert set(classification["categories"]) == set("ABCDEFG")
+    for item in classification["scripts"]:
+        assert item["categories"] and set(item["categories"]) <= set("ABCDEFG")
+        assert item["priority"] in ("P1", "P2", "P3") and item["recommendedFix"]
+    print("Undo classification: all 91 source records covered.")
+    runtime = json.loads((ROOT / "docs" / "script64-runtime-results.json").read_text(encoding="utf-8"))
+    script64 = next(scripts_root.rglob("64_Замена символов по списку из буфера обмена.js"))
+    assert runtime["sourceCodeSha256"] == card_tool["read_document"](script64.read_bytes()).sha256
+    results = runtime["runtimeResults"]
+    assert results["harness-ran"] == results["undo"] == results["clipboard-restored"] == "1"
+    checks = ("ordinary", "special", "backslash", "quote", "replacement-special",
+              "empty-selection", "empty-list", "invalid-list")
+    expected_status = "pass" if all(results[key] == "1" for key in checks) else "fail"
+    assert runtime["result"] == results["result"] == expected_status
+    print("Script 64 runtime evidence hash and reported outcome are consistent.")
 
 
 if __name__ == "__main__":
