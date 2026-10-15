@@ -18,6 +18,18 @@ function New-IsolatedFbeRuntime {
     return [pscustomobject]@{ Root = $root; Runtime = $runtime; Exe = Join-Path $runtime 'FBE.exe'; DataPath = $dataPath; StagePath = Join-Path $root 'test-stage.txt' }
 }
 
+function New-IsolatedFbeSettingsSeed {
+    param([Parameter(Mandatory)]$Isolation)
+
+    $settingsDir = Join-Path $Isolation.DataPath 'Settings'
+    New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
+    $settingsFile = Join-Path $settingsDir 'Settings.xml'
+    # CSettings reads /FBE/Settings[@ID="0"]; omitted fields retain its defaults.
+    $xml = '<?xml version="1.0" encoding="utf-8"?><FBE><Settings ID="0"><DocumentTreeScripts>false</DocumentTreeScripts><InterfaceTheme>0</InterfaceTheme></Settings></FBE>'
+    [IO.File]::WriteAllText($settingsFile, $xml, [Text.UTF8Encoding]::new($false))
+    return $settingsFile
+}
+
 function Set-IsolatedRuntimeStage {
     param([Parameter(Mandatory)]$Isolation, [Parameter(Mandatory)][string]$Stage)
     [IO.File]::WriteAllText($Isolation.StagePath, "stage=$Stage`r`nutc=$([DateTime]::UtcNow.ToString('o'))`r`n", [Text.UTF8Encoding]::new($false))

@@ -45,15 +45,13 @@ public static class NavigationStartupWindows {
 }
 '@
 try {
-    $source = Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'
+    $source = New-IsolatedFbeSettingsSeed -Isolation $isolation
     $settings = [IO.File]::ReadAllText($source)
     if ($settings -notmatch '<DocumentTreeScripts>false</DocumentTreeScripts>') { throw 'Settings fixture has no disabled Scripts mode.' }
     $settings = $settings.Replace('<DocumentTreeScripts>false</DocumentTreeScripts>', '<DocumentTreeScripts>true</DocumentTreeScripts>')
     if ($settings -notmatch '<InterfaceTheme>0</InterfaceTheme>') { throw 'Settings fixture has no automatic theme.' }
     $settings = $settings.Replace('<InterfaceTheme>0</InterfaceTheme>', "<InterfaceTheme>$Theme</InterfaceTheme>")
-    $settingsDir = Join-Path $isolation.DataPath 'Settings'
-    New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
-    [IO.File]::WriteAllText((Join-Path $settingsDir 'Settings.xml'), $settings, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($source, $settings, [Text.UTF8Encoding]::new($false))
     $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
     $process = Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList @('--portable', ('"' + $fixture + '"')) -PassThru
     $main = [IntPtr]::Zero
