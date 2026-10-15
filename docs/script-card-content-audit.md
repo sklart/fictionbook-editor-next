@@ -2,7 +2,7 @@
 
 Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
 Инвентаризовано файлов и карточек: **580**.
-Карточек без автоматических замечаний: **261**.
+Карточек без автоматических замечаний: **263**.
 Карточек с незавершённой содержательной проверкой: **580**.
 
 ## Состояние
@@ -16,32 +16,32 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **490**. Исполняемый код не изменён.
+Изменено карточек: **492**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 131
-- `generic_usage`: 436
+- `generic_summary`: 133
+- `generic_usage`: 438
 - `generic_warning`: 62
-- `inaccurate_description`: 748
+- `inaccurate_description`: 750
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_author`: 8
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 460
+- `incorrect_dependency`: 462
 - `incorrect_effect`: 9
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 443
+- `incorrect_scope`: 445
 - `incorrect_selection`: 51
 - `incorrect_setting`: 264
-- `incorrect_undo`: 435
+- `incorrect_undo`: 437
 - `incorrect_version`: 9
 - `missing_version`: 4
-- `missing_warning`: 74
+- `missing_warning`: 76
 - `uncertain_attribution`: 103
 
 Подтверждённые результаты:
@@ -49,24 +49,24 @@
 - `attributionClarified`: 104
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 318
+- `dependenciesVerified`: 320
 - `effectCorrected`: 7
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 434
-- `scopeClarified`: 420
+- `purposeClarified`: 436
+- `scopeClarified`: 422
 - `selectionClarified`: 11
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
 - `settingsCorrected`: 69
-- `undoDescriptionsClarified`: 427
-- `usageCorrected`: 436
+- `undoDescriptionsClarified`: 429
+- `usageCorrected`: 438
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 368
+- `warningsClarified`: 370
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **330**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **332**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -846,10 +846,12 @@
 - `19_Обработка форматирования/70_Сформатировать КАПС-'термины' жирным.js:972` — Между BeginUndoUnit и EndUndoUnit отсутствует try/finally; ошибка при обработке кандидата может оставить операцию незавершённой.
 - `19_Обработка форматирования/71_Сформатировать 'термины' жирным (по разделителю).js:688` — Временные B-маркеры вставляются до начала операции отмены; при исключении до их обычного удаления они останутся в документе.
 - `19_Обработка форматирования/71_Сформатировать 'термины' жирным (по разделителю).js:804` — Между BeginUndoUnit и EndUndoUnit отсутствует try/finally; ошибка при обработке кандидата может оставить операцию незавершённой.
+- `21_Поиск и замена/04_Поиск (без замены) ошибок текста (регэкспы от wotti, Roxana, JonVic и др.).js:761` — После подъёма к BODY/P код сразу читает el2.nodeName без проверки el2 на null; при курсоре вне P и без подходящего родителя возможна ошибка.
+- `21_Поиск и замена/05_Поиск (без замены) ошибок текста (TaKir-Sclex).js:1091` — el2.nodeName читается без проверки el2 на null после поиска родительского BODY/P; при неподходящей позиции курсора возможна ошибка.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 571
+- `generic_usage`: 565
 - `inaccurate_description`: 39
 - `incorrect_undo`: 74
 - `requires_review`: 312
