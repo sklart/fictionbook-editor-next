@@ -3,10 +3,10 @@
   "engine": "FBE Next Win32 / MSHTML / JScript; Doc::RunScript",
   "sourceCodeSha256": "a2cdab24a97864b881a3356aa3373f993aac724316e9da7e27f0da22f4e61c4a",
   "probeSha256": "51f71e789adeb6a418cc90a5a89764c90ff45192e6e77814076f15a6ae4a3b85",
-  "fbeExeSha256": "8f6db35073a060f3706aab4152f7ee5359c4dd61331c961f4f50d4d916d8c482",
-  "fbeExe": "out/script64-run/FBE.exe",
+  "fbeExeSha256": "c00c5b1c24fb9170fb768f36e051ae9b6dc7898cb61734913b75ec461f459b27",
+  "fbeExe": "out/tests/script64-runtime/FBE.exe",
   "buildConfiguration": "Release Win32 v143 VC Tools 14.44.35207; FbeStrictWarnings=true",
-  "buildSourceState": "Отдельный checkout codex/script64-marker-safety от 7c9a86af; посторонние исходники рабочего дерева не использовались. Подготовленные библиотеки зависимостей и заголовки Hunspell/Lexilla переиспользованы через junction, зависимости не пересобирались.",
+  "buildSourceState": "Инкрементальная сборка только FBE в отдельном техническом checkout от 8a3fd469. Три файла стенда скопированы из основной ветки и побайтово сверены; посторонние незакоммиченные исходники основного дерева не использовались. Подготовленные зависимости переиспользованы.",
   "dialogs": "MsgBox/alert перехвачены для отказов. Буфер настоящий: в стенде ограниченный повтор ошибки OpenClipboard; Run повторяется только если DOM и значение поля ещё не изменены. Исполняемый JS не переписывается стендом.",
   "runtimeResults": {
     "phase": "script64",
@@ -107,16 +107,16 @@
     "clipboard-restored": "1"
   },
   "result": "pass",
-  "reason": "Все профильные сценарии прошли: пять конфликтов ID с сохранением исходных DOM-объектов и атрибутов, Undo/Redo HTML, три варианта ошибки/очистки, TEXTAREA xaby → xABy → xaby → xABy. При отказе обоих методов удаления один маркер невозможно убрать до снятия инъекции; остальные очищены и группа закрыта.",
-  "productionCodeChanged": true,
+  "reason": "Строгий PASS: реальный TEXTAREA xaby → xABy → xaby → xABy, textarea-undo=1 и textarea-redo=1. Все прежние сценарии скрипта 64 прошли. C++ и PowerShell отклоняют 0, пропуск и дубль каждого ключа при result=pass.",
+  "productionCodeChanged": false,
   "undoVerification": "Перед каждым сценарием удалена история подготовки. Для книги проверена одна именованная операция, полные HTML-снимки после Undo/Redo и отсутствие предыдущих операций; для TEXTAREA — actual value, исходное выделение ab и сохранность остальной книги. Перед командами явно восстановлен фокус.",
   "harnessSourceSha256": {
-    "src/fbe/testing/RuntimeTestScript64.inl": "3fef3da537fefd10ebdf3659c4dd38ed3e31f10365b7c1fc7e4ef9368483e8a1",
-    "src/fbe/testing/Script64ResultChecks.h": "cdc8a8faa87f89367e51ceef356cef25c05b75f0136d02c699f6740d990fdaac",
-    "tools/tests/test-script64-runtime.ps1": "527422e474a7c944cd0e8c25c51aeea47831a3d95e122cc44cec7de6e578b8be",
-    "tools/tests/test-audit-script-cards.py": "d502d007f4db5e1ee85211163e18bf554ba77e2208090f3096a9ead1a5ef2747"
+    "src/fbe/testing/RuntimeTestScript64.inl": "a36da3fc18236a6816d95e1556532ac61e4883218f26ffb63cb4b8a3ca64624a",
+    "src/fbe/testing/Script64ResultChecks.h": "5ecaa5eb0ec899cc526ceb8c7532478781d472003591f765c0babed2db1e1e90",
+    "tools/tests/test-script64-runtime.ps1": "90ba6a233d071667444a1173bffeebef26717874a3b190ac57bfe9ffcc750f8f",
+    "tools/tests/test-audit-script-cards.py": "2379817bc99aaf3daad4398e27b19d6fb39c18ebad8b363fbdafa4481b0b8cab"
   },
-  "buildLogSha256": "a7aa4fbc6560a1254a4b33fade1bb752733aea7f039eb78c4fc6054fb93753e1",
+  "buildLogSha256": "27a31cbe7930423895cfa64d0668ec9bc0972695b96dfacf6d1f12c738baa726",
   "textareaUndoRedo": {
     "before": "xaby",
     "selection": "ab",
@@ -126,14 +126,25 @@
     "nativeSupportObserved": true,
     "artificialHistoryAdded": false
   },
-  "finalVerificationNote": "После восстановления доступного буфера выполнен дополнительный полный PASS с TimeoutSeconds=60 на точных финальных исходниках и EXE. Предыдущая попытка с лимитом 30 секунд остановилась без отчёта; этот тайм-аут не считался PASS. Все хеши источников стенда и проверенного EXE совпадают.",
-  "additionalBuild": {
-    "result": "pass",
-    "fbeExe": "out/Release/FBE.exe",
-    "fbeExeSha256": "3325977ec508c91565b02748653311e8647412558eaa19dd50c432509313663e",
-    "buildLogSha256": "786fdc6441be285d2fe2b82b10a163c444c566cecc10b24d8d70a84fe3dd040a",
-    "difference": "Только отступы C++-стенда и сборочная метка; для итоговой проверки сохранён точный EXE полного PASS."
-  },
+  "finalVerificationNote": "Реальный короткий запуск FBE Next / MSHTML / JScript с новым строгим C++ self-test и строгим PowerShell-парсером завершился PASS; буфер восстановлен. Проверяется точный EXE, сохранённый рядом с отчётом.",
   "runtimeTimeoutSeconds": 60,
-  "checkoutHashVerification": "При переносе в master проверка источников стенда допускает только преобразование LF/CRLF. Исходные SHA прогона сохранены; содержимое кода обязано совпадать."
+  "checkoutHashVerification": "При переносе в master проверка источников стенда допускает только преобразование LF/CRLF. Исходные SHA прогона сохранены; содержимое кода обязано совпадать.",
+  "strictTextareaHistoryGate": {
+    "requires": "changed && undoOk && redoOk",
+    "requiredReportValues": {
+      "textarea-undo": "1",
+      "textarea-redo": "1"
+    },
+    "negativeCasesPerParser": 6,
+    "negativeCases": [
+      "undo=0",
+      "undo missing",
+      "undo duplicate",
+      "redo=0",
+      "redo missing",
+      "redo duplicate"
+    ],
+    "negativeCasesRetainResultPass": true,
+    "unsupportedConfigurationIsPass": false
+  }
 }

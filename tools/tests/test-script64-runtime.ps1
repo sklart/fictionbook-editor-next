@@ -19,7 +19,7 @@ function Read-Script64Report([string]$Text) {
         if(!$entries.ContainsKey($key) -or $entries[$key] -cne '1') { throw "Failed/missing check: $key" }
     }
     foreach($key in @('textarea-undo','textarea-redo')) {
-        if(!$entries.ContainsKey($key) -or $entries[$key] -cnotmatch '^[01]$') { throw "Missing/invalid observation: $key" }
+        if(!$entries.ContainsKey($key) -or $entries[$key] -cne '1') { throw "Failed/missing check: $key" }
     }
     if(!$entries.ContainsKey('result') -or $entries['result'] -cne 'pass') { throw 'Runtime result is not pass.' }
     return $entries
@@ -29,7 +29,7 @@ if($ParserSelfTest) {
         'cleanup-mode-0','cleanup-mode-1','cleanup-mode-2','textarea-history-observed','undo','redo','undo-single','refusal-no-undo','exception-cleanup','ordinary','special',
         'backslash','quote','replacement-special','empty-selection','empty-list','invalid-list',
         'mixed-special','newlines','cyrillic','no-text','invalid-late','nodes','textarea','numeric-order','duplicates','cascade','utf16-reject') | ForEach-Object { "$_=1" }) -join "`n"
-    $good += "`ntextarea-undo=0`ntextarea-redo=1`nresult=pass`n"
+    $good += "`ntextarea-undo=1`ntextarea-redo=1`nresult=pass`n"
     $null = Read-Script64Report $good
     foreach($bad in @($good.Replace("`nspecial=1`n", "`nspecial=0`n"),
         $good.Replace("`nspecial=1`n", "`n"), ($good + "special=1`n"),
@@ -38,7 +38,16 @@ if($ParserSelfTest) {
         try { $null = Read-Script64Report $bad } catch { $rejected = $true }
         if(!$rejected) { throw 'Report parser accepted an invalid synthetic result.' }
     }
-    Write-Host 'Script 64 report parser: PASS (positive, collision, missing, duplicate, exact value).'
+    foreach($key in @('textarea-undo','textarea-redo')) {
+        $entry = "$key=1`n"
+        foreach($bad in @($good.Replace($entry, "$key=0`n"),
+            $good.Replace($entry, ''), ($good + $entry))) {
+            $rejected = $false
+            try { $null = Read-Script64Report $bad } catch { $rejected = $true }
+            if(!$rejected) { throw "Report parser accepted invalid $key with result=pass." }
+        }
+    }
+    Write-Host 'Script 64 report parser: PASS (positive, collision, missing, duplicate, exact value; TEXTAREA Undo/Redo zero, missing, duplicate).'
     return
 }
 if(!$FbeExe) { throw 'Specify -FbeExe or -ParserSelfTest.' }

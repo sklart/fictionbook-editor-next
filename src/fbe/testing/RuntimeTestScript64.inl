@@ -107,8 +107,8 @@ if(IsFbeTestScenario(L"script64-runtime"))
                 const bool redoOk = redoResult == (fixture == 5 ? L"xABy|1" : L"1");
                 if(fixture == 5)
                 {
-                    // A documented lack of native field history is an observed result too.
-                    const bool observed = changed && (undoOk || undoResult == L"xABy|1") && redoOk;
+                    // PASS requires both native field history operations to change the value.
+                    const bool observed = changed && undoOk && redoOk;
                     safetyResults.AppendFormat(L"textarea-history-observed=%d\ntextarea-undo=%d\ntextarea-redo=%d\ntextarea-after-undo=%s\ntextarea-after-redo=%s\n",
                         observed, undoOk, redoOk, static_cast<LPCWSTR>(undoResult), static_cast<LPCWSTR>(redoResult));
                     safety = safety && observed;

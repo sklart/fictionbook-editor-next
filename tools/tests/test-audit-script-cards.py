@@ -173,7 +173,7 @@ def main() -> None:
               "undo-single", "refusal-no-undo", "exception-cleanup")
     checks += ("id-collision-0", "id-collision-1", "id-collision-2", "id-collision-3",
                "id-collision-4", "cleanup-mode-0", "cleanup-mode-1", "cleanup-mode-2",
-               "textarea-history-observed")
+               "textarea-history-observed", "textarea-undo", "textarea-redo")
     expected_status = "pass" if all(results[key] == "1" for key in checks) else "fail"
     assert runtime["result"] == results["result"] == expected_status
     assert expected_status == "pass"
