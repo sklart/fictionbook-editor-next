@@ -3,8 +3,8 @@
   "scriptCount": 580,
   "counts": {
     "requires_review": 356,
-    "generic_usage": 853,
-    "incorrect_undo": 125,
+    "generic_usage": 849,
+    "incorrect_undo": 124,
     "inaccurate_description": 49
   },
   "reviewedChanges": [
@@ -53096,18 +53096,175 @@
         "attributionClarified": 1,
         "settingsCorrected": 1
       }
+    },
+    {
+      "path": "13_Заголовки, подзаголовки, пустые строки/670_Выделить следующий заглавный подзаголовок.js",
+      "codeSha256": "e5a53cda30897300e59bfbeb727ef6ccce3cf26f10772b25cb509810fba0e525",
+      "evidence": "Строки 1–25 задают назначение, авторство и порог; 36–37 — предварительный шаблон; 64–100 считают долю заглавных букв; 167–198 проверяют позицию и открывают группу отмены; 200–265 ищут до конца и при согласии с начала; 268–285 выделяют найденный P.subtitle и закрывают группу. Изменений книги, файловых, сетевых вызовов и запуска программ нет.",
+      "changes": [
+        {
+          "field": "authors",
+          "before": [
+            {
+              "name": "TaKir",
+              "role": "author"
+            },
+            {
+              "name": "TaKir",
+              "role": "contributor",
+              "contribution": "idea"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance"
+            }
+          ],
+          "after": [
+            {
+              "name": "TaKir",
+              "role": "author",
+              "contribution": "идея и реализация"
+            },
+            {
+              "name": "DeepSeek",
+              "role": "ai_assistance",
+              "contribution": "участие в реализации"
+            }
+          ],
+          "category": "uncertain_attribution"
+        },
+        {
+          "field": "summary",
+          "before": "Выделяет следующий заглавный подзаголовок.",
+          "after": "Ищет и выделяет следующий подзаголовок с заданной долей заглавных букв.",
+          "category": "generic_summary"
+        },
+        {
+          "field": "description",
+          "before": "Выделяет следующий заглавный подзаголовок. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+          "after": "От конца текущего выделения или курсора просматривает следующие P.subtitle внутри fbw_body. Предварительный шаблон проверяет наличие буквы или цифры, затем скрипт считает долю заглавных кириллических и латинских букв и сравнивает её с percentThreshold. Найденный подзаголовок выделяет и прокручивает в область видимости; книгу не меняет. При достижении конца предлагает повторить поиск с начала книги.",
+          "category": "inaccurate_description"
+        },
+        {
+          "field": "scope",
+          "before": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+          "after": "Все P.subtitle внутри fbw_body после текущей позиции, включая примечания и комментарии; при согласии повторного поиска — с начала fbw_body. Текущий абзац пропускается.",
+          "category": "incorrect_scope"
+        },
+        {
+          "field": "usage",
+          "before": [
+            "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
+            "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
+            "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
+            "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          ],
+          "after": [
+            "Поставьте курсор или выделите текст перед предполагаемым подзаголовком. Запуск ищет следующий подходящий подзаголовок; при достижении конца можно начать поиск с начала книги.",
+            "Для другого порога измените percentThreshold в исходном JS. Проверьте результат: доля заглавных рассчитывается только по кириллическим и латинским буквам."
+          ],
+          "category": "generic_usage"
+        },
+        {
+          "field": "warnings",
+          "before": [],
+          "after": [
+            "Процент округляется до целого: при пороге 100% подзаголовок с небольшой долей строчных букв тоже может быть принят.",
+            "Предварительный шаблон ошибочно считает символ | признаком содержательной строки; при пороге 0% такой подзаголовок может пройти поиск."
+          ],
+          "category": "missing_warning"
+        },
+        {
+          "field": "dependenciesComplete",
+          "before": false,
+          "after": true,
+          "category": "incorrect_dependency"
+        },
+        {
+          "field": "undo",
+          "before": {
+            "status": "explicit_calls_found",
+            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          },
+          "after": {
+            "status": "explicit_calls_found",
+            "description": "Скрипт открывает и завершает группу отмены, хотя только меняет выделение и прокрутку; изменений книги для отмены нет. Обычные ранние выходы после открытия группы её закрывают, обработка исключений не предусмотрена."
+          },
+          "category": "incorrect_undo"
+        },
+        {
+          "field": "settings",
+          "before": [
+            {
+              "name": "percentThreshold",
+              "value": 100,
+              "expression": "100",
+              "description": "100% по умолчанию (полностью заглавные)",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "blockElementClass",
+              "value": "subtitle",
+              "expression": "\"subtitle\"",
+              "description": "класс элемента подзаголовка",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            },
+            {
+              "name": "nbspEntity",
+              "value": "&nbsp;",
+              "expression": "\"&nbsp;\"",
+              "description": "Неразрывный пробел из настроек FBE",
+              "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            }
+          ],
+          "after": [
+            {
+              "name": "percentThreshold",
+              "value": 100,
+              "expression": "100",
+              "description": "Минимальная доля заглавных букв среди кириллических и латинских букв, в процентах.",
+              "valueMeaning": "Исходное значение в коде скрипта."
+            }
+          ],
+          "category": "incorrect_setting"
+        }
+      ],
+      "codeIssues": [
+        {
+          "line": 100,
+          "issue": "Math.round округляет долю заглавных до целого. При percentThreshold=100 доля 99,5% округляется до 100%, поэтому строка со строчной буквой может ошибочно считаться полностью заглавной."
+        },
+        {
+          "line": 37,
+          "issue": "Символ | включён внутрь класса символов предварительного шаблона. При пороге 0% P.subtitle из одних вертикальных черт считается содержательным и может быть найден."
+        },
+        {
+          "line": 181,
+          "issue": "Для операции поиска и выделения открывается группа отмены без защиты finally. Обычные ранние выходы закрывают её, но ошибка при поиске или выборе диапазона до EndUndoUnit на строке 285 оставит группу открытой."
+        }
+      ],
+      "metrics": {
+        "purposeClarified": 1,
+        "scopeClarified": 1,
+        "usageCorrected": 1,
+        "warningsClarified": 1,
+        "undoDescriptionsClarified": 1,
+        "dependenciesVerified": 1,
+        "attributionClarified": 1,
+        "settingsCorrected": 1
+      }
     }
   ],
   "reviewedCounts": {
-    "inaccurate_description": 686,
-    "generic_usage": 374,
+    "inaccurate_description": 687,
+    "generic_usage": 375,
     "false_warning": 319,
-    "incorrect_setting": 203,
-    "incorrect_scope": 381,
-    "incorrect_undo": 373,
-    "uncertain_attribution": 66,
-    "generic_summary": 69,
-    "incorrect_dependency": 390,
+    "incorrect_setting": 204,
+    "incorrect_scope": 382,
+    "incorrect_undo": 374,
+    "uncertain_attribution": 67,
+    "generic_summary": 70,
+    "incorrect_dependency": 391,
     "incorrect_authorship": 40,
     "incorrect_version": 8,
     "inaccurate_version": 1,
@@ -53121,20 +53278,20 @@
     "incorrect_modifies_document": 1,
     "inaccurate_summary": 5,
     "duplicate_attribution": 8,
-    "missing_warning": 12,
+    "missing_warning": 13,
     "missing_version": 4
   },
   "reviewedMetrics": {
     "falseWarningsRemoved": 78,
     "serviceSettingsRemoved": 156,
-    "undoDescriptionsClarified": 365,
-    "usageCorrected": 374,
-    "purposeClarified": 372,
-    "warningsClarified": 306,
-    "scopeClarified": 358,
+    "undoDescriptionsClarified": 366,
+    "usageCorrected": 375,
+    "purposeClarified": 373,
+    "warningsClarified": 307,
+    "scopeClarified": 359,
     "settingsClarified": 509,
-    "attributionClarified": 67,
-    "dependenciesVerified": 256,
+    "attributionClarified": 68,
+    "dependenciesVerified": 257,
     "externalWarningsRefined": 12,
     "dependenciesClarified": 29,
     "falseSettingsRemoved": 10,
@@ -53142,7 +53299,7 @@
     "selectionClarified": 6,
     "versionCorrected": 3,
     "versionsClarified": 4,
-    "settingsCorrected": 8,
+    "settingsCorrected": 9,
     "effectCorrected": 1
   },
   "scripts": [
@@ -152161,61 +152318,45 @@
       "lineEnding": "CRLF",
       "claims": {
         "title": "Выделить следующий заглавный подзаголовок",
-        "summary": "Выделяет следующий заглавный подзаголовок.",
-        "description": "Выделяет следующий заглавный подзаголовок. Поиск выполняется по условиям именно этого файла, с установкой диапазона и прокруткой; найденное не исправляется автоматически.",
+        "summary": "Ищет и выделяет следующий подзаголовок с заданной долей заглавных букв.",
+        "description": "От конца текущего выделения или курсора просматривает следующие P.subtitle внутри fbw_body. Предварительный шаблон проверяет наличие буквы или цифры, затем скрипт считает долю заглавных кириллических и латинских букв и сравнивает её с percentThreshold. Найденный подзаголовок выделяет и прокручивает в область видимости; книгу не меняет. При достижении конца предлагает повторить поиск с начала книги.",
         "authors": [
           {
             "name": "TaKir",
-            "role": "author"
-          },
-          {
-            "name": "TaKir",
-            "role": "contributor",
-            "contribution": "idea"
+            "role": "author",
+            "contribution": "идея и реализация"
           },
           {
             "name": "DeepSeek",
-            "role": "ai_assistance"
+            "role": "ai_assistance",
+            "contribution": "участие в реализации"
           }
         ],
         "version": "1.0",
-        "scope": "От текущей позиции; направление поиска определяется конкретным скриптом.",
+        "scope": "Все P.subtitle внутри fbw_body после текущей позиции, включая примечания и комментарии; при согласии повторного поиска — с начала fbw_body. Текущий абзац пропускается.",
         "modifiesDocument": false,
         "requiresSelection": false,
         "usage": [
-          "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "Оставьте курсор в обрабатываемом элементе или точке начала поиска; непустое выделение не требуется.",
-          "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже."
+          "Поставьте курсор или выделите текст перед предполагаемым подзаголовком. Запуск ищет следующий подходящий подзаголовок; при достижении конца можно начать поиск с начала книги.",
+          "Для другого порога измените percentThreshold в исходном JS. Проверьте результат: доля заглавных рассчитывается только по кириллическим и латинским буквам."
         ],
-        "warnings": [],
+        "warnings": [
+          "Процент округляется до целого: при пороге 100% подзаголовок с небольшой долей строчных букв тоже может быть принят.",
+          "Предварительный шаблон ошибочно считает символ | признаком содержательной строки; при пороге 0% такой подзаголовок может пройти поиск."
+        ],
         "settings": [
           {
             "name": "percentThreshold",
             "value": 100,
             "expression": "100",
-            "description": "100% по умолчанию (полностью заглавные)",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "blockElementClass",
-            "value": "subtitle",
-            "expression": "\"subtitle\"",
-            "description": "класс элемента подзаголовка",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
-          },
-          {
-            "name": "nbspEntity",
-            "value": "&nbsp;",
-            "expression": "\"&nbsp;\"",
-            "description": "Неразрывный пробел из настроек FBE",
-            "valueMeaning": "Значение литерала/резервное значение в исходнике, не сохранённая настройка пользователя."
+            "description": "Минимальная доля заглавных букв среди кириллических и латинских букв, в процентах.",
+            "valueMeaning": "Исходное значение в коде скрипта."
           }
         ],
         "dependencies": [],
         "undo": {
           "status": "explicit_calls_found",
-          "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+          "description": "Скрипт открывает и завершает группу отмены, хотя только меняет выделение и прокрутку; изменений книги для отмены нет. Обычные ранние выходы после открытия группы её закрывают, обработка исключений не предусмотрена."
         },
         "examples": null,
         "tags": [
@@ -152228,54 +152369,54 @@
       "evidence": {
         "undo_begin": [
           {
-            "line": 256,
+            "line": 240,
             "text": "window.external.BeginUndoUnit(document, undoMsg);"
           }
         ],
         "undo_end": [
           {
-            "line": 265,
+            "line": 249,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 329,
+            "line": 313,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 338,
+            "line": 322,
             "text": "window.external.EndUndoUnit(document);"
           },
           {
-            "line": 360,
+            "line": 344,
             "text": "window.external.EndUndoUnit(document);"
           }
         ],
         "dialog": [],
         "selection": [
           {
-            "line": 228,
+            "line": 212,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 228,
+            "line": 212,
             "text": "var selection = document.selection;"
           },
           {
-            "line": 229,
+            "line": 213,
             "text": "if (selection) {"
           },
           {
-            "line": 230,
+            "line": 214,
             "text": "var range = selection.createRange();"
           }
         ],
         "write": [
           {
-            "line": 193,
+            "line": 177,
             "text": "if (elem1.className == \"subtitle\" && subtitleRegExp.test(elem1.innerHTML.replace(/<[^>]*?>/gi, \"\"))) return true;"
           },
           {
-            "line": 375,
+            "line": 359,
             "text": "if (subtitleRegExp.test(node.innerHTML.replace(/<[^>]*?>/gi, \"\"))) {"
           }
         ],
@@ -152286,83 +152427,83 @@
         "file": [],
         "return": [
           {
-            "line": 136,
+            "line": 120,
             "text": "return ch == ' ' || ch == '\\t' || ch == '\\n' || ch == '\\r' || ch.charCodeAt(0) == 160;"
           },
           {
-            "line": 142,
+            "line": 126,
             "text": "return (code >= 1040 && code <= 1103) || // Кириллица"
           },
           {
-            "line": 150,
+            "line": 134,
             "text": "if (!isLetter(ch)) return false;"
           },
           {
-            "line": 152,
+            "line": 136,
             "text": "return (code >= 1040 && code <= 1071) || // Кириллица заглавные"
           },
           {
-            "line": 159,
+            "line": 143,
             "text": "if (!text) return 0;"
           },
           {
-            "line": 174,
+            "line": 158,
             "text": "if (totalLetters == 0) return 0;"
           },
           {
-            "line": 175,
+            "line": 159,
             "text": "return Math.round((upperLetters / totalLetters) * 100);"
           },
           {
-            "line": 188,
+            "line": 172,
             "text": "return text;"
           },
           {
-            "line": 193,
+            "line": 177,
             "text": "if (elem1.className == \"subtitle\" && subtitleRegExp.test(elem1.innerHTML.replace(/<[^>]*?>/gi, \"\"))) return true;"
           },
           {
-            "line": 194,
+            "line": 178,
             "text": "return false;"
           },
           {
-            "line": 200,
+            "line": 184,
             "text": "if (elem2.nodeName == \"DIV\" && elem2.className == nameOfClass) return true;"
           },
           {
-            "line": 203,
+            "line": 187,
             "text": "return false;"
           },
           {
-            "line": 215,
+            "line": 199,
             "text": "return el;"
           },
           {
-            "line": 223,
+            "line": 207,
             "text": "return el;"
           },
           {
-            "line": 246,
+            "line": 230,
             "text": "return;"
           },
           {
-            "line": 252,
+            "line": 236,
             "text": "return;"
           },
           {
-            "line": 267,
+            "line": 251,
             "text": "return;"
           },
           {
-            "line": 333,
+            "line": 317,
             "text": "return;"
           },
           {
-            "line": 339,
+            "line": 323,
             "text": "return; // Просто выходим без сообщений"
           },
           {
-            "line": 366,
+            "line": 350,
             "text": "if (!parent || !parent.childNodes) return;"
           }
         ]
@@ -152374,68 +152515,26 @@
           "name": "percentThreshold",
           "declarations": [
             {
-              "line": 97,
+              "line": 81,
               "text": "var percentThreshold = 100; // 100% по умолчанию (полностью заглавные)"
             }
           ],
           "uses": [
             {
-              "line": 97,
+              "line": 81,
               "text": "var percentThreshold = 100; // 100% по умолчанию (полностью заглавные)"
             },
             {
-              "line": 289,
+              "line": 273,
               "text": "if (percent >= percentThreshold) {"
             },
             {
-              "line": 317,
+              "line": 301,
               "text": "if (percent >= percentThreshold) {"
             },
             {
-              "line": 326,
+              "line": 310,
               "text": "var finalMsg = notFoundAnyMsg.replace(\"%P%\", percentThreshold);"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 1,
-          "name": "blockElementClass",
-          "declarations": [
-            {
-              "line": 100,
-              "text": "var blockElementClass = \"subtitle\"; // класс элемента подзаголовка"
-            }
-          ],
-          "uses": [
-            {
-              "line": 100,
-              "text": "var blockElementClass = \"subtitle\"; // класс элемента подзаголовка"
-            }
-          ],
-          "classification": "requires_review"
-        },
-        {
-          "index": 2,
-          "name": "nbspEntity",
-          "declarations": [
-            {
-              "line": 115,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            }
-          ],
-          "uses": [
-            {
-              "line": 115,
-              "text": "var nbspEntity = \"&nbsp;\";"
-            },
-            {
-              "line": 120,
-              "text": "nbspEntity = nbspChar;"
-            },
-            {
-              "line": 124,
-              "text": "nbspEntity = \"&nbsp;\";"
             }
           ],
           "classification": "requires_review"
@@ -152444,23 +152543,32 @@
       "dependencyEvidence": [],
       "authorshipEvidence": [
         {
-          "line": 77,
+          "line": 61,
           "text": "// version 1.0"
         },
         {
-          "line": 87,
+          "line": 71,
           "text": "// version 1.0, 21.01.2026"
         },
         {
-          "line": 91,
+          "line": 75,
           "text": "// Название и версия для сообщений"
         },
         {
-          "line": 93,
+          "line": 77,
           "text": "var version = \"1.0\";"
         }
       ],
-      "warningEvidence": [],
+      "warningEvidence": [
+        {
+          "text": "Процент округляется до целого: при пороге 100% подзаголовок с небольшой долей строчных букв тоже может быть принят.",
+          "verification": "requires_review"
+        },
+        {
+          "text": "Предварительный шаблон ошибочно считает символ | признаком содержательной строки; при пороге 0% такой подзаголовок может пройти поиск.",
+          "verification": "requires_review"
+        }
+      ],
       "unverifiedFields": [
         "title",
         "summary",
@@ -152480,100 +152588,34 @@
       ],
       "findings": [
         {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Откройте нужную книгу в FBE Next; скрипты этого комплекта работают с визуальным HTML-представлением, если в описании не указано иное.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Проверьте перечисленные параметры: часть задаётся в исходном JS, часть — через общий диалог настроек.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "Типовая инструкция требует проверки применимости к этому скрипту",
-          "confidence": "high",
-          "evidence": []
-        },
-        {
-          "category": "generic_usage",
-          "field": "usage",
-          "previous": "Запустите команду и ответьте на её диалоги. Тексты и условия проверок приведены ниже.",
-          "proposed": null,
-          "reason": "В исполняемом JS не найден прямой вызов диалога; возможна зависимость или косвенный вызов",
-          "confidence": "medium",
-          "evidence": []
-        },
-        {
-          "category": "incorrect_undo",
-          "field": "undo.description",
-          "previous": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей.",
-          "proposed": null,
-          "reason": "Техническое имя API или необоснованное обещание Ctrl+Z в пользовательском тексте",
-          "confidence": "high",
-          "evidence": [
-            {
-              "line": 256,
-              "text": "window.external.BeginUndoUnit(document, undoMsg);"
-            },
-            {
-              "line": 265,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 329,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 338,
-              "text": "window.external.EndUndoUnit(document);"
-            },
-            {
-              "line": 360,
-              "text": "window.external.EndUndoUnit(document);"
-            }
-          ]
-        },
-        {
           "category": "requires_review",
           "field": "undo",
           "previous": {
             "status": "explicit_calls_found",
-            "description": "Вызовы BeginUndoUnit/EndUndoUnit найдены. Это не доказывает корректный откат всех ветвей, внешних файлов и зависимостей."
+            "description": "Скрипт открывает и завершает группу отмены, хотя только меняет выделение и прокрутку; изменений книги для отмены нет. Обычные ранние выходы после открытия группы её закрывают, обработка исключений не предусмотрена."
           },
           "proposed": null,
           "reason": "Есть return между первым открытием и последним закрытием группы; проверить ветви и вложенность",
           "confidence": "medium",
           "evidence": [
             {
-              "line": 256,
+              "line": 240,
               "text": "window.external.BeginUndoUnit(document, undoMsg);"
             },
             {
-              "line": 267,
+              "line": 251,
               "text": "return;"
             },
             {
-              "line": 333,
+              "line": 317,
               "text": "return;"
             },
             {
-              "line": 339,
+              "line": 323,
               "text": "return; // Просто выходим без сообщений"
             },
             {
-              "line": 360,
+              "line": 344,
               "text": "window.external.EndUndoUnit(document);"
             }
           ]

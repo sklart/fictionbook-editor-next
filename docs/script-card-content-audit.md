@@ -16,56 +16,56 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **428**. Исполняемый код не изменён.
+Изменено карточек: **429**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 69
-- `generic_usage`: 374
+- `generic_summary`: 70
+- `generic_usage`: 375
 - `generic_warning`: 62
-- `inaccurate_description`: 686
+- `inaccurate_description`: 687
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 390
+- `incorrect_dependency`: 391
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 381
+- `incorrect_scope`: 382
 - `incorrect_selection`: 38
-- `incorrect_setting`: 203
-- `incorrect_undo`: 373
+- `incorrect_setting`: 204
+- `incorrect_undo`: 374
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 12
-- `uncertain_attribution`: 66
+- `missing_warning`: 13
+- `uncertain_attribution`: 67
 
 Подтверждённые результаты:
 
-- `attributionClarified`: 67
+- `attributionClarified`: 68
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 256
+- `dependenciesVerified`: 257
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 372
-- `scopeClarified`: 358
+- `purposeClarified`: 373
+- `scopeClarified`: 359
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 8
-- `undoDescriptionsClarified`: 365
-- `usageCorrected`: 374
+- `settingsCorrected`: 9
+- `undoDescriptionsClarified`: 366
+- `usageCorrected`: 375
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 306
+- `warningsClarified`: 307
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **268**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **269**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -611,12 +611,15 @@
 - `13_Заголовки, подзаголовки, пустые строки/635_Расформатировать подзаголовки (расширенная версия).js:362` — Группа отмены открыта без защиты finally; исключение при изменении P или вставке пустого абзаца до EndUndoUnit на строке 403 оставит её открытой после частичных изменений.
 - `13_Заголовки, подзаголовки, пустые строки/665_Выделить следующий заглавный заголовок.js:97` — Math.round округляет долю заглавных до целого. При percentThreshold=100 доля 99,5% округляется до 100%, поэтому заголовок со строчной буквой может ошибочно считаться полностью заглавным.
 - `13_Заголовки, подзаголовки, пустые строки/665_Выделить следующий заглавный заголовок.js:187` — Для операции поиска и выделения открывается группа отмены без защиты finally. Обычные ранние выходы закрывают её, но ошибка при поиске или выборе диапазона до EndUndoUnit на строке 295 оставит группу открытой.
+- `13_Заголовки, подзаголовки, пустые строки/670_Выделить следующий заглавный подзаголовок.js:100` — Math.round округляет долю заглавных до целого. При percentThreshold=100 доля 99,5% округляется до 100%, поэтому строка со строчной буквой может ошибочно считаться полностью заглавной.
+- `13_Заголовки, подзаголовки, пустые строки/670_Выделить следующий заглавный подзаголовок.js:37` — Символ | включён внутрь класса символов предварительного шаблона. При пороге 0% P.subtitle из одних вертикальных черт считается содержательным и может быть найден.
+- `13_Заголовки, подзаголовки, пустые строки/670_Выделить следующий заглавный подзаголовок.js:181` — Для операции поиска и выделения открывается группа отмены без защиты finally. Обычные ранние выходы закрывают её, но ошибка при поиске или выборе диапазона до EndUndoUnit на строке 285 оставит группу открытой.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 853
+- `generic_usage`: 849
 - `inaccurate_description`: 49
-- `incorrect_undo`: 125
+- `incorrect_undo`: 124
 - `requires_review`: 356
 
 ## Границы проверки
