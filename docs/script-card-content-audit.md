@@ -16,31 +16,31 @@
 
 ## Проверенные исправления
 
-Изменено карточек: **456**. Исполняемый код не изменён.
+Изменено карточек: **457**. Исполняемый код не изменён.
 
 - `duplicate_attribution`: 8
 - `false_setting`: 9
 - `false_warning`: 319
-- `generic_summary`: 97
-- `generic_usage`: 402
+- `generic_summary`: 98
+- `generic_usage`: 403
 - `generic_warning`: 62
-- `inaccurate_description`: 714
+- `inaccurate_description`: 715
 - `inaccurate_summary`: 5
 - `inaccurate_version`: 1
 - `incorrect_attribution`: 43
 - `incorrect_authorship`: 40
-- `incorrect_dependency`: 419
+- `incorrect_dependency`: 420
 - `incorrect_effect`: 3
 - `incorrect_metadata`: 10
 - `incorrect_modification`: 1
 - `incorrect_modifies_document`: 1
-- `incorrect_scope`: 409
-- `incorrect_selection`: 43
-- `incorrect_setting`: 231
-- `incorrect_undo`: 401
+- `incorrect_scope`: 410
+- `incorrect_selection`: 44
+- `incorrect_setting`: 232
+- `incorrect_undo`: 402
 - `incorrect_version`: 8
 - `missing_version`: 4
-- `missing_warning`: 40
+- `missing_warning`: 41
 - `uncertain_attribution`: 90
 
 Подтверждённые результаты:
@@ -48,24 +48,24 @@
 - `attributionClarified`: 91
 - `attributionCorrected`: 15
 - `dependenciesClarified`: 29
-- `dependenciesVerified`: 284
+- `dependenciesVerified`: 285
 - `effectCorrected`: 1
 - `externalWarningsRefined`: 12
 - `falseSettingsRemoved`: 10
 - `falseWarningsRemoved`: 78
-- `purposeClarified`: 400
-- `scopeClarified`: 386
+- `purposeClarified`: 401
+- `scopeClarified`: 387
 - `selectionClarified`: 6
 - `serviceSettingsRemoved`: 156
 - `settingsClarified`: 509
-- `settingsCorrected`: 36
-- `undoDescriptionsClarified`: 393
-- `usageCorrected`: 402
+- `settingsCorrected`: 37
+- `undoDescriptionsClarified`: 394
+- `usageCorrected`: 403
 - `versionCorrected`: 3
 - `versionsClarified`: 4
-- `warningsClarified`: 334
+- `warningsClarified`: 335
 
-Скриптов с подтверждёнными замечаниями к исполняемому коду: **296**.
+Скриптов с подтверждёнными замечаниями к исполняемому коду: **297**.
 
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:305` — После начала группы отмены выход при отсутствии body не закрывает её.
 - `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js:391` — Другие досрочные выходы после вставки временной ссылки также обходят завершение группы; алгоритм оставлен без изменений.
@@ -750,13 +750,17 @@
 - `13_Заголовки, подзаголовки, пустые строки/50_Привести заголовки разделов-'книг' к виду 'Книга I'.js:2227` — Обход исключает history, annotation и body notes/comments жёстким условием, а body с другим fbname не исключает. Два объявленных переключателя области не применяются.
 - `13_Заголовки, подзаголовки, пустые строки/50_Привести заголовки разделов-'книг' к виду 'Книга I'.js:2208` — После BeginUndoUnit и до EndUndoUnit на строке 2248 нет действующего досрочного return (строки с return закомментированы), но нет и finally; исключение при подготовке или обходе DOM оставит операцию отмены открытой.
 - `13_Заголовки, подзаголовки, пустые строки/50_Привести заголовки разделов-'книг' к виду 'Книга I'.js:2266` — Итоговое сообщение называет целевой вид 'Книга 1', хотя алгоритм вставляет римские числа и карточка называется 'Книга I'.
+- `14_Цитаты/052_Сформатировать абзац(ы) цитатой.js:70` — Проверка пустого текстового диапазона целиком закомментирована. При курсоре без выделения скрипт вставляет два маркера и может обработать текущий абзац, несмотря на текст ошибки 'Нет выделения'.
+- `14_Цитаты/052_Сформатировать абзац(ы) цитатой.js:89` — После BeginUndoUnit и вставки маркеров return при отсутствии начального P выходит без EndUndoUnit и без удаления маркеров. Аналогичный выход для конечного P на строке 98.
+- `14_Цитаты/052_Сформатировать абзац(ы) цитатой.js:34` — getNextNode поднимается по parentNode без проверки null в цикле while (!el.nextSibling). Если конечный абзац не достигается, обход может завершиться исключением с незакрытой операцией отмены.
+- `14_Цитаты/052_Сформатировать абзац(ы) цитатой.js:21` — Создание цитаты клонирует P с текущими временными маркерами внутри, после чего удаляет оригиналы. Поиск и удаление маркеров по ID зависит от того, какой из временно дублированных узлов возвращает getElementById.
 
 ## Замечания автоматического прохода
 
-- `generic_usage`: 715
+- `generic_usage`: 711
 - `inaccurate_description`: 46
-- `incorrect_undo`: 98
-- `requires_review`: 335
+- `incorrect_undo`: 97
+- `requires_review`: 334
 
 ## Границы проверки
 
