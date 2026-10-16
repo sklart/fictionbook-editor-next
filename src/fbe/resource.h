@@ -855,7 +855,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        270
 #define _APS_NEXT_COMMAND_VALUE         58003
-#define _APS_NEXT_CONTROL_VALUE         1707
+#define _APS_NEXT_CONTROL_VALUE         1795
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif
