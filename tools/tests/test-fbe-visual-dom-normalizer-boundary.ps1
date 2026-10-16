@@ -25,5 +25,5 @@ foreach($legacy in @('static void PackText', 'static void RelocateParagraphs', '
     if($view -match [regex]::Escape($legacy)) { throw "FBEview.cpp всё ещё определяет $legacy" }
 }
 
-if(-not $view.Contains('FbeVisualDom::NormalizeStructure(Document(), scopeNode)')) { throw 'CFBEView::Normalize не вызывает normalizer.' }
+if(-not $view.Contains('FbeVisualDom::NormalizeStructure(Document(), copyScope)')) { throw 'CFBEView::Normalize не вызывает normalizer для подготовленной копии DOM.' }
 Write-Host 'Visual DOM normalizer boundary passed.'

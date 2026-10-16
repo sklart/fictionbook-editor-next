@@ -34,7 +34,9 @@
 #include "image/ImageDocumentInserter.h"
 #include "clipboard/ClipboardPastePreparer.h"
 #include "clipboard/HtmlPasteSanitizer.h"
+#include "undo/UndoFailureRecovery.h"
 #include <vector>
+#include <memory>
 using FbeTable::Grid;
 
 class CSearchHighlightOverlay;
@@ -164,20 +166,36 @@ public:
 
 class PasteUndoRecordingScope {
 public:
-	explicit PasteUndoRecordingScope(IOleUndoManager* manager) : m_manager(manager) {
+	explicit PasteUndoRecordingScope(IOleUndoManager* manager, bool open = true) : m_manager(manager) {
 		CComObject<PasteBlockedUndoUnit>* unit = NULL;
 		if (m_manager && SUCCEEDED(CComObject<PasteBlockedUndoUnit>::CreateInstance(&unit))) {
 			m_block = unit;
-			m_open = SUCCEEDED(m_manager->Open(m_block));
+			if (open) Open();
 		}
 	}
 	~PasteUndoRecordingScope() { const HRESULT hr = Close(); if (FAILED(hr)) StartupTrace::HResult(L"undo", L"D415", hr, L"Recording block Close failed"); }
 	bool Blocked() const { return m_open; }
+	HRESULT Open() { if (m_open) return S_OK; if (!m_manager || !m_block) return E_OUTOFMEMORY; const HRESULT hr = m_manager->Open(m_block); if (SUCCEEDED(hr)) m_open = true; return hr; }
 	HRESULT Close() { if (!m_open) return S_OK; const HRESULT hr = m_manager->Close(m_block, FALSE); if (SUCCEEDED(hr)) m_open = false; return hr; }
 private:
 	CComPtr<IOleUndoManager> m_manager;
 	CComPtr<IOleParentUndoUnit> m_block;
 	bool m_open = false;
+};
+
+// Keep actual removed nodes until the inverse has been accepted. Reattaching
+// these nodes preserves references held by older native MSHTML undo units.
+struct PasteRestoreJournal {
+	MSHTML::IHTMLDOMNodePtr parent, anchor;
+	std::vector<MSHTML::IHTMLDOMNodePtr> original, replacement;
+	HRESULT Rollback() {
+		try {
+			for (const auto& node : replacement) if (node->parentNode == parent) parent->removeChild(node);
+			for (const auto& node : original) if (node->parentNode == parent) parent->removeChild(node);
+			for (const auto& node : original) parent->insertBefore(node, anchor.GetInterfacePtr());
+			return S_OK;
+		} catch (const _com_error& error) { StartupTrace::HResult(L"undo", L"D421", error.Error(), L"DOM journal restore failed"); return E_ABORT; }
+	}
 };
 
 class PasteDomUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
@@ -192,11 +210,17 @@ public:
 		m_beforeSelection = beforeSelection; m_afterSelection = afterSelection;
 		m_document = document; m_beforeWasClean = beforeWasClean;
 		m_beforeRecoveryClean = beforeRecoveryClean; m_saveVersion = saveVersion;
+		m_prefix = 0; m_suffix = 0;
+		m_beforeRetained.clear(); m_afterRetained.clear();
 		while (m_prefix < m_before.size() && m_prefix < m_after.size() && m_before[m_prefix].html == m_after[m_prefix].html) ++m_prefix;
 		while (m_suffix < m_before.size() - m_prefix && m_suffix < m_after.size() - m_prefix &&
 			m_before[m_before.size() - m_suffix - 1].html == m_after[m_after.size() - m_suffix - 1].html) ++m_suffix;
 	}
 	bool Changed() const { return m_before.size() - m_prefix - m_suffix || m_after.size() - m_prefix - m_suffix; }
+	void RetainOriginalChildren() {
+		for (size_t i = m_prefix; i < m_before.size() - m_suffix; ++i) m_beforeRetained.push_back(m_before[i].node);
+		for (size_t i = m_prefix; i < m_after.size() - m_suffix; ++i) m_afterRetained.push_back(m_after[i].node);
+	}
 	const std::vector<PasteChildSnapshot>& Before() const { return m_before; }
 	bool PrepareChangedClones() {
 		for (size_t i = m_prefix; i < m_before.size() - m_suffix; ++i)
@@ -205,44 +229,77 @@ public:
 			m_after[i].clone = m_after[i].node->cloneNode(VARIANT_TRUE);
 		return true;
 	}
-	HRESULT Restore(bool before) {
+	HRESULT Restore(bool before, PasteRestoreJournal* transaction = nullptr) {
 		if (!m_parent) return E_UNEXPECTED;
+		PasteRestoreJournal local;
+		PasteRestoreJournal& journal = transaction ? *transaction : local;
+		bool changing = false;
 		try {
+			journal.parent = m_parent;
 			const size_t current = (before ? m_after : m_before).size() - m_prefix - m_suffix;
 			const std::vector<PasteChildSnapshot>& wanted = before ? m_before : m_after;
 			MSHTML::IHTMLDOMNodePtr node(m_parent->firstChild);
 			for (size_t i = 0; i < m_prefix; ++i) { if (!node) return E_UNEXPECTED; node = node->nextSibling; }
 			for (size_t i = 0; i < current; ++i) {
 				if (!node) return E_UNEXPECTED;
-				MSHTML::IHTMLDOMNodePtr next(node->nextSibling);
-				m_parent->removeChild(node);
-				node = next;
+				journal.original.push_back(node); node = node->nextSibling;
 			}
-			for (size_t i = m_prefix; i < wanted.size() - m_suffix; ++i)
-				m_parent->insertBefore(wanted[i].clone->cloneNode(VARIANT_TRUE), node.GetInterfacePtr());
+			journal.anchor = node;
+			// All cloning and vector allocation must finish before the first edit.
+			const auto& retained = before ? m_beforeRetained : m_afterRetained;
+			if (!retained.empty()) journal.replacement = retained;
+			else for (size_t i = m_prefix; i < wanted.size() - m_suffix; ++i)
+				journal.replacement.push_back(wanted[i].clone->cloneNode(VARIANT_TRUE));
+			changing = true;
+			for (const auto& old : journal.original) { m_parent->removeChild(old); CheckError(FbeUndo::Inject(L"html-remove")); }
+			for (const auto& fresh : journal.replacement) { m_parent->insertBefore(fresh, journal.anchor.GetInterfacePtr()); CheckError(FbeUndo::Inject(L"html-insert")); }
 			return S_OK;
-		} catch (const _com_error& error) { return error.Error(); }
+		} catch (const _com_error& error) { return changing && FAILED(journal.Rollback()) ? E_ABORT : error.Error(); }
+		catch (const std::bad_alloc&) { return changing && FAILED(journal.Rollback()) ? E_ABORT : E_OUTOFMEMORY; }
 	}
 	STDMETHOD(Do)(IOleUndoManager* manager) {
+		try {
 		CComPtr<IOleUndoManager> recordingManager(manager);
 		if (!recordingManager) {
 			IServiceProviderPtr provider(MSHTML::IHTMLElementPtr(m_parent)->document);
 			if (provider) provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&recordingManager));
 		}
-		PasteUndoRecordingScope recording(recordingManager);
+		PasteUndoRecordingScope compensation(recordingManager, false), recording(recordingManager);
 		if (!recording.Blocked()) return E_UNEXPECTED;
-		const HRESULT result = Restore(m_applyBefore);
-		if (FAILED(result)) return result;
-		const HRESULT closed = recording.Close();
-		if (FAILED(closed)) return closed;
+		const long version = m_document ? m_document->m_body.GetVersionNumber() : -1;
+		const bool clean = m_document && !m_document->DocChanged(), recoveryClean = m_document && !m_document->DocRelChanged();
+		MSHTML::IHTMLTxtRangePtr oldSelection;
+		try { MSHTML::IHTMLDocument2Ptr document(MSHTML::IHTMLElementPtr(m_parent)->document); oldSelection = document->selection->createRange(); } catch (const _com_error&) {}
+		PasteRestoreJournal journal;
+		HRESULT result = Restore(m_applyBefore, &journal);
+		if (SUCCEEDED(result)) {
+			result = FbeUndo::Inject(L"html-close");
+			if (SUCCEEDED(result)) result = recording.Close();
+			if (SUCCEEDED(result) && manager) { result = FbeUndo::Inject(L"html-add"); if (SUCCEEDED(result)) result = manager->Add(this); }
+			if (FAILED(result)) {
+				if (!recording.Blocked() && FAILED(compensation.Open())) return E_ABORT;
+				if (FAILED(journal.Rollback())) return E_ABORT;
+			}
+		}
+		if (FAILED(result)) {
+			try { if (oldSelection) oldSelection->select(); } catch (const _com_error&) {}
+			const HRESULT compensated = compensation.Close(), closed = recording.Close();
+			if (m_document && result != E_ABORT) m_document->RestoreCleanAfterPasteUndo(version, clean, recoveryClean);
+			return FAILED(compensated) || FAILED(closed) ? E_ABORT : result;
+		}
 		try {
 			MSHTML::IHTMLTxtRangePtr selection(m_applyBefore ? m_beforeSelection : m_afterSelection);
 			if (selection) selection->select();
 		} catch (const _com_error&) {}
 		if (m_applyBefore && m_document)
 			m_document->RestoreCleanAfterPasteUndo(m_saveVersion, m_beforeWasClean, m_beforeRecoveryClean);
+		// A later compensation/redo must restore the exact nodes removed now,
+		// including references retained by earlier native undo units.
+		(m_applyBefore ? m_afterRetained : m_beforeRetained).swap(journal.original);
 		m_applyBefore = !m_applyBefore;
-		return manager ? manager->Add(this) : S_OK;
+		return S_OK;
+		} catch (const _com_error& error) { return error.Error(); }
+		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 	}
 	STDMETHOD(GetDescription)(BSTR* description) {
 		if (!description) return E_POINTER;
@@ -250,7 +307,7 @@ public:
 	}
 	STDMETHOD(GetUnitType)(CLSID* classId, LONG* id) {
 		if (!classId || !id) return E_POINTER;
-		*classId = CLSID_NULL; *id = 0; return S_OK;
+		*classId = FbeUndo::UnitClass(); *id = 1; return S_OK;
 	}
 	STDMETHOD(OnNextAdd)() { return S_OK; }
 private:
@@ -261,6 +318,7 @@ private:
 	bool m_beforeRecoveryClean = false;
 	long m_saveVersion = -1;
 	std::vector<PasteChildSnapshot> m_before, m_after;
+	std::vector<MSHTML::IHTMLDOMNodePtr> m_beforeRetained, m_afterRetained;
 	size_t m_prefix = 0, m_suffix = 0;
 	bool m_applyBefore = true;
 };
@@ -682,9 +740,33 @@ BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
 // editing commands
 LRESULT CFBEView::ExecCommand(int cmd) {
   IOleCommandTargetPtr	  ct(m_browser);
-  if (ct)
-    ct->Exec(&CGID_MSHTML,cmd,0,NULL,NULL);
-  return 0;
+  if (!ct) return E_NOINTERFACE;
+  if ((cmd != IDM_UNDO && cmd != IDM_REDO) || !m_ownerDocument)
+    return ct->Exec(&CGID_MSHTML,cmd,0,NULL,NULL);
+  try {
+    CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
+    if (!manager) return E_NOINTERFACE;
+    FbeUndo::HistoryCheckpoint history(manager);
+    if (!history.Owned(cmd == IDM_REDO)) return ct->Exec(&CGID_MSHTML,cmd,0,NULL,NULL);
+    const auto savepoints = m_ownerDocument->CaptureUndoSavepoints();
+    const unsigned long long before = FbeUndo::DocumentState(Document());
+    MSHTML::IHTMLTxtRangePtr selection;
+    try { selection = Document()->selection->createRange(); } catch (const _com_error&) {}
+    const HRESULT hr = ct->Exec(&CGID_MSHTML,cmd,0,NULL,NULL);
+    if (FAILED(hr)) {
+      // A failed Do causes OLE to compensate and clear both stacks. Restore
+      // retained entries only after proving the document is unchanged.
+      if (before == FbeUndo::DocumentState(Document())) {
+        const HRESULT restored = history.Restore(manager);
+        StartupTrace::HResult(L"undo", L"D420", restored, L"Restore history after compensated undo failure");
+        if (FAILED(restored)) return restored;
+        m_ownerDocument->RestoreUndoSavepoints(savepoints);
+        try { if (selection) selection->select(); } catch (const _com_error&) {}
+      } else return E_ABORT;
+    }
+    return hr;
+  } catch (const _com_error& error) { return error.Error(); }
+  catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 }
 
 void	  CFBEView::QueryStatus(OLECMD *cmd,int ncmd) {
@@ -939,7 +1021,7 @@ static bool	MergeEqualHTMLElements(MSHTML::IHTMLDOMNode *node, MSHTML::IHTMLDocu
 	while ((bool)cur) 
 	{
 		MSHTML::IHTMLDOMNodePtr next;
-		try { next = cur->nextSibling; } catch(...) { return false; }
+		next = cur->nextSibling;
 
 		if (MergeEqualHTMLElements(cur,doc))
 		{
@@ -1067,7 +1149,7 @@ restart:
 	while ((bool)cur) 
 	{
 		MSHTML::IHTMLDOMNodePtr next;
-		try { next = cur->nextSibling; } catch(...) { return false; }
+		next = cur->nextSibling;
 
 		if (RemoveUnk(cur,doc))
 			goto restart;
@@ -1964,6 +2046,10 @@ class DropUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOle
 	FB::Doc* m_document = nullptr;
 	long m_version = -1;
 	bool m_clean = false, m_recoveryClean = false;
+	std::unique_ptr<FbeUndo::HistoryCheckpoint> m_history;
+	unsigned long long m_before = 0;
+	FB::Doc::UndoSavepoints m_savepoints{};
+	MSHTML::IHTMLTxtRangePtr m_selection;
 public:
 	void CaptureHistoryState(FB::Doc* document) {
 		m_document = document;
@@ -1971,6 +2057,36 @@ public:
 			m_version = document->m_body.GetVersionNumber();
 			m_clean = !document->DocChanged(); m_recoveryClean = !document->DocRelChanged();
 		}
+	}
+	void PrepareRollback(IOleUndoManager* manager) {
+		if (m_history || !m_document) return;
+		try {
+			auto history = std::make_unique<FbeUndo::HistoryCheckpoint>(manager);
+			const auto before = FbeUndo::DocumentState(m_document->m_body.Document());
+			auto savepoints = m_document->CaptureUndoSavepoints();
+			MSHTML::IHTMLTxtRangePtr selection;
+			try { selection = m_document->m_body.Document()->selection->createRange(); } catch (const _com_error&) {}
+			m_history = std::move(history); m_before = before;
+			m_savepoints = std::move(savepoints); m_selection = selection;
+		} catch (const std::bad_alloc&) { _com_issue_error(E_OUTOFMEMORY); }
+	}
+	HRESULT RollbackRecorded(IOleUndoManager* manager) {
+		try {
+			if (!m_history || !m_document) return E_UNEXPECTED;
+			CheckError(manager->UndoTo(this));
+			if (m_before != FbeUndo::DocumentState(m_document->m_body.Document())) return E_ABORT;
+			// Only this transaction's inverse is on redo: committing it cleared
+			// the old redo entries, which the checkpoint still owns.
+			CComPtr<IEnumOleUndoUnits> list; CheckError(manager->EnumRedoable(&list));
+			CComPtr<IOleUndoUnit> inverse;
+			for (;;) { CComPtr<IOleUndoUnit> unit; const HRESULT hr = list->Next(1, &unit, nullptr); if (hr == S_FALSE) break; CheckError(hr); inverse = unit; }
+			if (inverse) CheckError(manager->DiscardFrom(inverse));
+			CheckError(m_history->Restore(manager));
+			m_document->RestoreUndoSavepoints(m_savepoints);
+			try { if (m_selection) m_selection->select(); } catch (const _com_error&) {}
+			return S_OK;
+		} catch (const _com_error& error) { return error.Error(); }
+		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 	}
 	BEGIN_COM_MAP(DropUndoUnit)
 		COM_INTERFACE_ENTRY(IOleUndoUnit)
@@ -2022,7 +2138,7 @@ public:
 	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id)
 	{
 		if (!clsid || !id) return E_POINTER;
-		*clsid = CLSID_NULL; *id = 0; return S_OK;
+		*clsid = FbeUndo::UnitClass(); *id = 2; return S_OK;
 	}
 	STDMETHOD(OnNextAdd)() { return m_units.empty() ? S_OK : m_units.back()->OnNextAdd(); }
 	STDMETHOD(Open)(IOleParentUndoUnit* unit)
@@ -2122,7 +2238,10 @@ HRESULT CFBEView::RollbackDropUndoGroup(IOleUndoManager* manager, IOleParentUndo
 {
 	const HRESULT closed = CloseDropUndoGroup(manager, parent, false);
 	if (FAILED(closed)) return closed;
-	return parent->Do(nullptr);
+	PasteUndoRecordingScope recording(manager);
+	if (!recording.Blocked()) return E_UNEXPECTED;
+	const HRESULT reverted = parent->Do(manager), blocked = recording.Close();
+	return FAILED(reverted) ? reverted : blocked;
 }
 
 namespace {
@@ -2209,6 +2328,7 @@ VARIANT_BOOL CFBEView::OnDragStart(IDispatch*)
 				m_drop_undo_open = true;
 			}
 			m_drop_version = GetVersionNumber();
+			static_cast<DropUndoUnit*>(m_drop_undo_parent.p)->PrepareRollback(m_drop_undo_manager);
 		} catch (const _com_error&) { ResetPendingDrop(); return VARIANT_FALSE; }
 	}
 	return VARIANT_TRUE;
@@ -2253,6 +2373,7 @@ VARIANT_BOOL CFBEView::OnDragDrop(IDispatch* event)
 			m_drop_undo_open = true;
 		}
 		m_drop_received = true;
+		static_cast<DropUndoUnit*>(m_drop_undo_parent.p)->PrepareRollback(m_drop_undo_manager);
 		// An internal move deletes its source after the target's Drop. Wait for
 		// dragend before queuing the finalizer outside the native drag loop.
 		if (!m_internal_drag && !PostMessage(AU::WM_FINALIZE_DROP, m_drop_generation)) { ResetPendingDrop(); return VARIANT_FALSE; }
@@ -2297,20 +2418,38 @@ LRESULT CFBEView::OnFinalizeDrop(UINT, WPARAM generation, LPARAM, BOOL&)
 			CString selectionTrace;
 			selectionTrace.Format(L"start=%ld; end=%ld; start-index=%ld; end-index=%ld", selectionStart.offset, selectionEnd.offset, selectionStart.index, selectionEnd.index);
 			StartupTrace::Event(L"drop", L"D412", selectionTrace);
+			CComPtr<IOleUndoManager> normalizationManager;
+			CComPtr<IOleParentUndoUnit> normalizationParent;
+			OpenDropUndoGroup(normalizationManager, normalizationParent);
+			HRESULT normalized = S_OK;
+			try
 			{
-				FbeDom::MarkupUndoUnitScope normalization(m_mk_srv, L"Normalize drop");
 				// Never broaden an unknown/stale endpoint to document.body. Each
 				// surviving changed owner is normalized once; siblings are untouched.
 				auto normalizeChanged = [&](MSHTML::IHTMLDOMNodePtr scope, const CString& before) {
 					if (IsLiveDropScope(scope, Document()) &&
 						CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(scope)->innerHTML)) != before)
-						NormalizeWithoutUndo(scope);
+						CheckError(NormalizeWithoutUndo(scope));
 				};
 				normalizeChanged(m_drag_source_scope, m_drop_source_html);
 				if (m_pending_drop_normalization_scope != m_drag_source_scope)
+				{
+					CheckError(FbeUndo::Inject(L"normalize-target"));
 					normalizeChanged(m_pending_drop_normalization_scope, m_drop_target_html);
+				}
 			}
-			if (caret)
+			catch (const _com_error& error) { normalized = error.Error(); }
+			catch (const std::bad_alloc&) { normalized = E_OUTOFMEMORY; }
+			if (SUCCEEDED(normalized)) normalized = CloseDropUndoGroup(normalizationManager, normalizationParent, true);
+			if (FAILED(normalized)) {
+				if (FAILED(CloseDropUndoGroup(normalizationManager, normalizationParent, true)) ||
+					FAILED(CloseDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent, true))) normalized = E_ABORT;
+				else {
+					m_drop_undo_open = false;
+					if (FAILED(static_cast<DropUndoUnit*>(m_drop_undo_parent.p)->RollbackRecorded(m_drop_undo_manager))) normalized = E_ABORT;
+				}
+			}
+			if (caret && SUCCEEDED(normalized))
 			{
 				MSHTML::IHTMLTxtRangePtr start(selectionStart.Restore(Document())), end(selectionEnd.Restore(Document()));
 				if (start && end) { start->setEndPoint(L"EndToStart", end); start->select(); }
@@ -2320,6 +2459,7 @@ LRESULT CFBEView::OnFinalizeDrop(UINT, WPARAM generation, LPARAM, BOOL&)
 				else caret->select();
 				}
 			}
+			CheckError(normalized);
 		}
 	}
 	catch (_com_error& error) { U::ReportError(error); }
@@ -2353,48 +2493,131 @@ void CFBEView::NormalizeScope(MSHTML::IHTMLDOMNodePtr dom)
 {
 	// OnPaste already owns the user-visible undo unit.  Keeping normalization
 	// inside it makes one Undo restore the pre-paste DOM.
-	NormalizeWithoutUndo(dom);
+	CheckError(NormalizeWithoutUndo(dom));
 }
 
-void CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
+HRESULT CFBEView::NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom)
 {
   try {
-	MSHTML::IHTMLDOMNodePtr el(dom);
-	MSHTML::IHTMLElementPtr scope(el);
-	if (!scope || (!IsNormalizationOwner(scope) && U::scmp(scope->id, L"fbw_body") != 0))
-	{
-		// Legacy callers pass document.body, whose child is fbw_body.
-		el = dom ? dom->firstChild : MSHTML::IHTMLDOMNodePtr();
-		while (el)
-		{
-			MSHTML::IHTMLElementPtr candidate(el);
-			if (candidate && U::scmp(candidate->id, L"fbw_body") == 0) break;
-			el = el->nextSibling;
-		}
-		scope = MSHTML::IHTMLElementPtr(el);
-	}
-	if (!scope) return;
-	MSHTML::IHTMLDOMNodePtr scopeNode(scope);
-	const bool fullNormalization = U::scmp(scope->id, L"fbw_body") == 0;
-	g_normalizationDiagnostics.Record(fullNormalization);
-
-    // remove unsupported elements
-	RemoveUnk(scopeNode,Document());
-
-	MergeEqualHTMLElements(scopeNode, Document());
-	FbeVisualDom::NormalizeStructure(Document(), scopeNode);
-    // fixup links
-	FixupLinks(scopeNode);
-  }
-  catch (_com_error& e) {
-    U::ReportError(e);
-  }
+    MSHTML::IHTMLElementPtr scope(dom);
+    if (!scope || (!IsNormalizationOwner(scope) && U::scmp(scope->id, L"fbw_body") != 0)) {
+      MSHTML::IHTMLDOMNodePtr child(dom ? dom->firstChild : MSHTML::IHTMLDOMNodePtr());
+      for (; child; child = child->nextSibling) {
+        MSHTML::IHTMLElementPtr candidate(child);
+        if (candidate && U::scmp(candidate->id, L"fbw_body") == 0) { scope = candidate; break; }
+      }
+      if (!child) return E_INVALIDARG;
+    }
+    const bool fullNormalization = U::scmp(scope->id, L"fbw_body") == 0;
+    g_normalizationDiagnostics.Record(fullNormalization);
+    MSHTML::IHTMLDOMNodePtr transform(scope);
+    // Title repair may merge siblings in its containing section.
+    if (U::scmp(scope->className, L"title") == 0) {
+      for (MSHTML::IHTMLElementPtr ancestor(scope->parentElement); ancestor; ancestor = ancestor->parentElement)
+        if (U::scmp(ancestor->className, L"section") == 0) { scope = ancestor; break; }
+    }
+    CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
+    if (!manager) return E_NOINTERFACE;
+    DWORD parentState = 0;
+    const HRESULT parentStatus = manager->GetOpenParentState(&parentState);
+    CheckError(parentStatus);
+    const bool blocked = parentStatus == S_OK && (parentState & UAS_BLOCKED) != 0;
+    const auto savepoints = m_ownerDocument ? m_ownerDocument->CaptureUndoSavepoints() : FB::Doc::UndoSavepoints{};
+    const long version = GetVersionNumber();
+    MSHTML::IHTMLTxtRangePtr selection;
+    DropSelectionEndpoint start, end;
+    try {
+      selection = Document()->selection->createRange();
+      start.Capture(selection, true, Document()); end.Capture(selection, false, Document());
+    } catch (const _com_error&) {}
+    PasteUndoRecordingScope compensation(manager, false), recording(manager);
+    if (!recording.Blocked()) return E_UNEXPECTED;
+    PasteRestoreJournal journal;
+    bool applied = false;
+    HRESULT result = S_OK;
+    try {
+      // Work on an orphan copy: MSHTML inner/outerHTML setters can destroy
+      // descendants even while COM references to them are retained. A failed
+      // normalization must never touch nodes referenced by previous history.
+      MSHTML::IHTMLDOMNodePtr original(scope), copy(original->cloneNode(VARIANT_TRUE));
+      std::vector<long> path;
+      for (MSHTML::IHTMLDOMNodePtr node(transform); node != original; node = node->parentNode) {
+        long index = 0; for (MSHTML::IHTMLDOMNodePtr prior(node->previousSibling); prior; prior = prior->previousSibling) ++index;
+        path.push_back(index);
+      }
+      MSHTML::IHTMLDOMNodePtr copyScope(copy);
+      for (auto index = path.rbegin(); index != path.rend(); ++index) {
+        copyScope = copyScope->firstChild;
+        for (long i = 0; i < *index; ++i) copyScope = copyScope->nextSibling;
+      }
+      RemoveUnk(copyScope, Document()); CheckError(FbeUndo::Inject(L"normalize-remove"));
+      MergeEqualHTMLElements(copyScope, Document()); CheckError(FbeUndo::Inject(L"normalize-merge"));
+      FbeVisualDom::NormalizeStructure(Document(), copyScope); CheckError(FbeUndo::Inject(L"normalize-structure"));
+      FixupLinks(copyScope); CheckError(FbeUndo::Inject(L"normalize-links"));
+      auto before = CapturePasteChildren(original, nullptr, false), after = CapturePasteChildren(copy, nullptr, false);
+      CComObject<PasteDomUndoUnit>* raw = nullptr;
+      CheckError(CComObject<PasteDomUndoUnit>::CreateInstance(&raw));
+      CComPtr<IOleUndoUnit> unit(raw);
+      raw->Initialize(original, std::move(before), std::move(after), selection, selection, m_ownerDocument,
+        savepoints.clean, savepoints.recoveryClean, version);
+      if (raw->Changed()) {
+        if (!blocked) {
+          // Preserve MSHTML's native markup pointers for the preceding drop.
+          // The orphan pass above validates the complete transformation, then
+          // the live pass records ordinary native undo in the current parent.
+          CheckError(recording.Close());
+          CComPtr<IOleUndoManager> liveManager; CComPtr<IOleParentUndoUnit> liveParent;
+          OpenDropUndoGroup(liveManager, liveParent);
+          if (parentStatus == S_FALSE) static_cast<DropUndoUnit*>(liveParent.p)->PrepareRollback(liveManager);
+          HRESULT liveResult = S_OK;
+          try {
+            FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Normalize DOM");
+            RemoveUnk(transform, Document()); MergeEqualHTMLElements(transform, Document());
+            FbeVisualDom::NormalizeStructure(Document(), transform); FixupLinks(transform);
+            CheckError(FbeUndo::Inject(L"normalize-live"));
+            native.Close();
+            CheckError(FbeUndo::Inject(L"normalize-close"));
+            CheckError(FbeUndo::Inject(L"normalize-add"));
+          } catch (const _com_error& error) { liveResult = error.Error(); }
+          catch (const std::bad_alloc&) { liveResult = E_OUTOFMEMORY; }
+          const HRESULT closed = CloseDropUndoGroup(liveManager, liveParent, true);
+          if (FAILED(closed)) return E_ABORT;
+          if (FAILED(liveResult)) {
+            if (parentStatus == S_FALSE && FAILED(static_cast<DropUndoUnit*>(liveParent.p)->RollbackRecorded(liveManager))) return E_ABORT;
+            CheckError(liveResult);
+          }
+        } else {
+        raw->RetainOriginalChildren(); // allocate all inverse state before mutation
+        CheckError(raw->Restore(false, &journal)); applied = true;
+        CheckError(FbeUndo::Inject(L"normalize-close")); CheckError(recording.Close());
+        CheckError(FbeUndo::Inject(L"normalize-add")); CheckError(manager->Add(unit));
+        }
+      } else CheckError(recording.Close());
+    } catch (const _com_error& error) { result = error.Error(); }
+    catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+    if (FAILED(result)) {
+      if (applied) {
+        if (!recording.Blocked() && FAILED(compensation.Open())) return E_ABORT;
+        if (FAILED(journal.Rollback())) return E_ABORT;
+      }
+      const HRESULT closed = recording.Close(), compensated = compensation.Close();
+      if (FAILED(closed) || FAILED(compensated)) return E_ABORT;
+      if (m_ownerDocument && result != E_ABORT) m_ownerDocument->RestoreUndoSavepoints(savepoints);
+    }
+    try {
+      if (selection) {
+        MSHTML::IHTMLTxtRangePtr first(start.Restore(Document())), last(end.Restore(Document()));
+        if (first && last) { first->setEndPoint(L"EndToStart", last); first->select(); }
+        else selection->select();
+      }
+    } catch (const _com_error&) {}
+    return result;
+  } catch (const _com_error& error) { return error.Error(); }
+  catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 }
-
 void CFBEView::Normalize(MSHTML::IHTMLDOMNodePtr dom)
 {
-	FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Normalize");
-	NormalizeWithoutUndo(dom);
+	CheckError(NormalizeWithoutUndo(dom));
 }
 
 LRESULT CFBEView::OnUndo(WORD, WORD, HWND, BOOL&)

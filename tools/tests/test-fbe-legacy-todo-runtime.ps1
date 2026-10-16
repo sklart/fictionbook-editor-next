@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
-    [ValidateSet('drop-normalization-runtime','source-regex-diagnostics-runtime','drop-files-runtime','drop-native-manual')]
+    [ValidateSet('drop-normalization-runtime','source-regex-diagnostics-runtime','drop-files-runtime','drop-native-manual','undo-atomic-failures')]
     [string[]]$Scenarios = @('drop-normalization-runtime','source-regex-diagnostics-runtime','drop-files-runtime'),
     [int]$TimeoutSeconds = 60,
     [switch]$KeepArtifacts
