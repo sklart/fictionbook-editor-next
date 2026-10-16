@@ -12,6 +12,16 @@ for (var c=0; c<candidates.length; c++) {
  if (candidates[c].variant==2) modes.push("fault","fault-before-body","empty-body","id-collision","fault-middle","selected","selected-fault");
  for (var m=0; m<modes.length; m++) fixtures.push({candidate:candidates[c], name:candidates[c].name+"-"+modes[m], mode:modes[m]});
 }
+if (selectedCases.length) {
+ var requested=[];
+ for (var s=0; s<selectedCases.length; s++) {
+  var found=null;
+  for (var f=0; f<fixtures.length; f++) if (fixtures[f].name==selectedCases[s]) { found=fixtures[f]; break; }
+  if (!found) throw new Error("unknown-note-scenario:"+selectedCases[s]);
+  requested.push(found);
+ }
+ fixtures=requested;
+}
 function localId(link) { var href=link.getAttribute("href"); return href.substring(href.lastIndexOf("#")+1); }
 function noMarkers() {
  var nodes=root.getElementsByTagName("A");
@@ -34,6 +44,7 @@ function validPairs() {
  return count==(current.mode=="existing" || current.mode=="middle" ? 3 : 1);
 }
 window.__notesCount=function () { window.external.SetStatusBarText(String(fixtures.length)); };
+window.__notesCaseName=function (index) { window.external.SetStatusBarText(fixtures[index].name); };
 window.__notesSetup=function (index) {
  current=fixtures[index]; messages=[]; focusTarget=null; promptCount=0;
  root.id="fbw_body";
@@ -105,7 +116,7 @@ window.__notesRun=function () {
     document.getElementById("caret").innerText.indexOf("before")==0 && document.getElementById("caret").innerText.indexOf("after")>0;
   }
  }
- window.__notesError=error ? String(error.message || error.description || error) : "";
+ window.__notesError=error ? String(error.message || error.description || error)+"; number="+error.number : "";
  if (!ok && !error) window.__notesError="sameHTML:"+(before==after)+" preserved:"+preserved()+" markers:"+noMarkers()+" messages:"+messages.length+" prompts:"+promptCount;
  window.external.SetStatusBarText(ok ? "1" : "0");
 };

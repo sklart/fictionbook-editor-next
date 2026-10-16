@@ -488,7 +488,7 @@ function Run () {
     else if (plan.titleNode.innerHTML!==plan.title) plan.titleNode.innerHTML=plan.title;
    }
   }
-  if (addSnoska && strConst3=="") newSection.lastChild.inflateBlock=true;
+  if (addSnoska && strConst3=="") window.external.inflateBlock(newSection.lastChild)=true;
   if (addSnoska && MoveFocusToNote) {
    var target=newSection.firstChild;
    while (target && target.nodeName!="P") target=target.nextSibling;
