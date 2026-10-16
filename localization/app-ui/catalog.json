@@ -3606,6 +3606,7 @@
         "bg-BG": "Структура на документа"
       }
     },
+    "fbe.document_tree.delete.confirm": { "component": "fbe.core", "runtimeOnly": true, "translations": { "en-US": "Delete selected node?", "ru-RU": "Удалить выбранный узел?", "uk-UA": "Видалити вибраний вузол?", "de-DE": "Ausgewählten Knoten löschen?", "fr-FR": "Supprimer le nœud sélectionné ?", "es-ES": "¿Eliminar el nodo seleccionado?", "it-IT": "Eliminare il nodo selezionato?", "pl-PL": "Usunąć wybrany węzeł?", "pt-PT": "Eliminar o nó selecionado?", "nl-NL": "Geselecteerd knooppunt verwijderen?", "cs-CZ": "Odstranit vybraný uzel?", "bg-BG": "Да се изтрие ли избраният възел?" } },
     "fbe.encodings.list": {
       "resourceId": "IDS_ENCODINGS",
       "component": "fbe.core",

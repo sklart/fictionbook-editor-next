@@ -6472,11 +6472,8 @@ LRESULT CMainFrame::OnTreeViewElementSource(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnTreeDeleteElement(WORD, WORD, HWND, BOOL&)
 {
 	wchar_t cpt[MAX_LOAD_STRING + 1];
-	wchar_t msg[MAX_LOAD_STRING + 1];
 	FbeLoadString(_Module.GetResourceInstance(), IDS_DOCUMENT_TREE_CAPTION, cpt, MAX_LOAD_STRING);
-	FbeLoadString(_Module.GetResourceInstance(), ID_DT_DELETE, msg, MAX_LOAD_STRING);
-	CString message(msg);
-	message += L"?";
+	const CString message = FbeLoadRuntimeStringByKey(L"fbe.document_tree.delete.confirm", L"Delete selected node?");
 
 	if (MessageBox(message, cpt, MB_YESNO | MB_ICONINFORMATION) == IDYES)
 	{
