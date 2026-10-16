@@ -91,7 +91,7 @@
 		});
 		return 0;
 	}
-	if (IsFbeTestScenario(L"drop-files-runtime"))
+	if (IsFbeTestScenario(L"drop-files-runtime") || IsFbeTestScenario(L"undo-atomic-failures"))
 	{
 		LegacyTodoTest::MessageProbe messages;
 		const CString originalFile(m_doc->m_filename);
@@ -161,6 +161,114 @@
 		bool passed = messages.timer != 0;
 		CStringA details;
 		auto check = [&](const char* name, bool result) { CStringA row; row.Format("%s=%d\r\n", name, result); details += row; passed = result && passed; };
+		if (IsFbeTestScenario(L"undo-atomic-failures")) {
+			KillTimer(RECOVERY_TIMER_ID);
+			MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
+			auto script = [&](LPCWSTR value) { CheckError(window->execScript(value, L"JScript")); };
+			auto state = [&]() {
+				CString result(bodyHtml());
+				MSHTML::IHTMLElementCollectionPtr elements(document->all);
+				for (long i = 0; i < elements->length; ++i) {
+					IDispatchPtr element(elements->item(i));
+					CComQIPtr<MSHTML::IHTMLInputElement> input(element); CComQIPtr<MSHTML::IHTMLSelectElement> select(element);
+					if (input) result += L"\n" + CString(static_cast<LPCWSTR>(input->value));
+					if (select) result += L"\n" + CString(static_cast<LPCWSTR>(select->value));
+				}
+				// Derived cover options are compared by text and target, not by
+				// MSHTML's implicit/default-selected serialization flags.
+				MSHTML::IHTMLElementCollectionPtr options(MSHTML::IHTMLElement2Ptr(document->body)->getElementsByTagName(L"OPTION"));
+				for (long i = 0; i < options->length; ++i) {
+					MSHTML::IHTMLOptionElementPtr option(options->item(i));
+					result += L"\n" + CString(static_cast<LPCWSTR>(option->value)) + L"|" + CString(static_cast<LPCWSTR>(option->text));
+				}
+				return result + L"\n" + binaryState();
+			};
+			auto history = [&]() {
+				std::vector<CComPtr<IUnknown>> entries;
+				for (int redo = 0; redo < 2; ++redo) {
+					CComPtr<IEnumOleUndoUnits> list;
+					CheckError(redo ? undoManager->EnumRedoable(&list) : undoManager->EnumUndoable(&list));
+					entries.push_back(nullptr);
+					for (;;) { CComPtr<IOleUndoUnit> unit; const HRESULT hr = list->Next(1, &unit, nullptr); if (hr == S_FALSE) break; CheckError(hr); CComPtr<IUnknown> identity; CheckError(unit->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity))); entries.push_back(identity); }
+				}
+				return entries;
+			};
+			script(L"document.all.fbw_body.innerHTML=\"<DIV class='body'><DIV class='section' id='owner'><P id='prior'>Prior</P><P>Anchor text</P></DIV></DIV>\";");
+			const CString initial(state());
+			m_doc->MarkSavePoint(); m_doc->MarkDocCP();
+			script(L"window.external.BeginUndoUnit(document,'prior one');document.all.prior.insertAdjacentHTML('beforeEnd',' one');window.external.EndUndoUnit(document);window.external.BeginUndoUnit(document,'prior two');document.all.prior.insertAdjacentHTML('beforeEnd',' two');window.external.EndUndoUnit(document);");
+			const CString priorState(state());
+			prepareCaret(); check("image-one", SUCCEEDED(m_doc->m_body.AddImage(originalFile + L".first.png")));
+			const CString firstState(state());
+			prepareCaret(); check("image-two", SUCCEEDED(m_doc->m_body.AddImage(originalFile + L".second.png")));
+			const CString secondState(state());
+			m_doc->m_body.ExecCommand(IDM_UNDO); check("seed-existing-redo", state() == firstState);
+			m_doc->MarkSavePoint(); m_doc->MarkDocCP();
+			auto failure = [&](LPCWSTR point, bool redo) {
+				script(L"var caret=document.body.createTextRange();caret.moveToElementText(document.all.prior);caret.collapse(true);caret.moveEnd('character',3);caret.select();");
+				const CString oldState(state()), oldFull(static_cast<LPCWSTR>(document->body->outerHTML)); const auto oldHistory = history();
+				const bool dirty = m_doc->DocChanged(), recovery = m_doc->DocRelChanged();
+				::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", point);
+				const HRESULT hr = static_cast<HRESULT>(m_doc->m_body.ExecCommand(redo ? IDM_REDO : IDM_UNDO));
+				wchar_t unused[80] = {}; const bool consumed = !::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", unused, _countof(unused));
+				::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
+				CStringA label{CW2A(point)}; label += redo ? "-redo" : "-undo";
+				const bool intact = FAILED(hr) && consumed && state() == oldState && history() == oldHistory && closedGroup() &&
+					m_doc->DocChanged() == dirty && m_doc->DocRelChanged() == recovery &&
+					CString(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text)) == L"Pri";
+				check(label, intact);
+				if (!intact) {
+					details.AppendFormat("failure-hr=0x%08lX consumed=%d document=%d history=%d closed=%d dirty=%d recovery=%d\r\n", static_cast<unsigned long>(hr), consumed, state() == oldState, history() == oldHistory, closedGroup(), m_doc->DocChanged() == dirty, m_doc->DocRelChanged() == recovery);
+					if (consumed) {
+						WritePortableStateTestText(originalFile + L".before.html", CStringA(CW2A(oldFull, CP_UTF8)));
+						WritePortableStateTestText(originalFile + L".after.html", CStringA(CW2A(document->body->outerHTML, CP_UTF8)));
+					}
+				}
+			};
+			const wchar_t* shared[] = {L"binary-rebuild", L"binary-covers", L"binary-close", L"binary-add", L"html-close", L"html-add"};
+			for (LPCWSTR point : shared) failure(point, false);
+			failure(L"html-remove", false);
+			// Real IDispatch exceptions after cache mutation, not only injected HRESULTs.
+			for (LPCWSTR function : {L"RebuildImagesInfo", L"FillCoverList"}) {
+				CString code; code.Format(L"var savedCacheFunction=%s;%s=(function(original){var first=true;return function(){original();if(first){first=false;throw new Error('undo cache failure');}};})(savedCacheFunction);", function, function); script(code);
+				const CString oldState(state()); const auto oldHistory = history();
+				const HRESULT hr = static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO));
+				code.Format(L"%s=savedCacheFunction;", function); script(code);
+				check("actual-cache-COM-failure", FAILED(hr) && state() == oldState && history() == oldHistory && closedGroup());
+			}
+			m_doc->m_body.ExecCommand(IDM_UNDO); check("retry-undo", state() == priorState);
+			for (LPCWSTR point : shared) failure(point, true);
+			failure(L"html-insert", true);
+			m_doc->m_body.ExecCommand(IDM_REDO); check("retry-redo-one", state() == firstState);
+			m_doc->m_body.ExecCommand(IDM_REDO); check("retry-redo-two", state() == secondState);
+			m_doc->m_body.ExecCommand(IDM_UNDO); m_doc->m_body.ExecCommand(IDM_UNDO);
+			m_doc->m_body.ExecCommand(IDM_UNDO); m_doc->m_body.ExecCommand(IDM_UNDO);
+			check("previous-native-history", state() == initial);
+			for (int i = 0; i < 4; ++i) m_doc->m_body.ExecCommand(IDM_REDO);
+			check("complete-redo-history", state() == secondState);
+			script(L"window.external.BeginUndoUnit(document,'normalizer fixture');document.all.owner.insertAdjacentHTML('beforeEnd','<P><SPAN>one</SPAN><SPAN>two</SPAN><BR>three</P>');window.external.EndUndoUnit(document);");
+			for (LPCWSTR point : {L"normalize-remove", L"normalize-merge", L"normalize-structure", L"normalize-links", L"normalize-live", L"normalize-close", L"normalize-add"}) {
+				const CString oldState(state()); const auto oldHistory = history(); const bool dirty = m_doc->DocChanged();
+				::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", point);
+				HRESULT hr = S_OK;
+				try { m_doc->m_body.NormalizeScope(MSHTML::IHTMLDOMNodePtr(document->all->item(L"owner"))); } catch (const _com_error& error) { hr = error.Error(); }
+				::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
+				check(CStringA(CW2A(point)), FAILED(hr) && state() == oldState && history() == oldHistory && closedGroup() && m_doc->DocChanged() == dirty);
+				details.AppendFormat("normalize-hr=0x%08lX document=%d history=%d closed=%d\r\n", static_cast<unsigned long>(hr), state() == oldState, history() == oldHistory, closedGroup());
+				if (state() != oldState) { WritePortableStateTestText(originalFile + L".normalize-before.html", CStringA(CW2A(oldState, CP_UTF8))); WritePortableStateTestText(originalFile + L".normalize-after.html", CStringA(CW2A(state(), CP_UTF8))); }
+			}
+			const CString savedBinaries(binaryState());
+			int line = 0, column = 0; check("validate", m_doc->Validate(line, column));
+			const CString savedXml(static_cast<LPCWSTR>(m_doc->CreateDOM(L"utf-8")->xml));
+			check("save", m_doc->Save()); check("reopen", LoadFile(originalFile) == OK);
+			document = m_doc->m_body.Document();
+			check("reopened-complete-document", CString(static_cast<LPCWSTR>(m_doc->CreateDOM(L"utf-8")->xml)) == savedXml);
+			check("reopened-binary-bytes", binaryState() == savedBinaries);
+			check("reopened-image-links", imageOrder().Find(L".first.png") >= 0 && imageOrder().Find(L".second.png") >= 0);
+			CStringA report(passed ? "undo-atomic=pass\r\n" : "undo-atomic=fail\r\n"); report += details;
+			DWORD written = 0; output.Write(report, report.GetLength(), &written); output.Flush(); output.Close();
+			::PostQuitMessage(passed ? 0 : 1); return 0;
+		}
 		// Establish a real text caret as in the existing import runtime harness.
 		::ShowWindow(m_hWnd, SW_RESTORE);
 		::SetForegroundWindow(m_hWnd);
@@ -250,6 +358,7 @@
 	}
 	if (IsFbeTestScenario(L"drop-normalization-runtime"))
 	{
+		LegacyTodoTest::MessageProbe messages;
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 		MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
 		auto script = [&](LPCWSTR text) { return SUCCEEDED(window->execScript(_bstr_t(text), _bstr_t(L"JScript"))); };
@@ -262,9 +371,9 @@
 		CStringA report("case\tresult\r\n");
 		bool passed = CFBEView::VerifyDropUndoContractForTest();
 		report += passed ? "ole-parent-contract\tpass\r\n" : "ole-parent-contract\tfail\r\n";
-		for (int test = 0; test < 6; ++test)
+		for (int test = 0; test < 7; ++test)
 		{
-			const bool changes = test < 3 || test == 5;
+			const bool changes = test < 3 || test >= 5;
 			script(L"document.all.fbw_body.innerHTML=\"<DIV class='body'><DIV class='section' id='source'><P id='drag'>move</P><P>remain</P></DIV><DIV class='section' id='target'><P id='drop'>target</P></DIV><DIV class='section' id='untouched'><P>keep<BR>this</P></DIV></DIV>\";");
 			const CString untouchedBefore(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->outerHTML));
 			const CString initial(html());
@@ -292,23 +401,36 @@
 					operation += mutation;
 					if (test == 1) operation += L"document.all.drag.removeNode(true);";
 					if (test == 5) operation += L"document.all.source.removeNode(true);";
+					if (test == 6) operation += L"document.all.source.insertAdjacentHTML('beforeEnd','<P>source<BR>line</P>');";
 					operation += L"window.external.EndUndoUnit(document);";
 					script(operation);
 				}
 			}
 			if (changes) script(test == 0 ? L"var p=document.all.source.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();" : L"var p=document.all.target.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();");
 			const CString selectedBefore(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
+			const CString unnormalized(html());
+			if (test == 6) ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"normalize-target");
 			if (test != 2) script(L"document.body.fireEvent('ondragend');");
 			const CString selectedAfterEvent(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
 			finish();
+			wchar_t fault[80] = {};
+			const bool consumed = !::GetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", fault, _countof(fault));
+			::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", nullptr);
 			const CString after(html());
+			if (test == 6) {
+				bool ok = consumed && after == before;
+				m_doc->m_body.ExecCommand(IDM_UNDO); ok = ok && html() == initial;
+				m_doc->m_body.ExecCommand(IDM_REDO); ok = ok && html() == before;
+				report += ok ? "normalization-two-owner-failure\tpass\r\n" : "normalization-two-owner-failure\tfail\r\n";
+				passed = passed && ok; continue;
+			}
 			bool ok = true;
 			bool normalized = true, selectionKept = true, scoped = true, undoOk = true, redoOk = true;
 			if (changes)
 			{
 				const CString ownerHtml(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(test == 0 ? L"source" : L"target"))->innerHTML));
 				const CString untouched(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->innerHTML));
-				normalized = ownerHtml.Find(L"<BR") < 0 && ownerHtml.Find(L"new") >= 0 && ownerHtml.Find(L"line") >= 0;
+				normalized = test == 6 ? consumed && after == unnormalized : ownerHtml.Find(L"<BR") < 0 && ownerHtml.Find(L"new") >= 0 && ownerHtml.Find(L"line") >= 0;
 				ok = normalized;
 				selectionKept = CString(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text)) == selectedBefore;
 				if (!selectionKept) report.AppendFormat("selection-before=%S event=%S after=%S\r\n", static_cast<LPCWSTR>(selectedBefore), static_cast<LPCWSTR>(selectedAfterEvent), static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
@@ -354,7 +476,7 @@
 				m_doc->m_body.ExecCommand(IDM_REDO);
 				ok = ok && html() == before;
 			}
-			const char* names[] = { "local", "cross-section", "external", "cancel", "unchanged", "detached-source" };
+			const char* names[] = { "local", "cross-section", "external", "cancel", "unchanged", "detached-source", "normalization-two-owner-failure" };
 			CStringA row; row.Format("%s\t%s\r\n", names[test], ok ? "pass" : "fail"); report += row;
 			CStringA detail; detail.Format("checks: normalize=%d selection=%d scope=%d undo=%d redo=%d version-before=%ld version-after=%ld\r\n", normalized, selectionKept, scoped, undoOk, redoOk, version, m_doc->m_body.GetVersionNumber()); report += detail;
 			passed = passed && ok;

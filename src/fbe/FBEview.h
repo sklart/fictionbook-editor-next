@@ -1034,7 +1034,7 @@ public:
 
 private:
 	void ResetPendingDrop();
-	void NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom);
+	HRESULT NormalizeWithoutUndo(MSHTML::IHTMLDOMNodePtr dom);
 	// added by SeNS
 	int m_startMatch, m_endMatch;
 };

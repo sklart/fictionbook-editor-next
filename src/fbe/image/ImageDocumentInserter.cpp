@@ -2,6 +2,7 @@
 #include "ImageDocumentInserter.h"
 #include "../BinaryId.h"
 #include "../utils/utils.h"
+#include "../undo/UndoFailureRecovery.h"
 namespace FbeImage {
 class BinaryRecordingBlock : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
 public:
@@ -25,12 +26,14 @@ class BinaryRecordingScope {
   CComPtr<IOleParentUndoUnit> m_block;
   bool m_open = false;
 public:
-  explicit BinaryRecordingScope(IOleUndoManager* manager) : m_manager(manager) {
+  explicit BinaryRecordingScope(IOleUndoManager* manager, bool open = true) : m_manager(manager) {
     CComObject<BinaryRecordingBlock>* raw = nullptr;
     CheckError(CComObject<BinaryRecordingBlock>::CreateInstance(&raw));
     m_block = raw;
-    CheckError(m_manager->Open(m_block)); m_open = true;
+    if (open) CheckError(Open());
   }
+  bool IsOpen() const { return m_open; }
+  HRESULT Open() { if (m_open) return S_OK; const HRESULT hr = m_manager->Open(m_block); if (SUCCEEDED(hr)) m_open = true; return hr; }
   HRESULT Close() {
     if (!m_open) return S_OK;
     const HRESULT hr = m_manager->Close(m_block, FALSE);
@@ -62,9 +65,29 @@ public:
       CComPtr<IOleUndoManager> recordingManager;
       IServiceProviderPtr services(ScriptDocument(script));
       CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&recordingManager)));
+      MSHTML::IHTMLDocument2Ptr document(ScriptDocument(script));
+      const MSHTML::IHTMLDOMNodePtr oldParent(node->parentNode), oldNext(node->nextSibling);
+      struct CoverState { MSHTML::IHTMLSelectElementPtr select; _bstr_t value; std::vector<MSHTML::IHTMLDOMNodePtr> options; };
+      std::vector<CoverState> covers;
+      for (LPCWSTR name : {L"tiCover", L"stiCover"}) {
+        MSHTML::IHTMLElementPtr container(document->all->item(name));
+        MSHTML::IHTMLElementCollectionPtr selects(MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"SELECT"));
+        for (long i = 0; i < selects->length; ++i) {
+          CoverState cover; cover.select = MSHTML::IHTMLSelectElementPtr(selects->item(i)); cover.value = cover.select->value;
+          for (MSHTML::IHTMLDOMNodePtr option(MSHTML::IHTMLDOMNodePtr(cover.select)->firstChild); option; option = option->nextSibling)
+            cover.options.push_back(option->cloneNode(VARIANT_TRUE));
+          covers.push_back(std::move(cover));
+        }
+      }
+      // Reserve the compensating block before any mutation (including the
+      // Add failure case, when the original block has already been closed).
+      BinaryRecordingScope compensation(recordingManager, false);
       BinaryRecordingScope recording(recordingManager);
+      bool changed = false;
+      try {
       if (attached) {
         if (node->parentNode != parent) return E_UNEXPECTED;
+        changed = true;
         parent->removeChild(node);
       } else {
         // MSHTML may retain a removed node in an orphan fragment. A parent
@@ -72,20 +95,41 @@ public:
         MSHTML::IHTMLDOMNodePtr body(ScriptDocument(script)->body);
         for (MSHTML::IHTMLDOMNodePtr ancestor(node->parentNode); ancestor; ancestor = ancestor->parentNode)
           if (ancestor == parent || ancestor == body) return E_UNEXPECTED;
+        changed = true;
         if (next && next->parentNode == parent) parent->insertBefore(node, next.GetInterfacePtr());
         else parent->appendChild(node);
       }
-      attached = !attached;
       CComDispatchDriver driver(script);
-      HRESULT hr = driver.Invoke0(L"RebuildImagesInfo");
-      const HRESULT covers = driver.Invoke0(L"FillCoverList");
-      if (SUCCEEDED(hr)) hr = covers;
-      const HRESULT closed = recording.Close();
-      if (FAILED(closed)) return closed;
-      // Preserve the inverse even if rebuilding a derived UI cache fails.
-      if (manager) { const HRESULT added = manager->Add(this); if (FAILED(added)) return added; }
-      return hr;
+      CheckError(FbeUndo::Inject(L"binary-rebuild")); CheckError(driver.Invoke0(L"RebuildImagesInfo"));
+      CheckError(FbeUndo::Inject(L"binary-covers")); CheckError(driver.Invoke0(L"FillCoverList"));
+      CheckError(FbeUndo::Inject(L"binary-close")); CheckError(recording.Close());
+      if (manager) { CheckError(FbeUndo::Inject(L"binary-add")); CheckError(manager->Add(this)); }
+      attached = !attached;
+      return S_OK;
+      } catch (const _com_error& failure) {
+        if (!changed) return failure.Error();
+        try {
+          if (!recording.IsOpen()) CheckError(compensation.Open());
+          if (oldParent) {
+            if (oldNext && oldNext->parentNode == oldParent) oldParent->insertBefore(node, oldNext.GetInterfacePtr());
+            else oldParent->appendChild(node);
+          } else if (node->parentNode) node->parentNode->removeChild(node);
+          CComDispatchDriver driver(script);
+          const HRESULT rebuilt = driver.Invoke0(L"RebuildImagesInfo");
+          const HRESULT filled = driver.Invoke0(L"FillCoverList");
+          for (const auto& cover : covers) {
+            MSHTML::IHTMLDOMNodePtr select(cover.select);
+            while (select->firstChild) select->removeChild(select->firstChild);
+            for (const auto& option : cover.options) select->appendChild(option);
+            if (cover.select->value != cover.value) cover.select->value = cover.value;
+          }
+          const HRESULT compensated = compensation.Close(), closed = recording.Close();
+          if (FAILED(rebuilt) || FAILED(filled) || FAILED(compensated) || FAILED(closed)) return E_ABORT;
+          return failure.Error();
+        } catch (const _com_error&) { return E_ABORT; }
+      }
     } catch (const _com_error& error) { return error.Error(); }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
   }
   STDMETHOD(GetDescription)(BSTR* text) {
     if (!text) return E_POINTER;

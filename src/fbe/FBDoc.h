@@ -96,6 +96,22 @@ public:
   }
 
 	void MarkSavePoint();
+	struct UndoSavepoints {
+		long savedVersion, recoveryVersion;
+		CString savedHtml, recoveryHtml;
+		bool hasSaved, hasRecovery, reconcile, clean, recoveryClean;
+	};
+	UndoSavepoints CaptureUndoSavepoints() {
+		return {m_body_ver, m_body_cp, m_savedBodyHtml, m_recoveryBodyHtml,
+			m_hasSavedBodyHtml, m_hasRecoveryBodyHtml, m_reconcilePasteHistoryClean, !DocChanged(), !DocRelChanged()};
+	}
+	void RestoreUndoSavepoints(const UndoSavepoints& state) {
+		m_body_ver = state.clean ? m_editor.GetVersionNumber() : state.savedVersion;
+		m_body_cp = state.recoveryClean ? m_editor.GetVersionNumber() : state.recoveryVersion;
+		m_savedBodyHtml = state.savedHtml; m_recoveryBodyHtml = state.recoveryHtml;
+		m_hasSavedBodyHtml = state.hasSaved; m_hasRecoveryBodyHtml = state.hasRecovery;
+		m_reconcilePasteHistoryClean = state.reconcile;
+	}
 	void RestoreCleanAfterPasteUndo(long originalVersion, bool saveClean, bool recoveryClean) {
 		if (saveClean && (m_body_ver == originalVersion || m_body_ver == -1)) MarkSavePoint();
 		if (recoveryClean && (m_body_cp == originalVersion || m_body_cp == -1)) MarkDocCP();
