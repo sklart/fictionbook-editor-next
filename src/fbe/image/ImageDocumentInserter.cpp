@@ -3,6 +3,121 @@
 #include "../BinaryId.h"
 #include "../utils/utils.h"
 namespace FbeImage {
+class BinaryRecordingBlock : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
+public:
+  BEGIN_COM_MAP(BinaryRecordingBlock)
+    COM_INTERFACE_ENTRY(IOleUndoUnit)
+    COM_INTERFACE_ENTRY(IOleParentUndoUnit)
+  END_COM_MAP()
+  STDMETHOD(Do)(IOleUndoManager*) { return E_UNEXPECTED; }
+  STDMETHOD(GetDescription)(BSTR* text) { if (!text) return E_POINTER; *text = ::SysAllocString(L"Binary recording block"); return *text ? S_OK : E_OUTOFMEMORY; }
+  STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) { if (!clsid || !id) return E_POINTER; *clsid = CLSID_NULL; *id = 0; return S_OK; }
+  STDMETHOD(OnNextAdd)() { return S_OK; }
+  STDMETHOD(Open)(IOleParentUndoUnit*) { return S_OK; }
+  STDMETHOD(Close)(IOleParentUndoUnit* unit, BOOL) { return unit == static_cast<IOleParentUndoUnit*>(this) ? S_FALSE : S_OK; }
+  STDMETHOD(Add)(IOleUndoUnit*) { return S_OK; }
+  STDMETHOD(FindUnit)(IOleUndoUnit*) { return S_FALSE; }
+  STDMETHOD(GetParentState)(DWORD* state) { if (!state) return E_POINTER; *state = UAS_BLOCKED; return S_OK; }
+};
+
+class BinaryRecordingScope {
+  CComPtr<IOleUndoManager> m_manager;
+  CComPtr<IOleParentUndoUnit> m_block;
+  bool m_open = false;
+public:
+  explicit BinaryRecordingScope(IOleUndoManager* manager) : m_manager(manager) {
+    CComObject<BinaryRecordingBlock>* raw = nullptr;
+    CheckError(CComObject<BinaryRecordingBlock>::CreateInstance(&raw));
+    m_block = raw;
+    CheckError(m_manager->Open(m_block)); m_open = true;
+  }
+  HRESULT Close() {
+    if (!m_open) return S_OK;
+    const HRESULT hr = m_manager->Close(m_block, FALSE);
+    if (SUCCEEDED(hr)) m_open = false;
+    return hr;
+  }
+  ~BinaryRecordingScope() { if (m_open) { const HRESULT hr = Close(); if (FAILED(hr)) ::OutputDebugString(L"FBE: binary recording block Close failed\n"); } }
+};
+
+static MSHTML::IHTMLDocument2Ptr ScriptDocument(const IDispatchPtr& script) {
+  CComDispatchDriver driver(script);
+  _variant_t document;
+  CheckError(driver.GetPropertyByName(L"document", &document));
+  return MSHTML::IHTMLDocument2Ptr(document);
+}
+
+// Retain the original binary node: cloning/serializing HTML loses base64data
+// (a SAFEARRAY expando), input values and event handlers in MSHTML.
+class ImportedBinaryUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
+public:
+  BEGIN_COM_MAP(ImportedBinaryUndoUnit)
+    COM_INTERFACE_ENTRY(IOleUndoUnit)
+  END_COM_MAP()
+  IDispatchPtr script;
+  MSHTML::IHTMLDOMNodePtr node, parent, next;
+  bool attached = true;
+  STDMETHOD(Do)(IOleUndoManager* manager) {
+    try {
+      CComPtr<IOleUndoManager> recordingManager;
+      IServiceProviderPtr services(ScriptDocument(script));
+      CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&recordingManager)));
+      BinaryRecordingScope recording(recordingManager);
+      if (attached) {
+        if (node->parentNode != parent) return E_UNEXPECTED;
+        parent->removeChild(node);
+      } else {
+        // MSHTML may retain a removed node in an orphan fragment. A parent
+        // pointer alone does not mean it is attached to the user's document.
+        MSHTML::IHTMLDOMNodePtr body(ScriptDocument(script)->body);
+        for (MSHTML::IHTMLDOMNodePtr ancestor(node->parentNode); ancestor; ancestor = ancestor->parentNode)
+          if (ancestor == parent || ancestor == body) return E_UNEXPECTED;
+        if (next && next->parentNode == parent) parent->insertBefore(node, next.GetInterfacePtr());
+        else parent->appendChild(node);
+      }
+      attached = !attached;
+      CComDispatchDriver driver(script);
+      HRESULT hr = driver.Invoke0(L"RebuildImagesInfo");
+      const HRESULT covers = driver.Invoke0(L"FillCoverList");
+      if (SUCCEEDED(hr)) hr = covers;
+      const HRESULT closed = recording.Close();
+      if (FAILED(closed)) return closed;
+      // Preserve the inverse even if rebuilding a derived UI cache fails.
+      if (manager) { const HRESULT added = manager->Add(this); if (FAILED(added)) return added; }
+      return hr;
+    } catch (const _com_error& error) { return error.Error(); }
+  }
+  STDMETHOD(GetDescription)(BSTR* text) {
+    if (!text) return E_POINTER;
+    *text = ::SysAllocString(L"Imported image binary"); return *text ? S_OK : E_OUTOFMEMORY;
+  }
+  STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) {
+    if (!clsid || !id) return E_POINTER;
+    *clsid = CLSID_NULL; *id = 0; return S_OK;
+  }
+  STDMETHOD(OnNextAdd)() { return S_OK; }
+};
+
+static MSHTML::IHTMLDOMNodePtr BinaryParent(const IDispatchPtr& script) {
+  MSHTML::IHTMLDocument2Ptr dom(ScriptDocument(script));
+  return MSHTML::IHTMLDOMNodePtr(dom->all->item(L"binobj"));
+}
+
+static IDispatchPtr FindImportedImage(MSHTML::IHTMLDOMNodePtr node, const _variant_t& id) {
+  if (!node) return IDispatchPtr();
+  MSHTML::IHTMLElementPtr element(node);
+  if (element && CString(static_cast<LPCWSTR>(element->className)) == L"image") {
+    const _variant_t href(element->getAttribute(L"href", 2));
+    if (V_VT(&href) == VT_BSTR && CString(href.bstrVal) == CString(L"#") + id.bstrVal)
+      return IDispatchPtr(element);
+  }
+  for (MSHTML::IHTMLDOMNodePtr child(node->firstChild); child; child = child->nextSibling) {
+    IDispatchPtr image(FindImportedImage(child, id));
+    if (image) return image;
+  }
+  return IDispatchPtr();
+}
+
 static HRESULT Finish(ImageInsertionResult *out, HRESULT result,
                       const _variant_t *binaryId = NULL) {
   if (out) {
@@ -45,26 +160,102 @@ HRESULT AddImportedBinary(const IDispatchPtr &script, const BYTE *bytes,
   V_VT(&args[3]) = VT_BSTR;
   CComDispatchDriver body(script);
   _variant_t id;
-  hr = body.InvokeN(L"apiAddBinary", args, 4, &id);
-  if (SUCCEEDED(hr))
-    hr = body.Invoke0(L"FillCoverList");
+  MSHTML::IHTMLDOMNodePtr parent;
+  std::vector<MSHTML::IHTMLDOMNodePtr> existing;
+  bool attempted = false;
+  try {
+    parent = BinaryParent(script);
+    if (!parent) return Finish(out, E_UNEXPECTED);
+    for (MSHTML::IHTMLDOMNodePtr child(parent->firstChild); child; child = child->nextSibling) existing.push_back(child);
+    attempted = true;
+    hr = body.InvokeN(L"apiAddBinary", args, 4, &id);
+    MSHTML::IHTMLDOMNodePtr created;
+    for (MSHTML::IHTMLDOMNodePtr child(parent->firstChild); child; child = child->nextSibling) {
+      if (std::find(existing.begin(), existing.end(), child) == existing.end()) {
+        if (created) { hr = E_UNEXPECTED; break; }
+        created = child;
+      }
+    }
+    if (SUCCEEDED(hr) && (!created || V_VT(&id) != VT_BSTR || !id.bstrVal || !*id.bstrVal)) hr = E_UNEXPECTED;
+    if (SUCCEEDED(hr)) hr = body.Invoke0(L"FillCoverList");
+    if (SUCCEEDED(hr) && out) out->createdBinary = created;
+  } catch (const _com_error& error) { hr = error.Error(); }
+  catch (const std::bad_alloc&) { hr = E_OUTOFMEMORY; }
+  if (FAILED(hr) && parent && attempted) {
+    // Identity-based rollback cannot remove a pre-existing binary with the
+    // same requested ID. apiAddBinary is synchronous; no other import runs here.
+    try {
+      for (MSHTML::IHTMLDOMNodePtr child(parent->firstChild); child;) {
+        MSHTML::IHTMLDOMNodePtr next(child->nextSibling);
+        if (std::find(existing.begin(), existing.end(), child) == existing.end()) parent->removeChild(child);
+        child = next;
+      }
+      const HRESULT rebuilt = body.Invoke0(L"RebuildImagesInfo");
+      const HRESULT covers = body.Invoke0(L"FillCoverList");
+      if (FAILED(rebuilt)) return Finish(out, rebuilt);
+      if (FAILED(covers)) return Finish(out, covers);
+    } catch (const _com_error& error) { return Finish(out, error.Error()); }
+  }
   return Finish(out, hr, &id);
 }
 HRESULT InsertImportedImage(const IDispatchPtr &script, const BYTE *bytes,
                             size_t size, const CString &name,
                             const CString &mime, ImagePlacement placement,
-                            ImageInsertionResult *out) {
+                            ImageInsertionResult *out, IOleUndoManager *manager) {
+  if (!manager) return Finish(out, E_POINTER);
+  CComObject<ImportedBinaryUndoUnit>* raw = nullptr;
+  HRESULT hr = CComObject<ImportedBinaryUndoUnit>::CreateInstance(&raw);
+  if (FAILED(hr)) return Finish(out, hr);
+  CComPtr<IOleUndoUnit> binaryUnit(raw);
   ImageInsertionResult result;
-  HRESULT hr = AddImportedBinary(script, bytes, size, name, mime, &result);
+  HRESULT binaryClosed = S_OK;
+  {
+    BinaryRecordingScope recording(manager);
+    hr = AddImportedBinary(script, bytes, size, name, mime, &result);
+    binaryClosed = recording.Close();
+  }
+  if (FAILED(binaryClosed)) {
+    if (result.createdBinary) {
+      try {
+        MSHTML::IHTMLDOMNodePtr parent(result.createdBinary->parentNode);
+        if (parent) parent->removeChild(result.createdBinary);
+        CComDispatchDriver body(script);
+        const HRESULT rebuilt = body.Invoke0(L"RebuildImagesInfo");
+        const HRESULT covers = body.Invoke0(L"FillCoverList");
+        if (FAILED(rebuilt)) return Finish(out, rebuilt);
+        if (FAILED(covers)) return Finish(out, covers);
+      } catch (const _com_error& error) { return Finish(out, error.Error()); }
+    }
+    return Finish(out, binaryClosed);
+  }
   if (SUCCEEDED(hr)) {
+    raw->script = script; raw->node = result.createdBinary;
+    raw->parent = raw->node->parentNode; raw->next = raw->node->nextSibling;
+    hr = manager->Add(binaryUnit);
+    if (FAILED(hr)) {
+      const HRESULT rolledBack = raw->Do(nullptr);
+      return Finish(out, FAILED(rolledBack) ? rolledBack : hr);
+    }
     CComDispatchDriver body(script);
     _variant_t check(false);
     _variant_t inserted;
+    // The editor records the affected children through its existing DOM undo
+    // unit. Do not mix those snapshots with MSHTML's deferred script units.
+    BinaryRecordingScope insertion(manager);
     hr = body.Invoke2(placement == ImagePlacement::Inline ? L"InsInlineImage"
                                                           : L"InsImage",
                       &check, &result.binaryId, &inserted);
-    if (SUCCEEDED(hr) && V_VT(&inserted) == VT_DISPATCH)
-      result.insertedElement = V_DISPATCH(&inserted);
+    if (SUCCEEDED(hr)) {
+      try {
+        if (V_VT(&inserted) == VT_DISPATCH && V_DISPATCH(&inserted)) {
+          MSHTML::IHTMLDOMNodePtr node(V_DISPATCH(&inserted));
+          if (node && node->parentNode) result.insertedElement = FindImportedImage(node, result.binaryId);
+        }
+        if (!result.insertedElement) hr = E_FAIL;
+      } catch (const _com_error& error) { hr = error.Error(); }
+    }
+    const HRESULT closed = insertion.Close();
+    if (FAILED(closed)) hr = closed;
     result.result = hr;
   }
   if (out)

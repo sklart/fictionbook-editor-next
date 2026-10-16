@@ -408,6 +408,8 @@ protected:
   int			    m_ignore_changes;
   int			    m_enable_paste;
 	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
+	CString m_drop_source_html, m_drop_target_html;
+	bool m_internal_drag = false, m_drop_received = false, m_drag_mouse_armed = false;
 	MSHTML::IHTMLDOMNodePtr m_drag_source_scope;
 	long m_drop_version = -1;
 	UINT_PTR m_drop_generation = 0;
@@ -655,6 +657,9 @@ public:
 		SINK_ENTRY_INFO(1, DIID_FBEHTMLElementEvents2, DISPID_HTMLELEMENTEVENTS2_ONSCROLL, OnScroll, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONPASTE, OnRealPaste, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGSTART, OnDragStart, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGENTER, OnDragHover, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGOVER, OnDragHover, &EventInfo)
+		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGLEAVE, OnDragLeave, &VoidEventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDROP, OnDragDrop, &EventInfo)
 		SINK_ENTRY_INFO(0, DIID_HTMLTextContainerEvents2, DISPID_HTMLELEMENTEVENTS2_ONDRAGEND, OnDragEnd, &VoidEventInfo)
 	END_SINK_MAP()
@@ -849,7 +854,8 @@ public:
 	// ImageImport deliberately stays independent of MSHTML and SAFEARRAYs.
 	HRESULT AddImportedBinary(const BYTE* data, size_t size, const CString& logicalFileName,
 		const CString& mimeType, _variant_t* checkedId = NULL);
-	void AddImage(const CString& filename, bool bInline = false, MSHTML::IHTMLElementPtr* inserted = nullptr);
+	HRESULT AddImage(const CString& filename, bool bInline = false, MSHTML::IHTMLElementPtr* inserted = nullptr,
+		MSHTML::IHTMLElement* afterImage = nullptr);
 
 	CString LastSearchPattern()
 	{
@@ -887,6 +893,9 @@ public:
   void ResetScintillaSearchError(HWND src);
   bool ReportScintillaRegexError(HWND src);
   void OpenDropUndoGroup(CComPtr<IOleUndoManager>& manager, CComPtr<IOleParentUndoUnit>& parent);
+  static HRESULT CloseDropUndoGroup(IOleUndoManager* manager, IOleParentUndoUnit* parent, bool commit);
+  static HRESULT RollbackDropUndoGroup(IOleUndoManager* manager, IOleParentUndoUnit* parent);
+  static bool VerifyDropUndoContractForTest();
   bool SciFindNext(HWND src, bool fFwdOnly, bool fBarf, bool skipCurrentZeroLength = false,
     int zeroLengthGuardStart = -1, int zeroLengthGuardEnd = -1);
 
@@ -1002,6 +1011,8 @@ public:
 	// HTMLTextContainerEvents2
 	VARIANT_BOOL __stdcall OnRealPaste(IDispatch *evt);
 	VARIANT_BOOL __stdcall OnDragStart(IDispatch*);
+	VARIANT_BOOL __stdcall OnDragHover(IDispatch*);
+	void __stdcall OnDragLeave(IDispatch*);
 	VARIANT_BOOL __stdcall OnDragDrop(IDispatch*);
 	void __stdcall OnDragEnd(IDispatch*);
 	LRESULT OnFinalizeDrop(UINT, WPARAM, LPARAM, BOOL&);

@@ -7,6 +7,7 @@ struct ImageInsertionResult {
   HRESULT result;
   _variant_t binaryId;
   IDispatchPtr insertedElement;
+  MSHTML::IHTMLDOMNodePtr createdBinary;
   ImageInsertionResult() : result(E_FAIL) {}
 };
 HRESULT AddImportedBinary(const IDispatchPtr &script, const BYTE *bytes,
@@ -16,5 +17,6 @@ HRESULT AddImportedBinary(const IDispatchPtr &script, const BYTE *bytes,
 HRESULT InsertImportedImage(const IDispatchPtr &script, const BYTE *bytes,
                             size_t size, const CString &logicalFileName,
                             const CString &mimeType, ImagePlacement placement,
-                            ImageInsertionResult *result = NULL);
+                            ImageInsertionResult *result = NULL,
+                            IOleUndoManager *undoManager = NULL);
 } // namespace FbeImage
