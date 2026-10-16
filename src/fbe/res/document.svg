@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="24" viewBox="0 0 120 24">
+<defs>
+  <linearGradient id="arrowTop" x1="0" y1="0" x2=".35" y2="1"><stop stop-color="#c8eaff"/><stop offset=".27" stop-color="#66c4f6"/><stop offset=".66" stop-color="#19b9ec"/><stop offset="1" stop-color="#37dcf4"/></linearGradient>
+  <linearGradient id="arrowSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4e9cc4"/><stop offset=".45" stop-color="#297dad"/><stop offset="1" stop-color="#426d82"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e5faff"/><stop offset=".18" stop-color="#7cceff"/><stop offset=".48" stop-color="#19aaf1"/><stop offset=".72" stop-color="#26d8fa"/><stop offset="1" stop-color="#247bc4"/></linearGradient>
+  <linearGradient id="blueEdge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#76b3e3"/><stop offset=".55" stop-color="#3484c3"/><stop offset="1" stop-color="#155b9f"/></linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#94dafa"/><stop offset=".38" stop-color="#13aee5"/><stop offset=".52" stop-color="#64f7ff"/><stop offset="1" stop-color="#2389d1"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2=".3" y2="1"><stop stop-color="#ffc8c2"/><stop offset=".2" stop-color="#ff827a"/><stop offset=".46" stop-color="#f83837"/><stop offset=".7" stop-color="#ed1b28"/><stop offset="1" stop-color="#b00c22"/></linearGradient>
+</defs>
+<g transform="translate(0 0)">
+ <path d="M.7 10.5h9V5.4L23 12.2v2.9L9.7 21v-3H.7Z" fill="url(#arrowSide)" stroke="#4d7088" stroke-width=".5" stroke-linejoin="round"/>
+ <path d="M.7 9.2h9V5.4L23 12.2 9.7 18.4v-3H.7Z" fill="url(#arrowTop)" stroke="#4a91bf" stroke-width=".65" stroke-linejoin="round"/>
+ <path d="M1.5 10.1h8.9V6.7L20.6 12" fill="none" stroke="#e3f8ff" stroke-opacity=".78" stroke-width=".8" stroke-linejoin="round"/>
+ <path d="M1.1 14.2h9.2l-.3 2.6H1.1Z" fill="#05a9e6" opacity=".53"/>
+</g>
+<g transform="translate(24 0)">
+ <path d="M7 8.4 23 15.1v2.9L7 23Z" fill="url(#arrowSide)" stroke="#566f81" stroke-width=".6" stroke-linejoin="round"/>
+ <path d="M7 8.4 23 15.1 7 20.6Z" fill="url(#arrowTop)" stroke="#428db9" stroke-width=".7" stroke-linejoin="round"/>
+ <path d="M8.1 9.6 20.7 15 8.1 18.2" fill="none" stroke="#e3f9ff" stroke-opacity=".75" stroke-width=".75"/>
+ <path d="M1.1 2.3 18.1 8.6v2.8L1.1 17.5Z" fill="url(#arrowSide)" stroke="#647c8b" stroke-width=".55" stroke-linejoin="round"/>
+ <path d="M1.1 2.3 18.1 8.6 1.1 15.2Z" fill="url(#arrowTop)" stroke="#5198c4" stroke-width=".65" stroke-linejoin="round"/>
+ <path d="M2.1 3.5 15.7 8.7 2.1 12.5" fill="none" stroke="#d8f4ff" stroke-opacity=".68" stroke-width=".75"/>
+</g><g transform="translate(48 0)">
+ <path d="M23.3 10.5h-9V5.4L1 12.2v2.9L14.3 21v-3h9Z" fill="url(#arrowSide)" stroke="#4d7088" stroke-width=".5" stroke-linejoin="round"/>
+ <path d="M23.3 9.2h-9V5.4L1 12.2l13.3 6.2v-3h9Z" fill="url(#arrowTop)" stroke="#4a91bf" stroke-width=".65" stroke-linejoin="round"/>
+ <path d="M22.5 10.1h-8.9V6.7L3.4 12" fill="none" stroke="#e3f8ff" stroke-opacity=".78" stroke-width=".8" stroke-linejoin="round"/>
+ <path d="M22.9 14.2h-9.2l.3 2.6h8.9Z" fill="#05a9e6" opacity=".53"/>
+</g>
+<g transform="translate(72 0)">
+ <path d="M4.5 1.8h15v1.8h-15zm0 18.6h15v1.8h-15z" fill="#82d9ff" stroke="#4289bc" stroke-width=".6"/>
+ <path d="M6 3.6h12c-.25 4-2.6 5.4-5.1 8.3l-.9 1.1-.9-1.1C8.6 9 6.25 7.6 6 3.6Zm6 9.4.9 1.1c2.5 2.9 4.85 4.3 5.1 6.3H6c.25-2 2.6-3.4 5.1-6.3Z" fill="url(#glass)" stroke="#368bc3" stroke-width=".7"/>
+ <path d="M7.8 4.6h8.4c-.4 2.5-2.6 4.6-4.2 6.2-1.6-1.6-3.8-3.7-4.2-6.2Zm4.2 10c1.6 1.6 3.8 3 4.2 4.8H7.8c.4-1.8 2.6-3.2 4.2-4.8Z" fill="#63eafa" opacity=".76"/>
+ <path d="M12 10.5v4" stroke="#e1ffff" stroke-width=".8"/>
+</g>
+<g transform="translate(96 0)">
+ <g transform="translate(-.96 0) scale(1.08 1)">
+  <path d="M5.2 2.7 12 9.3l6.8-6.6 3 3.1L15.2 12l6.6 6.2-3 3.1L12 14.7l-6.8 6.6-3-3.1L8.8 12 2.2 5.8Z" fill="#a91527" stroke="#761324" stroke-width=".8" stroke-linejoin="round" transform="translate(.45 1.45)"/>
+  <path d="M5.2 2.7 12 9.3l6.8-6.6 3 3.1L15.2 12l6.6 6.2-3 3.1L12 14.7l-6.8 6.6-3-3.1L8.8 12 2.2 5.8Z" fill="url(#red)" stroke="#ae2430" stroke-width=".55" stroke-linejoin="round"/>
+  <path d="M3.2 5.8 5.2 3.8 12 10.3l6.8-6.5 2 2-8.8 8.1Z" fill="#ffd2ca" opacity=".17"/>
+ </g></g></svg>

@@ -2209,14 +2209,21 @@
 			const int imageSize = UiMetrics::ScaleForDpi(baseSize, dpi), count = ::ImageList_GetImageCount(images);
 			int width = 0, height = 0;
 			if(count != expectedCount || !::ImageList_GetIconSize(images, &width, &height) || width != imageSize || height != imageSize || ToolbarFactory::ImageListHasMaskPlane(images)) return false;
-			if(resource == IDR_SCRIPTS)
+			if(resource == IDR_SCRIPTS || resource == IDR_DOCUMENT_TREE)
 			{
-				HBITMAP source = static_cast<HBITMAP>(::LoadImage(ATL::_AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCE(IDB_LAST_SCRIPT_HIRES), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
-				DIBSECTION sourceInfo = {}; const bool valid = source && ::GetObject(source, sizeof(sourceInfo), &sourceInfo) == sizeof(sourceInfo) && sourceInfo.dsBm.bmWidth == 48 && abs(sourceInfo.dsBmih.biHeight) == 48 && sourceInfo.dsBm.bmBits != NULL;
-				bool transparent = false, opaque = false;
-				if(valid) for(int pixel = 0; pixel < 48 * 48; ++pixel) { const DWORD alpha = static_cast<const DWORD*>(sourceInfo.dsBm.bmBits)[pixel] >> 24; transparent = transparent || alpha == 0; opaque = opaque || alpha == 255; }
-				if(source) ::DeleteObject(source);
-				if(!valid || !transparent || !opaque) return false;
+				const UINT documentTreeResources[] = { IDR_DOCUMENT_TREE, IDB_DOCUMENT_TREE_30, IDB_DOCUMENT_TREE_36, IDB_DOCUMENT_TREE_42, IDB_DOCUMENT_TREE_HIRES };
+				const int assetCount = resource == IDR_SCRIPTS ? 1 : static_cast<int>(_countof(documentTreeResources));
+				for(int asset = 0; asset < assetCount; ++asset)
+				{
+					const int sourceSize = resource == IDR_SCRIPTS ? 48 : 24 + asset * 6;
+					const UINT bitmapResourceId = resource == IDR_SCRIPTS ? IDB_LAST_SCRIPT_HIRES : documentTreeResources[asset];
+					HBITMAP source = static_cast<HBITMAP>(::LoadImage(ATL::_AtlBaseModule.GetModuleInstance(), MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+					DIBSECTION sourceInfo = {}; const bool valid = source && ::GetObject(source, sizeof(sourceInfo), &sourceInfo) == sizeof(sourceInfo) && sourceInfo.dsBm.bmWidth == expectedCount * sourceSize && abs(sourceInfo.dsBmih.biHeight) == sourceSize && sourceInfo.dsBm.bmBits != NULL;
+					bool transparent = false, opaque = false;
+					if(valid) for(int pixel = 0; pixel < expectedCount * sourceSize * sourceSize; ++pixel) { const DWORD alpha = static_cast<const DWORD*>(sourceInfo.dsBm.bmBits)[pixel] >> 24; transparent = transparent || alpha == 0; opaque = opaque || alpha == 255; }
+					if(source) ::DeleteObject(source);
+					if(!valid || !transparent || !opaque) return false;
+				}
 			}
 			BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = count * imageSize; info.bmiHeader.biHeight = -imageSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
 			void* bits = NULL; HBITMAP sheet = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &bits, NULL, 0);
@@ -2234,6 +2241,10 @@
 						if(::GetPixel(dc, icon * imageSize + x, y) != background) { left = min(left, x); top = min(top, y); right = max(right, x); bottom = max(bottom, y); }
 					passed = passed && right - left + 1 >= imageSize / 2 && bottom - top + 1 >= imageSize / 2;
 				}
+				// The double arrow has artwork at its upper-left corner only. This
+				// catches a vertically mirrored BMP even when its silhouette passes.
+				if(resource == IDR_DOCUMENT_TREE && dpi == 192)
+					passed = passed && ::GetPixel(dc, imageSize + 3, 6) != background && ::GetPixel(dc, imageSize + 3, 41) == background;
 				CString screenshotName; screenshotName.Format(L"toolbar-%s-%s", name, background == RGB(255, 255, 255) ? L"light" : L"dark");
 				passed = saveStandardToolbarScreenshot(sheet, count * imageSize, imageSize, dpi, screenshotName) && passed;
 			}

@@ -248,6 +248,10 @@
 #define IDB_TABLE_TOOLBAR_MAKE_NORMAL_CELLS 1219
 #define IDB_TOOLS_REFRESH_SCRIPTS           1220
 #define IDB_LAST_SCRIPT_HIRES              1221
+#define IDB_DOCUMENT_TREE_HIRES            1222
+#define IDB_DOCUMENT_TREE_30               1223
+#define IDB_DOCUMENT_TREE_36               1224
+#define IDB_DOCUMENT_TREE_42               1225
 #define IDB_PASTE_TEXT                     1226
 #define IDS_HOTKEY_SYMBOL_LEFT_POINTING_DOUBLE_QUOTATION_MARK 256
 #define IDS_CTXMENU_COPY                256

@@ -130,29 +130,6 @@ HBITMAP ScaleHighResolutionAlphaBitmap(HBITMAP alpha, int sourceSize, int target
 	return scaled;
 }
 
-HBITMAP ScaleCompactToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
-{
-	if(alpha == NULL || sourceSize <= 0 || targetSize <= 0) return NULL;
-	if(targetSize <= sourceSize) return ScaleHighResolutionAlphaBitmap(alpha, sourceSize, targetSize);
-	DIBSECTION sourceInfo = {};
-	if(::GetObject(alpha, sizeof(sourceInfo), &sourceInfo) != sizeof(sourceInfo) || sourceInfo.dsBm.bmBits == NULL ||
-		sourceInfo.dsBm.bmWidth != sourceSize || abs(sourceInfo.dsBmih.biHeight) != sourceSize)
-		{ ::DeleteObject(alpha); return NULL; }
-	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader); info.bmiHeader.biWidth = targetSize;
-	info.bmiHeader.biHeight = -targetSize; info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
-	void* targetBits = NULL;
-	HBITMAP scaled = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &targetBits, NULL, 0);
-	if(scaled == NULL || targetBits == NULL) { if(scaled) ::DeleteObject(scaled); ::DeleteObject(alpha); return NULL; }
-	const DWORD* sourcePixels = static_cast<const DWORD*>(sourceInfo.dsBm.bmBits);
-	DWORD* targetPixels = static_cast<DWORD*>(targetBits);
-	// The compact 24px artwork already has crisp keyed edges. Enlarging it
-	// with interpolation softens the arrows and delete glyph at high DPI.
-	for(int y = 0; y < targetSize; ++y) for(int x = 0; x < targetSize; ++x)
-		targetPixels[y * targetSize + x] = sourcePixels[(y * sourceSize / targetSize) * sourceSize + x * sourceSize / targetSize];
-	::DeleteObject(alpha);
-	return scaled;
-}
-
 HBITMAP ScaleLegacyToolbarAlphaBitmap(HBITMAP alpha, int sourceSize, int targetSize)
 {
 	if(alpha == NULL || sourceSize <= 0 || targetSize <= 0) return NULL;
@@ -234,20 +211,23 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 		(toolbarData->width != 16 && toolbarData->width != 24) || (baseImageSize != 16 && baseImageSize != 24)) return false;
 	int standardImageCount = 0;
 	for(int index = 0; index < toolbarData->itemCount; ++index) if(toolbarData->Items()[index] != 0) ++standardImageCount;
-	const bool lastScriptHighResolution = toolbarResourceId == IDR_SCRIPTS && baseImageSize == 24;
-	const int sourceSize = lastScriptHighResolution ? 48 : toolbarData->width;
 	const int imageSize = UiMetrics::ScaleForDpi(baseImageSize, dpi ? dpi : 96);
+	const bool lastScriptHighResolution = toolbarResourceId == IDR_SCRIPTS && baseImageSize == 24;
+	const bool documentTreeHighResolution = toolbarResourceId == IDR_DOCUMENT_TREE && baseImageSize == 24;
+	const bool documentTreeNativeSize = documentTreeHighResolution && imageSize >= 24 && imageSize <= 48 && (imageSize - 24) % 6 == 0;
+	const int sourceSize = lastScriptHighResolution ? 48 : documentTreeHighResolution ? (documentTreeNativeSize ? imageSize : 48) : toolbarData->width;
 	if(!ownedImages.Create(imageSize, imageSize, ILC_COLOR32, standardImageCount + 8, 8)) return false;
-	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(lastScriptHighResolution ? IDB_LAST_SCRIPT_HIRES : toolbarResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
+	const UINT documentTreeResources[] = { IDR_DOCUMENT_TREE, IDB_DOCUMENT_TREE_30, IDB_DOCUMENT_TREE_36, IDB_DOCUMENT_TREE_42, IDB_DOCUMENT_TREE_HIRES };
+	const UINT bitmapResourceId = lastScriptHighResolution ? IDB_LAST_SCRIPT_HIRES : documentTreeHighResolution
+		? (documentTreeNativeSize ? documentTreeResources[(imageSize - 24) / 6] : IDB_DOCUMENT_TREE_HIRES) : toolbarResourceId;
+	HBITMAP source = static_cast<HBITMAP>(::LoadImage(module, MAKEINTRESOURCE(bitmapResourceId), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION));
 	if(source == NULL) { ownedImages.Destroy(); return false; }
 	bool added = true;
 	for(int index = 0; index < standardImageCount; ++index)
 	{
 		HBITMAP alpha = CreateAlphaBitmapCell(source, sourceSize, index);
-		HBITMAP scaled = lastScriptHighResolution
+		HBITMAP scaled = lastScriptHighResolution || documentTreeHighResolution
 			? ScaleHighResolutionAlphaBitmap(alpha, sourceSize, imageSize)
-			: toolbarResourceId == IDR_DOCUMENT_TREE
-			? ScaleCompactToolbarAlphaBitmap(alpha, sourceSize, imageSize)
 			: sourceSize == 24 && baseImageSize == 24
 			? ScaleLegacyToolbarAlphaBitmap(alpha, sourceSize, imageSize)
 			: ScaleAlphaBitmap(alpha, sourceSize, imageSize);

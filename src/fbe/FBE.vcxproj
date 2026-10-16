@@ -691,6 +691,11 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <None Include="res\center.bmp" />
     <None Include="res\doc.bmp" />
     <None Include="res\document.bmp" />
+    <None Include="res\document_30.bmp" />
+    <None Include="res\document_36.bmp" />
+    <None Include="res\document_42.bmp" />
+    <None Include="res\document_48.bmp" />
+    <None Include="res\document.svg" />
     <None Include="res\paste_text.bmp" />
     <None Include="res\paste_text.svg" />
     <None Include="res\error.bmp" />

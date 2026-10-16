@@ -682,6 +682,21 @@
     <None Include="res\document.bmp">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="res\document_30.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\document_36.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\document_42.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\document_48.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\document.svg">
+      <Filter>Resource Files</Filter>
+    </None>
     <None Include="res\paste_text.bmp">
       <Filter>Resource Files</Filter>
     </None>

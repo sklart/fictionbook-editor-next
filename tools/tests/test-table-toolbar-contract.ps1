@@ -41,8 +41,8 @@ if ($menuBitmapHelper.Value -match 'm_clrMask') {
 if ($factory -notmatch '(?s)HBITMAP CreateAlphaBitmapCell\(.*?biBitCount = 32.*?bytesPerPixel.*?alpha == 0 \|\| \(blue == 0xFF && green == 0x00 && red == 0xFF\).*?return target;') {
 	throw 'Command and table toolbar bitmap conversion must create 32-bit alpha pixels using only the exact magenta transparency key.'
 }
-if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?LoadImage\(module, MAKEINTRESOURCE\(lastScriptHighResolution \? IDB_LAST_SCRIPT_HIRES : toolbarResourceId\), IMAGE_BITMAP.*?CreateAlphaBitmapCell\(source, sourceSize, index\).*?ScaleHighResolutionAlphaBitmap\(alpha, sourceSize, imageSize\).*?ScaleCompactToolbarAlphaBitmap\(alpha, sourceSize, imageSize\).*?ScaleLegacyToolbarAlphaBitmap\(alpha, sourceSize, imageSize\).*?ImageList_Add\(') {
-    throw 'Command-toolbar images must select the high-resolution Last Script asset and scale all cells through the shared ARGB pipeline.'
+if ($factory -notmatch '(?s)bool ToolbarFactory::CreateCommandToolbarImages\(.*?documentTreeNativeSize = documentTreeHighResolution.*?sourceSize = lastScriptHighResolution \? 48 : documentTreeHighResolution \? \(documentTreeNativeSize \? imageSize : 48\).*?ownedImages\.Create\(imageSize, imageSize, ILC_COLOR32,.*?documentTreeResources\[\] = \{ IDR_DOCUMENT_TREE, IDB_DOCUMENT_TREE_30, IDB_DOCUMENT_TREE_36, IDB_DOCUMENT_TREE_42, IDB_DOCUMENT_TREE_HIRES \}.*?CreateAlphaBitmapCell\(source, sourceSize, index\).*?lastScriptHighResolution \|\| documentTreeHighResolution.*?ScaleHighResolutionAlphaBitmap\(alpha, sourceSize, imageSize\).*?ScaleLegacyToolbarAlphaBitmap\(alpha, sourceSize, imageSize\).*?ImageList_Add\(') {
+    throw 'Command-toolbar images must select native-size document icons and scale cells through the shared ARGB pipeline.'
 }
 if ($factory -match 'ImageList_LoadImage|ImageList_GetIcon|ImageList_AddIcon|ILC_COLOR32 \| ILC_MASK') {
 	throw 'Command-toolbar ARGB images must not recompose a mask through the legacy image-list/icon path.'
