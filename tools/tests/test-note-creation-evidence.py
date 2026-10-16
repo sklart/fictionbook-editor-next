@@ -30,16 +30,27 @@ def main():
              for folder in ("02_Примечания", "03_Комментарии")
              for p in (ROOT / "runtime/Scripts" / folder).glob("0[1-6]_*.js")}
     assert len(paths) == len(report["sources"]) == 12 and set(report["sources"]) == paths
+    current = json.loads((ROOT / "docs/note-creation-lint-metadata-results.json").read_text(encoding="utf-8"))
+    assert current["previousEvidence"] == "note-creation-undo-stage1-results.json"
+    assert current["previousScenarioCount"] == 94 and current["currentScenarioCount"] == 2
+    assert set(current["sources"]) == paths
     for path, source in report["sources"].items():
         document = READ((ROOT / "runtime/Scripts" / path).read_bytes())
-        assert document.sha256 == source["codeSha256"] == document.card["sourceRevision"]["sha256"], path
+        assert current["sources"][path]["previousCodeSha256"] == source["codeSha256"], path
+        assert document.sha256 == current["sources"][path]["codeSha256"] == document.card["sourceRevision"]["sha256"], path
+        assert source["codeSha256"] != document.sha256, path
         prefix = document.code_bytes.replace(b"\r\n", b"\n").split(" // Подготовка не изменяет книгу".encode("utf-8"))[0]
-        assert hashlib.sha256(prefix).hexdigest() == source["configurationPrefixSha256"], path
+        assert hashlib.sha256(prefix).hexdigest() == current["sources"][path]["configurationPrefixSha256"], path
         assert document.encoding == source["encoding"] and document.bom_size == source["bomBytes"], path
-    for path, digest in report["harnessSourceSha256"].items():
+    for path, digest in current["harnessSourceSha256"].items():
         raw = (ROOT / path).read_bytes()
         lf = raw.replace(b"\r\n", b"\n")
         assert digest in {hashlib.sha256(data).hexdigest() for data in (raw, lf, lf.replace(b"\n", b"\r\n"))}, path
+    latest = current["runtimeResults"]
+    assert latest["fixtures"] == "2" and latest["result"] == "pass"
+    for name in ("notes-02-ordinary", "comments-02-ordinary"):
+        for suffix in ("", "-behavior", "-closed", "-undo", "-redo"):
+            assert latest[name + suffix] == "1", name + suffix
     classification = json.loads((ROOT / "docs/script-card-undo-classification.json").read_text(encoding="utf-8"))
     fixed = {item["path"] for item in classification["scripts"] if item.get("resolution", {}).get("status") == "fixed"}
     assert fixed == paths and classification["resolvedCount"] == 12 and classification["remainingCount"] == 79
@@ -47,7 +58,7 @@ def main():
     for item in classification["scripts"]:
         if item["path"] in fixed:
             assert item["resolution"]["codeSha256"] == report["sources"][item["path"]]["codeSha256"]
-    print("Note creation stage 1 evidence: PASS (12 sources, 94 runtime scenarios; 12 fixed / 79 remaining).")
+    print("Note creation evidence: PASS (historical 94 scenarios; current 12 SHA and 2 runtime scenarios).")
 
 
 if __name__ == "__main__":

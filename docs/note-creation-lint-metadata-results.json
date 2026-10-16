@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "date": "2026-10-16",
+  "scope": "Metadata and lint follow-up after ea1f9115",
+  "previousEvidence": "note-creation-undo-stage1-results.json",
+  "previousScenarioCount": 94,
+  "currentScenarioCount": 2,
+  "sources": {
+    "02_Примечания/01_Добавить примечание, остаться на его ссылке.js": {
+      "previousCodeSha256": "1ffb0ab10dc5d58596ca72f2274a98dea368445952ca89593ab4800321c1887b",
+      "codeSha256": "b62037d2bfb3338ea7639a5419deeada3e73055a899b6ee5d69e383e6a6b21dc",
+      "configurationPrefixSha256": "aac17ff5a6e3418f02ca94f5b0ba541e2b2eae5e4608d9dbf7f58a8fe20cc9a6"
+    },
+    "02_Примечания/02_Добавить примечание, введя его текст в окошке.js": {
+      "previousCodeSha256": "eaea5bfe01d0b0a92854c55a0b54baf8561edb0eec21af0bf206277f4b0643b6",
+      "codeSha256": "44d15a814e9059c7c42cb8085956bf51908f3e739dd884c9e9da77b10b78eeec",
+      "configurationPrefixSha256": "5fa3d08a7095831d7f88d13c2e025d65aea2c3b36652774f073bcdef926d8a3f"
+    },
+    "02_Примечания/03_Добавить примечание, перейти на его раздел.js": {
+      "previousCodeSha256": "11636b5d430fa28a300478f2f20a313a8761a9a72617099d883c1a92f2a55e46",
+      "codeSha256": "0b727ff47b885404f67eb716d8f66d6dfa35d30e20a0a4617a8529cfc04f09ec",
+      "configurationPrefixSha256": "9dee1717025c0b6646425930731ed53a188c1ce86060b9c5d01ff3800da6ab0d"
+    },
+    "02_Примечания/04_Добавить последнее примечание, остаться на его ссылке.js": {
+      "previousCodeSha256": "580c70ddfd370078dfdf84ce64c10221eeb7d31d8066d8e54cfca847439d137f",
+      "codeSha256": "22efdb9baf9c63adba630fdab4585d88631ba75e9fa740a006e3cfc2279d3346",
+      "configurationPrefixSha256": "751ee194243044773677db06d6a5e5ffa3d574e886eeb53ebafacaff23e1a9c6"
+    },
+    "02_Примечания/05_Добавить последнее примечание, введя его текст в окошке.js": {
+      "previousCodeSha256": "44ef64fbbdc2df6d45cdc92cd3d443ae34f2e9f7d4b1758478d4b0776f6cd7b4",
+      "codeSha256": "09443abfa8eba73a33069b21e56304a15502ad440a5f5ecdb44f3312f898c4cb",
+      "configurationPrefixSha256": "ca0d8c5e698b6ae995faaeef1a5b0d594c19a0d8f4ecc5cb9594f561be1dbeb7"
+    },
+    "02_Примечания/06_Добавить последнее примечание, перейти на его раздел.js": {
+      "previousCodeSha256": "b19424d27a69a247018193269c9a5a8db7fdfba4a11ee8ded6b394ca76b1895a",
+      "codeSha256": "a5ca945600c7994200cdad94e1636cb74a6a9b6fe0b2206fa75e1de063ac46f6",
+      "configurationPrefixSha256": "9783a30a1516b39e8961e6be3fef2453ce8215d91e935853168c48ab692d9c2c"
+    },
+    "03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js": {
+      "previousCodeSha256": "0af15d9f6dbf5e0d213b1c667e87d6e4d7354563f0d8633649368310f6fb59ff",
+      "codeSha256": "bf709b0d645b147dbbe9114feb32db35a8c8e8d9731ef78046a31bbdedd982f8",
+      "configurationPrefixSha256": "f18485df9e820e33267e75af1b6ce47f1f70c47382d8f87dd40fa28eff42180d"
+    },
+    "03_Комментарии/02_Добавить комментарий, введя его текст в окошке.js": {
+      "previousCodeSha256": "97e5d5d239f6d45e2ebdb8640ebdfb9ae27342dba506cf8a37e4448d98a684a2",
+      "codeSha256": "cbf0dca7a86ab7c41cc1021005688d5416bbaf146ae11de27d482ecb1d594eee",
+      "configurationPrefixSha256": "c17569f9590f0fcaa39c45fcb4a40a5031eeaa8596dcf35c8f21fda96e9fb331"
+    },
+    "03_Комментарии/03_Добавить комментарий, перейти на его раздел.js": {
+      "previousCodeSha256": "1c9d9e8b0d9fdbc03e4fd40b87f170c36228729ae0655569e11af1c95d952afa",
+      "codeSha256": "aa796185b02dc80c526c98e3263627959bc74af934a7ecec92d61d9dbf16521c",
+      "configurationPrefixSha256": "eb6964614e1cf53639cfaa355538467bbb2bc353bd8c447bb2035c54489c44d5"
+    },
+    "03_Комментарии/04_Добавить последний комментарий, остаться на его ссылке.js": {
+      "previousCodeSha256": "afd2dc38d9c296e9d5159aea932d21257ee65bace616e1d174bb2ee6c57d695b",
+      "codeSha256": "c217928eacc4d4e3121145a52ee33f797385f5e80b19280036a67d5573d16a3e",
+      "configurationPrefixSha256": "7e0afd33afcdc4c3a297da120b3985a7f06844a579cff5da7b8e3ca0edcaea4c"
+    },
+    "03_Комментарии/05_Добавить последний комментарий, введя его текст в окошке.js": {
+      "previousCodeSha256": "03e0146c6e152df0347610175de534c9681e75ddb84997ba9822140b5b7c47cc",
+      "codeSha256": "48684eb555cc8638405dbe991f23e9246f589ec0bade1a59e22c7ff01e642c96",
+      "configurationPrefixSha256": "5cbe7133fbac0d8a80ad96eb10c180ebd62f703c5f5e25e981bea2b53c012b55"
+    },
+    "03_Комментарии/06_Добавить последний комментарий, перейти на его раздел.js": {
+      "previousCodeSha256": "550b52b2fdcd816929ddb2a4fc6fcd49e584f457bcca7cea6835a462e4ac818c",
+      "codeSha256": "94ea34839723123d96f8289b53d8e93f61c6442e40168bfb5e02df21a4a60040",
+      "configurationPrefixSha256": "749b3483ed8d4005fafce83e32f4710bc492390667c3eab850327d6edf53431b"
+    }
+  },
+  "harnessSourceSha256": {
+    "src/fbe/testing/RuntimeTestNoteCreation.inl": "4ea5fc097fc1b48299b45e609c47cb33324591a1b7515eea5923bafb2855e1c8",
+    "src/fbe/testing/RuntimeTestPortableState.inl": "2c32539e9e78b4614f655dc1bc3cf70c605309ffb6aa15999556e41cd2485ad2",
+    "tools/tests/note-creation-runtime-probe.js": "a8f7d312c204a7452373ab70e533262480a9db58e7a066e5ebaf7d03d50d9352",
+    "tools/tests/test-note-creation-runtime.ps1": "6dde5b172545e4bd1a0cdd397a413bc656eca9943ea3d20c09671b76422c9c61"
+  },
+  "runtimeResults": {
+    "fixtures": "2",
+    "notes-02-ordinary": "1",
+    "notes-02-ordinary-behavior": "1",
+    "notes-02-ordinary-closed": "1",
+    "notes-02-ordinary-undo": "1",
+    "notes-02-ordinary-redo": "1",
+    "notes-02-ordinary-detail": "",
+    "comments-02-ordinary": "1",
+    "comments-02-ordinary-behavior": "1",
+    "comments-02-ordinary-closed": "1",
+    "comments-02-ordinary-undo": "1",
+    "comments-02-ordinary-redo": "1",
+    "comments-02-ordinary-detail": "",
+    "result": "pass"
+  }
+}

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createFingerprintEntries, fingerprintKey } from "./fingerprint.mjs";
 import { compareBaseline } from "./baseline.mjs";
 import { extractInlineScripts } from "./inline-html.mjs";
+import { isNoteCreationPath, normalizeComIndexedProperty } from "./com-indexed-property.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const baselinePath = path.join(root, "tools/lint-scripts/baseline.json");
@@ -22,9 +23,15 @@ const utf16Scripts = new Map(runtimeFiles
       : [];
   }));
 const utf8Scripts = runtimeFiles.filter((filePath) => /\.js$/i.test(filePath) && !utf16Scripts.has(filePath));
-const jsResults = await eslint.lintFiles(utf8Scripts);
+const needsComNormalization = (filePath) => isNoteCreationPath(path.relative(root, filePath));
+const jsResults = await eslint.lintFiles(utf8Scripts.filter((filePath) => !needsComNormalization(filePath)));
+for (const filePath of runtimeFiles.filter((filePath) => /\.js$/i.test(filePath) && needsComNormalization(filePath))) {
+  const source = utf16Scripts.get(filePath) ?? readFileSync(filePath, "utf8");
+  const relativePath = path.relative(root, filePath).split(path.sep).join("/");
+  jsResults.push(...await eslint.lintText(normalizeComIndexedProperty(relativePath, source), { filePath }));
+}
 for (const [filePath, source] of utf16Scripts) {
-  jsResults.push(...await eslint.lintText(source, { filePath }));
+  if (!needsComNormalization(filePath)) jsResults.push(...await eslint.lintText(source, { filePath }));
 }
 const htmlPaths = runtimeFiles
   .filter((filePath) => /\.html?$/i.test(filePath))
