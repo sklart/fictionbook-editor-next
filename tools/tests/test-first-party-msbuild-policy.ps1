@@ -65,7 +65,7 @@ foreach ($case in @(
     @{ Project = 'src\export-epub\ExportEPUBBatch.vcxproj'; Configuration = 'Release'; Platform = 'x64' },
     @{ Project = 'src\import-epub\ImportEPUBLunaSVG.vcxproj'; Configuration = 'Release'; Platform = 'Win32' }
 )) {
-    $output = & $msbuild (Join-Path $repoRoot $case.Project) "/p:Configuration=$($case.Configuration)" "/p:Platform=$($case.Platform)" '/getProperty:PlatformToolset;VCToolsVersion;VCToolsInstallDir;FbeRepoRoot;SolutionDir;FbeLanguageStandard' /nologo
+    $output = & $msbuild (Join-Path $repoRoot $case.Project) "/p:Configuration=$($case.Configuration)" "/p:Platform=$($case.Platform)" '/getProperty:PlatformToolset;VCToolsVersion;VCToolsInstallDir;FbeRepoRoot;SolutionDir;FbeLanguageStandard;OutDir;TargetDir' /nologo
     if ($LASTEXITCODE -ne 0) {
         throw "MSBuild property evaluation failed: $($case.Project)"
     }
@@ -84,6 +84,13 @@ foreach ($case in @(
     }
     if ($properties.SolutionDir.TrimEnd('\') -ne $repoRoot.TrimEnd('\')) {
         throw "Standalone SolutionDir is not repository-rooted for $($case.Project): $($properties.SolutionDir)"
+    }
+    if ($case.Project -eq 'src\contracts\FBEContracts.vcxproj') {
+        $expectedOutDir = Join-Path $repoRoot "out\$($case.Configuration)"
+        if ($properties.OutDir.TrimEnd('\') -ne $expectedOutDir -or
+            $properties.TargetDir.TrimEnd('\') -ne $expectedOutDir) {
+            throw "FBEContracts output must use $expectedOutDir instead of a repository-root configuration directory: OutDir=$($properties.OutDir), TargetDir=$($properties.TargetDir)"
+        }
     }
     if ($properties.FbeLanguageStandard -ne 'stdcpp17') {
         throw "Unexpected C++ baseline for $($case.Project): $($properties.FbeLanguageStandard)"
