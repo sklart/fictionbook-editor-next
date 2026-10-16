@@ -16,6 +16,7 @@ public static class AboutLayoutWindow {
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
     [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll", EntryPoint="GetWindowLongW")] static extern int GetWindowStyle(IntPtr window, int index);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr window, uint message, IntPtr wp, IntPtr lp);
@@ -42,6 +43,9 @@ public static class AboutLayoutWindow {
         PostMessage(frame, 0x0111, (IntPtr)0xE140, IntPtr.Zero); // ID_APP_ABOUT
     }
     public static void Close(IntPtr window) { PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); }
+    public static int ContributorsStyle(IntPtr about, int index) {
+        return GetWindowStyle(GetDlgItem(about, 1070), index);
+    }
 }
 '@
 try {
@@ -81,6 +85,9 @@ try {
             $children = @($audit.controls | Where-Object Parent -eq $aboutHandle)
             $buildLabel = @($children | Where-Object Id -eq 1108)
             if ($buildLabel.Count -ne 1 -or $buildLabel[0].TextMayClip) { throw "$locale About build label is missing or clipped." }
+            $contributorsStyle = [AboutLayoutWindow]::ContributorsStyle($about, -16)
+            $contributorsExStyle = [AboutLayoutWindow]::ContributorsStyle($about, -20)
+            if (($contributorsStyle -band 0x00800000) -eq 0 -and ($contributorsExStyle -band 0x00000200) -eq 0) { throw "$locale About contributors frame has no visible border (style 0x$($contributorsStyle.ToString('X8')), exstyle 0x$($contributorsExStyle.ToString('X8')))." }
             $checkedHandles = @($children | Where-Object Id -in 1108, 1023, 1058 | ForEach-Object Hwnd)
             $issues = @($audit.issues | Where-Object { -not $_.ignored -and $checkedHandles -contains $_.hwnd })
             if ($issues.Count) { throw "$locale About build/link row has layout findings: $($issues.kind -join ', ')." }

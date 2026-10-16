@@ -31,7 +31,7 @@ void EditorViewPresentationHost::PrepareEditorViewPresentation(EditorView previo
 {
 	if (plan.commitSourceToDocument) m_context.source.SendMessage(SCI_SETSAVEPOINT);
 	if (previous != target && target != SOURCE)
-		m_context.splitter.SetPresentationSinglePane(m_context.showDocumentTree ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
+		m_context.splitter.SetPresentationSinglePane(target == BODY && m_context.showDocumentTree ? SPLIT_PANE_NONE : SPLIT_PANE_RIGHT);
 	CComDispatchDriver body(m_context.document->m_body.Script()); CComVariant argument;
 	if (plan.leaveDescriptionMode) { argument = false; CheckError(body.Invoke1(L"apiShowDesc", &argument)); }
 	if (plan.enterDescriptionMode) { argument = true; CheckError(body.Invoke1(L"apiShowDesc", &argument)); }

@@ -841,6 +841,11 @@
 	if (IsFbeTestScenario(L"editor-view-lifecycle-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;
+		const bool originalTreePreference = _Settings.ViewDocumentTree();
+		BOOL treeCommandHandled = FALSE;
+		if (!originalTreePreference) OnViewTree(0, 0, NULL, treeCommandHandled);
+		const auto treeShown = [&]() { return (m_document_tree.GetStyle() & WS_VISIBLE) != 0; };
+		const bool treeVisibleInitially = treeShown() && m_splitter.GetSinglePaneMode() == SPLIT_PANE_NONE;
 		const auto isBodyHostActive = [&]() { return m_view.GetActiveWnd() == m_doc->m_body; };
 		const auto descriptionModeEnabled = [&]()
 		{
@@ -850,8 +855,10 @@
 		};
 		ShowView(DESC);
 		const bool bodyToDescription = m_editor_view_state.Current() == DESC && m_editor_view_state.Previous() == BODY && isBodyHostActive() && descriptionModeEnabled();
+		const bool treeHiddenInDescription = !treeShown() && m_splitter.GetSinglePaneMode() == SPLIT_PANE_RIGHT && _Settings.ViewDocumentTree();
 		ShowView(BODY);
 		const bool descriptionToBody = m_editor_view_state.Current() == BODY && m_editor_view_state.Previous() == DESC && isBodyHostActive() && !descriptionModeEnabled();
+		const bool treeRestoredInBody = treeShown() && m_splitter.GetSinglePaneMode() == SPLIT_PANE_NONE;
 		ShowView(SOURCE);
 		const bool bodyToSource = m_editor_view_state.Current() == SOURCE && IsSourceActive() && m_editor_view_state.Previous() == BODY;
 		ShowView(BODY);
@@ -877,10 +884,15 @@
 			ShowView(BODY); cycles = cycles && m_editor_view_state.Current() == BODY && isBodyHostActive();
 		}
 		const bool documentPreserved = m_doc == originalDocument && m_doc->m_body.Document() != NULL;
+		OnViewTree(0, 0, NULL, treeCommandHandled);
+		ShowView(DESC);
+		ShowView(BODY);
+		const bool hiddenTreePreferencePreserved = !_Settings.ViewDocumentTree() && !treeShown() && m_splitter.GetSinglePaneMode() == SPLIT_PANE_RIGHT;
+		if (originalTreePreference) OnViewTree(0, 0, NULL, treeCommandHandled);
 		CStringA report;
-		report.Format("body_desc=%d\ndesc_body=%d\nbody_source=%d\nsource_body=%d\ndesc_source=%d\nsource_desc=%d\nsource_body_desc=%d\nsource_desc_body=%d\ncycles=%d\ndocument=%d\n", bodyToDescription, descriptionToBody, bodyToSource, sourceToBody, descriptionToSource, sourceToDescription, sourceBodyDescription, sourceDescriptionBody, cycles, documentPreserved);
+		report.Format("body_desc=%d\ndesc_body=%d\nbody_source=%d\nsource_body=%d\ndesc_source=%d\nsource_desc=%d\nsource_body_desc=%d\ncycles=%d\ndocument=%d\ntree_initial=%d\ntree_desc_hidden=%d\ntree_body_restored=%d\ntree_hidden_preference=%d\n", bodyToDescription, descriptionToBody, bodyToSource, sourceToBody, descriptionToSource, sourceToDescription, sourceBodyDescription, sourceDescriptionBody, cycles, documentPreserved, treeVisibleInitially, treeHiddenInDescription, treeRestoredInBody, hiddenTreePreferencePreserved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(bodyToDescription && descriptionToBody && bodyToSource && sourceToBody && descriptionToSource && sourceToDescription && sourceBodyDescription && sourceDescriptionBody && cycles && documentPreserved ? 0 : 1);
+		::PostQuitMessage(bodyToDescription && descriptionToBody && bodyToSource && sourceToBody && descriptionToSource && sourceToDescription && sourceBodyDescription && sourceDescriptionBody && cycles && documentPreserved && treeVisibleInitially && treeHiddenInDescription && treeRestoredInBody && hiddenTreePreferencePreserved ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-two-phase-runtime"))

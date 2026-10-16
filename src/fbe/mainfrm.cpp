@@ -5458,7 +5458,7 @@ LRESULT CMainFrame::OnViewShowTextCaret(WORD, WORD, HWND, BOOL&)
 
 LRESULT CMainFrame::OnViewTree(WORD, WORD, HWND, BOOL&)
 {
-	if(IsSourceActive())
+	if(m_editor_view_state.Current() != BODY)
 		return 0;
 
 	BOOL bVisible = !_Settings.ViewDocumentTree();
@@ -6788,8 +6788,8 @@ void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)
 		m_doc->m_body.CloseFindDialog(m_doc->m_body.m_replace_dlg);
 		m_doc->m_body.CloseFindDialog(m_sci_replace_dlg);
 	}
-	if (prev != vt && vt != SOURCE)
-		UIEnable(ID_VIEW_TREE, 1);
+	UIEnable(ID_VIEW_TREE, vt == BODY);
+	UISetCheck(ID_VIEW_TREE, vt == BODY && _Settings.ViewDocumentTree());
 	UISetCheck(ID_VIEW_BODY, vt == BODY); UISetCheck(ID_VIEW_DESC, vt == DESC); UISetCheck(ID_VIEW_SOURCE, vt == SOURCE);
 	UIEnable(ID_VIEW_SHOW_TEXT_CARET, vt != SOURCE);
 	if (vt == BODY) { m_sel_changed = true; if (m_Speller) m_Speller->SetDocumentLanguage(); }
