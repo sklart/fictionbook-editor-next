@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
-    [ValidateSet('drop-normalization-runtime','source-regex-diagnostics-runtime','drop-files-runtime')]
+    [ValidateSet('drop-normalization-runtime','source-regex-diagnostics-runtime','drop-files-runtime','drop-native-manual')]
     [string[]]$Scenarios = @('drop-normalization-runtime','source-regex-diagnostics-runtime','drop-files-runtime'),
     [int]$TimeoutSeconds = 60,
     [switch]$KeepArtifacts
@@ -19,7 +19,7 @@ try {
         [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
         Copy-Item -LiteralPath $fixture -Destination ($fixture + '.other.fb2')
         $png = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAF/gL+MZ7M0QAAAABJRU5ErkJggg==')
-        foreach ($suffix in '.first.png','.second.png','.third.png','.single.png') { [IO.File]::WriteAllBytes($fixture + $suffix, $png) }
+        foreach ($suffix in '.first.png','.second.png','.third.png','.single.png','.failed.png') { [IO.File]::WriteAllBytes($fixture + $suffix, $png) }
         [IO.File]::WriteAllText($fixture + '.bad.png', 'invalid image')
         [IO.File]::WriteAllText($fixture + '.unsupported.txt', 'unsupported')
         $oldMode, $oldScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
@@ -29,7 +29,7 @@ try {
             $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario $scenario -Report $report -TimeoutSeconds $TimeoutSeconds
         } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $oldMode, $oldScenario }
         $text = if(Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<missing report>' }
-        if($exitCode -ne 0 -or $text -match 'fail' -or $text -notmatch 'pass') { throw "$scenario failed: exit=$exitCode`n$text" }
+        if($exitCode -ne 0 -or $text -match '(?im)(?:=fail\b|\tfail\b)' -or $text -notmatch '(?im)(?:=pass\b|\tpass\b)') { throw "$scenario failed: exit=$exitCode`n$text" }
         Write-Host "PASS $scenario`n$text"
     }
     $passed = $true

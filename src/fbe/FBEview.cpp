@@ -171,9 +171,9 @@ public:
 			m_open = SUCCEEDED(m_manager->Open(m_block));
 		}
 	}
-	~PasteUndoRecordingScope() { Close(); }
+	~PasteUndoRecordingScope() { const HRESULT hr = Close(); if (FAILED(hr)) StartupTrace::HResult(L"undo", L"D415", hr, L"Recording block Close failed"); }
 	bool Blocked() const { return m_open; }
-	void Close() { if (m_open) { m_manager->Close(m_block, FALSE); m_open = false; } }
+	HRESULT Close() { if (!m_open) return S_OK; const HRESULT hr = m_manager->Close(m_block, FALSE); if (SUCCEEDED(hr)) m_open = false; return hr; }
 private:
 	CComPtr<IOleUndoManager> m_manager;
 	CComPtr<IOleParentUndoUnit> m_block;
@@ -224,9 +224,17 @@ public:
 		} catch (const _com_error& error) { return error.Error(); }
 	}
 	STDMETHOD(Do)(IOleUndoManager* manager) {
-		if (!manager) return E_POINTER;
+		CComPtr<IOleUndoManager> recordingManager(manager);
+		if (!recordingManager) {
+			IServiceProviderPtr provider(MSHTML::IHTMLElementPtr(m_parent)->document);
+			if (provider) provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&recordingManager));
+		}
+		PasteUndoRecordingScope recording(recordingManager);
+		if (!recording.Blocked()) return E_UNEXPECTED;
 		const HRESULT result = Restore(m_applyBefore);
 		if (FAILED(result)) return result;
+		const HRESULT closed = recording.Close();
+		if (FAILED(closed)) return closed;
 		try {
 			MSHTML::IHTMLTxtRangePtr selection(m_applyBefore ? m_beforeSelection : m_afterSelection);
 			if (selection) selection->select();
@@ -234,7 +242,7 @@ public:
 		if (m_applyBefore && m_document)
 			m_document->RestoreCleanAfterPasteUndo(m_saveVersion, m_beforeWasClean, m_beforeRecoveryClean);
 		m_applyBefore = !m_applyBefore;
-		return manager->Add(this);
+		return manager ? manager->Add(this) : S_OK;
 	}
 	STDMETHOD(GetDescription)(BSTR* description) {
 		if (!description) return E_POINTER;
@@ -646,6 +654,25 @@ static void DestroySearchHighlightOverlay(CSearchHighlightOverlay* overlay)
 
 BOOL CFBEView::PreTranslateMessage(MSG* pMsg)
 {
+	if (pMsg && pMsg->message == WM_LBUTTONDOWN && m_normalize && HasDoc() &&
+		::IsChild(m_hWnd, pMsg->hwnd)) {
+		ResetPendingDrop();
+		if (!m_drop_undo_open) {
+			try {
+				IDispatchPtr selected(Document()->selection->createRange());
+				CComQIPtr<MSHTML::IHTMLTxtRange> text(selected);
+				CComQIPtr<MSHTML::IHTMLControlRange> control(selected);
+				if ((text && text->text.length() != 0) || (control && control->length > 0)) {
+					// MSHTML's mouse-down editing unit precedes even ondragstart.
+					// Open outside that native transaction; a plain selection click
+					// later discards this empty parent after the browser's mouseup.
+					OpenDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent);
+					m_drop_undo_open = true; m_drag_mouse_armed = true;
+					m_drop_version = GetVersionNumber();
+				}
+			} catch (const _com_error&) { ResetPendingDrop(); }
+		}
+	}
 	if (pMsg && pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB &&
 		MoveTableCell((::GetKeyState(VK_SHIFT) & 0x8000) != 0))
 		return TRUE;
@@ -1849,19 +1876,84 @@ MSHTML::IHTMLElementPtr FindNormalizationOwner(MSHTML::IHTMLElementPtr element)
 	return MSHTML::IHTMLElementPtr();
 }
 
-MSHTML::IHTMLDOMNodePtr CommonDropScope(MSHTML::IHTMLDOMNodePtr source, MSHTML::IHTMLDOMNodePtr target)
+bool IsLiveDropScope(MSHTML::IHTMLDOMNodePtr scope, MSHTML::IHTMLDocument2Ptr document)
 {
-	if (!source) return target;
-	for (MSHTML::IHTMLDOMNodePtr a(source); a; a = a->parentNode)
-		for (MSHTML::IHTMLDOMNodePtr b(target); b; b = b->parentNode)
-			if (a == b)
-			{
-				MSHTML::IHTMLElementPtr element(a);
-				if (element && (IsNormalizationOwner(element) || U::scmp(element->id, L"fbw_body") == 0))
-					return a;
-			}
-	return MSHTML::IHTMLDOMNodePtr();
+	MSHTML::IHTMLElementPtr element(scope);
+	if (!element || !IsNormalizationOwner(element) || U::scmp(element->className, L"body") == 0) return false;
+	MSHTML::IHTMLDOMNodePtr editable(document->all->item(L"fbw_body"));
+	for (MSHTML::IHTMLDOMNodePtr node(scope); node; node = node->parentNode)
+		if (node == editable) return true;
+	return false;
 }
+
+// MSHTML bookmarks encode document-wide coordinates which change when a BR
+// becomes a paragraph boundary. Keep each endpoint relative to its own owner.
+struct DropSelectionEndpoint {
+	MSHTML::IHTMLDOMNodePtr owner, parent;
+	long index = 0, offset = -1;
+	long textOffset = -1;
+	bool skipBreaks = false;
+	static long TextLength(MSHTML::IHTMLTxtRangePtr range) {
+		CString text(static_cast<LPCWSTR>(range->text)); text.Remove(L'\r'); text.Remove(L'\n');
+		return text.GetLength();
+	}
+	void Capture(MSHTML::IHTMLTxtRangePtr selection, bool start, MSHTML::IHTMLDocument2Ptr document) {
+		MSHTML::IHTMLTxtRangePtr endpoint(selection->duplicate());
+		endpoint->collapse(start ? VARIANT_TRUE : VARIANT_FALSE);
+		owner = MSHTML::IHTMLDOMNodePtr(FindNormalizationOwner(endpoint->parentElement()));
+		if (!IsLiveDropScope(owner, document)) return;
+		parent = owner->parentNode;
+		for (MSHTML::IHTMLDOMNodePtr node(owner->previousSibling); node; node = node->previousSibling) ++index;
+		auto compare = [&](long position) {
+			MSHTML::IHTMLTxtRangePtr probe(selection->duplicate());
+			probe->moveToElementText(MSHTML::IHTMLElementPtr(owner)); probe->collapse(VARIANT_TRUE);
+			const long moved = probe->move(L"character", position);
+			const long order = probe->compareEndPoints(L"StartToStart", endpoint);
+			if (moved < position && order < 0) CheckError(E_UNEXPECTED);
+			return order;
+		};
+		long low = 0, high = 1;
+		while (compare(high) < 0) { if (high > LONG_MAX / 2) return; high *= 2; }
+		while (low < high) { const long mid = low + (high - low) / 2; if (compare(mid) < 0) low = mid + 1; else high = mid; }
+		if (compare(low) == 0) offset = low;
+		MSHTML::IHTMLTxtRangePtr prefix(selection->duplicate());
+		prefix->moveToElementText(MSHTML::IHTMLElementPtr(owner)); prefix->setEndPoint(L"EndToStart", endpoint);
+		textOffset = TextLength(prefix);
+		MSHTML::IHTMLTxtRangePtr next(endpoint->duplicate()); next->moveEnd(L"character", 1);
+		skipBreaks = TextLength(next) > 0;
+	}
+	MSHTML::IHTMLTxtRangePtr Restore(MSHTML::IHTMLDocument2Ptr document) const {
+		if (offset < 0) return MSHTML::IHTMLTxtRangePtr();
+		MSHTML::IHTMLDOMNodePtr current(owner);
+		if (!IsLiveDropScope(current, document)) {
+			current = parent ? parent->firstChild : MSHTML::IHTMLDOMNodePtr();
+			for (long i = 0; current && i < index; ++i) current = current->nextSibling;
+		}
+		if (!IsLiveDropScope(current, document)) return MSHTML::IHTMLTxtRangePtr();
+		MSHTML::IHTMLTxtRangePtr range(MSHTML::IHTMLBodyElementPtr(document->body)->createTextRange());
+		range->moveToElementText(MSHTML::IHTMLElementPtr(current));
+		auto point = [&](long position) {
+			MSHTML::IHTMLTxtRangePtr probe(range->duplicate()); probe->collapse(VARIANT_TRUE); probe->move(L"character", position);
+			return probe;
+		};
+		// First determine the owner's end in MSHTML movement units. Then map
+		// text characters without CR/LF; BR and P boundaries have different
+		// movement widths but carry the same document text.
+		long low = 0, high = 1;
+		while (point(high)->compareEndPoints(L"StartToEnd", range) < 0) { if (high > LONG_MAX / 2) return MSHTML::IHTMLTxtRangePtr(); high *= 2; }
+		while (low < high) { const long mid = low + (high - low) / 2; if (point(mid)->compareEndPoints(L"StartToEnd", range) < 0) low = mid + 1; else high = mid; }
+		const long end = low;
+		low = 0; high = end;
+		const bool forward = skipBreaks && textOffset < TextLength(range);
+		while (low < high) {
+			const long mid = low + (high - low) / 2;
+			MSHTML::IHTMLTxtRangePtr prefix(range->duplicate()); prefix->setEndPoint(L"EndToStart", point(mid));
+			const long length = TextLength(prefix);
+			if (forward ? length <= textOffset : length < textOffset) low = mid + 1; else high = mid;
+		}
+		return point(forward && low ? low - 1 : low);
+	}
+};
 
 // MSHTML ends markup undo units at script/event boundaries. An OLE parent
 // collects the native drop and the later normalization across those boundaries.
@@ -1869,26 +1961,56 @@ class DropUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOle
 {
 	std::vector<CComPtr<IOleUndoUnit>> m_units;
 	CComPtr<IOleParentUndoUnit> m_open;
+	FB::Doc* m_document = nullptr;
+	long m_version = -1;
+	bool m_clean = false, m_recoveryClean = false;
 public:
+	void CaptureHistoryState(FB::Doc* document) {
+		m_document = document;
+		if (document) {
+			m_version = document->m_body.GetVersionNumber();
+			m_clean = !document->DocChanged(); m_recoveryClean = !document->DocRelChanged();
+		}
+	}
 	BEGIN_COM_MAP(DropUndoUnit)
 		COM_INTERFACE_ENTRY(IOleUndoUnit)
 		COM_INTERFACE_ENTRY(IOleParentUndoUnit)
 	END_COM_MAP()
 	STDMETHOD(Do)(IOleUndoManager* manager)
 	{
-		if (!manager) return E_POINTER;
+		if (m_open) return E_UNEXPECTED;
+		CString trace;
+		trace.Format(L"children=%u; manager=%s", static_cast<unsigned>(m_units.size()), manager ? L"provided" : L"null");
+		StartupTrace::Event(L"undo", L"D413", trace);
+		if (!manager)
+		{
+			for (auto unit = m_units.rbegin(); unit != m_units.rend(); ++unit)
+			{
+				const HRESULT result = (*unit)->Do(nullptr);
+				if (FAILED(result)) return result;
+			}
+			if (m_document) m_document->RestoreCleanAfterPasteUndo(m_version, m_clean, m_recoveryClean);
+			return S_OK;
+		}
 		CComObject<DropUndoUnit>* raw = nullptr;
 		HRESULT hr = CComObject<DropUndoUnit>::CreateInstance(&raw);
 		if (FAILED(hr)) return hr;
 		CComPtr<IOleParentUndoUnit> inverse(raw);
+		raw->CaptureHistoryState(m_document);
 		hr = manager->Open(inverse);
 		if (FAILED(hr)) return hr;
 		for (auto unit = m_units.rbegin(); unit != m_units.rend(); ++unit)
 		{
 			hr = (*unit)->Do(manager);
-			if (FAILED(hr)) break;
+			if (FAILED(hr)) {
+				CComBSTR description; (*unit)->GetDescription(&description);
+				StartupTrace::HResult(L"undo", L"D414", hr, description ? description.m_str : L"Child undo unit failed");
+				break;
+			}
 		}
 		const HRESULT closed = manager->Close(inverse, !raw->m_units.empty());
+		if (SUCCEEDED(hr) && SUCCEEDED(closed) && m_document)
+			m_document->RestoreCleanAfterPasteUndo(m_version, m_clean, m_recoveryClean);
 		return FAILED(hr) ? hr : closed;
 	}
 	STDMETHOD(GetDescription)(BSTR* text)
@@ -1906,6 +2028,7 @@ public:
 	STDMETHOD(Open)(IOleParentUndoUnit* unit)
 	{
 		if (!unit) return E_POINTER;
+		if (unit == static_cast<IOleParentUndoUnit*>(this) || FindUnit(unit) == S_OK) return E_INVALIDARG;
 		if (m_open) return m_open->Open(unit);
 		m_open = unit; return S_OK;
 	}
@@ -1917,20 +2040,26 @@ public:
 		const HRESULT closed = m_open->Close(unit, commit);
 		if (closed != S_FALSE) return closed;
 		if (m_open.p != unit) return E_INVALIDARG;
-		try { if (commit) m_units.push_back(m_open.p); }
-		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
-		m_open.Release(); return S_OK;
+		CComPtr<IOleParentUndoUnit> child(m_open);
+		m_open.Release();
+		const HRESULT added = commit ? Add(child) : S_OK;
+		if (FAILED(added)) m_open = child;
+		return added;
 	}
 	STDMETHOD(Add)(IOleUndoUnit* unit)
 	{
 		if (!unit) return E_POINTER;
+		if (unit == static_cast<IOleUndoUnit*>(this)) return E_INVALIDARG;
+		if (StartupTrace::Enabled()) { CComBSTR name; unit->GetDescription(&name); StartupTrace::Event(L"undo", L"D417", name ? name.m_str : L"Drop parent Add"); }
 		if (m_open) return m_open->Add(unit);
 		try { m_units.push_back(unit); }
 		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+		if (m_units.size() > 1) m_units[m_units.size() - 2]->OnNextAdd();
 		return S_OK;
 	}
 	STDMETHOD(FindUnit)(IOleUndoUnit* unit)
 	{
+		if (!unit) return E_POINTER;
 		if (m_open && (m_open.p == unit || m_open->FindUnit(unit) == S_OK)) return S_OK;
 		for (const auto& child : m_units)
 		{
@@ -1946,6 +2075,14 @@ public:
 		if (m_open) return m_open->GetParentState(state);
 		*state = UAS_NORMAL; return S_OK;
 	}
+	bool Empty() const { return m_units.empty(); }
+	HRESULT CloseChildren()
+	{
+		if (!m_open) return S_OK;
+		// Ask the immediate child to close through the ordinary parent contract;
+		// never discard recorded edits or clear the manager's previous history.
+		return Close(m_open, TRUE);
+	}
 };
 }
 
@@ -1956,58 +2093,174 @@ void CFBEView::OpenDropUndoGroup(CComPtr<IOleUndoManager>& manager, CComPtr<IOle
 		reinterpret_cast<void**>(&manager)));
 	CComObject<DropUndoUnit>* unit = nullptr;
 	CheckError(CComObject<DropUndoUnit>::CreateInstance(&unit));
-	parent = unit;
-	CheckError(manager->Open(parent));
+	CComPtr<IOleParentUndoUnit> candidate(unit);
+	unit->CaptureHistoryState(m_ownerDocument);
+	DWORD state = 0;
+	StartupTrace::HResult(L"undo", L"D416", manager->GetOpenParentState(&state), L"Open drop group: previous parent state");
+	const HRESULT opened = manager->Open(candidate);
+	if (FAILED(opened)) { manager.Release(); CheckError(opened); }
+	parent = candidate;
+}
+
+HRESULT CFBEView::CloseDropUndoGroup(IOleUndoManager* manager, IOleParentUndoUnit* parent, bool commit)
+{
+	if (!manager || !parent) return E_POINTER;
+	auto unit = static_cast<DropUndoUnit*>(parent);
+	StartupTrace::Event(L"undo", L"D418", unit->Empty() ? L"Close empty drop group" : L"Close recorded drop group");
+	HRESULT hr = manager->Close(parent, commit && !unit->Empty());
+	if (FAILED(hr))
+	{
+		StartupTrace::HResult(L"undo", L"D410", hr, L"Close drop group failed; closing nested units before retry");
+		const HRESULT nested = unit->CloseChildren();
+		if (FAILED(nested)) return nested;
+		hr = manager->Close(parent, commit && !unit->Empty());
+	}
+	return hr;
+}
+
+HRESULT CFBEView::RollbackDropUndoGroup(IOleUndoManager* manager, IOleParentUndoUnit* parent)
+{
+	const HRESULT closed = CloseDropUndoGroup(manager, parent, false);
+	if (FAILED(closed)) return closed;
+	return parent->Do(nullptr);
+}
+
+namespace {
+class DropUndoProbe : public CComObjectRootEx<CComSingleThreadModel>, public IOleUndoUnit {
+public:
+	BEGIN_COM_MAP(DropUndoProbe)
+		COM_INTERFACE_ENTRY(IOleUndoUnit)
+	END_COM_MAP()
+	int calls = 0, notifications = 0;
+	IOleUndoManager* received = reinterpret_cast<IOleUndoManager*>(1);
+	HRESULT result = S_OK;
+	STDMETHOD(Do)(IOleUndoManager* manager) { received = manager; ++calls; return result; }
+	STDMETHOD(GetDescription)(BSTR* text) { if (!text) return E_POINTER; *text = ::SysAllocString(L"Probe"); return *text ? S_OK : E_OUTOFMEMORY; }
+	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) { if (!clsid || !id) return E_POINTER; *clsid = CLSID_NULL; *id = 0; return S_OK; }
+	STDMETHOD(OnNextAdd)() { ++notifications; return S_OK; }
+};
+}
+
+bool CFBEView::VerifyDropUndoContractForTest()
+{
+	CComObject<DropUndoUnit>* raw = nullptr;
+	CComObject<DropUndoUnit>* nested = nullptr;
+	CComObject<DropUndoProbe>* first = nullptr;
+	CComObject<DropUndoProbe>* last = nullptr;
+	if (FAILED(CComObject<DropUndoUnit>::CreateInstance(&raw))) return false;
+	CComPtr<IOleParentUndoUnit> parent(raw);
+	if (FAILED(CComObject<DropUndoUnit>::CreateInstance(&nested))) return false;
+	CComPtr<IOleParentUndoUnit> child(nested);
+	if (FAILED(CComObject<DropUndoProbe>::CreateInstance(&first))) return false;
+	CComPtr<IOleUndoUnit> a(first);
+	if (FAILED(CComObject<DropUndoProbe>::CreateInstance(&last))) return false;
+	CComPtr<IOleUndoUnit> b(last);
+	DWORD state = 99;
+	bool ok = parent->Add(a) == S_OK && parent->Open(child) == S_OK && parent->Add(b) == S_OK;
+	ok = ok && parent->FindUnit(b) == S_OK && parent->FindUnit(nullptr) == E_POINTER;
+	ok = ok && parent->Close(parent, TRUE) == E_INVALIDARG && parent->FindUnit(b) == S_OK;
+	ok = ok && parent->Close(child, TRUE) == S_OK && parent->Close(parent, TRUE) == S_FALSE;
+	ok = ok && parent->GetParentState(&state) == S_OK && state == UAS_NORMAL && first->notifications == 1;
+	ok = ok && parent->Do(nullptr) == S_OK && first->calls == 1 && last->calls == 1 && !first->received && !last->received;
+	last->result = E_FAIL;
+	ok = ok && parent->Do(nullptr) == E_FAIL && first->calls == 1 && last->calls == 2;
+	return ok;
 }
 
 void CFBEView::ResetPendingDrop()
 {
-	bool changed = false;
-	try { changed = m_drop_version >= 0 && GetVersionNumber() != m_drop_version; } catch (const _com_error&) {}
+	bool changed = true;
+	try { changed = !m_drag_mouse_armed && m_drop_version >= 0 && GetVersionNumber() != m_drop_version; } catch (const _com_error&) {}
+	if (m_drop_undo_open)
+	{
+		const HRESULT closed = CloseDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent, changed);
+		if (FAILED(closed))
+		{
+			StartupTrace::HResult(L"undo", L"D411", closed, L"Drop undo group could not be closed");
+			return; // Retain ownership so lifecycle cleanup can retry.
+		}
+		m_drop_undo_open = false;
+	}
 	++m_drop_generation;
 	m_pending_drop_normalization_scope = nullptr;
 	m_drag_source_scope = nullptr;
+	m_drop_source_html.Empty(); m_drop_target_html.Empty();
+	m_internal_drag = false; m_drop_received = false; m_drag_mouse_armed = false;
 	m_drop_version = -1;
-	if (m_drop_undo_open)
-	{
-		m_drop_undo_open = false;
-		m_drop_undo_manager->Close(m_drop_undo_parent, changed);
-	}
 	m_drop_undo_parent.Release();
 	m_drop_undo_manager.Release();
 }
 
 VARIANT_BOOL CFBEView::OnDragStart(IDispatch*)
 {
-	ResetPendingDrop();
+	if (!m_drag_mouse_armed) ResetPendingDrop();
+	if (m_drop_undo_open && !m_drag_mouse_armed) return VARIANT_FALSE;
 	if (m_normalize)
-		m_drag_source_scope = ResolveNormalizationScope();
+	{
+		try {
+			m_internal_drag = true;
+			m_drag_mouse_armed = false;
+			m_drag_source_scope = ResolveNormalizationScope();
+			if (!IsLiveDropScope(m_drag_source_scope, Document())) m_drag_source_scope = nullptr;
+			// MSHTML opens its editing parent BEFORE ondrop. Own the outer group
+			// before that parent exists, so the browser can close its own child.
+			if (!m_drop_undo_open) {
+				OpenDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent);
+				m_drop_undo_open = true;
+			}
+			m_drop_version = GetVersionNumber();
+		} catch (const _com_error&) { ResetPendingDrop(); return VARIANT_FALSE; }
+	}
 	return VARIANT_TRUE;
+}
+
+VARIANT_BOOL CFBEView::OnDragHover(IDispatch*)
+{
+	if (!m_normalize || m_internal_drag || m_drop_undo_open) return VARIANT_TRUE;
+	try {
+		// External text has no dragstart in this document. Hover precedes the
+		// native drop transaction; leaving the view discards this empty parent.
+		OpenDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent);
+		m_drop_undo_open = true;
+		m_drop_version = GetVersionNumber();
+	} catch (const _com_error&) { ResetPendingDrop(); return VARIANT_FALSE; }
+	return VARIANT_TRUE;
+}
+
+void CFBEView::OnDragLeave(IDispatch*)
+{
+	if (!m_internal_drag && !m_drop_received) ResetPendingDrop();
 }
 
 VARIANT_BOOL CFBEView::OnDragDrop(IDispatch* event)
 {
 	if (!m_normalize) return VARIANT_TRUE;
+	if (m_drop_received) return VARIANT_FALSE;
 	try
 	{
 		MSHTML::IHTMLEventObjPtr dropEvent(event);
 		MSHTML::IHTMLElementPtr origin(dropEvent ? dropEvent->srcElement : nullptr);
 		MSHTML::IHTMLElementPtr target(FindNormalizationOwner(origin));
-		if (!target && origin && U::scmp(origin->id, L"fbw_body") == 0) target = origin;
-		if (!target) { ResetPendingDrop(); return VARIANT_TRUE; }
-		m_pending_drop_normalization_scope = CommonDropScope(m_drag_source_scope, MSHTML::IHTMLDOMNodePtr(target));
-		if (!m_pending_drop_normalization_scope)
-			m_pending_drop_normalization_scope = MSHTML::IHTMLDOMNodePtr(Document()->body);
+		m_pending_drop_normalization_scope = MSHTML::IHTMLDOMNodePtr(target);
+		if (!IsLiveDropScope(m_pending_drop_normalization_scope, Document())) m_pending_drop_normalization_scope = nullptr;
+		if (m_drag_source_scope) m_drop_source_html = static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(m_drag_source_scope)->innerHTML);
+		if (m_pending_drop_normalization_scope) m_drop_target_html = static_cast<LPCWSTR>(target->innerHTML);
 		m_drop_version = GetVersionNumber();
 		// Keep the browser's insertion, source deletion and normalization in one
 		// undo unit. Neither drop nor dragend observes the final internal-move DOM.
-		OpenDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent);
-		m_drop_undo_open = true;
-		if (!PostMessage(AU::WM_FINALIZE_DROP, m_drop_generation)) ResetPendingDrop();
+		if (!m_drop_undo_open) {
+			OpenDropUndoGroup(m_drop_undo_manager, m_drop_undo_parent);
+			m_drop_undo_open = true;
+		}
+		m_drop_received = true;
+		// An internal move deletes its source after the target's Drop. Wait for
+		// dragend before queuing the finalizer outside the native drag loop.
+		if (!m_internal_drag && !PostMessage(AU::WM_FINALIZE_DROP, m_drop_generation)) { ResetPendingDrop(); return VARIANT_FALSE; }
 	}
 	catch (const _com_error&)
 	{
 		ResetPendingDrop();
+		return VARIANT_FALSE; // Do not let an ungrouped native edit proceed.
 	}
 	return VARIANT_TRUE; // Preserve MSHTML's standard drop operation.
 }
@@ -2016,7 +2269,9 @@ void CFBEView::OnDragEnd(IDispatch*)
 {
 	// No drop in this view means cancellation or a drop outside the editor.
 	// The queued drop finalizer handles successful internal and external drops.
-	if (!m_drop_undo_open) ResetPendingDrop();
+	if (m_drop_undo_open && m_drop_received) {
+		if (!PostMessage(AU::WM_FINALIZE_DROP, m_drop_generation)) ResetPendingDrop();
+	} else ResetPendingDrop();
 }
 
 LRESULT CFBEView::OnFinalizeDrop(UINT, WPARAM generation, LPARAM, BOOL&)
@@ -2028,24 +2283,42 @@ LRESULT CFBEView::OnFinalizeDrop(UINT, WPARAM generation, LPARAM, BOOL&)
 		{
 			MSHTML::IHTMLTxtRangePtr caret;
 			_bstr_t bookmark;
+			DropSelectionEndpoint selectionStart, selectionEnd;
 			try
 			{
 				caret = Document()->selection->createRange();
-				if (caret) bookmark = caret->getBookmark();
+				if (caret) {
+					bookmark = caret->getBookmark();
+					selectionStart.Capture(caret, true, Document());
+					selectionEnd.Capture(caret, false, Document());
+				}
 			}
 			catch (const _com_error&) {} // A control selection has no text range.
+			CString selectionTrace;
+			selectionTrace.Format(L"start=%ld; end=%ld; start-index=%ld; end-index=%ld", selectionStart.offset, selectionEnd.offset, selectionStart.index, selectionEnd.index);
+			StartupTrace::Event(L"drop", L"D412", selectionTrace);
 			{
 				FbeDom::MarkupUndoUnitScope normalization(m_mk_srv, L"Normalize drop");
-				NormalizeWithoutUndo(m_pending_drop_normalization_scope);
+				// Never broaden an unknown/stale endpoint to document.body. Each
+				// surviving changed owner is normalized once; siblings are untouched.
+				auto normalizeChanged = [&](MSHTML::IHTMLDOMNodePtr scope, const CString& before) {
+					if (IsLiveDropScope(scope, Document()) &&
+						CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(scope)->innerHTML)) != before)
+						NormalizeWithoutUndo(scope);
+				};
+				normalizeChanged(m_drag_source_scope, m_drop_source_html);
+				if (m_pending_drop_normalization_scope != m_drag_source_scope)
+					normalizeChanged(m_pending_drop_normalization_scope, m_drop_target_html);
 			}
 			if (caret)
 			{
-				// SplitBRs can replace the scope's outerHTML. A live range then
-				// expands to the removed container; its bookmark retains the text
-				// coordinates across this structural rewrite in MSHTML.
+				MSHTML::IHTMLTxtRangePtr start(selectionStart.Restore(Document())), end(selectionEnd.Restore(Document()));
+				if (start && end) { start->setEndPoint(L"EndToStart", end); start->select(); }
+				else {
 				MSHTML::IHTMLTxtRangePtr restored(MSHTML::IHTMLBodyElementPtr(Document()->body)->createTextRange());
 				if (bookmark.length() && restored->moveToBookmark(bookmark)) restored->select();
 				else caret->select();
+				}
 			}
 		}
 	}
@@ -4219,6 +4492,8 @@ VARIANT_BOOL CFBEView::OnMouseMove(IDispatch* evt)
 
 VARIANT_BOOL CFBEView::OnMouseUp(IDispatch* evt)
 {
+	if (m_drag_mouse_armed && !m_internal_drag &&
+		!PostMessage(AU::WM_FINALIZE_DROP, m_drop_generation)) ResetPendingDrop();
 	if (!m_table_selection_dragging) return VARIANT_TRUE;
 	MSHTML::IHTMLEventObjPtr eventObject(evt);
 	MSHTML::IHTMLElementPtr source(eventObject ? eventObject->srcElement : NULL);
@@ -5278,7 +5553,7 @@ HRESULT CFBEView::AddImportedBinary(const BYTE* bytes, size_t size, const CStrin
 }
 
 // images
-void CFBEView::AddImage(const CString& filename, bool bInline, MSHTML::IHTMLElementPtr* inserted)
+HRESULT CFBEView::AddImage(const CString& filename, bool bInline, MSHTML::IHTMLElementPtr* inserted, MSHTML::IHTMLElement* afterImage)
 {
 	if (inserted) *inserted = nullptr;
 	ImageImportOptions options;
@@ -5289,23 +5564,81 @@ void CFBEView::AddImage(const CString& filename, bool bInline, MSHTML::IHTMLElem
 	CString error;
 	HRESULT hr = ImportImageForFb2(filename, options, imported, error);
 	if (hr == E_ABORT) {
-		if (U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
+		if (U::MessageBox(m_hWnd, FbeLoadRuntimeStringByKey(L"fbe.image_import.flatten_question", L"This image has transparency. Convert it to JPEG on a white background?"), FbeLoadRuntimeStringByKey(L"fbe.image_import.batch_title", L"Image import"), MB_YESNO | MB_ICONWARNING) != IDYES) return E_ABORT;
 		options.flattenTransparentJpeg = true;
 		hr = ImportImageForFb2(filename, options, imported, error);
 	}
-	if (FAILED(hr)) { if (!error.IsEmpty()) U::MessageBox(m_hWnd, filename + L"\n\n" + error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return; }
+	if (FAILED(hr)) { if (!error.IsEmpty()) U::MessageBox(m_hWnd, filename + L"\n\n" + error, L"FictionBook Editor", MB_OK | MB_ICONERROR); else U::ReportError(hr); return hr; }
+	CComPtr<IOleUndoManager> manager;
+	CComPtr<IOleParentUndoUnit> parent;
+	bool open = false;
+	bool domRecorded = false;
+	MSHTML::IHTMLDOMNodePtr owner;
+	std::vector<PasteChildSnapshot> before;
+	MSHTML::IHTMLTxtRangePtr beforeSelection;
+	DropSelectionEndpoint beforeStart, beforeEnd;
+	CComObject<PasteDomUndoUnit>* domRaw = nullptr;
+	CComPtr<IOleUndoUnit> domUndo;
 	try
 	{
+		owner = MSHTML::IHTMLDOMNodePtr(FindNormalizationOwner(SelectionContainer()));
+		if (!IsLiveDropScope(owner, Document())) CheckError(E_INVALIDARG);
+		before = CapturePasteChildren(owner);
+		beforeSelection = Document()->selection->createRange();
+		if (beforeSelection) { beforeStart.Capture(beforeSelection, true, Document()); beforeEnd.Capture(beforeSelection, false, Document()); }
+		CheckError(CComObject<PasteDomUndoUnit>::CreateInstance(&domRaw));
+		domUndo = domRaw;
+		OpenDropUndoGroup(manager, parent);
+		open = true;
 		FbeImage::ImageInsertionResult result;
 		hr = FbeImage::InsertImportedImage(Script(), imported.data.data(), imported.data.size(), imported.logicalFileName, imported.mimeType,
-			bInline ? FbeImage::ImagePlacement::Inline : FbeImage::ImagePlacement::Block, &result);
-		if (FAILED(hr))
-			U::ReportError(hr);
+			bInline ? FbeImage::ImagePlacement::Inline : FbeImage::ImagePlacement::Block, &result, manager);
+		CheckError(hr);
 
 		MSHTML::IHTMLDOMNodePtr node(result.insertedElement);
-		if(!bInline && node && !FbeVisualDom::IsDirectSectionImage(node))
-			FbeVisualDom::BubbleUp(node, L"DIV");
+		{
+			PasteUndoRecordingScope placement(manager);
+			if (!placement.Blocked()) CheckError(E_UNEXPECTED);
+			if (!bInline && node && !FbeVisualDom::IsDirectSectionImage(node)) FbeVisualDom::BubbleUp(node, L"DIV");
+			if (afterImage && MSHTML::IHTMLDOMNodePtr(afterImage)->nextSibling != node)
+				MSHTML::IHTMLElement2Ptr(afterImage)->insertAdjacentElement(L"afterEnd", MSHTML::IHTMLElementPtr(result.insertedElement));
+			CheckError(placement.Close());
+		}
+		MSHTML::IHTMLTxtRangePtr afterSelection(Document()->selection->createRange());
+		domRaw->Initialize(owner, before, CapturePasteChildren(owner, MSHTML::IHTMLDOMNodePtr(), false),
+			beforeSelection, afterSelection, nullptr, false, false, -1);
+		// The OLE parent restores savepoints only after BOTH HTML and binary
+		// have been restored. A DOM-only child must not mark a partial state clean.
+		if (!domRaw->Changed() || !domRaw->PrepareChangedClones()) CheckError(E_UNEXPECTED);
+		CheckError(manager->Add(domUndo));
+		domRecorded = true;
+		CheckError(CloseDropUndoGroup(manager, parent, true));
+		open = false;
 		if (inserted) *inserted = result.insertedElement;
 	}
-	catch (_com_error& error) { U::ReportError(error); }
+	catch (const _com_error& failure) { hr = failure.Error(); }
+	catch (const std::bad_alloc&) { hr = E_OUTOFMEMORY; }
+	if (open)
+	{
+		if (!domRecorded && owner) {
+			try {
+				// No image DOM unit was committed. Restore the preflight snapshot
+				// under a blocking parent before rolling back the owned binary.
+				PasteUndoRecordingScope recording(manager);
+				if (!recording.Blocked()) CheckError(E_UNEXPECTED);
+				domRaw->Initialize(owner, before, CapturePasteChildren(owner, MSHTML::IHTMLDOMNodePtr(), false),
+					MSHTML::IHTMLTxtRangePtr(), MSHTML::IHTMLTxtRangePtr(), nullptr, false, false, -1);
+				if (domRaw->Changed()) CheckError(domRaw->Restore(true));
+				CheckError(recording.Close());
+			} catch (const _com_error& failure) { hr = failure.Error(); }
+		}
+		const HRESULT rolledBack = RollbackDropUndoGroup(manager, parent);
+		if (FAILED(rolledBack)) hr = rolledBack;
+		try {
+			MSHTML::IHTMLTxtRangePtr start(beforeStart.Restore(Document())), end(beforeEnd.Restore(Document()));
+			if (start && end) { start->setEndPoint(L"EndToStart", end); start->select(); }
+		} catch (const _com_error&) {}
+	}
+	if (FAILED(hr)) U::ReportError(hr);
+	return hr;
 }

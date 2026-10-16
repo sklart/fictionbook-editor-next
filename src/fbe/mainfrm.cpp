@@ -1730,7 +1730,8 @@ BOOL CMainFrame::PreTranslateMessage(MSG* pMsg)
 	HWND hWndFocus = ::GetFocus();
 	if(m_doc)
 	{
-		if(::IsChild(m_doc->m_body,hWndFocus))
+		if(::IsChild(m_doc->m_body,hWndFocus) ||
+			(pMsg->message == WM_LBUTTONDOWN && ::IsChild(m_doc->m_body, pMsg->hwnd)))
 		{
 			if (m_doc->m_body.PreTranslateMessage(pMsg))
 				return TRUE;
@@ -5152,12 +5153,20 @@ LRESULT CMainFrame::OnDropFiles(UINT, WPARAM wParam, LPARAM, BOOL&)
     CComPtr<IOleParentUndoUnit> undoParent;
     m_doc->m_body.OpenDropUndoGroup(undoManager, undoParent);
     struct EndDropUndo {
-      CFBEView& view;
       IOleUndoManager* manager;
       IOleParentUndoUnit* parent;
-      long version;
-      ~EndDropUndo() { try { manager->Close(parent, view.GetVersionNumber() != version); } catch (const _com_error&) {} }
-    } undo = { m_doc->m_body, undoManager, undoParent, m_doc->m_body.GetVersionNumber() };
+      bool open = true;
+      HRESULT Close() {
+        if (!open) return S_OK;
+        const HRESULT closed = CFBEView::CloseDropUndoGroup(manager, parent, true);
+        if (SUCCEEDED(closed)) open = false;
+        return closed;
+      }
+      ~EndDropUndo() {
+        const HRESULT closed = Close();
+        if (FAILED(closed)) U::ReportError(closed);
+      }
+    } undo = { undoManager, undoParent };
     MSHTML::IHTMLElementPtr previous;
     for (const CString& path : paths)
     {
@@ -5183,24 +5192,13 @@ LRESULT CMainFrame::OnDropFiles(UINT, WPARAM wParam, LPARAM, BOOL&)
           continue;
         }
         MSHTML::IHTMLElementPtr inserted;
-        m_doc->m_body.AddImage(path, false, std::addressof(inserted));
-        // InsImage leaves the caret at the original paragraph end in one
-        // insertion branch. Place each successful image after the preceding
-        // batch image so this branch cannot reverse the shell's file order.
-        if (previous && inserted)
-        {
-          if (MSHTML::IHTMLDOMNodePtr(previous)->nextSibling != MSHTML::IHTMLDOMNodePtr(inserted))
-          {
-            m_doc->m_body.BeginUndoUnit(L"Order dropped images");
-            try { MSHTML::IHTMLElement2Ptr(previous)->insertAdjacentElement(L"afterEnd", inserted); }
-            catch (...) { m_doc->m_body.EndUndoUnit(); throw; }
-            m_doc->m_body.EndUndoUnit();
-          }
-        }
+        // Order is part of the same per-image DOM snapshot and transaction.
+        if (FAILED(m_doc->m_body.AddImage(path, false, std::addressof(inserted), previous))) continue;
         if (inserted) { previous = inserted; insertionRange = m_doc->m_body.Document()->selection->createRange(); }
       }
       catch (_com_error& error) { U::ReportError(error); }
     }
+    CheckError(undo.Close());
   }
   catch (_com_error& error) { U::ReportError(error); }
   catch (const std::bad_alloc&) { U::ReportError(E_OUTOFMEMORY); }

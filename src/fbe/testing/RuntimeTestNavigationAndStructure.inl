@@ -1,8 +1,105 @@
+	if (IsFbeTestScenario(L"drop-native-manual"))
+	{
+		// This fixture intentionally contains a BR. Recovery serialization after
+		// two minutes would normalize it while waiting for the human gesture and
+		// add an unrelated undo unit to the history under observation.
+		KillTimer(RECOVERY_TIMER_ID);
+		// No fireEvent or replacement editing command: wait for an actual mouse
+		// move in this disposable FBE window, then inspect its native result.
+		static CMainFrame* frame;
+		static CString initial, before, neighbor, path;
+		static ULONGLONG changedAt;
+		static CComPtr<IOleUndoManager> nativeManager;
+		static auto undoSummary = [](IOleUndoManager* manager) {
+			CStringA text;
+			DWORD state = 0; const HRESULT open = manager->GetOpenParentState(&state);
+			text.AppendFormat("open=0x%08lX state=%lu", static_cast<unsigned long>(open), state);
+			CComPtr<IEnumOleUndoUnits> units;
+			if (SUCCEEDED(manager->EnumUndoable(&units)) && units) {
+				for (unsigned count = 0; count < 20; ++count) {
+					CComPtr<IOleUndoUnit> unit;
+					if (units->Next(1, &unit, nullptr) != S_OK) break;
+					CComBSTR name; unit->GetDescription(&name);
+					text += " | "; text += CStringA(CW2A(name ? name.m_str : L"?", CP_UTF8));
+				}
+			}
+			return text;
+		};
+		frame = this; changedAt = 0; path = AU::_ARGS.source_memory_benchmark_path;
+		MSHTML::IHTMLDocument2Ptr dom(m_doc->m_body.Document());
+		nativeManager.Release();
+		IServiceProviderPtr services(dom);
+		CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&nativeManager)));
+		dom->parentWindow->execScript(L"document.all.fbw_body.innerHTML=\"<DIV class='body'><DIV class='section' id='source'><P id='drag'>MOVE</P><P>Source remains.</P></DIV><DIV class='section' id='target'><P id='drop'>Target text here.</P></DIV><DIV class='section' id='untouched'><P id='kept'>Keep<BR><EM>this formatting</EM> and <A href='#kept'>link</A>.</P></DIV></DIV>\";", L"JScript");
+		MSHTML::IHTMLElementPtr editable(dom->all->item(L"fbw_body"));
+		initial = static_cast<LPCWSTR>(editable->innerHTML);
+		m_doc->MarkSavePoint();
+		dom->parentWindow->execScript(L"window.external.BeginUndoUnit(document,'prior native edit');document.all.drop.insertAdjacentHTML('beforeEnd',' prior');window.external.EndUndoUnit(document);", L"JScript");
+		before = static_cast<LPCWSTR>(editable->innerHTML);
+		neighbor = static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(dom->all->item(L"untouched"))->outerHTML);
+		::ShowWindow(m_hWnd, SW_RESTORE); ::SetForegroundWindow(m_hWnd); m_doc->m_body.SetFocus();
+		dom->parentWindow->execScript(L"var dragRange=document.body.createTextRange();dragRange.moveToElementText(document.all.drag);dragRange.collapse(true);dragRange.moveEnd('character',4);dragRange.select();", L"JScript");
+		// Observe through script variables only: writing diagnostic attributes to
+		// the live DOM here would itself invalidate MSHTML's native undo history.
+		dom->parentWindow->execScript(L"window.fbeNativeDropSeen=false;document.body.attachEvent('ondrop',function(){window.fbeNativeBefore=document.all.fbw_body.innerHTML;window.fbeNativeNeighbor=document.all.untouched.outerHTML;window.fbeNativeDropSeen=true;});document.body.attachEvent('onkeydown',function(){window.event.returnValue=false;});", L"JScript");
+		const CStringA ready(CStringA("ready: use the mouse to drag MOVE into Target text here.\r\n") + undoSummary(nativeManager) + "\r\n");
+		DWORD written = 0; output.Write(ready, ready.GetLength(), &written); output.Flush(); output.Close();
+		::SetTimer(nullptr, 0, 200, [](HWND, UINT, UINT_PTR timer, DWORD) {
+			MSHTML::IHTMLDocument2Ptr document(frame->m_doc->m_body.Document());
+			CComDispatchDriver observer(frame->m_doc->m_body.Script());
+			_variant_t observed, observedBefore, observedNeighbor;
+			if (FAILED(observer.GetPropertyByName(L"fbeNativeDropSeen", &observed)) || observed.vt != VT_BOOL || observed.boolVal != VARIANT_TRUE) return;
+			if (FAILED(observer.GetPropertyByName(L"fbeNativeBefore", &observedBefore)) || FAILED(observer.GetPropertyByName(L"fbeNativeNeighbor", &observedNeighbor))) return;
+			before = static_cast<LPCWSTR>(_bstr_t(observedBefore));
+			neighbor = static_cast<LPCWSTR>(_bstr_t(observedNeighbor));
+			MSHTML::IHTMLElementPtr body(document->all->item(L"fbw_body"));
+			CString after(static_cast<LPCWSTR>(body->innerHTML));
+			if (after == before) { changedAt = 0; return; }
+			if (!changedAt) { changedAt = ::GetTickCount64(); return; }
+			if (::GetTickCount64() - changedAt < 2000) return;
+			::KillTimer(nullptr, timer);
+			const CString source(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"source"))->innerText));
+			const CString target(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"target"))->innerText));
+			const bool moved = source.Find(L"MOVE") < 0 && target.Find(L"MOVE") >= 0;
+			const bool scoped = CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->outerHTML)) == neighbor;
+			const bool dirty = frame->m_doc->DocChanged();
+			const CStringA beforeUndo(undoSummary(nativeManager));
+			frame->m_doc->m_body.SetFocus();
+			IOleCommandTargetPtr commands(frame->m_doc->m_body.Browser());
+			const HRESULT firstUndo = commands->Exec(&CGID_MSHTML, IDM_UNDO, 0, nullptr, nullptr);
+			const CString undoHtml(static_cast<LPCWSTR>(body->innerHTML));
+			const bool undo = undoHtml == before;
+			frame->m_doc->m_body.ExecCommand(IDM_UNDO);
+			const CString previousHtml(static_cast<LPCWSTR>(body->innerHTML));
+			const bool previous = previousHtml == initial;
+			frame->m_doc->m_body.ExecCommand(IDM_REDO);
+			const bool redoPrevious = CString(static_cast<LPCWSTR>(body->innerHTML)) == before;
+			frame->m_doc->m_body.ExecCommand(IDM_REDO);
+			const bool redo = CString(static_cast<LPCWSTR>(body->innerHTML)) == after;
+			const bool passed = moved && scoped && dirty && undo && previous && redoPrevious && redo;
+			CStringA report; report.Format("native-drop=%s\r\nmoved=%d scoped=%d dirty=%d undo=%d previous=%d redo-previous=%d redo=%d\r\n", passed ? "pass" : "fail", moved, scoped, dirty, undo, previous, redoPrevious, redo);
+			report += "history-before-undo="; report += beforeUndo;
+			report.AppendFormat("\r\nundo-command=0x%08lX\r\n", static_cast<unsigned long>(firstUndo));
+			if (!passed) {
+				report += "before="; report += CStringA(CW2A(before, CP_UTF8));
+				report += "\r\nafter="; report += CStringA(CW2A(after, CP_UTF8));
+				report += "\r\nundo="; report += CStringA(CW2A(undoHtml, CP_UTF8));
+				report += "\r\nprevious="; report += CStringA(CW2A(previousHtml, CP_UTF8)); report += "\r\n";
+			}
+			WritePortableStateTestText(path, report);
+			::PostQuitMessage(passed ? 0 : 1);
+		});
+		return 0;
+	}
 	if (IsFbeTestScenario(L"drop-files-runtime"))
 	{
 		LegacyTodoTest::MessageProbe messages;
 		const CString originalFile(m_doc->m_filename);
 		MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+		CComPtr<IOleUndoManager> undoManager;
+		IServiceProviderPtr undoProvider(document);
+		CheckError(undoProvider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&undoManager)));
+		auto closedGroup = [&]() { DWORD state = 0; return undoManager->GetOpenParentState(&state) == S_FALSE; };
 		auto drop = [&](const std::vector<CString>& files) {
 			size_t chars = 1;
 			for (const CString& file : files) chars += static_cast<size_t>(file.GetLength()) + 1;
@@ -17,6 +114,31 @@
 			return true; // OnDropFiles owns DragFinish, including all early returns.
 		};
 		auto bodyHtml = [&]() { return CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"fbw_body"))->innerHTML)); };
+		auto binaryState = [&]() {
+			CString state;
+			MSHTML::IHTMLDOMNodePtr parent(document->all->item(L"binobj"));
+			for (MSHTML::IHTMLDOMNodePtr node(parent->firstChild); node; node = node->nextSibling) {
+				MSHTML::IHTMLElementPtr element(node);
+				if (!element || U::scmp(element->tagName, L"DIV") != 0) continue;
+				MSHTML::IHTMLElementCollectionPtr fields(element->all);
+				MSHTML::IHTMLInputElementPtr id(fields->item(L"id")), type(fields->item(L"type"));
+				state += CString(static_cast<LPCWSTR>(id->value)) + L"|" + CString(static_cast<LPCWSTR>(type->value)) + L"|";
+				CComDispatchDriver dispatch(element);
+				_variant_t data; CheckError(dispatch.GetPropertyByName(L"base64data", &data));
+				if (data.vt != (VT_ARRAY | VT_UI1) || !data.parray || SafeArrayGetDim(data.parray) != 1) return CString(L"<invalid-data>");
+				long first = 0, last = -1;
+				CheckError(SafeArrayGetLBound(data.parray, 1, &first)); CheckError(SafeArrayGetUBound(data.parray, 1, &last));
+				const long count = last - first + 1;
+				if (count < 0 || count > INT_MAX / 2) return CString(L"<invalid-size>");
+				CString hex; wchar_t* text = hex.GetBuffer(count * 2);
+				BYTE* bytes = nullptr; CheckError(SafeArrayAccessData(data.parray, reinterpret_cast<void**>(&bytes)));
+				const wchar_t* digits = L"0123456789abcdef";
+				for (long i = 0; i < count; ++i) { text[2 * i] = digits[bytes[i] >> 4]; text[2 * i + 1] = digits[bytes[i] & 15]; }
+				CheckError(SafeArrayUnaccessData(data.parray)); hex.ReleaseBuffer(count * 2);
+				state += hex + L"\n";
+			}
+			return state;
+		};
 		auto imageOrder = [&]() {
 			CString order;
 			MSHTML::IHTMLElementPtr body(document->all->item(L"fbw_body"));
@@ -44,12 +166,54 @@
 		::SetForegroundWindow(m_hWnd);
 		prepareCaret();
 		const CString before(bodyHtml());
+		const CString binariesBefore(binaryState());
+		m_doc->MarkSavePoint(); m_doc->MarkDocCP();
 		check("two-files-dispatch", drop({originalFile + L".first.png", originalFile + L".second.png"}));
+		check("batch-group-closed", closedGroup());
 		CString order(imageOrder());
 		check("order", order.Find(L".first.png") >= 0 && order.Find(L".second.png") > order.Find(L".first.png"));
 		const CString after(bodyHtml());
-		m_doc->m_body.ExecCommand(IDM_UNDO); check("undo", bodyHtml() == before);
-		m_doc->m_body.ExecCommand(IDM_REDO); check("redo", bodyHtml() == after);
+		const CString binariesAfter(binaryState());
+		check("two-new-binaries", binariesAfter != binariesBefore && binariesAfter.Find(L".first.png") >= 0 && binariesAfter.Find(L".second.png") >= 0);
+		m_doc->m_body.ExecCommand(IDM_UNDO); check("undo", bodyHtml() == before && binaryState() == binariesBefore);
+		if (bodyHtml() != before || binaryState() != binariesBefore) {
+			details += "undo-html: "; details += CStringA(CW2A(bodyHtml(), CP_UTF8)); details += "\r\nundo-binary: "; details += CStringA(CW2A(binaryState(), CP_UTF8)); details += "\r\nexpected-html: "; details += CStringA(CW2A(before, CP_UTF8)); details += "\r\n";
+		}
+		check("clean-after-undo", !m_doc->DocChanged());
+		m_doc->m_body.ExecCommand(IDM_REDO); check("redo", bodyHtml() == after && binaryState() == binariesAfter);
+		check("dirty-after-redo", m_doc->DocChanged());
+		m_doc->MarkSavePoint();
+		m_doc->m_body.ExecCommand(IDM_UNDO); check("undo-from-savepoint", m_doc->DocChanged() && bodyHtml() == before && binaryState() == binariesBefore);
+		m_doc->m_body.ExecCommand(IDM_REDO); check("redo-to-savepoint", !m_doc->DocChanged() && bodyHtml() == after && binaryState() == binariesAfter);
+		// Exercise failures after binary creation, including a partially changed
+		// paragraph before the script throws. The next image must still succeed.
+		MSHTML::IHTMLWindow2Ptr window(document->parentWindow);
+		const wchar_t* failures[] = { L"return null;", L"throw new Error('before insert');", L"original(false,id); return null;", L"original(false,id); throw new Error('after insert');" };
+		for (const wchar_t* failure : failures) {
+			prepareCaret();
+			const CString oldHtml(bodyHtml()), oldBinaries(binaryState());
+			CString js; js.Format(L"var savedInsImage=InsImage;InsImage=(function(original){return function(check,id){if(check)return original(check,id);%s};})(savedInsImage);", failure);
+			window->execScript(_bstr_t(js), L"JScript");
+			MSHTML::IHTMLElementPtr inserted;
+			const HRESULT failed = m_doc->m_body.AddImage(originalFile + L".first.png", false, std::addressof(inserted));
+			window->execScript(L"InsImage=savedInsImage;", L"JScript");
+			check("insert-failure-atomic", FAILED(failed) && !inserted && bodyHtml() == oldHtml && binaryState() == oldBinaries);
+			check("error-group-closed", closedGroup());
+			if (bodyHtml() != oldHtml || binaryState() != oldBinaries) details.AppendFormat("failure: html=%d binary=%d\r\n", bodyHtml() == oldHtml, binaryState() == oldBinaries);
+		}
+		// Fail only the middle member of a real shell batch, after native DOM
+		// insertion; successful members and their binary data stay ordered.
+		prepareCaret();
+		window->execScript(L"var savedInsImage=InsImage;InsImage=function(check,id){if(check)return savedInsImage(check,id);var image=savedInsImage(check,id);if(String(id).indexOf('.failed.png')>=0)throw new Error('middle image');return image;};", L"JScript");
+		const CString preBatchHtml(bodyHtml()), preBatchBinaries(binaryState());
+		drop({originalFile + L".first.png", originalFile + L".failed.png", originalFile + L".second.png"});
+		window->execScript(L"InsImage=savedInsImage;", L"JScript");
+		const CString postBatchHtml(bodyHtml()), postBatchBinaries(binaryState());
+		check("middle-failure-no-orphan", postBatchBinaries.Find(L".failed.png") < 0 && postBatchHtml.Find(L".failed.png") < 0 && postBatchBinaries != preBatchBinaries);
+		m_doc->m_body.ExecCommand(IDM_UNDO); check("partial-batch-undo", bodyHtml() == preBatchHtml && binaryState() == preBatchBinaries);
+		m_doc->m_body.ExecCommand(IDM_REDO); check("partial-batch-redo", bodyHtml() == postBatchHtml && binaryState() == postBatchBinaries);
+		// Return to the first successful batch before the original contour.
+		m_doc->m_body.ExecCommand(IDM_UNDO);
 		const int warnings = LegacyTodoTest::messageCount;
 		check("unsupported", drop({originalFile + L".unsupported.txt"}) && bodyHtml() == after && LegacyTodoTest::messageCount == warnings + 1);
 		prepareCaret();
@@ -58,9 +222,13 @@
 		check("single", drop({originalFile + L".single.png"}) && imageOrder().Find(L".single.png") >= 0);
 		const CString beforeMixed(bodyHtml());
 		check("mixed", drop({originalFile, originalFile + L".first.png"}) && bodyHtml() == beforeMixed && m_doc->m_filename == originalFile && LegacyTodoTest::messageCount == warnings + 3);
+		int validationLine = 0, validationColumn = 0;
+		check("validate", m_doc->Validate(validationLine, validationColumn));
+		const CString savedBinaries(binaryState());
 		check("save", m_doc->Save());
 		check("reopen", LoadFile(originalFile) == OK);
 		document = m_doc->m_body.Document();
+		check("reopened-binary-data", binaryState() == savedBinaries);
 		order = imageOrder();
 		check("saved-images", order.Find(L".first.png") >= 0 && order.Find(L".second.png") > order.Find(L".first.png") && order.Find(L".third.png") >= 0 && order.Find(L".single.png") >= 0);
 		// Exercise the established singleton open route from a clean book;
@@ -92,10 +260,16 @@
 				::DispatchMessage(&message);
 		};
 		CStringA report("case\tresult\r\n");
-		bool passed = true;
-		for (int test = 0; test < 5; ++test)
+		bool passed = CFBEView::VerifyDropUndoContractForTest();
+		report += passed ? "ole-parent-contract\tpass\r\n" : "ole-parent-contract\tfail\r\n";
+		for (int test = 0; test < 6; ++test)
 		{
+			const bool changes = test < 3 || test == 5;
 			script(L"document.all.fbw_body.innerHTML=\"<DIV class='body'><DIV class='section' id='source'><P id='drag'>move</P><P>remain</P></DIV><DIV class='section' id='target'><P id='drop'>target</P></DIV><DIV class='section' id='untouched'><P>keep<BR>this</P></DIV></DIV>\";");
+			const CString untouchedBefore(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->outerHTML));
+			const CString initial(html());
+			m_doc->MarkSavePoint();
+			script(L"window.external.BeginUndoUnit(document,'previous edit');var prior=document.body.createTextRange();prior.moveToElementText(document.all.drop);prior.collapse(false);prior.select();prior.pasteHTML(' prior');window.external.EndUndoUnit(document);");
 			const CString before(html());
 			const long version = m_doc->m_body.GetVersionNumber();
 			// Real MSHTML event dispatch exercises the production connection point.
@@ -104,8 +278,9 @@
 			if (test != 2) script(L"var r=document.body.createTextRange();r.moveToElementText(document.all.drag);r.select();document.all.drag.fireEvent('ondragstart');");
 			if (test != 3)
 			{
+				if (test == 2) script(L"document.all.drop.fireEvent('ondragenter');document.all.drop.fireEvent('ondragover');");
 				script(test == 0 ? L"document.all.drag.fireEvent('ondrop');" : L"document.all.drop.fireEvent('ondrop');");
-				if (test < 3)
+				if (changes)
 				{
 					// A native browser drop creates an editing undo unit. Give the
 					// controlled stand-in the same contract; unwrapped script DOM
@@ -116,28 +291,31 @@
 					CString operation(L"window.external.BeginUndoUnit(document,'controlled drop');");
 					operation += mutation;
 					if (test == 1) operation += L"document.all.drag.removeNode(true);";
+					if (test == 5) operation += L"document.all.source.removeNode(true);";
 					operation += L"window.external.EndUndoUnit(document);";
 					script(operation);
 				}
 			}
-			if (test < 3) script(test == 0 ? L"var p=document.all.source.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();" : L"var p=document.all.target.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();");
+			if (changes) script(test == 0 ? L"var p=document.all.source.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();" : L"var p=document.all.target.lastChild;var r=document.body.createTextRange();r.moveToElementText(p);r.collapse(true);r.moveEnd('character',3);r.select();");
 			const CString selectedBefore(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
 			if (test != 2) script(L"document.body.fireEvent('ondragend');");
+			const CString selectedAfterEvent(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
 			finish();
 			const CString after(html());
 			bool ok = true;
 			bool normalized = true, selectionKept = true, scoped = true, undoOk = true, redoOk = true;
-			if (test < 3)
+			if (changes)
 			{
 				const CString ownerHtml(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(test == 0 ? L"source" : L"target"))->innerHTML));
 				const CString untouched(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->innerHTML));
 				normalized = ownerHtml.Find(L"<BR") < 0 && ownerHtml.Find(L"new") >= 0 && ownerHtml.Find(L"line") >= 0;
 				ok = normalized;
 				selectionKept = CString(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text)) == selectedBefore;
+				if (!selectionKept) report.AppendFormat("selection-before=%S event=%S after=%S\r\n", static_cast<LPCWSTR>(selectedBefore), static_cast<LPCWSTR>(selectedAfterEvent), static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text));
 				ok = ok && selectionKept;
-				// Cross-section moves require the common body owner; local and
-				// external drops must leave the adjacent section untouched.
-				if (test != 1) { scoped = untouched.Find(L"<BR") >= 0; ok = ok && scoped; }
+				scoped = untouched.Find(L"<BR") >= 0 &&
+					CString(static_cast<LPCWSTR>(MSHTML::IHTMLElementPtr(document->all->item(L"untouched"))->outerHTML)) == untouchedBefore;
+				ok = ok && scoped;
 				m_doc->m_body.ExecCommand(IDM_UNDO);
 				undoOk = html() == before; ok = ok && undoOk;
 
@@ -146,12 +324,37 @@
 				}
 				m_doc->m_body.ExecCommand(IDM_REDO);
 				redoOk = html() == after; ok = ok && redoOk;
+				m_doc->m_body.ExecCommand(IDM_UNDO);
+				m_doc->m_body.ExecCommand(IDM_UNDO);
+				const bool history = html() == initial;
+				m_doc->m_body.ExecCommand(IDM_REDO);
+				const bool priorRestored = html() == before;
+				m_doc->m_body.ExecCommand(IDM_REDO);
+				ok = ok && history && priorRestored && html() == after;
+				report.AppendFormat("previous-history=%d redo-history=%d dirty=%d\r\n", history, priorRestored, m_doc->DocChanged());
+				ok = ok && m_doc->DocChanged();
 				const long finishedVersion = m_doc->m_body.GetVersionNumber();
 				finish();
 				ok = ok && m_doc->m_body.GetVersionNumber() == finishedVersion;
 			}
-			else ok = after == before && m_doc->m_body.GetVersionNumber() == version;
-			const char* names[] = { "local", "cross-section", "external", "cancel", "unchanged" };
+			else {
+				ok = after == before && m_doc->m_body.GetVersionNumber() == version;
+				// A cancelled external hover must discard its empty OLE parent and
+				// leave the existing undo/redo stacks intact.
+				script(L"document.all.drop.fireEvent('ondragenter');document.all.drop.fireEvent('ondragover');document.all.drop.fireEvent('ondragleave');");
+				CComPtr<IOleUndoManager> manager;
+				IServiceProviderPtr services(document);
+				DWORD state = 0;
+				ok = ok && SUCCEEDED(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager))) && manager->GetOpenParentState(&state) == S_FALSE;
+				m_doc->m_body.ExecCommand(IDM_UNDO);
+				ok = ok && html() == initial;
+				script(L"var r=document.body.createTextRange();r.moveToElementText(document.all.drag);r.select();document.all.drag.fireEvent('ondragstart');");
+				if (test == 4) script(L"document.all.drop.fireEvent('ondrop');");
+				script(L"document.body.fireEvent('ondragend');"); finish();
+				m_doc->m_body.ExecCommand(IDM_REDO);
+				ok = ok && html() == before;
+			}
+			const char* names[] = { "local", "cross-section", "external", "cancel", "unchanged", "detached-source" };
 			CStringA row; row.Format("%s\t%s\r\n", names[test], ok ? "pass" : "fail"); report += row;
 			CStringA detail; detail.Format("checks: normalize=%d selection=%d scope=%d undo=%d redo=%d version-before=%ld version-after=%ld\r\n", normalized, selectionKept, scoped, undoOk, redoOk, version, m_doc->m_body.GetVersionNumber()); report += detail;
 			passed = passed && ok;
