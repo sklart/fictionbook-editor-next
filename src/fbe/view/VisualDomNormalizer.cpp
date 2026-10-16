@@ -183,9 +183,19 @@ void PackText(MSHTML::IHTMLElement2Ptr element,
   }
 }
 void SplitBRs(MSHTML::IHTMLElement2Ptr element) {
-  CString html = MSHTML::IHTMLElementPtr(element)->outerHTML;
-  if (html.Replace(L"<BR>", L"</P><P>") > 0)
-    MSHTML::IHTMLElementPtr(element)->outerHTML = html.AllocSysString();
+  // Replacing an entire structural owner reparses unaffected paragraphs and
+  // turns MSHTML's serialized inter-paragraph whitespace into new range steps.
+  // Rewrite only paragraphs that actually contain a BR, retaining their owner
+  // and all unaffected sibling nodes (and their live selection coordinates).
+  MSHTML::IHTMLElementCollectionPtr collection(element->getElementsByTagName(L"P"));
+  std::vector<MSHTML::IHTMLElementPtr> paragraphs;
+  for (long i = 0; collection && i < collection->length; ++i) paragraphs.push_back(MSHTML::IHTMLElementPtr(collection->item(i)));
+  MSHTML::IHTMLElementPtr root(element);
+  if (root && U::scmp(root->tagName, L"P") == 0) paragraphs.push_back(root);
+  for (const auto& paragraph : paragraphs) {
+    CString html = paragraph->outerHTML;
+    if (html.Replace(L"<BR>", L"</P><P>") > 0) paragraph->outerHTML = html.AllocSysString();
+  }
 }
 void NormalizeStructure(MSHTML::IHTMLDocument2Ptr document,
                         MSHTML::IHTMLDOMNodePtr root) {
