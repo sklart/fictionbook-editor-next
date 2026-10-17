@@ -65,6 +65,7 @@
 #include "toolbars\\ToolbarFactory.h"
 #include "toolbars\\TableToolbarCommands.h"
 #include "testing\RuntimeTestScenarioMode.h"
+#include "undo/UndoFailureRecovery.h"
 #include <string>
 #include <vector>
 #include <algorithm>
