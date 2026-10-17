@@ -204,7 +204,26 @@
 			const CString secondState(state());
 			m_doc->m_body.ExecCommand(IDM_UNDO); check("seed-existing-redo", state() == firstState);
 			m_doc->MarkSavePoint(); m_doc->MarkDocCP();
-			auto failure = [&](LPCWSTR point, bool redo) {
+            // The helper must accept NULL even with retained entries, without
+            // executing them, recording inverses or changing either stack.
+            {
+                CComObject<FbeUndo::RestoreRedo>* raw = nullptr;
+                CheckError(CComObject<FbeUndo::RestoreRedo>::CreateInstance(&raw));
+                CComPtr<IOleUndoUnit> replay(raw);
+                const auto oldHistory = history();
+                const CString oldState(state());
+                check("restore-redo-null-empty", replay->Do(nullptr) == S_OK);
+                for (int redo = 0; redo < 2; ++redo) {
+                    CComPtr<IEnumOleUndoUnits> list;
+                    CheckError(redo ? undoManager->EnumRedoable(&list) : undoManager->EnumUndoable(&list));
+                    for (;;) { CComPtr<IOleUndoUnit> unit; const HRESULT hr = list->Next(1, &unit, nullptr); if (hr == S_FALSE) break; CheckError(hr); raw->units.push_back(unit); }
+                }
+                const auto retained = raw->units;
+                check("restore-redo-null-retained", retained.size() > 1 && replay->Do(nullptr) == S_OK &&
+                    replay->Do(nullptr) == S_OK && raw->units == retained &&
+                    history() == oldHistory && state() == oldState && closedGroup());
+            }
+            auto failure = [&](LPCWSTR point, bool redo) {
 				script(L"var caret=document.body.createTextRange();caret.moveToElementText(document.all.prior);caret.collapse(true);caret.moveEnd('character',3);caret.select();");
 				const CString oldState(state()), oldFull(static_cast<LPCWSTR>(document->body->outerHTML)); const auto oldHistory = history();
 				const bool dirty = m_doc->DocChanged(), recovery = m_doc->DocRelChanged();
@@ -217,6 +236,7 @@
 					m_doc->DocChanged() == dirty && m_doc->DocRelChanged() == recovery &&
 					CString(static_cast<LPCWSTR>(MSHTML::IHTMLTxtRangePtr(document->selection->createRange())->text)) == L"Pri";
 				check(label, intact);
+				details.AppendFormat("command-hr=0x%08lX\r\n", static_cast<unsigned long>(hr));
 				if (!intact) {
 					details.AppendFormat("failure-hr=0x%08lX consumed=%d document=%d history=%d closed=%d dirty=%d recovery=%d\r\n", static_cast<unsigned long>(hr), consumed, state() == oldState, history() == oldHistory, closedGroup(), m_doc->DocChanged() == dirty, m_doc->DocRelChanged() == recovery);
 					if (consumed) {
@@ -227,6 +247,12 @@
 			};
 			const wchar_t* shared[] = {L"binary-rebuild", L"binary-covers", L"binary-close", L"binary-add", L"html-close", L"html-add"};
 			for (LPCWSTR point : shared) failure(point, false);
+            const wchar_t* memoryFailures[] = {L"binary-oom", L"binary-com-oom", L"binary-atl-oom", L"binary-covers-oom"};
+            auto binaryExceptions = [&](bool redo) {
+                for (LPCWSTR point : memoryFailures) failure(point, redo);
+                failure(L"binary-exception", redo);
+            };
+            binaryExceptions(false);
 			failure(L"html-remove", false);
 			// Real IDispatch exceptions after cache mutation, not only injected HRESULTs.
 			for (LPCWSTR function : {L"RebuildImagesInfo", L"FillCoverList"}) {
@@ -238,6 +264,7 @@
 			}
 			m_doc->m_body.ExecCommand(IDM_UNDO); check("retry-undo", state() == priorState);
 			for (LPCWSTR point : shared) failure(point, true);
+            binaryExceptions(true);
 			failure(L"html-insert", true);
 			m_doc->m_body.ExecCommand(IDM_REDO); check("retry-redo-one", state() == firstState);
 			m_doc->m_body.ExecCommand(IDM_REDO); check("retry-redo-two", state() == secondState);

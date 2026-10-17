@@ -56,7 +56,12 @@ public:
     BEGIN_COM_MAP(RestoreRedo)
         COM_INTERFACE_ENTRY(IOleUndoUnit)
     END_COM_MAP()
-    STDMETHOD(Do)(IOleUndoManager* manager) { if (!manager) return E_POINTER; for (const auto& unit : units) { const HRESULT hr = manager->Add(unit); if (FAILED(hr)) return hr; } return S_OK; }
+    STDMETHOD(Do)(IOleUndoManager* manager) {
+        // NULL means execution without recording an inverse. This unit only
+        // records retained history, so no work is needed without a manager.
+        if (manager) for (const auto& unit : units) { const HRESULT hr = manager->Add(unit); if (FAILED(hr)) return hr; }
+        return S_OK;
+    }
     STDMETHOD(GetDescription)(BSTR* value) { if (!value) return E_POINTER; *value = ::SysAllocString(L"Restore editor history"); return *value ? S_OK : E_OUTOFMEMORY; }
     STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) { if (!clsid || !id) return E_POINTER; *clsid = CLSID_NULL; *id = 0; return S_OK; }
     STDMETHOD(OnNextAdd)() { return S_OK; }

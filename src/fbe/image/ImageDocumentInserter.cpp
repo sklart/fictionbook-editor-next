@@ -84,6 +84,7 @@ public:
       BinaryRecordingScope compensation(recordingManager, false);
       BinaryRecordingScope recording(recordingManager);
       bool changed = false;
+      HRESULT failure = S_OK;
       try {
       if (attached) {
         if (node->parentNode != parent) return E_UNEXPECTED;
@@ -99,16 +100,26 @@ public:
         if (next && next->parentNode == parent) parent->insertBefore(node, next.GetInterfacePtr());
         else parent->appendChild(node);
       }
+      // Exercise exceptions after partial DOM mutation, inside the same
+      // compensation boundary as failures returned by COM.
+      if (FAILED(FbeUndo::Inject(L"binary-oom"))) throw std::bad_alloc();
+      if (FAILED(FbeUndo::Inject(L"binary-com-oom"))) _com_issue_error(E_OUTOFMEMORY);
+      if (FAILED(FbeUndo::Inject(L"binary-atl-oom"))) throw CAtlException(E_OUTOFMEMORY);
+      if (FAILED(FbeUndo::Inject(L"binary-exception"))) throw E_UNEXPECTED;
       CComDispatchDriver driver(script);
       CheckError(FbeUndo::Inject(L"binary-rebuild")); CheckError(driver.Invoke0(L"RebuildImagesInfo"));
       CheckError(FbeUndo::Inject(L"binary-covers")); CheckError(driver.Invoke0(L"FillCoverList"));
+      if (FAILED(FbeUndo::Inject(L"binary-covers-oom"))) throw std::bad_alloc();
       CheckError(FbeUndo::Inject(L"binary-close")); CheckError(recording.Close());
       if (manager) { CheckError(FbeUndo::Inject(L"binary-add")); CheckError(manager->Add(this)); }
       attached = !attached;
       return S_OK;
-      } catch (const _com_error& failure) {
-        if (!changed) return failure.Error();
-        try {
+      } catch (const _com_error& error) { failure = error.Error(); }
+      catch (const std::bad_alloc&) { failure = E_OUTOFMEMORY; }
+      catch (const CAtlException& error) { failure = error.m_hr; }
+      catch (...) { failure = E_UNEXPECTED; }
+      if (!changed) return failure;
+      try {
           if (!recording.IsOpen()) CheckError(compensation.Open());
           if (oldParent) {
             if (oldNext && oldNext->parentNode == oldParent) oldParent->insertBefore(node, oldNext.GetInterfacePtr());
@@ -125,11 +136,12 @@ public:
           }
           const HRESULT compensated = compensation.Close(), closed = recording.Close();
           if (FAILED(rebuilt) || FAILED(filled) || FAILED(compensated) || FAILED(closed)) return E_ABORT;
-          return failure.Error();
-        } catch (const _com_error&) { return E_ABORT; }
-      }
+          return failure;
+      } catch (...) { return E_ABORT; } // compensation itself could not finish
     } catch (const _com_error& error) { return error.Error(); }
     catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const CAtlException& error) { return error.m_hr; }
+    catch (...) { return E_UNEXPECTED; }
   }
   STDMETHOD(GetDescription)(BSTR* text) {
     if (!text) return E_POINTER;
