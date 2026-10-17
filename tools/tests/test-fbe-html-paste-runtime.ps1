@@ -3,19 +3,22 @@ param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
     [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked'),
-    [switch]$KeepArtifacts
+    [switch]$KeepArtifacts,
+    [switch]$RealPaste
 )
 
 $ErrorActionPreference = 'Stop'
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "FBE.exe not found: $FbeExe" }
 $directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-html-paste-' + [guid]::NewGuid().ToString('N'))
 $fixture = Join-Path $directory 'html-paste.fb2'
+$oldRoute = $env:FBE_NEXT_TEST_HTML_REAL_PASTE
 $oldMode, $oldScenario, $oldCase = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE
 try {
     New-Item -ItemType Directory -Path $directory | Out-Null
     $xml = '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Paste</first-name><last-name>Test</last-name></author><book-title>HTML paste</book-title><lang>en</lang></title-info><document-info><author><first-name>Paste</first-name><last-name>Test</last-name></author><date value="2026-10-15">2026-10-15</date><id>html-paste-test</id><version>1.0</version></document-info></description><body><section id="paste-target"><title><p>Heading</p></title><p>Before</p></section><section id="paste-neighbor"><p>Neighbor</p></section></body></FictionBook>'
     $env:FBE_NEXT_TEST_MODE = '1'
     $env:FBE_NEXT_TEST_SCENARIO = 'html-paste-runtime'
+    $env:FBE_NEXT_TEST_HTML_REAL_PASTE = if ($RealPaste) { '1' } else { $null }
     foreach($case in $Cases) {
         [IO.File]::WriteAllText($fixture, $xml, [Text.UTF8Encoding]::new($false))
         $report = Join-Path $directory "$case.tsv"
@@ -33,7 +36,7 @@ try {
         elseif($case -eq 'legacy-unmarked') {
             if($savedXml -match 'Legacy link' -or $savedXml -notmatch 'Before') { throw 'Unmarked FBE HTML changed the saved document.' }
         }
-        elseif($case -in @('internal', 'internal-dirty', 'internal-history', 'internal-end')) {
+        elseif($case -in @('internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end')) {
             if($savedXml -notmatch 'Internal code' -or $savedXml -notmatch 'internal link') { throw "Internal fragment missing after save: $case" }
         }
         elseif($case -eq 'plain-single') {
@@ -47,6 +50,7 @@ try {
     Write-Host "HTML paste runtime passed: $($Cases -join ', '); FB2 parse."
 }
 finally {
+    $env:FBE_NEXT_TEST_HTML_REAL_PASTE = $oldRoute
     $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_HTML_PASTE_CASE = $oldMode, $oldScenario, $oldCase
     if($KeepArtifacts) { Write-Host "Artifacts: $directory" }
     else { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
