@@ -160,6 +160,7 @@ namespace
 			dumpWritten ? L"yes" : L"no", dumpWritten ? ERROR_SUCCESS : dumpError,
 			snapshotState, diagnosticState, tempFallbackState);
 		CString line;
+		line.Format(L"session_id=%s\r\n", traceSnapshot.sessionId); text += line;
 		line.Format(L"Diagnostic trace: %s\r\n", snapshotAvailable ? traceSnapshot.currentLogPath : unknown); text += line;
 		line.Format(L"Last trace stage: %s; %s\r\n", snapshotAvailable ? traceSnapshot.lastEventCode : unknown, snapshotAvailable ? traceSnapshot.lastEventMessage : unknown); text += line;
 		line.Format(L"Last document stage: %s\r\n", snapshotAvailable ? traceSnapshot.lastDocumentStage : unknown); text += line;
@@ -230,7 +231,7 @@ namespace
 
 void CrashDiagnostics::Initialize()
 {
-	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
+	CString diagnosticsDirectory(StartupTrace::CurrentLogDirectory()); diagnosticsDirectory.TrimRight(L"\\"); diagnosticsDirectory += L"\\";
 	::CreateDirectory(diagnosticsDirectory, NULL);
 	const CString crashDirectory(diagnosticsDirectory + L"Crashes\\");
 	if (!::CreateDirectory(crashDirectory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS)

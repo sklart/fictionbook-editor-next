@@ -669,6 +669,10 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   ConfigureDllSearchPath();
 	StartupTrace::AppendTestStartupBreadcrumb("dll-search-configured");
   StartupTrace::Start();
+  CrashDiagnostics::Initialize();
+  if (DeploymentContext::HasCommandLineSwitch(L"--diagnostic-package-test")) {
+      const int result = StartupTrace::RunDiagnosticPackageTest(); StartupTrace::Finish(); return result;
+  }
 	StartupTrace::AppendTestStartupBreadcrumb("startup-trace-started");
 
 #if 1
@@ -740,7 +744,6 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
   StartupTrace::Event(L"startup", L"S140", L"settings initialized");
 	StartupTrace::AppendTestStartupBreadcrumb("settings-init-complete");
   if (PrintGenreCatalog()) { _Module.Term(); ::OleUninitialize(); StartupTrace::Finish(); return 0; }
-  CrashDiagnostics::Initialize();
   StartupTrace::Event(L"startup", L"S150", L"crash diagnostics initialized");
 
   // parse command line

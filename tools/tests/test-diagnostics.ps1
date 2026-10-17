@@ -17,6 +17,8 @@ $tests = @(
     'test-diagnostic-runner-contract.ps1',
     'test-resource-id-safety.ps1',
     'test-diagnostic-localization.ps1',
+    'test-diagnostic-dialog-contract.ps1',
+    'test-diagnostic-privacy-native.ps1',
     'test-diagnostic-log-segments.ps1',
     'test-diagnostic-trace-privacy.ps1',
     'test-diagnostic-snapshot-contract.ps1',

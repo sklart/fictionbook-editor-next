@@ -1288,24 +1288,24 @@
         "en-US": "&Spelling...", "ru-RU": "Ор&фография...", "uk-UA": "Ор&фографія...", "de-DE": "&Rechtschreibung...", "fr-FR": "O&rthographe...", "es-ES": "O&rtografía...", "it-IT": "O&rtografia...", "pl-PL": "&Pisownia...", "pt-PT": "O&rtografia...", "nl-NL": "S&pelling...", "cs-CZ": "&Pravopis...", "bg-BG": "&Правопис..."
       }
     },
-    "fbe.menu.idr_mainframe.tools.diagnostic_trace": {
-      "kind": "MENUITEM",
-      "targetId": "ID_TOOLS_DIAGNOSTIC_TRACE",
-      "translations": {
-        "en-US": "Diagnostic &trace...",
-        "ru-RU": "Диагностическая &трассировка...",
-        "uk-UA": "Діагностичне &трасування...",
-        "de-DE": "&Diagnoseprotokoll...",
-        "fr-FR": "&Trace de diagnostic...",
-        "es-ES": "&Traza de diagnóstico...",
-        "it-IT": "&Traccia diagnostica...",
-        "pl-PL": "&Śledzenie diagnostyczne...",
-        "pt-PT": "&Rastreio de diagnóstico...",
-        "nl-NL": "&Diagnostische tracering...",
-        "cs-CZ": "&Diagnostické trasování...",
-        "bg-BG": "&Диагностично проследяване..."
-      }
-    },
+      "fbe.menu.idr_mainframe.tools.diagnostic_trace": {
+        "kind": "MENUITEM",
+        "targetId": "ID_TOOLS_DIAGNOSTIC_TRACE",
+        "translations": {
+          "en-US": "FBE Next diagnostics...",
+          "ru-RU": "Диагностика FBE Next...",
+          "uk-UA": "Діагностика FBE Next...",
+          "de-DE": "FBE Next Diagnose...",
+          "fr-FR": "Diagnostic FBE Next...",
+          "es-ES": "Diagnóstico FBE Next...",
+          "it-IT": "Diagnostica FBE Next...",
+          "pl-PL": "Diagnostyka FBE Next...",
+          "pt-PT": "Diagnóstico FBE Next...",
+          "nl-NL": "FBE Next-diagnostiek...",
+          "cs-CZ": "Diagnostika FBE Next...",
+          "bg-BG": "Диагностика FBE Next..."
+        }
+      },
     "fbe.menu.idr_mainframe.tools.open_diagnostic_log": {
       "kind": "MENUITEM",
       "targetId": "ID_TOOLS_OPEN_DIAGNOSTIC_LOG",
@@ -1670,6 +1670,744 @@
         "nl-NL": "&Over...",
         "cs-CZ": "&O aplikaci...",
         "bg-BG": "&Относно..."
+      }
+    },
+    "fbe.diagnostics.title": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "FBE Next diagnostics",
+        "ru-RU": "Диагностика FBE Next",
+        "uk-UA": "Діагностика FBE Next",
+        "de-DE": "FBE Next Diagnose",
+        "fr-FR": "Diagnostic FBE Next",
+        "es-ES": "Diagnóstico FBE Next",
+        "it-IT": "Diagnostica FBE Next",
+        "pl-PL": "Diagnostyka FBE Next",
+        "pt-PT": "Diagnóstico FBE Next",
+        "nl-NL": "FBE Next-diagnostiek",
+        "cs-CZ": "Diagnostika FBE Next",
+        "bg-BG": "Диагностика FBE Next"
+      }
+    },
+    "fbe.diagnostics.toggle": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Toggle trace",
+        "ru-RU": "Вкл./выкл. трассировку",
+        "uk-UA": "Увімк./вимк. трасування",
+        "de-DE": "Protokoll umschalten",
+        "fr-FR": "Activer/désactiver la trace",
+        "es-ES": "Activar/desactivar traza",
+        "it-IT": "Attiva/disattiva traccia",
+        "pl-PL": "Przełącz śledzenie",
+        "pt-PT": "Ativar/desativar rastreio",
+        "nl-NL": "Tracering omschakelen",
+        "cs-CZ": "Přepnout trasování",
+        "bg-BG": "Вкл./изкл. проследяване"
+      }
+    },
+    "fbe.diagnostics.open": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Open selected file",
+        "ru-RU": "Открыть файл сеанса",
+        "uk-UA": "Відкрити файл сеансу",
+        "de-DE": "Sitzungsdatei öffnen",
+        "fr-FR": "Ouvrir le fichier choisi",
+        "es-ES": "Abrir archivo elegido",
+        "it-IT": "Apri file selezionato",
+        "pl-PL": "Otwórz wybrany plik",
+        "pt-PT": "Abrir ficheiro selecionado",
+        "nl-NL": "Geselecteerd bestand openen",
+        "cs-CZ": "Otevřít vybraný soubor",
+        "bg-BG": "Отваряне на избрания файл"
+      }
+    },
+    "fbe.diagnostics.folder": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Open folder",
+        "ru-RU": "Открыть папку",
+        "uk-UA": "Відкрити теку",
+        "de-DE": "Ordner öffnen",
+        "fr-FR": "Ouvrir le dossier",
+        "es-ES": "Abrir carpeta",
+        "it-IT": "Apri cartella",
+        "pl-PL": "Otwórz folder",
+        "pt-PT": "Abrir pasta",
+        "nl-NL": "Map openen",
+        "cs-CZ": "Otevřít složku",
+        "bg-BG": "Отваряне на папка"
+      }
+    },
+    "fbe.diagnostics.cleanup": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Clear old logs",
+        "ru-RU": "Очистить старые журналы",
+        "uk-UA": "Очистити старі журнали",
+        "de-DE": "Alte Protokolle löschen",
+        "fr-FR": "Effacer les anciens journaux",
+        "es-ES": "Borrar registros antiguos",
+        "it-IT": "Elimina vecchi registri",
+        "pl-PL": "Usuń stare dzienniki",
+        "pt-PT": "Limpar registos antigos",
+        "nl-NL": "Oude logboeken wissen",
+        "cs-CZ": "Smazat staré protokoly",
+        "bg-BG": "Изчистване на стари дневници"
+      }
+    },
+    "fbe.diagnostics.preview": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Preview / refresh",
+        "ru-RU": "Предпросмотр / обновить",
+        "uk-UA": "Перегляд / оновити",
+        "de-DE": "Vorschau / aktualisieren",
+        "fr-FR": "Aperçu / actualiser",
+        "es-ES": "Vista previa / actualizar",
+        "it-IT": "Anteprima / aggiorna",
+        "pl-PL": "Podgląd / odśwież",
+        "pt-PT": "Pré-visualizar / atualizar",
+        "nl-NL": "Voorbeeld / vernieuwen",
+        "cs-CZ": "Náhled / obnovit",
+        "bg-BG": "Преглед / обновяване"
+      }
+    },
+    "fbe.diagnostics.save": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Save package",
+        "ru-RU": "Сохранить пакет",
+        "uk-UA": "Зберегти пакет",
+        "de-DE": "Paket speichern",
+        "fr-FR": "Enregistrer le paquet",
+        "es-ES": "Guardar paquete",
+        "it-IT": "Salva pacchetto",
+        "pl-PL": "Zapisz pakiet",
+        "pt-PT": "Guardar pacote",
+        "nl-NL": "Pakket opslaan",
+        "cs-CZ": "Uložit balíček",
+        "bg-BG": "Запис на пакета"
+      }
+    },
+    "fbe.diagnostics.close": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Close",
+        "ru-RU": "Закрыть",
+        "uk-UA": "Закрити",
+        "de-DE": "Schließen",
+        "fr-FR": "Fermer",
+        "es-ES": "Cerrar",
+        "it-IT": "Chiudi",
+        "pl-PL": "Zamknij",
+        "pt-PT": "Fechar",
+        "nl-NL": "Sluiten",
+        "cs-CZ": "Zavřít",
+        "bg-BG": "Затваряне"
+      }
+    },
+    "fbe.diagnostics.sessions": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Diagnostic sessions (* crash)",
+        "ru-RU": "Диагностические сеансы (* авария)",
+        "uk-UA": "Діагностичні сеанси (* аварія)",
+        "de-DE": "Diagnosesitzungen (* Absturz)",
+        "fr-FR": "Sessions de diagnostic (* plantage)",
+        "es-ES": "Sesiones de diagnóstico (* fallo)",
+        "it-IT": "Sessioni diagnostiche (* arresto)",
+        "pl-PL": "Sesje diagnostyczne (* awaria)",
+        "pt-PT": "Sessões de diagnóstico (* falha)",
+        "nl-NL": "Diagnosesessies (* crash)",
+        "cs-CZ": "Diagnostické relace (* pád)",
+        "bg-BG": "Диагностични сесии (* срив)"
+      }
+    },
+    "fbe.diagnostics.components": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Components (bytes); double-click to exclude/include",
+        "ru-RU": "Компоненты (байты); двойной щелчок — исключить/включить",
+        "uk-UA": "Компоненти (байти); подвійне клацання — виключити/включити",
+        "de-DE": "Komponenten (Bytes); Doppelklick zum Aus-/Einschließen",
+        "fr-FR": "Composants (octets) ; double-clic pour exclure/inclure",
+        "es-ES": "Componentes (bytes); doble clic para excluir/incluir",
+        "it-IT": "Componenti (byte); doppio clic per escludere/includere",
+        "pl-PL": "Składniki (bajty); dwuklik wyklucza/dołącza",
+        "pt-PT": "Componentes (bytes); duplo clique para excluir/incluir",
+        "nl-NL": "Onderdelen (bytes); dubbelklik voor uitsluiten/opnemen",
+        "cs-CZ": "Součásti (bajty); dvojklik vyloučí/zahrne",
+        "bg-BG": "Компоненти (байтове); двукратно щракване за изключване/включване"
+      }
+    },
+    "fbe.diagnostics.included": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Included",
+        "ru-RU": "Включён",
+        "uk-UA": "Включено",
+        "de-DE": "Enthalten",
+        "fr-FR": "Inclus",
+        "es-ES": "Incluido",
+        "it-IT": "Incluso",
+        "pl-PL": "Dołączono",
+        "pt-PT": "Incluído",
+        "nl-NL": "Opgenomen",
+        "cs-CZ": "Zahrnuto",
+        "bg-BG": "Включен"
+      }
+    },
+    "fbe.diagnostics.excluded-by-user": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Excluded by user",
+        "ru-RU": "Исключён пользователем",
+        "uk-UA": "Виключено користувачем",
+        "de-DE": "Vom Benutzer ausgeschlossen",
+        "fr-FR": "Exclu par utilisateur",
+        "es-ES": "Excluido por usuario",
+        "it-IT": "Escluso dall’utente",
+        "pl-PL": "Wykluczono przez użytkownika",
+        "pt-PT": "Excluído pelo utilizador",
+        "nl-NL": "Uitgesloten door gebruiker",
+        "cs-CZ": "Vyloučeno uživatelem",
+        "bg-BG": "Изключен от потребителя"
+      }
+    },
+    "fbe.diagnostics.privacy-rejected": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Privacy check failed",
+        "ru-RU": "Проверка приватности не пройдена",
+        "uk-UA": "Перевірку приватності не пройдено",
+        "de-DE": "Datenschutzprüfung fehlgeschlagen",
+        "fr-FR": "Échec du contrôle de confidentialité",
+        "es-ES": "Control de privacidad fallido",
+        "it-IT": "Verifica privacy fallita",
+        "pl-PL": "Błąd kontroli prywatności",
+        "pt-PT": "Falha na verificação de privacidade",
+        "nl-NL": "Privacycontrole mislukt",
+        "cs-CZ": "Kontrola soukromí selhala",
+        "bg-BG": "Неуспешна проверка за поверителност"
+      }
+    },
+    "fbe.diagnostics.read-failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Read failed",
+        "ru-RU": "Ошибка чтения",
+        "uk-UA": "Помилка читання",
+        "de-DE": "Lesefehler",
+        "fr-FR": "Erreur de lecture",
+        "es-ES": "Error de lectura",
+        "it-IT": "Errore di lettura",
+        "pl-PL": "Błąd odczytu",
+        "pt-PT": "Erro de leitura",
+        "nl-NL": "Leesfout",
+        "cs-CZ": "Chyba čtení",
+        "bg-BG": "Грешка при четене"
+      }
+    },
+    "fbe.diagnostics.session-mismatch": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Session mismatch",
+        "ru-RU": "Чужой сеанс",
+        "uk-UA": "Інший сеанс",
+        "de-DE": "Sitzung stimmt nicht überein",
+        "fr-FR": "Session différente",
+        "es-ES": "Sesión diferente",
+        "it-IT": "Sessione diversa",
+        "pl-PL": "Inna sesja",
+        "pt-PT": "Sessão diferente",
+        "nl-NL": "Andere sessie",
+        "cs-CZ": "Jiná relace",
+        "bg-BG": "Друга сесия"
+      }
+    },
+    "fbe.diagnostics.legacy-untrusted-text": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Legacy text cannot be certified",
+        "ru-RU": "Приватность старого текста не подтверждена",
+        "uk-UA": "Приватність старого тексту не підтверджено",
+        "de-DE": "Alter Text nicht überprüfbar",
+        "fr-FR": "Ancien texte non certifiable",
+        "es-ES": "Texto antiguo no verificable",
+        "it-IT": "Testo precedente non verificabile",
+        "pl-PL": "Stary tekst niezweryfikowany",
+        "pt-PT": "Texto antigo não verificável",
+        "nl-NL": "Oude tekst niet verifieerbaar",
+        "cs-CZ": "Starý text nelze ověřit",
+        "bg-BG": "Старият текст не е проверим"
+      }
+    },
+    "fbe.diagnostics.normal": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Normal shutdown",
+        "ru-RU": "Штатное завершение",
+        "uk-UA": "Штатне завершення",
+        "de-DE": "Normal beendet",
+        "fr-FR": "Arrêt normal",
+        "es-ES": "Cierre normal",
+        "it-IT": "Chiusura normale",
+        "pl-PL": "Prawidłowe zakończenie",
+        "pt-PT": "Encerramento normal",
+        "nl-NL": "Normaal afgesloten",
+        "cs-CZ": "Normální ukončení",
+        "bg-BG": "Нормално приключване"
+      }
+    },
+    "fbe.diagnostics.unknown": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Unknown",
+        "ru-RU": "Неизвестно",
+        "uk-UA": "Невідомо",
+        "de-DE": "Unbekannt",
+        "fr-FR": "Inconnu",
+        "es-ES": "Desconocido",
+        "it-IT": "Sconosciuto",
+        "pl-PL": "Nieznany",
+        "pt-PT": "Desconhecido",
+        "nl-NL": "Onbekend",
+        "cs-CZ": "Neznámé",
+        "bg-BG": "Неизвестно"
+      }
+    },
+    "fbe.diagnostics.crash": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Crash report available",
+        "ru-RU": "Есть аварийный отчёт",
+        "uk-UA": "Є аварійний звіт",
+        "de-DE": "Absturzbericht vorhanden",
+        "fr-FR": "Rapport de plantage disponible",
+        "es-ES": "Informe de fallo disponible",
+        "it-IT": "Rapporto di arresto disponibile",
+        "pl-PL": "Dostępny raport awarii",
+        "pt-PT": "Relatório de falha disponível",
+        "nl-NL": "Crashrapport beschikbaar",
+        "cs-CZ": "Zpráva o pádu k dispozici",
+        "bg-BG": "Има отчет за срив"
+      }
+    },
+    "fbe.diagnostics.has_log": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Trace available",
+        "ru-RU": "Есть журнал",
+        "uk-UA": "Є журнал",
+        "de-DE": "Protokoll vorhanden",
+        "fr-FR": "Journal disponible",
+        "es-ES": "Registro disponible",
+        "it-IT": "Registro disponibile",
+        "pl-PL": "Dziennik dostępny",
+        "pt-PT": "Registo disponível",
+        "nl-NL": "Logboek beschikbaar",
+        "cs-CZ": "Protokol k dispozici",
+        "bg-BG": "Има дневник"
+      }
+    },
+    "fbe.diagnostics.no_log": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "No trace",
+        "ru-RU": "Журнал отсутствует",
+        "uk-UA": "Журнал відсутній",
+        "de-DE": "Kein Protokoll",
+        "fr-FR": "Aucun journal",
+        "es-ES": "Sin registro",
+        "it-IT": "Nessun registro",
+        "pl-PL": "Brak dziennika",
+        "pt-PT": "Sem registo",
+        "nl-NL": "Geen logboek",
+        "cs-CZ": "Bez protokolu",
+        "bg-BG": "Няма дневник"
+      }
+    },
+    "fbe.diagnostics.legacy": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Legacy: incomplete matching",
+        "ru-RU": "Старый формат: сопоставление неточное",
+        "uk-UA": "Старий формат: неточне зіставлення",
+        "de-DE": "Altformat: ungenaue Zuordnung",
+        "fr-FR": "Ancien format : association incertaine",
+        "es-ES": "Formato antiguo: asociación incierta",
+        "it-IT": "Formato precedente: associazione incerta",
+        "pl-PL": "Stary format: niepewne dopasowanie",
+        "pt-PT": "Formato antigo: associação incerta",
+        "nl-NL": "Oud formaat: onzekere koppeling",
+        "cs-CZ": "Starý formát: nejistá shoda",
+        "bg-BG": "Стар формат: неточно съпоставяне"
+      }
+    },
+    "fbe.diagnostics.extended": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Extended trace",
+        "ru-RU": "Расширенная трассировка",
+        "uk-UA": "Розширене трасування",
+        "de-DE": "Erweiterte Protokollierung",
+        "fr-FR": "Trace étendue",
+        "es-ES": "Traza ampliada",
+        "it-IT": "Traccia estesa",
+        "pl-PL": "Rozszerzone śledzenie",
+        "pt-PT": "Rastreio alargado",
+        "nl-NL": "Uitgebreide tracering",
+        "cs-CZ": "Rozšířené trasování",
+        "bg-BG": "Разширено проследяване"
+      }
+    },
+    "fbe.diagnostics.normal_mode": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Normal",
+        "ru-RU": "Обычный",
+        "uk-UA": "Звичайний",
+        "de-DE": "Normal",
+        "fr-FR": "Normal",
+        "es-ES": "Normal",
+        "it-IT": "Normale",
+        "pl-PL": "Zwykły",
+        "pt-PT": "Normal",
+        "nl-NL": "Normaal",
+        "cs-CZ": "Normální",
+        "bg-BG": "Обикновен"
+      }
+    },
+    "fbe.diagnostics.saved": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Package saved.",
+        "ru-RU": "Пакет сохранён.",
+        "uk-UA": "Пакет збережено.",
+        "de-DE": "Paket gespeichert.",
+        "fr-FR": "Paquet enregistré.",
+        "es-ES": "Paquete guardado.",
+        "it-IT": "Pacchetto salvato.",
+        "pl-PL": "Pakiet zapisano.",
+        "pt-PT": "Pacote guardado.",
+        "nl-NL": "Pakket opgeslagen.",
+        "cs-CZ": "Balíček uložen.",
+        "bg-BG": "Пакетът е записан."
+      }
+    },
+    "fbe.diagnostics.blocked": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Saving blocked: privacy check or size limit failed.",
+        "ru-RU": "Сохранение запрещено: ошибка приватности или превышен размер.",
+        "uk-UA": "Збереження заборонено: помилка приватності або розміру.",
+        "de-DE": "Speichern gesperrt: Datenschutz oder Größenlimit.",
+        "fr-FR": "Enregistrement bloqué : confidentialité ou taille.",
+        "es-ES": "Guardado bloqueado: privacidad o tamaño.",
+        "it-IT": "Salvataggio bloccato: privacy o dimensioni.",
+        "pl-PL": "Zapis zablokowany: prywatność lub rozmiar.",
+        "pt-PT": "Gravação bloqueada: privacidade ou tamanho.",
+        "nl-NL": "Opslaan geblokkeerd: privacy of grootte.",
+        "cs-CZ": "Uložení blokováno: soukromí nebo velikost.",
+        "bg-BG": "Записът е блокиран: поверителност или размер."
+      }
+    },
+    "fbe.diagnostics.restart": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Setting changed; restart required. FBE_NEXT_TRACE may still enable tracing.",
+        "ru-RU": "Настройка изменена; нужен перезапуск. FBE_NEXT_TRACE может включать трассировку.",
+        "uk-UA": "Налаштування змінено; потрібен перезапуск. FBE_NEXT_TRACE може вмикати трасування.",
+        "de-DE": "Einstellung geändert; Neustart nötig. FBE_NEXT_TRACE kann weiterhin aktivieren.",
+        "fr-FR": "Réglage modifié ; redémarrage requis. FBE_NEXT_TRACE peut activer la trace.",
+        "es-ES": "Ajuste cambiado; reinicie. FBE_NEXT_TRACE puede activar la traza.",
+        "it-IT": "Impostazione modificata; riavviare. FBE_NEXT_TRACE può attivare la traccia.",
+        "pl-PL": "Zmieniono ustawienie; uruchom ponownie. FBE_NEXT_TRACE może włączyć śledzenie.",
+        "pt-PT": "Definição alterada; reinicie. FBE_NEXT_TRACE pode ativar o rastreio.",
+        "nl-NL": "Instelling gewijzigd; herstart nodig. FBE_NEXT_TRACE kan tracering activeren.",
+        "cs-CZ": "Nastavení změněno; restartujte. FBE_NEXT_TRACE může zapnout trasování.",
+        "bg-BG": "Настройката е променена; рестартирайте. FBE_NEXT_TRACE може да включи проследяването."
+      }
+    },
+    "fbe.diagnostics.write_failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Cannot save. Choose a new filename; check space and permissions.",
+        "ru-RU": "Не удалось сохранить. Выберите новое имя; проверьте место и права.",
+        "uk-UA": "Не вдалося зберегти. Виберіть нове ім’я; перевірте місце та права.",
+        "de-DE": "Speichern fehlgeschlagen. Neuen Namen wählen; Platz und Rechte prüfen.",
+        "fr-FR": "Échec d’enregistrement. Choisir un autre nom ; vérifier espace et droits.",
+        "es-ES": "No se pudo guardar. Elija otro nombre; revise espacio y permisos.",
+        "it-IT": "Impossibile salvare. Scegliere altro nome; controllare spazio e permessi.",
+        "pl-PL": "Nie zapisano. Wybierz nową nazwę; sprawdź miejsce i uprawnienia.",
+        "pt-PT": "Não foi possível guardar. Escolha outro nome; verifique espaço e permissões.",
+        "nl-NL": "Opslaan mislukt. Kies een nieuwe naam; controleer ruimte en rechten.",
+        "cs-CZ": "Nelze uložit. Zvolte nový název; ověřte místo a oprávnění.",
+        "bg-BG": "Записът е неуспешен. Изберете ново име; проверете мястото и правата."
+      }
+    },
+    "fbe.diagnostics.component_unavailable": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Component omitted or unavailable; see manifest.",
+        "ru-RU": "Компонент исключён или недоступен; см. манифест.",
+        "uk-UA": "Компонент виключено або недоступний; див. маніфест.",
+        "de-DE": "Komponente ausgelassen oder nicht verfügbar; siehe Manifest.",
+        "fr-FR": "Composant exclu ou indisponible ; voir le manifeste.",
+        "es-ES": "Componente excluido o no disponible; vea el manifiesto.",
+        "it-IT": "Componente escluso o non disponibile; vedere manifesto.",
+        "pl-PL": "Składnik pominięty lub niedostępny; patrz manifest.",
+        "pt-PT": "Componente excluído ou indisponível; consulte o manifesto.",
+        "nl-NL": "Onderdeel weggelaten of niet beschikbaar; zie manifest.",
+        "cs-CZ": "Součást vynechána nebo nedostupná; viz manifest.",
+        "bg-BG": "Компонентът е изключен или недостъпен; вижте манифеста."
+      }
+    },
+    "fbe.diagnostics.open_failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Could not open selected file.",
+        "ru-RU": "Не удалось открыть файл сеанса.",
+        "uk-UA": "Не вдалося відкрити файл сеансу.",
+        "de-DE": "Sitzungsdatei nicht geöffnet.",
+        "fr-FR": "Impossible d’ouvrir le fichier choisi.",
+        "es-ES": "No se pudo abrir el archivo.",
+        "it-IT": "Impossibile aprire il file.",
+        "pl-PL": "Nie można otworzyć pliku.",
+        "pt-PT": "Não foi possível abrir o ficheiro.",
+        "nl-NL": "Kan het bestand niet openen.",
+        "cs-CZ": "Nelze otevřít soubor.",
+        "bg-BG": "Файлът не може да се отвори."
+      }
+    },
+    "fbe.diagnostics.state": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Mode: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "ru-RU": "Режим: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "uk-UA": "Режим: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "de-DE": "Modus: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "fr-FR": "Mode: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "es-ES": "Modo: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "it-IT": "Modalità: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "pl-PL": "Tryb: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "pt-PT": "Modo: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "nl-NL": "Modus: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "cs-CZ": "Režim: %s; %s; Win32=%lu\nSession ID: %s\n%s",
+        "bg-BG": "Режим: %s; %s; Win32=%lu\nSession ID: %s\n%s"
+      }
+    },
+    "fbe.diagnostics.summary": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Verified bytes / omitted: %llu / %u",
+        "ru-RU": "Проверено байт / исключено: %llu / %u",
+        "uk-UA": "Перевірено байт / виключено: %llu / %u",
+        "de-DE": "Geprüfte Bytes / ausgelassen: %llu / %u",
+        "fr-FR": "Octets vérifiés / exclus: %llu / %u",
+        "es-ES": "Bytes verificados / excluidos: %llu / %u",
+        "it-IT": "Byte verificati / esclusi: %llu / %u",
+        "pl-PL": "Sprawdzone bajty / pominięto: %llu / %u",
+        "pt-PT": "Bytes verificados / excluídos: %llu / %u",
+        "nl-NL": "Gecontroleerde bytes / weggelaten: %llu / %u",
+        "cs-CZ": "Ověřené bajty / vynecháno: %llu / %u",
+        "bg-BG": "Проверени байтове / изключени: %llu / %u"
+      }
+    },
+    "fbe.diagnostics.cleaned": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Deleted files / failed / bytes freed: %u / %u / %llu",
+        "ru-RU": "Удалено файлов / ошибок / освобождено байт: %u / %u / %llu",
+        "uk-UA": "Видалено файлів / помилок / звільнено байт: %u / %u / %llu",
+        "de-DE": "Dateien gelöscht / Fehler / Bytes frei: %u / %u / %llu",
+        "fr-FR": "Fichiers supprimés / erreurs / octets libérés: %u / %u / %llu",
+        "es-ES": "Archivos borrados / errores / bytes liberados: %u / %u / %llu",
+        "it-IT": "File eliminati / errori / byte liberati: %u / %u / %llu",
+        "pl-PL": "Usunięte pliki / błędy / zwolnione bajty: %u / %u / %llu",
+        "pt-PT": "Ficheiros eliminados / erros / bytes libertados: %u / %u / %llu",
+        "nl-NL": "Gewiste bestanden / fouten / vrijgemaakte bytes: %u / %u / %llu",
+        "cs-CZ": "Smazané soubory / chyby / uvolněné bajty: %u / %u / %llu",
+        "bg-BG": "Изтрити файлове / грешки / освободени байтове: %u / %u / %llu"
+      }
+    },
+    "fbe.diagnostics.cleanup_confirm": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Files / bytes to delete: %u / %llu. Click cleanup again to confirm.",
+        "ru-RU": "К удалению файлов / байт: %u / %llu. Нажмите очистку ещё раз для подтверждения.",
+        "uk-UA": "До видалення файлів / байтів: %u / %llu. Натисніть очищення ще раз.",
+        "de-DE": "Zu löschen: %u Dateien / %llu Bytes. Zum Bestätigen erneut klicken.",
+        "fr-FR": "À supprimer : %u fichiers / %llu octets. Recliquez pour confirmer.",
+        "es-ES": "A borrar: %u archivos / %llu bytes. Pulse de nuevo para confirmar.",
+        "it-IT": "Da eliminare: %u file / %llu byte. Fare clic di nuovo per confermare.",
+        "pl-PL": "Do usunięcia: %u plików / %llu bajtów. Kliknij ponownie, aby potwierdzić.",
+        "pt-PT": "A eliminar: %u ficheiros / %llu bytes. Clique novamente para confirmar.",
+        "nl-NL": "Te wissen: %u bestanden / %llu bytes. Klik opnieuw ter bevestiging.",
+        "cs-CZ": "Ke smazání: %u souborů / %llu bajtů. Potvrďte dalším kliknutím.",
+        "bg-BG": "За изтриване: %u файла / %llu байта. Натиснете отново за потвърждение."
+      }
+    },
+    "fbe.diagnostics.ambiguous-crash-match": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Ambiguous crash match",
+        "ru-RU": "Несколько подходящих crash-отчётов",
+        "uk-UA": "Кілька відповідних аварійних звітів",
+        "de-DE": "Mehrdeutige Absturzzuordnung",
+        "fr-FR": "Plusieurs rapports correspondants",
+        "es-ES": "Varios informes coincidentes",
+        "it-IT": "Più rapporti corrispondenti",
+        "pl-PL": "Niejednoznaczne dopasowanie awarii",
+        "pt-PT": "Vários relatórios correspondentes",
+        "nl-NL": "Meerdere overeenkomende crashrapporten",
+        "cs-CZ": "Nejednoznačná shoda pádu",
+        "bg-BG": "Няколко съответстващи отчета"
+      }
+    },
+    "fbe.diagnostics.crash_notice": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": " [Crash report: Tools > Diagnostics]",
+        "ru-RU": " [Есть crash-отчёт: Сервис → Диагностика]",
+        "uk-UA": " [Є аварійний звіт: Сервіс → Діагностика]",
+        "de-DE": " [Absturzbericht: Extras → Diagnose]",
+        "fr-FR": " [Rapport de plantage : Outils → Diagnostic]",
+        "es-ES": " [Informe de fallo: Herramientas → Diagnóstico]",
+        "it-IT": " [Rapporto di arresto: Strumenti → Diagnostica]",
+        "pl-PL": " [Raport awarii: Narzędzia → Diagnostyka]",
+        "pt-PT": " [Relatório de falha: Ferramentas → Diagnóstico]",
+        "nl-NL": " [Crashrapport: Extra → Diagnostiek]",
+        "cs-CZ": " [Zpráva o pádu: Nástroje → Diagnostika]",
+        "bg-BG": " [Отчет за срив: Инструменти → Диагностика]"
+      }
+    },
+    "fbe.diagnostics.duration": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "%llu s",
+        "ru-RU": "%llu с",
+        "uk-UA": "%llu с",
+        "de-DE": "%llu s",
+        "fr-FR": "%llu s",
+        "es-ES": "%llu s",
+        "it-IT": "%llu s",
+        "pl-PL": "%llu s",
+        "pt-PT": "%llu s",
+        "nl-NL": "%llu s",
+        "cs-CZ": "%llu s",
+        "bg-BG": "%llu с"
+      }
+    },
+    "fbe.diagnostics.damaged-crash-report": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Damaged crash report",
+        "ru-RU": "Повреждённый crash-отчёт",
+        "uk-UA": "Пошкоджений аварійний звіт",
+        "de-DE": "Beschädigter Absturzbericht",
+        "fr-FR": "Rapport de plantage endommagé",
+        "es-ES": "Informe de fallo dañado",
+        "it-IT": "Rapporto di arresto danneggiato",
+        "pl-PL": "Uszkodzony raport awarii",
+        "pt-PT": "Relatório de falha danificado",
+        "nl-NL": "Beschadigd crashrapport",
+        "cs-CZ": "Poškozená zpráva o pádu",
+        "bg-BG": "Повреден отчет за срив"
+      }
+    },
+    "fbe.diagnostics.setting": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Setting",
+        "ru-RU": "Настройка",
+        "uk-UA": "Налаштування",
+        "de-DE": "Einstellung",
+        "fr-FR": "Réglage",
+        "es-ES": "Ajuste",
+        "it-IT": "Impostazione",
+        "pl-PL": "Ustawienie",
+        "pt-PT": "Definição",
+        "nl-NL": "Instelling",
+        "cs-CZ": "Nastavení",
+        "bg-BG": "Настройка"
+      }
+    },
+    "fbe.diagnostics.source_none": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "None",
+        "ru-RU": "Нет",
+        "uk-UA": "Немає",
+        "de-DE": "Keine",
+        "fr-FR": "Aucun",
+        "es-ES": "Ninguno",
+        "it-IT": "Nessuna",
+        "pl-PL": "Brak",
+        "pt-PT": "Nenhuma",
+        "nl-NL": "Geen",
+        "cs-CZ": "Žádný",
+        "bg-BG": "Няма"
+      }
+    },
+    "fbe.diagnostics.size-limit": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Size limit",
+        "ru-RU": "Ограничение размера",
+        "uk-UA": "Обмеження розміру",
+        "de-DE": "Größenlimit",
+        "fr-FR": "Limite de taille",
+        "es-ES": "Límite de tamaño",
+        "it-IT": "Limite di dimensione",
+        "pl-PL": "Limit rozmiaru",
+        "pt-PT": "Limite de tamanho",
+        "nl-NL": "Groottelimiet",
+        "cs-CZ": "Limit velikosti",
+        "bg-BG": "Ограничение на размера"
       }
     }
   }

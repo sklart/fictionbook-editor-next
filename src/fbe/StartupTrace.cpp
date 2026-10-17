@@ -7,12 +7,16 @@
 #include <algorithm>
 #include <vector>
 #include <winver.h>
+#include "../common/DiagnosticPrivacy.h"
+#include "../common/DiagnosticLog.h"
 
 extern "C" { extern const char* build_timestamp; extern const char* build_commit; extern const char* build_configuration; }
 
 namespace
 {
 	HANDLE traceFile = INVALID_HANDLE_VALUE;
+	wchar_t sessionId[40] = {};
+	CString sessionStarted, sessionMetadataPath, sessionDirectory;
 	CRITICAL_SECTION traceLock;
 	bool traceLockInitialized = false;
 	ULONGLONG startTime = 0, previousTime = 0, writtenBytes = 0, recordSequence = 0;
@@ -53,8 +57,9 @@ namespace
 			int start = -1;
 			if (index + 2 < value.GetLength() && ((value[index] >= L'A' && value[index] <= L'Z') || (value[index] >= L'a' && value[index] <= L'z')) && value[index + 1] == L':' && (value[index + 2] == L'\\' || value[index + 2] == L'/')) start = index;
 			else if (index + 1 < value.GetLength() && value[index] == L'\\' && value[index + 1] == L'\\') start = index;
-			else if (value.Mid(index, 8).CompareNoCase(L"file:///") == 0) start = index;
-			if (start < 0) { ++index; continue; }
+			else if (value.Mid(index, 7).CompareNoCase(L"file://") == 0) start = index;
+			if (start < 0 && value[index]==L'/' && index+1<value.GetLength() && iswalpha(value[index+1]) && (index==0 || value[index-1]==L' ' || value[index-1]==L'=' || value[index-1]==L'"')) start=index;
+            if (start < 0) { ++index; continue; }
 			int end = start;
 			while (end < value.GetLength() && value[end] != L';' && value[end] != L'\r' && value[end] != L'\n' && value[end] != L'\t') ++end;
 			value = value.Left(start) + L"[path omitted]" + value.Mid(end);
@@ -68,6 +73,7 @@ namespace
 		CString value(text ? text : L"");
 		value.Replace(L"\r", L" "); value.Replace(L"\n", L" "); value.Replace(L"\t", L" ");
 		for (int index = 0; index < value.GetLength(); ++index) if (value[index] < L' ') value.SetAt(index, L' ');
+		if (redactPaths) value = RedactPathFragments(value);
 		value = ReplaceEnvironmentValue(value, L"USERPROFILE", L"%USERPROFILE%");
 		value = ReplaceEnvironmentValue(value, L"LOCALAPPDATA", L"%LOCALAPPDATA%");
 		value = ReplaceEnvironmentValue(value, L"APPDATA", L"%APPDATA%");
@@ -135,153 +141,8 @@ namespace
 		return true;
 	}
 
-	CString ResolveDiagnosticLogDirectory()
-	{
-		if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
-			return CString(DeploymentContext::DiagnosticsDirectory().c_str());
-		wchar_t base[MAX_PATH] = {};
-		if (SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base)))
-		{
-			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
-			return directory;
-		}
-		if (::GetTempPath(_countof(base), base))
-		{
-			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next Diagnostics";
-			return directory;
-		}
-		return CString();
-	}
+	CString ResolveDiagnosticLogDirectory() { return CString(DeploymentContext::DiagnosticsDirectory().c_str()); }
 
-	void ResolveDiagnosticLogDirectories(std::vector<CString>& directories)
-	{
-		directories.clear();
-		if (DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable)
-		{
-			const CString directory(DeploymentContext::DiagnosticsDirectory().c_str());
-			if (!directory.IsEmpty()) directories.push_back(directory);
-			return;
-		}
-		wchar_t base[MAX_PATH] = {};
-		if (SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, base)))
-		{
-			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
-			directories.push_back(directory);
-		}
-		if (::GetTempPath(_countof(base), base))
-		{
-			CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next Diagnostics";
-			bool known = false;
-			for (size_t index = 0; index < directories.size(); ++index) if (directories[index].CompareNoCase(directory) == 0) known = true;
-			if (!known) directories.push_back(directory);
-		}
-	}
-
-	struct DiagnosticLogName
-	{
-		unsigned int year, month, day, hour, minute, second, millisecond, processId, suffix, segment;
-	};
-
-	bool ParseDiagnosticLogNumber(const CString& text, int offset, int length, unsigned int& value)
-	{
-		if (length <= 0 || offset < 0 || offset + length > text.GetLength()) return false;
-		unsigned long parsed = 0;
-		for (int index = offset; index < offset + length; ++index)
-		{
-			if (text[index] < L'0' || text[index] > L'9') return false;
-			if (parsed > (ULONG_MAX - static_cast<unsigned long>(text[index] - L'0')) / 10) return false;
-			parsed = parsed * 10 + static_cast<unsigned long>(text[index] - L'0');
-		}
-		value = static_cast<unsigned int>(parsed);
-		return true;
-	}
-
-	bool ParseDiagnosticLogName(const CString& name, CString& session, DiagnosticLogName& logName)
-	{
-		session.Empty(); memset(&logName, 0, sizeof(logName));
-		if (name.GetLength() < 38 || name.Right(4).CompareNoCase(L".log") != 0) return false;
-		const CString stem = name.Left(name.GetLength() - 4);
-		if (stem.Left(10).CompareNoCase(L"fbe-trace-") != 0 || stem[18] != L'-' || stem[25] != L'-' || stem[29] != L'-' || stem.Mid(30, 3).CompareNoCase(L"pid") != 0) return false;
-		if (!ParseDiagnosticLogNumber(stem, 10, 8, logName.year) || !ParseDiagnosticLogNumber(stem, 19, 6, logName.hour) || !ParseDiagnosticLogNumber(stem, 26, 3, logName.millisecond)) return false;
-		logName.month = logName.year % 10000 / 100;
-		logName.day = logName.year % 100;
-		logName.year /= 10000;
-		logName.minute = logName.hour % 10000 / 100;
-		logName.second = logName.hour % 100;
-		logName.hour /= 10000;
-		int position = 33;
-		int next = stem.Find(L'-', position);
-		const int processIdEnd = next < 0 ? stem.GetLength() : next;
-		if (!ParseDiagnosticLogNumber(stem, position, processIdEnd - position, logName.processId)) return false;
-		while (next >= 0)
-		{
-			position = next + 1;
-			next = stem.Find(L'-', position);
-			const int end = next < 0 ? stem.GetLength() : next;
-			if (stem.Mid(position, 4).CompareNoCase(L"part") == 0)
-			{
-				if (logName.segment != 0 || !ParseDiagnosticLogNumber(stem, position + 4, end - position - 4, logName.segment)) return false;
-			}
-			else if (logName.suffix == 0)
-			{
-				if (!ParseDiagnosticLogNumber(stem, position, end - position, logName.suffix)) return false;
-			}
-			else return false;
-		}
-		const int partMarker = stem.ReverseFind(L'-');
-		session = logName.segment != 0 && partMarker >= 0 ? stem.Left(partMarker) : stem;
-		return true;
-	}
-
-	int CompareDiagnosticSessionName(const DiagnosticLogName& left, const DiagnosticLogName& right)
-	{
-		const unsigned int* leftValues = &left.year;
-		const unsigned int* rightValues = &right.year;
-		for (size_t index = 0; index < 9; ++index)
-		{
-			if (leftValues[index] < rightValues[index]) return -1;
-			if (leftValues[index] > rightValues[index]) return 1;
-		}
-		return 0;
-	}
-
-	ULONGLONG FileTimeValue(const FILETIME& value)
-	{
-		ULARGE_INTEGER result = {}; result.LowPart = value.dwLowDateTime; result.HighPart = value.dwHighDateTime;
-		return result.QuadPart;
-	}
-
-	CString FindLatestTrace(const CString& /*ignoredDirectory*/)
-	{
-		std::vector<CString> directories;
-		ResolveDiagnosticLogDirectories(directories);
-		CString latestPath, latestSession;
-		DiagnosticLogName latestLogName = {};
-		bool hasLatestLogName = false;
-		ULONGLONG latestWriteTime = 0;
-		for (size_t directoryIndex = 0; directoryIndex < directories.size(); ++directoryIndex)
-		{
-			WIN32_FIND_DATA findData = {};
-			HANDLE search = ::FindFirstFile(directories[directoryIndex] + L"\\fbe-trace-*.log", &findData);
-			if (search == INVALID_HANDLE_VALUE) continue;
-			do
-			{
-				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-				CString session; DiagnosticLogName logName = {};
-				if (!ParseDiagnosticLogName(findData.cFileName, session, logName)) continue;
-				const ULONGLONG writeTime = FileTimeValue(findData.ftLastWriteTime);
-				const int sessionOrder = hasLatestLogName ? CompareDiagnosticSessionName(logName, latestLogName) : 1;
-				if (sessionOrder > 0 || (sessionOrder == 0 && (logName.segment > latestLogName.segment || (logName.segment == latestLogName.segment && writeTime > latestWriteTime))))
-				{
-					latestSession = session; latestLogName = logName; hasLatestLogName = true; latestWriteTime = writeTime;
-					latestPath = directories[directoryIndex] + L"\\" + findData.cFileName;
-				}
-			}
-			while (::FindNextFile(search, &findData));
-			::FindClose(search);
-		}
-		return latestPath;
-	}
 	bool OpenTraceFile(const CString& directory, const SYSTEMTIME& time)
 	{
 		::SHCreateDirectoryEx(NULL, directory, NULL);
@@ -297,76 +158,6 @@ namespace
 		return false;
 	}
 
-	void CleanupOldTraceSessions(const CString& directory, const CString& preserveSession, size_t sessionLimit, StartupTrace::DiagnosticLogCleanupResult* cleanup = NULL)
-	{
-		struct TraceSession { CString name; DiagnosticLogName logName; };
-		std::vector<TraceSession> sessions;
-		WIN32_FIND_DATA findData = {};
-		HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &findData);
-		if (search == INVALID_HANDLE_VALUE)
-		{
-			const DWORD error = ::GetLastError();
-			if (cleanup && error != ERROR_FILE_NOT_FOUND) { ++cleanup->filesFailed; cleanup->lastError = error; }
-			return;
-		}
-		do
-		{
-			if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-			CString session; DiagnosticLogName logName = {};
-			if (!ParseDiagnosticLogName(findData.cFileName, session, logName)) continue;
-			bool known = false;
-			for (size_t index = 0; index < sessions.size(); ++index) if (sessions[index].name.CompareNoCase(session) == 0) { known = true; break; }
-			if (!known) { TraceSession entry = { session, logName }; sessions.push_back(entry); }
-		}
-		while (::FindNextFile(search, &findData));
-		::FindClose(search);
-		std::sort(sessions.begin(), sessions.end(), [](const TraceSession& left, const TraceSession& right) { return CompareDiagnosticSessionName(left.logName, right.logName) > 0; });
-		for (size_t sessionIndex = sessionLimit; sessionIndex < sessions.size(); ++sessionIndex)
-		{
-			const CString& session = sessions[sessionIndex].name;
-			if (session.CompareNoCase(preserveSession) == 0) continue;
-			if (cleanup) ++cleanup->sessionsFound;
-			bool sessionHasFiles = false;
-			bool sessionHasFailures = false;
-			bool sessionHasDeletedFiles = false;
-			HANDLE files = ::FindFirstFile(directory + L"\\" + session + L"*.log", &findData);
-			if (files == INVALID_HANDLE_VALUE)
-			{
-				if (cleanup) { ++cleanup->sessionsFailed; cleanup->lastError = ::GetLastError(); }
-				continue;
-			}
-			do
-			{
-				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-				CString fileName(findData.cFileName);
-				if (fileName != session + L".log" && fileName.Left(session.GetLength() + 5).CompareNoCase(session + L"-part") != 0) continue;
-				sessionHasFiles = true;
-				const CString filePath = directory + L"\\" + fileName;
-				if (::DeleteFile(filePath))
-				{
-					sessionHasDeletedFiles = true;
-					if (cleanup) ++cleanup->filesDeleted;
-				}
-				else
-				{
-					sessionHasFailures = true;
-					if (cleanup)
-					{
-						++cleanup->filesFailed;
-						cleanup->lastError = ::GetLastError();
-					}
-				}
-			}
-			while (::FindNextFile(files, &findData));
-			::FindClose(files);
-			if (cleanup)
-			{
-				if (!sessionHasFiles || (!sessionHasDeletedFiles && sessionHasFailures)) ++cleanup->sessionsFailed;
-				else if (sessionHasFailures) ++cleanup->sessionsPartiallyDeleted;
-				else ++cleanup->sessionsFullyDeleted;
-			}
-		}
-	}
 	void WriteUtf8(const CString& text, bool flush, bool force)
 	{
 		if (traceFile == INVALID_HANDLE_VALUE) return;
@@ -386,11 +177,12 @@ namespace
 	void WriteRecord(const wchar_t* category, const wchar_t* level, const wchar_t* code, const wchar_t* message, bool flush)
 	{
 		TraceLock guard;
-		if (traceFile == INVALID_HANDLE_VALUE) return;
 		const ULONGLONG now = ::GetTickCount64(); SYSTEMTIME time = {}; ::GetLocalTime(&time);
-		const CString safeCategory = Sanitize(category, 64, false), safeCode = Sanitize(code, 32, false), safeMessage = Sanitize(message, 512, true);
+		const CString safeCategory = FbeDiagnosticPrivacy::Identifier(category ? category : L"") ? category : L"unknown";
+		const CString safeCode = FbeDiagnosticPrivacy::Identifier(code ? code : L"") ? code : L"unknown";
+		const CString safeMessage(FbeDiagnosticPrivacy::Details(message).c_str());
 		CString line;
-		line.Format(L"%04u-%02u-%02u %02u:%02u:%02u.%03u; seq=%llu; elapsed=%llu; delta=%llu; PID=%lu; TID=%lu; level=%s; category=%s; code=%s; message=%s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ++recordSequence, now - startTime, now - previousTime, ::GetCurrentProcessId(), ::GetCurrentThreadId(), (LPCWSTR)level, (LPCWSTR)safeCategory, (LPCWSTR)(safeCode.IsEmpty() ? CString(L"-") : safeCode), (LPCWSTR)safeMessage);
+		line.Format(L"%04u-%02u-%02u %02u:%02u:%02u.%03u; seq=%llu; elapsed=%llu; delta=%llu; PID=%lu; TID=%lu; session_id=%s; level=%s; category=%s; code=%s; message=%s\r\n", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds, ++recordSequence, now - startTime, now - previousTime, ::GetCurrentProcessId(), ::GetCurrentThreadId(), sessionId, (LPCWSTR)level, (LPCWSTR)safeCategory, (LPCWSTR)(safeCode.IsEmpty() ? CString(L"-") : safeCode), (LPCWSTR)safeMessage);
 		previousTime = now;
 		lastStageCode = safeCode;
 		lastStageMessage = safeMessage;
@@ -398,18 +190,20 @@ namespace
 			lastDocumentStage = safeCode;
 
 		const bool isJavaScriptOperation = safeCategory == L"script" && safeCode.GetLength() >= 4 && safeCode[0] == L'J';
-		const bool isDiagnosticOrRestoreEvent = safeCode == L"J900" || safeCode == L"J901" || safeMessage.Find(L"operation=CSS restore") == 0;
+		const bool isDiagnosticOrRestoreEvent = safeCode == L"J900" || safeCode == L"J901" || (message && wcsncmp(message,L"operation=CSS restore",21)==0);
 		if (isJavaScriptOperation && !isDiagnosticOrRestoreEvent)
 			lastScriptOperationStage = safeCode;
-		WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
+		if (traceFile == INVALID_HANDLE_VALUE && wcscmp(level, L"info") == 0) return;
+        if (traceFile != INVALID_HANDLE_VALUE) WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
+        else if (sessionId[0]) {
+            const std::wstring path = std::wstring(sessionDirectory.GetString()) + L"fbe-events-" + sessionId + L".log";
+            if (!FbeDiagnostic::WriteUtf8(path, std::wstring(line.GetString()))) lastWriteError = ERROR_WRITE_FAULT;
+        }
 	}
 
-	CString GetLoadedModuleVersion(const wchar_t* moduleName)
-	{
-		HMODULE module = ::GetModuleHandle(moduleName);
-		if (!module) return CString(L"not-loaded");
-		wchar_t path[MAX_PATH] = {};
-		if (!::GetModuleFileName(module, path, _countof(path))) return CString(L"unavailable");
+    CString GetDiagnosticFileVersion(const CString& path)
+    {
+        if(path.IsEmpty()) return CString(L"unavailable");
 		HMODULE versionLibrary = ::LoadLibrary(L"version.dll");
 		if (!versionLibrary) return CString(L"unavailable");
 		typedef DWORD (WINAPI* GetSizeFn)(LPCWSTR, LPDWORD);
@@ -431,6 +225,12 @@ namespace
 		return result;
 	}
 
+    CString GetLoadedModuleVersion(const wchar_t* moduleName) {
+        HMODULE module=::GetModuleHandle(moduleName); if(!module) return CString(L"not-loaded");
+        wchar_t path[MAX_PATH]={}; if(!::GetModuleFileName(module,path,_countof(path))) return CString(L"unavailable");
+        return GetDiagnosticFileVersion(CString(path));
+    }
+
 	CString ModuleArchitecture(const CString& path)
 	{
 		DWORD binaryType = 0;
@@ -439,6 +239,17 @@ namespace
 			if (binaryType == SCS_32BIT_BINARY) return CString(L"x86");
 			if (binaryType == SCS_64BIT_BINARY) return CString(L"x64");
 		}
+        HANDLE file=::CreateFile(path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
+        if(file!=INVALID_HANDLE_VALUE) {
+            IMAGE_DOS_HEADER dos={}; DWORD read=0; DWORD signature=0; IMAGE_FILE_HEADER header={};
+            const bool valid=::ReadFile(file,&dos,sizeof(dos),&read,NULL) && read==sizeof(dos) && dos.e_magic==IMAGE_DOS_SIGNATURE && dos.e_lfanew>0 && dos.e_lfanew<1024*1024;
+            bool pe=false;
+            if(valid && ::SetFilePointer(file,dos.e_lfanew,NULL,FILE_BEGIN)!=INVALID_SET_FILE_POINTER)
+                pe=::ReadFile(file,&signature,sizeof(signature),&read,NULL) && read==sizeof(signature) && signature==IMAGE_NT_SIGNATURE && ::ReadFile(file,&header,sizeof(header),&read,NULL) && read==sizeof(header);
+            ::CloseHandle(file);
+            if(pe && header.Machine==IMAGE_FILE_MACHINE_I386) return CString(L"x86");
+            if(pe && header.Machine==IMAGE_FILE_MACHINE_AMD64) return CString(L"x64");
+        }
 		return CString(L"unknown");
 	}
 
@@ -462,7 +273,7 @@ namespace
 		CString details;
 		details.Format(L"module=%s; present=%d; loaded=%d; file-version=%s; architecture=%s",
 			moduleName, present ? 1 : 0, module ? 1 : 0,
-			(LPCWSTR)(module ? GetLoadedModuleVersion(mainExecutable ? NULL : moduleName) : CString(L"not-loaded")),
+			(LPCWSTR)GetDiagnosticFileVersion(path),
 			(LPCWSTR)ModuleArchitecture(path));
 		return details;
 	}
@@ -582,32 +393,39 @@ bool StartupTrace::SetEnabledForNextLaunch(bool enabled) { if (!DeploymentContex
 
 void StartupTrace::Start()
 {
-	if (!IsEnabledForNextLaunch()) return;
-	::InitializeCriticalSection(&traceLock); traceLockInitialized = true;
-	wchar_t base[MAX_PATH] = {};
-	const bool portable = DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable;
-	const bool haveLocalAppData = !portable && SUCCEEDED(::SHGetFolderPath(NULL, CSIDL_LOCAL_APPDATA | CSIDL_FLAG_CREATE, NULL, SHGFP_TYPE_CURRENT, base));
-	SYSTEMTIME time = {}; ::GetLocalTime(&time);
-	bool opened = false;
-	if (portable)
-	{
-		CString directory(DeploymentContext::DiagnosticsDirectory().c_str()); directory.TrimRight(L"\\");
-		opened = OpenTraceFile(directory, time);
-	}
-	else if (haveLocalAppData)
-	{
-		CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next\\Diagnostics";
-		opened = OpenTraceFile(directory, time);
-	}
-	if (!opened && !portable)
-	{
-		const DWORD primaryError = ::GetLastError();
-		if (!::GetTempPath(_countof(base), base)) { lastWriteError = primaryError; return; }
-		CString directory(base); directory.TrimRight(L"\\"); directory += L"\\FBE Next Diagnostics";
-		opened = OpenTraceFile(directory, time);
-		if (!opened) { lastWriteError = ::GetLastError() ? ::GetLastError() : primaryError; return; }
-	}
-	std::vector<CString> retentionDirectories; ResolveDiagnosticLogDirectories(retentionDirectories); const CString activeSession = traceBasePath.Mid(traceBasePath.ReverseFind(L'\\') + 1); for (size_t index = 0; index < retentionDirectories.size(); ++index) { const CString preserve = tracePath.Left(retentionDirectories[index].GetLength()).CompareNoCase(retentionDirectories[index]) == 0 ? activeSession : CString(); CleanupOldTraceSessions(retentionDirectories[index], preserve, 10); }
+	if (sessionId[0]) return;
+    GUID id = {}; if (FAILED(::CoCreateGuid(&id))) return;
+    wchar_t guid[40] = {}; ::StringFromGUID2(id, guid, _countof(guid));
+    wcsncpy_s(sessionId, guid + 1, 36); sessionId[36] = 0;
+    ::InitializeCriticalSection(&traceLock); traceLockInitialized = true;
+    SYSTEMTIME started = {}; ::GetSystemTime(&started);
+    sessionStarted.Format(L"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ", started.wYear, started.wMonth, started.wDay, started.wHour, started.wMinute, started.wSecond, started.wMilliseconds);
+    CString metadataDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
+    int created = ::SHCreateDirectoryEx(NULL, metadataDirectory, NULL);
+    if (created != ERROR_SUCCESS && created != ERROR_ALREADY_EXISTS && created != ERROR_FILE_EXISTS && DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable) {
+        wchar_t temp[MAX_PATH] = {}; if (::GetTempPath(_countof(temp),temp)) { metadataDirectory = CString(temp) + L"FBE Next Diagnostics\\"; ::SHCreateDirectoryEx(NULL,metadataDirectory,NULL); }
+    }
+    sessionDirectory = metadataDirectory;
+    sessionMetadataPath = metadataDirectory + L"fbe-session-" + sessionId + L".txt";
+    CString metadata; metadata.Format(L"session_id=%s\r\nstarted=%s\r\nPID=%lu\r\nversion=%s\r\noutcome=unknown\r\n", sessionId, (LPCWSTR)sessionStarted, ::GetCurrentProcessId(), FBE_VERSION_WSTRING);
+    metadata += BasicEnvironmentReport();
+    HANDLE file = ::CreateFile(sessionMetadataPath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(file==INVALID_HANDLE_VALUE && DeploymentContext::CurrentMode()!=DeploymentContext::Mode::Portable) {
+        wchar_t temp[MAX_PATH]={};
+        if(::GetTempPath(_countof(temp),temp)) {
+            metadataDirectory=CString(temp)+L"FBE Next Diagnostics\\"; ::SHCreateDirectoryEx(NULL,metadataDirectory,NULL);
+            sessionDirectory=metadataDirectory; sessionMetadataPath=metadataDirectory+L"fbe-session-"+sessionId+L".txt";
+            file=::CreateFile(sessionMetadataPath,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,NULL);
+        }
+    }
+    if (file != INVALID_HANDLE_VALUE) { CStringA bytes(CW2A(metadata, CP_UTF8)); DWORD written = 0; if (!::WriteFile(file, bytes.GetString(), bytes.GetLength(), &written, NULL) || written != static_cast<DWORD>(bytes.GetLength())) lastWriteError = ::GetLastError() ? ::GetLastError() : ERROR_WRITE_FAULT; ::CloseHandle(file); }
+    else lastWriteError = ::GetLastError();
+    startTime = previousTime = ::GetTickCount64();
+    if (!IsEnabledForNextLaunch()) { CleanupDiagnosticSessions(10); return; }
+    SYSTEMTIME time = {}; ::GetLocalTime(&time);
+    if (!OpenTraceFile(metadataDirectory, time)) { lastWriteError = ::GetLastError(); return; }
+
+	CleanupDiagnosticSessions(10);
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();
@@ -644,8 +462,8 @@ void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wch
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }
-void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); lastComFailure = failure; lastHResultFailure = failure; if (category && wcscmp(category, L"dispatch") == 0) lastDispatchFailure = failure; } }
-void StartupTrace::DispatchResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { HResult(category, code, result, message); if (FAILED(result)) { TraceLock guard; CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); lastDispatchFailure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); } }
+void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); lastComFailure = failure; lastHResultFailure = failure; if (category && wcscmp(category, L"dispatch") == 0) lastDispatchFailure = failure; } }
+void StartupTrace::DispatchResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { HResult(category, code, result, message); if (FAILED(result)) { TraceLock guard; CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); lastDispatchFailure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); } }
 void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
 	const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message)
 {
@@ -653,35 +471,17 @@ void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HR
 	details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L"");
 	details += FormatComExceptionMetadata(exceptionInfo, errorInfo);
 	WriteRecord(category, L"error", code, details, true);
-	{ TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + Sanitize(details, 256, true); lastComFailure = failure; lastHResultFailure = failure; }
+	{ TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); lastComFailure = failure; lastHResultFailure = failure; }
 }
 void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); if (isError) { const int marker = safeMessage.Find(L"failed-stage="); if (marker >= 0) { CString stage = safeMessage.Mid(marker + 13); const int separator = stage.Find(L";"); if (separator >= 0) stage = stage.Left(separator); TraceLock guard; lastScriptFailureStage = Sanitize(stage, 32, false); } } }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
-CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; }
-CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const CString path = tracePath.IsEmpty() ? FindLatestTrace(CString()) : tracePath; const int separator = path.ReverseFind(L'\\'); return separator >= 0 ? path.Left(separator) : ResolveDiagnosticLogDirectory(); }
-StartupTrace::DiagnosticLogCleanupResult StartupTrace::ClearOldLogSessions()
-{
-	TraceLock guard;
-	std::vector<CString> directories;
-	ResolveDiagnosticLogDirectories(directories);
-	const int separator = traceBasePath.ReverseFind(L'\\');
-	const CString activeSession = separator >= 0 ? traceBasePath.Mid(separator + 1) : traceBasePath;
-	DiagnosticLogCleanupResult cleanup;
-	bool foundDirectory = false;
-	for (size_t index = 0; index < directories.size(); ++index)
-	{
-		if (directories[index].IsEmpty() || ::GetFileAttributes(directories[index]) == INVALID_FILE_ATTRIBUTES) continue;
-		foundDirectory = true;
-		const CString preserve = tracePath.Left(directories[index].GetLength()).CompareNoCase(directories[index]) == 0 ? activeSession : CString();
-		CleanupOldTraceSessions(directories[index], preserve, 0, &cleanup);
-	}
-	if (!foundDirectory && cleanup.lastError == ERROR_SUCCESS) cleanup.lastError = ERROR_PATH_NOT_FOUND;
-	return cleanup;
-}
+CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
+CString StartupTrace::CurrentLogDirectory() { TraceLock guard; const CString path = tracePath; const int separator = path.ReverseFind(L'\\'); return separator >= 0 ? path.Left(separator) : (sessionDirectory.IsEmpty() ? ResolveDiagnosticLogDirectory() : sessionDirectory); }
 bool StartupTrace::TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot)
 {
 	::ZeroMemory(&snapshot, sizeof(snapshot));
+	wcsncpy_s(snapshot.sessionId, sessionId, _TRUNCATE);
 	snapshot.processId = ::GetCurrentProcessId();
 	snapshot.threadId = ::GetCurrentThreadId();
 	if (!traceLockInitialized || !::TryEnterCriticalSection(&traceLock)) return false;
@@ -756,4 +556,37 @@ CString StartupTrace::FormatComExceptionMetadata(const EXCEPINFO* exceptionInfo,
 	}
 	return details;
 }
-void StartupTrace::Finish() { if (traceFile != INVALID_HANDLE_VALUE) { Event(L"startup", L"S999", L"process shutdown"); Flush(); ::CloseHandle(traceFile); traceFile = INVALID_HANDLE_VALUE; traceBasePath.Empty(); } if (traceLockInitialized) { ::DeleteCriticalSection(&traceLock); traceLockInitialized = false; } }
+void StartupTrace::Finish() {
+    if (!sessionMetadataPath.IsEmpty()) {
+        HANDLE file = ::CreateFile(sessionMetadataPath, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (file != INVALID_HANDLE_VALUE) {
+            SYSTEMTIME now = {}; ::GetSystemTime(&now); CString end;
+            end.Format(L"ended=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\r\noutcome=normal\r\n", now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+            CStringA bytes(CW2A(end, CP_UTF8)); DWORD written = 0; ::WriteFile(file, bytes.GetString(), bytes.GetLength(), &written, NULL); ::CloseHandle(file);
+        }
+    }
+ if (traceFile != INVALID_HANDLE_VALUE) { Event(L"startup", L"S999", L"process shutdown"); Flush(); ::CloseHandle(traceFile); traceFile = INVALID_HANDLE_VALUE; traceBasePath.Empty(); } if (traceLockInitialized) { ::DeleteCriticalSection(&traceLock); traceLockInitialized = false; } }
+
+CString StartupTrace::SessionId() { return CString(sessionId); }
+CString StartupTrace::SessionStarted() { return sessionStarted; }
+CString StartupTrace::TraceSource() { return IsTraceEnabled(L"FBE_NEXT_TRACE") ? L"FBE_NEXT_TRACE" : (IsEnabledByStoredNextLaunchPreference() ? L"setting" : L"normal"); }
+CString StartupTrace::BasicEnvironmentReport()
+{
+    SYSTEM_INFO info = {}; ::GetNativeSystemInfo(&info);
+    OSVERSIONINFOEXW version = {}; version.dwOSVersionInfoSize = sizeof(version);
+    typedef LONG (WINAPI* VersionFunction)(OSVERSIONINFOEXW*);
+    VersionFunction rtlVersion = reinterpret_cast<VersionFunction>(::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion"));
+    if (rtlVersion) rtlVersion(&version);
+    CString text, commit(build_commit), configuration(build_configuration);
+    if(commit.IsEmpty()) commit=L"unknown";
+    text.Format(L"environment-source=selected-session-at-start\r\nfbe=%s\r\ncommit=%s\r\nconfiguration=%s\r\nwindows=%lu.%lu.%lu\r\nnative-architecture=%u\r\ndeployment=%s\r\n", FBE_VERSION_WSTRING, (LPCWSTR)commit, (LPCWSTR)configuration, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, info.wProcessorArchitecture, DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? L"portable" : L"installed");
+    const wchar_t* modules[] = { L"mshtml.dll", L"ieframe.dll", L"urlmon.dll", L"jscript.dll", L"msxml6.dll", L"Scintilla.dll", L"Lexilla.dll" };
+    text += DescribeDiagnosticModule(L"FBE.exe", true) + L"\r\n";
+    for (size_t i = 0; i < _countof(modules); ++i) text += DescribeDiagnosticModule(modules[i]) + L"\r\n";
+    return text;
+}
+// In-process plug-ins use the host backend without extending the COM contract.
+extern "C" __declspec(dllexport) void __stdcall FbeRegisterDiagnosticEvent(const wchar_t* source, const wchar_t* code, HRESULT hr)
+{
+    try { StartupTrace::HResult(source, code, hr); } catch (...) { }
+}

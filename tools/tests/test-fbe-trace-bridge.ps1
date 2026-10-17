@@ -84,9 +84,10 @@ $traceImplementation = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\f
 foreach($pattern in @('PARAMFLAG_FIN', 'PARAMFLAG_FOUT', 'PARAMFLAG_FRETVAL', 'core-compatible=%d; diagnostic-compatible=%d')) {
     if($fbeSource -notlike "*$pattern*") { throw "Missing typelib signature validation: $pattern" }
 }
-foreach($pattern in @('DiagnosticLogCleanupResult ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCriticalSection', 'FindLatestTrace', 'ResolveDiagnosticLogDirectory')) {
+foreach($pattern in @('DiagnosticLogCleanupResult ClearOldLogSessions()', 'TrySnapshot', 'TryEnterCriticalSection', 'SessionId()', 'ResolveDiagnosticLogDirectory')) {
     if(($traceHeader + $traceImplementation) -notlike "*$pattern*") { throw "Missing trace fallback or crash snapshot contract: $pattern" }
 }
+if($traceImplementation.Contains('FindLatestTrace')) { throw 'Current session APIs must not select an unrelated latest trace.' }
 foreach($pattern in @('var result=false;', 'var operationCompleted=false;', 'var cssRestoreFailed=false;', 'var originalException=null;', 'var controlledFailureOccurred=false;', 'var primaryFailureStage="";', 'function failControlled()', 'controlledFailureOccurred=true;', 'diagnosticFailureStage=primaryFailureStage || diagnosticOperationStage;', 'if(originalException)', 'throw originalException;', 'if(cssRestoreFailed)', 'TraceDiagnosticEvent("J210", "operation=CSS restore begin")', 'TraceDiagnosticEvent("J211", "operation=CSS restore success")', 'TraceDiagnosticEvent("J212", "level=error; operation=CSS restore failure; load-result=" + (operationCompleted ? "success" : "failure"))', 'if(!originalException && !controlledFailureOccurred)', 'diagnosticFailureStage="J212"', 'DiagError("J212", "CSS restore", e)', 'var failedStage = diagnosticFailureStage || diagnosticOperationStage || code')) {
     if($script -notlike "*$pattern*") { throw "Missing CSS restore diagnostic: $pattern" }
 }

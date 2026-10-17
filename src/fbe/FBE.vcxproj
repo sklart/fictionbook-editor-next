@@ -474,6 +474,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="diagnostics\DiagnosticDialog.h" />
+    <ClInclude Include="..\common\DiagnosticPrivacy.h" />
     <ClInclude Include="AboutBox.h" />
     <ClInclude Include="ArchiveEntryPicker.h" />
     <ClInclude Include="apputils.h" />

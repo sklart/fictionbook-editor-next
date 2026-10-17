@@ -1,26 +1,10 @@
-$ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')
-$source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.cpp')
-$frame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
-$localization = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'localization\app-ui\fbe-idr-mainframe-menu.json') | ConvertFrom-Json
-
-foreach($field in @('sessionsFound','sessionsFullyDeleted','sessionsPartiallyDeleted','sessionsFailed','filesDeleted','filesFailed','lastError')) {
-    if($header.IndexOf($field, [StringComparison]::Ordinal) -lt 0) { throw "Cleanup result is missing $field." }
+$ErrorActionPreference='Stop'
+$root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+$source=Get-Content -Raw (Join-Path $root 'src/fbe/DiagnosticPackage.cpp')
+$dialog=Get-Content -Raw (Join-Path $root 'src/fbe/diagnostics/DiagnosticDialog.h')
+foreach($token in 'CleanupDiagnosticSessions','session.id == SessionId()','session.crashAmbiguous','OpenProcess(SYNCHRONIZE','FILE_ATTRIBUTE_REPARSE_POINT','bytesDeleted','sessionsPartiallyDeleted','filesFailed') {
+ if(!$source.Contains($token)){throw "Missing cleanup boundary: $token"}
 }
-foreach($pattern in @('StartupTrace::DiagnosticLogCleanupResult StartupTrace::ClearOldLogSessions()', 'ResolveDiagnosticLogDirectories(directories)', 'ERROR_PATH_NOT_FOUND', 'sessionHasFiles', 'sessionHasFailures', 'sessionsFullyDeleted', 'sessionsPartiallyDeleted', 'sessionsFailed', 'DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable', 'DeploymentContext::DiagnosticsDirectory()')) {
-    if($source.IndexOf($pattern, [StringComparison]::Ordinal) -lt 0) { throw "Cleanup implementation is missing $pattern." }
-}
-foreach($key in @('fbe.trace.clear_completed_details','fbe.trace.clear_partial','fbe.trace.clear_empty','fbe.trace.clear_delete_failed')) {
-    $entry = $localization.strings.PSObject.Properties | Where-Object Name -eq $key
-    if($null -eq $entry) { throw "Cleanup localization key is missing: $key" }
-    if($key -ne 'fbe.trace.clear_empty' -and $entry.Value.translations.'en-US' -notmatch '%u') { throw "Cleanup localization key must retain numeric result data: $key" }
-}
-foreach($key in @('fbe.trace.clear_empty','fbe.trace.clear_completed_details','fbe.trace.clear_partial','fbe.trace.clear_delete_failed')) {
-    if($frame.IndexOf($key, [StringComparison]::Ordinal) -lt 0) { throw "Cleanup UI does not use $key." }
-}
-if(($localization.strings.'fbe.trace.clear_partial'.translations.'en-US' -split '%u').Count -ne 6) { throw 'Partial cleanup message must report five counters.' }
-foreach($language in $localization.strings.'fbe.trace.clear_partial'.translations.PSObject.Properties) {
-    if(($language.Value -split '%u').Count -ne 6) { throw "Partial cleanup message is incomplete for $($language.Name)." }
-}
-Write-Host 'Diagnostic cleanup contract passed.'
+if($source -match '(?i)DeleteFile\([^\r\n]*(?:\.fb2|Settings.xml|Recovery)'){throw 'Cleanup crosses diagnostic file scope'}
+if($dialog -notmatch 'CleanupDiagnosticSessions\(0,true\)' -or $dialog -notmatch 'cleanupPending'){throw 'Cleanup must show an estimate before confirmation'}
+Write-Host 'Diagnostic cleanup preservation and two-step UI contract passed.'

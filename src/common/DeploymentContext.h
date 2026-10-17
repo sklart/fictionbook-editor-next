@@ -83,7 +83,14 @@ namespace DeploymentContext
         return std::wstring(localAppData) + L"\\FBE Next\\";
     }
 
-    inline std::wstring DiagnosticsDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Diagnostics\\" : SettingsDirectory() + L"Diagnostics\\"; }
+    inline std::wstring DiagnosticsDirectory()
+    {
+        if (CurrentMode() == Mode::Portable) return DataRoot() + L"Diagnostics\\";
+        const std::wstring settings = SettingsDirectory();
+        if (!settings.empty()) return settings + L"Diagnostics\\";
+        wchar_t temp[MAX_PATH] = {};
+        return ::GetTempPathW(_countof(temp), temp) ? std::wstring(temp) + L"FBE Next Diagnostics\\" : std::wstring();
+    }
     inline std::wstring RecoveryDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Recovery\\" : SettingsDirectory() + L"Recovery\\"; }
     inline std::wstring LogsDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Logs\\" : SettingsDirectory() + L"Logs\\"; }
     inline std::wstring CacheDirectory() { return CurrentMode() == Mode::Portable ? DataRoot() + L"Cache\\" : SettingsDirectory() + L"Cache\\"; }

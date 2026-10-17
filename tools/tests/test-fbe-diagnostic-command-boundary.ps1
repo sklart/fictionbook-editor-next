@@ -24,7 +24,7 @@ foreach($unit in @($sourceHeader, $sourceImplementation, $serviceHeader, $servic
 foreach($forbidden in @('struct\s+SourceProfileSample', 'class\s+ShowSourcePhaseProfiler', 'struct\s+ProcessMemorySnapshot', 'static\s+bool\s+OpenDiagnosticLog', 'static\s+bool\s+OpenDiagnosticLogFolder', 'CopyDiagnosticLogPathToClipboard')) {
     if($main -match $forbidden) { throw "mainfrm retains diagnostic ownership: $forbidden" }
 }
-foreach($required in @('m_diagnostic_commands\.OpenCurrentLog', 'm_diagnostic_commands\.OpenLogFolder', 'm_diagnostic_commands\.ClearOldLogSessions', 'm_diagnostic_commands\.CreatePackage')) {
+foreach($required in @('m_diagnostic_commands\.OpenCurrentLog', 'm_diagnostic_commands\.OpenLogFolder', 'm_diagnostic_commands\.ClearOldLogSessions', 'DiagnosticDialog dialog\(m_diagnostic_commands\)')) {
     if($main -notmatch $required) { throw "Frame no longer delegates diagnostic operation: $required" }
 }
 Write-Host 'Diagnostic command boundary contract passed.'
