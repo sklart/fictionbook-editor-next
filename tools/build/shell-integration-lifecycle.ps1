@@ -27,8 +27,16 @@ function Save-ShellData([string]$Path,$Data) {
     Assert-ShellOrdinaryPath $Path
     $next=$Path+'.next';$previous=$Path+'.previous'
     Assert-ShellOrdinaryPath $next;Assert-ShellOrdinaryPath $previous
-    $Data | Export-Clixml -LiteralPath $next -Depth 60 -Encoding UTF8
+    # PS2 CLIXML has no LiteralPath. Use a literal directory and a fixed leaf;
+    # escaping an absolute wildcard path also fails on Windows PowerShell 5.1.
+    Push-Location -LiteralPath ([IO.Path]::GetDirectoryName($next))
+    try {$Data | Export-Clixml -Path ([IO.Path]::GetFileName($next)) -Depth 60 -Encoding UTF8} finally {Pop-Location}
     if([IO.File]::Exists($Path)){[IO.File]::Delete($previous);[IO.File]::Replace($next,$Path,$previous);[IO.File]::Delete($previous)}else{[IO.File]::Move($next,$Path)}
+}
+function Read-ShellData([string]$Path) {
+    Assert-ShellOrdinaryPath $Path
+    Push-Location -LiteralPath ([IO.Path]::GetDirectoryName($Path))
+    try {Import-Clixml -Path ([IO.Path]::GetFileName($Path))} finally {Pop-Location}
 }
 function Get-ShellRegistryValue([string]$Path,[string]$Name='') {
     $root=Open-ShellRegistry
@@ -91,7 +99,7 @@ function Get-ShellReceipt($Context) {
     $owner=Read-ShellOwner $Context.Directory
     if($owner.Count -and $owner['InstallDirectory'] -ine $Context.InstallationDirectory){return @{Foreign=$true}}
     $path=Join-Path $Context.Directory 'InstalledState.clixml';Assert-ShellOrdinaryPath $path
-    if([IO.File]::Exists($path)){$receipt=Import-Clixml -LiteralPath $path;if($receipt.Version -ne 1 -or $receipt.InstallationDirectory -ine $Context.InstallationDirectory -or (@($Context.Directory)+@($Context.LegacyDirectories)) -notcontains $receipt.Directory){return @{Foreign=$true}};foreach($schema in (Get-ShellSchemaPaths)){if($schema -ine (Join-Path $receipt.Directory 'FBE.Sequence.propdesc') -and $schema -ine (Join-Path $Context.Directory 'FBE.Sequence.propdesc')){return @{Foreign=$true}}};return $receipt}
+    if([IO.File]::Exists($path)){$receipt=Read-ShellData $path;if($receipt.Version -ne 1 -or $receipt.InstallationDirectory -ine $Context.InstallationDirectory -or (@($Context.Directory)+@($Context.LegacyDirectories)) -notcontains $receipt.Directory){return @{Foreign=$true}};foreach($schema in (Get-ShellSchemaPaths)){if($schema -ine (Join-Path $receipt.Directory 'FBE.Sequence.propdesc') -and $schema -ine (Join-Path $Context.Directory 'FBE.Sequence.propdesc')){return @{Foreign=$true}}};return $receipt}
     $directory=$Context.Directory
     if(-not $owner.Count){
         $allowed=@();foreach($dir in @($Context.Directory)+@($Context.LegacyDirectories)){$allowed+=Join-Path $dir $Context.NativeName}
@@ -226,7 +234,7 @@ function Invoke-ShellLifecycle($Context,[string]$Operation) {
         if(($Context.RequireRecovery -or [IO.File]::Exists($uncertain)) -and $Operation -ne 'Recover'){return New-ShellResult 'error' 'RECOVERY_REQUIRED' ([bool]$receipt.Installed) ([bool]$receipt.Cleanup) $true 'The previous helper outcome is unknown. Run explicit recovery before retrying.'}
         $journal=Join-Path $Context.Directory 'State\Transaction.clixml';Assert-ShellOrdinaryPath $journal
         if([IO.File]::Exists($journal)){
-            $saved=Import-Clixml -LiteralPath $journal
+            $saved=Read-ShellData $journal
             if($saved.Version -ne 1 -or $saved.Directory -ine $Context.Directory -or $saved.InstallationDirectory -ine $Context.InstallationDirectory){throw 'Recovery snapshot belongs to another installation.'}
             if($saved.Phase -eq 'cleanup' -and $receipt.Cleanup){if($Operation -eq 'Recover'){return Confirm-ShellCleanupRecovery $Context $receipt $uncertain};if($Operation -eq 'Remove'){return Complete-ShellRemoval $Context $receipt};return New-ShellResult 'pending' 'CLEANUP_PENDING' $false $true $false 'Complete the pending removal before reinstalling integration.'}
             if($saved.Phase -eq 'committed' -or $saved.Phase -eq 'rolled-back'){try {Remove-ShellState $Context}catch{return New-ShellResult 'pending' 'BACKUP_CLEANUP_PENDING' ([bool]$receipt.Installed) $false $false 'Confirmed integration state retained; release the backup files and retry.'}}

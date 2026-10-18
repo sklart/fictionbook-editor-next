@@ -18,8 +18,13 @@ if ($dialog -match 'std::wofstream|modern-file-dialog\.log') { throw 'ModernFile
 Require $dialog 'DiagnosticLog\.h' 'ModernFileDialog must include the common diagnostic API.'
 Require $diagnostic 'SHCreateDirectoryExW' 'Common diagnostics must create the directory recursively.'
 Require $diagnostic 'hr=0x' 'Common diagnostics must record HRESULT.'
-Require $diagnostic 'operation=' 'Common diagnostics must record the operation.'
+Require $diagnostic 'source=%s; code=%s; hr=0x%08lX; details=omitted' 'Common diagnostics must record structured identifiers and omit arbitrary details.'
+Require $diagnostic 'FbeDiagnosticPrivacy::Identifier\(category' 'Diagnostic source must pass the identifier allowlist.'
+Require $diagnostic 'FbeDiagnosticPrivacy::Identifier\(code' 'Diagnostic code must pass the identifier allowlist.'
+if ($diagnostic -match 'operation=' ) { throw 'Common diagnostics must not persist arbitrary operation strings.' }
 if ($diagnostic -match 'FAILED\(::SHCreateDirectoryExW') { throw 'SHCreateDirectoryExW returns a Win32 code, not HRESULT.' }
-Require $diagnostic 'const int result = ::SHCreateDirectoryExW' 'Directory creation must inspect the Win32 return code explicitly.'
-Require $diagnostic 'result != ERROR_SUCCESS.*result != ERROR_ALREADY_EXISTS.*result != ERROR_FILE_EXISTS' 'Directory creation must accept all successful Win32 return codes.'
+$creation = [regex]::Match($diagnostic, 'const\s+int\s+(\w+)\s*=\s*::SHCreateDirectoryExW\([^;]+;')
+if (-not $creation.Success) { throw 'Directory creation must inspect the Win32 return code explicitly.' }
+$status = [regex]::Escape($creation.Groups[1].Value)
+Require $diagnostic "$status\s*!=\s*ERROR_SUCCESS\s*&&\s*$status\s*!=\s*ERROR_ALREADY_EXISTS\s*&&\s*$status\s*!=\s*ERROR_FILE_EXISTS" 'Directory creation must accept all successful Win32 return codes.'
 Write-Host 'Modern file dialog contract passed.'

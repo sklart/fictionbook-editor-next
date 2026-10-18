@@ -84,6 +84,11 @@ function Assert-Old($Context,[string]$Directory=''){
     Assert ((Get-ShellRegistryValue 'SOFTWARE\Classes\FictionBook.2' 'InfoTip') -eq 'previous metadata') 'Metadata not restored.'
 }
 try {
+    $ctx=New-Case 'receipt [кириллица] space'
+    $result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.Result -eq 'ok') ('Special path update failed: '+($result | Out-String))
+    $receipt=Get-ShellReceipt $ctx;Assert ($receipt.Installed -and $receipt.Directory -eq $ctx.Directory) 'Special path receipt did not round-trip.'
+    $result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.Result -eq 'ok') 'Special path second update failed.'
+    $result=Invoke-ShellLifecycle $ctx 'Remove';Assert ($result.Result -eq 'ok') 'Special path removal failed.'
     $ctx=New-Case 'success';$result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.Result -eq 'ok' -and $result.EffectiveInstalled -eq 1) ('Update: '+($result | Out-String))
     $owner=Read-ShellOwner $ctx.Directory;Assert ($owner['X64Sha256'] -eq $ctx.Hashes[1]) 'Owner does not match new payload.'
     $result=Invoke-ShellLifecycle $ctx 'Update';Assert ($result.Code -eq 'ALREADY_CURRENT' -and $script:registerCount -eq 1) 'Repeated install registered twice.'
