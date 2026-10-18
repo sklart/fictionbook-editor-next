@@ -838,9 +838,37 @@
 		::PostQuitMessage(backupDisabled && (verifyOnly || (sourceEdited && sourceApplied && saved)) ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"diagnostic-operations-runtime"))
+	{
+		bool modes = true;
+		for (const auto target : { DESC, SOURCE, BODY, SOURCE, DESC, BODY }) {
+			ShowView(target);
+			const CString expected = target == BODY ? L"body" : (target == DESC ? L"description" : L"source");
+			modes = modes && m_editor_view_state.Current() == target && StartupTrace::ActiveEditorModeName() == expected;
+		}
+		int line = 0, column = 0;
+		const bool validated = m_doc->Validate(line, column);
+		const CString filename(m_doc->m_filename), encoding(m_doc->m_encoding);
+		const DocumentLocation location = m_document_session.Location();
+		const FILE_OP_STATUS saved = SaveFile(true);
+		const bool failedSafely = saved == FAIL && CString(m_doc->m_filename) == filename && CString(m_doc->m_encoding) == encoding && m_document_session.Location().storagePath == location.storagePath;
+		CStringA report; report.Format("modes=%d\nvalidated=%d\nsave_failed_safely=%d\n", modes, validated, failedSafely);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(modes && validated && failedSafely ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"editor-view-lifecycle-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;
+		const bool containerWasShown = (m_view.GetStyle() & WS_VISIBLE) != 0;
+		m_view.ShowWindow(SW_HIDE);
+		const bool hiddenBodyActive = m_view.GetActiveWnd() == m_doc->m_body;
+		m_view.HideActiveWnd();
+		const bool noHiddenPaneActive = m_view.GetActiveWnd() == NULL;
+		m_view.ActivateWnd(m_doc->m_body);
+		const bool hiddenContainer = hiddenBodyActive && noHiddenPaneActive &&
+			m_view.GetActiveWnd() == m_doc->m_body && (m_view.GetStyle() & WS_VISIBLE) == 0;
+		if (containerWasShown) m_view.ShowWindow(SW_SHOW);
 		const bool originalTreePreference = _Settings.ViewDocumentTree();
 		BOOL treeCommandHandled = FALSE;
 		if (!originalTreePreference) OnViewTree(0, 0, NULL, treeCommandHandled);
@@ -890,9 +918,9 @@
 		const bool hiddenTreePreferencePreserved = !_Settings.ViewDocumentTree() && !treeShown() && m_splitter.GetSinglePaneMode() == SPLIT_PANE_RIGHT;
 		if (originalTreePreference) OnViewTree(0, 0, NULL, treeCommandHandled);
 		CStringA report;
-		report.Format("body_desc=%d\ndesc_body=%d\nbody_source=%d\nsource_body=%d\ndesc_source=%d\nsource_desc=%d\nsource_body_desc=%d\ncycles=%d\ndocument=%d\ntree_initial=%d\ntree_desc_hidden=%d\ntree_body_restored=%d\ntree_hidden_preference=%d\n", bodyToDescription, descriptionToBody, bodyToSource, sourceToBody, descriptionToSource, sourceToDescription, sourceBodyDescription, sourceDescriptionBody, cycles, documentPreserved, treeVisibleInitially, treeHiddenInDescription, treeRestoredInBody, hiddenTreePreferencePreserved);
+		report.Format("hidden_container=%d\nbody_desc=%d\ndesc_body=%d\nbody_source=%d\nsource_body=%d\ndesc_source=%d\nsource_desc=%d\nsource_body_desc=%d\nsource_desc_body=%d\ncycles=%d\ndocument=%d\ntree_initial=%d\ntree_desc_hidden=%d\ntree_body_restored=%d\ntree_hidden_preference=%d\n", hiddenContainer, bodyToDescription, descriptionToBody, bodyToSource, sourceToBody, descriptionToSource, sourceToDescription, sourceBodyDescription, sourceDescriptionBody, cycles, documentPreserved, treeVisibleInitially, treeHiddenInDescription, treeRestoredInBody, hiddenTreePreferencePreserved);
 		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
-		::PostQuitMessage(bodyToDescription && descriptionToBody && bodyToSource && sourceToBody && descriptionToSource && sourceToDescription && sourceBodyDescription && sourceDescriptionBody && cycles && documentPreserved && treeVisibleInitially && treeHiddenInDescription && treeRestoredInBody && hiddenTreePreferencePreserved ? 0 : 1);
+		::PostQuitMessage(hiddenContainer && bodyToDescription && descriptionToBody && bodyToSource && sourceToBody && descriptionToSource && sourceToDescription && sourceBodyDescription && sourceDescriptionBody && cycles && documentPreserved && treeVisibleInitially && treeHiddenInDescription && treeRestoredInBody && hiddenTreePreferencePreserved ? 0 : 1);
 		return 0;
 	}
 	if (IsFbeTestScenario(L"archive-two-phase-runtime"))

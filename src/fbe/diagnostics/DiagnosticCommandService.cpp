@@ -23,4 +23,8 @@ StartupTrace::DiagnosticLogCleanupResult DiagnosticCommandService::ClearOldLogSe
 bool DiagnosticCommandService::CreatePackage(CString& packagePath, CString& error) const { return StartupTrace::CreateDiagnosticPackage(packagePath, error); }
 bool DiagnosticCommandService::IsEnabledForNextLaunch() const { return StartupTrace::IsEnabledForNextLaunch(); }
 bool DiagnosticCommandService::SetEnabledForNextLaunch(bool enabled) const { return StartupTrace::SetEnabledForNextLaunch(enabled); }
+std::vector<StartupTrace::DiagnosticSession> DiagnosticCommandService::Sessions() const { return StartupTrace::EnumerateDiagnosticSessions(); }
+bool DiagnosticCommandService::PreparePackage(const StartupTrace::DiagnosticSession& session, const std::vector<CString>& excluded,
+    std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot>& snapshot, CString& error) const { return StartupTrace::PrepareDiagnosticPackage(session,excluded,snapshot,error); }
+bool DiagnosticCommandService::SavePackage(const StartupTrace::DiagnosticPackageSnapshot& snapshot, const CString& path, CString& error) const { return StartupTrace::SaveDiagnosticPackage(snapshot,path,error); }
 }

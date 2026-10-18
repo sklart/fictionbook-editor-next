@@ -372,3 +372,29 @@ feed намеренно не обязан совпадать с текущей �
 
 Практический пошаговый сценарий выпуска собран в
 [docs/release-checklist.md](D:\Download\FBeditor\docs\release-checklist.md).
+
+## Проверка диагностики
+
+После сборки затронутых проектов Release Win32 с `FbeStrictWarnings=true`
+запустите короткую проверку production-сборщика:
+
+```powershell
+.\tools\tests\test-diagnostic-sessions.ps1 -Executable .\out\Release\FBE.exe
+.\tools\tests\test-diagnostic-localization.ps1
+.\tools\tests\test-diagnostic-operation-runtime.ps1 -Executable .\out\Release\FBE.exe
+```
+
+Проверка запускает FBE в закрытом тестовом режиме с отдельным каталогом
+настроек и данных под `build`. Она сверяет байты предпросмотра и ZIP,
+выбор сеанса, сопоставление аварий, ошибки плагинов и блокировку посторонних
+данных. Боевые настройки и журналы не используются. Команда
+`--diagnostic-package-test` действует только с `FBE_NEXT_TEST_MODE=1`.
+Отдельно требуется визуально проверить диалог в светлой/тёмной теме и при
+разном DPI. Совместимость кода с Windows 7 не заменяет проверку на самой ОС.
+
+Формат пакета, пользовательский порядок сбора и предупреждение о содержимом
+дампов описаны в [reporting-issues.md](reporting-issues.md).
+
+Проверка operation-runtime использует отдельную portable-копию и штатные native
+сценарии переключения режимов и ошибки Save As; каждый процесс ограничен
+25 секундами. Она проверяет сохранённые счётчики при выключенном trace.

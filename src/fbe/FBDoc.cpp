@@ -636,6 +636,7 @@ void Doc::ShowDescription(bool Show)
 
 void Doc::RunScript(LPCOLESTR filePath)
 {
+	StartupTrace::ScopedOperation operation(StartupTrace::Operation::Script);
 	TraceDocumentEvent(L"D300", L"script execution started", CString(filePath));
 	CComVariant vtResult;
 
@@ -691,7 +692,7 @@ void Doc::RunScript(LPCOLESTR filePath)
 	params[2] = filePath;
 	params[1] = htmlFolder;
 	params[0] = scriptCharset;
-	InvokeFunc(L"apiRunCmd", params, 3, vtResult);
+	if (SUCCEEDED(InvokeFunc(L"apiRunCmd", params, 3, vtResult))) operation.Succeeded();
 	TraceDocumentEvent(L"D301", L"script execution completed", CString(filePath));
 }
 VARIANT_BOOL Doc::CheckScript(LPCOLESTR filePath)
@@ -2059,6 +2060,7 @@ static CString CreateTemporaryFileName(const CString& directory, const wchar_t* 
 bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		      int *errline,int *errcol,bool reportAccessDenied)
 {
+	StartupTrace::ScopedOperation operation(fValidateOnly ? StartupTrace::Operation::Validate : StartupTrace::Operation::None);
 	if (m_serialization_unsafe)
 	{
 		m_last_save_error = E_FAIL;
@@ -2147,6 +2149,7 @@ bool  Doc::SaveToFile(const CString& filename,bool fValidateOnly,
 		::SendMessage(m_frame,AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t *)status);
 		::MessageBeep(MB_OK);
 		StartupTrace::Event(L"document", L"D221", L"book validation completed without errors");
+		operation.Succeeded();
 		return true;
     }
 
@@ -2238,6 +2241,7 @@ forcesave:
     return false;
   }
 
+  operation.Succeeded();
   return true;
 }
 

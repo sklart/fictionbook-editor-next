@@ -1,15 +1,14 @@
-$ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent (Split-Path $PSScriptRoot)
-$source = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\DiagnosticPackage.cpp')
-$header = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\StartupTrace.h')
-$mainFrame = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\mainfrm.cpp')
-foreach($required in @('CreateDiagnosticPackage', 'ZipStoreWriter', 'ContainsUnsafeContent', 'Privacy scan rejected', 'FBE-Diagnostics-%04u%02u%02u-%02u%02u%02u-%03u', 'totalBytes + bytes.size() > 256ULL', 'INVALID_SET_FILE_POINTER', 'package-manifest.txt', 'environment-report.txt', 'fbelib-report.txt', 'diagnostic-modules.txt', 'FindCrashTextForSession', 'CrashMatchesSession', 'sessionWindow = 30ULL * 60ULL', 'crash-report-included=', 'crash/latest-crash-report.txt', 'Crash dumps, books, settings, recovery files, scripts, images and clipboard data are excluded', 'FBE.exe', 'Scintilla.dll', 'Lexilla.dll', 'SessionPartNumber', 'std::sort(selected.begin()')) {
-    if($source.IndexOf($required, [StringComparison]::Ordinal) -lt 0) { throw "Missing diagnostic package contract: $required" }
+$ErrorActionPreference='Stop'
+$root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+$package=Get-Content -Raw (Join-Path $root 'src/fbe/DiagnosticPackage.cpp')
+$header=Get-Content -Raw (Join-Path $root 'src/fbe/StartupTrace.h')
+foreach($token in 'PrepareDiagnosticPackage','SaveDiagnosticPackage','ZipStoreWriter','ContainsUnsafeContent','EnvironmentSchema','TraceSchema','FindCrashTextForSession','sessionWindow = 30ULL * 60ULL','manifest.json','package-manifest.txt','environment-report.txt','fbelib-report.txt','diagnostic-modules.txt') {
+ if(!$package.Contains($token)){throw "Missing package integration: $token"}
 }
-if($source.IndexOf('base + L"*.log"', [StringComparison]::Ordinal) -ge 0) { throw 'Diagnostic package must not select session files by wildcard prefix.' }
-foreach($forbidden in @('*.fb2', 'Settings.xml', '.dmp')) {
-    if($source.IndexOf('Add("' + $forbidden, [StringComparison]::Ordinal) -ge 0) { throw "Forbidden package input added: $forbidden" }
-}
-if($header.IndexOf('bool CreateDiagnosticPackage(CString& packagePath, CString& error);', [StringComparison]::Ordinal) -lt 0) { throw 'Diagnostic package API is not exposed.' }
-if($mainFrame.IndexOf('OnToolsCreateDiagnosticPackage', [StringComparison]::Ordinal) -lt 0) { throw 'Diagnostic package command handler is missing.' }
-Write-Host 'Diagnostic package contract passed.'
+if($header -notmatch 'private:\s*std::vector<DiagnosticComponent> components;'){throw 'Snapshot contents must be private'}
+if($header -notmatch 'shared_ptr<const DiagnosticPackageSnapshot>'){throw 'Prepared snapshot must be immutable'}
+$save=[regex]::Match($package,'(?s)bool StartupTrace::SaveDiagnosticPackage.*?(?=bool StartupTrace::CreateDiagnosticPackage)').Value
+if($save -match 'ReadBytes|ReadText|EnumerateDiagnosticSessions'){throw 'Save must not reread source files'}
+if($save -notmatch 'snapshot.Components\(\)' -or $save -notmatch 'ContainsUnsafeContent\(item.bytes\)'){throw 'Save must verify and write snapshot bytes'}
+if($package -match 'zip.Add\([^\r\n]*\.dmp'){throw 'Memory dumps must remain excluded'}
+Write-Host 'Diagnostic immutable snapshot / ZIP contract passed.'

@@ -691,6 +691,9 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 	{ ID_APP_ABOUT, L"fbe.menu.idr_mainframe.help.about" },
 };
 
+#include "diagnostics/DiagnosticDialog.h"
+static bool g_hasPreviousDiagnosticCrash = false;
+
 static CString GetDiagnosticTraceText(LPCWSTR key, LPCWSTR fallback)
 {
 	return FbeLoadRuntimeStringByKey(key, fallback);
@@ -1048,9 +1051,9 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	SetRuntimeMenuItemTextByPosition(menu, 3, L"fbe.menu.idr_mainframe.popup.insert");
 	SetRuntimeMenuItemTextByPosition(menu, 4, L"fbe.menu.idr_mainframe.popup.style");
 	SetRuntimeMenuItemTextByPosition(menu, 5, L"fbe.menu.idr_mainframe.popup.tools");
-	const int diagnosticTopPosition = FindTopLevelMenuPositionByCommand(menu, ID_TOOLS_DIAGNOSTIC_TRACE);
-	if(diagnosticTopPosition >= 0)
-		SetRuntimeMenuItemTextByPosition(menu, diagnosticTopPosition, L"fbe.menu.idr_mainframe.popup.diagnostics");
+    HMENU toolsMenu=::GetSubMenu(menu,5);
+    const int diagnosticToolsPosition=FindTopLevelMenuPositionByCommand(toolsMenu,ID_TOOLS_OPEN_DIAGNOSTIC_LOG);
+    if(diagnosticToolsPosition>=0) SetRuntimeMenuItemTextByPosition(toolsMenu,diagnosticToolsPosition,L"fbe.menu.idr_mainframe.popup.diagnostics");
 	const int scriptsPosition = FindTopLevelScriptsMenuPosition(menu);
 	if(scriptsPosition >= 0)
 		SetRuntimeMenuItemTextByPosition(menu, scriptsPosition, L"fbe.menu.idr_mainframe.popup.scripts");
@@ -1381,6 +1384,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 	UISetCheck(ID_VIEW_SOURCE, 0);
 	m_view.ActivateWnd(doc->m_body);
 	m_editor_view_state.Reset(EditorView::Body, EditorView::Description);
+	StartupTrace::SetActiveEditorMode(StartupTrace::EditorMode::Body);
 	m_editor_selection_state.Reset();
 	m_cb_updated=false;
 	InvalidateSelectionContext();
@@ -1412,7 +1416,7 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	if (RuntimeTests::IsScenario(L"save-as-cancel-runtime")) return CString();
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
-	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"diagnostic-operations-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
 	{
 		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL, 0);
 		if (length)
@@ -2409,6 +2413,7 @@ BOOL CMainFrame::OnIdle()
 		CString title(tt + L" FB Editor Next");
 		if (StartupTrace::Enabled())
 			title += GetDiagnosticTraceText(L"fbe.trace.title_suffix", L" [Диагностика]");
+		if(g_hasPreviousDiagnosticCrash) title += FbeLoadRuntimeStringByKey(L"fbe.diagnostics.crash_notice",L" [Crash report: Tools > Diagnostics]");
 		SetWindowText(title);
 	}
 	if (profileIdle) g_idleProfile.titleMilliseconds += ::GetTickCount64() - titleStarted;
@@ -3942,33 +3947,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	RestorePortableToolbarLayout(m_ScriptsToolbar, true);
 	StartupTrace::AppendTestStartupBreadcrumb("scripts-toolbar-restore-complete");
 
-	// An unattended -b run has no user to answer this dialog.  Keep tracing
-	// enabled for the report, but never turn diagnostics into a modal blocker.
-	if (AU::_ARGS.source_memory_benchmark_path.IsEmpty() && StartupTrace::Enabled() && StartupTrace::IsEnabledByStoredNextLaunchPreference())
-  {
-	  const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
-	  const CString warning(GetDiagnosticTraceText(L"fbe.trace.warning",
-		  L"FBE Next запущен в режиме диагностики. Запись диагностического журнала может замедлять работу программы и содержит сведения о действиях с книгами.\n\n"
-		  L"Отключить диагностический режим для следующих запусков? Для применения потребуется перезапустить программу."));
-	  if (U::MessageBox(m_hWnd, warning, caption, MB_YESNO | MB_ICONWARNING) == IDYES)
-	  {
-		  if (m_diagnostic_commands.SetEnabledForNextLaunch(false))
-		  {
-			  U::MessageBox(m_hWnd,
-				  GetDiagnosticTraceText(L"fbe.trace.disable.completed",
-					  L"Диагностический режим будет отключён после перезапуска FBE Next."),
-				  caption, MB_OK | MB_ICONINFORMATION);
-		  }
-		  else
-		  {
-			  U::MessageBox(m_hWnd,
-				  GetDiagnosticTraceText(L"fbe.trace.change_failed",
-					  L"Не удалось изменить настройку диагностического журнала."),
-				  caption, MB_OK | MB_ICONERROR);
-		  }
-	  }
-  }
-
+  const auto diagnosticSessions = m_diagnostic_commands.Sessions();
+  g_hasPreviousDiagnosticCrash = std::any_of(diagnosticSessions.begin(),diagnosticSessions.end(),[](const StartupTrace::DiagnosticSession& item) { return item.outcome==L"crash"; });
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
 	ThemeManager::ApplyToWindow(m_hWnd);
   m_need_title_update = true;
@@ -5792,56 +5772,11 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 {
-	CString packagePath, error;
-	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Diagnostic trace"));
-	if (U::MessageBox(m_hWnd, GetDiagnosticTraceText(L"fbe.trace.package_confirmation", L"Create a diagnostic package?\n\nIt includes selected diagnostic logs, environment and FBELib information, and a matching technical crash report when available.\n\nIt never includes books, book text, XML/HTML, settings, recovery files, user scripts, images, or Base64 data."), caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
-		return 0;
-	if (!m_diagnostic_commands.CreatePackage(packagePath, error))
-	{
-		StartupTrace::Error(L"diagnostic", L"DG131", CString(L"diagnostic package creation failed: ") + StartupTrace::SanitizeLogText(error, 256));
-		LPCWSTR key = L"fbe.trace.package_write_failed";
-		LPCWSTR fallback = L"Could not write the diagnostic package.";
-		if (error.Find(L"No diagnostic trace session") >= 0 || error.Find(L"trace session could not") >= 0) { key = L"fbe.trace.package_no_session"; fallback = L"No diagnostic trace session is available."; }
-		else if (error.Find(L"Privacy scan rejected") >= 0) { key = L"fbe.trace.package_privacy_rejected"; fallback = L"The diagnostic package was not created because its privacy check rejected diagnostic content."; }
-		U::MessageBox(m_hWnd, GetDiagnosticTraceText(key, fallback), caption, MB_OK | MB_ICONERROR);
-		return 0;
-	}
-	CString message; message.Format(GetDiagnosticTraceText(L"fbe.trace.package_created", L"Diagnostic package created:\n%s"), (LPCWSTR)packagePath);
-	U::MessageBox(m_hWnd, message, caption, MB_OK | MB_ICONINFORMATION);
-	return 0;
+    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd); return 0;
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
-	const bool enabled = m_diagnostic_commands.IsEnabledForNextLaunch();
-	const CString caption(GetDiagnosticTraceText(L"fbe.trace.caption", L"Диагностический журнал"));
-	if(enabled)
-	{
-		U::MessageBox(m_hWnd,
-			GetDiagnosticTraceText(L"fbe.trace.already_enabled",
-				L"Диагностический журнал уже включён для следующих запусков FBE Next. После перезапуска программа предупредит о диагностическом режиме и предложит его отключить."),
-			caption, MB_OK | MB_ICONINFORMATION);
-		return 0;
-	}
-
-	const CString question(GetDiagnosticTraceText(L"fbe.trace.enable.question",
-			L"Диагностический журнал содержит технические сведения о запуске, командах и ошибках COM. Текст книги, XML, HTML, Base64 и содержимое пользовательских сценариев не записываются; пути обезличиваются.\n\n"
-			L"Включить его для следующего запуска FBE Next? Для начала записи потребуется перезапустить программу."));
-	if(U::MessageBox(m_hWnd, question, caption, MB_YESNO | MB_ICONQUESTION) != IDYES)
-		return 0;
-
-	if(!m_diagnostic_commands.SetEnabledForNextLaunch(true))
-	{
-		U::MessageBox(m_hWnd,
-			GetDiagnosticTraceText(L"fbe.trace.change_failed",
-				L"Не удалось изменить настройку диагностического журнала."),
-			caption, MB_OK | MB_ICONERROR);
-		return 0;
-	}
-
-	const CString result(GetDiagnosticTraceText(L"fbe.trace.enable.completed",
-		L"Диагностический журнал включён. Перезапустите FBE Next, чтобы начать запись."));
-	U::MessageBox(m_hWnd, result, caption, MB_OK | MB_ICONINFORMATION);
-	return 0;
+    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd); return 0;
 }
 
 LRESULT CMainFrame::OnToolsRefreshScripts(WORD, WORD, HWND, BOOL&)
@@ -6758,6 +6693,7 @@ void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& re
 void CMainFrame::ShowView(EditorView vt)
 {
 	const EditorView previous = m_editor_view_state.Current();
+	StartupTrace::ScopedOperation operation(previous == vt ? StartupTrace::Operation::None : StartupTrace::Operation::ViewSwitch);
 	if(previous != vt) HideCaretMarker();
 	if (!m_editor_view_state.CtrlTabActive() && previous != vt)
 		m_editor_view_state.SetLastCtrlTabView(previous);
@@ -6765,12 +6701,20 @@ void CMainFrame::ShowView(EditorView vt)
 		m_view, m_splitter, m_source, m_doc, m_editor_selection_state,
 		_Settings.ViewDocumentTree() };
 	EditorViewPresentationHost presentation(presentationContext);
-	const EditorViewChangeResult result =
-		m_editor_view_controller.ChangeView(m_editor_view_state, *this, presentation, vt);
+	const auto recordMode = [&]() {
+		const EditorView current = m_editor_view_state.Current();
+		StartupTrace::SetActiveEditorMode(current == BODY ? StartupTrace::EditorMode::Body : (current == DESC ? StartupTrace::EditorMode::Description : StartupTrace::EditorMode::Source));
+	};
+	EditorViewChangeResult result;
+	try { result = m_editor_view_controller.ChangeView(m_editor_view_state, *this, presentation, vt); }
+	catch (...) { recordMode(); throw; }
+	recordMode();
 	if (!result.Succeeded())
 		PresentEditorViewChangeFailure(result);
-	else
+	else {
+		operation.Succeeded();
 		ApplyEditorViewCommandUi(result.previous, result.current);
+	}
 }
 
 void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)

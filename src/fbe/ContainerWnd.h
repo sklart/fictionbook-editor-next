@@ -50,20 +50,15 @@ public:
     return 1;
   }
 
-  static BOOL CALLBACK FindProc(HWND hWnd,LPARAM lParam) {
-    if (::IsWindowVisible(hWnd)) {
-      *(HWND*)lParam=hWnd;
-      return FALSE;
-    }
-    return TRUE;
-  }
-
   HWND	  GetActiveWnd() {
-    HWND  hWnd=NULL;
-    ::EnumChildWindows(*this,FindProc,(LPARAM)&hWnd);
-    if (hWnd==NULL)
-      hWnd=GetWindow(GW_CHILD);
-    return hWnd;
+    // A hidden frame still has an active pane. Inspect each direct child's
+    // own visibility bit; IsWindowVisible also tests its ancestors.
+    for (HWND hWnd=GetWindow(GW_CHILD); hWnd!=NULL;
+         hWnd=::GetWindow(hWnd,GW_HWNDNEXT)) {
+      if ((::GetWindowLongPtr(hWnd,GWL_STYLE) & WS_VISIBLE)!=0)
+        return hWnd;
+    }
+    return NULL;
   }
 
   void	  HideActiveWnd() {

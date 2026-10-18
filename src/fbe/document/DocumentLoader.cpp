@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DocumentLoader.h"
+#include "../StartupTrace.h"
 #include "DocumentOpenSource.h"
 #include "..\apputils.h"
 #include "..\FBDoc.h"
@@ -13,7 +14,10 @@ DocumentOpenSource DocumentOpenSource::Normal(const CString& path)
 
 bool DocumentLoader::Load(FB::Doc& document, HWND parent, const DocumentOpenSource& source)
 {
-	return source.IsArchive()
+	StartupTrace::ScopedOperation operation(StartupTrace::Operation::Load);
+	const bool loaded = source.IsArchive()
 		? document.Load(parent, source.location.storagePath, source.location.entryPath, source.rawBytes)
 		: document.Load(parent, source.location.storagePath);
+	if (loaded) operation.Succeeded();
+	return loaded;
 }
