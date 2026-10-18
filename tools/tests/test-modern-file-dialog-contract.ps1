@@ -11,16 +11,20 @@ Require $dialog 'std::wstring title, okButtonLabel, fileNameLabel, defaultExtens
 Require $dialog 'std::wstring initialFileName, initialFolder' 'Request must own initial paths.'
 Require $images 'ImageImportFileTypes\(' 'Image filters need one shared source.'
 Require $images 'L"\*\.jpg;\*\.jpeg;\*\.png;\*\.webp;\*\.jp2;\*\.j2k;\*\.bmp;\*\.gif;\*\.tif;\*\.tiff;\*\.avif;\*\.heic;\*\.heif"' 'Supported modern image spec is incomplete.'
-Require $main 'filters\.push_back\(\{ type\.displayName\.GetString\(\), type\.wildcard\.GetString\(\) \}\)' 'Binary picker must use wildcard image specs.'
-Require $view 'filters\.push_back\(\{ type\.displayName\.GetString\(\), type\.wildcard\.GetString\(\) \}\)' 'Image picker must use wildcard image specs.'
+$pickerPattern = '\b\w+\.push_back\(\{\s*(\w+)\.displayName\.GetString\(\),\s*\1\.wildcard\.GetString\(\)\s*\}\)'
+Require $main $pickerPattern 'Binary picker must use wildcard image specs.'
+Require $view $pickerPattern 'Image picker must use wildcard image specs.'
+Require 'arbitraryEntries.push_back({ renamedImageType.displayName.GetString(), renamedImageType.wildcard.GetString() })' $pickerPattern 'Picker contract must accept arbitrary local names.'
+if ('arbitraryEntries.push_back({ firstType.displayName.GetString(), secondType.wildcard.GetString() })' -match $pickerPattern) { throw 'Picker contract must require the wildcard from the same image type.' }
 if ($main -match 'ImageImportFileFilter\(\).*COMDLG_FILTERSPEC' -or $view -match 'ImageImportFileFilter\(\).*COMDLG_FILTERSPEC') { throw 'Legacy NUL-delimited image filter passed to modern dialog.' }
 if ($dialog -match 'std::wofstream|modern-file-dialog\.log') { throw 'ModernFileDialog must not own a separate file logger.' }
 Require $dialog 'DiagnosticLog\.h' 'ModernFileDialog must include the common diagnostic API.'
 Require $diagnostic 'SHCreateDirectoryExW' 'Common diagnostics must create the directory recursively.'
 Require $diagnostic 'hr=0x' 'Common diagnostics must record HRESULT.'
 Require $diagnostic 'source=%s; code=%s; hr=0x%08lX; details=omitted' 'Common diagnostics must record structured identifiers and omit arbitrary details.'
-Require $diagnostic 'FbeDiagnosticPrivacy::Identifier\(category' 'Diagnostic source must pass the identifier allowlist.'
-Require $diagnostic 'FbeDiagnosticPrivacy::Identifier\(code' 'Diagnostic code must pass the identifier allowlist.'
+$signature = [regex]::Match($diagnostic, 'inline\s+void\s+HResult\(const wchar_t\*\s+(\w+),\s*const wchar_t\*\s+(\w+),\s*HRESULT\s+\w+,\s*const wchar_t\*\s+\w+\)')
+if (-not $signature.Success) { throw 'Common diagnostic API must accept category/code identifiers and HRESULT.' }
+foreach($field in 1,2) { Require $diagnostic ('FbeDiagnosticPrivacy::Identifier\(' + [regex]::Escape($signature.Groups[$field].Value) + '\b') 'Diagnostic source/code must pass the identifier allowlist.' }
 if ($diagnostic -match 'operation=' ) { throw 'Common diagnostics must not persist arbitrary operation strings.' }
 if ($diagnostic -match 'FAILED\(::SHCreateDirectoryExW') { throw 'SHCreateDirectoryExW returns a Win32 code, not HRESULT.' }
 $creation = [regex]::Match($diagnostic, 'const\s+int\s+(\w+)\s*=\s*::SHCreateDirectoryExW\([^;]+;')
