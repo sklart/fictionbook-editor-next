@@ -18,6 +18,11 @@ try {
  $damaged=Join-Path $crashes 'FBENext-crash-20000101-000000-001-pid4294967290.txt'
  $damagedBytes=[Text.Encoding]::UTF8.GetBytes("session_id=broken`r`nPRIVATE_BOOK C:\secret\book.fb2")
  [IO.File]::WriteAllBytes($damaged,$damagedBytes)
+ $validId='DDDD0001-0000-0000-0000-000000000001'
+ $valid=Join-Path $crashes 'FBENext-crash-20000101-000000-002-pid4294967291.txt'
+ $validBytes=[Text.Encoding]::UTF8.GetBytes("session_id=$validId`r`nException code: 0xC0000005`r`nProcess ID: 4294967291`r`n")
+ [IO.File]::WriteAllBytes($valid,$validBytes)
+ [IO.File]::WriteAllText((Join-Path (Split-Path $crashes) "fbe-session-$validId.txt"),"session_id=$validId`r`nPID=4294967291`r`nstarted=2000-01-01T00:00:00`r`noutcome=crash`r`n",[Text.UTF8Encoding]::new($false))
  $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TRACE='0'; $env:FBE_NEXT_TEST_SCENARIO='diagnostic-dialog-runtime'
  $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=Join-Path $evidence 'startup.txt'
  $process=Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList ('--portable -b "{0}" "{1}"' -f $report,$fixture) -WindowStyle Hidden -PassThru
@@ -27,6 +32,10 @@ try {
  if($exitCode -ne 0){throw "Diagnostic dialog runtime failed: exit $exitCode. Evidence: $evidence"}
  $rows=[IO.File]::ReadAllText($report)
  if([Convert]::ToBase64String([IO.File]::ReadAllBytes($damaged)) -cne [Convert]::ToBase64String($damagedBytes)){throw 'Manual review changed damaged report bytes'}
+ if([Convert]::ToBase64String([IO.File]::ReadAllBytes($valid)) -cne [Convert]::ToBase64String($validBytes)){throw 'Automatic review changed report bytes'}
+ foreach($check in 'automatic_review','review_worker_thread','review_stale_rejected','review_write_failed') {
+  if($rows -notmatch "$check=1"){throw "Incomplete review worker check: $check"}
+ }
  if($rows -notmatch 'damaged_review=1'){throw 'Damaged-report review did not preserve snapshot'}
  if($rows -notmatch 'layout_dpi_theme=1' -or $rows -notmatch 'responsive_cancel_close=1'){throw 'Incomplete dialog checks'}
  $passed=$true

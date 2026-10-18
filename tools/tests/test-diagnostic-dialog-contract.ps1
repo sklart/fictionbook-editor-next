@@ -12,4 +12,7 @@ foreach($token in 'commands.PreparePackage','commands.SavePackage','commands.Ses
  if(!$dialog.Contains($token)){throw "Diagnostic dialog integration missing: $token"}
 }
 if($dialog -match 'MessageBox'){throw 'Unified dialog must use inline state, not a chain of modal messages'}
+$completion=[regex]::Match($dialog,'(?s)void CompleteJob\(\).*?void Prepare\(').Value
+if(!$completion -or $completion -match 'StartupTrace::MarkDiagnosticCrash(?:Report)?Reviewed\('){throw 'UI completion must not perform crash review I/O'}
+if($dialog -notmatch 'Begin\(Work::ReviewPreview,'){throw 'Preview acknowledgement must use the existing worker'}
 Write-Host 'Diagnostic dialog controls, ownership, theme/DPI hooks and read-only preview contracts passed (not visual proof).'

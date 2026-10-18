@@ -5,6 +5,12 @@
     bool testMode=false, testPassed=true;
     unsigned int testPhase=0, heartbeat=0;
     bool cancelledReady=false, closeDeferred=false;
+    std::shared_ptr<std::atomic_bool> testReviewGate;
+    std::shared_ptr<Job> testReviewJob;
+    StartupTrace::DiagnosticSession testReviewSession;
+    ATL::CHandle testReviewLock;
+    bool automaticReview=false, reviewWorkerThread=false, staleRejected=false, reviewWriteFailed=false;
+    unsigned int reviewHeartbeat=0;
     std::shared_ptr<Job> closingJob;
     bool CheckLayout()
     {
@@ -62,15 +68,31 @@
     void TestTick()
     {
         if(!testMode) return;
-        if(testPhase==0 && !job) {
-            testPassed=CheckLayout() && snapshot && snapshot->Valid();
+        if(testPhase==0 && job && job->work==Work::ReviewPreview) {
+            ++reviewHeartbeat;
+            if(reviewHeartbeat==3) {
+                testReviewJob=job;
+                wchar_t shown[128]={}; ::GetDlgItemText(window,PreviewText,shown,_countof(shown));
+                testPassed=testPassed && shown[0]!=0 && ::IsWindowVisible(window);
+                testReviewGate->store(true);
+            }
+        } else if(testPhase==0 && !job) {
+            automaticReview=testReviewJob && testReviewJob->success && reviewHeartbeat>=3;
+            reviewWorkerThread=testReviewJob && testReviewJob->threadId!=::GetCurrentThreadId();
+            for(const auto& session:sessions) if(session.id==L"DDDD0001-0000-0000-0000-000000000001") {
+                testReviewSession=session; automaticReview=automaticReview && session.crashReviewed;
+            }
+            testPassed=testPassed && CheckLayout() && snapshot && snapshot->Valid();
+            testPassed=testPassed && automaticReview && reviewWorkerThread && !testReviewSession.crashPath.IsEmpty();
             testSnapshot=snapshot;
-            if(crashes.size()!=1 || crashes[0].reviewed) testPassed=false;
-            ::SendDlgItemMessage(window,Crashes,CB_SETCURSEL,0,0);
+            int damaged=-1;
+            for(size_t i=0;i<crashes.size();++i) if(crashes[i].path.Find(L"001-pid4294967290")>=0 && !crashes[i].reviewed) damaged=static_cast<int>(i);
+            if(crashes.size()!=2 || damaged<0) testPassed=false;
+            ::SendDlgItemMessage(window,Crashes,CB_SETCURSEL,damaged,0);
             ReviewSelectedCrash(); testPassed=testPassed && reviewPending && !job;
             ReviewSelectedCrash(); testPhase=10;
         } else if(testPhase==10 && !job) {
-            damagedReview=crashes.size()==1 && crashes[0].reviewed && !HasUnreviewedCrashes() && snapshot==testSnapshot && snapshot && snapshot->Valid();
+            damagedReview=crashes.size()==2 && !HasUnreviewedCrashes() && snapshot==testSnapshot && snapshot && snapshot->Valid();
             testPassed=testPassed && damagedReview;
             ::SendMessage(window,WM_COMMAND,ClearHangs,0); testPhase=11;
         } else if(testPhase==11 && !job) {
@@ -78,32 +100,50 @@
             ::SendMessage(window,WM_COMMAND,ClearHangs,0); testPhase=12;
         } else if(testPhase==12 && !job) {
             testPassed=testPassed && !hangPlan && snapshot && snapshot->Valid();
-            testPhase=1;
-            Begin(Work::Prepare,[](Job& result) {
-                for(unsigned int tick=0; tick<200 && !result.cancelled.load(); ++tick) ::Sleep(10);
-            });
+            testSnapshot=snapshot;
+            for(auto& session:sessions) if(session.crashPath==testReviewSession.crashPath) session.crashReviewed=false;
+            for(auto& report:crashes) if(report.path==testReviewSession.crashPath) report.reviewed=false;
+            auto stale=testReviewSession; stale.crashFingerprint+=L"-stale";
+            testReviewGate=std::make_shared<std::atomic_bool>(true);
+            ReviewPreview(stale); testReviewJob=job; testPhase=20;
+        } else if(testPhase==20 && !job) {
+            staleRejected=testReviewJob && !testReviewJob->success && snapshot==testSnapshot;
+            for(const auto& session:sessions) if(session.crashPath==testReviewSession.crashPath) staleRejected=staleRejected && !session.crashReviewed;
+            testPassed=testPassed && staleRejected;
+            const CString ini=CString(DeploymentContext::SettingsDirectory().c_str())+L"diagnostics-reviewed.ini";
+            const int slash=testReviewSession.crashPath.ReverseFind(L'\\');
+            testPassed=testPassed && ::WritePrivateProfileString(L"Reviewed",testReviewSession.crashPath.Mid(slash+1),NULL,ini)!=FALSE;
+            const HANDLE lock=::CreateFile(ini,GENERIC_READ,0,NULL,OPEN_EXISTING,0,NULL);
+            if(lock!=INVALID_HANDLE_VALUE) testReviewLock.Attach(lock); else testPassed=false;
+            ReviewPreview(testReviewSession); testReviewJob=job; testPhase=21;
+        } else if(testPhase==21 && !job) {
+            reviewWriteFailed=testReviewJob && !testReviewJob->success && snapshot==testSnapshot;
+            for(const auto& session:sessions) if(session.crashPath==testReviewSession.crashPath) reviewWriteFailed=reviewWriteFailed && !session.crashReviewed;
+            testPassed=testPassed && reviewWriteFailed; testReviewLock.Close();
+            testReviewGate=std::make_shared<std::atomic_bool>(false);
+            ReviewPreview(testReviewSession); testReviewJob=job; testPhase=1;
         } else if(testPhase==1 && job) {
             ++heartbeat;
             if(heartbeat==3) { ::SendMessage(window,WM_COMMAND,IDC_DIAGNOSTIC_CANCEL,0); testPhase=2; }
         } else if(testPhase==2 && !job) {
-            cancelledReady=snapshot && snapshot->Valid() && ::IsWindowEnabled(::GetDlgItem(window,Save));
+            cancelledReady=snapshot && snapshot->Valid() && snapshot==testSnapshot && ::IsWindowEnabled(::GetDlgItem(window,Save)) &&
+                testReviewJob && testReviewJob->cancelled.load() && !testReviewJob->success;
             testPhase=3;
-            Begin(Work::Prepare,[](Job& result) {
-                for(unsigned int tick=0; tick<200 && !result.cancelled.load(); ++tick) ::Sleep(10);
-            });
+            ReviewPreview(testReviewSession);
             closingJob=job; ::SendMessage(window,WM_CLOSE,0,0);
             closeDeferred=job && closing && ::IsWindow(window);
         }
     }
 public:
     CStringA RuntimeTestDetails() const {
-        CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\ndamaged_review=%d\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",damagedReview,testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
+        CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\ndamaged_review=%d\nautomatic_review=%d\nreview_worker_thread=%d\nreview_stale_rejected=%d\nreview_write_failed=%d\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",damagedReview,automaticReview,reviewWorkerThread,staleRejected,reviewWriteFailed,testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
     }
     bool RunRuntimeTest(HWND owner)
     {
         wchar_t guard[2]={};
         if(::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE",guard,2)!=1 || guard[0]!=L'1') return false;
-        testMode=true; Show(owner);
-        return testPassed && testPhase==3 && heartbeat>=3 && cancelledReady && closeDeferred && closingJob && closingJob->done.load(std::memory_order_acquire);
+        testMode=true; testReviewGate=std::make_shared<std::atomic_bool>(false); Show(owner);
+        return testPassed && testPhase==3 && heartbeat>=3 && cancelledReady && closeDeferred && closingJob && closingJob->done.load(std::memory_order_acquire) &&
+            closingJob->cancelled.load() && !closingJob->success && !StartupTrace::IsDiagnosticCrashReviewed(testReviewSession);
     }
 private:

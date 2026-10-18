@@ -14,12 +14,13 @@ class DiagnosticDialog
 {
     enum { Sessions=IDC_DIAGNOSTIC_SESSIONS, Components, PreviewText, Status, Toggle, OpenLog, OpenFolder, Cleanup, Preview, Save, State, Close, SessionLabel, ComponentLabel };
     enum { CrashLabel=IDC_DIAGNOSTIC_CRASH_LABEL, Crashes=IDC_DIAGNOSTIC_CRASH_REPORTS, ReviewCrash=IDC_DIAGNOSTIC_REVIEW_CRASH, ClearHangs=IDC_DIAGNOSTIC_CLEAR_HANGS, ClearCrashes=IDC_DIAGNOSTIC_CLEAR_CRASHES };
-    enum class Work { Catalog, Prepare, Save, Preview, Estimate, Cleanup, ReviewCrash, EstimateCrashes, ClearCrashes, EstimateHangs, ClearHangs };
+    enum class Work { Catalog, Prepare, Save, Preview, Estimate, Cleanup, ReviewCrash, ReviewPreview, EstimateCrashes, ClearCrashes, EstimateHangs, ClearHangs };
     struct Job {
         explicit Job(Work kind) : work(kind) {}
         Work work;
         std::atomic_bool cancelled{false}, done{false};
         bool success=false;
+        DWORD threadId=0;
         size_t page=0, pages=1;
         CString error, path, preview, reviewedFingerprint;
         std::vector<StartupTrace::DiagnosticSession> sessions;
@@ -71,6 +72,7 @@ class DiagnosticDialog
         try {
             // The worker owns its data and never holds a dialog/service pointer or HWND.
             worker=std::thread([pending,action]() {
+                pending->threadId=::GetCurrentThreadId();
                 StartupTrace::DiagnosticTaskScope cancellation(pending->cancelled);
                 try { action(*pending); } catch(...) { pending->success=false; }
                 pending->done.store(true,std::memory_order_release);
@@ -106,17 +108,34 @@ class DiagnosticDialog
             result.snapshot=checked;
         });
     }
+    void PreviewStatus()
+    {
+        if(!snapshot->Valid()) StatusText(Text(L"blocked",L"Saving blocked: mandatory privacy check failed or size limit exceeded."));
+        else if(previewPages>1) {
+            CString status; status.Format(Text(L"preview_page",L"Preview page %u / %u; ZIP contains all verified bytes."),static_cast<unsigned int>(previewPage+1),static_cast<unsigned int>(previewPages)); StatusText(status);
+        }
+        else StatusText(Text(L"ready",L"Verified snapshot ready.")+L" "+cleanupSummary);
+    }
+    void ReviewPreview(const StartupTrace::DiagnosticSession& session)
+    {
+        const auto gate=testMode ? testReviewGate : nullptr;
+        Begin(Work::ReviewPreview,[session,gate](Job& result) {
+            result.path=session.crashPath; result.reviewedFingerprint=session.crashFingerprint;
+            if(gate) while(!gate->load() && !result.cancelled.load()) ::Sleep(1);
+            if(!result.cancelled.load()) result.success=StartupTrace::MarkDiagnosticCrashReviewed(session);
+        });
+    }
     void CompleteJob()
     {
         if(!job || !job->done.load(std::memory_order_acquire)) return;
         if(worker.joinable()) worker.join(); // done is published after all I/O.
         const auto result=job; job.reset(); Busy(false);
-        if(result->work==Work::ReviewCrash && result->success) {
+        if((result->work==Work::ReviewCrash || result->work==Work::ReviewPreview) && result->success) {
             for(auto& report:crashes) if(report.path==result->path && report.fingerprint==result->reviewedFingerprint) report.reviewed=true;
             for(auto& session:sessions) if(session.crashPath==result->path && session.crashFingerprint==result->reviewedFingerprint) session.crashReviewed=true;
         }
         if(closing) { CloseDialog(); return; }
-        if(result->cancelled.load() && !((result->work==Work::Save || result->work==Work::ReviewCrash || result->work==Work::ClearHangs || result->work==Work::ClearCrashes || result->work==Work::Cleanup) && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
+        if(result->cancelled.load() && !((result->work==Work::Save || result->work==Work::ReviewCrash || result->work==Work::ReviewPreview || result->work==Work::ClearHangs || result->work==Work::ClearCrashes || result->work==Work::Cleanup) && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
         if(result->work==Work::Catalog && result->success) { catalogReady=true; sessions=result->sessions; crashes=result->crashes; ApplyCrashes(); ApplySessions(); }
         else if(result->work==Work::Prepare) {
             snapshot=result->snapshot; ApplyPrepared(result->success);
@@ -124,21 +143,17 @@ class DiagnosticDialog
         else if(result->work==Work::Preview && result->success) {
             previewPage=result->page; previewPages=result->pages; Busy(false);
             ::SetDlgItemText(window,PreviewText,result->preview.IsEmpty() ? Text(L"component_unavailable",L"Component omitted or unavailable; see the manifest.") : result->preview);
-            if(!snapshot->Valid()) StatusText(Text(L"blocked",L"Saving blocked: mandatory privacy check failed or size limit exceeded."));
-            else if(result->pages>1) {
-                CString status; status.Format(Text(L"preview_page",L"Preview page %u / %u; ZIP contains all verified bytes."),static_cast<unsigned int>(result->page+1),static_cast<unsigned int>(result->pages)); StatusText(status);
-            }
-            else StatusText(Text(L"ready",L"Verified snapshot ready.")+L" "+cleanupSummary);
+            PreviewStatus();
             const int index=static_cast<int>(::SendDlgItemMessage(window,Components,LB_GETCURSEL,0,0)), selected=Selected();
             if(index>=0 && snapshot && static_cast<size_t>(index)<snapshot->Components().size() && selected>=0 && static_cast<size_t>(selected)<sessions.size()) {
                 const auto& component=snapshot->Components()[index];
                 if(component.name==L"crash/latest-crash-report.txt" && component.status==L"included")
-                    if(StartupTrace::MarkDiagnosticCrashReviewed(sessions[selected])) {
-                        sessions[selected].crashReviewed=true;
-                        for(auto& report:crashes) if(report.path==sessions[selected].crashPath && report.fingerprint==sessions[selected].crashFingerprint) report.reviewed=true;
-                        ApplyCrashes();
-                    }
+                    ReviewPreview(sessions[selected]);
             }
+        }
+        else if(result->work==Work::ReviewPreview) {
+            if(result->success) { ApplyCrashes(); PreviewStatus(); }
+            else StatusText(Text(L"blocked",L"Report changed or could not be marked; refresh diagnostics."));
         }
         else if(result->work==Work::ReviewCrash) {
             if(result->success) ApplyCrashes();

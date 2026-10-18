@@ -366,8 +366,9 @@ bool StartupTrace::IsDiagnosticCrashReviewed(const DiagnosticSession& session) {
     return StoredReviewMatches(session.crashPath,fingerprint);
 }
 bool StartupTrace::MarkDiagnosticCrashReviewed(const DiagnosticSession& session) {
+    if(TaskCancelled()) return false;
     const CString key=CrashReviewKey(session), fingerprint=CrashReviewFingerprint(session);
-    if(key.IsEmpty() || fingerprint.IsEmpty() || fingerprint!=session.crashFingerprint) return false;
+    if(TaskCancelled() || key.IsEmpty() || fingerprint.IsEmpty() || fingerprint!=session.crashFingerprint) return false;
     return ::WritePrivateProfileString(L"Reviewed",key,fingerprint,CrashReviewIni())!=FALSE;
 }
 bool StartupTrace::HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSession>& sessions) {
