@@ -23,8 +23,9 @@
             ::CloseHandle(file); return text;
         };
         FbeDiagnostics::WatchdogState deterministic; FbeDiagnostics::WatchdogOptions production;
+        deterministic.Request(100); // Probes before explicit UI readiness remain suppressed.
         bool transitions=production.suspectMs==15000 && production.confirmMs==30000 && deterministic.Advance(60000,production)==0;
-        deterministic.Reply(); deterministic.Request(100);
+        deterministic.Ready(); deterministic.Request(100);
         transitions=transitions && deterministic.Advance(15100,production)==0 && deterministic.Advance(15101,production)==1 && deterministic.Advance(30101,production)==2 && deterministic.Advance(90000,production)==0;
         transitions=transitions && deterministic.Reply(); deterministic.Request(90001); deterministic.Reset(); transitions=transitions && deterministic.Advance(999999,production)==0;
         transitions=transitions && FbeDiagnostics::WatchdogState::ClockDiscontinuity(1100,1000,30100,1000) &&
@@ -35,8 +36,17 @@
         body->insertAdjacentHTML(L"beforeEnd",L"<p>PRIVATE_BOOK unsaved watchdog fixture.</p>");
         const CString before(static_cast<LPCWSTR>(body->innerHTML)); const bool dirtyBefore=m_doc->DocChanged(); FB::Doc* const owned=m_doc;
         OLECMD beforeCommands[]={{IDM_UNDO,0},{IDM_REDO,0}}; m_doc->m_body.QueryStatus(beforeCommands,_countof(beforeCommands));
+        { StartupTrace::ScopedOperation operation(StartupTrace::Operation::Save); operation.Succeeded(); }
+        m_ui_watchdog.Stop();
+        const bool earlyStarted=m_ui_watchdog.Start(m_hWnd);
+        ::Sleep(900); // UI is ready but cannot answer the very first posted heartbeat.
+        bool early=earlyStarted && m_ui_watchdog.Replies()==0 && m_ui_watchdog.Posts()==1 && m_ui_watchdog.Confirmations()==1 && reports().size()==1;
+        if(early) { const CString text=read(reports()[0]); early=StartupTrace::ValidateHangReport(text,session) && text.Find(L"hang-state=confirmed")>=0 && text.Find(L"hang-state=recovered")<0 && text.Find(L"hang-last-reply-ms=0")>=0; }
+        pump(250);
+        early=early && m_ui_watchdog.Recoveries()==1 && reports().size()==1 && read(reports()[0]).Find(L"hang-state=recovered")>=0;
+        m_ui_watchdog.Stop(); m_ui_watchdog.Start(m_hWnd);
         pump(500);
-        const bool normal=m_ui_watchdog.Running() && m_ui_watchdog.Replies()>=3 && m_ui_watchdog.Suspicions()==0 && reports().empty() && !StartupTrace::Enabled();
+        const bool normal=m_ui_watchdog.Running() && m_ui_watchdog.Replies()>=3 && m_ui_watchdog.Suspicions()==0 && reports().size()==1 && !StartupTrace::Enabled();
         { StartupTrace::ScopedOperation operation(StartupTrace::Operation::Save); operation.Succeeded(); }
         StartupTrace::HResult(L"watchdog-test",L"WD901",E_FAIL,L"PRIVATE_USER C:\\secret\\book.fb2 <p>PRIVATE_BOOK</p>");
         StartupTrace::Event(L"document",L"WD902",L"PRIVATE_USER C:\\secret\\book.fb2");
@@ -48,7 +58,7 @@
                 const ULONGLONG limit=::GetTickCount64()+2000;
                 while(::GetTickCount64()<limit && ::WaitForSingleObject(finished,20)==WAIT_TIMEOUT) {
                     const auto files=reports();
-                    if(files.size()==incident) for(const auto& file:files) {
+                    if(files.size()==incident+1) for(const auto& file:files) {
                         const CString text=read(file);
                         if(blocking.load() && text.Find(L"hang-state=confirmed")>=0 && text.Find(L"hang-state=recovered")<0 && text.Find(L"stats-in-progress=script")>=0 &&
                             text.Find(L"active-editor-mode=body")>=0 && text.Find(L"hang-last-hresult=0x80004005")>=0 && StartupTrace::ValidateHangReport(text,session)) observed.store(true);
@@ -62,7 +72,7 @@
             }
             blocking.store(false); ::SetEvent(finished); observer.join(); ::CloseHandle(finished);
             independent=independent && observed.load();
-            noDuplicates=noDuplicates && reports().size()==incident && m_ui_watchdog.Confirmations()==incident && m_ui_watchdog.Posts()-postsBefore<=1;
+            noDuplicates=noDuplicates && reports().size()==incident+1 && m_ui_watchdog.Confirmations()==incident && m_ui_watchdog.Posts()-postsBefore<=1;
             if(incident==2) {
                 BOOL handled=TRUE; OnWatchdogPower(WM_POWERBROADCAST,PBT_APMSUSPEND,0,handled); ::Sleep(200);
                 OnWatchdogPower(WM_POWERBROADCAST,PBT_APMRESUMEAUTOMATIC,0,handled);
@@ -70,7 +80,7 @@
             pump(300);
         }
         const bool recovered=m_ui_watchdog.Recoveries()==2;
-        bool completeReports=reports().size()==2, recoveredAcrossPause=false;
+        bool completeReports=reports().size()==3, recoveredAcrossPause=false;
         for(const auto& file:reports()) {
             const CString text=read(file);
             recoveredAcrossPause=recoveredAcrossPause || text.Find(L"hang-monitoring-interrupted=1")>=0;
@@ -81,7 +91,7 @@
         OnWatchdogPower(WM_POWERBROADCAST,PBT_APMRESUMEAUTOMATIC,0,powerHandled); pump(400);
         const bool suspend=m_ui_watchdog.Confirmations()==2 && m_ui_watchdog.Suspicions()==2;
         const DWORD error=m_ui_watchdog.LastError(); const ULONGLONG stopping=::GetTickCount64(); m_ui_watchdog.Stop(); const ULONGLONG stopMs=::GetTickCount64()-stopping;
-        ::Sleep(400); const bool stopped=!m_ui_watchdog.Running() && reports().size()==2 && stopMs<1000;
+        ::Sleep(400); const bool stopped=!m_ui_watchdog.Running() && reports().size()==3 && stopMs<1000;
         OLECMD afterCommands[]={{IDM_UNDO,0},{IDM_REDO,0}}; m_doc->m_body.QueryStatus(afterCommands,_countof(afterCommands));
         const bool documentPreserved=m_doc==owned && dirtyBefore && m_doc->DocChanged() && before==CString(static_cast<LPCWSTR>(body->innerHTML)) && beforeCommands[0].cmdf==afterCommands[0].cmdf && beforeCommands[1].cmdf==afterCommands[1].cmdf;
         CString safe=reports().empty() ? CString() : read(reports()[0]);
@@ -100,11 +110,11 @@
                 else if(!component.bytes.empty() && FAILED(preview.Write(component.bytes.data(),static_cast<DWORD>(component.bytes.size())))) zip=false;
             }
         }
-        zip=zip && checked && included==2 && rejected==1 && StartupTrace::SaveDiagnosticPackage(*checked,AU::_ARGS.source_memory_benchmark_path+L".zip",packageError);
+        zip=zip && checked && included==3 && rejected==1 && StartupTrace::SaveDiagnosticPackage(*checked,AU::_ARGS.source_memory_benchmark_path+L".zip",packageError);
         const bool restarted=m_ui_watchdog.Start(m_hWnd); pump(150);
         const bool shutdownRunning=restarted && m_ui_watchdog.Running() && m_ui_watchdog.Replies()>0;
-        const bool passed=recoveredAcrossPause && shutdownRunning && transitions && normal && independent && noDuplicates && recovered && completeReports && suspend && stopped && documentPreserved && privacy && catalog && zip && error==0;
-        CStringA result; result.Format("transitions=%d\nnormal=%d\nreport_while_ui_and_trace_locked=%d\nno_duplicates=%d\nrecovered=%d\nreports_complete=%d\npause_recovery=%d\nsuspend_resume=%d\nstop=%d\nstop_ms=%llu\nshutdown_running=%d\ndocument_preserved=%d\nprivacy=%d\ncatalog=%d\nzip=%d\nwrite_error=%lu\npassed=%d\n",transitions,normal,independent,noDuplicates,recovered,completeReports,recoveredAcrossPause,suspend,stopped,stopMs,shutdownRunning,documentPreserved,privacy,catalog,zip,error,passed);
+        const bool passed=early && recoveredAcrossPause && shutdownRunning && transitions && normal && independent && noDuplicates && recovered && completeReports && suspend && stopped && documentPreserved && privacy && catalog && zip && error==0;
+        CStringA result; result.Format("first_heartbeat=%d\ntransitions=%d\nnormal=%d\nreport_while_ui_and_trace_locked=%d\nno_duplicates=%d\nrecovered=%d\nreports_complete=%d\npause_recovery=%d\nsuspend_resume=%d\nstop=%d\nstop_ms=%llu\nshutdown_running=%d\ndocument_preserved=%d\nprivacy=%d\ncatalog=%d\nzip=%d\nwrite_error=%lu\npassed=%d\n",early,transitions,normal,independent,noDuplicates,recovered,completeReports,recoveredAcrossPause,suspend,stopped,stopMs,shutdownRunning,documentPreserved,privacy,catalog,zip,error,passed);
         DWORD written=0; output.Write(result,static_cast<DWORD>(result.GetLength()),&written); output.Flush(); output.Close();
         PostMessage(WM_CLOSE); if(!passed) ::PostQuitMessage(1); return 0;
     }

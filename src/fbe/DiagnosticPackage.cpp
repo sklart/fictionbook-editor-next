@@ -377,6 +377,7 @@ bool StartupTrace::HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSe
 }
 
 #include "diagnostics/CrashMaintenance.inl"
+#include "diagnostics/HangMaintenance.inl"
 
 std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSessions() { return EnumerateDiagnosticSessions(nullptr); }
 std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSessions(DiagnosticCatalogMetrics* metrics)
@@ -631,6 +632,7 @@ bool StartupTrace::CreateDiagnosticPackage(CString& packagePath, CString& error)
 
 #include "testing/DiagnosticPackageTest.inl"
 #include "diagnostics/DiagnosticCrashDiscovery.h"
+#include "testing/DiagnosticHangCleanupTest.inl"
 #include "testing/DiagnosticCatalogTest.inl"
 
 StartupTrace::DiagnosticLogCleanupResult StartupTrace::CleanupDiagnosticSessions(size_t keep, bool preview)

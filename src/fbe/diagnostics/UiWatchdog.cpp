@@ -82,7 +82,8 @@ void FbeDiagnostics::UiWatchdog::Run(HWND window,DWORD uiThread,const CString& s
     if(!::CreateDirectory(root,NULL) && ::GetLastError()!=ERROR_ALREADY_EXISTS) { writeError.store(::GetLastError()); return; }
     if(!SafeDirectory(root)) { writeError.store(ERROR_ACCESS_DENIED); return; }
     struct ReportFile { HANDLE handle=INVALID_HANDLE_VALUE; ~ReportFile() { Close(); } void Close() { if(handle!=INVALID_HANDLE_VALUE) { ::CloseHandle(handle); handle=INVALID_HANDLE_VALUE; } } } report;
-    WatchdogState state; DWORD tracked=0, observedEpoch=epoch.load(), incident=0;
+    // Start is called after UI readiness; the first unanswered probe is monitored too.
+    WatchdogState state; state.Ready(); DWORD tracked=0, observedEpoch=epoch.load(), incident=0;
     ULONGLONG previousAwake=AwakeMilliseconds(), previousWall=::GetTickCount64();
     StartupTrace::HangTelemetry cached; bool haveTelemetry=false, monitoringInterrupted=false; ULONGLONG excludedMs=0;
     auto record=[&](const wchar_t* status,bool confirmed,ULONGLONG now) {
@@ -135,7 +136,7 @@ void FbeDiagnostics::UiWatchdog::Run(HWND window,DWORD uiThread,const CString& s
             const DWORD sequence=NewSequence(); posted.store(sequence,std::memory_order_release);
             if(stopping.load()) break;
             if(::PostMessage(window,WatchdogHeartbeatMessage,sequence,0)) { posts.fetch_add(1); tracked=sequence; state.Request(now); }
-            else { posted.store(reply); state.Reset(); tracked=0; }
+            else { posted.store(reply); state.Reset(); state.Ready(); tracked=0; }
         } else {
             if(tracked!=pending) { tracked=pending; state.Request(now); }
             const unsigned int events=state.Advance(now>=excludedMs ? now-excludedMs:0,options);

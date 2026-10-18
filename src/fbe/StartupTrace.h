@@ -181,6 +181,13 @@ namespace StartupTrace
     std::vector<DiagnosticCrashReport> EnumerateDiagnosticCrashReports(DiagnosticCatalogMetrics* metrics=nullptr);
     bool MarkDiagnosticCrashReportReviewed(const DiagnosticCrashReport& report);
     DiagnosticCrashCleanupPlan PrepareDiagnosticCrashCleanup(unsigned int days=30);
+    struct DiagnosticHangCleanupItem { CString path, sessionId, fingerprint; ULONGLONG bytes=0; };
+    struct DiagnosticHangCleanupPlan {
+        std::vector<DiagnosticHangCleanupItem> items;
+        ULONGLONG cutoffTicks=0, bytes=0;
+        unsigned int files=0;
+    };
+    DiagnosticHangCleanupPlan PrepareDiagnosticHangCleanup(unsigned int days=30);
     bool IsDiagnosticCrashReviewed(const DiagnosticSession& session);
     bool MarkDiagnosticCrashReviewed(const DiagnosticSession& session);
     bool HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSession>& sessions);
@@ -211,6 +218,7 @@ namespace StartupTrace
 	DiagnosticLogCleanupResult ClearOldLogSessions();
     DiagnosticLogCleanupResult CleanupDiagnosticSessions(size_t keep, bool preview = false);
     DiagnosticLogCleanupResult ExecuteDiagnosticCrashCleanup(const DiagnosticCrashCleanupPlan& plan);
+    DiagnosticLogCleanupResult ExecuteDiagnosticHangCleanup(const DiagnosticHangCleanupPlan& plan);
 	bool TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot);
 	CString LastStageCode();
 	CString LastStageMessage();

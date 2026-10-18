@@ -7,6 +7,7 @@ $repo=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $evidence=Join-Path $repo ('build/diagnostic-dialog-runtime-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $evidence | Out-Null
 $passed=$false
+$oldBreadcrumb=$env:FBE_NEXT_TEST_STARTUP_BREADCRUMB
 $oldMode,$oldScenario,$oldTrace=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_SCENARIO,$env:FBE_NEXT_TRACE
 try {
  $null=New-IsolatedFbeSettingsSeed -Isolation $isolation
@@ -18,6 +19,7 @@ try {
  $damagedBytes=[Text.Encoding]::UTF8.GetBytes("session_id=broken`r`nPRIVATE_BOOK C:\secret\book.fb2")
  [IO.File]::WriteAllBytes($damaged,$damagedBytes)
  $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TRACE='0'; $env:FBE_NEXT_TEST_SCENARIO='diagnostic-dialog-runtime'
+ $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=Join-Path $evidence 'startup.txt'
  $process=Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList ('--portable -b "{0}" "{1}"' -f $report,$fixture) -WindowStyle Hidden -PassThru
  $exitCode=Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'diagnostic-dialog-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
  if(Test-Path -LiteralPath $report){Copy-Item -LiteralPath $report -Destination $evidence}
@@ -30,6 +32,7 @@ try {
  $passed=$true
  Write-Host "PASS: diagnostic dialog 96/144/192 DPI geometry, 12 locales, light/dark application, worker heartbeat, cancellation and deferred close. Evidence: $evidence"
 } finally {
+ $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=$oldBreadcrumb
  $env:FBE_NEXT_TEST_MODE=$oldMode; $env:FBE_NEXT_TEST_SCENARIO=$oldScenario; $env:FBE_NEXT_TRACE=$oldTrace
  $resolved=[IO.Path]::GetFullPath($isolation.Root)
  if(!($resolved.StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()),[StringComparison]::OrdinalIgnoreCase)) -or !([IO.Path]::GetFileName($resolved).StartsWith('fr-'))){throw 'Unexpected disposable runtime path'}

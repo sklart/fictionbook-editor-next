@@ -7,10 +7,17 @@ New-Item -ItemType Directory -Path $evidence | Out-Null
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $isolation=New-IsolatedFbeRuntime -FbeExe $Executable -Name 'diagnostic-operations'
 $passed=$false
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_SAVE_PATH')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_SAVE_PATH','FBE_NEXT_TEST_STARTUP_BREADCRUMB')
 $saved=@{}; foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 function Assert-True($value,[string]$message){if(!$value){throw $message}}
 try {
+ # Seed before launch: otherwise first-run migration imports the copied runtime's
+ # Data/Settings profile, including startup validation of the full script library.
+ # Script validation has its own runtime contour; this test exercises real editor operations.
+ $settings=New-IsolatedFbeSettingsSeed -Isolation $isolation
+ $seed=[IO.File]::ReadAllText($settings).Replace('</Settings>','<CheckScriptsOnStartup>false</CheckScriptsOnStartup></Settings>')
+ [IO.File]::WriteAllText($settings,$seed,[Text.UTF8Encoding]::new($false))
+ $env:FBE_NEXT_TEST_STARTUP_BREADCRUMB=Join-Path $evidence 'startup.txt'
  $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TRACE='0'
  $fixture=Join-Path $isolation.Root 'operations.fb2'
  [IO.File]::WriteAllText($fixture,'<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Runtime</first-name><last-name>Test</last-name></author><book-title>Operations</book-title><lang>en</lang></title-info><document-info><author><nickname>FBE</nickname></author><program-used>FBE</program-used><date value="2026-01-01">1 January 2026</date><id>11111111-1111-1111-1111-111111111111</id><version>1.0</version></document-info></description><body><section><p>operation fixture</p></section></body></FictionBook>',[Text.UTF8Encoding]::new($false))

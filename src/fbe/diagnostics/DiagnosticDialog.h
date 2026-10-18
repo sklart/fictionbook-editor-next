@@ -12,8 +12,8 @@
 class DiagnosticDialog
 {
     enum { Sessions=IDC_DIAGNOSTIC_SESSIONS, Components, PreviewText, Status, Toggle, OpenLog, OpenFolder, Cleanup, Preview, Save, State, Close, SessionLabel, ComponentLabel };
-    enum { CrashLabel=IDC_DIAGNOSTIC_CRASH_LABEL, Crashes=IDC_DIAGNOSTIC_CRASH_REPORTS, ReviewCrash=IDC_DIAGNOSTIC_REVIEW_CRASH, ClearCrashes=IDC_DIAGNOSTIC_CLEAR_CRASHES };
-    enum class Work { Catalog, Prepare, Save, Preview, Estimate, Cleanup, ReviewCrash, EstimateCrashes, ClearCrashes };
+    enum { CrashLabel=IDC_DIAGNOSTIC_CRASH_LABEL, Crashes=IDC_DIAGNOSTIC_CRASH_REPORTS, ReviewCrash=IDC_DIAGNOSTIC_REVIEW_CRASH, ClearHangs=IDC_DIAGNOSTIC_CLEAR_HANGS, ClearCrashes=IDC_DIAGNOSTIC_CLEAR_CRASHES };
+    enum class Work { Catalog, Prepare, Save, Preview, Estimate, Cleanup, ReviewCrash, EstimateCrashes, ClearCrashes, EstimateHangs, ClearHangs };
     struct Job {
         explicit Job(Work kind) : work(kind) {}
         Work work;
@@ -26,6 +26,7 @@ class DiagnosticDialog
         StartupTrace::DiagnosticLogCleanupResult cleanup;
         std::vector<StartupTrace::DiagnosticCrashReport> crashes;
         StartupTrace::DiagnosticCrashCleanupPlan crashPlan;
+        StartupTrace::DiagnosticHangCleanupPlan hangPlan;
     };
     std::shared_ptr<Job> job;
     std::thread worker;
@@ -36,6 +37,7 @@ class DiagnosticDialog
     HFONT font = NULL;
     bool cleanupPending = false, reviewPending=false;
     std::shared_ptr<const StartupTrace::DiagnosticCrashCleanupPlan> crashPlan;
+    std::shared_ptr<const StartupTrace::DiagnosticHangCleanupPlan> hangPlan;
     std::vector<StartupTrace::DiagnosticCrashReport> crashes;
     std::vector<StartupTrace::DiagnosticSession> sessions;
     std::vector<CString> excluded;
@@ -45,7 +47,7 @@ class DiagnosticDialog
     int Selected() const { return static_cast<int>(::SendDlgItemMessage(window, Sessions, CB_GETCURSEL, 0, 0)); }
     void Busy(bool value)
     {
-        const int controls[]={Sessions,Crashes,ReviewCrash,ClearCrashes,Components,Preview,Save,Toggle,OpenLog,OpenFolder,Cleanup,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
+        const int controls[]={Sessions,Crashes,ReviewCrash,ClearCrashes,ClearHangs,Components,Preview,Save,Toggle,OpenLog,OpenFolder,Cleanup,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
         for(int id : controls)
             ::EnableWindow(::GetDlgItem(window,id),!value && (id!=Save || (snapshot && snapshot->Valid())));
         ::ShowWindow(::GetDlgItem(window,IDC_DIAGNOSTIC_CANCEL),value ? SW_SHOW : SW_HIDE);
@@ -108,7 +110,7 @@ class DiagnosticDialog
         if(result->work==Work::ReviewCrash && result->success)
             for(auto& report:crashes) if(report.path==result->path) report.reviewed=true;
         if(closing) { CloseDialog(); return; }
-        if(result->cancelled.load() && !((result->work==Work::Save || result->work==Work::ReviewCrash || result->work==Work::ClearCrashes || result->work==Work::Cleanup) && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
+        if(result->cancelled.load() && !((result->work==Work::Save || result->work==Work::ReviewCrash || result->work==Work::ClearHangs || result->work==Work::ClearCrashes || result->work==Work::Cleanup) && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
         if(result->work==Work::Catalog && result->success) { catalogReady=true; sessions=result->sessions; crashes=result->crashes; ApplyCrashes(); ApplySessions(); }
         else if(result->work==Work::Prepare) {
             snapshot=result->snapshot; ApplyPrepared(result->success);
@@ -142,6 +144,14 @@ class DiagnosticDialog
         else if(result->work==Work::ClearCrashes) {
             cleanupSummary.Format(Text(L"cleaned",L"Deleted files / failed / bytes freed: %u / %u / %llu"),result->cleanup.filesDeleted,result->cleanup.filesFailed,result->cleanup.bytesDeleted);
             crashPlan.reset(); RefreshSessions();
+        }
+        else if(result->work==Work::EstimateHangs && result->success) {
+            hangPlan=std::make_shared<const StartupTrace::DiagnosticHangCleanupPlan>(result->hangPlan);
+            CString text; text.Format(Text(L"hang_cleanup_confirm",L"Hangs older than 30 days: %u files / %llu bytes. Click Clear old hangs again to delete."),hangPlan->files,hangPlan->bytes); StatusText(text);
+        }
+        else if(result->work==Work::ClearHangs) {
+            cleanupSummary.Format(Text(L"cleaned",L"Deleted files / failed / bytes freed: %u / %u / %llu"),result->cleanup.filesDeleted,result->cleanup.filesFailed,result->cleanup.bytesDeleted);
+            hangPlan.reset(); RefreshSessions();
         }
         else if(result->work==Work::Save) StatusText(result->success ? Text(L"saved",L"Package saved.")+L" "+result->path : Text(L"write_failed",L"Could not save. Choose a new filename and check free space and permissions."));
         else if(result->work==Work::Estimate) {
@@ -279,7 +289,7 @@ class DiagnosticDialog
         const struct { int id; const wchar_t* key; const wchar_t* fallback; } labels[] = {
             {Toggle,L"toggle",L"Toggle trace"},{OpenLog,L"open",L"Open selected file"},{OpenFolder,L"folder",L"Open folder"},
             {Cleanup,L"cleanup",L"Clear old logs"},{Preview,L"preview",L"Preview / refresh"},{Save,L"save",L"Save package"},{Close,L"close",L"Close"},
-            {CrashLabel,L"crash_reports",L"Crash reports (including damaged reports)"},{ReviewCrash,L"review_crash",L"Mark reviewed"},{ClearCrashes,L"clear_crashes",L"Clear old crashes"},
+            {ClearHangs,L"clear_hangs",L"Clear old hangs"},{CrashLabel,L"crash_reports",L"Crash reports (including damaged reports)"},{ReviewCrash,L"review_crash",L"Mark reviewed"},{ClearCrashes,L"clear_crashes",L"Clear old crashes"},
             {SessionLabel,L"sessions",L"Diagnostic sessions"},{ComponentLabel,L"components",L"Package components (bytes); double-click to exclude/include"}
         };
         ::SetDlgItemText(window,IDC_DIAGNOSTIC_PREVIOUS_PAGE,Text(L"previous_page",L"< Back"));
@@ -300,7 +310,7 @@ class DiagnosticDialog
     {
         int top=0; for(int id : {Toggle,OpenLog,OpenFolder,Cleanup}) top=(std::max)(top,ButtonWidthUnits(id,0));
         const int bottom=ButtonWidthUnits(Preview,110)+ButtonWidthUnits(IDC_DIAGNOSTIC_PREVIOUS_PAGE,50)+ButtonWidthUnits(IDC_DIAGNOSTIC_NEXT_PAGE,50)+ButtonWidthUnits(Save,110)+ButtonWidthUnits(Close,74)+48;
-        const int crashRow=ButtonWidthUnits(ReviewCrash,100)+ButtonWidthUnits(ClearCrashes,120)+230;
+        const int crashRow=(std::max)(ButtonWidthUnits(ReviewCrash,100)+230,ButtonWidthUnits(ClearCrashes,120)+ButtonWidthUnits(ClearHangs,120)+22);
         RECT bounds={0,0,(std::max)(crashRow,(std::max)(540,(std::max)(top*4+34,bottom))),380}; ::MapDialogRect(window,&bounds);
         ::AdjustWindowRectEx(&bounds,static_cast<DWORD>(::GetWindowLongPtr(window,GWL_STYLE)),FALSE,static_cast<DWORD>(::GetWindowLongPtr(window,GWL_EXSTYLE)));
         SIZE size={bounds.right-bounds.left,bounds.bottom-bounds.top}; return size;
@@ -341,11 +351,12 @@ class DiagnosticDialog
         const int button=(width-34)/4;
         move(Toggle,8,52,button,18); move(OpenLog,14+button,52,button,18);
         move(OpenFolder,20+2*button,52,button,18); move(Cleanup,26+3*button,52,button,18); move(SessionLabel,8,76,width-16,10); move(Sessions,8,88,width-16,150);
-        const int review=ButtonWidthUnits(ReviewCrash,100), clear=ButtonWidthUnits(ClearCrashes,120);
-        move(CrashLabel,8,110,width-16,10); move(Crashes,8,122,width-review-clear-28,150);
-        move(ReviewCrash,width-clear-review-14,122,review,18); move(ClearCrashes,width-clear-8,122,clear,18);
-        move(ComponentLabel,8,146,width-16,10); move(Components,8,158,width-16,65);
-        move(PreviewText,8,229,width-16,(std::max)(20,height-291));
+        const int review=ButtonWidthUnits(ReviewCrash,100), clear=ButtonWidthUnits(ClearCrashes,120), hangs=ButtonWidthUnits(ClearHangs,120);
+        move(CrashLabel,8,110,width-16,10); move(Crashes,8,122,width-review-22,150);
+        move(ReviewCrash,width-review-8,122,review,18);
+        move(ClearCrashes,8,146,clear,18); move(ClearHangs,14+clear,146,hangs,18);
+        move(ComponentLabel,8,170,width-16,10); move(Components,8,182,width-16,53);
+        move(PreviewText,8,241,width-16,(std::max)(20,height-303));
         move(Status,8,height-57,job ? width-220 : width-16,25);
         move(IDC_DIAGNOSTIC_PROGRESS,width-204,height-49,100,8);
         move(IDC_DIAGNOSTIC_CANCEL,width-98,height-57,90,18);
@@ -387,11 +398,16 @@ class DiagnosticDialog
             if(id!=Cleanup) self->cleanupPending=false;
             if(id!=ReviewCrash) self->reviewPending=false;
             if(id!=ClearCrashes) self->crashPlan.reset();
+            if(id!=ClearHangs) self->hangPlan.reset();
             if (id == Close || id == IDCANCEL) self->CloseDialog();
             else if(id==ReviewCrash) self->ReviewSelectedCrash();
             else if(id==ClearCrashes) {
                 if(!self->crashPlan) self->Begin(Work::EstimateCrashes,[](Job& result) { result.crashPlan=StartupTrace::PrepareDiagnosticCrashCleanup(); result.success=true; });
                 else { const auto plan=self->crashPlan; self->crashPlan.reset(); self->Begin(Work::ClearCrashes,[plan](Job& result) { result.cleanup=StartupTrace::ExecuteDiagnosticCrashCleanup(*plan); result.success=true; }); }
+            }
+            else if(id==ClearHangs) {
+                if(!self->hangPlan) self->Begin(Work::EstimateHangs,[](Job& result) { result.hangPlan=StartupTrace::PrepareDiagnosticHangCleanup(); result.success=true; });
+                else { const auto plan=self->hangPlan; self->hangPlan.reset(); self->Begin(Work::ClearHangs,[plan](Job& result) { result.cleanup=StartupTrace::ExecuteDiagnosticHangCleanup(*plan); result.success=true; }); }
             }
             else if (id == Sessions && code == CBN_SELCHANGE) { self->excluded.clear(); self->Prepare(); }
             else if (id == Components && code == LBN_SELCHANGE) self->ShowPreview();

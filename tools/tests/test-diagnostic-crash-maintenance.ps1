@@ -18,6 +18,12 @@ try {
  $foreignReport=Join-Path $foreign 'FBENext-crash-20000101-000000-999-pid4294967280.txt'
  [IO.File]::WriteAllText($foreignReport,'FOREIGN_PRIVATE_CONTENT',[Text.UTF8Encoding]::new($false))
  $null=New-Item -ItemType Junction -Path (Join-Path $fallback 'Crashes') -Target $foreign
+ $hangSession='BBBB0001-0000-0000-0000-000000000001'
+ $foreignHang=Join-Path $foreign ('fbe-hang-'+$hangSession+'-1.txt')
+ $hangText="hang-format=1`r`nsession_id=$hangSession`r`nhang-state=confirmed`r`nhang-duration-ms=30001`r`nhang-confirmed=1`r`n"
+ [IO.File]::WriteAllText($foreignHang,$hangText,[Text.UTF8Encoding]::new($false))
+ [IO.File]::SetLastWriteTimeUtc($foreignHang,[datetime]'2000-01-01T00:00:00Z')
+ $null=New-Item -ItemType Junction -Path (Join-Path $fallback 'Hangs') -Target $foreign
  foreach($verify in @('0','1')) {
   $env:FBE_NEXT_TEST_CATALOG_VERIFY=$verify
   $p=Start-Process -FilePath $Executable -ArgumentList '--installed','--diagnostic-catalog-test' -WindowStyle Hidden -PassThru
@@ -25,6 +31,7 @@ try {
   $p.WaitForExit(); if($p.ExitCode -ne 0){throw "Catalog test exit=$($p.ExitCode) verify=$verify. Evidence: $work"}
  }
  if([IO.File]::ReadAllText($foreignReport) -cne 'FOREIGN_PRIVATE_CONTENT'){throw 'Crash junction admitted or changed foreign content'}
+ if([IO.File]::ReadAllText($foreignHang) -cne $hangText){throw 'Hang junction admitted or changed foreign content'}
  Get-Content -LiteralPath (Join-Path $env:FBE_NEXT_TEST_PACKAGE_DIRECTORY 'catalog.txt')
  Write-Host "PASS: indexed large catalog; background discovery; damaged review persists without changing bytes; replacement notification; safe TXT/DMP cleanup. Evidence: $work"
 } finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}

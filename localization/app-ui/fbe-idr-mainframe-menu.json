@@ -2608,6 +2608,42 @@
         "bg-BG": "Отбележи като прочетен"
       }
     },
+    "fbe.diagnostics.clear_hangs": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Clear old hangs",
+        "ru-RU": "Очистить старые зависания",
+        "uk-UA": "Очистити старі зависання",
+        "de-DE": "Alte Hänger löschen",
+        "fr-FR": "Effacer les anciens blocages",
+        "es-ES": "Borrar bloqueos antiguos",
+        "it-IT": "Elimina vecchi blocchi",
+        "pl-PL": "Usuń stare zawieszenia",
+        "pt-PT": "Limpar bloqueios antigos",
+        "nl-NL": "Oude vastlopers wissen",
+        "cs-CZ": "Smazat stará zamrznutí",
+        "bg-BG": "Изчисти старите зависвания"
+      }
+    },
+    "fbe.diagnostics.hang_cleanup_confirm": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Hangs older than 30 days: %u files / %llu bytes. Click Clear old hangs again to delete.",
+        "ru-RU": "Зависания старше 30 дней: %u файлов / %llu байт. Нажмите «Очистить старые зависания» ещё раз для удаления.",
+        "uk-UA": "Зависання старші за 30 днів: %u файлів / %llu байт. Натисніть «Очистити старі зависання» ще раз для видалення.",
+        "de-DE": "Hänger älter als 30 Tage: %u Dateien / %llu Bytes. Zum Löschen erneut Alte Hänger löschen anklicken.",
+        "fr-FR": "Blocages de plus de 30 jours : %u fichiers / %llu octets. Cliquez à nouveau sur Effacer les anciens blocages pour supprimer.",
+        "es-ES": "Bloqueos de más de 30 días: %u archivos / %llu bytes. Pulse de nuevo Borrar bloqueos antiguos para eliminar.",
+        "it-IT": "Blocchi di oltre 30 giorni: %u file / %llu byte. Premi di nuovo Elimina vecchi blocchi per eliminare.",
+        "pl-PL": "Zawieszenia starsze niż 30 dni: %u plików / %llu bajtów. Kliknij ponownie Usuń stare zawieszenia, aby usunąć.",
+        "pt-PT": "Bloqueios com mais de 30 dias: %u ficheiros / %llu bytes. Clique novamente em Limpar bloqueios antigos para eliminar.",
+        "nl-NL": "Vastlopers ouder dan 30 dagen: %u bestanden / %llu bytes. Klik nogmaals op Oude vastlopers wissen om te verwijderen.",
+        "cs-CZ": "Zamrznutí starší než 30 dnů: %u souborů / %llu bajtů. Pro odstranění znovu klikněte na Smazat stará zamrznutí.",
+        "bg-BG": "Зависвания над 30 дни: %u файла / %llu байта. Натиснете отново Изчисти старите зависвания за изтриване."
+      }
+    },
     "fbe.diagnostics.clear_crashes": {
       "kind": "MESSAGE",
       "targetId": "",

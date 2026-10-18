@@ -33,14 +33,14 @@
             for(int extra : {0,240}) {
                 ::SetWindowPos(window,NULL,0,0,minimum.cx+extra,minimum.cy+extra,SWP_NOMOVE|SWP_NOZORDER);
                 Layout(); RECT client={}; ::GetClientRect(window,&client);
-                const int controls[]={State,Toggle,OpenLog,OpenFolder,Cleanup,SessionLabel,Sessions,CrashLabel,Crashes,ReviewCrash,ClearCrashes,ComponentLabel,Components,PreviewText,Status,Preview,Save,Close};
+                const int controls[]={State,Toggle,OpenLog,OpenFolder,Cleanup,SessionLabel,Sessions,CrashLabel,Crashes,ReviewCrash,ClearCrashes,ClearHangs,ComponentLabel,Components,PreviewText,Status,Preview,Save,Close};
                 for(int id : controls) {
                     RECT control={}; HWND child=::GetDlgItem(window,id); ::GetWindowRect(child,&control);
                     ::MapWindowPoints(NULL,window,reinterpret_cast<POINT*>(&control),2);
                     if(testFailure.IsEmpty() && !(control.left>=0 && control.top>=0 && control.right<=client.right && control.bottom<=client.bottom && control.right>control.left && control.bottom>control.top)) testFailure.Format(L"bounds locale=%s dpi=%u id=%d rect=%ld,%ld,%ld,%ld client=%ld,%ld",locale,dpi,id,control.left,control.top,control.right,control.bottom,client.right,client.bottom);
                     valid=valid && control.left>=0 && control.top>=0 && control.right<=client.right && control.bottom<=client.bottom && control.right>control.left && control.bottom>control.top;
                 }
-                const int buttons[]={ReviewCrash,ClearCrashes,Toggle,OpenLog,OpenFolder,Cleanup,Preview,Save,Close,IDC_DIAGNOSTIC_CANCEL,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
+                const int buttons[]={ReviewCrash,ClearCrashes,ClearHangs,Toggle,OpenLog,OpenFolder,Cleanup,Preview,Save,Close,IDC_DIAGNOSTIC_CANCEL,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
                 for(int id : buttons) {
                     HWND child=::GetDlgItem(window,id); wchar_t label[256]={}; ::GetWindowText(child,label,_countof(label));
                     HDC dc=::GetDC(child); HGDIOBJ old=::SelectObject(dc,reinterpret_cast<HFONT>(::SendMessage(child,WM_GETFONT,0,0)));
@@ -72,6 +72,12 @@
         } else if(testPhase==10 && !job) {
             damagedReview=crashes.size()==1 && crashes[0].reviewed && !HasUnreviewedCrashes() && snapshot==testSnapshot && snapshot && snapshot->Valid();
             testPassed=testPassed && damagedReview;
+            ::SendMessage(window,WM_COMMAND,ClearHangs,0); testPhase=11;
+        } else if(testPhase==11 && !job) {
+            testPassed=testPassed && hangPlan && hangPlan->files==0 && snapshot==testSnapshot;
+            ::SendMessage(window,WM_COMMAND,ClearHangs,0); testPhase=12;
+        } else if(testPhase==12 && !job) {
+            testPassed=testPassed && !hangPlan && snapshot && snapshot->Valid();
             testPhase=1;
             Begin(Work::Prepare,[](Job& result) {
                 for(unsigned int tick=0; tick<200 && !result.cancelled.load(); ++tick) ::Sleep(10);

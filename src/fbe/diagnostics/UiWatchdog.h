@@ -16,6 +16,7 @@ struct WatchdogState {
         return awake<previousAwake || wall<previousWall || awake-previousAwake>5000 || wall-previousWall>(awake-previousAwake)+2000;
     }
     void Reset() { *this=WatchdogState(); }
+    void Ready() { armed=true; }
     void Request(ULONGLONG now) { waiting=true; requestedAt=now; }
     bool Reply() { const bool recovered=suspected; waiting=false; suspected=confirmed=false; armed=true; return recovered; }
     unsigned int Advance(ULONGLONG now,const WatchdogOptions& options) {
@@ -38,6 +39,7 @@ class UiWatchdog {
     void Run(HWND window,DWORD uiThread,const CString& session,const CString& directory,const CString& environment,WatchdogOptions options);
 public:
     ~UiWatchdog() { Stop(); }
+    // Call only after the UI initialization/readiness boundary (OnPostCreate).
     bool Start(HWND window);
     void Stop();
     void Pause() noexcept { paused.store(true); epoch.fetch_add(1); }

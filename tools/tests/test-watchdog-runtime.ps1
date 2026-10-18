@@ -23,7 +23,7 @@ try {
  if(Test-Path -LiteralPath $hangs){Copy-Item -LiteralPath $hangs -Destination $evidence -Recurse}
  if($exit -ne 0){throw "Watchdog runtime failed: exit=$exit. Evidence: $evidence; runtime: $($isolation.Root)"}
  $rows=[IO.File]::ReadAllText($report); Get-Content -LiteralPath $report
- foreach($check in 'transitions','normal','report_while_ui_and_trace_locked','no_duplicates','recovered','reports_complete','pause_recovery','suspend_resume','stop','shutdown_running','document_preserved','privacy','catalog','zip','passed') {
+ foreach($check in 'first_heartbeat','transitions','normal','report_while_ui_and_trace_locked','no_duplicates','recovered','reports_complete','pause_recovery','suspend_resume','stop','shutdown_running','document_preserved','privacy','catalog','zip','passed') {
   if($rows -notmatch "(?m)^$check=1\r?$"){throw "Missing watchdog proof: $check"}
  }
  if((Get-FileHash $fixture -Algorithm SHA256).Hash -cne $fixtureHash){throw 'Watchdog changed the input document'}
@@ -44,7 +44,7 @@ try {
    }
    if($entry.FullName -eq 'manifest.json'){$manifest=$text | ConvertFrom-Json}
   }
-  if($hangCount -ne 2 -or $manifest.privacy -ne 'checked-final-bytes' -or @($manifest.omitted | Where-Object {$_.name -like 'hang/*' -and $_.reason -eq 'privacy-rejected'}).Count -ne 1){throw 'Hang ZIP privacy/manifest contract failed'}
+  if($hangCount -ne 3 -or $manifest.privacy -ne 'checked-final-bytes' -or @($manifest.omitted | Where-Object {$_.name -like 'hang/*' -and $_.reason -eq 'privacy-rejected'}).Count -ne 1){throw 'Hang ZIP privacy/manifest contract failed'}
  } finally {$zip.Dispose()}
  Copy-Item -LiteralPath ($report+'.zip') -Destination $evidence
  Get-FileHash -LiteralPath $Executable -Algorithm SHA256 | Format-List | Out-File (Join-Path $evidence 'executable-sha256.txt')

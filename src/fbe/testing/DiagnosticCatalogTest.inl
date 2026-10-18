@@ -85,7 +85,8 @@ int StartupTrace::RunDiagnosticCatalogTest()
     if(!write(late,unsafe+L"replacement",true)) return 25;
     const auto after=ExecuteDiagnosticCrashCleanup(fresh);
     if(!exists(late) || after.filesFailed==0) return 26;
-    CString evidence; evidence.Format(L"PASS\r\nsessions=%u\r\ncrashes=1000\r\nmetadata_reads=%llu\r\ncrash_headers=%llu\r\ncatalog_ms=%llu\r\nlaunch_ms=%llu\r\nbackground_scan_ms=%llu\r\nstartup_metadata_reads=%llu\r\ndamaged_review=1\r\nbackground_notifications=1\r\ncleanup_guards=1\r\n",static_cast<unsigned int>(sessions.size()),catalogMetrics.metadataReads,catalogMetrics.crashHeaders,catalogMs,scan.LaunchMilliseconds(),scan.ScanMilliseconds(),scan.Metrics().metadataReads);
+    if(!TestHangCleanup(directory)) return 31;
+    CString evidence; evidence.Format(L"PASS\r\nsessions=%u\r\ncrashes=1000\r\nmetadata_reads=%llu\r\ncrash_headers=%llu\r\ncatalog_ms=%llu\r\nlaunch_ms=%llu\r\nbackground_scan_ms=%llu\r\nstartup_metadata_reads=%llu\r\ndamaged_review=1\r\nbackground_notifications=1\r\ncleanup_guards=1\r\nhang_cleanup_guards=1\r\n",static_cast<unsigned int>(sessions.size()),catalogMetrics.metadataReads,catalogMetrics.crashHeaders,catalogMs,scan.LaunchMilliseconds(),scan.ScanMilliseconds(),scan.Metrics().metadataReads);
     ::SHCreateDirectoryEx(NULL,output,NULL);
     return write(CString(output)+L"\\catalog.txt",evidence) ? 0 : 27;
 }
