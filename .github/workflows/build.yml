@@ -37,6 +37,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-localization-preflight.ps1
+          ./tools/tests/test-fbe-runtime-dialog-coverage.ps1
       # validate reads the Lexilla and Hunspell projects to enforce the
       # boundary between first-party and vendored MSBuild policy. Fetching
       # every submodule here is unnecessary and makes this fast job depend on

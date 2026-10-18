@@ -380,7 +380,10 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-catalog.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-main-menu-mnemonics.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-find-replace-ui-contract.ps1")
-& (Join-Path $repoRoot "tools\tests\test-fbe-runtime-dialog-coverage.ps1")
+if (-not $SkipLocalizationPreflight) {
+    # CI already checked the source-only dialog bindings in validate.
+    & (Join-Path $repoRoot "tools\tests\test-fbe-runtime-dialog-coverage.ps1")
+}
 & (Join-Path $repoRoot "tools\tests\test-fbe-dialog-layout-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-no-fbe-locale-resource-dll.ps1")
 & (Join-Path $repoRoot "tools\tests\test-runtime-interface-language-contract.ps1")

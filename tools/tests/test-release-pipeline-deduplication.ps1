@@ -1,4 +1,4 @@
-<# Contract for the single Windows 7+ release pipeline. #>
+﻿<# Contract for the single Windows 7+ release pipeline. #>
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
@@ -61,6 +61,13 @@ foreach ($test in @('test-plugin-localization-catalog.ps1','test-fbv-localizatio
     if ($verify.Contains($test)) { throw "$test must not be rerun by verify-release after preflight." }
 }
 Require $verify 'test-runtime-lang-output-layout.ps1' 'post-build localization output-layout test'
+$dialogCoverage = 'test-fbe-runtime-dialog-coverage.ps1'
+$localizationStep = [regex]::Match($workflow, '(?s)- name: Validate localization preflight.*?(?=\n\s*#|\n\s*- name:)').Value
+Require $localizationStep $dialogCoverage 'source-only dialog bindings in validate'
+if ((Get-OccurrenceCount $workflow $dialogCoverage) -ne 1 -or (Get-OccurrenceCount $verify $dialogCoverage) -ne 1 -or
+    $verify -notmatch '(?s)if\s*\(-not\s+\$SkipLocalizationPreflight\)\s*\{\s*#[^\r\n]*\r?\n\s*&[^\r\n]*test-fbe-runtime-dialog-coverage\.ps1') {
+    throw 'Dialog bindings must run once in validate and once in the default local verifier, without a duplicate CI gate call.'
+}
 if ((Get-OccurrenceCount $workflow 'test-search-core-suite.ps1') -ne 1 -or (Get-OccurrenceCount $verify 'test-search-core-suite.ps1') -ne 1) {
     throw 'Search Core must be one explicit build suite and one default local verifier suite.'
 }

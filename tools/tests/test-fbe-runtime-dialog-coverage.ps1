@@ -1,4 +1,4 @@
-<# Ensures every catalog text is either bound by the generic dialog layer or
+﻿<# Ensures every catalog text is either bound by the generic dialog layer or
    consumed by an existing explicit runtime-localization implementation. #>
 [CmdletBinding()]
 param()
@@ -32,7 +32,7 @@ $consumers = @{
     IDD_SETTINGS_IMAGES = @{ File = 'src\fbe\settings\ui\SettingsImagesPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_IMAGES\)' }
     IDD_SETTINGS_GENERAL = @{ File = 'src\fbe\settings\ui\SettingsGeneralPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_GENERAL\)' }
     IDD_SETTINGS_EDITOR = @{ File = 'src\fbe\settings\ui\SettingsEditorPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_EDITOR\)' }
-    IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\settings\ui\SettingsSpellingPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
+    IDD_SETTINGS_SPELLING = @{ File = 'src\fbe\settings\ui\SettingsSpellingPage.cpp'; AdditionalFiles = @('src\fbe\settings\ui\SettingsDlg.cpp'); Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SPELLING\)' }
     IDD_SETTINGS_SOURCE = @{ File = 'src\fbe\settings\ui\SettingsSourcePage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_SOURCE\)' }
     IDD_SETTINGS_ADVANCED = @{ File = 'src\fbe\settings\ui\SettingsAdvancedPage.cpp'; Invocation = 'FbeApplyRuntimeDialogLocalization\(m_hWnd,\s*IDD_SETTINGS_ADVANCED\)' }
     IFileOpenDialog = @{ File = 'src\fbe\document\ui\DocumentFileDialogs.cpp'; Invocation = 'FbeLoadRuntimeStringByKey' }
@@ -58,6 +58,41 @@ foreach ($resource in $consumers.Keys) {
     $consumers[$resource].Text = $consumerText
 }
 
+# Retain translations used by older Settings UI without treating them as live
+# prompts. Each replacement must exist, be translated, and bind its own consumer.
+$replacedDialogKeys = @{
+    'fbe.settings.spelling.write_failed' = 'fbe.settings.save_failed'
+    'fbe.theme.delete.confirm_inactive' = 'fbe.theme.delete.staged'
+    'fbe.theme.delete.confirm_active' = 'fbe.theme.delete.staged'
+}
+function Test-ReplacedDialogKey([string]$Key) {
+    if (-not $replacedDialogKeys.ContainsKey($Key)) { return $false }
+    $replacementKey = $replacedDialogKeys[$Key]
+    $property = $catalog.strings.PSObject.Properties[$replacementKey]
+    if ($null -eq $property) { throw "Retained dialog key has no current replacement: $Key" }
+    $replacement = $property.Value
+    foreach ($language in $catalog.targetLanguages) {
+        if ([string]::IsNullOrWhiteSpace($replacement.translations.$language)) { throw "Replacement lacks $language translation: $replacementKey" }
+    }
+    return $consumers[$replacement.resource].Text.Contains($replacementKey)
+}
+foreach ($legacy in $replacedDialogKeys.Keys) {
+    $replacementKey = $replacedDialogKeys[$legacy]
+    $replacement = $catalog.strings.PSObject.Properties[$replacementKey].Value
+    $consumer = $consumers[$replacement.resource]
+    $originalText = $consumer.Text
+    try {
+        $consumer.Text = $originalText.Replace($replacementKey, 'fixture.removed.binding')
+        if (Test-ReplacedDialogKey $legacy) { throw 'A retained key accepted a missing runtime replacement binding.' }
+    } finally { $consumer.Text = $originalText }
+    $originalTranslation = $replacement.translations.'ru-RU'
+    $rejected = $false
+    try {
+        $replacement.translations.'ru-RU' = ''
+        try { $null = Test-ReplacedDialogKey $legacy } catch { $rejected = $true }
+    } finally { $replacement.translations.'ru-RU' = $originalTranslation }
+    if (-not $rejected) { throw 'A retained key accepted an untranslated replacement.' }
+}
 foreach ($entry in $catalog.strings.PSObject.Properties) {
     $key = $entry.Name
     $value = $entry.Value
@@ -91,8 +126,10 @@ foreach ($entry in $catalog.strings.PSObject.Properties) {
     $nativeOverwritePrompt = $key -eq 'fbe.quality.save.overwrite' -and
         $consumerText.Contains('request.overwritePrompt = true') -and
         $consumerText.Contains('FDEOR_DEFAULT')
+    $retainedReplacement = Test-ReplacedDialogKey $key
     if (-not $genericBinding -and -not $manifestDrivenBackgroundPreset -and -not $dynamicSearchPresetKey -and
-        -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and -not $consumerText.Contains($key)) {
+        -not $dynamicQualityRuleKey -and -not $dynamicQualityHelpKey -and -not $nativeOverwritePrompt -and
+        -not $retainedReplacement -and -not $consumerText.Contains($key)) {
         throw "JSON dialog key has no binding in its concrete runtime consumer: $key ($($value.resource))."
     }
 }
