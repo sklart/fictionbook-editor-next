@@ -15,7 +15,8 @@ function Invoke-SpellcheckCase([int]$Count) {
     New-Item -ItemType Directory -Path $directory | Out-Null
     try {
         $fixture = Join-Path $directory 'long-section.fb2'; $report = Join-Path $directory 'spell.tsv'
-        $paragraphs = 1..$Count | ForEach-Object { if ($Mutation -eq 'large-paragraph' -and $_ -eq $Count) { '<p>' + ('largeword ' * 20000) + '</p>' } else { "<p>ordinary paragraph $_</p>" } }
+        # Keep the 20k-word paragraph valid: this checks traversal bounds, not thousands of MSHTML misspelling overlays.
+        $paragraphs = 1..$Count | ForEach-Object { if ($Mutation -eq 'large-paragraph' -and $_ -eq $Count) { '<p>' + ('ordinary ' * 20000) + '</p>' } else { "<p>ordinary paragraph $_</p>" } }
         @('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>spell</book-title><lang>en</lang></title-info><document-info><program-used>test</program-used><id>spell-local-edit</id><version>1.0</version></document-info></description><body><section>', ($paragraphs -join ''), '</section></body></FictionBook>') | Set-Content -LiteralPath $fixture -Encoding utf8
         $oldMode, $oldScenario, $oldMutation = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO, $env:FBE_NEXT_TEST_SPELLCHECK_MUTATION
         try {
