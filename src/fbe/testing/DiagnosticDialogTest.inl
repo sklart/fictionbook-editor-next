@@ -107,7 +107,9 @@
             testReviewGate=std::make_shared<std::atomic_bool>(true);
             ReviewPreview(stale); testReviewJob=job; testPhase=20;
         } else if(testPhase==20 && !job) {
-            staleRejected=testReviewJob && !testReviewJob->success && snapshot==testSnapshot;
+            wchar_t status[512]={}; ::GetDlgItemText(window,Status,status,_countof(status));
+            staleRejected=testReviewJob && !testReviewJob->success && snapshot==testSnapshot &&
+                Text(L"review_failed",L"Report changed or could not be marked reviewed. Refresh diagnostics.")==status;
             for(const auto& session:sessions) if(session.crashPath==testReviewSession.crashPath) staleRejected=staleRejected && !session.crashReviewed;
             testPassed=testPassed && staleRejected;
             const CString ini=CString(DeploymentContext::SettingsDirectory().c_str())+L"diagnostics-reviewed.ini";
@@ -117,7 +119,9 @@
             if(lock!=INVALID_HANDLE_VALUE) testReviewLock.Attach(lock); else testPassed=false;
             ReviewPreview(testReviewSession); testReviewJob=job; testPhase=21;
         } else if(testPhase==21 && !job) {
-            reviewWriteFailed=testReviewJob && !testReviewJob->success && snapshot==testSnapshot;
+            wchar_t status[512]={}; ::GetDlgItemText(window,Status,status,_countof(status));
+            reviewWriteFailed=testReviewJob && !testReviewJob->success && snapshot==testSnapshot &&
+                Text(L"review_failed",L"Report changed or could not be marked reviewed. Refresh diagnostics.")==status;
             for(const auto& session:sessions) if(session.crashPath==testReviewSession.crashPath) reviewWriteFailed=reviewWriteFailed && !session.crashReviewed;
             testPassed=testPassed && reviewWriteFailed; testReviewLock.Close();
             testReviewGate=std::make_shared<std::atomic_bool>(false);

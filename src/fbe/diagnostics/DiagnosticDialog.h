@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../StartupTrace.h"
 #include "../ThemeManager.h"
 #include "../UiMetrics.h"
@@ -153,11 +153,11 @@ class DiagnosticDialog
         }
         else if(result->work==Work::ReviewPreview) {
             if(result->success) { ApplyCrashes(); PreviewStatus(); }
-            else StatusText(Text(L"blocked",L"Report changed or could not be marked; refresh diagnostics."));
+            else StatusText(Text(L"review_failed",L"Report changed or could not be marked reviewed. Refresh diagnostics."));
         }
         else if(result->work==Work::ReviewCrash) {
             if(result->success) ApplyCrashes();
-            StatusText(Text(result->success ? L"review_done" : L"blocked",result->success ? L"Marked reviewed. Report bytes were preserved." : L"Report changed or could not be marked; refresh diagnostics."));
+            StatusText(Text(result->success ? L"review_done" : L"review_failed",result->success ? L"Marked reviewed. Report bytes were preserved." : L"Report changed or could not be marked reviewed. Refresh diagnostics."));
         }
         else if(result->work==Work::EstimateCrashes && result->success) {
             crashPlan=std::make_shared<const StartupTrace::DiagnosticCrashCleanupPlan>(result->crashPlan);

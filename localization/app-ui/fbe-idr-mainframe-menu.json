@@ -2122,6 +2122,24 @@
         "bg-BG": "Пакетът е записан."
       }
     },
+    "fbe.diagnostics.review_failed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Report changed or could not be marked reviewed. Refresh diagnostics.",
+        "ru-RU": "Отчёт изменён или не удалось отметить его просмотренным. Обновите диагностику.",
+        "uk-UA": "Звіт змінено або не вдалося позначити його переглянутим. Оновіть діагностику.",
+        "de-DE": "Der Bericht wurde geändert oder konnte nicht als gelesen markiert werden. Aktualisieren Sie die Diagnose.",
+        "fr-FR": "Le rapport a changé ou n’a pas pu être marqué comme lu. Actualisez le diagnostic.",
+        "es-ES": "El informe cambió o no se pudo marcar como leído. Actualice el diagnóstico.",
+        "it-IT": "Il rapporto è cambiato o non è stato possibile segnarlo come letto. Aggiornare la diagnostica.",
+        "pl-PL": "Raport zmienił się lub nie można oznaczyć go jako przeczytany. Odśwież diagnostykę.",
+        "pt-PT": "O relatório foi alterado ou não pôde ser marcado como lido. Atualize o diagnóstico.",
+        "nl-NL": "Het rapport is gewijzigd of kon niet als gelezen worden gemarkeerd. Vernieuw de diagnostiek.",
+        "cs-CZ": "Zpráva se změnila nebo ji nelze označit jako přečtenou. Obnovte diagnostiku.",
+        "bg-BG": "Отчетът е променен или не може да бъде отбелязан като прочетен. Обновете диагностиката."
+      }
+    },
     "fbe.diagnostics.blocked": {
       "kind": "MESSAGE",
       "targetId": "",
