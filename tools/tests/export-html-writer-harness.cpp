@@ -361,7 +361,7 @@ int ExpectExistingSplitDocument()
         if (FAILED(writer.Prepare()) || FAILED(writer.WriteSplitDocument(L"index.html", L"new"))) return 1;
         // Existing files are never owned by rollback.
     }
-    const int failure = !ReadFileText(index, text) || text != "new";
+    const int failure = !ReadFileText(index, text) || text != "old";
     ::DeleteFile(index.c_str());
     return failure;
 }
@@ -383,9 +383,41 @@ int ExpectRollback()
 
 }
 
-int main()
+int wmain(int argc, wchar_t** argv)
 {
 	::CoInitialize(NULL);
+	if(argc==3) {
+		const std::wstring mode(argv[1]), target(argv[2]);
+		int reported=0;
+		HtmlExportWriter::Options options; options.targetPath=target; options.mime=true;
+		HtmlExportWriter::Callbacks callbacks=Callbacks(reported);
+		if(mode==L"multi-fail") {
+			options.mime=false;options.split=true;callbacks.confirmImageOverwrite=[](const std::wstring&){return true;};
+			HtmlExportWriter::Writer writer(options,callbacks);
+			if(FAILED(writer.Prepare()) || FAILED(writer.WriteSplitDocument(L"first.html",L"new first")) || FAILED(writer.WriteSplitDocument(L"second.html",L"new second"))) return 1;
+			const std::wstring second=target.substr(0,target.find_last_of(L"\\/")+1)+L"second.html";
+			HANDLE locked=::CreateFileW(second.c_str(),GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
+			const bool expected=locked!=INVALID_HANDLE_VALUE && FAILED(writer.Finalize());
+			if(locked!=INVALID_HANDLE_VALUE) ::CloseHandle(locked);
+			::CoUninitialize();return expected ? 0 : 1;
+		}
+		if(mode==L"write-fail" || mode==L"short-write") callbacks.writeTarget=[&](HANDLE,const void*,DWORD length,DWORD* written)->BOOL {
+			*written=length ? length-1 : 0; ::SetLastError(ERROR_WRITE_FAULT); return mode==L"short-write";
+		};
+		bool expected=false;
+		{
+			HtmlExportWriter::Writer writer(options,callbacks);
+			const HRESULT prepared=writer.Prepare();
+			if(mode==L"cancel") { CComPtr<IStream> output; expected=SUCCEEDED(prepared) && SUCCEEDED(writer.GetTransformOutput(&output)) && !WriteText(output,"partial"); }
+			else if(mode==L"commit-fail") {
+				CComPtr<IStream> output; const bool staged=SUCCEEDED(prepared) && SUCCEEDED(writer.GetTransformOutput(&output)) && !WriteText(output,"replacement");
+				HANDLE locked=::CreateFileW(target.c_str(),GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
+				expected=staged && locked!=INVALID_HANDLE_VALUE && FAILED(writer.Finalize());
+				if(locked!=INVALID_HANDLE_VALUE) ::CloseHandle(locked);
+			} else expected=FAILED(prepared);
+		}
+		::CoUninitialize(); return expected ? 0 : 1;
+	}
 	const int failures = ExpectNormalWrite() + ExpectOpenFailure() +
 		ExpectWriteFailureAndRollback(false) + ExpectWriteFailureAndRollback(true) + ExpectNoTargetHandleLeak() +
 		ExpectStandaloneWrite() + ExpectMimeFinalBoundary() + ExpectExternalImageWrite() +

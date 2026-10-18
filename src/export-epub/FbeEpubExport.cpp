@@ -13,6 +13,7 @@
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
+#include "../common/ExportFileTransaction.h"
 #else
 #include <codecvt>
 #endif
@@ -416,7 +417,13 @@ private:
 class ZipStoredWriter {
 public:
     bool Open(const std::filesystem::path& path, std::wstring* error) {
+#ifdef _WIN32
+        std::wstring temporary;
+        if (FAILED(files_.Stage(path.wstring(), temporary))) { SetError(error, L"Cannot stage output EPUB file: " + path.wstring()); return false; }
+        out_.open(std::filesystem::path(temporary), std::ios::binary | std::ios::trunc);
+#else
         out_.open(path, std::ios::binary | std::ios::trunc);
+#endif
         if (!out_) {
             SetError(error, L"Cannot create output EPUB file: " + path.wstring());
             return false;
@@ -521,10 +528,16 @@ public:
             SetError(error, L"Failed to finalize ZIP/EPUB file");
             return false;
         }
+#ifdef _WIN32
+        if (FAILED(files_.Commit())) { SetError(error, L"Cannot replace output EPUB file"); return false; }
+#endif
         return true;
     }
 
 private:
+#ifdef _WIN32
+    FbeExport::FileTransaction files_;
+#endif
     struct Entry {
         std::string path;
         std::uint32_t crc = 0;

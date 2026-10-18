@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HtmlExportWriterHelpers.h"
+#include "../common/ExportFileTransaction.h"
 
 #include <atlbase.h>
 #include <functional>
@@ -68,6 +69,7 @@ private:
 	void Report(Failure failure, const std::wstring& path, DWORD error) const;
 
 	Options m_options;
+	FbeExport::FileTransaction m_files;
 	Callbacks m_callbacks;
 	HtmlExportWriterHelpers::ImagePaths m_imagePaths;
 	HANDLE m_target;

@@ -3826,7 +3826,7 @@ HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
         opt.labels.notesTitle = static_cast<LPCWSTR>(LoadResourceString(IDS_EXPORT_LANDMARK_NOTES, L"Notes"));
         std::wstring error;
         if (!fbe::epub::EpubExporter().Export(book, std::filesystem::path((LPCWSTR)outPath), opt, &error)) {
-            ShowExportError(owner, error);
+            if (!headlessTest) ShowExportError(owner, error);
             return E_FAIL;
         }
 

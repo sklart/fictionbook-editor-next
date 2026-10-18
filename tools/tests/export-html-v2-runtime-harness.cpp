@@ -3,6 +3,9 @@
 #include <oleauto.h>
 #include <string>
 #include <windows.h>
+#include <wincrypt.h>
+#include <vector>
+#pragma comment(lib, "advapi32.lib")
 typedef HRESULT(STDAPICALLTYPE *GetClassObject)(REFCLSID, REFIID, void **);
 #ifdef FBE_TEST_EXPORT_EPUB
 #define FBE_TEST_CLSID L"{36FCFB2D-C3D8-4B81-ABC1-5A09CA846515}"
@@ -27,6 +30,18 @@ typedef HRESULT(STDAPICALLTYPE *GetClassObject)(REFCLSID, REFIID, void **);
 #define FBE_TEST_CANCEL L"FBE_NEXT_TEST_EXPORT_HTML_CANCEL"
 #define FBE_TEST_FAIL L"FBE_NEXT_TEST_EXPORT_HTML_FAIL"
 #endif
+static std::vector<BYTE> FileSha256(const std::wstring& path) {
+  HCRYPTPROV provider=0; HCRYPTHASH hash=0;
+  if(!CryptAcquireContextW(&provider,0,0,PROV_RSA_AES,CRYPT_VERIFYCONTEXT)) return {};
+  if(!CryptCreateHash(provider,CALG_SHA_256,0,0,&hash)){CryptReleaseContext(provider,0);return {};}
+  HANDLE file=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,0,0);
+  bool ok=file!=INVALID_HANDLE_VALUE; BYTE bytes[4096]; DWORD read=0;
+  while(ok) {if(!ReadFile(file,bytes,sizeof(bytes),&read,0)){ok=false;break;} if(!read) break;ok=CryptHashData(hash,bytes,read,0)!=FALSE;}
+  if(file!=INVALID_HANDLE_VALUE) CloseHandle(file);
+  std::vector<BYTE> result(32);DWORD length=32;
+  if(!ok || !CryptGetHashParam(hash,HP_HASHVAL,result.data(),&length,0)) result.clear();
+  CryptDestroyHash(hash);CryptReleaseContext(provider,0);return result;
+}
 static int Die(const wchar_t *s, HRESULT h) {
   std::wcerr << s << L" 0x" << std::hex << h << L"\n";
   return 1;
@@ -325,6 +340,26 @@ int wmain(int argc, wchar_t **argv) {
 #endif
   snap->Release();
   host->Release();
+  const auto preservedHash=FileSha256(good);
+  if(preservedHash.size()!=32) return 19;
+  SetEnvironmentVariableW(FBE_TEST_PATH,good.c_str());
+  SetEnvironmentVariableW(FBE_TEST_CANCEL,L"1");
+  host=new Host; snap=new Snapshot; h=Call(e,host,snap);snap->Release();host->Release();
+  if(h!=HRESULT_FROM_WIN32(ERROR_CANCELLED) || FileSha256(good)!=preservedHash) return 20;
+  SetEnvironmentVariableW(FBE_TEST_CANCEL,0);
+  HANDLE retained=CreateFileW(good.c_str(),GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,0,0);
+  if(retained==INVALID_HANDLE_VALUE) return 21;
+  host=new Host;snap=new Snapshot;h=Call(e,host,snap);snap->Release();host->Release();CloseHandle(retained);
+  if(SUCCEEDED(h) || FileSha256(good)!=preservedHash) return 22;
+#ifdef FBE_TEST_EXPORT_DOCX
+  SetEnvironmentVariableW(FBE_TEST_WRITE_FAIL,L"1");
+  host=new Host;snap=new Snapshot;h=Call(e,host,snap);snap->Release();host->Release();
+  if(SUCCEEDED(h) || FileSha256(good)!=preservedHash) return 23;
+  SetEnvironmentVariableW(FBE_TEST_WRITE_FAIL,0);
+#endif
+  host=new Host;snap=new Snapshot;h=Call(e,host,snap);snap->Release();host->Release();
+  if(FAILED(h) || FileSha256(good).size()!=32) return 24;
+  std::wcout<<L"Existing output SHA-256 preserved on cancellation and replacement failure; successful overwrite passed\n";
 #ifdef FBE_TEST_EXPORT_DOCX
   std::wstring blocked = root + L"\\missing-output-directory\\blocked.docx";
   SetEnvironmentVariableW(FBE_TEST_PATH, blocked.c_str());

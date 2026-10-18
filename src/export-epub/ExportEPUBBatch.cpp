@@ -894,9 +894,9 @@ void WriteReports(const Options& opt, const std::vector<BatchRecord>& records)
 }
 
 
-void DeletePartialOutputIfNeeded(const Options& opt, const fs::path& out)
+void DeletePartialOutputIfNeeded(const Options& opt, const fs::path& out, bool existedBefore)
 {
-    if (opt.keepFailedOutput) return;
+    if (opt.keepFailedOutput || existedBefore) return;
     std::error_code ec;
     if (fs::exists(out, ec)) {
         fs::remove(out, ec);
@@ -973,11 +973,10 @@ int wmain(int argc, wchar_t** argv)
             rec.output = out;
             rec.version = v;
             rec.sourceSize = FileSizeSafe(file);
+            const bool existedBefore = fs::exists(out);
             if (fs::exists(out)) {
                 if (FileSizeSafe(out) == 0) {
-                    std::wcout << L"RETRY: removing zero-size existing output " << out << L"\n";
-                    std::error_code removeEc;
-                    fs::remove(out, removeEc);
+                    std::wcout << L"RETRY: replacing zero-size output only after export succeeds " << out << L"\n";
                 } else if (opt.newerOnly && ExistingOutputIsUpToDate(file, out)) {
                     std::wcout << L"SKIP: " << out << L" is up to date\n";
                     ++skipped; rec.status = L"SKIP"; rec.skipReason = L"up to date"; rec.message = L"output file is newer than or same age as source"; rec.outputSize = FileSizeSafe(out); records.push_back(std::move(rec));
@@ -988,9 +987,6 @@ int wmain(int argc, wchar_t** argv)
                     ++skipped; rec.status = L"SKIP"; rec.skipReason = L"already exists"; rec.message = L"already exists"; rec.outputSize = FileSizeSafe(out); records.push_back(std::move(rec));
                     if (opt.progressEvery > 0 && planned % opt.progressEvery == 0) std::wcout << L"Progress: " << planned << L"/" << totalPlannedItems << L" items, OK=" << ok << L", skipped=" << skipped << L", failed=" << failed << L"\n";
                     continue;
-                } else if (opt.overwrite || opt.newerOnly) {
-                    std::error_code removeEc;
-                    fs::remove(out, removeEc);
                 }
             }
             if (opt.dryRun) {
@@ -1018,7 +1014,7 @@ int wmain(int argc, wchar_t** argv)
                 rec.status = L"FAIL";
                 rec.exitCode = 201;
                 rec.message = fs::exists(out) ? L"export returned success, but output file is empty" : L"export returned success, but output file was not created";
-                DeletePartialOutputIfNeeded(opt, out);
+                DeletePartialOutputIfNeeded(opt, out, existedBefore);
                 rec.outputSize = FileSizeSafe(out);
                 std::wcerr << L"FAIL rc=" << rec.exitCode << L": " << rec.message << L"\n";
             } else if (rc == 0) {
@@ -1028,7 +1024,7 @@ int wmain(int argc, wchar_t** argv)
                 ++failed;
                 rec.status = L"FAIL";
                 rec.message = SingleLineMessage(err[0] ? err : L"unknown error");
-                DeletePartialOutputIfNeeded(opt, out);
+                DeletePartialOutputIfNeeded(opt, out, existedBefore);
                 rec.outputSize = FileSizeSafe(out);
                 std::wcerr << L"FAIL rc=" << rc << L": " << rec.message << L"\n";
             }

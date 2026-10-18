@@ -1,4 +1,4 @@
-<# Builds and executes direct writer ownership and rollback coverage for ExportHTML. #>
+﻿<# Builds and executes direct writer ownership and rollback coverage for ExportHTML. #>
 [CmdletBinding()]
 param()
 
@@ -19,6 +19,20 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'ExportHTML writer harness did not compile.' }
     & $out
     if ($LASTEXITCODE -ne 0) { throw "ExportHTML writer harness failed: $LASTEXITCODE" }
+    $existing=Join-Path $scratch 'existing.html'
+    [IO.File]::WriteAllText($existing,'previous valid result',[Text.UTF8Encoding]::new($false))
+    $before=(Get-FileHash -LiteralPath $existing -Algorithm SHA256).Hash
+    foreach($failure in 'cancel','write-fail','short-write','commit-fail') {
+        & $out $failure $existing
+        if($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath $existing -Algorithm SHA256).Hash -cne $before){throw "Existing HTML changed during $failure"}
+    }
+    Write-Host "PASS: existing HTML SHA-256 preserved on cancellation, write failure, short write and replacement failure: $before"
+    $first=Join-Path $scratch 'first.html';$second=Join-Path $scratch 'second.html'
+    [IO.File]::WriteAllText($first,'original first');[IO.File]::WriteAllText($second,'original second')
+    $firstHash=(Get-FileHash -LiteralPath $first -Algorithm SHA256).Hash;$secondHash=(Get-FileHash -LiteralPath $second -Algorithm SHA256).Hash
+    & $out 'multi-fail' $existing
+    if($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath $first -Algorithm SHA256).Hash -cne $firstHash -or (Get-FileHash -LiteralPath $second -Algorithm SHA256).Hash -cne $secondHash){throw 'Multi-file HTML rollback changed an existing document'}
+    if(@(Get-ChildItem -LiteralPath $scratch -Filter 'fbe*.tmp').Count){throw 'HTML transaction leaked staging/backup files'}
 }
 finally {
     Remove-Item -LiteralPath $out -Force -ErrorAction SilentlyContinue

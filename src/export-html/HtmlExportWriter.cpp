@@ -71,7 +71,10 @@ void Writer::Report(Failure failure, const std::wstring& path, DWORD error) cons
 HRESULT Writer::OpenTarget()
 {
 	if (m_target != INVALID_HANDLE_VALUE) return S_OK;
-	m_target = ::CreateFile(m_options.targetPath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+	std::wstring staged;
+	const HRESULT stage = m_files.Stage(m_options.targetPath, staged);
+	if (FAILED(stage)) { Report(Failure::OpenTarget, m_options.targetPath, HRESULT_CODE(stage)); return stage; }
+	m_target = ::CreateFile(staged.c_str(), GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING, 0, NULL);
 	if (m_target != INVALID_HANDLE_VALUE) { m_targetOpened = true; return S_OK; }
 	const DWORD error = ::GetLastError();
 	Report(Failure::OpenTarget, m_options.targetPath, error);
@@ -198,12 +201,12 @@ HRESULT Writer::WriteSplitDocument(const std::wstring& fileName, const std::wstr
     const bool existed = ::GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES;
     if (existed && (!m_callbacks.confirmImageOverwrite || !m_callbacks.confirmImageOverwrite(path)))
         return S_FALSE;
-    ScopedHandle output(::CreateFile(path.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL));
+    std::wstring staged; const HRESULT stage = m_files.Stage(path, staged); if (FAILED(stage)) return stage;
+    ScopedHandle output(::CreateFile(staged.c_str(), GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING, 0, NULL));
     if (output.Get() == INVALID_HANDLE_VALUE) { const DWORD error = ::GetLastError(); Report(Failure::OpenTarget, path, error); return HRESULT_FROM_WIN32(error); }
     DWORD written = 0;
     const BOOL success = bytes.empty() || ::WriteFile(output.Get(), bytes.data(), static_cast<DWORD>(bytes.size()), &written, NULL);
     if (!success || written != bytes.size()) { const DWORD error = ::GetLastError(); Report(success ? Failure::ShortWrite : Failure::WriteTarget, path, error); return HRESULT_FROM_WIN32(error == ERROR_SUCCESS ? ERROR_WRITE_FAULT : error); }
-    if (!existed) m_createdDocuments.push_back(path);
     return S_OK;
 }
 HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
@@ -254,15 +257,14 @@ HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
             std::wstring imagePath;
             if (!HtmlExportWriterHelpers::BuildExternalImagePath(m_imagePaths,
                 std::wstring(V_BSTR(&id), ::SysStringLen(V_BSTR(&id))), imagePath)) continue;
-            HANDLE image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_NEW, 0, NULL);
-            bool created = image != INVALID_HANDLE_VALUE;
-            if (image == INVALID_HANDLE_VALUE && ::GetLastError() == ERROR_FILE_EXISTS) {
+            if (::GetFileAttributesW(imagePath.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 if (!m_callbacks.confirmImageOverwrite || !m_callbacks.confirmImageOverwrite(imagePath)) continue;
-                image = ::CreateFile(imagePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
             }
+            std::wstring staged; const HRESULT stage = m_files.Stage(imagePath, staged); if (FAILED(stage)) return stage;
+            HANDLE image = ::CreateFile(staged.c_str(), GENERIC_WRITE, 0, NULL, TRUNCATE_EXISTING, 0, NULL);
             if (image == INVALID_HANDLE_VALUE) {
                 Report(Failure::OpenImage, imagePath, ::GetLastError());
-                continue;
+                return HRESULT_FROM_WIN32(::GetLastError());
             }
             ScopedHandle imageHandle(image);
             DWORD written = 0;
@@ -272,10 +274,8 @@ HRESULT Writer::WriteImages(IXMLDOMDocument2* source)
             if (!wrote || written != length) {
                 Report(wrote ? Failure::ShortImageWrite : Failure::WriteImage, imagePath, error);
                 imageHandle.Reset();
-                ::DeleteFile(imagePath.c_str());
-                continue;
+                return HRESULT_FROM_WIN32(error ? error : ERROR_WRITE_FAULT);
             }
-            if (created) m_createdImages.push_back(imagePath);
         }
         catch (const _com_error&) {
             // A malformed individual binary remains non-fatal, as in the legacy writer.
@@ -306,7 +306,8 @@ HRESULT Writer::Finalize()
 		const HRESULT hr = WriteMimeFinalBoundary();
 		if (FAILED(hr)) return hr;
 	}
-	return CloseTarget();
+	const HRESULT close = CloseTarget();
+	return FAILED(close) ? close : m_files.Commit();
 }
 
 void Writer::Abort()
@@ -325,7 +326,6 @@ void Writer::Abort()
 	m_createdDocuments.clear();
 	if (m_createdImagesDirectory) ::RemoveDirectory(m_imagePaths.directory.c_str());
 	m_createdImagesDirectory = false;
-	if (m_targetOpened && !m_options.targetPath.empty()) ::DeleteFile(m_options.targetPath.c_str());
 }
 
 void Writer::Commit()

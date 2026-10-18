@@ -24,5 +24,16 @@ try {
     $lines = @(& $exe $dll); if ($LASTEXITCODE -ne 0) { throw "ExportEPUB v2 runtime harness failed: $LASTEXITCODE" }
     $epub3 = ($lines | Where-Object { $_ -like 'EPUB3=*' } | Select-Object -First 1) -replace '^EPUB3='; $epub2 = ($lines | Where-Object { $_ -like 'EPUB2=*' } | Select-Object -First 1) -replace '^EPUB2='
     if ([string]::IsNullOrWhiteSpace($epub3) -or [string]::IsNullOrWhiteSpace($epub2)) { throw 'Runtime harness did not return both EPUB paths.' }
-    try { Test-V2EpubContent $epub3 3; Test-V2EpubContent $epub2 2 } finally { Remove-Item -LiteralPath $epub3,$epub2 -Force -ErrorAction SilentlyContinue; $parent = Split-Path -Parent $epub3; Remove-Item -LiteralPath $parent -Force -ErrorAction SilentlyContinue }
+    Test-V2EpubContent $epub3 3; Test-V2EpubContent $epub2 2
+    $batch=Join-Path $root "out\$Configuration\ExportEPUBBatch.exe"
+    $fixture=Join-Path $PSScriptRoot 'fb2-metadata-cyrillic-smoke.fb2'
+    $before=(Get-FileHash -LiteralPath $epub3 -Algorithm SHA256).Hash
+    $held=[IO.File]::Open($epub3,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+    try { & $batch --input $fixture --output $epub3 --overwrite --dll $dll; $batchCode=$LASTEXITCODE } finally {$held.Dispose()}
+    if($batchCode -eq 0 -or (Get-FileHash -LiteralPath $epub3 -Algorithm SHA256).Hash -cne $before){throw 'Batch overwrite failure damaged existing EPUB'}
+    & $batch --input $fixture --output $epub3 --overwrite --dll $dll
+    if($LASTEXITCODE -ne 0){throw 'Batch successful overwrite failed'}
+    $batchZip=[IO.Compression.ZipFile]::OpenRead($epub3)
+    try {if(-not $batchZip.GetEntry('OEBPS/content.opf') -or -not $batchZip.GetEntry('mimetype')){throw 'Batch overwrite produced incomplete EPUB'}} finally {$batchZip.Dispose()}
+    Remove-Item -LiteralPath $epub3,$epub2 -Force -ErrorAction SilentlyContinue; $parent = Split-Path -Parent $epub3; Remove-Item -LiteralPath $parent -Force -ErrorAction SilentlyContinue
 } finally { Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath ($exe -replace '\.exe$','.pdb') -Force -ErrorAction SilentlyContinue }

@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "RuntimeLocalization.h"
 #include "..\\common\\ModernFileDialog.h"
+#include "../common/ExportFileTransaction.h"
 #include "..\\common\\fb2\\Fb2BinaryInspector.h"
 
 #include <vector>
@@ -3817,8 +3818,11 @@ extern "C" __declspec(dllexport) HRESULT WINAPI ExportFB2FileToDOCX(LPCWSTR fb2P
                     DocxExportSettings settings;
                     LoadDocxSettings(settings);
 
+                    FbeExport::FileTransaction files; std::wstring staged;
+                    const HRESULT stage = files.Stage(docxPath, staged);
                     CZipStoreWriter zip;
-                    if (!zip.Open(docxPath)) {
+                    if (FAILED(stage)) { result = stage; }
+                    else if (!zip.Open(staged.c_str())) {
                         const DWORD error = zip.Error();
                         result = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
                     } else {
@@ -3826,13 +3830,13 @@ extern "C" __declspec(dllexport) HRESULT WINAPI ExportFB2FileToDOCX(LPCWSTR fb2P
                         if (!builder.Build(zip)) {
                             zip.Close();
                             const DWORD error = zip.Error();
-                            ::DeleteFileW(docxPath);
                             result = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
                         } else {
                             if (!zip.Close()) {
                                 const DWORD error = zip.Error();
-                                ::DeleteFileW(docxPath);
                                 result = error ? HRESULT_FROM_WIN32(error) : E_FAIL;
+                            } else if (FAILED(result = files.Commit())) {
+                                // Existing output remains valid when replacement fails.
                             } else {
                                 if (settings.createReport) {
                                     CStringW reportName = MakeReportFileName(CStringW(docxPath));
@@ -4003,8 +4007,11 @@ HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		outputPath = dialogResult.paths.front().c_str();
         }
 
+        FbeExport::FileTransaction files; std::wstring staged;
+        const HRESULT stage = files.Stage(outputPath.GetString(), staged);
+        if (FAILED(stage)) return stage;
         CZipStoreWriter zip;
-		if (!zip.Open(outputPath)) {
+		if (!zip.Open(staged.c_str())) {
             const DWORD error = ::GetLastError();
             CString msg;
 			msg.Format(IDS_ERROR_OPEN_FILE, static_cast<LPCTSTR>(outputPath), static_cast<LPCTSTR>(U::Win32ErrMsg(error)));
@@ -4017,14 +4024,13 @@ HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
         if (!builder.Build(zip)) {
             zip.Close();
             const DWORD error = zip.Error();
-            ::DeleteFileW(outputPath);
             return error ? HRESULT_FROM_WIN32(error) : E_FAIL;
         }
         if (!zip.Close()) {
             const DWORD error = zip.Error();
-            ::DeleteFileW(outputPath);
             return error ? HRESULT_FROM_WIN32(error) : E_FAIL;
         }
+        const HRESULT committed = files.Commit(); if (FAILED(committed)) return committed;
         if (settings.createReport) {
             CStringW reportName = MakeReportFileName(CStringW(outputPath));
             WriteUtf8TextFile(reportName, builder.ReportText(CStringW(outputPath)));
