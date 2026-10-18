@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <psapi.h>
+#include <thread>
 #include "ThemeManager.h"
 #include "../version.h"
 #include "../common/DiagnosticPrivacy.h"
@@ -14,6 +15,8 @@
 
 namespace
 {
+    thread_local const std::atomic_bool* taskCancellation = nullptr;
+    bool TaskCancelled() { return taskCancellation && taskCancellation->load(std::memory_order_relaxed); }
 	struct ZipEntry { std::string name; DWORD crc; DWORD size; DWORD offset; };
 	class ZipStoreWriter
 	{
@@ -39,10 +42,16 @@ namespace
 	private:
 		HANDLE file; bool ok = true; ULONGLONG totalBytes = 0; std::vector<ZipEntry> entries;
 		DWORD Tell() { const DWORD result = ::SetFilePointer(file, 0, NULL, FILE_CURRENT); if (result == INVALID_SET_FILE_POINTER && ::GetLastError() != ERROR_SUCCESS) ok = false; return result; }
-		void Write(const void* data, DWORD size) { DWORD written = 0; if (!size) return; if (!::WriteFile(file, data, size, &written, NULL) || written != size) ok = false; }
+		void Write(const void* data, DWORD size) { const BYTE* cursor = static_cast<const BYTE*>(data);
+            while (ok && size) {
+                if (TaskCancelled()) { ok=false; break; }
+                const DWORD chunk=(std::min)(size,65536UL); DWORD written=0;
+                if (!::WriteFile(file,cursor,chunk,&written,NULL) || written!=chunk) { ok=false; break; }
+                cursor+=chunk; size-=chunk;
+            } }
 		void Write16(WORD value) { BYTE bytes[2] = { static_cast<BYTE>(value), static_cast<BYTE>(value >> 8) }; Write(bytes, 2); }
 		void Write32(DWORD value) { BYTE bytes[4] = { static_cast<BYTE>(value), static_cast<BYTE>(value >> 8), static_cast<BYTE>(value >> 16), static_cast<BYTE>(value >> 24) }; Write(bytes, 4); }
-		static DWORD Crc32(const std::vector<BYTE>& bytes) { DWORD crc = 0xffffffff; for (size_t index = 0; index < bytes.size(); ++index) { crc ^= bytes[index]; for (int bit = 0; bit < 8; ++bit) crc = (crc & 1) ? (crc >> 1) ^ 0xedb88320 : crc >> 1; } return crc ^ 0xffffffff; }
+		DWORD Crc32(const std::vector<BYTE>& bytes) { DWORD crc = 0xffffffff; for (size_t index = 0; index < bytes.size(); ++index) { if ((index & 65535)==0 && TaskCancelled()) { ok=false; return 0; } crc ^= bytes[index]; for (int bit = 0; bit < 8; ++bit) crc = (crc & 1) ? (crc >> 1) ^ 0xedb88320 : crc >> 1; } return crc ^ 0xffffffff; }
 	};
 
 	bool ReadBytes(const CString& path, std::vector<BYTE>& bytes)
@@ -53,11 +62,19 @@ namespace
         if(!::GetFileInformationByHandle(file,&info) || (info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT))) { ::CloseHandle(file); return false; }
 		LARGE_INTEGER size = {}; const bool valid = ::GetFileSizeEx(file, &size) && size.QuadPart >= 0 && size.QuadPart <= 64 * 1024 * 1024;
 		if (!valid) { ::CloseHandle(file); return false; }
-		bytes.resize(static_cast<size_t>(size.QuadPart)); DWORD read = 0; const bool result = bytes.empty() || (::ReadFile(file, &bytes[0], static_cast<DWORD>(bytes.size()), &read, NULL) && read == bytes.size()); ::CloseHandle(file); return result;
+		bytes.resize(static_cast<size_t>(size.QuadPart)); bool result=true;
+        for (size_t offset=0; offset<bytes.size();) {
+            if (TaskCancelled()) { result=false; break; }
+            const DWORD chunk=static_cast<DWORD>((std::min)(bytes.size()-offset,static_cast<size_t>(65536))); DWORD read=0;
+            if (!::ReadFile(file,bytes.data()+offset,chunk,&read,NULL) || read!=chunk) { result=false; break; }
+            offset+=read;
+        }
+        ::CloseHandle(file); if(!result) bytes.clear(); return result;
 	}
 
 	bool ContainsUnsafeContent(const std::vector<BYTE>& bytes)
 	{
+        if(TaskCancelled()) return true;
 		CString text;
         if (bytes.size() >= 2 && bytes[0] == 0xff && bytes[1] == 0xfe && bytes.size() % 2) return true;
 		if (bytes.size() >= 2 && bytes[0] == 0xff && bytes[1] == 0xfe) text.SetString(reinterpret_cast<const wchar_t*>(&bytes[2]), static_cast<int>((bytes.size() - 2) / 2));
@@ -99,7 +116,7 @@ namespace
 		const CString sessionStem = name.Left(name.GetLength() - 4);
 		std::vector<SessionFile> selected;
 		WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"\\fbe-trace-*.log", &find); if (search == INVALID_HANDLE_VALUE) return;
-		do { unsigned int segment = 0; if (!(find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && SessionPartNumber(find.cFileName, sessionStem, segment)) { SessionFile file = { directory + L"\\" + find.cFileName, segment }; selected.push_back(file); } } while (::FindNextFile(search, &find)); ::FindClose(search);
+		do { if(TaskCancelled()) break; unsigned int segment = 0; if (!(find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && SessionPartNumber(find.cFileName, sessionStem, segment)) { SessionFile file = { directory + L"\\" + find.cFileName, segment }; selected.push_back(file); } } while (::FindNextFile(search, &find)); ::FindClose(search);
 		std::sort(selected.begin(), selected.end(), [](const SessionFile& left, const SessionFile& right) { return left.part < right.part; });
 		for (size_t index = 0; index < selected.size(); ++index) files.push_back(selected[index].path);
 	}
@@ -183,7 +200,7 @@ namespace
         CString matched; unsigned int matches = 0;
         WIN32_FILE_ATTRIBUTE_DATA traceData = {}; const bool haveTrace = ::GetFileAttributesEx(session.logPath, GetFileExInfoStandard, &traceData) != FALSE;
         const ULONGLONG sessionWindow = 30ULL * 60ULL * 10000000ULL;
-        do {
+        do { if(TaskCancelled()) break;
             if (find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
             const CString path = directory + find.cFileName;
             const CString id = Field(ReadText(path), L"session_id");
@@ -339,6 +356,41 @@ namespace
     }
 }
 
+namespace {
+    CString CrashReviewIni() { return CString(DeploymentContext::SettingsDirectory().c_str())+L"diagnostics-reviewed.ini"; }
+    CString CrashReviewKey(const StartupTrace::DiagnosticSession& session) {
+        const CString name=Leaf(session.crashPath);
+        return name.Left(14)==L"FBENext-crash-" && name.Right(4)==L".txt" ? name : CString();
+    }
+    CString CrashReviewFingerprint(const StartupTrace::DiagnosticSession& session) {
+        if(session.crashPath.IsEmpty() || session.crashAmbiguous) return CString();
+        HANDLE file=::CreateFile(session.crashPath,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,FILE_FLAG_OPEN_REPARSE_POINT,NULL);
+        if(file==INVALID_HANDLE_VALUE) return CString();
+        BY_HANDLE_FILE_INFORMATION info={}; const bool valid=::GetFileInformationByHandle(file,&info)!=FALSE && !(info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT));
+        ::CloseHandle(file); if(!valid) return CString();
+        CString value; value.Format(L"%08lX-%08lX%08lX-%08lX%08lX-%08lX%08lX",info.dwVolumeSerialNumber,info.nFileIndexHigh,info.nFileIndexLow,info.ftLastWriteTime.dwHighDateTime,info.ftLastWriteTime.dwLowDateTime,info.nFileSizeHigh,info.nFileSizeLow);
+        return value;
+    }
+}
+StartupTrace::DiagnosticTaskScope::DiagnosticTaskScope(const std::atomic_bool& cancelled) : previous(taskCancellation) { taskCancellation=&cancelled; }
+StartupTrace::DiagnosticTaskScope::~DiagnosticTaskScope() { taskCancellation=previous; }
+bool StartupTrace::IsDiagnosticCrashReviewed(const DiagnosticSession& session) {
+    const CString key=CrashReviewKey(session), fingerprint=CrashReviewFingerprint(session);
+    if(key.IsEmpty() || fingerprint.IsEmpty() || fingerprint!=session.crashFingerprint) return false;
+    wchar_t saved[128]={}; ::GetPrivateProfileString(L"Reviewed",key,L"",saved,_countof(saved),CrashReviewIni());
+    return fingerprint==saved;
+}
+bool StartupTrace::MarkDiagnosticCrashReviewed(const DiagnosticSession& session) {
+    const CString key=CrashReviewKey(session), fingerprint=CrashReviewFingerprint(session);
+    if(key.IsEmpty() || fingerprint.IsEmpty() || fingerprint!=session.crashFingerprint) return false;
+    return ::WritePrivateProfileString(L"Reviewed",key,fingerprint,CrashReviewIni())!=FALSE;
+}
+bool StartupTrace::HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSession>& sessions) {
+    return std::any_of(sessions.begin(),sessions.end(),[](const DiagnosticSession& item) {
+        return item.outcome==L"crash" && !item.crashPath.IsEmpty() && !IsDiagnosticCrashReviewed(item);
+    });
+}
+
 std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSessions()
 {
     std::vector<DiagnosticSession> sessions;
@@ -349,7 +401,7 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
     for (const auto& directory : directories) {
     WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"fbe-session-*.txt", &find);
     if (search != INVALID_HANDLE_VALUE) {
-        do {
+        do { if(TaskCancelled()) break;
             if (find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
             DiagnosticSession item; item.metadataPath = directory + find.cFileName;
             CString text(ReadText(item.metadataPath)); item.id = Field(text, L"session_id");
@@ -362,7 +414,7 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
     }
     search = ::FindFirstFile(directory + L"fbe-trace-*.log", &find);
     if (search != INVALID_HANDLE_VALUE) {
-        do {
+        do { if(TaskCancelled()) break;
             if (find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
             CString name(find.cFileName); if (name.Find(L"-part") >= 0 || !LegacyTraceName(name)) continue;
             const CString path = directory + name, text = ReadLogHeader(path), id = LogSessionId(text);
@@ -382,7 +434,7 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
     const CString crashRoot=directory+L"Crashes\\";
     search=::FindFirstFile(crashRoot+L"FBENext-crash-*.txt",&find);
     if(search!=INVALID_HANDLE_VALUE) {
-        do {
+        do { if(TaskCancelled()) break;
             if(find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT)) continue;
             const CString path=crashRoot+find.cFileName,text=ReadText(path),id=Field(text,L"session_id");
             if(!ValidSessionId(id) || std::any_of(sessions.begin(),sessions.end(),[&](const DiagnosticSession& item) { return item.id==id; })) continue;
@@ -397,6 +449,8 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
         DiagnosticSession item; item.id = SessionId(); item.started = SessionStarted(); item.version = FBE_VERSION_WSTRING;
         item.processId = ::GetCurrentProcessId(); item.outcome = L"unknown"; item.logPath = CurrentLogPath(); item.metadataPath=CurrentLogDirectory()+L"\\fbe-session-"+item.id+L".txt"; sessions.push_back(item);
     }
+    if(TaskCancelled()) return {};
+    for(auto& session:sessions) session.crashFingerprint=CrashReviewFingerprint(session);
     std::sort(sessions.begin(), sessions.end(), [](const DiagnosticSession& a, const DiagnosticSession& b) { if(a.started!=b.started) return a.started>b.started;
         if(a.processId!=b.processId) return a.processId>b.processId;
         const auto suffix=[](const CString& path) { const int marker=path.Find(L"-pid"); const int dash=marker<0 ? -1 : path.Find(L'-',marker+4); return dash<0 ? 0UL : wcstoul(path.Mid(dash+1),NULL,10); };
@@ -407,7 +461,7 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
 bool StartupTrace::PrepareDiagnosticPackage(const DiagnosticSession& selected, const std::vector<CString>& excluded,
     std::shared_ptr<const DiagnosticPackageSnapshot>& snapshot, CString& error)
 {
-    snapshot.reset(); error.Empty(); Flush();
+    snapshot.reset(); error.Empty(); if(TaskCancelled()) { error=L"Cancelled."; return false; } Flush();
     // Resolve from the catalog again; callers cannot introduce arbitrary book paths.
     const auto catalog = EnumerateDiagnosticSessions(); DiagnosticSession session; unsigned int found = 0;
     for (const auto& item : catalog) if (item.id == selected.id) { session = item; ++found; }
@@ -520,6 +574,7 @@ bool StartupTrace::PrepareDiagnosticPackage(const DiagnosticSession& selected, c
     add(L"package-manifest.txt", Utf8(manifest), false); add(L"manifest.json", Utf8(json), false);
     for (const auto& item : result->components) if (!item.optional && item.status != L"included") valid = false;
     result->valid = valid && total <= 255ULL * 1024ULL * 1024ULL;
+    if(TaskCancelled()) { error=L"Cancelled."; return false; }
     snapshot = result;
     if (!result->valid) { error = L"Privacy scan rejected mandatory content or package size limit exceeded."; return false; }
     return true;
@@ -527,20 +582,38 @@ bool StartupTrace::PrepareDiagnosticPackage(const DiagnosticSession& selected, c
 
 bool StartupTrace::SaveDiagnosticPackage(const DiagnosticPackageSnapshot& snapshot, const CString& path, CString& error)
 {
-    error.Empty(); if (!snapshot.Valid()) { error = L"Unverified snapshot."; return false; }
+    error.Empty(); if(TaskCancelled()) { error=L"Cancelled."; return false; } if (!snapshot.Valid()) { error = L"Unverified snapshot."; return false; }
     for (const auto& item : snapshot.Components()) if (item.status == L"included" && ContainsUnsafeContent(item.bytes)) { error = L"Privacy scan rejected final bytes."; return false; }
     bool success = false;
     {
+        if(TaskCancelled()) { error=L"Cancelled."; return false; }
         ZipStoreWriter zip;
         if (!zip.Open(path)) { error = L"Could not create the diagnostic package (choose a new file name)."; return false; }
         bool added = true;
         for (const auto& item : snapshot.Components()) if (added && item.status == L"included") {
             CStringA name(CW2A(item.name, CP_UTF8)); added = zip.Add(name, item.bytes);
         }
-        const bool closed = zip.Close(); success = added && closed;
+        const bool closed = zip.Close(); success = added && closed && !TaskCancelled();
     }
     if (!success) { ::DeleteFile(path); error = L"Could not write the diagnostic package."; }
     return success;
+}
+
+bool StartupTrace::SaveDiagnosticPackageUnique(const DiagnosticPackageSnapshot& snapshot, const CString& requested, CString& actual, CString& error)
+{
+    actual.Empty(); const int slash=(std::max)(requested.ReverseFind(L'\\'),requested.ReverseFind(L'/'));
+    const int dot=requested.ReverseFind(L'.'); const bool extension=dot>slash;
+    const CString stem=extension ? requested.Left(dot) : requested, suffix=extension ? requested.Mid(dot) : CString(L".zip");
+    for(unsigned int attempt=0; attempt<10000; ++attempt) {
+        if(TaskCancelled()) { error=L"Cancelled."; return false; }
+        CString path=requested;
+        if(attempt) { CString number; number.Format(L" (%u)",attempt); path=stem+number+suffix; }
+        if(::GetFileAttributes(path)!=INVALID_FILE_ATTRIBUTES) continue;
+        if(SaveDiagnosticPackage(snapshot,path,error)) { actual=path; return true; }
+        // CREATE_NEW is the final authority, including concurrent save races.
+        if(::GetFileAttributes(path)==INVALID_FILE_ATTRIBUTES) return false;
+    }
+    error=L"No unused package name is available."; return false;
 }
 
 bool StartupTrace::CreateDiagnosticPackage(CString& packagePath, CString& error)
@@ -564,6 +637,7 @@ StartupTrace::DiagnosticLogCleanupResult StartupTrace::CleanupDiagnosticSessions
     DiagnosticLogCleanupResult result;
     const auto sessions = EnumerateDiagnosticSessions();
     for (size_t i = keep; i < sessions.size(); ++i) {
+        if(TaskCancelled()) break;
         const auto& session = sessions[i];
         // Absence of a shutdown marker is not proof of a crash. Keep all explicit crash evidence.
         if (session.id == SessionId() || !session.crashPath.IsEmpty() || session.crashAmbiguous) continue;
@@ -576,6 +650,7 @@ StartupTrace::DiagnosticLogCleanupResult StartupTrace::CleanupDiagnosticSessions
         if (!session.legacy && ::GetFileAttributes(events) != INVALID_FILE_ATTRIBUTES) files.push_back(events);
         ++result.sessionsFound; bool deleted = false, failed = false;
         for (const auto& file : files) {
+            if(TaskCancelled()) break;
             WIN32_FILE_ATTRIBUTE_DATA data = {};
             if (!::GetFileAttributesEx(file, GetFileExInfoStandard, &data) || (data.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) { ++result.filesFailed; failed = true; continue; }
             if (preview || ::DeleteFile(file)) {

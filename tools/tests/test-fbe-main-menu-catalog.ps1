@@ -137,9 +137,9 @@ foreach($name in @('ID_FILE_RESTART', 'ID_FILE_IMPORT_PLACEHOLDER', 'ID_FILE_EXP
     if($commandIds.ContainsKey($value)) { throw "Служебные ID меню совпадают: $name." }
     $commandIds[$value] = $name
 }
-$toolsDiagnostics = '(?s)POPUP "&Tools"\s+BEGIN.*?MENUITEM "[^"]+",\s*ID_TOOLS_DIAGNOSTIC_TRACE.*?POPUP "Diagnostic tools"\s+BEGIN.*?ID_TOOLS_OPEN_DIAGNOSTIC_LOG.*?ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER.*?ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH.*?ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS.*?ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE.*?END'
-if ($resourceText -notmatch $toolsDiagnostics) { throw 'Диалог диагностики должен быть доступен из Сервиса, прежние команды сохранены в подменю.' }
-if($frameSource -notmatch 'FindTopLevelMenuPositionByCommand\(toolsMenu,ID_TOOLS_OPEN_DIAGNOSTIC_LOG\)') { throw 'Диагностическое подменю должно локализоваться без переименования меню Сервис.' }
+$helpDiagnostics = '(?s)POPUP "&Help"\s+BEGIN.*?MENUITEM "[^"]+",\s*ID_TOOLS_DIAGNOSTIC_TRACE.*?POPUP "Diagnostic tools"\s+BEGIN.*?ID_TOOLS_OPEN_DIAGNOSTIC_LOG.*?ID_TOOLS_OPEN_DIAGNOSTIC_FOLDER.*?ID_TOOLS_COPY_DIAGNOSTIC_LOG_PATH.*?ID_TOOLS_CLEAR_DIAGNOSTIC_LOGS.*?ID_TOOLS_CREATE_DIAGNOSTIC_PACKAGE.*?END'
+if ($resourceText -notmatch $helpDiagnostics) { throw 'Диалог диагностики должен быть доступен из Справки, прежние команды сохранены в подменю.' }
+if($frameSource -notmatch 'FindTopLevelMenuPositionByCommand\(helpMenu, ID_TOOLS_OPEN_DIAGNOSTIC_LOG\)') { throw 'Диагностическое подменю должно локализоваться без переименования меню Справка.' }
 if ([regex]::Matches($resourceText, 'ID_TOOLS_(DIAGNOSTIC_TRACE|OPEN_DIAGNOSTIC_LOG|OPEN_DIAGNOSTIC_FOLDER|COPY_DIAGNOSTIC_LOG_PATH|CLEAR_DIAGNOSTIC_LOGS)').Count -ne 5) {
     throw 'Каждая команда диагностики должна присутствовать в главном меню ровно один раз.'
 }

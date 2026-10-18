@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <atomic>
 
 namespace StartupTrace
 {
@@ -105,6 +106,7 @@ namespace StartupTrace
     struct DiagnosticSession
     {
         CString id, logPath, metadataPath, crashPath, started, ended, version, outcome;
+        CString crashFingerprint; // Identity of the exact report offered for review.
         DWORD processId = 0;
         bool legacy = false;
         bool crashAmbiguous = false;
@@ -127,6 +129,21 @@ namespace StartupTrace
         friend bool PrepareDiagnosticPackage(const DiagnosticSession&, const std::vector<CString>&,
             std::shared_ptr<const DiagnosticPackageSnapshot>&, CString&);
     };
+    // Per-thread cancellation for diagnostic I/O only. Existing entry points stay compatible.
+    class DiagnosticTaskScope
+    {
+        const std::atomic_bool* previous;
+    public:
+        explicit DiagnosticTaskScope(const std::atomic_bool& cancelled);
+        ~DiagnosticTaskScope();
+        DiagnosticTaskScope(const DiagnosticTaskScope&) = delete;
+        DiagnosticTaskScope& operator=(const DiagnosticTaskScope&) = delete;
+    };
+    bool IsDiagnosticCrashReviewed(const DiagnosticSession& session);
+    bool MarkDiagnosticCrashReviewed(const DiagnosticSession& session);
+    bool HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSession>& sessions);
+    bool SaveDiagnosticPackageUnique(const DiagnosticPackageSnapshot& snapshot, const CString& requested,
+        CString& actual, CString& error);
     CString SessionId();
     CString SessionStarted();
     CString BasicEnvironmentReport();

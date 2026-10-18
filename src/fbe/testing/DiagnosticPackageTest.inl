@@ -63,6 +63,29 @@ int StartupTrace::RunDiagnosticPackageTest()
         for(const auto& item:excludedSnapshot->Components()) if(item.name==L"diagnostic-modules.txt") excluded=item.status==L"excluded-by-user" && item.bytes.empty();
         if(!excluded) return 96;
     }
+    if(prepared) {
+        std::atomic_bool cancelled{true}; CString cancelError, actual;
+        std::shared_ptr<const DiagnosticPackageSnapshot> cancelledSnapshot;
+        {
+            DiagnosticTaskScope cancellation(cancelled);
+            if(!EnumerateDiagnosticSessions().empty()) return 110;
+            if(PrepareDiagnosticPackage(session,{},cancelledSnapshot,cancelError) || cancelledSnapshot) return 111;
+            if(SaveDiagnosticPackage(*snapshot,directory+L"cancelled.zip",cancelError)) return 112;
+            if(SaveDiagnosticPackageUnique(*snapshot,directory+L"cancelled.zip",actual,cancelError)) return 113;
+        }
+        if(::GetFileAttributes(directory+L"cancelled.zip")!=INVALID_FILE_ATTRIBUTES) return 114;
+        if(!PrepareDiagnosticPackage(session,{},cancelledSnapshot,cancelError)) return 115; // Scope must restore TLS.
+    }
+    if(found && !session.crashPath.IsEmpty() && !session.crashAmbiguous) {
+        report+=CString(L"reviewed-before=")+(IsDiagnosticCrashReviewed(session) ? L"1" : L"0")+L"\r\n";
+        wchar_t mark[2]={};
+        if(::GetEnvironmentVariable(L"FBE_NEXT_TEST_REVIEW_CRASH",mark,2)==1 && mark[0]==L'1') {
+            std::vector<BYTE> before,after; if(!ReadBytes(session.crashPath,before)) return 116;
+            if(!MarkDiagnosticCrashReviewed(session) || !IsDiagnosticCrashReviewed(session)) return 117;
+            if(!ReadBytes(session.crashPath,after) || before!=after) return 118;
+        }
+        report+=CString(L"reviewed-after=")+(IsDiagnosticCrashReviewed(session) ? L"1" : L"0")+L"\r\n";
+    }
     // New events after preview must not change the saved package.
     Error(L"diagnostic", L"DGAFTER", L"hr=0x80070005");
     { ScopedOperation afterPreview(Operation::ViewSwitch); SetActiveEditorMode(EditorMode::Body); afterPreview.Succeeded(); }
@@ -71,6 +94,12 @@ int StartupTrace::RunDiagnosticPackageTest()
         std::vector<BYTE> before,after; ReadBytes(directory+L"package.zip",before); CString collisionError;
         if(SaveDiagnosticPackage(*snapshot,directory+L"package.zip",collisionError)) return 97;
         ReadBytes(directory+L"package.zip",after); if(before!=after) return 98;
+        CString path1,path2,error1,error2; bool saved1=false,saved2=false;
+        std::thread first([&]() { saved1=SaveDiagnosticPackageUnique(*snapshot,directory+L"package.zip",path1,error1); });
+        std::thread second([&]() { saved2=SaveDiagnosticPackageUnique(*snapshot,directory+L"package.zip",path2,error2); });
+        first.join(); second.join();
+        if(!saved1 || !saved2 || path1==path2 || path1==directory+L"package.zip" || path2==directory+L"package.zip") return 119;
+        for(const auto& path:{directory+L"package.zip",path1,path2}) { if(!ReadBytes(path,after) || before!=after) return 120; }
     }
     wchar_t cleanup[2]={};
     if(::GetEnvironmentVariable(L"FBE_NEXT_TEST_PACKAGE_CLEANUP",cleanup,2)==1 && cleanup[0]==L'1') {

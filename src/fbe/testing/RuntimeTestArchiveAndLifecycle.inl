@@ -838,6 +838,15 @@
 		::PostQuitMessage(backupDisabled && (verifyOnly || (sourceEdited && sourceApplied && saved)) ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"diagnostic-dialog-runtime"))
+	{
+		DiagnosticDialog dialog(m_diagnostic_commands);
+		const bool passed=dialog.RunRuntimeTest(m_hWnd);
+		CStringA report=passed ? "layout_dpi_theme=1\nresponsive_cancel_close=1\n" : "layout_dpi_theme=0\nresponsive_cancel_close=0\n";
+		report+=dialog.RuntimeTestDetails();
+		DWORD written=0; output.Write(report,static_cast<DWORD>(report.GetLength()),&written); output.Flush(); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"diagnostic-operations-runtime"))
 	{
 		bool modes = true;

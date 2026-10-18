@@ -5,7 +5,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $work=Join-Path $root ('build/diagnostic-session-test-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $work | Out-Null
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_PACKAGE_DIRECTORY','FBE_NEXT_TEST_PACKAGE_SESSION','FBE_NEXT_TRACE','FBE_NEXT_TEST_PACKAGE_CLEANUP','TEMP','TMP')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_TEST_PACKAGE_DIRECTORY','FBE_NEXT_TEST_PACKAGE_SESSION','FBE_NEXT_TRACE','FBE_NEXT_TEST_PACKAGE_CLEANUP','FBE_NEXT_TEST_REVIEW_CRASH','TEMP','TMP')
 $saved=@{};foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 function Assert-True($value,[string]$message){if(!$value){throw $message}}
 function Run-Export([string]$name,[bool]$trace,[string]$selected='', [int]$expected=0) {
@@ -94,6 +94,29 @@ try {
  $matched=Run-Export 'right-crash' $false $active.Id
  Assert-True ($matched.Contents['crash/latest-crash-report.txt'] -match '0xC0000005') 'Crash did not match by session ID'
  Assert-True ($matched.Manifest.outcome -eq 'crash') 'Crash outcome missing'
+ # Review markers persist across processes, retain report bytes, and notice replacement files.
+ $crashHash=(Get-FileHash -LiteralPath $right -Algorithm SHA256).Hash
+ $unread=Get-Content -Raw (Join-Path $work 'right-crash/result.txt')
+ Assert-True ($unread -match 'reviewed-before=0') 'New crash was already reviewed'
+ $env:FBE_NEXT_TEST_REVIEW_CRASH='1'
+ $null=Run-Export 'review-crash' $false $active.Id
+ $env:FBE_NEXT_TEST_REVIEW_CRASH=$null
+ $null=Run-Export 'review-persisted' $false $active.Id
+ Assert-True ((Get-Content -Raw (Join-Path $work 'review-persisted/result.txt')) -match 'reviewed-before=1') 'Review acknowledgement did not survive restart'
+ Assert-True ((Get-FileHash -LiteralPath $right -Algorithm SHA256).Hash -eq $crashHash) 'Review changed or deleted report bytes'
+ [IO.File]::AppendAllText($right,"Exception flags: 0x00000000`r`n",[Text.Encoding]::Unicode)
+ $null=Run-Export 'review-replaced' $false $active.Id
+ Assert-True ((Get-Content -Raw (Join-Path $work 'review-replaced/result.txt')) -match 'reviewed-before=0') 'Changed crash was suppressed by an old acknowledgement'
+ # Startup must retain crash evidence beyond the former ten-event limit.
+ $retained=@()
+ foreach($i in 1..12) {
+  $retainedReport=Join-Path $crashes ('FBENext-crash-19990101-000000-{0:d3}-pid1' -f $i)
+  [IO.File]::WriteAllText(($retainedReport+'.txt'),"session_id=$($base.Id)`r`nException code: 0xC0000005`r`n",[Text.Encoding]::Unicode)
+  [IO.File]::WriteAllText(($retainedReport+'.dmp'),'retained dump fixture')
+  $retained+=($retainedReport+'.txt'),($retainedReport+'.dmp')
+ }
+ $null=Run-Export 'retain-crash-history' $false $active.Id
+ foreach($path in $retained){Assert-True (Test-Path -LiteralPath $path) 'Startup deleted historical crash evidence'}
  $duplicate=Join-Path $crashes 'FBENext-crash-20000101-000002-000-pid99999.txt'
  Copy-Item -LiteralPath $right -Destination $duplicate
  $ambiguous=Run-Export 'ambiguous-crash' $false $active.Id

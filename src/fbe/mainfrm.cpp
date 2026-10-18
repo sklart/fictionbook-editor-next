@@ -1051,9 +1051,7 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	SetRuntimeMenuItemTextByPosition(menu, 3, L"fbe.menu.idr_mainframe.popup.insert");
 	SetRuntimeMenuItemTextByPosition(menu, 4, L"fbe.menu.idr_mainframe.popup.style");
 	SetRuntimeMenuItemTextByPosition(menu, 5, L"fbe.menu.idr_mainframe.popup.tools");
-    HMENU toolsMenu=::GetSubMenu(menu,5);
-    const int diagnosticToolsPosition=FindTopLevelMenuPositionByCommand(toolsMenu,ID_TOOLS_OPEN_DIAGNOSTIC_LOG);
-    if(diagnosticToolsPosition>=0) SetRuntimeMenuItemTextByPosition(toolsMenu,diagnosticToolsPosition,L"fbe.menu.idr_mainframe.popup.diagnostics");
+
 	const int scriptsPosition = FindTopLevelScriptsMenuPosition(menu);
 	if(scriptsPosition >= 0)
 		SetRuntimeMenuItemTextByPosition(menu, scriptsPosition, L"fbe.menu.idr_mainframe.popup.scripts");
@@ -1062,7 +1060,7 @@ static void ApplyRuntimeMainFrameMenuLocalization(HMENU menu)
 	{
 		SetRuntimeMenuItemTextByPosition(menu, helpPosition, L"fbe.menu.idr_mainframe.popup.help");
 		HMENU helpMenu = ::GetSubMenu(menu, helpPosition);
-		const int diagnosticsPosition = FindTopLevelMenuPositionByCommand(helpMenu, ID_TOOLS_DIAGNOSTIC_TRACE);
+		const int diagnosticsPosition = FindTopLevelMenuPositionByCommand(helpMenu, ID_TOOLS_OPEN_DIAGNOSTIC_LOG);
 		if(diagnosticsPosition >= 0)
 			SetRuntimeMenuItemTextByPosition(helpMenu, diagnosticsPosition, L"fbe.menu.idr_mainframe.popup.diagnostics");
 	}
@@ -2413,7 +2411,7 @@ BOOL CMainFrame::OnIdle()
 		CString title(tt + L" FB Editor Next");
 		if (StartupTrace::Enabled())
 			title += GetDiagnosticTraceText(L"fbe.trace.title_suffix", L" [Диагностика]");
-		if(g_hasPreviousDiagnosticCrash) title += FbeLoadRuntimeStringByKey(L"fbe.diagnostics.crash_notice",L" [Crash report: Tools > Diagnostics]");
+		if(g_hasPreviousDiagnosticCrash) title += FbeLoadRuntimeStringByKey(L"fbe.diagnostics.crash_notice",L" [New crash report: Help > Diagnostics]");
 		SetWindowText(title);
 	}
 	if (profileIdle) g_idleProfile.titleMilliseconds += ::GetTickCount64() - titleStarted;
@@ -3948,7 +3946,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	StartupTrace::AppendTestStartupBreadcrumb("scripts-toolbar-restore-complete");
 
   const auto diagnosticSessions = m_diagnostic_commands.Sessions();
-  g_hasPreviousDiagnosticCrash = std::any_of(diagnosticSessions.begin(),diagnosticSessions.end(),[](const StartupTrace::DiagnosticSession& item) { return item.outcome==L"crash"; });
+  g_hasPreviousDiagnosticCrash = StartupTrace::HasUnreviewedDiagnosticCrashes(diagnosticSessions);
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
 	ThemeManager::ApplyToWindow(m_hWnd);
   m_need_title_update = true;
@@ -5772,11 +5770,15 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 {
-    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd); return 0;
+    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd);
+    if(dialog.CatalogReady()) g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes();
+    m_need_title_update=true; return 0;
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
-    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd); return 0;
+    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd);
+    if(dialog.CatalogReady()) g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes();
+    m_need_title_update=true; return 0;
 }
 
 LRESULT CMainFrame::OnToolsRefreshScripts(WORD, WORD, HWND, BOOL&)

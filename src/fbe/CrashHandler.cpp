@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include <dbghelp.h>
-#include <algorithm>
-#include <vector>
 
 #include "CrashHandler.h"
 #include "StartupTrace.h"
@@ -14,7 +12,6 @@
 
 namespace
 {
-	const size_t MAX_CRASH_REPORTS = 10;
 	wchar_t g_crashDirectory[MAX_PATH] = {};
 
 	CString CaptureExceptionStack(EXCEPTION_POINTERS* exceptionInfo)
@@ -69,56 +66,6 @@ namespace
 
 		::SymCleanup(process);
 		return result.IsEmpty() ? CString(L"unavailable") : result;
-	}
-
-	void CleanupOldReports(const CString& crashDirectory)
-	{
-		std::vector<CString> reportNames;
-		WIN32_FIND_DATA findData = {};
-		HANDLE search = ::FindFirstFile(crashDirectory + L"FBENext-crash-*.*", &findData);
-		if (search == INVALID_HANDLE_VALUE)
-			return;
-
-		do
-		{
-			if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-				continue;
-
-			CString name(findData.cFileName);
-			const int extension = name.ReverseFind(L'.');
-			if (extension < 0)
-				continue;
-			const CString suffix(name.Mid(extension));
-			if (suffix.CompareNoCase(L".dmp") != 0 && suffix.CompareNoCase(L".txt") != 0)
-				continue;
-
-			name.Delete(extension, name.GetLength() - extension);
-			bool alreadyAdded = false;
-			for (size_t i = 0; i < reportNames.size(); ++i)
-			{
-				if (reportNames[i].CompareNoCase(name) == 0)
-				{
-					alreadyAdded = true;
-					break;
-				}
-			}
-			if (!alreadyAdded)
-				reportNames.push_back(name);
-		}
-		while (::FindNextFile(search, &findData));
-		::FindClose(search);
-
-		std::sort(reportNames.begin(), reportNames.end(),
-			[](const CString& left, const CString& right)
-			{
-				return left.CompareNoCase(right) > 0;
-			});
-
-		for (size_t i = MAX_CRASH_REPORTS; i < reportNames.size(); ++i)
-		{
-			::DeleteFile(crashDirectory + reportNames[i] + L".dmp");
-			::DeleteFile(crashDirectory + reportNames[i] + L".txt");
-		}
 	}
 
 	void WriteTextReport(const wchar_t* path, EXCEPTION_POINTERS* exceptionInfo,
@@ -237,7 +184,7 @@ void CrashDiagnostics::Initialize()
 	if (!::CreateDirectory(crashDirectory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS)
 		return;
 
-	CleanupOldReports(crashDirectory);
+	// Reports are retained; acknowledging a notification never deletes evidence.
 	wcsncpy_s(g_crashDirectory, crashDirectory, _TRUNCATE);
 	::SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 }

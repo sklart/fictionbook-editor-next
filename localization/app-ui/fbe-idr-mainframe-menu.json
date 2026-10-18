@@ -2306,18 +2306,18 @@
       "kind": "MESSAGE",
       "targetId": "",
       "translations": {
-        "en-US": " [Crash report: Tools > Diagnostics]",
-        "ru-RU": " [Есть crash-отчёт: Сервис → Диагностика]",
-        "uk-UA": " [Є аварійний звіт: Сервіс → Діагностика]",
-        "de-DE": " [Absturzbericht: Extras → Diagnose]",
-        "fr-FR": " [Rapport de plantage : Outils → Diagnostic]",
-        "es-ES": " [Informe de fallo: Herramientas → Diagnóstico]",
-        "it-IT": " [Rapporto di arresto: Strumenti → Diagnostica]",
-        "pl-PL": " [Raport awarii: Narzędzia → Diagnostyka]",
-        "pt-PT": " [Relatório de falha: Ferramentas → Diagnóstico]",
-        "nl-NL": " [Crashrapport: Extra → Diagnostiek]",
-        "cs-CZ": " [Zpráva o pádu: Nástroje → Diagnostika]",
-        "bg-BG": " [Отчет за срив: Инструменти → Диагностика]"
+        "en-US": " [New crash report: Help > Diagnostics]",
+        "ru-RU": " [Новый crash-отчёт: Справка → Диагностика]",
+        "uk-UA": " [Новий аварійний звіт: Довідка → Діагностика]",
+        "de-DE": " [Neuer Absturzbericht: Hilfe → Diagnose]",
+        "fr-FR": " [Nouveau rapport de plantage : Aide → Diagnostic]",
+        "es-ES": " [Nuevo informe de fallo: Ayuda → Diagnóstico]",
+        "it-IT": " [Nuovo rapporto di arresto: Aiuto → Diagnostica]",
+        "pl-PL": " [Nowy raport awarii: Pomoc → Diagnostyka]",
+        "pt-PT": " [Novo relatório de falha: Ajuda → Diagnóstico]",
+        "nl-NL": " [Nieuw crashrapport: Help → Diagnostiek]",
+        "cs-CZ": " [Nová zpráva o pádu: Nápověda → Diagnostika]",
+        "bg-BG": " [Нов отчет за срив: Помощ → Диагностика]"
       }
     },
     "fbe.diagnostics.duration": {
@@ -2408,6 +2408,168 @@
         "nl-NL": "Groottelimiet",
         "cs-CZ": "Limit velikosti",
         "bg-BG": "Ограничение на размера"
+      }
+    },
+    "fbe.diagnostics.working": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Preparing diagnostics...",
+        "ru-RU": "Подготовка диагностики...",
+        "uk-UA": "Підготовка діагностики...",
+        "de-DE": "Diagnose wird vorbereitet...",
+        "fr-FR": "Préparation du diagnostic...",
+        "es-ES": "Preparando diagnóstico...",
+        "it-IT": "Preparazione diagnostica...",
+        "pl-PL": "Przygotowywanie diagnostyki...",
+        "pt-PT": "A preparar diagnóstico...",
+        "nl-NL": "Diagnostiek voorbereiden...",
+        "cs-CZ": "Příprava diagnostiky...",
+        "bg-BG": "Подготовка на диагностиката..."
+      }
+    },
+    "fbe.diagnostics.saving": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Saving verified package...",
+        "ru-RU": "Сохранение проверенного пакета...",
+        "uk-UA": "Збереження перевіреного пакета...",
+        "de-DE": "Geprüftes Paket wird gespeichert...",
+        "fr-FR": "Enregistrement du paquet vérifié...",
+        "es-ES": "Guardando paquete verificado...",
+        "it-IT": "Salvataggio del pacchetto verificato...",
+        "pl-PL": "Zapisywanie sprawdzonego pakietu...",
+        "pt-PT": "A guardar pacote verificado...",
+        "nl-NL": "Gecontroleerd pakket opslaan...",
+        "cs-CZ": "Ukládání ověřeného balíčku...",
+        "bg-BG": "Запис на проверения пакет..."
+      }
+    },
+    "fbe.diagnostics.cancel": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Cancel",
+        "ru-RU": "Отмена",
+        "uk-UA": "Скасувати",
+        "de-DE": "Abbrechen",
+        "fr-FR": "Annuler",
+        "es-ES": "Cancelar",
+        "it-IT": "Annulla",
+        "pl-PL": "Anuluj",
+        "pt-PT": "Cancelar",
+        "nl-NL": "Annuleren",
+        "cs-CZ": "Storno",
+        "bg-BG": "Отказ"
+      }
+    },
+    "fbe.diagnostics.cancelled": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Operation cancelled.",
+        "ru-RU": "Операция отменена.",
+        "uk-UA": "Операцію скасовано.",
+        "de-DE": "Vorgang abgebrochen.",
+        "fr-FR": "Opération annulée.",
+        "es-ES": "Operación cancelada.",
+        "it-IT": "Operazione annullata.",
+        "pl-PL": "Operacja anulowana.",
+        "pt-PT": "Operação cancelada.",
+        "nl-NL": "Bewerking geannuleerd.",
+        "cs-CZ": "Operace zrušena.",
+        "bg-BG": "Операцията е отменена."
+      }
+    },
+    "fbe.diagnostics.cancelling": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Cancelling diagnostic operation...",
+        "ru-RU": "Отмена диагностической операции...",
+        "uk-UA": "Скасування діагностичної операції...",
+        "de-DE": "Diagnosevorgang wird abgebrochen...",
+        "fr-FR": "Annulation du diagnostic...",
+        "es-ES": "Cancelando operación de diagnóstico...",
+        "it-IT": "Annullamento della diagnostica...",
+        "pl-PL": "Anulowanie diagnostyki...",
+        "pt-PT": "A cancelar diagnóstico...",
+        "nl-NL": "Diagnostiek annuleren...",
+        "cs-CZ": "Rušení diagnostiky...",
+        "bg-BG": "Отмяна на диагностиката..."
+      }
+    },
+    "fbe.diagnostics.ready": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Verified snapshot ready.",
+        "ru-RU": "Проверенный снимок готов.",
+        "uk-UA": "Перевірений знімок готовий.",
+        "de-DE": "Geprüfte Momentaufnahme bereit.",
+        "fr-FR": "Instantané vérifié prêt.",
+        "es-ES": "Instantánea verificada lista.",
+        "it-IT": "Istantanea verificata pronta.",
+        "pl-PL": "Sprawdzona migawka gotowa.",
+        "pt-PT": "Instantâneo verificado pronto.",
+        "nl-NL": "Gecontroleerde momentopname gereed.",
+        "cs-CZ": "Ověřený snímek je připraven.",
+        "bg-BG": "Проверената снимка е готова."
+      }
+    },
+    "fbe.diagnostics.preview_page": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Preview page %u / %u; ZIP contains all verified bytes.",
+        "ru-RU": "Страница %u / %u; ZIP содержит все проверенные данные.",
+        "uk-UA": "Сторінка %u / %u; ZIP містить усі перевірені дані.",
+        "de-DE": "Vorschauseite %u / %u; ZIP enthält alle geprüften Daten.",
+        "fr-FR": "Page %u / %u ; le ZIP contient toutes les données vérifiées.",
+        "es-ES": "Página %u / %u; el ZIP contiene todos los datos verificados.",
+        "it-IT": "Pagina %u / %u; lo ZIP contiene tutti i dati verificati.",
+        "pl-PL": "Strona %u / %u; ZIP zawiera wszystkie sprawdzone dane.",
+        "pt-PT": "Página %u / %u; o ZIP contém todos os dados verificados.",
+        "nl-NL": "Pagina %u / %u; ZIP bevat alle gecontroleerde gegevens.",
+        "cs-CZ": "Strana %u / %u; ZIP obsahuje všechna ověřená data.",
+        "bg-BG": "Страница %u / %u; ZIP съдържа всички проверени данни."
+      }
+    },
+    "fbe.diagnostics.previous_page": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "< Back",
+        "ru-RU": "< Назад",
+        "uk-UA": "< Назад",
+        "de-DE": "< Zurück",
+        "fr-FR": "< Retour",
+        "es-ES": "< Atrás",
+        "it-IT": "< Indietro",
+        "pl-PL": "< Wstecz",
+        "pt-PT": "< Voltar",
+        "nl-NL": "< Vorige",
+        "cs-CZ": "< Zpět",
+        "bg-BG": "< Назад"
+      }
+    },
+    "fbe.diagnostics.next_page": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Next >",
+        "ru-RU": "Далее >",
+        "uk-UA": "Далі >",
+        "de-DE": "Weiter >",
+        "fr-FR": "Suivant >",
+        "es-ES": "Siguiente >",
+        "it-IT": "Avanti >",
+        "pl-PL": "Dalej >",
+        "pt-PT": "Próxima >",
+        "nl-NL": "Volgende >",
+        "cs-CZ": "Další >",
+        "bg-BG": "Напред >"
       }
     }
   }

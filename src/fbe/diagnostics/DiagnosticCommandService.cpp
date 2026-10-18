@@ -26,5 +26,6 @@ bool DiagnosticCommandService::SetEnabledForNextLaunch(bool enabled) const { ret
 std::vector<StartupTrace::DiagnosticSession> DiagnosticCommandService::Sessions() const { return StartupTrace::EnumerateDiagnosticSessions(); }
 bool DiagnosticCommandService::PreparePackage(const StartupTrace::DiagnosticSession& session, const std::vector<CString>& excluded,
     std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot>& snapshot, CString& error) const { return StartupTrace::PrepareDiagnosticPackage(session,excluded,snapshot,error); }
+bool DiagnosticCommandService::SavePackageUnique(const StartupTrace::DiagnosticPackageSnapshot& snapshot, const CString& requested, CString& actual, CString& error) const { return StartupTrace::SaveDiagnosticPackageUnique(snapshot,requested,actual,error); }
 bool DiagnosticCommandService::SavePackage(const StartupTrace::DiagnosticPackageSnapshot& snapshot, const CString& path, CString& error) const { return StartupTrace::SaveDiagnosticPackage(snapshot,path,error); }
 }

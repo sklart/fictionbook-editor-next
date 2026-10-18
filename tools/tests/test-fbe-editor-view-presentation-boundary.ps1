@@ -10,10 +10,10 @@ $controllerHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\view
 $mainHeader = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.h')
 $mainSource = Get-Content -Raw -LiteralPath (Join-Path $root 'src\fbe\mainfrm.cpp')
 
-foreach($required in @('struct\s+EditorViewPresentationContext', 'class\s+EditorViewPresentationHost', 'IEditorViewPresentationHost', 'CContainerWnd', 'CSplitterWindow', 'SourceEditorControl', 'EditorSelectionState')) {
+foreach($required in @('struct\s+EditorViewPresentationContext', 'class\s+EditorViewPresentationHost', 'IEditorViewPresentationHost', 'CContainerWnd', 'IEditorViewSplitter', 'SourceEditorControl', 'EditorSelectionState')) {
     if(($hostHeader + $hostSource) -notmatch $required) { throw "Presentation host is missing: $required" }
 }
-foreach($required in @('ActivateWnd\s*\(', 'HideActiveWnd\s*\(', 'SetSinglePaneMode\s*\(', 'SaveBodyScroll', 'SCI_ENSUREVISIBLEENFORCEPOLICY')) {
+foreach($required in @('ActivateWnd\s*\(', 'HideActiveWnd\s*\(', 'SetPresentationSinglePane\s*\(', 'SaveBodyScroll', 'SCI_ENSUREVISIBLEENFORCEPOLICY')) {
     if($hostSource -notmatch $required) { throw "Presentation mechanics are missing: $required" }
 }
 foreach($unit in @($hostHeader, $hostSource)) {
@@ -29,7 +29,7 @@ if([string]::IsNullOrEmpty($showView)) { throw 'Unable to locate CMainFrame::Sho
 foreach($required in @('EditorViewPresentationHost', 'm_editor_view_controller\.ChangeView\s*\(')) {
     if($showView -notmatch $required) { throw "ShowView presentation adapter is missing: $required" }
 }
-foreach($forbidden in @('ActivateWnd\s*\(', 'HideActiveWnd\s*\(', 'SetSinglePaneMode\s*\(', 'SCI_')) {
+foreach($forbidden in @('ActivateWnd\s*\(', 'HideActiveWnd\s*\(', 'SetPresentationSinglePane\s*\(', 'SCI_')) {
     if($showView -match $forbidden) { throw "ShowView must not retain presentation mechanics: $forbidden" }
 }
 if($controllerHeader -notmatch 'IEditorSourceExchange&\s+source\s*,\s*IEditorViewPresentationHost&\s+presentation') {

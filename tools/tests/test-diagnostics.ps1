@@ -20,6 +20,7 @@ $tests = @(
     'test-diagnostic-dialog-contract.ps1',
     'test-diagnostic-privacy-native.ps1',
     'test-diagnostic-operation-runtime.ps1',
+    'test-diagnostic-dialog-runtime.ps1',
     'test-diagnostic-log-segments.ps1',
     'test-diagnostic-trace-privacy.ps1',
     'test-diagnostic-snapshot-contract.ps1',
