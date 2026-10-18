@@ -444,7 +444,10 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
         item.processId = ::GetCurrentProcessId(); item.outcome = L"unknown"; item.logPath = CurrentLogPath(); item.metadataPath=CurrentLogDirectory()+L"\\fbe-session-"+item.id+L".txt"; sessions.push_back(item);
     }
     if(TaskCancelled()) return {};
-    for(auto& session:sessions) session.crashFingerprint=CrashReviewFingerprint(session);
+    for(auto& session:sessions) {
+        session.crashFingerprint=CrashReviewFingerprint(session);
+        session.crashReviewed=!session.crashFingerprint.IsEmpty() && StoredReviewMatches(session.crashPath,session.crashFingerprint);
+    }
     std::sort(sessions.begin(), sessions.end(), [](const DiagnosticSession& a, const DiagnosticSession& b) { if(a.started!=b.started) return a.started>b.started;
         if(a.processId!=b.processId) return a.processId>b.processId;
         const auto suffix=[](const CString& path) { const int marker=path.Find(L"-pid"); const int dash=marker<0 ? -1 : path.Find(L'-',marker+4); return dash<0 ? 0UL : wcstoul(path.Mid(dash+1),NULL,10); };

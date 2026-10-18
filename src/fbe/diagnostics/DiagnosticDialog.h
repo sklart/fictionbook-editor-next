@@ -21,7 +21,7 @@ class DiagnosticDialog
         std::atomic_bool cancelled{false}, done{false};
         bool success=false;
         size_t page=0, pages=1;
-        CString error, path, preview;
+        CString error, path, preview, reviewedFingerprint;
         std::vector<StartupTrace::DiagnosticSession> sessions;
         std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot> snapshot;
         StartupTrace::DiagnosticLogCleanupResult cleanup;
@@ -111,8 +111,10 @@ class DiagnosticDialog
         if(!job || !job->done.load(std::memory_order_acquire)) return;
         if(worker.joinable()) worker.join(); // done is published after all I/O.
         const auto result=job; job.reset(); Busy(false);
-        if(result->work==Work::ReviewCrash && result->success)
-            for(auto& report:crashes) if(report.path==result->path) report.reviewed=true;
+        if(result->work==Work::ReviewCrash && result->success) {
+            for(auto& report:crashes) if(report.path==result->path && report.fingerprint==result->reviewedFingerprint) report.reviewed=true;
+            for(auto& session:sessions) if(session.crashPath==result->path && session.crashFingerprint==result->reviewedFingerprint) session.crashReviewed=true;
+        }
         if(closing) { CloseDialog(); return; }
         if(result->cancelled.load() && !((result->work==Work::Save || result->work==Work::ReviewCrash || result->work==Work::ClearHangs || result->work==Work::ClearCrashes || result->work==Work::Cleanup) && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
         if(result->work==Work::Catalog && result->success) { catalogReady=true; sessions=result->sessions; crashes=result->crashes; ApplyCrashes(); ApplySessions(); }
@@ -132,6 +134,7 @@ class DiagnosticDialog
                 const auto& component=snapshot->Components()[index];
                 if(component.name==L"crash/latest-crash-report.txt" && component.status==L"included")
                     if(StartupTrace::MarkDiagnosticCrashReviewed(sessions[selected])) {
+                        sessions[selected].crashReviewed=true;
                         for(auto& report:crashes) if(report.path==sessions[selected].crashPath && report.fingerprint==sessions[selected].crashFingerprint) report.reviewed=true;
                         ApplyCrashes();
                     }
@@ -198,7 +201,7 @@ class DiagnosticDialog
         StatusText(valid ? status : Text(L"blocked", L"Saving blocked: mandatory privacy check failed or size limit exceeded."));
         ::EnableWindow(::GetDlgItem(window, Save), valid);
         int preview=0; const int session=Selected();
-        if(snapshot && session>=0 && static_cast<size_t>(session)<sessions.size() && !StartupTrace::IsDiagnosticCrashReviewed(sessions[session]))
+        if(snapshot && session>=0 && static_cast<size_t>(session)<sessions.size() && !sessions[session].crashReviewed)
             for(size_t i=0;i<snapshot->Components().size();++i)
                 if(snapshot->Components()[i].name==L"crash/latest-crash-report.txt" && snapshot->Components()[i].status==L"included") preview=static_cast<int>(i);
         ::SendDlgItemMessage(window, Components, LB_SETCURSEL, preview, 0); ShowPreview();
@@ -238,7 +241,7 @@ class DiagnosticDialog
         if(index<0 || static_cast<size_t>(index)>=crashes.size()) return;
         if(!reviewPending) { reviewPending=true; StatusText(Text(L"review_confirm",L"Click Mark reviewed again to acknowledge this file, including an unreadable preview. Its contents will not be exported.")); return; }
         reviewPending=false; const auto report=crashes[index];
-        Begin(Work::ReviewCrash,[report](Job& result) { result.path=report.path; result.success=StartupTrace::MarkDiagnosticCrashReportReviewed(report); });
+        Begin(Work::ReviewCrash,[report](Job& result) { result.path=report.path; result.reviewedFingerprint=report.fingerprint; result.success=StartupTrace::MarkDiagnosticCrashReportReviewed(report); });
     }
     void ApplySessions()
     {
@@ -254,7 +257,7 @@ class DiagnosticDialog
                 (LPCWSTR)(session.legacy ? CString(L" | ")+Text(L"legacy",L"Legacy: incomplete matching") : CString()));
             ::SendDlgItemMessage(window, Sessions, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(row.GetString()));
             if (session.id == StartupTrace::SessionId() && !selectedCrash) selected = static_cast<int>(i);
-            if (!selectedCrash && session.outcome == L"crash" && !StartupTrace::IsDiagnosticCrashReviewed(session)) { selected = static_cast<int>(i); selectedCrash = true; }
+            if (!selectedCrash && session.outcome == L"crash" && !session.crashReviewed) { selected = static_cast<int>(i); selectedCrash = true; }
         }
         ::SendDlgItemMessage(window, Sessions, CB_SETCURSEL, selected, 0); excluded.clear(); Prepare();
     }

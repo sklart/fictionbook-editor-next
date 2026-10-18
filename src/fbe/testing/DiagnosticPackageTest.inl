@@ -77,11 +77,15 @@ int StartupTrace::RunDiagnosticPackageTest()
         if(!PrepareDiagnosticPackage(session,{},cancelledSnapshot,cancelError)) return 115; // Scope must restore TLS.
     }
     if(found && !session.crashPath.IsEmpty() && !session.crashAmbiguous) {
+        if(session.crashReviewed != IsDiagnosticCrashReviewed(session)) return 123;
         report+=CString(L"reviewed-before=")+(IsDiagnosticCrashReviewed(session) ? L"1" : L"0")+L"\r\n";
         wchar_t mark[2]={};
         if(::GetEnvironmentVariable(L"FBE_NEXT_TEST_REVIEW_CRASH",mark,2)==1 && mark[0]==L'1') {
             std::vector<BYTE> before,after; if(!ReadBytes(session.crashPath,before)) return 116;
             if(!MarkDiagnosticCrashReviewed(session) || !IsDiagnosticCrashReviewed(session)) return 117;
+            bool cachedReview=false;
+            for(const auto& refreshed:EnumerateDiagnosticSessions()) if(refreshed.id==session.id && refreshed.crashFingerprint==session.crashFingerprint) cachedReview=refreshed.crashReviewed;
+            if(!cachedReview) return 124;
             if(!ReadBytes(session.crashPath,after) || before!=after) return 118;
         }
         report+=CString(L"reviewed-after=")+(IsDiagnosticCrashReviewed(session) ? L"1" : L"0")+L"\r\n";

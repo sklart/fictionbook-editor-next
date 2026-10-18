@@ -130,6 +130,7 @@ namespace StartupTrace
         bool legacy = false;
         bool crashAmbiguous = false;
         bool hasHangReports = false;
+        bool crashReviewed = false; // Prepared with crashFingerprint by the catalog worker.
     };
     struct DiagnosticComponent
     {
