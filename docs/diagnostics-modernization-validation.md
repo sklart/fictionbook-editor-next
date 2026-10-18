@@ -114,10 +114,67 @@ release-артефакт из окончательного коммита.
 Дополнительный запуск старого editor-view-lifecycle-runtime завершился с
 exit=1: его проверки identity/HTML-host дали нули, при этом mode/state и
 счётчики записались. Артефакты:
-`%TEMP%/fr-564f1bd6dd6d4881834ffc192fd2bd99`. До исходной базы причина не
-изолировалась; этот более широкий сценарий не объявляется PASS и в рамках
-статистики не исправлялся. Новый целевой сценарий не заменяет его и не
+`%TEMP%/fr-564f1bd6dd6d4881834ffc192fd2bd99`. На этапе статистики причина ещё не была изолирована; результаты расследования
+и исправления приведены ниже. Новый целевой сценарий не заменяет его и не
 подтверждает внешний вид диалога, Windows 7 или полный lifecycle редактора.
+
+## Исправление старого lifecycle-теста (18.10.2026)
+
+Падение воспроизведено на исходной базе
+`dafefd1cd239cedd885c68c88fb0e920e7e36561`, до обоих диагностических коммитов.
+Исходники извлечены через git archive в `build/lifecycle-baseline/source`;
+использованы подготовленные зависимости, собран только FBE в Release Win32,
+v143 / VC Tools 14.44, strict `/W4 /WX`. Сборка прошла. Лог:
+`build/lifecycle-baseline/lifecycle-build.log`.
+SHA256 исходного EXE: `A83F3640B9A0CF865F9E2D8996E8CABDF112589F0433605EAE94492257E36F8F`.
+Тот же portable-сценарий с таймаутом 25 секунд вернул exit=1; значения
+body_desc/desc_body/source_body/source_desc равны 0, как до исправления.
+Сохранённые отчёт и SHA: `build/editor-view-lifecycle-5b26b7c04d014d809d922caec159994f`.
+
+Причина: CContainerWnd искал активное окно через EnumChildWindows и
+IsWindowVisible, учитывающий видимость предков. При скрытом окне редактора
+поиск возвращал первый дочерний HWND вместо активной панели, а переключения
+могли скрывать другую панель. Теперь выбираются только непосредственные
+дочерние окна с собственным WS_VISIBLE; если все панели скрыты, возвращается
+NULL. Изменение не затрагивает document ownership или Source transfer.
+
+В старом CStringA::Format также было 14 аргументов при 13 полях: пропущено
+source_desc_body, поэтому значения cycles/document/tree были смещены.
+Восстановлено поле и его проверка в PowerShell. Ранее записанный document=0
+сам по себе не доказывал потерю identity документа. Добавлена проверка
+скрытого контейнера, скрытия всех панелей и повторной активации Body.
+Runner запускается Hidden, сохраняет отчёт и SHA EXE, ограничен 25 секундами
+по умолчанию и корректно цитирует пути.
+
+Проверенная сборка содержит диагностику из `97351f2c141f` и это исправление,
+без посторонних изменений текущей рабочей ветки. Release Win32 strict PASS;
+лог `build/diagnostics-validation/lifecycle-final-build.log`, метка
+`97351f2c141f-dirty`. SHA256 EXE:
+`6AD60F77B5F16A77405AE12DE0A9448D588958758E4E2F0A1C53BA078AAB8DBB`.
+Это проверочный EXE, не релизный пакет.
+
+- PASS editor-view-lifecycle-runtime: все 15 полей равны 1, в том числе
+  hidden_container, оба порядка Source/Body/Description, три цикла,
+  identity документа и предпочтение дерева. Доказательства:
+  `build/editor-view-lifecycle-d1b87291276d4222b2cb652152934d28`.
+- PASS diagnostic-sessions (trace off/on, сеансы, privacy, операции,
+  immutable ZIP): `build/diagnostic-session-test-976b363914b24c439950cbc0cd9b32d5`.
+- PASS diagnostic-operations-runtime: реальные переключения режима, загрузка,
+  валидация и безопасный неудачный Save As; trace отключён. Доказательства:
+  `build/diagnostic-operation-runtime-9ce6a18fdc5d41faa850485c685b164e`.
+- PASS lifecycle/controller/source-view-session boundary, diagnostic-package,
+  diagnostic-cleanup-contract и git diff --check.
+- Контракт editor-view-presentation-boundary падает на требовании
+  CSplitterWindow как на исходной базе, так и сейчас: код использует
+  IEditorViewSplitter. Этот исходный дефект контракта не исправлялся.
+
+При первом запуске diagnostic-sessions проверочная сборка с произвольной
+текстовой меткой build_commit была отвергнута privacy-проверкой (exit=94).
+Метка заменена на допустимый SHA с -dirty, после чего тест прошёл;
+проверки privacy не ослаблялись.
+
+Диагностика зависаний остаётся отдельным этапом. Полный release gate,
+визуальная проверка GUI/DPI и Windows 7 не выполнялись.
 
 ## Границы и оставшаяся работа
 
@@ -170,3 +227,6 @@ exit=1: его проверки identity/HTML-host дали нули, при э�
 - `src/fbe/document/DocumentSaveController.cpp`
 - `src/fbe/testing/RuntimeTestArchiveAndLifecycle.inl`
 - `tools/tests/test-diagnostic-operation-runtime.ps1`
+
+- `src/fbe/ContainerWnd.h`
+- `tools/tests/test-fbe-editor-view-lifecycle-runtime.ps1`
