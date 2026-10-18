@@ -122,19 +122,6 @@ static std::vector<PasteChildSnapshot> CapturePasteChildren(MSHTML::IHTMLDOMNode
 	return children;
 }
 
-static void RestorePasteHtml(MSHTML::IHTMLElementPtr parent, const std::vector<PasteChildSnapshot>& children) {
-	CString html;
-	for (const PasteChildSnapshot& child : children) html += child.html;
-	parent->innerHTML = _bstr_t(html);
-}
-
-static void RestorePasteChildren(MSHTML::IHTMLDOMNodePtr parent, const std::vector<PasteChildSnapshot>& children) {
-	for (MSHTML::IHTMLDOMNodePtr first(parent->firstChild); first; first = parent->firstChild)
-		parent->removeChild(first);
-	for (const PasteChildSnapshot& child : children)
-		parent->appendChild(child.clone->cloneNode(VARIANT_TRUE));
-}
-
 class PasteBlockedUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOleParentUndoUnit {
 public:
 	BEGIN_COM_MAP(PasteBlockedUndoUnit)
@@ -329,6 +316,51 @@ static CComPtr<IOleUndoManager> GetPasteUndoManager(MSHTML::IHTMLDocument2Ptr do
 	if (provider) provider->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager));
 	return manager;
 }
+
+// The canceled browser event and the deferred editor command are separate
+// transactions. Remove only the proven empty native event, retaining all
+// previous native units and redo entries before starting the real insertion.
+struct PendingHtmlPaste {
+    CComPtr<IOleUndoManager> manager;
+    MSHTML::IHTMLDocument2Ptr document;
+    FbeUndo::HistoryCheckpoint history;
+    FB::Doc::UndoSavepoints savepoints;
+    unsigned long long state;
+    MSHTML::IHTMLTxtRangePtr selection;
+    PendingHtmlPaste(IOleUndoManager* undo, FB::Doc* owner) : manager(undo),
+        document(owner->m_body.Document()), history(undo), savepoints(owner->CaptureUndoSavepoints()),
+        state(FbeUndo::DocumentState(document)), selection(document->selection->createRange()) {}
+    HRESULT Finish(FB::Doc* owner) {
+        if (!owner || owner->m_body.Document() != document) return E_UNEXPECTED;
+        try {
+            if (FbeUndo::DocumentState(document) != state) return E_UNEXPECTED;
+            DWORD open = 0;
+            if (manager->GetOpenParentState(&open) != S_FALSE) return E_UNEXPECTED;
+            const auto unit = history.AddedUndoUnit(manager);
+            if (unit) {
+                const HRESULT undone = manager->UndoTo(unit);
+                if (FbeUndo::DocumentState(document) != state) return E_ABORT;
+                if (FAILED(undone)) {
+                    CheckError(history.Restore(manager));
+                    owner->RestoreUndoSavepoints(savepoints);
+                    if (selection) selection->select();
+                    return undone;
+                }
+                CComPtr<IEnumOleUndoUnits> list; CheckError(manager->EnumRedoable(&list));
+                CComPtr<IOleUndoUnit> inverse, other;
+                if (list->Next(1, &inverse, nullptr) == S_OK) {
+                    if (list->Next(1, &other, nullptr) != S_FALSE) return E_UNEXPECTED;
+                    CheckError(manager->DiscardFrom(inverse));
+                }
+            }
+            CheckError(history.Restore(manager));
+            owner->RestoreUndoSavepoints(savepoints);
+            if (selection) selection->select();
+            return S_OK;
+        } catch (const _com_error& error) { return error.Error(); }
+        catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    }
+};
 
 // В живой сборке FBE regex режима «Дизайн» всегда идёт через наш wrapper
 // поверх PCRE2, поэтому здесь больше не нужна развилка на VBScript.RegExp.
@@ -2045,12 +2077,31 @@ class DropUndoUnit : public CComObjectRootEx<CComSingleThreadModel>, public IOle
 	CComPtr<IOleParentUndoUnit> m_open;
 	FB::Doc* m_document = nullptr;
 	long m_version = -1;
-	bool m_clean = false, m_recoveryClean = false;
+	bool m_clean = false, m_recoveryClean = false, m_paste = false, m_pasteUndo = true;
+    DropSelectionEndpoint m_pasteBefore[2], m_pasteAfter[2];
+    void CapturePasteSelection(DropSelectionEndpoint* endpoints) {
+        if (!m_document) return;
+        MSHTML::IHTMLDocument2Ptr document(m_document->m_body.Document());
+        MSHTML::IHTMLTxtRangePtr selected(document->selection->createRange());
+        endpoints[0].Capture(selected, true, document);
+        endpoints[1].Capture(selected, false, document);
+    }
+    void RestorePasteSelection() {
+        if (!m_paste || !m_document) return;
+        const auto& endpoints = m_pasteUndo ? m_pasteBefore : m_pasteAfter;
+        try {
+            MSHTML::IHTMLDocument2Ptr document(m_document->m_body.Document());
+            MSHTML::IHTMLTxtRangePtr start(endpoints[0].Restore(document)), end(endpoints[1].Restore(document));
+            if (start && end) { start->setEndPoint(L"EndToStart", end); start->select(); }
+        } catch (const _com_error&) {}
+    }
 	std::unique_ptr<FbeUndo::HistoryCheckpoint> m_history;
 	unsigned long long m_before = 0;
 	FB::Doc::UndoSavepoints m_savepoints{};
 	MSHTML::IHTMLTxtRangePtr m_selection;
 public:
+	void SetPaste() { m_paste = true; CapturePasteSelection(m_pasteBefore); }
+    void FinishPaste() { CapturePasteSelection(m_pasteAfter); }
 	void CaptureHistoryState(FB::Doc* document) {
 		m_document = document;
 		if (document) {
@@ -2106,12 +2157,15 @@ public:
 				if (FAILED(result)) return result;
 			}
 			if (m_document) m_document->RestoreCleanAfterPasteUndo(m_version, m_clean, m_recoveryClean);
+            RestorePasteSelection();
 			return S_OK;
 		}
 		CComObject<DropUndoUnit>* raw = nullptr;
 		HRESULT hr = CComObject<DropUndoUnit>::CreateInstance(&raw);
 		if (FAILED(hr)) return hr;
 		CComPtr<IOleParentUndoUnit> inverse(raw);
+		raw->m_paste = m_paste; raw->m_pasteUndo = !m_pasteUndo;
+        for (int i = 0; i < 2; ++i) { raw->m_pasteBefore[i] = m_pasteBefore[i]; raw->m_pasteAfter[i] = m_pasteAfter[i]; }
 		raw->CaptureHistoryState(m_document);
 		hr = manager->Open(inverse);
 		if (FAILED(hr)) return hr;
@@ -2127,12 +2181,13 @@ public:
 		const HRESULT closed = manager->Close(inverse, !raw->m_units.empty());
 		if (SUCCEEDED(hr) && SUCCEEDED(closed) && m_document)
 			m_document->RestoreCleanAfterPasteUndo(m_version, m_clean, m_recoveryClean);
+		if (SUCCEEDED(hr) && SUCCEEDED(closed)) RestorePasteSelection();
 		return FAILED(hr) ? hr : closed;
 	}
 	STDMETHOD(GetDescription)(BSTR* text)
 	{
 		if (!text) return E_POINTER;
-		*text = ::SysAllocString(L"Drag and drop");
+		*text = ::SysAllocString(m_paste ? L"Paste" : L"Drag and drop");
 		return *text ? S_OK : E_OUTOFMEMORY;
 	}
 	STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id)
@@ -2650,6 +2705,8 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 {
 	try
 	{
+		auto pending = std::move(m_pendingHtmlPaste);
+		if (pending) CheckError(pending->Finish(m_ownerDocument));
 		PasteEnableScope pasteEnabled(m_enable_paste);
 
 		FbeClipboard::ClipboardPasteOptions options;
@@ -2759,11 +2816,8 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 				undoScope = Document()->all->item(L"fbw_body");
 			CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
 			if (!undoScope || !manager) return 0;
-			MSHTML::IHTMLDOMNodePtr parent(undoScope);
-			CString lowerInsert(insertHtml); lowerInsert.MakeLower();
-			const int firstParagraph = lowerInsert.Find(L"<p");
-			const bool smallPaste = (firstParagraph < 0 || lowerInsert.Find(L"<p", firstParagraph + 2) < 0) &&
-				lowerInsert.Find(L"<table") < 0 && lowerInsert.Find(L"<img") < 0 && lowerInsert.Find(L"<div") < 0;
+            CString lowerInsert(insertHtml); lowerInsert.MakeLower();
+            const int firstParagraph = lowerInsert.Find(L"<p");
 			MSHTML::IHTMLElementPtr paragraphAtEnd;
 			if (firstParagraph >= 0 || lowerInsert.Find(L"<table") >= 0 ||
 				lowerInsert.Find(L"<div") >= 0) {
@@ -2798,25 +2852,26 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 					}
 				}
 			}
-			MSHTML::IHTMLDOMNodePtr changedChild;
-			if (smallPaste) {
-				changedChild = MSHTML::IHTMLDOMNodePtr(pasteRange->parentElement());
-				while (changedChild && changedChild->parentNode != parent) changedChild = changedChild->parentNode;
-			}
-			const bool targetedSnapshot = smallPaste && changedChild;
-			std::vector<PasteChildSnapshot> before(CapturePasteChildren(parent, changedChild, !targetedSnapshot));
-			MSHTML::IHTMLTxtRangePtr beforeSelection(pasteRange->duplicate());
-			const bool beforeWasClean = m_ownerDocument && !m_ownerDocument->DocChanged();
-			const bool beforeRecoveryClean = m_ownerDocument && !m_ownerDocument->DocRelChanged();
-			const long saveVersion = GetVersionNumber();
-			CComObject<PasteDomUndoUnit>* unit = NULL;
-			HRESULT hr = CComObject<PasteDomUndoUnit>::CreateInstance(&unit);
-			if (FAILED(hr)) _com_issue_error(hr);
-			CComPtr<IOleUndoUnit> unitOwner(unit);
-			PasteUndoRecordingScope recording(manager);
-			if (!recording.Blocked()) return 0;
-			std::vector<PasteChildSnapshot> after;
-			try {
+            MSHTML::IHTMLElementPtr splitParagraph;
+            CString splitId;
+            MSHTML::IHTMLDOMNodePtr splitNext;
+            for (MSHTML::IHTMLElementPtr element(pasteRange->parentElement()); element && element != undoScope; element = element->parentElement) {
+                if (U::scmp(element->tagName, L"P") == 0) {
+                    splitParagraph = element; splitId = static_cast<LPCWSTR>(element->id);
+                    splitNext = MSHTML::IHTMLDOMNodePtr(element)->nextSibling; break;
+                }
+            }
+            // Keep MSHTML's native edit units and markup pointers. Replacing
+            // their nodes with snapshot clones breaks earlier native history.
+            CComPtr<IOleUndoManager> pasteManager;
+            CComPtr<IOleParentUndoUnit> pasteParent;
+            OpenDropUndoGroup(pasteManager, pasteParent);
+            auto transaction = static_cast<DropUndoUnit*>(pasteParent.p);
+            HRESULT result = S_OK;
+            try {
+                transaction->SetPaste();
+                transaction->PrepareRollback(pasteManager);
+                FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Paste HTML");
 				if (paragraphAtEnd) {
 					MSHTML::IHTMLDOMNodePtr paragraphNode(paragraphAtEnd);
 					MSHTML::IHTMLDOMNodePtr nextOriginal(paragraphNode->nextSibling);
@@ -2830,34 +2885,30 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 						placed->collapse(VARIANT_FALSE); placed->select();
 					}
 				} else pasteRange->pasteHTML(_bstr_t(insertHtml));
-				CaptureClipboardTitlePasteDomForTest(Document());
-				pasteEnabled.Close();
-				NormalizeScope(normalizationScope);
-				after = CapturePasteChildren(parent, MSHTML::IHTMLDOMNodePtr(), false);
-			} catch (...) {
-				if (targetedSnapshot) RestorePasteHtml(undoScope, before);
-				else RestorePasteChildren(parent, before);
-				if (m_ownerDocument) m_ownerDocument->RestoreCleanAfterPasteUndo(saveVersion, beforeWasClean, beforeRecoveryClean);
-				throw;
-			}
-			recording.Close();
-			MSHTML::IHTMLTxtRangePtr afterSelection(Document()->selection->createRange());
-			unit->Initialize(parent, std::move(before), std::move(after), beforeSelection, afterSelection,
-				m_ownerDocument, beforeWasClean, beforeRecoveryClean, saveVersion);
-			if (unit->Changed()) {
-				if (!unit->PrepareChangedClones()) {
-					PasteUndoRecordingScope rollback(manager);
-					RestorePasteHtml(undoScope, unit->Before());
-					if (m_ownerDocument) m_ownerDocument->RestoreCleanAfterPasteUndo(saveVersion, beforeWasClean, beforeRecoveryClean);
-					_com_issue_error(E_UNEXPECTED);
-				}
-				hr = manager->Add(unit);
-				if (FAILED(hr)) {
-					PasteUndoRecordingScope rollback(manager);
-					unit->Restore(true);
-				}
-			}
-			if (FAILED(hr)) _com_issue_error(hr);
+                // pasteHTML copies the original paragraph's ID to its split
+                // tail. Keep the anchor on the original node only; record the
+                // removal natively so Undo restores the original attributes.
+                if (splitParagraph && !splitId.IsEmpty()) {
+                    for (MSHTML::IHTMLDOMNodePtr node(MSHTML::IHTMLDOMNodePtr(splitParagraph)->nextSibling); node && node != splitNext; node = node->nextSibling) {
+                        MSHTML::IHTMLElementPtr paragraph(node);
+                        if (paragraph && U::scmp(paragraph->tagName, L"P") == 0 && splitId == CString(static_cast<LPCWSTR>(paragraph->id)))
+                            paragraph->removeAttribute(L"id", 0);
+                    }
+                }
+                CaptureClipboardTitlePasteDomForTest(Document());
+                native.Close();
+                pasteEnabled.Close();
+                NormalizeScope(normalizationScope);
+                transaction->FinishPaste();
+            } catch (const _com_error& error) { result = error.Error(); }
+            catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+            catch (...) { result = E_UNEXPECTED; }
+            const HRESULT closed = CloseDropUndoGroup(pasteManager, pasteParent, true);
+            if (FAILED(closed)) CheckError(E_ABORT);
+            if (FAILED(result)) {
+                if (!transaction->Empty() && FAILED(transaction->RollbackRecorded(pasteManager))) CheckError(E_ABORT);
+                CheckError(result);
+            }
 			return 0;
 		}
 		FbeDom::MarkupUndoUnitScope undo(m_mk_srv, L"Paste");
@@ -4813,6 +4864,14 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 	{
 		// MSHTML can roll back DOM edits made inside the canceled paste event.
 		// Run the editor insertion after the event returns.
+        try {
+            if (m_normalize && m_ownerDocument && !m_pendingHtmlPaste) {
+                CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
+                if (!manager) CheckError(E_NOINTERFACE);
+                m_pendingHtmlPaste = std::make_shared<PendingHtmlPaste>(manager, m_ownerDocument);
+            }
+        } catch (_com_error& error) { oe->returnValue = VARIANT_FALSE; U::ReportError(error); return VARIANT_TRUE; }
+        catch (const std::bad_alloc&) { oe->returnValue = VARIANT_FALSE; _com_error error(E_OUTOFMEMORY); U::ReportError(error); return VARIANT_TRUE; }
 		PostMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0);
 		oe->returnValue = VARIANT_FALSE;
 	}

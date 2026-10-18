@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <algorithm>
 
 namespace FbeUndo {
 inline const GUID& UnitClass() {
@@ -77,6 +78,18 @@ class HistoryCheckpoint {
     }
 public:
     explicit HistoryCheckpoint(IOleUndoManager* manager) : m_undo(Read(manager, false)), m_redo(Read(manager, true)) {}
+    // A canceled MSHTML paste can publish one empty native unit after its
+    // event handler returns. Never confuse another edit with that unit.
+    CComPtr<IOleUndoUnit> AddedUndoUnit(IOleUndoManager* manager) const {
+        const auto undo = Read(manager, false);
+        if (undo == m_undo) return nullptr;
+        if (undo.size() != m_undo.size() + 1 ||
+            !std::equal(m_undo.begin(), m_undo.end(), undo.begin())) CheckError(E_UNEXPECTED);
+        GUID clsid = {}; LONG id = 0;
+        CheckError(undo.back()->GetUnitType(&clsid, &id));
+        if (clsid == UnitClass()) CheckError(E_UNEXPECTED);
+        return undo.back();
+    }
     bool Owned(bool redo) const {
         const auto& units = redo ? m_redo : m_undo;
         if (units.empty()) return false;

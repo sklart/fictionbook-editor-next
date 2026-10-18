@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include <atlcrack.h>
+#include <memory>
 #if !defined(AFX_FBEVIEW_H__E0C71279_419D_4273_93E3_57F6A57C7CFE__INCLUDED_)
 #define AFX_FBEVIEW_H__E0C71279_419D_4273_93E3_57F6A57C7CFE__INCLUDED_
 
@@ -24,6 +25,7 @@
 #include "structure\\BodyStructuralEditor.h"
 
 namespace FB { class Doc; }
+struct PendingHtmlPaste;
 
 extern CSettings _Settings;
 
@@ -407,6 +409,7 @@ protected:
 
   int			    m_ignore_changes;
   int			    m_enable_paste;
+  std::shared_ptr<PendingHtmlPaste> m_pendingHtmlPaste;
 	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
 	CString m_drop_source_html, m_drop_target_html;
 	bool m_internal_drag = false, m_drop_received = false, m_drag_mouse_armed = false;
