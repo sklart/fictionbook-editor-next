@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run full release validation without publishing a release
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -269,7 +274,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           $arguments = @{ Configuration = 'Release'; PlatformToolset = 'v143'; SkipUpdateManifest = $true; SkipLocalizationPreflight = $true; SkipEarlyRuntimeSuites = $true; BatchOutputDirectory = 'out/target-batches' }
-          if ($env:GITHUB_REF_TYPE -eq 'tag') { $arguments.FullValidation = $true }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -or '${{ inputs.full_validation }}' -eq 'true') { $arguments.FullValidation = $true }
           ./tools/build/verify-release.ps1 @arguments
       - name: Smoke bundled plugin upgrade and uninstall
         if: github.event_name == 'pull_request'
@@ -375,6 +380,7 @@ jobs:
             $arguments.FullValidation = $true
             if ($env:GITHUB_REF_NAME -match '^v\d+\.\d+\.\d+-') { $arguments.Prerelease = $true }
           }
+          elseif ('${{ inputs.full_validation }}' -eq 'true') { $arguments.FullValidation = $true }
           ./tools/build/create-release.ps1 @arguments
       - name: Smoke packaged installer upgrade and uninstall
         shell: pwsh

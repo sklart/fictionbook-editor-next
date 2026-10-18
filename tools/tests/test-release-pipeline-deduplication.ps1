@@ -87,6 +87,9 @@ Forbid $verify 'QUARANTINED table-toolbar-rendering failure' 'verify-release.ps1
 Require $verify 'test-nsis-legacy-archhandler-cleanup.ps1' 'verify-release legacy ArchHandler cleanup contract'
 Require $verify 'test-fbe-save-as-mru-runtime.ps1' 'verify-release Save As MRU runtime regression'
 $tableContourStart = $verify.IndexOf('if ($runTables) {')
+if ($workflow -notmatch '(?s)workflow_dispatch:.*?full_validation:.*?type: boolean.*?default: false') { throw 'Manual full validation must be an explicit opt-in.' }
+if (($workflow | Select-String -Pattern 'inputs\.full_validation' -AllMatches).Matches.Count -ne 2) { throw 'Manual full validation must reach both verification and packaging.' }
+if ($workflow -notmatch "(?s)publish:.*?if: github.ref_type == 'tag'") { throw 'Manual validation must not publish a release.' }
 $fullContourStart = $verify.IndexOf('if ($FullValidation) {')
 if ($tableContourStart -lt 0 -or $fullContourStart -lt 0) { throw 'verify-release.ps1 must retain explicit table and FULL contours.' }
 $tableContourEnd = Get-BlockEnd $verify $tableContourStart 'table contour'
