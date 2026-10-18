@@ -54,6 +54,12 @@ if ($buildBlock -notmatch '(?s)- name: Ensure NSIS 3\.13\s*\n\s*if: github\.even
     $packageBlock -notmatch 'Smoke packaged installer upgrade and uninstall') {
     throw 'NSIS must run only for PR smoke in build and once for the real package setup on push/tag.'
 }
+foreach ($job in @($buildBlock, $packageBlock)) {
+    $scopeSmoke = [regex]::Match($job, '(?s)- name: Smoke NSIS install scopes.*?(?=\n\s*- name:)').Value
+    if ($scopeSmoke -notmatch 'test-prerelease-nsis-state\.ps1') {
+        throw 'Each provisioned NSIS scope smoke must also run the production ownership/menu-state probe.'
+    }
+}
 $imageCache = [regex]::Match($workflow, '(?s)- name: Restore prepared image stack cache.*?(?=\n\s*- name:)').Value
 foreach ($requiredPath in @('build/libwebp','build/openjpeg','build/aom','build/libde265','build/libheif')) { if ($imageCache -notmatch [regex]::Escape($requiredPath)) { throw "Image cache is missing $requiredPath." } }
 foreach ($script in @('tools\build\build-libwebp.ps1','tools\build\build-openjpeg.ps1')) {

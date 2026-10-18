@@ -1,5 +1,8 @@
-﻿[CmdletBinding()] param([string]$Configuration = 'Release')
+﻿[CmdletBinding()] param([string]$Configuration = 'Release', [string]$BatchExecutable)
 $ErrorActionPreference = 'Stop'; $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if (-not $BatchExecutable) { $BatchExecutable = Join-Path $root "out\$Configuration\ExportEPUBBatch.exe" }
+$batch = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchExecutable)
+if (-not (Test-Path -LiteralPath $batch -PathType Leaf)) { throw "Missing ExportEPUBBatch.exe: $batch" }
 $dll = Join-Path $root "out\$Configuration\Plugins\ExportEPUB.dll"; if (-not (Test-Path -LiteralPath $dll)) { throw "Missing ExportEPUB.dll: $dll" }
 & (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -Arch x86 -HostArch x64 -PlatformToolset v143
 $apiDirectory = & (Join-Path $PSScriptRoot 'ensure-fbe-api.ps1') -Configuration $Configuration
@@ -25,7 +28,6 @@ try {
     $epub3 = ($lines | Where-Object { $_ -like 'EPUB3=*' } | Select-Object -First 1) -replace '^EPUB3='; $epub2 = ($lines | Where-Object { $_ -like 'EPUB2=*' } | Select-Object -First 1) -replace '^EPUB2='
     if ([string]::IsNullOrWhiteSpace($epub3) -or [string]::IsNullOrWhiteSpace($epub2)) { throw 'Runtime harness did not return both EPUB paths.' }
     Test-V2EpubContent $epub3 3; Test-V2EpubContent $epub2 2
-    $batch=Join-Path $root "out\$Configuration\ExportEPUBBatch.exe"
     $fixture=Join-Path $PSScriptRoot 'fb2-metadata-cyrillic-smoke.fb2'
     $before=(Get-FileHash -LiteralPath $epub3 -Algorithm SHA256).Hash
     $held=[IO.File]::Open($epub3,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)

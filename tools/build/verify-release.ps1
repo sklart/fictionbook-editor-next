@@ -348,7 +348,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-abi.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-plugin-v2-negotiation-policy.ps1")
 & (Join-Path $repoRoot "tools\tests\test-export-html-v2-runtime.ps1") -Configuration $Configuration
-& (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration -BatchExecutable (Join-Path $batchOutputDir "ExportEPUBBatch.exe")
 & (Join-Path $repoRoot "tools\tests\test-export-docx-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-import-epub-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-prerelease-epub-import.ps1") -Importer (Join-Path $batchOutputDir "ImportEPUBBatch.exe")
@@ -417,7 +417,11 @@ if (-not $SkipEarlyRuntimeSuites) {
     & (Join-Path $repoRoot "tools\tests\test-nsis-install-scopes.ps1")
 }
 & (Join-Path $repoRoot "tools\tests\test-nsis-ownership-safe-uninstall.ps1")
-& (Join-Path $repoRoot "tools\tests\test-prerelease-nsis-state.ps1")
+if (-not $SkipEarlyRuntimeSuites) {
+    # CI executes this native NSIS probe alongside its scope smoke, after the
+    # compiler is provisioned in the PR build or push/tag package job.
+    & (Join-Path $repoRoot "tools\tests\test-prerelease-nsis-state.ps1")
+}
 & (Join-Path $repoRoot "tools\tests\test-nsis-shell-lifecycle.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir

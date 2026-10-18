@@ -260,6 +260,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-nsis-install-scopes.ps1
+          ./tools/tests/test-prerelease-nsis-state.ps1
       - name: Verify universal release binaries and Dark Theme stabilization runtime
         shell: pwsh
         env:
@@ -362,6 +363,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-nsis-install-scopes.ps1
+          ./tools/tests/test-prerelease-nsis-state.ps1
       - name: Create release artifacts without compiling
         shell: pwsh
         run: |

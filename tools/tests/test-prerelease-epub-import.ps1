@@ -25,6 +25,7 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
     $output=Join-Path $work ($name+'.fb2');$log=Join-Path $work ($name+'.txt')
     $process=[Diagnostics.Process]::new()
     $process.StartInfo.FileName=$Importer
+    $process.StartInfo.WorkingDirectory=$repo
     $process.StartInfo.Arguments='"{0}" "{1}" --no-images --no-cover --no-notes --no-validate' -f $path,$output
     $process.StartInfo.UseShellExecute=$false;$process.StartInfo.CreateNoWindow=$true
     $process.StartInfo.RedirectStandardOutput=$true;$process.StartInfo.RedirectStandardError=$true
