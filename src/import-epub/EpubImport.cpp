@@ -11,6 +11,7 @@
 #include <set>
 #include <algorithm>
 #include <cwctype>
+#include <future>
 #include <shlwapi.h>
 #include <gdiplus.h>
 
@@ -18,6 +19,12 @@ namespace
 {
     EpubImportOptions g_options;
     EpubImportRuntimeStats g_runtimeStats;
+    thread_local CStringW g_bookRoot;
+    struct BookRootScope {
+        CStringW previous;
+        explicit BookRootScope(const CStringW& root) : previous(g_bookRoot) { g_bookRoot=root; }
+        ~BookRootScope() { g_bookRoot=previous; }
+    };
 
     CStringW LoadImportRuntimeString(UINT stringId, LPCWSTR fallback)
     {
@@ -735,16 +742,31 @@ namespace
     {
         CStringW rel = UrlDecodeUtf8(relative);
         rel.Replace(L'/', L'\\');
-
-        wchar_t combined[4096] = L"";
-        wchar_t canonical[4096] = L"";
-
-        if (!PathCombineW(combined, baseDir, rel))
-            return CStringW();
-        if (!PathCanonicalizeW(canonical, combined))
-            return CStringW(combined);
-
-        return CStringW(canonical);
+        if (g_bookRoot.IsEmpty() || rel.IsEmpty() || rel[0]==L'\\' || rel.Find(L':')>=0 ||
+            wcslen(rel.GetString())!=static_cast<size_t>(rel.GetLength())) return CStringW();
+        int segmentStart=0;
+        while(segmentStart<rel.GetLength()) {
+            int end=rel.Find(L'\\',segmentStart); if(end<0) end=rel.GetLength();
+            const CStringW segment=rel.Mid(segmentStart,end-segmentStart);
+            if(!segment.IsEmpty() && segment!=L"." && segment!=L".." && (segment.Right(1)==L" " || segment.Right(1)==L".")) return CStringW();
+            segmentStart=end+1;
+        }
+        wchar_t canonical[MAX_PATH] = {}, root[MAX_PATH] = {};
+        const CStringW joined=baseDir+L"\\"+rel;
+        const DWORD length=::GetFullPathNameW(joined, _countof(canonical), canonical, nullptr);
+        const DWORD rootLength=::GetFullPathNameW(g_bookRoot, _countof(root), root, nullptr);
+        if(!length || length>=_countof(canonical) || !rootLength || rootLength>=_countof(root)) return CStringW();
+        CStringW prefix(root); prefix.TrimRight(L"\\");
+        const CStringW path(canonical);
+        if(path.GetLength()<=prefix.GetLength() || path.Left(prefix.GetLength()).CompareNoCase(prefix)!=0 || path[prefix.GetLength()]!=L'\\') return CStringW();
+        // Reject redirections at the extraction root and at every descendant,
+        // including the final resource. Never fall back to an unchecked path.
+        for(int i=prefix.GetLength(); i<=path.GetLength(); ++i) {
+            if(i!=path.GetLength() && path[i]!=L'\\') continue;
+            const DWORD attributes=::GetFileAttributesW(path.Left(i));
+            if(attributes!=INVALID_FILE_ATTRIBUTES && (attributes&FILE_ATTRIBUTE_REPARSE_POINT)) return CStringW();
+        }
+        return path;
     }
 
     bool FileExists(const CStringW& path)
@@ -792,6 +814,7 @@ namespace
     {
         if (!DirectoryExists(dir))
             return true;
+        if(::GetFileAttributesW(dir)&FILE_ATTRIBUTE_REPARSE_POINT) return ::RemoveDirectoryW(dir)!=FALSE;
 
         CStringW mask = dir;
         if (!mask.IsEmpty() && mask.Right(1) != L"\\")
@@ -818,7 +841,7 @@ namespace
                 }
                 else
                 {
-                    ::SetFileAttributesW(child, FILE_ATTRIBUTE_NORMAL);
+                    if(!(fd.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT)) ::SetFileAttributesW(child, FILE_ATTRIBUTE_NORMAL);
                     ::DeleteFileW(child);
                 }
             }
@@ -931,13 +954,44 @@ namespace
         return true;
     }
 
-    bool WaitForZipFolderExtraction(const CStringW& extractDir, CStringW& errorText)
+    struct ExpectedZipFile { CStringW path; LONG size=0; };
+    bool CollectZipFiles(Folder* folder, const CStringW& prefix, std::vector<ExpectedZipFile>& files, unsigned int depth=0)
     {
-        CStringW container = extractDir + L"\\META-INF\\container.xml";
+        if(!folder || depth>64 || files.size()>100000) return false;
+        CComPtr<FolderItems> items; long count=0;
+        if(FAILED(folder->Items(&items)) || !items || FAILED(items->get_Count(&count))) return false;
+        for(long i=0;i<count;++i) {
+            CComPtr<FolderItem> item; CComBSTR name; VARIANT_BOOL directory=VARIANT_FALSE;
+            if(FAILED(items->Item(_variant_t(i), &item)) || !item || FAILED(item->get_Path(&name)) || FAILED(item->get_IsFolder(&directory))) return false;
+            const CStringW itemPath(name);
+            const CStringW leaf=itemPath.Mid(itemPath.ReverseFind(L'\\')+1);
+            if(leaf.IsEmpty() || leaf==L"." || leaf==L".." || leaf.FindOneOf(L"\\/:")>=0) return false;
+            const CStringW relative=prefix+leaf;
+            if(directory) {
+                CComPtr<IDispatch> dispatch; if(FAILED(item->get_GetFolder(&dispatch))) return false;
+                CComQIPtr<Folder> child(dispatch); if(!CollectZipFiles(child,relative+L"\\",files,depth+1)) return false;
+            } else {
+                ExpectedZipFile file; file.path=relative;
+                if(FAILED(item->get_Size(&file.size)) || file.size<0) return false;
+                files.push_back(file);
+            }
+        }
+        return true;
+    }
+    bool WaitForZipFolderExtraction(const CStringW& extractDir, const std::vector<ExpectedZipFile>& files, CStringW& errorText)
+    {
         for (int i = 0; i < 600; ++i)
         {
-            if (FileExists(container))
-                return true;
+            bool ready=!files.empty();
+            for(const auto& expected:files) {
+                const CStringW path=CombineAndCanonicalizePath(extractDir,expected.path);
+                HANDLE file=::CreateFileW(path,GENERIC_READ,0,nullptr,OPEN_EXISTING,FILE_FLAG_OPEN_REPARSE_POINT,nullptr);
+                if(file==INVALID_HANDLE_VALUE) { ready=false; break; }
+                BY_HANDLE_FILE_INFORMATION info={}; LARGE_INTEGER size={};
+                const bool complete=::GetFileInformationByHandle(file,&info) && !(info.dwFileAttributes&(FILE_ATTRIBUTE_REPARSE_POINT|FILE_ATTRIBUTE_DIRECTORY)) && ::GetFileSizeEx(file,&size) && size.QuadPart==expected.size;
+                ::CloseHandle(file); if(!complete) { ready=false; break; }
+            }
+            if (ready) return true;
             Sleep(100);
         }
 
@@ -961,6 +1015,7 @@ namespace
         }
 
         CreateDirectoryRecursive(extractDir);
+        BookRootScope extractionRoot(extractDir);
 
         CComPtr<IShellDispatch> shell;
         HRESULT hr = shell.CoCreateInstance(CLSID_Shell);
@@ -996,6 +1051,8 @@ namespace
             return false;
         }
 
+        std::vector<ExpectedZipFile> expected;
+        if(!CollectZipFiles(zipFolder,L"",expected)) { errorText=L"Cannot enumerate all EPUB archive resources safely."; return false; }
         CComPtr<FolderItems> items;
         hr = zipFolder->Items(&items);
         if (FAILED(hr) || !items)
@@ -1014,14 +1071,45 @@ namespace
 
         _variant_t vItems(static_cast<IDispatch*>(itemsDispatch), true);
         _variant_t vOptions(static_cast<long>(FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_NOCONFIRMMKDIR));
-        hr = destFolder->CopyHere(vItems, vOptions);
+        std::future<void> delayedCopy;
+        wchar_t testMode[4]={}, delayedLeaf[MAX_PATH]={};
+        const bool delay=::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE",testMode,_countof(testMode))==1 && testMode[0]==L'1' &&
+            ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_DELAY_ENTRY",delayedLeaf,_countof(delayedLeaf))>0;
+        if(delay) {
+            wchar_t rootReport[MAX_PATH]={};
+            if(::GetEnvironmentVariableW(L"FBE_NEXT_TEST_EPUB_ROOT_REPORT",rootReport,_countof(rootReport))>0)
+                if(!WriteUtf8TextFile(rootReport,extractDir)) return false;
+            long count=0; hr=items->get_Count(&count); bool found=false;
+            for(long i=0;SUCCEEDED(hr) && i<count;++i) {
+                CComPtr<FolderItem> item; CComBSTR name;
+                hr=items->Item(_variant_t(i),&item); if(FAILED(hr) || !item) break;
+                hr=item->get_Path(&name); if(FAILED(hr)) break;
+                const CStringW itemPath(name);
+                if(itemPath.Mid(itemPath.ReverseFind(L'\\')+1)==delayedLeaf) { found=true; continue; }
+                hr=destFolder->CopyHere(_variant_t(static_cast<IDispatch*>(item.p)),vOptions);
+            }
+            if(!found) return false;
+            const CStringW leaf(delayedLeaf);
+            delayedCopy=std::async(std::launch::async,[zipPath,extractDir,leaf]() {
+                const HRESULT initialized=::CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
+                if(FAILED(initialized)) return;
+                {
+                    ::Sleep(1200);
+                    CComPtr<IShellDispatch> workerShell; CComPtr<Folder> sourceFolder,targetFolder; CComPtr<FolderItem> item;
+                    if(SUCCEEDED(workerShell.CoCreateInstance(CLSID_Shell)) && SUCCEEDED(workerShell->NameSpace(_variant_t(zipPath),&sourceFolder)) && sourceFolder &&
+                        SUCCEEDED(workerShell->NameSpace(_variant_t(extractDir),&targetFolder)) && targetFolder && SUCCEEDED(sourceFolder->ParseName(CComBSTR(leaf),&item)) && item)
+                        targetFolder->CopyHere(_variant_t(static_cast<IDispatch*>(item.p)),_variant_t(static_cast<long>(FOF_SILENT|FOF_NOCONFIRMATION|FOF_NOERRORUI|FOF_NOCONFIRMMKDIR)));
+                }
+                ::CoUninitialize();
+            });
+        } else hr = destFolder->CopyHere(vItems, vOptions);
         if (FAILED(hr))
         {
             errorText.Format(static_cast<LPCWSTR>(LoadImportRuntimeString(IDS_IMPORT_RUNTIME_ZIP_EXTRACT_FAILED, L"Windows ZIP provider could not extract EPUB. HRESULT=0x%08lX")), hr);
             return false;
         }
 
-        if (!WaitForZipFolderExtraction(extractDir, errorText))
+        if (!WaitForZipFolderExtraction(extractDir, expected, errorText))
             return false;
 
         if (!ValidateExtractedDirectoryTree(extractDir, errorText))
@@ -1602,6 +1690,7 @@ namespace
             item.properties = Attr(nodes[i], L"properties");
             if (!item.href.IsEmpty())
                 item.absPath = CombineAndCanonicalizePath(package.opfDir, item.href);
+            if(!item.href.IsEmpty() && item.absPath.IsEmpty()) { errorText=L"Unsafe EPUB manifest resource: "+item.href; return false; }
             if (!item.id.IsEmpty() && !item.href.IsEmpty())
                 package.manifest[std::wstring(item.id.GetString())] = item;
 
@@ -4727,6 +4816,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     }
 
     TempDirectory temp;
+    BookRootScope bookRoot(temp.Path()+L"\\epub");
     CStringW extractDir;
     if (!ExpandEpubToDirectory(epubPath, temp.Path(), extractDir, errorText))
     {
@@ -4762,6 +4852,10 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         return false;
     }
     log.AddFormat(L"Title: %s", package.title);
+    for(const auto& id:package.spine) {
+        const auto item=package.manifest.find(std::wstring(id));
+        if(item==package.manifest.end() || !FileExists(item->second.absPath)) { errorText=L"Missing mandatory EPUB spine resource: "+id; return false; }
+    }
     if (!package.seriesName.IsEmpty())
         log.AddFormat(L"Series: %s", package.seriesName);
     log.AddFormatInt(L"Manifest items: %d", static_cast<int>(package.manifest.size()));
@@ -4876,9 +4970,9 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         CStringW xhtmlPath = CombineAndCanonicalizePath(package.opfDir, item.href);
         if (!FileExists(xhtmlPath))
         {
-            warning += LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SPINE_FILE_MISSING, L"Spine file was not found: ") + item.href + L"\r\n";
+            errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SPINE_FILE_MISSING, L"Spine file was not found: ") + item.href;
             log.AddFormat(L"Missing spine file: %s", item.href);
-            continue;
+            return false;
         }
 
         ctx.currentXhtmlDir = DirectoryOf(xhtmlPath);
@@ -4889,6 +4983,7 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             ++importedSections;
             log.AddFormat(L"Imported spine item: %s", item.href);
         }
+        else { errorText=L"Cannot import mandatory EPUB chapter: "+item.href+L"\r\n"+warning; return false; }
     }
 
     log.AddFormatInt(L"Imported sections: %d", importedSections);
