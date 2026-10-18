@@ -2,7 +2,7 @@
 param(
     [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
     [ValidateRange(20, 120)][int]$TimeoutSeconds = 60,
-    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked'),
+    [string[]]$Cases = @('word', 'title', 'plain', 'plain-single', 'plain-middle', 'internal', 'internal-dirty', 'internal-history', 'internal-history-middle', 'internal-end', 'internal-missing-link', 'internal-missing-image', 'legacy-unmarked', 'queue-post-failure', 'queue-post-clean-failure', 'queue-failure-retry', 'queue-two', 'queue-three', 'queue-plain-two'),
     [switch]$KeepArtifacts,
     [switch]$RealPaste
 )
@@ -30,7 +30,11 @@ try {
         if($row.Count -ne 1 -or $row[0].result -ne 'pass') { throw "HTML paste runtime failed: $case; report: $(Get-Content $report -Raw)" }
         [xml]$saved = Get-Content -LiteralPath $fixture -Raw
         $savedXml = $saved.OuterXml
-        if($case -in @('internal-missing-link', 'internal-missing-image')) {
+        if($case -like 'queue-*') {
+            if($case -notin @('queue-post-failure','queue-post-clean-failure') -and $savedXml -notmatch 'Queue1') { throw "Queued text missing after save: $case" }
+            if($savedXml -match 'Queue9|Queue7') { throw "Rejected or newer clipboard inserted: $case" }
+        }
+        elseif($case -in @('internal-missing-link', 'internal-missing-image')) {
             if($savedXml -match 'Missing note|absent-image' -or $savedXml -notmatch 'Before') { throw "Unsafe internal fragment changed the saved document: $case" }
         }
         elseif($case -eq 'legacy-unmarked') {

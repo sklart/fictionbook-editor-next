@@ -26,6 +26,7 @@
 
 namespace FB { class Doc; }
 struct PendingHtmlPaste;
+struct DeferredHtmlPaste;
 
 extern CSettings _Settings;
 
@@ -365,7 +366,8 @@ enum : UINT {
 	WM_REFRESH_FIND_RESULTS_PANE = WM_APP + 44,
 	WM_DETACH_FIND_RESULTS_PANE = WM_APP + 45,
 	WM_FINALIZE_REPLACE_ALL_COMPLETION = WM_APP + 46,
-	WM_FINALIZE_DROP = WM_APP + 47
+	WM_FINALIZE_DROP = WM_APP + 47,
+	WM_FINALIZE_HTML_PASTE = WM_APP + 48
 };
 }
 class CSearchHighlightOverlay;
@@ -374,7 +376,7 @@ class CSearchHighlightOverlay;
 // Give the ATL event sink a stable IID with external linkage.
 extern const IID DIID_FBEHTMLElementEvents2;
 
-class CFBEView : public CWindowImpl<CFBEView, CAxWindow, CFBEViewWinTraits>,
+class CFBEView : public CWindowImpl<CFBEView, CAxWindow, CFBEViewWinTraits>, public CIdleHandler,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_DWebBrowserEvents2>,
 		 public IDispEventSimpleImpl<0, CFBEView, &DIID_HTMLDocumentEvents2>,
 		 public IDispEventSimpleImpl<1, CFBEView, &DIID_FBEHTMLElementEvents2>,
@@ -410,6 +412,9 @@ protected:
   int			    m_ignore_changes;
   int			    m_enable_paste;
   std::shared_ptr<PendingHtmlPaste> m_pendingHtmlPaste;
+  std::shared_ptr<DeferredHtmlPaste> m_activeHtmlPaste;
+  UINT_PTR m_htmlPasteGeneration = 0;
+  CMessageLoop* m_pasteIdleLoop = nullptr;
 	MSHTML::IHTMLDOMNodePtr m_pending_drop_normalization_scope;
 	CString m_drop_source_html, m_drop_target_html;
 	bool m_internal_drag = false, m_drop_received = false, m_drag_mouse_armed = false;
@@ -578,6 +583,8 @@ public:
   ~CFBEView();
 
   BOOL PreTranslateMessage(MSG* pMsg);
+  BOOL OnIdle();
+  LRESULT OnDeferredHtmlPaste(UINT, WPARAM, LPARAM, BOOL&);
 
   BEGIN_MSG_MAP(CFBEView)
     MESSAGE_HANDLER(WM_CREATE, OnCreate)
@@ -585,6 +592,7 @@ public:
     MESSAGE_HANDLER(WM_SIZE, OnSize)
 	MESSAGE_HANDLER(AU::WM_FINALIZE_REPLACE_ALL_COMPLETION, OnFinalizeReplaceAllCompletion)
 	MESSAGE_HANDLER(AU::WM_FINALIZE_DROP, OnFinalizeDrop)
+	MESSAGE_HANDLER(AU::WM_FINALIZE_HTML_PASTE, OnDeferredHtmlPaste)
 
     // editing commands
     COMMAND_ID_HANDLER(ID_EDIT_UNDO, OnUndo)
