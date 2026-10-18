@@ -64,6 +64,7 @@ namespace
         std::vector<CStringW> subjects;
         std::map<std::wstring, ManifestItem> manifest;
         std::vector<CStringW> spine;
+        std::set<std::wstring> mandatorySpine;
         std::map<std::wstring, CStringW> navTitlesByAbsPath;
         std::set<std::wstring> guideServiceDocuments;
         int guideReferenceCount;
@@ -1704,7 +1705,11 @@ namespace
         {
             CStringW idref = Attr(nodes[i], L"idref");
             if (!idref.IsEmpty())
+            {
                 package.spine.push_back(idref);
+                if (Attr(nodes[i], L"linear").CompareNoCase(L"no") != 0)
+                    package.mandatorySpine.insert(std::wstring(idref.GetString()));
+            }
         }
 
         // EPUB 2 guide is still common in real books. It often contains better
@@ -4854,7 +4859,10 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
     log.AddFormat(L"Title: %s", package.title);
     for(const auto& id:package.spine) {
         const auto item=package.manifest.find(std::wstring(id));
-        if(item==package.manifest.end() || !FileExists(item->second.absPath)) { errorText=L"Missing mandatory EPUB spine resource: "+id; return false; }
+        if(item==package.manifest.end() || !FileExists(item->second.absPath)) {
+            if(package.mandatorySpine.count(std::wstring(id.GetString()))) { errorText=L"Missing mandatory EPUB spine resource: "+id; return false; }
+            log.AddFormat(L"Skipped missing optional EPUB spine resource: %s", id);
+        }
     }
     if (!package.seriesName.IsEmpty())
         log.AddFormat(L"Series: %s", package.seriesName);
@@ -4917,6 +4925,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             continue;
 
         const ManifestItem& item = it->second;
+        const bool mandatory = package.mandatorySpine.count(std::wstring(item.id.GetString())) != 0;
+        if (!mandatory && !FileExists(item.absPath)) continue;
 
         if (options.importNotes && noteDocumentIds.find(std::wstring(item.id.GetString())) != noteDocumentIds.end())
         {
@@ -4950,11 +4960,16 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
 
         if (IsImageMediaType(item.mediaType) || IsImageHrefByExtension(item.href))
         {
+            // These are explicit user filters, not a failed chapter conversion.
+            const bool excludedByOption = !options.importImages ||
+                (IsSvgImage(item) && options.svgConversionMode == SVG_IMPORT_SKIP);
             if (ConvertImageSpineItemToFb2Section(item, title, ctx, body, warning))
             {
                 ++importedSections;
                 log.AddFormat(L"Imported image spine item: %s", item.href);
             }
+            else if (mandatory && !excludedByOption) { errorText=L"Cannot import mandatory EPUB image chapter: "+item.href+L"\r\n"+warning; return false; }
+            else log.AddFormat(excludedByOption ? L"Skipped image spine item by import option: %s" : L"Skipped optional EPUB image chapter: %s", item.href);
             continue;
         }
 
@@ -4963,7 +4978,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             item.href.Right(5).CompareNoCase(L".html") != 0 &&
             item.href.Right(6).CompareNoCase(L".xhtml") != 0)
         {
-            log.AddFormat(L"Skipped unsupported spine item: %s", item.href);
+            if (mandatory) { errorText=L"Unsupported mandatory EPUB spine resource: "+item.href; return false; }
+            log.AddFormat(L"Skipped unsupported optional spine item: %s", item.href);
             continue;
         }
 
@@ -4972,7 +4988,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
         {
             errorText = LoadImportRuntimeString(IDS_IMPORT_RUNTIME_SPINE_FILE_MISSING, L"Spine file was not found: ") + item.href;
             log.AddFormat(L"Missing spine file: %s", item.href);
-            return false;
+            if (mandatory) return false;
+            continue;
         }
 
         ctx.currentXhtmlDir = DirectoryOf(xhtmlPath);
@@ -4983,7 +5000,8 @@ bool BuildFb2XmlFromEpub(const CStringW& epubPath, const EpubImportOptions& opti
             ++importedSections;
             log.AddFormat(L"Imported spine item: %s", item.href);
         }
-        else { errorText=L"Cannot import mandatory EPUB chapter: "+item.href+L"\r\n"+warning; return false; }
+        else if (mandatory) { errorText=L"Cannot import mandatory EPUB chapter: "+item.href+L"\r\n"+warning; return false; }
+        else log.AddFormat(L"Skipped invalid optional EPUB chapter: %s", item.href);
     }
 
     log.AddFormatInt(L"Imported sections: %d", importedSections);

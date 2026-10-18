@@ -44,6 +44,21 @@ function New-Epub([string]$name,[string]$chapter='chapter.xhtml',[string]$opf='b
     } finally {$zip.Dispose()}
     return $path
 }
+function New-ExtraSpineEpub([string]$name,[string]$mediaType='application/octet-stream',[switch]$Optional,[switch]$Missing) {
+    $path=New-Epub $name
+    $zip=[IO.Compression.ZipFile]::Open($path,'Update')
+    try {
+        $entry=$zip.GetEntry('book.opf');$reader=[IO.StreamReader]::new($entry.Open())
+        try{$opf=$reader.ReadToEnd()}finally{$reader.Dispose()}
+        $entry.Delete()
+        $linear=if($Optional){' linear="no"'}else{''}
+        $opf=$opf.Replace('</manifest>','<item id="extra" href="extra.bin" media-type="'+$mediaType+'"/></manifest>')
+        $opf=$opf.Replace('</spine>','<itemref idref="extra"'+$linear+'/></spine>')
+        Add-ZipText $zip 'book.opf' $opf
+        if(-not $Missing){Add-ZipText $zip 'extra.bin' 'not an XHTML document'}
+    } finally {$zip.Dispose()}
+    return $path
+}
 function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Reparse) {
     $output=Join-Path $work ($name+'.fb2');$log=Join-Path $work ($name+'.txt')
     $process=[Diagnostics.Process]::new()
@@ -81,6 +96,13 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
 $oldMode,$oldDelay,$oldRootReport=$env:FBE_NEXT_TEST_MODE,$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY,$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT
 try {
     $valid=New-Epub 'valid';Invoke-Import $valid 'valid' $true
+    Invoke-Import (New-ExtraSpineEpub 'mandatory-unsupported') 'mandatory-unsupported' $false
+    Invoke-Import (New-ExtraSpineEpub 'optional-unsupported' -Optional) 'optional-unsupported' $true
+    Invoke-Import (New-ExtraSpineEpub 'mandatory-extra-missing' -Missing) 'mandatory-extra-missing' $false
+    Invoke-Import (New-ExtraSpineEpub 'optional-extra-missing' -Optional -Missing) 'optional-extra-missing' $true
+    Invoke-Import (New-ExtraSpineEpub 'mandatory-malformed' -mediaType 'application/xhtml+xml') 'mandatory-malformed' $false
+    Invoke-Import (New-ExtraSpineEpub 'optional-malformed' -mediaType 'application/xhtml+xml' -Optional) 'optional-malformed' $true
+    Invoke-Import (New-ExtraSpineEpub 'explicit-no-images' -mediaType 'image/png') 'explicit-no-images' $true
     Invoke-Import (New-Epub 'relative' -chapter 'sub/../chapter.xhtml') 'relative' $true
     Invoke-Import (New-Epub 'encoded-relative' -chapter '%63hapter.xhtml') 'encoded-relative' $true
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY='last.xhtml'
@@ -98,5 +120,5 @@ try {
     $cases=@('../external.xhtml','%2e%2e%2fexternal.xhtml','..\external.xhtml','/external.xhtml',$outside,('file:///'+$outside.Replace('\','/')),'\\server\share\external.xhtml')
     for($i=0;$i -lt $cases.Count;++$i){Invoke-Import (New-Epub ('unsafe-'+$i) -chapter $cases[$i]) ('unsafe-'+$i) $false}
     Invoke-Import (New-Epub 'opf-outside' -opf ('../external.xhtml')) 'opf-outside' $false
-    Write-Host "PASS: complete and delayed Shell extraction, missing mandatory chapter, OPF and manifest path confinement. Evidence: $work"
+    Write-Host "PASS: complete/delayed Shell extraction, mandatory/optional spine, explicit image filters, OPF/manifest path confinement and reparse cleanup. Evidence: $work"
 } finally {$env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_EPUB_DELAY_ENTRY=$oldDelay;$env:FBE_NEXT_TEST_EPUB_ROOT_REPORT=$oldRootReport}
