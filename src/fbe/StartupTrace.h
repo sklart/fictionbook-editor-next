@@ -24,6 +24,25 @@ namespace StartupTrace
 		wchar_t lastDispatchFailure[512];
 	};
 	void Start();
+    enum class Operation { None, Load, Save, Validate, Script, ViewSwitch, Count };
+    enum class EditorMode { Unknown, Body, Description, Source };
+    // Fixed-size counters, available even without trace; no document payloads.
+    ULONGLONG BeginOperation(Operation operation) noexcept;
+    void EndOperation(ULONGLONG token, bool succeeded) noexcept;
+    class ScopedOperation
+    {
+        ULONGLONG token;
+        bool succeeded = false;
+    public:
+        explicit ScopedOperation(Operation operation) noexcept : token(BeginOperation(operation)) {}
+        ~ScopedOperation() noexcept { EndOperation(token, succeeded); }
+        void Succeeded() noexcept { succeeded = true; }
+        ScopedOperation(const ScopedOperation&) = delete;
+        ScopedOperation& operator=(const ScopedOperation&) = delete;
+    };
+    void SetActiveEditorMode(EditorMode mode) noexcept;
+    CString ActiveEditorModeName();
+    CString OperationStatisticsReport(bool atShutdown = false);
     int RunDiagnosticPackageTest();
 	// Test-only progress marker. It is a no-op unless an isolated test explicitly
 	// provides both FBE_NEXT_TEST_MODE=1 and a breadcrumb file path.

@@ -34,6 +34,18 @@ function Run-Export([string]$name,[bool]$trace,[string]$selected='', [int]$expec
   $manifest=$contents['manifest.json'] | ConvertFrom-Json
   Assert-True ($manifest.session_id -match '^[0-9a-fA-F-]{36}$') 'Missing session ID'
   Assert-True ($manifest.privacy -eq 'checked-final-bytes') 'Missing privacy result'
+  $stats=$contents['operation-statistics.txt']
+  Assert-True ($stats -match "(?m)^session_id=$($manifest.session_id)\r?$") 'Statistics belong to another session'
+  if(!$selected) {
+   Assert-True ($stats -match 'operation-statistics-source=selected-current-session-at-preview') 'Missing current statistics source'
+   Assert-True ($stats -match 'active-editor-mode=source') 'Active source mode absent from preview'
+   Assert-True ($contents['runtime-state.txt'] -match 'active-editor-mode=source') 'Runtime mode differs from statistics snapshot'
+   Assert-True ($stats -match 'stats-save-completed=2' -and $stats -match 'stats-save-failed=1') 'Operation success/failure counters missing'
+   Assert-True ($stats -match 'stats-validate-completed=32' -and $stats -match 'stats-dropped=1') 'Bounded operation tracker failed'
+   Assert-True ($stats -match 'stats-view-switch-started=0') 'Operation after preview leaked into ZIP'
+  } elseif($stats -match 'operation-statistics-source=selected-session-at-shutdown') {
+   Assert-True ($stats -match 'active-editor-mode=body' -and $stats -match 'stats-view-switch-completed=1') 'Historical statistics lost shutdown state'
+  }
   foreach($file in $manifest.files){Assert-True ($zip.GetEntry($file.name).Length -eq $file.size) "Manifest size mismatch: $($file.name)"}
   return @{Id=$manifest.session_id;Contents=$contents;Manifest=$manifest}
  }finally{$zip.Dispose()}
@@ -95,6 +107,9 @@ try {
  Assert-True ($missing.Contents['environment-report.txt'] -match 'metadata-status=missing') 'Missing historical metadata not reported'
  [IO.File]::WriteAllBytes($metadata,$metadataBytes)
  # Plain book text without suspicious XML/path tokens must also fail the schema.
+ [IO.File]::AppendAllText($metadata,"stats-save-last-ms=PRIVATE_BOOK`r`n",[Text.Encoding]::UTF8)
+ $null=Run-Export 'unsafe-statistics' $false $active.Id 94
+ [IO.File]::WriteAllBytes($metadata,$metadataBytes)
  [IO.File]::AppendAllText($metadata,"arbitrary=PRIVATE_BOOK`r`n",[Text.Encoding]::UTF8)
  $null=Run-Export 'unsafe-metadata' $false $active.Id 94
  # Manual cleanup may remove only recognized old diagnostics, preserving crash sessions and current data.

@@ -838,6 +838,25 @@
 		::PostQuitMessage(backupDisabled && (verifyOnly || (sourceEdited && sourceApplied && saved)) ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"diagnostic-operations-runtime"))
+	{
+		bool modes = true;
+		for (const auto target : { DESC, SOURCE, BODY, SOURCE, DESC, BODY }) {
+			ShowView(target);
+			const CString expected = target == BODY ? L"body" : (target == DESC ? L"description" : L"source");
+			modes = modes && m_editor_view_state.Current() == target && StartupTrace::ActiveEditorModeName() == expected;
+		}
+		int line = 0, column = 0;
+		const bool validated = m_doc->Validate(line, column);
+		const CString filename(m_doc->m_filename), encoding(m_doc->m_encoding);
+		const DocumentLocation location = m_document_session.Location();
+		const FILE_OP_STATUS saved = SaveFile(true);
+		const bool failedSafely = saved == FAIL && CString(m_doc->m_filename) == filename && CString(m_doc->m_encoding) == encoding && m_document_session.Location().storagePath == location.storagePath;
+		CStringA report; report.Format("modes=%d\nvalidated=%d\nsave_failed_safely=%d\n", modes, validated, failedSafely);
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Flush(); output.Close();
+		::PostQuitMessage(modes && validated && failedSafely ? 0 : 1);
+		return 0;
+	}
 	if (IsFbeTestScenario(L"editor-view-lifecycle-runtime"))
 	{
 		FB::Doc* const originalDocument = m_doc;

@@ -228,6 +228,26 @@ namespace
         for (int i=0; i<value.GetLength(); ++i) if (!(value[i]>=L'0' && value[i]<=L'9') && !wcschr(extra,value[i])) return false;
         return true;
     }
+    bool StatisticsKey(const CString& key) {
+        return key.Left(6)==L"stats-" || key==L"active-editor-mode" || key==L"operation-statistics-source";
+    }
+    bool StatisticsField(const CString& key, const CString& value) {
+        if(value.Find(L'|')>=0) return false;
+        const CString operations(L"|none|load|save|validate|script|view-switch|");
+        if(key==L"operation-statistics-source") return value==L"selected-session-at-shutdown" || value==L"selected-current-session-at-preview" || value==L"historical-session-unavailable";
+        if(key==L"active-editor-mode") return value==L"unknown" || value==L"body" || value==L"description" || value==L"source";
+        if(key==L"stats-last-completed" || key==L"stats-in-progress") return operations.Find(L"|"+value+L"|")>=0 && !value.IsEmpty();
+        if(key==L"stats-last-result") return value==L"unknown" || value==L"success" || value==L"failure";
+        if(!NumericText(value,L"") || value.GetLength()>20) return false;
+        if(key==L"stats-dropped" || key==L"stats-last-duration-ms" || key==L"stats-in-progress-ms") return true;
+        const wchar_t* names[]={L"load",L"save",L"validate",L"script",L"view-switch"};
+        const CString fields(L"|started|completed|failed|active|total-ms|last-ms|max-ms|");
+        for(const auto name:names) {
+            const CString prefix=CString(L"stats-")+name+L"-";
+            if(key.Left(prefix.GetLength())==prefix) { const CString field=key.Mid(prefix.GetLength()); return !field.IsEmpty() && fields.Find(L"|"+field+L"|")>=0; }
+        }
+        return false;
+    }
     bool EnvironmentSchema(const CString& text) {
         int pos=0;
         while(pos>=0) {
@@ -246,6 +266,7 @@ namespace
             else if(key==L"configuration") { if(value!=L"Release" && value!=L"Debug" && value!=L"unknown") return false; }
             else if(key==L"deployment") { if(value!=L"portable" && value!=L"installed") return false; }
             else if(key==L"environment-source") { if(value!=L"selected-session-at-start" && value!=L"selected-current-session-at-preview" && value!=L"historical-session-unavailable") return false; }
+            else if(StatisticsKey(key)) { if(!StatisticsField(key,value)) return false; }
             else if(key==L"metadata-status") { if(value!=L"missing") return false; }
             else if(key==L"module") {
                 int fields=0, p=0;
@@ -411,6 +432,18 @@ bool StartupTrace::PrepareDiagnosticPackage(const DiagnosticSession& selected, c
     }
     const bool validEnvironment=EnvironmentSchema(environment) && (!metadataExists || (metadataReadable && Field(environment,L"session_id")==session.id));
     add(L"environment-report.txt", Utf8(environment), false, metadataExists && !metadataReadable ? L"read-failed" : (validEnvironment ? L"included" : L"privacy-rejected"));
+    CString statistics;
+    if(session.id==SessionId()) statistics=OperationStatisticsReport();
+    else {
+        statistics=L"session_id="+session.id+L"\r\n";
+        int p=0; bool recorded=false;
+        while(p>=0) {
+            CString line=environment.Tokenize(L"\n",p); line.Trim(); const int eq=line.Find(L'=');
+            if(eq>=0 && StatisticsKey(line.Left(eq))) { statistics+=line+L"\r\n"; if(line.Left(eq)==L"operation-statistics-source") recorded=true; }
+        }
+        if(!recorded) statistics+=L"operation-statistics-source=historical-session-unavailable\r\n";
+    }
+    add(L"operation-statistics.txt",Utf8(statistics),true,validEnvironment && EnvironmentSchema(statistics) ? L"included" : L"privacy-rejected");
     CString modules; int modulePos=0; while(modulePos>=0) { CString line=environment.Tokenize(L"\n",modulePos); if(line.Left(7)==L"module=") modules+=line+L"\n"; }
     add(L"diagnostic-modules.txt", Utf8(modules), true, validEnvironment ? L"included" : L"privacy-rejected");
     CString traceText; std::vector<CString> logs; if (!session.logPath.IsEmpty()) AddSessionFiles(session.logPath, logs);
@@ -446,6 +479,7 @@ bool StartupTrace::PrepareDiagnosticPackage(const DiagnosticSession& selected, c
             (LPCWSTR)session.id,::IsProcessDPIAware()?1:0,dpi,static_cast<int>(ThemeManager::GetSelectedTheme()),memoryAvailable?1:0,static_cast<ULONGLONG>(memory.WorkingSetSize),static_cast<ULONGLONG>(memory.PagefileUsage),available?1:0);
         const auto code=[](const wchar_t* value) { return FbeDiagnosticPrivacy::Identifier(value) ? CString(value) : CString(L"unknown"); };
         state+=L"last-event-code="+code(trace.lastEventCode)+L"\r\nlast-document-code="+code(trace.lastDocumentStage)+L"\r\nlast-script-operation-code="+code(trace.lastScriptOperationStage)+L"\r\n";
+        state+=L"active-editor-mode="+ActiveEditorModeName()+L"\r\n";
         add(L"runtime-state.txt",Utf8(state),true);
     }
     add(L"fbelib-report.txt", Utf8(ExtractCategoryLines(traceText,L"typelib")), true);

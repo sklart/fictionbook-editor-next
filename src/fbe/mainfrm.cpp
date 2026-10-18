@@ -1384,6 +1384,7 @@ void CMainFrame::AttachDocument(FB::Doc *doc)
 	UISetCheck(ID_VIEW_SOURCE, 0);
 	m_view.ActivateWnd(doc->m_body);
 	m_editor_view_state.Reset(EditorView::Body, EditorView::Description);
+	StartupTrace::SetActiveEditorMode(StartupTrace::EditorMode::Body);
 	m_editor_selection_state.Reset();
 	m_cb_updated=false;
 	InvalidateSelectionContext();
@@ -1415,7 +1416,7 @@ CString	CMainFrame::GetSaveFileName(CString& encoding) {
 	if (RuntimeTests::IsScenario(L"save-as-cancel-runtime")) return CString();
 	// Runtime integration uses an explicitly supplied output only in this
 	// narrowly scoped test mode; normal Save As always shows the native dialog.
-	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
+	if (RuntimeTests::IsScenario(L"archive-rar-save-runtime") || RuntimeTests::IsScenario(L"save-as-failure-runtime") || RuntimeTests::IsScenario(L"diagnostic-operations-runtime") || RuntimeTests::IsScenario(L"script-document-path-runtime"))
 	{
 		const DWORD length = ::GetEnvironmentVariable(L"FBE_NEXT_TEST_SAVE_PATH", NULL, 0);
 		if (length)
@@ -6692,6 +6693,7 @@ void CMainFrame::PresentEditorViewChangeFailure(const EditorViewChangeResult& re
 void CMainFrame::ShowView(EditorView vt)
 {
 	const EditorView previous = m_editor_view_state.Current();
+	StartupTrace::ScopedOperation operation(previous == vt ? StartupTrace::Operation::None : StartupTrace::Operation::ViewSwitch);
 	if(previous != vt) HideCaretMarker();
 	if (!m_editor_view_state.CtrlTabActive() && previous != vt)
 		m_editor_view_state.SetLastCtrlTabView(previous);
@@ -6699,12 +6701,20 @@ void CMainFrame::ShowView(EditorView vt)
 		m_view, m_splitter, m_source, m_doc, m_editor_selection_state,
 		_Settings.ViewDocumentTree() };
 	EditorViewPresentationHost presentation(presentationContext);
-	const EditorViewChangeResult result =
-		m_editor_view_controller.ChangeView(m_editor_view_state, *this, presentation, vt);
+	const auto recordMode = [&]() {
+		const EditorView current = m_editor_view_state.Current();
+		StartupTrace::SetActiveEditorMode(current == BODY ? StartupTrace::EditorMode::Body : (current == DESC ? StartupTrace::EditorMode::Description : StartupTrace::EditorMode::Source));
+	};
+	EditorViewChangeResult result;
+	try { result = m_editor_view_controller.ChangeView(m_editor_view_state, *this, presentation, vt); }
+	catch (...) { recordMode(); throw; }
+	recordMode();
 	if (!result.Succeeded())
 		PresentEditorViewChangeFailure(result);
-	else
+	else {
+		operation.Succeeded();
 		ApplyEditorViewCommandUi(result.previous, result.current);
+	}
 }
 
 void CMainFrame::ApplyEditorViewCommandUi(EditorView prev, EditorView vt)

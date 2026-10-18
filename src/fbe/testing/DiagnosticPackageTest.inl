@@ -7,6 +7,32 @@ int StartupTrace::RunDiagnosticPackageTest()
     if (!length || length >= _countof(output)) return 91;
     CString directory(output); directory.TrimRight(L"\\"); directory += L"\\";
     if (::SHCreateDirectoryEx(NULL, directory, NULL) != ERROR_SUCCESS && ::GetFileAttributes(directory) == INVALID_FILE_ATTRIBUTES) return 92;
+    if(ActiveEditorModeName()!=L"unknown") return 100;
+    for (const auto mode : {EditorMode::Body,EditorMode::Description,EditorMode::Source}) {
+        SetActiveEditorMode(mode);
+        const CString expected=mode==EditorMode::Body ? L"body" : (mode==EditorMode::Description ? L"description" : L"source");
+        if(ActiveEditorModeName()!=expected) return 101;
+    }
+    {
+        ScopedOperation load(Operation::Load);
+        { ScopedOperation save(Operation::Save); ::Sleep(20); save.Succeeded(); }
+        const CString active=OperationStatisticsReport();
+        if(Field(active,L"stats-in-progress")!=L"load" || Field(active,L"stats-save-completed")!=L"1" || Field(active,L"stats-load-active")!=L"1") return 102;
+        if(_wtoi64(Field(active,L"stats-save-last-ms"))<10) return 103;
+        load.Succeeded();
+    }
+    { ScopedOperation failed(Operation::Save); }
+    try { ScopedOperation unwound(Operation::Script); throw 1; } catch(int) { }
+    const CString counted=OperationStatisticsReport();
+    if(Field(counted,L"stats-load-completed")!=L"1" || Field(counted,L"stats-save-completed")!=L"2" || Field(counted,L"stats-save-failed")!=L"1" || Field(counted,L"stats-script-failed")!=L"1") return 104;
+    if(Field(counted,L"stats-in-progress")!=L"none" || Field(counted,L"stats-last-completed")!=L"script" || Field(counted,L"stats-last-result")!=L"failure") return 105;
+    ULONGLONG tokens[32]={};
+    for(auto& token:tokens) { token=BeginOperation(Operation::Validate); if(!token) return 106; }
+    if(BeginOperation(Operation::Validate)!=0 || Field(OperationStatisticsReport(),L"stats-dropped")!=L"1") return 107;
+    for(const auto token:tokens) EndOperation(token,true);
+    EndOperation(tokens[0],false); // Duplicate completion must not count or underflow.
+    if(Field(OperationStatisticsReport(),L"stats-validate-completed")!=L"32" || Field(OperationStatisticsReport(),L"stats-validate-active")!=L"0") return 108;
+    if(BeginOperation(Operation::None) || BeginOperation(Operation::Count)) return 109;
     // The public plug-in helper must route into the host and suppress arbitrary details.
     FbeDiagnostic::HResult(L"file-dialog", L"FD203", E_ACCESSDENIED, L"PRIVATE_USER C:\\secret\\book.fb2 <p>PRIVATE_BOOK</p>");
     Event(L"diagnostic", L"DGTEST", L"PRIVATE_USER; hr=0x80004005; C:\\secret\\book.fb2; <p>PRIVATE_BOOK</p>");
@@ -39,6 +65,7 @@ int StartupTrace::RunDiagnosticPackageTest()
     }
     // New events after preview must not change the saved package.
     Error(L"diagnostic", L"DGAFTER", L"hr=0x80070005");
+    { ScopedOperation afterPreview(Operation::ViewSwitch); SetActiveEditorMode(EditorMode::Body); afterPreview.Succeeded(); }
     const bool saved = prepared && SaveDiagnosticPackage(*snapshot, directory + L"package.zip", error);
     if(saved) {
         std::vector<BYTE> before,after; ReadBytes(directory+L"package.zip",before); CString collisionError;

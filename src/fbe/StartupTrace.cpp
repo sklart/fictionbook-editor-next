@@ -30,6 +30,37 @@ namespace
 	const wchar_t* const diagnosticTraceRegistryPath = L"Software\\FBETeam\\FictionBook Editor Next\\Diagnostics";
 	const wchar_t* const diagnosticTraceRegistryValue = L"TraceNextLaunch";
 
+    struct OperationCounters {
+        ULONGLONG started = 0, completed = 0, failed = 0, active = 0;
+        ULONGLONG totalMs = 0, lastMs = 0, maxMs = 0;
+    };
+    struct ActiveOperation { ULONGLONG token = 0, started = 0; StartupTrace::Operation operation = StartupTrace::Operation::None; };
+    constexpr size_t operationCount = static_cast<size_t>(StartupTrace::Operation::Count);
+    OperationCounters operationCounters[operationCount];
+    ActiveOperation activeOperations[32];
+    ULONGLONG nextOperationToken = 0, droppedOperations = 0, lastCompletedMs = 0;
+    StartupTrace::Operation lastCompletedOperation = StartupTrace::Operation::None;
+    bool lastCompletedSucceeded = false;
+    StartupTrace::EditorMode activeEditorMode = StartupTrace::EditorMode::Unknown;
+    const wchar_t* OperationName(StartupTrace::Operation operation) {
+        switch(operation) {
+        case StartupTrace::Operation::Load: return L"load";
+        case StartupTrace::Operation::Save: return L"save";
+        case StartupTrace::Operation::Validate: return L"validate";
+        case StartupTrace::Operation::Script: return L"script";
+        case StartupTrace::Operation::ViewSwitch: return L"view-switch";
+        default: return L"none";
+        }
+    }
+    const wchar_t* EditorModeName(StartupTrace::EditorMode mode) {
+        switch(mode) {
+        case StartupTrace::EditorMode::Body: return L"body";
+        case StartupTrace::EditorMode::Description: return L"description";
+        case StartupTrace::EditorMode::Source: return L"source";
+        default: return L"unknown";
+        }
+    }
+
 	class TraceLock { public: TraceLock() { if (traceLockInitialized) ::EnterCriticalSection(&traceLock); } ~TraceLock() { if (traceLockInitialized) ::LeaveCriticalSection(&traceLock); } };
 
 	CString TrySnapshot(const CString& value)
@@ -556,12 +587,72 @@ CString StartupTrace::FormatComExceptionMetadata(const EXCEPINFO* exceptionInfo,
 	}
 	return details;
 }
+ULONGLONG StartupTrace::BeginOperation(Operation operation) noexcept
+{
+    if (!traceLockInitialized || operation <= Operation::None || operation >= Operation::Count) return 0;
+    TraceLock guard;
+    for (auto& active : activeOperations) if (!active.token) {
+        if (++nextOperationToken == 0) ++nextOperationToken;
+        active = { nextOperationToken, ::GetTickCount64(), operation };
+        auto& counter = operationCounters[static_cast<size_t>(operation)];
+        ++counter.started; ++counter.active;
+        return active.token;
+    }
+    ++droppedOperations;
+    return 0;
+}
+void StartupTrace::EndOperation(ULONGLONG token, bool succeeded) noexcept
+{
+    if (!token || !traceLockInitialized) return;
+    TraceLock guard;
+    for (auto& active : activeOperations) if (active.token == token) {
+        const ULONGLONG elapsed = ::GetTickCount64() - active.started;
+        auto& counter = operationCounters[static_cast<size_t>(active.operation)];
+        ++counter.completed; if (!succeeded) ++counter.failed; --counter.active;
+        counter.totalMs += elapsed; counter.lastMs = elapsed; counter.maxMs = (std::max)(counter.maxMs, elapsed);
+        lastCompletedOperation = active.operation; lastCompletedSucceeded = succeeded; lastCompletedMs = elapsed;
+        active = {}; return;
+    }
+}
+void StartupTrace::SetActiveEditorMode(EditorMode mode) noexcept
+{
+    if (!traceLockInitialized) return;
+    TraceLock guard;
+    activeEditorMode = mode >= EditorMode::Unknown && mode <= EditorMode::Source ? mode : EditorMode::Unknown;
+}
+CString StartupTrace::ActiveEditorModeName()
+{
+    TraceLock guard; return CString(EditorModeName(activeEditorMode));
+}
+CString StartupTrace::OperationStatisticsReport(bool atShutdown)
+{
+    OperationCounters counters[operationCount]; ActiveOperation latest;
+    ULONGLONG dropped = 0, lastMs = 0; Operation last = Operation::None; bool succeeded = false; EditorMode mode;
+    {
+        TraceLock guard;
+        std::copy(std::begin(operationCounters), std::end(operationCounters), std::begin(counters));
+        for (const auto& active : activeOperations) if (active.token > latest.token) latest = active;
+        dropped = droppedOperations; last = lastCompletedOperation; succeeded = lastCompletedSucceeded; lastMs = lastCompletedMs; mode = activeEditorMode;
+    }
+    CString text;
+    text.Format(L"operation-statistics-source=%s\r\nsession_id=%s\r\nactive-editor-mode=%s\r\nstats-dropped=%llu\r\nstats-last-completed=%s\r\nstats-last-result=%s\r\nstats-last-duration-ms=%llu\r\nstats-in-progress=%s\r\nstats-in-progress-ms=%llu\r\n",
+        atShutdown ? L"selected-session-at-shutdown" : L"selected-current-session-at-preview", sessionId, EditorModeName(mode), dropped,
+        OperationName(last), last == Operation::None ? L"unknown" : (succeeded ? L"success" : L"failure"), lastMs, OperationName(latest.operation), latest.token ? ::GetTickCount64()-latest.started : 0);
+    for (size_t i = 1; i < operationCount; ++i) {
+        const auto& c = counters[i]; const wchar_t* name = OperationName(static_cast<Operation>(i));
+        text.AppendFormat(L"stats-%s-started=%llu\r\nstats-%s-completed=%llu\r\nstats-%s-failed=%llu\r\nstats-%s-active=%llu\r\nstats-%s-total-ms=%llu\r\nstats-%s-last-ms=%llu\r\nstats-%s-max-ms=%llu\r\n",
+            name,c.started,name,c.completed,name,c.failed,name,c.active,name,c.totalMs,name,c.lastMs,name,c.maxMs);
+    }
+    return text;
+}
+
 void StartupTrace::Finish() {
     if (!sessionMetadataPath.IsEmpty()) {
         HANDLE file = ::CreateFile(sessionMetadataPath, FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (file != INVALID_HANDLE_VALUE) {
             SYSTEMTIME now = {}; ::GetSystemTime(&now); CString end;
             end.Format(L"ended=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\r\noutcome=normal\r\n", now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond, now.wMilliseconds);
+            end += OperationStatisticsReport(true);
             CStringA bytes(CW2A(end, CP_UTF8)); DWORD written = 0; ::WriteFile(file, bytes.GetString(), bytes.GetLength(), &written, NULL); ::CloseHandle(file);
         }
     }

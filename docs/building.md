@@ -381,6 +381,7 @@ feed намеренно не обязан совпадать с текущей �
 ```powershell
 .\tools\tests\test-diagnostic-sessions.ps1 -Executable .\out\Release\FBE.exe
 .\tools\tests\test-diagnostic-localization.ps1
+.\tools\tests\test-diagnostic-operation-runtime.ps1 -Executable .\out\Release\FBE.exe
 ```
 
 Проверка запускает FBE в закрытом тестовом режиме с отдельным каталогом
@@ -393,3 +394,7 @@ feed намеренно не обязан совпадать с текущей �
 
 Формат пакета, пользовательский порядок сбора и предупреждение о содержимом
 дампов описаны в [reporting-issues.md](reporting-issues.md).
+
+Проверка operation-runtime использует отдельную portable-копию и штатные native
+сценарии переключения режимов и ошибки Save As; каждый процесс ограничен
+25 секундами. Она проверяет сохранённые счётчики при выключенном trace.
