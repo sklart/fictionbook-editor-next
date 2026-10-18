@@ -24,6 +24,8 @@ Require $backend 'm_description = operationName' 'The caller supplied operation 
 Require $backend 'UAS_BLOCKED' 'Internal XML changes must use a blocked parent unit.'
 Require $backend 'XmlRecordingScope suppress\(manager\)' 'Undo/Redo must suppress internal units without clearing history.'
 Require $backend 'XmlVisualState' 'Undo must restore binary expandos and savepoints alongside native history.'
+Require $backend '(?s)STDMETHOD\(Add\).*?OnNextAdd\(' 'Native child units must be notified when a following child is added.'
+Require $backend '(?s)STDMETHOD\(FindUnit\).*?CComQIPtr<IOleParentUndoUnit>.*?FindUnit\(' 'FindUnit must search nested native parent units.'
 if($backend -match 'Enable\(FALSE\)') { throw 'Disabling the undo manager destroys preceding history.' }
 if($backend -match 'm_undoSnapshots|UndoLastApply') { throw 'XML backend must not maintain a parallel undo stack.' }
 Require $backend 'documentWasDirty' 'Undo must restore the captured dirty-state contract.'

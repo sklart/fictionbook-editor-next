@@ -149,20 +149,39 @@ public:
 		*classId = CLSID_NULL; *id = 0; return S_OK;
 	}
 	STDMETHOD(OnNextAdd)() { return m_units.empty() ? S_OK : m_units.back()->OnNextAdd(); }
-	STDMETHOD(Open)(IOleParentUndoUnit* unit) { if(!unit) return E_POINTER; if(m_open) return m_open->Open(unit); m_open=unit; return S_OK; }
+	STDMETHOD(Open)(IOleParentUndoUnit* unit) {
+		if(!unit) return E_POINTER;
+		if(unit==static_cast<IOleParentUndoUnit*>(this) || FindUnit(unit)==S_OK) return E_INVALIDARG;
+		if(m_open) return m_open->Open(unit);
+		m_open=unit; return S_OK;
+	}
 	STDMETHOD(Close)(IOleParentUndoUnit* unit, BOOL commit) {
 		if(!m_open) return S_FALSE;
 		const HRESULT hr=m_open->Close(unit,commit); if(hr!=S_FALSE) return hr;
 		if(m_open.p!=unit) return E_INVALIDARG;
-		CComPtr<IOleParentUndoUnit> child(m_open);m_open.Release();return commit ? Add(child) : S_OK;
+		CComPtr<IOleParentUndoUnit> child(m_open);m_open.Release();
+		const HRESULT added=commit ? Add(child) : S_OK;
+		if(FAILED(added)) m_open=child;
+		return added;
 	}
 	STDMETHOD(Add)(IOleUndoUnit* unit) {
 		if(!unit) return E_POINTER;
+		if(unit==static_cast<IOleUndoUnit*>(this)) return E_INVALIDARG;
 		if(m_open) return m_open->Add(unit);
 		try {m_units.push_back(unit);} catch(const std::bad_alloc&) {return E_OUTOFMEMORY;}
+		if(m_units.size()>1) m_units[m_units.size()-2]->OnNextAdd();
 		return S_OK;
 	}
-	STDMETHOD(FindUnit)(IOleUndoUnit* unit) { for(const auto& child:m_units) if(child.p==unit) return S_OK; return S_FALSE; }
+	STDMETHOD(FindUnit)(IOleUndoUnit* unit) {
+		if(!unit) return E_POINTER;
+		if(m_open && (m_open.p==unit || m_open->FindUnit(unit)==S_OK)) return S_OK;
+		for(const auto& child:m_units) {
+			if(child.p==unit) return S_OK;
+			CComQIPtr<IOleParentUndoUnit> parent(child);
+			if(parent && parent->FindUnit(unit)==S_OK) return S_OK;
+		}
+		return S_FALSE;
+	}
 	STDMETHOD(GetParentState)(DWORD* state) { if(!state) return E_POINTER; if(m_open) return m_open->GetParentState(state); *state=UAS_NORMAL; return S_OK; }
 
 private:
@@ -174,6 +193,8 @@ private:
 	std::vector<CComPtr<IOleUndoUnit>> m_units;
 	CComPtr<IOleParentUndoUnit> m_open;
 };
+
+#include "../testing/XmlUndoProtocolTest.inl"
 
 XmlScriptBackend::XmlScriptBackend(FB::Doc*& document, SourceEditorControl& source,
 	const std::function<bool()>& sourceIsActive, const SynchronizeCallback& synchronize) :
@@ -232,6 +253,7 @@ XmlScriptDiagnostic XmlScriptBackend::ApplySourceText(const CString& text, const
 	bool opened = false;
 	try {
 		CheckError(result);
+		if(!VerifyXmlUndoParentProtocol()) CheckError(E_UNEXPECTED);
 		before.Capture(m_document);
 		unit->Initialize(this, previous, text, documentWasDirty, operationName, before, before);
 		CheckError(manager->Open(unit)); opened=true;
