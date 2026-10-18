@@ -1,4 +1,4 @@
-<# Verifies schema-v2 candidate generation never changes tracked update.xml. #>
+﻿<# Verifies schema-v2 candidate generation never changes tracked update.xml. #>
 [CmdletBinding()]
 param()
 
@@ -32,6 +32,9 @@ if ($legacy308MigrationRequired) {
 if ($manifest.FBE.Version -ne $prereleaseVersion -or $manifest.FBE.ReleaseTag -ne "v$prereleaseVersion" -or $manifest.FBE.ReleaseType -ne 'prerelease' -or $manifest.FBE.Artifacts.SetupUrl -notlike "*$prereleaseAssetVersion-win32-setup.exe") { throw 'Candidate must preserve prerelease identity in both version and asset name.' }
 & (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $candidate -ExpectedReleaseTag "v$version-rc.2" -Feed PrereleaseFeed
 if (-not $legacy308MigrationRequired) {
+    foreach ($name in @("FictionBookEditorNext-$version-win32-setup.exe", "FictionBookEditorNext-$version-win32-portable.zip")) {
+        Set-Content -LiteralPath (Join-Path $fixture $name) -Value $name -NoNewline
+    }
     $stableCandidate = Join-Path $fixture 'update-stable.xml'
     & (Join-Path $root 'tools\build\new-update-manifest-candidate.ps1') -ArtifactsRoot $fixture -OutputPath $stableCandidate -ReleaseTag "v$version"
     & (Join-Path $root 'tools\build\validate-update-manifest.ps1') -ManifestPath $stableCandidate -ExpectedReleaseTag "v$version" -Feed StableFeed
