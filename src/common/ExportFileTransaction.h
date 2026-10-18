@@ -26,7 +26,9 @@ class FileTransaction {
         for (auto it = files.rbegin(); it != files.rend(); ++it) {
             if (!it->applied) continue;
             const bool restored = it->existed
-                ? ::ReplaceFileW(it->target.c_str(), it->backup.c_str(), NULL, 0, NULL, NULL) != FALSE
+                ? (::GetFileAttributesW(it->target.c_str()) != INVALID_FILE_ATTRIBUTES
+                    ? ::ReplaceFileW(it->target.c_str(), it->backup.c_str(), NULL, 0, NULL, NULL) != FALSE
+                    : ::MoveFileExW(it->backup.c_str(), it->target.c_str(), MOVEFILE_WRITE_THROUGH) != FALSE)
                 : ::DeleteFileW(it->target.c_str()) != FALSE;
             if (restored) it->applied = false;
             // On rollback failure retain the backup for recovery, never erase it.
@@ -68,7 +70,13 @@ public:
             const BOOL replaced = file.existed
                 ? ::ReplaceFileW(file.target.c_str(), file.temporary.c_str(), file.backup.c_str(), 0, NULL, NULL)
                 : ::MoveFileExW(file.temporary.c_str(), file.target.c_str(), MOVEFILE_WRITE_THROUGH);
-            if (!replaced) { const HRESULT hr = Error(); Rollback(); return hr; }
+            if (!replaced) {
+                const DWORD error = ::GetLastError();
+                // ReplaceFile can fail after moving the original to the backup.
+                // Mark that state before rollback so cleanup cannot erase it.
+                if (file.existed && error == ERROR_UNABLE_TO_MOVE_REPLACEMENT_2) file.applied = true;
+                Rollback(); return HRESULT_FROM_WIN32(error ? error : ERROR_WRITE_FAULT);
+            }
             file.applied = true;
         }
         for (auto& file : files) { if (!file.backup.empty()) ::DeleteFileW(file.backup.c_str()); file.applied = false; }

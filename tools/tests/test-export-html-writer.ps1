@@ -33,6 +33,22 @@ try {
     & $out 'multi-fail' $existing
     if($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath $first -Algorithm SHA256).Hash -cne $firstHash -or (Get-FileHash -LiteralPath $second -Algorithm SHA256).Hash -cne $secondHash){throw 'Multi-file HTML rollback changed an existing document'}
     if(@(Get-ChildItem -LiteralPath $scratch -Filter 'fbe*.tmp').Count){throw 'HTML transaction leaked staging/backup files'}
+    $transactionTest = Join-Path $scratch 'transaction.exe'
+    & cl.exe /nologo /EHsc /W4 /WX /std:c++17 /utf-8 "/Fo:$obj\\" (Join-Path $PSScriptRoot 'export-file-transaction-harness.cpp') /link /OUT:$transactionTest
+    if ($LASTEXITCODE -ne 0) { throw 'Transaction failure harness did not compile' }
+    foreach ($mode in 'restore-succeeds','restore-fails') {
+        [IO.File]::WriteAllText($existing,'previous valid result',[Text.UTF8Encoding]::new($false))
+        & $transactionTest $mode $existing
+        if ($LASTEXITCODE -ne 0) { throw "Partial replacement probe failed: $mode" }
+        $backups = @(Get-ChildItem -LiteralPath $scratch -Filter 'fbe*.tmp')
+        if ($mode -eq 'restore-succeeds') {
+            if ((Get-FileHash -LiteralPath $existing -Algorithm SHA256).Hash -cne $before -or $backups.Count) { throw 'Partial replacement did not restore the original' }
+        } else {
+            if ((Test-Path -LiteralPath $existing) -or $backups.Count -ne 1 -or (Get-FileHash -LiteralPath $backups[0].FullName -Algorithm SHA256).Hash -cne $before) { throw 'Failed restoration lost the original backup' }
+            Remove-Item -LiteralPath $backups[0].FullName -Force
+        }
+    }
+    Write-Host 'PASS: partial ReplaceFile failure restores the original, or retains its SHA-256-identical backup when restoration fails'
 }
 finally {
     Remove-Item -LiteralPath $out -Force -ErrorAction SilentlyContinue
