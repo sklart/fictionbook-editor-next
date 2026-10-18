@@ -858,7 +858,7 @@
     }
 	if (IsFbeTestScenario(L"diagnostic-dialog-runtime"))
 	{
-		DiagnosticDialog dialog(m_diagnostic_commands);
+		DiagnosticDialog dialog(m_diagnostic_commands,&m_ui_watchdog);
 		const bool passed=dialog.RunRuntimeTest(m_hWnd);
 		CStringA report=passed ? "layout_dpi_theme=1\nresponsive_cancel_close=1\n" : "layout_dpi_theme=0\nresponsive_cancel_close=0\n";
 		report+=dialog.RuntimeTestDetails();

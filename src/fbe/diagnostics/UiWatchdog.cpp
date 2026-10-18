@@ -2,6 +2,8 @@
 #include "UiWatchdog.h"
 #include "../CrashHandler.h"
 #include <algorithm>
+#include <system_error>
+#include <new>
 
 namespace {
     std::atomic<DWORD> nextSequence{0};
@@ -30,9 +32,11 @@ namespace {
             code(sample.eventCode),code(sample.documentCode),code(sample.scriptCode),code(sample.scriptFailureCode),code(sample.hresultCode),sample.hasHresult ? 1U:0U,sample.hresult,sample.hasFailure ? 1U:0U,sample.failureHresult);
         return text;
     }
-    bool SafeDirectory(const CString& directory) {
+    DWORD DirectoryError(const CString& directory) {
         const DWORD attributes=::GetFileAttributes(directory);
-        return attributes!=INVALID_FILE_ATTRIBUTES && (attributes&FILE_ATTRIBUTE_DIRECTORY) && !(attributes&FILE_ATTRIBUTE_REPARSE_POINT);
+        if(attributes==INVALID_FILE_ATTRIBUTES) return ::GetLastError();
+        if(!(attributes&FILE_ATTRIBUTE_DIRECTORY)) return ERROR_DIRECTORY;
+        return (attributes&FILE_ATTRIBUTE_REPARSE_POINT) ? ERROR_ACCESS_DENIED : ERROR_SUCCESS;
     }
 }
 FbeDiagnostics::WatchdogOptions FbeDiagnostics::WatchdogOptions::CurrentProcess()
@@ -46,19 +50,39 @@ FbeDiagnostics::WatchdogOptions FbeDiagnostics::WatchdogOptions::CurrentProcess(
 }
 bool FbeDiagnostics::UiWatchdog::Start(HWND window)
 {
-    if(worker.joinable() || !::IsWindow(window)) return false;
-    stopEvent=::CreateEvent(NULL,TRUE,FALSE,NULL); if(!stopEvent) return false;
+    std::lock_guard<std::mutex> lock(lifecycleMutex);
+    if(state.load(std::memory_order_acquire)!=State::Stopped) return false;
+    StopLocked(); // Reap a completed worker before reusing its event/HWND.
+    if(!::IsWindow(window)) { writeError.store(ERROR_INVALID_WINDOW_HANDLE); return false; }
+    stopEvent=::CreateEvent(NULL,TRUE,FALSE,NULL);
+    if(!stopEvent) { writeError.store(::GetLastError()); return false; }
     ownerWindow=window;
     stopping.store(false); paused.store(false); posted.store(0); acknowledged.store(0); lastReply.store(0);
-    posts.store(0); replies.store(0); suspicions.store(0); confirmations.store(0); recoveries.store(0); writeError.store(0);
-    const CString session=StartupTrace::SessionId(), directory=StartupTrace::CurrentLogDirectory(), environment=StartupTrace::HangEnvironmentReport();
-    const DWORD uiThread=::GetWindowThreadProcessId(window,NULL); const auto options=WatchdogOptions::CurrentProcess();
-    try { worker=std::thread([this,window,uiThread,session,directory,environment,options]() {
-        try { Run(window,uiThread,session,directory,environment,options); } catch(...) { writeError.store(ERROR_UNHANDLED_EXCEPTION); }
-    }); } catch(...) { ::CloseHandle(stopEvent); stopEvent=NULL; return false; }
-    return true;
+    posts.store(0); replies.store(0); suspicions.store(0); confirmations.store(0); recoveries.store(0);
+    try {
+        const CString session=StartupTrace::SessionId(), directory=StartupTrace::CurrentLogDirectory(), environment=StartupTrace::HangEnvironmentReport();
+        const DWORD uiThread=::GetWindowThreadProcessId(window,NULL);
+        if(!uiThread) { writeError.store(ERROR_INVALID_WINDOW_HANDLE); StopLocked(); return false; }
+        const auto options=WatchdogOptions::CurrentProcess();
+        state.store(State::Starting,std::memory_order_release);
+        worker=std::thread([this,window,uiThread,session,directory,environment,options]() {
+            try { Run(window,uiThread,session,directory,environment,options); }
+            catch(const std::bad_alloc&) { writeError.store(ERROR_NOT_ENOUGH_MEMORY); }
+            catch(...) { writeError.store(ERROR_UNHANDLED_EXCEPTION); }
+            // Publish only after Run's report handles and every error have been finalized.
+            state.store(State::Stopped,std::memory_order_release);
+        });
+    } catch(const std::bad_alloc&) { writeError.store(ERROR_NOT_ENOUGH_MEMORY); StopLocked(); return false; }
+    catch(const std::system_error&) { writeError.store(ERROR_NO_SYSTEM_RESOURCES); StopLocked(); return false; }
+    catch(...) { writeError.store(ERROR_UNHANDLED_EXCEPTION); StopLocked(); return false; }
+    return true; // Accepted asynchronous start; Running becomes true only after initialization.
 }
 void FbeDiagnostics::UiWatchdog::Stop()
+{
+    std::lock_guard<std::mutex> lock(lifecycleMutex);
+    StopLocked();
+}
+void FbeDiagnostics::UiWatchdog::StopLocked()
 {
     stopping.store(true); if(stopEvent) ::SetEvent(stopEvent);
     if(worker.joinable()) worker.join();
@@ -68,6 +92,7 @@ void FbeDiagnostics::UiWatchdog::Stop()
         MSG stale={}; ::PeekMessage(&stale,ownerWindow,WatchdogHeartbeatMessage,WatchdogHeartbeatMessage,PM_REMOVE);
     }
     ownerWindow=NULL;
+    state.store(State::Stopped,std::memory_order_release);
 }
 void FbeDiagnostics::UiWatchdog::Acknowledge(DWORD sequence) noexcept
 {
@@ -78,12 +103,30 @@ void FbeDiagnostics::UiWatchdog::Acknowledge(DWORD sequence) noexcept
 void FbeDiagnostics::UiWatchdog::Run(HWND window,DWORD uiThread,const CString& session,const CString& directory,const CString& environment,WatchdogOptions options)
 {
     CString root(directory); root.TrimRight(L"\\/"); const CString parent=root; root+=L"\\Hangs\\";
-    if(!SafeDirectory(parent)) { writeError.store(ERROR_ACCESS_DENIED); return; }
-    if(!::CreateDirectory(root,NULL) && ::GetLastError()!=ERROR_ALREADY_EXISTS) { writeError.store(::GetLastError()); return; }
-    if(!SafeDirectory(root)) { writeError.store(ERROR_ACCESS_DENIED); return; }
+    DWORD error=DirectoryError(parent); if(error) { writeError.store(error); return; }
+    CString folder(root); folder.TrimRight(L"\\/");
+    error=DirectoryError(folder);
+    if(error==ERROR_FILE_NOT_FOUND || error==ERROR_PATH_NOT_FOUND) {
+        if(!::CreateDirectory(folder,NULL)) {
+            error=::GetLastError(); if(error!=ERROR_ALREADY_EXISTS) { writeError.store(error); return; }
+        }
+        error=DirectoryError(folder);
+    }
+    if(error) { writeError.store(error); return; }
+    HANDLE access=::CreateFile(folder,FILE_ADD_FILE|FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT,NULL);
+    if(access==INVALID_HANDLE_VALUE) { writeError.store(::GetLastError()); return; }
+    BY_HANDLE_FILE_INFORMATION info={};
+    const bool inspected=::GetFileInformationByHandle(access,&info)!=FALSE;
+    error=inspected ? (!(info.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY) ? ERROR_DIRECTORY : ((info.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT) ? ERROR_ACCESS_DENIED : ERROR_SUCCESS)) : ::GetLastError();
+    ::CloseHandle(access); if(error) { writeError.store(error); return; }
+    if(stopping.load()) return;
+    state.store(State::Running,std::memory_order_release);
+    // Deterministic exception coverage, gated by the existing three test-only short-mode guards.
+    wchar_t fault[16]={};
+    if(options.intervalMs==25 && ::GetEnvironmentVariable(L"FBE_NEXT_TEST_WATCHDOG_FAULT",fault,_countof(fault)) && wcscmp(fault,L"exception")==0) throw ERROR_UNHANDLED_EXCEPTION;
     struct ReportFile { HANDLE handle=INVALID_HANDLE_VALUE; ~ReportFile() { Close(); } void Close() { if(handle!=INVALID_HANDLE_VALUE) { ::CloseHandle(handle); handle=INVALID_HANDLE_VALUE; } } } report;
     // Start is called after UI readiness; the first unanswered probe is monitored too.
-    WatchdogState state; state.Ready(); DWORD tracked=0, observedEpoch=epoch.load(), incident=0;
+    WatchdogState episode; episode.Ready(); DWORD tracked=0, observedEpoch=epoch.load(), incident=0;
     ULONGLONG previousAwake=AwakeMilliseconds(), previousWall=::GetTickCount64();
     StartupTrace::HangTelemetry cached; bool haveTelemetry=false, monitoringInterrupted=false; ULONGLONG excludedMs=0;
     auto record=[&](const wchar_t* status,bool confirmed,ULONGLONG now) {
@@ -93,7 +136,7 @@ void FbeDiagnostics::UiWatchdog::Run(HWND window,DWORD uiThread,const CString& s
         SYSTEMTIME utc={}; ::GetSystemTime(&utc); const ULONGLONG wall=::GetTickCount64();
         CString text; text.Format(L"hang-format=1\r\nsession_id=%s\r\nhang-incident=%lu\r\nhang-state=%s\r\nhang-confirmed=%u\r\nhang-utc=%04u-%02u-%02uT%02u:%02u:%02u.%03uZ\r\nhang-duration-ms=%llu\r\nhang-ui-thread-id=%lu\r\nhang-worker-thread-id=%lu\r\nhang-ui-state=%s\r\nhang-clock=unbiased\r\nhang-request-ms=%llu\r\nhang-last-reply-ms=%llu\r\nhang-heartbeat-sequence=%lu\r\nhang-heartbeat-acknowledged=%lu\r\nhang-telemetry-available=%u\r\nhang-telemetry-fresh=%u\r\nhang-telemetry-age-ms=%llu\r\nhang-threshold-suspect-ms=%lu\r\nhang-threshold-confirm-ms=%lu\r\nhang-dump=not-requested\r\n",
             (LPCWSTR)session,incident,status,confirmed ? 1U:0U,utc.wYear,utc.wMonth,utc.wDay,utc.wHour,utc.wMinute,utc.wSecond,utc.wMilliseconds,
-            now>=state.requestedAt ? (now-state.requestedAt)-(std::min)(excludedMs,now-state.requestedAt):0,uiThread,::GetCurrentThreadId(),wcscmp(status,L"recovered")==0 ? L"responding" : L"heartbeat-timeout",state.requestedAt,lastReply.load(),posted.load(),acknowledged.load(),haveTelemetry ? 1U:0U,fresh ? 1U:0U,
+            now>=episode.requestedAt ? (now-episode.requestedAt)-(std::min)(excludedMs,now-episode.requestedAt):0,uiThread,::GetCurrentThreadId(),wcscmp(status,L"recovered")==0 ? L"responding" : L"heartbeat-timeout",episode.requestedAt,lastReply.load(),posted.load(),acknowledged.load(),haveTelemetry ? 1U:0U,fresh ? 1U:0U,
             haveTelemetry && wall>=cached.sampledAt ? wall-cached.sampledAt:0,options.suspectMs,options.confirmMs);
         text.AppendFormat(L"hang-monitoring-interrupted=%u\r\nhang-monitor-paused-ms=%llu\r\n",monitoringInterrupted ? 1U:0U,excludedMs);
         text+=TelemetryText(cached); text+=environment;
@@ -105,20 +148,26 @@ void FbeDiagnostics::UiWatchdog::Run(HWND window,DWORD uiThread,const CString& s
             if(report.handle==INVALID_HANDLE_VALUE) { writeError.store(::GetLastError()); return; }
         }
         const CStringA bytes(CW2A(text,CP_UTF8)); DWORD written=0;
-        if(!::WriteFile(report.handle,bytes,static_cast<DWORD>(bytes.GetLength()),&written,NULL) || written!=static_cast<DWORD>(bytes.GetLength()) || !::FlushFileBuffers(report.handle)) writeError.store(::GetLastError() ? ::GetLastError() : ERROR_WRITE_FAULT);
+        if(!::WriteFile(report.handle,bytes,static_cast<DWORD>(bytes.GetLength()),&written,NULL)) writeError.store(::GetLastError());
+        else if(written!=static_cast<DWORD>(bytes.GetLength())) writeError.store(ERROR_WRITE_FAULT);
+        else if(!::FlushFileBuffers(report.handle)) writeError.store(::GetLastError());
     };
-    while(::WaitForSingleObject(stopEvent,options.intervalMs)==WAIT_TIMEOUT && !stopping.load()) {
+    while(!stopping.load()) {
+        const DWORD waited=::WaitForSingleObject(stopEvent,options.intervalMs);
+        if(waited==WAIT_OBJECT_0) break;
+        if(waited!=WAIT_TIMEOUT) { writeError.store(waited==WAIT_FAILED ? ::GetLastError() : ERROR_GEN_FAILURE); return; }
+        if(stopping.load()) break;
         const ULONGLONG now=AwakeMilliseconds(), wall=::GetTickCount64(); const DWORD currentEpoch=epoch.load();
         const bool discontinuity=WatchdogState::ClockDiscontinuity(now,previousAwake,wall,previousWall);
         const ULONGLONG delta=now>=previousAwake ? now-previousAwake : 0;
         previousAwake=now; previousWall=wall;
         const auto resetMonitoring=[&]() {
-            if(state.suspected) {
+            if(episode.suspected) {
                 // Keep an already reported episode until its UI reply. Suppression must
                 // not lose recovery or create another report for the same continuous stall.
                 monitoringInterrupted=true; excludedMs+=delta;
             } else {
-                const bool ready=state.armed; state.Reset(); state.armed=ready;
+                const bool ready=episode.armed; episode.Reset(); episode.armed=ready;
                 tracked=0; report.Close(); excludedMs=0; monitoringInterrupted=false;
             }
             observedEpoch=currentEpoch;
@@ -128,18 +177,18 @@ void FbeDiagnostics::UiWatchdog::Run(HWND window,DWORD uiThread,const CString& s
         StartupTrace::HangTelemetry latest; if(StartupTrace::TryGetHangTelemetry(latest)) { cached=latest; haveTelemetry=true; }
         const DWORD pending=posted.load(), reply=acknowledged.load(std::memory_order_acquire);
         if(pending && pending==reply && tracked==pending) {
-            const bool wasConfirmed=state.confirmed;
-            if(state.suspected) { record(L"recovered",wasConfirmed,lastReply.load()); recoveries.fetch_add(1); }
-            state.Reply(); report.Close(); tracked=0; monitoringInterrupted=false; excludedMs=0;
+            const bool wasConfirmed=episode.confirmed;
+            if(episode.suspected) { record(L"recovered",wasConfirmed,lastReply.load()); recoveries.fetch_add(1); }
+            episode.Reply(); report.Close(); tracked=0; monitoringInterrupted=false; excludedMs=0;
         }
         if(!pending || pending==reply) {
             const DWORD sequence=NewSequence(); posted.store(sequence,std::memory_order_release);
             if(stopping.load()) break;
-            if(::PostMessage(window,WatchdogHeartbeatMessage,sequence,0)) { posts.fetch_add(1); tracked=sequence; state.Request(now); }
-            else { posted.store(reply); state.Reset(); state.Ready(); tracked=0; }
+            if(::PostMessage(window,WatchdogHeartbeatMessage,sequence,0)) { posts.fetch_add(1); tracked=sequence; episode.Request(now); }
+            else { writeError.store(::GetLastError()); posted.store(reply); episode.Reset(); episode.Ready(); tracked=0; }
         } else {
-            if(tracked!=pending) { tracked=pending; state.Request(now); }
-            const unsigned int events=state.Advance(now>=excludedMs ? now-excludedMs:0,options);
+            if(tracked!=pending) { tracked=pending; episode.Request(now); }
+            const unsigned int events=episode.Advance(now>=excludedMs ? now-excludedMs:0,options);
             if(events&1) { incident=NewSequence(); suspicions.fetch_add(1); record(L"suspected",false,now); }
             // A future optional dump collector must require a separate explicit,
             // revocable user consent. This path only writes typed technical text.

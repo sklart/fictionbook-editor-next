@@ -3,6 +3,7 @@
 #include "../ThemeManager.h"
 #include "../UiMetrics.h"
 #include "DiagnosticCommandService.h"
+#include "UiWatchdog.h"
 #include "../../common/DeploymentContext.h"
 #include <commdlg.h>
 #include <thread>
@@ -33,6 +34,9 @@ class DiagnosticDialog
     size_t previewPage=0, previewPages=1;
     bool closing=false, catalogReady=false;
     CString cleanupSummary;
+    const FbeDiagnostics::UiWatchdog* watchdog=nullptr;
+    bool displayedRunning=false; DWORD displayedWatchdogError=0;
+    CString stateText;
     HWND window = NULL;
     HFONT font = NULL;
     bool cleanupPending = false, reviewPending=false;
@@ -315,6 +319,15 @@ class DiagnosticDialog
         ::AdjustWindowRectEx(&bounds,static_cast<DWORD>(::GetWindowLongPtr(window,GWL_STYLE)),FALSE,static_cast<DWORD>(::GetWindowLongPtr(window,GWL_EXSTYLE)));
         SIZE size={bounds.right-bounds.left,bounds.bottom-bounds.top}; return size;
     }
+    void UpdateWatchdogState(bool force=false)
+    {
+        if(!watchdog) return;
+        const bool running=watchdog->Running(); const DWORD error=watchdog->LastError();
+        if(!force && running==displayedRunning && error==displayedWatchdogError) return;
+        displayedRunning=running; displayedWatchdogError=error;
+        CString status; status.Format(Text(L"watchdog_state",L"Watchdog running: %u; last Win32 error: %lu"),running ? 1U:0U,error);
+        ::SetDlgItemText(window,State,stateText+L"\r\n"+status);
+    }
     void Init()
     {
         ApplyLabels();
@@ -322,7 +335,7 @@ class DiagnosticDialog
         CString state; state.Format(Text(L"state", L"Mode: %s; source: %s; write error: %lu\r\nSession: %s\r\nFolder: %s"),
             (LPCWSTR)Text(StartupTrace::Enabled() ? L"extended" : L"normal_mode", StartupTrace::Enabled() ? L"Extended trace" : L"Normal"),
             (LPCWSTR)source, StartupTrace::LastWriteError(), (LPCWSTR)StartupTrace::SessionId(), (LPCWSTR)StartupTrace::CurrentLogDirectory());
-        ::SetDlgItemText(window, State, state);
+        stateText=state; ::SetDlgItemText(window, State, stateText); UpdateWatchdogState(true);
         ::SendDlgItemMessage(window,PreviewText,EM_SETLIMITTEXT,65536,0);
         ApplyFont(UiMetrics::DpiForWindow(window)); ThemeManager::ApplyToWindow(window);
         ::SetDlgItemText(window,IDC_DIAGNOSTIC_CANCEL,Text(L"cancel",L"Cancel"));
@@ -383,7 +396,7 @@ class DiagnosticDialog
         auto self = reinterpret_cast<DiagnosticDialog*>(::GetWindowLongPtr(hwnd, DWLP_USER));
         if (message == WM_INITDIALOG) { self = reinterpret_cast<DiagnosticDialog*>(lp); self->window = hwnd; ::SetWindowLongPtr(hwnd,DWLP_USER,lp); self->Init(); self->Layout(); return TRUE; }
         if (!self) return FALSE;
-        if(message==WM_TIMER && wp==1) { self->CompleteJob(); self->TestTick(); return TRUE; }
+        if(message==WM_TIMER && wp==1) { self->UpdateWatchdogState(); self->CompleteJob(); self->TestTick(); return TRUE; }
         if(message==WM_DESTROY) { ::KillTimer(hwnd,1); if(self->job) self->job->cancelled.store(true); return TRUE; }
         if (message == WM_SIZE && wp!=SIZE_MINIMIZED) { self->Layout(); return TRUE; }
         if (message == WM_GETMINMAXINFO) { auto info=reinterpret_cast<MINMAXINFO*>(lp); const SIZE size=self->MinimumSize();
@@ -442,7 +455,7 @@ class DiagnosticDialog
     }
 #include "../testing/DiagnosticDialogTest.inl"
 public:
-    explicit DiagnosticDialog(FbeDiagnostics::DiagnosticCommandService&) {}
+    explicit DiagnosticDialog(FbeDiagnostics::DiagnosticCommandService&,const FbeDiagnostics::UiWatchdog* monitor=nullptr) : watchdog(monitor) {}
     bool CatalogReady() const { return catalogReady; }
     bool HasUnreviewedCrashes() const { return std::any_of(crashes.begin(),crashes.end(),[](const StartupTrace::DiagnosticCrashReport& report){return !report.reviewed;}); }
     ~DiagnosticDialog() {

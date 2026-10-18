@@ -7,7 +7,7 @@ $isolation=New-IsolatedFbeRuntime -FbeExe $Executable -Name 'watchdog'
 $repo=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $evidence=Join-Path $repo ('build/watchdog-runtime-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $evidence | Out-Null
-$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_WATCHDOG_SHORT')
+$names=@('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TRACE','FBE_NEXT_TEST_WATCHDOG_SHORT','FBE_NEXT_TEST_WATCHDOG_FAULT')
 $saved=@{}; foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name)}
 $passed=$false
 try {
@@ -15,6 +15,7 @@ try {
  $fixture=Join-Path $isolation.Root 'watchdog.fb2'; $report=Join-Path $isolation.Root 'watchdog.txt'
  [IO.File]::WriteAllText($fixture,'<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Test</nickname></author><book-title>PRIVATE_BOOK</book-title><lang>en</lang></title-info><document-info><id>watchdog</id><version>1.0</version></document-info></description><body><section><p>PRIVATE_BOOK watchdog fixture.</p></section></body></FictionBook>',[Text.UTF8Encoding]::new($false))
  $fixtureHash=(Get-FileHash $fixture -Algorithm SHA256).Hash
+ $env:FBE_NEXT_TEST_WATCHDOG_FAULT=$null
  $env:FBE_NEXT_TEST_MODE='1'; $env:FBE_NEXT_TRACE='0'; $env:FBE_NEXT_TEST_SCENARIO='watchdog-runtime'; $env:FBE_NEXT_TEST_WATCHDOG_SHORT='1'
  $process=Start-Process -FilePath $isolation.Exe -WorkingDirectory $isolation.Runtime -ArgumentList ('--portable -b "{0}" "{1}"' -f $report,$fixture) -WindowStyle Hidden -PassThru
  $exit=Wait-IsolatedFbeProcess -Process $process -Isolation $isolation -Scenario 'watchdog-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
@@ -23,7 +24,7 @@ try {
  if(Test-Path -LiteralPath $hangs){Copy-Item -LiteralPath $hangs -Destination $evidence -Recurse}
  if($exit -ne 0){throw "Watchdog runtime failed: exit=$exit. Evidence: $evidence; runtime: $($isolation.Root)"}
  $rows=[IO.File]::ReadAllText($report); Get-Content -LiteralPath $report
- foreach($check in 'first_heartbeat','transitions','normal','report_while_ui_and_trace_locked','no_duplicates','recovered','reports_complete','pause_recovery','suspend_resume','stop','shutdown_running','document_preserved','privacy','catalog','zip','passed') {
+ foreach($check in 'lifecycle','directory_failure','restart_after_failure','worker_exception','concurrent_lifecycle','first_heartbeat','transitions','normal','report_while_ui_and_trace_locked','no_duplicates','recovered','reports_complete','pause_recovery','suspend_resume','stop','shutdown_running','document_preserved','privacy','catalog','zip','passed') {
   if($rows -notmatch "(?m)^$check=1\r?$"){throw "Missing watchdog proof: $check"}
  }
  if((Get-FileHash $fixture -Algorithm SHA256).Hash -cne $fixtureHash){throw 'Watchdog changed the input document'}

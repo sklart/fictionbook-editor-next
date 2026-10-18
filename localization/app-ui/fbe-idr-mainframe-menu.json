@@ -2212,6 +2212,24 @@
         "bg-BG": "Файлът не може да се отвори."
       }
     },
+    "fbe.diagnostics.watchdog_state": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Watchdog running: %u; last Win32 error: %lu",
+        "ru-RU": "Watchdog работает: %u; последняя ошибка Win32: %lu",
+        "uk-UA": "Watchdog працює: %u; остання помилка Win32: %lu",
+        "de-DE": "Watchdog aktiv: %u; letzter Win32-Fehler: %lu",
+        "fr-FR": "Watchdog actif : %u ; dernière erreur Win32 : %lu",
+        "es-ES": "Watchdog activo: %u; último error Win32: %lu",
+        "it-IT": "Watchdog attivo: %u; ultimo errore Win32: %lu",
+        "pl-PL": "Watchdog działa: %u; ostatni błąd Win32: %lu",
+        "pt-PT": "Watchdog ativo: %u; último erro Win32: %lu",
+        "nl-NL": "Watchdog actief: %u; laatste Win32-fout: %lu",
+        "cs-CZ": "Watchdog běží: %u; poslední chyba Win32: %lu",
+        "bg-BG": "Watchdog работи: %u; последна грешка Win32: %lu"
+      }
+    },
     "fbe.diagnostics.state": {
       "kind": "MESSAGE",
       "targetId": "",

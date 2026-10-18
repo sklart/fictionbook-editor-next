@@ -22,6 +22,7 @@
                 if(::ReadFile(file,bytes.data(),size,&count,NULL) && count==size) text=CString(CA2W(bytes.data(),CP_UTF8)); }
             ::CloseHandle(file); return text;
         };
+#include "RuntimeTestWatchdogLifecycle.inl"
         FbeDiagnostics::WatchdogState deterministic; FbeDiagnostics::WatchdogOptions production;
         deterministic.Request(100); // Probes before explicit UI readiness remain suppressed.
         bool transitions=production.suspectMs==15000 && production.confirmMs==30000 && deterministic.Advance(60000,production)==0;
@@ -113,8 +114,8 @@
         zip=zip && checked && included==3 && rejected==1 && StartupTrace::SaveDiagnosticPackage(*checked,AU::_ARGS.source_memory_benchmark_path+L".zip",packageError);
         const bool restarted=m_ui_watchdog.Start(m_hWnd); pump(150);
         const bool shutdownRunning=restarted && m_ui_watchdog.Running() && m_ui_watchdog.Replies()>0;
-        const bool passed=early && recoveredAcrossPause && shutdownRunning && transitions && normal && independent && noDuplicates && recovered && completeReports && suspend && stopped && documentPreserved && privacy && catalog && zip && error==0;
-        CStringA result; result.Format("first_heartbeat=%d\ntransitions=%d\nnormal=%d\nreport_while_ui_and_trace_locked=%d\nno_duplicates=%d\nrecovered=%d\nreports_complete=%d\npause_recovery=%d\nsuspend_resume=%d\nstop=%d\nstop_ms=%llu\nshutdown_running=%d\ndocument_preserved=%d\nprivacy=%d\ncatalog=%d\nzip=%d\nwrite_error=%lu\npassed=%d\n",early,transitions,normal,independent,noDuplicates,recovered,completeReports,recoveredAcrossPause,suspend,stopped,stopMs,shutdownRunning,documentPreserved,privacy,catalog,zip,error,passed);
+        const bool passed=lifecycle && directoryFailure && restart && workerException && concurrent && early && recoveredAcrossPause && shutdownRunning && transitions && normal && independent && noDuplicates && recovered && completeReports && suspend && stopped && documentPreserved && privacy && catalog && zip && error==0;
+        CStringA result; result.Format("directory_win32=%lu\nblocked_win32=%lu\nlifecycle=%d\ndirectory_failure=%d\nrestart_after_failure=%d\nworker_exception=%d\nconcurrent_lifecycle=%d\nfirst_heartbeat=%d\ntransitions=%d\nnormal=%d\nreport_while_ui_and_trace_locked=%d\nno_duplicates=%d\nrecovered=%d\nreports_complete=%d\npause_recovery=%d\nsuspend_resume=%d\nstop=%d\nstop_ms=%llu\nshutdown_running=%d\ndocument_preserved=%d\nprivacy=%d\ncatalog=%d\nzip=%d\nwrite_error=%lu\npassed=%d\n",directoryCode,blockedCode,lifecycle,directoryFailure,restart,workerException,concurrent,early,transitions,normal,independent,noDuplicates,recovered,completeReports,recoveredAcrossPause,suspend,stopped,stopMs,shutdownRunning,documentPreserved,privacy,catalog,zip,error,passed);
         DWORD written=0; output.Write(result,static_cast<DWORD>(result.GetLength()),&written); output.Flush(); output.Close();
         PostMessage(WM_CLOSE); if(!passed) ::PostQuitMessage(1); return 0;
     }

@@ -1,6 +1,7 @@
 #pragma once
 #include "../StartupTrace.h"
 #include <thread>
+#include <mutex>
 
 namespace FbeDiagnostics {
 constexpr UINT WatchdogHeartbeatMessage=WM_APP+0x270;
@@ -29,6 +30,9 @@ struct WatchdogState {
     }
 };
 class UiWatchdog {
+    enum class State { Stopped, Starting, Running };
+    std::atomic<State> state{State::Stopped};
+    std::mutex lifecycleMutex;
     std::thread worker;
     HANDLE stopEvent=NULL;
     HWND ownerWindow=NULL;
@@ -36,6 +40,7 @@ class UiWatchdog {
     std::atomic<DWORD> epoch{0}, posted{0}, acknowledged{0};
     std::atomic<ULONGLONG> lastReply{0};
     std::atomic<DWORD> posts{0}, replies{0}, suspicions{0}, confirmations{0}, recoveries{0}, writeError{0};
+    void StopLocked(); // lifecycleMutex held; the worker never acquires this mutex.
     void Run(HWND window,DWORD uiThread,const CString& session,const CString& directory,const CString& environment,WatchdogOptions options);
 public:
     ~UiWatchdog() { Stop(); }
@@ -45,12 +50,13 @@ public:
     void Pause() noexcept { paused.store(true); epoch.fetch_add(1); }
     void Resume() noexcept { epoch.fetch_add(1); paused.store(false); }
     void Acknowledge(DWORD sequence) noexcept;
-    bool Running() const { return worker.joinable(); }
+    bool Running() const { return state.load(std::memory_order_acquire)==State::Running; }
     DWORD Posts() const { return posts.load(); }
     DWORD Replies() const { return replies.load(); }
     DWORD Suspicions() const { return suspicions.load(); }
     DWORD Confirmations() const { return confirmations.load(); }
     DWORD Recoveries() const { return recoveries.load(); }
+    // Sticky last failure: Stop and successful restart never erase diagnostic evidence.
     DWORD LastError() const { return writeError.load(); }
 };
 }

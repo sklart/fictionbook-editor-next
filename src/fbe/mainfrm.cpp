@@ -2,6 +2,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
+#include <aclapi.h>
 #include "clipboard/HtmlPasteSanitizer.h"
 #include "scripts/ScriptCardBlock.h"
 #include "scripts/ScriptCardParser.h"
@@ -5789,13 +5790,13 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 }
 LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 {
-    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd);
+    DiagnosticDialog dialog(m_diagnostic_commands,&m_ui_watchdog); dialog.Show(m_hWnd);
     if(dialog.CatalogReady()) { m_diagnostic_crash_result_superseded=true; g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes(); }
     m_need_title_update=true; return 0;
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
-    DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd);
+    DiagnosticDialog dialog(m_diagnostic_commands,&m_ui_watchdog); dialog.Show(m_hWnd);
     if(dialog.CatalogReady()) { m_diagnostic_crash_result_superseded=true; g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes(); }
     m_need_title_update=true; return 0;
 }

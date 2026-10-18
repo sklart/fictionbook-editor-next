@@ -680,3 +680,83 @@ metadata могут быть очищены только после провер
 открытия. Уже выполненные удаления не откатываются при отмене. Системный файловый
 I/O не прерывается принудительно. Длительные E2E, пересборка зависимостей и полный
 release gate не проводились. SHA коммита и сверка origin/master — в итоговом сообщении.
+
+
+## 2026-10-18 — Фактическое состояние и ошибки Watchdog
+
+База: `6ec7feb78ab6f97634ef83ab718d31f45f8e9134`. Перед началом выполнен
+fetch, HEAD и origin/master совпадали. Изменения выполнялись непосредственно
+в master. Посторонние `.editorconfig`, `docs/architecture/split-undo-mshtml-probe.md`,
+`runtime/Resources/Words.xml` и `.worktrees/` не изменялись и не включались в коммит.
+
+### Исправления
+
+- Running читает атомарное состояние Stopped/Starting/Running, не joinable.
+  Running=true публикуется после проверки каталога; при любом возврате или
+  перехваченном исключении рабочего потока сначала сохраняется ошибка и
+  освобождаются его ресурсы, затем публикуется Stopped. Пока поток готовится,
+  Running=false. Приостановка по debugger/power по-прежнему временно подавляет
+  heartbeat внутри живого рабочего потока.
+- Start/Stop сериализованы отдельным mutex. Worker и обработчик heartbeat
+  его не захватывают. Повторный Start после завершения worker сам выполняет
+  join и закрывает старый event; живой/запускающийся worker не дублируется.
+  Stop сигнализирует event до join; повторные Stop безопасны. HWND/event
+  не переиспользуются до завершения предыдущего worker.
+- Добавлена проверка реального открытия Hangs с FILE_ADD_FILE. Сохраняются
+  точные ошибки файловых Win32 API, неверный HWND — 1400, нехватка памяти — 8,
+  исключение worker — 574, ошибка создания std::thread — 1450.
+  Ошибка ожидания event и ошибки PostMessage тоже фиксируются. Короткая запись
+  получает ERROR_WRITE_FAULT без подстановки случайного GetLastError.
+- LastError хранит последнюю ошибку до конца жизни объекта: успешный запуск,
+  остановка и отклонение дублирующего Start её не обнуляют. В существующем
+  окне диагностики доступны фактический Running и последний Win32-код,
+  обновляемые при изменении. Строка локализована на 12 языков. Это сведения
+  текущего процесса; новый формат постоянного отчёта не вводился.
+- Пороги 15/30 секунд, один outstanding heartbeat, состояния эпизода,
+  формат hang TXT/ZIP и схемы приватности сохранены. StartupTrace/CrashHandler
+  и их замки не менялись; worker не пишет в StartupTrace и не ждёт UI.
+
+### Проверки
+
+- **PASS Release Win32 /W4 /WX**, v143 / VC Tools 14.44.35207,
+  `FbeStrictWarnings=true`, FBE.vcxproj без сборки зависимостей.
+  Финальный журнал: `build/diagnostics-validation/watchdog-state-build-final.log`.
+  EXE commit `6ec7feb78ab6-dirty`, SHA256
+  `932224E5F998AD59E5329EB56E0AB60D01FCED915192EB6EC54639FA1435BC72`.
+- **PASS watchdog-runtime**:
+  lifecycle/directory_failure/restart_after_failure/worker_exception/concurrent_lifecycle=1.
+  Проверены запуск и ответы настоящего message-only окна, неверный HWND,
+  файл вместо Hangs (267), запрет FILE_ADD_FILE через DACL (5), Running=false
+  после завершения с ошибкой, сохранение ошибки после Stop и успешного Start,
+  повторный Start без Stop, отсутствие двойного запуска, две конкурентные
+  остановки, управляемое исключение (574) и последующий перезапуск.
+  DACL меняется только у изолированного тестового Hangs и восстанавливается.
+  Инъекция исключения доступна только при трёх существующих test/short guards.
+  Все прежние first-heartbeat, trace-lock stall, recovery/no duplicates,
+  power-handler, Stop/close, DOM/dirty/undo и privacy/catalog/ZIP проверки
+  прошли; stop_ms=0, write_error=0 у основного монитора. Три hang-компонента
+  совпадают с preview побайтно, повреждённый TXT исключён, DMP не создавались.
+  `build/watchdog-runtime-1e14af9ab4394ee5bfd2731fe922320a`.
+- **PASS diagnostic-dialog-runtime**: 12 локалей, 96/144/192 DPI, Light/Dark,
+  размеры, отмена, отложенное закрытие и неизменяемость снимка:
+  `build/diagnostic-dialog-runtime-894d2abc6e2f47099c5dcb1f8010b27a`.
+- **PASS diagnostic-sessions**: privacy, выбранный сеанс, crash identity,
+  routing плагинов, неизменяемые bytes preview/ZIP и manifest:
+  `build/diagnostic-session-test-aaf6aa8c302340de9b96bf29a4aa720a`.
+- **PASS diagnostic-privacy-native**: отдельная строгая сборка и две portable-копии:
+  `build/diagnostic-privacy-native-b289d75c22d34765af6b7be1a6843518`.
+  **PASS** watchdog/dialog/localization contracts и fbe-contract-generation.
+  IDL и dependency DLL не изменены.
+
+### Ограничения
+
+Windows 7 физически не запускалась. Новые вызовы используют существующую базу
+Win7 API; mutex уже используется проектом с тем же v143/C++17 toolchain.
+Реальное исчерпание памяти/ресурсов процесса и аппаратные сбои не создавались:
+проверены пути обработки, а исключение worker проверено управляемой инъекцией.
+Принудительный TerminateThread не используется и не поддерживается; авария всего
+процесса остаётся в существующем CrashHandler. Как и прежде, Stop безопасно ждёт
+текущий системный файловый I/O и не обрывает запись принудительно. Пороговые
+runtime-тесты сокращённые, 15/30 секунд проверены детерминированно. Длительные E2E,
+пересборка зависимостей и полный release gate не проводились. SHA итогового
+коммита и сверка сервера приводятся в итоговом сообщении задачи.
