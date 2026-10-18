@@ -233,6 +233,8 @@ Var SavedSystemIntegrationFlags
 Var SavedFb2AssociationFlags
 Var SavedFbdAssociationFlags
 Var SavedValidateFlags
+Var PreviousAssociationOwned
+Var PreviousValidateOwned
 Var SavedExplorerFlags
 Var SavedShortcutsFlags
 Var SavedStartMenuFlags
@@ -1382,6 +1384,15 @@ portable_core_done:
 
 installed_core_state:
   Call CleanupLegacyArchHandlerRegistration
+  ; Retain ownership when an upgrade leaves an optional component unchecked.
+  ; Uninstall still checks each live command/icon before removing it.
+  StrCpy $PreviousAssociationOwned 0
+  StrCpy $PreviousValidateOwned 0
+  ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${If} $0 == $INSTDIR
+    ReadRegDWORD $PreviousAssociationOwned ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "AssociationRegistered"
+    ReadRegDWORD $PreviousValidateOwned ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "ValidateVerbInstalled"
+  ${EndIf}
   ; uninstall info must exist for any successful installation, not only when
   ; optional system integration is selected
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME_VERSION}"
@@ -1400,8 +1411,8 @@ installed_core_state:
   ; Component state is deliberately kept next to the uninstall record.  The
   ; uninstaller must never infer ownership solely from a well-known CLSID or
   ; ProgID: another installed instance may have claimed it after this setup.
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "AssociationRegistered" 0
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "ValidateVerbInstalled" 0
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "AssociationRegistered" $PreviousAssociationOwned
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "ValidateVerbInstalled" $PreviousValidateOwned
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "PropertyHandlerInstalled" $ShellPreviousProperty
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteUninstaller "$INSTDIR\uninst.exe"
@@ -1592,20 +1603,33 @@ Function CreateDesktopShortcut
   !insertmacro MUI_STARTMENU_WRITE_END
 FunctionEnd
 
+; UAC copies registers, not arbitrary globals. The elevated page can change
+; the menu group after elevation; pass that current selection on every call.
+Function CreateStartMenuShortcutsAsUser
+  StrCpy $ICONS_GROUP $R7
+  Call CreateStartMenuShortcuts
+FunctionEnd
+Function CreateDesktopShortcutAsUser
+  StrCpy $ICONS_GROUP $R7
+  Call CreateDesktopShortcut
+FunctionEnd
+
 SectionGroup /e !$(ShCutGroup) ShCutGroup_id
 ; Shortcuts
 	Section $(Start_Menu_ShortCuts) Start_Menu_ShortCuts_id
 		${If} $InstallScope == "allusers"
 			Call CreateStartMenuShortcuts
 		${Else}
-			!insertmacro UAC_AsUser_Call Function CreateStartMenuShortcuts ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
+			StrCpy $R7 $ICONS_GROUP
+			!insertmacro UAC_AsUser_Call Function CreateStartMenuShortcutsAsUser ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
 		${EndIf}
 	SectionEnd	
 	Section /o $(Desktop_ShortCut) Desktop_ShortCut_id
 		${If} $InstallScope == "allusers"
 			Call CreateDesktopShortcut
 		${Else}
-			!insertmacro UAC_AsUser_Call Function CreateDesktopShortcut ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
+			StrCpy $R7 $ICONS_GROUP
+			!insertmacro UAC_AsUser_Call Function CreateDesktopShortcutAsUser ${UAC_SYNCREGISTERS}|${UAC_SYNCOUTDIR}|${UAC_SYNCINSTDIR}
 		${EndIf}
 	SectionEnd
 SectionGroupEnd
