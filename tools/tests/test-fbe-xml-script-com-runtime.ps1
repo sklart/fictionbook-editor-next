@@ -1,17 +1,20 @@
-<# Exercises the public XML scripting API through the actual MSHTML JScript window.external object. #>
+﻿<# Exercises the public XML scripting API through the actual MSHTML JScript window.external object. #>
 [CmdletBinding()]
 param(
-    [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
+    [string]$FbeExe,
     [int]$TimeoutSeconds = 90,
     [switch]$Fbd
 )
 
 $ErrorActionPreference = 'Stop'
+if(-not $FbeExe){$FbeExe=Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'}
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-xml-script-com-' + [guid]::NewGuid().ToString('N'))
-[void](New-Item -ItemType Directory -Path $directory)
+$isolation=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'xml-com'
+$directory=$isolation.Root;$FbeExe=$isolation.Exe;$passed=$false
 try {
+    $null=New-IsolatedFbeSettingsSeed -Isolation $isolation
     $fixture = Join-Path $directory ('xml-script-com.' + $(if($Fbd) { 'fbd' } else { 'fb2' })); $report = Join-Path $directory 'xml-script-com.txt'
     $xml = if($Fbd) { @'
 <?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>XML_API_BEFORE</book-title><lang>en</lang></title-info><document-info><id>xml-script-com-test</id><version>1.0</version></document-info></description></FictionBook>
@@ -22,7 +25,7 @@ try {
     $savedMode, $savedScenario = $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO
     try {
         $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'xml-script-com-runtime'
-        $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -PassThru
+        $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable','-b', $report, $fixture) -WorkingDirectory (Split-Path $FbeExe) -WindowStyle Hidden -PassThru
         if(-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw 'FBE не завершил XML COM scenario.' }
         if($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { throw "FBE XML COM scenario failed: exit $($process.ExitCode)." }
     } finally { $env:FBE_NEXT_TEST_MODE, $env:FBE_NEXT_TEST_SCENARIO = $savedMode, $savedScenario }
@@ -30,4 +33,5 @@ try {
     foreach($key in @('get', 'validate', 'diagnostic', 'diagnostic_escape', 'apply', 'dirty', 'undo', 'redo', 'tree')) { if($result[$key] -ne '1') { throw "XML COM runtime check failed: $key." } }
     if($result['result'] -ne 'pass') { throw 'XML COM runtime reported failure.' }
     Write-Host 'FBE XML scripting COM runtime passed.'
-} finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    $passed=$true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }

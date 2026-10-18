@@ -1,4 +1,4 @@
-<# Guards the non-COM XML scripting backend and its production boundaries. #>
+﻿<# Guards the non-COM XML scripting backend and its production boundaries. #>
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
@@ -13,15 +13,18 @@ $external = Get-Content -Raw (Join-Path $root 'src\fbe\ExternalHelper.cpp')
 function Require([string]$text, [string]$token, [string]$message) { if($text -notmatch $token) { throw $message } }
 Require $header 'class XmlScriptBackend' 'Internal XML backend is missing.'
 Require $backend 'SourceDocumentTransfer::ReadSourceText' 'Active Source must be read from Scintilla.'
-Require $backend 'CreateDOM\(m_document->m_encoding\)' 'BODY XML must use production serialization.'
+Require $backend 'CreateDOMForAnalysis\(' 'BODY XML must use read-only production serialization without adding native undo units.'
 Require $backend 'SetXMLAndValidate\(m_source\.m_hWnd, true' 'Validation must use the production validation path.'
 Require $backend 'SetXMLAndValidate\(m_source\.m_hWnd, false' 'Apply must use the production LoadFromDOM path.'
 Require $backend 'GetSourceText\(previous\)' 'Apply must capture a rollback snapshot before mutation.'
-Require $backend 'public IOleUndoUnit' 'Apply must use the standard MSHTML undo manager.'
-Require $backend 'manager->Add\(unit\)' 'Apply must register exactly one standard undo unit.'
+Require $backend 'public IOleParentUndoUnit' 'Apply must use the standard MSHTML undo manager.'
+Require $backend 'manager->Close\(unit,TRUE\)' 'Apply must commit one standard parent undo unit.'
 Require $backend 'GetDescription' 'The standard undo unit must expose its operation name.'
 Require $backend 'm_description = operationName' 'The caller supplied operation name must describe the undo unit.'
-Require $backend 'UndoManagerDisableScope suppress\(manager\)' 'Undo/Redo snapshot application must suppress internal MSHTML undo units.'
+Require $backend 'UAS_BLOCKED' 'Internal XML changes must use a blocked parent unit.'
+Require $backend 'XmlRecordingScope suppress\(manager\)' 'Undo/Redo must suppress internal units without clearing history.'
+Require $backend 'XmlVisualState' 'Undo must restore binary expandos and savepoints alongside native history.'
+if($backend -match 'Enable\(FALSE\)') { throw 'Disabling the undo manager destroys preceding history.' }
 if($backend -match 'm_undoSnapshots|UndoLastApply') { throw 'XML backend must not maintain a parallel undo stack.' }
 Require $backend 'documentWasDirty' 'Undo must restore the captured dirty-state contract.'
 Require $backend 'if\(previous == text\) return diagnostic;' 'No-op XML Apply must finish before LoadFromDOM and undo registration.'

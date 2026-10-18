@@ -669,12 +669,35 @@
 		if(secondUndo) { m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_REDO, 0), 0); }
 		CString afterSecondRedo;
 		const bool secondRedo = secondUndo && GetInternalXmlScriptSourceText(afterSecondRedo) && afterSecondRedo.Find(L"XML_API_AFTER") >= 0;
+		bool historyChain = false;
+		CStringA historyDetails;
+		try {
+			MSHTML::IHTMLDocument2Ptr dom(m_doc->m_body.Document());
+			CheckError(dom->parentWindow->execScript(L"window.external.BeginUndoUnit(document,'manual before Apply');var prior=document.body.createTextRange();prior.moveToElementText(document.getElementById('xml-prior'));prior.collapse(false);prior.select();prior.pasteHTML(' MANUAL');window.external.EndUndoUnit(document);", L"JScript"));
+			CString manual; const bool manualCaptured = GetInternalXmlScriptSourceText(manual) && manual.Find(L"MANUAL") >= 0;
+			CString first(manual); first.Replace(L"XML_API_AFTER", L"XML_APPLY_ONE");
+			CString second(first); second.Replace(L"XML_APPLY_ONE", L"XML_APPLY_TWO");
+			const bool applyOne=manualCaptured && ApplyInternalXmlScriptText(first,L"Apply 1").valid;
+			const bool applyTwo=applyOne && ApplyInternalXmlScriptText(second,L"Apply 2").valid;
+			historyChain = manualCaptured && applyOne && applyTwo;
+			historyDetails.AppendFormat("manual=%d\napply_one=%d\napply_two=%d\n",manualCaptured,applyOne,applyTwo);
+			auto transition = [&](WORD command, const wchar_t* text, bool manualExpected) {
+				m_doc->m_body.SetFocus(); SendMessage(WM_COMMAND, MAKEWPARAM(command,0),0);
+				CString current; if (!GetInternalXmlScriptSourceText(current)) return false;
+				const bool match=current.Find(text) >= 0 && (current.Find(L"MANUAL") >= 0) == manualExpected && current.Find(L"AQID") >= 0;
+				historyDetails.AppendFormat("transition_%u_%S=%d;manual=%d;binary=%d\n",command,text,match,current.Find(L"MANUAL")>=0,current.Find(L"AQID")>=0);
+				return match;
+			};
+			historyChain = historyChain && transition(ID_EDIT_UNDO,L"XML_APPLY_ONE",true) && transition(ID_EDIT_UNDO,L"XML_API_AFTER",true) && transition(ID_EDIT_UNDO,L"XML_API_AFTER",false) && transition(ID_EDIT_REDO,L"XML_API_AFTER",true) && transition(ID_EDIT_REDO,L"XML_APPLY_ONE",true) && transition(ID_EDIT_REDO,L"XML_APPLY_TWO",true);
+		} catch (const _com_error&) { historyChain = false; }
 		const bool bodyReady = m_doc->m_body.Document() != NULL;
 		const bool treeReady = !_Settings.ViewDocumentTree() || m_document_tree.m_tree.m_tree.GetCount() > 0;
-		const bool passed = read && valid.valid && !invalid.valid && noOpPreserved && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && secondUndo && secondRedo && bodyReady && treeReady;
+		const bool passed = read && valid.valid && !invalid.valid && noOpPreserved && prepared && changedInDocument && dirty && restored && undoRestoredDirtyState && redone && secondUndo && secondRedo && bodyReady && treeReady && historyChain;
 		CStringA report;
 		report.Format("read=%d\nvalidate=%d\ninvalid_rejected=%d\nno_op=%d\napply=%d\ndirty=%d\nundo=%d\nundo_dirty_restored=%d\nredo=%d\nundo_second=%d\nredo_second=%d\nbody=%d\ntree=%d\nresult=%s\n",
 			read, valid.valid, !invalid.valid, noOpPreserved, changedInDocument, dirty, restored, undoRestoredDirtyState, redone, secondUndo, secondRedo, bodyReady, treeReady, passed ? "pass" : "fail");
+		report.AppendFormat("history_chain=%d\n",historyChain);
+		report+=historyDetails;
 		DWORD written = 0;
 		output.Write(report, static_cast<DWORD>(report.GetLength()), &written);
 		output.Close();
