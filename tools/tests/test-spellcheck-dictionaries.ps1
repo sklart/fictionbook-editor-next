@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 Проверяет словари орфографии в out\<Configuration>\Dict и ожидаемые Hunspell-связанные инварианты в исходниках.
 #>
@@ -203,7 +203,7 @@ if ($spellerSource -notmatch 'FbeLoadRuntimeStringByKey\(L"fbe\.spelling\.menu\.
     (@($spellDialogLocalization.targetLanguages | Where-Object { -not $spellDialogLocalization.strings.'fbe.spelling.menu.add_to_dictionary'.translations.$_ }).Count -ne 0)) {
     throw "Spell popup labels must use runtime localization, including Russian More suggestions."
 }
-if ($mainFrameImplementation -notmatch 'FindTopLevelMenuPositionByCommand\(helpMenu, ID_TOOLS_DIAGNOSTIC_TRACE\)') {
+if ($mainFrameImplementation -notmatch 'FindTopLevelMenuPositionByCommand\(\s*(?<parent>\w+)\s*,\s*ID_TOOLS_OPEN_DIAGNOSTIC_LOG\s*\)[\s\S]{0,300}SetRuntimeMenuItemTextByPosition\(\s*\k<parent>\s*,\s*\w+\s*,\s*L"fbe\.menu\.idr_mainframe\.popup\.diagnostics"\s*\)') {
     throw "Nested Diagnostics popup must use its runtime localization key."
 }
 $hunspellHeader = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party\hunspell\src\hunspell\hunspell.hxx') -Raw
