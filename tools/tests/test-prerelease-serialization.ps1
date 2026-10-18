@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference='Stop'
 if(-not $FbeExe){$FbeExe=Join-Path $PSScriptRoot '../../out/Release/FBE.exe'}

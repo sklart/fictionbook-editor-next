@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$Configuration = "Release",
 
@@ -351,6 +351,12 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-export-epub-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-export-docx-v2-runtime.ps1") -Configuration $Configuration
 & (Join-Path $repoRoot "tools\tests\test-import-epub-v2-runtime.ps1") -Configuration $Configuration
+& (Join-Path $repoRoot "tools\tests\test-prerelease-epub-import.ps1") -Importer (Join-Path $batchOutputDir "ImportEPUBBatch.exe")
+& (Join-Path $repoRoot "tools\tests\test-prerelease-serialization.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-xml-script-backend-contract.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-xml-script-backend-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-xml-script-com-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
+& (Join-Path $repoRoot "tools\tests\test-fbe-xml-script-com-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Fbd
 # В исходниках ещё есть накопленный исторический набор строк, который будет
 # переноситься в JSON-локализации поэтапно. В release-контуре аудит остаётся
 # видимым, но не должен блокировать выпуск до фиксации отдельного эталона.
@@ -411,6 +417,8 @@ if (-not $SkipEarlyRuntimeSuites) {
     & (Join-Path $repoRoot "tools\tests\test-nsis-install-scopes.ps1")
 }
 & (Join-Path $repoRoot "tools\tests\test-nsis-ownership-safe-uninstall.ps1")
+& (Join-Path $repoRoot "tools\tests\test-prerelease-nsis-state.ps1")
+& (Join-Path $repoRoot "tools\tests\test-nsis-shell-lifecycle.ps1")
 & (Join-Path $repoRoot "tools\tests\test-nsis-uninstall-user-data.ps1")
 & (Join-Path $repoRoot "tools\tests\test-bundled-plugin-local-activation.ps1") -Configuration $Configuration -RuntimeDirectory $outputDir
 & (Join-Path $repoRoot "tools\tests\test-import-epub-registration.ps1") -Configuration $Configuration

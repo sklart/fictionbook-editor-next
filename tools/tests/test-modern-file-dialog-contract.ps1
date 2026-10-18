@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $dialog = Get-Content -Raw (Join-Path $root 'src\common\ModernFileDialog.h')
 $diagnostic = Get-Content -Raw (Join-Path $root 'src\common\DiagnosticLog.h')
