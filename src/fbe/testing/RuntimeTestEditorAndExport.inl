@@ -1,3 +1,44 @@
+	if (IsFbeTestScenario(L"prerelease-serialization"))
+	{
+		wchar_t marker[8] = {};
+		::GetEnvironmentVariableW(L"FBE_NEXT_TEST_NBSP", marker, _countof(marker));
+		const CString previousNbsp = _Settings.GetNBSPChar();
+		_Settings.SetNBSPChar(marker);
+		bool passed = false;
+		CStringA details;
+		try {
+			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
+			CheckError(document->parentWindow->execScript(_bstr_t(CString(L"recursiveChangeNbsp(document.getElementById('fbw_body'), '") + marker + L"');"), L"JScript"));
+			const CString before(static_cast<const wchar_t*>(document->body->innerHTML));
+			const bool dirty = m_doc->DocChanged();
+			MSXML2::IXMLDOMDocument2Ptr snapshot(m_doc->CreateDOMForAnalysis());
+			std::vector<unsigned char> bytes;
+			const CString saved = AU::_ARGS.source_memory_benchmark_path + L".fb2";
+			const CString recovery = AU::_ARGS.source_memory_benchmark_path + L".recovery.fb2";
+			const bool serialized = snapshot && m_doc->SerializeToMemory(bytes, FictionBookFileType::Fb2);
+			const bool recoverySaved = serialized && m_doc->SaveRecoveryCopy(recovery);
+			const bool unchanged = before == CString(static_cast<const wchar_t*>(document->body->innerHTML)) && dirty == m_doc->DocChanged();
+			const bool savedOk = recoverySaved && m_doc->Save(saved);
+			auto checkXml = [&](MSXML2::IXMLDOMDocument2Ptr xml) {
+				if (!xml) return false;
+				xml->setProperty(L"SelectionNamespaces", L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'");
+				const CString text(static_cast<const wchar_t*>(xml->xml));
+				return xml->selectNodes(L"//fb:table")->length == 3 && text.Find(L"A\u00A0B") >= 0 && text.Find(marker) < 0;
+			};
+			MSXML2::IXMLDOMDocument2Ptr reopened(U::CreateDocument(false)), recovered(U::CreateDocument(false)), memory(U::CreateDocument(false));
+			CStringW memoryText;
+			if (!bytes.empty()) {
+				const int length = ::MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(bytes.data()), static_cast<int>(bytes.size()), NULL, 0);
+				::MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(bytes.data()), static_cast<int>(bytes.size()), memoryText.GetBuffer(length), length); memoryText.ReleaseBuffer(length);
+			}
+			passed = savedOk && unchanged && checkXml(snapshot) && reopened->load(_variant_t(saved)) && recovered->load(_variant_t(recovery)) && memory->loadXML(_bstr_t(memoryText)) && checkXml(reopened) && checkXml(recovered) && checkXml(memory);
+			details.Format("serialized=%d\nrecovery=%d\nunchanged=%d\nsaved=%d\nsnapshot=%d\n", serialized, recoverySaved, unchanged, savedOk, checkXml(snapshot));
+		} catch (const _com_error&) { passed = false; }
+		_Settings.SetNBSPChar(previousNbsp);
+		const CStringA report(details + (passed ? "result=pass\n" : "result=fail\n"));
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"issue43-menu-quality-visual-runtime"))
 	{
 		auto menuText = [](HMENU menu, int position) -> CString {

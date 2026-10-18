@@ -1807,14 +1807,14 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
     return result;
   };
 
-  const auto SnapshotSerializedTables = [](MSXML2::IXMLDOMDocument2Ptr document) -> TableSnapshot {
+  const auto SnapshotSerializedTables = [](MSXML2::IXMLDOMDocument2Ptr document, bool annotation, bool history) -> TableSnapshot {
     TableSnapshot result = {};
     if (!document) return result;
-    MSXML2::IXMLDOMNodeListPtr tables(document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table")));
+    CString tablePath(L"/fb:FictionBook/fb:body//fb:table");
+    if (annotation) tablePath += L" | /fb:FictionBook/fb:description/fb:title-info/fb:annotation//fb:table";
+    if (history) tablePath += L" | /fb:FictionBook/fb:description/fb:document-info/fb:history//fb:table";
+    MSXML2::IXMLDOMNodeListPtr tables(document->selectNodes(_bstr_t(tablePath)));
     result.tables = tables->length;
-    result.rows = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr"))->length;
-    result.td = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr/fb:td"))->length;
-    result.th = document->selectNodes(_bstr_t(L"/fb:FictionBook/fb:body//fb:table/fb:tr/fb:th"))->length;
     for (long tableIndex = 0; tableIndex < tables->length; ++tableIndex) {
       MSXML2::IXMLDOMNodePtr table(tables->item[tableIndex]);
       MSXML2::IXMLDOMNamedNodeMapPtr attrs(table->attributes);
@@ -1822,6 +1822,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
       MSXML2::IXMLDOMNodeListPtr rows(table->selectNodes(L"fb:tr"));
       MSXML2::IXMLDOMNodeListPtr td(table->selectNodes(L"fb:tr/fb:td"));
       MSXML2::IXMLDOMNodeListPtr th(table->selectNodes(L"fb:tr/fb:th"));
+      result.rows += rows->length; result.td += td->length; result.th += th->length;
       CString part;
       part.Format(L"T%ld[id=%s;rows=%ld;td=%ld;th=%ld];", tableIndex + 1,
         id ? (const wchar_t*)id->text : L"", rows->length, td->length, th->length);
@@ -1842,7 +1843,8 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   };
 
   markTableSerializationPhase(L"native-before-normalize-start");
-  const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(m_editor.Document()->body);
+  const MSHTML::IHTMLElementPtr visualRoot(MSHTML::IHTMLDocument3Ptr(m_editor.Document())->getElementById(L"fbw_body"));
+  const TableSnapshot tablesBeforeNormalize = SnapshotNativeTables(visualRoot);
   markTableSerializationPhase(L"native-before-normalize-complete");
 
   // normalize body first
@@ -1879,7 +1881,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
   }
 
   markTableSerializationPhase(L"native-after-normalize-start");
-  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(m_editor.Document()->body);
+  const TableSnapshot tablesAfterNormalize = SnapshotNativeTables(visualRoot);
   markTableSerializationPhase(L"native-after-normalize-complete");
   if (!tablesBeforeNormalize.Equals(tablesAfterNormalize))
   {
@@ -1960,7 +1962,7 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 	}
 
   markTableSerializationPhase(L"serialized-snapshot-start");
-  const TableSnapshot serializedTables = SnapshotSerializedTables(ndoc);
+  const TableSnapshot serializedTables = SnapshotSerializedTables(ndoc, ann != NULL, hist != NULL);
   markTableSerializationPhase(L"serialized-snapshot-complete");
   if (!tablesAfterNormalize.Equals(serializedTables))
   {
@@ -1983,6 +1985,17 @@ MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool comp
 
 	markTableSerializationPhase(L"complete");
 
+  // Restore display markers only in the detached XML shared by FB2, ZIP,
+  // recovery and source snapshots. Never mutate the editor or its undo stack.
+  const CString nbsp = _Settings.GetNBSPChar();
+  if (nbsp != L"\u00A0" && !nbsp.IsEmpty()) {
+    MSXML2::IXMLDOMNodeListPtr texts(ndoc->selectNodes(L"//text()[not(parent::fb:binary)]"));
+    for (long i = 0; i < texts->length; ++i) {
+      MSXML2::IXMLDOMNodePtr text(texts->item[i]);
+      CString value(text->nodeValue);
+      if (value.Replace(nbsp, L"\u00A0")) text->nodeValue = _variant_t(value);
+    }
+  }
   Indent(root,ndoc,0);
   return ndoc;
 }
@@ -2163,33 +2176,6 @@ forcesave:
     else
       path.Delete(cp,path.GetLength()-cp);
     CString	buf(CreateTemporaryFileName(path, _T("fbe")));
-
-	// added by SeNS: replace all nbsp - non-breaking spaces
-	if (_Settings.GetNBSPChar().Compare(L"\u00A0") != 0)
-	{
-		MSXML2::IXMLDOMNodePtr node = ndoc->firstChild;
-
-		while (node && node!=ndoc)
-		{
-			if (node->nodeType==3)
-			{
-				CString s = node->nodeValue;
-				int n = s.Replace( _Settings.GetNBSPChar(), L"\u00A0");
-				int k = s.Replace(L"<p>\u00A0</p>", L"<empty-line/>");
-				if (n || k)
-				{
-					node->nodeValue = s.AllocSysString();
-				}
-			}
-			if (node->firstChild)
-				node=node->firstChild;
-			else
-			{
-				while (node && node!=ndoc && node->nextSibling==NULL) node=node->parentNode;
-				if (node && node!=ndoc) node=node->nextSibling;
-			}
-		}
-	}
 
     // try to save file
     hr=ndoc->raw_save(_variant_t((const wchar_t *)buf));
