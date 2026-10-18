@@ -21,6 +21,8 @@ try {
 <?xml version="1.0" encoding="utf-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><nickname>Test</nickname></author><book-title>Tables</book-title><annotation><table id="annotation"><tr><td>A&#160;B</td></tr></table></annotation><lang>en</lang></title-info><src-title-info><genre>prose</genre><author><nickname>Source</nickname></author><book-title>Hidden</book-title><annotation><table id="hidden"><tr><td>hidden source</td></tr></table></annotation><lang>en</lang></src-title-info><document-info><id>prerelease</id><version>1.0</version><history><table id="history"><tr><td>history</td></tr></table></history></document-info></description><body><section><table id="body"><tr><td>body</td></tr></table></section></body></FictionBook>
 '@
+    $inlineNodes=(0..63 | ForEach-Object { '<strong>Unknown inline {0}</strong>' -f $_ }) -join ''
+    $xml=$xml.Replace('</section>','<p id="unknown-inline-probe">'+ $inlineNodes +'</p></section>')
     [IO.File]::WriteAllText($fixture,$xml,[Text.UTF8Encoding]::new($false))
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO='prerelease-serialization'
     foreach($code in 0x25a1,0x25ab,0x25e6) {
@@ -31,11 +33,16 @@ try {
         $node.InnerText=[string][char]$code;$preferences.Save($settings)
         $report=Join-Path $isolation.Root ("serialization-$code.txt")
         Invoke-SerializationFbe $fixture $report
-        if([IO.File]::ReadAllText($report) -notmatch 'result=pass'){throw "Serialization failed for U+$('{0:X4}' -f $code): $report"}
+        if([IO.File]::ReadAllText($report) -notmatch 'result=pass' -or [IO.File]::ReadAllText($report) -notmatch 'invalid_inline_rejected=1'){throw "Serialization failed for U+$('{0:X4}' -f $code): $report"}
         foreach($suffix in '.fb2','.recovery.fb2') {
             [xml]$saved=[IO.File]::ReadAllText($report+$suffix)
             $ns=[Xml.XmlNamespaceManager]::new($saved.NameTable);$ns.AddNamespace('fb','http://www.gribuser.ru/xml/fictionbook/2.0')
             if($saved.SelectNodes('//fb:table',$ns).Count -ne 3 -or $saved.DocumentElement.InnerText -notmatch "A$([char]0xa0)B"){throw 'Saved XML lost table/NBSP content'}
+            $inlineNodes=$saved.SelectNodes("//fb:p[@id='unknown-inline-probe']/fb:strong",$ns)
+            if($inlineNodes.Count -ne 64){throw 'Saved XML lost unknown inline elements'}
+            foreach($index in 0..63) {
+                if($inlineNodes[$index].InnerText -cne "Unknown inline $index"){throw "Saved XML lost unknown inline $index"}
+            }
         }
         foreach($suffix in '.fb2','.recovery.fb2') {
             $reopened=Join-Path $isolation.Root ("reopen-$code-$($suffix.Trim('.')).txt")
@@ -54,7 +61,7 @@ try {
         $env:FBE_NEXT_TEST_ARCHIVE_ENTRY=$null
     }
     $passed=$true
-    Write-Host 'PASS: annotation/history/body and hidden source tables; three NBSP markers; FB2/recovery editor reopen; production ZIP save and reopen; visual DOM unchanged.'
+    Write-Host 'PASS: tables; three NBSP markers; 64 unknown inline elements; invalid inline rejected; FB2/recovery editor reopen; production ZIP save and reopen; visual DOM unchanged.'
 } finally {
     $env:FBE_NEXT_TEST_MODE=$oldMode;$env:FBE_NEXT_TEST_SCENARIO=$oldScenario;$env:FBE_NEXT_TEST_NBSP=$oldNbsp;$env:FBE_NEXT_TEST_ARCHIVE_ENTRY=$oldEntry
     Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed

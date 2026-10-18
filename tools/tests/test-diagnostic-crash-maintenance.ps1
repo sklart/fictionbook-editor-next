@@ -32,6 +32,8 @@ try {
  }
  if([IO.File]::ReadAllText($foreignReport) -cne 'FOREIGN_PRIVATE_CONTENT'){throw 'Crash junction admitted or changed foreign content'}
  if([IO.File]::ReadAllText($foreignHang) -cne $hangText){throw 'Hang junction admitted or changed foreign content'}
- Get-Content -LiteralPath (Join-Path $env:FBE_NEXT_TEST_PACKAGE_DIRECTORY 'catalog.txt')
+ $catalogEvidence=Get-Content -LiteralPath (Join-Path $env:FBE_NEXT_TEST_PACKAGE_DIRECTORY 'catalog.txt') -Raw
+ if($catalogEvidence -notmatch 'lock_release_guards=1'){throw 'Catalog lock release regression did not run'}
+ Write-Host $catalogEvidence
  Write-Host "PASS: indexed large catalog; background discovery; damaged review persists without changing bytes; replacement notification; safe TXT/DMP cleanup. Evidence: $work"
 } finally {foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name])}}

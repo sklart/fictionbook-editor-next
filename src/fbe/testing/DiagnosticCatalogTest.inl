@@ -64,18 +64,34 @@ int StartupTrace::RunDiagnosticCatalogTest()
     }
     const CString foreign=root+L"notes.txt", orphan=root+L"FBENext-crash-20000101-000000-999-pid4294967287.dmp", alias=root+L"hard-link.txt";
     if(!write(foreign,unsafe,true) || !write(orphan,unsafe,true) || !::CreateHardLink(alias,hard,NULL)) return 16;
-    HANDLE lock=::CreateFile(dump(locked),GENERIC_READ,0,NULL,OPEN_EXISTING,0,NULL), textLock=::CreateFile(lockedText,GENERIC_READ,FILE_SHARE_READ,NULL,OPEN_EXISTING,0,NULL);
-    if(lock==INVALID_HANDLE_VALUE || textLock==INVALID_HANDLE_VALUE) return 17;
+    auto acquire=[](const CString& file,DWORD sharing,ATL::CHandle& owner) {
+        const HANDLE handle=::CreateFile(file,GENERIC_READ,sharing,NULL,OPEN_EXISTING,0,NULL);
+        if(handle==INVALID_HANDLE_VALUE) return false;
+        owner.Attach(handle); return true;
+    };
+    auto earlyExit=[&](int result) {
+        ATL::CHandle first, second;
+        if(!acquire(dump(locked),0,first) ||
+            !acquire(result==17 ? root+L"missing-lock-probe.txt" : lockedText,FILE_SHARE_READ,second)) return 17;
+        return result;
+    };
+    for(const int result:{17,20,21}) {
+        if(earlyExit(result)!=result) return 32;
+        ATL::CHandle first, second;
+        if(!acquire(dump(locked),0,first) || !acquire(lockedText,0,second)) return 33;
+    }
+    ATL::CHandle lock, textLock;
+    if(!acquire(dump(locked),0,lock) || !acquire(lockedText,FILE_SHARE_READ,textLock)) return 17;
     const auto plan=PrepareDiagnosticCrashCleanup();
-    if(plan.items.size()!=2 || plan.files!=4 || !plan.bytes) { ::CloseHandle(lock); ::CloseHandle(textLock); return 18; }
-    if(!write(dump(stale),L"CHANGED_DUMP",true)) { ::CloseHandle(lock); ::CloseHandle(textLock); return 19; }
+    if(plan.items.size()!=2 || plan.files!=4 || !plan.bytes) return 18;
+    if(!write(dump(stale),L"CHANGED_DUMP",true)) return 19;
     // A new eligible file created after preview is outside the approved plan.
     const CString late=path(8,4294967286UL); if(!write(late,unsafe,true) || !MarkDiagnosticCrashReportReviewed(reportAt(late))) return 20;
     {
         std::atomic_bool cancelled{true}; DiagnosticTaskScope scope(cancelled);
         if(!PrepareDiagnosticCrashCleanup().items.empty() || ExecuteDiagnosticCrashCleanup(plan).filesDeleted!=0) return 21;
     }
-    const auto cleaned=ExecuteDiagnosticCrashCleanup(plan); ::CloseHandle(lock); ::CloseHandle(textLock);
+    const auto cleaned=ExecuteDiagnosticCrashCleanup(plan); lock.Close(); textLock.Close();
     if(cleaned.filesDeleted!=2 || cleaned.filesFailed!=1 || exists(good) || exists(dump(good)) || !exists(stale) || !exists(dump(stale))) return 22;
     for(const auto& file:{unreviewed,locked,current,active,hard,lockedText,late,foreign,orphan,alias,path(999)}) if(!exists(file)) return 23;
     // Forged paths and changed TXT identity cannot widen a previously approved plan.
@@ -87,6 +103,7 @@ int StartupTrace::RunDiagnosticCatalogTest()
     if(!exists(late) || after.filesFailed==0) return 26;
     if(!TestHangCleanup(directory)) return 31;
     CString evidence; evidence.Format(L"PASS\r\nsessions=%u\r\ncrashes=1000\r\nmetadata_reads=%llu\r\ncrash_headers=%llu\r\ncatalog_ms=%llu\r\nlaunch_ms=%llu\r\nbackground_scan_ms=%llu\r\nstartup_metadata_reads=%llu\r\ndamaged_review=1\r\nbackground_notifications=1\r\ncleanup_guards=1\r\nhang_cleanup_guards=1\r\n",static_cast<unsigned int>(sessions.size()),catalogMetrics.metadataReads,catalogMetrics.crashHeaders,catalogMs,scan.LaunchMilliseconds(),scan.ScanMilliseconds(),scan.Metrics().metadataReads);
+    evidence+=L"lock_release_guards=1\r\n";
     ::SHCreateDirectoryEx(NULL,output,NULL);
     return write(CString(output)+L"\\catalog.txt",evidence) ? 0 : 27;
 }

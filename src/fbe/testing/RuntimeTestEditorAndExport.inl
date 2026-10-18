@@ -9,9 +9,12 @@
 		try {
 			MSHTML::IHTMLDocument2Ptr document(m_doc->m_body.Document());
 			CheckError(document->parentWindow->execScript(_bstr_t(CString(L"recursiveChangeNbsp(document.getElementById('fbw_body'), '") + marker + L"');"), L"JScript"));
+			CheckError(document->parentWindow->execScript(L"var inlineProbe=document.getElementById('unknown-inline-probe');inlineProbe.innerHTML='';for(var n=0;n<64;n++){var span=document.createElement('SPAN');span.className='unknown_element';span.setAttribute('source_class','strong');span.innerText='Unknown inline '+n;inlineProbe.appendChild(span);}", L"JScript"));
 			const CString before(static_cast<const wchar_t*>(document->body->innerHTML));
 			const bool dirty = m_doc->DocChanged();
-			MSXML2::IXMLDOMDocument2Ptr snapshot(m_doc->CreateDOMForAnalysis());
+			CString snapshotError;
+			MSXML2::IXMLDOMDocument2Ptr snapshot(m_doc->CreateDOMForAnalysis(&snapshotError));
+			if(snapshot) snapshot->save(_variant_t(AU::_ARGS.source_memory_benchmark_path + L".snapshot.fb2"));
 			std::vector<unsigned char> bytes;
 			const CString saved = AU::_ARGS.source_memory_benchmark_path + L".fb2";
 			const CString recovery = AU::_ARGS.source_memory_benchmark_path + L".recovery.fb2";
@@ -23,7 +26,9 @@
 				if (!xml) return false;
 				xml->setProperty(L"SelectionNamespaces", L"xmlns:fb='http://www.gribuser.ru/xml/fictionbook/2.0'");
 				const CString text(static_cast<const wchar_t*>(xml->xml));
-				return xml->selectNodes(L"//fb:table")->length == 3 && text.Find(L"A\u00A0B") >= 0 && text.Find(marker) < 0;
+				return xml->selectNodes(L"//fb:table")->length == 3 &&
+					xml->selectNodes(L"//fb:p[@id='unknown-inline-probe' or @fb:id='unknown-inline-probe']/fb:strong")->length == 64 &&
+					text.Find(L"A\u00A0B") >= 0 && text.Find(marker) < 0;
 			};
 			MSXML2::IXMLDOMDocument2Ptr reopened(U::CreateDocument(false)), recovered(U::CreateDocument(false)), memory(U::CreateDocument(false));
 			CStringW memoryText;
@@ -32,7 +37,15 @@
 				::MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(bytes.data()), static_cast<int>(bytes.size()), memoryText.GetBuffer(length), length); memoryText.ReleaseBuffer(length);
 			}
 			passed = savedOk && unchanged && checkXml(snapshot) && reopened->load(_variant_t(saved)) && recovered->load(_variant_t(recovery)) && memory->loadXML(_bstr_t(memoryText)) && checkXml(reopened) && checkXml(recovered) && checkXml(memory);
-			details.Format("serialized=%d\nrecovery=%d\nunchanged=%d\nsaved=%d\nsnapshot=%d\n", serialized, recoverySaved, unchanged, savedOk, checkXml(snapshot));
+			CheckError(document->parentWindow->execScript(L"var invalidSpan=document.createElement('SPAN');invalidSpan.className='unknown_element';invalidSpan.setAttribute('source_class','');invalidSpan.innerText='Invalid inline';document.getElementById('unknown-inline-probe').appendChild(invalidSpan);", L"JScript"));
+			const CString invalidBefore(static_cast<const wchar_t*>(document->body->innerHTML));
+			const bool invalidDirty = m_doc->DocChanged();
+			CString invalidError;
+			const bool invalidRejected = !m_doc->CreateDOMForAnalysis(&invalidError) && !invalidError.IsEmpty() &&
+				invalidBefore == CString(static_cast<const wchar_t*>(document->body->innerHTML)) && invalidDirty == m_doc->DocChanged();
+			passed = passed && invalidRejected;
+			details.Format("serialized=%d\nrecovery=%d\nunchanged=%d\nsaved=%d\nsnapshot=%d\ninvalid_inline_rejected=%d\n", serialized, recoverySaved, unchanged, savedOk, checkXml(snapshot), invalidRejected);
+			if(!snapshotError.IsEmpty()) details += CStringA(snapshotError) + "\n";
 		} catch (const _com_error&) { passed = false; }
 		_Settings.SetNBSPChar(previousNbsp);
 		const CStringA report(details + (passed ? "result=pass\n" : "result=fail\n"));

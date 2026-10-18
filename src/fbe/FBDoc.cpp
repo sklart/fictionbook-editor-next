@@ -1176,6 +1176,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
   MSHTML::IHTMLElementPtr     einl(inl);
   _bstr_t		      cls(einl->className);
 
+  _bstr_t                     realClassName;
   const wchar_t		      *xname=NULL;
   bool			      fA=false;
   bool			      fStyle=false;
@@ -1199,7 +1200,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
    {
 	  if(U::scmp(cls,L"unknown_element")==0)
 	  {
-		  _bstr_t realClassName = einl->getAttribute(L"source_class", 2);
+		  realClassName = einl->getAttribute(L"source_class", 2);
 		  xname = realClassName;
 		  fUnk = true;
 	  }
@@ -1216,6 +1217,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessInline(MSHTML::IHTMLDOMNode *inl,
 	  }
   }
 
+  if (!xname || !*xname) CheckError(E_INVALIDARG);
   MSXML2::IXMLDOMElementPtr   xinl(doc->createNode(1L,xname,FBNS));
 
   if (fImg)
@@ -1436,7 +1438,7 @@ static MSXML2::IXMLDOMNodePtr	  ProcessDiv(MSHTML::IHTMLElement *div,
       xdiv->appendChild(nnp);
     } else if (U::scmp(name,L"P")==0 || U::scmp(name,L"TD")==0 || U::scmp(name,L"TH")==0) {
 		MSXML2::IXMLDOMNodePtr  np;
-		try { np = ProcessP(efc,doc,bn); } catch (...) { np = 0; }
+		np = ProcessP(efc,doc,bn);
       if (np) {
 		Indent(xdiv,doc,indent+1);
 		xdiv->appendChild(np);
