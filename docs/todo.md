@@ -1,5 +1,7 @@
 # Текущий TODO
 
+- [x] Остаточные замечания HTML Paste: отказ PostMessage без потери Undo/Redo, FIFO быстрых вставок со снимками HTML/текста, актуальный статический контроль copyScope и нативной нормализации. Целевые проверки — в `html-paste-followup-report.md`; ручная совместимость остаётся отдельным пунктом в `html-paste-compatibility-smoke.md`.
+
 - [x] Остаточные замечания Undo: атомарность binary и HTML при отказах COM/регистрации Undo, сохранение истории и savepoint, передача ошибок нормализации и отказ от всего Drop при ошибке. Целевые проверки и Release Win32 — в `undo-atomic-failures-report.md`.
 - [x] Исправлены HTML Paste Undo `internal-history` и `plain-middle`: прежняя нативная история, каретка, dirty/recovery, одна группа вставки и OnRealPaste. Целевые проверки, Validate и Save → Reopen — в `html-paste-undo-report.md`.
 

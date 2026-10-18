@@ -216,6 +216,7 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-structural-production.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -FixtureId plain -Operation insert-row-below
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-attributes-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-boundary.ps1")
+& (Join-Path $repoRoot "tools\tests\test-fbe-clipboard-paste-boundary.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-visual-dom-normalizer-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 & (Join-Path $repoRoot "tools\tests\test-fbe-structural-trace-contract.ps1")
 & (Join-Path $repoRoot "tools\tests\test-fbe-cite-poem-undo-contract.ps1")

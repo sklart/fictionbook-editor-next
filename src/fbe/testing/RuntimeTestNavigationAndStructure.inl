@@ -661,12 +661,14 @@
 		output.Write(header, static_cast<DWORD>(header.GetLength()), &written);
 		wchar_t caseName[32] = {};
 		::GetEnvironmentVariable(L"FBE_NEXT_TEST_HTML_PASTE_CASE", caseName, _countof(caseName));
+        const bool queueCase = wcsncmp(caseName, L"queue-", 6) == 0;
+        const bool cleanQueueFailure = wcscmp(caseName, L"queue-post-clean-failure") == 0;
 		const bool singleLine = wcscmp(caseName, L"plain-single") == 0;
 		const bool middle = wcscmp(caseName, L"plain-middle") == 0;
 		const bool internalEnd = wcscmp(caseName, L"internal-end") == 0;
 		const bool preDirty = wcscmp(caseName, L"internal-dirty") == 0;
 		const bool historyMiddle = wcscmp(caseName, L"internal-history-middle") == 0;
-		const bool priorHistory = wcscmp(caseName, L"internal-history") == 0 || historyMiddle;
+		const bool priorHistory = wcscmp(caseName, L"internal-history") == 0 || historyMiddle || (queueCase && !cleanQueueFailure);
 		const bool missingLink = wcscmp(caseName, L"internal-missing-link") == 0;
 		const bool missingImage = wcscmp(caseName, L"internal-missing-image") == 0;
 		const bool internal = wcscmp(caseName, L"internal") == 0 || internalEnd || preDirty || priorHistory || missingLink || missingImage;
@@ -800,8 +802,8 @@
 					document->execCommand(L"Paste", VARIANT_FALSE, _variant_t());
 					bool routed = false;
 					MSG pending = {};
-					while (::PeekMessage(&pending, m_doc->m_body, WM_COMMAND, WM_COMMAND, PM_REMOVE)) {
-						if (LOWORD(pending.wParam) == ID_EDIT_PASTE) routed = true;
+					while (::PeekMessage(&pending, m_doc->m_body, AU::WM_FINALIZE_HTML_PASTE, AU::WM_FINALIZE_HTML_PASTE, PM_REMOVE)) {
+						routed = true;
 						::DispatchMessage(&pending);
 					}
 					safetyOk = routed && safetyOk;
@@ -823,6 +825,136 @@
             };
             const auto previousUndo = undoHistory();
 			const CString beforeCaret(selectionState());
+            if (queueCase) {
+                auto redoHistory = [&]() {
+                    CComPtr<IEnumOleUndoUnits> list; CheckError(pasteManager->EnumRedoable(&list));
+                    std::vector<CComPtr<IOleUndoUnit>> units;
+                    for (;;) { CComPtr<IOleUndoUnit> unit; const HRESULT hr = list->Next(1, &unit, nullptr); if (hr == S_FALSE) break; CheckError(hr); units.push_back(unit); }
+                    return units;
+                };
+                auto setInput = [&](int index) {
+                    const bool textOnly = wcscmp(caseName, L"queue-plain-two") == 0;
+                    CStringA html; html.Format("<strong>Queue%d</strong>", index);
+                    const CStringA prefix("Version:0.9\r\nStartFragment:00000000\r\nEndFragment:00000000\r\n");
+                    CStringA bytes; bytes.Format("Version:0.9\r\nStartFragment:%08u\r\nEndFragment:%08u\r\n",
+                        static_cast<unsigned>(prefix.GetLength()), static_cast<unsigned>(prefix.GetLength() + html.GetLength()));
+                    bytes += html;
+                    CString text; text.Format(textOnly ? L"Queue%d\r\n\r\nTail" : L"Queue%d", index);
+                    CheckError(::OpenClipboard(m_doc->m_body) ? S_OK : E_FAIL);
+                    ::EmptyClipboard();
+                    HGLOBAL h = ::GlobalAlloc(GMEM_MOVEABLE, bytes.GetLength() + 1);
+                    HGLOBAL t = ::GlobalAlloc(GMEM_MOVEABLE, (text.GetLength() + 1) * sizeof(wchar_t));
+                    char* hp = h ? static_cast<char*>(::GlobalLock(h)) : nullptr;
+                    wchar_t* tp = t ? static_cast<wchar_t*>(::GlobalLock(t)) : nullptr;
+                    if (hp) { memcpy(hp, static_cast<LPCSTR>(bytes), bytes.GetLength() + 1); ::GlobalUnlock(h); }
+                    if (tp) { memcpy(tp, static_cast<LPCWSTR>(text), (text.GetLength() + 1) * sizeof(wchar_t)); ::GlobalUnlock(t); }
+                    const bool htmlSet = !textOnly && hp && ::SetClipboardData(::RegisterClipboardFormat(L"HTML Format"), h);
+                    const bool textSet = tp && ::SetClipboardData(CF_UNICODETEXT, t);
+                    if (!htmlSet && h) ::GlobalFree(h);
+                    if (!textSet && t) ::GlobalFree(t);
+                    ::CloseClipboard(); CheckError((textOnly || htmlSet) && textSet ? S_OK : E_FAIL);
+                };
+                auto event = [&]() { document->execCommand(L"Paste", VARIANT_FALSE, _variant_t()); };
+                auto drain = [&]() {
+                    int count = 0; MSG message = {};
+                    while (::PeekMessage(&message, m_doc->m_body, AU::WM_FINALIZE_HTML_PASTE, AU::WM_FINALIZE_HTML_PASTE, PM_REMOVE)) {
+                        ++count; ::DispatchMessage(&message);
+                    }
+                    safetyOk = closed() && safetyOk;
+                    return count;
+                };
+                // Leave both a previous native Undo and a native Redo. A
+                // rejected browser event must retain their exact COM objects.
+                m_doc->m_body.MarkupServices()->BeginUndoUnit(L"Future edit");
+                pasteTarget->insertAdjacentText(L"beforeEnd", L" Future");
+                m_doc->m_body.MarkupServices()->EndUndoUnit();
+                edit(ID_EDIT_UNDO);
+                range->select();
+                const auto previousRedo = redoHistory();
+                const auto baseline = FbeUndo::DocumentState(document);
+                const CString baselineHtml(static_cast<LPCWSTR>(editable->innerHTML)), baselineCaret(selectionState());
+                const bool baselineDirty = m_doc->DocChanged(), baselineRecovery = m_doc->DocRelChanged();
+                const auto baselineSavepoints = m_doc->CaptureUndoSavepoints();
+                bool valid = !previousRedo.empty() && undoHistory() == previousUndo;
+                auto traceQueue = [&](LPCSTR stage) {
+                    CStringA message; message.Format("queue-stage: %s valid=%d undo=%u redo=%u caret=%S html=%S\r\n", stage, valid,
+                        static_cast<unsigned>(undoHistory().size()), static_cast<unsigned>(redoHistory().size()),
+                        static_cast<LPCWSTR>(selectionState()), static_cast<LPCWSTR>(editable->innerHTML));
+                    output.Write(message, static_cast<DWORD>(message.GetLength()), &written);
+                };
+                const bool failPost = cleanQueueFailure || wcscmp(caseName, L"queue-post-failure") == 0 || wcscmp(caseName, L"queue-failure-retry") == 0;
+                if (failPost) {
+                    setInput(7);
+                    ::SetEnvironmentVariableW(L"FBE_NEXT_UNDO_FAILURE", L"paste-post");
+                    event();
+                    const bool notPosted = drain() == 0;
+                    _Module.GetMessageLoop()->OnIdle(0); // actual fallback, after the MSHTML event returned
+                    const bool restored = FbeUndo::DocumentState(document) == baseline &&
+                        selectionState() == baselineCaret && undoHistory() == previousUndo && redoHistory() == previousRedo &&
+                        m_doc->DocChanged() == baselineDirty && m_doc->DocRelChanged() == baselineRecovery && closed();
+                    const auto recovered = m_doc->CaptureUndoSavepoints();
+                    const bool savepoints = recovered.savedVersion == (baselineSavepoints.clean ? m_doc->m_body.GetVersionNumber() : baselineSavepoints.savedVersion) &&
+                        recovered.recoveryVersion == (baselineSavepoints.recoveryClean ? m_doc->m_body.GetVersionNumber() : baselineSavepoints.recoveryVersion) && recovered.savedHtml == baselineSavepoints.savedHtml &&
+                        recovered.recoveryHtml == baselineSavepoints.recoveryHtml && recovered.hasSaved == baselineSavepoints.hasSaved &&
+                        recovered.hasRecovery == baselineSavepoints.hasRecovery && recovered.reconcile == baselineSavepoints.reconcile;
+                    valid = valid && notPosted && restored && savepoints;
+                    CStringA trace; trace.Format("queue-failure: posted=%d restored=%d\r\n", !notPosted, restored);
+                    if (!valid) output.Write(trace, static_cast<DWORD>(trace.GetLength()), &written);
+                }
+                const int count = wcscmp(caseName, L"queue-three") == 0 ? 3 : (wcscmp(caseName, L"queue-two") == 0 || wcscmp(caseName, L"queue-plain-two") == 0) ? 2 :
+                    (wcscmp(caseName, L"queue-post-failure") == 0 || cleanQueueFailure) ? 0 : 1;
+                std::vector<CString> htmls{baselineHtml}, carets{baselineCaret};
+                std::vector<unsigned long long> states{baseline};
+                // Sequential real events supply an independent ordering and
+                // caret oracle for the burst, with a different clipboard each time.
+                for (int i = 1; i <= count; ++i) {
+                    setInput(i); m_doc->m_body.OnPaste(0, ID_EDIT_PASTE, 0, handled);
+                    htmls.push_back(CString(static_cast<LPCWSTR>(editable->innerHTML)));
+                    carets.push_back(selectionState()); states.push_back(FbeUndo::DocumentState(document));
+                    CString marker; marker.Format(L"Queue%d", i);
+                    valid = htmls.back().Find(marker) >= 0 && undoHistory().size() == previousUndo.size() + i && closed() && valid;
+                    if (!valid) traceQueue("sequential");
+                }
+                for (int i = count - 1; i >= 0; --i) {
+                    edit(ID_EDIT_UNDO);
+                    valid = FbeUndo::DocumentState(document) == states[i] && selectionState() == carets[i] && valid;
+                    if (!valid) traceQueue("sequential-undo");
+                }
+                valid = undoHistory() == previousUndo && valid;
+                for (int i = 1; i <= count; ++i) { setInput(i); event(); }
+                setInput(9); // queued requests must not read this newer clipboard
+                const DWORD queuedClipboard = ::GetClipboardSequenceNumber();
+                valid = drain() == (count ? 1 : 0) && valid;
+                valid = FbeUndo::DocumentState(document) == states.back() && selectionState() == carets.back() &&
+                    undoHistory().size() == previousUndo.size() + count && ::GetClipboardSequenceNumber() == queuedClipboard && valid;
+                if (!valid) traceQueue("burst");
+                for (int i = count - 1; i >= 0; --i) {
+                    edit(ID_EDIT_UNDO);
+                    valid = FbeUndo::DocumentState(document) == states[i] && selectionState() == carets[i] &&
+                        m_doc->DocChanged() == baselineDirty && m_doc->DocRelChanged() == baselineRecovery && valid;
+                }
+                valid = undoHistory() == previousUndo && valid;
+                if (count) {
+                    edit(ID_EDIT_UNDO);
+                    valid = CString(static_cast<LPCWSTR>(editable->innerHTML)) == before && !m_doc->DocChanged() && !m_doc->DocRelChanged() && valid;
+                    edit(ID_EDIT_REDO);
+                    valid = FbeUndo::DocumentState(document) == baseline && valid;
+                }
+                for (int i = 1; i <= count; ++i) {
+                    edit(ID_EDIT_REDO);
+                    valid = FbeUndo::DocumentState(document) == states[i] && selectionState() == carets[i] &&
+                        m_doc->DocChanged() && m_doc->DocRelChanged() && valid;
+                }
+                int line = 0, column = 0;
+                valid = closed() && safetyOk && valid;
+                const bool validation = m_doc->Validate(line, column), reopen = saveReopen();
+                valid = validation && reopen && valid;
+                CStringA row; row.Format("%S\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\r\n",
+                    caseName, valid, valid, valid, valid, valid, valid, valid, valid, valid, valid, validation, reopen, valid ? "pass" : "fail");
+                output.Write(row, static_cast<DWORD>(row.GetLength()), &written);
+                if (originalClipboard) ::OleSetClipboard(originalClipboard);
+                output.Flush(); output.Close(); ::PostQuitMessage(valid ? 0 : 1); return 0;
+            }
 			CString middleLeft, middleRight;
 			if (middle) {
 				MSHTML::IHTMLTxtRangePtr split(range->duplicate());

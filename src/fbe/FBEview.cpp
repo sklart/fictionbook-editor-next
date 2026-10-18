@@ -320,6 +320,25 @@ static CComPtr<IOleUndoManager> GetPasteUndoManager(MSHTML::IHTMLDocument2Ptr do
 // The canceled browser event and the deferred editor command are separate
 // transactions. Remove only the proven empty native event, retaining all
 // previous native units and redo entries before starting the real insertion.
+struct DeferredHtmlPaste {
+    CString fragment, plainText;
+    GUID origin = GUID_NULL;
+    bool hasHtml = false, readableHtml = false, internal = false, hasText = false;
+    bool continueAtCaret = false;
+    MSHTML::IHTMLTxtRangePtr selection;
+    DWORD clipboardSequence = 0;
+    explicit DeferredHtmlPaste(CFBEView& view) {
+        const DWORD sequence = ::GetClipboardSequenceNumber();
+        selection = view.Document()->selection->createRange();
+        hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
+        readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(view, fragment);
+        internal = FbeClipboard::HtmlPasteSanitizer::GetInternalCopyOrigin(view, origin);
+        hasText = FbeClipboard::HtmlPasteSanitizer::ReadPlainText(view, plainText);
+        if (::GetClipboardSequenceNumber() != sequence) CheckError(E_ABORT);
+        clipboardSequence = sequence;
+    }
+};
+
 struct PendingHtmlPaste {
     CComPtr<IOleUndoManager> manager;
     MSHTML::IHTMLDocument2Ptr document;
@@ -327,6 +346,10 @@ struct PendingHtmlPaste {
     FB::Doc::UndoSavepoints savepoints;
     unsigned long long state;
     MSHTML::IHTMLTxtRangePtr selection;
+    std::vector<std::shared_ptr<DeferredHtmlPaste>> requests;
+    size_t events = 0;
+    bool posted = false;
+    UINT_PTR generation = 0;
     PendingHtmlPaste(IOleUndoManager* undo, FB::Doc* owner) : manager(undo),
         document(owner->m_body.Document()), history(undo), savepoints(owner->CaptureUndoSavepoints()),
         state(FbeUndo::DocumentState(document)), selection(document->selection->createRange()) {}
@@ -336,9 +359,9 @@ struct PendingHtmlPaste {
             if (FbeUndo::DocumentState(document) != state) return E_UNEXPECTED;
             DWORD open = 0;
             if (manager->GetOpenParentState(&open) != S_FALSE) return E_UNEXPECTED;
-            const auto unit = history.AddedUndoUnit(manager);
-            if (unit) {
-                const HRESULT undone = manager->UndoTo(unit);
+            const auto units = history.AddedUndoUnits(manager, events);
+            for (auto unit = units.rbegin(); unit != units.rend(); ++unit) {
+                const HRESULT undone = manager->UndoTo(*unit);
                 if (FbeUndo::DocumentState(document) != state) return E_ABORT;
                 if (FAILED(undone)) {
                     CheckError(history.Restore(manager));
@@ -605,12 +628,20 @@ LRESULT CFBEView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& /* unu
   StartupTrace::HResult(L"webbrowser", L"WB112", hr, L"BrowserEvents::DispEventAdvise");
   if (FAILED(hr))
     return 1;
+  if (m_normalize) {
+    CMessageLoop* loop = _Module.GetMessageLoop();
+    if (!loop || !loop->AddIdleHandler(this)) return -1;
+    m_pasteIdleLoop = loop;
+  }
   m_last_browser_event = L"BrowserEventsAdvised";
   return 0;
 }
 
 CFBEView::~CFBEView()
 {
+	// Run removes the module's loop registration before destroying the frame;
+	// the loop itself outlives the frame and all its documents.
+	if (m_pasteIdleLoop) m_pasteIdleLoop->RemoveIdleHandler(this);
 	ResetPendingDrop();
 	DestroySearchHighlightOverlay(m_search_highlight_overlay);
 	m_search_highlight_overlay = NULL;
@@ -2705,8 +2736,11 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 {
 	try
 	{
-		auto pending = std::move(m_pendingHtmlPaste);
-		if (pending) CheckError(pending->Finish(m_ownerDocument));
+        if (m_pendingHtmlPaste) {
+            BOOL handled = FALSE;
+            OnDeferredHtmlPaste(0, m_pendingHtmlPaste->generation, 0, handled);
+        }
+        auto captured = std::move(m_activeHtmlPaste);
 		PasteEnableScope pasteEnabled(m_enable_paste);
 
 		FbeClipboard::ClipboardPasteOptions options;
@@ -2729,6 +2763,7 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		}
 		CString insertHtml;
 		bool preparedHtml = false;
+        const bool nativeText = captured && !captured->hasHtml && captured->hasText;
 		bool htmlClipboardDetected = false;
 		if (m_normalize && command == ID_EDIT_PASTE_TEXT)
 		{
@@ -2742,13 +2777,14 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		else if (m_normalize && command != ID_EDIT_PASTE_TEXT)
 		{
 			GUID clipboardOrigin = GUID_NULL;
-			const bool internalPaste = FbeClipboard::HtmlPasteSanitizer::GetInternalCopyOrigin(m_hWnd, clipboardOrigin);
+            if (captured) clipboardOrigin = captured->origin;
+			const bool internalPaste = captured ? captured->internal : FbeClipboard::HtmlPasteSanitizer::GetInternalCopyOrigin(m_hWnd, clipboardOrigin);
 			const bool sameDocument = internalPaste && m_ownerDocument &&
 				::IsEqualGUID(clipboardOrigin, m_ownerDocument->ClipboardIdentity());
-			CString fragment;
-			const bool hasHtml = ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
+			CString fragment(captured ? captured->fragment : CString());
+			const bool hasHtml = captured ? captured->hasHtml : ::IsClipboardFormatAvailable(::RegisterClipboardFormat(L"HTML Format")) != FALSE;
 			htmlClipboardDetected = hasHtml;
-			const bool readableHtml = hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_hWnd, fragment);
+			const bool readableHtml = captured ? captured->readableHtml : hasHtml && FbeClipboard::HtmlPasteSanitizer::ReadClipboardFragment(m_hWnd, fragment);
 			if (readableHtml && internalPaste) fragment = FbeClipboard::HtmlPasteSanitizer::NormalizeInternalLinks(
 				fragment, U::UrlFromPath(U::GetProgDirFile(L"main.html")));
 			FbeClipboard::HtmlPasteOutcome outcome = FbeClipboard::HtmlPasteOutcome::PlainText;
@@ -2788,8 +2824,8 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 					lower.Find(L"<table") >= 0 || lower.Find(L"<img") >= 0 ||
 					lower.Find(L"<ul") >= 0 || lower.Find(L"<ol") >= 0 ||
 					lower.Find(L"<li") >= 0 || lower.Find(L"<math") >= 0;
-				CString plainText;
-				if (!structuralHtml && FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, plainText))
+				CString plainText(captured ? captured->plainText : CString());
+				if (!structuralHtml && (captured ? captured->hasText : FbeClipboard::HtmlPasteSanitizer::ReadPlainText(m_hWnd, plainText)))
 				{
 					insertHtml = FbeClipboard::HtmlPasteSanitizer::PlainTextToHtml(plainText, options.nbspReplacement, insideParagraph);
 					preparedHtml = true;
@@ -2803,13 +2839,18 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
 		}
 		if (command == ID_EDIT_PASTE_TEXT && m_normalize && !preparedHtml)
 			return 0;
+        if (captured && !preparedHtml && !nativeText) {
+            // Preserve the existing native bitmap/other-format path. Never
+            // substitute unrelated newer clipboard data for a queued request.
+            if (captured->clipboardSequence != ::GetClipboardSequenceNumber()) CheckError(E_ABORT);
+        }
 
 		// MSHTML moves the live selection while pasting. Keep the pre-paste
 		// endpoints so a cross-owner insertion cannot be normalized too narrowly.
 		MSHTML::IHTMLDOMNodePtr normalizationScope;
 		if (m_normalize)
 			normalizationScope = ResolveNormalizationScope();
-		if (preparedHtml)
+		if (preparedHtml || nativeText)
 		{
 			MSHTML::IHTMLElementPtr undoScope(normalizationScope);
 			if (!undoScope || (!IsNormalizationOwner(undoScope) && U::scmp(undoScope->id, L"fbw_body") != 0))
@@ -2872,7 +2913,15 @@ LRESULT CFBEView::OnPaste(WORD, WORD command, HWND, BOOL&)
                 transaction->SetPaste();
                 transaction->PrepareRollback(pasteManager);
                 FbeDom::MarkupUndoUnitScope native(m_mk_srv, L"Paste HTML");
-				if (paragraphAtEnd) {
+                if (nativeText) {
+                    // TextRange uses MSHTML's text insertion rules (including
+                    // merging the first/last line into the current paragraph),
+                    // while reading the immutable event-time clipboard value.
+                    CString text(captured->plainText);
+                    text.Replace(L"\u00a0", options.nbspReplacement);
+                    pasteRange->text = _bstr_t(text);
+                    pasteRange->collapse(VARIANT_FALSE); pasteRange->select();
+                } else if (paragraphAtEnd) {
 					MSHTML::IHTMLDOMNodePtr paragraphNode(paragraphAtEnd);
 					MSHTML::IHTMLDOMNodePtr nextOriginal(paragraphNode->nextSibling);
 					paragraphAtEnd->insertAdjacentHTML(L"afterEnd", _bstr_t(insertHtml));
@@ -4028,6 +4077,8 @@ void  CFBEView::OnDocumentComplete(IDispatch *pDisp,VARIANT *vtUrl) {
 
 bool CFBEView::Init()
 {
+	m_pendingHtmlPaste.reset();
+	m_activeHtmlPaste.reset();
 	ResetPendingDrop();
   StartupTrace::Event(L"webbrowser", L"WB160", L"CFBEView::Init begin");
 	// A full MSHTML rebuild invalidates every DOM-scoped navigation origin.
@@ -4856,6 +4907,39 @@ VARIANT_BOOL CFBEView::OnKeyUp(IDispatch*)
 	return VARIANT_TRUE;
 }
 
+BOOL CFBEView::OnIdle()
+{
+    // Posting may fail (for example, a full thread message queue). The WTL
+    // idle handler is registered before the browser can emit paste events;
+    // it needs no second PostMessage and only removes canceled native events.
+    if (m_pendingHtmlPaste && !m_pendingHtmlPaste->posted) {
+        auto pending = std::move(m_pendingHtmlPaste);
+        const HRESULT result = pending->Finish(m_ownerDocument);
+        if (FAILED(result)) StartupTrace::HResult(L"clipboard", L"CP101", result, L"Canceled paste recovery");
+    }
+    return FALSE;
+}
+
+LRESULT CFBEView::OnDeferredHtmlPaste(UINT, WPARAM generation, LPARAM, BOOL&)
+{
+    if (!m_pendingHtmlPaste || generation != m_pendingHtmlPaste->generation) return 0;
+    auto pending = std::move(m_pendingHtmlPaste);
+    try {
+        CheckError(pending->Finish(m_ownerDocument));
+        for (const auto& request : pending->requests) {
+            // Repeated Ctrl+V at the same position follows the caret left by
+            // the preceding insertion; an explicitly moved selection is kept.
+            if (!request->continueAtCaret && request->selection) request->selection->select();
+            m_activeHtmlPaste = request;
+            BOOL handled = FALSE;
+            OnPaste(0, ID_EDIT_PASTE, 0, handled);
+            m_activeHtmlPaste.reset();
+        }
+    } catch (const _com_error& error) { U::ReportError(error.Error()); }
+    catch (const std::bad_alloc&) { _com_error error(E_OUTOFMEMORY); U::ReportError(error); }
+    return 0;
+}
+
 VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 {
 	MSHTML::IHTMLEventObjPtr oe(evt);
@@ -4864,16 +4948,40 @@ VARIANT_BOOL  CFBEView::OnRealPaste(IDispatch* evt)
 	{
 		// MSHTML can roll back DOM edits made inside the canceled paste event.
 		// Run the editor insertion after the event returns.
+        oe->returnValue = VARIANT_FALSE;
         try {
-            if (m_normalize && m_ownerDocument && !m_pendingHtmlPaste) {
-                CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
-                if (!manager) CheckError(E_NOINTERFACE);
-                m_pendingHtmlPaste = std::make_shared<PendingHtmlPaste>(manager, m_ownerDocument);
+            if (m_normalize && m_ownerDocument) {
+                if (!m_pendingHtmlPaste) {
+                    CComPtr<IOleUndoManager> manager(GetPasteUndoManager(Document()));
+                    if (!manager) CheckError(E_NOINTERFACE);
+                    m_pendingHtmlPaste = std::make_shared<PendingHtmlPaste>(manager, m_ownerDocument);
+                    m_pendingHtmlPaste->generation = ++m_htmlPasteGeneration;
+                }
+                auto& pending = *m_pendingHtmlPaste;
+                ++pending.events;
+                auto request = std::make_shared<DeferredHtmlPaste>(*this);
+                if (!pending.requests.empty()) {
+                    auto previous = pending.requests.back()->selection;
+                    request->continueAtCaret = previous && request->selection &&
+                        previous->compareEndPoints(L"StartToStart", request->selection) == 0 &&
+                        previous->compareEndPoints(L"EndToEnd", request->selection) == 0;
+                }
+                pending.requests.push_back(request);
+                if (!pending.posted) {
+                    const bool posted = SUCCEEDED(FbeUndo::Inject(L"paste-post")) &&
+                        PostMessage(AU::WM_FINALIZE_HTML_PASTE, pending.generation, 0);
+                    if (!posted) {
+                        pending.requests.pop_back(); // no insertion for the rejected event
+                        StartupTrace::Event(L"clipboard", L"CP100", L"Deferred paste queue rejected; idle recovery scheduled");
+                        return VARIANT_TRUE;
+                    }
+                    pending.posted = true;
+                }
+            } else if (!PostMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0)) {
+                StartupTrace::Event(L"clipboard", L"CP100", L"Deferred form paste queue rejected");
             }
         } catch (_com_error& error) { oe->returnValue = VARIANT_FALSE; U::ReportError(error); return VARIANT_TRUE; }
         catch (const std::bad_alloc&) { oe->returnValue = VARIANT_FALSE; _com_error error(E_OUTOFMEMORY); U::ReportError(error); return VARIANT_TRUE; }
-		PostMessage(WM_COMMAND, MAKELONG(ID_EDIT_PASTE, 0), 0);
-		oe->returnValue = VARIANT_FALSE;
 	}
 	else
 	{
