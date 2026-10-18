@@ -44,7 +44,15 @@ $advancedDialog = Get-Dialog 'IDD_SETTINGS_ADVANCED'
 $hotkeysDialog = Get-Dialog 'IDD_HOTKEYS'
 $imagesDialog = Get-Dialog 'IDD_SETTINGS_IMAGES'
 $wordsDialog = Get-Dialog 'IDD_SETTINGS_WORDS'
-Assert-Contains $sourceDialog 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, 300, \d+' 'Source page must retain room for full localized labels and preview.'
+$sourceSize = [regex]::Match($sourceDialog, 'IDD_SETTINGS_SOURCE DIALOGEX 0, 0, (?<width>\d+), (?<height>\d+)')
+if (-not $sourceSize.Success -or [int]$sourceSize.Groups['width'].Value -lt 300) {
+    throw 'Layout contract failed: Source page must retain at least 300 dialog units for localized labels and preview.'
+}
+$preview = [regex]::Match($sourceDialog, 'CONTROL\s+"",IDC_OPTIONS_SOURCE_PREVIEW,"Static",[^\r\n]*?,(?<x>\d+),(?<y>\d+),(?<w>\d+),(?<h>\d+),WS_EX_CLIENTEDGE')
+if (-not $preview.Success -or ([int]$preview.Groups['x'].Value + [int]$preview.Groups['w'].Value) -gt [int]$sourceSize.Groups['width'].Value -or
+    ([int]$preview.Groups['y'].Value + [int]$preview.Groups['h'].Value) -gt [int]$sourceSize.Groups['height'].Value) {
+    throw 'Layout contract failed: Source preview must fit inside its page.'
+}
 $settingsLayout = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\settings\ui\SettingsDlg.cpp')
 Assert-Contains $settingsLayout 'GWL_STYLE\) \| WS_VSCROLL \| WS_HSCROLL' 'Long Settings pages must remain scrollable inside the window.'
 foreach ($control in @('IDC_WRAP', 'IDC_SYNTAXHL', 'IDC_TAGHL', 'IDC_SHOWEOL',

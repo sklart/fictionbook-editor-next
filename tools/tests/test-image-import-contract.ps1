@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 )
 
@@ -75,7 +75,7 @@ Assert-True ($inserterSource -match 'InsImage' -and $inserterSource -match 'InsI
 Assert-True ($frameSource -match 'ImportBinary\(fileName') 'Пакетный импорт должен продолжать обработку файлов.'
 Assert-True ($frameSource -match 'batch_summary') 'Пакетный импорт должен формировать единый итоговый отчёт.'
 Assert-True ($frameSource -match 'else\s+continue;') 'Отказ от JPEG flatten в пакетном импорте не должен считаться ошибкой.'
-Assert-True ($viewSource -match '!= IDYES\) return;') 'Отказ от JPEG flatten при вставке не должен показывать ошибку.'
+Assert-True ($viewSource -match '!= IDYES\) return E_ABORT;') 'Отказ от JPEG flatten при вставке должен возвращать отмену до показа ошибки.'
 Assert-True ($projectSource -match 'libwebp\.lib') 'libwebp должен быть статически подключён.'
 Assert-True ($projectSource -match 'openjp2\.lib') 'OpenJPEG должен быть статически подключён.'
 foreach ($key in @('fbe.image_import.read_failed', 'fbe.image_import.heif_decode_failed', 'fbe.image_import.filter_supported', 'fbe.image_import.filter_heif')) {
