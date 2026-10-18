@@ -236,7 +236,7 @@ class DiagnosticDialog
             const ULONGLONG start=TimeTicks(session.started), end=TimeTicks(session.ended);
             if(start && end>=start) duration.Format(Text(L"duration",L"%llu s"),(end-start)/10000000ULL);
             row.Format(L"%s%s | %s | %s | PID %lu | %s | %s%s", session.outcome == L"crash" ? L"* " : L"", (LPCWSTR)session.started, (LPCWSTR)duration,
-                (LPCWSTR)session.version, session.processId, (LPCWSTR)outcome, (LPCWSTR)Text(session.logPath.IsEmpty() ? L"no_log" : L"has_log", session.logPath.IsEmpty() ? L"No trace" : L"Trace"),
+                (LPCWSTR)session.version, session.processId, (LPCWSTR)(outcome+(session.hasHangReports ? CString(L" | ")+Text(L"hang_reports",L"Watchdog reports") : CString())), (LPCWSTR)Text(session.logPath.IsEmpty() ? L"no_log" : L"has_log", session.logPath.IsEmpty() ? L"No trace" : L"Trace"),
                 (LPCWSTR)(session.legacy ? CString(L" | ")+Text(L"legacy",L"Legacy: incomplete matching") : CString()));
             ::SendDlgItemMessage(window, Sessions, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(row.GetString()));
             if (session.id == StartupTrace::SessionId() && !selectedCrash) selected = static_cast<int>(i);

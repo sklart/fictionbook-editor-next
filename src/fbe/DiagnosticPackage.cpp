@@ -296,6 +296,8 @@ namespace
         }
         return true;
     }
+#include "diagnostics/HangCatalog.inl"
+
     CString SafeCrashReport(const CString& original)
     {
         // Crash reports remain available separately. Export only typed technical values;
@@ -326,6 +328,8 @@ namespace
         return result;
     }
 }
+
+#include "diagnostics/HangReportSchema.inl"
 
 namespace {
     bool StoredReviewMatches(const CString& path,const CString& fingerprint) {
@@ -424,6 +428,15 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
         item.crashPath=FindCrashTextForSession(item,crashes,&item.crashAmbiguous);
         positions.emplace(std::wstring(item.id),sessions.size()); sessions.push_back(item);
     }
+    for(const auto& hang:HangFiles(directory)) {
+        const auto position=positions.find(std::wstring(hang.session));
+        if(position!=positions.end()) sessions[position->second].hasHangReports=true;
+        else {
+            DiagnosticSession item; item.id=hang.session; item.hasHangReports=true; item.outcome=L"unknown"; item.version=L"unknown";
+            item.metadataPath=directory+L"fbe-session-"+item.id+L".txt";
+            positions.emplace(std::wstring(item.id),sessions.size()); sessions.push_back(item);
+        }
+    }
     }
     if (std::none_of(sessions.begin(), sessions.end(), [](const DiagnosticSession& item) { return item.id == SessionId(); }) && !SessionId().IsEmpty()) {
         DiagnosticSession item; item.id = SessionId(); item.started = SessionStarted(); item.version = FBE_VERSION_WSTRING;
@@ -498,6 +511,12 @@ bool StartupTrace::PrepareDiagnosticPackage(const DiagnosticSession& selected, c
     if (::GetFileAttributes(eventPath) != INVALID_FILE_ATTRIBUTES) {
         std::vector<BYTE> bytes; const bool read = ReadBytes(eventPath, bytes);
         add(L"plugin-and-error-events.txt", bytes, true, !read ? L"read-failed" : (LogSessionId(Decode(bytes)) != session.id ? L"session-mismatch" : (TraceSchema(Decode(bytes),session.id) ? L"included" : L"privacy-rejected")));
+    }
+    for(const auto& hang:HangFiles(eventRoot)) if(hang.session==session.id) {
+        WIN32_FILE_ATTRIBUTE_DATA info={}; std::vector<BYTE> bytes;
+        const bool bounded=::GetFileAttributesEx(hang.path,GetFileExInfoStandard,&info)!=FALSE && info.nFileSizeHigh==0 && info.nFileSizeLow<=256*1024;
+        const bool read=bounded && ReadBytes(hang.path,bytes);
+        add(L"hang/"+Leaf(hang.path),bytes,true,!bounded ? L"size-limit" : (!read ? L"read-failed" : (ValidateHangReport(Decode(bytes),session.id) ? L"included" : L"privacy-rejected")));
     }
     if (session.crashAmbiguous) add(L"crash/latest-crash-report.txt", {}, true, L"ambiguous-crash-match");
     if (!session.crashPath.IsEmpty()) {
@@ -627,7 +646,7 @@ StartupTrace::DiagnosticLogCleanupResult StartupTrace::CleanupDiagnosticSessions
         if(TaskCancelled()) break;
         const auto& session = sessions[i];
         // Absence of a shutdown marker is not proof of a crash. Keep all explicit crash evidence.
-        if (session.id == SessionId() || !session.crashPath.IsEmpty() || session.crashAmbiguous) continue;
+        if (session.id == SessionId() || !session.crashPath.IsEmpty() || session.crashAmbiguous || session.hasHangReports) continue;
         HANDLE process = ::OpenProcess(SYNCHRONIZE,FALSE,session.processId);
         const bool running = process ? ::WaitForSingleObject(process,0)==WAIT_TIMEOUT : ::GetLastError()==ERROR_ACCESS_DENIED; if(process) ::CloseHandle(process); if(running) continue;
         std::vector<CString> files;

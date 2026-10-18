@@ -838,6 +838,7 @@
 		::PostQuitMessage(backupDisabled && (verifyOnly || (sourceEdited && sourceApplied && saved)) ? 0 : 1);
 		return 0;
 	}
+#include "RuntimeTestWatchdog.inl"
 	if (IsFbeTestScenario(L"diagnostic-startup-runtime"))
     {
         bool unread=false, completed=false; unsigned int heartbeat=0;

@@ -16,7 +16,7 @@ namespace
 {
 	HANDLE traceFile = INVALID_HANDLE_VALUE;
 	wchar_t sessionId[40] = {};
-	CString sessionStarted, sessionMetadataPath, sessionDirectory;
+	CString sessionStarted, sessionMetadataPath, sessionDirectory, hangEnvironment;
 	CRITICAL_SECTION traceLock;
 	bool traceLockInitialized = false;
 	ULONGLONG startTime = 0, previousTime = 0, writtenBytes = 0, recordSequence = 0;
@@ -30,10 +30,7 @@ namespace
 	const wchar_t* const diagnosticTraceRegistryPath = L"Software\\FBETeam\\FictionBook Editor Next\\Diagnostics";
 	const wchar_t* const diagnosticTraceRegistryValue = L"TraceNextLaunch";
 
-    struct OperationCounters {
-        ULONGLONG started = 0, completed = 0, failed = 0, active = 0;
-        ULONGLONG totalMs = 0, lastMs = 0, maxMs = 0;
-    };
+    using OperationCounters=StartupTrace::HangOperationCounters;
     struct ActiveOperation { ULONGLONG token = 0, started = 0; StartupTrace::Operation operation = StartupTrace::Operation::None; };
     constexpr size_t operationCount = static_cast<size_t>(StartupTrace::Operation::Count);
     OperationCounters operationCounters[operationCount];
@@ -62,6 +59,8 @@ namespace
     }
 
 	class TraceLock { public: TraceLock() { if (traceLockInitialized) ::EnterCriticalSection(&traceLock); } ~TraceLock() { if (traceLockInitialized) ::LeaveCriticalSection(&traceLock); } };
+
+#include "diagnostics/HangTelemetry.inl"
 
 	CString TrySnapshot(const CString& value)
 	{
@@ -224,6 +223,7 @@ namespace
 		const bool isDiagnosticOrRestoreEvent = safeCode == L"J900" || safeCode == L"J901" || (message && wcsncmp(message,L"operation=CSS restore",21)==0);
 		if (isJavaScriptOperation && !isDiagnosticOrRestoreEvent)
 			lastScriptOperationStage = safeCode;
+        PublishHangStage(safeCategory,safeCode,isJavaScriptOperation && !isDiagnosticOrRestoreEvent);
 		if (traceFile == INVALID_HANDLE_VALUE && wcscmp(level, L"info") == 0) return;
         if (traceFile != INVALID_HANDLE_VALUE) WriteUtf8(line, flush, wcscmp(level, L"error") == 0);
         else if (sessionId[0]) {
@@ -439,7 +439,9 @@ void StartupTrace::Start()
     sessionDirectory = metadataDirectory;
     sessionMetadataPath = metadataDirectory + L"fbe-session-" + sessionId + L".txt";
     CString metadata; metadata.Format(L"session_id=%s\r\nstarted=%s\r\nPID=%lu\r\nversion=%s\r\noutcome=unknown\r\n", sessionId, (LPCWSTR)sessionStarted, ::GetCurrentProcessId(), FBE_VERSION_WSTRING);
-    metadata += BasicEnvironmentReport();
+    hangEnvironment=BasicEnvironmentReport();
+    metadata += hangEnvironment;
+    PublishHangOperations();
     HANDLE file = ::CreateFile(sessionMetadataPath, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
     if(file==INVALID_HANDLE_VALUE && DeploymentContext::CurrentMode()!=DeploymentContext::Mode::Portable) {
         wchar_t temp[MAX_PATH]={};
@@ -493,18 +495,19 @@ void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wch
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }
-void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); lastComFailure = failure; lastHResultFailure = failure; if (category && wcscmp(category, L"dispatch") == 0) lastDispatchFailure = failure; } }
+void StartupTrace::HResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { PublishHangHresult(code,result); CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); WriteRecord(category, FAILED(result) ? L"error" : L"info", code, details, FAILED(result)); if (FAILED(result)) { TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); lastComFailure = failure; lastHResultFailure = failure; if (category && wcscmp(category, L"dispatch") == 0) lastDispatchFailure = failure; } }
 void StartupTrace::DispatchResult(const wchar_t* category, const wchar_t* code, HRESULT result, const wchar_t* message) { HResult(category, code, result, message); if (FAILED(result)) { TraceLock guard; CString details; details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L""); lastDispatchFailure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); } }
 void StartupTrace::ComException(const wchar_t* category, const wchar_t* code, HRESULT result,
 	const EXCEPINFO* exceptionInfo, IErrorInfo* errorInfo, const wchar_t* message)
 {
+    PublishHangHresult(code,result);
 	CString details;
 	details.Format(L"hr=0x%08lX; %s", static_cast<unsigned long>(result), message ? message : L"");
 	details += FormatComExceptionMetadata(exceptionInfo, errorInfo);
 	WriteRecord(category, L"error", code, details, true);
 	{ TraceLock guard; const CString failure = Sanitize(code, 32, false) + L": " + CString(FbeDiagnosticPrivacy::Details(details).c_str()); lastComFailure = failure; lastHResultFailure = failure; }
 }
-void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); if (isError) { const int marker = safeMessage.Find(L"failed-stage="); if (marker >= 0) { CString stage = safeMessage.Mid(marker + 13); const int separator = stage.Find(L";"); if (separator >= 0) stage = stage.Left(separator); TraceLock guard; lastScriptFailureStage = Sanitize(stage, 32, false); } } }
+void StartupTrace::ScriptEvent(const wchar_t* code, const wchar_t* message) { CString safeMessage = SanitizeScriptDetails(message); const bool isError = safeMessage.Find(L"level=error") == 0; WriteRecord(L"script", isError ? L"error" : L"info", code, safeMessage, isError); if (isError) { const int marker = safeMessage.Find(L"failed-stage="); if (marker >= 0) { CString stage = safeMessage.Mid(marker + 13); const int separator = stage.Find(L";"); if (separator >= 0) stage = stage.Left(separator); TraceLock guard; lastScriptFailureStage = Sanitize(stage, 32, false); PublishHangScriptFailure(stage); } } }
 void StartupTrace::Flush() { TraceLock guard; if (traceFile != INVALID_HANDLE_VALUE && !::FlushFileBuffers(traceFile)) lastWriteError = ::GetLastError(); }
 void StartupTrace::EmergencyFlush() { if (traceFile != INVALID_HANDLE_VALUE) ::FlushFileBuffers(traceFile); }
 CString StartupTrace::CurrentLogPath() { TraceLock guard; return tracePath; }
@@ -596,9 +599,9 @@ ULONGLONG StartupTrace::BeginOperation(Operation operation) noexcept
         active = { nextOperationToken, ::GetTickCount64(), operation };
         auto& counter = operationCounters[static_cast<size_t>(operation)];
         ++counter.started; ++counter.active;
-        return active.token;
+        PublishHangOperations(); return active.token;
     }
-    ++droppedOperations;
+    ++droppedOperations; PublishHangOperations();
     return 0;
 }
 void StartupTrace::EndOperation(ULONGLONG token, bool succeeded) noexcept
@@ -611,7 +614,7 @@ void StartupTrace::EndOperation(ULONGLONG token, bool succeeded) noexcept
         ++counter.completed; if (!succeeded) ++counter.failed; --counter.active;
         counter.totalMs += elapsed; counter.lastMs = elapsed; counter.maxMs = (std::max)(counter.maxMs, elapsed);
         lastCompletedOperation = active.operation; lastCompletedSucceeded = succeeded; lastCompletedMs = elapsed;
-        active = {}; return;
+        active = {}; PublishHangOperations(); return;
     }
 }
 void StartupTrace::SetActiveEditorMode(EditorMode mode) noexcept
@@ -619,6 +622,19 @@ void StartupTrace::SetActiveEditorMode(EditorMode mode) noexcept
     if (!traceLockInitialized) return;
     TraceLock guard;
     activeEditorMode = mode >= EditorMode::Unknown && mode <= EditorMode::Source ? mode : EditorMode::Unknown;
+    PublishHangOperations();
+}
+bool StartupTrace::TryGetHangTelemetry(HangTelemetry& snapshot) noexcept
+{
+    if(!::TryAcquireSRWLockShared(&hangTelemetryLock)) return false;
+    snapshot=hangTelemetry; ::ReleaseSRWLockShared(&hangTelemetryLock); return snapshot.sampledAt!=0;
+}
+CString StartupTrace::HangEnvironmentReport() { return hangEnvironment; }
+void StartupTrace::TestHoldTraceLockForWatchdog(DWORD milliseconds)
+{
+    wchar_t mode[2]={};
+    if(::GetEnvironmentVariable(L"FBE_NEXT_TEST_MODE",mode,2)!=1 || mode[0]!=L'1' || milliseconds>5000) return;
+    TraceLock lock; ::Sleep(milliseconds);
 }
 CString StartupTrace::ActiveEditorModeName()
 {

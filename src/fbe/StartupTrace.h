@@ -44,6 +44,24 @@ namespace StartupTrace
     void SetActiveEditorMode(EditorMode mode) noexcept;
     CString ActiveEditorModeName();
     CString OperationStatisticsReport(bool atShutdown = false);
+    struct HangOperationCounters {
+        ULONGLONG started=0, completed=0, failed=0, active=0;
+        ULONGLONG totalMs=0, lastMs=0, maxMs=0;
+    };
+    struct HangTelemetry {
+        HangOperationCounters operations[static_cast<size_t>(Operation::Count)];
+        EditorMode mode=EditorMode::Unknown;
+        Operation lastCompleted=Operation::None, inProgress=Operation::None;
+        bool lastSucceeded=false, hasHresult=false, hasFailure=false;
+        ULONGLONG sampledAt=0, inProgressSince=0, lastDuration=0, dropped=0;
+        DWORD hresult=0, failureHresult=0;
+        wchar_t eventCode[20]={}, documentCode[20]={}, scriptCode[20]={}, scriptFailureCode[20]={}, hresultCode[20]={};
+    };
+    // Independent, fixed-size snapshot. Neither acquisition nor publication waits.
+    bool TryGetHangTelemetry(HangTelemetry& snapshot) noexcept;
+    CString HangEnvironmentReport(); // Immutable environment captured at Start().
+    bool ValidateHangReport(const CString& text,const CString& expectedSession);
+    void TestHoldTraceLockForWatchdog(DWORD milliseconds);
     int RunDiagnosticPackageTest();
     int RunDiagnosticCatalogTest();
 	// Test-only progress marker. It is a no-op unless an isolated test explicitly
@@ -111,6 +129,7 @@ namespace StartupTrace
         DWORD processId = 0;
         bool legacy = false;
         bool crashAmbiguous = false;
+        bool hasHangReports = false;
     };
     struct DiagnosticComponent
     {

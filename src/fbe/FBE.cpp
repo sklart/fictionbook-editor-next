@@ -564,6 +564,7 @@ int Run(LPTSTR /*lpstrCmdLine*/ = NULL, int nCmdShow = SW_SHOWDEFAULT)
 
 	StartupTrace::AppendTestStartupBreadcrumb("run-message-loop-start");
 	int nRet = theLoop.Run();
+    wndMain.m_ui_watchdog.Stop();
 	StartupTrace::AppendTestStartupBreadcrumb("run-exit");
 	StartupTrace::Event(L"startup", L"S900", L"message loop exited");
 

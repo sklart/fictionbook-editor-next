@@ -2715,6 +2715,24 @@
         "cs-CZ": "Přečtené pády starší 30 dnů: %u souborů / %llu bajtů. Dalším kliknutím smažete.",
         "bg-BG": "Прочетени сривове на повече от 30 дни: %u файла / %llu байта. Натиснете отново за изтриване."
       }
+    },
+    "fbe.diagnostics.hang_reports": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Watchdog reports",
+        "ru-RU": "Отчёты о зависаниях",
+        "uk-UA": "Звіти про зависання",
+        "de-DE": "Berichte über Hänger",
+        "fr-FR": "Rapports de blocage",
+        "es-ES": "Informes de bloqueos",
+        "it-IT": "Rapporti di blocco",
+        "pl-PL": "Raporty zawieszeń",
+        "pt-PT": "Relatórios de bloqueio",
+        "nl-NL": "Vastlooprapporten",
+        "cs-CZ": "Zprávy o zamrznutí",
+        "bg-BG": "Отчети за блокиране"
+      }
     }
   }
 }

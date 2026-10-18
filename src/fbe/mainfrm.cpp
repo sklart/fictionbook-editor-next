@@ -3960,6 +3960,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+    m_ui_watchdog.Stop();
     KillTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID);
     m_diagnostic_crash_discovery.Stop();
 	HideCaretMarker();
@@ -4030,6 +4031,7 @@ LRESULT CMainFrame::OnDescriptionFormChanged(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
 {
+    m_ui_watchdog.Pause();
 	HideCaretMarker();
 	if (DocChanged())
 		SaveRecoveryNow();
@@ -4038,6 +4040,7 @@ LRESULT CMainFrame::OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnEndSession(UINT, WPARAM wParam, LPARAM, BOOL&)
 {
+    if(wParam) m_ui_watchdog.Stop(); else m_ui_watchdog.Resume();
 	if(wParam) HideCaretMarker();
 	if (wParam)
 	{
@@ -4049,6 +4052,7 @@ LRESULT CMainFrame::OnEndSession(UINT, WPARAM wParam, LPARAM, BOOL&)
 }
 LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
 {
+    m_ui_watchdog.Pause();
 	HideCaretMarker();
   // Batch jobs have neither an operator nor an interactive close contract.
   // Their individual scenario handlers have already saved or recorded failure
@@ -4061,6 +4065,7 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 		!RuntimeTests::IsScenario(L"save-decision-quit-close");
 	if (unattendedTest || unattendedBatch || DiscardChanges())
   {
+    m_ui_watchdog.Stop();
 	m_recovery.DeleteIfWritten();
 	// added by SeNS
 	if (m_Speller)
@@ -4121,6 +4126,7 @@ LRESULT CMainFrame::OnClose(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/,
 	// In particular, unattended Save/benchmark runs use WM_CLOSE to finish.
 	return 0;
   }
+  m_ui_watchdog.Resume();
   return 0;
 }
 
@@ -4590,6 +4596,7 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	FillMenuWithHkeys(m_MenuBar.GetMenu());
 	RunPortableStateTestScenario();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-before-runtime-dispatch");
+    m_ui_watchdog.Start(m_hWnd);
 	if (!AU::_ARGS.source_memory_benchmark_path.IsEmpty())
 	{
 		if (PostMessage(AU::WM_SOURCE_MEMORY_BENCHMARK))

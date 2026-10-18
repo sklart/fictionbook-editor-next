@@ -247,6 +247,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
       <ClCompile Include="DocumentTree.cpp" />
 
       <ClCompile Include="DiagnosticPackage.cpp" />
+      <ClCompile Include="diagnostics\UiWatchdog.cpp"><PrecompiledHeader>NotUsing</PrecompiledHeader></ClCompile>
     <ClCompile Include="ElementDescMnr.cpp" />
     <ClCompile Include="ElementDescriptor.cpp" />
     <ClCompile Include="ExternalHelper.cpp">

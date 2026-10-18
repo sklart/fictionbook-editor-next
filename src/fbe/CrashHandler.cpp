@@ -13,6 +13,7 @@
 namespace
 {
 	wchar_t g_crashDirectory[MAX_PATH] = {};
+    volatile LONG g_handlingCrash=0;
 
 	CString CaptureExceptionStack(EXCEPTION_POINTERS* exceptionInfo)
 	{
@@ -130,6 +131,7 @@ namespace
 
 	LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exceptionInfo)
 	{
+        ::InterlockedExchange(&g_handlingCrash,1);
 		StartupTrace::EmergencyFlush();
 		if (g_crashDirectory[0] == L'\0')
 			return EXCEPTION_EXECUTE_HANDLER;
@@ -188,3 +190,5 @@ void CrashDiagnostics::Initialize()
 	wcsncpy_s(g_crashDirectory, crashDirectory, _TRUNCATE);
 	::SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 }
+
+bool CrashDiagnostics::HandlingCrash() noexcept { return ::InterlockedCompareExchange(&g_handlingCrash,0,0)!=0; }

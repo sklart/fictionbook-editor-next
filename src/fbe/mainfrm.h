@@ -11,6 +11,7 @@
 #include "res1.h"
 #include "RuntimeLocalization.h"
 #include "diagnostics/DiagnosticCrashDiscovery.h"
+#include "diagnostics/UiWatchdog.h"
 #include "CaretFocusDiagnostics.h"
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
@@ -367,6 +368,7 @@ public:
 	PluginExecutionController m_plugin_execution;
 	FbeDiagnostics::DiagnosticCommandService m_diagnostic_commands;
     DiagnosticCrashDiscovery m_diagnostic_crash_discovery;
+    FbeDiagnostics::UiWatchdog m_ui_watchdog;
     bool m_diagnostic_crash_result_superseded=false;
 	void InitializeExtensionUi();
 	bool InitializeScripts();
@@ -486,6 +488,8 @@ public:
 		MESSAGE_HANDLER(WM_QUERYENDSESSION, OnQueryEndSession)
 		MESSAGE_HANDLER(WM_ENDSESSION, OnEndSession)
 		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
+        MESSAGE_HANDLER(FbeDiagnostics::WatchdogHeartbeatMessage, OnWatchdogHeartbeat)
+        MESSAGE_HANDLER(WM_POWERBROADCAST, OnWatchdogPower)
 		MESSAGE_HANDLER(WM_ACTIVATEAPP, OnCaretMarkerActivation)
 		MESSAGE_HANDLER(WM_ACTIVATE, OnCaretMarkerActivation)
 		MESSAGE_HANDLER(WM_CLIPBOARDUPDATE, OnClipboardUpdate)
@@ -673,6 +677,13 @@ public:
   LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnQueryEndSession(UINT, WPARAM, LPARAM, BOOL&);
   LRESULT OnEndSession(UINT, WPARAM, LPARAM, BOOL&);
+  LRESULT OnWatchdogHeartbeat(UINT, WPARAM sequence, LPARAM, BOOL&) { m_ui_watchdog.Acknowledge(static_cast<DWORD>(sequence)); return 0; }
+  LRESULT OnWatchdogPower(UINT, WPARAM event, LPARAM, BOOL& handled) {
+      if(event==PBT_APMSUSPEND) m_ui_watchdog.Pause();
+      else if(event==PBT_APMRESUMEAUTOMATIC || event==PBT_APMRESUMESUSPEND || event==PBT_APMRESUMECRITICAL) m_ui_watchdog.Resume();
+      else { handled=FALSE; return 0; }
+      return TRUE;
+  }
   LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnCaretMarkerActivation(UINT, WPARAM, LPARAM, BOOL&);
 	void HideCaretMarker();
