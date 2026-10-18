@@ -4,6 +4,29 @@ $ErrorActionPreference='Stop'
 $repo=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 if(-not $Importer){$Importer=Join-Path $repo 'out/Release/ImportEPUBBatch.exe'}
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+public static class EpubImportFixturePaths {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern uint GetLongPathNameW(string path, StringBuilder result, uint size);
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern uint GetShortPathNameW(string path, StringBuilder result, uint size);
+    public static string Long(string path) {
+        var result = new StringBuilder(32768);
+        uint size = GetLongPathNameW(path, result, (uint)result.Capacity);
+        if (size == 0 || size >= result.Capacity) throw new Win32Exception(Marshal.GetLastWin32Error());
+        return result.ToString().TrimEnd('\\');
+    }
+    public static string Short(string path) {
+        var result = new StringBuilder(32768);
+        uint size = GetShortPathNameW(path, result, (uint)result.Capacity);
+        return size == 0 || size >= result.Capacity ? path : result.ToString();
+    }
+}
+'@
 $work=Join-Path $repo ('build/tests/epub-boundary-'+[guid]::NewGuid().ToString('N'))
 $null=[IO.Directory]::CreateDirectory($work)
 function Add-ZipText($zip,[string]$name,[string]$text) {
@@ -29,13 +52,21 @@ function Invoke-Import([string]$path,[string]$name,[bool]$success,[switch]$Repar
     $process.StartInfo.Arguments='"{0}" "{1}" --no-images --no-cover --no-notes --no-validate' -f $path,$output
     $process.StartInfo.UseShellExecute=$false;$process.StartInfo.CreateNoWindow=$true
     $process.StartInfo.RedirectStandardOutput=$true;$process.StartInfo.RedirectStandardError=$true
+    if ($Reparse) {
+        # Exercise the alias used by Win32 GetTempPath on some CI profiles.
+        $shortTemp = [EpubImportFixturePaths]::Short([IO.Path]::GetTempPath())
+        $process.StartInfo.EnvironmentVariables['TMP'] = $shortTemp
+        $process.StartInfo.EnvironmentVariables['TEMP'] = $shortTemp
+    }
     $null=$process.Start();$stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
     if($Reparse) {
         $deadline=[DateTime]::UtcNow.AddSeconds(5)
         while(-not [IO.File]::Exists($env:FBE_NEXT_TEST_EPUB_ROOT_REPORT) -and [DateTime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 20}
         $extracted=[IO.File]::ReadAllText($env:FBE_NEXT_TEST_EPUB_ROOT_REPORT).Trim()
         $parent=[IO.Path]::GetDirectoryName($extracted)
-        if([IO.Path]::GetFileName($extracted) -ne 'epub' -or [IO.Path]::GetFileName($parent) -notmatch '^ImportEPUB_[A-F0-9-]{36}$' -or [IO.Path]::GetDirectoryName($parent).TrimEnd('\') -ine [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')){throw 'Unexpected test-owned extraction path'}
+        $actualTemp = [EpubImportFixturePaths]::Long([IO.Path]::GetDirectoryName($parent))
+        $expectedTemp = [EpubImportFixturePaths]::Long([IO.Path]::GetTempPath())
+        if([IO.Path]::GetFileName($extracted) -ne 'epub' -or [IO.Path]::GetFileName($parent) -notmatch '^ImportEPUB_[A-F0-9-]{36}$' -or $actualTemp -ine $expectedTemp){throw 'Unexpected test-owned extraction path'}
         $null=New-Item -ItemType Junction -Path (Join-Path $extracted 'redirect') -Target $work
     }
     if(-not $process.WaitForExit(75000)){Stop-Process -Id $process.Id -Force;throw "Import timeout: $log"}
