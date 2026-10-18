@@ -2,8 +2,12 @@ $ErrorActionPreference='Stop'
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $package=Get-Content -Raw (Join-Path $root 'src/fbe/DiagnosticPackage.cpp')
 $header=Get-Content -Raw (Join-Path $root 'src/fbe/StartupTrace.h')
-foreach($token in 'PrepareDiagnosticPackage','SaveDiagnosticPackage','ZipStoreWriter','ContainsUnsafeContent','EnvironmentSchema','TraceSchema','FindCrashTextForSession','sessionWindow = 30ULL * 60ULL','manifest.json','package-manifest.txt','environment-report.txt','fbelib-report.txt','diagnostic-modules.txt') {
+foreach($token in 'PrepareDiagnosticPackage','SaveDiagnosticPackage','ZipStoreWriter','ContainsUnsafeContent','EnvironmentSchema','TraceSchema','FindCrashTextForSession','manifest.json','package-manifest.txt','environment-report.txt','fbelib-report.txt','diagnostic-modules.txt') {
  if(!$package.Contains($token)){throw "Missing package integration: $token"}
+}
+$index=Get-Content -Raw (Join-Path $root 'src/fbe/diagnostics/CrashCatalogIndex.inl')
+foreach($token in 'span=30ULL*60*10000000','bySession','legacyByPid','std::lower_bound','bytes(8192)') {
+ if(!$index.Contains($token)){throw "Missing indexed crash matching boundary: $token"}
 }
 if($header -notmatch 'private:\s*std::vector<DiagnosticComponent> components;'){throw 'Snapshot contents must be private'}
 if($header -notmatch 'shared_ptr<const DiagnosticPackageSnapshot>'){throw 'Prepared snapshot must be immutable'}

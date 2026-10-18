@@ -670,6 +670,9 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPTSTR lp
 	StartupTrace::AppendTestStartupBreadcrumb("dll-search-configured");
   StartupTrace::Start();
   CrashDiagnostics::Initialize();
+  if (DeploymentContext::HasCommandLineSwitch(L"--diagnostic-catalog-test")) {
+      const int result=StartupTrace::RunDiagnosticCatalogTest(); StartupTrace::Finish(); return result;
+  }
   if (DeploymentContext::HasCommandLineSwitch(L"--diagnostic-package-test")) {
       const int result = StartupTrace::RunDiagnosticPackageTest(); StartupTrace::Finish(); return result;
   }

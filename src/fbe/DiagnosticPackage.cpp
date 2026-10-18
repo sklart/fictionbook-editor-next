@@ -8,6 +8,9 @@
 #include <vector>
 #include <psapi.h>
 #include <thread>
+#include <map>
+#include <mutex>
+#include <climits>
 #include "ThemeManager.h"
 #include "../version.h"
 #include "../common/DiagnosticPrivacy.h"
@@ -15,6 +18,7 @@
 
 namespace
 {
+    std::mutex logCleanupMutex;
     thread_local const std::atomic_bool* taskCancellation = nullptr;
     bool TaskCancelled() { return taskCancellation && taskCancellation->load(std::memory_order_relaxed); }
 	struct ZipEntry { std::string name; DWORD crc; DWORD size; DWORD offset; };
@@ -121,15 +125,6 @@ namespace
 		for (size_t index = 0; index < selected.size(); ++index) files.push_back(selected[index].path);
 	}
 
-	bool CrashMatchesSession(const CString& name, DWORD processId)
-	{
-		const int marker = name.Find(L"-pid");
-		if (marker < 0 || name.Right(4).CompareNoCase(L".txt") != 0) return false;
-		const CString pidText(name.Mid(marker + 4, name.GetLength() - marker - 8));
-		if (pidText.IsEmpty()) return false;
-		unsigned long pid = 0; for (int index = 0; index < pidText.GetLength(); ++index) { if (pidText[index] < L'0' || pidText[index] > L'9') return false; pid = pid * 10 + pidText[index] - L'0'; }
-		return pid == processId;
-	}
 
     CString Decode(const std::vector<BYTE>& bytes)
     {
@@ -190,31 +185,7 @@ namespace
         auto newline=std::find(bytes.begin(),bytes.end(),static_cast<BYTE>('\n')); if(newline!=bytes.end()) bytes.erase(newline+1,bytes.end());
         return Decode(bytes);
     }
-    CString FindCrashTextForSession(const StartupTrace::DiagnosticSession& session, bool* ambiguous = NULL)
-    {
-        CString root = session.metadataPath.IsEmpty() ? session.logPath : session.metadataPath; root = root.Left(root.ReverseFind(L'\\') + 1);
-        if(root.IsEmpty()) root = StartupTrace::CurrentLogDirectory() + L"\\";
-        const CString directory(root + L"Crashes\\");
-        WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"FBENext-crash-*.txt", &find);
-        if (search == INVALID_HANDLE_VALUE) return CString();
-        CString matched; unsigned int matches = 0;
-        WIN32_FILE_ATTRIBUTE_DATA traceData = {}; const bool haveTrace = ::GetFileAttributesEx(session.logPath, GetFileExInfoStandard, &traceData) != FALSE;
-        const ULONGLONG sessionWindow = 30ULL * 60ULL * 10000000ULL;
-        do { if(TaskCancelled()) break;
-            if (find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
-            const CString path = directory + find.cFileName;
-            const CString id = Field(ReadText(path), L"session_id");
-            bool match = !session.legacy && !id.IsEmpty() && id == session.id;
-            // Never use PID/time to override an explicit, different session ID.
-            if (session.legacy && id.IsEmpty() && haveTrace && CrashMatchesSession(find.cFileName, session.processId)) {
-                ULARGE_INTEGER trace = {}, crash = {}; trace.LowPart = traceData.ftLastWriteTime.dwLowDateTime; trace.HighPart = traceData.ftLastWriteTime.dwHighDateTime;
-                crash.LowPart = find.ftLastWriteTime.dwLowDateTime; crash.HighPart = find.ftLastWriteTime.dwHighDateTime;
-                match = (trace.QuadPart > crash.QuadPart ? trace.QuadPart - crash.QuadPart : crash.QuadPart - trace.QuadPart) <= sessionWindow;
-            }
-            if (match) { matched = path; ++matches; }
-        } while (::FindNextFile(search, &find));
-        ::FindClose(search); if(ambiguous) *ambiguous = matches > 1; return matches == 1 ? matched : CString();
-    }
+#include "diagnostics/CrashCatalogIndex.inl"
 
 	CString ExtractCategoryLines(const CString& trace, const wchar_t* category)
 	{
@@ -357,19 +328,30 @@ namespace
 }
 
 namespace {
+    bool StoredReviewMatches(const CString& path,const CString& fingerprint) {
+        wchar_t saved[128]={}; const CString ini=CString(DeploymentContext::SettingsDirectory().c_str())+L"diagnostics-reviewed.ini";
+        ::GetPrivateProfileString(L"Reviewed",Leaf(path),L"",saved,_countof(saved),ini);
+        if(fingerprint.IsEmpty()) return false;
+        if(fingerprint==saved) return true;
+        // Upgrade pre-change-time markers once; keep previously acknowledged reports quiet.
+        const size_t length=wcslen(saved);
+        if(length==59 && fingerprint.GetLength()==76 && fingerprint.Left(59)==saved) {
+            return ::WritePrivateProfileString(L"Reviewed",Leaf(path),fingerprint,ini)!=FALSE;
+        }
+        return false;
+    }
     CString CrashReviewIni() { return CString(DeploymentContext::SettingsDirectory().c_str())+L"diagnostics-reviewed.ini"; }
     CString CrashReviewKey(const StartupTrace::DiagnosticSession& session) {
         const CString name=Leaf(session.crashPath);
-        return name.Left(14)==L"FBENext-crash-" && name.Right(4)==L".txt" ? name : CString();
+        DWORD pid=0; return CrashFileName(name,pid) ? name : CString();
     }
     CString CrashReviewFingerprint(const StartupTrace::DiagnosticSession& session) {
         if(session.crashPath.IsEmpty() || session.crashAmbiguous) return CString();
         HANDLE file=::CreateFile(session.crashPath,FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,FILE_FLAG_OPEN_REPARSE_POINT,NULL);
         if(file==INVALID_HANDLE_VALUE) return CString();
         BY_HANDLE_FILE_INFORMATION info={}; const bool valid=::GetFileInformationByHandle(file,&info)!=FALSE && !(info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT));
-        ::CloseHandle(file); if(!valid) return CString();
-        CString value; value.Format(L"%08lX-%08lX%08lX-%08lX%08lX-%08lX%08lX",info.dwVolumeSerialNumber,info.nFileIndexHigh,info.nFileIndexLow,info.ftLastWriteTime.dwHighDateTime,info.ftLastWriteTime.dwLowDateTime,info.nFileSizeHigh,info.nFileSizeLow);
-        return value;
+        const CString fingerprint=valid ? CrashFingerprint(info,file) : CString();
+        ::CloseHandle(file); return fingerprint;
     }
 }
 StartupTrace::DiagnosticTaskScope::DiagnosticTaskScope(const std::atomic_bool& cancelled) : previous(taskCancellation) { taskCancellation=&cancelled; }
@@ -377,8 +359,7 @@ StartupTrace::DiagnosticTaskScope::~DiagnosticTaskScope() { taskCancellation=pre
 bool StartupTrace::IsDiagnosticCrashReviewed(const DiagnosticSession& session) {
     const CString key=CrashReviewKey(session), fingerprint=CrashReviewFingerprint(session);
     if(key.IsEmpty() || fingerprint.IsEmpty() || fingerprint!=session.crashFingerprint) return false;
-    wchar_t saved[128]={}; ::GetPrivateProfileString(L"Reviewed",key,L"",saved,_countof(saved),CrashReviewIni());
-    return fingerprint==saved;
+    return StoredReviewMatches(session.crashPath,fingerprint);
 }
 bool StartupTrace::MarkDiagnosticCrashReviewed(const DiagnosticSession& session) {
     const CString key=CrashReviewKey(session), fingerprint=CrashReviewFingerprint(session);
@@ -391,25 +372,29 @@ bool StartupTrace::HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSe
     });
 }
 
-std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSessions()
+#include "diagnostics/CrashMaintenance.inl"
+
+std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSessions() { return EnumerateDiagnosticSessions(nullptr); }
+std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSessions(DiagnosticCatalogMetrics* metrics)
 {
+    if(metrics) *metrics=DiagnosticCatalogMetrics();
     std::vector<DiagnosticSession> sessions;
-    std::vector<CString> directories = { CString(DeploymentContext::DiagnosticsDirectory().c_str()) };
-    if (DeploymentContext::CurrentMode() != DeploymentContext::Mode::Portable) {
-        wchar_t temp[MAX_PATH] = {}; if (::GetTempPath(_countof(temp),temp)) directories.push_back(CString(temp) + L"FBE Next Diagnostics\\");
-    }
+    const auto directories=DiagnosticDirectories();
+    std::map<std::wstring,size_t> positions;
     for (const auto& directory : directories) {
+    const auto crashes=BuildCrashIndex(directory,metrics);
     WIN32_FIND_DATA find = {}; HANDLE search = ::FindFirstFile(directory + L"fbe-session-*.txt", &find);
     if (search != INVALID_HANDLE_VALUE) {
         do { if(TaskCancelled()) break;
             if (find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
             DiagnosticSession item; item.metadataPath = directory + find.cFileName;
+            if(metrics) ++metrics->metadataReads;
             CString text(ReadText(item.metadataPath)); item.id = Field(text, L"session_id");
             if (!ValidSessionId(item.id) || Leaf(item.metadataPath) != L"fbe-session-" + item.id + L".txt") continue;
             item.started = Field(text, L"started"); item.ended = Field(text, L"ended"); item.version = Field(text, L"version");
             item.processId = wcstoul(Field(text, L"PID"), NULL, 10); item.outcome = Field(text, L"outcome");
-            item.crashPath = FindCrashTextForSession(item, &item.crashAmbiguous); if ((!item.crashPath.IsEmpty() || item.crashAmbiguous)) item.outcome = L"crash";
-            sessions.push_back(item);
+            item.crashPath = FindCrashTextForSession(item, crashes, &item.crashAmbiguous); if ((!item.crashPath.IsEmpty() || item.crashAmbiguous)) item.outcome = L"crash";
+            positions.emplace(std::wstring(item.id),sessions.size()); sessions.push_back(item);
         } while (::FindNextFile(search, &find)); ::FindClose(search);
     }
     search = ::FindFirstFile(directory + L"fbe-trace-*.log", &find);
@@ -418,31 +403,26 @@ std::vector<StartupTrace::DiagnosticSession> StartupTrace::EnumerateDiagnosticSe
             if (find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) continue;
             CString name(find.cFileName); if (name.Find(L"-part") >= 0 || !LegacyTraceName(name)) continue;
             const CString path = directory + name, text = ReadLogHeader(path), id = LogSessionId(text);
-            bool found = false;
-            for (auto& item : sessions) if (!id.IsEmpty() && item.id == id) { item.logPath = path; found = true; break; }
+            const auto position=positions.find(std::wstring(id)); const bool found=!id.IsEmpty() && position!=positions.end();
+            if(found) sessions[position->second].logPath=path;
             if (!found && (id.IsEmpty() || ValidSessionId(id))) {
                 DiagnosticSession item; item.legacy = id.IsEmpty(); item.id = item.legacy ? name.Left(name.GetLength() - 4) : id; item.logPath = path;
                 if(!item.legacy) item.metadataPath=directory+L"fbe-session-"+id+L".txt";
                 const int marker = name.Find(L"-pid"); if (marker < 0) continue;
                 item.processId = wcstoul(name.Mid(marker + 4), NULL, 10); item.outcome = L"unknown";
                 item.started = FileSessionStarted(name,10); item.version = item.legacy ? L"legacy" : L"unknown";
-                item.crashPath = FindCrashTextForSession(item, &item.crashAmbiguous); if ((!item.crashPath.IsEmpty() || item.crashAmbiguous)) item.outcome = L"crash";
-                sessions.push_back(item);
+                item.crashPath = FindCrashTextForSession(item, crashes, &item.crashAmbiguous); if ((!item.crashPath.IsEmpty() || item.crashAmbiguous)) item.outcome = L"crash";
+                positions.emplace(std::wstring(item.id),sessions.size()); sessions.push_back(item);
             }
         } while (::FindNextFile(search, &find)); ::FindClose(search);
     }
-    const CString crashRoot=directory+L"Crashes\\";
-    search=::FindFirstFile(crashRoot+L"FBENext-crash-*.txt",&find);
-    if(search!=INVALID_HANDLE_VALUE) {
-        do { if(TaskCancelled()) break;
-            if(find.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT)) continue;
-            const CString path=crashRoot+find.cFileName,text=ReadText(path),id=Field(text,L"session_id");
-            if(!ValidSessionId(id) || std::any_of(sessions.begin(),sessions.end(),[&](const DiagnosticSession& item) { return item.id==id; })) continue;
-            DiagnosticSession item; item.id=id; item.crashPath=path; item.outcome=L"crash"; item.started=FileSessionStarted(find.cFileName,14); item.version=L"unknown";
-            // Keep the report directory for subsequent catalog resolution and export.
-            item.metadataPath=directory+L"fbe-session-"+id+L".txt";
-            item.crashPath=FindCrashTextForSession(item,&item.crashAmbiguous); sessions.push_back(item);
-        } while(::FindNextFile(search,&find)); ::FindClose(search);
+    for(const auto& report:crashes.reports) {
+        if(TaskCancelled()) break;
+        if(!ValidSessionId(report.sessionId) || positions.count(std::wstring(report.sessionId))) continue;
+        DiagnosticSession item; item.id=report.sessionId; item.outcome=L"crash"; item.started=FileSessionStarted(Leaf(report.path),14); item.version=L"unknown";
+        item.metadataPath=directory+L"fbe-session-"+item.id+L".txt";
+        item.crashPath=FindCrashTextForSession(item,crashes,&item.crashAmbiguous);
+        positions.emplace(std::wstring(item.id),sessions.size()); sessions.push_back(item);
     }
     }
     if (std::none_of(sessions.begin(), sessions.end(), [](const DiagnosticSession& item) { return item.id == SessionId(); }) && !SessionId().IsEmpty()) {
@@ -631,10 +611,17 @@ bool StartupTrace::CreateDiagnosticPackage(CString& packagePath, CString& error)
 }
 
 #include "testing/DiagnosticPackageTest.inl"
+#include "diagnostics/DiagnosticCrashDiscovery.h"
+#include "testing/DiagnosticCatalogTest.inl"
 
 StartupTrace::DiagnosticLogCleanupResult StartupTrace::CleanupDiagnosticSessions(size_t keep, bool preview)
 {
     DiagnosticLogCleanupResult result;
+    // Startup retention and an explicit cleanup may now overlap. Serialize their
+    // destructive passes; async callers can still cancel while waiting.
+    std::unique_lock<std::mutex> cleanupLock(logCleanupMutex,std::defer_lock);
+    while(!cleanupLock.try_lock()) { if(TaskCancelled()) return result; ::Sleep(10); }
+    if(TaskCancelled()) return result;
     const auto sessions = EnumerateDiagnosticSessions();
     for (size_t i = keep; i < sessions.size(); ++i) {
         if(TaskCancelled()) break;

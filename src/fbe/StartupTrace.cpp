@@ -452,11 +452,11 @@ void StartupTrace::Start()
     if (file != INVALID_HANDLE_VALUE) { CStringA bytes(CW2A(metadata, CP_UTF8)); DWORD written = 0; if (!::WriteFile(file, bytes.GetString(), bytes.GetLength(), &written, NULL) || written != static_cast<DWORD>(bytes.GetLength())) lastWriteError = ::GetLastError() ? ::GetLastError() : ERROR_WRITE_FAULT; ::CloseHandle(file); }
     else lastWriteError = ::GetLastError();
     startTime = previousTime = ::GetTickCount64();
-    if (!IsEnabledForNextLaunch()) { CleanupDiagnosticSessions(10); return; }
+    if (!IsEnabledForNextLaunch()) return;
     SYSTEMTIME time = {}; ::GetLocalTime(&time);
     if (!OpenTraceFile(metadataDirectory, time)) { lastWriteError = ::GetLastError(); return; }
 
-	CleanupDiagnosticSessions(10);
+	// Retention runs in the main frame diagnostic worker, after UI creation.
 	startTime = previousTime = ::GetTickCount64(); writtenBytes = recordSequence = traceSegment = 0;
 	Event(L"environment", L"E000", L"FictionBook Editor diagnostic trace started");
 	WriteEnvironmentHeader();

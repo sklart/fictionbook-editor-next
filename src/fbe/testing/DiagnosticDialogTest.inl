@@ -1,5 +1,7 @@
 // Included inside DiagnosticDialog; reachable only through the guarded runtime scenario.
     CString testFailure;
+    bool damagedReview=false;
+    std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot> testSnapshot;
     bool testMode=false, testPassed=true;
     unsigned int testPhase=0, heartbeat=0;
     bool cancelledReady=false, closeDeferred=false;
@@ -31,13 +33,14 @@
             for(int extra : {0,240}) {
                 ::SetWindowPos(window,NULL,0,0,minimum.cx+extra,minimum.cy+extra,SWP_NOMOVE|SWP_NOZORDER);
                 Layout(); RECT client={}; ::GetClientRect(window,&client);
-                for(int id : {State,Toggle,OpenLog,OpenFolder,Cleanup,SessionLabel,Sessions,ComponentLabel,Components,PreviewText,Status,Preview,Save,Close}) {
+                const int controls[]={State,Toggle,OpenLog,OpenFolder,Cleanup,SessionLabel,Sessions,CrashLabel,Crashes,ReviewCrash,ClearCrashes,ComponentLabel,Components,PreviewText,Status,Preview,Save,Close};
+                for(int id : controls) {
                     RECT control={}; HWND child=::GetDlgItem(window,id); ::GetWindowRect(child,&control);
                     ::MapWindowPoints(NULL,window,reinterpret_cast<POINT*>(&control),2);
                     if(testFailure.IsEmpty() && !(control.left>=0 && control.top>=0 && control.right<=client.right && control.bottom<=client.bottom && control.right>control.left && control.bottom>control.top)) testFailure.Format(L"bounds locale=%s dpi=%u id=%d rect=%ld,%ld,%ld,%ld client=%ld,%ld",locale,dpi,id,control.left,control.top,control.right,control.bottom,client.right,client.bottom);
                     valid=valid && control.left>=0 && control.top>=0 && control.right<=client.right && control.bottom<=client.bottom && control.right>control.left && control.bottom>control.top;
                 }
-                const int buttons[]={Toggle,OpenLog,OpenFolder,Cleanup,Preview,Save,Close,IDC_DIAGNOSTIC_CANCEL,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
+                const int buttons[]={ReviewCrash,ClearCrashes,Toggle,OpenLog,OpenFolder,Cleanup,Preview,Save,Close,IDC_DIAGNOSTIC_CANCEL,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
                 for(int id : buttons) {
                     HWND child=::GetDlgItem(window,id); wchar_t label[256]={}; ::GetWindowText(child,label,_countof(label));
                     HDC dc=::GetDC(child); HGDIOBJ old=::SelectObject(dc,reinterpret_cast<HFONT>(::SendMessage(child,WM_GETFONT,0,0)));
@@ -61,6 +64,14 @@
         if(!testMode) return;
         if(testPhase==0 && !job) {
             testPassed=CheckLayout() && snapshot && snapshot->Valid();
+            testSnapshot=snapshot;
+            if(crashes.size()!=1 || crashes[0].reviewed) testPassed=false;
+            ::SendDlgItemMessage(window,Crashes,CB_SETCURSEL,0,0);
+            ReviewSelectedCrash(); testPassed=testPassed && reviewPending && !job;
+            ReviewSelectedCrash(); testPhase=10;
+        } else if(testPhase==10 && !job) {
+            damagedReview=crashes.size()==1 && crashes[0].reviewed && !HasUnreviewedCrashes() && snapshot==testSnapshot && snapshot && snapshot->Valid();
+            testPassed=testPassed && damagedReview;
             testPhase=1;
             Begin(Work::Prepare,[](Job& result) {
                 for(unsigned int tick=0; tick<200 && !result.cancelled.load(); ++tick) ::Sleep(10);
@@ -80,7 +91,7 @@
     }
 public:
     CStringA RuntimeTestDetails() const {
-        CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
+        CStringA result(CW2A(testFailure,CP_UTF8)), state; state.Format("\ndamaged_review=%d\nphase=%u\nheartbeat=%u\ncancel_ready=%d\nclose_deferred=%d\n",damagedReview,testPhase,heartbeat,cancelledReady,closeDeferred); return result+state;
     }
     bool RunRuntimeTest(HWND owner)
     {

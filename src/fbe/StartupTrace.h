@@ -45,6 +45,7 @@ namespace StartupTrace
     CString ActiveEditorModeName();
     CString OperationStatisticsReport(bool atShutdown = false);
     int RunDiagnosticPackageTest();
+    int RunDiagnosticCatalogTest();
 	// Test-only progress marker. It is a no-op unless an isolated test explicitly
 	// provides both FBE_NEXT_TEST_MODE=1 and a breadcrumb file path.
 	void AppendTestStartupBreadcrumb(const char* phase);
@@ -139,6 +140,28 @@ namespace StartupTrace
         DiagnosticTaskScope(const DiagnosticTaskScope&) = delete;
         DiagnosticTaskScope& operator=(const DiagnosticTaskScope&) = delete;
     };
+    struct DiagnosticCatalogMetrics {
+        ULONGLONG crashDirectories=0, crashHeaders=0, metadataReads=0;
+    };
+    struct DiagnosticCrashReport {
+        CString path, sessionId, fingerprint;
+        DWORD processId=0;
+        ULONGLONG modifiedTicks=0, bytes=0;
+        bool reviewed=false;
+    };
+    struct DiagnosticCrashCleanupItem {
+        DiagnosticCrashReport report;
+        CString dumpFingerprint;
+        ULONGLONG dumpBytes=0;
+    };
+    struct DiagnosticCrashCleanupPlan {
+        std::vector<DiagnosticCrashCleanupItem> items;
+        ULONGLONG cutoffTicks=0, bytes=0;
+        unsigned int files=0;
+    };
+    std::vector<DiagnosticCrashReport> EnumerateDiagnosticCrashReports(DiagnosticCatalogMetrics* metrics=nullptr);
+    bool MarkDiagnosticCrashReportReviewed(const DiagnosticCrashReport& report);
+    DiagnosticCrashCleanupPlan PrepareDiagnosticCrashCleanup(unsigned int days=30);
     bool IsDiagnosticCrashReviewed(const DiagnosticSession& session);
     bool MarkDiagnosticCrashReviewed(const DiagnosticSession& session);
     bool HasUnreviewedDiagnosticCrashes(const std::vector<DiagnosticSession>& sessions);
@@ -149,6 +172,7 @@ namespace StartupTrace
     CString BasicEnvironmentReport();
     CString TraceSource();
     std::vector<DiagnosticSession> EnumerateDiagnosticSessions();
+    std::vector<DiagnosticSession> EnumerateDiagnosticSessions(DiagnosticCatalogMetrics* metrics);
     bool PrepareDiagnosticPackage(const DiagnosticSession& session, const std::vector<CString>& excluded,
         std::shared_ptr<const DiagnosticPackageSnapshot>& snapshot, CString& error);
     bool SaveDiagnosticPackage(const DiagnosticPackageSnapshot& snapshot, const CString& path, CString& error);
@@ -167,6 +191,7 @@ namespace StartupTrace
 	// Removes completed diagnostic sessions while preserving the current process trace.
 	DiagnosticLogCleanupResult ClearOldLogSessions();
     DiagnosticLogCleanupResult CleanupDiagnosticSessions(size_t keep, bool preview = false);
+    DiagnosticLogCleanupResult ExecuteDiagnosticCrashCleanup(const DiagnosticCrashCleanupPlan& plan);
 	bool TryGetCrashTraceSnapshot(CrashTraceSnapshot& snapshot);
 	CString LastStageCode();
 	CString LastStageMessage();

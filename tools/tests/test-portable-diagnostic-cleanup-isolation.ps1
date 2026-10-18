@@ -29,8 +29,8 @@ try {
         [Text.UTF8Encoding]::new($false))
 
     # Twelve well-formed completed sessions are deliberately older than the new
-    # process trace.  Start() retains ten sessions; ClearOldLogSessions() then
-    # removes every completed portable session while preserving its active one.
+    # process trace. Background retention and explicit ClearOldLogSessions() may
+    # overlap; the serialized cleanup must preserve the active portable trace.
     foreach ($number in 1..12) {
         $name = 'fbe-trace-20200101-0000{0:D2}-{0:D3}-pid{1}.log' -f $number, (600000 + $number)
         Set-Content -LiteralPath (Join-Path $portableDiagnostics $name) -Value "portable-session-$number" -Encoding ascii

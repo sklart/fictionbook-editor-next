@@ -4,7 +4,7 @@ $rc=Get-Content -Raw (Join-Path $root 'src/fbe/FBE.rc')
 $dialog=Get-Content -Raw (Join-Path $root 'src/fbe/diagnostics/DiagnosticDialog.h')
 $template=[regex]::Match($rc,'(?ms)^IDD_DIAGNOSTICS DIALOGEX.*?^END').Value
 if(!$template){throw 'Unified diagnostics dialog template missing'}
-foreach($control in 'SESSIONS','COMPONENTS','PREVIEW_TEXT','STATUS','TOGGLE','OPEN_LOG','OPEN_FOLDER','CLEANUP','PREVIEW','SAVE','STATE','CLOSE','CANCEL','PROGRESS','PREVIOUS_PAGE','NEXT_PAGE') {
+foreach($control in 'SESSIONS','COMPONENTS','PREVIEW_TEXT','STATUS','TOGGLE','OPEN_LOG','OPEN_FOLDER','CLEANUP','PREVIEW','SAVE','STATE','CLOSE','CANCEL','PROGRESS','PREVIOUS_PAGE','NEXT_PAGE','CRASH_LABEL','CRASH_REPORTS','REVIEW_CRASH','CLEAR_CRASHES') {
  if(!$template.Contains('IDC_DIAGNOSTIC_'+$control)){throw "Dialog control missing: $control"}
 }
 if($template -notmatch 'ES_READONLY'){throw 'Preview must be read-only'}

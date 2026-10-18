@@ -10,6 +10,7 @@
 #include "resource.h"
 #include "res1.h"
 #include "RuntimeLocalization.h"
+#include "diagnostics/DiagnosticCrashDiscovery.h"
 #include "CaretFocusDiagnostics.h"
 #include "document\\DocumentLocation.h"
 #include "document\\DocumentSession.h"
@@ -365,6 +366,8 @@ public:
 	PluginUiController m_plugins;
 	PluginExecutionController m_plugin_execution;
 	FbeDiagnostics::DiagnosticCommandService m_diagnostic_commands;
+    DiagnosticCrashDiscovery m_diagnostic_crash_discovery;
+    bool m_diagnostic_crash_result_superseded=false;
 	void InitializeExtensionUi();
 	bool InitializeScripts();
 	LRESULT OnViewScriptToolbarToggle(WORD, WORD, HWND, BOOL&);

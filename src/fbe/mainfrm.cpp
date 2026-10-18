@@ -693,6 +693,7 @@ static const RuntimeMenuCommandBinding kMainFrameMenuCommandBindings[] = {
 
 #include "diagnostics/DiagnosticDialog.h"
 static bool g_hasPreviousDiagnosticCrash = false;
+static const UINT_PTR DIAGNOSTIC_DISCOVERY_TIMER_ID=0xFBE1;
 
 static CString GetDiagnosticTraceText(LPCWSTR key, LPCWSTR fallback)
 {
@@ -3945,8 +3946,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 	RestorePortableToolbarLayout(m_ScriptsToolbar, true);
 	StartupTrace::AppendTestStartupBreadcrumb("scripts-toolbar-restore-complete");
 
-  const auto diagnosticSessions = m_diagnostic_commands.Sessions();
-  g_hasPreviousDiagnosticCrash = StartupTrace::HasUnreviewedDiagnosticCrashes(diagnosticSessions);
+  g_hasPreviousDiagnosticCrash=false;
+  if(m_diagnostic_crash_discovery.Start(true)) SetTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID,100);
   StartupTrace::AppendTestStartupBreadcrumb("mainframe-finalize-start");
 	ThemeManager::ApplyToWindow(m_hWnd);
   m_need_title_update = true;
@@ -3959,6 +3960,8 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+    KillTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID);
+    m_diagnostic_crash_discovery.Stop();
 	HideCaretMarker();
 	if(m_script_card_window.IsWindow()) m_script_card_window.DestroyWindow();
 	if (m_clipboard_listener_registered)
@@ -4517,6 +4520,15 @@ LRESULT CMainFrame::OnDetachFindResultsPane(UINT, WPARAM view, LPARAM, BOOL&)
 }
 LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 {
+    if(wParam==DIAGNOSTIC_DISCOVERY_TIMER_ID) {
+        bool unread=false;
+        if(m_diagnostic_crash_discovery.Poll(unread)) {
+            KillTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID);
+            if(!m_diagnostic_crash_result_superseded) { g_hasPreviousDiagnosticCrash=unread; m_need_title_update=true; }
+        }
+        return 0;
+    }
+
 	if(wParam == CARET_MARKER_TIMER_ID)
 	{
 		HideCaretMarker();
@@ -5771,13 +5783,13 @@ LRESULT CMainFrame::OnToolsClearDiagnosticLogs(WORD, WORD, HWND, BOOL&)
 LRESULT CMainFrame::OnToolsCreateDiagnosticPackage(WORD, WORD, HWND, BOOL&)
 {
     DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd);
-    if(dialog.CatalogReady()) g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes();
+    if(dialog.CatalogReady()) { m_diagnostic_crash_result_superseded=true; g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes(); }
     m_need_title_update=true; return 0;
 }
 LRESULT CMainFrame::OnToolsDiagnosticTrace(WORD, WORD, HWND, BOOL&)
 {
     DiagnosticDialog dialog(m_diagnostic_commands); dialog.Show(m_hWnd);
-    if(dialog.CatalogReady()) g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes();
+    if(dialog.CatalogReady()) { m_diagnostic_crash_result_superseded=true; g_hasPreviousDiagnosticCrash=dialog.HasUnreviewedCrashes(); }
     m_need_title_update=true; return 0;
 }
 

@@ -12,7 +12,8 @@
 class DiagnosticDialog
 {
     enum { Sessions=IDC_DIAGNOSTIC_SESSIONS, Components, PreviewText, Status, Toggle, OpenLog, OpenFolder, Cleanup, Preview, Save, State, Close, SessionLabel, ComponentLabel };
-    enum class Work { Catalog, Prepare, Save, Preview, Estimate, Cleanup };
+    enum { CrashLabel=IDC_DIAGNOSTIC_CRASH_LABEL, Crashes=IDC_DIAGNOSTIC_CRASH_REPORTS, ReviewCrash=IDC_DIAGNOSTIC_REVIEW_CRASH, ClearCrashes=IDC_DIAGNOSTIC_CLEAR_CRASHES };
+    enum class Work { Catalog, Prepare, Save, Preview, Estimate, Cleanup, ReviewCrash, EstimateCrashes, ClearCrashes };
     struct Job {
         explicit Job(Work kind) : work(kind) {}
         Work work;
@@ -23,6 +24,8 @@ class DiagnosticDialog
         std::vector<StartupTrace::DiagnosticSession> sessions;
         std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot> snapshot;
         StartupTrace::DiagnosticLogCleanupResult cleanup;
+        std::vector<StartupTrace::DiagnosticCrashReport> crashes;
+        StartupTrace::DiagnosticCrashCleanupPlan crashPlan;
     };
     std::shared_ptr<Job> job;
     std::thread worker;
@@ -31,7 +34,9 @@ class DiagnosticDialog
     CString cleanupSummary;
     HWND window = NULL;
     HFONT font = NULL;
-    bool cleanupPending = false;
+    bool cleanupPending = false, reviewPending=false;
+    std::shared_ptr<const StartupTrace::DiagnosticCrashCleanupPlan> crashPlan;
+    std::vector<StartupTrace::DiagnosticCrashReport> crashes;
     std::vector<StartupTrace::DiagnosticSession> sessions;
     std::vector<CString> excluded;
     std::shared_ptr<const StartupTrace::DiagnosticPackageSnapshot> snapshot;
@@ -40,7 +45,7 @@ class DiagnosticDialog
     int Selected() const { return static_cast<int>(::SendDlgItemMessage(window, Sessions, CB_GETCURSEL, 0, 0)); }
     void Busy(bool value)
     {
-        const int controls[]={Sessions,Components,Preview,Save,Toggle,OpenLog,OpenFolder,Cleanup,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
+        const int controls[]={Sessions,Crashes,ReviewCrash,ClearCrashes,Components,Preview,Save,Toggle,OpenLog,OpenFolder,Cleanup,IDC_DIAGNOSTIC_PREVIOUS_PAGE,IDC_DIAGNOSTIC_NEXT_PAGE};
         for(int id : controls)
             ::EnableWindow(::GetDlgItem(window,id),!value && (id!=Save || (snapshot && snapshot->Valid())));
         ::ShowWindow(::GetDlgItem(window,IDC_DIAGNOSTIC_CANCEL),value ? SW_SHOW : SW_HIDE);
@@ -100,9 +105,11 @@ class DiagnosticDialog
         if(!job || !job->done.load(std::memory_order_acquire)) return;
         if(worker.joinable()) worker.join(); // done is published after all I/O.
         const auto result=job; job.reset(); Busy(false);
+        if(result->work==Work::ReviewCrash && result->success)
+            for(auto& report:crashes) if(report.path==result->path) report.reviewed=true;
         if(closing) { CloseDialog(); return; }
-        if(result->cancelled.load() && !(result->work==Work::Save && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
-        if(result->work==Work::Catalog && result->success) { catalogReady=true; sessions=result->sessions; ApplySessions(); }
+        if(result->cancelled.load() && !((result->work==Work::Save || result->work==Work::ReviewCrash || result->work==Work::ClearCrashes || result->work==Work::Cleanup) && result->success)) { StatusText(Text(L"cancelled",L"Operation cancelled.")); return; }
+        if(result->work==Work::Catalog && result->success) { catalogReady=true; sessions=result->sessions; crashes=result->crashes; ApplyCrashes(); ApplySessions(); }
         else if(result->work==Work::Prepare) {
             snapshot=result->snapshot; ApplyPrepared(result->success);
         }
@@ -118,8 +125,23 @@ class DiagnosticDialog
             if(index>=0 && snapshot && static_cast<size_t>(index)<snapshot->Components().size() && selected>=0 && static_cast<size_t>(selected)<sessions.size()) {
                 const auto& component=snapshot->Components()[index];
                 if(component.name==L"crash/latest-crash-report.txt" && component.status==L"included")
-                    StartupTrace::MarkDiagnosticCrashReviewed(sessions[selected]);
+                    if(StartupTrace::MarkDiagnosticCrashReviewed(sessions[selected])) {
+                        for(auto& report:crashes) if(report.path==sessions[selected].crashPath && report.fingerprint==sessions[selected].crashFingerprint) report.reviewed=true;
+                        ApplyCrashes();
+                    }
             }
+        }
+        else if(result->work==Work::ReviewCrash) {
+            if(result->success) ApplyCrashes();
+            StatusText(Text(result->success ? L"review_done" : L"blocked",result->success ? L"Marked reviewed. Report bytes were preserved." : L"Report changed or could not be marked; refresh diagnostics."));
+        }
+        else if(result->work==Work::EstimateCrashes && result->success) {
+            crashPlan=std::make_shared<const StartupTrace::DiagnosticCrashCleanupPlan>(result->crashPlan);
+            CString text; text.Format(Text(L"crash_cleanup_confirm",L"Reviewed crashes older than 30 days: %u files / %llu bytes. Click Clear old crashes again to delete."),crashPlan->files,crashPlan->bytes); StatusText(text);
+        }
+        else if(result->work==Work::ClearCrashes) {
+            cleanupSummary.Format(Text(L"cleaned",L"Deleted files / failed / bytes freed: %u / %u / %llu"),result->cleanup.filesDeleted,result->cleanup.filesFailed,result->cleanup.bytesDeleted);
+            crashPlan.reset(); RefreshSessions();
         }
         else if(result->work==Work::Save) StatusText(result->success ? Text(L"saved",L"Package saved.")+L" "+result->path : Text(L"write_failed",L"Could not save. Choose a new filename and check free space and permissions."));
         else if(result->work==Work::Estimate) {
@@ -179,8 +201,30 @@ class DiagnosticDialog
         snapshot.reset();
         Begin(Work::Catalog,[](Job& result) {
             FbeDiagnostics::DiagnosticCommandService commands;
-            result.sessions=commands.Sessions(); result.success=true;
+            result.sessions=commands.Sessions(); result.crashes=StartupTrace::EnumerateDiagnosticCrashReports(); result.success=true;
         });
+    }
+    void ApplyCrashes()
+    {
+        const int previous=static_cast<int>(::SendDlgItemMessage(window,Crashes,CB_GETCURSEL,0,0));
+        ::SendDlgItemMessage(window,Crashes,CB_RESETCONTENT,0,0);
+        int selected=previous>=0 && static_cast<size_t>(previous)<crashes.size() ? previous : 0;
+        bool unread=false;
+        for(size_t i=0;i<crashes.size();++i) {
+            const auto& report=crashes[i]; const int slash=report.path.ReverseFind(L'\\');
+            CString row=Text(report.reviewed ? L"reviewed" : L"unread",report.reviewed ? L"Reviewed" : L"New")+L" | "+report.path.Mid(slash+1);
+            ::SendDlgItemMessage(window,Crashes,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(row.GetString()));
+            if(!unread && !report.reviewed) { selected=static_cast<int>(i); unread=true; }
+        }
+        ::SendDlgItemMessage(window,Crashes,CB_SETCURSEL,selected,0);
+    }
+    void ReviewSelectedCrash()
+    {
+        const int index=static_cast<int>(::SendDlgItemMessage(window,Crashes,CB_GETCURSEL,0,0));
+        if(index<0 || static_cast<size_t>(index)>=crashes.size()) return;
+        if(!reviewPending) { reviewPending=true; StatusText(Text(L"review_confirm",L"Click Mark reviewed again to acknowledge this file, including an unreadable preview. Its contents will not be exported.")); return; }
+        reviewPending=false; const auto report=crashes[index];
+        Begin(Work::ReviewCrash,[report](Job& result) { result.path=report.path; result.success=StartupTrace::MarkDiagnosticCrashReportReviewed(report); });
     }
     void ApplySessions()
     {
@@ -235,6 +279,7 @@ class DiagnosticDialog
         const struct { int id; const wchar_t* key; const wchar_t* fallback; } labels[] = {
             {Toggle,L"toggle",L"Toggle trace"},{OpenLog,L"open",L"Open selected file"},{OpenFolder,L"folder",L"Open folder"},
             {Cleanup,L"cleanup",L"Clear old logs"},{Preview,L"preview",L"Preview / refresh"},{Save,L"save",L"Save package"},{Close,L"close",L"Close"},
+            {CrashLabel,L"crash_reports",L"Crash reports (including damaged reports)"},{ReviewCrash,L"review_crash",L"Mark reviewed"},{ClearCrashes,L"clear_crashes",L"Clear old crashes"},
             {SessionLabel,L"sessions",L"Diagnostic sessions"},{ComponentLabel,L"components",L"Package components (bytes); double-click to exclude/include"}
         };
         ::SetDlgItemText(window,IDC_DIAGNOSTIC_PREVIOUS_PAGE,Text(L"previous_page",L"< Back"));
@@ -255,7 +300,8 @@ class DiagnosticDialog
     {
         int top=0; for(int id : {Toggle,OpenLog,OpenFolder,Cleanup}) top=(std::max)(top,ButtonWidthUnits(id,0));
         const int bottom=ButtonWidthUnits(Preview,110)+ButtonWidthUnits(IDC_DIAGNOSTIC_PREVIOUS_PAGE,50)+ButtonWidthUnits(IDC_DIAGNOSTIC_NEXT_PAGE,50)+ButtonWidthUnits(Save,110)+ButtonWidthUnits(Close,74)+48;
-        RECT bounds={0,0,(std::max)(540,(std::max)(top*4+34,bottom)),380}; ::MapDialogRect(window,&bounds);
+        const int crashRow=ButtonWidthUnits(ReviewCrash,100)+ButtonWidthUnits(ClearCrashes,120)+230;
+        RECT bounds={0,0,(std::max)(crashRow,(std::max)(540,(std::max)(top*4+34,bottom))),380}; ::MapDialogRect(window,&bounds);
         ::AdjustWindowRectEx(&bounds,static_cast<DWORD>(::GetWindowLongPtr(window,GWL_STYLE)),FALSE,static_cast<DWORD>(::GetWindowLongPtr(window,GWL_EXSTYLE)));
         SIZE size={bounds.right-bounds.left,bounds.bottom-bounds.top}; return size;
     }
@@ -277,6 +323,10 @@ class DiagnosticDialog
             const SIZE minimum=MinimumSize();
             ::SetWindowPos(window,NULL,0,0,(std::max)(width,static_cast<int>(minimum.cx)),(std::max)(height,static_cast<int>(minimum.cy)),SWP_NOMOVE|SWP_NOZORDER);
         }
+        // Also honor localized button widths on the very first open (no saved size).
+        RECT current={}; ::GetWindowRect(window,&current); const SIZE minimum=MinimumSize();
+        if(current.right-current.left<minimum.cx || current.bottom-current.top<minimum.cy)
+            ::SetWindowPos(window,NULL,0,0,(std::max)(current.right-current.left,minimum.cx),(std::max)(current.bottom-current.top,minimum.cy),SWP_NOMOVE|SWP_NOZORDER);
         const int x = ::GetPrivateProfileInt(L"Window", L"X", -32000, ini), y = ::GetPrivateProfileInt(L"Window", L"Y", -32000, ini);
         RECT candidate = { x,y,x + (width ? width : 800), y + (height ? height : 600) };
         if (x != -32000 && ::MonitorFromRect(&candidate, MONITOR_DEFAULTTONULL)) ::SetWindowPos(window, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
@@ -291,8 +341,11 @@ class DiagnosticDialog
         const int button=(width-34)/4;
         move(Toggle,8,52,button,18); move(OpenLog,14+button,52,button,18);
         move(OpenFolder,20+2*button,52,button,18); move(Cleanup,26+3*button,52,button,18); move(SessionLabel,8,76,width-16,10); move(Sessions,8,88,width-16,150);
-        move(ComponentLabel,8,110,width-16,10); move(Components,8,122,width-16,65);
-        move(PreviewText,8,193,width-16,(std::max)(20,height-255));
+        const int review=ButtonWidthUnits(ReviewCrash,100), clear=ButtonWidthUnits(ClearCrashes,120);
+        move(CrashLabel,8,110,width-16,10); move(Crashes,8,122,width-review-clear-28,150);
+        move(ReviewCrash,width-clear-review-14,122,review,18); move(ClearCrashes,width-clear-8,122,clear,18);
+        move(ComponentLabel,8,146,width-16,10); move(Components,8,158,width-16,65);
+        move(PreviewText,8,229,width-16,(std::max)(20,height-291));
         move(Status,8,height-57,job ? width-220 : width-16,25);
         move(IDC_DIAGNOSTIC_PROGRESS,width-204,height-49,100,8);
         move(IDC_DIAGNOSTIC_CANCEL,width-98,height-57,90,18);
@@ -332,7 +385,14 @@ class DiagnosticDialog
             if(id==IDC_DIAGNOSTIC_CANCEL && self->job) { self->job->cancelled.store(true); self->StatusText(Text(L"cancelling",L"Cancelling diagnostic operation...")); return TRUE; }
             if(self->job && id!=Close && id!=IDCANCEL) return TRUE;
             if(id!=Cleanup) self->cleanupPending=false;
+            if(id!=ReviewCrash) self->reviewPending=false;
+            if(id!=ClearCrashes) self->crashPlan.reset();
             if (id == Close || id == IDCANCEL) self->CloseDialog();
+            else if(id==ReviewCrash) self->ReviewSelectedCrash();
+            else if(id==ClearCrashes) {
+                if(!self->crashPlan) self->Begin(Work::EstimateCrashes,[](Job& result) { result.crashPlan=StartupTrace::PrepareDiagnosticCrashCleanup(); result.success=true; });
+                else { const auto plan=self->crashPlan; self->crashPlan.reset(); self->Begin(Work::ClearCrashes,[plan](Job& result) { result.cleanup=StartupTrace::ExecuteDiagnosticCrashCleanup(*plan); result.success=true; }); }
+            }
             else if (id == Sessions && code == CBN_SELCHANGE) { self->excluded.clear(); self->Prepare(); }
             else if (id == Components && code == LBN_SELCHANGE) self->ShowPreview();
             else if (id == Components && code == LBN_DBLCLK && self->snapshot) {
@@ -368,7 +428,7 @@ class DiagnosticDialog
 public:
     explicit DiagnosticDialog(FbeDiagnostics::DiagnosticCommandService&) {}
     bool CatalogReady() const { return catalogReady; }
-    bool HasUnreviewedCrashes() const { return StartupTrace::HasUnreviewedDiagnosticCrashes(sessions); }
+    bool HasUnreviewedCrashes() const { return std::any_of(crashes.begin(),crashes.end(),[](const StartupTrace::DiagnosticCrashReport& report){return !report.reviewed;}); }
     ~DiagnosticDialog() {
         // Normal close waits through the message loop. This guard also covers an
         // externally destroyed modal/WM_QUIT before StartupTrace is shut down.

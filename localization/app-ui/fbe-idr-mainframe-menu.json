@@ -2571,6 +2571,150 @@
         "cs-CZ": "Další >",
         "bg-BG": "Напред >"
       }
+    },
+    "fbe.diagnostics.crash_reports": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Crash reports (including damaged reports)",
+        "ru-RU": "Аварийные отчёты (включая повреждённые)",
+        "uk-UA": "Аварійні звіти (зокрема пошкоджені)",
+        "de-DE": "Absturzberichte (auch beschädigte)",
+        "fr-FR": "Rapports de plantage (y compris endommagés)",
+        "es-ES": "Informes de fallos (incluidos los dañados)",
+        "it-IT": "Rapporti di arresto (anche danneggiati)",
+        "pl-PL": "Raporty awarii (także uszkodzone)",
+        "pt-PT": "Relatórios de falha (incluindo danificados)",
+        "nl-NL": "Crashrapporten (ook beschadigde)",
+        "cs-CZ": "Zprávy o pádu (včetně poškozených)",
+        "bg-BG": "Отчети за срив (включително повредени)"
+      }
+    },
+    "fbe.diagnostics.review_crash": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Mark reviewed",
+        "ru-RU": "Отметить просмотренным",
+        "uk-UA": "Позначити переглянутим",
+        "de-DE": "Als gelesen markieren",
+        "fr-FR": "Marquer comme lu",
+        "es-ES": "Marcar como revisado",
+        "it-IT": "Segna come letto",
+        "pl-PL": "Oznacz jako przeczytany",
+        "pt-PT": "Marcar como lido",
+        "nl-NL": "Markeer als gelezen",
+        "cs-CZ": "Označit jako přečtené",
+        "bg-BG": "Отбележи като прочетен"
+      }
+    },
+    "fbe.diagnostics.clear_crashes": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Clear old crashes",
+        "ru-RU": "Очистить старые аварии",
+        "uk-UA": "Очистити старі аварії",
+        "de-DE": "Alte Abstürze löschen",
+        "fr-FR": "Effacer les anciens plantages",
+        "es-ES": "Borrar fallos antiguos",
+        "it-IT": "Elimina vecchi arresti",
+        "pl-PL": "Usuń stare awarie",
+        "pt-PT": "Limpar falhas antigas",
+        "nl-NL": "Oude crashes wissen",
+        "cs-CZ": "Smazat staré pády",
+        "bg-BG": "Изчисти старите сривове"
+      }
+    },
+    "fbe.diagnostics.reviewed": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Reviewed",
+        "ru-RU": "Просмотрен",
+        "uk-UA": "Переглянуто",
+        "de-DE": "Gelesen",
+        "fr-FR": "Lu",
+        "es-ES": "Revisado",
+        "it-IT": "Letto",
+        "pl-PL": "Przeczytany",
+        "pt-PT": "Lido",
+        "nl-NL": "Gelezen",
+        "cs-CZ": "Přečteno",
+        "bg-BG": "Прочетен"
+      }
+    },
+    "fbe.diagnostics.unread": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "New",
+        "ru-RU": "Новый",
+        "uk-UA": "Новий",
+        "de-DE": "Neu",
+        "fr-FR": "Nouveau",
+        "es-ES": "Nuevo",
+        "it-IT": "Nuovo",
+        "pl-PL": "Nowy",
+        "pt-PT": "Novo",
+        "nl-NL": "Nieuw",
+        "cs-CZ": "Nové",
+        "bg-BG": "Нов"
+      }
+    },
+    "fbe.diagnostics.review_confirm": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Click Mark reviewed again to acknowledge this file, including an unreadable preview. Its contents will not be exported.",
+        "ru-RU": "Нажмите «Отметить просмотренным» ещё раз для подтверждения, даже если предпросмотр недоступен. Содержимое не экспортируется.",
+        "uk-UA": "Натисніть «Позначити переглянутим» ще раз, навіть якщо перегляд недоступний. Вміст не експортується.",
+        "de-DE": "Zum Bestätigen erneut auf Als gelesen markieren klicken, auch ohne Vorschau. Der Inhalt wird nicht exportiert.",
+        "fr-FR": "Cliquez à nouveau sur Marquer comme lu pour confirmer, même sans aperçu. Le contenu ne sera pas exporté.",
+        "es-ES": "Pulse de nuevo Marcar como revisado para confirmar, incluso sin vista previa. No se exportará el contenido.",
+        "it-IT": "Premi di nuovo Segna come letto per confermare, anche senza anteprima. Il contenuto non sarà esportato.",
+        "pl-PL": "Kliknij ponownie Oznacz jako przeczytany, nawet bez podglądu. Treść nie będzie eksportowana.",
+        "pt-PT": "Clique novamente em Marcar como lido para confirmar, mesmo sem pré-visualização. O conteúdo não será exportado.",
+        "nl-NL": "Klik opnieuw op Markeer als gelezen ter bevestiging, ook zonder voorbeeld. De inhoud wordt niet geëxporteerd.",
+        "cs-CZ": "Potvrďte opětovným kliknutím na Označit jako přečtené, i bez náhledu. Obsah se neexportuje.",
+        "bg-BG": "Натиснете отново Отбележи като прочетен за потвърждение, дори без преглед. Съдържанието няма да се експортира."
+      }
+    },
+    "fbe.diagnostics.review_done": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Marked reviewed. Report bytes were preserved.",
+        "ru-RU": "Отмечен просмотренным. Содержимое отчёта сохранено.",
+        "uk-UA": "Позначено переглянутим. Вміст звіту збережено.",
+        "de-DE": "Als gelesen markiert. Bericht unverändert erhalten.",
+        "fr-FR": "Marqué comme lu. Rapport conservé sans modification.",
+        "es-ES": "Marcado como revisado. Informe conservado sin cambios.",
+        "it-IT": "Segnato come letto. Rapporto conservato invariato.",
+        "pl-PL": "Oznaczono jako przeczytany. Raport zachowano bez zmian.",
+        "pt-PT": "Marcado como lido. Relatório preservado sem alterações.",
+        "nl-NL": "Gemarkeerd als gelezen. Rapport ongewijzigd bewaard.",
+        "cs-CZ": "Označeno jako přečtené. Zpráva zůstala beze změny.",
+        "bg-BG": "Отбелязан като прочетен. Отчетът е запазен без промени."
+      }
+    },
+    "fbe.diagnostics.crash_cleanup_confirm": {
+      "kind": "MESSAGE",
+      "targetId": "",
+      "translations": {
+        "en-US": "Reviewed crashes older than 30 days: %u files / %llu bytes. Click Clear old crashes again to delete.",
+        "ru-RU": "Просмотренные аварии старше 30 дней: %u файлов / %llu байт. Повторите очистку старых аварий для удаления.",
+        "uk-UA": "Переглянуті аварії старші за 30 днів: %u файлів / %llu байтів. Повторіть очищення для видалення.",
+        "de-DE": "Gelesene Abstürze älter als 30 Tage: %u Dateien / %llu Bytes. Zum Löschen erneut klicken.",
+        "fr-FR": "Plantages lus de plus de 30 jours : %u fichiers / %llu octets. Cliquez à nouveau pour supprimer.",
+        "es-ES": "Fallos revisados de más de 30 días: %u archivos / %llu bytes. Pulse de nuevo para borrar.",
+        "it-IT": "Arresti letti da oltre 30 giorni: %u file / %llu byte. Premi di nuovo per eliminare.",
+        "pl-PL": "Przeczytane awarie starsze niż 30 dni: %u plików / %llu bajtów. Kliknij ponownie, aby usunąć.",
+        "pt-PT": "Falhas lidas com mais de 30 dias: %u ficheiros / %llu bytes. Clique novamente para eliminar.",
+        "nl-NL": "Gelezen crashes ouder dan 30 dagen: %u bestanden / %llu bytes. Klik opnieuw om te wissen.",
+        "cs-CZ": "Přečtené pády starší 30 dnů: %u souborů / %llu bajtů. Dalším kliknutím smažete.",
+        "bg-BG": "Прочетени сривове на повече от 30 дни: %u файла / %llu байта. Натиснете отново за изтриване."
+      }
     }
   }
 }

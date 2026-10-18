@@ -838,6 +838,23 @@
 		::PostQuitMessage(backupDisabled && (verifyOnly || (sourceEdited && sourceApplied && saved)) ? 0 : 1);
 		return 0;
 	}
+	if (IsFbeTestScenario(L"diagnostic-startup-runtime"))
+    {
+        bool unread=false, completed=false; unsigned int heartbeat=0;
+        const ULONGLONG start=::GetTickCount64();
+        do {
+            completed=m_diagnostic_crash_discovery.Poll(unread);
+            MSG message={}; while(::PeekMessage(&message,NULL,0,0,PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); ++heartbeat; }
+            if(!completed) ::Sleep(1);
+        } while(!completed && ::GetTickCount64()-start<10000);
+        BOOL handled=TRUE; OnTimer(WM_TIMER,DIAGNOSTIC_DISCOVERY_TIMER_ID,0,handled);
+        const auto& metrics=m_diagnostic_crash_discovery.Metrics();
+        const bool passed=completed && unread && g_hasPreviousDiagnosticCrash && metrics.metadataReads==0 && metrics.crashHeaders==512 &&
+            m_diagnostic_crash_discovery.ThreadId()!=::GetCurrentThreadId() && m_diagnostic_crash_discovery.LaunchMilliseconds()<500;
+        CStringA report; report.Format("startup_background=%d\ncrash_headers=%llu\nmetadata_reads=%llu\nlaunch_ms=%llu\nscan_ms=%llu\nheartbeat=%u\n",passed,metrics.crashHeaders,metrics.metadataReads,m_diagnostic_crash_discovery.LaunchMilliseconds(),m_diagnostic_crash_discovery.ScanMilliseconds(),heartbeat);
+        DWORD written=0; output.Write(report,static_cast<DWORD>(report.GetLength()),&written); output.Flush(); output.Close();
+        ::PostQuitMessage(passed ? 0 : 1); return 0;
+    }
 	if (IsFbeTestScenario(L"diagnostic-dialog-runtime"))
 	{
 		DiagnosticDialog dialog(m_diagnostic_commands);
