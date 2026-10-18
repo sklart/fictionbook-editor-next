@@ -115,8 +115,9 @@ Assert-Contains $trace 'FBE_VERSION_WSTRING' `
 	'шапка диагностического журнала должна содержать версию FBE'
 Assert-Contains $source 'ID_TOOLS_DIAGNOSTIC_TRACE' `
 	'меню должно содержать команду включения диагностического журнала'
-Assert-Contains $source 'fbe.trace.warning' `
-	'при запуске с диагностическим журналом должно выводиться предупреждение'
+$diagnosticDialog = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $repoRoot 'src\fbe\diagnostics\DiagnosticDialog.h')))
+Assert-Contains $diagnosticDialog 'StartupTrace::Enabled() ? L"extended" : L"normal_mode"' `
+	'окно диагностики должно явно показывать действующий расширенный режим журнала'
 Assert-Contains $source 'fbe.trace.title_suffix' `
 	'заголовок окна должен отмечать диагностический режим'
 Assert-Contains $source 'TraceMainFrameCommand(wParam, lParam);' `

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path)
 
 $ErrorActionPreference = 'Stop'
@@ -22,7 +22,11 @@ foreach($needle in @('PathIsRelative(path)', 'PathIsURL(path)', 'IsRegularFile(p
 foreach($field in @('editorBackgroundKind','editorBackgroundId','editorBackgroundCustomPath','editorBackgroundLayout')) { if($frame -notmatch $field) { throw "Background-only changes are absent from configuration snapshot: $field" } }
 if($frame -notmatch 'HasDocumentStyleConfigurationChanged[\s\S]*editorBackgroundKind') { throw 'Background-only changes do not request Doc::ApplyConfChanges().' }
 if($frame -notmatch 'HasOnlyEditorBackgroundConfigurationChanged') { throw 'Background-only changes do not have a fast apply path.' }
-if($frame -notmatch 'void CMainFrame::ApplyEditorBackgroundChanges\(\)[\s\S]*m_doc->ApplyConfChanges\(\)[\s\S]*_Settings.Save\(\)') { throw 'Background fast apply must update MSHTML and persist settings.' }
+$applyBackground = [regex]::Match($frame, '(?s)void CMainFrame::ApplyEditorBackgroundChanges\(bool\s+(?<save>\w+)\)\s*\{(?<body>.*?)\r?\n\}')
+if (-not $applyBackground.Success -or $applyBackground.Groups['body'].Value -notmatch 'm_doc->ApplyConfChanges\(\)' -or
+    $applyBackground.Groups['body'].Value -notmatch ('if\s*\(\s*' + [regex]::Escape($applyBackground.Groups['save'].Value) + '\s*\)\s*_Settings.Save\(\)')) {
+    throw 'Background fast apply must update MSHTML and persist settings when requested.'
+}
 if($settings -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)' -and (Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'src\fbe\settings\ui\SettingsEditorPage.cpp')) -notmatch 'SetEditorBackgroundCustomPath\(m_customBackgroundPath\)') { throw 'Custom path preservation behavior is not explicit.' }
 if($readme -match 'preview\.jpg') { throw 'README advertises a preview that is not shipped.' }
 

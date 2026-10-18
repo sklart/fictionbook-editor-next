@@ -1,4 +1,4 @@
-<# Verifies safe removal of registrations left by pre-FBE Next ArchHandler. #>
+﻿<# Verifies safe removal of registrations left by pre-FBE Next ArchHandler. #>
 [CmdletBinding()]
 param()
 
@@ -21,6 +21,13 @@ function Forbid([string]$text, [string]$needle, [string]$message) {
 
 $cleanup = Get-FunctionBody 'CleanupLegacyArchHandlerRegistration'
 $uninstallCleanup = Get-FunctionBody 'un.CleanupLegacyArchHandlerRegistration'
+$userCleanup = Get-FunctionBody 'CleanupLegacyArchHandlerUserRegistration'
+$uninstallUserCleanup = Get-FunctionBody 'un.CleanupLegacyArchHandlerUserRegistration'
+foreach ($prefix in @('', 'un.')) {
+    $wrapper = Get-FunctionBody ($prefix + 'CleanupLegacyArchHandlerRegistration')
+    Require $wrapper ('UAC_AsUser_Call Function ' + $prefix + 'CleanupLegacyArchHandlerUserRegistration ${UAC_SYNCREGISTERS}') 'Elevated cleanup must run HKCU changes in the original user process.'
+    Require $wrapper ('Call ' + $prefix + 'CleanupLegacyArchHandlerUserRegistration') 'Unelevated cleanup must call the same user registration worker.'
+}
 Require $cleanup 'RMDir /r "$INSTDIR\Utilities\ArchHandler"' 'Upgrade cleanup must remove only the old ArchHandler directory.'
 Forbid $cleanup 'RMDir /r "$INSTDIR\Utilities"' 'Upgrade cleanup must preserve the rest of Utilities.'
 $expected = @(
@@ -32,16 +39,16 @@ $expected = @(
     'DeleteRegKey HKCU "Software\FictionBook Editor\ArchHandler"'
 )
 foreach ($command in $expected) {
-    Require $cleanup $command "Upgrade cleanup must contain: $command"
-    Require $uninstallCleanup $command "Uninstall cleanup must contain: $command"
+    Require $userCleanup $command "Upgrade cleanup must contain: $command"
+    Require $uninstallUserCleanup $command "Uninstall cleanup must contain: $command"
 }
-foreach ($body in @($cleanup, $uninstallCleanup)) {
+foreach ($body in @($cleanup, $uninstallCleanup, $userCleanup, $uninstallUserCleanup)) {
     foreach ($unsafe in @('UserChoice', 'DeleteRegValue HKCU "Software\Classes\.zip" ""', 'DeleteRegValue HKCU "Software\Classes\.rar" ""', 'DeleteRegKey HKCU "Software\Classes\.zip"', 'DeleteRegKey HKCU "Software\Classes\.rar"')) {
         Forbid $body $unsafe "Legacy cleanup must not change the user's ZIP/RAR default association: $unsafe"
     }
 }
 
-$outsideCleanup = $script.Replace($cleanup, '').Replace($uninstallCleanup, '')
+$outsideCleanup = $script.Replace($cleanup, '').Replace($uninstallCleanup, '').Replace($userCleanup, '').Replace($uninstallUserCleanup, '')
 foreach ($legacyRegistration in @('FictionBookEditor.ArchHandler', 'FictionBook Editor ArchHandler', 'Software\FictionBook Editor\ArchHandler')) {
     Forbid $outsideCleanup $legacyRegistration "Installer must not register ArchHandler: $legacyRegistration"
 }

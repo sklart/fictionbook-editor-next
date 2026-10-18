@@ -1,4 +1,4 @@
-<# Verifies atomic publication for every portable mutable persistence path. #>
+﻿<# Verifies atomic publication for every portable mutable persistence path. #>
 [CmdletBinding()]
 param()
 
@@ -10,11 +10,17 @@ function Require([string]$text, [string]$fragment, [string]$what) {
 }
 
 $serializer = Text 'src\fbe\XMLSerializer\XMLSerializer.cpp'
-Require $serializer 'm_sFile + L".tmp"' 'Settings/Hotkeys temporary file'
+Require $serializer 'SettingsFileTransaction::Temporary(m_sFile)' 'Settings/Hotkeys unique temporary file'
 Require $serializer 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'Settings/Hotkeys atomic replacement'
 $wordsStore = Text 'src\fbe\settings\words\WordsStore.cpp'
-Require $wordsStore 'fileName + L".tmp"' 'Words temporary file'
-Require $wordsStore 'MoveFileExW(temporaryFile, fileName, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)' 'Words atomic replacement'
+Require $wordsStore 'SettingsFileTransaction::Temporary(path)' 'Words unique temporary file'
+Require $wordsStore 'transaction.Add(path, temporary)' 'Words staged destination'
+Require $wordsStore 'SaveToFile(words, temporary) && transaction.Commit()' 'Words publication only after successful save'
+$transaction = Text 'src\fbe\settings\SettingsFileTransaction.h'
+Require $transaction 'PathRemoveFileSpecW' 'Temporary file must use the destination directory'
+Require $transaction 'GetTempFileNameW(directory' 'Unique temporary file allocation'
+Require $transaction 'MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH' 'Transactional replacement and rollback'
+Require $transaction 'MoveFileExW(entry.temporary, entry.destination, MOVEFILE_WRITE_THROUGH)' 'Publish staged Words file'
 $locale = Text 'src\fbe\RuntimeLocalization.cpp'
 Require $locale 'temporaryPath += L".tmp"' 'Locale temporary file'
 Require $locale 'MoveFileExW(temporaryPath, localePath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)' 'Locale atomic replacement'

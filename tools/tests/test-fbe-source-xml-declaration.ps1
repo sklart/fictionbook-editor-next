@@ -1,16 +1,21 @@
-<# XML declaration helper and real FBE Source -> Body -> Save regressions. #>
+﻿<# XML declaration helper and real FBE Source -> Body -> Save regressions. #>
 [CmdletBinding()]
 param(
-    [string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
+    [string]$FbeExe,
     [ValidateRange(30, 300)][int]$TimeoutSeconds = 120
 )
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $root 'tools\build\Import-VsDevEnvironment.ps1') -PlatformToolset v143
-$directory = Join-Path ([IO.Path]::GetTempPath()) ('fbe-xml-declaration-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $directory | Out-Null
+if (-not $FbeExe) { $FbeExe = Join-Path $root 'out\Release\FBE.exe' }
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'xml-declaration'
+$directory = $isolation.Root
+$FbeExe = $isolation.Exe
+$passed = $false
 try {
+    $null = New-IsolatedFbeSettingsSeed -Isolation $isolation
     $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
     if (-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
     function Assert-FbeEncodingRoundTrip([string] $fromEncoding, [string] $targetEncoding) {
@@ -24,11 +29,11 @@ try {
             $env:FBE_NEXT_TEST_MODE = '1'
             $env:FBE_NEXT_TEST_SCENARIO = 'source-xml-declaration-encoding-runtime'
             $env:FBE_NEXT_TEST_TARGET_ENCODING = $targetEncoding
-            $process = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $report, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -PassThru
+            $process = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $report, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -WindowStyle Hidden -PassThru
             if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $process.Id -Force; throw "FBE не завершил encoding round-trip $fromEncoding -> $targetEncoding." }
             if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)) { $details = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<report missing>' }; throw "FBE encoding round-trip $fromEncoding -> $targetEncoding failed: exit $($process.ExitCode).`n$details" }
             $env:FBE_NEXT_TEST_SCENARIO = 'source-xml-declaration-reopen-runtime'
-            $reopened = Start-Process -FilePath $FbeExe -ArgumentList @('-b', $reopenReport, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -PassThru
+            $reopened = Start-Process -FilePath $FbeExe -ArgumentList @('--portable', '-b', $reopenReport, $fixture) -WorkingDirectory (Split-Path -Parent $FbeExe) -WindowStyle Hidden -PassThru
             if (-not $reopened.WaitForExit($TimeoutSeconds * 1000)) { Stop-Process -Id $reopened.Id -Force; throw "FBE не завершил повторное открытие $fromEncoding -> $targetEncoding." }
             if ($reopened.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reopenReport)) { $details = if (Test-Path -LiteralPath $reopenReport) { Get-Content -LiteralPath $reopenReport -Raw } else { '<report missing>' }; throw "FBE reopen $fromEncoding -> $targetEncoding failed: exit $($reopened.ExitCode).`n$details" }
         }
@@ -53,4 +58,5 @@ try {
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'XML declaration helper regression failed.' }
     Write-Host 'XML declaration helper and FBE integration regressions passed.'
-} finally { Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue }
+    $passed = $true
+} finally { Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed }

@@ -19,13 +19,15 @@ $html = Get-SourceText 'src\export-html\ExportHTML.cpp'
 $epub = Get-SourceText 'src\export-epub\ExportEPUB.cpp'
 $docx = Get-SourceText 'src\export-docx\ExportDOCX.cpp'
 $installer = Get-SourceText 'packaging\nsis\Installer\MakeInstaller.bat'
+$installerBuilder = Get-SourceText 'tools\build\build-installer.ps1'
 $nsisResolver = Get-SourceText 'tools\build\resolve-nsis.ps1'
 
 $pluginHost = Get-SourceText 'src\fbe\plugins\PluginManager.cpp'
 if ($pluginHost -match 'CoCreateInstance|RegEnumKeyEx|DiscoverLegacyPlugins') { throw 'Plugin Host must not use registry COM activation or discovery.' }
 
-Assert-Contains $installer 'resolve-nsis.ps1' 'Единый резолвер NSIS'
-Assert-Contains $installer '/X"!addplugindir /x86-unicode %NSIS_INCLUDE_DIR%"' 'Unicode-каталог NSIS plugins'
+Assert-Contains $installer 'tools\build\build-installer.ps1' 'Делегирование сборки NSIS'
+Assert-Contains $installerBuilder 'resolve-nsis.ps1' 'Единый резолвер NSIS'
+Assert-Contains $installerBuilder '/X!addplugindir /x86-unicode ..\NSIS' 'Unicode-каталог NSIS plugins'
 Assert-Contains $nsisResolver "[version]'3.13'" 'Минимальная версия NSIS'
 Assert-Contains $nsisResolver 'FBE_MAKENSIS' 'Явно заданный путь makensis'
 Assert-Contains $nsisResolver 'Plugins\x86-unicode\UAC.dll' 'Обязательный Unicode UAC plugin'

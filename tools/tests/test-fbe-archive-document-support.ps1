@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
@@ -37,7 +37,9 @@ Require $reader 'IsSafeEntryPath' 'Archive entry identities must reject unsafe p
 Require $reader 'segmentStart[\s\S]{0,300}L"\.\."' 'Archive entry identities must reject parent-directory segments.'
 Require $reader 'entries\.empty\(\).*ErrorCode::NoFictionBookEntries.*return false' 'An archive without FictionBook entries must fail resolution before any entry access.'
 Require $frame 'FbeArchiveUi::ResolveOpenRequest[\s\S]{0,1400}DiscardChanges' 'Archive resolve must precede document discard.'
-Require $frame 'DetectDocumentContainerKind\(buf\)' 'File drag-and-drop must use archive resolver.'
+$dropHandler = [regex]::Match($frame, '(?s)LRESULT\s+CMainFrame::OnDropFiles\([^\r\n]*\)\s*\{(?<body>.*?)\r?\n\}').Groups['body'].Value
+Require $dropHandler 'DetectDocumentContainerKind\(\s*\w+\s*\)' 'File drag-and-drop must detect archive containers.'
+Require $dropHandler 'LoadFile\(\s*\w+\.front\(\)\s*\)' 'File drag-and-drop must use the document loader and its archive resolver.'
 Require $frame 'startupArchive' 'Command-line opening must use archive resolver.'
 Require $writer 'archive_write_set_format_zip' 'ZIP writer is missing.'
 Require $writer 'ReplaceFileW' 'ZIP replacement must use ReplaceFileW.'
