@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$FbeExe)
 $ErrorActionPreference = 'Stop'
 if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe' }
@@ -81,10 +81,16 @@ try {
     $encodedUid = -join ($uid.ToCharArray() | ForEach-Object { '{0:X4}' -f [int][char]$_ })
     $settingsDirectory = Join-Path $isolation.DataPath 'Settings'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
-    $settings = [IO.File]::ReadAllText((Join-Path $isolation.Runtime 'Data\Settings\Settings.xml'))
-    $settings = [regex]::Replace($settings, '<ScriptsFolder>[^<]*</ScriptsFolder>', '<ScriptsFolder>InputBoxProbe\</ScriptsFolder>')
-    $settings = [regex]::Replace($settings, '<ScriptCommandIds>[^<]*</ScriptCommandIds>', "<ScriptCommandIds>1:$encodedUid</ScriptCommandIds>")
-    [IO.File]::WriteAllText((Join-Path $settingsDirectory 'Settings.xml'), $settings, [Text.UTF8Encoding]::new($false))
+    # Build explicit isolated settings: a fresh build may omit empty fields or
+    # serialize them as self-closing elements, which regex replacement missed.
+    $settingsFile = New-IsolatedFbeSettingsSeed -Isolation $isolation
+    [xml]$settings = [IO.File]::ReadAllText($settingsFile)
+    $settingsNode = $settings.SelectSingleNode('/FBE/Settings[@ID="0"]')
+    foreach ($entry in @(@('ScriptsFolder', 'InputBoxProbe\'), @('ScriptCommandIds', "1:$encodedUid"))) {
+        $node = $settings.CreateElement($entry[0]); $node.InnerText = $entry[1]
+        $null = $settingsNode.AppendChild($node)
+    }
+    [IO.File]::WriteAllText($settingsFile, $settings.OuterXml, [Text.UTF8Encoding]::new($false))
     $registry = '<Scripts version="1">' + "`r`n" +
         '  <Script uid="' + $uid + '" path="probe.js" fingerprint="0000000000000000" />' + "`r`n" +
         '</Scripts>' + "`r`n"
