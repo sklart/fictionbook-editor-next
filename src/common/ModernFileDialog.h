@@ -26,6 +26,7 @@ inline HWND CurrentOwnerOnThread() { return ShowOwner(); }
 
 struct Request {
     bool save = false, allowMultiSelect = false, fileMustExist = false, pathMustExist = false, overwritePrompt = false;
+    bool pickFolders = false, strictInitialFolder = false;
     std::wstring title, okButtonLabel, fileNameLabel, defaultExtension;
     std::wstring initialFileName, initialFolder;
     const COMDLG_FILTERSPEC* filters = nullptr; UINT filterCount = 0, filterIndex = 0;
@@ -62,6 +63,7 @@ inline Result Show(HWND owner, const Request& request) {
     if (request.fileMustExist) options |= FOS_FILEMUSTEXIST;
     if (request.pathMustExist) options |= FOS_PATHMUSTEXIST;
     if (request.overwritePrompt) options |= FOS_OVERWRITEPROMPT;
+    if (request.pickFolders) options |= FOS_PICKFOLDERS;
     if (FAILED(hr = dialog->SetOptions(options))) { result.error = hr; return result; }
     if (!request.title.empty()) dialog->SetTitle(request.title.c_str());
     if (!request.okButtonLabel.empty()) dialog->SetOkButtonLabel(request.okButtonLabel.c_str());
@@ -72,11 +74,13 @@ inline Result Show(HWND owner, const Request& request) {
     if (request.filterIndex && FAILED(hr = dialog->SetFileTypeIndex(request.filterIndex))) { result.error = hr; return result; }
     if (!request.initialFolder.empty()) {
         IShellItem* rawFolder = nullptr;
-        if (SUCCEEDED(CreateShellItemFromPath(request.initialFolder.c_str(), &rawFolder))) {
+        hr = CreateShellItemFromPath(request.initialFolder.c_str(), &rawFolder);
+        if (SUCCEEDED(hr)) {
             CComPtr<IShellItem> folder;
             folder.Attach(rawFolder);
-            dialog->SetFolder(folder);
+            hr = dialog->SetFolder(folder);
         }
+        if (request.strictInitialFolder && FAILED(hr)) { result.error = hr; return result; }
     }
     CComPtr<IFileDialogCustomize> customize;
     if (request.customize || request.readCustomization) {

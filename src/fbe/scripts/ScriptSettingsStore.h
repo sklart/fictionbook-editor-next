@@ -95,12 +95,18 @@ inline bool Load(std::vector<Entry>& entries)
         MSXML2::IXMLDOMElementPtr element(nodes->item[index]); Entry entry;
         if (!element || wcscmp(element->nodeName, L"Entry") != 0 ||
             !Unhex(Attribute(element, L"identity"), entry.identity) || !Unhex(Attribute(element, L"name"), entry.name)) return false;
-        entry.type = Attribute(element, L"type"); entry.data = Attribute(element, L"data");
+        entry.type = Attribute(element, L"type");
+        _variant_t data = element->getAttribute(L"data"); if (data.vt != VT_BSTR) return false;
+        entry.data = CString(data.bstrVal, ::SysStringLen(data.bstrVal));
         if (entry.identity.IsEmpty() || entry.name.IsEmpty() || entry.name.GetLength() > 256 ||
             !seen.emplace(std::wstring(entry.identity), std::wstring(entry.name)).second) return false;
         if (entry.type == L"string") { CString text; if (!Unhex(entry.data, text) || text.GetLength() > static_cast<int>(MaximumValueLength)) return false; }
         else if (entry.type == L"boolean") { if (entry.data != L"true" && entry.data != L"false") return false; }
-        else if (entry.type != L"number") return false;
+        else if (entry.type == L"number") {
+            CComVariant encoded(static_cast<LPCWSTR>(entry.data)), number;
+            if (entry.data.IsEmpty() || entry.data.GetLength() > 128 ||
+                FAILED(::VariantChangeTypeEx(&number, &encoded, LOCALE_INVARIANT, 0, VT_R8)) || !_finite(number.dblVal)) return false;
+        } else return false;
         entries.push_back(entry);
     }
     return true;
@@ -145,7 +151,7 @@ inline HRESULT Access(int operation, const CString& name, const VARIANT* input, 
 {
     LastFailure() = S_OK;
     const CString identity = Identity(); if (identity.IsEmpty()) return E_UNEXPECTED;
-    if (operation != 3 && (name.IsEmpty() || name.GetLength() > 256)) return E_INVALIDARG;
+    if (operation != 3 && (name.IsEmpty() || name.GetLength() > 256 || wcslen(name) != static_cast<size_t>(name.GetLength()))) return E_INVALIDARG;
     CComVariant value; CString type;
     if ((operation == 0 || operation == 1) && (!input || !Normalize(*input, value, type))) return E_INVALIDARG;
     CComVariant answer(operation == 0 ? value : CComVariant(false));

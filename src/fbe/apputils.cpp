@@ -124,6 +124,7 @@ public:
   const wchar_t	*m_title;
   const wchar_t	*m_prompt;
 
+  bool m_extended = false;
   CInputBox(const wchar_t *title,const wchar_t *prompt) : m_title(title), m_prompt(prompt) { }
 
   BEGIN_DDX_MAP(CInputBox)
@@ -143,6 +144,14 @@ public:
     SetDlgItemText(IDC_PROMPT,m_prompt);
     SetWindowText(m_title);
 	AdjustPromptLayout();
+    if (m_extended) {
+      RECT position = {}; ::GetWindowRect(GetDlgItem(IDNO), &position);
+      ::MapWindowPoints(NULL, m_hWnd, reinterpret_cast<POINT*>(&position), 2);
+      ::SetWindowPos(GetDlgItem(IDYES), NULL, position.left, position.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+      ::ShowWindow(GetDlgItem(IDNO), SW_HIDE);
+      ::SetWindowTextW(GetDlgItem(IDYES), FbeLoadRuntimeStringByKey(L"fbe.messagebox.ok", L"OK"));
+      ::SetFocus(GetDlgItem(IDC_INPUT));
+    }
     return 0;
   }
 
@@ -231,6 +240,15 @@ int	InputBox(CString& result, const wchar_t *title, const wchar_t *prompt) {
   int dlgResult = dlg.DoModal();
   if (dlgResult == IDYES) result=dlg.m_text;
   return dlgResult;
+}
+
+int InputBoxOwned(CString& result, const wchar_t* title, const wchar_t* prompt, HWND owner) {
+  CInputBox dlg(title, prompt);
+  dlg.m_extended = true;
+  dlg.m_text = result;
+  const int response = dlg.DoModal(owner);
+  if (response == IDYES) result = dlg.m_text;
+  return response;
 }
 
 // html

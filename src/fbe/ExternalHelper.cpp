@@ -12,13 +12,15 @@
 #include <new>
 #include "scripts/ScriptExecutionContext.h"
 #include "scripts/ScriptSettingsStore.h"
+#include "../common/RuntimeLocalizationCommon.h"
 
 namespace {
 const wchar_t* const ScriptingMethods[] = {
  L"GetScriptingApiVersion", L"HasScriptingMethod", L"GetScriptingCapabilities",
  L"GetCurrentScriptPath", L"GetCurrentScriptDirectory", L"GetCurrentScriptName", L"GetCurrentScriptId",
  L"GetScriptsRootDirectory", L"GetInterfaceLanguage", L"GetCurrentViewMode", L"IsDocumentModified",
- L"GetScriptSetting", L"SetScriptSetting", L"RemoveScriptSetting", L"ClearScriptSettings"
+ L"GetScriptSetting", L"SetScriptSetting", L"RemoveScriptSetting", L"ClearScriptSettings",
+ L"SelectOpenFile", L"SelectSaveFile", L"SelectFolder", L"InputBoxEx"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {

@@ -549,7 +549,7 @@ if (HasApi("GetCurrentScriptDirectory")) {
 |---|---|
 | Версия, HasScriptingMethod, capabilities, контекст и сведения об окружении (этап 1А) | Implemented |
 | GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Implemented |
-| SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Planned |
+| SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Implemented |
 | Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Planned |
 | Дополнительные binary, validation, diagnostics, dialogs, clipboard, status-stack, save API (этап 3) | Planned |
 | GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText; существующие Undo, InputBox/GetModalResult, SaveBinary, пути документа | Already covered by existing API |
@@ -571,7 +571,7 @@ Issue #45 остаётся открытым до реализации и при�
 
 `capabilities.scriptSettings = true` означает наличие этих четырёх методов.
 Требуется активный контекст скрипта; вне него возвращается COM-ошибка
-`E_UNEXPECTED`. Имя непустое, до 256 UTF-16 кодовых единиц. Строковое значение
+`E_UNEXPECTED`. Имя непустое, без нулевого символа, до 256 UTF-16 кодовых единиц. Строковое значение
 и строковое значение по умолчанию ограничены 32768 UTF-16 кодовыми единицами.
 Разные виды чисел совместимы как числа JavaScript; boolean и строка с ними не
 смешиваются. NaN, Infinity, объекты, массивы, функции, null и undefined не
@@ -605,3 +605,100 @@ if (HasApi("GetScriptSetting")) {
     }
 }
 ```
+
+
+### Файловые диалоги (API 1.0.0)
+
+| Метод | Параметр и результат |
+|---|---|
+| `SelectOpenFile(optionsJson)` | JSON-объект строкой; выбирает существующий файл, либо несколько при multiSelect=true. |
+| `SelectSaveFile(optionsJson)` | JSON-объект строкой; выбирает путь сохранения. Файл не записывается. Подтверждение существующего файла обязательно. |
+| `SelectFolder(optionsJson)` | JSON-объект строкой; выбирает существующий файловый каталог, либо несколько при multiSelect=true. |
+
+`capabilities.fileDialogs = true` означает эти три метода. Общие поля:
+
+| Поле | Тип / поведение |
+|---|---|
+| `title` | Строка заголовка, необязательная. |
+| `initialDirectory` | Строка начального каталога; ошибка Shell при его установке возвращается как error. |
+| `initialFileName` | Строка начального имени файла, необязательная. |
+| `defaultExtension` | Строка расширения, например `fb2`, необязательная. |
+| `multiSelect` | Boolean, по умолчанию false; для SelectSaveFile значение true отклоняется. |
+| `filters` | Массив до 32 объектов `{ "name": "Книги", "pattern": "*.fb2;*.zip" }`; строки непустые, до 256 UTF-16 единиц. Для SelectFolder фильтры отклоняются. |
+
+При успехе возвращается JSON-строка `{"status":"ok","path":"..."}` либо
+`{"status":"ok","paths":["...","..."]}` для multiSelect=true. При отмене:
+`{"status":"cancelled"}`. Ошибка отличается от отмены:
+
+```json
+{"status":"error","code":"invalid-options","hresult":"0x80070057","message":"..."}
+```
+
+Стабильные машинные коды: `invalid-options` (неверный JSON/параметры),
+`owner-unavailable` (нет живого окна-владельца), `dialog-failed` (ошибка Shell).
+`hresult` — строка hexadecimal HRESULT; `message` — диагностическая строка
+Windows, на её текст/язык нельзя опираться в коде. Вход — JSON-объект до
+65536 UTF-16 единиц. Неизвестные и повторные поля, неверные типы и нулевые
+символы в строках отклоняются. Одна строка ограничена 32767 UTF-16 единицами.
+Unicode, UNC и длинные пути передаются Shell без буфера MAX_PATH; фактическая
+допустимость пути определяется оболочкой и файловой системой Windows.
+
+Окно-владелец — редактор, используется ModernFileDialog и штатная защита его
+системного оформления. Старые диалоги не переводятся в новый режим параметров.
+Выбор файла/каталога не открывает его в редакторе и не изменяет документ.
+Выбор пути сохранения сам по себе не создаёт и не заменяет файл.
+
+### InputBoxEx (API 1.0.0)
+
+`window.external.InputBoxEx(optionsJson)` принимает JSON-объект строкой с
+необязательными строковыми полями `title`, `prompt`, `value` (по умолчанию
+пустые). Ограничения JSON/строк — как у файловых диалогов. Есть кнопки OK и
+отмены; начальное значение и подтверждённый ввод могут быть пустыми.
+`capabilities.inputBoxEx = true` означает наличие этого метода.
+
+Подтверждённый пустой ввод возвращает `{"accepted":true,"value":""}`;
+отмена — `{"accepted":false,"value":""}`. Ошибка возвращает
+`accepted:false`, `status:"error"`, `code`, `hresult`, `message` по общей схеме.
+Результат не записывается в старый GetModalResult; поведение старого InputBox
+не меняется. Используются штатные раскладка/DPI/оформление поля ввода и
+явный владелец-редактор.
+
+Примеры без современной синтаксики JavaScript и без обязательного глобального
+JSON (он отсутствует в некоторых режимах MSHTML):
+
+```javascript
+if (HasApi("SelectOpenFile")) {
+    var selectionJson = window.external.SelectOpenFile(
+        '{"title":"Выберите книгу","filters":[{"name":"FB2","pattern":"*.fb2"}]}');
+}
+if (HasApi("InputBoxEx")) {
+    var inputJson = window.external.InputBoxEx(
+        '{"title":"Имя","prompt":"Введите значение","value":""}');
+}
+```
+
+Результаты — текст JSON; их можно разобрать уже используемым в скрипте
+JSON-парсером. API не добавляет/не заменяет глобальный JSON и не ограничивает
+ActiveX, COM или DOM. Не используйте eval для текста FB2/XML или произвольных
+внешних данных.
+
+### Детализация отложенного покрытия #45
+
+| Методы / семейство | Статус |
+|---|---|
+| CreateSelectionBookmark, RestoreSelectionBookmark, ReleaseSelectionBookmark, GetSelectionText, GetSelectionHtml, GetSelectionInfo | Planned |
+| BeginDocumentUpdate, EndDocumentUpdate | Planned |
+| BeginProgress, SetProgress, IsProgressCancelled, EndProgress | Planned |
+| ReadTextFile, WriteTextFile, FileExists, DirectoryExists, CreateDirectory | Planned |
+| CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Planned |
+| GetBinaryInfo, AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary, SaveAllBinaries, GenerateUniqueBinaryId | Planned |
+| ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError | Planned |
+| ShowMessage, SelectFromList, SelectMultipleFromList, ChooseColor | Planned |
+| GetClipboardText, SetClipboardText, GetClipboardHtml, SetClipboardHtml | Planned |
+| PushStatusBarText, PopStatusBarText, ClearStatusBarText | Planned |
+| SaveCurrentDocument, SaveCurrentDocumentAs, SaveDocumentCopy, SaveSerializedDocumentCopy | Planned |
+| ProcessPendingUiEvents, автоматический откат произвольного DOM | Deferred |
+| GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText | Already covered by existing API |
+
+Наличие этих названий в плане не делает их доступными. Проблема зависаний
+issue #41 и интерфейс параметров карточек issue #48 не включены в этап 1.

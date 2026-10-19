@@ -1,3 +1,5 @@
+#include "RuntimeTestScriptingDialogs.inl"
+#include "RuntimeTestScriptingEnvironment.inl"
 	if (IsFbeTestScenario(L"scripting-stage1"))
 	{
 		wchar_t root[32768] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT", root, _countof(root));
@@ -47,7 +49,22 @@
 			}
 			if (passed) {
 				const CString renamed = CString(root) + L"\\renamed.js";
-				passed = ::MoveFileW(CString(root) + L"\\outer.js", renamed) != FALSE;
+				CHandle finished(::CreateEventW(NULL, TRUE, FALSE, NULL));
+				const DWORD uiThread = ::GetCurrentThreadId();
+				std::thread closeError([&]() {
+					for (int retry = 0; retry < 1000 && ::WaitForSingleObject(finished, 10) == WAIT_TIMEOUT; ++retry)
+						::EnumThreadWindows(uiThread, [](HWND window, LPARAM) -> BOOL {
+							wchar_t name[64] = {}; ::GetClassNameW(window, name, _countof(name));
+							if (::IsWindowVisible(window) &&
+								(wcscmp(name, L"#32770") == 0 || wcscmp(name, L"FBEThemedMessageDialog") == 0))
+								::PostMessageW(window, WM_CLOSE, 0, 0);
+							return TRUE;
+						}, reinterpret_cast<LPARAM>(m_hWnd));
+				});
+				m_doc->RunScript(CString(root) + L"\\error.js");
+				::SetEvent(finished); closeError.join();
+				passed = FbeScripts::ExecutionContexts().empty();
+				passed = passed && ::MoveFileW(CString(root) + L"\\outer.js", renamed) != FALSE;
 				if (passed) {
 					ScriptDescriptor descriptor = {}; descriptor.path = renamed;
 					descriptor.name = L"renamed"; descriptor.uid = L"11111111-1111-4111-8111-111111111111";

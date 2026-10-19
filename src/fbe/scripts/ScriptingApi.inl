@@ -1,4 +1,5 @@
 // Included by ExternalHelper.cpp; the legacy dual interface stays immutable.
+#include "ScriptingDialogs.inl"
 HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters,
     VARIANT* result, UINT* argumentError)
 {
@@ -6,7 +7,7 @@ HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISP
     if (parameters && parameters->cNamedArgs) return DISP_E_NONAMEDARGS;
     const UINT count = parameters ? parameters->cArgs : 0;
     const UINT expected = dispid == 111 || dispid == 112 ? 2 :
-        (dispid == 101 || dispid == 113 || dispid == 1000 || dispid == 1001 ? 1 : 0);
+        (dispid == 101 || dispid == 113 || (dispid >= 115 && dispid <= 118) || dispid == 1000 || dispid == 1001 ? 1 : 0);
     if (count != expected) return DISP_E_BADPARAMCOUNT;
     if (count && (!parameters || !parameters->rgvarg)) return E_POINTER;
     if (dispid >= 111 && dispid <= 114) {
@@ -30,16 +31,21 @@ HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISP
         if (argument.vt != type) { if (argumentError) *argumentError = 0; return DISP_E_TYPEMISMATCH; }
     }
     CComVariant value;
+    if (dispid >= 115 && dispid <= 118) {
+        value = FbeScripts::Dialogs::Show(m_xmlScriptHost, dispid, argument.bstrVal);
+        return result ? value.Detach(result) : S_OK;
+    }
     const FbeScripts::ScriptExecutionContext* context = FbeScripts::CurrentExecutionContext();
     CString text;
     switch (dispid) {
     case 100: value = L"1.0.0"; break;
     case 101: {
         DISPID id = DISPID_UNKNOWN; LPOLESTR name = argument.bstrVal;
-        const bool exists = name && name[0] != L'_' && SUCCEEDED(GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &id));
+        const bool exists = name && name[0] && name[0] != L'_' && wcslen(name) == ::SysStringLen(argument.bstrVal) &&
+            SUCCEEDED(GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &id));
         value = exists; break;
     }
-    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.0.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true}}"; break;
+    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.0.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true,\"fileDialogs\":true,\"inputBoxEx\":true}}"; break;
     case 103: value = context ? context->path : CString(); break;
     case 104:
         if (context) { const int slash = context->path.ReverseFind(L'\\'); if (slash >= 0) text = context->path.Left(slash + 1); }
