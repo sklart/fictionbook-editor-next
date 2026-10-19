@@ -491,9 +491,9 @@ COM-аргументов. Имена методов нечувствительн
 
 | Метод (впервые в 1.0.0) | Параметры и результат |
 |---|---|
-| `GetScriptingApiVersion()` | Без параметров; текущая версия строкой (`1.1.0`). |
+| `GetScriptingApiVersion()` | Без параметров; текущая версия строкой (`1.2.0`). |
 | `HasScriptingMethod(name)` | Строковое имя; boolean фактической доступности публичного метода, включая старые методы; неизвестное имя даёт false. Метод не вызывается. |
-| `GetScriptingCapabilities()` | JSON-строка со `schemaVersion: 1`, `apiVersion: "1.1.0"` и объектом `capabilities`. |
+| `GetScriptingCapabilities()` | JSON-строка со `schemaVersion: 1`, `apiVersion: "1.2.0"` и объектом `capabilities`. |
 | `GetCurrentScriptPath()` | Абсолютный путь выполняемого JS-файла; без контекста пустая строка. |
 | `GetCurrentScriptDirectory()` | Каталог этого файла с завершающим `\`; без контекста пустая строка. |
 | `GetCurrentScriptName()` | Имя этого JS-файла с расширением; без контекста пустая строка. |
@@ -551,7 +551,8 @@ if (HasApi("GetCurrentScriptDirectory")) {
 | GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Implemented |
 | SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Implemented |
 | Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Implemented |
-| Дополнительные binary, validation, diagnostics, dialogs, clipboard, status-stack, save API (этап 3) | Planned |
+| ValidateCurrentDocument, LogMessage, последняя ошибка (этап 3А) | Implemented |
+| Дополнительные binary, dialogs, clipboard, status-stack, save API (этапы 3Б–3Г) | Planned |
 | GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText; существующие Undo, InputBox/GetModalResult, SaveBinary, пути документа | Already covered by existing API |
 | ProcessPendingUiEvents и автоматический откат произвольных DOM-изменений | Deferred |
 
@@ -692,7 +693,7 @@ ActiveX, COM или DOM. Не используйте eval для текста FB
 | ReadTextFile, WriteTextFile, WriteTextFileEx, FileExists, DirectoryExists, CreateDirectory | Implemented |
 | CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Implemented |
 | GetBinaryInfo, AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary, SaveAllBinaries, GenerateUniqueBinaryId | Planned |
-| ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError | Planned |
+| ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError (этап 3А) | Implemented |
 | ShowMessage, SelectFromList, SelectMultipleFromList, ChooseColor | Planned |
 | GetClipboardText, SetClipboardText, GetClipboardHtml, SetClipboardHtml | Planned |
 | PushStatusBarText, PopStatusBarText, ClearStatusBarText | Planned |
@@ -709,9 +710,9 @@ issue #41 и интерфейс параметров карточек issue #48 
 WriteTextFileEx добавлен с новым DISPID 142; опубликованные DISPID 100–141
 и допустимые вызовы WriteTextFile не изменены.
 Прежние IID, typelib, сигнатуры и DISPID 1–35, а также методы API 1.0.0
-сохранены. GetScriptingApiVersion возвращает `1.1.0`. В capabilities добавлены
+сохранены. В этапе 2 опубликована версия `1.1.0`. В capabilities добавлены
 булевы ключи `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`.
-Методы этапа 3 не объявляются доступными. Issue #45 остаётся открытым.
+Реализация этапа 3А описана ниже. Методы этапов 3Б–3Г не объявляются доступными; issue #45 остаётся открытым.
 
 ### Проверка этапов 1–2
 
@@ -927,3 +928,122 @@ if (HasApi("WriteTextFileEx")) {
 типизированные COM-клиенты прежнего интерфейса продолжают использовать прежний
 неизменённый контракт. На старом FBE проверяйте HasApi через try/catch, как в
 разделе API 1.0.0; не полагайтесь на наличие нового метода без проверки.
+
+## Этап 3А: API 1.2.0
+
+Методы добавлены только в аддитивный IDispatch. IDL, IID, vtable и DISPID 1–142
+сохранены. GetScriptingApiVersion возвращает `1.2.0`; capabilities содержит
+`documentValidation`, `logging`, `scriptingErrors` со значением true.
+Этапы 3Б–3Г не реализованы, issue #45 остаётся открытым.
+
+| DISPID | Метод | Параметры / результат |
+|---|---|---|
+| 143 | ValidateCurrentDocument(optionsJson) | Обязательная JSON-строка `{}`; возвращает JSON результата проверки. Другие параметры пока не поддерживаются. |
+| 144 | LogMessage(level, message) | Две строки; true при передаче события штатному журналу, false при выключенном журнале или достижении лимита. |
+| 145 | GetLastScriptingError() | JSON последней ошибки текущего контекста. |
+| 146 | ClearLastScriptingError() | Очищает ошибку текущего контекста; возвращает true. |
+
+Все четыре метода требуют активного контекста скрипта; вне него возвращается
+E_UNEXPECTED. Неверное число аргументов даёт DISP_E_BADPARAMCOUNT, неверный тип —
+DISP_E_TYPEMISMATCH, именованные аргументы — DISP_E_NONAMEDARGS. Объекты JScript
+не преобразуются в строки через пользовательский toString.
+
+### Проверка текущего документа
+
+ValidateCurrentDocument проверяет FB2 штатным SAX/schema-механизмом, FBD —
+штатной проверкой структуры description-only документа. Для Design/Description
+строится detached DOM и читается через IStream. Полная XML-строка с binary
+не передаётся в JScript. В Source проверяется актуальный текст Scintilla,
+включая несохранённые изменения. Режим, выделение, Body, Source, Undo/Redo,
+dirty-state и точки сохранения не меняются. Строка состояния и звуковые
+уведомления прежней интерактивной проверки не используются.
+
+```json
+{"schemaVersion":1,"status":"ok","valid":true,"diagnosticsComplete":true,"errors":[],"warnings":[]}
+```
+
+При ошибке XML или схемы status остаётся `ok`, valid равен false. errors содержит
+только первую ошибку штатного обработчика: code=`xml-invalid`, severity=`error`,
+message, line и column. Координаты штатного парсера отсчитываются от 1;
+структурная ошибка FBD имеет координаты 1:1. При ошибке кодировки Source без
+координат парсера возвращается 0:0. diagnosticsComplete равен false: полный
+список ошибок не собирается. warnings пока всегда пуст. Для FBD
+valid=true означает корректность штатной структуры FBD, а не полную схему FB2.
+
+Технический отказ отличается от невалидной книги: status=`error`, valid=null,
+diagnosticsComplete=false. Единственный элемент errors имеет code=`no-document`
+или `validation-unavailable`, hresult, message и нулевые координаты.
+Технический отказ сохраняется также в GetLastScriptingError. Невалидная книга
+сама по себе не является ошибкой вызова API и прежнюю сохранённую ошибку не стирает.
+Размер optionsJson ограничен 1024 UTF-16 единицами, неизвестные ключи и неверный
+JSON дают E_INVALIDARG. Пока допускается только пустой объект с пробелами вокруг него.
+
+Метод не вызывает публичные ValidateSourceText/GetLastSourceDiagnostic и не
+перезаписывает их прежнюю диагностику. Операции анализа остаются синхронными;
+для большой книги время проверки определяется штатным механизмом FBE.
+
+```javascript
+if (HasApi("ValidateCurrentDocument")) {
+    var validationJson = window.external.ValidateCurrentDocument("{}");
+    // Разберите JSON используемым в вашем скрипте JSON-парсером.
+    // Глобальный JSON доступен не во всех режимах MSHTML.
+}
+```
+
+### Сообщения журнала и приватность
+
+LogMessage принимает level=`debug`, `info`, `warning` или `error` с учётом регистра.
+Другой уровень даёт E_INVALIDARG. message — строка до 512 UTF-16 единиц;
+превышение даёт HRESULT 0x8007006F (`message-too-long`). Непарные суррогаты
+отклоняются с E_INVALIDARG. Unicode и управляющие символы не нарушают формат журнала.
+
+Сохранена существующая политика приватности StartupTrace: произвольный текст
+message фильтруется. В существующем журнале остаются уровень, числовой токен
+текущего контекста (`number`), наличие сообщения и длина (`size`). Имя и путь
+скрипта, исходный код, содержимое книги и персональные данные автоматически
+не добавляются. Это ограничение действует и при явном LogMessage; метод не
+предназначен для сохранения произвольных текстовых заметок.
+
+Лимиты: 32 события за интервал 1000 мс на UI-поток (включая вложенные скрипты)
+и 256 событий на контекст. При превышении возвращается false без диалога.
+При выключенном диагностическом журнале допустимый вызов также возвращает false
+и журнал не создаёт. Ошибки типов/параметров проверяются даже при выключенном журнале.
+Успешный LogMessage с уровнем error не создаёт ошибку API.
+
+TraceScript и IsDiagnosticTraceEnabled сохраняют прежний контракт. LogMessage
+использует существующую инфраструктуру с кодом SA144, а не отдельный файл.
+Ошибки загрузки, синтаксиса и выполнения JScript по-прежнему обслуживает
+FbeScriptDiagnostics (issue #46); новая система их не перехватывает и не дублирует.
+
+### Последняя ошибка API
+
+Пустое состояние: `{"schemaVersion":1,"hasError":false}`. При неудаче:
+
+```json
+{"schemaVersion":1,"hasError":true,"method":"WriteTextFileEx","hresult":"0x80070005","code":"access-denied","message":"Отказано в доступе"}
+```
+
+message формируется по HRESULT и зависит от языка Windows, не содержит аргументов
+вызова. Устойчивые code: `invalid-argument`, `type-mismatch`, `bad-parameter-count`,
+`named-arguments-not-supported`, `method-not-supported`, `context-unavailable`,
+`access-denied`, `out-of-memory`, `message-too-long`, `file-not-found`, `path-not-found`,
+`already-exists`, `file-locked`, `operation-failed`.
+
+Хранятся ошибки HRESULT аддитивных методов DISPID 100–146 и технические отказы
+ValidateCurrentDocument. Возвраты false/status:error старых методов без неудачного
+HRESULT и диагностика прежних COM-методов 1–35 сюда не копируются. Их поведение
+не меняется. Успешные вызовы не стирают предыдущую ошибку. Сам GetLastScriptingError
+не меняет её даже при неправильных аргументах; ClearLastScriptingError очищает
+только текущий контекст. Вложенный скрипт получает пустое состояние и не изменяет
+состояние родителя, включая выход по исключению.
+
+Состояние состоит из ограниченной строки JSON без COM-ссылок. Оно уничтожается
+при завершении контекста; системный текст ошибки ограничен 512 UTF-16 единицами.
+Оно не сохраняется между запусками и не записывается в журнал
+автоматически. При исчерпании памяти сохранение диагностики может быть пропущено,
+но исходный HRESULT вызова остаётся прежним.
+
+Адресный тест `tools/tests/test-fbe-scripting-stage3a.ps1` принимает `-Mode portable`
+или `installed`, `-Kind fb2` или `fbd` и `-Trace`. Дополнительно выполняются прежние
+контуры этапов 1–2 и проверка встроенной typelib. Windows 7 SP1 проверяется только
+при доступном окружении; в текущем прогоне имеет статус NOT RUN.
