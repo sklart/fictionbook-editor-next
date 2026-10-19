@@ -153,6 +153,14 @@ try {
 [Общие правила](#общие-правила-и-совместимость) · [Практические сценарии](#практические-сценарии) · [Ограничения](#ограничения-контракты-и-ошибки) · [Не реализовано](#запланировано-но-не-доступно-для-вызова)
 
 
+### Готовые сложные скрипты
+
+- [А. Аудит книги с отчётом](#complex-report)
+- [Б. Неразрывные пробелы, пакетный Undo и прогресс](#complex-nbsp)
+- [В. Инвентаризация изображений с экспортом TSV](#complex-images)
+- [Г. Изменение названия книги через XML/MSXML6](#complex-title)
+- [Д. Экспорт выделенной цитаты](#complex-selection)
+
 ## Общие правила и совместимость
 
 - Имена расширенных методов нечувствительны к регистру при поиске через IDispatch. Параметры передаются позиционно, не именованными COM-аргументами.
@@ -176,8 +184,9 @@ try {
 > `GetProgramVersion()` сообщает версию приложения; `GetScriptingApiVersion()` — **версию API**. Проверка только номера приложения недостаточна.
 
 
-## Справочник методов
+> **Как запускать примеры:** каждый блок «Пример → результат» — самостоятельный JS-скрипт с `function Run()`; сохраните его в отдельный `.js` и запустите внутри FBE Next. Не вставляйте сразу 82 функции `Run()` в один файл. Примеры, изменяющие книгу или создающие файлы, снабжены предупреждениями. Указанные пути, размеры и значения — образцы: реальные зависят от книги и окружения.
 
+## Справочник методов
 
 ## Версия API, контекст скрипта и окружение
 
@@ -191,9 +200,17 @@ try {
 
 **Особенности:** В старых версиях метода может не быть: для совместимости проверяйте вызов через `try/catch`.
 
+**Пример → результат**
+
 ```javascript
-var version = window.external.GetScriptingApiVersion();
+function Run() {
+    var ext = window.external;
+    var v = ext.GetScriptingApiVersion();
+    ext.MsgBox('API скриптов: ' + v);
+}
 ```
+
+**Ожидаемый результат:** Окно **«API скриптов: 1.2.0»** в актуальной реализации. Это не номер версии редактора.
 
 <a id="api-hasscriptingmethod"></a>
 
@@ -205,11 +222,18 @@ var version = window.external.GetScriptingApiVersion();
 
 **Особенности:** Проверяет и исходный интерфейс, и расширение. Имя нечувствительно к регистру. При работе со старым FBE отсутствие самого `HasScriptingMethod` перехватывайте через `try/catch`.
 
+**Пример → результат**
+
 ```javascript
-if (window.external.HasScriptingMethod("GetSelectionText")) {
-    var text = window.external.GetSelectionText();
+function Run() {
+    var ext = window.external;
+    var available = ext.HasScriptingMethod('GetSelectionText');
+    var planned = ext.HasScriptingMethod('GetClipboardText');
+    ext.MsgBox('Выделение: ' + available + '; буфер обмена: ' + planned);
 }
 ```
+
+**Ожидаемый результат:** **«Выделение: true; буфер обмена: false»** для API 1.2.0. Методы не вызываются, проверяется лишь их наличие.
 
 <a id="api-getscriptingcapabilities"></a>
 
@@ -221,9 +245,17 @@ if (window.external.HasScriptingMethod("GetSelectionText")) {
 
 **Особенности:** В версии 1.2.0 доступны ключи: `scriptContext`, `environment`, `scriptSettings`, `fileDialogs`, `inputBoxEx`, `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`, `documentValidation`, `logging`, `scriptingErrors`. Неизвестный ключ не считайте подтверждением возможности.
 
+**Пример → результат**
+
 ```javascript
-var capsJson = window.external.GetScriptingCapabilities();
+function Run() {
+    var ext = window.external;
+    var caps = ext.GetScriptingCapabilities();
+    ext.MsgBox(caps);
+}
 ```
+
+**Ожидаемый результат:** JSON с `"apiVersion":"1.2.0"` и `"capabilities"`, включая `"selection":true`, `"progress":true` и `"scriptingErrors":true`. Содержимое может расширяться в новых версиях.
 
 <a id="api-getcurrentscriptpath"></a>
 
@@ -235,9 +267,17 @@ var capsJson = window.external.GetScriptingCapabilities();
 
 **Особенности:** Вложенный запуск `apiRunCmd` временно переключает путь на вложенный скрипт.
 
+**Пример → результат**
+
 ```javascript
-var current = window.external.GetCurrentScriptPath();
+function Run() {
+    var ext = window.external;
+    var path = ext.GetCurrentScriptPath();
+    ext.MsgBox(path || 'Контекст файла не определён');
+}
 ```
+
+**Ожидаемый результат:** Например, `C:\FBE\Scripts\Check.js`. При обычном запуске зарегистрированного скрипта показывается его путь.
 
 <a id="api-getcurrentscriptdirectory"></a>
 
@@ -249,9 +289,17 @@ var current = window.external.GetCurrentScriptPath();
 
 **Особенности:** Подходит для хранения соседних ресурсов. Не путайте с рабочим каталогом FBE.
 
+**Пример → результат**
+
 ```javascript
-var dir = window.external.GetCurrentScriptDirectory();
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetCurrentScriptDirectory();
+    ext.MsgBox('Каталог: ' + dir);
+}
 ```
+
+**Ожидаемый результат:** Например, `C:\FBE\Scripts\` — **с завершающим обратным слешем**.
 
 <a id="api-getcurrentscriptname"></a>
 
@@ -261,9 +309,17 @@ var dir = window.external.GetCurrentScriptDirectory();
 
 **Результат:** Строка либо `""` вне контекста.
 
+**Пример → результат**
+
 ```javascript
-var name = window.external.GetCurrentScriptName();
+function Run() {
+    var ext = window.external;
+    var name = ext.GetCurrentScriptName();
+    ext.MsgBox(name || '(без имени)');
+}
 ```
+
+**Ожидаемый результат:** Для файла `C:\FBE\Scripts\Check.js` выводится **`Check.js`**.
 
 <a id="api-getcurrentscriptid"></a>
 
@@ -275,9 +331,17 @@ var name = window.external.GetCurrentScriptName();
 
 **Особенности:** Не создаёт новый UID и не сканирует всю библиотеку.
 
+**Пример → результат**
+
 ```javascript
-var id = window.external.GetCurrentScriptId();
+function Run() {
+    var ext = window.external;
+    var uid = ext.GetCurrentScriptId();
+    ext.MsgBox(uid ? 'UID: ' + uid : 'Скрипт не зарегистрирован');
+}
 ```
+
+**Ожидаемый результат:** UID из реестра скриптов; для незарегистрированного файла — «Скрипт не зарегистрирован». Новый UID не создаётся.
 
 <a id="api-getscriptsrootdirectory"></a>
 
@@ -289,9 +353,17 @@ var id = window.external.GetCurrentScriptId();
 
 **Особенности:** Завершающий разделитель может присутствовать; для склеивания путей используйте `CombinePath`.
 
+**Пример → результат**
+
 ```javascript
-var root = window.external.GetScriptsRootDirectory();
+function Run() {
+    var ext = window.external;
+    var root = ext.GetScriptsRootDirectory();
+    ext.MsgBox('Библиотека скриптов: ' + root);
+}
 ```
+
+**Ожидаемый результат:** Абсолютный путь к настроенному каталогу Scripts; в разных установках он различается.
 
 <a id="api-getinterfacelanguage"></a>
 
@@ -301,9 +373,17 @@ var root = window.external.GetScriptsRootDirectory();
 
 **Результат:** Строка, например `"ru-RU"` или `"en-US"`.
 
+**Пример → результат**
+
 ```javascript
-var lang = window.external.GetInterfaceLanguage();
+function Run() {
+    var ext = window.external;
+    var lang = ext.GetInterfaceLanguage();
+    ext.MsgBox('Язык интерфейса: ' + lang);
+}
 ```
+
+**Ожидаемый результат:** Например, **`ru-RU`** при русском интерфейсе или **`en-US`** при английском.
 
 <a id="api-getcurrentviewmode"></a>
 
@@ -315,11 +395,18 @@ var lang = window.external.GetInterfaceLanguage();
 
 **Особенности:** Позволяет не обращаться к MSHTML Body при активном Source.
 
+**Пример → результат**
+
 ```javascript
-if (window.external.GetCurrentViewMode() === "source") {
-    // В этом режиме работайте с Source API.
+function Run() {
+    var ext = window.external;
+    var mode = ext.GetCurrentViewMode();
+    if (mode == 'source') ext.MsgBox('Открыт исходный XML');
+    else ext.MsgBox('Текущий режим: ' + mode);
 }
 ```
+
+**Ожидаемый результат:** В режиме Source — «Открыт исходный XML»; иначе возвращается `design` либо `description`.
 
 <a id="api-isdocumentmodified"></a>
 
@@ -331,10 +418,17 @@ if (window.external.GetCurrentViewMode() === "source") {
 
 **Особенности:** Учитывает изменения Body, Description и несохранённый текст Source.
 
+**Пример → результат**
+
 ```javascript
-var dirty = window.external.IsDocumentModified();
+function Run() {
+    var ext = window.external;
+    var modified = ext.IsDocumentModified();
+    ext.MsgBox(modified ? 'Есть несохранённые изменения' : 'Изменений нет');
+}
 ```
 
+**Ожидаемый результат:** После сохранения книги — **«Изменений нет»**; после правки без сохранения — **«Есть несохранённые изменения»**.
 
 ## Файл документа и общие сведения
 
@@ -348,9 +442,17 @@ var dirty = window.external.IsDocumentModified();
 
 **Результат:** Строка пути или `""` для ещё не сохранённой книги / невозможности нормализации.
 
+**Пример → результат**
+
 ```javascript
-var path = window.external.GetDocumentFilePath();
+function Run() {
+    var ext = window.external;
+    var path = ext.GetDocumentFilePath();
+    ext.MsgBox(path || 'Книга ещё не сохранена');
+}
 ```
+
+**Ожидаемый результат:** Например, `D:\Книги\Повесть.fb2`; для новой книги — «Книга ещё не сохранена».
 
 <a id="getdocumentfilename"></a>
 
@@ -362,9 +464,17 @@ var path = window.external.GetDocumentFilePath();
 
 **Результат:** Строка имени либо `""` до первого сохранения.
 
+**Пример → результат**
+
 ```javascript
-var fileName = window.external.GetDocumentFileName();
+function Run() {
+    var ext = window.external;
+    var file = ext.GetDocumentFileName();
+    ext.MsgBox(file || '(имени пока нет)');
+}
 ```
+
+**Ожидаемый результат:** Если открыт `D:\Книги\Повесть.fb2`, выводится **`Повесть.fb2`**.
 
 <a id="getdocumentdirectory"></a>
 
@@ -378,10 +488,17 @@ var fileName = window.external.GetDocumentFileName();
 
 **Особенности:** Используйте для создания отчётов рядом с книгой, предварительно убедившись, что книга сохранена.
 
+**Пример → результат**
+
 ```javascript
-var bookDir = window.external.GetDocumentDirectory();
-if (!bookDir) { window.external.MsgBox("Сначала сохраните книгу."); return; }
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetDocumentDirectory();
+    ext.MsgBox(dir || 'Сначала сохраните книгу');
+}
 ```
+
+**Ожидаемый результат:** Например, `D:\Книги` без завершающего слеша; для новой книги — просьба сохранить.
 
 <a id="getstylepath"></a>
 
@@ -395,9 +512,17 @@ if (!bookDir) { window.external.MsgBox("Сначала сохраните кни
 
 **Особенности:** Это расположение приложения, а не каталог текущего скрипта.
 
+**Пример → результат**
+
 ```javascript
-var installDir = window.external.GetStylePath();
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetStylePath();
+    ext.MsgBox('Каталог FBE: ' + dir);
+}
 ```
+
+**Ожидаемый результат:** Например, `C:\Program Files (x86)\FictionBook Editor Next`; это не путь к открытому документу.
 
 <a id="getprogramversion"></a>
 
@@ -411,9 +536,16 @@ var installDir = window.external.GetStylePath();
 
 **Особенности:** Не используйте вместо `GetScriptingApiVersion` для проверки доступности новых методов.
 
+**Пример → результат**
+
 ```javascript
-var appVersion = window.external.GetProgramVersion();
+function Run() {
+    var ext = window.external;
+    ext.MsgBox('Версия приложения: ' + ext.GetProgramVersion());
+}
 ```
+
+**Ожидаемый результат:** Например, **«Версия приложения: 3.0.9»**. Номер зависит от установленного релиза.
 
 <a id="getuuid"></a>
 
@@ -425,9 +557,17 @@ var appVersion = window.external.GetProgramVersion();
 
 **Результат:** Строка UUID в верхнем регистре без фигурных скобок.
 
+**Пример → результат**
+
 ```javascript
-var id = window.external.GetUUID();
+function Run() {
+    var ext = window.external;
+    var id = ext.GetUUID();
+    ext.MsgBox('UUID: ' + id);
+}
 ```
+
+**Ожидаемый результат:** Например, **`E89CE0E8-38D7-4FA4-9052-1CD9650C6D2F`**; при каждом вызове создаётся новое значение.
 
 <a id="getnbsp"></a>
 
@@ -441,10 +581,17 @@ var id = window.external.GetUUID();
 
 **Особенности:** Для нормализации пробелов лучше использовать этот метод, а не жёстко зашитый код символа.
 
+**Пример → результат**
+
 ```javascript
-var nbsp = window.external.GetNBSP();
-paragraph.innerText = "Иван" + nbsp + "Иванов";
+function Run() {
+    var ext = window.external;
+    var nbsp = ext.GetNBSP();
+    ext.MsgBox('Иван' + nbsp + 'Иванов; код символа: ' + nbsp.charCodeAt(0));
+}
 ```
+
+**Ожидаемый результат:** Между словами отображается неразрывный пробел; код соответствует выбранной настройке FBE (часто **160**).
 
 <a id="isfastmode"></a>
 
@@ -456,9 +603,16 @@ paragraph.innerText = "Иван" + nbsp + "Иванов";
 
 **Результат:** `true` или `false`.
 
+**Пример → результат**
+
 ```javascript
-var fast = window.external.IsFastMode();
+function Run() {
+    var ext = window.external;
+    ext.MsgBox(ext.IsFastMode() ? 'Быстрый режим включён' : 'Обычный режим');
+}
 ```
+
+**Ожидаемый результат:** Одна из двух указанных строк — в зависимости от текущей настройки.
 
 <a id="getviewwidth"></a>
 
@@ -470,9 +624,17 @@ var fast = window.external.IsFastMode();
 
 **Результат:** Целое число пикселей.
 
+**Пример → результат**
+
 ```javascript
-var width = window.external.GetViewWidth();
+function Run() {
+    var ext = window.external;
+    var pixels = ext.GetViewWidth();
+    ext.MsgBox('Ширина рабочей области: ' + pixels + ' px');
+}
 ```
+
+**Ожидаемый результат:** Число пикселей, например **`980 px`**; изменяется при изменении размеров редактора.
 
 <a id="getviewheight"></a>
 
@@ -484,10 +646,17 @@ var width = window.external.GetViewWidth();
 
 **Результат:** Целое число пикселей.
 
+**Пример → результат**
+
 ```javascript
-var height = window.external.GetViewHeight();
+function Run() {
+    var ext = window.external;
+    var pixels = ext.GetViewHeight();
+    ext.MsgBox('Высота рабочей области: ' + pixels + ' px');
+}
 ```
 
+**Ожидаемый результат:** Число пикселей, например **`640 px`**; зависит от размеров окна и панелей.
 
 ## Редактирование DOM, Undo и исходный XML
 
@@ -503,14 +672,25 @@ var height = window.external.GetViewHeight();
 
 **Особенности:** `document` — DOM текущего представления; `action` — текст действия в истории отмены. Обязательно закрывайте группу в `finally`.
 
+**Пример → результат**
+
+**Условие:** Только Design/редактируемый DOM; пример **изменяет** открытый документ.
+
 ```javascript
-window.external.BeginUndoUnit(document, "Правка заголовков");
-try {
-    // Изменения DOM.
-} finally {
-    window.external.EndUndoUnit(document);
+function Run() {
+    var ext = window.external;
+    var root = document.getElementById('fbw_body');
+    if (!root) { ext.MsgBox('Переключитесь в режим редактирования'); return; }
+    var p = root.getElementsByTagName('P')[0];
+    if (!p) { ext.MsgBox('Абзацев нет'); return; }
+    ext.BeginUndoUnit(document, 'Пометить первый абзац');
+    try { ext.SetStyleEx(document, p, 'subtitle'); }
+    finally { ext.EndUndoUnit(document); }
+    ext.MsgBox('Пометка поставлена. При необходимости нажмите Ctrl+Z.');
 }
 ```
+
+**Ожидаемый результат:** Первый абзац получает класс `subtitle`; правка группируется в **одно Undo**. Не запускайте на рабочей книге без необходимости.
 
 <a id="endundounit"></a>
 
@@ -524,9 +704,25 @@ try {
 
 **Особенности:** Передавайте тот же объект `document`, что и в `BeginUndoUnit`.
 
+**Пример → результат**
+
+**Условие:** Меняет DOM; запускайте в тестовой книге.
+
 ```javascript
-window.external.EndUndoUnit(document);
+function Run() {
+    var ext = window.external;
+    var root = document.getElementById('fbw_body');
+    if (!root) return;
+    var p = root.getElementsByTagName('P')[0];
+    if (!p) return;
+    ext.BeginUndoUnit(document, 'Поставить пометку');
+    try { p.appendChild(document.createTextNode(' [демо]')); }
+    finally { ext.EndUndoUnit(document); }
+    ext.MsgBox('Группа закрыта, Ctrl+Z отменит пометку.');
+}
 ```
+
+**Ожидаемый результат:** В конце первого абзаца появляется текст **` [демо]`**; группа отмены закрывается даже при исключении, а изменение можно отменить.
 
 <a id="inflateblock"></a>
 
@@ -540,9 +736,25 @@ window.external.EndUndoUnit(document);
 
 **Особенности:** Используется для совместимости с классическим FBE. Синтаксис записи индексированного COM-свойства зависит от JScript/COM; для массового включения используйте `InflateParagraphs`.
 
+**Пример → результат**
+
+**Условие:** В редакторе должен быть хотя бы один абзац; для массовой работы предпочтителен `InflateParagraphs`.
+
 ```javascript
-var inflated = window.external.inflateBlock(paragraph);
+function Run() {
+    var ext = window.external;
+    var root = document.getElementById('fbw_body');
+    if (!root) return;
+    var p = root.getElementsByTagName('P')[0];
+    if (!p) return;
+    var before = ext.inflateBlock(p);
+    ext.inflateBlock(p) = true; // Только Microsoft JScript + COM, не Node.js!
+    var after = ext.inflateBlock(p);
+    ext.MsgBox('До: ' + before + '; после: ' + after);
+}
 ```
+
+**Ожидаемый результат:** После присваивания значение становится **`true`**. Запись `ext.inflateBlock(p) = true` — допустимый специальный синтаксис индексированного COM-свойства в Microsoft JScript; обычный JS-парсер его отвергнет.
 
 <a id="inflateparagraphs"></a>
 
@@ -554,9 +766,21 @@ var inflated = window.external.inflateBlock(paragraph);
 
 **Результат:** Результат не используется.
 
+**Пример → результат**
+
 ```javascript
-window.external.InflateParagraphs(section);
+function Run() {
+    var ext = window.external;
+    var root = document.getElementById('fbw_body');
+    if (!root) return;
+    var p = root.getElementsByTagName('P')[0];
+    if (!p) return;
+    ext.InflateParagraphs(root);
+    ext.MsgBox('Первый P развёрнут: ' + ext.inflateBlock(p));
+}
 ```
+
+**Ожидаемый результат:** При успешной операции выводится **«Первый P развёрнут: true»**. Вызов применяется ко всем `P` переданного контейнера.
 
 <a id="setstyleex"></a>
 
@@ -570,9 +794,25 @@ window.external.InflateParagraphs(section);
 
 **Особенности:** Первый аргумент сохранён для совместимости с историческим контрактом.
 
+**Пример → результат**
+
+**Условие:** Изменяет форматирование книги; сначала попробуйте в копии.
+
 ```javascript
-window.external.SetStyleEx(document, paragraph, "subtitle");
+function Run() {
+    var ext = window.external;
+    var root = document.getElementById('fbw_body');
+    if (!root) return;
+    var p = root.getElementsByTagName('P')[0];
+    if (!p) return;
+    ext.BeginUndoUnit(document, 'Сделать подзаголовком');
+    try { ext.SetStyleEx(document, p, 'subtitle'); }
+    finally { ext.EndUndoUnit(document); }
+    ext.MsgBox('Новый class: ' + p.className);
+}
 ```
+
+**Ожидаемый результат:** Первый абзац получает класс **`subtitle`**. Переоформление можно отменить штатным Undo.
 
 <a id="api-begindocumentupdate"></a>
 
@@ -584,14 +824,25 @@ window.external.SetStyleEx(document, paragraph, "subtitle");
 
 **Особенности:** `optionsJson`: `"{}"` или `"{\"suspendRedraw\":true}"`. Последний вариант временно приостанавливает перерисовку. Поддерживаются вложенные группы с закрытием в обратном порядке. **Это не транзакционный откат изменений**.
 
+**Пример → результат**
+
+**Условие:** Для старого FBE нужен API 1.1+. Изменяет DOM.
+
 ```javascript
-var token = window.external.BeginDocumentUpdate("Исправление текста", "{}");
-try {
-    // Изменения документа.
-} finally {
-    window.external.EndDocumentUpdate(token);
+function Run() {
+    var ext = window.external;
+    var root = document.getElementById('fbw_body');
+    if (!root) return;
+    var p = root.getElementsByTagName('P')[0];
+    if (!p) return;
+    var token = ext.BeginDocumentUpdate('Отметить абзац', '{"suspendRedraw":true}');
+    try { ext.SetStyleEx(document, p, 'subtitle'); }
+    finally { ext.EndDocumentUpdate(token); }
+    ext.MsgBox('Пакет завершён; история Undo сохранена');
 }
 ```
+
+**Ожидаемый результат:** Первый абзац получает класс `subtitle`, операция оформляется как **один Undo**, после завершения восстанавливается перерисовка.
 
 <a id="api-enddocumentupdate"></a>
 
@@ -603,9 +854,21 @@ try {
 
 **Особенности:** При неправильном порядке закрытия, чужом или устаревшем токене возникает ошибка. Перерисовка восстанавливается и при аварийном завершении контекста.
 
+**Пример → результат**
+
 ```javascript
-window.external.EndDocumentUpdate(token);
+function Run() {
+    var ext = window.external;
+    var token = ext.BeginDocumentUpdate('Пустой демонстрационный пакет', '{}');
+    try { ext.SetStatusBarText('Пакет открыт'); }
+    finally {
+        var closed = ext.EndDocumentUpdate(token);
+        ext.MsgBox('EndDocumentUpdate: ' + closed);
+    }
+}
 ```
+
+**Ожидаемый результат:** Появляется **«EndDocumentUpdate: true»**; группа закрыта. Поскольку DOM не менялся, полезной Undo-правки не создаётся.
 
 <a id="работа-с-исходным-xml-документа"></a>
 
@@ -619,9 +882,20 @@ window.external.EndDocumentUpdate(token);
 
 **Особенности:** В Source учитывает даже ещё не применённые изменения, не переключая режим редактора. Большие бинарные вложения увеличивают память и объём строки.
 
+**Пример → результат**
+
+**Условие:** Большие вложения существенно увеличивают возвращаемую строку.
+
 ```javascript
-var xml = window.external.GetSourceText();
+function Run() {
+    var ext = window.external;
+    var xml = ext.GetSourceText();
+    ext.MsgBox('Символов в XML: ' + xml.length +
+               '; есть description: ' + (xml.indexOf('<description') >= 0));
+}
 ```
+
+**Ожидаемый результат:** Выводится длина полного XML и признак наличия `description` (обычно **`true`**). Книга не изменяется.
 
 <a id="api-validatesourcetext"></a>
 
@@ -633,12 +907,17 @@ var xml = window.external.GetSourceText();
 
 **Особенности:** После отказа детали доступны через `GetLastSourceDiagnostic()`.
 
+**Пример → результат**
+
 ```javascript
-if (!window.external.ValidateSourceText(changedXml)) {
-    window.external.MsgBox(window.external.GetLastSourceDiagnostic());
-    return;
+function Run() {
+    var ext = window.external;
+    var valid = ext.ValidateSourceText('Это не XML');
+    ext.MsgBox('Проверка: ' + valid);
 }
 ```
+
+**Ожидаемый результат:** Гарантированный отрицательный пример: **«Проверка: false»**. Открытая книга при этом не меняется.
 
 <a id="api-getlastsourcediagnostic"></a>
 
@@ -650,9 +929,18 @@ if (!window.external.ValidateSourceText(changedXml)) {
 
 **Особенности:** Это отдельная диагностика Source API, не путайте с `GetLastScriptingError()`. Глобальный `JSON` доступен не во всех режимах MSHTML.
 
+**Пример → результат**
+
 ```javascript
-var detailsJson = window.external.GetLastSourceDiagnostic();
+function Run() {
+    var ext = window.external;
+    ext.ValidateSourceText('Это не XML');
+    var json = ext.GetLastSourceDiagnostic();
+    ext.MsgBox(json);
+}
 ```
+
+**Ожидаемый результат:** JSON с **`"valid":false`**, сообщением об ошибке и координатами `line`/`column`. Сообщение зависит от штатного парсера.
 
 <a id="api-applysourcetext"></a>
 
@@ -664,11 +952,28 @@ var detailsJson = window.external.GetLastSourceDiagnostic();
 
 **Особенности:** При невалидном XML документ остаётся неизменным. Не вызывайте внутри открытой группы `BeginDocumentUpdate`.
 
+**Пример → результат**
+
+**Условие:** Это учебная **точная строковая замена**; для реальных структурных изменений предпочтителен XML-aware подход, например [сценарий Г](#complex-title). Не используйте внутри `BeginDocumentUpdate`.
+
 ```javascript
-if (!window.external.ApplySourceText(changedXml, "Исправление XML")) {
-    window.external.MsgBox(window.external.GetLastSourceDiagnostic());
+function Run() {
+    var ext = window.external;
+    var xml = ext.GetSourceText();
+    var from = '<book-title>Черновик</book-title>';
+    var to = '<book-title>Готово</book-title>';
+    if (xml.indexOf(from) < 0) { ext.MsgBox('Нет точного совпадения'); return; }
+    var changed = xml.replace(from, to);
+    if (!ext.AskYesNo('Заменить название Черновик на Готово?')) return;
+    if (!ext.ValidateSourceText(changed)) {
+        ext.MsgBox(ext.GetLastSourceDiagnostic()); return;
+    }
+    var ok = ext.ApplySourceText(changed, 'Переименовать книгу');
+    ext.MsgBox('Применение XML: ' + ok);
 }
 ```
+
+**Ожидаемый результат:** Для книги с точно указанной разметкой меняет заголовок на **«Готово»** и добавляет **одно Undo**. Без совпадения или при отмене ничего не делает.
 
 <a id="api-validatecurrentdocument"></a>
 
@@ -680,10 +985,19 @@ if (!window.external.ApplySourceText(changedXml, "Исправление XML")) 
 
 **Особенности:** Параметр обязателен и пока должен быть строкой `"{}"` (можно пробелы). В Source проверяется несохранённый текст; в Design/Description — detached DOM/stream. Не меняет Undo/Redo, выделение, режим и dirty-state. Для структурной проверки FBD действует его собственный контракт.
 
+**Пример → результат**
+
+**Условие:** Не затрагивает dirty-state, выделение и Undo; в Source учитываются несохранённые изменения.
+
 ```javascript
-var resultJson = window.external.ValidateCurrentDocument("{}");
+function Run() {
+    var ext = window.external;
+    var json = ext.ValidateCurrentDocument('{}');
+    ext.MsgBox(json);
+}
 ```
 
+**Ожидаемый результат:** Для корректного FB2, например: `{"schemaVersion":1,"status":"ok","valid":true,"diagnosticsComplete":true,"errors":[],"warnings":[]}`. При ошибке — `valid:false` и сведения о первой ошибке.
 
 ## Выделение и закладки
 
@@ -697,9 +1011,18 @@ var resultJson = window.external.ValidateCurrentDocument("{}");
 
 **Особенности:** До 128 закладок на контекст. Закладка живёт только во время текущего скрипта; не сохраняйте её в настройках.
 
+**Пример → результат**
+
 ```javascript
-var mark = window.external.CreateSelectionBookmark();
+function Run() {
+    var ext = window.external;
+    var mark = ext.CreateSelectionBookmark();
+    ext.MsgBox('Закладка создана: ' + (mark.length > 0));
+    ext.ReleaseSelectionBookmark(mark);
+}
 ```
+
+**Ожидаемый результат:** Выводится **`true`**; токен не имеет полезного для пользователя текстового представления и живёт до конца запуска скрипта.
 
 <a id="api-restoreselectionbookmark"></a>
 
@@ -711,11 +1034,20 @@ var mark = window.external.CreateSelectionBookmark();
 
 **Особенности:** Не переключает режим. Смена документа, версии MSHTML, содержимого Source или значения соответствующих полей Description может инвалидировать закладку.
 
+**Пример → результат**
+
 ```javascript
-if (!window.external.RestoreSelectionBookmark(mark)) {
-    window.external.MsgBox("Выделение уже изменилось.");
+function Run() {
+    var ext = window.external;
+    var mark = ext.CreateSelectionBookmark();
+    try {
+        var restored = ext.RestoreSelectionBookmark(mark);
+        ext.MsgBox('Восстановлено: ' + restored);
+    } finally { ext.ReleaseSelectionBookmark(mark); }
 }
 ```
+
+**Ожидаемый результат:** Если между вызовами документ и режим не менялись, **«Восстановлено: true»**; при инвалидированной закладке `false`.
 
 <a id="api-releaseselectionbookmark"></a>
 
@@ -727,9 +1059,19 @@ if (!window.external.RestoreSelectionBookmark(mark)) {
 
 **Особенности:** Оставшиеся закладки освобождаются автоматически в конце контекста скрипта.
 
+**Пример → результат**
+
 ```javascript
-window.external.ReleaseSelectionBookmark(mark);
+function Run() {
+    var ext = window.external;
+    var mark = ext.CreateSelectionBookmark();
+    var first = ext.ReleaseSelectionBookmark(mark);
+    var second = ext.ReleaseSelectionBookmark(mark);
+    ext.MsgBox('Первый вызов: ' + first + '; повторный: ' + second);
+}
 ```
+
+**Ожидаемый результат:** **«Первый вызов: true; повторный: false»**. Это позволяет проверить освобождение временного ресурса.
 
 <a id="api-getselectiontext"></a>
 
@@ -741,9 +1083,17 @@ window.external.ReleaseSelectionBookmark(mark);
 
 **Особенности:** Работает с выделением Body, Source и полей Description. В Source читает только выделенный диапазон Scintilla, не полный XML.
 
+**Пример → результат**
+
 ```javascript
-var text = window.external.GetSelectionText();
+function Run() {
+    var ext = window.external;
+    var selected = ext.GetSelectionText();
+    ext.MsgBox(selected ? 'Выделено: ' + selected : 'Текст не выделен');
+}
 ```
+
+**Ожидаемый результат:** При выделении слова «Москва» выводится **«Выделено: Москва»**; без текстового выделения — соответствующее сообщение.
 
 <a id="api-getselectionhtml"></a>
 
@@ -755,9 +1105,17 @@ var text = window.external.GetSelectionText();
 
 **Особенности:** Для Source результат содержит HTML-экранированный выбранный исходный текст. Поддерживается также control-выделение.
 
+**Пример → результат**
+
 ```javascript
-var html = window.external.GetSelectionHtml();
+function Run() {
+    var ext = window.external;
+    var html = ext.GetSelectionHtml();
+    ext.MsgBox(html || '(нет HTML-выделения)');
+}
 ```
+
+**Ожидаемый результат:** Для выделенного форматированного фрагмента выводится его HTML, например с тегами `<EM>`/`<STRONG>`; в Source — HTML-экранированный текст XML.
 
 <a id="api-getselectioninfo"></a>
 
@@ -769,10 +1127,17 @@ var html = window.external.GetSelectionHtml();
 
 **Особенности:** `view`: `design`, `description`, `source`; `type`: `text`, `control`, `none`; длина измеряется в единицах UTF-16, включая пары для supplementary-символов.
 
+**Пример → результат**
+
 ```javascript
-var infoJson = window.external.GetSelectionInfo();
+function Run() {
+    var ext = window.external;
+    var json = ext.GetSelectionInfo();
+    ext.MsgBox(json);
+}
 ```
 
+**Ожидаемый результат:** Для шести выделенных букв в Design — JSON наподобие `{"schemaVersion":1,"view":"design","type":"text","textLength":6,"controlCount":0}`. Книга не изменяется.
 
 ## Диалоги и пользовательский ввод
 
@@ -786,9 +1151,16 @@ var infoJson = window.external.GetSelectionInfo();
 
 **Результат:** Результат не используется.
 
+**Пример → результат**
+
 ```javascript
-window.external.MsgBox("Обработка завершена.");
+function Run() {
+    var ext = window.external;
+    ext.MsgBox('Проверка выполнена: найдено 3 совпадения.');
+}
 ```
+
+**Ожидаемый результат:** Появится модальное информационное окно с приведённым текстом и кнопкой **ОК**.
 
 <a id="askyesno"></a>
 
@@ -800,9 +1172,17 @@ window.external.MsgBox("Обработка завершена.");
 
 **Результат:** `true` только при выборе «Да».
 
+**Пример → результат**
+
 ```javascript
-if (!window.external.AskYesNo("Продолжить?")) return;
+function Run() {
+    var ext = window.external;
+    var accepted = ext.AskYesNo('Создать отчёт?');
+    ext.MsgBox(accepted ? 'Пользователь согласился' : 'Пользователь отказался');
+}
 ```
+
+**Ожидаемый результат:** Нажатие **«Да»** возвращает `true`, **«Нет»** — `false`; второй диалог это покажет.
 
 <a id="inputbox"></a>
 
@@ -816,10 +1196,18 @@ if (!window.external.AskYesNo("Продолжить?")) return;
 
 **Особенности:** Чтобы отличить отмену от подтверждения пустой строки, сразу вызывайте `GetModalResult()`.
 
+**Пример → результат**
+
 ```javascript
-var name = window.external.InputBox("Имя", "Название", "");
-if (window.external.GetModalResult() !== 6) return;
+function Run() {
+    var ext = window.external;
+    var text = ext.InputBox('Введите автора', 'Метаданные', 'А. Пушкин');
+    var ok = (ext.GetModalResult() == 6);
+    ext.MsgBox(ok ? 'Введено: ' + text : 'Ввод отменён');
+}
 ```
+
+**Ожидаемый результат:** Если нажать подтверждение, не меняя поле: **«Введено: А. Пушкин»**. При отмене — **«Ввод отменён»**.
 
 <a id="getmodalresult"></a>
 
@@ -833,9 +1221,18 @@ if (window.external.GetModalResult() !== 6) return;
 
 **Особенности:** Это состояние старого InputBox; новый `InputBoxEx` на него не влияет.
 
+**Пример → результат**
+
 ```javascript
-var accepted = window.external.GetModalResult() === 6;
+function Run() {
+    var ext = window.external;
+    var answer = ext.InputBox('Введите число', 'Проверка', '10');
+    var code = ext.GetModalResult();
+    ext.MsgBox('Код диалога: ' + code);
+}
 ```
+
+**Ожидаемый результат:** Для подтверждения — **`6`** (`IDYES`), для отмены обычно **`2`** (`IDCANCEL`).
 
 <a id="api-selectopenfile"></a>
 
@@ -847,10 +1244,20 @@ var accepted = window.external.GetModalResult() === 6;
 
 **Особенности:** Опции: `title`, `initialDirectory`, `initialFileName`, `defaultExtension`, `multiSelect`, `filters`. Выбор не открывает книгу в редакторе.
 
+**Пример → результат**
+
+**Условие:** Метод только выбирает путь, **не открывает книгу** в FBE.
+
 ```javascript
-var selected = window.external.SelectOpenFile(
-    '{"title":"Выберите книгу","filters":[{"name":"FB2","pattern":"*.fb2"}]}');
+function Run() {
+    var ext = window.external;
+    var json = ext.SelectOpenFile(
+        '{"title":"Открыть FB2","filters":[{"name":"Книги FB2","pattern":"*.fb2"}]}');
+    ext.MsgBox(json);
+}
 ```
+
+**Ожидаемый результат:** После выбора книги — JSON наподобие `{"status":"ok","path":"D:\\Books\\Book.fb2"}`; при закрытии окна — `{"status":"cancelled"}`.
 
 <a id="api-selectsavefile"></a>
 
@@ -862,10 +1269,18 @@ var selected = window.external.SelectOpenFile(
 
 **Особенности:** Сам файл **не записывает**. При существующем файле пользователь должен подтвердить замену. `multiSelect:true` не поддерживается.
 
+**Пример → результат**
+
 ```javascript
-var targetJson = window.external.SelectSaveFile(
-    '{"title":"Сохранить отчёт","defaultExtension":"txt"}');
+function Run() {
+    var ext = window.external;
+    var json = ext.SelectSaveFile(
+        '{"title":"Куда сохранить отчёт","defaultExtension":"txt"}');
+    ext.MsgBox(json);
+}
 ```
+
+**Ожидаемый результат:** После выбора пути — `status:"ok"` и `path`; при отмене — `status:"cancelled"`. **Никакого файла пока не создано.**
 
 <a id="api-selectfolder"></a>
 
@@ -877,10 +1292,17 @@ var targetJson = window.external.SelectSaveFile(
 
 **Особенности:** Поддерживает `multiSelect`. Поле `filters` для каталогов недопустимо.
 
+**Пример → результат**
+
 ```javascript
-var folderJson = window.external.SelectFolder(
-    '{"title":"Выберите папку"}');
+function Run() {
+    var ext = window.external;
+    var json = ext.SelectFolder('{"title":"Каталог для отчётов"}');
+    ext.MsgBox(json);
+}
 ```
+
+**Ожидаемый результат:** При выборе папки — JSON с `status:"ok"` и полем `path`, при отмене — `{"status":"cancelled"}`.
 
 <a id="api-inputboxex"></a>
 
@@ -892,11 +1314,18 @@ var folderJson = window.external.SelectFolder(
 
 **Особенности:** Строковые поля `title`, `prompt`, `value` необязательны. При ошибке возвращается `status:"error"`, `code`, `hresult`, `message`. Старый `GetModalResult()` не изменяется.
 
+**Пример → результат**
+
 ```javascript
-var answerJson = window.external.InputBoxEx(
-    '{"title":"Имя","prompt":"Введите значение","value":""}');
+function Run() {
+    var ext = window.external;
+    var json = ext.InputBoxEx(
+        '{"title":"Подпись","prompt":"Введите имя","value":"Михаил"}');
+    ext.MsgBox(json);
+}
 ```
 
+**Ожидаемый результат:** При ОК без изменений — `{"accepted":true,"value":"Михаил"}`; при отмене — `{"accepted":false,"value":""}`. Состояние старого `GetModalResult()` не меняется.
 
 ## Описание книги и жанры
 
@@ -912,9 +1341,21 @@ var answerJson = window.external.InputBoxEx(
 
 **Особенности:** Координаты `x`/`y` — экранные пиксели, например из `event.screenX/screenY`; первый аргумент оставлен для совместимости.
 
+**Пример → результат**
+
+**Условие:** В реальном обработчике нажатия мыши используйте `event.screenX`/`event.screenY`; центр экрана здесь только для демонстрации.
+
 ```javascript
-var genre = window.external.GenrePopup(paragraph, event.screenX, event.screenY);
+function Run() {
+    var ext = window.external;
+    var x = Math.floor(window.screen.width / 2);
+    var y = Math.floor(window.screen.height / 2);
+    var genre = ext.GenrePopup(document.body, x, y);
+    ext.MsgBox(genre == null ? 'Жанр не выбран' : 'Код жанра: ' + genre);
+}
 ```
+
+**Ожидаемый результат:** Появляется меню жанров. После выбора, например «Фэнтези», возвращается код жанра (часто `sf_fantasy`); при отмене — `null`.
 
 <a id="getextendedstyle"></a>
 
@@ -926,9 +1367,17 @@ var genre = window.external.GenrePopup(paragraph, event.screenX, event.screenY);
 
 **Результат:** `true` или `false`.
 
+**Пример → результат**
+
 ```javascript
-var shown = window.external.GetExtendedStyle("annotation");
+function Run() {
+    var ext = window.external;
+    var shown = ext.GetExtendedStyle('annotation');
+    ext.MsgBox('Расширенный показ annotation: ' + shown);
+}
 ```
+
+**Ожидаемый результат:** `true` или `false` в зависимости от сохранённой настройки показа аннотации.
 
 <a id="descshowelement"></a>
 
@@ -940,9 +1389,20 @@ var shown = window.external.GetExtendedStyle("annotation");
 
 **Результат:** Результат не используется.
 
+**Пример → результат**
+
 ```javascript
-window.external.DescShowElement("annotation", true);
+function Run() {
+    var ext = window.external;
+    var before = ext.GetExtendedStyle('annotation');
+    try {
+        ext.DescShowElement('annotation', !before);
+        ext.MsgBox('Новая настройка: ' + ext.GetExtendedStyle('annotation'));
+    } finally { ext.DescShowElement('annotation', before); }
+}
 ```
+
+**Ожидаемый результат:** В окне отображается **значение, противоположное исходному**. Затем настройка возвращается к исходному состоянию.
 
 <a id="descshowmenu"></a>
 
@@ -956,10 +1416,21 @@ window.external.DescShowElement("annotation", true);
 
 **Особенности:** Для координат также используется `event.screenX/screenY`.
 
+**Пример → результат**
+
+**Условие:** В обработчике мыши берите экранные координаты из события; здесь выбран центр первичного экрана.
+
 ```javascript
-var elementId = window.external.DescShowMenu(button, event.screenX, event.screenY);
+function Run() {
+    var ext = window.external;
+    var x = Math.floor(window.screen.width / 2);
+    var y = Math.floor(window.screen.height / 2);
+    var chosen = ext.DescShowMenu(document.body, x, y);
+    ext.MsgBox(chosen ? 'Выбран элемент: ' + chosen : 'Элемент не выбран');
+}
 ```
 
+**Ожидаемый результат:** Открывается меню элементов Description. При выборе возвращается идентификатор элемента; при закрытии без выбора — пустое значение.
 
 ## Строка состояния, прогресс и отмена
 
@@ -973,9 +1444,16 @@ var elementId = window.external.DescShowMenu(button, event.screenX, event.screen
 
 **Результат:** Результат не используется.
 
+**Пример → результат**
+
 ```javascript
-window.external.SetStatusBarText("Обработано: " + count);
+function Run() {
+    var ext = window.external;
+    ext.SetStatusBarText('Скрипт: обработано 10 из 20 абзацев');
+}
 ```
+
+**Ожидаемый результат:** Надпись **«Скрипт: обработано 10 из 20 абзацев»** появляется в строке состояния FBE; текст может позднее смениться штатным сообщением.
 
 <a id="api-beginprogress"></a>
 
@@ -987,9 +1465,18 @@ window.external.SetStatusBarText("Обработано: " + count);
 
 **Особенности:** `maximum` — целое от 1 до 4294967295. На UI-потоке может быть одно активное окно; вызовы требуют активного контекста.
 
+**Пример → результат**
+
 ```javascript
-var progress = window.external.BeginProgress("Обработка", 100);
+function Run() {
+    var ext = window.external;
+    var token = ext.BeginProgress('Проверка примера', 3);
+    try { ext.SetProgress(token, 1, 'Первый шаг'); }
+    finally { ext.EndProgress(token); }
+}
 ```
+
+**Ожидаемый результат:** Открывается стандартное окно прогресса с максимумом **3**, после завершения окна оно закрывается. `token` — внутренний идентификатор, а не числовой процент.
 
 <a id="api-setprogress"></a>
 
@@ -1001,9 +1488,20 @@ var progress = window.external.BeginProgress("Обработка", 100);
 
 **Особенности:** `value` — целое в диапазоне от 0 до `maximum`; метод не приводит к произвольному выполнению очереди UI.
 
+**Пример → результат**
+
 ```javascript
-window.external.SetProgress(progress, 25, "25 из 100");
+function Run() {
+    var ext = window.external;
+    var token = ext.BeginProgress('Обработка страниц', 4);
+    try {
+        var ok = ext.SetProgress(token, 2, 'Страница 2 из 4');
+        ext.MsgBox('Обновление прогресса: ' + ok);
+    } finally { ext.EndProgress(token); }
+}
 ```
+
+**Ожидаемый результат:** Прогресс показывает **2 из 4**, подпись «Страница 2 из 4», вызов возвращает **`true`**.
 
 <a id="api-isprogresscancelled"></a>
 
@@ -1015,9 +1513,22 @@ window.external.SetProgress(progress, 25, "25 из 100");
 
 **Особенности:** Отмена **кооперативная**: именно скрипт должен прекратить работу; уже сделанные изменения автоматически не откатываются.
 
+**Пример → результат**
+
+**Условие:** Это не обработчик событий и не универсальная «отзывчивая пауза»: вызывайте проверку в естественных точках длительного алгоритма.
+
 ```javascript
-if (window.external.IsProgressCancelled(progress)) break;
+function Run() {
+    var ext = window.external;
+    var token = ext.BeginProgress('Отмена', 100);
+    try {
+        var cancelled = ext.IsProgressCancelled(token);
+        ext.SetStatusBarText(cancelled ? 'Запрошена отмена' : 'Отмена не запрошена');
+    } finally { ext.EndProgress(token); }
+}
 ```
+
+**Ожидаемый результат:** Сразу после открытия обычно **`false`**. Если пользователь успевает нажать «Отмена» и событие доставлено диалогу, последующая проверка выдаст `true`.
 
 <a id="api-endprogress"></a>
 
@@ -1029,10 +1540,18 @@ if (window.external.IsProgressCancelled(progress)) break;
 
 **Особенности:** Вызывайте в `finally`; при завершении контекста окно также закрывается автоматически.
 
+**Пример → результат**
+
 ```javascript
-window.external.EndProgress(progress);
+function Run() {
+    var ext = window.external;
+    var token = ext.BeginProgress('Завершение', 1);
+    try { ext.SetProgress(token, 1, 'Готово'); }
+    finally { ext.MsgBox('EndProgress: ' + ext.EndProgress(token)); }
+}
 ```
 
+**Ожидаемый результат:** **`EndProgress: true`**; окно прогресса закрыто, ресурсы освобождены.
 
 ## Двоичные вложения, текстовые файлы и пути
 
@@ -1048,9 +1567,23 @@ window.external.EndProgress(progress);
 
 **Особенности:** Передавайте `binary.base64data` — **двоичную строку**, а не текст кодировки base64.
 
+**Пример → результат**
+
+**Условие:** Откройте FB2 с хотя бы одним binary-вложением.
+
 ```javascript
-var bytes = window.external.GetBinarySize(binary.base64data);
+function Run() {
+    var ext = window.external;
+    var binbox = document.all.binobj;
+    if (!binbox) { ext.MsgBox('Контейнер binary отсутствует'); return; }
+    var nodes = binbox.getElementsByTagName('DIV');
+    if (!nodes.length) { ext.MsgBox('У книги нет вложений'); return; }
+    var data = nodes[0].base64data;
+    ext.MsgBox('Размер первого вложения: ' + ext.GetBinarySize(data) + ' Б');
+}
 ```
+
+**Ожидаемый результат:** Если первое вложение занимает **15342 байта**, появится «Размер первого вложения: 15342 Б». Считываются именно декодированные бинарные данные, не текст base64.
 
 <a id="savebinary"></a>
 
@@ -1064,9 +1597,24 @@ var bytes = window.external.GetBinarySize(binary.base64data);
 
 **Особенности:** При `prompt:true` открывается Save As и подтверждение замены. При `prompt:false` файл по `path` создаётся **только если его ещё нет**; существующий не заменяется.
 
+**Пример → результат**
+
+**Условие:** Выберите действительно нужное вложение; расширение и формат файла должны соответствовать его MIME-типу. При `prompt:true` возможно подтверждение перезаписи.
+
 ```javascript
-var ok = window.external.SaveBinary("cover.jpg", binary.base64data, false);
+function Run() {
+    var ext = window.external;
+    var binbox = document.all.binobj;
+    if (!binbox) return;
+    var nodes = binbox.getElementsByTagName('DIV');
+    if (!nodes.length) { ext.MsgBox('Вложений нет'); return; }
+    var suggestedName = String(nodes[0].all.id.value);
+    var ok = ext.SaveBinary(suggestedName, nodes[0].base64data, true);
+    ext.MsgBox(ok ? 'Сохранено выбранное вложение' : 'Отменено или ошибка записи');
+}
 ```
+
+**Ожидаемый результат:** Откроется диалог Save As; после подтверждённой записи — **`true`**, при отмене — **`false`**.
 
 <a id="getimagedimsbypath"></a>
 
@@ -1078,9 +1626,20 @@ var ok = window.external.SaveBinary("cover.jpg", binary.base64data, false);
 
 **Результат:** Строка вида `"640x480"`, либо `""` при ошибке.
 
+**Пример → результат**
+
+**Условие:** Замените путь на реальный путь к PNG/JPEG или другому поддерживаемому изображению.
+
 ```javascript
-var dims = window.external.GetImageDimsByPath("C:\\Pictures\\cover.jpg");
+function Run() {
+    var ext = window.external;
+    var path = 'C:\\Pictures\\cover.jpg';
+    var dims = ext.GetImageDimsByPath(path);
+    ext.MsgBox(dims ? 'Размер: ' + dims : 'Нет файла / неподдерживаемый формат');
+}
 ```
+
+**Ожидаемый результат:** Для существующего изображения **600×900** — **`600x900`**. При отсутствии указанного файла — пустая строка и сообщение о невозможности определить размер.
 
 <a id="getimagedimsbydata"></a>
 
@@ -1094,9 +1653,27 @@ var dims = window.external.GetImageDimsByPath("C:\\Pictures\\cover.jpg");
 
 **Особенности:** Передавайте `base64data`, а не произвольный JS-текст.
 
+**Пример → результат**
+
+**Условие:** Откройте книгу, содержащую изображение в разделе `binary`.
+
 ```javascript
-var dims = window.external.GetImageDimsByData(binary.base64data);
+function Run() {
+    var ext = window.external;
+    var binbox = document.all.binobj;
+    if (!binbox) return;
+    var nodes = binbox.getElementsByTagName('DIV');
+    for (var i = 0; i < nodes.length; i++) {
+        var type = nodes[i].all.type.value;
+        if (type.indexOf('image/') !== 0) continue;
+        ext.MsgBox('Первое изображение: ' + ext.GetImageDimsByData(nodes[i].base64data));
+        return;
+    }
+    ext.MsgBox('Изображений среди вложений нет');
+}
 ```
+
+**Ожидаемый результат:** Например, **«Первое изображение: 600x900»**; если вложения не являются изображениями — отдельное сообщение.
 
 <a id="api-readtextfile"></a>
 
@@ -1108,9 +1685,24 @@ var dims = window.external.GetImageDimsByData(binary.base64data);
 
 **Особенности:** Без кодировки распознаются BOM UTF-8/UTF-16LE, иначе читается UTF-8. При неверной кодировке, пути или доступе возникает COM-ошибка.
 
+**Пример → результат**
+
+**Условие:** Не запускайте чтение больших файлов без учёта ограничения 8 МиБ.
+
 ```javascript
-var data = window.external.ReadTextFile(path, "utf-8");
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetCurrentScriptDirectory();
+    var path = ext.CombinePath(dir, 'example.txt');
+    if (!ext.FileExists(path)) {
+        ext.MsgBox('Положите example.txt рядом со скриптом'); return;
+    }
+    try { ext.MsgBox(ext.ReadTextFile(path, 'utf-8')); }
+    catch (e) { ext.MsgBox('Не удалось прочитать UTF-8 файл'); }
+}
 ```
+
+**Ожидаемый результат:** Если рядом со скриптом находится `example.txt` с текстом **«Привет, FBE!»** в UTF-8, появляется окно с этой строкой.
 
 <a id="api-writetextfile"></a>
 
@@ -1122,9 +1714,21 @@ var data = window.external.ReadTextFile(path, "utf-8");
 
 **Особенности:** По умолчанию UTF-8 без BOM. Метод **может перезаписать файл**; безопаснее `WriteTextFileEx` с `overwrite:false`.
 
+**Пример → результат**
+
+**Условие:** Метод умеет **заменять существующий файл**. В примере имя уникально, чтобы не затронуть чужие файлы; учебный файл остаётся в `%TEMP%`.
+
 ```javascript
-window.external.WriteTextFile(path, "Отчёт", "utf-8");
+function Run() {
+    var ext = window.external;
+    var filename = 'fbe-example-' + ext.GetUUID() + '.txt';
+    var path = ext.CombinePath(ext.GetTempDirectory(), filename);
+    var ok = ext.WriteTextFile(path, 'Строка 1\r\nСтрока 2', 'utf-8');
+    ext.MsgBox(ok ? 'Создан файл: ' + path : 'Запись не выполнена');
+}
 ```
+
+**Ожидаемый результат:** Во временном каталоге появляется уникальный UTF-8-файл из двух строк; вызов возвращает **`true`**.
 
 <a id="api-writetextfileex"></a>
 
@@ -1136,13 +1740,23 @@ window.external.WriteTextFile(path, "Отчёт", "utf-8");
 
 **Особенности:** `overwrite:false` использует безопасное создание без замены. `true` — атомарная замена. Относительные пути считаются относительно рабочего каталога FBE.
 
+**Пример → результат**
+
+**Условие:** Файл остаётся во временном каталоге; `overwrite:false` — безопасный вариант для новых скриптов.
+
 ```javascript
-try {
-    window.external.WriteTextFileEx(path, "Отчёт", false, "utf-8");
-} catch (e) {
-    window.external.MsgBox("Записать файл не удалось.");
+function Run() {
+    var ext = window.external;
+    var path = ext.CombinePath(ext.GetTempDirectory(),
+                               'fbe-api-' + ext.GetUUID() + '.txt');
+    try {
+        var ok = ext.WriteTextFileEx(path, 'Новый отчёт', false, 'utf-8');
+        ext.MsgBox(ok ? 'Создано без перезаписи: ' + path : 'Ошибка');
+    } catch (e) { ext.MsgBox('Не удалось создать файл'); }
 }
 ```
+
+**Ожидаемый результат:** Создаётся новый файл с текстом **«Новый отчёт»**, возвращается **`true`**. При повторном создании **того же** пути с `overwrite:false` возникнет COM-ошибка, старый файл останется целым.
 
 <a id="api-fileexists"></a>
 
@@ -1152,9 +1766,17 @@ try {
 
 **Результат:** `true` или `false`; отсутствие доступа также может дать `false`.
 
+**Пример → результат**
+
 ```javascript
-var exists = window.external.FileExists(path);
+function Run() {
+    var ext = window.external;
+    var path = ext.CombinePath(ext.GetCurrentScriptDirectory(), 'example.txt');
+    ext.MsgBox('example.txt существует: ' + ext.FileExists(path));
+}
 ```
+
+**Ожидаемый результат:** **`true`** при наличии обычного доступного файла `example.txt` рядом со скриптом и **`false`** при его отсутствии.
 
 <a id="api-directoryexists"></a>
 
@@ -1164,9 +1786,17 @@ var exists = window.external.FileExists(path);
 
 **Результат:** `true` или `false`.
 
+**Пример → результат**
+
 ```javascript
-var exists = window.external.DirectoryExists(path);
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetCurrentScriptDirectory();
+    ext.MsgBox('Каталог скрипта существует: ' + ext.DirectoryExists(dir));
+}
 ```
+
+**Ожидаемый результат:** При штатном запуске скрипта из существующего каталога — **`true`**.
 
 <a id="api-createdirectory"></a>
 
@@ -1178,9 +1808,20 @@ var exists = window.external.DirectoryExists(path);
 
 **Особенности:** Ограничения пути зависят от используемого Shell/Windows API, включая MAX_PATH в этой операции.
 
+**Пример → результат**
+
+**Условие:** Созданный учебный каталог не удаляется автоматически; удалите его после проверки.
+
 ```javascript
-window.external.CreateDirectory(targetDir);
+function Run() {
+    var ext = window.external;
+    var path = ext.CombinePath(ext.GetTempDirectory(), 'FBE-API-Demo-' + ext.GetUUID());
+    var created = ext.CreateDirectory(path);
+    ext.MsgBox('Каталог создан: ' + created + '\n' + path);
+}
 ```
+
+**Ожидаемый результат:** Создаётся новая папка в `%TEMP%`; выводится **`true`** и её путь.
 
 <a id="api-combinepath"></a>
 
@@ -1192,10 +1833,17 @@ window.external.CreateDirectory(targetDir);
 
 **Особенности:** Если второй аргумент уже абсолютный, он заменяет первый.
 
+**Пример → результат**
+
 ```javascript
-var path = window.external.CombinePath(
-    window.external.GetCurrentScriptDirectory(), "report.txt");
+function Run() {
+    var ext = window.external;
+    var p = ext.CombinePath('C:\\Books', 'reports\\list.txt');
+    ext.MsgBox(p);
+}
 ```
+
+**Ожидаемый результат:** Результат: **`C:\Books\reports\list.txt`** (пути нормализуются; сам файл не создаётся).
 
 <a id="api-getfilename"></a>
 
@@ -1205,9 +1853,17 @@ var path = window.external.CombinePath(
 
 **Результат:** Строка имени файла.
 
+**Пример → результат**
+
 ```javascript
-var name = window.external.GetFileName(path);
+function Run() {
+    var ext = window.external;
+    var name = ext.GetFileName('C:\\Books\\Novel.fb2');
+    ext.MsgBox(name);
+}
 ```
+
+**Ожидаемый результат:** Строка **`Novel.fb2`**; существование файла на диске не проверяется.
 
 <a id="api-getdirectoryname"></a>
 
@@ -1217,9 +1873,17 @@ var name = window.external.GetFileName(path);
 
 **Результат:** Строка без завершающего разделителя, кроме корня, или `""` для имени без каталога.
 
+**Пример → результат**
+
 ```javascript
-var dir = window.external.GetDirectoryName(path);
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetDirectoryName('C:\\Books\\Novel.fb2');
+    ext.MsgBox(dir);
+}
 ```
+
+**Ожидаемый результат:** Строка **`C:\Books`**; файл может не существовать.
 
 <a id="api-getextension"></a>
 
@@ -1229,9 +1893,17 @@ var dir = window.external.GetDirectoryName(path);
 
 **Результат:** Строка с точкой (`".fb2"`) либо `""`.
 
+**Пример → результат**
+
 ```javascript
-var extension = window.external.GetExtension(path);
+function Run() {
+    var ext = window.external;
+    var extName = ext.GetExtension('C:\\Books\\Novel.fb2');
+    ext.MsgBox(extName);
+}
 ```
+
+**Ожидаемый результат:** Строка **`.fb2`** (с точкой). Для имени без расширения вернётся `""`.
 
 <a id="api-gettempdirectory"></a>
 
@@ -1241,9 +1913,17 @@ var extension = window.external.GetExtension(path);
 
 **Результат:** Строка каталога с завершающим разделителем.
 
+**Пример → результат**
+
 ```javascript
-var dir = window.external.GetTempDirectory();
+function Run() {
+    var ext = window.external;
+    var dir = ext.GetTempDirectory();
+    ext.MsgBox('Временный каталог: ' + dir);
+}
 ```
+
+**Ожидаемый результат:** Реальный путь вроде **`C:\Users\User\AppData\Local\Temp\`** с завершающим разделителем.
 
 <a id="api-gettempfilename"></a>
 
@@ -1255,10 +1935,19 @@ var dir = window.external.GetTempDirectory();
 
 **Особенности:** По умолчанию `prefix="fbe-"`, `extension=".tmp"`; файл требуется удалить самому скрипту. Префикс и расширение не должны содержать недопустимые символы пути, каждое ограничено 64 UTF-16 единицами.
 
+**Пример → результат**
+
+**Условие:** Метод **создаёт файл**, а не только придумывает его имя. Удаление временного файла остаётся задачей вызывающего скрипта.
+
 ```javascript
-var tmp = window.external.GetTempFileName("fbe-", ".txt");
+function Run() {
+    var ext = window.external;
+    var path = ext.GetTempFileName('fbe-api-', '.txt');
+    ext.MsgBox('Уже создан пустой временный файл: ' + path);
+}
 ```
 
+**Ожидаемый результат:** Возвращается путь уникального **уже существующего пустого** файла `fbe-api-<GUID>.txt` в `%TEMP%`.
 
 ## Настройки пользовательского скрипта
 
@@ -1272,9 +1961,17 @@ var tmp = window.external.GetTempFileName("fbe-", ".txt");
 
 **Особенности:** Поддерживаются строка, boolean и конечное число. Значение не должно быть объектом/массивом или `null`. При повреждённом/недоступном файле может возвращаться defaultValue.
 
+**Пример → результат**
+
 ```javascript
-var enabled = window.external.GetScriptSetting("enabled", true);
+function Run() {
+    var ext = window.external;
+    var limit = ext.GetScriptSetting('docs.demo.limit', 25);
+    ext.MsgBox('Лимит: ' + limit);
+}
 ```
+
+**Ожидаемый результат:** Если ключ не записывался, возвращается значение по умолчанию **`25`**; иначе сохранённое числовое значение.
 
 <a id="api-setscriptsetting"></a>
 
@@ -1286,9 +1983,19 @@ var enabled = window.external.GetScriptSetting("enabled", true);
 
 **Особенности:** Имя — непустая строка до 256 UTF-16 единиц; значения: строка до 32768 единиц, конечное число или boolean. Нужен контекст скрипта.
 
+**Пример → результат**
+
+**Условие:** Настройка сохраняется между запусками скрипта, пока её не удалить.
+
 ```javascript
-var ok = window.external.SetScriptSetting("enabled", true);
+function Run() {
+    var ext = window.external;
+    var ok = ext.SetScriptSetting('docs.demo.enabled', true);
+    ext.MsgBox('Настройка сохранена: ' + ok);
+}
 ```
+
+**Ожидаемый результат:** При успешной записи — **`true`**. При последующем запуске того же скрипта `GetScriptSetting` увидит `true`.
 
 <a id="api-removescriptsetting"></a>
 
@@ -1298,9 +2005,19 @@ var ok = window.external.SetScriptSetting("enabled", true);
 
 **Результат:** Boolean успеха; отсутствие ключа не считается ошибкой.
 
+**Пример → результат**
+
 ```javascript
-window.external.RemoveScriptSetting("enabled");
+function Run() {
+    var ext = window.external;
+    ext.SetScriptSetting('docs.demo.enabled', true);
+    var removed = ext.RemoveScriptSetting('docs.demo.enabled');
+    var value = ext.GetScriptSetting('docs.demo.enabled', false);
+    ext.MsgBox('Удалено: ' + removed + '; значение по умолчанию: ' + value);
+}
 ```
+
+**Ожидаемый результат:** При успешных операциях — **«Удалено: true; значение по умолчанию: false»**.
 
 <a id="api-clearscriptsettings"></a>
 
@@ -1312,10 +2029,20 @@ window.external.RemoveScriptSetting("enabled");
 
 **Особенности:** Не затрагивает настройки других скриптов и переменные исходных JS-файлов.
 
+**Пример → результат**
+
+**Условие:** Это потенциально разрушительная операция для пользовательских настроек данного `.js`. Перед запуском убедитесь, что это тестовый скрипт.
+
 ```javascript
-window.external.ClearScriptSettings();
+function Run() {
+    var ext = window.external;
+    if (!ext.AskYesNo('Удалить ВСЕ сохранённые настройки этого скрипта?')) return;
+    var ok = ext.ClearScriptSettings();
+    ext.MsgBox('Настройки скрипта очищены: ' + ok);
+}
 ```
 
+**Ожидаемый результат:** Только после подтверждения удаляются **все** ключи текущего скрипта. При успехе выводится **`true`**.
 
 ## Диагностика, журнал и локализация
 
@@ -1327,9 +2054,17 @@ window.external.ClearScriptSettings();
 
 **Результат:** `true` или `false`.
 
+**Пример → результат**
+
 ```javascript
-var enabled = window.external.IsDiagnosticTraceEnabled();
+function Run() {
+    var ext = window.external;
+    var enabled = ext.IsDiagnosticTraceEnabled();
+    ext.MsgBox(enabled ? 'Трассировка включена' : 'Трассировка выключена');
+}
 ```
+
+**Ожидаемый результат:** Одна из двух строк в зависимости от состояния штатной диагностики FBE.
 
 <a id="api-tracescript"></a>
 
@@ -1341,9 +2076,17 @@ var enabled = window.external.IsDiagnosticTraceEnabled();
 
 **Особенности:** Код до 32 символов; сообщение проходит политику приватности и ограничено 512 символами. Не предназначено для хранения исходного текста книги.
 
+**Пример → результат**
+
 ```javascript
-window.external.TraceScript("MY-SCRIPT", "Этап завершён");
+function Run() {
+    var ext = window.external;
+    ext.TraceScript('API-DEMO', 'Шаг проверки завершён');
+    ext.MsgBox('Событие передано подсистеме трассировки');
+}
 ```
+
+**Ожидаемый результат:** При включённой трассировке создаётся диагностическое событие с кодом `API-DEMO`; это **не** запись произвольного текста книги.
 
 <a id="api-getlocalizedstring"></a>
 
@@ -1355,9 +2098,19 @@ window.external.TraceScript("MY-SCRIPT", "Этап завершён");
 
 **Особенности:** Работает с уже известными редактору ключами; не добавляет переводы произвольному скрипту.
 
+**Пример → результат**
+
+**Условие:** Содержимое локализованных ресурсов зависит от текущего языка и состава каталога.
+
 ```javascript
-var label = window.external.GetLocalizedString("example-key");
+function Run() {
+    var ext = window.external;
+    var value = ext.GetLocalizedString('fbe.script.run_failed');
+    ext.MsgBox(value ? value.substring(0, 160) : '(нет строки по ключу)');
+}
 ```
+
+**Ожидаемый результат:** Для известного ключа редактора выводится локализованный шаблон ошибки запуска скрипта (возможно, с `{path}`). Для неизвестного ключа — пустая строка.
 
 <a id="api-logmessage"></a>
 
@@ -1369,9 +2122,17 @@ var label = window.external.GetLocalizedString("example-key");
 
 **Особенности:** Уровни: `debug`, `info`, `warning`, `error` (с учётом регистра). Размер сообщения до 512 UTF-16 единиц. **Содержимое сообщения фильтруется политикой приватности**: журнал может содержать только токен контекста, факт сообщения и длину, а не сам текст.
 
+**Пример → результат**
+
 ```javascript
-window.external.LogMessage("info", "Обработка завершена");
+function Run() {
+    var ext = window.external;
+    var accepted = ext.LogMessage('info', 'Проверка API выполнена');
+    ext.MsgBox('Сообщение принято журналом: ' + accepted);
+}
 ```
+
+**Ожидаемый результат:** При включённом журнале и соблюдении лимитов — **`true`**; иначе **`false`**. Сам текст события может не сохраняться из-за фильтра приватности.
 
 <a id="api-getlastscriptingerror"></a>
 
@@ -1383,9 +2144,21 @@ window.external.LogMessage("info", "Обработка завершена");
 
 **Особенности:** Отслеживает ошибки HRESULT методов DISPID 100–146 и технический отказ `ValidateCurrentDocument`. Старые методы DISPID 1–35 и обычный возврат `false` автоматически сюда не записываются. Успешные вызовы не стирают ошибку.
 
+**Пример → результат**
+
+**Условие:** Это демонстрация последней COM-ошибки **новых** методов; диагностический вызов намеренно неверный.
+
 ```javascript
-var errJson = window.external.GetLastScriptingError();
+function Run() {
+    var ext = window.external;
+    try { ext.GetTempFileName('bad/name', '.tmp'); }
+    catch (e) { /* Намеренно вызываем ошибку аргумента. */ }
+    var json = ext.GetLastScriptingError();
+    ext.MsgBox(json);
+}
 ```
+
+**Ожидаемый результат:** JSON с **`"hasError":true`**, `"method":"GetTempFileName"` и кодом `invalid-argument` (текст на языке Windows).
 
 <a id="api-clearlastscriptingerror"></a>
 
@@ -1397,90 +2170,31 @@ var errJson = window.external.GetLastScriptingError();
 
 **Особенности:** Вложенный скрипт имеет собственное состояние и не очищает ошибку родителя.
 
-```javascript
-window.external.ClearLastScriptingError();
-```
-
-
-## Практические сценарии
-
-### 1. Сохранить отчёт рядом со скриптом, не заменяя существующий файл
+**Пример → результат**
 
 ```javascript
-if (!HasApi("WriteTextFileEx") || !HasApi("CombinePath")) {
-    window.external.MsgBox("Для этой операции нужен API 1.1 или новее.");
-    return;
-}
-var target = window.external.CombinePath(
-    window.external.GetCurrentScriptDirectory(), "report.txt");
-try {
-    window.external.WriteTextFileEx(target, "Найдено ошибок: " + count, false, "utf-8");
-    window.external.MsgBox("Отчёт сохранён: " + target);
-} catch (e) {
-    window.external.MsgBox("Файл уже существует или произошла ошибка записи.");
+function Run() {
+    var ext = window.external;
+    try { ext.GetTempFileName('bad/name', '.tmp'); } catch (e) {}
+    var cleared = ext.ClearLastScriptingError();
+    var json = ext.GetLastScriptingError();
+    ext.MsgBox('Очищено: ' + cleared + '\n' + json);
 }
 ```
 
-При `overwrite=false` существующий файл не будет заменён, даже если его создал другой процесс непосредственно перед завершением записи.
+**Ожидаемый результат:** После очистки: **`true`** и JSON **`{"schemaVersion":1,"hasError":false}`**.
 
-### 2. Исправить полный XML с валидацией и Undo
+## Практические задачи и готовые решения
 
-```javascript
-var xml = window.external.GetSourceText();
-var updated = xml.replace("старый текст", "новый текст");
-if (updated !== xml) {
-    if (!window.external.ValidateSourceText(updated)) {
-        window.external.MsgBox(window.external.GetLastSourceDiagnostic());
-    } else if (!window.external.ApplySourceText(updated, "Правка XML")) {
-        window.external.MsgBox(window.external.GetLastSourceDiagnostic());
-    }
-}
-```
+Небольшие вызовы отдельных методов приведены **непосредственно в их описаниях**. Ниже — подборка задач, которые требуют нескольких методов API. Полный код и пример результата находятся [в последнем разделе документа](#сложные-скрипты-сочетание-методов-api).
 
-Сценарий демонстрирует порядок вызовов, но простая строковая замена не учитывает семантику XML и может затронуть ненужные фрагменты. Для сложных изменений используйте XML-aware обработку и проверяйте результат.
-
-### 3. Обрабатывать выделение, не меняя книгу
-
-```javascript
-if (HasApi("GetSelectionText")) {
-    var selected = window.external.GetSelectionText();
-    window.external.MsgBox(selected || "Текст не выделен.");
-}
-```
-
-### 4. Прогресс с добровольной отменой
-
-```javascript
-if (HasApi("BeginProgress")) {
-    var progress = window.external.BeginProgress("Проверка абзацев", items.length);
-    try {
-        for (var i = 0; i < items.length; ++i) {
-            if (window.external.IsProgressCancelled(progress)) break;
-            // Проверяем items[i].
-            window.external.SetProgress(progress, i + 1, "Обработано: " + (i + 1));
-        }
-    } finally {
-        window.external.EndProgress(progress);
-    }
-}
-```
-
-`items.length` в этом примере должен быть положительным целым числом; при пустом списке не создавайте окно прогресса. Нажатие «Отмена» не откатывает уже выполненные изменения.
-
-### 5. Настройки без изменения текста исходного скрипта
-
-```javascript
-if (HasApi("GetScriptSetting")) {
-    var enabled = window.external.GetScriptSetting("normalize", true);
-    if (enabled) {
-        // Выполнить нормализацию.
-    }
-    window.external.SetScriptSetting("normalize", enabled);
-}
-```
-
-Хранилище настроек скрипта отдельно от настроек его карточки и от переменных в исходном `.js`.
-
+| Практическая задача | Ключевые методы | Полный скрипт |
+|---|---|---|
+| Проверить книгу и сохранить отчёт без перезаписи | `ValidateCurrentDocument`, `GetDocumentFileName`, `WriteTextFileEx` | [А. Аудит книги](#complex-report) |
+| Массово заменить пробел, сохранив Undo | `GetNBSP`, `BeginDocumentUpdate`, `BeginProgress`, `EndDocumentUpdate` | [Б. Неразрывный пробел](#complex-nbsp) |
+| Проанализировать размер и разрешение встроенных изображений | `GetBinarySize`, `GetImageDimsByData`, `SelectFolder` | [В. Таблица изображений](#complex-images) |
+| Поменять название в XML с проверкой | `InputBoxEx`, `GetSourceText`, `ValidateSourceText`, `ApplySourceText` | [Г. Название книги](#complex-title) |
+| Сохранить выделенный текст с диагностикой ошибок | `GetSelectionText`, `SelectSaveFile`, `WriteTextFileEx` | [Д. Экспорт цитаты](#complex-selection) |
 
 ## Ограничения, контракты и ошибки
 
@@ -1556,3 +2270,331 @@ if (HasApi("GetScriptSetting")) {
 Для диагностики реализации используются адресные тесты `tools/tests/test-fbe-scripting-stage1.ps1`, `test-fbe-scripting-stage2.ps1`, `test-fbe-scripting-stage3a.ps1` и `test-fbe-typelib-runtime.ps1`. Вторая и третья группы проверяют реальный JScript, Source/Body/Description, Undo, параметры вызова, диалоги и ошибки в пределах предусмотренных сценариев. Это не свидетельство полного тестирования всех пользовательских скриптов.
 
 Проверку нужно проводить отдельно для portable и installed. Запуск на Windows 7 SP1 нельзя считать подтверждённым только по анализу импортов: для этого необходим отдельный реальный прогон на Windows 7.
+
+
+## Сложные скрипты: сочетание методов API
+
+Здесь приведены **полные скрипты**, а не фрагменты: каждый блок можно сохранить отдельным `.js` в каталоге Scripts FBE Next. Скрипты написаны для **Microsoft JScript**, без `let`, стрелочных функций и `async/await`. Запускайте их по одному. Примеры, меняющие книгу, сначала проверьте на тестовом FB2; сохранение книги на диск не производится автоматически.
+
+> **Чтение JSON.** Несколько новых методов возвращают JSON **строкой**. Там, где результат нужно разобрать, используется `JSON.parse`, если он доступен. Резервный `eval` применяется **только к JSON, непосредственно возвращённому `window.external` в том же вызове**, а не к FB2/XML, внешним файлам или произвольному пользовательскому тексту. Для распространяемого скрипта предпочтительнее включить отдельный проверенный JSON-парсер, не требующий `eval`.
+
+<a id="complex-report"></a>
+### Сценарий A. Аудит текущей книги: проверка XML и отчёт без изменения документа
+
+**Задача:** одной командой получить сведения об открытой книге, проверить её валидность и сохранить текстовый отчёт с уникальным именем. Исходный FB2 не меняется. Комбинация: `HasScriptingMethod`, `GetDocumentFileName`, `GetCurrentViewMode`, `IsDocumentModified`, `ValidateCurrentDocument`, `GetSelectionInfo`, `GetDocumentDirectory`, `GetCurrentScriptDirectory`, `CombinePath`, `GetUUID`, `WriteTextFileEx`, `SetStatusBarText`, `GetLastScriptingError`.
+
+```javascript
+function HasApi(name) {
+    try { return window.external.HasScriptingMethod(name); }
+    catch (e) { return false; }
+}
+
+function Run() {
+    var ext = window.external;
+    if (!HasApi('ValidateCurrentDocument') ||
+        !HasApi('WriteTextFileEx') || !HasApi('GetSelectionInfo')) {
+        ext.MsgBox('Нужен FBE Next с API 1.2.0.');
+        return;
+    }
+    if (!ext.AskYesNo('Проверить книгу и сохранить отчёт?')) return;
+
+    var name = ext.GetDocumentFileName() || '(новая книга)';
+    var mode = ext.GetCurrentViewMode();
+    var dirty = ext.IsDocumentModified();
+    var validation = ext.ValidateCurrentDocument('{}');
+    var selection = ext.GetSelectionInfo();
+
+    var report = 'Отчёт FBE Next\r\n' +
+        'Книга: ' + name + '\r\n' +
+        'Режим: ' + mode + '\r\n' +
+        'Несохранённые изменения: ' + dirty + '\r\n' +
+        'Валидация: ' + validation + '\r\n' +
+        'Информация о выделении: ' + selection + '\r\n';
+
+    // У сохранённой книги отчёт пишется рядом с ней, иначе — рядом со скриптом.
+    var dir = ext.GetDocumentDirectory() || ext.GetCurrentScriptDirectory();
+    if (!dir) { ext.MsgBox('Не удалось определить каталог отчёта.'); return; }
+    var file = 'fbe-audit-' + ext.GetUUID() + '.txt';
+    var path = ext.CombinePath(dir, file);
+
+    try {
+        ext.WriteTextFileEx(path, report, false, 'utf-8');
+        ext.SetStatusBarText('Аудит завершён: ' + name);
+        ext.MsgBox('Отчёт сохранён:\n' + path);
+    } catch (e) {
+        ext.MsgBox('Сбой записи. Диагностика:\n' +
+                   ext.GetLastScriptingError());
+    }
+}
+```
+
+**Пример → результат:** если открыта `Повесть.fb2` в режиме Design и есть несохранённые изменения, появится файл `fbe-audit-<UUID>.txt`. В нём будут `Книга: Повесть.fb2`, `Режим: design`, `Несохранённые изменения: true` и JSON результата штатной проверки. **Текст самой книги не экспортируется.** При отказе в правах отчёт не создаётся, книга остаётся неизменной.
+
+<a id="complex-nbsp"></a>
+### Сценарий Б. Массовая правка «г. Москва» → «г. Москва» с одним Undo
+
+**Задача:** заменить обычный пробел в строго заданной текстовой последовательности на выбранный в FBE неразрывный пробел, **не уничтожая вложенные теги форматирования**. Комбинация: `GetCurrentViewMode`, `GetNBSP`, `GetScriptSetting`, `AskYesNo`, `BeginDocumentUpdate`, `BeginProgress`, `SetProgress`, `IsProgressCancelled`, `EndProgress`, `EndDocumentUpdate`, `SetStatusBarText`.
+
+```javascript
+function ReplaceInTextNodes(node, nbsp) {
+    var changed = 0;
+    var children = node.childNodes;
+    for (var i = 0; i < children.length; i++) {
+        var item = children[i];
+        if (item.nodeType == 3) { // Текстовый узел, без изменения HTML-тегов.
+            var oldText = String(item.nodeValue);
+            var matches = oldText.match(/г\. Москва/g);
+            if (matches) {
+                item.nodeValue = oldText.replace(/г\. Москва/g, 'г.' + nbsp + 'Москва');
+                changed += matches.length;
+            }
+        } else if (item.nodeType == 1) {
+            changed += ReplaceInTextNodes(item, nbsp);
+        }
+    }
+    return changed;
+}
+
+function Run() {
+    var ext = window.external;
+    try {
+        if (!ext.HasScriptingMethod('BeginDocumentUpdate') ||
+            !ext.HasScriptingMethod('BeginProgress')) {
+            ext.MsgBox('Требуется API 1.1.0 или новее.');
+            return;
+        }
+    } catch (e) { ext.MsgBox('Новый API недоступен.'); return; }
+
+    if (ext.GetCurrentViewMode() != 'design') {
+        ext.MsgBox('Откройте книгу в режиме Design.'); return;
+    }
+    var enabled = ext.GetScriptSetting('docs.example.fixMoscow', true);
+    if (!enabled) { ext.MsgBox('Сценарий отключён в настройках скрипта.'); return; }
+    var root = document.getElementById('fbw_body');
+    if (!root) return;
+    var paragraphs = root.getElementsByTagName('P');
+    if (!paragraphs.length) { ext.MsgBox('Нет абзацев.'); return; }
+    if (!ext.AskYesNo('Исправить «г. Москва» во всех абзацах книги?')) return;
+
+    var nbsp = ext.GetNBSP();
+    var changes = 0;
+    var cancelled = false;
+    var token = ext.BeginDocumentUpdate('Неразрывный пробел после г.',
+                                        '{"suspendRedraw":true}');
+    try {
+        var progress = null;
+        try {
+            progress = ext.BeginProgress('Нормализация текста', paragraphs.length);
+            for (var i = 0; i < paragraphs.length; i++) {
+                if (ext.IsProgressCancelled(progress)) { cancelled = true; break; }
+                changes += ReplaceInTextNodes(paragraphs[i], nbsp);
+                if (i % 20 == 0 || i + 1 == paragraphs.length) {
+                    ext.SetProgress(progress, i + 1, 'Абзац ' + (i + 1));
+                }
+            }
+        } finally {
+            if (progress !== null) ext.EndProgress(progress);
+        }
+    } finally {
+        ext.EndDocumentUpdate(token);
+    }
+    ext.SetStatusBarText('Замен пробела: ' + changes);
+    ext.MsgBox('Заменено: ' + changes +
+               (cancelled ? '\nОтменено пользователем (частичная правка).' : '') +
+               '\nПравку можно отменить одним Ctrl+Z.');
+}
+```
+
+**Пример → результат:** при наличии трёх совпадений **`г. Москва`** станет **`г. Москва`** (неразрывный пробел); окно покажет **«Заменено: 3»**. `Ctrl+Z` отменит все изменения данной пакетной операции. Если пользователь отменил процесс, уже сделанная часть правок **остаётся**, но также отменяется штатным Undo. Метод `IsProgressCancelled` не выполняет произвольный message pump: в длительных CPU-циклах отклик кнопки отмены может быть не мгновенным.
+
+<a id="complex-images"></a>
+### Сценарий В. Инвентаризация изображений FB2 с экспортом TSV
+
+**Задача:** собрать таблицу ID, MIME, размера в байтах и разрешения встроенных изображений, выбрать папку и сохранить TSV для открытия в Excel/Calc. Комбинация: `GetBinarySize`, `GetImageDimsByData`, `GetDocumentFileName`, `SelectFolder`, `CombinePath`, `GetUUID`, `WriteTextFileEx`, `GetLastScriptingError`.
+
+```javascript
+function ParseHostJson(value) {
+    if (typeof JSON != 'undefined' && JSON && typeof JSON.parse == 'function')
+        return JSON.parse(value);
+    // Только доверенная JSON-строка, непосредственно возвращённая API FBE.
+    return eval('(' + value + ')');
+}
+function TsvCell(value) {
+    return String(value).replace(/[\t\r\n]/g, ' ');
+}
+
+function Run() {
+    var ext = window.external;
+    try {
+        if (!ext.HasScriptingMethod('SelectFolder') ||
+            !ext.HasScriptingMethod('WriteTextFileEx')) {
+            ext.MsgBox('Нужен API 1.1.0 или новее.'); return;
+        }
+    } catch (e) { ext.MsgBox('Новый API недоступен.'); return; }
+
+    if (!document.all || !document.all.binobj) {
+        ext.MsgBox('Контейнер вложений недоступен в этом представлении.'); return;
+    }
+    var nodes = document.all.binobj.getElementsByTagName('DIV');
+    var output = 'ID\tMIME\tРазмер (Б)\tШирина x высота\r\n';
+    var images = 0;
+    for (var i = 0; i < nodes.length; i++) {
+        var binary = nodes[i];
+        var mime = String(binary.all.type.value);
+        if (mime.toLowerCase().indexOf('image/') != 0) continue;
+        var id = String(binary.all.id.value);
+        var bytes = ext.GetBinarySize(binary.base64data);
+        var dims = ext.GetImageDimsByData(binary.base64data);
+        output += TsvCell(id) + '\t' + TsvCell(mime) + '\t' +
+                  bytes + '\t' + TsvCell(dims || 'не определено') + '\r\n';
+        images++;
+    }
+    if (!images) { ext.MsgBox('Встроенных изображений нет.'); return; }
+
+    var chosen = ParseHostJson(ext.SelectFolder('{"title":"Куда сохранить список изображений"}'));
+    if (chosen.status != 'ok' || !chosen.path) return;
+    var path = ext.CombinePath(chosen.path,
+                               'fbe-images-' + ext.GetUUID() + '.tsv');
+    try {
+        ext.WriteTextFileEx(path, output, false, 'utf-8-bom');
+        ext.MsgBox('Книга: ' + (ext.GetDocumentFileName() || '(новая)') +
+                   '\nИзображений: ' + images + '\nОтчёт: ' + path);
+    } catch (e) {
+        ext.MsgBox('Не удалось создать отчёт.\n' + ext.GetLastScriptingError());
+    }
+}
+```
+
+**Пример → результат:** для книги с `cover.jpg` (`image/jpeg`, 600×900, 15342 Б) и `illustration.png` программа создаст TSV с двумя строками данных. Кодировка **UTF-8 с BOM** удобна для открытия кириллицы табличными редакторами. Вложенные картинки и сам FB2 **не меняются**; при отмене выбора папки отчёт не сохраняется.
+
+<a id="complex-title"></a>
+### Сценарий Г. Изменение названия книги в XML через MSXML6 с валидацией и Undo
+
+**Задача:** запросить новое название, отредактировать именно элемент `description/title-info/book-title`, проверить готовый XML штатным валидатором и применить одной операцией Undo. Используются `GetSourceText`, `InputBoxEx`, `ValidateSourceText`, `GetLastSourceDiagnostic`, `ApplySourceText`, `AskYesNo`, `GetCurrentViewMode` и COM MSXML6 (как во внутреннем JS FBE).
+
+```javascript
+function ParseHostJson(value) {
+    if (typeof JSON != 'undefined' && JSON && typeof JSON.parse == 'function')
+        return JSON.parse(value);
+    // Только JSON, сформированный самим API FBE, не ввод пользователя и не XML.
+    return eval('(' + value + ')');
+}
+
+function Run() {
+    var ext = window.external;
+    try {
+        if (!ext.HasScriptingMethod('InputBoxEx')) {
+            ext.MsgBox('Нужен API 1.0.0 или новее.'); return;
+        }
+    } catch (e) { ext.MsgBox('Новый API недоступен.'); return; }
+
+    var xml = ext.GetSourceText();
+    var dom;
+    try { dom = new ActiveXObject('Msxml2.DOMDocument.6.0'); }
+    catch (e) { ext.MsgBox('MSXML6 недоступен на этом ПК.'); return; }
+    dom.async = false;
+    dom.validateOnParse = false;
+    dom.resolveExternals = false;
+    if (!dom.loadXML(xml)) {
+        ext.MsgBox('Исходный XML некорректен: ' + dom.parseError.reason);
+        return;
+    }
+    var title = dom.selectSingleNode(
+        "/*[local-name()='FictionBook']" +
+        "/*[local-name()='description']" +
+        "/*[local-name()='title-info']" +
+        "/*[local-name()='book-title']");
+    if (!title) {
+        ext.MsgBox('Тег book-title в title-info не найден (это FB2?).'); return;
+    }
+    var oldTitle = String(title.text);
+    var opts = '{"title":"Название книги","prompt":"Новое название","value":""}';
+    var result = ParseHostJson(ext.InputBoxEx(opts));
+    if (!result.accepted) return;
+    var newTitle = String(result.value).replace(/^\s+|\s+$/g, '');
+    if (!newTitle || newTitle == oldTitle) {
+        ext.MsgBox('Новое название пустое или не отличается.'); return;
+    }
+    if (!ext.AskYesNo('Изменить название «' + oldTitle + '» на «' +
+                      newTitle + '»?')) return;
+
+    title.text = newTitle; // MSXML экранирует спецсимволы XML сам.
+    var updated = dom.xml;
+    if (!ext.ValidateSourceText(updated)) {
+        ext.MsgBox('Не прошло проверку: ' + ext.GetLastSourceDiagnostic());
+        return;
+    }
+    if (!ext.ApplySourceText(updated, 'Изменить название книги')) {
+        ext.MsgBox('Применить XML не удалось: ' + ext.GetLastSourceDiagnostic());
+        return;
+    }
+    ext.MsgBox('Название изменено. Доступен Ctrl+Z; книгу ещё нужно сохранить.');
+}
+```
+
+**Пример → результат:** для книги с названием «Черновик» пользователь вводит «Готово» и подтверждает; текст `<book-title>` меняется, операция попадает в историю Undo, но **файл на диске сам не сохраняется**. MSXML6 при сериализации `dom.xml` может нормализовать пробелы/форматирование XML и способ представления вложений. Поэтому такой способ подходит, когда вы осознанно допускаете повторную сериализацию **всей книги**. Для точечного редактирования без переписывания остального XML требуется более сложное решение.
+
+<a id="complex-selection"></a>
+### Сценарий Д. Экспорт выделенной цитаты в новый TXT с безопасной записью
+
+**Задача:** взять только выделенный текст из Design/Source/Description, запросить имя автора через `InputBoxEx`, предложить путь сохранения, записать UTF-8-файл без перезаписи существующих и показать диагностику ошибки. Комбинация: `GetSelectionText`, `GetSelectionInfo`, `InputBoxEx`, `SelectSaveFile`, `WriteTextFileEx`, `GetDocumentFileName`, `GetLastScriptingError`, `ClearLastScriptingError`.
+
+```javascript
+function ParseHostJson(value) {
+    if (typeof JSON != 'undefined' && JSON && typeof JSON.parse == 'function')
+        return JSON.parse(value);
+    // Используйте здесь только JSON, непосредственно полученный от FBE.
+    return eval('(' + value + ')');
+}
+
+function Run() {
+    var ext = window.external;
+    try {
+        if (!ext.HasScriptingMethod('GetSelectionText') ||
+            !ext.HasScriptingMethod('SelectSaveFile') ||
+            !ext.HasScriptingMethod('WriteTextFileEx')) {
+            ext.MsgBox('Нужен API 1.1.0 или новее.'); return;
+        }
+    } catch (e) { ext.MsgBox('Новый API недоступен.'); return; }
+
+    var selected = ext.GetSelectionText();
+    if (!selected) { ext.MsgBox('Сначала выделите текст.'); return; }
+    var selectionInfo = ext.GetSelectionInfo();
+
+    var author = ParseHostJson(ext.InputBoxEx(
+        '{"title":"Цитата","prompt":"Укажите автора цитаты","value":""}'));
+    if (!author.accepted) return;
+
+    var target = ParseHostJson(ext.SelectSaveFile(
+        '{"title":"Сохранить выделенную цитату","defaultExtension":"txt",' +
+        '"filters":[{"name":"Текстовый файл","pattern":"*.txt"}]}'));
+    if (target.status != 'ok' || !target.path) return;
+
+    var text = 'Книга: ' + (ext.GetDocumentFileName() || '(новая)') + '\r\n' +
+               'Автор: ' + author.value + '\r\n' +
+               'Сведения о выделении: ' + selectionInfo + '\r\n' +
+               '----\r\n' + selected + '\r\n';
+    ext.ClearLastScriptingError();
+    try {
+        ext.WriteTextFileEx(target.path, text, false, 'utf-8');
+        ext.MsgBox('Цитата сохранена:\n' + target.path);
+    } catch (e) {
+        ext.MsgBox('Файл не записан и не перезаписан.\n' +
+                   ext.GetLastScriptingError());
+    }
+}
+```
+
+**Пример → результат:** если выделить «В начале было слово», указать автора «Автор книги» и выбрать **новое** имя `citation.txt`, будет создан файл с источником, автором, сведениями о выделении и самой цитатой. Если в диалоге выбран существующий файл, `WriteTextFileEx(..., false)` откажет с COM-ошибкой и **не заменит его**, даже если в системном диалоге ранее было подтверждение существующего имени. Исходная книга не меняется.
+
+### Краткая таблица проверки составных сценариев
+
+| Сценарий | Меняет книгу | Создаёт файл | Пример ожидаемого результата |
+|---|---|---|---|
+| А. Аудит книги | Нет | Да, новый TXT | `fbe-audit-<UUID>.txt` со статусом валидации |
+| Б. Неразрывные пробелы | **Да**, одно Undo | Нет | 3 замены, Ctrl+Z отменяет результат |
+| В. Вложения | Нет | Да, новый TSV | ID, MIME, байты, разрешение изображений |
+| Г. Название FB2 | **Да**, одно Undo | Нет | `<book-title>Готово</book-title>` |
+| Д. Цитата | Нет | Да, только новый TXT | Текст выделения и метаданные |
+
+**Что проверять при адаптации:** наличие `HasScriptingMethod`, контекст запуска, режим редактора, отмену диалога, права на каталог, результат `false` и исключения COM. Методы группы Undo не обеспечивают автоматический транзакционный откат уже внесённых изменений; новые методы этапов 3Б–3Г в этих скриптах не используются.
