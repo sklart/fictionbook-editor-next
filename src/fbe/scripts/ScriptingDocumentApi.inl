@@ -7,7 +7,7 @@
             auto document = m_doc->m_body.Document();
             CComPtr<IUnknown> identity; CheckError(document->QueryInterface(IID_PPV_ARGS(&identity)));
             MSHTML::IHTMLDocument3Ptr document3(document);
-            MSHTML::IHTMLElementPtr root(document3->getElementById(L"fbw_body"));
+            MSHTML::IHTMLElementPtr root(document3->getElementById(view == L"description" ? L"fbw_desc" : L"fbw_body"));
             CComPtr<IUnknown> rootIdentity;
             if (root) CheckError(root->QueryInterface(IID_PPV_ARGS(&rootIdentity)));
             auto& resources = FbeScripts::DocumentResources();
@@ -18,15 +18,16 @@
                 if (source) {
                     mark.anchor = m_source.SendMessage(SCI_GETANCHOR); mark.caret = m_source.SendMessage(SCI_GETCURRENTPOS);
                     mark.source = FbeScripts::SourceBytes(m_source);
-                    size_t total = mark.source.size();
-                    for (const auto& saved : resources.bookmarks) total += saved.source.size();
-                    if (total > 64 * 1024 * 1024) CheckError(E_OUTOFMEMORY);
                 } else {
+                    if (view == L"description") mark.description = FbeScripts::DescriptionState(root);
                     IDispatchPtr selected(document->selection->createRange());
                     MSHTML::IHTMLTxtRangePtr text(selected);
                     if (text) mark.range = text->duplicate();
                     else { MSHTML::IHTMLControlRangePtr controls(selected); if (!controls) CheckError(E_NOTIMPL); mark.controls = controls; }
                 }
+                size_t total = mark.source.size() + mark.description.size() * sizeof(wchar_t);
+                for (const auto& saved : resources.bookmarks) total += saved.source.size() + saved.description.size() * sizeof(wchar_t);
+                if (total > 64 * 1024 * 1024) CheckError(E_OUTOFMEMORY);
                 request->returnValue = mark.token; resources.bookmarks.push_back(std::move(mark));
             } else if (method == 120 || method == 121) {
                 auto found = std::find_if(resources.bookmarks.begin(), resources.bookmarks.end(), [&](const auto& mark) { return mark.token == args[0].bstrVal; });
@@ -35,6 +36,7 @@
                     valid = found->document == identity && found->root == rootIdentity && found->view == view &&
                         found->revision == m_doc->m_body.GetVersionNumber();
                     if (valid && source) valid = found->source == FbeScripts::SourceBytes(m_source);
+                    if (valid && view == L"description") valid = found->description == FbeScripts::DescriptionState(root);
                     if (valid) {
                         if (source) m_source.SendMessage(SCI_SETSEL, found->anchor, found->caret);
                         else if (found->range) found->range->select(); else found->controls->select();
@@ -44,10 +46,9 @@
             } else if (method >= 122 && method <= 124) {
                 CString text, html, type; long count = 0;
                 if (source) {
-                    const auto bytes = FbeScripts::SourceBytes(m_source);
-                    const auto start = m_source.SendMessage(SCI_GETSELECTIONSTART), end = m_source.SendMessage(SCI_GETSELECTIONEND);
-                    text = FbeScripts::FromUtf8(bytes.substr(static_cast<size_t>(start), static_cast<size_t>(end - start)));
-                    html = FbeScripts::EscapeHtml(text); type = text.IsEmpty() ? L"none" : L"text";
+                    text = FbeScripts::FromUtf8(FbeScripts::SourceSelectionBytes(m_source));
+                    if (method == 123) html = FbeScripts::EscapeHtml(text);
+                    type = text.IsEmpty() ? L"none" : L"text";
                 } else {
                     type = static_cast<LPCWSTR>(document->selection->type); type.MakeLower();
                     IDispatchPtr selected(document->selection->createRange()); MSHTML::IHTMLTxtRangePtr range(selected);

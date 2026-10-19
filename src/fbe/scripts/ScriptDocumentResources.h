@@ -63,6 +63,7 @@ struct SelectionBookmark {
     long revision = -1;
     sptr_t anchor = 0, caret = 0;
     std::string source;
+    std::wstring description;
 };
 struct ScriptDocumentResources : ScriptResourceLifetime {
     std::vector<SelectionBookmark> bookmarks;
@@ -90,6 +91,44 @@ inline std::string SourceBytes(HWND window)
     std::vector<char> bytes(static_cast<size_t>(length) + 1);
     ::SendMessageW(window, SCI_GETTEXT, bytes.size(), reinterpret_cast<LPARAM>(bytes.data()));
     return std::string(bytes.data(), static_cast<size_t>(length));
+}
+inline std::string SourceSelectionBytes(HWND window)
+{
+    const auto start = ::SendMessageW(window, SCI_GETSELECTIONSTART, 0, 0);
+    const auto end = ::SendMessageW(window, SCI_GETSELECTIONEND, 0, 0);
+    if (start < 0 || end < start || end - start > 64 * 1024 * 1024) CheckError(E_OUTOFMEMORY);
+    std::string bytes(static_cast<size_t>(end - start) + 1, '\0');
+    Sci_TextRange range = { { static_cast<Sci_PositionCR>(start), static_cast<Sci_PositionCR>(end) }, &bytes[0] };
+    ::SendMessageW(window, SCI_GETTEXTRANGE, 0, reinterpret_cast<LPARAM>(&range));
+    bytes.resize(static_cast<size_t>(end - start));
+    return bytes;
+}
+inline std::wstring DescriptionState(MSHTML::IHTMLElementPtr root)
+{
+    if (!root) CheckError(E_UNEXPECTED);
+    std::wstring state;
+    MSHTML::IHTMLElement2Ptr element(root);
+    const auto controls = element->getElementsByTagName(L"*");
+    for (long index = 0; index < controls->length; ++index) {
+        MSHTML::IHTMLElementPtr control(controls->item(_variant_t(index), _variant_t()));
+        const CString tag(static_cast<LPCWSTR>(control->tagName));
+        if (tag != L"INPUT" && tag != L"TEXTAREA" && tag != L"SELECT") continue;
+        CComDispatchDriver driver(control); CComVariant value;
+        CheckError(driver.GetPropertyByName(L"value", &value));
+        if (value.vt != VT_BSTR) CheckError(E_UNEXPECTED);
+        const UINT length = ::SysStringLen(value.bstrVal);
+        state += std::to_wstring(length); state += L":";
+        if (length) state.append(value.bstrVal, length);
+        if (tag == L"INPUT") {
+            MSHTML::IHTMLInputElementPtr input(control);
+            state += input->checked == VARIANT_FALSE ? L":0;" : L":1;";
+        } else if (tag == L"SELECT") {
+            MSHTML::IHTMLSelectElementPtr select(control);
+            state += L":" + std::to_wstring(select->selectedIndex) + L";";
+        }
+        if (state.size() > 32 * 1024 * 1024) CheckError(E_OUTOFMEMORY);
+    }
+    return state;
 }
 inline CString FromUtf8(const std::string& bytes)
 {
