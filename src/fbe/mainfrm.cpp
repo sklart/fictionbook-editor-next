@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "scripts/ScriptExecutionContext.h"
 #include "scripts/ScriptSettingsStore.h"
+#include "scripts/ScriptDocumentResources.h"
 #include <aclapi.h>
 #include "clipboard/HtmlPasteSanitizer.h"
 #include "scripts/ScriptCardBlock.h"
@@ -1640,6 +1641,10 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 {
 	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
 	if(request == NULL) return 0;
+	if(request->operation == XmlScriptApiOperation::ScriptingDocumentOperation)
+	{
+#include "scripts/ScriptingDocumentApi.inl"
+	}
 	if(request->operation == XmlScriptApiOperation::GetScriptingEnvironment)
 	{
 		request->viewMode = m_editor_view_state.Current() == SOURCE ? L"source" :
@@ -1655,6 +1660,12 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 		request->valid = request->succeeded;
 		if(!request->succeeded) request->message = L"No document is open.";
 		return request->succeeded ? 1 : 0;
+	}
+	if(request->operation == XmlScriptApiOperation::ApplySourceText && FbeScripts::HasDocumentUpdates())
+	{
+		request->succeeded = true;
+		request->message = L"Close document updates before replacing the document.";
+		return 1;
 	}
 	if(request->text == NULL) { request->message = L"XML text is missing."; return 0; }
 	const XmlScriptDiagnostic diagnostic = request->operation == XmlScriptApiOperation::ValidateSourceText

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atlstr.h>
+#include <atlcomcli.h>
+#include <vector>
 
 // Synchronous request passed from window.external to the editor-owned XML
 // backend.  It deliberately contains no parsing or document logic.
@@ -9,7 +11,8 @@ enum class XmlScriptApiOperation
 	GetSourceText,
 	ValidateSourceText,
 	ApplySourceText,
-	GetScriptingEnvironment
+	GetScriptingEnvironment,
+	ScriptingDocumentOperation
 };
 
 struct XmlScriptApiRequest
@@ -25,6 +28,10 @@ struct XmlScriptApiRequest
 	CString message;
 	CString scriptPath, scriptUid, viewMode;
 	bool documentModified = false;
+	DISPID scriptingMethod = 0;
+	std::vector<CComVariant> arguments;
+	CComVariant returnValue;
+	HRESULT error = S_OK;
 
 	explicit XmlScriptApiRequest(XmlScriptApiOperation requestedOperation = XmlScriptApiOperation::GetSourceText) :
 		operation(requestedOperation), text(NULL), action(NULL), succeeded(false),

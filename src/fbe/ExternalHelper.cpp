@@ -20,7 +20,13 @@ const wchar_t* const ScriptingMethods[] = {
  L"GetCurrentScriptPath", L"GetCurrentScriptDirectory", L"GetCurrentScriptName", L"GetCurrentScriptId",
  L"GetScriptsRootDirectory", L"GetInterfaceLanguage", L"GetCurrentViewMode", L"IsDocumentModified",
  L"GetScriptSetting", L"SetScriptSetting", L"RemoveScriptSetting", L"ClearScriptSettings",
- L"SelectOpenFile", L"SelectSaveFile", L"SelectFolder", L"InputBoxEx"
+ L"SelectOpenFile", L"SelectSaveFile", L"SelectFolder", L"InputBoxEx",
+ L"CreateSelectionBookmark", L"RestoreSelectionBookmark", L"ReleaseSelectionBookmark",
+ L"GetSelectionText", L"GetSelectionHtml", L"GetSelectionInfo",
+ L"BeginDocumentUpdate", L"EndDocumentUpdate",
+ L"BeginProgress", L"SetProgress", L"IsProgressCancelled", L"EndProgress",
+ L"ReadTextFile", L"WriteTextFile", L"FileExists", L"DirectoryExists", L"CreateDirectory",
+ L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {

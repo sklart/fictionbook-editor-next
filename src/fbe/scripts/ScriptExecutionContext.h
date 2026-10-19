@@ -1,6 +1,7 @@
 #pragma once
 #include <atlstr.h>
 #include <vector>
+#include <memory>
 
 namespace FbeScripts {
 inline CString AbsoluteScriptPath(const CString& input)
@@ -13,7 +14,11 @@ inline CString AbsoluteScriptPath(const CString& input)
     if (!written || written >= size) return CString();
     CString path(buffer.data()); path.Replace(L'/', L'\\'); return path;
 }
-struct ScriptExecutionContext { CString path, uid; long token; };
+struct ScriptResourceLifetime { virtual ~ScriptResourceLifetime() = default; };
+struct ScriptExecutionContext {
+    CString path, uid; long token;
+    std::shared_ptr<ScriptResourceLifetime> documentResources, progressResources;
+};
 inline std::vector<ScriptExecutionContext>& ExecutionContexts()
 {
     static thread_local std::vector<ScriptExecutionContext> contexts;
@@ -24,7 +29,7 @@ inline long PushExecutionContext(const CString& path, const CString& uid)
     static thread_local long nextToken = 0;
     if (nextToken == LONG_MAX) nextToken = 0;
     const long token = ++nextToken;
-    ExecutionContexts().push_back({ path, uid, token });
+    ExecutionContexts().push_back({ path, uid, token, {}, {} });
     return token;
 }
 inline bool PopExecutionContext(long token)
