@@ -491,9 +491,9 @@ COM-аргументов. Имена методов нечувствительн
 
 | Метод (впервые в 1.0.0) | Параметры и результат |
 |---|---|
-| `GetScriptingApiVersion()` | Без параметров; строка `1.0.0`. |
+| `GetScriptingApiVersion()` | Без параметров; текущая версия строкой (`1.1.0`). |
 | `HasScriptingMethod(name)` | Строковое имя; boolean фактической доступности публичного метода, включая старые методы; неизвестное имя даёт false. Метод не вызывается. |
-| `GetScriptingCapabilities()` | JSON-строка со `schemaVersion: 1`, `apiVersion: "1.0.0"` и объектом `capabilities`. |
+| `GetScriptingCapabilities()` | JSON-строка со `schemaVersion: 1`, `apiVersion: "1.1.0"` и объектом `capabilities`. |
 | `GetCurrentScriptPath()` | Абсолютный путь выполняемого JS-файла; без контекста пустая строка. |
 | `GetCurrentScriptDirectory()` | Каталог этого файла с завершающим `\`; без контекста пустая строка. |
 | `GetCurrentScriptName()` | Имя этого JS-файла с расширением; без контекста пустая строка. |
@@ -550,7 +550,7 @@ if (HasApi("GetCurrentScriptDirectory")) {
 | Версия, HasScriptingMethod, capabilities, контекст и сведения об окружении (этап 1А) | Implemented |
 | GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Implemented |
 | SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Implemented |
-| Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Planned |
+| Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Implemented |
 | Дополнительные binary, validation, diagnostics, dialogs, clipboard, status-stack, save API (этап 3) | Planned |
 | GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText; существующие Undo, InputBox/GetModalResult, SaveBinary, пути документа | Already covered by existing API |
 | ProcessPendingUiEvents и автоматический откат произвольных DOM-изменений | Deferred |
@@ -686,11 +686,11 @@ ActiveX, COM или DOM. Не используйте eval для текста FB
 
 | Методы / семейство | Статус |
 |---|---|
-| CreateSelectionBookmark, RestoreSelectionBookmark, ReleaseSelectionBookmark, GetSelectionText, GetSelectionHtml, GetSelectionInfo | Planned |
-| BeginDocumentUpdate, EndDocumentUpdate | Planned |
-| BeginProgress, SetProgress, IsProgressCancelled, EndProgress | Planned |
-| ReadTextFile, WriteTextFile, FileExists, DirectoryExists, CreateDirectory | Planned |
-| CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Planned |
+| CreateSelectionBookmark, RestoreSelectionBookmark, ReleaseSelectionBookmark, GetSelectionText, GetSelectionHtml, GetSelectionInfo | Implemented |
+| BeginDocumentUpdate, EndDocumentUpdate | Implemented |
+| BeginProgress, SetProgress, IsProgressCancelled, EndProgress | Implemented |
+| ReadTextFile, WriteTextFile, FileExists, DirectoryExists, CreateDirectory | Implemented |
+| CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Implemented |
 | GetBinaryInfo, AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary, SaveAllBinaries, GenerateUniqueBinaryId | Planned |
 | ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError | Planned |
 | ShowMessage, SelectFromList, SelectMultipleFromList, ChooseColor | Planned |
@@ -702,3 +702,144 @@ ActiveX, COM или DOM. Не используйте eval для текста FB
 
 Наличие этих названий в плане не делает их доступными. Проблема зависаний
 issue #41 и интерфейс параметров карточек issue #48 не включены в этап 1.
+
+## Этап 2: API 1.1.0
+
+Новые методы опубликованы через аддитивный IDispatch, DISPID 119–141.
+Прежние IID, typelib, сигнатуры и DISPID 1–35, а также методы API 1.0.0
+сохранены. GetScriptingApiVersion возвращает `1.1.0`. В capabilities добавлены
+булевы ключи `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`.
+Методы этапа 3 не объявляются доступными. Issue #45 остаётся открытым.
+
+### Выделение и закладки
+
+| Метод | Параметры / результат |
+|---|---|
+| CreateSelectionBookmark() | Непрозрачная строка-токен текущего выделения/каретки. |
+| RestoreSelectionBookmark(token) | Boolean; восстанавливает существующую допустимую закладку. |
+| ReleaseSelectionBookmark(token) | Boolean; освобождает закладку, false для неизвестной/освобождённой. |
+| GetSelectionText() | Строка текста; пустая для отсутствующего текстового выделения. |
+| GetSelectionHtml() | HTML текстового/control-выделения; в Source — HTML-экранированный исходный текст. |
+| GetSelectionInfo() | JSON-строка: schemaVersion=1, view, type, textLength (UTF-16), controlCount. |
+
+В Body/Description используется штатный MSHTML range, в Source — байтовые
+позиции Scintilla с преобразованием текста из UTF-8. Тип: `text`, `control`
+или `none`; view: `design`, `description`, `source`. Чтение и создание
+закладок не меняют документ/Undo. Восстановление меняет только выделение.
+
+Закладка принадлежит текущему контексту выполнения скрипта и не переносится
+во вложенный скрипт. В конце контекста все закладки освобождаются. В одном
+контексте допускается до 128 закладок. Restore не переключает режим редактора:
+при несовпадении режима, идентичности документа/корня Body или версии MSHTML
+возвращается false и закладка освобождается. В Source дополнительно сравниваются
+полные исходные байты. Поэтому DOM-изменение консервативно инвалидирует
+закладку; автоматическое следование за произвольными DOM-правками не обещается.
+Полная замена документа через Source/ApplySourceText также инвалидирует её.
+Суммарный объём Source-снимков контекста ограничен 64 МиБ. Закладки не предназначены для постоянного хранения.
+
+### Пакетные изменения
+
+`BeginDocumentUpdate(action, optionsJson)` возвращает строковый токен.
+`action` — строка названия Undo, `optionsJson` — `{}` либо
+`{"suspendRedraw":true}` (по умолчанию false). Неизвестные поля/типы
+отклоняются. `EndDocumentUpdate(token)` завершает последнюю операцию текущего
+контекста и возвращает true. Вложенные операции закрываются в обратном порядке;
+чужой, устаревший или нарушающий порядок токен вызывает ошибку.
+
+Используются существующие MSHTML undo units или SCI_BEGIN/ENDUNDOACTION в
+Source. При suspendRedraw временно подавляется перерисовка активной поверхности;
+вложенные операции совместно учитывают её состояние. Исходная видимость
+сохраняется, перерисовка восстанавливается при End и при выходе из скрипта,
+включая исключение. Подсветка опечаток, настройки и обработка DOM не отключаются.
+Пакетный режим не гарантирует устранения зависаний issue #41.
+
+Это группировка Undo, а не транзакционный откат произвольного DOM. При ошибке
+уже сделанные изменения остаются и могут быть отменены пользователем через
+штатный Undo. Не переключайте документ/режим внутри открытого пакета. ApplySourceText
+возвращает false с диагностикой, пока открыт хотя бы один пакет.
+
+```javascript
+if (HasApi("BeginDocumentUpdate")) {
+    var token = window.external.BeginDocumentUpdate("Моя правка", "{}");
+    try {
+        // Изменения существующим DOM/Scintilla-механизмом скрипта.
+    } finally {
+        window.external.EndDocumentUpdate(token);
+    }
+}
+```
+
+### Прогресс и отмена
+
+| Метод | Параметры / результат |
+|---|---|
+| BeginProgress(title, maximum) | Строка title, целое maximum 1…4294967295; возвращает строковый токен. |
+| SetProgress(token, value, message) | Целое value 0…maximum, строка message; true при успехе. |
+| IsProgressCancelled(token) | Boolean; пользователь нажал отмену. |
+| EndProgress(token) | Закрывает окно и возвращает true. |
+
+Используется системный IProgressDialog с владельцем-редактором. Разрешено одно
+активное окно на UI-поток; токен принадлежит текущему контексту. Окно закрывается
+также при выходе/исключении, владелец разблокируется. Отмена кооперативная:
+скрипт должен проверить IsProgressCancelled и прекратить работу самостоятельно.
+Опрос отмены не выполняет произвольный message pump редактора.
+ProcessPendingUiEvents не добавлен. Отмена не откатывает сделанные изменения.
+
+```javascript
+if (HasApi("BeginProgress")) {
+    var progress = window.external.BeginProgress("Обработка", 100);
+    try {
+        for (var i = 0; i < 100; ++i) {
+            if (window.external.IsProgressCancelled(progress)) break;
+            window.external.SetProgress(progress, i + 1, "Шаг " + (i + 1));
+        }
+    } finally { window.external.EndProgress(progress); }
+}
+```
+
+### Текстовые файлы и пути
+
+| Метод | Параметры / результат |
+|---|---|
+| ReadTextFile(path[, encoding]) | Строка содержимого; без encoding распознаются BOM UTF-8/UTF-16LE, иначе UTF-8. |
+| WriteTextFile(path, text[, encoding]) | Полная атомарная замена через временный файл рядом с назначением, flush и переименование; true при успехе. По умолчанию UTF-8 без BOM. |
+| FileExists(path) | Boolean: доступный существующий файл (не каталог). |
+| DirectoryExists(path) | Boolean: доступный существующий каталог. |
+| CreateDirectory(path) | Создаёт каталог с родителями; true и для уже существующего каталога. |
+| CombinePath(directory, name) | Абсолютный нормализованный Windows-путь; абсолютный второй аргумент заменяет первый. |
+| GetFileName(path) | Последний компонент пути, без доступа к диску. |
+| GetDirectoryName(path) | Каталог без завершающего разделителя, кроме корня диска; пустая строка для имени без каталога. |
+| GetExtension(path) | Суффикс последнего компонента с точкой, либо пустая строка. |
+| GetTempDirectory() | Системный временный каталог с завершающим разделителем. |
+| GetTempFileName() | Создаёт уникальный пустой файл во временном каталоге и возвращает путь; удаление — ответственность вызывающего. |
+
+Кодировки: `utf-8`, `utf-8-bom`, `utf-16le` (запись с BOM), `windows-1251`.
+При явной кодировке соответствующий BOM пропускается. Невалидный UTF-8/UTF-16
+и непредставимые символы Windows-1251 отклоняются без потери прежнего файла.
+NUL в содержимом сохраняется, NUL в путях/названиях кодировки недопустим.
+Предел файла/результата записи — 8 МиБ; входного текста — 8 Ми UTF-16 единиц.
+Каталог назначения WriteTextFile должен существовать. Файл read-only не
+перезаписывается. Создание каталогов использует существующий Shell API;
+ограничения путей определяются Windows (включая MAX_PATH для этой операции).
+Относительные пути разрешаются относительно текущего рабочего каталога FBE,
+а не каталога скрипта; для последнего используйте GetCurrentScriptDirectory.
+
+При ошибке типов, параметров, кодировки, чтения или записи возникает COM-ошибка
+с HRESULT, доступная JScript через try/catch. FileExists/DirectoryExists
+возвращают false также при недоступности объекта. Операции не открывают FB2
+в редакторе и не меняют текущий документ/dirty-state.
+
+```javascript
+if (HasApi("WriteTextFile")) {
+    var path = window.external.CombinePath(
+        window.external.GetCurrentScriptDirectory(), "result.txt");
+    try { window.external.WriteTextFile(path, "Результат", "utf-8"); }
+    catch (error) { window.external.MsgBox("Не удалось записать результат"); }
+}
+```
+
+Методы ресурсов выделения/пакета/прогресса требуют активного контекста скрипта
+(E_UNEXPECTED вне него). Все новые методы доступны из настоящего JScript,
+типизированные COM-клиенты прежнего интерфейса продолжают использовать прежний
+неизменённый контракт. На старом FBE проверяйте HasApi через try/catch, как в
+разделе API 1.0.0; не полагайтесь на наличие нового метода без проверки.
