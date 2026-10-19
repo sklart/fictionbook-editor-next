@@ -1,1049 +1,1558 @@
-# API пользовательских скриптов FBE Next
+# API пользовательских скриптов FictionBook Editor Next
 
-Скрипты FBE выполняются в DOM-документе редактора. Дополнительные возможности
-приложения доступны через объект `window.external`. В этой справке `document`
-означает текущий `window.document`, а `element` — DOM-элемент этого документа.
+> **Актуальный публичный контракт: API 1.2.0, 82 метода** (`window.external`). Справочник составлен по исходному `IExternalHelper` (DISPID 1–35), таблице расширения DISPID 100–146 и документации `master` по состоянию на 19 октября 2026 года. Реализация этапов 3Б–3Г по issue #45 пока не включена.
 
-## Оглавление
+Скрипты выполняются внутри FBE Next под **Microsoft JScript/MSHTML**. `document` здесь — DOM активного представления, а **полный FB2/FBD XML** доступен отдельно через Source API. Расширение API не равно версии самого редактора: используйте `GetScriptingApiVersion()` / `HasScriptingMethod()`.
 
-### Отмена и разметка
+Этот документ организован по задачам. В оглавлении перечислены все публичные методы — ссылки ведут непосредственно к описаниям. **Не реализованные** функции вынесены в конец, чтобы их нельзя было перепутать с доступными.
 
-- [BeginUndoUnit](#beginundounit)
-- [EndUndoUnit](#endundounit)
-- [inflateBlock](#inflateblock)
-- [InflateParagraphs](#inflateparagraphs)
-- [SetStyleEx](#setstyleex)
+## Быстрый старт
 
-### Диалоги и строка состояния
+Проверка доступности нового метода при работе с разными версиями редактора:
 
-- [MsgBox](#msgbox)
-- [AskYesNo](#askyesno)
-- [InputBox](#inputbox)
-- [GetModalResult](#getmodalresult)
-- [SetStatusBarText](#setstatusbartext)
+```javascript
+function HasApi(name) {
+    try { return window.external.HasScriptingMethod(name); }
+    catch (e) { return false; }
+}
 
-### Документ и окружение
-
-- [Работа с исходным XML документа](#работа-с-исходным-xml-документа)
-- [GetDocumentFilePath](#getdocumentfilepath)
-- [GetDocumentFileName](#getdocumentfilename)
-- [GetDocumentDirectory](#getdocumentdirectory)
-- [GetStylePath](#getstylepath)
-- [GetProgramVersion](#getprogramversion)
-- [GetUUID](#getuuid)
-- [GetNBSP](#getnbsp)
-- [IsFastMode](#isfastmode)
-- [GetViewWidth](#getviewwidth)
-- [GetViewHeight](#getviewheight)
-
-### Изображения и файлы
-
-- [GetBinarySize](#getbinarysize)
-- [SaveBinary](#savebinary)
-- [GetImageDimsByPath](#getimagedimsbypath)
-- [GetImageDimsByData](#getimagedimsbydata)
-
-### Элементы описания и жанры
-
-- [GenrePopup](#genrepopup)
-- [GetExtendedStyle](#getextendedstyle)
-- [DescShowElement](#descshowelement)
-- [DescShowMenu](#descshowmenu)
-
-## Общие правила
-
-- Методы доступны только при запуске скрипта внутри FBE. В обычном браузере
-  объекта `window.external` с этим контрактом нет.
-- Изменения DOM, которые должны отменяться одним действием, заключайте в
-  `BeginUndoUnit` и `EndUndoUnit`. Для выхода по ошибке также обязательно
-  завершайте начатую группу отмены.
-- Параметры `x` и `y` в методах всплывающих меню — экранные координаты в
-  пикселях; обычно их берут из события мыши.
-- `BSTR` в COM-контракте соответствует строке JavaScript. Булевы результаты
-  доступны как `true` и `false`.
-
-## Отмена и разметка
-
-<a id="beginundounit"></a>
-### `BeginUndoUnit(document, action)`
-
-Открывает именованную группу отмены для изменений DOM. `action` показывается в
-истории отмены. На вход передаются DOM-документ и строка названия действия;
-результат не используется.
-
-```js
-window.external.BeginUndoUnit(document, "Нормализация заголовков");
-// Изменение DOM.
-window.external.EndUndoUnit(document);
-```
-
-<a id="endundounit"></a>
-### `EndUndoUnit(document)`
-
-Закрывает текущую группу отмены, начатую `BeginUndoUnit`. На вход передаётся
-тот же DOM-документ; результат не используется.
-
-```js
-window.external.BeginUndoUnit(document, "Смена класса абзаца");
-paragraph.className = "subtitle";
-window.external.EndUndoUnit(document);
-```
-
-<a id="inflateblock"></a>
-### `inflateBlock(element)`
-
-Свойство расширенного отображения блочного элемента. Чтение возвращает
-булево значение, запись включает или выключает разворачивание блока. На вход
-передаётся DOM-элемент; результат чтения — `true` или `false`.
-
-```js
-if (!window.external.inflateBlock(paragraph)) {
-  window.external.inflateBlock(paragraph) = true;
+if (HasApi("GetSelectionText")) {
+    window.external.MsgBox(window.external.GetSelectionText());
 }
 ```
 
-<a id="inflateparagraphs"></a>
-### `InflateParagraphs(element)`
+Безопасная группа Undo для старого DOM API:
 
-Включает `inflateBlock` у всех вложенных элементов `P` переданного контейнера.
-На вход передаётся DOM-контейнер; результат не используется.
-
-```js
-window.external.InflateParagraphs(section);
-```
-
-<a id="setstyleex"></a>
-### `SetStyleEx(document, element, style)`
-
-Устанавливает значение атрибута `class` элемента. `document` передаётся для
-совместимости с историческим контрактом. Вход: DOM-документ, DOM-элемент и
-строка CSS-класса; результат не используется.
-
-```js
-window.external.SetStyleEx(document, paragraph, "subtitle");
-```
-
-## Диалоги и строка состояния
-
-<a id="msgbox"></a>
-### `MsgBox(message)`
-
-Показывает информационное окно с кнопкой «ОК». На вход передаётся строка;
-результат не используется.
-
-```js
-window.external.MsgBox("Обработка завершена.");
-```
-
-<a id="askyesno"></a>
-### `AskYesNo(message)`
-
-Показывает окно с кнопками «Да» и «Нет» и возвращает `true` только для «Да».
-На вход передаётся строка; результат — `true` или `false`.
-
-```js
-if (window.external.AskYesNo("Продолжить?")) {
-  // ...
+```javascript
+window.external.BeginUndoUnit(document, "Нормализация разметки");
+try {
+    // Изменяйте DOM документа.
+} finally {
+    window.external.EndUndoUnit(document);
 }
 ```
 
-<a id="inputbox"></a>
-### `InputBox(prompt, title, value)`
+При использовании новых методов проверяйте их наличие, а вызовы, способные выдавать COM-ошибки, оборачивайте в `try/catch`. В старом MSHTML **глобальный объект `JSON` может отсутствовать**: строки JSON, возвращаемые API, обрабатывайте совместимым JSON-парсером; не применяйте `eval` к XML книги или произвольным внешним данным.
 
-Показывает окно ввода. Возвращает введённый текст при подтверждении; при
-отмене возвращает пустую строку. Код закрытия окна доступен сразу после вызова
-через `GetModalResult()`. На вход передаются текст приглашения, заголовок и
-начальное значение; результат — строка ввода или пустая строка.
+## Оглавление: все 82 метода
 
-```js
-var input = window.external.InputBox("Введите заголовок", "Свойства", "");
-if (window.external.GetModalResult() !== 6) { // 6 — IDYES
-  return;
+Переходы привязаны к явным якорям `api-<имя>`; изменение формулировок заголовков не должно ломать ссылки.
+
+### Версия API, контекст скрипта и окружение
+
+- [`GetScriptingApiVersion`](#api-getscriptingapiversion)
+- [`HasScriptingMethod`](#api-hasscriptingmethod)
+- [`GetScriptingCapabilities`](#api-getscriptingcapabilities)
+- [`GetCurrentScriptPath`](#api-getcurrentscriptpath)
+- [`GetCurrentScriptDirectory`](#api-getcurrentscriptdirectory)
+- [`GetCurrentScriptName`](#api-getcurrentscriptname)
+- [`GetCurrentScriptId`](#api-getcurrentscriptid)
+- [`GetScriptsRootDirectory`](#api-getscriptsrootdirectory)
+- [`GetInterfaceLanguage`](#api-getinterfacelanguage)
+- [`GetCurrentViewMode`](#api-getcurrentviewmode)
+- [`IsDocumentModified`](#api-isdocumentmodified)
+
+### Файл документа и общие сведения
+
+- [`GetDocumentFilePath`](#api-getdocumentfilepath)
+- [`GetDocumentFileName`](#api-getdocumentfilename)
+- [`GetDocumentDirectory`](#api-getdocumentdirectory)
+- [`GetStylePath`](#api-getstylepath)
+- [`GetProgramVersion`](#api-getprogramversion)
+- [`GetUUID`](#api-getuuid)
+- [`GetNBSP`](#api-getnbsp)
+- [`IsFastMode`](#api-isfastmode)
+- [`GetViewWidth`](#api-getviewwidth)
+- [`GetViewHeight`](#api-getviewheight)
+
+### Редактирование DOM, Undo и исходный XML
+
+- [`BeginUndoUnit`](#api-beginundounit)
+- [`EndUndoUnit`](#api-endundounit)
+- [`inflateBlock`](#api-inflateblock)
+- [`InflateParagraphs`](#api-inflateparagraphs)
+- [`SetStyleEx`](#api-setstyleex)
+- [`BeginDocumentUpdate`](#api-begindocumentupdate)
+- [`EndDocumentUpdate`](#api-enddocumentupdate)
+- [`GetSourceText`](#api-getsourcetext)
+- [`ValidateSourceText`](#api-validatesourcetext)
+- [`GetLastSourceDiagnostic`](#api-getlastsourcediagnostic)
+- [`ApplySourceText`](#api-applysourcetext)
+- [`ValidateCurrentDocument`](#api-validatecurrentdocument)
+
+### Выделение и закладки
+
+- [`CreateSelectionBookmark`](#api-createselectionbookmark)
+- [`RestoreSelectionBookmark`](#api-restoreselectionbookmark)
+- [`ReleaseSelectionBookmark`](#api-releaseselectionbookmark)
+- [`GetSelectionText`](#api-getselectiontext)
+- [`GetSelectionHtml`](#api-getselectionhtml)
+- [`GetSelectionInfo`](#api-getselectioninfo)
+
+### Диалоги и пользовательский ввод
+
+- [`MsgBox`](#api-msgbox)
+- [`AskYesNo`](#api-askyesno)
+- [`InputBox`](#api-inputbox)
+- [`GetModalResult`](#api-getmodalresult)
+- [`SelectOpenFile`](#api-selectopenfile)
+- [`SelectSaveFile`](#api-selectsavefile)
+- [`SelectFolder`](#api-selectfolder)
+- [`InputBoxEx`](#api-inputboxex)
+
+### Описание книги и жанры
+
+- [`GenrePopup`](#api-genrepopup)
+- [`GetExtendedStyle`](#api-getextendedstyle)
+- [`DescShowElement`](#api-descshowelement)
+- [`DescShowMenu`](#api-descshowmenu)
+
+### Строка состояния, прогресс и отмена
+
+- [`SetStatusBarText`](#api-setstatusbartext)
+- [`BeginProgress`](#api-beginprogress)
+- [`SetProgress`](#api-setprogress)
+- [`IsProgressCancelled`](#api-isprogresscancelled)
+- [`EndProgress`](#api-endprogress)
+
+### Двоичные вложения, текстовые файлы и пути
+
+- [`GetBinarySize`](#api-getbinarysize)
+- [`SaveBinary`](#api-savebinary)
+- [`GetImageDimsByPath`](#api-getimagedimsbypath)
+- [`GetImageDimsByData`](#api-getimagedimsbydata)
+- [`ReadTextFile`](#api-readtextfile)
+- [`WriteTextFile`](#api-writetextfile)
+- [`WriteTextFileEx`](#api-writetextfileex)
+- [`FileExists`](#api-fileexists)
+- [`DirectoryExists`](#api-directoryexists)
+- [`CreateDirectory`](#api-createdirectory)
+- [`CombinePath`](#api-combinepath)
+- [`GetFileName`](#api-getfilename)
+- [`GetDirectoryName`](#api-getdirectoryname)
+- [`GetExtension`](#api-getextension)
+- [`GetTempDirectory`](#api-gettempdirectory)
+- [`GetTempFileName`](#api-gettempfilename)
+
+### Настройки пользовательского скрипта
+
+- [`GetScriptSetting`](#api-getscriptsetting)
+- [`SetScriptSetting`](#api-setscriptsetting)
+- [`RemoveScriptSetting`](#api-removescriptsetting)
+- [`ClearScriptSettings`](#api-clearscriptsettings)
+
+### Диагностика, журнал и локализация
+
+- [`IsDiagnosticTraceEnabled`](#api-isdiagnostictraceenabled)
+- [`TraceScript`](#api-tracescript)
+- [`GetLocalizedString`](#api-getlocalizedstring)
+- [`LogMessage`](#api-logmessage)
+- [`GetLastScriptingError`](#api-getlastscriptingerror)
+- [`ClearLastScriptingError`](#api-clearlastscriptingerror)
+
+[Общие правила](#общие-правила-и-совместимость) · [Практические сценарии](#практические-сценарии) · [Ограничения](#ограничения-контракты-и-ошибки) · [Не реализовано](#запланировано-но-не-доступно-для-вызова)
+
+
+## Общие правила и совместимость
+
+- Имена расширенных методов нечувствительны к регистру при поиске через IDispatch. Параметры передаются позиционно, не именованными COM-аргументами.
+- `BSTR` соответствует строкам JScript; `BOOL` — `true`/`false`. Из-за различий COM/JScript не полагайтесь на современный синтаксис JavaScript (`let`, `const`, стрелочные функции и т.п.). Примеры ниже используют `var`, `try/finally` и простые функции.
+- Всплывающие меню принимают **экранные** координаты `x`/`y` в пикселях.
+- Старый `IExternalHelper` и DISPID 1–35 оставлены для совместимости. Новые методы присоединяются к тому же `window.external` через аддитивный `IDispatch`; регистрация нового COM-сервера не требуется.
+- Для создания **одного** Undo используйте `BeginUndoUnit`/`EndUndoUnit` или `BeginDocumentUpdate`/`EndDocumentUpdate`. Ни один из этих методов не гарантирует автоматического отката произвольных уже сделанных DOM-правок при исключении. Завершайте открытую группу в `finally`.
+- Для изменения XML всей книги берите `GetSourceText` → проверяйте `ValidateSourceText` → вызывайте `ApplySourceText`. Внутри открытого пакета `BeginDocumentUpdate` последняя операция недопустима.
+- Часть методов (настройки, закладки, пакетный режим, прогресс, диагностика) требует активного контекста скрипта; вне него возможен `E_UNEXPECTED`. Вложенный запуск скрипта получает собственные контекст, ресурсы и состояние последней ошибки.
+- Пути в текстовом API разрешаются относительно рабочего каталога FBE, **а не** папки скрипта. Для соседних файлов используйте `CombinePath(GetCurrentScriptDirectory(), name)`.
+
+### Границы версий
+
+| Версия / DISPID | Реализованные возможности |
+|---|---|
+| Старый интерфейс, **1–35** | Undo, разметка, базовые диалоги, свойства документа, изображения, Source XML, локализация и диагностика. |
+| **1.0.0**, **100–118** | Проверка версии и capabilities, контекст скрипта, настройки скрипта, современные диалоги. |
+| **1.1.0**, **119–142** | Выделение и закладки, пакетный Undo, прогресс, текстовые файлы и работа с путями. |
+| **1.2.0**, **143–146** | Проверка текущего документа, логирование, последняя ошибка API. |
+
+> `GetProgramVersion()` сообщает версию приложения; `GetScriptingApiVersion()` — **версию API**. Проверка только номера приложения недостаточна.
+
+
+## Справочник методов
+
+
+## Версия API, контекст скрипта и окружение
+
+<a id="api-getscriptingapiversion"></a>
+
+### `GetScriptingApiVersion()`
+
+Определяет версию расширенного интерфейса независимо от номера релиза редактора.
+
+**Результат:** Строка, в актуальной реализации — `"1.2.0"`.
+
+**Особенности:** В старых версиях метода может не быть: для совместимости проверяйте вызов через `try/catch`.
+
+```javascript
+var version = window.external.GetScriptingApiVersion();
+```
+
+<a id="api-hasscriptingmethod"></a>
+
+### `HasScriptingMethod(name)`
+
+Проверяет, доступен ли публичный метод по строковому имени; сам метод не выполняет.
+
+**Результат:** `true` или `false`.
+
+**Особенности:** Проверяет и исходный интерфейс, и расширение. Имя нечувствительно к регистру. При работе со старым FBE отсутствие самого `HasScriptingMethod` перехватывайте через `try/catch`.
+
+```javascript
+if (window.external.HasScriptingMethod("GetSelectionText")) {
+    var text = window.external.GetSelectionText();
 }
-// input содержит введённый пользователем текст.
 ```
 
-<a id="getmodalresult"></a>
-### `GetModalResult()`
+<a id="api-getscriptingcapabilities"></a>
 
-Возвращает код последнего окна `InputBox`: при подтверждении — `6` (`IDYES`),
-при отмене обычно `2` (`IDCANCEL`). Значение сохраняется до следующего
-`InputBox`. Входных параметров нет; результат — числовой код кнопки.
+### `GetScriptingCapabilities()`
 
-```js
-window.external.InputBox("Введите значение", "Параметр", "по умолчанию");
-var resultCode = window.external.GetModalResult(); // 6 — подтверждено
+Получает сведения о поддерживаемых группах возможностей.
+
+**Результат:** JSON-строка с `schemaVersion`, `apiVersion` и `capabilities`.
+
+**Особенности:** В версии 1.2.0 доступны ключи: `scriptContext`, `environment`, `scriptSettings`, `fileDialogs`, `inputBoxEx`, `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`, `documentValidation`, `logging`, `scriptingErrors`. Неизвестный ключ не считайте подтверждением возможности.
+
+```javascript
+var capsJson = window.external.GetScriptingCapabilities();
 ```
 
-<a id="setstatusbartext"></a>
-### `SetStatusBarText(text)`
+<a id="api-getcurrentscriptpath"></a>
 
-Заменяет текст строки состояния главного окна FBE. На вход передаётся строка;
-результат не используется.
+### `GetCurrentScriptPath()`
 
-```js
-window.external.SetStatusBarText("Обработано: " + count);
+Возвращает абсолютный путь выполняемого JS-файла.
+
+**Результат:** Строка пути или `""`, если нет активного контекста.
+
+**Особенности:** Вложенный запуск `apiRunCmd` временно переключает путь на вложенный скрипт.
+
+```javascript
+var current = window.external.GetCurrentScriptPath();
 ```
 
-## Документ и окружение
+<a id="api-getcurrentscriptdirectory"></a>
 
-<a id="работа-с-исходным-xml-документа"></a>
-### Работа с исходным XML документа
+### `GetCurrentScriptDirectory()`
 
-`document` — это DOM визуального Body, предоставляемый MSHTML. Он не является
-полным XML книги. Для работы со всем документом FB2 или FBD через Source API
-используйте `window.external`: получаемая строка включает `description`, все
-`body` и `binary`.
+Находит каталог, где лежит выполняемый скрипт.
 
-```js
-window.external.GetSourceText()
-window.external.ValidateSourceText(xml)
-window.external.GetLastSourceDiagnostic()
-window.external.ApplySourceText(xml, action)
+**Результат:** Абсолютный путь **с завершающим `\`** или `""` без контекста.
+
+**Особенности:** Подходит для хранения соседних ресурсов. Не путайте с рабочим каталогом FBE.
+
+```javascript
+var dir = window.external.GetCurrentScriptDirectory();
 ```
 
-`window.external.GetSourceText()` возвращает полный актуальный XML. Если
-пользователь оставил несохранённые изменения в режиме Source, метод читает
-именно этот текст и не переключает редактор в другой режим. Большие `binary`
-существенно увеличивают размер возвращаемой строки.
+<a id="api-getcurrentscriptname"></a>
 
-Перед изменением вызывайте `window.external.ValidateSourceText(xml)`. Это
-штатная проверка полного FB2/FBD. Если XML невалиден, вызов
-`window.external.ApplySourceText(xml, action)` также отвергает его: документ
-не меняется. При успехе Apply создаёт одну стандартную операцию Undo/Redo с
-описанием `action`.
+### `GetCurrentScriptName()`
 
-`window.external.GetLastSourceDiagnostic()` возвращает JSON последней XML
-операции. Его структура: `valid` (boolean), `message` (string), `line`
-(number) и `column` (number). В JScript JSON можно разобрать через `eval`:
+Получает имя выполняемого JS-файла с расширением, но без каталога.
 
-```js
-function ReadSourceDiagnostic()
-{
-    return eval("(" + window.external.GetLastSourceDiagnostic() + ")");
+**Результат:** Строка либо `""` вне контекста.
+
+```javascript
+var name = window.external.GetCurrentScriptName();
+```
+
+<a id="api-getcurrentscriptid"></a>
+
+### `GetCurrentScriptId()`
+
+Получает UID скрипта из существующего реестра скриптов.
+
+**Результат:** Строка UID; пустая строка для незарегистрированного скрипта или вне контекста.
+
+**Особенности:** Не создаёт новый UID и не сканирует всю библиотеку.
+
+```javascript
+var id = window.external.GetCurrentScriptId();
+```
+
+<a id="api-getscriptsrootdirectory"></a>
+
+### `GetScriptsRootDirectory()`
+
+Возвращает настроенный корневой каталог пользовательских скриптов.
+
+**Результат:** Абсолютный путь.
+
+**Особенности:** Завершающий разделитель может присутствовать; для склеивания путей используйте `CombinePath`.
+
+```javascript
+var root = window.external.GetScriptsRootDirectory();
+```
+
+<a id="api-getinterfacelanguage"></a>
+
+### `GetInterfaceLanguage()`
+
+Получает активную эффективную локаль интерфейса.
+
+**Результат:** Строка, например `"ru-RU"` или `"en-US"`.
+
+```javascript
+var lang = window.external.GetInterfaceLanguage();
+```
+
+<a id="api-getcurrentviewmode"></a>
+
+### `GetCurrentViewMode()`
+
+Определяет текущий режим отображения документа.
+
+**Результат:** Одна из строк `"design"`, `"source"`, `"description"`.
+
+**Особенности:** Позволяет не обращаться к MSHTML Body при активном Source.
+
+```javascript
+if (window.external.GetCurrentViewMode() === "source") {
+    // В этом режиме работайте с Source API.
 }
-
-function Run()
-{
-    var xml = window.external.GetSourceText();
-    var changed = xml.replace("старый текст", "новый текст");
-
-    if (!window.external.ValidateSourceText(changed))
-    {
-        var diagnostic = ReadSourceDiagnostic();
-        window.external.MsgBox(
-            diagnostic.message + " (" + diagnostic.line + ":" + diagnostic.column + ")");
-        return;
-    }
-
-    // Apply повторно валидирует XML и добавляет одну обычную операцию Undo/Redo.
-    window.external.ApplySourceText(changed, "Замена текста в XML");
-}
 ```
+
+<a id="api-isdocumentmodified"></a>
+
+### `IsDocumentModified()`
+
+Проверяет несохранённые изменения в текущем документе.
+
+**Результат:** `true` или `false`.
+
+**Особенности:** Учитывает изменения Body, Description и несохранённый текст Source.
+
+```javascript
+var dirty = window.external.IsDocumentModified();
+```
+
+
+## Файл документа и общие сведения
+
 <a id="getdocumentfilepath"></a>
+
+<a id="api-getdocumentfilepath"></a>
+
 ### `GetDocumentFilePath()`
 
-Возвращает абсолютный путь к текущему FB2-файлу. До первого сохранения новой
-книги возвращает пустую строку. Метод возвращает абсолютный нормализованный
-путь; если нормализовать путь невозможно, возвращает пустую строку. Входных
-параметров нет; результат — строка.
+Возвращает абсолютный нормализованный путь к файлу текущей книги.
 
-```js
-var fullPath = window.external.GetDocumentFilePath();
-// Например: "D:\\Books\\Example.fb2" или "" для несохранённой книги.
+**Результат:** Строка пути или `""` для ещё не сохранённой книги / невозможности нормализации.
+
+```javascript
+var path = window.external.GetDocumentFilePath();
 ```
 
 <a id="getdocumentfilename"></a>
+
+<a id="api-getdocumentfilename"></a>
+
 ### `GetDocumentFileName()`
 
-Возвращает имя текущего файла вместе с расширением, без пути. До первого
-сохранения возвращает пустую строку. Входных параметров нет; результат —
-строка.
+Возвращает имя текущего файла вместе с расширением, без каталога.
 
-```js
+**Результат:** Строка имени либо `""` до первого сохранения.
+
+```javascript
 var fileName = window.external.GetDocumentFileName();
-// Например: "Example.fb2".
 ```
 
 <a id="getdocumentdirectory"></a>
+
+<a id="api-getdocumentdirectory"></a>
+
 ### `GetDocumentDirectory()`
 
-Возвращает абсолютный путь к каталогу текущей книги без завершающего `\`,
-кроме корня диска. До первого сохранения возвращает пустую строку. Входных
-параметров нет; результат — строка.
+Получает каталог текущей книги.
 
-```js
-var directory = window.external.GetDocumentDirectory();
-if (!directory) {
-  window.external.MsgBox("Сначала сохраните книгу.");
-  return;
-}
-var reportPath = directory + "\\report.txt";
+**Результат:** Строка пути без завершающего `\`, кроме корня диска; `""` до сохранения.
+
+**Особенности:** Используйте для создания отчётов рядом с книгой, предварительно убедившись, что книга сохранена.
+
+```javascript
+var bookDir = window.external.GetDocumentDirectory();
+if (!bookDir) { window.external.MsgBox("Сначала сохраните книгу."); return; }
 ```
 
 <a id="getstylepath"></a>
+
+<a id="api-getstylepath"></a>
+
 ### `GetStylePath()`
 
-Возвращает каталог установленной программы FBE без завершающего `\`. Входных
-параметров нет; результат — строка.
+Возвращает каталог установленной программы FBE.
 
-```js
-var programDir = window.external.GetStylePath();
-// Например: "C:\\Program Files (x86)\\FictionBook Editor Next".
+**Результат:** Строка абсолютного пути, обычно без завершающего `\`.
+
+**Особенности:** Это расположение приложения, а не каталог текущего скрипта.
+
+```javascript
+var installDir = window.external.GetStylePath();
 ```
 
 <a id="getprogramversion"></a>
+
+<a id="api-getprogramversion"></a>
+
 ### `GetProgramVersion()`
 
-Возвращает строку версии работающего FBE. Входных параметров нет; результат —
-строка.
+Определяет версию запущенного редактора.
 
-```js
-var version = window.external.GetProgramVersion();
-// Например: "3.0.5".
+**Результат:** Строка вида `"3.0.9"` (значение зависит от релиза).
+
+**Особенности:** Не используйте вместо `GetScriptingApiVersion` для проверки доступности новых методов.
+
+```javascript
+var appVersion = window.external.GetProgramVersion();
 ```
 
 <a id="getuuid"></a>
+
+<a id="api-getuuid"></a>
+
 ### `GetUUID()`
 
-Создаёт и возвращает новый UUID в верхнем регистре, без фигурных скобок.
-Входных параметров нет; результат — строка UUID.
+Генерирует новый UUID.
 
-```js
+**Результат:** Строка UUID в верхнем регистре без фигурных скобок.
+
+```javascript
 var id = window.external.GetUUID();
 ```
 
 <a id="getnbsp"></a>
+
+<a id="api-getnbsp"></a>
+
 ### `GetNBSP()`
 
-Возвращает символ неразрывного пробела, выбранный в настройках FBE. Входных
-параметров нет; результат — строка из одного символа.
+Получает используемый в настройках редактора символ неразрывного пробела.
 
-```js
+**Результат:** Строка из одного символа.
+
+**Особенности:** Для нормализации пробелов лучше использовать этот метод, а не жёстко зашитый код символа.
+
+```javascript
 var nbsp = window.external.GetNBSP();
 paragraph.innerText = "Иван" + nbsp + "Иванов";
 ```
 
 <a id="isfastmode"></a>
+
+<a id="api-isfastmode"></a>
+
 ### `IsFastMode()`
 
-Возвращает `true`, если в FBE включён быстрый режим просмотра. Входных
-параметров нет; результат — `true` или `false`.
+Определяет, включён ли быстрый режим просмотра.
 
-```js
-if (window.external.IsFastMode()) {
-  window.external.MsgBox("Скрипт запущен в быстром режиме.");
-}
+**Результат:** `true` или `false`.
+
+```javascript
+var fast = window.external.IsFastMode();
 ```
 
 <a id="getviewwidth"></a>
+
+<a id="api-getviewwidth"></a>
+
 ### `GetViewWidth()`
 
-Возвращает текущую ширину рабочей области редактора в пикселях. Входных
-параметров нет; результат — целое число.
+Измеряет ширину текущей рабочей области редактора.
 
-```js
+**Результат:** Целое число пикселей.
+
+```javascript
 var width = window.external.GetViewWidth();
 ```
 
 <a id="getviewheight"></a>
+
+<a id="api-getviewheight"></a>
+
 ### `GetViewHeight()`
 
-Возвращает текущую высоту рабочей области редактора в пикселях. Входных
-параметров нет; результат — целое число.
+Измеряет высоту текущей рабочей области редактора.
 
-```js
+**Результат:** Целое число пикселей.
+
+```javascript
 var height = window.external.GetViewHeight();
 ```
 
-## Изображения и файлы
 
-<a id="getbinarysize"></a>
-### `GetBinarySize(data)`
+## Редактирование DOM, Undo и исходный XML
 
-Возвращает размер двоичных данных в байтах. Параметр должен быть строкой с
-двоичным содержимым, например `base64data` элемента `binary`, а не строкой
-base64-представления. На вход передаётся двоичная строка; результат — целое
-число байтов.
+<a id="beginundounit"></a>
 
-```js
-var size = window.external.GetBinarySize(binary.base64data);
-// Например: 15342.
-```
+<a id="api-beginundounit"></a>
 
-<a id="savebinary"></a>
-### `SaveBinary(path, data, prompt)`
+### `BeginUndoUnit(document, action)`
 
-Сохраняет двоичные данные `data` в файл и возвращает `true` только после полной
-успешной записи.
+Начинает именованную группу Undo для изменений DOM визуального редактора.
 
-При `prompt = true` открывается стандартный диалог Save As. Если выбран
-существующий файл, Windows запрашивает подтверждение замены; после
-подтверждения файл заменяется. Отмена диалога возвращает `false`, как и
-реальная ошибка записи (она может быть показана пользователю).
+**Результат:** Результат не используется.
 
-При `prompt = false` диалог не открывается: используется путь `path`. Если
-целевой файл отсутствует, он создаётся. Если он уже существует, метод не
-заменяет его и возвращает `false`; существующий файл остаётся неизменным.
-`FILE_EXISTS` в этом режиме — ожидаемый результат для вызывающего скрипта, а
-не повод показывать сообщение пользователю. Любая ошибка записи также
-возвращает `false` без показа диалога.
+**Особенности:** `document` — DOM текущего представления; `action` — текст действия в истории отмены. Обязательно закрывайте группу в `finally`.
 
-Вход: путь, двоичные данные и флаг показа диалога; результат — `true` или
-`false`.
-
-```js
-var saved = window.external.SaveBinary("cover.jpg", binary.base64data, false);
-```
-
-<a id="getimagedimsbypath"></a>
-### `GetImageDimsByPath(path)`
-
-Возвращает размеры изображения по пути строкой вида `"640x480"`. Если файл
-не удалось прочитать или формат не поддержан, возвращает пустую строку. На
-вход передаётся строка пути; результат — строка размера или `""`.
-
-```js
-var dims = window.external.GetImageDimsByPath("D:\\Pictures\\cover.jpg");
-// "640x480" при успехе, "" при ошибке.
-```
-
-<a id="getimagedimsbydata"></a>
-### `GetImageDimsByData(data)`
-
-Возвращает размеры изображения строкой `"ширинаxвысота"` по двоичным данным.
-Передавайте значение `base64data` элемента `binary`; для произвольной строки
-JavaScript метод не предназначен. При ошибке возвращается пустая строка. На
-вход передаются двоичные данные `base64data`; результат — строка размера или
-`""`.
-
-```js
-var dims = window.external.GetImageDimsByData(binary.base64data);
-```
-
-## Элементы описания и жанры
-
-<a id="genrepopup"></a>
-### `GenrePopup(element, x, y)`
-
-Открывает меню жанров в экранной точке `(x, y)` и возвращает идентификатор
-выбранного жанра FB2. Если меню закрыто без выбора, результат — `null`.
-Параметр `element` сохранён для совместимости и в текущей реализации не
-используется. Вход: DOM-элемент и экранные координаты; результат — строковый
-идентификатор жанра или `null`.
-
-```js
-var genre = window.external.GenrePopup(paragraph, event.screenX, event.screenY);
-if (genre !== null) {
-  window.external.MsgBox("Выбран жанр: " + genre);
+```javascript
+window.external.BeginUndoUnit(document, "Правка заголовков");
+try {
+    // Изменения DOM.
+} finally {
+    window.external.EndUndoUnit(document);
 }
 ```
 
+<a id="endundounit"></a>
+
+<a id="api-endundounit"></a>
+
+### `EndUndoUnit(document)`
+
+Закрывает ранее начатую группу отмены.
+
+**Результат:** Результат не используется.
+
+**Особенности:** Передавайте тот же объект `document`, что и в `BeginUndoUnit`.
+
+```javascript
+window.external.EndUndoUnit(document);
+```
+
+<a id="inflateblock"></a>
+
+<a id="api-inflateblock"></a>
+
+### `inflateBlock(element)`
+
+Индексированное COM-свойство расширенного отображения блочного элемента.
+
+**Результат:** При чтении — `true`/`false`; также поддерживается запись свойства.
+
+**Особенности:** Используется для совместимости с классическим FBE. Синтаксис записи индексированного COM-свойства зависит от JScript/COM; для массового включения используйте `InflateParagraphs`.
+
+```javascript
+var inflated = window.external.inflateBlock(paragraph);
+```
+
+<a id="inflateparagraphs"></a>
+
+<a id="api-inflateparagraphs"></a>
+
+### `InflateParagraphs(element)`
+
+Включает `inflateBlock` для вложенных элементов `P` указанного контейнера.
+
+**Результат:** Результат не используется.
+
+```javascript
+window.external.InflateParagraphs(section);
+```
+
+<a id="setstyleex"></a>
+
+<a id="api-setstyleex"></a>
+
+### `SetStyleEx(document, element, style)`
+
+Устанавливает элементу CSS-класс (атрибут `class`).
+
+**Результат:** Результат не используется.
+
+**Особенности:** Первый аргумент сохранён для совместимости с историческим контрактом.
+
+```javascript
+window.external.SetStyleEx(document, paragraph, "subtitle");
+```
+
+<a id="api-begindocumentupdate"></a>
+
+### `BeginDocumentUpdate(action, optionsJson)`
+
+Начинает пакетную правку, возвращая токен группы Undo.
+
+**Результат:** Строка-токен.
+
+**Особенности:** `optionsJson`: `"{}"` или `"{\"suspendRedraw\":true}"`. Последний вариант временно приостанавливает перерисовку. Поддерживаются вложенные группы с закрытием в обратном порядке. **Это не транзакционный откат изменений**.
+
+```javascript
+var token = window.external.BeginDocumentUpdate("Исправление текста", "{}");
+try {
+    // Изменения документа.
+} finally {
+    window.external.EndDocumentUpdate(token);
+}
+```
+
+<a id="api-enddocumentupdate"></a>
+
+### `EndDocumentUpdate(token)`
+
+Завершает последнюю открытую пакетную операцию текущего скрипта.
+
+**Результат:** `true` при успехе.
+
+**Особенности:** При неправильном порядке закрытия, чужом или устаревшем токене возникает ошибка. Перерисовка восстанавливается и при аварийном завершении контекста.
+
+```javascript
+window.external.EndDocumentUpdate(token);
+```
+
+<a id="работа-с-исходным-xml-документа"></a>
+
+<a id="api-getsourcetext"></a>
+
+### `GetSourceText()`
+
+Читает **полный актуальный XML** книги FB2/FBD, включая `description`, все `body` и `binary`.
+
+**Результат:** Строка XML.
+
+**Особенности:** В Source учитывает даже ещё не применённые изменения, не переключая режим редактора. Большие бинарные вложения увеличивают память и объём строки.
+
+```javascript
+var xml = window.external.GetSourceText();
+```
+
+<a id="api-validatesourcetext"></a>
+
+### `ValidateSourceText(xml)`
+
+Проверяет полный XML FB2/FBD штатным механизмом редактора до изменения книги.
+
+**Результат:** `true` для валидного XML, иначе `false`.
+
+**Особенности:** После отказа детали доступны через `GetLastSourceDiagnostic()`.
+
+```javascript
+if (!window.external.ValidateSourceText(changedXml)) {
+    window.external.MsgBox(window.external.GetLastSourceDiagnostic());
+    return;
+}
+```
+
+<a id="api-getlastsourcediagnostic"></a>
+
+### `GetLastSourceDiagnostic()`
+
+Получает подробности последней Source XML-операции.
+
+**Результат:** JSON-строка с полями `valid`, `message`, `line`, `column`.
+
+**Особенности:** Это отдельная диагностика Source API, не путайте с `GetLastScriptingError()`. Глобальный `JSON` доступен не во всех режимах MSHTML.
+
+```javascript
+var detailsJson = window.external.GetLastSourceDiagnostic();
+```
+
+<a id="api-applysourcetext"></a>
+
+### `ApplySourceText(xml, action)`
+
+Повторно проверяет и применяет XML целиком, создавая одну операцию Undo/Redo с названием `action`.
+
+**Результат:** `true` при успешном применении, `false` при отказе.
+
+**Особенности:** При невалидном XML документ остаётся неизменным. Не вызывайте внутри открытой группы `BeginDocumentUpdate`.
+
+```javascript
+if (!window.external.ApplySourceText(changedXml, "Исправление XML")) {
+    window.external.MsgBox(window.external.GetLastSourceDiagnostic());
+}
+```
+
+<a id="api-validatecurrentdocument"></a>
+
+### `ValidateCurrentDocument(optionsJson)`
+
+Выполняет штатную проверку текущего FB2/FBD **без передачи всего XML в JScript**.
+
+**Результат:** JSON-строка с `schemaVersion`, `status`, `valid`, `diagnosticsComplete`, `errors`, `warnings`.
+
+**Особенности:** Параметр обязателен и пока должен быть строкой `"{}"` (можно пробелы). В Source проверяется несохранённый текст; в Design/Description — detached DOM/stream. Не меняет Undo/Redo, выделение, режим и dirty-state. Для структурной проверки FBD действует его собственный контракт.
+
+```javascript
+var resultJson = window.external.ValidateCurrentDocument("{}");
+```
+
+
+## Выделение и закладки
+
+<a id="api-createselectionbookmark"></a>
+
+### `CreateSelectionBookmark()`
+
+Сохраняет состояние текущего выделения либо каретки.
+
+**Результат:** Непрозрачный строковый токен.
+
+**Особенности:** До 128 закладок на контекст. Закладка живёт только во время текущего скрипта; не сохраняйте её в настройках.
+
+```javascript
+var mark = window.external.CreateSelectionBookmark();
+```
+
+<a id="api-restoreselectionbookmark"></a>
+
+### `RestoreSelectionBookmark(token)`
+
+Возвращает каретку/выделение к сохранённому состоянию, если оно ещё допустимо.
+
+**Результат:** `true` при успешном восстановлении, иначе `false`.
+
+**Особенности:** Не переключает режим. Смена документа, версии MSHTML, содержимого Source или значения соответствующих полей Description может инвалидировать закладку.
+
+```javascript
+if (!window.external.RestoreSelectionBookmark(mark)) {
+    window.external.MsgBox("Выделение уже изменилось.");
+}
+```
+
+<a id="api-releaseselectionbookmark"></a>
+
+### `ReleaseSelectionBookmark(token)`
+
+Явно освобождает сохранённую закладку.
+
+**Результат:** `true` при освобождении, `false` для неизвестной или уже удалённой закладки.
+
+**Особенности:** Оставшиеся закладки освобождаются автоматически в конце контекста скрипта.
+
+```javascript
+window.external.ReleaseSelectionBookmark(mark);
+```
+
+<a id="api-getselectiontext"></a>
+
+### `GetSelectionText()`
+
+Получает обычный текст выделения.
+
+**Результат:** Строка, `""` при отсутствии текстового выделения.
+
+**Особенности:** Работает с выделением Body, Source и полей Description. В Source читает только выделенный диапазон Scintilla, не полный XML.
+
+```javascript
+var text = window.external.GetSelectionText();
+```
+
+<a id="api-getselectionhtml"></a>
+
+### `GetSelectionHtml()`
+
+Получает HTML-представление выделения.
+
+**Результат:** HTML-строка.
+
+**Особенности:** Для Source результат содержит HTML-экранированный выбранный исходный текст. Поддерживается также control-выделение.
+
+```javascript
+var html = window.external.GetSelectionHtml();
+```
+
+<a id="api-getselectioninfo"></a>
+
+### `GetSelectionInfo()`
+
+Описывает тип и объём текущего выделения без передачи его содержимого.
+
+**Результат:** JSON-строка с `schemaVersion`, `view`, `type`, `textLength`, `controlCount`.
+
+**Особенности:** `view`: `design`, `description`, `source`; `type`: `text`, `control`, `none`; длина измеряется в единицах UTF-16, включая пары для supplementary-символов.
+
+```javascript
+var infoJson = window.external.GetSelectionInfo();
+```
+
+
+## Диалоги и пользовательский ввод
+
+<a id="msgbox"></a>
+
+<a id="api-msgbox"></a>
+
+### `MsgBox(message)`
+
+Показывает информационное окно с одной кнопкой «ОК».
+
+**Результат:** Результат не используется.
+
+```javascript
+window.external.MsgBox("Обработка завершена.");
+```
+
+<a id="askyesno"></a>
+
+<a id="api-askyesno"></a>
+
+### `AskYesNo(message)`
+
+Запрашивает у пользователя ответ «Да» или «Нет».
+
+**Результат:** `true` только при выборе «Да».
+
+```javascript
+if (!window.external.AskYesNo("Продолжить?")) return;
+```
+
+<a id="inputbox"></a>
+
+<a id="api-inputbox"></a>
+
+### `InputBox(prompt, title, value)`
+
+Отображает старое окно ввода текста.
+
+**Результат:** Введённая строка после подтверждения; при отмене — `""`.
+
+**Особенности:** Чтобы отличить отмену от подтверждения пустой строки, сразу вызывайте `GetModalResult()`.
+
+```javascript
+var name = window.external.InputBox("Имя", "Название", "");
+if (window.external.GetModalResult() !== 6) return;
+```
+
+<a id="getmodalresult"></a>
+
+<a id="api-getmodalresult"></a>
+
+### `GetModalResult()`
+
+Возвращает код последнего диалога `InputBox`.
+
+**Результат:** Числовой код: `6` (`IDYES`) при подтверждении, обычно `2` (`IDCANCEL`) при отмене.
+
+**Особенности:** Это состояние старого InputBox; новый `InputBoxEx` на него не влияет.
+
+```javascript
+var accepted = window.external.GetModalResult() === 6;
+```
+
+<a id="api-selectopenfile"></a>
+
+### `SelectOpenFile(optionsJson)`
+
+Открывает системный диалог выбора существующего файла или нескольких файлов.
+
+**Результат:** JSON-строка `{"status":"ok","path":"..."}` либо с `paths`, при отмене `{"status":"cancelled"}`.
+
+**Особенности:** Опции: `title`, `initialDirectory`, `initialFileName`, `defaultExtension`, `multiSelect`, `filters`. Выбор не открывает книгу в редакторе.
+
+```javascript
+var selected = window.external.SelectOpenFile(
+    '{"title":"Выберите книгу","filters":[{"name":"FB2","pattern":"*.fb2"}]}');
+```
+
+<a id="api-selectsavefile"></a>
+
+### `SelectSaveFile(optionsJson)`
+
+Предлагает пользователю выбрать путь для сохранения файла.
+
+**Результат:** JSON-строка с `status` и `path` (или `status:"cancelled"`).
+
+**Особенности:** Сам файл **не записывает**. При существующем файле пользователь должен подтвердить замену. `multiSelect:true` не поддерживается.
+
+```javascript
+var targetJson = window.external.SelectSaveFile(
+    '{"title":"Сохранить отчёт","defaultExtension":"txt"}');
+```
+
+<a id="api-selectfolder"></a>
+
+### `SelectFolder(optionsJson)`
+
+Выбирает существующий каталог или несколько каталогов.
+
+**Результат:** JSON-строка с `status` и `path`/`paths`.
+
+**Особенности:** Поддерживает `multiSelect`. Поле `filters` для каталогов недопустимо.
+
+```javascript
+var folderJson = window.external.SelectFolder(
+    '{"title":"Выберите папку"}');
+```
+
+<a id="api-inputboxex"></a>
+
+### `InputBoxEx(optionsJson)`
+
+Показывает современный диалог ввода с отдельным признаком подтверждения.
+
+**Результат:** JSON-строка: `{"accepted":true,"value":"..."}` либо `{"accepted":false,"value":""}`.
+
+**Особенности:** Строковые поля `title`, `prompt`, `value` необязательны. При ошибке возвращается `status:"error"`, `code`, `hresult`, `message`. Старый `GetModalResult()` не изменяется.
+
+```javascript
+var answerJson = window.external.InputBoxEx(
+    '{"title":"Имя","prompt":"Введите значение","value":""}');
+```
+
+
+## Описание книги и жанры
+
+<a id="genrepopup"></a>
+
+<a id="api-genrepopup"></a>
+
+### `GenrePopup(element, x, y)`
+
+Открывает меню выбора жанра FB2 в указанной точке экрана.
+
+**Результат:** Идентификатор жанра строкой либо `null` при отмене.
+
+**Особенности:** Координаты `x`/`y` — экранные пиксели, например из `event.screenX/screenY`; первый аргумент оставлен для совместимости.
+
+```javascript
+var genre = window.external.GenrePopup(paragraph, event.screenX, event.screenY);
+```
+
 <a id="getextendedstyle"></a>
+
+<a id="api-getextendedstyle"></a>
+
 ### `GetExtendedStyle(elementId)`
 
-Возвращает состояние настройки расширенного показа элемента описания с данным
-идентификатором. На вход передаётся строковый идентификатор; результат —
-`true` или `false`.
+Читает состояние расширенного показа элемента описания по его идентификатору.
 
-```js
-var isShown = window.external.GetExtendedStyle("annotation");
+**Результат:** `true` или `false`.
+
+```javascript
+var shown = window.external.GetExtendedStyle("annotation");
 ```
 
 <a id="descshowelement"></a>
+
+<a id="api-descshowelement"></a>
+
 ### `DescShowElement(elementId, show)`
 
-Включает или выключает расширенный показ элемента описания и сохраняет это
-значение в настройках FBE. На вход передаются идентификатор и булево значение;
-результат не используется.
+Включает или выключает расширенный показ элемента описания, сохраняя настройку.
 
-```js
+**Результат:** Результат не используется.
+
+```javascript
 window.external.DescShowElement("annotation", true);
 ```
 
 <a id="descshowmenu"></a>
+
+<a id="api-descshowmenu"></a>
+
 ### `DescShowMenu(button, x, y)`
 
-Открывает меню доступных компонентов описания в экранной точке `(x, y)` и
-возвращает идентификатор выбранного элемента. Если выбор отменён, результат
-не определён; проверяйте его перед использованием. Параметр `button`
-сохранён для совместимости и в текущей реализации не используется. Вход:
-произвольный объект кнопки и экранные координаты; результат — строковый
-идентификатор выбранного элемента либо пустое/неопределённое значение при
-отмене.
+Показывает меню элементов Description у кнопки в экранной точке.
 
-```js
+**Результат:** Строка ID элемента или пустое значение при отсутствии выбора.
+
+**Особенности:** Для координат также используется `event.screenX/screenY`.
+
+```javascript
 var elementId = window.external.DescShowMenu(button, event.screenX, event.screenY);
-if (elementId) {
-  window.external.MsgBox("Выбран элемент: " + elementId);
-}
 ```
 
 
-## Версионированное расширение (API 1.0.0, issue #45)
+## Строка состояния, прогресс и отмена
 
-Версия API независима от версии редактора. Старый dual-интерфейс
-`IExternalHelper`, IID, порядок vtable и DISPID 1–35 не меняются. Новые методы
-доступны через `IDispatch::GetIDsOfNames/Invoke` у того же `window.external`;
-старый typelib намеренно описывает только прежний dual-контракт. Расширение
-не требует регистрации нового COM-сервера. Вызовы позиционные, без именованных
-COM-аргументов. Имена методов нечувствительны к регистру.
+<a id="setstatusbartext"></a>
 
-| Метод (впервые в 1.0.0) | Параметры и результат |
-|---|---|
-| `GetScriptingApiVersion()` | Без параметров; текущая версия строкой (`1.2.0`). |
-| `HasScriptingMethod(name)` | Строковое имя; boolean фактической доступности публичного метода, включая старые методы; неизвестное имя даёт false. Метод не вызывается. |
-| `GetScriptingCapabilities()` | JSON-строка со `schemaVersion: 1`, `apiVersion: "1.2.0"` и объектом `capabilities`. |
-| `GetCurrentScriptPath()` | Абсолютный путь выполняемого JS-файла; без контекста пустая строка. |
-| `GetCurrentScriptDirectory()` | Каталог этого файла с завершающим `\`; без контекста пустая строка. |
-| `GetCurrentScriptName()` | Имя этого JS-файла с расширением; без контекста пустая строка. |
-| `GetCurrentScriptId()` | UID существующего ScriptRegistry/ScriptDescriptor; незарегистрированный скрипт и отсутствие контекста дают пустую строку. Новый UID не создаётся. |
-| `GetScriptsRootDirectory()` | Абсолютный настроенный каталог Scripts; завершающий разделитель может сохраняться. |
-| `GetInterfaceLanguage()` | Текущая эффективная локаль интерфейса, например `ru-RU` или `en-US`. |
-| `GetCurrentViewMode()` | Строка `design`, `source` или `description`. |
-| `IsDocumentModified()` | Boolean штатного dirty-state, включая Body, Description и несохранённый Source. |
+<a id="api-setstatusbartext"></a>
 
-Стабильные ключи capabilities: `scriptContext` (сведения и стек контекстов),
-`environment` (окружение и состояние документа). Значение true означает
-реализованную возможность; отсутствующий/неизвестный ключ нельзя считать
-поддерживаемой возможностью. Новые ключи могут добавляться без изменения схемы.
-Служебные методы хоста и их DISPID не являются публичным API.
+### `SetStatusBarText(text)`
 
-Контекст действует при загрузке и выполнении скрипта. Вложенный `apiRunCmd`
-временно переключает его на вложенный файл, после возврата/исключения
-восстанавливается внешний контекст. Нативный запуск дополнительно защищён
-RAII. Чтение UID не запускает обнаружение, хеширование или проверку всей
-библиотеки. Перенос зарегистрированного скрипта отслеживается штатным реестром
-при обновлении каталога. Произвольный вызов ранее сохранённой JS-функции вне
-служебных точек запуска не создаёт контекст файла.
+Устанавливает произвольный текст в строке состояния редактора.
 
-Пример для старого Microsoft JScript (включая безопасный fallback в старом FBE):
+**Результат:** Результат не используется.
 
 ```javascript
-function HasApi(name) {
-    try { return window.external.HasScriptingMethod(name); }
-    catch (error) { return false; }
-}
-if (HasApi("GetCurrentScriptDirectory")) {
-    var resources = window.external.GetCurrentScriptDirectory();
+window.external.SetStatusBarText("Обработано: " + count);
+```
+
+<a id="api-beginprogress"></a>
+
+### `BeginProgress(title, maximum)`
+
+Создаёт системное окно прогресса с возможностью отмены.
+
+**Результат:** Непрозрачный токен.
+
+**Особенности:** `maximum` — целое от 1 до 4294967295. На UI-потоке может быть одно активное окно; вызовы требуют активного контекста.
+
+```javascript
+var progress = window.external.BeginProgress("Обработка", 100);
+```
+
+<a id="api-setprogress"></a>
+
+### `SetProgress(token, value, message)`
+
+Обновляет количество обработанных элементов и подпись в окне прогресса.
+
+**Результат:** `true` при успехе.
+
+**Особенности:** `value` — целое в диапазоне от 0 до `maximum`; метод не приводит к произвольному выполнению очереди UI.
+
+```javascript
+window.external.SetProgress(progress, 25, "25 из 100");
+```
+
+<a id="api-isprogresscancelled"></a>
+
+### `IsProgressCancelled(token)`
+
+Проверяет, нажал ли пользователь кнопку отмены.
+
+**Результат:** `true` или `false`.
+
+**Особенности:** Отмена **кооперативная**: именно скрипт должен прекратить работу; уже сделанные изменения автоматически не откатываются.
+
+```javascript
+if (window.external.IsProgressCancelled(progress)) break;
+```
+
+<a id="api-endprogress"></a>
+
+### `EndProgress(token)`
+
+Закрывает окно прогресса и освобождает связанные ресурсы.
+
+**Результат:** `true` при успехе.
+
+**Особенности:** Вызывайте в `finally`; при завершении контекста окно также закрывается автоматически.
+
+```javascript
+window.external.EndProgress(progress);
+```
+
+
+## Двоичные вложения, текстовые файлы и пути
+
+<a id="getbinarysize"></a>
+
+<a id="api-getbinarysize"></a>
+
+### `GetBinarySize(data)`
+
+Возвращает размер бинарного содержимого вложения в байтах.
+
+**Результат:** Целое число.
+
+**Особенности:** Передавайте `binary.base64data` — **двоичную строку**, а не текст кодировки base64.
+
+```javascript
+var bytes = window.external.GetBinarySize(binary.base64data);
+```
+
+<a id="savebinary"></a>
+
+<a id="api-savebinary"></a>
+
+### `SaveBinary(path, data, prompt)`
+
+Сохраняет двоичные данные в отдельный файл.
+
+**Результат:** `true` после полной записи либо `false` при отмене/ошибке.
+
+**Особенности:** При `prompt:true` открывается Save As и подтверждение замены. При `prompt:false` файл по `path` создаётся **только если его ещё нет**; существующий не заменяется.
+
+```javascript
+var ok = window.external.SaveBinary("cover.jpg", binary.base64data, false);
+```
+
+<a id="getimagedimsbypath"></a>
+
+<a id="api-getimagedimsbypath"></a>
+
+### `GetImageDimsByPath(path)`
+
+Читает ширину и высоту изображения по пути.
+
+**Результат:** Строка вида `"640x480"`, либо `""` при ошибке.
+
+```javascript
+var dims = window.external.GetImageDimsByPath("C:\\Pictures\\cover.jpg");
+```
+
+<a id="getimagedimsbydata"></a>
+
+<a id="api-getimagedimsbydata"></a>
+
+### `GetImageDimsByData(data)`
+
+Определяет размеры изображения по бинарному содержимому.
+
+**Результат:** Строка вида `"640x480"`, либо `""`.
+
+**Особенности:** Передавайте `base64data`, а не произвольный JS-текст.
+
+```javascript
+var dims = window.external.GetImageDimsByData(binary.base64data);
+```
+
+<a id="api-readtextfile"></a>
+
+### `ReadTextFile(path[, encoding])`
+
+Читает небольшой текстовый файл с диска.
+
+**Результат:** Строка содержимого.
+
+**Особенности:** Без кодировки распознаются BOM UTF-8/UTF-16LE, иначе читается UTF-8. При неверной кодировке, пути или доступе возникает COM-ошибка.
+
+```javascript
+var data = window.external.ReadTextFile(path, "utf-8");
+```
+
+<a id="api-writetextfile"></a>
+
+### `WriteTextFile(path, text[, encoding])`
+
+Записывает текстовый файл с атомарной заменой уже существующего файла.
+
+**Результат:** `true` при успехе.
+
+**Особенности:** По умолчанию UTF-8 без BOM. Метод **может перезаписать файл**; безопаснее `WriteTextFileEx` с `overwrite:false`.
+
+```javascript
+window.external.WriteTextFile(path, "Отчёт", "utf-8");
+```
+
+<a id="api-writetextfileex"></a>
+
+### `WriteTextFileEx(path, text, overwrite[, encoding])`
+
+Записывает текст с явным разрешением или запретом перезаписи.
+
+**Результат:** `true` при успехе; при конфликте существующего файла с `overwrite:false` — COM-ошибка.
+
+**Особенности:** `overwrite:false` использует безопасное создание без замены. `true` — атомарная замена. Относительные пути считаются относительно рабочего каталога FBE.
+
+```javascript
+try {
+    window.external.WriteTextFileEx(path, "Отчёт", false, "utf-8");
+} catch (e) {
+    window.external.MsgBox("Записать файл не удалось.");
 }
 ```
 
-Неверное число аргументов новых методов даёт `DISP_E_BADPARAMCOUNT`, неверный
-тип — `DISP_E_TYPEMISMATCH`; старое поведение методов при этом не меняется.
-Предел вложенности контекстов — 256; ошибочный путь даёт `E_INVALIDARG`.
+<a id="api-fileexists"></a>
 
-### Диагностика существующего контракта
+### `FileExists(path)`
 
-- `window.external.IsDiagnosticTraceEnabled()` возвращает boolean включённой
-  диагностической трассировки.
-- `window.external.TraceScript(code, message)` записывает диагностическое
-  событие; не изменяет документ. Код ограничен 32 символами, сообщение
-  очищается штатной диагностической подсистемой и ограничено 512 символами.
-- `window.external.GetLocalizedString(key)` возвращает локализованную строку
-  по ключу существующего каталога интерфейса. Это существующие DISPID 29–31.
+Проверяет наличие доступного обычного файла (не каталога).
 
-### Покрытие issue #45
-
-| Группа / методы | Статус |
-|---|---|
-| Версия, HasScriptingMethod, capabilities, контекст и сведения об окружении (этап 1А) | Implemented |
-| GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Implemented |
-| SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Implemented |
-| Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Implemented |
-| ValidateCurrentDocument, LogMessage, последняя ошибка (этап 3А) | Implemented |
-| Дополнительные binary, dialogs, clipboard, status-stack, save API (этапы 3Б–3Г) | Planned |
-| GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText; существующие Undo, InputBox/GetModalResult, SaveBinary, пути документа | Already covered by existing API |
-| ProcessPendingUiEvents и автоматический откат произвольных DOM-изменений | Deferred |
-
-Issue #45 остаётся открытым до реализации и приёмки последующих этапов.
-Интерфейс настройки карточек issue #48 в этот этап не входит; исходные карточки
-и переменные в пользовательских JS-файлах не изменяются.
-
-
-### Настройки скрипта (API 1.0.0)
-
-| Метод | Параметры и результат |
-|---|---|
-| `GetScriptSetting(name, defaultValue)` | Строковое имя и значение по умолчанию; возвращает сохранённое значение совместимого типа либо defaultValue. |
-| `SetScriptSetting(name, value)` | Имя и строка, конечное число либо boolean; boolean успешной атомарной записи. |
-| `RemoveScriptSetting(name)` | Удаляет один параметр; boolean успеха. Отсутствующий параметр также можно удалить. |
-| `ClearScriptSettings()` | Удаляет параметры только выполняемого скрипта; boolean успеха. |
-
-`capabilities.scriptSettings = true` означает наличие этих четырёх методов.
-Требуется активный контекст скрипта; вне него возвращается COM-ошибка
-`E_UNEXPECTED`. Имя непустое, без нулевого символа, до 256 UTF-16 кодовых единиц. Строковое значение
-и строковое значение по умолчанию ограничены 32768 UTF-16 кодовыми единицами.
-Разные виды чисел совместимы как числа JavaScript; boolean и строка с ними не
-смешиваются. NaN, Infinity, объекты, массивы, функции, null и undefined не
-сериализуются и отклоняются с `E_INVALIDARG`. Для отсутствующего параметра,
-несовместимого типа или недоступного/повреждённого файла чтение возвращает
-переданный defaultValue. Unicode, переводы строк и вложенные нулевые символы
-строк сохраняются без потерь.
-
-Файл `ScriptSettings.xml` расположен в `DeploymentContext::SettingsDirectory()`:
-пользовательский каталог установленной версии либо Data/Settings в portable.
-Файл содержит не больше 1024 параметров для всех скриптов и занимает не больше
-1 MiB после сериализации. Превышение общего лимита даёт false при записи.
-Имена и строковые значения хранятся в кодировке hex UTF-16 внутри XML, не в
-исходных JS. Изоляция — `uid:<существующий UID>`; резервная область
-`path:<абсолютный путь с нормализованными разделителями и регистром>` хранит
-сам путь, без хеша и коллизий хеширования. В резервном режиме переименование
-создаёт новую область настроек. С зарегистрированным прежним UID область
-сохраняется после штатного обновления каталога.
-
-Запись сериализуется межпроцессным файлом `ScriptSettings.xml.lock`, выполняется
-через временный файл в том же каталоге, flush и атомарное переименование.
-Ошибка доступа/блокировки/записи возвращает false; прежний файл не затирается.
-Повреждённый файл автоматически не исправляется и не перезаписывается.
-Настройки карточек issue #48 и исходные переменные скриптов не затрагиваются.
+**Результат:** `true` или `false`; отсутствие доступа также может дать `false`.
 
 ```javascript
-if (HasApi("GetScriptSetting")) {
-    var enabled = window.external.GetScriptSetting("option", true);
-    if (!window.external.SetScriptSetting("option", enabled)) {
-        window.external.MsgBox("Не удалось сохранить настройку");
+var exists = window.external.FileExists(path);
+```
+
+<a id="api-directoryexists"></a>
+
+### `DirectoryExists(path)`
+
+Проверяет наличие доступного каталога.
+
+**Результат:** `true` или `false`.
+
+```javascript
+var exists = window.external.DirectoryExists(path);
+```
+
+<a id="api-createdirectory"></a>
+
+### `CreateDirectory(path)`
+
+Создаёт указанный каталог и недостающие родительские каталоги.
+
+**Результат:** `true` также для уже существующего каталога.
+
+**Особенности:** Ограничения пути зависят от используемого Shell/Windows API, включая MAX_PATH в этой операции.
+
+```javascript
+window.external.CreateDirectory(targetDir);
+```
+
+<a id="api-combinepath"></a>
+
+### `CombinePath(directory, name)`
+
+Соединяет каталог и имя в нормализованный абсолютный Windows-путь.
+
+**Результат:** Строка пути.
+
+**Особенности:** Если второй аргумент уже абсолютный, он заменяет первый.
+
+```javascript
+var path = window.external.CombinePath(
+    window.external.GetCurrentScriptDirectory(), "report.txt");
+```
+
+<a id="api-getfilename"></a>
+
+### `GetFileName(path)`
+
+Возвращает последний компонент пути, не обращаясь к диску.
+
+**Результат:** Строка имени файла.
+
+```javascript
+var name = window.external.GetFileName(path);
+```
+
+<a id="api-getdirectoryname"></a>
+
+### `GetDirectoryName(path)`
+
+Возвращает каталог из полного пути.
+
+**Результат:** Строка без завершающего разделителя, кроме корня, или `""` для имени без каталога.
+
+```javascript
+var dir = window.external.GetDirectoryName(path);
+```
+
+<a id="api-getextension"></a>
+
+### `GetExtension(path)`
+
+Выделяет расширение последнего компонента пути.
+
+**Результат:** Строка с точкой (`".fb2"`) либо `""`.
+
+```javascript
+var extension = window.external.GetExtension(path);
+```
+
+<a id="api-gettempdirectory"></a>
+
+### `GetTempDirectory()`
+
+Возвращает системную временную папку.
+
+**Результат:** Строка каталога с завершающим разделителем.
+
+```javascript
+var dir = window.external.GetTempDirectory();
+```
+
+<a id="api-gettempfilename"></a>
+
+### `GetTempFileName([prefix[, extension]])`
+
+Создаёт уникальный пустой файл во временном каталоге.
+
+**Результат:** Абсолютный путь уже созданного файла.
+
+**Особенности:** По умолчанию `prefix="fbe-"`, `extension=".tmp"`; файл требуется удалить самому скрипту. Префикс и расширение не должны содержать недопустимые символы пути, каждое ограничено 64 UTF-16 единицами.
+
+```javascript
+var tmp = window.external.GetTempFileName("fbe-", ".txt");
+```
+
+
+## Настройки пользовательского скрипта
+
+<a id="api-getscriptsetting"></a>
+
+### `GetScriptSetting(name, defaultValue)`
+
+Читает персональную настройку выполняемого скрипта.
+
+**Результат:** Сохранённое значение совместимого типа или `defaultValue`.
+
+**Особенности:** Поддерживаются строка, boolean и конечное число. Значение не должно быть объектом/массивом или `null`. При повреждённом/недоступном файле может возвращаться defaultValue.
+
+```javascript
+var enabled = window.external.GetScriptSetting("enabled", true);
+```
+
+<a id="api-setscriptsetting"></a>
+
+### `SetScriptSetting(name, value)`
+
+Сохраняет настройку текущего скрипта в отдельном хранилище.
+
+**Результат:** `true` при успешной атомарной записи, `false` при ошибке доступа или лимите.
+
+**Особенности:** Имя — непустая строка до 256 UTF-16 единиц; значения: строка до 32768 единиц, конечное число или boolean. Нужен контекст скрипта.
+
+```javascript
+var ok = window.external.SetScriptSetting("enabled", true);
+```
+
+<a id="api-removescriptsetting"></a>
+
+### `RemoveScriptSetting(name)`
+
+Удаляет один ключ настроек текущего скрипта.
+
+**Результат:** Boolean успеха; отсутствие ключа не считается ошибкой.
+
+```javascript
+window.external.RemoveScriptSetting("enabled");
+```
+
+<a id="api-clearscriptsettings"></a>
+
+### `ClearScriptSettings()`
+
+Удаляет **все** настройки только текущего скрипта.
+
+**Результат:** Boolean успеха.
+
+**Особенности:** Не затрагивает настройки других скриптов и переменные исходных JS-файлов.
+
+```javascript
+window.external.ClearScriptSettings();
+```
+
+
+## Диагностика, журнал и локализация
+
+<a id="api-isdiagnostictraceenabled"></a>
+
+### `IsDiagnosticTraceEnabled()`
+
+Проверяет, включена ли штатная диагностическая трассировка редактора.
+
+**Результат:** `true` или `false`.
+
+```javascript
+var enabled = window.external.IsDiagnosticTraceEnabled();
+```
+
+<a id="api-tracescript"></a>
+
+### `TraceScript(code, message)`
+
+Отправляет диагностическое событие в существующую трассировку.
+
+**Результат:** Результат не используется.
+
+**Особенности:** Код до 32 символов; сообщение проходит политику приватности и ограничено 512 символами. Не предназначено для хранения исходного текста книги.
+
+```javascript
+window.external.TraceScript("MY-SCRIPT", "Этап завершён");
+```
+
+<a id="api-getlocalizedstring"></a>
+
+### `GetLocalizedString(key)`
+
+Получает локализованную строку из существующего каталога интерфейса.
+
+**Результат:** Строка по ключу.
+
+**Особенности:** Работает с уже известными редактору ключами; не добавляет переводы произвольному скрипту.
+
+```javascript
+var label = window.external.GetLocalizedString("example-key");
+```
+
+<a id="api-logmessage"></a>
+
+### `LogMessage(level, message)`
+
+Отправляет событие в штатный диагностический журнал.
+
+**Результат:** `true`, если событие принято; `false`, если журнал выключен или достигнут лимит.
+
+**Особенности:** Уровни: `debug`, `info`, `warning`, `error` (с учётом регистра). Размер сообщения до 512 UTF-16 единиц. **Содержимое сообщения фильтруется политикой приватности**: журнал может содержать только токен контекста, факт сообщения и длину, а не сам текст.
+
+```javascript
+window.external.LogMessage("info", "Обработка завершена");
+```
+
+<a id="api-getlastscriptingerror"></a>
+
+### `GetLastScriptingError()`
+
+Получает последнюю техническую ошибку новых методов API в текущем контексте.
+
+**Результат:** JSON-строка `{"schemaVersion":1,"hasError":false}` либо описание `method`, `hresult`, `code`, `message`.
+
+**Особенности:** Отслеживает ошибки HRESULT методов DISPID 100–146 и технический отказ `ValidateCurrentDocument`. Старые методы DISPID 1–35 и обычный возврат `false` автоматически сюда не записываются. Успешные вызовы не стирают ошибку.
+
+```javascript
+var errJson = window.external.GetLastScriptingError();
+```
+
+<a id="api-clearlastscriptingerror"></a>
+
+### `ClearLastScriptingError()`
+
+Явно сбрасывает сохранённую ошибку новых методов текущего скрипта.
+
+**Результат:** `true` при очистке.
+
+**Особенности:** Вложенный скрипт имеет собственное состояние и не очищает ошибку родителя.
+
+```javascript
+window.external.ClearLastScriptingError();
+```
+
+
+## Практические сценарии
+
+### 1. Сохранить отчёт рядом со скриптом, не заменяя существующий файл
+
+```javascript
+if (!HasApi("WriteTextFileEx") || !HasApi("CombinePath")) {
+    window.external.MsgBox("Для этой операции нужен API 1.1 или новее.");
+    return;
+}
+var target = window.external.CombinePath(
+    window.external.GetCurrentScriptDirectory(), "report.txt");
+try {
+    window.external.WriteTextFileEx(target, "Найдено ошибок: " + count, false, "utf-8");
+    window.external.MsgBox("Отчёт сохранён: " + target);
+} catch (e) {
+    window.external.MsgBox("Файл уже существует или произошла ошибка записи.");
+}
+```
+
+При `overwrite=false` существующий файл не будет заменён, даже если его создал другой процесс непосредственно перед завершением записи.
+
+### 2. Исправить полный XML с валидацией и Undo
+
+```javascript
+var xml = window.external.GetSourceText();
+var updated = xml.replace("старый текст", "новый текст");
+if (updated !== xml) {
+    if (!window.external.ValidateSourceText(updated)) {
+        window.external.MsgBox(window.external.GetLastSourceDiagnostic());
+    } else if (!window.external.ApplySourceText(updated, "Правка XML")) {
+        window.external.MsgBox(window.external.GetLastSourceDiagnostic());
     }
 }
 ```
 
+Сценарий демонстрирует порядок вызовов, но простая строковая замена не учитывает семантику XML и может затронуть ненужные фрагменты. Для сложных изменений используйте XML-aware обработку и проверяйте результат.
 
-### Файловые диалоги (API 1.0.0)
-
-| Метод | Параметр и результат |
-|---|---|
-| `SelectOpenFile(optionsJson)` | JSON-объект строкой; выбирает существующий файл, либо несколько при multiSelect=true. |
-| `SelectSaveFile(optionsJson)` | JSON-объект строкой; выбирает путь сохранения. Файл не записывается. Подтверждение существующего файла обязательно. |
-| `SelectFolder(optionsJson)` | JSON-объект строкой; выбирает существующий файловый каталог, либо несколько при multiSelect=true. |
-
-`capabilities.fileDialogs = true` означает эти три метода. Общие поля:
-
-| Поле | Тип / поведение |
-|---|---|
-| `title` | Строка заголовка, необязательная. |
-| `initialDirectory` | Строка начального каталога; ошибка Shell при его установке возвращается как error. |
-| `initialFileName` | Строка начального имени файла, необязательная. |
-| `defaultExtension` | Строка расширения, например `fb2`, необязательная. |
-| `multiSelect` | Boolean, по умолчанию false; для SelectSaveFile значение true отклоняется. |
-| `filters` | Массив до 32 объектов `{ "name": "Книги", "pattern": "*.fb2;*.zip" }`; строки непустые, до 256 UTF-16 единиц. Для SelectFolder фильтры отклоняются. |
-
-При успехе возвращается JSON-строка `{"status":"ok","path":"..."}` либо
-`{"status":"ok","paths":["...","..."]}` для multiSelect=true. При отмене:
-`{"status":"cancelled"}`. Ошибка отличается от отмены:
-
-```json
-{"status":"error","code":"invalid-options","hresult":"0x80070057","message":"..."}
-```
-
-Стабильные машинные коды: `invalid-options` (неверный JSON/параметры),
-`owner-unavailable` (нет живого окна-владельца), `dialog-failed` (ошибка Shell).
-`hresult` — строка hexadecimal HRESULT; `message` — диагностическая строка
-Windows, на её текст/язык нельзя опираться в коде. Вход — JSON-объект до
-65536 UTF-16 единиц. Неизвестные и повторные поля, неверные типы и нулевые
-символы в строках отклоняются. Одна строка ограничена 32767 UTF-16 единицами.
-Unicode, UNC и длинные пути передаются Shell без буфера MAX_PATH; фактическая
-допустимость пути определяется оболочкой и файловой системой Windows.
-
-Окно-владелец — редактор, используется ModernFileDialog и штатная защита его
-системного оформления. Старые диалоги не переводятся в новый режим параметров.
-Выбор файла/каталога не открывает его в редакторе и не изменяет документ.
-Выбор пути сохранения сам по себе не создаёт и не заменяет файл.
-
-### InputBoxEx (API 1.0.0)
-
-`window.external.InputBoxEx(optionsJson)` принимает JSON-объект строкой с
-необязательными строковыми полями `title`, `prompt`, `value` (по умолчанию
-пустые). Ограничения JSON/строк — как у файловых диалогов. Есть кнопки OK и
-отмены; начальное значение и подтверждённый ввод могут быть пустыми.
-`capabilities.inputBoxEx = true` означает наличие этого метода.
-
-Подтверждённый пустой ввод возвращает `{"accepted":true,"value":""}`;
-отмена — `{"accepted":false,"value":""}`. Ошибка возвращает
-`accepted:false`, `status:"error"`, `code`, `hresult`, `message` по общей схеме.
-Результат не записывается в старый GetModalResult; поведение старого InputBox
-не меняется. Используются штатные раскладка/DPI/оформление поля ввода и
-явный владелец-редактор.
-
-Примеры без современной синтаксики JavaScript и без обязательного глобального
-JSON (он отсутствует в некоторых режимах MSHTML):
+### 3. Обрабатывать выделение, не меняя книгу
 
 ```javascript
-if (HasApi("SelectOpenFile")) {
-    var selectionJson = window.external.SelectOpenFile(
-        '{"title":"Выберите книгу","filters":[{"name":"FB2","pattern":"*.fb2"}]}');
-}
-if (HasApi("InputBoxEx")) {
-    var inputJson = window.external.InputBoxEx(
-        '{"title":"Имя","prompt":"Введите значение","value":""}');
+if (HasApi("GetSelectionText")) {
+    var selected = window.external.GetSelectionText();
+    window.external.MsgBox(selected || "Текст не выделен.");
 }
 ```
 
-Результаты — текст JSON; их можно разобрать уже используемым в скрипте
-JSON-парсером. API не добавляет/не заменяет глобальный JSON и не ограничивает
-ActiveX, COM или DOM. Не используйте eval для текста FB2/XML или произвольных
-внешних данных.
-
-### Статусы методов issue #45
-
-| Методы / семейство | Статус |
-|---|---|
-| CreateSelectionBookmark, RestoreSelectionBookmark, ReleaseSelectionBookmark, GetSelectionText, GetSelectionHtml, GetSelectionInfo | Implemented |
-| BeginDocumentUpdate, EndDocumentUpdate | Implemented |
-| BeginProgress, SetProgress, IsProgressCancelled, EndProgress | Implemented |
-| ReadTextFile, WriteTextFile, WriteTextFileEx, FileExists, DirectoryExists, CreateDirectory | Implemented |
-| CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Implemented |
-| GetBinaryInfo, AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary, SaveAllBinaries, GenerateUniqueBinaryId | Planned |
-| ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError (этап 3А) | Implemented |
-| ShowMessage, SelectFromList, SelectMultipleFromList, ChooseColor | Planned |
-| GetClipboardText, SetClipboardText, GetClipboardHtml, SetClipboardHtml | Planned |
-| PushStatusBarText, PopStatusBarText, ClearStatusBarText | Planned |
-| SaveCurrentDocument, SaveCurrentDocumentAs, SaveDocumentCopy, SaveSerializedDocumentCopy | Planned |
-| ProcessPendingUiEvents, автоматический откат произвольного DOM | Deferred |
-| GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText | Already covered by existing API |
-
-Наличие этих названий в плане не делает их доступными. Проблема зависаний
-issue #41 и интерфейс параметров карточек issue #48 не включены в этап 1.
-
-## Этап 2: API 1.1.0
-
-Новые методы опубликованы через аддитивный IDispatch, DISPID 119–142.
-WriteTextFileEx добавлен с новым DISPID 142; опубликованные DISPID 100–141
-и допустимые вызовы WriteTextFile не изменены.
-Прежние IID, typelib, сигнатуры и DISPID 1–35, а также методы API 1.0.0
-сохранены. В этапе 2 опубликована версия `1.1.0`. В capabilities добавлены
-булевы ключи `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`.
-Реализация этапа 3А описана ниже. Методы этапов 3Б–3Г не объявляются доступными; issue #45 остаётся открытым.
-
-### Проверка этапов 1–2
-
-Адресный runtime-контур запускается на Release Win32 отдельно в режимах
-`portable` и `installed`. Для каждого режима предусмотрены четыре проверки:
-
-```powershell
-foreach ($mode in 'portable', 'installed') {
-    ./tools/tests/test-fbe-scripting-stage1.ps1 -Mode $mode
-    ./tools/tests/test-fbe-scripting-stage1.ps1 -Mode $mode -Dialogs
-    ./tools/tests/test-fbe-scripting-stage1.ps1 -Mode $mode -Environment
-    ./tools/tests/test-fbe-scripting-stage2.ps1 -Mode $mode
-}
-```
-
-При отдельном каталоге сборки всем командам передаётся `-FbeExe` с путём к
-проверяемому FBE.exe. `installed` перенаправляет файлы настроек в отдельный
-тестовый каталог; этот контур не проверяет установщик.
-Проверка диалогов ожидает появления фокуса с ограниченным таймаутом, затем
-проверяет владельца, блокировку редактора, фокус, монитор, подтверждение и отмену.
-
-Контур совместимости включает настоящие JScript/MSHTML, три штатных скрипта
-изменения регистра, прежние Undo/Redo, запуск команды меню и вложенные вызовы.
-F2 проверяется с явным назначением команды последнего скрипта; штатная
-раскладка клавиш при этом не меняется. Это адресная регрессия, а не проверка
-всего каталога пользовательских скриптов.
-
-`test-fbe-typelib-runtime.ps1` проверяет встроенную typelib без регистрации COM:
-IID IExternalHelper, DISPID 1–35, виды вызовов, типы параметров и результата.
-Несовпадение числа параметров отклоняется до обращения к таблице их типов.
-Неизменность исходного IDL дополнительно проверяют runtime-скрипты.
-
-Проверка импортов бинарника не заменяет запуск на Windows 7 SP1. При проверке
-2026-10-19 запуск на Windows 7 имеет статус `NOT RUN`; поддержка этой ОС по
-одной проверке импортов не подтверждается. Отложенная орфография, обновление
-дерева и автоматический откат произвольного DOM по-прежнему не реализованы.
-
-### Выделение и закладки
-
-| Метод | Параметры / результат |
-|---|---|
-| CreateSelectionBookmark() | Непрозрачная строка-токен текущего выделения/каретки. |
-| RestoreSelectionBookmark(token) | Boolean; восстанавливает существующую допустимую закладку. |
-| ReleaseSelectionBookmark(token) | Boolean; освобождает закладку, false для неизвестной/освобождённой. |
-| GetSelectionText() | Строка текста; пустая для отсутствующего текстового выделения. |
-| GetSelectionHtml() | HTML текстового/control-выделения; в Source — HTML-экранированный исходный текст. |
-| GetSelectionInfo() | JSON-строка: schemaVersion=1, view, type, textLength (UTF-16), controlCount. |
-
-В Body/Description используется штатный MSHTML range, в Source — байтовые
-позиции Scintilla с преобразованием текста из UTF-8. Тип: `text`, `control`
-или `none`; view: `design`, `description`, `source`. Чтение и создание
-закладок не меняют документ/Undo. Восстановление меняет только выделение.
-
-В Description поддерживается также текстовое выделение внутри полей формы
-(например, названия книги); оно читается и восстанавливается в том же режиме.
-Обычные GetSelectionText/GetSelectionHtml/GetSelectionInfo в Source читают
-только выделенный диапазон Scintilla, без копирования полного XML. UTF-8 позиции
-переводятся в текст UTF-16; supplementary Unicode-символ занимает две единицы
-в textLength. Это не меняет правила хранения и проверки закладок ниже.
-
-Закладка принадлежит текущему контексту выполнения скрипта и не переносится
-во вложенный скрипт. В конце контекста все закладки освобождаются. В одном
-контексте допускается до 128 закладок. Restore не переключает режим редактора:
-при несовпадении режима, идентичности документа/корня активного представления или версии MSHTML
-возвращается false и закладка освобождается. В Source дополнительно сравниваются
-полные исходные байты. Поэтому DOM-изменение консервативно инвалидирует
-закладку; автоматическое следование за произвольными DOM-правками не обещается.
-Полная замена документа через Source/ApplySourceText также инвалидирует её.
-Суммарный объём Source-снимков контекста ограничен 64 МиБ. Закладки не предназначены для постоянного хранения.
-
-Для Description дополнительно сравниваются текущие значения полей
-формы: изменение input.value может не менять версию Body. При изменении
-Description старая закладка отклоняется. Для снимков значений Description
-действует отдельный лимит 64 МиБ на контекст; прежний бюджет Source не уменьшается.
-
-### Пакетные изменения
-
-`BeginDocumentUpdate(action, optionsJson)` возвращает строковый токен.
-`action` — строка названия Undo, `optionsJson` — `{}` либо
-`{"suspendRedraw":true}` (по умолчанию false). Неизвестные поля/типы
-отклоняются. `EndDocumentUpdate(token)` завершает последнюю операцию текущего
-контекста и возвращает true. Вложенные операции закрываются в обратном порядке;
-чужой, устаревший или нарушающий порядок токен вызывает ошибку.
-
-Используются существующие MSHTML undo units или SCI_BEGIN/ENDUNDOACTION в
-Source. При suspendRedraw временно подавляется перерисовка активной поверхности;
-вложенные операции совместно учитывают её состояние. Исходная видимость
-сохраняется, перерисовка восстанавливается при End и при выходе из скрипта,
-включая исключение. Подсветка опечаток, настройки и обработка DOM не отключаются.
-Пакетный режим не гарантирует устранения зависаний issue #41.
-
-Отложенная проверка орфографии и отложенное обновление дерева **не реализованы**
-как возможности API 1.1. Пакет не подавляет соответствующие уведомления или
-фоновые проверки; гарантируются группировка Undo и учёт suspendRedraw.
-Вложенные suspendRedraw включают перерисовку и запрашивают её обновление только
-при закрытии последней подавляющей группы для данного окна. В Description
-используется общий с Body MSHTML undo manager; группа может менять поля
-Description без изменения содержимого Body.
-
-Это группировка Undo, а не транзакционный откат произвольного DOM. При ошибке
-уже сделанные изменения остаются и могут быть отменены пользователем через
-штатный Undo. Не переключайте документ/режим внутри открытого пакета. ApplySourceText
-возвращает false с диагностикой, пока открыт хотя бы один пакет.
-
-```javascript
-if (HasApi("BeginDocumentUpdate")) {
-    var token = window.external.BeginDocumentUpdate("Моя правка", "{}");
-    try {
-        // Изменения существующим DOM/Scintilla-механизмом скрипта.
-    } finally {
-        window.external.EndDocumentUpdate(token);
-    }
-}
-```
-
-### Прогресс и отмена
-
-| Метод | Параметры / результат |
-|---|---|
-| BeginProgress(title, maximum) | Строка title, целое maximum 1…4294967295; возвращает строковый токен. |
-| SetProgress(token, value, message) | Целое value 0…maximum, строка message; true при успехе. |
-| IsProgressCancelled(token) | Boolean; пользователь нажал отмену. |
-| EndProgress(token) | Закрывает окно и возвращает true. |
-
-Используется системный IProgressDialog с владельцем-редактором. Разрешено одно
-активное окно на UI-поток; токен принадлежит текущему контексту. Окно закрывается
-также при выходе/исключении, владелец разблокируется. Отмена кооперативная:
-скрипт должен проверить IsProgressCancelled и прекратить работу самостоятельно.
-Опрос отмены не выполняет произвольный message pump редактора.
-ProcessPendingUiEvents не добавлен. Отмена не откатывает сделанные изменения.
+### 4. Прогресс с добровольной отменой
 
 ```javascript
 if (HasApi("BeginProgress")) {
-    var progress = window.external.BeginProgress("Обработка", 100);
+    var progress = window.external.BeginProgress("Проверка абзацев", items.length);
     try {
-        for (var i = 0; i < 100; ++i) {
+        for (var i = 0; i < items.length; ++i) {
             if (window.external.IsProgressCancelled(progress)) break;
-            window.external.SetProgress(progress, i + 1, "Шаг " + (i + 1));
+            // Проверяем items[i].
+            window.external.SetProgress(progress, i + 1, "Обработано: " + (i + 1));
         }
-    } finally { window.external.EndProgress(progress); }
+    } finally {
+        window.external.EndProgress(progress);
+    }
 }
 ```
 
-### Текстовые файлы и пути
+`items.length` в этом примере должен быть положительным целым числом; при пустом списке не создавайте окно прогресса. Нажатие «Отмена» не откатывает уже выполненные изменения.
 
-| Метод | Параметры / результат |
-|---|---|
-| ReadTextFile(path[, encoding]) | Строка содержимого; без encoding распознаются BOM UTF-8/UTF-16LE, иначе UTF-8. |
-| WriteTextFile(path, text[, encoding]) | Полная атомарная замена через временный файл рядом с назначением, flush и переименование; true при успехе. По умолчанию UTF-8 без BOM. |
-| WriteTextFileEx(path, text, overwrite[, encoding]) | Аддитивный безопасный вариант: overwrite — обязательный Boolean. При false создаёт только новый файл; существующий файл сохраняется, вызов выдаёт COM-ошибку. При true разрешает атомарную замену. Кодировки и результат как у WriteTextFile. |
-| FileExists(path) | Boolean: доступный существующий файл (не каталог). |
-| DirectoryExists(path) | Boolean: доступный существующий каталог. |
-| CreateDirectory(path) | Создаёт каталог с родителями; true и для уже существующего каталога. |
-| CombinePath(directory, name) | Абсолютный нормализованный Windows-путь; абсолютный второй аргумент заменяет первый. |
-| GetFileName(path) | Последний компонент пути, без доступа к диску. |
-| GetDirectoryName(path) | Каталог без завершающего разделителя, кроме корня диска; пустая строка для имени без каталога. |
-| GetExtension(path) | Суффикс последнего компонента с точкой, либо пустая строка. |
-| GetTempDirectory() | Системный временный каталог с завершающим разделителем. |
-| GetTempFileName([prefix[, extension]]) | Создаёт уникальный пустой файл во временном каталоге и возвращает путь; удаление — ответственность вызывающего. Без аргументов сохранены prefix=`fbe-` и extension=`.tmp`. |
-
-Кодировки: `utf-8`, `utf-8-bom`, `utf-16le` (запись с BOM), `windows-1251`.
-При явной кодировке соответствующий BOM пропускается. Невалидный UTF-8/UTF-16
-и непредставимые символы Windows-1251 отклоняются без потери прежнего файла.
-NUL в содержимом сохраняется, NUL в путях/названиях кодировки недопустим.
-Предел файла/результата записи — 8 МиБ; входного текста — 8 Ми UTF-16 единиц.
-Каталог назначения WriteTextFile должен существовать. Файл read-only не
-перезаписывается. Создание каталогов использует существующий Shell API;
-ограничения путей определяются Windows (включая MAX_PATH для этой операции).
-
-Старые вызовы WriteTextFile с двумя или тремя параметрами сохраняют поведение
-API 1.1: существующий файл заменяется. Для новых скриптов рекомендуется
-WriteTextFileEx с overwrite=false; флаг false проверяется атомарным переименованием
-без замены, поэтому файл, созданный другим процессом непосредственно перед
-завершением записи, также не перезаписывается. При ошибке преобразования,
-записи, flush или переименования исходный файл сохраняется, временный файл
-удаляется. overwrite=true следует передавать после осознанного выбора пользователя.
-
-Кратковременные отказы доступа/совместного использования при завершении записи
-текстового файла и захвате блокировки настроек скрипта повторяются до 10 раз
-с паузой 10 мс. При сохранении настроек временный файл записывается и сбрасывается
-один раз; повторяется только атомарное переименование, до 50 раз с паузой 10 мс.
-Ожидание между попытками ограничено 500 мс; время самой файловой операции
-определяется Windows. Постоянный
-отказ не скрывается: файловые методы выдают COM-ошибку, методы записи настроек
-возвращают false по прежнему контракту. Проверки существующего файла при
-overwrite=false не заменяются предварительной проверкой FileExists.
-
-Параметры GetTempFileName — строки длиной до 64 UTF-16 единиц каждая. Extension
-может начинаться с точки; при её отсутствии точка добавляется. Пустая строка
-extension означает имя без расширения. Разделители каталогов, управляющие
-символы, `..`, недопустимые символы имени Windows и завершающие пробел/точка
-отклоняются. Уникальный GUID добавляется между prefix и extension; файл
-создаётся через CREATE_NEW, а не только подбирается свободное имя.
-Относительные пути разрешаются относительно текущего рабочего каталога FBE,
-а не каталога скрипта; для последнего используйте GetCurrentScriptDirectory.
-
-При ошибке типов, параметров, кодировки, чтения или записи возникает COM-ошибка
-с HRESULT, доступная JScript через try/catch. FileExists/DirectoryExists
-возвращают false также при недоступности объекта. Операции не открывают FB2
-в редакторе и не меняют текущий документ/dirty-state.
+### 5. Настройки без изменения текста исходного скрипта
 
 ```javascript
-if (HasApi("WriteTextFileEx")) {
-    var path = window.external.CombinePath(
-        window.external.GetCurrentScriptDirectory(), "result.txt");
-    try { window.external.WriteTextFileEx(path, "Результат", false, "utf-8"); }
-    catch (error) { window.external.MsgBox("Не удалось записать результат"); }
+if (HasApi("GetScriptSetting")) {
+    var enabled = window.external.GetScriptSetting("normalize", true);
+    if (enabled) {
+        // Выполнить нормализацию.
+    }
+    window.external.SetScriptSetting("normalize", enabled);
 }
 ```
 
-Методы ресурсов выделения/пакета/прогресса требуют активного контекста скрипта
-(E_UNEXPECTED вне него). Все новые методы доступны из настоящего JScript,
-типизированные COM-клиенты прежнего интерфейса продолжают использовать прежний
-неизменённый контракт. На старом FBE проверяйте HasApi через try/catch, как в
-разделе API 1.0.0; не полагайтесь на наличие нового метода без проверки.
+Хранилище настроек скрипта отдельно от настроек его карточки и от переменных в исходном `.js`.
 
-## Этап 3А: API 1.2.0
 
-Методы добавлены только в аддитивный IDispatch. IDL, IID, vtable и DISPID 1–142
-сохранены. GetScriptingApiVersion возвращает `1.2.0`; capabilities содержит
-`documentValidation`, `logging`, `scriptingErrors` со значением true.
-Этапы 3Б–3Г не реализованы, issue #45 остаётся открытым.
+## Ограничения, контракты и ошибки
 
-| DISPID | Метод | Параметры / результат |
-|---|---|---|
-| 143 | ValidateCurrentDocument(optionsJson) | Обязательная JSON-строка `{}`; возвращает JSON результата проверки. Другие параметры пока не поддерживаются. |
-| 144 | LogMessage(level, message) | Две строки; true при передаче события штатному журналу, false при выключенном журнале или достижении лимита. |
-| 145 | GetLastScriptingError() | JSON последней ошибки текущего контекста. |
-| 146 | ClearLastScriptingError() | Очищает ошибку текущего контекста; возвращает true. |
+### Файловые диалоги и InputBoxEx
 
-Все четыре метода требуют активного контекста скрипта; вне него возвращается
-E_UNEXPECTED. Неверное число аргументов даёт DISP_E_BADPARAMCOUNT, неверный тип —
-DISP_E_TYPEMISMATCH, именованные аргументы — DISP_E_NONAMEDARGS. Объекты JScript
-не преобразуются в строки через пользовательский toString.
+Диалоги используют текстовый JSON-объект опций размером до **65 536 UTF-16 единиц**. Поля `title`, `initialDirectory`, `initialFileName`, `defaultExtension` (строки), `multiSelect` (boolean) и `filters` (до 32 объектов `{"name":"...","pattern":"*.fb2;*.zip"}`) поддерживаются применительно к соответствующему диалогу. Неизвестные и повторные поля, неверные типы и NUL в строках отклоняются. Для `SelectSaveFile` нельзя задавать `multiSelect:true`, для `SelectFolder` — `filters`.
 
-### Проверка текущего документа
+При успехе результат имеет `status:"ok"` и `path` либо `paths`; при отмене `status:"cancelled"`; при ошибке — `status:"error"`, `code`, `hresult`, `message`. Возможные коды: `invalid-options`, `owner-unavailable`, `dialog-failed`. Текст `message` определяется Windows — **не сравнивайте его строкой**. При выборе файлов и папок редактор не открывает документ и не меняет dirty-state. Выбор места сохранения не записывает файл.
 
-ValidateCurrentDocument проверяет FB2 штатным SAX/schema-механизмом, FBD —
-штатной проверкой структуры description-only документа. Для Design/Description
-строится detached DOM и читается через IStream. Полная XML-строка с binary
-не передаётся в JScript. В Source проверяется актуальный текст Scintilla,
-включая несохранённые изменения. Режим, выделение, Body, Source, Undo/Redo,
-dirty-state и точки сохранения не меняются. Строка состояния и звуковые
-уведомления прежней интерактивной проверки не используются.
+`InputBoxEx` различает подтверждение даже пустого ввода (`accepted:true`) и отмену (`accepted:false`) и не изменяет результат исторического `GetModalResult()`.
+
+### Настройки скриптов
+
+Четыре метода настроек работают только при активном контексте. Хранение выполняется в файле `ScriptSettings.xml` (каталог настроек установленной или portable-версии). Для зарегистрированного скрипта область привязана к его UID; иначе — к нормализованному абсолютному пути, и переименование может создать другую область. Максимум: **1024 настройки на все скрипты**, **1 МиБ сериализованного файла**. Изменения сохраняются посредством временного файла и атомарного переименования; ошибки записи возвращают `false`, без перезаписи повреждённого исходного файла. Старые переменные пользовательских JS и настройки карточек не изменяются.
+
+### Закладки, пакетный Undo, прогресс
+
+Закладки выделения принадлежат только текущему контексту скрипта (до **128** одновременно). После смены режима/документа, изменений DOM или Source они могут стать недействительными. В Source используются позиции Scintilla, корректно преобразуемые между UTF-8 и UTF-16; для снимков Source есть бюджет 64 МиБ на контекст и отдельный бюджет 64 МиБ для Description. Не пытайтесь хранить токены закладок между запусками.
+
+`BeginDocumentUpdate` поддерживает только пустой объект опций или `{"suspendRedraw":true}`; открытые группы закрываются в порядке LIFO. Подавление перерисовки не отключает орфографию и не откладывает обновление дерева; соответствующая оптимизация **не реализована**. Это группировка Undo, а не безопасная транзакция отката. Одновременно допускается только одно активное окно прогресса на UI-поток; пользовательскую отмену необходимо проверять явным вызовом `IsProgressCancelled`.
+
+### Текстовые файлы
+
+Поддерживаемые кодировки: `utf-8`, `utf-8-bom`, `utf-16le` (с BOM при записи), `windows-1251`. При чтении без явно указанной кодировки BOM UTF-8/UTF-16LE распознаётся автоматически, а без BOM применяется UTF-8. Некорректный UTF и символы, которые нельзя представить в Windows-1251, не записываются с потерями.
+
+Предел файла/записанного результата — **8 МиБ**, входного текста — **8 Ми UTF-16 единиц**. Директория назначения должна существовать. Запись проходит через временный файл, сброс на диск и атомарное переименование. `WriteTextFile` заменяет существующий файл; `WriteTextFileEx` требует явного `overwrite`. Повторные попытки предусмотрены для кратковременных конфликтов доступа, но постоянный отказ заканчивается COM-ошибкой.
+
+У `GetTempFileName` префикс и расширение не длиннее 64 UTF-16 единиц; запрещены недопустимые для Windows символы и сегменты путей. Файл создаётся сразу с уникальным GUID в имени; удаление лежит на скрипте.
+
+### Валидация и диагностика API 1.2.0
+
+`ValidateCurrentDocument("{}")` не меняет состояние книги. Типовой успешный ответ:
 
 ```json
 {"schemaVersion":1,"status":"ok","valid":true,"diagnosticsComplete":true,"errors":[],"warnings":[]}
 ```
 
-При ошибке XML или схемы status остаётся `ok`, valid равен false. errors содержит
-только первую ошибку штатного обработчика: code=`xml-invalid`, severity=`error`,
-message, line и column. Координаты штатного парсера отсчитываются от 1;
-структурная ошибка FBD имеет координаты 1:1. При ошибке кодировки Source без
-координат парсера возвращается 0:0. diagnosticsComplete равен false: полный
-список ошибок не собирается. warnings пока всегда пуст. Для FBD
-valid=true означает корректность штатной структуры FBD, а не полную схему FB2.
+При невалидном XML `status` остаётся `ok`, `valid:false`; штатный обработчик сообщает только первую ошибку (`diagnosticsComplete:false`), `warnings` пока пуст. При техническом отказе — `status:"error"`, `valid:null`, ошибка `no-document`/`validation-unavailable`. В FBD `valid:true` означает корректность структуры FBD, не полную схему FB2. Максимум аргумента `optionsJson` — 1024 UTF-16 единицы, допустим только пустой объект. Source-диагностика (`GetLastSourceDiagnostic`) от этого вызова не затирается.
 
-Технический отказ отличается от невалидной книги: status=`error`, valid=null,
-diagnosticsComplete=false. Единственный элемент errors имеет code=`no-document`
-или `validation-unavailable`, hresult, message и нулевые координаты.
-Технический отказ сохраняется также в GetLastScriptingError. Невалидная книга
-сама по себе не является ошибкой вызова API и прежнюю сохранённую ошибку не стирает.
-Размер optionsJson ограничен 1024 UTF-16 единицами, неизвестные ключи и неверный
-JSON дают E_INVALIDARG. Пока допускается только пустой объект с пробелами вокруг него.
+`LogMessage` принимает уровни `debug`, `info`, `warning`, `error`. Лимиты — **32 события за 1000 мс** на UI-поток и **256 событий** на контекст. При выключенной трассировке или превышении лимита возвращает `false`. Для приватности произвольный текст записи не сохраняется как есть: журнал хранит структурированные сведения, а не содержимое книги, путь скрипта или персональные данные.
 
-Метод не вызывает публичные ValidateSourceText/GetLastSourceDiagnostic и не
-перезаписывает их прежнюю диагностику. Операции анализа остаются синхронными;
-для большой книги время проверки определяется штатным механизмом FBE.
-
-```javascript
-if (HasApi("ValidateCurrentDocument")) {
-    var validationJson = window.external.ValidateCurrentDocument("{}");
-    // Разберите JSON используемым в вашем скрипте JSON-парсером.
-    // Глобальный JSON доступен не во всех режимах MSHTML.
-}
-```
-
-### Сообщения журнала и приватность
-
-LogMessage принимает level=`debug`, `info`, `warning` или `error` с учётом регистра.
-Другой уровень даёт E_INVALIDARG. message — строка до 512 UTF-16 единиц;
-превышение даёт HRESULT 0x8007006F (`message-too-long`). Непарные суррогаты
-отклоняются с E_INVALIDARG. Unicode и управляющие символы не нарушают формат журнала.
-
-Сохранена существующая политика приватности StartupTrace: произвольный текст
-message фильтруется. В существующем журнале остаются уровень, числовой токен
-текущего контекста (`number`), наличие сообщения и длина (`size`). Имя и путь
-скрипта, исходный код, содержимое книги и персональные данные автоматически
-не добавляются. Это ограничение действует и при явном LogMessage; метод не
-предназначен для сохранения произвольных текстовых заметок.
-
-Лимиты: 32 события за интервал 1000 мс на UI-поток (включая вложенные скрипты)
-и 256 событий на контекст. При превышении возвращается false без диалога.
-При выключенном диагностическом журнале допустимый вызов также возвращает false
-и журнал не создаёт. Ошибки типов/параметров проверяются даже при выключенном журнале.
-Успешный LogMessage с уровнем error не создаёт ошибку API.
-
-TraceScript и IsDiagnosticTraceEnabled сохраняют прежний контракт. LogMessage
-использует существующую инфраструктуру с кодом SA144, а не отдельный файл.
-Ошибки загрузки, синтаксиса и выполнения JScript по-прежнему обслуживает
-FbeScriptDiagnostics (issue #46); новая система их не перехватывает и не дублирует.
-
-### Последняя ошибка API
-
-Пустое состояние: `{"schemaVersion":1,"hasError":false}`. При неудаче:
+`GetLastScriptingError` отслеживает ошибки HRESULT **новых** методов (DISPID 100–146) в текущем контексте, но не обобщает возвраты `false` или ошибки старого интерфейса. Пример состояния:
 
 ```json
 {"schemaVersion":1,"hasError":true,"method":"WriteTextFileEx","hresult":"0x80070005","code":"access-denied","message":"Отказано в доступе"}
 ```
 
-message формируется по HRESULT и зависит от языка Windows, не содержит аргументов
-вызова. Устойчивые code: `invalid-argument`, `type-mismatch`, `bad-parameter-count`,
-`named-arguments-not-supported`, `method-not-supported`, `context-unavailable`,
-`access-denied`, `out-of-memory`, `message-too-long`, `file-not-found`, `path-not-found`,
-`already-exists`, `file-locked`, `operation-failed`.
+Успешный вызов не стирает сохранённую ошибку — очистку выполняет `ClearLastScriptingError()`. Текст `message` локализован средствами Windows; для логики лучше использовать `code`/`hresult`. Вложенные скрипты не разделяют состояние ошибки с родителем. По завершении скрипта сведения уничтожаются.
 
-Хранятся ошибки HRESULT аддитивных методов DISPID 100–146 и технические отказы
-ValidateCurrentDocument. Возвраты false/status:error старых методов без неудачного
-HRESULT и диагностика прежних COM-методов 1–35 сюда не копируются. Их поведение
-не меняется. Успешные вызовы не стирают предыдущую ошибку. Сам GetLastScriptingError
-не меняет её даже при неправильных аргументах; ClearLastScriptingError очищает
-только текущий контекст. Вложенный скрипт получает пустое состояние и не изменяет
-состояние родителя, включая выход по исключению.
+### Совместимость с исходным COM-контрактом
 
-Состояние состоит из ограниченной строки JSON без COM-ссылок. Оно уничтожается
-при завершении контекста; системный текст ошибки ограничен 512 UTF-16 единицами.
-Оно не сохраняется между запусками и не записывается в журнал
-автоматически. При исчерпании памяти сохранение диагностики может быть пропущено,
-но исходный HRESULT вызова остаётся прежним.
+Исходный `IExternalHelper` сохраняет IID, типы, порядок vtable и DISPID **1–35**; методы API 1.0.0/1.1.0/1.2.0 доступны через аддитивный `IDispatch` с DISPID **100–146**. Старый typelib не объявляет новые функции, поэтому для вызовов из скриптов следует обращаться через динамический `window.external`, а не ожидать их наличия в прежнем статически типизированном интерфейсе. Вызовы с неверным числом или типами параметров отвергаются через COM-ошибки (`DISP_E_BADPARAMCOUNT`, `DISP_E_TYPEMISMATCH`), вне контекста — где применимо — `E_UNEXPECTED`.
 
-Адресный тест `tools/tests/test-fbe-scripting-stage3a.ps1` принимает `-Mode portable`
-или `installed`, `-Kind fb2` или `fbd` и `-Trace`. Дополнительно выполняются прежние
-контуры этапов 1–2 и проверка встроенной typelib. Windows 7 SP1 проверяется только
-при доступном окружении; в текущем прогоне имеет статус NOT RUN.
+Сверяемые реализации: [`src/contracts/fbe.idl`](../src/contracts/fbe.idl), [`src/fbe/ExternalHelper.cpp`](../src/fbe/ExternalHelper.cpp), [`src/fbe/scripts/ScriptingApi.inl`](../src/fbe/scripts/ScriptingApi.inl), [`src/fbe/scripts/ScriptingStage2.inl`](../src/fbe/scripts/ScriptingStage2.inl) и [`src/fbe/scripts/ScriptingDiagnostics.inl`](../src/fbe/scripts/ScriptingDiagnostics.inl).
+
+## Запланировано, но не доступно для вызова
+
+Перечисленное ниже **не входит** в 82 метода и пока не должно попадать в основной указатель. Актуальный статус ведётся в [issue #45](https://github.com/sklart/fictionbook-editor-next/issues/45).
+
+| Направление | Планируемые методы |
+|---|---|
+| Вложения | `GetBinaryInfo`, `AddBinaryFromFile`, `ReplaceBinaryFromFile`, `RemoveBinary`, `SaveAllBinaries`, `GenerateUniqueBinaryId` |
+| Расширенные диалоги | `ShowMessage`, `SelectFromList`, `SelectMultipleFromList`, `ChooseColor` |
+| Буфер обмена | `GetClipboardText`, `SetClipboardText`, `GetClipboardHtml`, `SetClipboardHtml` |
+| Стек строки состояния | `PushStatusBarText`, `PopStatusBarText`, `ClearStatusBarText` |
+| Сохранение книги | `SaveCurrentDocument`, `SaveCurrentDocumentAs`, `SaveDocumentCopy`, `SaveSerializedDocumentCopy` |
+| Отложено | `ProcessPendingUiEvents`, автоматический откат произвольных DOM-изменений |
+
+Другие задачи (например, интерфейс параметров карточек скриптов, issue #48) не следует трактовать как методы API `window.external`.
+
+## Тестовые контуры в репозитории
+
+Для диагностики реализации используются адресные тесты `tools/tests/test-fbe-scripting-stage1.ps1`, `test-fbe-scripting-stage2.ps1`, `test-fbe-scripting-stage3a.ps1` и `test-fbe-typelib-runtime.ps1`. Вторая и третья группы проверяют реальный JScript, Source/Body/Description, Undo, параметры вызова, диалоги и ошибки в пределах предусмотренных сценариев. Это не свидетельство полного тестирования всех пользовательских скриптов.
+
+Проверку нужно проводить отдельно для portable и installed. Запуск на Windows 7 SP1 нельзя считать подтверждённым только по анализу импортов: для этого необходим отдельный реальный прогон на Windows 7.
