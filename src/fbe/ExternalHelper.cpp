@@ -26,7 +26,8 @@ const wchar_t* const ScriptingMethods[] = {
  L"BeginDocumentUpdate", L"EndDocumentUpdate",
  L"BeginProgress", L"SetProgress", L"IsProgressCancelled", L"EndProgress",
  L"ReadTextFile", L"WriteTextFile", L"FileExists", L"DirectoryExists", L"CreateDirectory",
- L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName"
+ L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName",
+ L"WriteTextFileEx"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {

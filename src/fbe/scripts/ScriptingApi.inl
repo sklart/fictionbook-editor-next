@@ -4,7 +4,7 @@
 HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters,
     VARIANT* result, UINT* argumentError)
 {
-    if (dispid >= 119 && dispid <= 141) return FbeScripts::InvokeStage2(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
+    if (dispid >= 119 && dispid <= 142) return FbeScripts::InvokeStage2(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
     if (parameters && parameters->cNamedArgs) return DISP_E_NONAMEDARGS;
     const UINT count = parameters ? parameters->cArgs : 0;

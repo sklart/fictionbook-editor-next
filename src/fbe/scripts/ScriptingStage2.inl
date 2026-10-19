@@ -92,7 +92,7 @@ inline CString ReadScriptText(const CString& path, CString encoding, bool automa
     if (!count) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
     CString result; ::MultiByteToWideChar(codepage, flags, bytes.data() + offset, static_cast<int>(length), result.GetBuffer(count), count); result.ReleaseBuffer(count); return result;
 }
-inline bool WriteScriptText(const CString& path, const CString& text, const CString& encoding)
+inline bool WriteScriptText(const CString& path, const CString& text, const CString& encoding, bool overwrite = true)
 {
     const UINT codepage = TextEncoding(encoding); std::vector<char> bytes;
     if (codepage == 1200) {
@@ -119,20 +119,40 @@ inline bool WriteScriptText(const CString& path, const CString& text, const CStr
     const auto replace = [](LPCWSTR destination, LPCWSTR source, LPCWSTR, DWORD, LPVOID, LPVOID) -> BOOL {
         return ::MoveFileExW(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
     };
-    try { FbeBackupFileCommit::CommitSavedFile(temporary, path, false, replace); }
+    try {
+        if (overwrite) FbeBackupFileCommit::CommitSavedFile(temporary, path, false, replace);
+        else {
+            CHandle completed(::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
+            if (completed == INVALID_HANDLE_VALUE || !::FlushFileBuffers(completed)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+            completed.Close();
+            if (!::MoveFileExW(temporary, path, MOVEFILE_WRITE_THROUGH)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+        }
+    }
     catch (...) { ::DeleteFileW(temporary); throw; }
     return true;
 }
 inline CComVariant FileString(const CString& text)
 { CComVariant value; value.vt = VT_BSTR; value.bstrVal = text.AllocSysString(); if (!value.bstrVal) CheckError(E_OUTOFMEMORY); return value; }
+inline CString TempNamePart(const CComVariant& value, bool extension)
+{
+    CString part = Stage2String(value);
+    if (part.GetLength() > 64) CheckError(E_INVALIDARG);
+    if (extension && !part.IsEmpty() && part[0] != L'.') part = L"." + part;
+    for (int index = 0; index < part.GetLength(); ++index)
+        if (part[index] < 32 || wcschr(L"\\/:*?\"<>|", part[index])) CheckError(E_INVALIDARG);
+    if (part.Find(L"..") >= 0 || (!part.IsEmpty() && (part.Right(1) == L"." || part.Right(1) == L" "))) CheckError(E_INVALIDARG);
+    return part;
+}
 inline CComVariant FileOperation(DISPID method, const std::vector<CComVariant>& args)
 {
     if (method == 140 || method == 141) {
         DWORD size = ::GetTempPathW(0, NULL); if (!size || size > 32768) CheckError(E_FAIL);
         std::vector<wchar_t> directory(size + 1); if (!::GetTempPathW(static_cast<DWORD>(directory.size()), directory.data())) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
         if (method == 140) return CComVariant(directory.data());
+        const CString prefix = args.empty() ? CString(L"fbe-") : TempNamePart(args[0], false);
+        const CString extension = args.size() < 2 ? CString(L".tmp") : TempNamePart(args[1], true);
         for (int attempt = 0; attempt < 8; ++attempt) {
-            const CString path = CString(directory.data()) + L"fbe-" + ResourceToken() + L".tmp";
+            const CString path = CString(directory.data()) + prefix + ResourceToken() + extension;
             CHandle file(::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL));
             if (file != INVALID_HANDLE_VALUE) return CComVariant(path);
             if (::GetLastError() != ERROR_FILE_EXISTS) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
@@ -156,6 +176,7 @@ inline CComVariant FileOperation(DISPID method, const std::vector<CComVariant>& 
     const CString path = ApiFilePath(args[0]);
     if (method == 131) return FileString(ReadScriptText(path, args.size() == 2 ? Stage2String(args[1]) : CString(), args.size() == 1));
     if (method == 132) return CComVariant(WriteScriptText(path, Stage2String(args[1], true), args.size() == 3 ? Stage2String(args[2]) : CString(L"utf-8")));
+    if (method == 142) return CComVariant(WriteScriptText(path, Stage2String(args[1], true), args.size() == 4 ? Stage2String(args[3]) : CString(L"utf-8"), args[2].boolVal != VARIANT_FALSE));
     const DWORD attributes = ::GetFileAttributesW(path);
     if (method == 133 || method == 134) return CComVariant(attributes != INVALID_FILE_ATTRIBUTES && ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) == (method == 134));
     if (method == 135) {
@@ -171,16 +192,18 @@ inline HRESULT InvokeStage2(HWND owner, DISPID method, WORD flags, DISPPARAMS* p
     if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
     if (parameters && parameters->cNamedArgs) return DISP_E_NONAMEDARGS;
     const UINT count = parameters ? parameters->cArgs : 0;
-    const UINT expected[] = {0,1,1,0,0,0,2,1,2,3,1,1,1,2,1,1,1,2,1,1,1,0,0};
-    const UINT minimum = expected[method - 119]; const bool optional = method == 131 || method == 132;
-    if (count < minimum || count > minimum + (optional ? 1U : 0U)) return DISP_E_BADPARAMCOUNT;
+    const UINT expected[] = {0,1,1,0,0,0,2,1,2,3,1,1,1,2,1,1,1,2,1,1,1,0,0,3};
+    const UINT minimum = expected[method - 119];
+    const UINT extra = method == 141 ? 2U : (method == 131 || method == 132 || method == 142 ? 1U : 0U);
+    if (count < minimum || count > minimum + extra) return DISP_E_BADPARAMCOUNT;
     if (count && (!parameters || !parameters->rgvarg)) return E_POINTER;
     std::vector<CComVariant> args(count);
     for (UINT index = 0; index < count; ++index) {
         CheckError(::VariantCopyInd(&args[index], &parameters->rgvarg[count - index - 1]));
         const bool numeric = (method == 127 && index == 1) || (method == 128 && index == 1);
-        if (!numeric && args[index].vt != VT_BSTR) { if (argumentError) *argumentError = count - index - 1; return DISP_E_TYPEMISMATCH; }
-        if (!numeric) Stage2String(args[index], method == 132 && index == 1);
+        const bool boolean = method == 142 && index == 2;
+        if ((!numeric && !boolean && args[index].vt != VT_BSTR) || (boolean && args[index].vt != VT_BOOL)) { if (argumentError) *argumentError = count - index - 1; return DISP_E_TYPEMISMATCH; }
+        if (!numeric && !boolean) Stage2String(args[index], (method == 132 || method == 142) && index == 1);
     }
     CComVariant value;
     if (method <= 126) {
