@@ -32,7 +32,7 @@ function Run(){try{
  for(var i=0;i<methods.length;i++)assert3(e.HasScriptingMethod(methods[i]),methods[i]);
  var capabilities=json3(e.GetScriptingCapabilities()).capabilities;
  assert3(capabilities.documentValidation&&capabilities.logging&&capabilities.scriptingErrors,"capabilities");
- assert3(!e.HasScriptingMethod("SaveDocumentCopy")&&!e.HasScriptingMethod("GetBinaryInfo"),"later stages unavailable");
+ assert3(!e.HasScriptingMethod("SaveDocumentCopy")&&e.HasScriptingMethod("GetBinaryInfo"),"later stages unavailable");
  assert3(!error3().hasError,"fresh context");
  rejects3(function(){e.ValidateCurrentDocument();}); assert3(error3().code==="bad-parameter-count","argument count");
  rejects3(function(){e.ValidateCurrentDocument(0);}); assert3(error3().code==="type-mismatch","argument type");

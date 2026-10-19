@@ -2,9 +2,11 @@
 #include "ScriptingDialogs.inl"
 #include "ScriptingStage2.inl"
 #include "ScriptingDiagnostics.inl"
+#include "ScriptingBinary.inl"
 HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters,
     VARIANT* result, UINT* argumentError)
 {
+    if (dispid == 147 || dispid == 148 || dispid == 152) return FbeScripts::InvokeBinary(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 143 && dispid <= 146) return FbeScripts::InvokeStage3A(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (dispid >= 119 && dispid <= 142) return FbeScripts::InvokeStage2(m_xmlScriptHost, dispid, flags, parameters, result, argumentError);
     if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
@@ -49,7 +51,7 @@ HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISP
             SUCCEEDED(GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &id));
         value = exists; break;
     }
-    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.2.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true,\"fileDialogs\":true,\"inputBoxEx\":true,\"selection\":true,\"documentUpdate\":true,\"progress\":true,\"textFiles\":true,\"paths\":true,\"documentValidation\":true,\"logging\":true,\"scriptingErrors\":true}}"; break;
+    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.2.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true,\"fileDialogs\":true,\"inputBoxEx\":true,\"selection\":true,\"documentUpdate\":true,\"progress\":true,\"textFiles\":true,\"paths\":true,\"documentValidation\":true,\"logging\":true,\"scriptingErrors\":true,\"binaryReadExport\":true}}"; break;
     case 103: value = context ? context->path : CString(); break;
     case 104:
         if (context) { const int slash = context->path.ReverseFind(L'\\'); if (slash >= 0) text = context->path.Left(slash + 1); }

@@ -1,4 +1,4 @@
-# API пользовательских скриптов FBE Next
+﻿# API пользовательских скриптов FBE Next
 
 Скрипты FBE выполняются в DOM-документе редактора. Дополнительные возможности
 приложения доступны через объект `window.external`. В этой справке `document`
@@ -552,7 +552,7 @@ if (HasApi("GetCurrentScriptDirectory")) {
 | SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Implemented |
 | Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Implemented |
 | ValidateCurrentDocument, LogMessage, последняя ошибка (этап 3А) | Implemented |
-| Дополнительные binary, dialogs, clipboard, status-stack, save API (этапы 3Б–3Г) | Planned |
+| Изменение binary, dialogs, clipboard, status-stack, save API (этапы 3Б.2–3Г) | Planned |
 | GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText; существующие Undo, InputBox/GetModalResult, SaveBinary, пути документа | Already covered by existing API |
 | ProcessPendingUiEvents и автоматический откат произвольных DOM-изменений | Deferred |
 
@@ -692,7 +692,8 @@ ActiveX, COM или DOM. Не используйте eval для текста FB
 | BeginProgress, SetProgress, IsProgressCancelled, EndProgress | Implemented |
 | ReadTextFile, WriteTextFile, WriteTextFileEx, FileExists, DirectoryExists, CreateDirectory | Implemented |
 | CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Implemented |
-| GetBinaryInfo, AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary, SaveAllBinaries, GenerateUniqueBinaryId | Planned |
+| GetBinaryInfo, GenerateUniqueBinaryId, SaveAllBinaries (этап 3Б.1) | Implemented |
+| AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary (этап 3Б.2) | Planned |
 | ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError (этап 3А) | Implemented |
 | ShowMessage, SelectFromList, SelectMultipleFromList, ChooseColor | Planned |
 | GetClipboardText, SetClipboardText, GetClipboardHtml, SetClipboardHtml | Planned |
@@ -712,7 +713,7 @@ WriteTextFileEx добавлен с новым DISPID 142; опубликова�
 Прежние IID, typelib, сигнатуры и DISPID 1–35, а также методы API 1.0.0
 сохранены. В этапе 2 опубликована версия `1.1.0`. В capabilities добавлены
 булевы ключи `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`.
-Реализация этапа 3А описана ниже. Методы этапов 3Б–3Г не объявляются доступными; issue #45 остаётся открытым.
+Реализация этапа 3А описана ниже. Из этапа 3Б доступны чтение и экспорт; изменяющие методы и этапы 3В–3Г пока не объявляются доступными; issue #45 остаётся открытым.
 
 ### Проверка этапов 1–2
 
@@ -934,7 +935,7 @@ if (HasApi("WriteTextFileEx")) {
 Методы добавлены только в аддитивный IDispatch. IDL, IID, vtable и DISPID 1–142
 сохранены. GetScriptingApiVersion возвращает `1.2.0`; capabilities содержит
 `documentValidation`, `logging`, `scriptingErrors` со значением true.
-Этапы 3Б–3Г не реализованы, issue #45 остаётся открытым.
+Чтение и экспорт этапа 3Б описаны ниже; issue #45 остаётся открытым.
 
 | DISPID | Метод | Параметры / результат |
 |---|---|---|
@@ -1047,3 +1048,42 @@ HRESULT и диагностика прежних COM-методов 1–35 сю�
 или `installed`, `-Kind fb2` или `fbd` и `-Trace`. Дополнительно выполняются прежние
 контуры этапов 1–2 и проверка встроенной typelib. Windows 7 SP1 проверяется только
 при доступном окружении; в текущем прогоне имеет статус NOT RUN.
+
+## Этап 3Б.1: чтение и экспорт бинарных объектов
+
+Аддитивный IDispatch, без изменения typelib, IID и старых DISPIDs:
+
+| DISPID | Метод | Результат |
+|---|---|---|
+| 147 | `GetBinaryInfo(id)` | JSON: `schemaVersion:1`, `id`, `mimeType`, фактический `size` в байтах, `width`/`height` или `null`, `referenceCount:null` (достоверный подсчёт пока не предоставляется). |
+| 148 | `GenerateUniqueBinaryId(preferredName)` | Свободный XML ID; нормализация имени файла сохраняет Unicode, конфликт получает `_0`, `_1` и т. д. Ничего не создаёт. |
+| 152 | `SaveAllBinaries(directory[, overwritePolicy])` | JSON: `schemaVersion:1`, `status:"ok"/"error"`, счётчики `saved`, `skipped`, `errors`, массив `objects` с `id`, `fileName`, `status`, `hresult`. |
+
+Design и Description используют текущее состояние книги. В Source все три метода
+возвращают `E_NOTIMPL` (`0x80004001`), сохраняя несохранённый текст и режим.
+Отсутствующий ID: `HRESULT_FROM_WIN32(ERROR_NOT_FOUND)` (`0x80070490`).
+Некорректные типы, число аргументов и политика экспорта диагностируются COM-ошибкой.
+Успешное чтение не изменяет выделение, книгу, dirty-state и историю Undo/Redo.
+Байты не передаются строкой в JScript; размеры изображений определяются CImage,
+как в существующем механизме FBE. Неподдерживаемые изображения имеют размеры `null`.
+
+Каталог экспорта должен существовать. Политики: `skip` по умолчанию пропускает
+существующие файлы, `fail` отмечает конфликт ошибкой, `replace` разрешает атомарную
+замену. Данные записываются во временный файл в том же каталоге, сбрасываются на
+диск и переименовываются; ошибка не удаляет ранее экспортированные файлы.
+Частичный экспорт возвращает `status:"error"`, даже если часть файлов сохранена.
+Имена начинаются с `_`, недопустимые Windows-символы заменяются, длинные ID
+сокращаются до 100 UTF-16 единиц без разрыва пары; совпадения имён получают
+суффикс. Префикс защищает также DOS device names. Слишком длинный путь отклоняется
+явно (`ERROR_FILENAME_EXCED_RANGE`), без усечения каталога или выхода за его пределы.
+Отчёт содержит фактическое соответствие ID и имени файла. StartupTrace не получает
+имён файлов и содержимого вложений.
+
+```js
+var infoJson = window.external.GetBinaryInfo("обложка.png");
+var nextId = window.external.GenerateUniqueBinaryId("обложка.png");
+var exportJson = window.external.SaveAllBinaries("D:\\Export", "skip");
+```
+
+Версия API остаётся `1.2.0` до завершения и проверки изменяющих методов 3Б.2.
+Capability `binaryReadExport:true` обозначает доступность этих трёх методов.

@@ -1,5 +1,6 @@
-#include "RuntimeTestScriptingStage2.inl"
+﻿#include "RuntimeTestScriptingStage2.inl"
 #include "RuntimeTestScriptingStage3A.inl"
+#include "RuntimeTestScriptingStage3B.inl"
 #include "RuntimeTestScriptingDialogs.inl"
 #include "RuntimeTestScriptingEnvironment.inl"
 	if (IsFbeTestScenario(L"scripting-stage1"))

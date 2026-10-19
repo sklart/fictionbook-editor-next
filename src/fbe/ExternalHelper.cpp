@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 #include "resource.h"
 #include "res1.h"
 
@@ -11,6 +11,7 @@
 #include <vector>
 #include <new>
 #include "scripts/ScriptExecutionContext.h"
+#include "scripts/ScriptJson.h"
 #include "scripts/ScriptSettingsStore.h"
 #include "../common/RuntimeLocalizationCommon.h"
 namespace FbeScripts { void RecordApiFailure(LPCWSTR method, HRESULT error) noexcept; }
@@ -28,13 +29,14 @@ const wchar_t* const ScriptingMethods[] = {
  L"BeginProgress", L"SetProgress", L"IsProgressCancelled", L"EndProgress",
  L"ReadTextFile", L"WriteTextFile", L"FileExists", L"DirectoryExists", L"CreateDirectory",
  L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName",
- L"WriteTextFileEx", L"ValidateCurrentDocument", L"LogMessage", L"GetLastScriptingError", L"ClearLastScriptingError"
+ L"WriteTextFileEx", L"ValidateCurrentDocument", L"LogMessage", L"GetLastScriptingError", L"ClearLastScriptingError",
+ L"GetBinaryInfo", L"GenerateUniqueBinaryId", nullptr, nullptr, nullptr, L"SaveAllBinaries"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {
  if (!name) return DISPID_UNKNOWN;
  for (size_t index = 0; index < _countof(ScriptingMethods); ++index)
-  if (_wcsicmp(name, ScriptingMethods[index]) == 0) return 100 + static_cast<DISPID>(index);
+  if (ScriptingMethods[index] && _wcsicmp(name, ScriptingMethods[index]) == 0) return 100 + static_cast<DISPID>(index);
  if (_wcsicmp(name, L"_EnterScriptContext") == 0) return 1000;
  if (_wcsicmp(name, L"_LeaveScriptContext") == 0) return 1001;
  return DISPID_UNKNOWN;
@@ -257,7 +259,7 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		try { result = InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }
 		catch (const _com_error& error) { result = error.Error(); }
 		catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
-		if (FAILED(result) && dispid >= 100 && dispid <= 146 && dispid != 145)
+		if (FAILED(result) && dispid >= 100 && dispid <= 152 && dispid != 145 && ScriptingMethods[dispid - 100])
 			FbeScripts::RecordApiFailure(ScriptingMethods[dispid - 100], result);
 		return result;
 	}
@@ -361,26 +363,7 @@ HRESULT ExternalHelper::GetDocumentDirectory(BSTR* directory)
 
 namespace
 {
-CString JsonEscape(const CString& value)
-{
-	CString escaped;
-	for(int index = 0; index < value.GetLength(); ++index)
-	{
-		const wchar_t character = value[index];
-		switch(character)
-		{
-		case L'\\': escaped += L"\\\\"; break;
-		case L'\"': escaped += L"\\\""; break;
-		case L'\r': escaped += L"\\r"; break;
-		case L'\n': escaped += L"\\n"; break;
-		case L'\t': escaped += L"\\t"; break;
-		default:
-			if(character < 0x20) { CString encoded; encoded.Format(L"\\u%04X", static_cast<unsigned int>(character)); escaped += encoded; }
-			else escaped += character;
-		}
-	}
-	return escaped;
-}
+using FbeScripts::JsonEscape;
 
 CString SourceDiagnosticJson(const XmlScriptApiRequest& diagnostic)
 {
