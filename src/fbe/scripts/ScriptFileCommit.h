@@ -4,12 +4,12 @@
 
 namespace FbeScripts {
 template<class Commit>
-inline void RetryScriptFileCommit(Commit&& commit)
+inline void RetryScriptFileCommit(Commit&& commit, unsigned retries = 10)
 {
     for (unsigned attempt = 0; ; ++attempt) {
         try { commit(); return; }
         catch (const _com_error& error) {
-            if (attempt == 10 || (error.Error() != HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED) &&
+            if (attempt == retries || (error.Error() != HRESULT_FROM_WIN32(ERROR_ACCESS_DENIED) &&
                 error.Error() != HRESULT_FROM_WIN32(ERROR_SHARING_VIOLATION) &&
                 error.Error() != HRESULT_FROM_WIN32(ERROR_LOCK_VIOLATION))) throw;
             ::Sleep(10);

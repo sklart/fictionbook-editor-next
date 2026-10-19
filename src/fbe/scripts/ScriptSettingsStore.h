@@ -1,7 +1,6 @@
 #pragma once
 #include "ScriptExecutionContext.h"
 #include "ScriptFileCommit.h"
-#include "../BackupFileCommit.h"
 #include "../../common/DeploymentContext.h"
 #include <set>
 #include <cmath>
@@ -113,7 +112,8 @@ inline bool Load(std::vector<Entry>& entries)
     }
     return true;
 }
-inline bool Save(const std::vector<Entry>& entries)
+template<class Rename>
+inline bool SaveWithRename(const std::vector<Entry>& entries, Rename&& rename)
 {
     if (entries.size() > MaximumEntries) return false;
     auto document = NewDocument(); auto root = document->createElement(L"ScriptSettings");
@@ -129,26 +129,29 @@ inline bool Save(const std::vector<Entry>& entries)
     const DWORD bytes = static_cast<DWORD>(xml.GetLength() * sizeof(wchar_t)); if (bytes > MaximumBytes) return false;
     GUID guid = {}; if (FAILED(::CoCreateGuid(&guid))) return false;
     wchar_t suffix[40] = {}; ::StringFromGUID2(guid, suffix, _countof(suffix));
-    const CString temporary = FilePath() + suffix + L".tmp";
+    const CString destination = FilePath();
+    const CString temporary = destination + suffix + L".tmp";
+    LastFailureOperation() = L"create-temporary";
     CHandle file(::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL));
-    if (file == INVALID_HANDLE_VALUE) return false;
+    if (file == INVALID_HANDLE_VALUE) { LastFailure() = HRESULT_FROM_WIN32(::GetLastError()); return false; }
+    LastFailureOperation() = L"write";
     DWORD written = 0; const bool saved = ::WriteFile(file, static_cast<LPCWSTR>(xml), bytes, &written, NULL) && written == bytes;
+    DWORD error = saved ? ERROR_SUCCESS : ::GetLastError();
+    if (saved) LastFailureOperation() = L"flush";
+    const bool flushed = saved && ::FlushFileBuffers(file);
+    if (saved && !flushed) error = ::GetLastError();
     file.Close();
-    if (!saved) { ::DeleteFileW(temporary); return false; }
+    if (!flushed) { ::DeleteFileW(temporary); LastFailure() = HRESULT_FROM_WIN32(error ? error : ERROR_WRITE_FAULT); return false; }
     // Settings need a single same-directory rename, without ReplaceFile's
     // metadata merge and its partially completed replacement failure modes.
-    const auto replaceSettings = [](LPCWSTR destination, LPCWSTR source, LPCWSTR, DWORD, LPVOID, LPVOID) -> BOOL {
+    try { RetryScriptFileCommit([&]() {
         LastFailureOperation() = L"rename";
-        return ::MoveFileExW(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
-    };
-    try { RetryScriptFileCommit([&]() { LastFailureOperation() = L"flush"; FbeBackupFileCommit::CommitSavedFile(temporary, FilePath(), false, replaceSettings); }); }
-    catch (const _com_error& error) {
-        if (error.Error() != HRESULT_FROM_WIN32(ERROR_UNABLE_TO_MOVE_REPLACEMENT) &&
-            error.Error() != HRESULT_FROM_WIN32(ERROR_UNABLE_TO_MOVE_REPLACEMENT_2)) ::DeleteFileW(temporary);
-        throw;
-    }
+        if (!rename(temporary, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+    }, 50); }
+    catch (...) { ::DeleteFileW(temporary); throw; }
     return true;
 }
+inline bool Save(const std::vector<Entry>& entries) { return SaveWithRename(entries, ::MoveFileExW); }
 // operation: 0=get, 1=set, 2=remove, 3=clear. No JS objects are coerced.
 inline HRESULT Access(int operation, const CString& name, const VARIANT* input, VARIANT* result)
 {

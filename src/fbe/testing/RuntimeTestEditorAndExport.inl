@@ -19,6 +19,25 @@
 			if (result.vt == VT_BSTR) details = CW2A(result.bstrVal, CP_UTF8);
             if (!passed) { CStringA error; error.Format("; settings_error=0x%08lX; settings_operation=%s; last_error=%lu", static_cast<unsigned long>(FbeScripts::SettingsStore::LastFailure()), static_cast<LPCSTR>(CW2A(FbeScripts::SettingsStore::LastFailureOperation(), CP_UTF8)), ::GetLastError()); details += error; }
 			if (passed) {
+				std::vector<FbeScripts::SettingsStore::Entry> entries;
+				if (!FbeScripts::SettingsStore::Load(entries)) CheckError(E_FAIL);
+				CHandle locked(::CreateFileW(FbeScripts::SettingsStore::FilePath(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
+				CHandle attempted(::CreateEventW(NULL, TRUE, FALSE, NULL));
+				if (locked == INVALID_HANDLE_VALUE || !attempted) CheckError(E_FAIL);
+				unsigned denied = 0;
+				std::thread release([&]() { ::WaitForSingleObject(attempted, 1000); ::Sleep(250); locked.Close(); });
+				try {
+					passed = FbeScripts::SettingsStore::SaveWithRename(entries, [&](LPCWSTR source, LPCWSTR destination, DWORD flags) -> BOOL {
+						const BOOL moved = ::MoveFileExW(source, destination, flags);
+						if (!moved) { const DWORD error = ::GetLastError(); ++denied; ::SetEvent(attempted); ::SetLastError(error); }
+						return moved;
+					});
+				} catch (...) { ::SetEvent(attempted); release.join(); throw; }
+				::SetEvent(attempted); release.join();
+				passed = passed && denied > 0;
+				if (!passed) details = "transient settings commit";
+			}
+			if (passed) {
 				const CString path = FbeScripts::SettingsStore::FilePath();
 				std::vector<BYTE> saved;
 				{
