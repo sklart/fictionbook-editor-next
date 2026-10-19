@@ -1,27 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FBE>
-	<Name>FictionBook Editor Next Release 3.0.8-rc2</Name>
-	<Date>02-09-2026</Date>
-	<Version>3.0.8-rc2</Version>
-	<ReleaseTag>v3.0.8-rc2</ReleaseTag>
-	<ReleaseType>prerelease</ReleaseType>
-	<Beta>true</Beta>
+	<Name>FictionBook Editor Next Release 3.0.9</Name>
+	<Date>19-10-2026</Date>
+	<Version>3.0.9</Version>
+	<ReleaseTag>v3.0.9</ReleaseTag>
+	<ReleaseType>stable</ReleaseType>
+	<Beta>false</Beta>
 	<Artifacts>
-		<SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.8-rc2/FictionBookEditorNext-3.0.8-rc2-win32-setup.exe</SetupUrl>
-		<SetupSHA256>74FFC71CB71FE7D3AB0C33F2BBF1ED4810377ADC201588EF568EA0C0F4B0F40F</SetupSHA256>
-		<PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.8-rc2/FictionBookEditorNext-3.0.8-rc2-win32-portable.zip</PortableUrl>
-		<PortableSHA256>61ECD15C699DF715D2C02265E0F1CAC4B69069F1122EBAEBB6E9491BF448381C</PortableSHA256>
-		<Modern>
-			<SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.8-rc2/FictionBookEditorNext-3.0.8-win32-setup.exe</SetupUrl>
-			<SetupSHA256>74FFC71CB71FE7D3AB0C33F2BBF1ED4810377ADC201588EF568EA0C0F4B0F40F</SetupSHA256>
-			<PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.8-rc2/FictionBookEditorNext-3.0.8-win32-portable.zip</PortableUrl>
-			<PortableSHA256>61ECD15C699DF715D2C02265E0F1CAC4B69069F1122EBAEBB6E9491BF448381C</PortableSHA256>
-		</Modern>
-		<Win7>
-			<SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.8-rc2/FictionBookEditorNext-3.0.8-win7-win32-setup.exe</SetupUrl>
-			<SetupSHA256>74FFC71CB71FE7D3AB0C33F2BBF1ED4810377ADC201588EF568EA0C0F4B0F40F</SetupSHA256>
-			<PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.8-rc2/FictionBookEditorNext-3.0.8-win7-win32-portable.zip</PortableUrl>
-			<PortableSHA256>61ECD15C699DF715D2C02265E0F1CAC4B69069F1122EBAEBB6E9491BF448381C</PortableSHA256>
-		</Win7>
+		<SetupUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9/FictionBookEditorNext-3.0.9-win32-setup.exe</SetupUrl>
+		<SetupSHA256>56E91C6C97A8A10D8FFC28BED0899AEB9F0A7E00FFA9AE5EE20D71581246EBA0</SetupSHA256>
+		<PortableUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9/FictionBookEditorNext-3.0.9-win32-portable.zip</PortableUrl>
+		<PortableSHA256>9D1E1D8D14C29F4DC3B55CE2CC73F792215EE4279594A9E5575E658A2500CD26</PortableSHA256>
 	</Artifacts>
+	<DownloadUrl>https://github.com/sklart/fictionbook-editor-next/releases/download/v3.0.9/FictionBookEditorNext-3.0.9-win32-setup.exe</DownloadUrl>
+	<SHA256>56E91C6C97A8A10D8FFC28BED0899AEB9F0A7E00FFA9AE5EE20D71581246EBA0</SHA256>
 </FBE>
