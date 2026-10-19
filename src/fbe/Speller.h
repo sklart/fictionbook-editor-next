@@ -232,6 +232,8 @@ public:
 	long GetTestVisitedParagraphs() const { return m_testVisitedParagraphs; }
 	long GetTestCheckScrollCalls() const { return m_testCheckScrollCalls; }
 	size_t GetTestHighlightCount() const { return m_ElementHighlights.size(); }
+	size_t GetTestHighlightCount(long elementID) const { return m_ElementHighlights.count(elementID); }
+	size_t TestHighlightedWords(long elementID, LPCWSTR expectedWord);
 	void CheckCurrentPage();
 	// main function
 	SPELL_RESULT SpellCheck(CString word);
@@ -239,8 +241,6 @@ public:
 	void SetCheckRussianYoUsage(bool enabled);
 	bool CheckRussianYoUsage(CString word, CString* correction = nullptr);
 	CStrings* GetSuggestions(CString word);
-	void MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString word, int pos,
-		SPELL_RESULT category = SPELL_MISSPELL);
 	void ClearMarks(int elemID);
 	void ClearAllMarks();
 	// SeNS
@@ -332,6 +332,7 @@ protected:
 	CString GetSelWord();
 
 	CSplitter* splitter;
+	void MarkWords(MSHTML::IHTMLElementPtr elem, long uniqID, CWords& words, const CString& text);
 };
 
 #endif

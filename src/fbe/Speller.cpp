@@ -3,6 +3,7 @@
 #include "res1.h"
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include "FBE.h"
 #include "Speller.h"
 #include "SpellParagraphTraversal.h"
@@ -800,51 +801,101 @@ SPELL_RESULT CSpeller::CheckWord(CString word)
 	return result == SPELL_OK && CheckRussianYoUsage(word) ? SPELL_YO_WARNING : result;
 }
 
-//
-// Highlight word at the pos in the element
-// 
-void CSpeller::MarkElement(MSHTML::IHTMLElementPtr elem, long uniqID, CString word, int pos,
-	SPELL_RESULT category)
+// Adjacent misspellings share one underline segment. Correct words and punctuation
+// always split runs; no spelling result or document content is changed.
+void CSpeller::MarkWords(MSHTML::IHTMLElementPtr elem, long uniqID, CWords& words,
+	const CString& text)
 {
-	MSHTML::IMarkupPointerPtr impStart;
-	MSHTML::IMarkupPointerPtr impEnd;
+	struct Run { int first, last; SPELL_RESULT category; };
+	std::vector<Run> runs;
+	for (int index = 0; index < words.GetSize(); ++index)
+	{
+		const SPELL_RESULT category = CheckWord(words.GetValueAt(index));
+		if (category != SPELL_MISSPELL && category != SPELL_YO_WARNING) continue;
+		bool join = category == SPELL_MISSPELL && !runs.empty() &&
+			runs.back().category == category && runs.back().last == index - 1;
+		if (join)
+		{
+			const int gapStart = words.GetKeyAt(index - 1) + words.GetValueAt(index - 1).GetLength();
+			for (int offset = gapStart; offset < words.GetKeyAt(index); ++offset)
+				if (text[offset] != L' ' && text[offset] != L'\x00a0') { join = false; break; }
+		}
+		if (join) runs.back().last = index;
+		else runs.push_back({ index, index, category });
+	}
+	MSHTML::IMarkupPointerPtr cursor, limit, start, end, last;
+	m_ims->CreateMarkupPointer(&cursor);
+	m_ims->CreateMarkupPointer(&limit);
+	m_ims->CreateMarkupPointer(&start);
+	m_ims->CreateMarkupPointer(&end);
+	m_ims->CreateMarkupPointer(&last);
+	cursor->MoveAdjacentToElement(elem, MSHTML::ELEM_ADJ_AfterBegin);
+	limit->MoveAdjacentToElement(elem, MSHTML::ELEM_ADJ_BeforeEnd);
+	int position = 0;
+	for (const auto& run : runs)
+	{
+		// Token offsets increase: traverse each character only once per paragraph.
+		for (; position < words.GetKeyAt(run.first); ++position)
+			cursor->MoveUnit(MSHTML::MOVEUNIT_NEXTCHAR);
+		start->MoveToPointer(cursor);
+		end->MoveToPointer(limit);
+		_bstr_t firstWord(words.GetValueAt(run.first));
+		if (start->findText(firstWord, FINDTEXT_MATCHCASE, end, NULL) == S_FALSE) continue;
+		if (run.last != run.first)
+		{
+			for (; position < words.GetKeyAt(run.last); ++position)
+				cursor->MoveUnit(MSHTML::MOVEUNIT_NEXTCHAR);
+			last->MoveToPointer(cursor);
+			end->MoveToPointer(limit);
+			_bstr_t lastWord(words.GetValueAt(run.last));
+			if (last->findText(lastWord, FINDTEXT_MATCHCASE, end, NULL) == S_FALSE) continue;
+		}
+		MSHTML::IDisplayPointerPtr displayStart, displayEnd;
+		m_ids->CreateDisplayPointer(&displayStart);
+		displayStart->MoveToMarkupPointer(start, NULL);
+		m_ids->CreateDisplayPointer(&displayEnd);
+		displayEnd->MoveToMarkupPointer(end, NULL);
+		MSHTML::IHighlightSegmentPtr segment;
+		if (run.category == SPELL_YO_WARNING && m_irsYo)
+			m_irsYo->textDecorationColor = ThemeManager::IsHighContrast() ? "WindowText" :
+				(ThemeManager::IsDark() ? "#d7ba72" : "#9a6b00");
+		m_ihrs->AddSegment(displayStart, displayEnd,
+			run.category == SPELL_YO_WARNING && m_irsYo ? m_irsYo : m_irs, &segment);
+		m_ElementHighlights.emplace(uniqID, segment);
+	}
+}
 
-	// Create start markup pointer
-	m_ims->CreateMarkupPointer(&impStart);
-	impStart->MoveAdjacentToElement(elem, MSHTML::ELEM_ADJ_AfterBegin);
-	for (int i=0; i<pos; i++)
-		impStart->MoveUnit (MSHTML::MOVEUNIT_NEXTCHAR);
-
-	// Create end markup pointer
-	m_ims->CreateMarkupPointer(&impEnd);
-	impEnd->MoveAdjacentToElement(elem, MSHTML::ELEM_ADJ_BeforeEnd);
-
-	// Locate the misspelled word
-	_bstr_t w = word.AllocSysString();
-	// First: exact match
-//	if (impStart->findText (w, FINDTEXT_WHOLEWORD | FINDTEXT_MATCHCASE, impEnd, NULL) == S_FALSE)
-	// Second: partial match
-	if (impStart->findText (w, FINDTEXT_MATCHCASE, impEnd, NULL) == S_FALSE)
-		return;
-
-	// Create a display pointers from the markup pointers
-	MSHTML::IDisplayPointerPtr idpStart;
-	m_ids->CreateDisplayPointer(&idpStart);
-	idpStart->MoveToMarkupPointer(impStart, NULL);
-
-	MSHTML::IDisplayPointerPtr idpEnd;
-	m_ids->CreateDisplayPointer(&idpEnd);
-	idpEnd->MoveToMarkupPointer(impEnd, NULL);
-
-	// Add or remove the segment
-	MSHTML::IHighlightSegmentPtr ihs;
-	if(category == SPELL_YO_WARNING && m_irsYo)
-		m_irsYo->textDecorationColor = ThemeManager::IsHighContrast() ? "WindowText" :
-			(ThemeManager::IsDark() ? "#d7ba72" : "#9a6b00");
-	m_ihrs->AddSegment(idpStart, idpEnd,
-		category == SPELL_YO_WARNING && m_irsYo ? m_irsYo : m_irs, &ihs);
-
-	m_ElementHighlights.emplace(uniqID, ihs);
+size_t CSpeller::TestHighlightedWords(long elementID, LPCWSTR expectedWord)
+{
+	MSHTML::IHTMLBodyElementPtr body(m_doc2->body);
+	MSHTML::IHTMLTxtRangePtr range(body->createTextRange());
+	MSHTML::IMarkupPointerPtr start, end, previousEnd;
+	m_ims->CreateMarkupPointer(&start);
+	m_ims->CreateMarkupPointer(&end);
+	m_ims->CreateMarkupPointer(&previousEnd);
+	const auto segments = m_ElementHighlights.equal_range(elementID);
+	bool first = true;
+	size_t count = 0;
+	for (auto segment = segments.first; segment != segments.second; ++segment)
+	{
+		segment->second->GetPointers(start, end);
+		long rightOfPrevious = FALSE;
+		if (!first && (FAILED(start->IsRightOf(previousEnd, &rightOfPrevious)) || !rightOfPrevious)) return 0;
+		m_ims->MoveRangeToPointers(start, end, range);
+		_bstr_t text(range->text);
+		CString highlighted(static_cast<const wchar_t*>(text));
+		int offset = 0;
+		CString word = highlighted.Tokenize(L" \x00a0", offset);
+		while (!word.IsEmpty())
+		{
+			if (word != expectedWord) return 0;
+			++count;
+			word = highlighted.Tokenize(L" \x00a0", offset);
+		}
+		previousEnd->MoveToPointer(end);
+		first = false;
+	}
+	return count;
 }
 
 //
@@ -944,12 +995,7 @@ void CSpeller::CheckElement(MSHTML::IHTMLElementPtr elem, long uniqID)
 
 		// tokenize and spellcheck
 		splitter->Split(&innerText, &words);
-		for (int i=0; i<words.GetSize(); i++)
-		{
-			const SPELL_RESULT category = CheckWord(words.GetValueAt(i));
-			if (category == SPELL_MISSPELL || category == SPELL_YO_WARNING)
-				MarkElement(elem, uniqID, words.GetValueAt(i), words.GetKeyAt(i), category);
-		}
+		MarkWords(elem, uniqID, words, innerText);
 	}
 }
 
@@ -1027,13 +1073,7 @@ void CSpeller::CheckCurrentPage()
 			// remove underline
 			ClearMarks(currNum);
 			splitter->Split(&innerText, &words);
-			for (int i=0; i<words.GetSize(); i++)
-			{
-				CString wrd = words.GetValueAt(i);
-				const SPELL_RESULT category = CheckWord(wrd);
-				if (category == SPELL_MISSPELL || category == SPELL_YO_WARNING)
-					MarkElement(elem, currNum, wrd, words.GetKeyAt(i), category);
-			}
+			MarkWords(elem, currNum, words, innerText);
 		}
 
 		if (elem == endElem)

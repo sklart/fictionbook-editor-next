@@ -2086,7 +2086,7 @@
 	{
 		wchar_t mutationValue[32] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_SPELLCHECK_MUTATION", mutationValue, _countof(mutationValue));
 		const CString mutation(mutationValue[0] ? mutationValue : L"direct");
-		const bool formatting = mutation == L"formatting", script = mutation == L"script", largeParagraph = mutation == L"large-paragraph";
+		const bool formatting = mutation == L"formatting", script = mutation == L"script", dense = mutation == L"dense-misspellings", largeParagraph = mutation == L"large-paragraph" || dense;
 		MSHTML::IHTMLBodyElementPtr body(m_doc->m_body.Document() ? m_doc->m_body.Document()->body : MSHTML::IHTMLBodyElementPtr());
 		MSHTML::IHTMLElementCollectionPtr paragraphs(body ? MSHTML::IHTMLElement2Ptr(body)->getElementsByTagName(L"P") : MSHTML::IHTMLElementCollectionPtr());
 		MSHTML::IHTMLElementPtr paragraph(paragraphs && paragraphs->length ? paragraphs->item(_variant_t(paragraphs->length - 1), _variant_t()) : MSHTML::IHTMLElementPtr());
@@ -2099,6 +2099,7 @@
 		else if (range->move(L"character", 1) != 1) { output.Close(); ::PostQuitMessage(1); return 0; }
 		range->select(); m_Speller->SetEnabled(true); _Settings.SetHighlightMisspells(true); m_Speller->ResetTestDiagnostics();
 		bool domChanged = false;
+		const ULONGLONG spellStarted = ::GetTickCount64();
 		if (formatting)
 		{
 			SendMessage(WM_COMMAND, MAKEWPARAM(ID_EDIT_ITALIC, 0), 0); const ULONGLONG deadline = ::GetTickCount64() + 2000; while (::GetTickCount64() < deadline) { MSG message = {}; while (::PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) { ::TranslateMessage(&message); ::DispatchMessage(&message); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); if (upper.Find(L"<EM") >= 0) break; ::Sleep(1); } _bstr_t html(paragraph->innerHTML); CString upper(static_cast<const wchar_t*>(html)); upper.MakeUpper(); domChanged = nonEmptySelection && upper.Find(L"<EM") >= 0;
@@ -2114,10 +2115,40 @@
 		}
 		else
 		{
-			_bstr_t original(paragraph->innerText); CString changed(static_cast<const wchar_t*>(original)); changed += largeParagraph ? L" largeedit" : L" localedit"; paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(changed)); _bstr_t updated(paragraph->innerText); domChanged = CString(static_cast<const wchar_t*>(updated)).Find(largeParagraph ? L"largeedit" : L"localedit") >= 0;
+			if (dense)
+			{
+				// Preserve inline boundaries while changing the same paragraph.
+				_bstr_t originalHtml(paragraph->innerHTML);
+				CString html(static_cast<const wchar_t*>(originalHtml)); html += L" ordinary";
+				paragraph->innerHTML = _bstr_t(html);
+				_bstr_t updatedText(paragraph->innerText);
+				domChanged = CString(static_cast<const wchar_t*>(updatedText)).Right(8) == L"ordinary";
+			}
+			else
+			{
+				_bstr_t original(paragraph->innerText); CString changed(static_cast<const wchar_t*>(original)); changed += largeParagraph ? L" largeedit" : L" localedit"; paragraph->innerText = _bstr_t(static_cast<const wchar_t*>(changed)); _bstr_t updated(paragraph->innerText); domChanged = CString(static_cast<const wchar_t*>(updated)).Find(largeParagraph ? L"largeedit" : L"localedit") >= 0;
+			}
 		}
 		if (!formatting && !script) { BOOL handled = FALSE; OnEdChange(0, 0, NULL, handled); }
+		const ULONGLONG spellElapsed = ::GetTickCount64() - spellStarted;
 		CStringA row; row.Format("paragraph_count\t%ld\r\ncheck_element_calls\t%ld\r\nvisited_paragraphs\t%ld\r\ndom_changed\t%d\r\n", paragraphs->length, m_Speller->GetTestCheckElementCalls(), m_Speller->GetTestVisitedParagraphs(), domChanged ? 1 : 0);
+		if (dense)
+		{
+			const long id = MSHTML::IHTMLUniqueNamePtr(paragraph)->uniqueNumber;
+			const size_t marked = m_Speller->TestHighlightedWords(id, L"largeword");
+			const size_t segments = m_Speller->GetTestHighlightCount(id);
+			const bool rangesCorrect = marked == 20000;
+			const ULONGLONG refreshStarted = ::GetTickCount64();
+			m_Speller->CheckCurrentPage();
+			const ULONGLONG refreshElapsed = ::GetTickCount64() - refreshStarted;
+			const size_t refreshed = m_Speller->TestHighlightedWords(id, L"largeword");
+			paragraph->innerText = L"ordinary paragraph";
+			m_Speller->CheckElement(paragraph, id);
+			const size_t cleared = m_Speller->GetTestHighlightCount(id);
+			CStringA denseRow;
+			denseRow.Format("highlights\t%Iu\r\nrefreshed_highlights\t%Iu\r\ncleared_highlights\t%Iu\r\nspell_elapsed_ms\t%I64u\r\nrefresh_elapsed_ms\t%I64u\r\nranges_correct\t%d\r\nsegments\t%Iu\r\n", marked, refreshed, cleared, spellElapsed, refreshElapsed, rangesCorrect ? 1 : 0, segments);
+			row += denseRow;
+		}
 		DWORD written = 0; output.Write(row, static_cast<DWORD>(row.GetLength()), &written); output.Close(); ::PostQuitMessage(domChanged ? 0 : 1); return 0;
 	}
 	if (IsFbeTestScenario(L"spellcheck-scroll"))
