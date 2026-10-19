@@ -689,7 +689,7 @@ ActiveX, COM или DOM. Не используйте eval для текста FB
 | CreateSelectionBookmark, RestoreSelectionBookmark, ReleaseSelectionBookmark, GetSelectionText, GetSelectionHtml, GetSelectionInfo | Implemented |
 | BeginDocumentUpdate, EndDocumentUpdate | Implemented |
 | BeginProgress, SetProgress, IsProgressCancelled, EndProgress | Implemented |
-| ReadTextFile, WriteTextFile, FileExists, DirectoryExists, CreateDirectory | Implemented |
+| ReadTextFile, WriteTextFile, WriteTextFileEx, FileExists, DirectoryExists, CreateDirectory | Implemented |
 | CombinePath, GetFileName, GetDirectoryName, GetExtension, GetTempDirectory, GetTempFileName | Implemented |
 | GetBinaryInfo, AddBinaryFromFile, ReplaceBinaryFromFile, RemoveBinary, SaveAllBinaries, GenerateUniqueBinaryId | Planned |
 | ValidateCurrentDocument, LogMessage, GetLastScriptingError, ClearLastScriptingError | Planned |
@@ -705,7 +705,9 @@ issue #41 и интерфейс параметров карточек issue #48 
 
 ## Этап 2: API 1.1.0
 
-Новые методы опубликованы через аддитивный IDispatch, DISPID 119–141.
+Новые методы опубликованы через аддитивный IDispatch, DISPID 119–142.
+WriteTextFileEx добавлен с новым DISPID 142; опубликованные DISPID 100–141
+и допустимые вызовы WriteTextFile не изменены.
 Прежние IID, typelib, сигнатуры и DISPID 1–35, а также методы API 1.0.0
 сохранены. GetScriptingApiVersion возвращает `1.1.0`. В capabilities добавлены
 булевы ключи `selection`, `documentUpdate`, `progress`, `textFiles`, `paths`.
@@ -727,15 +729,27 @@ issue #41 и интерфейс параметров карточек issue #48 
 или `none`; view: `design`, `description`, `source`. Чтение и создание
 закладок не меняют документ/Undo. Восстановление меняет только выделение.
 
+В Description поддерживается также текстовое выделение внутри полей формы
+(например, названия книги); оно читается и восстанавливается в том же режиме.
+Обычные GetSelectionText/GetSelectionHtml/GetSelectionInfo в Source читают
+только выделенный диапазон Scintilla, без копирования полного XML. UTF-8 позиции
+переводятся в текст UTF-16; supplementary Unicode-символ занимает две единицы
+в textLength. Это не меняет правила хранения и проверки закладок ниже.
+
 Закладка принадлежит текущему контексту выполнения скрипта и не переносится
 во вложенный скрипт. В конце контекста все закладки освобождаются. В одном
 контексте допускается до 128 закладок. Restore не переключает режим редактора:
-при несовпадении режима, идентичности документа/корня Body или версии MSHTML
+при несовпадении режима, идентичности документа/корня активного представления или версии MSHTML
 возвращается false и закладка освобождается. В Source дополнительно сравниваются
 полные исходные байты. Поэтому DOM-изменение консервативно инвалидирует
 закладку; автоматическое следование за произвольными DOM-правками не обещается.
 Полная замена документа через Source/ApplySourceText также инвалидирует её.
 Суммарный объём Source-снимков контекста ограничен 64 МиБ. Закладки не предназначены для постоянного хранения.
+
+Для Description дополнительно сравниваются текущие значения полей
+формы: изменение input.value может не менять версию Body. При изменении
+Description старая закладка отклоняется. Для снимков значений Description
+действует отдельный лимит 64 МиБ на контекст; прежний бюджет Source не уменьшается.
 
 ### Пакетные изменения
 
@@ -752,6 +766,14 @@ Source. При suspendRedraw временно подавляется перер�
 сохраняется, перерисовка восстанавливается при End и при выходе из скрипта,
 включая исключение. Подсветка опечаток, настройки и обработка DOM не отключаются.
 Пакетный режим не гарантирует устранения зависаний issue #41.
+
+Отложенная проверка орфографии и отложенное обновление дерева **не реализованы**
+как возможности API 1.1. Пакет не подавляет соответствующие уведомления или
+фоновые проверки; гарантируются группировка Undo и учёт suspendRedraw.
+Вложенные suspendRedraw включают перерисовку и запрашивают её обновление только
+при закрытии последней подавляющей группы для данного окна. В Description
+используется общий с Body MSHTML undo manager; группа может менять поля
+Description без изменения содержимого Body.
 
 Это группировка Undo, а не транзакционный откат произвольного DOM. При ошибке
 уже сделанные изменения остаются и могут быть отменены пользователем через
@@ -803,6 +825,7 @@ if (HasApi("BeginProgress")) {
 |---|---|
 | ReadTextFile(path[, encoding]) | Строка содержимого; без encoding распознаются BOM UTF-8/UTF-16LE, иначе UTF-8. |
 | WriteTextFile(path, text[, encoding]) | Полная атомарная замена через временный файл рядом с назначением, flush и переименование; true при успехе. По умолчанию UTF-8 без BOM. |
+| WriteTextFileEx(path, text, overwrite[, encoding]) | Аддитивный безопасный вариант: overwrite — обязательный Boolean. При false создаёт только новый файл; существующий файл сохраняется, вызов выдаёт COM-ошибку. При true разрешает атомарную замену. Кодировки и результат как у WriteTextFile. |
 | FileExists(path) | Boolean: доступный существующий файл (не каталог). |
 | DirectoryExists(path) | Boolean: доступный существующий каталог. |
 | CreateDirectory(path) | Создаёт каталог с родителями; true и для уже существующего каталога. |
@@ -811,7 +834,7 @@ if (HasApi("BeginProgress")) {
 | GetDirectoryName(path) | Каталог без завершающего разделителя, кроме корня диска; пустая строка для имени без каталога. |
 | GetExtension(path) | Суффикс последнего компонента с точкой, либо пустая строка. |
 | GetTempDirectory() | Системный временный каталог с завершающим разделителем. |
-| GetTempFileName() | Создаёт уникальный пустой файл во временном каталоге и возвращает путь; удаление — ответственность вызывающего. |
+| GetTempFileName([prefix[, extension]]) | Создаёт уникальный пустой файл во временном каталоге и возвращает путь; удаление — ответственность вызывающего. Без аргументов сохранены prefix=`fbe-` и extension=`.tmp`. |
 
 Кодировки: `utf-8`, `utf-8-bom`, `utf-16le` (запись с BOM), `windows-1251`.
 При явной кодировке соответствующий BOM пропускается. Невалидный UTF-8/UTF-16
@@ -821,6 +844,27 @@ NUL в содержимом сохраняется, NUL в путях/назва
 Каталог назначения WriteTextFile должен существовать. Файл read-only не
 перезаписывается. Создание каталогов использует существующий Shell API;
 ограничения путей определяются Windows (включая MAX_PATH для этой операции).
+
+Старые вызовы WriteTextFile с двумя или тремя параметрами сохраняют поведение
+API 1.1: существующий файл заменяется. Для новых скриптов рекомендуется
+WriteTextFileEx с overwrite=false; флаг false проверяется атомарным переименованием
+без замены, поэтому файл, созданный другим процессом непосредственно перед
+завершением записи, также не перезаписывается. При ошибке преобразования,
+записи, flush или переименования исходный файл сохраняется, временный файл
+удаляется. overwrite=true следует передавать после осознанного выбора пользователя.
+
+Кратковременные отказы доступа/совместного использования при завершении записи
+и захвате блокировки настроек скрипта повторяются до 10 раз с паузой 10 мс. Постоянный
+отказ не скрывается: файловые методы выдают COM-ошибку, методы записи настроек
+возвращают false по прежнему контракту. Проверки существующего файла при
+overwrite=false не заменяются предварительной проверкой FileExists.
+
+Параметры GetTempFileName — строки длиной до 64 UTF-16 единиц каждая. Extension
+может начинаться с точки; при её отсутствии точка добавляется. Пустая строка
+extension означает имя без расширения. Разделители каталогов, управляющие
+символы, `..`, недопустимые символы имени Windows и завершающие пробел/точка
+отклоняются. Уникальный GUID добавляется между prefix и extension; файл
+создаётся через CREATE_NEW, а не только подбирается свободное имя.
 Относительные пути разрешаются относительно текущего рабочего каталога FBE,
 а не каталога скрипта; для последнего используйте GetCurrentScriptDirectory.
 
@@ -830,10 +874,10 @@ NUL в содержимом сохраняется, NUL в путях/назва
 в редакторе и не меняют текущий документ/dirty-state.
 
 ```javascript
-if (HasApi("WriteTextFile")) {
+if (HasApi("WriteTextFileEx")) {
     var path = window.external.CombinePath(
         window.external.GetCurrentScriptDirectory(), "result.txt");
-    try { window.external.WriteTextFile(path, "Результат", "utf-8"); }
+    try { window.external.WriteTextFileEx(path, "Результат", false, "utf-8"); }
     catch (error) { window.external.MsgBox("Не удалось записать результат"); }
 }
 ```

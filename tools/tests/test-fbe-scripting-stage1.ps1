@@ -51,6 +51,10 @@ function Run() {
   apiRunCmd(@@FALLBACK@@);
   stage1Assert(window.stage1Child===true && e.GetCurrentScriptPath()==self,"nested restore");
   try { apiRunCmd(@@ERROR@@); stage1Assert(false,"missing nested exception"); } catch(error) { stage1Assert(e.GetCurrentScriptPath()==self,"error restore"); }
+  for(var writeIndex=0;writeIndex<200;writeIndex++) {
+   stage1Assert(e.SetScriptSetting("atomic-stress",writeIndex),"settings write stress "+writeIndex);
+   stage1Assert(e.GetScriptSetting("atomic-stress",-1)===writeIndex,"settings read stress "+writeIndex);
+  }
   stage1Failure="PASS";
  } catch(error) { stage1Failure=String(error.message || error); }
 }

@@ -25,9 +25,11 @@
                     if (text) mark.range = text->duplicate();
                     else { MSHTML::IHTMLControlRangePtr controls(selected); if (!controls) CheckError(E_NOTIMPL); mark.controls = controls; }
                 }
-                size_t total = mark.source.size() + mark.description.size() * sizeof(wchar_t);
-                for (const auto& saved : resources.bookmarks) total += saved.source.size() + saved.description.size() * sizeof(wchar_t);
-                if (total > 64 * 1024 * 1024) CheckError(E_OUTOFMEMORY);
+                size_t sourceBytes = mark.source.size(), descriptionBytes = mark.description.size() * sizeof(wchar_t);
+                for (const auto& saved : resources.bookmarks) {
+                    sourceBytes += saved.source.size(); descriptionBytes += saved.description.size() * sizeof(wchar_t);
+                }
+                if (sourceBytes > 64 * 1024 * 1024 || descriptionBytes > 64 * 1024 * 1024) CheckError(E_OUTOFMEMORY);
                 request->returnValue = mark.token; resources.bookmarks.push_back(std::move(mark));
             } else if (method == 120 || method == 121) {
                 auto found = std::find_if(resources.bookmarks.begin(), resources.bookmarks.end(), [&](const auto& mark) { return mark.token == args[0].bstrVal; });

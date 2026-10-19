@@ -1,5 +1,6 @@
 #pragma once
 #include "ScriptExecutionContext.h"
+#include "ScriptFileCommit.h"
 #include "../BackupFileCommit.h"
 #include "../../common/DeploymentContext.h"
 #include <set>
@@ -9,6 +10,7 @@
 namespace FbeScripts {
 namespace SettingsStore {
 inline HRESULT& LastFailure() { static thread_local HRESULT value = S_OK; return value; }
+inline LPCWSTR& LastFailureOperation() { static thread_local LPCWSTR value = L"none"; return value; }
 constexpr DWORD MaximumBytes = 1024 * 1024;
 constexpr size_t MaximumEntries = 1024;
 constexpr UINT MaximumValueLength = 32768;
@@ -136,9 +138,10 @@ inline bool Save(const std::vector<Entry>& entries)
     // Settings need a single same-directory rename, without ReplaceFile's
     // metadata merge and its partially completed replacement failure modes.
     const auto replaceSettings = [](LPCWSTR destination, LPCWSTR source, LPCWSTR, DWORD, LPVOID, LPVOID) -> BOOL {
+        LastFailureOperation() = L"rename";
         return ::MoveFileExW(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
     };
-    try { FbeBackupFileCommit::CommitSavedFile(temporary, FilePath(), false, replaceSettings); }
+    try { RetryScriptFileCommit([&]() { LastFailureOperation() = L"flush"; FbeBackupFileCommit::CommitSavedFile(temporary, FilePath(), false, replaceSettings); }); }
     catch (const _com_error& error) {
         if (error.Error() != HRESULT_FROM_WIN32(ERROR_UNABLE_TO_MOVE_REPLACEMENT) &&
             error.Error() != HRESULT_FROM_WIN32(ERROR_UNABLE_TO_MOVE_REPLACEMENT_2)) ::DeleteFileW(temporary);
@@ -150,6 +153,7 @@ inline bool Save(const std::vector<Entry>& entries)
 inline HRESULT Access(int operation, const CString& name, const VARIANT* input, VARIANT* result)
 {
     LastFailure() = S_OK;
+    LastFailureOperation() = L"validate";
     const CString identity = Identity(); if (identity.IsEmpty()) return E_UNEXPECTED;
     if (operation != 3 && (name.IsEmpty() || name.GetLength() > 256 || wcslen(name) != static_cast<size_t>(name.GetLength()))) return E_INVALIDARG;
     CComVariant value; CString type;
@@ -161,10 +165,15 @@ inline HRESULT Access(int operation, const CString& name, const VARIANT* input, 
             const CString directory(DeploymentContext::SettingsDirectory().c_str());
             const int created = ::SHCreateDirectoryExW(NULL, directory, NULL);
             if (created != ERROR_SUCCESS && created != ERROR_ALREADY_EXISTS && created != ERROR_FILE_EXISTS) return answer.Detach(result);
-            lock.Attach(::CreateFileW(FilePath() + L".lock", GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL));
-            if (lock == INVALID_HANDLE_VALUE) { LastFailure() = HRESULT_FROM_WIN32(::GetLastError()); return answer.Detach(result); }
+            LastFailureOperation() = L"lock";
+            RetryScriptFileCommit([&]() {
+                HANDLE handle = ::CreateFileW(FilePath() + L".lock", GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                if (handle == INVALID_HANDLE_VALUE) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+                lock.Attach(handle);
+            });
         }
         std::vector<Entry> entries;
+        LastFailureOperation() = L"load";
         if (!Load(entries)) { LastFailure() = HRESULT_FROM_WIN32(ERROR_INVALID_DATA); return answer.Detach(result); }
         auto found = entries.end();
         for (auto current = entries.begin(); current != entries.end(); ++current)
@@ -186,6 +195,7 @@ inline HRESULT Access(int operation, const CString& name, const VARIANT* input, 
             else {
                 entries.erase(std::remove_if(entries.begin(), entries.end(), [&](const Entry& entry) { return entry.identity == identity; }), entries.end());
             }
+            LastFailureOperation() = L"save";
             answer = Save(entries);
         }
     } catch (const _com_error& error) { LastFailure() = error.Error(); }

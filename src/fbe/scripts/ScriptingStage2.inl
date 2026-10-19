@@ -1,4 +1,5 @@
 #include "ScriptDocumentResources.h"
+#include "ScriptFileCommit.h"
 #include "../BackupFileCommit.h"
 #include <shlobj.h>
 #include <cmath>
@@ -119,7 +120,7 @@ inline bool WriteScriptText(const CString& path, const CString& text, const CStr
     const auto replace = [](LPCWSTR destination, LPCWSTR source, LPCWSTR, DWORD, LPVOID, LPVOID) -> BOOL {
         return ::MoveFileExW(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
     };
-    try {
+    try { RetryScriptFileCommit([&]() {
         if (overwrite) FbeBackupFileCommit::CommitSavedFile(temporary, path, false, replace);
         else {
             CHandle completed(::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
@@ -127,7 +128,7 @@ inline bool WriteScriptText(const CString& path, const CString& text, const CStr
             completed.Close();
             if (!::MoveFileExW(temporary, path, MOVEFILE_WRITE_THROUGH)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
         }
-    }
+    }); }
     catch (...) { ::DeleteFileW(temporary); throw; }
     return true;
 }

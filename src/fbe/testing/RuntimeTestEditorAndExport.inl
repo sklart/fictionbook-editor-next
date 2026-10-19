@@ -17,7 +17,7 @@
 			const HRESULT hr = m_doc->InvokeFunc(L"apiStage1Results", NULL, 0, result, true);
 			passed = SUCCEEDED(hr) && result.vt == VT_BSTR && wcscmp(result.bstrVal, L"PASS") == 0;
 			if (result.vt == VT_BSTR) details = CW2A(result.bstrVal, CP_UTF8);
-			if (!passed) { CStringA error; error.Format("; settings_error=0x%08lX; last_error=%lu", static_cast<unsigned long>(FbeScripts::SettingsStore::LastFailure()), ::GetLastError()); details += error; }
+            if (!passed) { CStringA error; error.Format("; settings_error=0x%08lX; settings_operation=%s; last_error=%lu", static_cast<unsigned long>(FbeScripts::SettingsStore::LastFailure()), static_cast<LPCSTR>(CW2A(FbeScripts::SettingsStore::LastFailureOperation(), CP_UTF8)), ::GetLastError()); details += error; }
 			if (passed) {
 				const CString path = FbeScripts::SettingsStore::FilePath();
 				std::vector<BYTE> saved;

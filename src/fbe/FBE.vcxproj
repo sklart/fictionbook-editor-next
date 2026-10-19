@@ -497,6 +497,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="document\recent\RecentDocumentsController.h" />
 	<ClInclude Include="scripts\ScriptCatalog.h" />
 	<ClInclude Include="scripts\ScriptRegistry.h" />
+	<ClInclude Include="scripts\ScriptFileCommit.h" />
 	<ClInclude Include="scripts\ScriptCardBlock.h" />
 	<ClInclude Include="scripts\ScriptCardDlg.h" />
 	<ClInclude Include="scripts\ScriptCardParser.h" />
