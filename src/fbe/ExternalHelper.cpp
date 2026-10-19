@@ -9,13 +9,16 @@
 #include "ExternalHelper.h"
 #include <map>
 #include <vector>
+#include <new>
 #include "scripts/ScriptExecutionContext.h"
+#include "scripts/ScriptSettingsStore.h"
 
 namespace {
 const wchar_t* const ScriptingMethods[] = {
  L"GetScriptingApiVersion", L"HasScriptingMethod", L"GetScriptingCapabilities",
  L"GetCurrentScriptPath", L"GetCurrentScriptDirectory", L"GetCurrentScriptName", L"GetCurrentScriptId",
- L"GetScriptsRootDirectory", L"GetInterfaceLanguage", L"GetCurrentViewMode", L"IsDocumentModified"
+ L"GetScriptsRootDirectory", L"GetInterfaceLanguage", L"GetCurrentViewMode", L"IsDocumentModified",
+ L"GetScriptSetting", L"SetScriptSetting", L"RemoveScriptSetting", L"ClearScriptSettings"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {
@@ -239,8 +242,11 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)
 		*argumentError = UINT_MAX;
-	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || dispid == 1000 || dispid == 1001)
-		return InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError);
+	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || dispid == 1000 || dispid == 1001) {
+		try { return InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }
+		catch (const _com_error& error) { return error.Error(); }
+		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+	}
 
 	const bool trace = IsLoadDiagnosticMethod(dispid);
 	const bool knownMethod = wcscmp(ExternalHelperMethodName(dispid), L"other") != 0;

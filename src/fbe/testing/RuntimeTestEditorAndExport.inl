@@ -14,6 +14,52 @@
 			const HRESULT hr = m_doc->InvokeFunc(L"apiStage1Results", NULL, 0, result, true);
 			passed = SUCCEEDED(hr) && result.vt == VT_BSTR && wcscmp(result.bstrVal, L"PASS") == 0;
 			if (result.vt == VT_BSTR) details = CW2A(result.bstrVal, CP_UTF8);
+			if (!passed) { CStringA error; error.Format("; settings_error=0x%08lX; last_error=%lu", static_cast<unsigned long>(FbeScripts::SettingsStore::LastFailure()), ::GetLastError()); details += error; }
+			if (passed) {
+				const CString path = FbeScripts::SettingsStore::FilePath();
+				std::vector<BYTE> saved;
+				{
+					CHandle file(::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
+					LARGE_INTEGER size = {}; DWORD read = 0;
+					passed = file != INVALID_HANDLE_VALUE && ::GetFileSizeEx(file, &size) && size.QuadPart > 0 && size.QuadPart <= 1024 * 1024;
+					if (passed) { saved.resize(static_cast<size_t>(size.QuadPart)); passed = ::ReadFile(file, saved.data(), static_cast<DWORD>(saved.size()), &read, NULL) && read == saved.size(); }
+				}
+				auto write = [&](const void* bytes, DWORD size) {
+					CHandle file(::CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)); DWORD written = 0;
+					return file != INVALID_HANDLE_VALUE && ::WriteFile(file, bytes, size, &written, NULL) && written == size;
+				};
+				auto check = [&](int mode) {
+					FbeScripts::ScriptExecutionScope context(CString(root) + L"\\outer.js");
+					FbeScripts::ExecutionContexts().back().uid = m_scripts.FindScriptUid(CString(root) + L"\\outer.js", root);
+					CComVariant parameter(mode), answer;
+					return SUCCEEDED(m_doc->InvokeFunc(L"apiStage1StorageCheck", &parameter, 1, answer, true)) && answer.vt == VT_BOOL && answer.boolVal == VARIANT_TRUE;
+				};
+				if (passed) {
+					const wchar_t broken[] = L"\xfeff<broken>";
+					const bool corrupt = write(broken, sizeof(broken) - sizeof(wchar_t)) && check(0);
+					const bool restored = write(saved.data(), static_cast<DWORD>(saved.size()));
+					const DWORD attributes = ::GetFileAttributesW(path);
+					const bool denied = restored && ::SetFileAttributesW(path, attributes | FILE_ATTRIBUTE_READONLY) && check(1);
+					::SetFileAttributesW(path, attributes);
+					passed = corrupt && restored && denied && check(2);
+					if (!passed) details = "corrupt/read-only/recovered settings";
+				}
+			}
+			if (passed) {
+				const CString renamed = CString(root) + L"\\renamed.js";
+				passed = ::MoveFileW(CString(root) + L"\\outer.js", renamed) != FALSE;
+				if (passed) {
+					ScriptDescriptor descriptor = {}; descriptor.path = renamed;
+					descriptor.name = L"renamed"; descriptor.uid = L"11111111-1111-4111-8111-111111111111";
+					m_scripts.Menu().Clear(); m_scripts.Menu().Add(descriptor, FbeScripts::VisualResource());
+					m_scripts.SetLastScript(descriptor); BOOL handled = FALSE;
+					OnLastScript(0, 0, NULL, handled);
+					result.Clear();
+					passed = SUCCEEDED(m_doc->InvokeFunc(L"apiStage1Results", NULL, 0, result, true)) &&
+						result.vt == VT_BSTR && wcscmp(result.bstrVal, L"PASS") == 0;
+					if (result.vt == VT_BSTR) details = CW2A(result.bstrVal, CP_UTF8);
+				}
+			}
 			passed = passed && FbeScripts::ExecutionContexts().empty() &&
 				DocChanged() == modifiedBefore && m_editor_view_state.Current() == viewBefore && m_scripts.DiscoveryCount() == discoveryBefore;
 		} catch (...) { details = "native exception"; }

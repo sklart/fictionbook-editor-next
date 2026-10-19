@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
 #include "scripts/ScriptExecutionContext.h"
+#include "scripts/ScriptSettingsStore.h"
 #include <aclapi.h>
 #include "clipboard/HtmlPasteSanitizer.h"
 #include "scripts/ScriptCardBlock.h"

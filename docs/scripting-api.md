@@ -548,7 +548,7 @@ if (HasApi("GetCurrentScriptDirectory")) {
 | Группа / методы | Статус |
 |---|---|
 | Версия, HasScriptingMethod, capabilities, контекст и сведения об окружении (этап 1А) | Implemented |
-| GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Planned |
+| GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Implemented |
 | SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Planned |
 | Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Planned |
 | Дополнительные binary, validation, diagnostics, dialogs, clipboard, status-stack, save API (этап 3) | Planned |
@@ -558,3 +558,50 @@ if (HasApi("GetCurrentScriptDirectory")) {
 Issue #45 остаётся открытым до реализации и приёмки последующих этапов.
 Интерфейс настройки карточек issue #48 в этот этап не входит; исходные карточки
 и переменные в пользовательских JS-файлах не изменяются.
+
+
+### Настройки скрипта (API 1.0.0)
+
+| Метод | Параметры и результат |
+|---|---|
+| `GetScriptSetting(name, defaultValue)` | Строковое имя и значение по умолчанию; возвращает сохранённое значение совместимого типа либо defaultValue. |
+| `SetScriptSetting(name, value)` | Имя и строка, конечное число либо boolean; boolean успешной атомарной записи. |
+| `RemoveScriptSetting(name)` | Удаляет один параметр; boolean успеха. Отсутствующий параметр также можно удалить. |
+| `ClearScriptSettings()` | Удаляет параметры только выполняемого скрипта; boolean успеха. |
+
+`capabilities.scriptSettings = true` означает наличие этих четырёх методов.
+Требуется активный контекст скрипта; вне него возвращается COM-ошибка
+`E_UNEXPECTED`. Имя непустое, до 256 UTF-16 кодовых единиц. Строковое значение
+и строковое значение по умолчанию ограничены 32768 UTF-16 кодовыми единицами.
+Разные виды чисел совместимы как числа JavaScript; boolean и строка с ними не
+смешиваются. NaN, Infinity, объекты, массивы, функции, null и undefined не
+сериализуются и отклоняются с `E_INVALIDARG`. Для отсутствующего параметра,
+несовместимого типа или недоступного/повреждённого файла чтение возвращает
+переданный defaultValue. Unicode, переводы строк и вложенные нулевые символы
+строк сохраняются без потерь.
+
+Файл `ScriptSettings.xml` расположен в `DeploymentContext::SettingsDirectory()`:
+пользовательский каталог установленной версии либо Data/Settings в portable.
+Файл содержит не больше 1024 параметров для всех скриптов и занимает не больше
+1 MiB после сериализации. Превышение общего лимита даёт false при записи.
+Имена и строковые значения хранятся в кодировке hex UTF-16 внутри XML, не в
+исходных JS. Изоляция — `uid:<существующий UID>`; резервная область
+`path:<абсолютный путь с нормализованными разделителями и регистром>` хранит
+сам путь, без хеша и коллизий хеширования. В резервном режиме переименование
+создаёт новую область настроек. С зарегистрированным прежним UID область
+сохраняется после штатного обновления каталога.
+
+Запись сериализуется межпроцессным файлом `ScriptSettings.xml.lock`, выполняется
+через временный файл в том же каталоге, flush и атомарное переименование.
+Ошибка доступа/блокировки/записи возвращает false; прежний файл не затирается.
+Повреждённый файл автоматически не исправляется и не перезаписывается.
+Настройки карточек issue #48 и исходные переменные скриптов не затрагиваются.
+
+```javascript
+if (HasApi("GetScriptSetting")) {
+    var enabled = window.external.GetScriptSetting("option", true);
+    if (!window.external.SetScriptSetting("option", enabled)) {
+        window.external.MsgBox("Не удалось сохранить настройку");
+    }
+}
+```

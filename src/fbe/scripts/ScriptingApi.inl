@@ -5,8 +5,23 @@ HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISP
     if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
     if (parameters && parameters->cNamedArgs) return DISP_E_NONAMEDARGS;
     const UINT count = parameters ? parameters->cArgs : 0;
-    const UINT expected = dispid == 101 || dispid == 1000 || dispid == 1001 ? 1 : 0;
+    const UINT expected = dispid == 111 || dispid == 112 ? 2 :
+        (dispid == 101 || dispid == 113 || dispid == 1000 || dispid == 1001 ? 1 : 0);
     if (count != expected) return DISP_E_BADPARAMCOUNT;
+    if (count && (!parameters || !parameters->rgvarg)) return E_POINTER;
+    if (dispid >= 111 && dispid <= 114) {
+        CComVariant name, value;
+        if (count) {
+            HRESULT hr = ::VariantCopyInd(&name, &parameters->rgvarg[count - 1]);
+            if (FAILED(hr)) return hr;
+            if (name.vt != VT_BSTR) { if (argumentError) *argumentError = count - 1; return DISP_E_TYPEMISMATCH; }
+        }
+        HRESULT hr = FbeScripts::SettingsStore::Access(static_cast<int>(dispid - 111),
+            count ? CString(name.bstrVal, ::SysStringLen(name.bstrVal)) : CString(),
+            count == 2 ? &parameters->rgvarg[0] : NULL, &value);
+        if (FAILED(hr)) return hr;
+        return result ? value.Detach(result) : S_OK;
+    }
     CComVariant argument;
     if (count) {
         HRESULT hr = ::VariantCopyInd(&argument, &parameters->rgvarg[0]);
@@ -24,7 +39,7 @@ HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISP
         const bool exists = name && name[0] != L'_' && SUCCEEDED(GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &id));
         value = exists; break;
     }
-    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.0.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true}}"; break;
+    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.0.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true,\"scriptSettings\":true}}"; break;
     case 103: value = context ? context->path : CString(); break;
     case 104:
         if (context) { const int slash = context->path.ReverseFind(L'\\'); if (slash >= 0) text = context->path.Left(slash + 1); }
