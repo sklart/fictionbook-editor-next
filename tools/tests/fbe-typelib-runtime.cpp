@@ -42,8 +42,13 @@ int wmain(int argc, wchar_t** argv)
 			{
 				found = true;
 				wprintf(L"method=%s; dispid=%ld; invkind=%u; params=%u; cParamsOpt=%u; return-vt=%u; return-flags=0x%04X\n", methods[index].name, static_cast<long>(function->memid), static_cast<unsigned>(function->invkind), function->cParams, function->cParamsOpt, static_cast<unsigned>(BaseType(function->elemdescFunc.tdesc)), function->elemdescFunc.paramdesc.wParamFlags);
-				if (function->cParams != methods[index].params || BaseType(function->elemdescFunc.tdesc) != methods[index].result) { fwprintf(stderr, L"Signature mismatch: %s\n", methods[index].name); ++failures; }
-				for (UINT parameter = 0; parameter < function->cParams; ++parameter)
+				if (function->cParams < 0 || static_cast<UINT>(function->cParams) != methods[index].params || BaseType(function->elemdescFunc.tdesc) != methods[index].result)
+				{
+					fwprintf(stderr, L"Signature mismatch: %s\n", methods[index].name); ++failures;
+					info->ReleaseFuncDesc(function);
+					continue;
+				}
+				for (UINT parameter = 0; parameter < methods[index].params; ++parameter)
 				{
 					const USHORT flags = function->lprgelemdescParam[parameter].paramdesc.wParamFlags;
 					wprintf(L"method=%s; param%u-vt=%u; param%u-flags=0x%04X\n", methods[index].name, parameter, static_cast<unsigned>(BaseType(function->lprgelemdescParam[parameter].tdesc)), parameter, flags);

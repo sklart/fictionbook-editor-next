@@ -11,28 +11,34 @@ if (IsFbeTestScenario(L"scripting-dialogs"))
         passed = SUCCEEDED(m_doc->InvokeFunc(L"apiStage1Results", NULL, 0, state, true)) &&
             state.vt == VT_BSTR && wcscmp(state.bstrVal, L"PASS") == 0;
         if (state.vt == VT_BSTR) details = CW2A(state.bstrVal, CP_UTF8);
+        if (!passed) {
+            CStringA error;
+            error.Format("; settings_error=0x%08lX; settings_operation=%s", static_cast<unsigned long>(FbeScripts::SettingsStore::LastFailure()),
+                static_cast<LPCSTR>(CW2A(FbeScripts::SettingsStore::LastFailureOperation(), CP_UTF8)));
+            details += error;
+        }
         for (int index = 0; passed && index < 7; ++index) {
             CString caption; caption.Format(L"FBE API45 %lu case %d", ::GetCurrentProcessId(), index);
             bool found = false, owned = false, focused = false, positioned = false;
             std::thread driver([&]() {
                 HWND dialog = NULL, button = NULL;
                 const UINT buttonId = index == 4 || index == 6 ? IDCANCEL : (index == 5 ? IDYES : IDOK);
-                for (int retry = 0; retry < 600 && !button; ++retry) {
+                for (int retry = 0; retry < 600 && !(button && focused); ++retry) {
                     dialog = ::FindWindowW(L"#32770", caption);
                     DWORD process = 0; if (dialog) ::GetWindowThreadProcessId(dialog, &process);
                     if (process == ::GetCurrentProcessId()) {
                         HWND candidate = ::GetDlgItem(dialog, buttonId);
                         if (candidate && ::IsWindowVisible(candidate) && ::IsWindowEnabled(candidate)) button = candidate;
+                        GUITHREADINFO gui = {}; gui.cbSize = sizeof(gui);
+                        if (::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &gui))
+                            focused = gui.hwndFocus && (gui.hwndFocus == dialog || ::IsChild(dialog, gui.hwndFocus));
                     }
-                    if (!button) ::Sleep(10);
+                    if (!(button && focused)) ::Sleep(10);
                 }
                 if (!dialog || !button) { if (dialog) ::PostMessageW(dialog, WM_CLOSE, 0, 0); return; }
                 found = true;
                 owned = ::GetAncestor(dialog, GA_ROOTOWNER) == m_hWnd && !::IsWindowEnabled(m_hWnd);
                 if (index == 5) ::SetWindowTextW(::GetDlgItem(dialog, IDC_INPUT), L"");
-                GUITHREADINFO gui = {}; gui.cbSize = sizeof(gui);
-                if (::GetGUIThreadInfo(::GetWindowThreadProcessId(dialog, NULL), &gui))
-                    focused = gui.hwndFocus && (gui.hwndFocus == dialog || ::IsChild(dialog, gui.hwndFocus));
                 positioned = ::MonitorFromWindow(dialog, MONITOR_DEFAULTTONEAREST) == ::MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST);
                 ::SendMessageW(button, BM_CLICK, 0, 0);
             });

@@ -6,6 +6,16 @@ if (IsFbeTestScenario(L"scripting-environment"))
     try {
         FbeScriptDiagnostics::ScopedDialogSuppression suppressDialogs;
         m_doc->RunScript(CString(root) + L"\\outer.js");
+        CComVariant setup;
+        passed = SUCCEEDED(m_doc->InvokeFunc(L"apiStage1Results", NULL, 0, setup, true)) &&
+            setup.vt == VT_BSTR && wcscmp(setup.bstrVal, L"PASS") == 0;
+        if (!passed) {
+            if (setup.vt == VT_BSTR) details = CW2A(setup.bstrVal, CP_UTF8);
+            CStringA error;
+            error.Format("; settings_error=0x%08lX; settings_operation=%s", static_cast<unsigned long>(FbeScripts::SettingsStore::LastFailure()),
+                static_cast<LPCSTR>(CW2A(FbeScripts::SettingsStore::LastFailureOperation(), CP_UTF8)));
+            details += error;
+        }
         auto check = [&](LPCWSTR expected) {
             CComVariant result;
             const bool correct = SUCCEEDED(m_doc->InvokeFunc(L"apiStage1EnvironmentValue", NULL, 0, result, true)) &&
@@ -26,7 +36,7 @@ if (IsFbeTestScenario(L"scripting-environment"))
         ::ShowWindow(m_hWnd, SW_SHOWNORMAL); ::SetForegroundWindow(m_hWnd);
         ShowView(BODY); m_doc->m_body.SetFocus();
         paragraph()->innerText = L"alpha beta"; pump(); m_doc->MarkSavePoint();
-        passed = check(L"design:false");
+        if (passed) passed = check(L"design:false");
         const wchar_t* files[] = {
             L"Scripts\\01_Регистр\\01_В верхний регистр.js",
             L"Scripts\\01_Регистр\\02_В нижний регистр.js",
