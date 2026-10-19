@@ -50,7 +50,7 @@ function Run(){try{
  assert2(!e.ApplySourceText(beforeBatch,"blocked replacement"),"replacement blocked during batch");paragraph2().innerText="batch one";var inner=e.BeginDocumentUpdate("inner","{}");
  rejects2(function(){e.EndDocumentUpdate(outer);},"LIFO");paragraph2().innerText="batch two";assert2(e.EndDocumentUpdate(inner),"inner end");
  window.stage2OuterToken=outer;
- stage2Phase="nested error";try{apiRunCmd(@@CHILD@@);assert2(false,"nested exception");}catch(error){assert2(e.GetCurrentScriptName()==="stage2.js","context restored");}
+ stage2Phase="nested error";var nestedThrown=false;window.stage2ChildPrepared=false;try{apiRunCmd(@@CHILD@@);}catch(error){nestedThrown=true;assert2(e.GetCurrentScriptName()==="stage2.js","context restored");}assert2(nestedThrown&&window.stage2ChildPrepared,"nested cleanup setup and exception");
  paragraph2().innerText="batch two";assert2(e.EndDocumentUpdate(outer),"outer end");rejects2(function(){e.EndDocumentUpdate(outer);},"stale update");
  stage2Failure="PASS";
 }catch(error){stage2Failure=stage2Phase+": "+String(error.message||error);}}
@@ -68,7 +68,7 @@ function stage2ProgressEnd(){try{var e=window.external;assert2(e.EndProgress(sta
 '@
     $script=$script.Replace('@@ROOT@@',($scripts|ConvertTo-Json -Compress)).Replace('@@CHILD@@',((Join-Path $scripts 'child.js')|ConvertTo-Json -Compress))
     $script | Set-Content (Join-Path $scripts 'stage2.js') -Encoding utf8
-    'function Run(){var e=window.external;var rejected=false;try{e.EndDocumentUpdate(window.stage2OuterToken);}catch(error){rejected=true;}if(!rejected)throw new Error("foreign token accepted");e.BeginDocumentUpdate("unfinished",''{"suspendRedraw":true}'');paragraph2().innerText="child mutation";e.BeginProgress("Unfinished child progress",2);throw new Error("intentional");}' | Set-Content (Join-Path $scripts 'child.js') -Encoding utf8
+    'function Run(){var e=window.external;var rejected=false;try{e.EndDocumentUpdate(window.stage2OuterToken);}catch(error){rejected=true;}if(!rejected)throw new Error("foreign token accepted");e.BeginDocumentUpdate("unfinished",''{"suspendRedraw":true}'');paragraph2().innerText="child mutation";e.BeginProgress("Unfinished child progress",2);window.stage2ChildPrepared=true;throw new Error("intentional");}' | Set-Content (Join-Path $scripts 'child.js') -Encoding utf8
     [IO.File]::WriteAllText((Join-Path $scripts 'readonly.txt'),'original',[Text.UTF8Encoding]::new($false)); (Get-Item (Join-Path $scripts 'readonly.txt')).IsReadOnly=$true
     [IO.File]::WriteAllBytes((Join-Path $scripts 'invalid.txt'),[byte[]]@(0xff,0xff))
     [IO.File]::WriteAllBytes((Join-Path $scripts 'invalid16.txt'),[byte[]]@(0xff,0xfe,0x00,0xd8))
