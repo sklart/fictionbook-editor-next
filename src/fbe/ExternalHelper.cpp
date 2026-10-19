@@ -13,6 +13,7 @@
 #include "scripts/ScriptExecutionContext.h"
 #include "scripts/ScriptSettingsStore.h"
 #include "../common/RuntimeLocalizationCommon.h"
+namespace FbeScripts { void RecordApiFailure(LPCWSTR method, HRESULT error) noexcept; }
 
 namespace {
 const wchar_t* const ScriptingMethods[] = {
@@ -27,7 +28,7 @@ const wchar_t* const ScriptingMethods[] = {
  L"BeginProgress", L"SetProgress", L"IsProgressCancelled", L"EndProgress",
  L"ReadTextFile", L"WriteTextFile", L"FileExists", L"DirectoryExists", L"CreateDirectory",
  L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName",
- L"WriteTextFileEx"
+ L"WriteTextFileEx", L"ValidateCurrentDocument", L"LogMessage", L"GetLastScriptingError", L"ClearLastScriptingError"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {
@@ -252,9 +253,13 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 	if (argumentError)
 		*argumentError = UINT_MAX;
 	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || dispid == 1000 || dispid == 1001) {
-		try { return InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }
-		catch (const _com_error& error) { return error.Error(); }
-		catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+		HRESULT result;
+		try { result = InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }
+		catch (const _com_error& error) { result = error.Error(); }
+		catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+		if (FAILED(result) && dispid >= 100 && dispid <= 146 && dispid != 145)
+			FbeScripts::RecordApiFailure(ScriptingMethods[dispid - 100], result);
+		return result;
 	}
 
 	const bool trace = IsLoadDiagnosticMethod(dispid);

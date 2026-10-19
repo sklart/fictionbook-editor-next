@@ -12,7 +12,8 @@ enum class XmlScriptApiOperation
 	ValidateSourceText,
 	ApplySourceText,
 	GetScriptingEnvironment,
-	ScriptingDocumentOperation
+	ScriptingDocumentOperation,
+	ValidateCurrentDocument
 };
 
 struct XmlScriptApiRequest

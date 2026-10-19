@@ -100,6 +100,7 @@ namespace StartupTrace
 	// Сохраняет режим следующего запуска в пользовательских настройках FBE.
 	bool SetEnabledForNextLaunch(bool enabled);
 	void Event(const wchar_t* category, const wchar_t* code, const wchar_t* message);
+	void Debug(const wchar_t* category, const wchar_t* code, const wchar_t* message);
 	void Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message);
 	// Записывает информационное событие диагностического журнала.
 	void Event(const wchar_t* category, const wchar_t* stage);

@@ -220,6 +220,30 @@ XmlScriptDiagnostic XmlScriptBackend::ValidateSourceText(const CString& text) co
 	::SysFreeString(candidate); return diagnostic;
 }
 
+XmlScriptDiagnostic XmlScriptBackend::ValidateCurrentDocument() const
+{
+	XmlScriptDiagnostic diagnostic;
+	try {
+		if (!m_document) { diagnostic.error = E_UNEXPECTED; return diagnostic; }
+		CComBSTR source;
+		if (m_sourceIsActive()) {
+			SourceDocumentText current;
+			if (SourceDocumentTransfer::ReadSourceText(m_source, current) != SourceTransitionResult::Success) {
+				diagnostic.error = E_FAIL; return diagnostic;
+			}
+			if (current.utf8.size() > 1 && !::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, current.utf8.data(), static_cast<int>(current.utf8.size() - 1), NULL, 0)) {
+			diagnostic.message = L"Source contains invalid UTF-8."; return diagnostic;
+			}
+			source.Attach(current.text.AllocSysString());
+			if (!source) { diagnostic.error = E_OUTOFMEMORY; return diagnostic; }
+		}
+		diagnostic.error = m_document->ValidateForScripting(source, diagnostic.valid, diagnostic.line, diagnostic.column, diagnostic.message);
+	} catch (const _com_error& error) { diagnostic.error = error.Error(); }
+	catch (const std::bad_alloc&) { diagnostic.error = E_OUTOFMEMORY; }
+	catch (...) { diagnostic.error = E_FAIL; }
+	return diagnostic;
+}
+
 XmlScriptDiagnostic XmlScriptBackend::ApplySnapshot(const CString& text, bool markDocumentDirty)
 {
 	XmlScriptDiagnostic diagnostic;

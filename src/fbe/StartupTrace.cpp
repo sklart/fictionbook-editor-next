@@ -492,6 +492,7 @@ ULONGLONG StartupTrace::XsdSchemaLoadCount() { return Enabled() ? xsdSchemaLoadC
 void StartupTrace::CountSourceSerialization() { if (Enabled()) ++sourceSerializationCount; }
 ULONGLONG StartupTrace::SourceSerializationCount() { return Enabled() ? sourceSerializationCount : 0; }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"info", code, message, false); }
+void StartupTrace::Debug(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"debug", code, message, false); }
 void StartupTrace::Warning(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"warning", code, message, false); }
 void StartupTrace::Event(const wchar_t* category, const wchar_t* message) { WriteRecord(category, L"info", L"LEGACY", message, false); }
 void StartupTrace::Error(const wchar_t* category, const wchar_t* code, const wchar_t* message) { WriteRecord(category, L"error", code, message, true); }

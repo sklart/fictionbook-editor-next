@@ -1641,6 +1641,15 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 {
 	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
 	if(request == NULL) return 0;
+	if (request->operation == XmlScriptApiOperation::ValidateCurrentDocument) {
+		const XmlScriptDiagnostic diagnostic = m_xml_script_backend.ValidateCurrentDocument();
+		request->error = diagnostic.error;
+		request->valid = diagnostic.valid;
+		request->line = diagnostic.line; request->column = diagnostic.column;
+		request->message = diagnostic.message;
+		request->succeeded = SUCCEEDED(diagnostic.error);
+		return 1;
+	}
 	if(request->operation == XmlScriptApiOperation::ScriptingDocumentOperation)
 	{
 #include "scripts/ScriptingDocumentApi.inl"

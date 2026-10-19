@@ -287,7 +287,7 @@ namespace
                 const int eq=field.Find(L'='); if(eq<0) return false;
                 const CString key=field.Left(eq),value=field.Mid(eq+1); ++fields;
                 if(key==L"session_id") { if(value!=sessionId) return false; }
-                else if(key==L"level") { if(value!=L"info" && value!=L"warning" && value!=L"error") return false; }
+                else if(key==L"level") { if(value!=L"debug" && value!=L"info" && value!=L"warning" && value!=L"error") return false; }
                 else if(key==L"category" || key==L"code") { if(!FbeDiagnosticPrivacy::Identifier(std::wstring(value.GetString()))) return false; }
                 else if(key==L"seq" || key==L"elapsed" || key==L"delta" || key==L"PID" || key==L"TID") { if(!FbeDiagnosticPrivacy::Number(std::wstring(value.GetString()))) return false; }
                 else return false;

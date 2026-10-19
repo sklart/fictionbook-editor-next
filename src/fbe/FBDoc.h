@@ -79,6 +79,7 @@ public:
   // sourceOverride is used by the internal XML-scripting backend.  It takes
   // the exact same production SAX/schema/FBD path as Source validation.
   bool	  SetXMLAndValidate(HWND sci,bool fValidateOnly,int& errline,int& errcol,CString* errorMessage=NULL, BSTR sourceOverride=NULL);
+  HRESULT ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, int& column, CString& message);
   bool	  TextToXML(BSTR text, MSXML2::IXMLDOMDocument2Ptr *xml);
 
   //bool	  SetXML(MSXML2::IXMLDOMDocument2 *dom);

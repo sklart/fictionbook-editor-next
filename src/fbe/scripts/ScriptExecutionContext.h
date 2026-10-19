@@ -18,6 +18,8 @@ struct ScriptResourceLifetime { virtual ~ScriptResourceLifetime() = default; };
 struct ScriptExecutionContext {
     CString path, uid; long token;
     std::shared_ptr<ScriptResourceLifetime> documentResources, progressResources;
+    CString lastScriptingError;
+    unsigned loggedMessages = 0;
 };
 inline std::vector<ScriptExecutionContext>& ExecutionContexts()
 {
@@ -29,7 +31,7 @@ inline long PushExecutionContext(const CString& path, const CString& uid)
     static thread_local long nextToken = 0;
     if (nextToken == LONG_MAX) nextToken = 0;
     const long token = ++nextToken;
-    ExecutionContexts().push_back({ path, uid, token, {}, {} });
+    ExecutionContexts().push_back({ path, uid, token, {}, {}, {}, 0 });
     return token;
 }
 inline bool PopExecutionContext(long token)

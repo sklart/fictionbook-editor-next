@@ -1638,8 +1638,11 @@ static MSXML2::IXMLDOMSchemaCollection2Ptr FictionBookSchemaCacheForCurrentThrea
 	thread_local MSXML2::IXMLDOMSchemaCollection2Ptr schemas;
 	if (!schemas)
 	{
-		CheckError(schemas.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
-		schemas->add(FBNS, (const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
+		// Failed loads must not publish an incomplete cache to either XML API.
+		MSXML2::IXMLDOMSchemaCollection2Ptr candidate;
+		CheckError(candidate.CreateInstance(L"Msxml2.XMLSchemaCache.6.0"));
+		candidate->add(FBNS, (const wchar_t *)U::GetProgDirFile(L"FictionBook.xsd"));
+		schemas = candidate;
 		StartupTrace::CountXsdSchemaLoad();
 	}
 	return schemas;
@@ -1736,6 +1739,52 @@ static bool ReportFbdStructureValidationFailure(HWND frame, const CString& messa
 		::SendMessage(frame, AU::WM_SETSTATUSTEXT, 0, (LPARAM)(const wchar_t*)message);
 	StartupTrace::Warning(L"document", L"D227", L"FBD structural validation failed");
 	return false;
+}
+
+HRESULT Doc::ValidateForScripting(BSTR sourceOverride, bool& valid, int& line, int& column, CString& message)
+{
+	valid = false; line = column = 0; message.Empty();
+	try {
+		MSXML2::ISAXXMLReaderPtr reader;
+		CheckError(reader.CreateInstance(L"Msxml2.SAXXMLReader.6.0"));
+		MSXML2::IXMLDOMSchemaCollection2Ptr schemas;
+		ConfigureFictionBookSaxReader(reader, m_file_type, schemas);
+		CComObject<SAXErrorHandler>* raw = nullptr;
+		CheckError(CComObject<SAXErrorHandler>::CreateInstance(&raw));
+		CComPtr<CComObject<SAXErrorHandler>> errors(raw);
+		reader->putErrorHandler(errors);
+		MSXML2::IXMLDOMDocument2Ptr snapshot;
+		MSXML2::IMXWriterPtr writer;
+		CComVariant input;
+		if (sourceOverride) {
+			input.vt = VT_BSTR;
+			input.bstrVal = ::SysAllocStringLen(sourceOverride, ::SysStringLen(sourceOverride));
+			if (!input.bstrVal) return E_OUTOFMEMORY;
+			if (m_file_type == FictionBookFileType::Fbd) {
+				snapshot = U::CreateDocument(true);
+				CheckError(writer.CreateInstance(L"Msxml2.MXXMLWriter.6.0"));
+				writer->output = snapshot.GetInterfacePtr();
+				reader->putContentHandler(MSXML2::ISAXContentHandlerPtr(writer));
+			}
+		} else {
+			snapshot = CreateDOMForAnalysis(&message);
+			if (!snapshot) return E_FAIL;
+			IStreamPtr stream(snapshot);
+			if (!stream) return E_NOINTERFACE;
+			input = static_cast<IUnknown*>(stream.GetInterfacePtr());
+		}
+		const HRESULT parsed = reader->raw_parse(input);
+		if (FAILED(parsed)) {
+			if (errors->m_msg.IsEmpty()) return parsed;
+			message = errors->m_msg; line = errors->m_line; column = errors->m_col;
+			return S_OK;
+		}
+		if (m_file_type == FictionBookFileType::Fbd && !ValidateFbdDocumentStructure(snapshot, &message)) {
+			line = column = 1; return S_OK;
+		}
+		valid = true; return S_OK;
+	} catch (const _com_error& error) { return error.Error(); }
+	catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
 }
 
 MSXML2::IXMLDOMDocument2Ptr Doc::CreateDOMImp(const CString& encoding, bool compactBinaries,
