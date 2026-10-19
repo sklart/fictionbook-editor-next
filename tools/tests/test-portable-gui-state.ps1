@@ -34,6 +34,12 @@ function Invoke-PortableStateScenario([string]$Scenario) {
         $env:FBE_NEXT_TEST_MODE = $oldMode; $env:FBE_NEXT_TEST_SCENARIO = $oldScenario
     }
 }
+function Get-ScriptUid([string]$RelativePath) {
+    [xml]$registry = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'ScriptRegistry.xml')
+    $entries = @($registry.Scripts.Script | Where-Object { $_.path -eq $RelativePath })
+    if ($entries.Count -ne 1 -or -not $entries[0].uid) { throw "Missing unique script identity: $RelativePath" }
+    return [string]$entries[0].uid
+}
 
 $registryKeys = @(
     'HKCU\Software\FBETeam\FictionBook Editor Next',
@@ -72,7 +78,10 @@ if ($hotkeysXml -notmatch '<Name>Words</Name>\s*<Accel>13;135</Accel>') { throw 
 $settingsXml = Get-Content -Raw -LiteralPath (Join-Path $settings 'Settings.xml')
 if ($settingsXml -notmatch '<Toolbars>[^<]*60160,\d+,731;') { throw 'Toolbar exact sentinel width for the first rebar band was not persisted.' }
 $portableToolbarsXml = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
-if ($portableToolbarsXml -notmatch '<Toolbars version="1">' -or $portableToolbarsXml -notmatch '<Toolbar name="Command">' -or $portableToolbarsXml -notmatch '<Toolbar name="Scripts">') { throw 'Portable toolbar layout was not persisted as versioned structured data.' }
+[xml]$portableToolbars = $portableToolbarsXml
+if ($portableToolbars.Toolbars.version -ne '2' -or
+    @($portableToolbars.SelectNodes('/Toolbars/Toolbar[@id="commands" and @kind="commands"]')).Count -ne 1 -or
+    @($portableToolbars.SelectNodes('/Toolbars/Toolbar[@id="scripts-main" and @kind="scripts"]')).Count -ne 1) { throw 'Portable toolbar layout was not persisted as versioned structured data.' }
 $persistedSnapshot = Get-FileTreeSnapshot $data
 
 Invoke-PortableStateScenario 'portable-state-read'
@@ -110,7 +119,8 @@ Invoke-PortableStateScenario 'portable-legacy-hotkey-read'
 $legacyReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($legacyReport -notmatch '(?m)^legacy-hotkey=1$' -or $legacyReport -notmatch '(?m)^result=pass$') { throw "Moved portable legacy hotkey was not migrated:`n$legacyReport" }
 $migratedHotkeys = Get-Content -Raw -LiteralPath (Join-Path $settings 'Hotkeys.xml')
-if ($migratedHotkeys -notmatch '<Name>tools/foo\.js</Name>' -or $migratedHotkeys -match 'BeforeMove|missing\.js') { throw 'Legacy Hotkeys.xml did not choose the longest valid relative script suffix.' }
+$fooUid = Get-ScriptUid 'tools/foo.js'
+if ($migratedHotkeys -notmatch ([regex]::Escape("<Name>script:$fooUid</Name>")) -or $migratedHotkeys -match 'BeforeMove|missing\.js') { throw 'Legacy Hotkeys.xml did not choose the UID of the longest valid relative script suffix.' }
 
 # Exercise a real non-empty customization using a deterministic script catalog.
 # Keep foo.js for the independent legacy-hotkey migration case above, but make
@@ -123,26 +133,40 @@ Invoke-PortableStateScenario 'portable-toolbar-layout-write'
 $nonEmptyWriteReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($nonEmptyWriteReport -notmatch '(?m)^alpha-catalog=1$' -or $nonEmptyWriteReport -notmatch '(?m)^beta-catalog=1$' -or $nonEmptyWriteReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyWriteReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyWriteReport -notmatch '(?m)^last-script-beta=1$' -or $nonEmptyWriteReport -notmatch '(?m)^result=pass$') { throw "Could not create non-empty portable toolbar fixture:`n$nonEmptyWriteReport" }
 $nonEmptyToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
-if ($nonEmptyToolbars -notmatch '(?s)<Toolbar name="Scripts">\s*<Script path="test/alpha\.js"\s*/>\s*<Separator[^>]*/>\s*<Script path="test/beta\.js"\s*/>\s*</Toolbar>' -or $nonEmptyToolbars -notmatch '<LastScript path="test/beta\.js"\s*/>') { throw 'Scripts toolbar or last script did not persist deterministic relative paths.' }
+$alphaUid = Get-ScriptUid 'test/alpha.js'; $betaUid = Get-ScriptUid 'test/beta.js'
+[xml]$nonEmptyLayout = $nonEmptyToolbars
+$scriptItems = @($nonEmptyLayout.SelectNodes('/Toolbars/Toolbar[@id="scripts-main"]/*'))
+if ($scriptItems.Count -ne 3 -or $scriptItems[0].Name -ne 'Script' -or $scriptItems[0].uid -ne $alphaUid -or
+    $scriptItems[1].Name -ne 'Separator' -or $scriptItems[2].Name -ne 'Script' -or $scriptItems[2].uid -ne $betaUid -or
+    $nonEmptyLayout.Toolbars.LastScript.uid -ne $betaUid) { throw 'Scripts toolbar or last script did not persist exact script identities and order.' }
 Invoke-PortableStateScenario 'portable-toolbar-layout-read'
 $nonEmptyReadReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($nonEmptyReadReport -notmatch '(?m)^nonempty-command=1$' -or $nonEmptyReadReport -notmatch '(?m)^nonempty-scripts=1$' -or $nonEmptyReadReport -notmatch '(?m)^last-script-beta=1$' -or $nonEmptyReadReport -notmatch '(?m)^result=pass$') { throw "Non-empty portable toolbar layout was not restored exactly after restart:`n$nonEmptyReadReport" }
 
-# Missing scripts must be dropped from the saved toolbar and must not leave a
-# stale last-script pointer.  Alpha remains available and therefore proves the
-# valid part of the customization survives the restart.
+# Missing scripts are omitted from the live HWND, while v2 retains their UIDs
+# so the customization reconnects when the script returns.
 Remove-Item -LiteralPath (Join-Path $testScripts 'Beta.js') -Force
 Invoke-PortableStateScenario 'portable-toolbar-missing-script-read'
 $missingScriptReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($missingScriptReport -notmatch '(?m)^missing-script-safe=1$' -or $missingScriptReport -notmatch '(?m)^result=pass$') { throw "Missing script was not safely handled during toolbar restore:`n$missingScriptReport" }
 $missingScriptToolbars = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
-if ($missingScriptToolbars -match 'test/beta\.js') { throw 'Missing script or stale last-script path remained in Toolbars.xml.' }
+[xml]$missingLayout = $missingScriptToolbars
+if (@($missingLayout.SelectNodes('/Toolbars/Toolbar[@id="scripts-main"]/Script') | Where-Object { $_.uid -eq $betaUid }).Count -ne 1 -or
+    @($missingLayout.SelectNodes('/Toolbars/LastScript')).Count -ne 0) { throw 'Unavailable script identity was lost or the unavailable last-script command remained active.' }
+Copy-Item -LiteralPath $scriptTemplate.FullName -Destination (Join-Path $testScripts 'Beta.js') -Force
+Invoke-PortableStateScenario 'portable-toolbar-returned-script-read'
+$restoredReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
+if ($restoredReport -notmatch '(?m)^nonempty-scripts=1$' -or $restoredReport -notmatch '(?m)^last-script-beta=0$' -or $restoredReport -notmatch '(?m)^result=pass$') { throw "Returned script did not reconnect to its saved UID:`n$restoredReport" }
 
 # An explicitly empty toolbar is a valid customization, not a missing/corrupt
 # settings file.  Verify it survives a second real application start.
 Invoke-PortableStateScenario 'portable-toolbar-empty-write'
 $emptyToolbarXml = Get-Content -Raw -Encoding Unicode -LiteralPath (Join-Path $settings 'Toolbars.xml')
-if ($emptyToolbarXml -notmatch '(?s)<Toolbar name="Command">\s*</Toolbar>' -or $emptyToolbarXml -notmatch '(?s)<Toolbar name="Scripts">\s*</Toolbar>') { throw 'Empty portable toolbars were not serialized explicitly.' }
+[xml]$emptyLayout = $emptyToolbarXml
+foreach ($id in @('commands', 'scripts-main')) {
+    $toolbar = @($emptyLayout.SelectNodes("/Toolbars/Toolbar[@id='$id']"))
+    if ($toolbar.Count -ne 1 -or $toolbar[0].ChildNodes.Count -ne 0) { throw 'Empty portable toolbars were not serialized explicitly.' }
+}
 Invoke-PortableStateScenario 'portable-toolbar-empty-read'
 $emptyReport = Get-Content -Raw -LiteralPath (Join-Path $data 'Diagnostics\portable-state-report.txt')
 if ($emptyReport -notmatch '(?m)^empty-toolbar=1$' -or $emptyReport -notmatch '(?m)^result=pass$') { throw "Empty portable toolbar was replaced by default after restart:`n$emptyReport" }

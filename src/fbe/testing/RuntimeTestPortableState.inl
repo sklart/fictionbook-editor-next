@@ -71,6 +71,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool toolbarLayoutWrite = IsFbeTestScenario(L"portable-toolbar-layout-write");
 	const bool toolbarLayoutRead = IsFbeTestScenario(L"portable-toolbar-layout-read");
 	const bool missingScriptRead = IsFbeTestScenario(L"portable-toolbar-missing-script-read");
+	const bool returnedScriptRead = IsFbeTestScenario(L"portable-toolbar-returned-script-read");
 	const bool malformedToolbarRead = IsFbeTestScenario(L"portable-toolbar-malformed-read");
 	const bool scriptsReload = IsFbeTestScenario(L"portable-scripts-reload");
 	const bool legacyHotkeyRead = IsFbeTestScenario(L"portable-legacy-hotkey-read");
@@ -96,7 +97,7 @@ void CMainFrame::RunPortableStateTestScenario()
 	const bool scriptStartupValidationOn = IsFbeTestScenario(L"script-startup-validation-on");
 	const bool scriptStartupValidationOffWrite = IsFbeTestScenario(L"script-startup-validation-off-write");
 	const bool scriptStartupValidationOffRead = IsFbeTestScenario(L"script-startup-validation-off-read");
-	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationScriptsMultiRuntime && !navigationFavoritesReadRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCardDialogRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
+	if (!ordinaryWrite && !ordinaryRead && !emptyToolbarWrite && !emptyToolbarRead && !toolbarLayoutWrite && !toolbarLayoutRead && !missingScriptRead && !returnedScriptRead && !malformedToolbarRead && !scriptsReload && !legacyHotkeyRead && !hotkeyExport && !diagnosticCleanup && !scriptToolbarLifecycle && !scriptToolbarLifecycleReload && !scriptToolbarRollbackNoMain && !scriptToolbarRollbackPersisted && !scriptToolbarRollbackPartial && !scriptToolbarRuntimeSize && !toolbarLayoutAdapterTransaction && !scriptsToolbarCustomizeCtrlF && !navigationScriptsRuntime && !navigationSearchFavoritesRuntime && !navigationScriptsMultiRuntime && !navigationFavoritesReadRuntime && !navigationViewBarElementsRuntime && !navigationScriptsReloadRuntime && !scriptLiveReloadRuntime && !scriptCardDialogRuntime && !scriptCatalogRefreshRuntime && !scriptStartupValidationOn && !scriptStartupValidationOffWrite && !scriptStartupValidationOffRead)
 		return;
 
 	const CString diagnosticsDirectory(DeploymentContext::DiagnosticsDirectory().c_str());
@@ -1859,7 +1860,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		report.Format("phase=toolbar-malformed-read\ndefaults-kept=%d\nresult=%s\n", defaultsKept, defaultsKept ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
-	else if (toolbarLayoutWrite || toolbarLayoutRead || missingScriptRead)
+	else if (toolbarLayoutWrite || toolbarLayoutRead || missingScriptRead || returnedScriptRead)
 	{
 		TBBUTTON commandFirst = {}, commandAdded = {}, alphaButton = {}, betaButton = {}, separator = {};
 		separator.iBitmap = 13;
@@ -1911,11 +1912,12 @@ void CMainFrame::RunPortableStateTestScenario()
 		CStringA report;
 		report.Format("phase=toolbar-layout-%s\nscript-count=%d\ndiscovered-scripts=%s\nalpha-command=%d\nbeta-command=%d\ncommand-catalog=%d\nalpha-catalog=%d\nbeta-catalog=%d\nnonempty-command=%d\nnonempty-scripts=%d\nlast-script-beta=%d\nmissing-script-safe=%d\nresult=%s\n",
 			missingScriptRead ? "missing-script-read" : toolbarLayoutWrite ? "write" : "read", m_scripts.Menu().Count(), static_cast<LPCSTR>(discoveredScripts), alphaCommand, betaCommand, commandCatalogReady, alphaInCatalog, betaInCatalog, commandLayout, scriptsLayout, lastScriptIsBeta, missingScriptSafe,
-			missingScriptRead ? (missingScriptSafe ? "pass" : "fail") : commandLayout && scriptsLayout && lastScriptIsBeta ? "pass" : "fail");
+			missingScriptRead ? (missingScriptSafe ? "pass" : "fail") : commandLayout && scriptsLayout && (returnedScriptRead ? !m_scripts.HasLastScript() : lastScriptIsBeta) ? "pass" : "fail");
 		WritePortableStateTestText(reportPath, report);
 	}
 	else if (scriptsReload)
 	{
+		_Settings.SetCheckScriptsOnStartup(true, true);
 		const DWORD before = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
 		InitializeExtensionUi();
 		InitializeExtensionUi();
@@ -1939,7 +1941,10 @@ void CMainFrame::RunPortableStateTestScenario()
 	else if (legacyHotkeyRead)
 	{
 		CHotkeysGroup* scripts = _Settings.GetGroupByName(L"Scripts");
-		CHotkey* foo = scripts ? _Settings.GetHotkeyByName(L"tools/foo.js", *scripts) : NULL;
+		CString identity;
+		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
+			if(m_scripts.Menu().Item(index).relativePath == L"tools/foo.js") identity = L"script:" + m_scripts.Menu().Item(index).uid;
+		CHotkey* foo = scripts && !identity.IsEmpty() ? _Settings.GetHotkeyByName(identity, *scripts) : NULL;
 		const bool migrated = foo != NULL && foo->m_accel.fVirt == (FVIRTKEY | FCONTROL) && foo->m_accel.key == VK_F9;
 		CStringA report;
 		report.Format("phase=legacy-hotkey-read\nlegacy-hotkey=%d\nresult=%s\n", migrated, migrated ? "pass" : "fail");
