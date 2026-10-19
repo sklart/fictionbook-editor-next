@@ -1,0 +1,55 @@
+// Included by ExternalHelper.cpp; the legacy dual interface stays immutable.
+HRESULT ExternalHelper::InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters,
+    VARIANT* result, UINT* argumentError)
+{
+    if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
+    if (parameters && parameters->cNamedArgs) return DISP_E_NONAMEDARGS;
+    const UINT count = parameters ? parameters->cArgs : 0;
+    const UINT expected = dispid == 101 || dispid == 1000 || dispid == 1001 ? 1 : 0;
+    if (count != expected) return DISP_E_BADPARAMCOUNT;
+    CComVariant argument;
+    if (count) {
+        HRESULT hr = ::VariantCopyInd(&argument, &parameters->rgvarg[0]);
+        if (FAILED(hr)) return hr;
+        const VARTYPE type = static_cast<VARTYPE>(dispid == 1001 ? VT_I4 : VT_BSTR);
+        if (argument.vt != type) { if (argumentError) *argumentError = 0; return DISP_E_TYPEMISMATCH; }
+    }
+    CComVariant value;
+    const FbeScripts::ScriptExecutionContext* context = FbeScripts::CurrentExecutionContext();
+    CString text;
+    switch (dispid) {
+    case 100: value = L"1.0.0"; break;
+    case 101: {
+        DISPID id = DISPID_UNKNOWN; LPOLESTR name = argument.bstrVal;
+        const bool exists = name && name[0] != L'_' && SUCCEEDED(GetIDsOfNames(IID_NULL, &name, 1, LOCALE_USER_DEFAULT, &id));
+        value = exists; break;
+    }
+    case 102: value = L"{\"schemaVersion\":1,\"apiVersion\":\"1.0.0\",\"capabilities\":{\"scriptContext\":true,\"environment\":true}}"; break;
+    case 103: value = context ? context->path : CString(); break;
+    case 104:
+        if (context) { const int slash = context->path.ReverseFind(L'\\'); if (slash >= 0) text = context->path.Left(slash + 1); }
+        value = text; break;
+    case 105:
+        if (context) text = context->path.Mid(context->path.ReverseFind(L'\\') + 1);
+        value = text; break;
+    case 106: value = context ? context->uid : CString(); break;
+    case 107: value = FbeScripts::AbsoluteScriptPath(_Settings.GetScriptsFolder()); break;
+    case 108: value = _Settings.GetInterfaceLocaleName(); break;
+    case 109: case 110: {
+        XmlScriptApiRequest request(XmlScriptApiOperation::GetScriptingEnvironment);
+        if (!SendXmlScriptRequest(m_xmlScriptHost, request)) return E_UNEXPECTED;
+        if (dispid == 109) value = request.viewMode; else value = request.documentModified;
+        break;
+    }
+    case 1000: {
+        const CString path = FbeScripts::AbsoluteScriptPath(CString(argument.bstrVal, ::SysStringLen(argument.bstrVal)));
+        if (path.IsEmpty() || FbeScripts::ExecutionContexts().size() >= 256) return E_INVALIDARG;
+        XmlScriptApiRequest request(XmlScriptApiOperation::GetScriptingEnvironment); request.scriptPath = path;
+        if (!SendXmlScriptRequest(m_xmlScriptHost, request)) return E_UNEXPECTED;
+        value = FbeScripts::PushExecutionContext(path, request.scriptUid); break;
+    }
+    case 1001: if (!FbeScripts::PopExecutionContext(argument.lVal)) return E_INVALIDARG; break;
+    default: return DISP_E_MEMBERNOTFOUND;
+    }
+    return result ? value.Detach(result) : S_OK;
+}

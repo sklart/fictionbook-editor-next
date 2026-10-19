@@ -478,3 +478,83 @@ if (elementId) {
   window.external.MsgBox("Выбран элемент: " + elementId);
 }
 ```
+
+
+## Версионированное расширение (API 1.0.0, issue #45)
+
+Версия API независима от версии редактора. Старый dual-интерфейс
+`IExternalHelper`, IID, порядок vtable и DISPID 1–35 не меняются. Новые методы
+доступны через `IDispatch::GetIDsOfNames/Invoke` у того же `window.external`;
+старый typelib намеренно описывает только прежний dual-контракт. Расширение
+не требует регистрации нового COM-сервера. Вызовы позиционные, без именованных
+COM-аргументов. Имена методов нечувствительны к регистру.
+
+| Метод (впервые в 1.0.0) | Параметры и результат |
+|---|---|
+| `GetScriptingApiVersion()` | Без параметров; строка `1.0.0`. |
+| `HasScriptingMethod(name)` | Строковое имя; boolean фактической доступности публичного метода, включая старые методы; неизвестное имя даёт false. Метод не вызывается. |
+| `GetScriptingCapabilities()` | JSON-строка со `schemaVersion: 1`, `apiVersion: "1.0.0"` и объектом `capabilities`. |
+| `GetCurrentScriptPath()` | Абсолютный путь выполняемого JS-файла; без контекста пустая строка. |
+| `GetCurrentScriptDirectory()` | Каталог этого файла с завершающим `\`; без контекста пустая строка. |
+| `GetCurrentScriptName()` | Имя этого JS-файла с расширением; без контекста пустая строка. |
+| `GetCurrentScriptId()` | UID существующего ScriptRegistry/ScriptDescriptor; незарегистрированный скрипт и отсутствие контекста дают пустую строку. Новый UID не создаётся. |
+| `GetScriptsRootDirectory()` | Абсолютный настроенный каталог Scripts; завершающий разделитель может сохраняться. |
+| `GetInterfaceLanguage()` | Текущая эффективная локаль интерфейса, например `ru-RU` или `en-US`. |
+| `GetCurrentViewMode()` | Строка `design`, `source` или `description`. |
+| `IsDocumentModified()` | Boolean штатного dirty-state, включая Body, Description и несохранённый Source. |
+
+Стабильные ключи capabilities: `scriptContext` (сведения и стек контекстов),
+`environment` (окружение и состояние документа). Значение true означает
+реализованную возможность; отсутствующий/неизвестный ключ нельзя считать
+поддерживаемой возможностью. Новые ключи могут добавляться без изменения схемы.
+Служебные методы хоста и их DISPID не являются публичным API.
+
+Контекст действует при загрузке и выполнении скрипта. Вложенный `apiRunCmd`
+временно переключает его на вложенный файл, после возврата/исключения
+восстанавливается внешний контекст. Нативный запуск дополнительно защищён
+RAII. Чтение UID не запускает обнаружение, хеширование или проверку всей
+библиотеки. Перенос зарегистрированного скрипта отслеживается штатным реестром
+при обновлении каталога. Произвольный вызов ранее сохранённой JS-функции вне
+служебных точек запуска не создаёт контекст файла.
+
+Пример для старого Microsoft JScript (включая безопасный fallback в старом FBE):
+
+```javascript
+function HasApi(name) {
+    try { return window.external.HasScriptingMethod(name); }
+    catch (error) { return false; }
+}
+if (HasApi("GetCurrentScriptDirectory")) {
+    var resources = window.external.GetCurrentScriptDirectory();
+}
+```
+
+Неверное число аргументов новых методов даёт `DISP_E_BADPARAMCOUNT`, неверный
+тип — `DISP_E_TYPEMISMATCH`; старое поведение методов при этом не меняется.
+Предел вложенности контекстов — 256; ошибочный путь даёт `E_INVALIDARG`.
+
+### Диагностика существующего контракта
+
+- `window.external.IsDiagnosticTraceEnabled()` возвращает boolean включённой
+  диагностической трассировки.
+- `window.external.TraceScript(code, message)` записывает диагностическое
+  событие; не изменяет документ. Код ограничен 32 символами, сообщение
+  очищается штатной диагностической подсистемой и ограничено 512 символами.
+- `window.external.GetLocalizedString(key)` возвращает локализованную строку
+  по ключу существующего каталога интерфейса. Это существующие DISPID 29–31.
+
+### Покрытие issue #45
+
+| Группа / методы | Статус |
+|---|---|
+| Версия, HasScriptingMethod, capabilities, контекст и сведения об окружении (этап 1А) | Implemented |
+| GetScriptSetting, SetScriptSetting, RemoveScriptSetting, ClearScriptSettings (этап 1Б) | Planned |
+| SelectOpenFile, SelectSaveFile, SelectFolder, InputBoxEx (этап 1В) | Planned |
+| Закладки/текст/HTML выделения, Begin/EndDocumentUpdate, прогресс/отмена, текстовые файлы и операции путей (этап 2) | Planned |
+| Дополнительные binary, validation, diagnostics, dialogs, clipboard, status-stack, save API (этап 3) | Planned |
+| GetSourceText, ValidateSourceText, GetLastSourceDiagnostic, ApplySourceText; существующие Undo, InputBox/GetModalResult, SaveBinary, пути документа | Already covered by existing API |
+| ProcessPendingUiEvents и автоматический откат произвольных DOM-изменений | Deferred |
+
+Issue #45 остаётся открытым до реализации и приёмки последующих этапов.
+Интерфейс настройки карточек issue #48 в этот этап не входит; исходные карточки
+и переменные в пользовательских JS-файлах не изменяются.

@@ -22,6 +22,7 @@ public:
 	void ClearLastScript() { m_lastUid.Empty(); }
 	const CString& LastScriptUid() const { return m_lastUid; }
 	const ScriptDescriptor* LastScript() const;
+	CString FindScriptUid(const CString& path, const CString& scriptsRoot);
 	bool HasLastScript() const { return !m_lastUid.IsEmpty(); }
 	bool Initialize(const CString& folder, const CString& persistedCommandIds, CString& updatedCommandIds,
 		HMENU scriptsMenu, const CString& noScriptsText,

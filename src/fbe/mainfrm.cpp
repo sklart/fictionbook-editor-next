@@ -2,6 +2,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
+#include "scripts/ScriptExecutionContext.h"
 #include <aclapi.h>
 #include "clipboard/HtmlPasteSanitizer.h"
 #include "scripts/ScriptCardBlock.h"
@@ -1638,6 +1639,15 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 {
 	XmlScriptApiRequest* request = reinterpret_cast<XmlScriptApiRequest*>(data);
 	if(request == NULL) return 0;
+	if(request->operation == XmlScriptApiOperation::GetScriptingEnvironment)
+	{
+		request->viewMode = m_editor_view_state.Current() == SOURCE ? L"source" :
+			(m_editor_view_state.Current() == DESC ? L"description" : L"design");
+		request->documentModified = DocChanged();
+		if (!request->scriptPath.IsEmpty()) request->scriptUid = m_scripts.FindScriptUid(request->scriptPath, _Settings.GetScriptsFolder());
+		request->succeeded = true;
+		return 1;
+	}
 	if(request->operation == XmlScriptApiOperation::GetSourceText)
 	{
 		request->succeeded = GetInternalXmlScriptSourceText(request->resultText);

@@ -1577,6 +1577,9 @@ function apiShowDesc(state)
 }
 function apiRunCmd(path, htmlFolder, charset)
 {
+	var executionToken=window.external._EnterScriptContext(String(path));
+	try {
+
 	var messageTemplate=GetLocalizedStringOrDefault("fbe.script.run_failed", "The script\n\n{path}\n\ncould not be started because it could not be loaded successfully.\n\nThe file may no longer be at its expected path.");
 	var scriptPath=String(path==null ? "" : path);
 	window.msgText=messageTemplate.indexOf("{path}")>=0 ? messageTemplate.replace("{path}", scriptPath) : messageTemplate+"\n\n"+scriptPath;
@@ -1589,6 +1592,8 @@ function apiRunCmd(path, htmlFolder, charset)
 	window.Run=function() {
 	  if (window.msgText) alert(window.msgText);
 	};
+
+	} finally { window.external._LeaveScriptContext(executionToken); }
 }
 
 // MSHTML may reuse a script whose src has already been assigned. Replace the
@@ -1596,6 +1601,9 @@ function apiRunCmd(path, htmlFolder, charset)
 // for legacy combo scripts which address userCmd directly.
 function LoadUserCommandScript(path, charset)
 {
+	var executionToken=window.external._EnterScriptContext(String(path));
+	try {
+
 	var previous=document.getElementById("userCmd");
 	if(!previous || !previous.parentNode)
 		return null;
@@ -1607,27 +1615,44 @@ function LoadUserCommandScript(path, charset)
 	previous.parentNode.replaceChild(script,previous);
 	script.src="file:///"+path;
 	return script;
+
+	} finally { window.external._LeaveScriptContext(executionToken); }
 }
 
 function apiGetClassName(path)
 {
+	var executionToken=window.external._EnterScriptContext(String(path));
+	try {
+
 	if(!LoadUserCommandScript(path))
 		return;
 	return GetClassName();
+
+	} finally { window.external._LeaveScriptContext(executionToken); }
 }
 
 function apiGetTitle(path)
 {
+	var executionToken=window.external._EnterScriptContext(String(path));
+	try {
+
 	if(!LoadUserCommandScript(path))
 		return;
 	return GetTitle();
+
+	} finally { window.external._LeaveScriptContext(executionToken); }
 }
 
 function apiProcessCmd(path)
 {
+	var executionToken=window.external._EnterScriptContext(String(path));
+	try {
+
 	if(!LoadUserCommandScript(path))
 		return;
 	ProcessCmd();
+
+	} finally { window.external._LeaveScriptContext(executionToken); }
 }
 
 function SetInFrame(range, tagName, className)

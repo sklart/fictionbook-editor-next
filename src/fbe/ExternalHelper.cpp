@@ -9,6 +9,24 @@
 #include "ExternalHelper.h"
 #include <map>
 #include <vector>
+#include "scripts/ScriptExecutionContext.h"
+
+namespace {
+const wchar_t* const ScriptingMethods[] = {
+ L"GetScriptingApiVersion", L"HasScriptingMethod", L"GetScriptingCapabilities",
+ L"GetCurrentScriptPath", L"GetCurrentScriptDirectory", L"GetCurrentScriptName", L"GetCurrentScriptId",
+ L"GetScriptsRootDirectory", L"GetInterfaceLanguage", L"GetCurrentViewMode", L"IsDocumentModified"
+};
+DISPID ScriptingMethodId(LPCWSTR name)
+{
+ if (!name) return DISPID_UNKNOWN;
+ for (size_t index = 0; index < _countof(ScriptingMethods); ++index)
+  if (_wcsicmp(name, ScriptingMethods[index]) == 0) return 100 + static_cast<DISPID>(index);
+ if (_wcsicmp(name, L"_EnterScriptContext") == 0) return 1000;
+ if (_wcsicmp(name, L"_LeaveScriptContext") == 0) return 1001;
+ return DISPID_UNKNOWN;
+}
+}
 
 __declspec(thread) bool ExternalHelper::s_traceScriptActive = false;
 CComAutoCriticalSection ExternalHelper::s_embeddedTypeInfoLock;
@@ -193,6 +211,11 @@ HRESULT ExternalHelper::GetIDsOfNames(REFIID riid, LPOLESTR* names, UINT nameCou
 		return DISP_E_UNKNOWNINTERFACE;
 	if (!names || !dispids || nameCount == 0)
 		return E_INVALIDARG;
+	const DISPID extension = ScriptingMethodId(names[0]);
+	if (extension != DISPID_UNKNOWN) {
+		if (nameCount != 1) return DISP_E_UNKNOWNNAME;
+		dispids[0] = extension; return S_OK;
+	}
 
 	CComPtr<ITypeInfo> typeInfo;
 	HRESULT result = GetEmbeddedTypeInfo(&typeInfo);
@@ -216,6 +239,8 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		return DISP_E_UNKNOWNINTERFACE;
 	if (argumentError)
 		*argumentError = UINT_MAX;
+	if ((dispid >= 100 && dispid < 100 + static_cast<DISPID>(_countof(ScriptingMethods))) || dispid == 1000 || dispid == 1001)
+		return InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError);
 
 	const bool trace = IsLoadDiagnosticMethod(dispid);
 	const bool knownMethod = wcscmp(ExternalHelperMethodName(dispid), L"other") != 0;
@@ -764,3 +789,5 @@ HRESULT ExternalHelper::DescShowMenu(IDispatch */* unused: obj */, LONG x,LONG y
 
 	return S_OK;
 }
+
+#include "scripts/ScriptingApi.inl"

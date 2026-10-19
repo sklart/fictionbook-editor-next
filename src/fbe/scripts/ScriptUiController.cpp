@@ -2,6 +2,7 @@
 #include "ScriptUiController.h"
 #include "ScriptCatalog.h"
 #include "ScriptRegistry.h"
+#include "ScriptExecutionContext.h"
 #include "..\resource.h"
 
 namespace FbeScripts
@@ -25,6 +26,19 @@ UiController::UiController(UINT folderCommandBase, UINT folderCommandCount)
 void UiController::SetLastScript(const ScriptDescriptor& script)
 {
 	m_lastUid = script.uid;
+}
+
+CString UiController::FindScriptUid(const CString& path, const CString& scriptsRoot)
+{
+	const CString absolute = AbsoluteScriptPath(path);
+	for (const auto& script : m_menu.Items())
+		if (!script.isFolder && AbsoluteScriptPath(script.path).CompareNoCase(absolute) == 0) return script.uid;
+	CString root = AbsoluteScriptPath(scriptsRoot); root.TrimRight(L"\\"); root += L"\\";
+	if (absolute.Left(root.GetLength()).CompareNoCase(root) != 0) return CString();
+	CString relative = absolute.Mid(root.GetLength()); relative.Replace(L'\\', L'/'); relative.MakeLower();
+	if (!m_registryLoaded) { if (!m_registry.Load()) return CString(); m_registryLoaded = true; }
+	const ScriptIdentity* identity = m_registry.FindByPath(relative);
+	return identity ? identity->uid : CString();
 }
 
 const ScriptDescriptor* UiController::LastScript() const

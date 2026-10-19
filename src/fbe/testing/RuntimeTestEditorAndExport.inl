@@ -1,3 +1,26 @@
+	if (IsFbeTestScenario(L"scripting-stage1"))
+	{
+		wchar_t root[32768] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT", root, _countof(root));
+		_Settings.SetScriptsFolder(root);
+		const UINT discoveryBefore = m_scripts.DiscoveryCount();
+		const bool modifiedBefore = DocChanged();
+		const auto viewBefore = m_editor_view_state.Current();
+		bool passed = false;
+		CStringA details;
+		try {
+			FbeScriptDiagnostics::ScopedDialogSuppression suppressDialogs;
+			m_doc->RunScript(CString(root) + L"\\outer.js");
+			CComVariant result;
+			const HRESULT hr = m_doc->InvokeFunc(L"apiStage1Results", NULL, 0, result, true);
+			passed = SUCCEEDED(hr) && result.vt == VT_BSTR && wcscmp(result.bstrVal, L"PASS") == 0;
+			if (result.vt == VT_BSTR) details = CW2A(result.bstrVal, CP_UTF8);
+			passed = passed && FbeScripts::ExecutionContexts().empty() &&
+				DocChanged() == modifiedBefore && m_editor_view_state.Current() == viewBefore && m_scripts.DiscoveryCount() == discoveryBefore;
+		} catch (...) { details = "native exception"; }
+		CStringA report; report.Format("result=%s\r\ndetails=%s\r\n", passed ? "PASS" : "FAIL", details.GetString());
+		DWORD written = 0; output.Write(report, static_cast<DWORD>(report.GetLength()), &written); output.Close();
+		::PostQuitMessage(passed ? 0 : 1); return 0;
+	}
 	if (IsFbeTestScenario(L"prerelease-serialization"))
 	{
 		wchar_t marker[8] = {};

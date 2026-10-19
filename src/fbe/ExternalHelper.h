@@ -56,6 +56,7 @@ class ExternalHelper :
   static CComAutoCriticalSection s_embeddedTypeInfoLock;
   static CComPtr<ITypeInfo> s_embeddedTypeInfo;
   static HRESULT GetEmbeddedTypeInfo(ITypeInfo** resultTypeInfo);
+  HRESULT InvokeScriptingExtension(DISPID dispid, WORD flags, DISPPARAMS* parameters, VARIANT* result, UINT* argumentError);
 
 public:
   static void FlushTraceSummary();

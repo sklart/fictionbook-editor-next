@@ -14,6 +14,7 @@
 #include "apputils.h"
 
 #include "FBDoc.h"
+#include "scripts/ScriptExecutionContext.h"
 #include "Scintilla.h"
 #include "Settings.h"
 #include "ThemeManager.h"
@@ -636,6 +637,7 @@ void Doc::ShowDescription(bool Show)
 
 void Doc::RunScript(LPCOLESTR filePath)
 {
+	FbeScripts::ScriptExecutionScope executionContext(filePath);
 	StartupTrace::ScopedOperation operation(StartupTrace::Operation::Script);
 	TraceDocumentEvent(L"D300", L"script execution started", CString(filePath));
 	CComVariant vtResult;

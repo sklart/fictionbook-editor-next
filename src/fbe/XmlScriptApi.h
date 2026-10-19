@@ -8,7 +8,8 @@ enum class XmlScriptApiOperation
 {
 	GetSourceText,
 	ValidateSourceText,
-	ApplySourceText
+	ApplySourceText,
+	GetScriptingEnvironment
 };
 
 struct XmlScriptApiRequest
@@ -22,6 +23,8 @@ struct XmlScriptApiRequest
 	int line;
 	int column;
 	CString message;
+	CString scriptPath, scriptUid, viewMode;
+	bool documentModified = false;
 
 	explicit XmlScriptApiRequest(XmlScriptApiOperation requestedOperation = XmlScriptApiOperation::GetSourceText) :
 		operation(requestedOperation), text(NULL), action(NULL), succeeded(false),
