@@ -1750,7 +1750,9 @@ void CMainFrame::RunPortableStateTestScenario()
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index) if(!m_scripts.Menu().Item(index).isFolder && !m_scripts.Menu().Item(index).uid.IsEmpty()) { knownUid = m_scripts.Menu().Item(index).uid; break; }
 		for(int index = 1; index <= 5; ++index) { ScriptToolbarDefinition item; item.id.Format(L"runtime-toolbar-%d", index); item.name.Format(L"Runtime toolbar %d", index); item.visible = true; definitions.push_back(item); }
 		PortableToolbarItem known = {}; known.scriptUid = knownUid.IsEmpty() ? L"runtime-layout-anchor-uid" : knownUid; definitions.back().items.push_back(known);
-		PortableToolbarItem missing = {}; missing.scriptUid = L"runtime-missing-script-uid"; definitions.back().items.push_back(missing);
+		PortableToolbarItem missing = {}; missing.scriptUid = L"runtime-missing-script-uid";
+		missing.scriptName = L"Последнее известное имя"; missing.relativePath = L"missing/Последний путь.js";
+		definitions.back().items.push_back(missing);
 		PortableToolbarItem separator = {}; separator.separator = true; separator.width = 9; definitions.back().items.push_back(separator);
 		const int initialBands = m_rebar.GetBandCount();
 		auto runtimeBandsValid = [&](int expected) {
@@ -1790,8 +1792,30 @@ void CMainFrame::RunPortableStateTestScenario()
 			if(item.id == L"runtime-toolbar-5" && item.items.size() > 1 && item.items[1].scriptUid == L"runtime-missing-script-uid") missingPreserved = true;
 			if(index > 0 && item.id == definitions[1].id) orderPreserved = true;
 		}
-		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved;
+		bool missingMetadata = false, missingLabel = false;
+		for(const auto& toolbar : persisted.scriptToolbars)
+			if(toolbar.id == L"runtime-toolbar-5" && toolbar.items.size() > 1) {
+				const auto& item = toolbar.items[1];
+				missingMetadata = item.scriptName == missing.scriptName && item.relativePath == missing.relativePath;
+				const ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(toolbar.id);
+				if(runtime != NULL) {
+					ScriptsToolbarTarget target = {}; target.id = toolbar.id; target.name = toolbar.name; target.toolbar = runtime->window; target.items = toolbar.items;
+					std::vector<ScriptsToolbarCommand> available; CSimpleArray<TBBUTTON> defaults;
+					CScriptsToolbarCustomizeDlg dialog(runtime->window, available, defaults, _Settings, std::vector<ScriptsToolbarTarget>(1, target),
+						[](const CString&, const std::vector<PortableToolbarItem>&) { return false; }, true, CString(L"Assignment metadata"));
+					if(dialog.Create(m_hWnd) != NULL) {
+						CListBox list(dialog.GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT)); CString label;
+						const int length = list.GetTextLen(1);
+						if(length >= 0) { list.GetText(1, label.GetBuffer(length + 1)); label.ReleaseBuffer(); }
+						missingLabel = label.Find(missing.scriptName) >= 0 && label.Find(missing.relativePath) >= 0;
+						dialog.DestroyWindow();
+					}
+				}
+			}
+		const bool passed = defaultNames && created && renamedAndReordered && hidden && shown && deleted && incremental && untouchedStable && reloads && loaded && missingPreserved && orderPreserved && missingMetadata && missingLabel;
+		CStringA metadataReport; metadataReport.Format("missing-metadata=%d\nmissing-label=%d\n", missingMetadata, missingLabel);
 		CStringA report; report.Format("phase=script-toolbar-lifecycle\nmode=%s\ndefault-names=%d\ncreated=%d\nrenamed-reordered=%d\nhidden=%d\nshown=%d\ndeleted=%d\nincremental=%d\nuntouched-stable=%d\nreloads=%d\nmissing-uid=%d\npersistence=%d\nresult=%s\n", DeploymentContext::CurrentMode() == DeploymentContext::Mode::Portable ? "portable" : "installed", defaultNames, created, renamedAndReordered, hidden, shown, deleted, incremental, untouchedStable, reloads, missingPreserved, loaded && orderPreserved, passed ? "pass" : "fail");
+		report += metadataReport;
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;
 	}
 	if (diagnosticCleanup)

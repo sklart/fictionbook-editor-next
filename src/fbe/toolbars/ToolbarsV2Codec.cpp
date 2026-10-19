@@ -6,7 +6,16 @@ namespace
 CString Escape(const CString& value) { CString result(value); result.Replace(L"&", L"&amp;"); result.Replace(L"\"", L"&quot;"); result.Replace(L"<", L"&lt;"); result.Replace(L">", L"&gt;"); return result; }
 CString Unescape(const CString& value) { CString result(value); result.Replace(L"&quot;", L"\""); result.Replace(L"&lt;", L"<"); result.Replace(L"&gt;", L">"); result.Replace(L"&amp;", L"&"); return result; }
 bool Attr(const CString& tag, const wchar_t* key, CString& value) { CString prefix(key); prefix += L"=\""; int at = tag.Find(prefix); if(at < 0) return false; at += prefix.GetLength(); const int end = tag.Find(L'\"', at); if(end < 0) return false; value = Unescape(tag.Mid(at, end - at)); return true; }
-void WriteItems(CString& xml, const std::vector<PortableToolbarItem>& items) { for(size_t i = 0; i < items.size(); ++i) { const PortableToolbarItem& item = items[i]; if(item.separator) xml.AppendFormat(L"    <Separator width=\"%d\" />\r\n", item.width); else if(!item.scriptUid.IsEmpty()) xml.AppendFormat(L"    <Script uid=\"%s\" />\r\n", static_cast<LPCWSTR>(Escape(item.scriptUid))); else if(item.command) xml.AppendFormat(L"    <Command id=\"%d\" />\r\n", item.command); } }
+void WriteItems(CString& xml, const std::vector<PortableToolbarItem>& items)
+{
+	for(const auto& item : items)
+	{
+		if(item.separator) xml.AppendFormat(L"    <Separator width=\"%d\" />\r\n", item.width);
+		else if(!item.scriptUid.IsEmpty()) xml.AppendFormat(L"    <Script uid=\"%s\" name=\"%s\" path=\"%s\" />\r\n",
+			static_cast<LPCWSTR>(Escape(item.scriptUid)), static_cast<LPCWSTR>(Escape(item.scriptName)), static_cast<LPCWSTR>(Escape(item.relativePath)));
+		else if(item.command) xml.AppendFormat(L"    <Command id=\"%d\" />\r\n", item.command);
+	}
+}
 }
 
 CString ToolbarsV2Codec::Serialize(const PortableToolbarLayout& layout)
@@ -24,7 +33,7 @@ bool ToolbarsV2Codec::Parse(const CString& xml, PortableToolbarLayout& layout)
 		if(tag.Left(8) == L"Toolbar ") { if(current != NULL || commands) return false; CString id, kind, name; if(!Attr(tag,L"id",id) || !Attr(tag,L"kind",kind) || id.IsEmpty()) return false; if(kind == L"commands") { if(id != L"commands" || parsed.commandToolbarPresent) return false; parsed.commandToolbarPresent = true; commands = true; } else if(kind == L"scripts") { for(size_t i = 0; i < parsed.scriptToolbars.size(); ++i) if(parsed.scriptToolbars[i].id == id) return false; ScriptToolbarDefinition d; d.id = id; Attr(tag,L"name",name); d.name = name.IsEmpty() ? id : name; d.visible = tag.Find(L"visible=\"0\"") < 0; parsed.scriptToolbars.push_back(d); current = &parsed.scriptToolbars.back(); if(id == L"scripts-main") parsed.scriptsToolbarPresent = true; } else return false; continue; }
 		if(tag == L"/Toolbar") { if(current == NULL && !commands) return false; current = NULL; commands = false; continue; }
 		if(tag.Left(10) == L"LastScript") { if(!Attr(tag,L"uid",parsed.lastScript)) return false; continue; }
-		if(current == NULL && !commands) continue; PortableToolbarItem item = {}; if(tag.Left(9) == L"Separator") { item.separator = true; item.width = 8; CString value; if(Attr(tag,L"width",value)) { const int width = _wtoi(value); if(width > 0 && width <= 32767) item.width = width; } } else if(tag.Left(7) == L"Command") { CString id; if(!Attr(tag,L"id",id)) return false; item.command=_wtoi(id); } else if(tag.Left(6) == L"Script") { if(!Attr(tag,L"uid",item.scriptUid)) return false; } else continue; if(commands) parsed.commands.push_back(item); else { current->items.push_back(item); if(current->id == L"scripts-main") parsed.scripts.push_back(item); }
+		if(current == NULL && !commands) continue; PortableToolbarItem item = {}; if(tag.Left(9) == L"Separator") { item.separator = true; item.width = 8; CString value; if(Attr(tag,L"width",value)) { const int width = _wtoi(value); if(width > 0 && width <= 32767) item.width = width; } } else if(tag.Left(7) == L"Command") { CString id; if(!Attr(tag,L"id",id)) return false; item.command=_wtoi(id); } else if(tag.Left(6) == L"Script") { if(!Attr(tag,L"uid",item.scriptUid)) return false; Attr(tag,L"name",item.scriptName); Attr(tag,L"path",item.relativePath); } else continue; if(commands) parsed.commands.push_back(item); else { current->items.push_back(item); if(current->id == L"scripts-main") parsed.scripts.push_back(item); }
 	}
 	if(current != NULL || commands) return false; layout=parsed; return true;
 }

@@ -10,6 +10,7 @@ struct ScriptIdentity
 	CString uid;
 	CString relativePath;
 	CString fingerprint;
+	CString name;
 };
 
 // Keeps script identity out of .js files and out of the registry.  Missing

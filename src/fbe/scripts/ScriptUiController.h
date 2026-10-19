@@ -5,6 +5,8 @@
 #include "ScriptVisualResources.h"
 #include <functional>
 
+struct PortableToolbarItem;
+
 namespace FbeScripts
 {
 enum { ScriptCommandCount = 999 };
@@ -23,6 +25,7 @@ public:
 	const CString& LastScriptUid() const { return m_lastUid; }
 	const ScriptDescriptor* LastScript() const;
 	CString FindScriptUid(const CString& path, const CString& scriptsRoot);
+	void DescribeAssignment(PortableToolbarItem& item) const;
 	bool HasLastScript() const { return !m_lastUid.IsEmpty(); }
 	bool Initialize(const CString& folder, const CString& persistedCommandIds, CString& updatedCommandIds,
 		HMENU scriptsMenu, const CString& noScriptsText,
@@ -32,8 +35,8 @@ public:
 
 private:
 	MenuBuilder m_menu;
-	// A catalogue refresh must use the identities it assigned earlier in the
-	// same process even while ScriptRegistry.xml is being atomically replaced.
+	// Cached records survive a refresh; Resolve merges them with the latest
+	// on-disk registry under the profile lock before publishing identities.
 	ScriptRegistry m_registry;
 	bool m_registryLoaded;
 	VisualResources m_visuals;

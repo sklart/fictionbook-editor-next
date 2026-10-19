@@ -1,17 +1,45 @@
 #include "stdafx.h"
 #include "PortableToolbarStore.h"
 #include "ToolbarsV2Codec.h"
+#include "../scripts/ScriptRegistry.h"
+#include "ScriptToolbarItemText.h"
+#include <rpc.h>
 #include "..\\..\\common\\DeploymentContext.h"
 
 namespace
 {
+void DescribeItems(std::vector<PortableToolbarItem>& items, const FbeScripts::ScriptRegistry& registry)
+{
+	for(auto& item : items)
+	{
+		if(item.separator || item.scriptUid.IsEmpty()) continue;
+		const FbeScripts::ScriptIdentity* identity = registry.FindByUid(item.scriptUid);
+		if(identity == NULL) continue; // Сохраняем последний известный снимок.
+		item.relativePath = identity->relativePath;
+		if(!identity->name.IsEmpty()) item.scriptName = identity->name;
+		if(item.scriptName.IsEmpty()) item.scriptName = ScriptToolbarItemText::Name(item);
+	}
+}
+
+void DescribeLayout(PortableToolbarLayout& layout, const FbeScripts::ScriptRegistry& registry)
+{
+	DescribeItems(layout.commands, registry); DescribeItems(layout.scripts, registry);
+	for(auto& toolbar : layout.scriptToolbars) DescribeItems(toolbar.items, registry);
+}
+
 CString PortableToolbarsPath() { return CString(DeploymentContext::SettingsDirectory().c_str()) + L"Toolbars.xml"; }
 CString XmlEscape(const CString& value) { CString escaped(value); escaped.Replace(L"&", L"&amp;"); escaped.Replace(L"\"", L"&quot;"); escaped.Replace(L"<", L"&lt;"); escaped.Replace(L">", L"&gt;"); return escaped; }
 CString XmlUnescape(const CString& value) { CString unescaped(value); unescaped.Replace(L"&quot;", L"\""); unescaped.Replace(L"&lt;", L"<"); unescaped.Replace(L"&gt;", L">"); unescaped.Replace(L"&amp;", L"&"); return unescaped; }
 bool WriteText(const CString& text)
 {
+	if(text.GetLength() > 128 * 1024) return false; // Тот же предел, что у Load.
 	const CString directory(DeploymentContext::SettingsDirectory().c_str()); if(!::CreateDirectory(directory, NULL) && ::GetLastError() != ERROR_ALREADY_EXISTS) return false;
-	const CString path = PortableToolbarsPath(), temporary = path + L".tmp"; HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); if(file == INVALID_HANDLE_VALUE) return false;
+	UUID uuid = {}; const RPC_STATUS status = ::UuidCreate(&uuid);
+	if(status != RPC_S_OK && status != RPC_S_UUID_LOCAL_ONLY) return false;
+	RPC_WSTR value = NULL; if(::UuidToStringW(&uuid, &value) != RPC_S_OK) return false;
+	const CString suffix(reinterpret_cast<LPCWSTR>(value)); ::RpcStringFreeW(&value);
+	const CString path = PortableToolbarsPath(), temporary = path + L"." + suffix + L".tmp";
+	HANDLE file = ::CreateFile(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL); if(file == INVALID_HANDLE_VALUE) return false;
 	DWORD written = 0;
 	const DWORD bytes = static_cast<DWORD>(text.GetLength() * sizeof(wchar_t));
 	bool ok = ::WriteFile(file, text, bytes, &written, NULL) != FALSE && written == bytes;
@@ -31,7 +59,11 @@ bool PortableToolbarStore::Load(PortableToolbarLayout& layout)
 	const CString path = PortableToolbarsPath(); HANDLE file = ::CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); if(file == INVALID_HANDLE_VALUE) return false;
 	const DWORD length = ::GetFileSize(file, NULL); if(length == INVALID_FILE_SIZE || length > 256 * 1024 || (length % sizeof(wchar_t)) != 0) { ::CloseHandle(file); return false; }
 	std::vector<wchar_t> text(length / sizeof(wchar_t) + 1, 0); DWORD read = 0; const BOOL ok = ::ReadFile(file, &text[0], length, &read, NULL); ::CloseHandle(file); if(!ok || read != length) return false;
-	CString content(&text[0]); if(content.Find(L"<Toolbars version=\"2\">") >= 0) return ToolbarsV2Codec::Parse(content, layout); if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0) return false;
+	CString content(&text[0]); if(content.Find(L"<Toolbars version=\"2\">") >= 0) {
+		if(!ToolbarsV2Codec::Parse(content, layout)) return false;
+		FbeScripts::ScriptRegistry registry; if(registry.Load()) DescribeLayout(layout, registry);
+		return true;
+	} if(content.Find(L"<Toolbars version=\"1\">") < 0 || content.Find(L"</Toolbars>") < 0) return false;
 	PortableToolbarLayout parsed; int cursor = 0; CString active; bool closedRoot = false;
 	while(cursor >= 0) { const int start = content.Find(L'<', cursor); if(start < 0) break; const int end = content.Find(L'>', start + 1); if(end < 0) return false; CString tag = content.Mid(start + 1, end - start - 1); cursor = end + 1;
 		if(tag == L"/Toolbars") { if(!active.IsEmpty()) return false; closedRoot = true; break; }
@@ -45,7 +77,12 @@ bool PortableToolbarStore::Load(PortableToolbarLayout& layout)
 }
 bool PortableToolbarStore::Save(const PortableToolbarLayout& layout)
 {
-	return WriteText(ToolbarsV2Codec::Serialize(layout));
+	FbeScripts::ScriptRegistry registry;
+	if(!registry.Load()) return false;
+	PortableToolbarLayout described(layout);
+	DescribeLayout(described, registry);
+	// Снимок назначения хранится в той же атомарной записи, что и UID.
+	return WriteText(ToolbarsV2Codec::Serialize(described));
 }
 bool PortableToolbarStore::CaptureSnapshot(Snapshot& snapshot)
 {

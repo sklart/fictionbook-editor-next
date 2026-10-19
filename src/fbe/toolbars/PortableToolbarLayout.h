@@ -10,6 +10,7 @@ struct PortableToolbarItem
 	int width;
 	CString relativePath;
 	CString scriptUid;
+	CString scriptName;
 };
 
 struct ScriptToolbarDefinition

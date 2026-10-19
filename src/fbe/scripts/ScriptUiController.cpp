@@ -3,6 +3,7 @@
 #include "ScriptCatalog.h"
 #include "ScriptRegistry.h"
 #include "ScriptExecutionContext.h"
+#include "../toolbars/PortableToolbarLayout.h"
 #include "..\resource.h"
 
 namespace FbeScripts
@@ -22,6 +23,14 @@ void ResolveVisualPathParts(const ScriptDescriptor& descriptor, CString& directo
 
 UiController::UiController(UINT folderCommandBase, UINT folderCommandCount)
 	: m_menu(folderCommandBase, folderCommandCount), m_registryLoaded(false), m_initializeCount(0), m_discoveryCount(0) {}
+
+void UiController::DescribeAssignment(PortableToolbarItem& item) const
+{
+	const ScriptIdentity* identity = m_registry.FindByUid(item.scriptUid);
+	if(identity == NULL) return;
+	item.relativePath = identity->relativePath;
+	if(!identity->name.IsEmpty()) item.scriptName = identity->name;
+}
 
 void UiController::SetLastScript(const ScriptDescriptor& script)
 {

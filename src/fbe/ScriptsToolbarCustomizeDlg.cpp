@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "toolbars/ScriptToolbarItemText.h"
 #include "ScriptsToolbarCustomizeDlg.h"
 #include "Settings.h"
 #include "RuntimeLocalization.h"
@@ -191,8 +192,8 @@ void CScriptsToolbarCustomizeDlg::PopulateCurrent(const std::vector<DWORD_PTR>* 
 		TBBUTTON button = {}; const bool known = CurrentItemButton(i, button);
 		CString name;
 		for(size_t j = 0; known && j < m_available.size(); ++j) if(m_available[j].command == button.idCommand) { name = DisplayName(j); break; }
-		if(name.IsEmpty() && !items[i].scriptUid.IsEmpty()) name = FbeLoadRuntimeStringByKey(
-			L"fbe.scripts_toolbar_customize.unavailable_script", L"Unavailable script");
+		if(name.IsEmpty() && !items[i].scriptUid.IsEmpty()) name = ScriptToolbarItemText::UnavailableLabel(items[i], FbeLoadRuntimeStringByKey(
+			L"fbe.scripts_toolbar_customize.unavailable_script", L"Unavailable script"));
 		if(name.IsEmpty()) name.Format(FbeLoadRuntimeStringByKey(
 			L"fbe.scripts_toolbar_customize.unknown_command", L"Command %d"), items[i].command);
 		const int row = m_currentList.AddString(name); m_currentList.SetItemData(row, static_cast<DWORD_PTR>(i));
@@ -243,10 +244,11 @@ LRESULT CScriptsToolbarCustomizeDlg::OnToolTipText(int, LPNMHDR hdr, BOOL& bHand
 	} else {
 		const size_t itemIndex = static_cast<size_t>(m_currentList.GetItemData(row)); TBBUTTON button = {};
 		if(itemIndex < CurrentItems().size() && CurrentItems()[itemIndex].separator) m_toolTipText = FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.separator", L"--- Separator ---");
-		else if(CurrentItemButton(itemIndex, button)) for(size_t i = 0; i < m_available.size(); ++i)
-			if(m_available[i].command == button.idCommand) { m_toolTipText = m_available[i].name; if(!m_available[i].relativePath.IsEmpty()) m_toolTipText += L"\n" + m_available[i].relativePath; break; }
-		else if(itemIndex < CurrentItems().size() && !CurrentItems()[itemIndex].scriptUid.IsEmpty())
-			m_toolTipText.Format(L"%s\n%s", static_cast<LPCWSTR>(FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.unavailable_script", L"Unavailable script")), static_cast<LPCWSTR>(CurrentItems()[itemIndex].scriptUid));
+		else if(CurrentItemButton(itemIndex, button)) {
+			for(size_t i = 0; i < m_available.size(); ++i)
+				if(m_available[i].command == button.idCommand) { m_toolTipText = m_available[i].name; if(!m_available[i].relativePath.IsEmpty()) m_toolTipText += L"\n" + m_available[i].relativePath; break; }
+		} else if(itemIndex < CurrentItems().size() && !CurrentItems()[itemIndex].scriptUid.IsEmpty())
+			m_toolTipText = ScriptToolbarItemText::UnavailableDetails(CurrentItems()[itemIndex], FbeLoadRuntimeStringByKey(L"fbe.scripts_toolbar_customize.unavailable_script", L"Unavailable script"));
 	}
 	if(m_toolTipText.IsEmpty()) { bHandled = FALSE; return 0; }
 	info->lpszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(m_toolTipText));

@@ -570,6 +570,7 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
 	<ClInclude Include="navigation\ReferenceNavigation.h" />
     <ClInclude Include="mainfrm.h" />
 	<ClInclude Include="toolbars\PortableToolbarLayout.h" />
+	<ClInclude Include="toolbars\ScriptToolbarItemText.h" />
 	<ClInclude Include="toolbars\PortableToolbarStore.h" />
 	<ClInclude Include="toolbars\ScriptToolbarCollection.h" />
 	<ClInclude Include="toolbars\ToolbarsV2Codec.h" />

@@ -2609,6 +2609,7 @@ void CMainFrame::ShowScriptsToolbarCustomizeDialog(HWND selectedToolbar)
 	for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index) {
 		const ScriptToolbarRuntime& runtime = m_scriptToolbars.Items()[index];
 		ScriptsToolbarTarget target = {}; target.id = runtime.definition.id; target.name = runtime.definition.name; target.toolbar = runtime.window; target.items = runtime.definition.items;
+		for(auto& item : target.items) m_scripts.DescribeAssignment(item);
 		if(target.items.empty() && runtime.window != NULL && !ToolbarLayoutAdapter::Capture(runtime.window, target.items)) return;
 		for(size_t itemIndex = 0; itemIndex < target.items.size(); ++itemIndex) if(!target.items[itemIndex].separator && !target.items[itemIndex].scriptUid.IsEmpty())
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.uid == target.items[itemIndex].scriptUid && script.commandId > 0) { target.items[itemIndex].command = ID_SCRIPT_BASE + script.commandId; break; } }
@@ -2735,7 +2736,7 @@ bool CMainFrame::UpdateScriptToolbarItems(const CString& id, const std::vector<P
 	}
 	std::vector<PortableToolbarItem> persisted = items;
 	for(size_t itemIndex = 0; itemIndex < persisted.size(); ++itemIndex) if(!persisted[itemIndex].separator && persisted[itemIndex].command >= ID_SCRIPT_BASE + 1 && persisted[itemIndex].command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT)
-		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.commandId == persisted[itemIndex].command - ID_SCRIPT_BASE) { persisted[itemIndex].command = 0; persisted[itemIndex].scriptUid = script.uid; break; } }
+		for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex) { const ScriptDescriptor& script = m_scripts.Menu().Item(scriptIndex); if(!script.isFolder && script.commandId == persisted[itemIndex].command - ID_SCRIPT_BASE) { persisted[itemIndex].command = 0; persisted[itemIndex].scriptUid = script.uid; persisted[itemIndex].relativePath = script.relativePath; persisted[itemIndex].scriptName = script.name; break; } }
 	bool found = false;
 	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index) if(layout.scriptToolbars[index].id == id) { layout.scriptToolbars[index].items = persisted; if(id == L"scripts-main") layout.scripts = persisted; found = true; break; }
 	if(!found) return false;
@@ -2783,7 +2784,7 @@ bool CMainFrame::AddScriptsToToolbar(const std::vector<CString>& scriptUids, con
 						(!current[index].items[item].relativePath.IsEmpty() && current[index].items[item].relativePath.CompareNoCase(script.relativePath) == 0)))
 						{ present = true; break; }
 				if(present) continue;
-				PortableToolbarItem item = {}; item.separator = false; item.command = 0; item.width = 0; item.relativePath = script.relativePath; item.scriptUid = script.uid;
+				PortableToolbarItem item = {}; item.separator = false; item.command = 0; item.width = 0; item.relativePath = script.relativePath; item.scriptUid = script.uid; item.scriptName = script.name;
 				current[index].items.push_back(item);
 				changed = true;
 			}
@@ -3073,7 +3074,7 @@ void CMainFrame::RestorePortableToolbarLayout(HWND toolbar, bool scriptsToolbar)
 		{
 			command = 0;
 			for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
-				if(!m_scripts.Menu().Item(scriptIndex).isFolder && (m_scripts.Menu().Item(scriptIndex).uid == item.scriptUid || (!item.relativePath.IsEmpty() && m_scripts.Menu().Item(scriptIndex).relativePath == item.relativePath)) && m_scripts.Menu().Item(scriptIndex).commandId > 0)
+				if(!m_scripts.Menu().Item(scriptIndex).isFolder && (m_scripts.Menu().Item(scriptIndex).uid == item.scriptUid || (item.scriptUid.IsEmpty() && !item.relativePath.IsEmpty() && m_scripts.Menu().Item(scriptIndex).relativePath == item.relativePath)) && m_scripts.Menu().Item(scriptIndex).commandId > 0)
 				{
 					command = ID_SCRIPT_BASE + m_scripts.Menu().Item(scriptIndex).commandId;
 					break;
@@ -3182,6 +3183,9 @@ void CMainFrame::SavePortableToolbarLayout()
 	for(size_t index = 0; index < layout.scriptToolbars.size(); ++index)
 		if(layout.scriptToolbars[index].id == L"scripts-main") { layout.scriptToolbars[index].items = layout.scripts; ScriptToolbarRuntime* runtime = m_scriptToolbars.Find(L"scripts-main"); if(runtime != NULL && runtime->rebarBandId != 0 && m_rebar.IdToIndex(runtime->rebarBandId) >= 0) layout.scriptToolbars[index].visible = IsBandVisible(runtime->rebarBandId); mainFound = true; break; }
 	if(!mainFound) { ScriptToolbarDefinition main; main.id = L"scripts-main"; main.name = L"Scripts"; main.items = layout.scripts; layout.scriptToolbars.push_back(main); }
+	for(auto& item : layout.scripts) m_scripts.DescribeAssignment(item);
+	for(auto& definition : layout.scriptToolbars)
+		for(auto& item : definition.items) m_scripts.DescribeAssignment(item);
 	layout.lastScript = m_scripts.LastScriptUid();
 	PortableToolbarStore::Save(layout);
 }
@@ -3275,7 +3279,7 @@ bool CMainFrame::PopulateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 			items[item].command = 0;
 			for(int script = 0; script < m_scripts.Menu().Count(); ++script)
 				if(!m_scripts.Menu().Item(script).isFolder && m_scripts.Menu().Item(script).commandId > 0 &&
-					(m_scripts.Menu().Item(script).uid == items[item].scriptUid || (!items[item].relativePath.IsEmpty() && m_scripts.Menu().Item(script).relativePath == items[item].relativePath)))
+					(m_scripts.Menu().Item(script).uid == items[item].scriptUid || (items[item].scriptUid.IsEmpty() && !items[item].relativePath.IsEmpty() && m_scripts.Menu().Item(script).relativePath == items[item].relativePath)))
 				{ items[item].command = ID_SCRIPT_BASE + m_scripts.Menu().Item(script).commandId; break; }
 		}
 	std::vector<TBBUTTON> buttons(catalog.GetSize());
