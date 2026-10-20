@@ -87,7 +87,12 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 		VisualResource visual = m_visuals.Load(directory, picture, candidate.isFolder); m_menu.Add(candidate, static_cast<VisualResource&&>(visual));
 	}
 	const bool changed = m_menu.AssignCommandIds(ScriptCommandCount, persistedCommandIds, updatedCommandIds);
-	while(::GetMenuItemCount(scriptsMenu) > 0) ::RemoveMenu(scriptsMenu, 0, MF_BYPOSITION);
+	while(::GetMenuItemCount(scriptsMenu) > 0) {
+		// RemoveMenu detaches a popup without freeing its descendants.
+		const HMENU previousPopup = ::GetSubMenu(scriptsMenu, 0);
+		if(!::RemoveMenu(scriptsMenu, 0, MF_BYPOSITION)) break;
+		if(previousPopup) ::DestroyMenu(previousPopup);
+	}
 	if(m_menu.Count())
 	{
 		m_menu.Build(scriptsMenu, [](ScriptDescriptor&) {}, addVisual);

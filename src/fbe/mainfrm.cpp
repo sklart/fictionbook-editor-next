@@ -3448,10 +3448,17 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 {
 	const std::vector<CHotkeysGroup> previousHotkeys = _Settings.m_hotkey_groups;
 	ReleaseScriptResources();
-	for(UINT command = ID_SCRIPT_BASE; command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT; ++command)
+	for(UINT command = ID_SCRIPT_BASE; command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT; ++command) {
 		ThemeManager::UnregisterNativeMenuBitmap(command);
-	for(UINT command = SCRIPT_FOLDER_MENU_ID_BASE; command <= SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT; ++command)
+		// WTL appends command images (and Vista menu bitmaps) on every AddIcon.
+		// Remove old mappings before rebuilding, including duplicates from an
+		// earlier scan, while preserving all non-script menu images.
+		while(m_MenuBar.RemoveImage(command)) {}
+	}
+	for(UINT command = SCRIPT_FOLDER_MENU_ID_BASE; command <= SCRIPT_FOLDER_MENU_ID_BASE + SCRIPT_FOLDER_MENU_ID_COUNT; ++command) {
 		ThemeManager::UnregisterNativeMenuBitmap(command);
+		while(m_MenuBar.RemoveImage(command)) {}
+	}
 	DestroyScriptToolbarRuntimeControls();
 	m_scriptToolbars.Reset();
 	for(size_t index = 0; index < definitions.size(); ++index) m_scriptToolbars.Add(definitions[index]);

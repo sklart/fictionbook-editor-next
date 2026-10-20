@@ -102,7 +102,24 @@ void CMainFrame::RunScriptHotkeyManagementTest()
 		::SetKeyboardState(modified);
 		::SendMessageW(dialog.GetDlgItem(IDC_BUTTON_DEFAULT), WM_KEYDOWN, 'F', 0);
 		check("ctrl-f", ::GetFocus() == dialog.m_search);
+		dialog.m_editHotkey.SetFocus();
+		MSG recording = {}; recording.hwnd = dialog.m_editHotkey; recording.message = WM_KEYDOWN; recording.wParam = 'F';
+		check("recording-bypasses-search", !dialog.PreTranslateMessage(&recording) && ::GetFocus() == dialog.m_editHotkey);
+		dialog.m_editHotkey.SendMessage(WM_KEYDOWN, VK_CONTROL);
+		dialog.m_editHotkey.SendMessage(WM_KEYDOWN, 'F');
+		check("record-ctrl-f", dialog.m_accel.key == 'F' && dialog.m_accel.fVirt == (FVIRTKEY | FCONTROL) && ::GetFocus() == dialog.m_editHotkey);
+		// Remove the existing Ctrl+F only in this disposable dialog snapshot;
+		// the collision confirmation path is covered separately by Settings tests.
+		for(auto& entry : _Settings.m_hotkey_groups) for(auto& key : entry.m_hotkeys)
+			if(key.m_accel.cmd != ID_LAST_SCRIPT && key.m_accel.key == 'F' && key.m_accel.fVirt == (FVIRTKEY | FCONTROL)) {
+				key.m_accel.key = 0; key.m_accel.fVirt = 0;
+			}
+		dialog.OnBnClickedButtonHotkeyAssign(0, 0, NULL, handled);
+		check("assign-ctrl-f", last->m_accel.key == 'F' && last->m_accel.fVirt == (FVIRTKEY | FCONTROL));
+		dialog.m_editHotkey.SendMessage(WM_KEYUP, 'F');
+		dialog.m_editHotkey.SendMessage(WM_KEYUP, VK_CONTROL);
 		::SetKeyboardState(keyboard);
+		dialog.m_search.SetFocus();
 		dialog.m_search.SetWindowText(L"ПАПКА");
 		check("folder-search", dialog.m_hotkeys.GetItemCount() == 2);
 		dialog.m_search.SetWindowText(L"ПОВТОР");
@@ -178,6 +195,43 @@ void CMainFrame::RunScriptHotkeyManagementTest()
 	const bool loaded = saved && saved->load(_variant_t(FbeSettings::HotkeysFilePath())) != VARIANT_FALSE;
 	check("no-xml-duplicates", loaded && group &&
 		saved->selectNodes(L"/FBE/HkGroups/HkGroup[GroupName='Scripts']/Hotkeys/Hotkey")->length == static_cast<long>(group->m_hotkeys.size()));
+	wchar_t refreshText[16] = {};
+	::GetEnvironmentVariableW(L"FBE_NEXT_HOTKEY_TEST_REFRESHES", refreshText, _countof(refreshText));
+	const int refreshes = _wtoi(refreshText);
+	if(refreshes >= 200 && refreshes <= 500 && wcscmp(phase, L"write") == 0) {
+		const auto privateBytes = []() -> SIZE_T {
+			PROCESS_MEMORY_COUNTERS_EX memory = {}; memory.cb = sizeof(memory);
+			return ::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory))
+				? memory.PrivateUsage : 0;
+		};
+		for(int index = 0; index < 30; ++index) { _Settings.keycodes = 0; _Settings.LoadHotkeyGroups(); }
+		const SIZE_T loadBefore = privateBytes();
+		for(int index = 0; index < refreshes; ++index) { _Settings.keycodes = 0; _Settings.LoadHotkeyGroups(); }
+		const SIZE_T loadAfter = privateBytes();
+		report.AppendFormat("load-iterations=%d\nload-private-before=%Iu\nload-private-after=%Iu\n", refreshes, loadBefore, loadAfter);
+		check("load-memory-bounded", loadBefore != 0 && loadAfter <= loadBefore + 4 * 1024 * 1024);
+		for(int index = 0; index < 20; ++index) InitializeScripts();
+		const SIZE_T before = privateBytes();
+		const DWORD userBefore = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+		const DWORD gdiBefore = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		bool refreshed = true;
+		for(int index = 0; index < refreshes; ++index) {
+			refreshed = InitializeScripts() && refreshed;
+			if((index + 1) % 100 == 0) report.AppendFormat("refresh-%d-private=%Iu\n", index + 1, privateBytes());
+		}
+		const SIZE_T after = privateBytes();
+		const DWORD userAfter = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+		const DWORD gdiAfter = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS);
+		report.AppendFormat("refresh-gdi-before=%lu\nrefresh-gdi-after=%lu\n", gdiBefore, gdiAfter);
+		check("refresh-gdi-handles-bounded", gdiBefore != 0 && gdiAfter <= gdiBefore + 4);
+		report.AppendFormat("refresh-user-before=%lu\nrefresh-user-after=%lu\n", userBefore, userAfter);
+		check("refresh-user-handles-bounded", userBefore != 0 && userAfter <= userBefore + 2);
+		report.AppendFormat("refresh-iterations=%d\nrefresh-private-before=%Iu\nrefresh-private-after=%Iu\n", refreshes, before, after);
+		check("refresh-memory-bounded", refreshed && before != 0 && after <= before + 8 * 1024 * 1024);
+		group = FbeSettings::Hotkeys::FindGroup(_Settings.m_hotkey_groups, L"Scripts");
+		scriptKey = group ? FbeSettings::Hotkeys::FindHotkey(*group, identity) : NULL;
+		check("stress-assignments", group && group->m_hotkeys.size() == count && scriptKey && scriptKey->m_accel.key == VK_F6);
+	}
 	report.AppendFormat("result=%s\n", passed ? "pass" : "fail");
 	CAtlFile output; DWORD written = 0;
 	if(SUCCEEDED(output.Create(AU::_ARGS.source_memory_benchmark_path, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS)))

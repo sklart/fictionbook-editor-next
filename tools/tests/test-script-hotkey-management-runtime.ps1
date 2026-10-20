@@ -1,11 +1,12 @@
 [CmdletBinding()]
-param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'))
+param([string]$FbeExe = (Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe'),
+    [ValidateSet(0,200,300,400,500)][int]$RefreshIterations = 0)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $FbeExe = (Resolve-Path -LiteralPath $FbeExe).Path
 $work = Join-Path $repo ('out\tests\script-hotkeys-' + [Guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $work
-$variables = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_HOTKEY_TEST_ROOT','FBE_NEXT_HOTKEY_TEST_PHASE','FBE_NEXT_UI_LOCALE')
+$variables = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY','FBE_NEXT_HOTKEY_TEST_ROOT','FBE_NEXT_HOTKEY_TEST_PHASE','FBE_NEXT_HOTKEY_TEST_REFRESHES','FBE_NEXT_UI_LOCALE')
 $saved = @{}; foreach ($name in $variables) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
     foreach ($mode in 'installed','portable') {
@@ -40,10 +41,11 @@ try {
             $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = Join-Path $directory 'Profile'
             $env:FBE_NEXT_HOTKEY_TEST_ROOT = (Join-Path $directory 'Data\Scripts') + '\'
             $env:FBE_NEXT_HOTKEY_TEST_PHASE = $phase
+            $env:FBE_NEXT_HOTKEY_TEST_REFRESHES = [string]$RefreshIterations
             $env:FBE_NEXT_UI_LOCALE = 'ru-RU'
             $report = Join-Path $directory "report-$phase.txt"
             $process = Start-Process -FilePath (Join-Path $directory 'FBE.exe') -WorkingDirectory $directory -ArgumentList @("--$mode", '-b', ('"' + $report + '"'), ('"' + (Join-Path $directory 'fixture.fb2') + '"')) -PassThru -WindowStyle Hidden
-            if (-not $process.WaitForExit(90000)) { Stop-Process -Id $process.Id -Force; throw "Hotkey $mode/$phase test timed out: $directory" }
+            if (-not $process.WaitForExit($(if($RefreshIterations) { 600000 } else { 90000 }))) { Stop-Process -Id $process.Id -Force; throw "Hotkey $mode/$phase test timed out: $directory" }
             $text = if (Test-Path -LiteralPath $report) { Get-Content -Raw -LiteralPath $report } else { '<no report>' }
             if ($process.ExitCode -ne 0 -or $text -notmatch '(?m)^result=pass$') { throw "Hotkey $mode/$phase failed ($($process.ExitCode)):`n$text`nLogs: $directory" }
             Write-Host "Script hotkey management $mode/$phase runtime: PASS"

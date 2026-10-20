@@ -3,6 +3,24 @@
 #include "..\\SettingsPaths.h"
 #include "../../utils/utils.h"
 namespace FbeSettings { namespace Hotkeys {
+namespace {
+// Deserialize transfers the groups and their nested heap objects to its caller.
+// Keep this separate from CHotkeysGroup: live/saved groups also contain borrowed
+// pointers into m_hotkeys and must never delete those pointers.
+struct DeserializedGroups {
+	std::vector<void*> objects;
+	~DeserializedGroups() {
+		for(void* object : objects) {
+			auto* group = static_cast<CHotkeysGroup*>(object);
+			for(void* hotkey : group->m_ptr_hotkeys) delete static_cast<CHotkey*>(hotkey);
+			delete group;
+		}
+	}
+	DeserializedGroups() = default;
+	DeserializedGroups(const DeserializedGroups&) = delete;
+	DeserializedGroups& operator=(const DeserializedGroups&) = delete;
+};
+}
 CString CommandTooltip(const std::vector<CHotkeysGroup>& groups, UINT command, const CString& text)
 {
 	for(const auto& group : groups)
@@ -22,17 +40,15 @@ bool SaveToFile(const std::vector<CHotkeysGroup>& groups, const CString& path)
         const CString existingPath = FbeSettings::HotkeysFilePath();
         if(::GetFileAttributesW(existingPath) != INVALID_FILE_ATTRIBUTES) {
             CXMLSerializer existing(existingPath, L"FBE", true);
-            CHotkeysGroup factory; std::vector<void*> stored;
-            existing.Deserialize(&factory, stored);
+            CHotkeysGroup factory; DeserializedGroups stored;
+            existing.Deserialize(&factory, stored.objects);
             CHotkeysGroup* scripts = FindGroup(snapshot, L"Scripts");
-            for(void* object : stored) {
+            for(void* object : stored.objects) {
                 const auto* old = static_cast<CHotkeysGroup*>(object);
                 if(scripts && old->m_reg_name == L"Scripts")
                     for(const auto& hotkey : old->m_hotkeys)
                         if(hotkey.m_reg_name.Left(7) == L"script:" && !FindHotkey(*scripts, hotkey.m_reg_name))
                             scripts->m_hotkeys.push_back(hotkey);
-                for(void* hotkey : old->m_ptr_hotkeys) delete static_cast<CHotkey*>(hotkey);
-                delete old;
             }
         }
         CXMLSerializer serializer(path, L"FBE", false);
@@ -56,11 +72,13 @@ CHotkey* FindHotkey(CHotkeysGroup& group, const CString& name)
 void Load(std::vector<CHotkeysGroup>& groups, int& keycodes)
 {
 	CXMLSerializer serializer(FbeSettings::HotkeysFilePath(), L"FBE", true);
-	CHotkeysGroup group; std::vector<void*> objects; serializer.Deserialize(&group, objects);
+	CHotkeysGroup factory; DeserializedGroups owned;
+	serializer.Deserialize(&factory, owned.objects);
+	const auto& objects = owned.objects;
 	bool migratedLegacyScriptHotkey = false;
 	for(unsigned int i = 0; i < objects.size(); ++i)
 	{
-		group = *static_cast<CHotkeysGroup*>(objects[i]);
+		const CHotkeysGroup& group = *static_cast<CHotkeysGroup*>(objects[i]);
 		CHotkeysGroup* foundGroup = FindGroup(groups, group.m_reg_name);
 		if(foundGroup == NULL) continue;
 		for(unsigned int j = 0; j < group.m_hotkeys.size(); ++j)

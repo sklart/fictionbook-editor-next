@@ -114,8 +114,9 @@ static LRESULT CALLBACK HotkeySearchKeys(HWND window, UINT message, WPARAM wPara
 {
 	auto* dialog = reinterpret_cast<CSettingsHotkeysDlg*>(reference);
 	if(message == WM_NCDESTROY) ::RemoveWindowSubclass(window, HotkeySearchKeys, id);
-	const bool searchKey = (wParam == VK_ESCAPE && dialog->m_search.GetWindowTextLength() > 0) ||
-		(wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000));
+	const bool recordingShortcut = ::GetFocus() == dialog->m_editHotkey.m_hWnd;
+	const bool searchKey = !recordingShortcut && ((wParam == VK_ESCAPE && dialog->m_search.GetWindowTextLength() > 0) ||
+		(wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000)));
 	if(message == WM_GETDLGCODE && searchKey)
 		return ::DefSubclassProc(window, message, wParam, lParam) | DLGC_WANTMESSAGE;
 	if(message == WM_KEYDOWN && searchKey) {
@@ -129,6 +130,8 @@ BOOL CSettingsHotkeysDlg::PreTranslateMessage(MSG* message)
 {
 	if(!message || !::IsWindow(m_hWnd) || !::IsWindowVisible(m_hWnd) ||
 		(message->hwnd != m_hWnd && !::IsChild(m_hWnd, message->hwnd))) return FALSE;
+	// The recording edit owns every key chord, including Ctrl+F and Escape.
+	if(::GetFocus() == m_editHotkey.m_hWnd) return FALSE;
 	if(message->message == WM_KEYDOWN) {
 		if(message->wParam == 'F' && (::GetKeyState(VK_CONTROL) & 0x8000)) {
 			m_search.SetFocus(); m_search.SetSel(0, -1); return TRUE;
