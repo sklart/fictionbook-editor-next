@@ -1,78 +1,30 @@
-# Performance Phase B — fixed document overhead
+# Документ перенесён: performance-phase-b
 
-## Реализовано
+Актуальный вход: [architecture/performance.md](architecture/performance.md).
 
-| Область | Что кэшируется | Ключ | Инвалидация |
-| --- | --- | --- | --- |
-| XSLT | готовый `Msxml2.XSLTemplate.6.0` | путь stylesheet + язык | другой путь или язык; неудачные загрузки не кэшируются |
-| XSD | `Msxml2.XMLSchemaCache.6.0` | текущий COM thread/apartment | завершение потока/apartment |
-| BODY → SOURCE | сериализованный XML-текст | DOM-снимок + encoding + document type | BODY mutation, SOURCE commit/reload (новый DOM-снимок), смена encoding или типа |
-| Design search | `SearchTextSnapshot` | identity DOM-документа + document generation | `Invalidate`, другой DOM или generation |
-| Search mapping | source id/sourceIndex → vector index | rebuild snapshot | rebuild snapshot |
+Полный прежний текст: [историческая редакция](archive/performance/performance-phase-b.md).
 
-Кэш XSL хранится в сохраняемом runtime JS context. Каждый language variant
-создаёт свой immutable template; один mutable XSL DOM между языками не
-используется. Кэш XSD остаётся apartment-local и не передаёт COM-объекты между
-потоками.
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-## Проверенная производительная семантика
+## Прежние якоря
 
-- Повторный transform с тем же путём и языком создаёт один template; смена
-  языка создаёт независимый template.
-- Повторный BODY → SOURCE без изменения документа читает сохранённый
-  сериализованный текст. Перемещение caret, selection и scroll его не
-  инвалидируют.
-- Четыре изменения search query на одном документе используют один snapshot;
-  поиск выполняется заново только над уже построенным текстом. Scoped search
-  использует тот же snapshot для преобразования scope и для query.
-- Lookup source range по id и MSHTML `sourceIndex` не выполняет линейный scan.
+<a id="performance-phase-b--fixed-document-overhead"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#performance-phase-b--fixed-document-overhead).
 
-При включённом existing diagnostic trace фиксируются aggregate counters:
-`xslt_template_builds`, `xsd_schema_loads` и `source_serializations`;
-`DocumentSearchCoordinator` хранит проверяемые счётчики snapshot builds и
-query runs. Они не пишут содержимое документа и не добавляют per-paragraph
-логирование.
+<a id="runtime-benchmark"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#runtime-benchmark).
 
-## Targeted evidence
+<a id="targeted-evidence"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#targeted-evidence).
 
-Release-проект FBE собран после изменений Phase B. Пройдены целевые проверки:
-`test-fbe-main-js-reliability.ps1`,
-`test-fbe-body-source-transition-runtime.ps1`,
-`test-fbd-support-contract.ps1`,
-`test-source-serialization-cache-contract.ps1`,
-`test-search-snapshot-cache-contract.ps1`,
-`test-search-session.ps1` и MSHTML SearchDocumentAdapter regression.
-Контракт счётчиков — `test-phase-b-performance-counters-contract.ps1`.
+<a id="ограничения"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D1%8F).
 
-### Runtime benchmark
+<a id="проверенная-производительная-семантика"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%B5%D0%BD%D0%BD%D0%B0%D1%8F-%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F-%D1%81%D0%B5%D0%BC%D0%B0%D0%BD%D1%82%D0%B8%D0%BA%D0%B0).
 
-Один реальный lifecycle run на fixture малого размера (1 000 paragraphs,
-381 428 bytes) выполнил open, BODY initialization, source validation и
-несколько BODY ↔ SOURCE переходов за `8 358 ms`. Средний fixture (10 000
-paragraphs, 3 837 429 bytes) прошёл тот же маршрут за `18 229 ms`. Оба
-прогона завершили semantic assertions BODY/SOURCE transition.
+<a id="реализовано"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#%D1%80%D0%B5%D0%B0%D0%BB%D0%B8%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%BE).
 
-Cache cardinality проверяется отдельно от wall-clock: JS harness создаёт один
-XSL template для повторного path/language и отдельный для другого языка;
-MSHTML search regression выполняет четыре incremental queries при ровно одном
-snapshot build. Source XML cache и schema cache проверяются их targeted
-контрактами и реальным BODY/SOURCE validation route.
-
-Phase B устраняет повторную фиксированную работу; задача не задаёт и не
-заявляет искусственный процент ускорения. Полный release gate и ручной smoke
-остаются отдельными этапами по scope задачи.
-
-## Финальная cardinality-проверка
-
-- `phase-b-cache-runtime`: second XSD validation schema loads = `0`;
-  second unchanged BODY → SOURCE serializations = `0`; реальная BODY-правка
-  инвалидирует serialized source cache.
-- SearchDocumentAdapter/MSHTML: incremental search snapshot builds / queries =
-  `1 / 4`; scoped search query runs = `1`; invalid scoped regexp сохраняет
-  diagnostic regexp.
-
-## Ограничения
-
-Не менялись BinaryStore, DOM virtualization, background DOM/validation,
-MSHTML hosting и архитектура Source/Document model. UTF-8 буфер Scintilla не
-кэшируется: он нужен только при реальной повторной загрузке содержимого.
+<a id="финальная-cardinality-проверка"></a>
+[Перейти к соответствующему разделу](archive/performance/performance-phase-b.md#%D1%84%D0%B8%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F-cardinality-%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B0).

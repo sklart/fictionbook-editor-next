@@ -1,0 +1,1143 @@
+> **Исторический материал.** Сохранён из `docs/todo.md` на ревизии `1ad7c507d1ed`. Указанные ниже даты, версии, PASS/FAIL и планы относятся к описанным прогонам, а не к проверке текущего релиза. Изменены навигация и оформление архивного раздела; результаты испытаний не повышались.
+
+[Исходная редакция без документационных изменений](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/todo.md).
+
+# Текущий TODO
+
+- [x] Остаточные замечания HTML Paste: отказ PostMessage без потери Undo/Redo, FIFO быстрых вставок со снимками HTML/текста, актуальный статический контроль copyScope и нативной нормализации. Целевые проверки — в `html-paste-followup-report.md`; ручная совместимость остаётся отдельным пунктом в `html-paste-compatibility-smoke.md`.
+
+- [x] Остаточные замечания Undo: атомарность binary и HTML при отказах COM/регистрации Undo, сохранение истории и savepoint, передача ошибок нормализации и отказ от всего Drop при ошибке. Целевые проверки и Release Win32 — в `undo-atomic-failures-report.md`.
+- [x] Исправлены HTML Paste Undo `internal-history` и `plain-middle`: прежняя нативная история, каретка, dirty/recovery, одна группа вставки и OnRealPaste. Целевые проверки, Validate и Save → Reopen — в `html-paste-undo-report.md`.
+
+- [x] Остаточные дефекты legacy TODO: отдельные изменённые области Drop, OLE `Do(NULL)` и контроль закрытия групп; атомарная вставка изображений с полным составом binary в Undo/Redo. Целевые сценарии включают третью неизменяемую секцию с BR, предыдущую историю, ошибки до/после вставки и в середине пакета.
+- [x] Короткая проверка настоящего переноса мышью между секциями: неизменная соседняя секция, два Undo и два Redo, предыдущая история и закрытие групп подтверждены. Исправлен порядок относительно нативной группы MSHTML; результаты и ограничения — в `legacy-todo-residual-verification.md`.
+- [x] Остатки legacy TODO: совместимая с MSHTML защита используемых binary от удаления, отложенная нормализация Drag & Drop, диагностика regex в режиме «Код», пакетное перетаскивание изображений.
+- [ ] Завершить ручную проверку Drag & Drop в интерактивном FBE на реальных книгах: внутри секции, между секциями, внешний текст, Escape, каретка/выделение, dirty state, Undo/Redo и Save → Reopen. Автоматические проверки событий и контролируемых изменений DOM не заменяют этот smoke.
+- [ ] Проверить перечисленные исправления на Windows 7 и совместимость с реальными книгами FBE 2.8.5; текущие host-проверки этого не подтверждают.
+- [ ] Длительные операции и отзывчивость: продолжать в issue #59. Синтаксис замены `$T/$U/$L/$S/$E/$Q` сохраняется; изменение обозначений не входит в эту работу.
+
+
+- [ ] При подтверждённой пользовательской потребности рассмотреть native пакетное преобразование кодировки FB2 на общем C++ encoding/XML слое FBE, без HTA/JScript/ADODB.
+
+- [x] Завершить автоматизируемую часть issue #32: `main.css` и
+  `main_fast.css` синхронизированы по геометрии панели описания, `strong` и
+  декоративным стилям; Fast Mode сохраняет только упрощение базовых
+  document-`div` и минимальные структурные маркеры. Контракт CSS фиксирует
+  все оставшиеся различия и вычисляет каскадные `padding` для `cite`/`title`;
+  parser явно ограничен текущим плоским CSS.
+- [ ] Выполнить ручной smoke issue #32 в интерактивном FBE на обычной и
+  крупной FB2: загрузка, Normal/Fast переключение, прокрутка и редактирование;
+  подтвердить отсутствие заметной регрессии Fast Mode на реальной машине.
+
+- [x] Первый этап пользовательских панелей скриптов: выделить `ScriptRegistry`
+  и `ScriptIdentity` с GUID, fingerprint-heuristic, orphan preservation и
+  atomic persistence в `DeploymentContext::SettingsDirectory`; перевести
+  runtime command mapping, Last Script и новые script hotkeys на UID, сохранив
+  миграцию legacy relative path.
+- [x] Завершить пользовательские панели скриптов: `Toolbars.xml` v2,
+  generic collection/runtime lifecycle, UI создания/переименования/удаления,
+  порядка и visibility, dynamic menu и сохранение в portable/installed mode.
+- [x] Разрешить редактирование скрытых script toolbars по definition без
+  materialization HWND; добавить restart/lifecycle runtime regression для
+  create/rename/reorder/hide/show/delete, missing UID и обоих режимов.
+- [x] Подключить реальный lifecycle runtime-test к Release verification;
+  portable state очищается между прогонами, а installed mode ограничен
+  изолированным CI-профилем.
+
+- [x] Зафиксировать единый baseline C++17 для собственных C++-проектов через
+  `FbeLanguageStandard`; оставить C++20, `/permissive-` и `/Zc:wchar_t`
+  самостоятельными следующими этапами.
+- [ ] Отдельно спланировать C++20/conformance-миграцию: пробный strict-прогон
+  блокируют WTL/ATL, неявные COM/CString-преобразования, MSXML-строки и
+  Microsoft `for each`; не смешивать это с C++17 baseline.
+- [x] Выделить production responsibilities extensions из `CMainFrame`:
+  runtime UI, scripts/plugins startup и их state/lifecycle имеют отдельные
+  owners; test-only runtime harness остаётся изолированным.
+- [x] Выделить первый этап Document/File lifecycle ownership: New/Open и
+  Reload используют transactional `PendingDocument`, MRU — result-контракт и
+  normal/archive MRU принадлежит отдельному owner. Save/Save As и recovery
+  остаются в `CMainFrame` отдельными следующими этапами.
+- [x] Выделить Save / Save As / archive save persistence в
+  `DocumentSaveController`, сохранив editor/recovery presentation boundary.
+- [x] Стабилизировать save result: serialization, normal-write и archive-write
+  failures различаются, а session/savepoint/recovery подтверждаются только
+  после persistence success.
+- [x] Сделать Save As rollback-safe для encoding и направить его MRU update
+  через `RecentDocumentsController`.
+- [x] Выделить lifecycle recovery в `RecoveryController`, сохранив storage
+  format, frame timer/prompt и normal/archive session identity semantics.
+- [x] Зафиксировать normal recovery runtime: восстановленный документ остаётся
+  dirty, получает Untitled/NewDocument identity, а snapshot очищается после
+  успешного restore.
+- [x] Завершить lifecycle ownership перехода BODY/DESC/SOURCE в
+  `EditorViewController`: host-port удерживает presentation в `CMainFrame`,
+  но ordering, fail-closed Source commit и state commit принадлежат
+  coordinator.
+- [x] Вынести Source XML snapshot, сериализацию/применение и подготовку
+  Scintilla в `SourceViewSession`, а двустороннее сопоставление выделения — в
+  `BodySourceSelectionCoordinator`; удалить legacy-реализацию из `mainfrm.cpp`.
+- [x] Вынести import/export COM execution protocol в
+  `PluginExecutionController`, оставив plugin discovery/menu/last command в
+  `PluginUiController` и document replacement в application layer.
+- [x] Вынести logical lifecycle status bar в `FBEStatusBar::State`, сохранив
+  WTL control, pane behavior и layout presentation responsibility frame.
+- [x] Изолировать Source benchmark diagnostics и операции diagnostic commands
+  от `CMainFrame`, сохранив `StartupTrace` и privacy/package backends.
+
+- [x] Исправить обработку слов с несколькими дефисами в окне «Слова»: автоматический список и ручное добавление исключений должны сохранять полную цепочку, например Хо-ро-шо.
+
+- [x] Исправить обработку мягкого переноса U+00AD в проверке орфографии: считать его частью слова при разборе, не передавать в Hunspell и не сохранять в пользовательском словаре/списке игнорирования; сохранить исходный символ в книге. Отдельно продумать неразрушающее визуальное отображение мягких переносов в режиме «Тело».
+- [x] Реализовать базовый этап issue #1: добавить на вкладку «Настройки FBE Next» сохраняемый выбор «Как в системе», FBE Light, FBE Dark и исторической схем XML-подсветки, включая runtime JSON-локализацию; старые контрастная и тёмная схемы скрыты и безопасно мигрируются в FBE Light/FBE Dark; устранить конфликт идентификаторов контролов и регрессию перехода в «Код».
+- [x] Исправить настройку отображения неразрывного пробела: корректно показать Unicode-символы в списке и применять изменение к текущей книге.
+- [x] Исправить portable-версию при расположении в пути с кириллицей: загрузчик
+  пользовательских скриптов использует Unicode-путь без фиксированного
+  `MAX_PATH`, а каталог `Scripts` не переводится принудительно в нижний регистр.
+- [x] Обеспечить запуск пакетных конвертеров из Win7 portable-пакета: все три
+  Batch EXE повторно собираются с API-уровнем Windows 7, а запуск двойным
+  щелчком показывает подсказку вместо мгновенного закрытия консольного окна.
+- [x] Исправить ложное падение GitHub Actions при создании release-артефактов:
+  аудит кириллицы C/C++ выводит результаты, но не блокирует выпуск на
+  историческом наборе строк; строгая проверка сохранена для регрессионных фикстур.
+- [x] Подготовить выпуск 3.0.7-rc.1: теги предварительных выпусков не обновляют стабильный
+  `update.xml`, а сверка Modern/Win7 portable-архивов допускает и проверяет
+  ожидаемое различие пересобираемых Batch-конвертеров.
+- [x] Подключить пункт «Диагностический журнал…» к русскому и украинскому
+  сгенерированному MENU-ресурсу, чтобы он был доступен через «Сервис» во всех
+  поставляемых локализациях.
+- [ ] По диагностическому журналу переходов между «Телом», «Описанием» и «Кодом» воспроизвести и устранить оставшиеся неточности позиционирования заголовков, аннотаций и выделений, пересекающих `<p>`; для теста включить «Справка → Диагностика FBE Next…» (или `FBE_NEXT_TRACE=1`), перезапустить FBE Next и использовать книгу сообщества. Журнал содержит время, последовательность, длительность, PID/TID, категорию, уровень и код операции; в нём есть события `command`, `editor`, `document`, `xml`, `xslt`, `webbrowser`, `plugin`, `settings`, `recovery`, `script`, `com` и `error`. Он не сохраняет текст книги, пути файлов, содержимое скриптов и base64; каждый запуск имеет собственный session_id, текущий сегмент ограничен 4 МБ. Переключение трассировки в окне диагностики сохраняется для следующего запуска; переменная окружения имеет приоритет. Пути, хранение и очистка описаны в docs/reporting-issues.md.
+- [x] Продолжить issue #1: загрузить и проверить 21 поставляемую внешнюю JSON-тему, чтобы вместе с «Как в системе», FBE Light, FBE Dark и исторической FBE в списке было ровно 25 вариантов. Каждая палитра содержит все 23 логические роли; источник и MIT-лицензия отражены в `runtime\Themes\licenses\THIRD_PARTY_NOTICES.txt` и `docs\xml-source-theme-sources.md`; staging-проверка контролирует их попадание в пакет. Старые контрастные схемы скрыты и мигрируются в FBE Light/FBE Dark.
+- [ ] Продолжить issue #1: добавить import/export палитр, FB2-семантические группы тегов и расширенную диагностику ошибок XML. Остальные палитры в дальнейшем поставлять отдельными загружаемыми пакетами.
+- [x] Реализовать первый этап issue #46: подробную диагностику ошибок загрузки, разбора и выполнения пользовательских JavaScript-скриптов с копированием сведений.
+- [ ] Реализовать второй и третий этапы issue #46: предварительную проверку всех скриптов, общий список ошибок, журнал, открытие файла и дополнительный анализ распространённых синтаксических ошибок.
+- [x] Устранить синхронный обход всех абзацев при обновлении фоновой проверки
+  орфографии после локальной правки (#11): проверять содержащий выделение
+  абзац и обходить видимые абзацы через DOM-соседей.
+
+- [x] Исправить страницу компонентов установщика: увеличить область описания,
+  сократить не влезающие тексты во всех базовых локалях и заменить устаревшую
+  ссылку на Jurgennt нейтральной формулировкой «от сообщества».
+- [x] Исправить установку экспортных плагинов без повышения прав: ExportHTML,
+  ExportDOCX и ExportEPUB регистрируются в пользовательском разделе реестра;
+  сборка setup допускается только Unicode-вариантом NSIS, чтобы русские
+  сообщения не отображались как mojibake.
+- [x] Закрыть автоматизируемую часть issue #4: runtime-переходы Body↔Source проверяют caret, Unicode, повторяющийся текст, границы тегов и inline-разметку; для неотображаемых Source-позиций сохранён детерминированный безопасный fallback.
+- [ ] Выполнить ручной smoke issue #4 на реальных книгах: подтвердить позиционирование в title, annotation, вложенных sections и выделениях, пересекающих `<p>`.
+- [x] Удалить legacy FBE locale DLL: русский и украинский интерфейсы получают
+  строки из `Lang\<locale>\fbe.json`, как и остальные языки; DLL/PDB
+  запрещены в output, package и symbols artifacts.
+- [x] Привести шрифт всех вкладок окна настроек к образцу страницы «Слова»:
+  `Tahoma 8` в основном приложении и английских structural dialogs FBE.exe.
+- [x] Подготовить полный справочник `window.external` для разработчиков
+  пользовательских скриптов: все доступные методы, свойство `inflateBlock`,
+  входные и выходные данные в примерах и оглавление с быстрыми переходами.
+- [x] Реализовать issue #38: добавить документированный API пользовательских
+  скриптов для пути, имени файла и каталога открытого FB2; до первого
+  сохранения возвращать пустую строку.
+- [x] Добавить в «Настройки FBE Next» опцию показа полного пути к открытому
+  файлу в заголовке окна: по умолчанию выключена, длинный путь сокращается по
+  текущей ширине окна с сохранением имени файла.
+- [x] Проверить экспорт runtime JSON для новой настройки заголовка окна:
+  режим «Определяется системой» должен получать строку системной локали.
+- [x] Добавить в настройки FBE Next управляемое создание резервной `.bak`-копии
+  при сохранении существующей книги: настройка должна быть включена по
+  умолчанию, а отключение не должно отменять безопасную запись через временный
+  файл и атомарную замену.
+- [x] Проверить запуск FBE из командной строки с относительным путём к FB2; найденный дефект исправлен нормализацией стартового аргумента в полный путь.
+
+Рабочий список для отложенных задач и следующих шагов. Исторические старые
+заметки остаются в `docs/legacy-todo.txt`, а здесь ведётся актуальный бэклог.
+
+## Актуальная техдолговая заметка
+- [ ] Ускорить повторный запуск FBE при большом наборе скриптов: в текущем
+  Release-пакете 373 `.js` в 29 папках проверяются синхронным созданием JScript
+  COM-движка для каждого файла, что занимает около 2,6 секунды. Подготовить
+  безопасный кэш уже проверенного списка с инвалидацией по пути, размеру и
+  времени изменения; при первом запуске и после изменения скриптов сохранять
+  полную проверку.
+- [ ] Заменить временный английский fallback продуктовых строк установщика для
+  немецкого, французского, испанского, итальянского, польского, португальского,
+  нидерландского, чешского и болгарского языков на вычитанные переводы; не
+  смешивать эту работу со штатными переводами страниц NSIS.
+- [x] Подготовить Weblate-friendly JSON-каталог собственных строк установщика:
+  `localization/installer-ui/catalog.json` извлекает 72 синхронные строки из
+  английской, русской и украинской `.nsh`; до вычитки остальных языков сборка
+  продолжает использовать действующие NSIS-файлы и английский fallback.
+- [x] Обновить редакторные зависимости до Scintilla 5.6.4 и Lexilla 5.5.1,
+  пересобрать DLL и прогнать smoke-тест редактора кода.
+- [x] Синхронизировать `update.xml` после tag-релиза с SHA-256 фактически
+  опубликованного CI-установщика, чтобы автообновление не использовало сумму
+  локальной сборки.
+- [x] Убрать отдельную проверку размера `FBV.exe`: размер собственных бинарников
+  меняется при штатной компоновке и локализации, поэтому release-gate должен
+  контролировать одинаковые структурные свойства всех модулей, а не список
+  исторических размеров одного файла.
+- [x] Зафиксировать layout runtime-локализации в `out\<Configuration>`:
+  для всех 12 языков JSON-пакеты лежат в `Lang\<locale>`; release-gate
+  запрещает возврат legacy FBE locale DLL/PDB и пустых корневых locale-каталогов.
+- [ ] Локализовать шаблон новой книги: заменить единственный устаревший
+  `runtime\blank.fb2` в Windows-1251 на UTF-8 fallback и подготовить
+  `blank_<locale>.fb2` для установленных языков. При создании документа FBE
+  должен выбирать шаблон текущего языка, а при его отсутствии безопасно
+  использовать базовый `blank.fb2`.
+- [x] Восстановить сборку `ImportEPUBBatch.exe` после подключения runtime
+  JSON-локализации: batch-конвертер должен включать общий loader и не
+  зависеть от `DllMain` DLL-плагина.
+- [x] Провести аудит legacy locale resources: bitmap/icon/toolbar ресурсы
+  дублировали structural resources FBE.exe; locale-проекты удалены, Shell MUI
+  оставлен независимым контуром.
+- [x] Подготовить релизный контур к двум вариантам пакетов: основной modern
+  build для Windows 8.1/10/11 и отдельный Win7-compatible setup/portable build.
+- [x] Убрать повторную полную Win7-сборку в CI: общие бинарники, property
+  handler и MUI использовать с Modern-этапа, отдельно собирать только
+  Scintilla/Lexilla и проверять хэши общих файлов в обоих portable-архивах.
+- После первого успешного GitHub Actions-прогона с двумя профилями проверить,
+  что release assets содержат оба набора ZIP, оба setup-файла и
+  `SHA256SUMS.txt` описывает все файлы.
+- На Windows 7 SP1 x64 протестировать именно
+  `FictionBookEditorNext-*-win7-win32-setup.exe` и `FictionBookEditorNext-*-win7-win32-portable.zip`: запуск FBE, режим `Код`,
+  Scintilla-поиск/замена, FBV, ImportEPUB/ExportEPUB/ExportDOCX.
+- После пересборки Win7-compatible установщика повторить clean Win7 smoke: меню `Файл → Экспорт` должно показывать `To HTML`, `To DOCX`, `To EPUB`, а отсутствие плагинов должно считаться release-блокером.
+- После пересборки ordinary и Win7-compatible установщиков вручную проверить финальную страницу мастера установки: русский текст и чекбокс `Запустить FictionBook Editor Next` должны отображаться без mojibake и без обрезания.
+- Если после статического CRT и отключения TLB-регистрации `ExportHTML` на clean Win7 плагины всё ещё не появляются, следующим шагом снять installer log/registry snapshot и проверить фактические HRESULT `RegDll` для `ExportHTML.dll`, `ExportDOCX.dll`, `ExportEPUB.dll`.
+- После следующего GitHub release проверить, что описание релиза содержит ссылку на соответствующий `docs/release-notes/<version>.md` и не имеет ручных переносов внутри пунктов списка.
+- [x] Зафиксировать Weblate-friendly направление локализации в
+  `docs/localization.md` и стартовом каталоге `localization/plugin-ui`.
+- [x] Начать отдельный локализационный блок: основные строки окон плагинов
+  `ExportDOCX`, `ExportEPUB`, `ImportEPUB`, `ExportHTML` заведены в стабильный
+  JSON-каталог переводов `localization/plugin-ui/catalog.json` с украинским и
+  черновыми европейскими переводами.
+- [x] Подключить генерацию Win32 resource-фрагментов
+  из `localization/plugin-ui/catalog.json` и расширить каталог на tooltip,
+  диагностические сообщения и отчёты плагинов.
+- [x] Добавить подготовительный каталог локализации основного интерфейса FBE/FBV:
+  `localization/app-ui/catalog.json` фиксирует существующие `.rc`-источники,
+  первые стабильные ключи, целевые языки и будущий Weblate-friendly переход.
+- [x] Подключить генерацию Win32 resource-фрагментов
+  из `localization/plugin-ui/catalog.json` и `localization/app-ui/catalog.json`,
+  а затем расширить каталоги на tooltip, диагностические сообщения, отчёты
+  плагинов и полный набор строк FBV.
+- [x] Начать runtime-локализацию основных строк FBV: статус, кнопки, колонка,
+  `No errors`, SAX/error-сообщения перенесены в `STRINGTABLE` для целевых языков.
+- [x] Подключить runtime JSON-overlay для FBV и всех текущих плагинов: внешние `Lang/<локаль>/fbv.json`, `Lang/<локаль>/export-html.json`, `Lang/<локаль>/import-epub.json`, `Lang/<локаль>/export-epub.json` и `Lang/<локаль>/export-docx.json` перекрывают встроенные ресурсы, но отсутствие файлов не ломает запуск.
+- [x] Подключить основной FBE как runtime JSON-потребитель: `FbeLoadString` и `U::MessageBox` теперь читают 128 уже заведённых строк из `Lang/<локаль>/fbe.json` поверх встроенных ресурсов.
+- [x] Развести пользовательские данные, настройки и регистрацию встроенных
+  плагинов FBE Next со старой версией: используются `%LOCALAPPDATA%\FBE Next`,
+  `HKCU\Software\FBETeam\FictionBook Editor Next`, отдельный контракт
+  `FBE_NEXT_UI_LOCALE` и четыре новые COM GUID плагинов.
+- [x] Расширить существующую настройку языка FBE: добавить вариант `Определяется системой` и все 12 целевых языков, чтобы выбранная локаль управляла runtime JSON-слоем FBE/FBV/плагинов через общий контракт.
+- [x] Сделать следующий безопасный шаг к переключению языка без перезапуска: после смены языка FBE runtime string cache сбрасывается, а ExportHTML/ExportDOCX/ExportEPUB/ImportEPUB перечитывают JSON при входе в экспорт/импорт, чтобы новые окна плагинов брали актуальную locale.
+- [x] Исправить порядок применения смены языка в настройках FBE: сначала перезагрузка resource DLL, сброс runtime JSON cache и refresh main-frame UI, затем применение остальных настроек и restart-prompt.
+- [x] Выровнять оба входа в настройки FBE (`OnToolsOptions()` и `OnViewOptions()`), чтобы смена языка не зависела от того, каким пунктом меню открыт диалог.
+- [x] Расширить выпадающий список выбора языка и усилить тест контракта настроек FBE: `Определяется системой` остаётся первым, список не сортируется, а `OnToolsOptions()` применяет language-refresh в правильном порядке.
+- [x] Убрать ложное требование перезапуска при смене только языка интерфейса: FBE уже перезагружает resource/runtime-слой и main-frame UI, поэтому restart остаётся только для действительно требующих его настроек.
+- [x] Расширить resource-layout страницы `IDD_OPTIONS` для базового FBE и generated ru/uk: поле `IDC_LANG` теперь не должно обрезать `Определяется системой`, ширина закреплена тестом малых диалогов.
+- [x] Подключить оставшиеся статические подписи и группы `IDD_OPTIONS` к runtime JSON-overlay через стабильные control ID: новые языки теперь могут переводить подписи цветов, шрифтов, групп интерфейса/source/spellcheck и label языка без отдельной resource DLL.
+- [x] Завершить безопасный live-refresh FBE: главное меню, панели, toolbar,
+  динамические пункты и дочерние окна обновляются после смены локали без
+  повторного создания плагинов. Открытые модальные окна плагинов намеренно не
+  пересоздаются: FBE не позволяет менять язык при открытом окне настроек, а
+  следующее открытие плагина читает уже выбранный `Lang/<locale>`.
+- [x] Довести новые языки интерфейса FBE до единого JSON→generated/runtime
+  механизма для меню и диалогов: контрольный инвентарь `MENU`/`DIALOGEX`
+  показывает 0 ручных UI-литералов, а встроенный Win32 fallback сохранён для
+  запуска без внешних языковых файлов.
+- [x] Выделить reusable runtime JSON loader для FBE/FBV/плагинов, чтобы убрать дублирование парсера и загрузки `Lang/<локаль>/<модуль>.json` между модулями. Общий `src/common/RuntimeLocalizationCommon.h` подключён к FBE, FBV, ExportHTML, ExportDOCX, ExportEPUB и ImportEPUB; порядок `en-US` → выбранная локаль → встроенные ресурсы централизован.
+- [x] Продолжить FBE JSON→generated `.rc2` без конфликта `RC2151`: закрыт 16-ID блок 176–191 переносом `IDS_SB_SAVED_NO_ERR`, добавлен анализатор `tools/localization/analyze-fbe-stringtable-blocks.ps1`, connect-скрипт удаляет пустые `STRINGTABLE`.
+- [x] Перенести следующие компактные FBE-блоки в JSON→generated `.rc2`: `IDS_MB_*`, `IDS_DOCUMENT_TREE_CAPTION` и `IDS_ENCODINGS`; сборка `res_rus.dll`/`res_ukr.dll` подтверждает отсутствие `RC2151`.
+- [x] Закрыть следующие смешанные FBE-блоки без `RC2151`: 160–175, 288–303 и 304–319 перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 144–159: command-line diagnostics и подписи table/image/section/style полей перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 192–207: выбор папки скриптов, Edit/Navigation hotkey captions и конфликт hotkey скрипта перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 272–287: inline image, fast mode, navigation/spell/tree-view строки перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть последний смешанный FBE-блок 256–271: context menu, document-tree menu, hotkey collision/status и prompt перезапуска настроек перенесены в JSON→generated `.rc2`; анализатор больше не показывает смешанных блоков.
+- [x] Начать перенос полностью ручных FBE-блоков: блок 96–111 перенесён в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 112–127: команды добавления/вставки и базовые Edit hotkeys перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 128–143: metadata/status/settings/table captions перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 208–223: hotkey-подписи сворачивания/разворачивания дерева и выбор `Href` перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Закрыть FBE-блок 224–239: style/view/navigation hotkey captions и вставка таблицы перенесены в JSON→generated `.rc2`, resource DLL собираются.
+- [x] Восстановить повреждённые строки Win32 resource DLL для русской и
+      украинской локализаций: подсказки команд и названия hotkey не должны
+      отображаться последовательностями `?`; добавить регрессионную проверку.
+- [x] Проверить PVS-Studio отчёты основных модулей и устранить Level 2
+      предупреждение ExportDOCX о многосимвольном литерале знака «№».
+- [x] Закрыть FBE-блок 240–255: hotkey-группы «Скрипты/Символы», окно слов и пункт «Вырезать» перенесены в JSON→generated `.rc2`; по текущему анализатору ручных FBE `IDS_*` блоков не осталось.
+- [x] Добавить инвентарь FBE `MENU`/`DIALOGEX` UI-литералов: 414 строк в 17 ресурсах фиксируются JSON-отчётом и smoke-тестом перед переносом меню/диалогов в Weblate-friendly каталог.
+- [x] Подготовить Weblate-friendly каталог главного меню FBE `IDR_MAINFRAME`: 68 пунктов меню заведены в JSON с 12 языками и проверяются `test-fbe-main-menu-catalog.ps1`.
+- [x] Добавить генератор generated `.rc2` для главного меню FBE `IDR_MAINFRAME`: ru/ukr MENU-фрагменты создаются из JSON и проверяются `test-fbe-main-menu-generated-resource.ps1`; runtime-подключение ручного блока остаётся следующим шагом.
+- [x] Подключить generated главное меню FBE `IDR_MAINFRAME` в runtime-ресурсы: ручной MENU-блок заменён на `FBEIdrMainframeMenu.generated.rc2`, `res_rus.dll`/`res_ukr.dll` собираются, остаточный инвентарь ручных UI-литералов — 278 строк.
+- [x] Перенести малые меню FBE `IDR_DOCUMENT_TREE` и `IDR_TOOLBAR_MENU` на JSON→generated pipeline: ручных `MENU` в FBE-инвентаре больше нет, осталось 264 `DIALOGEX` строки.
+- [x] Подключить каталог малых диалогов FBE к runtime JSON-export и начать runtime-refresh страниц настроек «Вид», «Другое», «Слова» и «Клавиши»: безопасные элементы с уникальными ID берут строки из `Lang/<локаль>/fbe.json`.
+- [x] Подключить runtime JSON-строки для безопасных элементов окон FBE «Найти» и «Заменить»: заголовки, кнопки, чекбоксы и направление поиска берут строки из `Lang/<локаль>/fbe.json`.
+- [x] Закрыть остаточные англоязычные подписи окон поиска/замены FBE: `Find what`, `Replace with`, `Direction` и `Cancel` теперь адресуются через стабильные control ID и runtime JSON-overlay.
+- [x] Расширить `test-runtime-lang-export.ps1` проверками runtime-ключей FBE-диалогов, уже подключённых к `Lang/<локаль>/fbe.json`.
+- [x] Подключить контекстное меню HTML-редактора FBE к runtime-aware строкам, включая ранее жёстко заданный пункт `Undo`.
+- [x] Подключить окно проверки орфографии FBE к runtime JSON для заголовка и основных кнопок, а также перевести его контекстное меню на runtime-aware строки.
+- [x] Подключить окно настроек ExportDOCX к runtime JSON по ключам `export_docx.dialog.settings.*`: видимые группы, чекбоксы, labels шрифта/страницы/языка/empty-line и кнопки заведены в каталог на 12 языков и проверяются runtime-export тестом.
+- [x] Проверить runtime-локализацию окон настроек и tooltip-строк ExportEPUB: `test-export-epub-runtime-lang-overlay.ps1` и `test-export-epub-localization-resources.ps1` подтверждают 87 binding-строк на 12 языков.
+- [x] Проверить runtime-локализацию окна настроек, SVG-комбо и tooltip-строк ImportEPUB: `test-import-epub-runtime-lang-overlay.ps1` и `test-import-epub-localization-resources.ps1` подтверждают 151 binding-строку на 12 языков.
+- [x] Перенести малые DIALOGEX-диалоги FBE `IDD_TABLE`, `IDD_INPUTBOX`, `IDD_ADDIMAGE` на JSON→generated pipeline; осталось 234 ручных DIALOGEX-строки.
+- [x] Перенести следующий компактный DIALOGEX-срез FBE `IDD_TOOLS_SETTINGS`, `IDD_ABOUTBOX`, `IDD_CUSTOMSAVEDLG` на JSON→generated pipeline; осталось 216 ручных DIALOGEX-строк.
+- [x] Перенести страницу настроек слов FBE `IDD_SETTINGS_WORDS` на JSON→generated pipeline; осталось 206 ручных DIALOGEX-строк.
+- [x] Перенести страницу настроек горячих клавиш FBE `IDD_HOTKEYS` на JSON→generated pipeline; осталось 188 ручных DIALOGEX-строк.
+- [x] Перенести диалог поиска FBE `IDD_FIND` на JSON→generated pipeline; осталось 168 ручных DIALOGEX-строк.
+- [x] Перенести диалог замены FBE `IDD_REPLACE` на JSON→generated pipeline; осталось 142 ручных DIALOGEX-строки.
+- [x] Перенести диалог проверки орфографии FBE `IDD_SPELL_CHECK` на JSON→generated pipeline; осталось 118 ручных DIALOGEX-строк.
+- [x] Перенести диалог списка слов FBE `IDD_WORDS` на JSON→generated pipeline; осталось 82 ручных DIALOGEX-строки.
+- [x] Перенести страницу прочих настроек FBE `IDD_SETTING_OTHER` на JSON→generated pipeline; остался только `IDD_OPTIONS` на 42 ручных DIALOGEX-строки.
+- [x] Перенести страницу основных параметров FBE `IDD_OPTIONS` на JSON→generated pipeline; ручной FBE-инвентарь `MENU`/`DIALOGEX` закрыт полностью, осталось 0 UI-литералов.
+- [x] Подключить FBE MENU/DIALOGEX-проверки к `verify-release.ps1`: release-gate теперь сторожит generated главное меню, малые меню, generated DIALOGEX и нулевой ручной UI-инвентарь.
+- [x] Добавить ручной repair-контур для локального запуска `out\Release\FBE.exe`: `repair-local-plugin-registration.ps1` перерегистрирует плагины на DLL из `out\<Configuration>`, чтобы настройки Export/Import брали актуальные runtime JSON-переводы.
+- [x] Локализовать известную COM-ошибку `80040154 / Class not registered` через runtime JSON FBE, чтобы сообщение соответствовало выбранному языку интерфейса, а не языку Windows.
+- [x] Закрыть остатки ручного теста локализации: динамические пункты меню встроенных плагинов ImportEPUB/ExportDOCX/ExportEPUB/ExportHTML локализуются поверх COM-регистрации, `Cancel` в FBE/плагинах берётся из runtime JSON, а немецкие tooltip-подсказки ExportDOCX больше не остаются английскими.
+- [x] Расширить немецкий runtime JSON-слой tooltip-подсказок ImportEPUB и ExportEPUB: профильные overlay-тесты подтверждают, что немецкие tooltip-строки плагинов больше не совпадают с английским fallback.
+- [x] Расширить украинский, французский и испанский runtime JSON-слой tooltip-подсказок ExportEPUB: профильный overlay-тест подтверждает отсутствие английского fallback в ExportEPUB tooltip-строках этих языков.
+- [x] Закрыть tooltip-слой ExportEPUB для всех 12 целевых языков: `export_epub.tooltip.*` больше не совпадает с английским fallback ни для одного подключённого языка.
+- [x] Закрыть tooltip-слой ImportEPUB для всех 12 целевых языков: 33 строки `import_epub.tooltip.*` больше не совпадают с английским fallback ни для одного подключённого языка.
+- [x] Закрыть tooltip-слой ExportDOCX для всех 12 целевых языков: 38 строк `export_docx.tooltip.*` больше не совпадают с английским fallback ни для одного подключённого языка.
+- [x] Закрыть видимые настройки ImportEPUB для всех 12 целевых языков: группы, заголовок, SVG-режимы, hint, кнопки и 25 опций больше не используют английский fallback, кроме нейтральной кнопки `OK`.
+- [x] Закрыть видимые настройки ExportEPUB для всех 12 целевых языков: 30 строк `export_epub.options.*` больше не используют английский fallback, кроме нейтральной кнопки `OK`.
+- [x] Закрыть plugin-level слой ImportEPUB для всех 12 целевых языков: системный диалог выбора EPUB, стадии импорта и сообщения ошибок больше не используют английский fallback.
+- [x] Закрыть runtime diagnostics ImportEPUB для всех 12 целевых языков: 62 строки `import_epub.runtime.*` больше не используют английский fallback, кроме технических имён и идентификаторов.
+- [x] Сделать список языков FBE зависимым от реально установленных JSON-пакетов: отсутствующий или удалённый вручную `Lang/<locale>/fbe.json` больше не предлагается в настройках; переключение только языка не перезапускает тяжёлую конфигурацию редактора, а resource DLL остаются загруженными до завершения процесса.
+- [x] Устранить найденное в отладчике аварийное завершение после смены языка: лёгкий путь сохранения настроек больше не вызывает `SaveHotkeyGroups()` и старый XML-сериализатор для не изменявшихся коллекций горячих клавиш.
+- [x] Устранить повторную инициализацию плагинов, скриптов и toolbar при live-смене языка: меню переводится на месте, без накопления GDI-ресурсов, роста памяти и повреждения интерфейса.
+- [x] Усилить контракт подготовки FBE-локализации: `test-app-localization-catalog.ps1`
+  теперь проверяет наличие критичных FBE-ресурсов обновления, read-only warning
+  и завершения поиска в `src/fbe/FBE.rc`, `res_rus` и `res_ukr`, а также
+  предупреждает, какие из них ещё не заведены в `localization/app-ui/catalog.json`.
+- [x] Перенести в `localization/app-ui/catalog.json`
+  оставшиеся `IDS_UPDATE_*`, `IDS_SEARCH_END_MSG` и `IDS_READONLY_SAVE_MSG`,
+  чтобы первый критичный FBE-срез попал в Weblate seed и общий проверочный
+  Win32 resource-fragment pipeline.
+- [x] Добавить отдельный строгий генератор FBE
+  `.rc2` по модели FBV, который будет создавать существующие `IDS_*`, а не
+  промежуточные `IDS_L10N_*`.
+- [x] Подключить `FBEStrings.generated.rc2` к `res_rus`/`res_ukr`: ручные дубли
+  первого FBE-среза удалены из локализованных `STRINGTABLE`, тест
+  `test-fbe-localization-resources.ps1` проверяет include и отсутствие дублей,
+  а `res_rus.dll`/`res_ukr.dll` собираются с generated-строками.
+- [x] Перенести второй FBE-срез в JSON→generated `.rc2`: сообщения сохранения,
+  validation/import/export, внешнего изменения файла, нехватки памяти и
+  отсутствующих скриптов теперь генерируются в `FBEStrings.generated.rc2`; обе
+  локализованные resource DLL собираются после удаления ручных дублей.
+- [x] Перенести третий FBE-срез в JSON→generated `.rc2`: script/XML/COM
+  diagnostics, replace/search messages и сообщения замены слов теперь
+  генерируются из `localization/app-ui/catalog.json`; обе локализованные
+  resource DLL собираются после удаления ручных дублей.
+- [x] Перенести четвёртый безопасный FBE-срез в JSON→generated `.rc2`: строки
+  добавления изображения и binary-ресурсов теперь генерируются из
+  `localization/app-ui/catalog.json`; обе локализованные resource DLL собираются
+  после удаления ручных дублей.
+- Следующий FBE-шаг по локализации: вручную проверить GUI-сценарии обновлений,
+  read-only warning и завершения поиска на русской и украинской ресурсных DLL,
+  затем переносить status bar, context menu, document-tree и hotkey captions
+  небольшими группами тем же JSON→generated `.rc2` контуром, но сначала
+  группировать кандидатов по 16-ID `STRINGTABLE` блокам: частичный перенос
+  блока даёт `RC2151 cannot reuse string constants`.
+- [x] Добавить экспорт seed-файлов для переводчиков/Weblate:
+  `tools/localization/export-weblate-seed.ps1` собирает app/plugin-каталоги в
+  per-language JSON под `out/localization/weblate-seed`.
+- [x] Подключить FBV к JSON→generated `.rc2`: `FBV.rc` включает
+  `FBVStrings.generated.rc2`, который строится из
+  `localization/app-ui/catalog.json` с существующими `IDS_*`.
+- [x] Повторить JSON→generated `.rc2` подход на маленьком плагине:
+  runtime-строки ExportHTML перенесены в `localization/plugin-ui/catalog.json`,
+  а `ExportHTML.rc` подключает `ExportHTMLStrings.generated.rc2`.
+- [x] Начать локализацию всплывающих подсказок плагинов на реальном runtime-
+  примере: tooltip-строки custom save dialog ExportHTML добавлены в
+  `localization/plugin-ui/catalog.json`, генерируются в
+  `ExportHTMLStrings.generated.rc2` и загружаются через `LoadString`.
+- [x] Перенести первый DOCX runtime-срез из hardcoded строк в JSON→generated
+  `.rc2`: вкладки настроек, значения комбобоксов примечаний/empty-line/языка/
+  профиля и подпись кнопки сохранения теперь идут через `IDS_DOCX_*`.
+- [x] Закрыть основной пользовательский runtime-хвост ExportDOCX: титульная страница, диагностический отчёт, TOC-текст и validation warnings перенесены в JSON→generated `.rc2`; `ExportDOCX.dll` собирается без предупреждений.
+- [x] Перенести первый крупный runtime-срез `ImportEPUB`: XML/ZIP/container/OPF/navigation/spine diagnostics, плейсхолдеры изображений/примечаний и заголовок отчёта теперь идут через JSON→generated `.rc2`; `ImportEPUB.dll` собирается без предупреждений.
+- [x] Добрать второй runtime-срез `ImportEPUB`: SVG/LunaSVG/GDI+, XHTML,
+  spine-изображения, mimetype/encryption и финальная FB2 validation перенесены
+  в JSON→generated `.rc2`; `ImportEPUB.dll` собирается без предупреждений,
+  `EpubImport.cpp` оставляет только 7 строк жанровых эвристик.
+- [x] Перенести основной runtime-срез `ExportEPUBPlugin.cpp`: preflight/summary
+  fallback-строки очищены от кириллицы, body/chapter/annotation/titlepage labels
+  заведены в JSON→generated `.rc2`; `ExportEPUB.dll` собирается без предупреждений.
+- [x] Закрыть 3 строки `Обложка` в `FbeEpubExport.cpp` через аккуратный слой
+  `EpubExportLabels`/`EpubExportOptions`: UI-слой передаёт `IDS_EXPORT_COVER_TITLE`,
+  низкоуровневый exporter не зависит напрямую от Win32-ресурсов.
+- [x] Закрыть runtime/tooltip-срез shell/metadata diagnostics: `Fb2ThumbnailProvider.cpp`, `Fb2ShellProperties.cpp`, `Fb2CoverImage.cpp`, `Fb2CoverThumbnail.cpp`, `Fb2Metadata.cpp` и PCRE2 diagnostics очищены от зашитой кириллицы; `analyze-product-hardcoded-cyrillic.ps1` показывает ноль C/C++ строковых литералов продукта с кириллицей.
+- [x] Добрать EPUB/DOCX остатки hardcoded-кириллицы без потери поведения: EPUB landmarks перенесены в `EpubExportLabels` и JSON→generated `.rc2`, а русскоязычные DOCX/ImportEPUB эвристики сохранены через Unicode escape-последовательности.
+- [x] Прогнать полный `verify-release.ps1` после очистки C/C++ hardcoded-кириллицы: release-gate проходит успешно, включая ExportEPUB XHTML 1.1, ExportEPUB кириллицу, локализационные каталоги и ImportEPUB COM smoke.
+- [x] Подготовить экспорт будущих внешних runtime JSON-файлов: `tools/localization/export-runtime-lang.ps1` формирует `Lang/<язык>/<модуль>.json` для FBE, FBV и плагинов, `test-runtime-lang-export.ps1` подключён к release-gate, а portable/NSIS input уже получает каталог `Lang`.
+- [x] Подключить первый runtime-потребитель внешнего JSON: FBV читает `Lang/en-US/fbv.json` и `Lang/<системная локаль>/fbv.json` поверх встроенных ресурсов; `test-fbv-runtime-lang-overlay.ps1` сторожит binding-контракт.
+- [x] Подключить третий runtime-потребитель внешнего JSON: ImportEPUB читает `Lang/en-US/import-epub.json` и `Lang/<системная локаль>/import-epub.json` поверх встроенных ресурсов; `test-import-epub-runtime-lang-overlay.ps1` сторожит binding-контракт для 151 строки.
+- [x] Подключить четвёртый runtime-потребитель внешнего JSON: ExportEPUB читает `Lang/en-US/export-epub.json` и `Lang/<системная локаль>/export-epub.json` поверх встроенных ресурсов; `test-export-epub-runtime-lang-overlay.ps1` сторожит binding-контракт для 87 строк.
+- [x] Подключить пятый runtime-потребитель внешнего JSON: ExportDOCX читает `Lang/en-US/export-docx.json` и `Lang/<системная локаль>/export-docx.json` поверх встроенных ресурсов; `test-export-docx-runtime-lang-overlay.ps1` сторожит binding-контракт для 143 строк.
+- [x] Добавить первый main-frame refresh после смены языка: FBE обновляет главное меню, динамические Import/Export/Script/MRU-пункты, hotkey-подписи, статические подписи toolbar-полей, тексты кнопок command/script toolbar, runtime-tooltip main toolbar без устаревшего WTL `LoadString` cache, status-pane INS/OVR и заголовок и внутреннее меню панели структуры документа через `RefreshLocalizedMainFrameUi()`.
+- [x] Закрывать modeless-диалоги поиска/замены и проверки орфографии перед применением настроек языка, чтобы при следующем открытии они создавались уже на актуальной локали.
+- [x] Заменить прямые `CString::LoadString` в `src/fbe` на `FbeLoadCString()` и добавить проверку в `test-runtime-interface-language-contract.ps1`, чтобы старый код не обходил runtime JSON-overlay.
+- [x] Расширить проверку обходов локализации на FBV и плагины: `test-runtime-interface-language-contract.ps1` теперь разрешает `LoadString` только в fallback-загрузчиках и ловит новые прямые обращения вне runtime JSON-слоя.
+- [x] Подключить аудит зашитой кириллицы в пользовательских C/C++-строках к
+  `verify-release.ps1`: release-gate теперь блокирует новые строки в обход
+  JSON-локализации, а корректная обработка экранированных обратных слешей
+  исключает ложные срабатывания на последующие комментарии; fixture-тест
+  фиксирует этот сценарий отдельно.
+- [x] Зафиксировать правило, что брендовые имена `FictionBook Editor Next` / `FB Editor Next` не переводятся; заголовок главного окна больше не использует старое `FB Editor`.
+- [x] Добавить автопроверку брендовых имён в `test-app-localization-catalog.ps1`, чтобы машинные переводы не меняли `FictionBook Editor` / `FB Editor Next` / `FictionBook Validator`.
+- [x] Добавить package-gate `test-runtime-lang-package.ps1` и подключить его к `package-portable.ps1`, чтобы `Lang` для 12 языков и 6 модулей обязательно попадал в portable/staging-пакет.
+- [x] Добавить экспорт runtime JSON-локализации в обычный `out\<Configuration>\Lang`: ручной запуск `out\Release\FBE.exe` теперь видит те же `Lang/<locale>/<module>.json`, что portable-пакет и установщик.
+- [x] Подключить главное меню FBE `IDR_MAINFRAME` к runtime JSON для всех 12 языков: menu-каталог экспортируется в `Lang/<locale>/fbe.json`, а FBE накладывает переводы на загруженное Win32-меню при старте и refresh.
+- [x] Подключить вторичные меню FBE `IDR_DOCUMENT_TREE` и `IDR_TOOLBAR_MENU` к runtime JSON для всех 12 языков: контекстное меню дерева документа и меню настройки toolbar теперь используют `Lang/<locale>/fbe.json`.
+- [x] Добавить в `docs/manual-test-plan.md` отдельный раздел ручной проверки локализации перед пользовательским smoke-прогоном.
+- Следующий шаг по локализации: довести переключение языка без перезапуска до полного GUI-refresh — обновлять уже созданные дочерние окна и уже открытый plugin UI. Главное окно, меню, toolbar/status и новые окна уже обновляются без restart; перезапуск остаётся только для действительно требующих его настроек.
+- [x] Закрыть отдельный GUI-хвост ExportHTML: повторяющиеся `IDC_STATIC`
+  заменены на отдельные control ID, подписи и фильтр выбора XSL/XSLT читаются
+  через runtime JSON в `OnInitDialog`; сборка ExportHTML.dll и профильные
+  localization-тесты проходят.
+- [x] Перенести в runtime JSON видимые базовые подписи окна «О программе» FBE:
+  заголовок, «Сборка» и кнопка установки обновления теперь переключаются вместе
+  с языком интерфейса и сохраняют встроенный fallback.
+- [x] Добавить локализованные fallback-сообщения `Unknown error` в ExportHTML,
+  ExportDOCX и ExportEPUB: редкие ошибки без системного текста теперь проходят
+  через JSON → встроенный ресурс и отображаются на выбранном языке интерфейса.
+- [x] Добавить инвентарь будущих языковых пакетов установщика:
+  `localization/language-packs.json` описывает связь языков с `res_*.dll`,
+  `.mui`, словарями, лицензиями, жанрами, XSL и будущими `blank_*.fb2`.
+- [x] Добавить генератор чернового NSIS-плана языковых секций:
+  `tools/localization/export-nsis-language-pack-plan.ps1` создаёт draft `.nsh`
+  из `language-packs.json`, но пока не меняет поведение установщика.
+- [x] Зафиксировать и реализовать runtime-контракт локализации: основной внешний
+  формат — JSON-файлы в `Lang/<язык>`, встроенный fallback обязателен для
+  FBE/FBV/плагинов, а shell/MUI-ресурсы размещаются в `Lang/Shell`.
+- [x] Перенести MUI-host `FBVVerbResources.dll` и его 12 спутников из корня
+  программы в `Lang\Shell`; обновление/удаление старых выпусков очищает только
+  прежние одноимённые MUI-файлы, не затрагивая остальные пользовательские данные.
+- [x] Превратить `language-packs.json` в реальные NSIS-секции языковых пакетов:
+  установщик собирается с 12 языками FBE, английский (`en-US`) обязателен, а
+  русский (`ru-RU`) и украинский (`uk-UA`) включены по умолчанию.
+- [x] Сделать языковые ресурсы опциональными компонентами установщика:
+  остальные JSON/MUI-пакеты из `Lang` пользователь может не выбирать, а
+  отсутствие внешнего файла не ломает запуск благодаря встроенному fallback.
+- Рассмотреть возможность отдельного legacy-установщика для Windows XP: только
+  как отдельную ветку/артефакт с явным предупреждением о потере части современной
+  функциональности, без возврата legacy PCRE в основной runtime FictionBook
+  Editor Next.
+- [x] Разделить `.fb2`-интеграцию в установщике на отдельные пользовательские
+  опции: ассоциация/иконка FBE Next, команда проверки FB2 через FBV без смены
+  приложения по умолчанию, свойства и миниатюры `.fb2` в Проводнике.
+- На следующем ручном installer-smoke проверить новые раздельные опции на
+  чистой установке: отдельно без ассоциации `.fb2`, только с командой проверки,
+  только со свойствами/миниатюрами и с полным набором интеграции.
+- После пересборки установщика проверить страницу выбора компонентов: длинные
+  названия секций должны помещаться заметно лучше за счёт нижнего описания
+  компонентов.
+- После пересборки FBE вручную проверить `О программе`: проверка обновлений на
+  актуальной версии должна показывать, что установлена последняя версия, без
+  ложной `Ошибка загрузки`. Если снова появится ошибка, первым делом смотреть
+  `%LOCALAPPDATA%\FBE\update-check-trace.log`.
+- После пересборки FBE вручную проверить расширенное окно `О программе`: ссылка
+  на GitHub-репозиторий должна помещаться по ширине без обрезания.
+- На следующем installer-smoke проверить обновление поверх установленной версии
+  с включённой shell-интеграцией: если `FBShell64.dll` занят Проводником, setup
+  должен завершиться без ручного `Пропустить` и попросить перезагрузку/поставить
+  отложенную замену.
+- На Windows 7 SP1 x64 отдельно проверить запуск `FBE.exe` после замены
+  `PathCchRemoveFileSpec` на `PathRemoveFileSpecW`: ошибка про отсутствующий
+  `api-ms-win-core-path-l1-1-0.dll` не должна повторяться.
+- На Windows 7 SP1 x64 отдельно проверить запуск после Win7-сборки
+  `Scintilla.dll`: ошибка про отсутствующий
+  `GetSystemTimePreciseAsFileTime` не должна повторяться, а режим `Код` должен
+  открываться и проходить базовый поиск/замену.
+- На Windows 7 SP1 x64 выяснить, почему при удалении версии 3.0.4 на
+  мгновение мелькает окно терминала с красным текстом: повторить деинсталляцию
+  с логированием, определить, какой helper-скрипт/команда выводит ошибку, и
+  решить, нужно ли исправление в uninstall-сценарии.
+- [x] Финальная стратегия для `api-ms-win-crt-*.dll` на чистой Windows 7:
+  документировать обязательные системные обновления Universal CRT, включая
+  KB2999226, и актуальный Microsoft Visual C++ Redistributable; не встраивать
+  app-local UCRT/VC Runtime в текущий установщик. `check-win7-imports.ps1`
+  оставляет эти зависимости предупреждением, но не блокирует релиз.
+- После пересборки и установки повторить GUI-smoke `ImportEPUB`: пункт меню
+  должен открывать диалог выбора EPUB, а при COM-сбое показывать сообщение
+  ImportEPUB со стадией, а не безымянное окно FBE `COM Error`.
+- [x] Добавить post-install диагностику для ручного smoke новых `.fb2`-опций:
+  `tools/tests/check-fb2-installer-options.ps1` проверяет ожидаемый профиль
+  после выбора галочек в GUI-установщике.
+- [x] Подключить новые иконки приложения `FBE2.ico` и `FBE.ico` к ресурсам сборки FBE/локализованных resource DLL; временные `*_new.ico` и старые резервные иконки удалены.
+- [x] Добавить в установщик опциональную установку консольных batch-конвертеров из новых import/export-плагинов: секция `Batch-конвертеры` ставит `ExportDOCXBatch.exe`, `ExportEPUBBatch.exe`, `ImportEPUBBatch.exe` и их обязательные DLL-зависимости рядом с FBE.
+- [x] Вынести `ImportEPUBLunaSVG.dll` из batch-конвертеров в подсекцию `ImportEPUB`: библиотека устанавливается как дополнительный компонент для преобразования SVG-обложек EPUB в PNG/JPEG.
+- [x] Подготовить GitHub-релизную структуру для `FictionBook Editor Next 3.0.0`: обновлены имя продукта, update-check URL, GitHub-ссылки в окне `О программе`, имена артефактов `FictionBookEditorNext-*`, README, техническое описание отличий и workflow с пользовательскими release notes.
+- [x] Высокий UX/data-loss приоритет: FBE теперь явно реагирует на read-only файл при обычном сохранении — показывает предупреждение и предлагает сохранить копию через `Сохранить как...`, не снимая dirty-state при отказе.
+- Для будущего UX-улучшения рассмотреть отдельную кнопку/команду `Снять атрибут read-only и сохранить`, но только с явным подтверждением пользователя.
+- [x] Разобрать `ExportEPUB` по ручному тесту 2026-06-29: причина кракозябр в окнах и mojibake в XHTML/NCX `<title>` была в компиляции UTF-8 C++-исходников без `/utf-8`; `ExportEPUB.vcxproj` и `ExportEPUBBatch.vcxproj` исправлены, добавлен регрессионный тест кириллического EPUB.
+- [x] Release-блокер по `verify-artifacts.ps1` закрыт: symbols ZIP проверяется с учётом `ExportDOCX.pdb`, `ExportEPUB.pdb` и `ImportEPUB.pdb`; текущий `out/artifacts` проходит проверку.
+- [x] По итогам ручного прогона 2026-06-29 проверить `ExportEPUB`: mojibake в XHTML/NCX `<title>` закрыт автоматическим тестом `test-export-epub-cyrillic.ps1`; окна плагина должны использовать те же исправленные C++-строки, но после установки стоит дополнительно подтвердить это ручным GUI-smoke.
+- [x] Интегрировать финальный корректирующий пакет `ExportEPUB`: EPUB 2/XHTML 1.1 больше не оставляет прямой текст внутри `div`/`blockquote`, не вкладывает блочные элементы в `<a>`, отбрасывает `file://` href, нормализует HTTP/HTTPS-ссылки с обратными слэшами и использует безопасный собственный base64-декодер для FB2 `binary`.
+- [x] Перед релизом добавить общую автоматическую проверку плагинов на кракозябры: `test-plugin-mojibake.ps1` подключён к `verify-release.ps1` и покрывает пользовательские строки `ExportEPUB`, `ImportEPUB`, `ExportDOCX`, `ExportHTML`, `FBV` и `FBE`.
+- [x] Убрать legacy PCRE smoke из стандартного release-gate: `verify-release.ps1` больше не вызывает старые `test-pcre*.ps1`, но по-прежнему проверяет PCRE2 и отсутствие `pcre.dll` в релизном runtime.
+- [x] Починить clean CI-сборку GitHub Actions: `build.ps1` теперь готовит Hunspell на чистом checkout, а PCRE2 выбирает CMake generator по `PlatformToolset`, чтобы runner `windows-2022` с VS 2022 не пытался использовать `Visual Studio 18 2026`.
+- По итогам ручного прогона 2026-06-29 проверить `ImportEPUB`: обложка импортируется как встроенная, но не отображается в редакторе или не связывается с FB2-кодом ожидаемым образом.
+- По итогам ручного прогона 2026-06-29 завести UX-хвосты: выровнять шрифты вкладок настроек, исправить default extension/filter в `Save image as` для GIF, вернуть tooltip в параметрах ExportEPUB, локализовать окно FBV и добавить FBV-режим выбора файлов/папки при прямом запуске.
+- По итогам ручного прогона 2026-06-29 продуктовые пожелания: команды `Файл → Закрыть текущий файл` / `Закрыть все открытые файлы`, вставка JPEG 2000/WebP с конвертацией в FB2-совместимый формат, HTML-export со встроенными изображениями.
+
+### Целостность binary и parity выделения BODY/SOURCE
+
+- [x] Переименование используемого изображения обновляет все ссылки `href` и
+  `fbw-internal` `src`, обе coverpage (`title-info` и `src-title-info`),
+  сохраняет выбранные `SELECT` после обновления списков и подтверждено
+  runtime-проверкой Rename → BODY/SOURCE → Save → Reopen: после повторного
+  открытия проверяется реальный DOM FBE, новый ID, обе coverpage, все ссылки
+  изображений и отсутствие старого ID.
+- [x] Ручной `binary id` проверяется по тем же правилам XML ID, что и
+  автоматически создаваемый ID: невалидные и дублирующие значения
+  восстанавливаются без изменения ссылок и обложки. C++ и `runtime/main.js`
+  используют одну таблицу UTF-16 правил для первого и последующих символов;
+  differential-тест граничных Unicode-значений входит в обязательный
+  release-gate.
+- [x] Runtime-покрытие двустороннего выделения BODY/SOURCE включает title,
+  annotation, inline-разметку, диапазон через абзацы, границы тегов,
+  повторяющийся текст, Unicode, вложенные section и caret; каждый сценарий
+  проверяет возврат к тому же логическому месту после полного round-trip.
+### Оптимизация `binary` при сохранении FB2 (#24)
+
+- [x] Сохранять допустимое тире в автоматически создаваемом `binary id` при
+      добавлении изображения или вложения; ранее оно отбрасывалось без
+      необходимости.
+- [x] Записывать base64-содержимое `binary` без добавляемых MSXML переводов
+      строк, сохраняя исходные байты вложения; заменять содержимое через
+      дочерний `IXMLDOMText`, а не неподдерживаемый MSXML6 `put_text` элемента;
+      выполнять эту оптимизацию только при сохранении, не при переходе в «Код».
+- [x] Добавить автоматическую проверку компактной сериализации и включить её
+      в release-gate.
+- [x] Добавить production stress-тест Save → Reopen → Save для 50, 100 и 500
+      `binary`, с контролем времени, пиковой памяти, компактной Base64,
+      схемы FB2 и побайтовой сохранности вложений.
+- [x] Добавить throttled-индикацию прогресса обработки изображений при
+      сохранении больших книг: status bar обновляется безопасно без прокачки
+      общей очереди сообщений.
+- [ ] Выполнить ручной smoke на крупной реальной иллюстрированной FB2:
+      оценить время сохранения, размер файла и визуальную работу progress.
+- Перед возвратом к PVS-Studio пройти ручной smoke/regression по `docs/manual-test-plan.md`, фиксируя для каждого дефекта сценарий, файл, ожидаемый/фактический результат и скриншот или лог.
+- После пакета `V821` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти пять текущих предупреждений `V821`. Следующий безопасный блок выбирать осторожно: `V522` требует проверки null-contract, `V524` — смысла одинаковых обработчиков, `V550` — допуска для float-сравнений; `V565` по пустым `catch` оставить отдельной поведенческой ревизией.
+- После пакета `V809` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти все текущие предупреждения `V809`. Следующий механически безопасный пакет лучше брать из небольших групп `V821`/`V522`/`V524`; `V565` по пустым `catch` и лицензионные `V1042` по `xmlMatchedTagsHighlighter.*` оставить отдельными ревизиями, потому что там важен смысл поведения/происхождения кода, а не стиль.
+- После хвостового пакета `V815`/`V801` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти последние `V815` и текущие `V801` по `Settings`, `Splitter`, `utils`. Если подтвердится, следующий небольшой безопасный пакет брать из `V809`; `V565` по пустым `catch` и `V1042` по лицензии `xmlMatchedTagsHighlighter.*` оставить отдельными немеханическими ревизиями.
+- После строкового пакета `V815`/смежного `V801` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти предупреждения по `CString`-очистке/пустоте в `FBEview.*`, `AboutBox.*`, `Settings*.cpp` и повторному `KeycodeToString()` в `SettingsHotkeysDlg.cpp`. Следующий безопасный пакет лучше брать из `V809` или оставшихся точечных `V801`; `V565` по пустым `catch` оставить отдельной поведенческой ревизией.
+- После пакета `V1003`/`V559` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти оставшиеся dangerous macro diagnostics в `apputils.h`/`atlctrlsext.h` и suspicious assignment diagnostics в `GLLogo.cpp`, `Utils.cpp`, `TreeView.cpp`. Если подтвердится, следующий безопасный пакет можно брать из `V809`/`V815`; `V565` по пустым `catch` оставить отдельной поведенческой ревизией.
+- После пакета `V1003`/`V576` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти опасные arithmetic-макросы в `res1.h` и format-type предупреждения по `SearchReplace.h`, `FBDoc.cpp`, `Settings.cpp`, `SettingsOtherDlg.cpp`, `mainfrm.cpp`. Если результат подтвердится, следующий маленький пакет лучше брать из `V559` или выборочных `V809`, а `V565`/пустые catch оставить отдельной ревизией поведения.
+- После закрытия `V802` повторно прогнать PVS-Studio для `FBE`: ожидаемое состояние Level 1/2 — только два `V1042` по `xmlMatchedTagsHighlighter.*`. Их разбирать отдельно как лицензионную/provenance-задачу, а не как механическое изменение кода. Следующий технический пакет брать уже из Level 3, предпочтительно небольшими тематическими группами (`V565`/`V1048`/`V820` отдельно).
+- После PVS-пакета по свежему `D:\FBE.plog` повторно прогнать PVS-Studio для `FBE` и сверить уход `V1109` по `SHA256.h`, `V1109` по `Utils.cpp::PathRemoveFileSpecW`, `V560` в `ModelessDialog.h`, `V808` в `atlctrlsext.h`, `V801`/`V1037` в `XMLSerializer.cpp`. `V1042` по `xmlMatchedTagsHighlighter.*` отдельно рассматривать как лицензионную диагностику, не как механическую code-style правку.
+- После `V801`-пакета по descriptor-сигнатурам повторно прогнать PVS-Studio для `FBE` и сверить уход предупреждений в `ElementDescriptor.cpp`, `ElementDescMnr.cpp` и `FBEview.cpp::GetRangePos`. Следующий крупный технический блок — deprecated API (`SHA256.h`/CryptoAPI и `Utils.cpp::PathRemoveFileSpecW`); build-гигиена старого `FBV.exe` уже закрыта отдельным исправлением.
+- После малого PVS-пакета по `V815`/`V817`/`V807` повторно прогнать PVS-Studio для `FBE` и сверить уход этих предупреждений. Следующие тематические блоки не смешивать: deprecated API (`SHA256.h`, `PathRemoveFileSpecW`), спорные license diagnostics и performance-only `V801`/`V807`.
+- После пакета `FbeLoadString()` повторно прогнать PVS-Studio для `FBE`: ожидаемо должны уйти основные `V530` по `LoadStringW`. Следующий безопасный пакет лучше брать из оставшихся Level 1/2 по новому `.plog`: deprecated CryptoAPI/`PathRemoveFileSpecW` отдельно, performance-only `V801`/`V807`/`V815` отдельно.
+- [x] Закрыть build-гигиену `FBV.exe`: старый `runtime\FBV.exe` больше не перезаписывает актуальный `out\Release\FBV.exe`, а `build.ps1` сам пересобирает `src/fbv/FBV.vcxproj` перед release-gate.
+- После второго укрупнённого механического PVS-пакета повторно прогнать `FBE` в PVS-Studio. Ожидаемо должны уйти `V823` по `http_download`/`Speller`, `V818` по `pElAdjacent`/`http_download`, часть `V815` в `Settings.cpp`, `V810` по image-title, `V806` в `Words`/`SettingsHotkeysDlg` и `V730` по `m_selBandID`. Следующий крупный пакет лучше посвятить либо `LoadStringW` helper-обёртке, либо deprecated API (`SHA256.h`, `PathRemoveFileSpecW`), но не смешивать их.
+- После укрупнённого механического PVS-пакета повторно прогнать `FBE` в PVS-Studio и сверить, что ушли ожидаемые `V818`, `V832`, часть `V815`/`V803`/`V806`/`V823` и оставшиеся `V730` по `CMainFrame`/`CGLLogoView`. Следующую волну начинать уже от нового `.plog`, а не от старого `D:\FBE.plog`.
+- По свежему `D:\FBE.plog` после первого PVS-пакета осталось 371 сообщение: 18 Level 1, 118 Level 2, 235 Level 3. Второй безопасный пакет уже закрыл часть инициализации/WinAPI (`LoadKeyboardLayout`, `CMainFrame`, `COptDlg`, `CGLLogoView`); следующий PVS-шаг — повторный прогон `FBE` и разбор оставшихся функциональных Level 1/2, не смешивая их с performance-only.
+- [x] Закрыть build-гигиену после подключения новых проектов: `FBV.exe`, `ImportEPUB.dll`, `ExportDOCX.dll`, batch-утилиты и `ImportEPUBLunaSVG.dll` принудительно пересобираются в `build.ps1` там, где прямой project build стабильно выводит результат в общий `out\Release`; `verify-release.ps1 -Configuration Release` проходит на версии `3.0.0`.
+- После правок `ExportDOCX.vcxproj` и `ImportEPUB` повторно прогнать PVS для `ExportDOCX` и `ImportEPUB`: ожидается, что у `ImportEPUB` уйдут `V823`/`V821`, а `ExportDOCX` должен загрузиться в Visual Studio без статуса «не удалось загрузить».
+- Первая безопасная волна по свежему `PVS-FBE-2026-06-28.plog` закрыла `V519`, `V547`, `V560` и явную часть `V719` через локальные правки в `FBEview.cpp`, `mainfrm.cpp` и `XMLSerializer.cpp`; следующий шаг — повторно прогнать PVS для `FBE` и продолжить только по оставшимся функциональным Level 1/2. Performance-only `V801`/`V803`/`V807`/`V815`/`V823` оставить отдельной низкоприоритетной волной.
+- После подключения `ExportDOCX`, `ExportEPUB` и `ImportEPUB` к общему `FBE.sln` выполнить ручной plugin-smoke на установленной сборке: проверить появление пунктов импорта/экспорта в меню FBE, регистрацию/снятие регистрации через installer/uninstaller и отсутствие регрессии у уже работающего `ExportEPUB`.
+- [x] `ImportEPUBLunaSVG.dll` включён в стандартный пакет как дополнительная подсекция ImportEPUB; packaging/build/release-gate проверяют его наличие и PDB.
+- Проверить non-admin/UAC-сценарий регистрации новых plugin-DLL: `ImportEPUB` использует per-user COM-регистрацию, а export-плагины сохраняют исторический HKCR/ATL-контур и требуют отдельного installer-smoke перед релизным закреплением.
+- Исправлен precedence-дефект в `CModelessDialogImpl::GetMsgProc`: проверки
+  Enter/Esc/Tab/Menu и символьных shortcut теперь корректно ограничены
+  сообщениями `WM_KEYDOWN` и `WM_CHAR`; посторонние сообщения больше не
+  передаются в `IsDialogMessage` только из-за совпавшего `wParam`. Также
+  удалены недостижимая ветвь `ShowSource`, повторная проверка `col` в memory-
+  protocol и доказанно избыточные условия `DomPath`. Сборка `pvs8-Release`,
+  source-safety и startup smoke прошли. Ручная проверка клавиш в find/replace-
+  диалогах отложена до доступа к ПК.
+- Следующий безопасный пакет PVS-аудита завершён: инициализированы поля
+  `CDocumentTree`, modeless- и find/replace-диалогов; исправлено владение
+  списком подсказок и `CSplitter` в `CSpeller`; устранены лишние DOM-
+  присваивание и проверка непустого `vector`; COM-исключение перехватывается
+  по ссылке. В `ScriptLoad()` добавлены
+othrow`, защита `length + 2`,
+  сохранение ошибки `ReadFile` до `CloseHandle` и проверка короткого чтения.
+  Сборка `pvs7-Release`, source-safety, startup и spellcheck regression
+  прошли. [x] Issue #11 закрыт: автоматические runtime-сценарии теперь покрывают
+  direct `innerText`, форматирование, пользовательский JS и большой абзац;
+  ручная проверка JS/VBS больше не требуется.
+- Завершена безопасная чистка оставшихся подтверждённых PVS-замечаний без
+  изменения поведения: удалены неиспользуемые локальные объекты в `FBDoc`,
+  `mainfrm`, `Utils`, `Words` и `XMLSerializer`, пустые деструкторы script-
+  объектов объявлены `default`, константа `Tokens` вынесена из заголовка,
+  рекомендация V815 в `Serializable.h` закрыта через `CString::Empty()`.
+  Изолированная сборка `pvs6-Release`, `test-source-safety.ps1`, startup
+  smoke и regression-тест словарей орфографии прошли. Новый контрольный
+  `.plog` и ручные UI-проверки отложены до
+  появления доступа к рабочему ПК.
+- Третий контрольный этап PVS-аудита: `FBE-after-fixes-2.plog` содержит 422
+  сообщения (33 Level 1, 153 Level 2, 236 Level 3), однако собственные
+  Level 1 теперь состоят преимущественно из deprecated API,
+  performance-only, license diagnostics и мёртвых локальных переменных.
+  Функционально значимая часть Level 2 дополнительно исправлена и проверена
+  чистой сборкой/startup smoke.
+- `FBV`, `FBShell`, `ExportHTML` считать закрытыми по текущему PVS-аудиту:
+  Level 1/2 отсутствуют. Оставшиеся V1096/V1048 — диагностики на штатные ATL
+  COM/message-map макросы; V815 в `Serializable.h` — необязательная
+  микрорекомендация `CString::Empty()`.
+- Следующий PVS-шаг для FBE — не массовая погоня за нулём предупреждений, а
+  отдельные тематические задачи: модернизация CryptoAPI в `SHA256.h`, замена
+  deprecated shell API, затем cleanup мёртвых переменных и только после
+  этого performance-only замечания.
+- Получены отдельные PVS-Studio отчёты для всего C++-набора решения:
+  `FBE-after-fixes.plog` (440 сообщений), `FBShell.plog` (15), `FBV.plog`
+  (2), `ExportHTML.plog` (4). Подтверждённые замечания FBV/FBShell и общий
+  дефект инициализации `CProperty` исправлены; ExportHTML содержит только
+  низкоприоритетные ATL macro diagnostics после явного оформления tolerant
+  image-export catch.
+- Следующий контрольный шаг: повторно построить `.plog` для `FBE`, `FBShell`
+  и `FBV` после последнего пакета. В новом FBE-отчёте приоритет отдавать
+  оставшимся функциональным Level 2; deprecated API, performance-only и
+  license diagnostics разбирать отдельными тематическими задачами, не
+  смешивая их с исправлением ошибок.
+- Выполнен первый полный baseline-прогон PVS-Studio для проекта `FBE`
+  (`Release|Win32`): исходный отчёт содержал 673 сообщения, из них 86
+  Level 1 относились к собственным исходникам после исключения WTL/ATL и
+  сторонних заголовков. Подтверждённые ошибки управления памятью,
+  COM/BSTR/VARIANT_BOOL, инициализации и владения Win32-ресурсами исправлены
+  несколькими локальными пакетами; чистая проверочная сборка проходит.
+- Следующий шаг PVS-аудита: повторно запустить анализ проекта `FBE` и
+  сохранить новый `.plog`, затем разбирать только оставшийся актуальный
+  набор Level 1/2. Старый `D:\FBE.plog` больше не использовать для
+  привязки к строкам после внесённых изменений.
+
+- После первого точечного аудита `src/fbe` продолжить идти именно по
+  безопасным локальным узким местам:
+  1. ручные
+ew[]/delete` и ранние `return` с потерей cleanup;
+  2. старые file-size / file-IO пути (`GetFileSize`, узкие `DWORD`-контуры);
+  3. только потом более рискованные темы вроде `CreateThread` и больших
+     UI/DOM-путей, где уже легко задеть архитектуру.
+- Уже закрыты первые четыре локальных узких места в `src/fbe`:
+  `SourceToHTML()` cleanup, `U::LoadFile()`, `ScriptLoad()` и буфер в
+  `XmlMatchedTagsHighlighter::lookupTags()`. Следующий безопасный кандидат —
+  осторожный аудит thread-контуров (`CreateThread`) и ещё нескольких
+  ручных буферов в `FBDoc.cpp` / `mainfrm.cpp`, но без больших
+  архитектурных переписываний.
+- Следующая волна тоже закрыта: в `FBDoc.cpp` уже усилены проверки
+  `CreatePipe` / `CreateThread`, убран ещё один ручной `malloc/free` в
+  XML/SAX-пути и упрощён cleanup строки в `GetSavedPos()`. Следующий
+  безопасный шаг — продолжить такой же точечный аудит оставшихся
+  file/buffer/resource-path участков в `mainfrm.cpp`, `FBEview.cpp`,
+  `ElementDescMnr.cpp` и соседних core-модулях, не заходя пока в крупные
+  архитектурные переделки.
+- Ещё одна безопасная волна тоже закрыта: в `mainfrm.cpp` и `FBEview.cpp`
+  уже убраны несколько локальных временных `malloc/free`-буферов в пользу
+  `std::vector<char>`. Следующий разумный кандидат — не массовый рефакторинг,
+  а такой же точечный аудит оставшихся file/resource/error-handling участков
+  в `mainfrm.cpp`, `ElementDescMnr.cpp`, `FBDoc.cpp` и смежных core-модулях.
+- Для внешних нативных helper-утилит в build/test-контуре по возможности
+  разделять «успешный, но шумный» вывод и реальные ошибки: на успехе лог
+  должен быть коротким, а при сбое — сохранять полный диагностический текст.
+- В validation-скриптах для installer/layout по возможности проверять не
+  конкретную строковую форму пути, а саму семантику (целевой каталог,
+  отсутствие legacy fallback), иначе helper-скрипты начинают ложно падать
+  после безвредного рефакторинга путей.
+- После обновления внешних библиотек дополнительно проверять не только
+  основной build и `verify-release.ps1`, но и `verify-artifacts.ps1`, потому
+  что там тоже есть собственные ожидания по версиям runtime-DLL.
+- Если когда-нибудь снова понадобится `UPX`, возвращать его только как
+  явный opt-in для совместимых бинарников и не включать по умолчанию в
+  проекты с `GUARD_CF`, иначе полный build снова начнёт ложнопадать на
+  post-build этапе.
+- После завершения текущего этапа shell / thumbnail-диагностики продолжить
+  ревизию `tools/tests`: первая волна уже убрала три старых промежуточных
+  `IThumbnailCache` smoke-файла, а вторая — неиспользуемую ad-hoc пару
+  `cover-inspect`; дальше аналогично проверять остальные кандидаты только
+  после подтверждения, что они не входят в активный build/release/doc-контур.
+- Для дальнейшей cleanup-ревизии `tools/tests` опираться на `docs/test-contours.md`: там зафиксировано, что считать release-gate, что относится к shell-диагностике, а что оставлено как legacy/reference-only контур.
+- Третья волна cleanup-ревизии `tools/tests` не выявила новых безопасных
+  удалений: оставшиеся малоссылочные файлы в основном относятся к
+  точечной shell/metadata-диагностике или legacy/reference-only проверкам,
+  поэтому дальше чистить их только вместе с отдельным решением по сужению
+  тестового покрытия.
+
+- После добавления `test-fb2-shell-thumbnail-matrix.ps1` основное
+  thumbnail-покрытие уже закрыто; дальше по этой теме оставлять только
+  лёгкий хвост на будущее:
+  если позже появится желание улучшать внешний вид обложек в правой панели
+  или preview-области, отдельно решить, нужен ли проекту не просто faithful
+  thumbnail provider, а уже дополнительная постобработка embedded cover
+  image (например, trim белых полей). Пока это не считать обязательным
+  release-gate.
+
+- Проанализировать изменения в upstream-форке `evpobr/fictionbookeditor`
+  (ветка `master`, история коммитов:
+  https://github.com/evpobr/fictionbookeditor/commits/master/)
+  и при необходимости учесть их в нашей версии с корректировкой под текущую
+  кодовую базу, сборочный контур и уже принятые решения проекта.
+- По итогам первичной сверки reference-форка `evpobr/fictionbookeditor`
+  зафиксировано, что practical-часть (`FBV` на `MSXML6`, `MS Shell Dlg` в
+  `FBV` / `ExportHTML`, installer LZMA) уже либо импортирована, либо
+  функционально перекрыта нашей веткой; дальше использовать этот форк в
+  основном как исторический reference для точечных UI/FBV-решений, а не как
+  источник механических patch-переносов. См. `docs/upstream-evpobr-analysis.md`.
+
+- Считать ранее проблемный кейс `tmp/diamond-guns-germs-steel.fb2`
+  практически закрытым: повторный прогон `test-fb2-shell-properties.ps1`
+  на 21.06.2026 возвращает корректные `Author/Title/Language/Genre` и
+  document-info поля, а пустые `Sequence` / `Keywords` соответствуют самой
+  книге. Если тема неполных shell-свойств всплывёт снова, нужен уже новый
+  воспроизводимый реальный файл или обезличенный fixture.
+
+- Conditional UAC-доработка installer/uninstaller теперь опирается на явный
+  uninstall-маркер `SystemIntegrationInstalled`: `setup` записывает его при
+  установке системной интеграции, а `uninst.exe` читает его в `un.onInit`
+  перед запросом elevation. Остаётся подтвердить это отдельным ручным GUI-
+  прогоном именно на неадминистративном запуске деинсталлятора.
+
+- В clean-room shell-цикле считать допустимым частичный warning от
+  `cleanup-shell-test-state.ps1`, если заняты только временные build-artifacts
+  вроде `out\package\shell-build\...\Debug\FBShell.dll`, а ключевые registry /
+  shared-shell хвосты при этом действительно сняты. Для property schema
+  pre-clean теперь допускается идемпотентный `PSUnregisterPropertySchema ->
+  0x80070002`.
+
+- Отдельно добить источник «грязного baseline» published FBE-specific
+  свойств на тестовой машине: даже после clean-room цикла
+  `PSGetPropertyDescriptionByName` по `FBE.*` может возвращать published-
+  состояние до старта installer smoke. Для повторяемой диагностики теперь
+  использовать `tools/tests/diagnose-fbe-property-schema-baseline.ps1`.
+- В installer smoke держать различие между двумя случаями:
+  1) реальная недоочистка текущего setup/uninstall-контура;
+  2) residual machine baseline Property System, когда `FBE.*` остаются
+     published даже при уже снятых `PropertyHandlers\.fb2`, `ShellEx` и
+     `CLSID`. Второй случай уже подтверждён на тестовой машине и не должен
+     маскироваться под обычную installer-регрессию.
+
+- После переноса `WriteUninstaller` и uninstall metadata из optional-секции
+  `System_Integration` в основной install-контур отдельно перепроверить
+  реальную GUI-установку с UAC-relaunch: убедиться, что `uninst.exe`
+  появляется всегда, а флаг `SystemIntegrationInstalled` меняется только
+  при установленной системной интеграции.
+- Проверка выполнена: `uninst.exe` теперь создаётся и без системной
+  интеграции, при этом `SystemIntegrationInstalled` продолжает управлять
+  только conditional UAC на удалении. Размер программы в «Программы и
+  компоненты» / «Установленные приложения» после добавления `EstimatedSize`
+  также подтверждён на реальной машине. Дальше по этой теме нужен только
+  контроль на отсутствие регрессий.
+
+- [x] Контур проверки обновлений сторонних исходников расширен на `WTL`:
+  версия читается из `_WTL_VER`, upstream проверяется через SourceForge RSS,
+  download/apply-скрипты понимают архив WTL с вложенной папкой `Include`.
+  Следующий кандидат для отдельной оценки — `NSIS UAC`.
+- [x] WTL 10.0.1 проверен после раскладки: прошли `check-third-party-updates`,
+  `build.ps1 -Configuration Release -Platform Win32 -SkipUpx`,
+  `verify-release.ps1 -Configuration Release`, FBE startup, FBV fixture,
+  FBShell loader, shell-surface diagnostics и plugin/export smoke.
+- [x] Закрыта регрессия clean GitHub Actions/standalone-сборки `FBShell` после
+  WTL 10.0.1: helper-функции переведены с `WTL::CString` на `ATL::CString`,
+  а include-путь WTL в `FBShell.vcxproj` сделан относительным к проекту.
+
+- Если обновления `Scintilla` / `Lexilla` / `PCRE2` / `Hunspell` станут регулярной
+  операцией, добавить поверх нового download/apply-контура отдельный
+  полуручной чек-лист: какие smoke/regression-тесты обязательно прогонять
+  сразу после раскладки каждой зависимости.
+
+- Если orchestration-сценарий обновления зависимостей приживётся, подумать
+  о следующем шаге: отдельный отчётный режим с сохранением краткого лога
+  "скачал -> разложил -> пересобрал -> прогнал тесты" в `tmp`, чтобы такие
+  обновления потом было проще прикладывать к changelog и коммитам.
+
+- Для нового единого сценария `tools/build/update-third-party-dependency.ps1`
+  позже стоит добавить машинно-читаемый итоговый отчёт: например JSON или
+  markdown-summary с локальной/удалённой версией, фактом раскладки и списком
+  реально прогнанных smoke/regression-проверок.
+
+## Завершено
+
+### Миграция `PCRE -> PCRE2`
+
+Цель: убрать runtime-зависимость от `pcre.dll` / `pcre.lib` и перевести
+регулярные выражения режима `Дизайн` на `PCRE2`, не сломав поведение поиска,
+замены и существующих шаблонов пользователей.
+
+#### Этап 1. Подготовка
+
+- [x] Зафиксировать текущее поведение режима `Дизайн` на наборе кейсов из
+      `tools/tests/regex-fixtures.json`.
+- [x] Добавить отдельный smoke-тест или runner для wrapper-логики режима
+      `Дизайн`, чтобы можно было сравнивать `PCRE` и `PCRE2`.
+- [x] Отдельно описать совместимые и несовместимые места между `PCRE 7.9` и
+      `PCRE2`, которые реально затрагивают FBE.
+
+#### Этап 2. Изоляция wrapper-слоя
+
+- [x] Выделить текущую regex-обвязку из `src/fbe/apputils.cpp` в более явный
+      внутренний слой адаптера.
+- [x] Убрать прямую зависимость остального кода от деталей `pcre_exec`,
+      `pcre_compile` и старых структур `PCRE`.
+- [x] Сохранить текущий интерфейс `AU::IRegExp2`, чтобы не ломать вызовы в
+      `FBEview.cpp` на первом шаге.
+
+Текущий статус:
+
+- текущая реализация `PCRE` уже была вынесена из `apputils.cpp`;
+- добавлен внутренний контракт `RegexBackend`, который отделяет
+  `AU::IRegExp2` от низкоуровневого `PCRE`;
+- runtime режима `Дизайн` уже переключён на `PCRE2`, а legacy-контур `PCRE`
+  сохранён только во внешних compare-тестах и reference-зависимостях.
+
+#### Этап 3. Параллельный адаптер `PCRE2`
+
+- [x] Добавить сборку и подключение `PCRE2` как отдельной зависимости.
+- [x] Реализовать альтернативный backend для `AU::IRegExp2` поверх `PCRE2`.
+- [x] Поддержать как минимум:
+      - UTF-8;
+      - `IgnoreCase`;
+      - `Global`;
+      - `Multiline`;
+      - группы захвата;
+      - backreference в замене.
+
+Промежуточно уже сделано:
+
+- добавлен dispatcher для выбора regex-backend внутри `RegexBackend`;
+- legacy-контур `PCRE` сначала был оставлен рядом для сравнения, а затем
+  удалён из runtime-исходников после завершения переключения;
+- реализован рабочий backend `PCRE2`, уже выбранный по умолчанию;
+- добавлены отдельные скрипты сборки и smoke-проверки `PCRE2`;
+- добавлено автоматическое сравнение `PCRE` и `PCRE2` на wrapper-фикстурах;
+- добавлены fixture- и smoke-проверки замены с `backreference` и флагами
+  форматирования (`\0`, `\1`, `\U`, `\T`, `\Q`).
+- дополнительно зафиксированы кейсы для `\+`, незахваченной необязательной
+  группы в замене и явного сброса регистра через `\Q`.
+- отдельно покрыты глобальная замена по пустым совпадениям и multiline-замена
+  по якорям строки.
+- добавлены wrapper-проверки для `FirstIndex` на UTF-8 после перевода строки и
+  для multiline-групп захвата.
+
+#### Этап 4. Сравнение поведения
+
+- [x] Прогнать одинаковые кейсы на старом `PCRE` и новом `PCRE2`.
+- [x] Зафиксировать различия:
+      - корректные улучшения;
+      - несовместимости, которые нужно сохранить ради обратной совместимости;
+      - несовместимости, которые можно принять и задокументировать.
+- [x] Отдельно проверить сценарии режима `Дизайн`:
+      - поиск;
+      - `Заменить`;
+      - `Заменить все`;
+      - многострочные совпадения;
+      - кириллицу и UTF-8.
+
+Примечание:
+
+- автоматические проверки `\U` / `\L` / `\T` уже покрывают базовые ASCII- и
+  кириллические кейсы;
+- различия по `SubMatches`, `\+`, пустым совпадениям, multiline-замене и
+  `FirstIndex` на UTF-8 уже зафиксированы как ожидаемое поведение;
+- отдельный прогон `test-pcre2.ps1`, `test-pcre2-wrapper.ps1` и
+  `test-pcre2-replace.ps1` подтверждает поиск, замену, multiline и кириллицу
+  уже на текущем `PCRE2`-контуре режима `Дизайн`;
+- отдельную проверку регистровых преобразований на кириллице лучше вынести в
+  самостоятельный этап, потому что там пересекаются regex и старая
+  Win32-логика `LCMapString`.
+
+#### Этап 5. Переключение
+
+- [x] Перевести `USE_PCRE`-ветку на `PCRE2`.
+- [x] Удалить старую зависимость от `pcre.lib` и `pcre.dll` из основной сборки,
+      runtime и инсталлятора.
+- [x] Обновить `verify-release.ps1`, `create-release.ps1` и runtime-проверки.
+- [x] Обновить документацию в `docs/building.md` и `docs/regex-regression.md`.
+
+Что уже сделано на этом этапе:
+
+- `FBE.exe` больше не линкуется с legacy `pcre.lib`;
+- `runtime\pcre.dll` удалён из поставки;
+- NSIS-установщик и portable-пакет больше не включают `pcre.dll`;
+- compile-time макрос `USE_PCRE` и исходник `RegexBackendPcre.cpp` удалены из
+  основной кодовой базы;
+- legacy `PCRE 7.9`, его исходники и compare-тесты удалены из репозитория:
+  поддерживается только актуальный PCRE2-контур.
+
+#### Основные риски
+
+- Поведенческие отличия regex между `PCRE 7.9` и `PCRE2`.
+- Отличия в группах захвата и backreference при замене.
+- Возможные изменения в обработке некорректных шаблонов.
+- Разный результат в режиме `Дизайн` и `Код`, который пользователи воспримут
+  как регрессию.
+
+#### Практическое правило
+
+Миграцию не делать одним большим коммитом. Лучше идти так:
+
+1. зафиксировать текущее поведение;
+2. сделать адаптер;
+3. включить параллельное сравнение;
+4. только потом переключать runtime.
+
+Итог по ветке:
+
+- миграция `PCRE -> PCRE2` завершена как рабочий runtime-контур;
+- release, installer и runtime уже очищены от обязательной зависимости на
+  legacy `pcre.dll`;
+- текущий regression-набор достаточен, чтобы считать тему закрытой для
+  обычной разработки и релизов.
+
+## Модернизация shell extension
+
+- [x] Подготовить новый состав поставки shell-интеграции: значки, контекстное меню, свойства/колонки.
+
+- [x] Зафиксировать фактическое поведение `FBShell.dll` на Windows 10/11.
+- [x] Подтвердить, что modern property handler реально показывает метаданные `.fb2` в колонках Проводника.
+- [x] Включить сборку и упаковку modern property handler для `Win32` и `x64` в релизный контур `create-release.ps1` и `out\package`.
+- [x] Встроить в NSIS elevated-регистрацию modern property handler для `Win32 Explorer` и `64-bit Explorer`.
+- [x] Подтвердить smoke-проверкой, что `setup.exe` и `uninst.exe` корректно ставят и снимают modern property handler.
+- [x] Дотянуть штатный installer-helper до thumbnail-контура, чтобы обычный `setup.exe` регистрировал thumbnail provider для `.fb2` и `FictionBook.2`.
+- [x] Расширить installer smoke-проверку так, чтобы она отдельно контролировала регистрацию и снятие thumbnail provider наряду с property handler и schema.
+- [x] Дотянуть проверку shell-контура до реальной COM-активации thumbnail provider: контролировать не только `ShellEx`, но и `CLSID\...\InprocServer32`, чтобы ловить сбои вида `CoCreateInstance -> 0x80040154`.
+- [x] Починить диагностический вывод `fb2-shell-properties-query.cpp`, чтобы пустое свойство не обрывало весь последующий дамп shell-значений на проблемных реальных книгах.
+- [x] Добавить отдельный кириллический FB2-fixture для shell-диагностики:
+      `tools/tests/fb2-metadata-cyrillic-smoke.fb2` с заполненными
+      `author/title/lang/keywords/sequence/document-info`, чтобы легче
+      отличать баг property handler от особенностей конкретной реальной книги.
+- [x] Вывести legacy `ColumnProvider` из стандартной регистрации, сохранив его как отдельный build-флаг для возможного отката.
+- [x] Вывести legacy `ContextMenu` из стандартной регистрации, сохранив его как отдельный build-флаг для возможного отката.
+- [x] Перенести основной сценарий `Validate` из legacy shell extension в обычную shell-команду без DLL.
+- [x] Развести в инсталляторе modern property handler и legacy shell-контур, чтобы обычная установка не тащила старую shell-интеграцию ради иконок.
+- [x] Развести имена файлов: `FBShell.dll` для modern `Win32`, `FBShell64.dll` для modern `x64`.
+- [x] Убрать legacy shell-контур из стандартной поставки и оставить для `.fb2` обычную иконку файла через `DefaultIcon`.
+- [x] Решить, оставляем ли `ColumnProvider` в основной поставке.
+- [x] Решить, выносить ли `ContextMenu` в отдельную опцию.
+- [x] Проверить актуальность встроенных `zlib`, `libpng`, `libjpeg` в `src\fbshell`.
+- [x] Вывести legacy `IconExtractor` из стандартной сборки `FBShell`, оставив его только как opt-in build-флаг.
+- [x] Удалить legacy `IconExtractor`, `ImageLoader` и встроенные `zlib/libpng/libjpeg` из дерева `src\fbshell`, потому что modern thumbnail provider уже использует новый `Fb2CoverImage`-контур.
+- [x] Завершить `cover extraction` / modern thumbnail provider вместо legacy
+      `IconExtractor`: reader `Fb2CoverImage`, отдельный COM-класс с
+      `IInitializeWithStream`, WIC-декодирование и shell-регистрация входят в
+      штатный контур.
+- [x] Вывести legacy `ColumnProvider`, `ContextMenu` и `IconExtractor` из активного проекта `FBShell`, чтобы modern DLL не зависела от мёртвого shell-контура.
+- [x] Добавить отдельный per-user скрипт восстановления shell-регистрации
+      `.fb2` (`DefaultIcon`, `InfoTip`, `TileInfo`, `Details`, `Edit`,
+      `Validate`) без полной переустановки FBE.
+- [x] Добавить отдельную диагностику поверхностей shell-интеграции `.fb2`,
+      чтобы быстро отличать проблему регистрации (`PropertyHandlers`,
+      `InfoTip`, `Details`) от ограничений самого Explorer.
+
+Сводные заметки по этому контуру: `docs/shell-extension-modernization.md`.
+
+## Современные колонки `.fb2` в Проводнике
+
+- [x] Подготовить отдельный внутренний reader метаданных `.fb2` без зависимости от legacy shell API.
+- [x] Определить минимальный MVP-набор свойств для Проводника: автор, название, жанр, язык, серия.
+- [x] Зафиксировать предварительный маппинг свойств: подтверждённые Windows-поля, candidate-поля и FBE-specific поля.
+- [x] Подготовить внутренний слой `PropertyId -> PROPERTYKEY` для MVP-полей `Author`, `Title`, `Language`.
+- [x] Подготовить внутренний кэш значений будущего `IPropertyStore` для MVP-полей.
+- [x] Подготовить тестируемый COM-каркас `IPropertyStore + IInitializeWithStream` без регистрации в системе.
+- [x] Подготовить отдельный экспериментальный класс `Fb2PropertyHandler` как будущую точку входа modern property handler.
+- [x] Подготовить compile-time флаг для штатной shell-сборки modern property handler.
+- [x] Подготовить отдельные скрипты регистрации/отката property handler и чеклист ручной GUI-проверки.
+- [x] Исследовать современный property-handler контур для Windows 10/11 вместо старого `IColumnProvider`.
+- [x] Сделать прототип modern property handler для 2-3 полей.
+- [x] Перевести `Genre`, `DocumentVersion`, `DocumentDate` в FBE-specific
+      published-свойства вместо спорных системных Windows-полей.
+- [x] Перевести `Keywords` и `DocumentId` в FBE-specific published-свойства
+      после проверки реального UI-поведения Проводника Windows 11.
+- [x] Подтвердить на реальной машине новые FBE-specific поля `FBE:Жанр`,
+      `FBE:Версия документа` и `FBE:Дата документа` в колонках Проводника.
+- [x] Подтвердить на реальной машине новые FBE-specific поля
+      `FBE:Ключевые слова` и `FBE:Идентификатор документа` в колонках
+      Проводника.
+- [x] Подтвердить, что после полной shell-регистрации Windows 11 показывает
+      FBE-specific свойства в tooltip.
+- [x] Отдельно исследовать, можно ли заставить Windows 11 показывать custom
+      FBE-specific свойства именно в правой панели сведений.
+  - [x] Проверить гипотезу, что для правой панели Проводника нужен не только
+        `Details`, но и отдельный ключ `PreviewDetails`.
+  - [x] После добавления `PreviewDetails` повторно проверить правую панель
+        сведений руками на Windows 11 и зафиксировать итог.
+- [x] Вернуть для `FictionBook.2` shell-строки `InfoTip`, `TileInfo` и
+      `Details` уже на modern-контуре, без возврата legacy `ColumnProvider`.
+- [x] Подтвердить на реальной машине, что после регистрации `.propdesc`-schema поле `Sequence` появляется в Проводнике как published FBE-specific свойство.
+- [x] Подтвердить smoke-проверкой, что обычный `setup.exe` и `uninst.exe`
+      корректно ставят и снимают `FBE.Sequence.propdesc` вместе с modern
+      property handler.
+- [x] Зафиксировать этот install/uninstall smoke-сценарий отдельным
+      воспроизводимым скриптом.
+- [x] Добавить отдельную non-admin проверку согласованности shell-строк
+      `InfoTip`, `TileInfo`, `Details` между NSIS и PowerShell-тестами.
+
+## Split view редактора
+
+- [ ] Отдельно исследовать возможность разделения окна FBE на две рабочие
+      области для одного документа.
+- [ ] Оценить минимальный практический сценарий: два независимых окна одного
+      и того же текста с несвязанной прокруткой для ручного переноса фрагментов
+      и раскладки примечаний.
+- [ ] Проверить сценарий `основной текст + body notes`, где верхняя и нижняя
+      области показывают разные части одной книги и не тащат скролл друг за
+      другом.
+- [ ] Отдельно оценить более сложный режим `Body + Source`:
+      - синхронизация текущей позиции между режимами `B` и `S`;
+      - возможность видеть код для текущего видимого места без постоянного
+        переключения режимов;
+      - снижение проблемы потери позиции курсора при переходе между `B` и `S`.
+- [ ] Проверить, нужен ли для split view только вертикальный раскол, или
+      стоит сразу закладывать переключаемые варианты `сверху/снизу` и
+      `слева/справа`.
+- [ ] Оценить архитектурный риск для текущего FBE:
+      - насколько переиспользуемы существующие view и document-контуры;
+      - не усилим ли нестабильность переключения между `Body` и `Source`;
+      - можно ли сначала сделать исследовательский прототип без глубокого
+        переписывания редактора.
+- [ ] Отдельно рассмотреть, может ли split view пригодиться не только для
+      редактирования книги, но и для сложных скриптовых сценариев, где сейчас
+      приходится уходить во внешний браузер или отдельные сравнивающие утилиты.
+- [x] Расширить install/uninstall smoke-сценарий с одного `Sequence` до всего
+      FBE-specific набора (`Genre`, `Sequence`, `DocumentVersion`,
+      `DocumentDate`).
+- [x] Расширить install/uninstall smoke-сценарий и schema-check на новый
+      FBE-specific набор `Keywords` и `DocumentId`.
+- [x] Прогнать на реальной машине расширенный install/uninstall smoke-сценарий
+      для всего FBE-specific набора и зафиксировать результат.
+
+Детальный план: `docs/fbshell-roadmap.md`.
+Текущая таблица маппинга свойств: `docs/fb2-property-mapping.md`.
+Отдельный план по серии книги: `docs/sequence-property-schema-plan.md`.
+Регистрация schema: `docs/sequence-property-schema.md`.
+Отдельный план по thumbnail provider: `docs/thumbnail-provider-plan.md`.
+
+### Отдельный хвост по `Validate`
+
+- [x] Проверить и починить запуск `Validate` из контекстного меню `.fb2`: причина была не в shell-команде как таковой, а в историческом `FBV.exe`, завязанном на `MSXML4`, и в том, что installer smoke в конце снимал регистрацию verb.
+- [x] Разобраться, не сломался ли текущий `FBV` после переработки shell-регистрации или релизного контура.
+- [x] Добавить иконку для пункта `Validate` в контекстном меню и проверить её на Windows 10/11.
+- [x] Подменить в install/release smoke-сценарии runtime-FBV.exe на локально собранный out/Release/FBV.exe и повторить ручную проверку Validate на реальной .fb2.
+- [x] Сверить локальный `FBV` с upstream `evpobr/fictionbookeditor`: подтверждено, что в upstream есть полноценные исходники на `MSXML6`; они импортированы в `src/fbv` и уже локально собираются в новый `FBV.exe`.
+- [x] Добавить отдельный XSD-валидный fixture `tools/tests/fb2-validate-valid-smoke.fb2` и подтвердить, что shell-команда `Validate` открывает его без ошибок (`No errors.`).
+- [x] Добавить отдельную автоматическую проверку наличия shell-verb `Validate` после финальной установки setup: `test-fbe-specific-installer.ps1` теперь проверяет `Validate\Command`, `Icon` и `MUIVerb`.
+- [x] Перевести подпись shell-команды `Validate` на основные европейские языки и сделать её динамической относительно языка ОС через MUI satellite files.
+- [x] Убрать кракозябры в локализованной подписи `Validate`: чтение строки переведено с `FBV.exe` на отдельный MUI-модуль `FBVVerbResources.dll`, `SHLoadIndirectString` теперь возвращает корректный русский текст из собранного пакета.
+- [x] Провести точечную cleanup-доработку исходников `src/fbv/FBV.cpp`: исправить lifecycle `errmsg` при `Revalidate`, убрать хрупкое предположение `index == lParam`, перевести чтение размера файла на `GetFileSizeEx`, ослабить sharing в `CreateFile` и перенести список файлов из глобалов в поля `CMainDlg`.
+- [x] Прогнать installer smoke от имени администратора и подтвердить, что установленная копия пишет `MUIVerb = @...\FBVVerbResources.dll,-109;v2`, регистрирует `Validate\Command` и корректно очищает shell-verb после деинсталляции.
+- [ ] Провести поэтапную модернизацию исходников `src/fbv` без смены общей Win32/ATL-архитектуры:
+  - заменить внутреннее хранение строк и списка файлов с `BSTR` + `realloc/free` на RAII-структуры (`CStringW` или `std::wstring`, `std::vector<FileInfo>`);
+  - убрать ручной `DoEvents()` и перевести валидацию в worker-thread с корректной отменой и обновлением UI;
+  - локально завернуть COM/file resources в небольшие RAII-обёртки, чтобы уменьшить количество ручного cleanup-кода;
+  - по возможности сократить прямую ручную работу с `ListView`/Win32 API там, где это не ломает текущую архитектуру и поведение.
+
+Текущий статус thumbnail provider:
+
+- [x] Внутренний reader обложки `Fb2CoverImage.*`.
+- [x] WIC-pipeline `IWICBitmapDecoder -> IWICBitmapFrameDecode ->
+      IWICBitmapScaler (Fant) -> IWICFormatConverter -> 32-bit HBITMAP` в
+      `Fb2CoverThumbnail.*`: сохраняет пропорции, не делает upscale и
+      сохраняет alpha.
+- [x] COM-класс thumbnail provider в `src/fbshell`.
+- [x] Автоматические smoke-проверки COM-контура для `png`, `jpeg`, `bmp`.
+- [x] Проверки размеров `32/64/128/256/512`, реального downscale, запрета
+      upscale и типов `WTSAT_RGB` / `WTSAT_ARGB`, включая реальные пиксели
+      alpha PNG.
+- [x] Автоматические negative-сценарии:
+      битая base64-обложка, отсутствие `coverpage`, отсутствие нужного
+      `binary`, `E_POINTER`, повторный `Initialize`.
+- [x] Сводный автоматический shell smoke
+      `test-fb2-shell-thumbnail-matrix.ps1` (прямой COM, `CoCreateInstance`,
+      shell API, forced dump, negative cases).
+- [x] Финальная ручная GUI-проверка миниатюр в Проводнике на fixture и
+      реальных книгах: обычные и большие значки, fallback-иконка для
+      битых/неполных `.fb2`, правая панель сведений и повторная проверка
+      после сброса shell-кэшей.
+- [ ] Необязательное будущее улучшение: содержательная постобработка обложек
+      (например, trim белых полей), если она потребуется для preview/details;
+      это не дефект и не часть thumbnail provider.
+
+## Пожелания из Google Groups
+
+Краткая выжимка пожеланий пользователей из `D:\Download\FBE_GoogleGroups_Analysis.md`.
+Часть тем уже могла быть закрыта в текущей ветке, поэтому перед реализацией
+каждый пункт нужно отдельно сверять с фактическим состоянием программы.
+
+- [ ] Сверить, нужна ли ещё отдельная древовидная панель или набор быстрых
+      панелей для пользовательских скриптов и сценариев массовой правки.
+- [ ] Оценить отдельный инструментарий для сносок, примечаний и ссылок:
+      сопоставление маркеров, контроль парности, ускорение раскладки
+      примечаний по готовым контейнерам.
+- [ ] Оценить режим сравнения двух редакций одной книги прямо в FBE или в
+      тесно связанном вспомогательном инструменте.
+- [ ] Проверить, нужен ли отдельный набор средств анализа структуры FB2/XML и
+      поиска проблем разметки поверх уже существующих проверок.
+- [ ] Вернуться к идее пакетной обработки иллюстраций, включая
+      автоконвертацию изображений в `JPG`, если это действительно полезно для
+      типовых сценариев пользователей.
+- [ ] Продумать развитие экосистемы пользовательских скриптов и плагинов:
+      удобство установки, каталогизации и повторного использования.
+- [ ] Отдельно посмотреть на производительность тяжёлых пользовательских
+      скриптов и длинных операций массовой обработки.
+- [ ] Сверить, какие зависимости от `Internet Explorer` / `ActiveX` уже сняты,
+      а какие ещё стоит убирать в рамках дальнейшей модернизации.
+- [ ] Проверить, нужны ли дополнительные инструменты для просмотра результата
+      правок прямо в редакторе без постоянного ухода во внешние программы.
+
+## Следующие кандидаты после `PCRE2`
+
+- [x] Дальнейшая модернизация механизма обновлений вокруг `update.xml`.
+- [x] Дополнительные smoke/regression проверки пользовательских сценариев для
+      обновлённых `PCRE2` и `Scintilla`.
+  - [x] Зафиксировать и покрыть тестом регрессию Scintilla: `\1` в замене режима `Код` после `SCI_TARGETFROMSELECTION`.
+  - [x] Добавить Scintilla-проверки для повторного поиска,
+ot found`, `IgnoreCase` и zero-length regex.
+  - [x] Зафиксировать, что текущий набор regression-проверок достаточен для
+        завершения темы обновления `PCRE2` и `Scintilla`.
+
+- [x] Дальнейшее упорядочивание релизного контура и упаковки.
+  - [x] Зафиксировать staging-поток `out\Release -> out\package -> out\artifacts`.
+  - [x] Добавить отдельную автоматическую проверку staging-каталога `out\package\FictionBookEditor` для modern shell-артефактов и schema.
+  - [x] Добавить отдельную автоматическую проверку NSIS-контура, чтобы `MakeInstaller.bat`/`MakeInstaller.nsi` не откатились к удалённому `Installer\Input`.
+  - [x] Обновлять `SHA256SUMS.txt` после ручного запуска `MakeInstaller.bat`, чтобы setup.exe не расходился с контрольными суммами.
+  - [x] Расширить `verify-release.ps1` проверкой `VERSIONINFO` и `FileDescription` для `FBShell.dll` и DLL локализаций.
+  - [x] Пересобрать `FBShell.dll`, `res_rus.dll`, `res_ukr.dll` после добавления `VERSIONINFO` и подтвердить новой release-проверкой, что metadata реально попала в бинарники.
+  - [x] Убрать историческую ручную структуру `packaging\nsis\Installer\Input` из активного релизного контура и из репозитория.
+  - [x] Развести в документации роли `out\Release`, `out\package` и `out\artifacts`.
+  - [ ] Отдельно оценить целесообразность перехода с `NSIS` на `Inno Setup`:
+        сравнить поддержку выборочного UAC, shell-регистрации, modern
+        property schema, локализации, portable/release-сценариев и общую
+        сопровождаемость installer-кода.
+
+- [x] Cleanup legacy-логики поиска и замены в режиме `Дизайн`.
+  - [x] Упростить adapter-слой `RegexBackend`, где runtime уже всегда работает через `PCRE2`.
+  - [x] Зафиксировать, что после упрощения `RegexBackend` отдельный dispatcher
+        больше не нужен, а прямой `PCRE2`-путь подтверждён regression-
+        проверками `test-pcre2.ps1`, `test-pcre2-wrapper.ps1`,
+        `test-pcre2-replace.ps1`.
+  - [ ] Когда-нибудь отдельно вернуться только если понадобится уже не
+        обновление библиотек, а дальнейшая локальная чистка кода.
+- [ ] Дальнейшее выравнивание документации и комментариев по-русски.
+  - [x] Перевести на русский новые служебные сообщения release/NSIS-скриптов
+        (`prepare-installer.ps1`, `verify-nsis-layout.ps1`,
+        `MakeInstaller.bat`).
+  - [x] Перевести на русский служебные сообщения versioning-скрипта
+        `tools\version\sync-version.ps1`, включая проверку `update.xml`.
+  - [x] Перевести на русский оставшиеся активные сообщения
+        `tools\build\create-release.ps1`, включая автоматически
+        генерируемый `README.txt` для пакета debug symbols.
+  - [x] Довести до русского единообразия сообщения в скриптах
+        property handler
+        (`build-shell-integration.ps1`,
+        `register-shell-integration.ps1`,
+        `unregister-shell-integration.ps1`).
+  - [x] Перевести на русский оставшиеся активные сообщения и табличный вывод
+        в `package-portable.ps1` и
+        `tools\tests\check-fbe-specific-properties.ps1`.
+  - [x] Перевести на русский оставшиеся пользовательские сообщения в
+        скриптах регистрации и снятия регистрации схемы свойств
+        (`register-sequence-property-schema.ps1`,
+        `unregister-sequence-property-schema.ps1`).
+  - [x] Дочистить формулировки install/uninstall smoke-проверки
+        `tools\tests\test-fbe-specific-installer.ps1`, убрав последние
+        смешанные англо-русские сообщения.
+  - [x] Перевести на русский основные smoke/runtime-сообщения в сценариях
+        `PCRE2`, `Scintilla`, `source-safety`, `verify-runtime-binaries` и
+        связанных тестовых обвязках.
+  - [x] Приглушить избыточный штатный шум `PCRE2`-сборки в smoke-сценариях,
+        оставив подробный лог только на случай ошибки.
+  - [x] Исправить битую кодировку в актуально используемых fixture-файлах
+        regression-набора, чтобы тестовые сценарии снова были читаемыми.
+        `tools\tests\regex-fixtures.json` на этом шаге уже выровнен целиком
+        по читаемым описаниям и заметкам.
+  - [ ] Дальше идти уже выборочно по оставшимся debug/smoke/runtime-скриптам,
+        где английский текст ещё не мешает релизному потоку.
+        На этом шаге основной активный build/test-контур уже почти полностью
+        выровнен по русским сообщениям; дальше остались в основном редкие
+        вспомогательные сценарии и сторонний upstream-вывод.

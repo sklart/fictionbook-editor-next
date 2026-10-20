@@ -1,122 +1,45 @@
-# План отдельной property schema для `Sequence`
+# Документ перенесён: sequence-property-schema-plan
 
-Этот документ фиксирует именно тот путь, который выбран для поля `Sequence`:
-не пытаться запихнуть серию книги в чужое стандартное Windows-свойство, а
-сделать для неё отдельный FBE-specific контур.
+Актуальный вход: [reference/sequence-property-schema.md](reference/sequence-property-schema.md).
 
-## Почему `Sequence` нельзя маппить "как-нибудь"
+Полный прежний текст: [историческая редакция](archive/shell/sequence-property-schema-plan.md).
 
-`Sequence` в FB2 — это не жанр, не тема и не произвольная категория.
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-Это именно:
+## Прежние якоря
 
-- серия книги;
-- и, при наличии, номер книги внутри серии.
+<a id="план-отдельной-property-schema-для-sequence"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D0%BF%D0%BB%D0%B0%D0%BD-%D0%BE%D1%82%D0%B4%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D0%B9-property-schema-%D0%B4%D0%BB%D1%8F-sequence).
 
-Пример значения:
+<a id="почему-sequence-нельзя-маппить-как-нибудь"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D0%BF%D0%BE%D1%87%D0%B5%D0%BC%D1%83-sequence-%D0%BD%D0%B5%D0%BB%D1%8C%D0%B7%D1%8F-%D0%BC%D0%B0%D0%BF%D0%BF%D0%B8%D1%82%D1%8C-%D0%BA%D0%B0%D0%BA-%D0%BD%D0%B8%D0%B1%D1%83%D0%B4%D1%8C).
 
-- `Основание [03]`
-- `Ведьмак [01]`
+<a id="практический-план"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D0%B9-%D0%BF%D0%BB%D0%B0%D0%BD).
 
-Если маппить такое поле в произвольное стандартное Windows-свойство, мы
-получим либо смысловую путаницу, либо неудобное отображение в Проводнике.
+<a id="следующий-конкретный-шаг"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%81%D0%BB%D0%B5%D0%B4%D1%83%D1%8E%D1%89%D0%B8%D0%B9-%D0%BA%D0%BE%D0%BD%D0%BA%D1%80%D0%B5%D1%82%D0%BD%D1%8B%D0%B9-%D1%88%D0%B0%D0%B3).
 
-## Что уже есть в проекте
+<a id="целевое-состояние"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%86%D0%B5%D0%BB%D0%B5%D0%B2%D0%BE%D0%B5-%D1%81%D0%BE%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%B8%D0%B5).
 
-Сейчас для `Sequence` уже существует устойчивая внутренняя база:
+<a id="что-пока-сознательно-не-делаем"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%87%D1%82%D0%BE-%D0%BF%D0%BE%D0%BA%D0%B0-%D1%81%D0%BE%D0%B7%D0%BD%D0%B0%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE-%D0%BD%D0%B5-%D0%B4%D0%B5%D0%BB%D0%B0%D0%B5%D0%BC).
 
-- reader читает `title-info/sequence`:
-  [Fb2Metadata.cpp](D:\Download\FBeditor\src\common\fb2\Fb2Metadata.cpp)
-- внутренняя модель хранит `PropertyId::Sequence`:
-  [Fb2ShellProperties.h](D:\Download\FBeditor\src\common\fb2\Fb2ShellProperties.h)
-- в таблице маппинга поле уже помечено как `fbe-specific`:
-  [fb2-property-mapping.md](D:\Download\FBeditor\docs\fb2-property-mapping.md)
+<a id="что-уже-есть-в-проекте"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%87%D1%82%D0%BE-%D1%83%D0%B6%D0%B5-%D0%B5%D1%81%D1%82%D1%8C-%D0%B2-%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%B5).
 
-То есть проблема уже не в чтении данных, а именно в способе публикации этого
-поля в Windows Shell.
+<a id="этап-1-выделить-идентификаторы"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%8D%D1%82%D0%B0%D0%BF-1-%D0%B2%D1%8B%D0%B4%D0%B5%D0%BB%D0%B8%D1%82%D1%8C-%D0%B8%D0%B4%D0%B5%D0%BD%D1%82%D0%B8%D1%84%D0%B8%D0%BA%D0%B0%D1%82%D0%BE%D1%80%D1%8B).
 
-## Целевое состояние
+<a id="этап-2-подготовить-property-schema"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%8D%D1%82%D0%B0%D0%BF-2-%D0%BF%D0%BE%D0%B4%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-property-schema).
 
-Для `Sequence` нужен отдельный FBE-specific shell-контур:
+<a id="этап-3-подготовить-операционные-скрипты"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%8D%D1%82%D0%B0%D0%BF-3-%D0%BF%D0%BE%D0%B4%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-%D0%BE%D0%BF%D0%B5%D1%80%D0%B0%D1%86%D0%B8%D0%BE%D0%BD%D0%BD%D1%8B%D0%B5-%D1%81%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D1%8B).
 
-1. собственный `PROPERTYKEY`;
-2. собственное canonical name;
-3. отдельная property schema / property description;
-4. публикация через modern property handler;
-5. корректное отображение имени колонки в локализации Windows.
+<a id="этап-4-подключить-sequence-к-modern-property-handler"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%8D%D1%82%D0%B0%D0%BF-4-%D0%BF%D0%BE%D0%B4%D0%BA%D0%BB%D1%8E%D1%87%D0%B8%D1%82%D1%8C-sequence-%D0%BA-modern-property-handler).
 
-Рабочее имя свойства на текущем этапе:
-
-- `FBE.Sequence`
-
-Это пока не финальное имя для XML-схемы, а проектное обозначение.
-
-## Практический план
-
-### Этап 1. Выделить идентификаторы
-
-Нужно зафиксировать отдельно от legacy `FMTID_FB`:
-
-- новый GUID набора свойств FBE;
-- `PROPERTYKEY` для `Sequence`.
-
-Важно: не переиспользовать старый legacy `FMTID_FB` как основу новой схемы,
-чтобы modern shell-контур не зависел от исторического `ColumnProvider`.
-
-### Этап 2. Подготовить property schema
-
-Нужно завести отдельный schema-артефакт для FBE-specific свойств:
-
-- сначала только для `Sequence`;
-- позже, возможно, и для других собственных полей FB2.
-
-Минимальные требования:
-
-- человекочитаемое имя свойства;
-- понятная группа;
-- строковый тип;
-- пригодность для колонок и tooltip;
-- предсказуемое поведение в русской Windows.
-
-### Этап 3. Подготовить операционные скрипты
-
-Понадобятся отдельные скрипты:
-
-- регистрация property schema;
-- снятие регистрации;
-- перезапуск `explorer.exe` для ручной проверки;
-- возможно, отдельная диагностика зарегистрированного состояния.
-
-Это лучше держать отдельно от обычной регистрации property handler.
-
-### Этап 4. Подключить `Sequence` к modern property handler
-
-После появления отдельного `PROPERTYKEY`:
-
-- добавить его в published-набор modern property handler;
-- убедиться, что `IPropertyStore` отдаёт значение серии;
-- проверить отображение в tooltip и в колонках.
-
-### Этап 5. Ручная GUI-проверка
-
-Нужно проверить:
-
-- видит ли Проводник свойство серии;
-- доступно ли оно как колонка;
-- как называется поле в локализованной Windows;
-- появляется ли серия в tooltip;
-- нет ли нестабильности `explorer.exe`.
-
-## Что пока сознательно не делаем
-
-Пока не делаем:
-
-- временный возврат к legacy `FMTID_FB`;
-- попытку спрятать `Sequence` в `System.Subject`, `System.Category` или другие
-  чужие поля;
-- включение этой схемы в обычный инсталлятор без отдельной ручной проверки.
-
-## Следующий конкретный шаг
-
-Следующим кодовым шагом по этой ветке должен быть не installer и не GUI, а
-выделение нового FBE-specific `PROPERTYKEY`-набора для будущей schema.
+<a id="этап-5-ручная-gui-проверка"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema-plan.md#%D1%8D%D1%82%D0%B0%D0%BF-5-%D1%80%D1%83%D1%87%D0%BD%D0%B0%D1%8F-gui-%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B0).

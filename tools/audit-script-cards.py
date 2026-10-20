@@ -12,6 +12,8 @@ from dataclasses import dataclass
 import hashlib
 import html
 import json
+import os
+import shutil
 from pathlib import Path
 import re
 import runpy
@@ -493,7 +495,7 @@ def write_reports(records: list[dict], output: Path, baseline: str,
                json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     rows = []
     def source_link(path: str) -> str:
-        target = "../runtime/Scripts/" + quote(path, safe="/")
+        target = quote(os.path.relpath(SCRIPTS / path, output).replace(os.sep, "/"), safe="/")
         return "<a href='" + html.escape(target, quote=True) + "'>" + html.escape(path) + "</a>"
     for record in records:
         for issue in record["findings"]:
@@ -561,14 +563,22 @@ def write_reports(records: list[dict], output: Path, baseline: str,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "docs")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "out" / "reports" / "script-cards")
     parser.add_argument("--apply", type=Path, metavar="REVIEWED_PROPOSALS_JSON")
     parser.add_argument("--reviewed-proposals", type=Path,
                         default=ROOT / "docs" / "script-card-reviewed-proposals.json")
     parser.add_argument("--baseline", type=Path,
                         default=ROOT / "docs" / "script-card-code-baseline.json")
     args = parser.parse_args()
-    baseline = subprocess.check_output([str(Path("C:/Program Files/Git/cmd/git.exe")), "rev-parse", "HEAD"],
+    git = shutil.which("git")
+    if git is None:
+        raise ValueError("Git was not found in PATH")
+    output = args.output_dir.resolve()
+    docs_root = (ROOT / "docs").resolve()
+    if output == docs_root or docs_root in output.parents:
+        raise ValueError("Generated audit output must not be written inside docs")
+    args.output_dir = output
+    baseline = subprocess.check_output([git, "rev-parse", "HEAD"],
                                        cwd=ROOT, text=True).strip()
     records = [inspect(path) for path in sorted(SCRIPTS.rglob("*.js"))]
     if args.baseline.is_file():

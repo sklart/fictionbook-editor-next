@@ -1,55 +1,56 @@
-# Тестовые контуры
+# Выбор контура тестирования
 
-Проект собирает один универсальный Win32 runtime для Windows 7 SP1+; отдельных Modern/Win7 деревьев и batch-профилей нет. FBE.exe напрямую открывает поддерживаемые ZIP/RAR-контейнеры; отдельный ArchHandler не поставляется.
+> Тип: Действующая инструкция. Документационная база: FBE Next 3.0.9, `master` / `1ad7c507d1ed`; сверка 19 октября 2026 года.
 
-## FAST
+## От правки к проверке
 
-Обычный `tools/build/verify-release.ps1` — обязательный PR/master gate. Он проверяет staging/layout `out\Release` и `out\Release\Plugins`, безопасность PE и импорты Win7, локализацию, dictionaries, PCRE2, batch-конвертеры и контракты редактора. В него также входят дешёвые table contracts `test-fbe-table-visual-mode.ps1` и `test-table-toolbar-contract.ps1`, а также contracts scripting document path, backup settings, AutoUrlDetect, XML themes, current line, filename state и XML declaration.
+**LOCAL / affected**: собрать затронутый компонент и выполнить связанные адресные проверки. **STAGE**: после законченного логического блока подтвердить межкомпонентные связи и уместные runtime-сценарии. **RELEASE**: проверить авторитетную сборку и полный обязательный состав перед выпуском.
 
-Локальный запуск: `pwsh ./tools/build/verify-release.ps1 -Configuration Release`.
+`verify-release.ps1` служит общим gate; его не нужно повторять после каждой строки документации. Отдельно запущенный source-contract подтверждает только своё условие, а не внешний вид GUI или работу на Windows 7.
 
-## FULL
+## FAST и FULL
 
-`-FullValidation` добавляет настоящие GUI/production round-trip, huge binary и table fixtures, structural table matrix, toolbar rendering, performance, fault-injection, portable isolation и stress tests. В этом контуре выполняется `test-fbe-spellcheck-local-edit-performance.ps1`: реальный FBE проверяет bounded work после direct `innerText`, форматирования, пользовательского JS и правки большого абзаца; счётчики доказывают независимость от числа абзацев. Также выполняется `test-fbe-idle-performance-runtime.ps1`: реальные small и medium FB2 проходят 1000 неизменных idle-циклов без повторных command, selection, toolbar или JS/COM обновлений.
+```powershell
+pwsh ./tools/build/verify-release.ps1 -Configuration Release
+pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation
+```
 
-Локальный запуск: `pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation`.
+Обычный контур проверяет обязательные release-контракты, staging/layout, импорты, локализацию и другие проверки, перечисленные в самом скрипте. FULL добавляет тяжёлые production round-trip, stress, performance, fault-injection и иные дополнительные сценарии. Наличие файла в `tools/tests` не означает его включения в gate.
 
-`-RunTableTests` запускает только тяжёлый table subset без остальных FULL сценариев: `pwsh ./tools/build/verify-release.ps1 -Configuration Release -RunTableTests`.
+Табличное подмножество можно запускать отдельно:
 
-## Tables
+```powershell
+pwsh ./tools/build/verify-release.ps1 -Configuration Release -RunTableTests
+```
 
-FAST содержит статические/transform contracts. FULL содержит toolbar rendering и production round-trip (включая Huge), structural operations, performance, failure safety и fault injection. Ни один table test не подавляет ошибку: toolbar rendering является строгим blocker.
+Не ведите здесь вручную второй полный список тестовых файлов: он быстро расходится с исполняемым кодом. Для машинного каталога предусмотрен:
 
-Отдельный toolbar smoke: `pwsh ./tools/tests/test-fbe-table-toolbar-rendering.ps1 -FbeExe ./out/Release/FBE.exe`.
+```powershell
+pwsh ./tools/tests/get-release-test-catalog.ps1 -AsJson
+```
 
-## CI-special
+Контуры и конкретные ID можно выбирать поддерживаемыми параметрами каталога; неизвестный ID должен считаться ошибкой.
 
-Прямое открытие ZIP/RAR проверяют `test-fbe-archive-document-support.ps1`,
-`test-fbe-archive-runtime.ps1` и `test-fbe-archive-mru-runtime.ps1`, включая
-`.fb2.zip`, `.fb2.rar`, обычные архивы и Unicode-пути. Установщик при upgrade
-безопасно удаляет только legacy OpenWith/ProgID/Capabilities ArchHandler;
-`test-nsis-legacy-archhandler-cleanup.ps1` не допускает смены пользовательской
-ассоциации `.zip` или `.rar`. Installer upgrade/uninstall, shell/property-handler
-и keyboard-layout native checks также вызываются специализированными workflow steps.
+## Специализированные проверки
 
-## Installer, shell, portable и plugins
+Installer/shell-проверки используют подготовленные stages и изолированную среду. Portable-проверки подтверждают собственные настройки и отсутствие нежелательных изменений профиля/реестра. Все плагины проверяются в современном каталоге `Plugins`.
 
-Installer/shell tests используют staged package, а portable tests проверяют изоляцию Settings/registry/copies. Plugins всегда проверяются в современном `Plugins` layout; ImportEPUB batch smoke загружает `Plugins\ImportEPUB.dll`.
+Проект использует один универсальный Win32 runtime для Windows 7 SP1+; старую Modern/Win7 build-матрицу нельзя возвращать в инструкции. Нативные shell-компоненты проверяются с учётом разрядности Проводника.
 
-## Manual/diagnostic
+[Ручная регрессия](testing/manual-regression.md) дополняет автоматические проверки. [Проверки Source](testing/source-editor.md), [DirectWrite](testing/source-directwrite.md), [Shell](testing/shell-integration.md), [regex](testing/regex-regression.md), [вставки](testing/html-paste.md) и [орфографии](testing/spellcheck.md) имеют отдельные чек-листы.
 
-`test-diagnostics.ps1`, shell thumbnail dump/prime, отдельные fixture inspectors и corpus tools — диагностические входы, а не неявное покрытие release gate. Перед удалением такого файла следует проверить его ссылки в PowerShell wrappers, workflow и документации.
+## Документация и контрольные данные
 
-Файловая backup regression запускается отдельно: `pwsh ./tools/tests/test-fbe-backup-file-commit.ps1`.
+Документационный gate проверяет локальные ссылки, якоря, файл-карту и неизменность защищённых evidence-файлов. Он не запускает FBE, не объявляет пройденным Release и не выдаёт статическую сверку методов API за JScript runtime-тест.
 
-## Карта и self-test
+[Реестр доказательств](testing/evidence.md) объясняет, почему некоторые JSON и один Markdown-источник остаются по прежним путям. Их нельзя удалять, форматировать или пересчитывать только ради чистоты каталога.
 
-`test-release-pipeline-deduplication.ps1` закрепляет единый pipeline, отсутствие устаревшей Modern/Win7 матрицы и обязательные FAST/FULL контуры. Полный список активных release tests является последовательностью вызовов в `tools/build/verify-release.ps1`; наличие файла само по себе не означает, что он входит в gate.
+## Запись результата
 
-Машинно-читаемый каталог строится из этой последовательности, поэтому не
-создаёт второй редактируемый список: `pwsh ./tools/tests/get-release-test-catalog.ps1 -AsJson`.
-Он содержит stable ID, путь, компонент, FAST/FULL/TABLE-контур и фактические
-invocation. `test-release-test-catalog.ps1` проверяет, что все перечисленные
-сценарии существуют и имеют базовые метаданные. Для перечисления выбранного
-множества без запуска используйте `-Contour FAST`, `-Contour FULL` или
-`-Id release.plugin-v2-abi`; неизвестный ID считается ошибкой.
+Используйте `PASS`, `FAIL`, `NOT RUN`, `BLOCKED` с указанием commit, команд, окружения и артефактов. Для исторических прогонов дополнительно указывайте исходную ревизию и не заменяйте её текущим `master`. Реестр текущих пробелов — [статус верификации](testing/verification-status.md).
+
+## Основания
+
+- [docs/test-contours.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/test-contours.md)
+- [docs/building.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/building.md)
+- [tools/build/verify-release.ps1](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/tools/build/verify-release.ps1)

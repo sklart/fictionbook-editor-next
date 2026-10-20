@@ -1,114 +1,61 @@
-# Чек-лист релиза
+# Чек-лист выпуска
 
-Короткая памятка для локального выпуска новой версии FBE.
+> Тип: Действующая инструкция. Документационная база: FBE Next 3.0.9, `master` / `1ad7c507d1ed`; сверка 19 октября 2026 года.
 
-## Перед началом
+Это рабочий порядок подготовки нового выпуска, а не отчёт о том, что проверки уже выполнены. Записывайте commit, версию EXE, SHA-256, ОС и фактический результат каждого применимого пункта.
 
-1. Проверить актуальную версию в [src/version.h](D:\Download\FBeditor\src\version.h).
-2. Убедиться, что рабочее дерево в ожидаемом состоянии и случайные временные
-   файлы не попадут в релиз.
-3. При изменениях в поиске, замене, `Scintilla`, `Lexilla`, `PCRE2` или
-   орфографии отдельно просмотреть:
-   - [docs/regex-regression.md](D:\Download\FBeditor\docs\regex-regression.md);
-   - [docs/spellcheck-regression.md](D:\Download\FBeditor\docs\spellcheck-regression.md).
-4. Если релиз затрагивает shell-интеграцию, installer helper-скрипты,
-   `FBShell`, `FBV` или состав `tools/tests`, свериться с
-   [docs/test-contours.md](D:\Download\FBeditor\docs\test-contours.md),
-   чтобы не пропустить shell/thumbnail release-gate и не удалить нужный
-   диагностический сценарий.
+## Перед сборкой
 
-## Обязательные локальные проверки
+Проверьте `src/version.h` и выполните штатную синхронизацию версии. Убедитесь, что выбранная ревизия, submodules, локализация и рабочее дерево соответствуют содержимому выпуска. Незакоммиченные изменения нельзя незаметно выдавать за результат чистого тега.
 
-1. Прогнать основную проверку релиза:
+Сверьте [TODO](todo.md), [статус проверок](testing/verification-status.md) и открытые блокирующие issues. Исторический PASS, результат по исходникам и настоящий runtime PASS — разные основания.
+
+## Проверка реализации
 
 ```powershell
-.\tools\build\verify-release.ps1 -Configuration Release
+pwsh ./tools/build/build.ps1 -Configuration Release -Platform Win32
+pwsh ./tools/build/verify-release.ps1 -Configuration Release
 ```
 
-Table-regression suite намеренно opt-in и для обычной portable-проверки не
-запускается. Если она нужна отдельно, передайте `-RunTableTests`.
+Перед tag/релизом выберите применимые FULL-сценарии и пройдите [ручную регрессию](testing/manual-regression.md). В неё входят базовое редактирование и сохранение, Undo/Redo, ZIP/RAR, поиск и массовая замена, таблицы, скрипты, диагностика, импорт/экспорт и installed/portable-изоляция.
 
-3. При изменениях `FBShell.dll` или `FBE.Sequence.propdesc` выполнить elevated
-integration gate в двух Windows/MUI окружениях. Этот тест устанавливает
-регистрацию штатными shell-скриптами, регистрирует schema и проверяет реальные
-`IPropertyDescription::GetDisplayName()` для всех шести `FBE.*` properties:
+Изменения поиска требуют [regex-проверок](testing/regex-regression.md), орфографии — [проверок словарей](testing/spellcheck.md), системной интеграции — [Shell-матрицы](testing/shell-integration.md). Проверку Windows 7, интерактивного UAC и переходов между мониторами записывайте как `NOT RUN`, пока её не выполнили в соответствующей среде.
+
+Для документационных правок отдельно проверяются локальные ссылки, якоря, отсутствие ссылок на диск разработчика и сохранность защищённых данных тестов. В сопровождении этого пакета есть отдельный Python-проверяющий и workflow; это не замена проверкам приложения.
+
+## Сборка артефактов
 
 ```powershell
-# На русской Windows/MUI:
-.	ools	ests	est-fbe-shell-localization-installed.ps1 -ExpectedLanguage ru
-
-# На английской Windows/MUI:
-.	ools	ests	est-fbe-shell-localization-installed.ps1 -ExpectedLanguage en
+pwsh ./tools/build/create-release.ps1 -Configuration Release -Platform Win32
 ```
 
-Это отдельный release/manual gate: один процесс CI не может надёжно сменить
-язык MUI, который использует Windows Property System.
+Проверьте в `out/artifacts` setup, portable, symbols и `SHA256SUMS.txt`. Для 3.0.9 основная линия имеет имена `FictionBookEditorNext-3.0.9-win32-*`. Для следующих версий и prerelease точные имена определяются release-скриптом и manifest, а не ручной догадкой по тегу.
 
-2. При необходимости отдельно перепроверить манифест обновления:
+Проверьте происхождение и независимую валидацию Core/Integration stages. Portable получается из Core; вход NSIS формируется из Core **и** Integration. Сам по себе готовый portable ZIP не подтверждает полноту installer-интеграции.
 
-```powershell
-.\tools\tests\test-update-manifest.ps1
-```
+Архитектура редактора — Win32. Отдельные shell DLL для 32/64-разрядного Проводника не означают наличие второго редактора. Исторические `-win7-` aliases выпуска 3.0.8 RC1 не являются текущей самостоятельной сборочной линией и не включаются в обязательный перечень новых артефактов.
 
-Эта проверка уже входит в `verify-release.ps1`, но бывает полезна отдельно,
-если работа идёт именно вокруг `update.xml`.
+## Метаданные и публикация
 
-## Сборка релизных артефактов
+Теги `vX.Y.Z` обозначают стабильный выпуск; prerelease-теги содержат суффикс. В истории проекта встречаются `-rc.1` и `-rc2`: не переименовывайте опубликованные теги ради унификации.
 
-1. Запустить полный сценарий выпуска:
+Сборка артефактов сама по себе не должна публиковать рабочий update feed. Tag workflow готовит candidate manifest; публикация обновляет нужный feed только после появления соответствующих release-артефактов. Для prerelease меняется prerelease-feed, для стабильного выпуска — feeds согласно действующему workflow.
 
-```powershell
-.\tools\build\create-release.ps1 -Configuration Release -Platform Win32
-```
+Проверьте candidate через `validate-update-manifest.ps1` с параметрами актуального сценария. URL, версия и SHA-256 feed должны указывать на установщик **этого же** опубликованного тега. Сохраните соответствующий `symbols.zip` для разбора дампов.
 
-2. После завершения проверить содержимое `out\artifacts`:
-   - `FictionBookEditorNext-<version>-win32-portable.zip`;
-   - `FictionBookEditorNext-<version>-win32-setup.exe`;
-   - `FictionBookEditorNext-<version>-win32-symbols.zip`;
-   - `SHA256SUMS.txt`.
+**Текст GitHub Release — действующий источник пользовательских примечаний.** Файл в `docs/release-notes` является сопровождаемым конспектом/начальным текстом. `new-release-notes.ps1` не должен стирать вручную отредактированное body существующего Release. При актуализации репозиторного конспекта сверяйте основные изменения и ограничения, но не подменяйте механизм публикации автоматическим перезаписыванием.
 
-3. При необходимости отдельно проверить staging-папки:
-   - `out\Release` содержит свежие бинарники;
-   - `out\package\FictionBookEditor` содержит portable-набор файлов и служит
-     прямым входом для NSIS.
+В [каталоге выпусков](release-notes/README.md) должны присутствовать отдельные записи опубликованных RC. Файл `3.0.8.md` в новой структуре является указателем, а не вымышленным стабильным выпуском.
 
-## Что теперь делается автоматически
+## Основания остановить публикацию
 
-Создание артефактов не меняет опубликованные `update.xml` и
-`update-prerelease.xml`. Для tag workflow создаёт candidate manifest в
-`out\release\update.xml`; только publish job после фактической публикации
-обновляет соответствующий feed.
+Неустранённая ошибка обязательного gate; потеря данных или нарушение сохранения/Undo в применимом ручном сценарии; неполный/неверный пакет; отсутствие обязательного provenance; несовпадение версии, URL или хеша manifest; ошибочное объявление непроведённых проверок успешными.
 
-Также автоматически делается следующее:
+Не превращайте любой `NOT RUN` в автоматический FAIL, но явно решайте, допустим ли конкретный пробел покрытия для данного релиза. Такое решение должно быть записано, а не подразумеваться.
 
-- формируется portable staging в `out\package\FictionBookEditor`;
-- NSIS читает `out\package\FictionBookEditor` напрямую;
-- собираются ZIP portable, ZIP symbols и NSIS-установщик;
-- записываются SHA-256 в `out\artifacts\SHA256SUMS.txt`.
+## Основания
 
-Для релизов линии 3.0.8 дополнительно могут появиться `-win7-` setup и portable
-файлы. Это временные byte-identical aliases универсальных артефактов для
-обновления опубликованного `v3.0.8-rc.1`, а не второй build или пакет.
-
-## Что проверить перед публикацией GitHub Release
-
-Для тега `vX.Y.Z-beta.N` или `vX.Y.Z-rc.N` workflow публикует GitHub prerelease и обновляет только `update-prerelease.xml`. Для `vX.Y.Z` он обновляет оба feed: `update.xml` и `update-prerelease.xml`. Candidate manifest создаётся с `-ReleaseTag`; имена файлов остаются с базовой версией.
-
-Описание GitHub Release — единственный актуальный источник пользовательских примечаний. `new-release-notes.ps1` задаёт лишь исходный текст для нового release; повторный workflow не передаёт `--notes-file` существующему release и сохраняет ручные правки body.
-
-1. Тег должен иметь вид `v<version>`, например `v3.0.0`.
-2. Candidate manifest должен пройти `validate-update-manifest.ps1`; после
-   публикации `DownloadUrl` и `SHA256` stable feed должны ссылаться на setup
-   того же тега.
-3. `SHA256` в опубликованном stable feed должен совпадать с установщиком из
-   `out\artifacts`.
-4. Архив `*-symbols.zip` нужно сохранить вместе с релизом для разбора будущих
-   minidump.
-
-## Что считать блокером релиза
-
-- `verify-release.ps1` завершился с ошибкой;
-- `test-update-manifest.ps1` не проходит;
-- `validate-update-manifest.ps1` не проходит для candidate manifest;
-- `update.xml` не совпадает по версии, URL или SHA-256 с собранным установщиком;
-- ручные регрессионные проверки выявили падение или явную несовместимость.
+- [tools/build/create-release.ps1](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/tools/build/create-release.ps1)
+- [tools/build/new-release-notes.ps1](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/tools/build/new-release-notes.ps1)
+- [docs/release-checklist.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/release-checklist.md)
+- [docs/architecture/runtime-packaging.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/architecture/runtime-packaging.md)

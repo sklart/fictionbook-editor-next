@@ -1,32 +1,22 @@
-# MSHTML: выделение изображения и прокрутка
+# Документ перенесён: mshtml-image-selection-scrollbar-regression
 
-## Результат ручной регрессии
+Актуальный вход: [testing/image-selection-scrollbar.md](testing/image-selection-scrollbar.md).
 
-### Windows 11
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-**PASS** — исходная ошибка `COM Error 0x80004005` больше не воспроизводится после
-замены обработки `commonParentElement()` на обработку `IHTMLControlRange` через
-`item(0)`.
+## Прежние якоря
 
-Проверка выполнена для документа с выделенной картинкой и прокруткой через полосу
-прокрутки. Регрессионный fixture `tools/tests/fixtures/tree-image-scrollbar.fb2`
-содержит настоящее изображение и существующий `binary`; `#undefined` не является
-предполагаемой первопричиной этой ошибки.
+<a id="checklist-для-windows-7"></a>
+[Перейти к соответствующему разделу](testing/image-selection-scrollbar.md#checklist-%D0%B4%D0%BB%D1%8F-windows-7).
 
-### Windows 7
+<a id="mshtml-выделение-изображения-и-прокрутка"></a>
+[Перейти к соответствующему разделу](testing/image-selection-scrollbar.md#mshtml-%D0%B2%D1%8B%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5-%D0%B8%D0%B7%D0%BE%D0%B1%D1%80%D0%B0%D0%B6%D0%B5%D0%BD%D0%B8%D1%8F-%D0%B8-%D0%BF%D1%80%D0%BE%D0%BA%D1%80%D1%83%D1%82%D0%BA%D0%B0).
 
-**NOT TESTED — Windows 7 environment unavailable.** Это не FAIL и не блокирует
-автоматические source-contract и release-проверки.
+<a id="windows-11"></a>
+[Перейти к соответствующему разделу](testing/image-selection-scrollbar.md#windows-11).
 
-## Checklist для Windows 7
+<a id="windows-7"></a>
+[Перейти к соответствующему разделу](testing/image-selection-scrollbar.md#windows-7).
 
-1. Открыть FB2 с несколькими изображениями, включить дерево документа и отображение
-   изображений в нём.
-2. Выделить изображение и проверить прокрутку колёсиком мыши, стрелкой scrollbar,
-   кликом по track, перетаскиванием thumb и клавишами PageUp/PageDown.
-3. Повторить с несколькими изображениями, а при наличии — с inline image.
-4. Повторить сценарии 20–50 раз.
-5. Убедиться в отсутствии `COM Error 80004005`, зависания, модального COM-диалога,
-   повреждения selection и нарушения синхронизации дерева документа.
-6. При ошибке сохранить StartupTrace с COM-операцией и HRESULT; не откатывать
-   item(0)-based исправление без установленной причины.
+<a id="результат-ручной-регрессии"></a>
+[Перейти к соответствующему разделу](testing/image-selection-scrollbar.md#%D1%80%D0%B5%D0%B7%D1%83%D0%BB%D1%8C%D1%82%D0%B0%D1%82-%D1%80%D1%83%D1%87%D0%BD%D0%BE%D0%B9-%D1%80%D0%B5%D0%B3%D1%80%D0%B5%D1%81%D1%81%D0%B8%D0%B8).

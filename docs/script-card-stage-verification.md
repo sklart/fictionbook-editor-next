@@ -1,21 +1,16 @@
-# Проверка этапа исправления карточек скриптов
+# Документ перенесён: script-card-stage-verification
 
-Дата: 13–14 октября 2026 года. Исходный коммит: `82db45a8e8b17ff860880975eedf5e732c5f0d41`.
+Актуальный вход: [archive/script-cards/script-card-stage-verification.md](archive/script-cards/script-card-stage-verification.md).
 
-## Выполнено
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-- Release Win32: сборка `src/fbe/FBE.vcxproj` через MSBuild Visual Studio 2022, VC Tools 14.44 — успешно.
-- Профильный визуальный тест `tools/tests/test-script-card-dialog-runtime.ps1` — успешно. Проверены длинная карточка «Добавить комментарий, остаться на его ссылке», список параметров, узкое окно, тёмная тема и предупреждение при изменённом коде. Снимки находятся в `out/tests/script-card-correction/` и не включены в коммит.
-- `tools/tests/test-audit-script-cards.py` — успешно.
-- `tools/tests/test-script-card-catalog.py` — успешно, 580 карточек.
-- `tools/generate-script-card-index.py --check` — успешно.
-- `tools/tests/test-localization-export.ps1` — успешно для 12 языков.
-- `git diff --check` — успешно.
+## Прежние якоря
 
-## Ограничения
+<a id="выполнено"></a>
+[Перейти к соответствующему разделу](archive/script-cards/script-card-stage-verification.md#%D0%B2%D1%8B%D0%BF%D0%BE%D0%BB%D0%BD%D0%B5%D0%BD%D0%BE).
 
-Строгая сборка с `FbeStrictWarnings=true` остановилась на предупреждении C4389 в неизменённых файлах `src/fbe/source/ui/SourceEditorControl.cpp:342` и `src/fbe/testing/RuntimeTestArchiveAndLifecycle.inl:634`. Изменённые файлы карточек компилируются без новых предупреждений. Обычная сборка Release Win32 проходит.
+<a id="ограничения"></a>
+[Перейти к соответствующему разделу](archive/script-cards/script-card-stage-verification.md#%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D1%8F).
 
-Автоматический проход охватил все 580 скриптов, но полная содержательная проверка каждого поля и каждого пути выполнения ещё не выполнена. Статус каждого скрипта в отчёте — `requires_review`. Исправления внесены только там, где есть подтверждающие участки кода; этот этап нельзя считать завершённым аудитом всех карточек.
-
-В скрипте `03_Комментарии/01_Добавить комментарий, остаться на его ссылке.js` подтверждены досрочные выходы после начала группы отмены. Исполняемый код оставлен без изменений; требуется отдельное исправление алгоритма.
+<a id="проверка-этапа-исправления-карточек-скриптов"></a>
+[Перейти к соответствующему разделу](archive/script-cards/script-card-stage-verification.md#%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B0-%D1%8D%D1%82%D0%B0%D0%BF%D0%B0-%D0%B8%D1%81%D0%BF%D1%80%D0%B0%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D1%8F-%D0%BA%D0%B0%D1%80%D1%82%D0%BE%D1%87%D0%B5%D0%BA-%D1%81%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B2).

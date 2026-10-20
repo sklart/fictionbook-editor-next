@@ -1,476 +1,70 @@
-# Сборка
+# Сборка из исходников
 
-## Требования
+> Тип: Действующая инструкция. Документационная база: FBE Next 3.0.9, `master` / `1ad7c507d1ed`; сверка 19 октября 2026 года.
 
-- Visual Studio 2022 с компонентами разработки классических приложений на C++;
-  release scripts используют `PlatformToolset=v143` и требуют установленный
-  VC Tools `14.44`.
-- Windows 10/11 SDK.
-- PowerShell 7 (`pwsh`) для first-party build, test и release scripts.
+## Требования и границы
 
-Windows 7 SP1 — целевая runtime-платформа готового приложения. Это не
-ограничивает development/release tooling: сборка использует актуальные Visual
-Studio, Windows SDK и PowerShell 7.
+Среда разработки: Visual Studio 2022 с C++ desktop tools, toolset `v143`, VC Tools ветки `14.44`, Windows SDK и PowerShell 7 (`pwsh`). Для официальной упаковки нужен NSIS. Исходники подмодулей должны соответствовать зафиксированным ревизиям репозитория.
 
-Собранные бинарники поддерживают Windows 7 SP1 и новее. Windows XP и Vista
-больше не поддерживаются.
+Целевая среда готового приложения и среда сборки — разные вещи. Приложение ориентировано на Windows 7 SP1 и новее; сборка на самой Windows 7 и средствами PowerShell 2.0 из этого не следуют. Поддержка XP/Vista в эту поставку не входит. Не заменяйте toolset или CRT без проверки импортов Windows 7.
 
-Исполняемый файл использует режим DPI awareness Per-Monitor V2 на современных
-версиях Windows. Legacy-ветка манифеста сохраняет режим System DPI awareness на
-Windows 7 и включает помониторное масштабирование там, где оно поддерживается,
-например на Windows 8.1.
+Собственный C++-код использует централизованный baseline C++17. Документационная реорганизация не меняет этот baseline, COM-контракт, пользовательские JS или third-party исходники.
 
-Режим «Код» использует цвета Windows High Contrast и обновляет редактор и
-дерево документа при изменении системных цветов или темы.
+## Обычная сборка
 
-Когда Windows завершает пользовательский сеанс, FBE синхронно записывает
-аварийную копию. В режиме «Код» текущий UTF-8 XML-текст сохраняется даже в том
-случае, если он временно невалиден.
-
-Диагностические файлы падений `.dmp` и `.txt` сохраняются без автоматического
-удаления при запуске. Просмотренный crash-компонент отмечается отдельно;
-постоянных предупреждений об одном неизменённом отчёте нет.
-
-При создании релиза отдельно формируется архив `*-symbols.zip` с PDB-файлами,
-соответствующими опубликованным бинарникам. Символы не устанавливаются на
-машины пользователей, поэтому этот архив нужно сохранять для анализа minidump
-от той же версии.
-
-Пользовательские настройки и словарь пользовательской орфографии по умолчанию
-хранятся в `%LOCALAPPDATA%\FBE`. При первом запуске находящийся рядом с
-исполняемым файлом `custom.dic` копируется туда. Явно заданные абсолютные пути
-к словарям по-прежнему поддерживаются.
-
-Установщик регистрирует встроенную type library FBE на уровне всей системы.
-Portable-копия регистрирует её только для текущего пользователя и только если
-подходящей регистрации ещё нет.
-
-Документы сначала записываются во временный файл в целевой папке, затем
-сбрасываются на диск и после этого подменяются через Windows API замены файла.
-При включённой настройке `CreateBackupFile` перезапись уже существующего
-документа создаёт рядом файл `.bak` с его предыдущим содержимым. При первом
-сохранении нового файла `.bak` не создаётся. Отключение `CreateBackupFile` не
-отменяет безопасную запись через временный файл и последующую замену целевого
-файла, а также не удаляет и не перезаписывает ранее существующий `.bak`.
-
-Происхождение воспроизводимо собранных runtime-артефактов фиксируется в
-`out/build-provenance` во время authoritative build, а состав Core и
-Integration задаётся в `packaging/package-manifest.json`. `stage-core.ps1` и
-`stage-integration.ps1` проверяют эти сведения до копирования файлов. Для
-внешних бинарных зависимостей сохраняются запись в
-`THIRD-PARTY-NOTICES.md` и соответствующая лицензия; заменять их без отдельной
-проверки происхождения нельзя.
-
-Редактор исходного кода использует Scintilla 5.6.7 и Lexilla 5.5.4 из
-`third_party`. Скрипт `tools/build/build-scintilla.ps1` собирает их x86 DLL с
-статическим C++ runtime до сборки solution и выкладывает их в `runtime`.
-Скрипт `tools/tests/test-scintilla.ps1` проверяет загрузку Lexilla и синтаксис
-регулярных выражений, используемый в поиске и замене в режиме «Код». Он также
-проверяет контролируемое поведение при отсутствии одной из DLL редактора.
-Сборка релиза запускает этот тест автоматически.
-
-Для контроля upstream-обновлений исходников `Scintilla`, `Lexilla`, `PCRE2`
-и `Hunspell`
-добавлены отдельные сервисные сценарии:
+Из корня подготовленного репозитория:
 
 ```powershell
-.\tools\build\check-third-party-updates.ps1
-.\tools\build\download-third-party-updates.ps1
-.\tools\build\apply-third-party-update.ps1 -Dependency scintilla
-.\tools\build\apply-third-party-update-and-test.ps1 -Dependency pcre2
-.\tools\build\build-hunspell.ps1
-.\tools\build\update-third-party-dependency.ps1 -Dependency aom
+pwsh ./tools/build/build.ps1 -Configuration Release -Platform Win32
 ```
 
-Первый сценарий показывает локальную и удалённую версии и сообщает, где
-доступно обновление. Второй скачивает ZIP-архивы исходников в
-`tmp\third-party-updates` и раскладывает их по отдельным каталогам вида
-`<dependency>-<version>` вместе с `download-metadata.json`.
-
-При необходимости можно ограничить набор зависимостей:
+Для строгого first-party-контура доступны используемые проектом параметры:
 
 ```powershell
-.\tools\build\check-third-party-updates.ps1 -Dependency scintilla,lexilla
-.\tools\build\download-third-party-updates.ps1 -Dependency pcre2,hunspell
+pwsh ./tools/build/build.ps1 -PlatformToolset v143 -SkipUpx -WarningsAsErrors
 ```
 
-По умолчанию скачиваются только реально более новые версии. Если нужно
-принудительно скачать даже уже текущую версию, используйте
-`-AllowCurrentVersion`.
+Окончательный набор параметров берите из `param(...)` актуального `tools/build/build.ps1`. Наличие старой команды в архивном отчёте не делает её официальным способом сборки.
 
-Сценарий `apply-third-party-update.ps1` берёт уже скачанный каталог из
-`tmp\third-party-updates` (или явный `-SourcePath`), валидирует структуру
-исходников, копирует новый вариант в staging, переносит текущую копию
-`third_party\<dependency>` в backup и только после этого подменяет рабочий
-каталог. Для безопасной примерки используйте `-WhatIf`.
+## Что проверять после изменения
 
-Сценарий `apply-third-party-update-and-test.ps1` автоматизирует следующий шаг:
-после раскладки обновления он запускает правильный build/test-контур для этой
-зависимости. Сейчас поддерживаются:
-
-- `scintilla` / `lexilla` -> `build-scintilla.ps1` + `test-scintilla.ps1`;
-- `pcre2` -> `build-pcre2.ps1` + `test-pcre2.ps1` +
-  `test-pcre2-wrapper.ps1` + `test-pcre2-replace.ps1`;
-- `hunspell` -> `build-hunspell.ps1` + `test-spellcheck-dictionaries.ps1`.
-
-Для безопасной dry-run проверки orchestration-потока также можно использовать
-`-WhatIf`.
-
-Если нужен единый вход на весь цикл `check -> download -> apply -> build ->
-test`, используйте:
+| Масштаб | Действие |
+| --- | --- |
+| Только Markdown, навигация и перенос отчётов | Проверка ссылок, якорей, карты переноса и сохранности контрольных файлов. Полная сборка приложения не требуется сама по себе. |
+| Локальная правка подсистемы | Сборка затронутого проекта и связанные адресные тесты. |
+| Завершённый межмодульный этап, упаковка, build/release | Официальная Release-сборка и `verify-release.ps1`. |
+| Выпуск/tag или крупное системное изменение | Уместный FULL-контур и ручная матрица; результаты фиксируются отдельно. |
 
 ```powershell
-.\tools\build\update-third-party-dependency.ps1 -Dependency scintilla
-.\tools\build\update-third-party-dependency.ps1 -Dependency lexilla
-.\tools\build\update-third-party-dependency.ps1 -Dependency pcre2
-.\tools\build\update-third-party-dependency.ps1 -Dependency hunspell
+pwsh ./tools/build/verify-release.ps1 -Configuration Release
+pwsh ./tools/build/verify-release.ps1 -Configuration Release -FullValidation
 ```
 
-Этот сценарий сам:
+Вторая команда не является обязательной после каждой небольшой правки. Подробности: [контуры](test-contours.md), [ручная регрессия](testing/manual-regression.md).
 
-- сверяет локальную и upstream-версии;
-- при необходимости скачивает ZIP-архив в `tmp\third-party-updates`;
-- передаёт распакованный каталог в `apply-third-party-update-and-test.ps1`;
-- запускает правильный build/test-контур для выбранной зависимости.
+## Результаты и упаковка
 
-Полезные флаги:
+Редактор и штатные EXE собираются в `out/Release`, плагины — в `out/Release/Plugins`. Это результаты сборки, а не окончательная структура всех пакетов.
 
-- `-AllowCurrentVersion` — прогнать тот же цикл даже без новой upstream-версии;
-- `-ForceDownload` — перескачать архив заново;
-- `-ForceApply` — разрешить повторную раскладку даже для той же версии;
-- `-WhatIf` — безопасно посмотреть, что именно сценарий собирается сделать.
+Официальный путь упаковки: результаты сборки → раздельные **Core** и **Integration** stages → portable из Core и вход NSIS из обоих stages. `packaging/layout.json` задаёт исполняемую карту раскладки, `packaging/package-manifest.json` — обязательный состав и запреты. Сведения происхождения находятся в `out/build-provenance`.
 
-Для GUI smoke-теста используйте
-`tools/tests/test-fbe-startup.ps1 -Configuration Release`. Он ждёт завершения
-legacy-инициализации MSHTML и проверяет, что восстановленное главное окно
-остаётся видимым и отвечает на сообщения.
-
-Ручной чек-лист регрессии орфографии находится в
-`docs/spellcheck-regression.md`. Его стоит проходить после обновления
-`Hunspell`, словарей или логики орфографии.
-
-Ручной чек-лист регрессии поиска и замены находится в
-`docs/regex-regression.md`. Его стоит проходить после изменений в
-`Scintilla`, `Lexilla`, `PCRE2` или логике regex-поиска.
-
-Канонический набор regex-кейсов хранится в `tools/tests/regex-fixtures.json`.
-Его описание и правила пополнения находятся в `docs/regex-fixtures.md`.
-Практические заметки по совместимости `PCRE 7.9` и `PCRE2` для FBE собраны в
-`docs/pcre2-compatibility.md`.
-
-Актуальный список отложенных и следующих задач хранится в `docs/todo.md`.
-Карта активных тестовых контуров и их ролей собрана в
-`docs/test-contours.md`: перед cleanup-ревизией `tools/tests` и перед
-выборочным прогоном shell/regression-сценариев лучше сверяться именно с ней.
-
-В `third_party/pcre2` подключён официальный исходный код `PCRE2 10.49`.
-Скрипт `tools/build/build-pcre2.ps1` собирает статическую x86-библиотеку
-`pcre2-16` через CMake и выкладывает её в `build/pcre2/install/<Configuration>`.
-Скрипт `tools/tests/test-pcre2.ps1` проверяет эту сборку на базовых fixture-кейсах.
-Основной runtime FBE использует только `PCRE2`. Исторический reference-контур
-`PCRE 7.9` и связанные с ним тесты удалены: стандартная и ручная проверка
-регулярных выражений опирается на единый актуальный `PCRE2`-контур.
-
-- NSIS для создания установщика.
-
-UPX 5.2.1 хранится в `tools/upx`. Hunspell подключён как Git submodule в
-`third_party/hunspell`.
-
-Для отдельной пересборки только статической библиотеки Hunspell используйте:
+Не копируйте в установщик произвольное содержимое `runtime/` и не считайте portable-каталог единственным входом NSIS. Сопровождаемые ресурсы и скомпилированные DLL проходят разные проверки. См. [runtime и упаковка](architecture/runtime-packaging.md).
 
 ```powershell
-.\tools\build\build-hunspell.ps1 -Configuration Release
+pwsh ./tools/build/create-release.ps1 -Configuration Release -Platform Win32
 ```
 
-## Команда
+Эта команда создаёт артефакты. Условия публикации, feeds и проверки хешей описаны в [чек-листе выпуска](release-checklist.md).
 
-```powershell
-.\tools\build\build.ps1 -Configuration Release -Platform Win32
-```
+## Зависимости и диагностические процедуры
 
-## Проверка изменений
+Обновление библиотек — отдельная инженерная задача, а не побочный эффект актуализации документации. Действующие сервисные команды и сохранённая подробная инструкция находятся в [сопровождении зависимостей](reference/build-tooling.md). Прежде чем выполнять разрушающий шаг `apply`, используйте поддерживаемый командой dry-run и проверьте изменения источников, лицензий и хешей.
 
-Используйте три уровня проверки. На **LOCAL / affected** после обычной правки
-соберите только затронутый проект и запустите связанные `tools/tests/test-*.ps1`:
-`source`, `table`, `archive`, `settings`, `scripts`, `document` либо
-`first-party-msbuild-policy` для build/MSBuild. На **STAGE** после логического
-блока добавьте Release-сборку затронутых first-party проектов, strict warnings
-для C++ и несколько соответствующих runtime/behavior тестов.
+Каталоги пользовательских данных описаны в [настройках](user-guide/settings.md), диагностика — в [сообщении об ошибке](reporting-issues.md). В частности, текущая installed-версия использует `%LOCALAPPDATA%\FBE Next`, а не исторический каталог `%LOCALAPPDATA%\FBE`.
 
-`verify-release.ps1` — **RELEASE** gate, а не проверка после каждой правки или
-маленького коммита. Запускайте его один раз после завершённого этапа, когда
-изменения затрагивают широкий runtime, package, build/release или межмодульный
-контракт. `-FullValidation` нужен только перед релизом/tag, после крупного
-системного изменения или по явному запросу. Уже успешный release gate не нужно
-повторять после одной документации или несвязанного кода.
+## Основания
 
-Для CI с установленным Visual Studio 2022:
-
-```powershell
-.\tools\build\build.ps1 -PlatformToolset v143 -SkipUpx -WarningsAsErrors
-```
-
-Это также локальный release-контур по умолчанию: `build.ps1`,
-`create-release.ps1`, `verify-release.ps1`, FBShell property handler и FBV MUI
-используют v143, а native release binaries и Scintilla/Lexilla
-инициализируются через `vcvars_ver=14.44`. Не заменяйте этот набор на более
-новый VC Tools без отдельной проверки Windows 7 imports.
-
-Собственный C++ код собирается с централизованным baseline `/std:c++17`
-(`FbeLanguageStandard=stdcpp17`). Это не отменяет поддержку Windows 7: её
-сохраняют v143 / VC Tools 14.44 и существующая policy API/CRT. Для локальной
-оценки будущей миграции допустимо передать MSBuild
-`/p:FbeLanguageStandard=stdcpp20`, не меняя `.vcxproj`; это не release-режим.
-Vendored и generated-проекты имеют собственные требования. `/permissive-` и
-`/Zc:wchar_t` намеренно не меняются.
-
-Пробный strict first-party C++20-прогон на VC Tools 14.44 пока не собирается:
-его блокируют legacy WTL/ATL, неявные COM/CString-преобразования, MSXML-строки
-и `for each`. Это известный результат оценки, а не основание менять C++17
-release baseline.
-
-Параметр `-WarningsAsErrors` запрещает появление новых предупреждений
-компилятора. Предупреждения legacy-заголовков WTL подавлены только на границе
-подключения сторонней библиотеки.
-
-Скрипт ищет MSBuild через `vswhere.exe`. Ручной эквивалент:
-
-```powershell
-msbuild FBE.sln /m /t:Build /p:Configuration=Release /p:Platform=Win32
-```
-
-## Результат
-
-- Бинарники и runtime-файлы: `out/Release`.
-- Промежуточные объектные файлы: `build/obj`.
-- Статическая библиотека Hunspell: `build/hunspell/lib/Release`.
-
-Проверка и подготовка portable-артефакта:
-
-```powershell
-.\tools\build\verify-release.ps1
-.\tools\build\package-portable.ps1
-```
-
-Portable-архив не требует установки: распакуйте его и запускайте `FBE.exe`.
-Все изменяемые данные portable-версии лежат рядом с программой в `Data`
-(`Settings`, `Scripts`, `Dictionaries`, `Themes`, журналы и recovery); она не
-использует `%LOCALAPPDATA%\FBE Next`, не регистрирует COM-плагины и не меняет
-ассоциации файлов. Папку portable можно переносить целиком, включая `Data`.
-Bundled plugins активируются из `Plugins\plugins.json` локально, без
-регистрации. Это единый portable-набор для Windows 7 SP1 и новее; отдельного
-compatibility-профиля и отдельной Win7-сборки нет.
-
-NSIS installer предлагает три режима. **Current User** устанавливает текущую
-Win32-сборку в `%LOCALAPPDATA%\Programs\FictionBook Editor Next` без UAC;
-**All Users** устанавливает её в `Program Files (x86)\FictionBook Editor Next`
-и требует прав администратора; **Portable** создаёт переносимую папку без
-деинсталлятора, ассоциаций и системной интеграции. Для автоматической установки
-совмещайте `/S` с одним из `/CURRENTUSER`, `/ALLUSERS` или `/PORTABLE`.
-Installer Portable создаёт копию через мастер, а `portable.zip` предназначен
-для ручной распаковки без запуска installer.
-
-Проверка релиза по умолчанию не запускает длительный набор table-regression
-tests. Для его явного включения используйте `-RunTableTests`:
-
-```powershell
-.\tools\build\verify-release.ps1 -RunTableTests
-```
-
-Основное приложение остаётся 32-битным, поскольку использует legacy-компоненты
-Windows и существующую Win32-интеграцию.
-
-## Диагностическая трассировка
-
-При необходимости можно включить диагностический журнал запуска, команд, переходов
-между режимами, операций с документом и COM-ошибок:
-
-```powershell
-$env:FBE_NEXT_TRACE = "1"
-.\out\Release\FBE.exe
-Remove-Item Env:FBE_NEXT_TRACE
-```
-
-Файлы установленной версии находятся в `%LOCALAPPDATA%\FBE Next\Diagnostics\`,
-portable — в `<DataPath>\Diagnostics\` рядом с FBE (`Data` по умолчанию).
-При недоступности основного каталога установленная версия использует
-`%TEMP%\FBE Next Diagnostics\`; portable остаётся в своём каталоге данных.
-Каждый запуск получает `session_id` и `fbe-session-<session_id>.txt`.
-Расширенный журнал называется `fbe-trace-YYYYMMDD-HHMMSS-mmm-pidNNN.log`,
-его сегменты — `-partN.log`. В обычном режиме подробного trace нет, но доступны
-метаданные сеанса, статистика операций и ограниченный журнал ошибок
-`fbe-events-<session_id>.log`.
-
-Трассировку для следующих запусков можно переключить через
-«Справка → Диагностика FBE Next…»; требуется перезапуск. `FBE_NEXT_TRACE=1`
-имеет приоритет над сохранённым выключением, поэтому уберите переменную
-окружения для отключения. Режим отмечен в заголовке, повторных стартовых
-модальных предупреждений нет.
-
-Поиск новых аварий и сохранённая ротация старых журналов выполняются в фоне
-после создания окна. Проверка аварий читает ограниченный заголовок каждого TXT
-один раз и индексирует `session_id`; она не читает метаданные всех сеансов.
-Одноразовый таймер получения результата отключается после завершения.
-Отметка новой аварии в заголовке может появиться чуть позже самого окна.
-
-В диагностике выберите сеанс, проверьте компоненты и предпросмотр, затем
-сохраните ZIP. Сохраняются байты того же проверенного снимка; занятое имя
-получает уникальный суффикс без перезаписи. Подготовка и запись работают в фоне
-с отменой. Дампы в стандартный пакет не входят.
-
-Список аварийных файлов позволяет явно отметить просмотренным и повреждённый
-или отклонённый проверкой отчёт: повторное нажатие подтверждает действие,
-содержимое не меняется и не получает разрешения на экспорт. Отметки находятся
-в `diagnostics-reviewed.ini` каталога настроек. Изменённый отчёт снова считается
-новым. Crash TXT/DMP автоматически не удаляются.
-
-«Очистить старые журналы» и «Очистить старые аварии» — разные действия.
-Очистка аварий сначала показывает число файлов и размер, а повторное нажатие
-удаляет только одобренный список просмотренных TXT и соответствующих DMP
-старше 30 дней. Текущие, непросмотренные, занятые или изменившиеся файлы,
-отчёты работающих/непроверяемых процессов, ссылки и посторонние имена сохраняются.
-Отдельный DMP без TXT не удаляется. Перед удалением пара повторно проверяется
-и открывается эксклюзивно; частичные ошибки отражаются в результате.
-
-Подробности приватности и подготовки пакета: [сообщение об ошибке](reporting-issues.md).
-
-Watchdog включён независимо от trace: после готовности UI выполняется один
-неблокирующий heartbeat примерно в секунду. Контролируется уже первый
-отправленный heartbeat после готовности UI. Пороги — более 15/30 секунд.
-Отчёты `Diagnostics\Hangs\fbe-hang-<session_id>-<incident>.txt` связываются с
-сеансом и попадают в `hang/` диагностического ZIP после проверки приватности.
-Подозрение, подтверждение и восстановление дописываются в один файл. Отчёты
-не содержат текста книг/скриптов или путей; дампы автоматически не создаются.
-Сон, отладка и закрытие сбрасывают отсчёт. Подробности и ограничения снимка
-описаны в [инструкции по сообщению об ошибке](reporting-issues.md).
-
-Короткая проверка Watchdog на отдельной portable-копии:
-
-```powershell
-.\tools\tests\test-watchdog-contract.ps1
-.\tools\tests\test-watchdog-runtime.ps1
-```
-
-Runtime-проверка устанавливает пороги 150/300 мс только при одновременных
-`FBE_NEXT_TEST_MODE=1`, `FBE_NEXT_TEST_SCENARIO=watchdog-runtime` и
-`FBE_NEXT_TEST_WATCHDOG_SHORT=1`. В обычном запуске действуют 15/30 секунд.
-Дополнительно проверяются фактическое Running/LastError при файле вместо
-Hangs и блокировке открытия каталога, исключение worker, сохранение ошибки,
-повторный Start без Stop и конкурентные Start/Stop. Инъекция исключения
-FBE_NEXT_TEST_WATCHDOG_FAULT=exception действует только при тех же трёх
-тестовых ограничениях и не меняет обычный запуск.
-Она проверяет зависание до первого ответа heartbeat и два последующих
-блокирования настоящего UI, включая удержание trace lock,
-запись до его освобождения, восстановление, сохранность несохранённого документа,
-приватность и точное соответствие preview/ZIP. Ручная очистка старых Hangs
-проверяется вместе с crash cleanup:
-
-```powershell
-.\tools\tests\test-diagnostic-crash-maintenance.ps1
-1..3 | ForEach-Object { .\tools\tests\test-diagnostic-dialog-runtime.ps1 }
-```
-
-Очистка Hangs требует предварительного подсчёта и повторного нажатия;
-новые, текущие, используемые, изменённые и непроверенные отчёты сохраняются.
-Полный release gate не требуется.
-
-Автоматический тест запуска с выводом этой трассы:
-
-```powershell
-.\tools\tests\test-fbe-startup.ps1 -Configuration Release -Trace
-```
-
-Быстрые проверки безопасности исходников без сборки и запуска приложения:
-
-```powershell
-.\tools\tests\test-source-safety.ps1
-```
-
-Smoke-тест внутреннего reader-а метаданных `.fb2` для будущей shell-интеграции:
-
-```powershell
-.\tools\tests\test-fb2-metadata.ps1
-```
-
-## Установщик
-
-Официальный источник файлов для упаковки теперь такой:
-
-- `out\Release` — сырые бинарники после сборки;
-- `out\package\FictionBookEditor` — staging portable-пакета и основной вход
-  для NSIS-установщика;
-- `out\artifacts` — итоговые ZIP- и setup-артефакты релиза.
-
-После сборки Release штатный сценарий сам формирует
-`out\package\FictionBookEditor` и использует его напрямую как вход для NSIS:
-
-```powershell
-.\packaging\nsis\Installer\MakeInstaller.bat
-```
-
-Отдельно подготовить входные файлы установщика можно командой:
-
-```powershell
-.\tools\build\prepare-installer.ps1
-```
-
-Эта команда не собирает состав релиза вручную: она просто подтверждает, что
-уже готовый portable staging в `out\package\FictionBookEditor` можно читать
-напрямую из NSIS.
-
-## Релизные артефакты
-
-Полный локальный сценарий собирает проект, проверяет версии, создаёт portable ZIP,
-NSIS-установщик и файл контрольных сумм:
-
-```powershell
-.\tools\build\create-release.ps1
-```
-
-Проверить состав уже созданных архивов и их контрольные суммы:
-
-```powershell
-.\tools\build\verify-artifacts.ps1 -Platform Win32
-```
-
-Результаты помещаются в `out\artifacts`:
-
-- `FictionBookEditorNext-<version>-win32-portable.zip`;
-- `FictionBookEditorNext-<version>-win32-setup.exe`;
-- `FictionBookEditorNext-<version>-win32-symbols.zip`;
-- `SHA256SUMS.txt`.
-
-Для уже собранных бинарников используйте `-SkipBuild`. Candidate manifest
-проверяется отдельно через `tools\build\validate-update-manifest.ps1`; опубликованный
-feed намеренно не обязан совпадать с текущей версией исходников. Теги
-`v3.0.0` и `v3.0.0-rc.1` запускают соответствующий сценарий GitHub Actions.
-
-Практический пошаговый сценарий выпуска собран в
-[docs/release-checklist.md](D:\Download\FBeditor\docs\release-checklist.md).
-
-## Проверка диагностики
-
-После сборки затронутых проектов Release Win32 с `FbeStrictWarnings=true`
-запустите короткую проверку production-сборщика:
-
-```powershell
-.\tools\tests\test-diagnostic-sessions.ps1 -Executable .\out\Release\FBE.exe
-.\tools\tests\test-diagnostic-localization.ps1
-.\tools\tests\test-diagnostic-operation-runtime.ps1 -Executable .\out\Release\FBE.exe
-.\tools\tests\test-diagnostic-dialog-runtime.ps1 -Executable .\out\Release\FBE.exe
-```
-
-Проверка запускает FBE в закрытом тестовом режиме с отдельным каталогом
-настроек и данных под `build`. Она сверяет байты предпросмотра и ZIP,
-выбор сеанса, сопоставление аварий, ошибки плагинов и блокировку посторонних
-данных. Боевые настройки и журналы не используются. Команда
-`--diagnostic-package-test` действует только с `FBE_NEXT_TEST_MODE=1`.
-Отдельно требуется визуально проверить диалог в светлой/тёмной теме и при
-разном DPI. Совместимость кода с Windows 7 не заменяет проверку на самой ОС.
-
-Формат пакета, пользовательский порядок сбора и предупреждение о содержимом
-дампов описаны в [reporting-issues.md](reporting-issues.md).
-
-Проверка operation-runtime использует отдельную portable-копию и штатные native
-сценарии переключения режимов и ошибки Save As; каждый процесс ограничен
-25 секундами. Она проверяет сохранённые счётчики при выключенном trace.
+- [tools/build/build.ps1](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/tools/build/build.ps1)
+- [tools/build/create-release.ps1](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/tools/build/create-release.ps1)
+- [docs/architecture/runtime-packaging.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/architecture/runtime-packaging.md)
+- [src/common/DeploymentContext.h](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/src/common/DeploymentContext.h)

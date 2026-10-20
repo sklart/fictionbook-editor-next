@@ -1,57 +1,42 @@
-# Версионирование
+# Версия приложения, API и выпусков
 
-Версия приложения задаётся в одном месте: `src/version.h`.
+> Тип: Действующая инструкция. Документационная база: FBE Next 3.0.9, `master` / `1ad7c507d1ed`; сверка 19 октября 2026 года.
 
-Она управляет:
+## Версия продукта
 
-- версией, показываемой в окне «О программе»;
-- файловой и продуктовой версией `FBE.exe`;
-- файловой и продуктовой версией `ExportHTML.dll`;
-- значением `PRODUCT_VER_NUM` в NSIS.
-
-После изменения версии нужно запускать:
+Источником версии приложения остаётся `src/version.h`. После изменения используйте:
 
 ```powershell
-.\tools\version\sync-version.ps1
+pwsh ./tools/version/sync-version.ps1
 ```
 
-Обычная сборка запускает синхронизацию автоматически. При этом сборка более
-старой ветки остаётся возможной, даже если в `update.xml` уже объявлен более
-новый релиз.
+Проверяйте согласованность About, file/product versions бинарников и установщика штатными release-проверками. Не редактируйте независимо сгенерированные представления одной версии.
 
-## Онлайн-манифест обновлений
+## Теги и архивная история
 
-Приложение загружает:
+Стабильные выпуски имеют теги `vX.Y.Z`, предварительные — суффикс Beta/RC. Исторические написания тегов сохраняются буквально: например `v3.0.8-rc.1` и `v3.0.8-rc2`. Ни даты публикации, ни существующие URL не унифицируются задним числом.
 
-`https://raw.githubusercontent.com/sklart/fictionbook-editor-next/master/update.xml`
+Для каждого опубликованного RC ведётся собственная запись в [истории выпусков](release-notes/README.md). Отсутствие стабильного 3.0.8 нельзя компенсировать документом, который ошибочно называет RC1 стабильным выпуском.
 
-Значение `<Version>` сравнивается как число с версией, встроенной в запущенный
-исполняемый файл. Дата в манифесте носит справочный характер и больше не
-используется для определения наличия обновления.
+## Не смешивать три контракта
 
-`update.xml` — это метаданные релиза, а не входной файл сборки. При создании
-официального установщика скрипт выпуска сам синхронизирует в нём поля `Name`,
-`Date`, `Version`, `Beta`, `DownloadUrl` и `SHA256`. Значение `Version` должно
-совпадать с `src/version.h`, а адрес загрузки обязан использовать HTTPS и
-указывать на опубликованный `.exe`.
+| Обозначение | Что означает |
+| --- | --- |
+| FBE Next 3.0.9 | Версия продукта и набора поставки. |
+| Scripting API 1.2.0 | Возможности `window.external`; наличие метода проверяется через публичный API. |
+| FBELib 1.0 | Версия type library со своими инвариантами совместимости. |
 
-Скрипт `tools/build/create-release.ps1` вычисляет итоговый SHA-256 установщика,
-записывает его и в `SHA256SUMS.txt`, и в `update.xml`, а затем повторно
-проверяет манифест.
+Из расширения scripting API не следует автоматическое повышение версии type library. IID, существующие DISPID и бинарная совместимость управляются правилами [FBELib](reference/fbelib-typelib-versioning.md). Архитектура XML backend вынесена в [отдельный документ](architecture/xml-scripting-api.md), полный публичный справочник — в [scripting-api.md](scripting-api.md).
 
-Отдельная smoke-проверка манифеста доступна через:
+## Feeds и release notes
 
-```powershell
-.\tools\tests\test-update-manifest.ps1
-```
+Candidate manifest создаётся для проверяемого релиза, а опубликованные feeds обновляются на шаге публикации. Не подставляйте в feed локальный путь, непроверенный URL или SHA другого установщика. Точный сценарий — [чек-лист выпуска](release-checklist.md).
 
-Она также входит в `.\tools\build\verify-release.ps1`.
+`docs/release-notes` и опубликованный GitHub Release имеют разные роли: репозиторный текст помогает готовить выпуск, а опубликованное body может содержать последующие ручные уточнения. Эти уточнения нельзя затирать повторным workflow.
 
-Короткий сценарий локального выпуска и финальной проверки собран в
-[docs/release-checklist.md](D:\Download\FBeditor\docs\release-checklist.md).
+## Основания
 
-Из соображений безопасности `DownloadUrl` должен указывать на
-`https://github.com/sklart/fictionbook-editor-next/releases/download/`.
-Приложение отклоняет установщики, размещённые вне GitHub Releases этого
-репозитория, даже если сам манифест был успешно загружен.
-Ручное копирование контрольной суммы не требуется.
+- [src/version.h](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/src/version.h)
+- [docs/fbelib-typelib-versioning.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/fbelib-typelib-versioning.md)
+- [tools/build/new-release-notes.ps1](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/tools/build/new-release-notes.ps1)
+- [docs/versioning.md](https://github.com/sklart/fictionbook-editor-next/blob/1ad7c507d1edcd0ca132589fe5a9f16a5574253d/docs/versioning.md)

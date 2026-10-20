@@ -9,7 +9,7 @@ used by the menu and command handlers. A check must not modify the DOM.
 - **Split** remains in `BodyStructuralEditor`. The existing selection and ID
   transfer rules are retained. Its native MSHTML undo behavior and the reason
   it is not forced into one Ctrl+Z are documented in
-  [split-undo-mshtml-probe.md](split-undo-mshtml-probe.md).
+  [split-undo-mshtml-probe.md](../archive/undo/split-undo-mshtml-probe.md).
 - **Merge** accepts adjacent, same-type sections, citations, or stanzas only
   after checking the layout. Text sections merge with text sections, nested
   sections with nested sections. The second outer ID or other attributes,

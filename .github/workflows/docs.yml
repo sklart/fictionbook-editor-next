@@ -1,0 +1,44 @@
+name: Documentation checks
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - 'tools/docs/**'
+      - 'tools/audit-script-cards.py'
+      - 'tools/tests/test-docs-tools.py'
+      - 'src/contracts/fbe.idl'
+      - 'src/fbe/ExternalHelper.cpp'
+      - 'src/fbe/scripts/**'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - 'tools/docs/**'
+      - 'tools/audit-script-cards.py'
+      - 'tools/tests/test-docs-tools.py'
+      - 'src/contracts/fbe.idl'
+      - 'src/fbe/ExternalHelper.cpp'
+      - 'src/fbe/scripts/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          submodules: false
+      - name: Test documentation tools and isolated audit output
+        run: python3 tools/tests/test-docs-tools.py
+      - name: Check local documentation links and anchors
+        run: python3 tools/docs/doc_links.py --root .
+      - name: Check current public scripting API and navigation
+        run: python3 tools/docs/check_scripting_api.py --root .

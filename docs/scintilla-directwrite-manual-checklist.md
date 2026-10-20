@@ -1,24 +1,19 @@
-# DirectWrite и layout threads: ручная проверка
+# Документ перенесён: scintilla-directwrite-manual-checklist
 
-Этот чек-лист обязателен до включения `SC_TECHNOLOGY_DIRECTWRITE` в FBE по умолчанию. Автоматический smoke подтверждает доступность API, но не заменяет визуальную проверку.
+Актуальный вход: [testing/source-directwrite.md](testing/source-directwrite.md).
 
-## Матрица
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-Проверить на Windows 7 SP1, Windows 10 и Windows 11, при DPI 100%, 125%, 150% и 200%, в Light, Dark и High Contrast.
+## Прежние якоря
 
-Для каждого варианта проверить:
+<a id="directwrite-и-layout-threads-ручная-проверка"></a>
+[Перейти к соответствующему разделу](testing/source-directwrite.md#directwrite-%D0%B8-layout-threads-%D1%80%D1%83%D1%87%D0%BD%D0%B0%D1%8F-%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B0).
 
-- кириллицу, italic и bold в Source;
-- caret, selection и current-line highlighting;
-- line-number и folding margins;
-- XML indicators и EOL validation annotation;
-- wrap длинных абзацев, resize окна и scroll;
-- переходы Body ↔ Source.
+<a id="layout-benchmark"></a>
+[Перейти к соответствующему разделу](testing/source-directwrite.md#layout-benchmark).
 
-## Layout benchmark
+<a id="матрица"></a>
+[Перейти к соответствующему разделу](testing/source-directwrite.md#%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0).
 
-Для isolated Scintilla measurement запустить `tools/tests/test-scintilla.ps1 -EditorRuntimeDirectory .\\out\\editor-runtime\\Modern -RunLayoutBenchmark`. Harness создаёт XML 1/5 MB, делает warm-up и семь измерений wrap/reflow при resize для default, DirectWrite+1 и (при `SCI_SUPPORTSFEATURE`) DirectWrite+2 threads. 20 MB — отдельный длительный прогон с `-RunLayoutBenchmarkLarge`, чтобы не блокировать обычную диагностику. Затем подтвердить результат тем же сценарием в FBE: открытие Source, resize, scroll и переключение Body/Source. Включать threads только если median не ухудшается и память Win32 остаётся приемлемой.
-
-## Результат
-
-До заполнения этой матрицы FBE остаётся на `SC_TECHNOLOGY_DEFAULT` и с однопоточным layout, даже если runtime API сообщает поддержку.
+<a id="результат"></a>
+[Перейти к соответствующему разделу](testing/source-directwrite.md#%D1%80%D0%B5%D0%B7%D1%83%D0%BB%D1%8C%D1%82%D0%B0%D1%82).

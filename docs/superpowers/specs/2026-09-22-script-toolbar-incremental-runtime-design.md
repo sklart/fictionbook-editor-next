@@ -1,80 +1,28 @@
-# Инкрементальное применение пользовательских панелей скриптов
+# Документ перенесён: 2026-09-22-script-toolbar-incremental-runtime-design
 
-## Цель
+Актуальный вход: [archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md).
 
-Убрать полный rebuild подсистемы скриптов из штатного пути управления
-пользовательскими панелями. Операции создания, переименования, показа,
-скрытия, перемещения и удаления панели должны менять только затронутый
-runtime/UI, не выполняя discovery каталога `Scripts`, `ScriptLoad`, поиск
-`Run`, повторную загрузку изображений, перестроение меню Scripts или
-регистрацию hotkeys.
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-## Неизменяемые границы
+## Прежние якоря
 
-- `Toolbars.xml v2`, Script UID, command IDs, hotkeys и правила discovery не
-  меняются.
-- `scripts-main` сохраняет свой отдельный lifecycle: его HWND создаётся при
-  создании главного окна и не проходит через generic create/destroy custom
-  toolbar helpers.
-- Скрытая custom-панель имеет definition, но не имеет HWND и rebar band.
-- Полный `InitializeScripts()` сохраняется для startup/reload и как аварийный
-  fallback восстановления runtime.
+<a id="delta-apply"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#delta-apply).
 
-## Runtime primitives
+<a id="runtime-primitives"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#runtime-primitives).
 
-`CMainFrame` получает узкие helpers для custom-панели по стабильному `id`:
+<a id="инкрементальное-применение-пользовательских-панелей-скриптов"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#%D0%B8%D0%BD%D0%BA%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%B5-%D0%BF%D1%80%D0%B8%D0%BC%D0%B5%D0%BD%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D1%8C%D1%81%D0%BA%D0%B8%D1%85-%D0%BF%D0%B0%D0%BD%D0%B5%D0%BB%D0%B5%D0%B9-%D1%81%D0%BA%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B2).
 
-1. создать HWND и rebar band;
-2. удалить band и HWND;
-3. заполнить toolbar из уже имеющегося каталога command IDs и ImageList
-   основной панели;
-4. применить items definition;
-5. привести порядок существующих visible bands к порядку definitions через
-   `CReBarCtrl::MoveBand`.
+<a id="наблюдаемость-и-тестирование"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#%D0%BD%D0%B0%D0%B1%D0%BB%D1%8E%D0%B4%D0%B0%D0%B5%D0%BC%D0%BE%D1%81%D1%82%D1%8C-%D0%B8-%D1%82%D0%B5%D1%81%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5).
 
-Полная инициализация использует эти же primitives после единственного
-`m_scripts.Initialize()`. Создание custom toolbar не вызывает `ScriptLoad`,
-`Catalog::Discover`, повторную регистрацию hotkeys и не читает изображения
-скриптов с диска.
+<a id="неизменяемые-границы"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#%D0%BD%D0%B5%D0%B8%D0%B7%D0%BC%D0%B5%D0%BD%D1%8F%D0%B5%D0%BC%D1%8B%D0%B5-%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D1%8B).
 
-## Delta apply
+<a id="ошибки-и-rollback"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#%D0%BE%D1%88%D0%B8%D0%B1%D0%BA%D0%B8-%D0%B8-rollback).
 
-`ApplyScriptToolbarDefinitions(previous, current)` работает в следующем
-порядке:
-
-1. захватывает точный persistent snapshot;
-2. сохраняет `current` через `PortableToolbarStore`;
-3. сопоставляет definitions по `id`;
-4. создаёт только новые visible custom-панели;
-5. удаляет только отсутствующие custom-панели;
-6. show/hide изменяет только соответствующий HWND/band;
-7. rename обновляет definition и View menu без изменения HWND;
-8. reorder перемещает существующие visible bands;
-9. обновляет View → Script toolbars и layout rebar.
-
-`scripts-main` может обновить metadata/visibility, но никогда не создаётся и
-не уничтожается как custom toolbar в этом пути.
-
-## Ошибки и rollback
-
-После ошибки runtime delta `PortableToolbarStore::RestoreSnapshot(snapshot)`
-вызывается безусловно. Затем применяется обратная delta к `previous`. Если
-обратная delta не удалась, вызывается аварийный
-`InitializeScriptsFromDefinitions(previous, hadPersistedMainDefinition)`.
-Таким образом persistent state восстанавливается точно даже при ошибке
-runtime rollback, а полный rebuild не является штатным механизмом.
-
-## Наблюдаемость и тестирование
-
-Добавляется test-only счётчик полных script initialization/discovery и trace
-для времени delta apply. Runtime regression после первичного startup выполняет
-`create → rename → hide → show → move → delete` и проверяет:
-
-- счётчик полной инициализации/discovery не изменился;
-- command IDs и hotkeys не изменились;
-- HWND `scripts-main` и незатронутых custom-панелей не изменились;
-- только затронутая панель получает/теряет HWND и band;
-- reload возвращает тот же persisted state;
-- fault injection восстанавливает persistent snapshot и прежний runtime.
-
-Покрытие запускается в portable и isolated-installed lifecycle contours.
+<a id="цель"></a>
+[Перейти к соответствующему разделу](../../archive/planning/2026-09-22-script-toolbar-incremental-runtime-design.md#%D1%86%D0%B5%D0%BB%D1%8C).

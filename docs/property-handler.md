@@ -1,89 +1,24 @@
-# Экспериментальный modern property handler
+# Документ перенесён: property-handler
 
-Этот документ описывает безопасный способ собирать и проверять новый
-property-handler контур для `.fb2`, не подмешивая его в обычную сборку по
-умолчанию.
+Актуальный вход: [shell-integration.md](shell-integration.md).
 
-## Текущий принцип
+Полный прежний текст: [историческая редакция](archive/shell/property-handler.md).
 
-Новый класс `Fb2PropertyHandler` уже существует в исходниках:
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-- `src/fbshell/Fb2PropertyHandler.h`
-- `src/fbshell/Fb2PropertyHandler.cpp`
-- `src/fbshell/Fb2PropertyHandler.rgs`
+## Прежние якоря
 
-Но по умолчанию он **не включён** в `OBJECT_MAP` и поэтому не участвует в
-обычной COM-регистрации `FBShell.dll`.
+<a id="важное-ограничение"></a>
+[Перейти к соответствующему разделу](archive/shell/property-handler.md#%D0%B2%D0%B0%D0%B6%D0%BD%D0%BE%D0%B5-%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D0%B5).
 
-Это сделано специально, чтобы:
+<a id="зачем-нужен-этот-промежуточный-шаг"></a>
+[Перейти к соответствующему разделу](archive/shell/property-handler.md#%D0%B7%D0%B0%D1%87%D0%B5%D0%BC-%D0%BD%D1%83%D0%B6%D0%B5%D0%BD-%D1%8D%D1%82%D0%BE%D1%82-%D0%BF%D1%80%D0%BE%D0%BC%D0%B5%D0%B6%D1%83%D1%82%D0%BE%D1%87%D0%BD%D1%8B%D0%B9-%D1%88%D0%B0%D0%B3).
 
-- не ломать legacy-поставку;
-- не включать shell handler случайно;
-- иметь отдельный управляемый путь для ручной проверки на GUI.
+<a id="как-включить-shell-handler-в-сборку"></a>
+[Перейти к соответствующему разделу](archive/shell/property-handler.md#%D0%BA%D0%B0%D0%BA-%D0%B2%D0%BA%D0%BB%D1%8E%D1%87%D0%B8%D1%82%D1%8C-shell-handler-%D0%B2-%D1%81%D0%B1%D0%BE%D1%80%D0%BA%D1%83).
 
-## Как включить shell handler в сборку
+<a id="текущий-принцип"></a>
+[Перейти к соответствующему разделу](archive/shell/property-handler.md#%D1%82%D0%B5%D0%BA%D1%83%D1%89%D0%B8%D0%B9-%D0%BF%D1%80%D0%B8%D0%BD%D1%86%D0%B8%D0%BF).
 
-Для этого добавлен отдельный build-скрипт:
-
-```powershell
-.\tools\build\build-shell-integration.ps1 -Configuration Release -Platform x64
-```
-
-Он собирает проект с MSBuild-свойством:
-
-- `ShellIntegration=true`
-
-И важно: этот скрипт собирает **только**
-`src/fbshell/FBShell.vcxproj`, а не весь `FBE.sln`.
-
-Это сделано специально, чтобы проверка property handler не
-зависела от отдельных старых ошибок в других проектах решения.
-
-Для реальной проверки в современном 64-битном Проводнике приоритетен именно
-вариант:
-
-- `-Platform x64`
-
-При таком режиме в `src/fbshell/FBShell.cpp` активируется compile-time флаг:
-
-- `FBE_ENABLE_PROPERTY_HANDLER`
-
-И новый класс попадает в `OBJECT_MAP` DLL.
-
-## Важное ограничение
-
-Даже после такой сборки handler ещё не считается частью стандартной поставки.
-
-Его нужно рассматривать как отдельный экспериментальный контур для ручной
-проверки:
-
-1. собрать DLL с включённым флагом;
-2. отдельно решить сценарий регистрации;
-3. вручную проверить поведение на Windows GUI;
-4. только потом думать о включении в инсталлятор или в обычную поставку.
-
-Для управляемого эксперимента добавлены отдельные скрипты:
-
-- `tools/build/register-shell-integration.ps1`
-- `tools/build/unregister-shell-integration.ps1`
-
-И отдельный чеклист GUI-проверки:
-
-- `docs/property-handler-manual-test.md`
-
-Сами скрипты используют схему регистрации, описанную в Microsoft Learn:
-
-- COM-регистрация CLSID обработчика;
-- ассоциация расширения `.fb2` через
-  `HKLM\Software\Microsoft\Windows\CurrentVersion\PropertySystem\PropertyHandlers`.
-
-Это требует прав администратора на время эксперимента.
-
-## Зачем нужен этот промежуточный шаг
-
-Он даёт управляемую развилку:
-
-- обычная сборка остаётся стабильной;
-- shell-сценарий включён в штатную сборку;
-- дальнейшие проверки modern property handler не смешиваются с legacy
-  `ColumnProvider`.
+<a id="экспериментальный-modern-property-handler"></a>
+[Перейти к соответствующему разделу](archive/shell/property-handler.md#%D1%8D%D0%BA%D1%81%D0%BF%D0%B5%D1%80%D0%B8%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9-modern-property-handler).

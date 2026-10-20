@@ -1,119 +1,34 @@
-# Маппинг свойств `.fb2` на Windows Shell Properties
+# Документ перенесён: fb2-property-mapping
 
-Этот документ фиксирует текущее решение по тому, как внутренние свойства FB2
-соотносятся со стандартными Windows Shell properties.
+Актуальный вход: [reference/fb2-property-mapping.md](reference/fb2-property-mapping.md).
 
-Важно: это не финальная реализация property handler, а рабочая таблица решений,
-на которую должен опираться будущий modern shell-контур.
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-## Статусы
+## Прежние якоря
 
-- `confirmed` — сопоставление выглядит корректным и осмысленным;
-- `fbe-specific` — стандартного Windows-свойства пока нет или оно выглядит
-  хуже, чем отдельное FBE-специфичное поле.
+<a id="маппинг-свойств-fb2-на-windows-shell-properties"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D0%BC%D0%B0%D0%BF%D0%BF%D0%B8%D0%BD%D0%B3-%D1%81%D0%B2%D0%BE%D0%B9%D1%81%D1%82%D0%B2-fb2-%D0%BD%D0%B0-windows-shell-properties).
 
-## Таблица
+<a id="правило-для-отображаемых-названий-колонок"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D0%BF%D1%80%D0%B0%D0%B2%D0%B8%D0%BB%D0%BE-%D0%B4%D0%BB%D1%8F-%D0%BE%D1%82%D0%BE%D0%B1%D1%80%D0%B0%D0%B6%D0%B0%D0%B5%D0%BC%D1%8B%D1%85-%D0%BD%D0%B0%D0%B7%D0%B2%D0%B0%D0%BD%D0%B8%D0%B9-%D0%BA%D0%BE%D0%BB%D0%BE%D0%BD%D0%BE%D0%BA).
 
-| Свойство FB2/FBE | Для пользователя | Windows canonical name | Статус | Комментарий |
-| --- | --- | --- | --- | --- |
-| `author` | Автор | `System.Author` | `confirmed` | Хорошо соответствует авторам книги/документа. |
-| `title` | Название | `System.Title` | `confirmed` | Естественное сопоставление для названия книги. |
-| `language` | Язык | `System.Language` | `confirmed` | Подходит для `title-info/lang`. |
-| `keywords` | FBE:Ключевые слова | — | `fbe-specific` | Ключевые слова вынесены в отдельное FBE-specific свойство, потому что UI Проводника Windows 11 непредсказуемо показывает `System.Keywords`. |
-| `genre` | FBE:Жанр | — | `fbe-specific` | Книжный жанр вынесен в отдельное FBE-specific свойство, чтобы не использовать музыкальный системный ключ Windows. |
-| `sequence` | FBE:Серия | — | `fbe-specific` | Книжная серия публикуется как отдельное FBE-specific свойство. |
-| `documentId` | FBE:Идентификатор документа | — | `fbe-specific` | Идентификатор документа вынесен в отдельное FBE-specific свойство, потому что UI Проводника Windows 11 непредсказуемо показывает `System.Document.DocumentID`. |
-| `documentVersion` | FBE:Версия документа | — | `fbe-specific` | Версия FB2-документа вынесена в отдельное FBE-specific свойство, чтобы не смешивать её с общим Windows-полем версии документа. |
-| `documentDate` | FBE:Дата документа | — | `fbe-specific` | Дата FB2-документа вынесена в отдельное FBE-specific свойство, чтобы не смешивать её с системной датой создания файла или документа Windows. |
+<a id="практические-выводы"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D0%B5-%D0%B2%D1%8B%D0%B2%D0%BE%D0%B4%D1%8B).
 
-## Правило для отображаемых названий колонок
+<a id="рекомендуемый-mvp-для-modern-property-handler"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D1%80%D0%B5%D0%BA%D0%BE%D0%BC%D0%B5%D0%BD%D0%B4%D1%83%D0%B5%D0%BC%D1%8B%D0%B9-mvp-%D0%B4%D0%BB%D1%8F-modern-property-handler).
 
-Если свойство маппится на стандартное Windows property и используется его
-canonical name, итоговое отображаемое имя поля должно браться из локализации
-самой Windows, а не из жёстко зашитой строки FBE.
+<a id="связанные-файлы"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D1%81%D0%B2%D1%8F%D0%B7%D0%B0%D0%BD%D0%BD%D1%8B%D0%B5-%D1%84%D0%B0%D0%B9%D0%BB%D1%8B).
 
-То есть для таких полей:
+<a id="статусы"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D1%81%D1%82%D0%B0%D1%82%D1%83%D1%81%D1%8B).
 
-- `Author`
-- `Title`
-- `Language`
+<a id="таблица"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D1%82%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0).
 
-FBE хранит только:
+<a id="уже-можно-считать-устойчивыми"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D1%83%D0%B6%D0%B5-%D0%BC%D0%BE%D0%B6%D0%BD%D0%BE-%D1%81%D1%87%D0%B8%D1%82%D0%B0%D1%82%D1%8C-%D1%83%D1%81%D1%82%D0%BE%D0%B9%D1%87%D0%B8%D0%B2%D1%8B%D0%BC%D0%B8).
 
-- внутренний `debugName`;
-- `fallbackDisplayName` для диагностики, тестов и резервного сценария;
-- canonical name свойства Windows.
-
-Но в пользовательском интерфейсе Проводника приоритет должен быть у
-локализованного имени, которое отдаёт Windows.
-
-Для `fbe-specific` полей (`Keywords`, `Genre`, `Sequence`, `DocumentId`,
-`DocumentVersion`, `DocumentDate` и возможных будущих собственных свойств)
-отдельная локализация FBE по-прежнему понадобится. Для них теперь принято
-явное отображение с префиксом `FBE:`.
-
-## Практические выводы
-
-### Уже можно считать устойчивыми
-
-- `Author -> System.Author`
-- `Title -> System.Title`
-- `Language -> System.Language`
-
-Именно эти поля лучше брать в первый MVP будущего property handler.
-
-В коде это правило уже должно выражаться явно, а не через догадки по строкам:
-
-- `UsesWindowsProperty(...)` — у свойства есть canonical name Windows;
-- `IsConfirmedWindowsProperty(...)` — это подтверждённое стандартное свойство;
-- `IsMvpWindowsProperty(...)` — свойство входит в первый безопасный MVP
-  property handler.
-
-Для уже подтверждённых MVP-полей полезно также держать отдельный слой прямого
-маппинга на `PROPERTYKEY`, чтобы будущий handler не восстанавливал его через
-строки canonical name. Этот слой уже можно строить только для:
-
-- `Author -> PKEY_Author`
-- `Title -> PKEY_Title`
-- `Language -> PKEY_Language`
-
-### Уже переведены в FBE-specific schema
-
-- `Keywords`
-- `Genre`
-- `Sequence`
-- `DocumentId`
-- `DocumentVersion`
-- `DocumentDate`
-
-Для этих полей принято явное решение:
-
-- не использовать спорные или семантически чужие системные Windows-свойства;
-- публиковать собственные FBE-specific поля;
-- визуально помечать их в Проводнике префиксом `FBE:`.
-
-Для этих полей разумнее заранее готовиться к собственному FBE-контуру свойств,
-чем пытаться силой вписать их в неудачные стандартные ключи Windows.
-
-## Рекомендуемый MVP для modern property handler
-
-Первый безопасный MVP уже опирается на такие поля:
-
-1. `Author`
-2. `Title`
-3. `Language`
-
-Следующим опубликованным кольцом теперь уже считаются FBE-specific поля:
-
-4. `Keywords`
-5. `Genre`
-6. `Sequence`
-7. `DocumentId`
-8. `DocumentVersion`
-9. `DocumentDate`
-
-## Связанные файлы
-
-- кодовая таблица дескрипторов: `src/common/fb2/Fb2ShellProperties.h`
-- реализация текущих статусов и кандидатов: `src/common/fb2/Fb2ShellProperties.cpp`
-- общий roadmap shell-переработки: `docs/fbshell-roadmap.md`
+<a id="уже-переведены-в-fbe-specific-schema"></a>
+[Перейти к соответствующему разделу](reference/fb2-property-mapping.md#%D1%83%D0%B6%D0%B5-%D0%BF%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D0%B4%D0%B5%D0%BD%D1%8B-%D0%B2-fbe-specific-schema).

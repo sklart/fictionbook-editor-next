@@ -1,83 +1,27 @@
-# Экспериментальная регистрация FBE-specific schema
+# Документ перенесён: sequence-property-schema
 
-Этот документ описывает текущий экспериментальный контур для FBE-specific
-property schema книжных полей.
+Актуальный вход: [reference/sequence-property-schema.md](reference/sequence-property-schema.md).
 
-## Что уже подготовлено
+Полный прежний текст: [историческая редакция](archive/shell/sequence-property-schema.md).
 
-В проект добавлены:
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-- schema-файл:
-  [FBE.Sequence.propdesc](D:\Download\FBeditor\packaging\property-schema\FBE.Sequence.propdesc)
-- скрипт регистрации:
-  [register-sequence-property-schema.ps1](D:\Download\FBeditor\tools\build\register-sequence-property-schema.ps1)
-- скрипт отката:
-  [unregister-sequence-property-schema.ps1](D:\Download\FBeditor\tools\build\unregister-sequence-property-schema.ps1)
+## Прежние якоря
 
-Сейчас через этот schema-файл публикуются:
+<a id="как-запускать"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema.md#%D0%BA%D0%B0%D0%BA-%D0%B7%D0%B0%D0%BF%D1%83%D1%81%D0%BA%D0%B0%D1%82%D1%8C).
 
-- `FBE:Жанр`
-- `FBE:Серия`
-- `FBE:Версия документа`
-- `FBE:Дата документа`
+<a id="ограничение-текущего-черновика"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema.md#%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%B5%D0%BD%D0%B8%D0%B5-%D1%82%D0%B5%D0%BA%D1%83%D1%89%D0%B5%D0%B3%D0%BE-%D1%87%D0%B5%D1%80%D0%BD%D0%BE%D0%B2%D0%B8%D0%BA%D0%B0).
 
-## Что это пока НЕ делает
+<a id="что-изменилось-дальше"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema.md#%D1%87%D1%82%D0%BE-%D0%B8%D0%B7%D0%BC%D0%B5%D0%BD%D0%B8%D0%BB%D0%BE%D1%81%D1%8C-%D0%B4%D0%B0%D0%BB%D1%8C%D1%88%D0%B5).
 
-Пока этот шаг:
+<a id="что-уже-подготовлено"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema.md#%D1%87%D1%82%D0%BE-%D1%83%D0%B6%D0%B5-%D0%BF%D0%BE%D0%B4%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BB%D0%B5%D0%BD%D0%BE).
 
-- не обещает немедленное появление колонки серии в Проводнике.
+<a id="что-это-пока-не-делает"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema.md#%D1%87%D1%82%D0%BE-%D1%8D%D1%82%D0%BE-%D0%BF%D0%BE%D0%BA%D0%B0-%D0%BD%D0%B5-%D0%B4%D0%B5%D0%BB%D0%B0%D0%B5%D1%82).
 
-Сейчас это уже безопасная основа для следующего шага:
-
-1. зарегистрировать schema;
-2. убедиться, что система принимает FBE-specific свойство;
-3. использовать уже подключённый published `PKEY_FBE_Sequence` в modern property handler;
-4. вручную проверить отображение FBE-specific полей в Проводнике.
-
-Текущий статус:
-
-- `PKEY_FBE_Sequence`, `PKEY_FBE_Genre`,
-  `PKEY_FBE_DocumentVersion`, `PKEY_FBE_DocumentDate` уже подключены в
-  published-набор modern property handler;
-- отдельная shell-сборка `FBShell.dll` с этими ключами уже успешно
-  собирается;
-- отображение `Sequence` уже подтверждено на реальной машине в Проводнике;
-- schema-файл уже включён в общий staging и в штатный NSIS-установщик;
-- без отдельной регистрации `.propdesc`-schema это свойство всё равно нельзя
-  считать полноценной GUI-функцией.
-
-## Что изменилось дальше
-
-После успешной ручной проверки shell-контура следующий шаг уже внесён в
-кодовую базу:
-
-- `FBE.Sequence.propdesc` теперь попадает в общий staging `out\package`;
-- обычный NSIS-установщик готов ставить и снимать эту schema вместе с modern
-  property handler.
-
-То есть этот документ теперь нужен в основном как памятка по ручной отладке и
-точечной проверке schema вне полного установщика.
-
-## Как запускать
-
-Регистрация:
-
-```powershell
-.\tools\build\register-sequence-property-schema.ps1
-```
-
-Откат:
-
-```powershell
-.\tools\build\unregister-sequence-property-schema.ps1
-```
-
-Оба скрипта требуют PowerShell с правами администратора.
-
-## Ограничение текущего черновика
-
-В `.propdesc` сейчас зашиты labels с префиксом `FBE:` прямо в XML.
-
-Это осознанный текущий шаг. Для полного соответствия локализации Windows позже
-лучше перейти на ресурсно-локализуемые имена свойств, а не на прямые строки
-внутри schema-файла.
+<a id="экспериментальная-регистрация-fbe-specific-schema"></a>
+[Перейти к соответствующему разделу](archive/shell/sequence-property-schema.md#%D1%8D%D0%BA%D1%81%D0%BF%D0%B5%D1%80%D0%B8%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F-%D1%80%D0%B5%D0%B3%D0%B8%D1%81%D1%82%D1%80%D0%B0%D1%86%D0%B8%D1%8F-fbe-specific-schema).

@@ -1,52 +1,27 @@
-# Modern FB2 thumbnail provider: завершено
+# Документ перенесён: thumbnail-provider-plan
 
-## Статус
+Актуальный вход: [reference/thumbnail-provider.md](reference/thumbnail-provider.md).
 
-Основная задача modern thumbnail provider для `.fb2` завершена. Provider входит
-в штатный shell-контур FBE Next; legacy `IExtractImage`, `IconExtractor`,
-`ImageLoader` и bundled `zlib/libpng/libjpeg` не используются и не должны
-возвращаться.
+Полный прежний текст: [историческая редакция](archive/shell/thumbnail-provider-plan.md).
 
-## Реализация
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-- `src/common/fb2/Fb2CoverImage.*` безопасно извлекает `coverpage` и нужный
-  `binary` из FB2-потока с существующими лимитами размера.
-- `src/common/fb2/Fb2CoverThumbnail.*` использует единый WIC-pipeline:
-  `IWICBitmapDecoder -> IWICBitmapFrameDecode -> IWICBitmapScaler ->
-  IWICFormatConverter -> 32-bit HBITMAP`.
-- Для downscale используется `WICBitmapInterpolationModeFant`; пропорции
-  сохраняются, а изображения меньше запрошенного `cx` не увеличиваются.
-- PNG с реальной прозрачностью сохраняет alpha и возвращается как
-  `WTSAT_ARGB`; JPEG, BMP и непрозрачный PNG возвращаются как `WTSAT_RGB`.
-- `src/fbshell/Fb2ThumbnailProvider.*` реализует `IInitializeWithStream` и
-  `IThumbnailProvider`; отсутствие или повреждение обложки даёт мягкий отказ
-  и обычную fallback-иконку без падения Explorer.
+## Прежние якоря
 
-## Подтверждённые проверки
+<a id="modern-fb2-thumbnail-provider-завершено"></a>
+[Перейти к соответствующему разделу](archive/shell/thumbnail-provider-plan.md#modern-fb2-thumbnail-provider-%D0%B7%D0%B0%D0%B2%D0%B5%D1%80%D1%88%D0%B5%D0%BD%D0%BE).
 
-Автоматический контур:
+<a id="необязательный-будущий-хвост"></a>
+[Перейти к соответствующему разделу](archive/shell/thumbnail-provider-plan.md#%D0%BD%D0%B5%D0%BE%D0%B1%D1%8F%D0%B7%D0%B0%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9-%D0%B1%D1%83%D0%B4%D1%83%D1%89%D0%B8%D0%B9-%D1%85%D0%B2%D0%BE%D1%81%D1%82).
 
-- `tools/tests/test-fb2-thumbnail-provider.ps1` подтверждает PNG/JPEG/BMP,
-  alpha PNG, размеры `32/64/128/256/512`, downscale, запрет upscale,
-  `WTSAT_RGB`/`WTSAT_ARGB` и реальные пиксели с частичной alpha.
-- `tools/tests/test-fb2-shell-thumbnail-matrix.ps1` покрывает прямой COM,
-  `CoCreateInstance`, shell API, forced extraction через `IThumbnailCache` и
-  мягкие отказы для битой обложки, отсутствующих `coverpage` и `binary`.
-- Общий Release regression и Release Win32 build проходят.
+<a id="подтверждённые-проверки"></a>
+[Перейти к соответствующему разделу](archive/shell/thumbnail-provider-plan.md#%D0%BF%D0%BE%D0%B4%D1%82%D0%B2%D0%B5%D1%80%D0%B6%D0%B4%D1%91%D0%BD%D0%BD%D1%8B%D0%B5-%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B8).
 
-Ручной Windows Explorer smoke завершён: проверены крупные и очень крупные
-значки, несколько FB2 одновременно, повторное открытие/обновление папки и
-стабильность `explorer.exe`.
+<a id="реализация"></a>
+[Перейти к соответствующему разделу](archive/shell/thumbnail-provider-plan.md#%D1%80%D0%B5%D0%B0%D0%BB%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F).
 
-## Эксплуатационная диагностика
+<a id="статус"></a>
+[Перейти к соответствующему разделу](archive/shell/thumbnail-provider-plan.md#%D1%81%D1%82%D0%B0%D1%82%D1%83%D1%81).
 
-Explorer кэширует успешные и отрицательные результаты. При старом значке после
-положительного shell smoke используются `reset-explorer-thumbnail-cache.ps1`
-и, только как диагностика stale negative cache,
-`prime-fb2-thumbnail-cache.ps1`. Это не часть provider и не release gate.
-
-## Необязательный будущий хвост
-
-Допустима отдельная визуальная постобработка embedded cover image — например,
-trim белых полей для preview/details pane. Это не дефект thumbnail provider и
-не требует изменения WIC/shell-пути.
+<a id="эксплуатационная-диагностика"></a>
+[Перейти к соответствующему разделу](archive/shell/thumbnail-provider-plan.md#%D1%8D%D0%BA%D1%81%D0%BF%D0%BB%D1%83%D0%B0%D1%82%D0%B0%D1%86%D0%B8%D0%BE%D0%BD%D0%BD%D0%B0%D1%8F-%D0%B4%D0%B8%D0%B0%D0%B3%D0%BD%D0%BE%D1%81%D1%82%D0%B8%D0%BA%D0%B0).

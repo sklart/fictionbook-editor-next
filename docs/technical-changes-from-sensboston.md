@@ -1,115 +1,43 @@
-# Технические отличия FictionBook Editor Next от sensboston/fictionbookeditor
+# Документ перенесён: technical-changes-from-sensboston
 
-Документ описывает основные инженерные отличия текущей ветки от исходного проекта <https://github.com/sensboston/fictionbookeditor>.  
-Пользовательское описание изменений находится в [README.md](../README.md); здесь перечислены именно технические направления.
+Актуальный вход: [archive/upstream/technical-changes-from-sensboston.md](archive/upstream/technical-changes-from-sensboston.md).
 
-## 1. Структура проекта
+Этот файл сохраняет совместимость ранее опубликованного пути. Новые ссылки следует вести на тематический раздел.
 
-- Исходники разнесены по каталогам `src/*`:
-  - `src/fbe` — основное приложение;
-  - `src/fbv` — FictionBook Validator;
-  - `src/fbshell` — shell-интеграция Windows;
-  - `src/export-html`, `src/export-docx`, `src/export-epub`, `src/import-epub` — плагины.
-- Runtime-файлы отделены от исходников в `runtime`.
-- Упаковка и NSIS-скрипты вынесены в `packaging`.
-- Вспомогательные build/test/release-сценарии вынесены в `tools`.
+## Прежние якоря
 
-## 2. Версионирование и branding
+<a id="1-структура-проекта"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#1-%D1%81%D1%82%D1%80%D1%83%D0%BA%D1%82%D1%83%D1%80%D0%B0-%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%B0).
 
-- Продукт переименован в `FictionBook Editor Next`.
-- Версия новой ветки начинается с `3.0.0`.
-- Общие version-макросы находятся в `src/version.h`.
-- `tools/version/sync-version.ps1` синхронизирует `src/version.h` и NSIS `version.nsh`.
-- Проверка обновлений переведена на GitHub Releases fork-репозитория `sklart/fictionbook-editor-next`.
+<a id="10-тестирование"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#10-%D1%82%D0%B5%D1%81%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5).
 
-## 3. Release pipeline
+<a id="11-принципы-сопровождения"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#11-%D0%BF%D1%80%D0%B8%D0%BD%D1%86%D0%B8%D0%BF%D1%8B-%D1%81%D0%BE%D0%BF%D1%80%D0%BE%D0%B2%D0%BE%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D1%8F).
 
-- Добавлен GitHub Actions workflow `.github/workflows/build.yml`.
-- На push и pull request выполняется сборка Win32 Release и публикация временных artifacts.
-- На tag `v*` создаётся GitHub Release с:
-  - установщиком;
-  - portable ZIP;
-  - ZIP с PDB/debug-символами;
-  - `SHA256SUMS.txt`;
-  - человекочитаемыми release notes из `CHANGELOG.md`.
-- `tools/build/create-release.ps1` формирует артефакты и обновляет `update.xml` реальной SHA-256 суммой установщика.
+<a id="2-версионирование-и-branding"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#2-%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D0%BE%D0%BD%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5-%D0%B8-branding).
 
-## 4. NSIS и установщик
+<a id="3-release-pipeline"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#3-release-pipeline).
 
-- Установщик переведён на staged input из `out/package/FictionBookEditor`.
-- Добавлена синхронизация UAC-плагина из `third_party/uac`.
-- Системная интеграция Windows вынесена в отдельную опциональную секцию.
-- Деинсталлятор создаётся независимо от выбора системной интеграции.
-- В uninstall registry пишутся `DisplayVersion`, `InstallLocation`, `DisplayIcon`, `Publisher`, `URLInfoAbout`, `EstimatedSize`.
-- Плагины импорта/экспорта и batch-конвертеры оформлены отдельными секциями.
-- `ImportEPUBLunaSVG.dll` устанавливается как дополнительная библиотека ImportEPUB для SVG→PNG/JPEG conversion.
+<a id="4-nsis-и-установщик"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#4-nsis-%D0%B8-%D1%83%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D1%89%D0%B8%D0%BA).
 
-## 5. Shell-интеграция Windows
+<a id="5-shell-интеграция-windows"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#5-shell-%D0%B8%D0%BD%D1%82%D0%B5%D0%B3%D1%80%D0%B0%D1%86%D0%B8%D1%8F-windows).
 
-- Старый shell-контур заменён modern property handler / thumbnail provider.
-- Поддерживаются:
-  - FBE-specific published properties;
-  - `InfoTip`, `TileInfo`, `Details`, `PreviewDetails`;
-  - thumbnail provider для обложек FB2;
-  - регистрация на `.fb2` и `FictionBook.2`.
-- Схема свойств `FBE.Sequence.propdesc` размещается в shared shell directory.
-- Добавлены диагностические и smoke-тесты:
-  - `check-fb2-shell-surfaces.ps1`;
-  - `test-fb2-shell-thumbnail-matrix.ps1`;
-  - `test-fbe-specific-installer.ps1`;
-  - дополнительные fixture FB2 для кириллицы, свойств и обложек.
+<a id="6-fbv"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#6-fbv).
 
-## 6. FBV
+<a id="7-плагины-импорта-и-экспорта"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#7-%D0%BF%D0%BB%D0%B0%D0%B3%D0%B8%D0%BD%D1%8B-%D0%B8%D0%BC%D0%BF%D0%BE%D1%80%D1%82%D0%B0-%D0%B8-%D1%8D%D0%BA%D1%81%D0%BF%D0%BE%D1%80%D1%82%D0%B0).
 
-- Исходники `FBV` импортированы в `src/fbv`.
-- `FBV.exe` собирается вместе с проектом и больше не берётся как старый runtime-бинарник.
-- Добавлены MUI-ресурсы для локализованного shell verb `Validate`.
-- Shell-команда проверки FB2 использует `FBV.exe` и локализованную подпись.
-- Release-gate проверяет наличие и версию `FBV.exe`/`FBV.pdb`.
+<a id="8-зависимости"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#8-%D0%B7%D0%B0%D0%B2%D0%B8%D1%81%D0%B8%D0%BC%D0%BE%D1%81%D1%82%D0%B8).
 
-## 7. Плагины импорта и экспорта
+<a id="9-устойчивость-fbe"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#9-%D1%83%D1%81%D1%82%D0%BE%D0%B9%D1%87%D0%B8%D0%B2%D0%BE%D1%81%D1%82%D1%8C-fbe).
 
-- В solution подключены:
-  - `ExportDOCX`;
-  - `ExportEPUB`;
-  - `ImportEPUB`;
-  - `ImportEPUBLunaSVG`;
-  - batch-утилиты `ExportDOCXBatch`, `ExportEPUBBatch`, `ImportEPUBBatch`.
-- Плагины и batch-утилиты выводят DLL/EXE/PDB в общий `out/Release`.
-- Portable/package/release-gate учитывает новые бинарники и символы.
-- Для ExportEPUB исправлены UTF-8/mojibake проблемы в окнах и EPUB metadata.
-
-## 8. Зависимости
-
-- Legacy PCRE не возвращается в runtime.
-- Добавлен сервисный контур обновления сторонних исходников:
-  - Scintilla;
-  - Lexilla;
-  - PCRE2;
-  - Hunspell.
-- Сценарии находятся в `tools/build/*third-party*`.
-- Hunspell собирается через отдельный build-контур и проверяется smoke/regression тестами.
-
-## 9. Устойчивость FBE
-
-- Добавлена обработка read-only FB2 перед сохранением.
-- Исправлена загрузка файлов по относительным путям из командной строки.
-- Добавлена crash/recovery диагностика:
-  - recovery-копии;
-  - crash dumps;
-  - отдельный symbols ZIP для релиза.
-- Постепенно закрываются PVS-Studio warnings без архитектурной переписи.
-
-## 10. Тестирование
-
-- Добавлен документ [test-contours.md](test-contours.md) с картой тестовых контуров.
-- Добавлен [manual-test-plan.md](manual-test-plan.md) для ручного тестирования.
-- Release-gate включает проверки сборки, runtime-бинарников, installer/package layout, shell/FBV/export smoke-сценариев и artifacts ZIP.
-
-## 11. Принципы сопровождения
-
-- Не переписывать проект с нуля.
-- Не возвращать legacy PCRE в runtime.
-- Сохранять структуру каталогов и принятые решения проекта.
-- Сначала изучать существующую реализацию, затем менять.
-- Новые изменения фиксировать в `CHANGELOG.md` и `docs/todo.md`.
+<a id="технические-отличия-fictionbook-editor-next-от-sensbostonfictionbookeditor"></a>
+[Перейти к соответствующему разделу](archive/upstream/technical-changes-from-sensboston.md#%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D0%B5-%D0%BE%D1%82%D0%BB%D0%B8%D1%87%D0%B8%D1%8F-fictionbook-editor-next-%D0%BE%D1%82-sensbostonfictionbookeditor).

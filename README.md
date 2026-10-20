@@ -512,8 +512,8 @@ cd fictionbook-editor-next
 - [Система версий и обновлений](docs/versioning.md)
 - [Архитектура и документация](docs/README.md)
 - [API пользовательских скриптов](docs/scripting-api.md)
-- [Регулярные выражения и тестовые сценарии](docs/regex-regression.md)
-- [Локализация](docs/localization.md)
+- [Регулярные выражения и тестовые сценарии](docs/testing/regex-regression.md)
+- [Локализация](docs/reference/localization.md)
 - [Карта тестов](docs/test-contours.md)
 
 ## Обратная связь и участие
