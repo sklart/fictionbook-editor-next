@@ -208,11 +208,12 @@ bool ToolbarFactory::CreateCommandToolbarImages(CImageList& ownedImages, UINT to
 	HGLOBAL resourceData = resource != NULL ? ::LoadResource(module, resource) : NULL;
 	ToolbarResourceData* toolbarData = resourceData != NULL ? static_cast<ToolbarResourceData*>(::LockResource(resourceData)) : NULL;
 	if(toolbarData == NULL || toolbarData->version != 1 || toolbarData->width != toolbarData->height ||
-		(toolbarData->width != 16 && toolbarData->width != 24) || (baseImageSize != 16 && baseImageSize != 24)) return false;
+		(toolbarData->width != 16 && toolbarData->width != 24) ||
+		(baseImageSize != 16 && baseImageSize != 24 && !(toolbarResourceId == IDR_SCRIPTS && (baseImageSize == 20 || baseImageSize == 32)))) return false;
 	int standardImageCount = 0;
 	for(int index = 0; index < toolbarData->itemCount; ++index) if(toolbarData->Items()[index] != 0) ++standardImageCount;
 	const int imageSize = UiMetrics::ScaleForDpi(baseImageSize, dpi ? dpi : 96);
-	const bool lastScriptHighResolution = toolbarResourceId == IDR_SCRIPTS && baseImageSize == 24;
+	const bool lastScriptHighResolution = toolbarResourceId == IDR_SCRIPTS;
 	const bool documentTreeHighResolution = toolbarResourceId == IDR_DOCUMENT_TREE && baseImageSize == 24;
 	const bool documentTreeNativeSize = documentTreeHighResolution && imageSize >= 24 && imageSize <= 48 && (imageSize - 24) % 6 == 0;
 	const int sourceSize = lastScriptHighResolution ? 48 : documentTreeHighResolution ? (documentTreeNativeSize ? imageSize : 48) : toolbarData->width;

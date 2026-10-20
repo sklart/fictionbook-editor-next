@@ -25,9 +25,9 @@ static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKEL
 namespace
 {
 const int kFavoriteScriptImageIndex = 1;
-const int kScriptImageSize = 20;
-const int kScriptItemHeight = 24;
-const int kScriptIndent = 20;
+int ScriptImageSize() { return _Settings.GetScriptIconSize(); }
+int ScriptItemHeight() { return ScriptImageSize() + 4; }
+int ScriptIndent() { return (std::max)(20, ScriptImageSize()); }
 constexpr UINT_PTR kScriptPreviewShowTimer = 0x53435001;
 constexpr UINT_PTR kScriptPreviewHideTimer = 0x53435002;
 constexpr UINT kScriptPreviewExitDelayMs = 250;
@@ -843,7 +843,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
   
   // "OnInitialUpdate"
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
-	  m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, UiMetrics::DpiForWindow(m_hWnd));
+	  m_script_image_size = UiMetrics::ScaleForDpi(ScriptImageSize(), UiMetrics::DpiForWindow(m_hWnd));
 	  m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,16,8);
   SetImageList(m_ImageList,TVSIL_NORMAL);
 
@@ -1476,8 +1476,8 @@ void CTreeView::ApplyModeAppearance()
 		// square plus/minus expanders, independently of Explorer chevrons.
 		::SetWindowTheme(m_hWnd, L" ", L" ");
 		const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
-		SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi));
-		SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi));
+		SetItemHeight(UiMetrics::ScaleForDpi(ScriptItemHeight(), dpi));
+		SetIndent(UiMetrics::ScaleForDpi(ScriptIndent(), dpi));
 	}
 	else
 	{
@@ -1505,15 +1505,15 @@ void CTreeView::UpdateScriptDpiMetrics(UINT dpi)
 {
 	if(!IsWindow()) return;
 	if(dpi == 0) dpi = UiMetrics::DpiForWindow(m_hWnd);
-	const int size = UiMetrics::ScaleForDpi(kScriptImageSize, dpi);
+	const int size = UiMetrics::ScaleForDpi(ScriptImageSize(), dpi);
 	if(size != m_script_image_size)
 	{
 		PrepareScriptImages(dpi);
 	}
 	if(m_script_mode)
 	{
-		SetItemHeight(UiMetrics::ScaleForDpi(kScriptItemHeight, dpi));
-		SetIndent(UiMetrics::ScaleForDpi(kScriptIndent, dpi));
+		SetItemHeight(UiMetrics::ScaleForDpi(ScriptItemHeight(), dpi));
+		SetIndent(UiMetrics::ScaleForDpi(ScriptIndent(), dpi));
 	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
 }
@@ -1614,7 +1614,7 @@ void CTreeView::PrepareScriptImages(UINT dpi)
 	const int previousSize = m_script_image_size;
 	const std::vector<int> previousMapping = m_script_images;
 	const int previousFavoriteImage = m_favorite_image;
-	m_script_image_size = UiMetrics::ScaleForDpi(kScriptImageSize, dpi ? dpi : UiMetrics::DpiForWindow(m_hWnd));
+	m_script_image_size = UiMetrics::ScaleForDpi(ScriptImageSize(), dpi ? dpi : UiMetrics::DpiForWindow(m_hWnd));
 	const HIMAGELIST previousImages = m_scriptImageList.Detach();
 	if(!m_scriptImageList.Create(m_script_image_size,m_script_image_size,ILC_COLOR32|ILC_MASK,
 		static_cast<int>(m_script_items.size())+2,8))

@@ -343,6 +343,12 @@ CSize CSettings::GetScriptsToolbarCustomizeSize() const
 {
 	return CSize(static_cast<int>(m_scripts_toolbar_customize_width), static_cast<int>(m_scripts_toolbar_customize_height));
 }
+int CSettings::GetScriptIconSize() const { return static_cast<int>(m_script_icon_size); }
+void CSettings::SetScriptIconSize(int size, bool apply)
+{
+	m_script_icon_size = size == 20 || size == 24 || size == 32 ? size : 16;
+	if(apply) Save();
+}
 bool CSettings::GetScriptsToolbarCustomizePlacement(WINDOWPLACEMENT& wpl) const
 {
 	if(m_scripts_toolbar_customize_placement.length != sizeof(WINDOWPLACEMENT)) return false;

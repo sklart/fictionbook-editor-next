@@ -99,6 +99,7 @@ const wchar_t SETTINGS_DIALOG_MANUAL_SIZE_KEY[] = L"SettingsDialogManualSize";
 const wchar_t TOOLBARS_SETTINGS_KEY[]	= L"Toolbars";
 const wchar_t SCRIPT_COMMAND_IDS_KEY[] = L"ScriptCommandIds";
 const wchar_t FAVORITE_SCRIPTS_KEY[] = L"FavoriteScripts";
+const wchar_t SCRIPT_ICON_SIZE_KEY[] = L"ScriptIconSize";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY[] = L"ScriptsToolbarCustomizeSize";
 const wchar_t SCRIPTS_TOOLBAR_CUSTOMIZE_PLACEMENT_KEY[] = L"ScriptsToolbarCustomizePlacement";
 const wchar_t RESTORE_FILE_POS_KEY[]	= L"RestoreFilePosition";
@@ -187,6 +188,7 @@ int CSettings::GetProperties(std::vector<CString>& properties)
 	properties.push_back(TOOLBARS_SETTINGS_KEY);
 	properties.push_back(SCRIPT_COMMAND_IDS_KEY);
 	properties.push_back(FAVORITE_SCRIPTS_KEY);
+	properties.push_back(SCRIPT_ICON_SIZE_KEY);
 	properties.push_back(SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY);
 	properties.push_back(RESTORE_FILE_POS_KEY);
 	properties.push_back(INTERFACE_LANG_KEY);
@@ -406,6 +408,7 @@ bool CSettings::GetPropertyValue(const CString& sProperty, CProperty& property)
 		return true;
 	}
 	else if(sProperty == FAVORITE_SCRIPTS_KEY) { property = m_favorite_scripts; return true; }
+	else if(sProperty == SCRIPT_ICON_SIZE_KEY) { property = GetStringedProperty(&m_script_icon_size, KEY_INT); return true; }
 	else if(sProperty == SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY)
 	{
 		CString value; value.Format(L"%u;%u", m_scripts_toolbar_customize_width, m_scripts_toolbar_customize_height);
@@ -800,6 +803,7 @@ bool CSettings::SetPropertyValue(const CString& sProperty, CProperty& sValue)
 		return true;
 	}
 	else if(sProperty == FAVORITE_SCRIPTS_KEY) { m_favorite_scripts = sValue.GetStringValue(); return true; }
+	else if(sProperty == SCRIPT_ICON_SIZE_KEY) { SetScriptIconSize(StrToInt(sValue.GetStringValue())); return true; }
 	else if(sProperty == SCRIPTS_TOOLBAR_CUSTOMIZE_SIZE_KEY)
 	{
 		unsigned int width = 0, height = 0;

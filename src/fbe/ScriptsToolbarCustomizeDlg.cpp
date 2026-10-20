@@ -24,6 +24,7 @@ namespace
 		int defaultInvoked = 0;
 		int filterUnregistered = 0;
 		bool active = false;
+		bool iconRowsFit = false;
 	} g_ctrlFSmoke;
 
 	UINT DpiForTargetMonitor(HMONITOR monitor, UINT fallback)
@@ -446,6 +447,9 @@ void CScriptsToolbarCustomizeDlg::UpdateMetrics()
 		IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL, IDC_SCRIPTS_TOOLBAR_AVAILABLE, IDC_SCRIPTS_TOOLBAR_CURRENT, IDC_SCRIPTS_TOOLBAR_ADD,
 		IDC_SCRIPTS_TOOLBAR_REMOVE, IDC_SCRIPTS_TOOLBAR_UP, IDC_SCRIPTS_TOOLBAR_DOWN, IDC_SCRIPTS_TOOLBAR_RESET, IDCANCEL };
 	for(int i = 0; i < _countof(controls); ++i) ::SendMessage(GetDlgItem(controls[i]), WM_SETFONT, font, TRUE);
+	const int rowHeight = Scale(m_showPanelSelector ? (std::max)(28, m_settings.GetScriptIconSize() + 8) : 28);
+	::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_SETITEMHEIGHT, 0, rowHeight);
+	::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_SETITEMHEIGHT, 0, rowHeight);
 	m_minimumSize = CSize(Scale(560), Scale(330));
 }
 int CScriptsToolbarCustomizeDlg::Scale(int px) const { return UiMetrics::ScaleForDpi(px, m_dpi); }
@@ -641,7 +645,7 @@ void CScriptsToolbarCustomizeDlg::FocusSearch()
 	::SetFocus(search); ::SendMessage(search, EM_SETSEL, 0, -1);
 }
 LRESULT CScriptsToolbarCustomizeDlg::OnDrawItem(UINT, WPARAM, LPARAM lParam, BOOL&) { DrawListItem(*reinterpret_cast<DRAWITEMSTRUCT*>(lParam)); return TRUE; }
-LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(28); return TRUE; }
+LRESULT CScriptsToolbarCustomizeDlg::OnMeasureItem(UINT, WPARAM, LPARAM lParam, BOOL&) { reinterpret_cast<MEASUREITEMSTRUCT*>(lParam)->itemHeight = Scale(m_showPanelSelector ? (std::max)(28, m_settings.GetScriptIconSize() + 8) : 28); return TRUE; }
 LRESULT CScriptsToolbarCustomizeDlg::OnWindowClose(UINT, WPARAM, LPARAM, BOOL&) { if(m_ctrlFSmoke) { ::KillTimer(m_hWnd, kCtrlFSmokeTimer); g_ctrlFSmoke.defaultInvoked = m_ctrlFSmokeDefaultInvoked ? 1 : 0; } UnregisterMessageFilter(); if(m_ctrlFSmoke) g_ctrlFSmoke.filterUnregistered = !m_messageFilterRegistered ? 1 : 0; ::RemoveProp(m_hWnd, kSkipSystemDialogLocalizationProperty); SavePlacement(); EndDialog(IDCANCEL); return 0; }
 LRESULT CScriptsToolbarCustomizeDlg::OnDpiChanged(UINT, WPARAM, LPARAM lParam, BOOL&)
 {
@@ -661,6 +665,11 @@ LRESULT CScriptsToolbarCustomizeDlg::OnTimer(UINT, WPARAM timer, LPARAM, BOOL&)
 
 void CScriptsToolbarCustomizeDlg::RunCtrlFSmokePhase()
 {
+	int width = 0, height = 0;
+	const int rowHeight = Scale(m_showPanelSelector ? (std::max)(28, m_settings.GetScriptIconSize() + 8) : 28);
+	g_ctrlFSmoke.iconRowsFit = ::ImageList_GetIconSize(m_scriptImages, &width, &height) &&
+		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_GETITEMHEIGHT, 0, 0) == rowHeight &&
+		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_GETITEMHEIGHT, 0, 0) == rowHeight && rowHeight >= height + Scale(4);
 	const UINT controls[] = { IDC_SCRIPTS_TOOLBAR_RESET, IDC_SCRIPTS_TOOLBAR_PANEL, IDCANCEL, IDC_SCRIPTS_TOOLBAR_ADD, IDC_SCRIPTS_TOOLBAR_REMOVE };
 	const int controlCount = _countof(controls);
 	if((m_ctrlFSmokePhase & 1) == 0)
@@ -706,7 +715,7 @@ namespace ScriptsToolbarCustomizeRuntimeTest
 
 	CStringA CtrlFSmokeReport()
 	{
-		const bool passed = g_ctrlFSmoke.active && g_ctrlFSmoke.testedControls >= 3 &&
+		const bool passed = g_ctrlFSmoke.active && g_ctrlFSmoke.iconRowsFit && g_ctrlFSmoke.testedControls >= 3 &&
 			g_ctrlFSmoke.handledCtrlF == g_ctrlFSmoke.testedControls &&
 			g_ctrlFSmoke.focusedSearch == g_ctrlFSmoke.testedControls &&
 			g_ctrlFSmoke.selectedSearch == g_ctrlFSmoke.testedControls &&
@@ -716,6 +725,7 @@ namespace ScriptsToolbarCustomizeRuntimeTest
 		report.Format("phase=scripts-toolbar-customize-ctrl-f\ncontrols=%d\nctrl-f-handled=%d\nfocus-search=%d\nsearch-selection=%d\ndialog-survived=%d\ndefault-invoked=%d\nmessage-filter-unregistered=%d\nresult=%s\n",
 			g_ctrlFSmoke.testedControls, g_ctrlFSmoke.handledCtrlF, g_ctrlFSmoke.focusedSearch, g_ctrlFSmoke.selectedSearch,
 			g_ctrlFSmoke.dialogSurvived, g_ctrlFSmoke.defaultInvoked, g_ctrlFSmoke.filterUnregistered, passed ? "pass" : "fail");
+		report.AppendFormat("icon-rows-fit=%d\n", g_ctrlFSmoke.iconRowsFit);
 		return report;
 	}
 }

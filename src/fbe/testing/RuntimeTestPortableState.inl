@@ -62,6 +62,15 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 
 void CMainFrame::RunPortableStateTestScenario()
 {
+    if(IsFbeTestScenario(L"script-icon-size-read")) {
+        int width = 0, height = 0;
+        const int expected = UiMetrics::ScaleForDpi(32, UiMetrics::DpiForWindow(m_hWnd));
+        const bool passed = _Settings.GetScriptIconSize() == 32 &&
+            ::ImageList_GetIconSize(m_scriptsToolbarImages, &width, &height) && width == expected && height == expected;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "icon-size-restart=1\nresult=pass\n" : "icon-size-restart=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
 #include "RuntimeTestScript64.inl"
 #include "RuntimeTestNoteCreation.inl"
 	const bool ordinaryWrite = IsFbeTestScenario(L"portable-state-write");
@@ -995,9 +1004,10 @@ void CMainFrame::RunPortableStateTestScenario()
 	}
 	if(scriptToolbarRuntimeSize)
 	{
+		const int initialIconSize = _Settings.GetScriptIconSize();
 		::CreateDirectory(scriptsDirectory, NULL);
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
-		const bool fixtureWritten = WritePortableStateTestText(scriptsDirectory + L"RuntimeSize.js", "function Run() {}\n");
+		const bool fixtureWritten = WritePortableStateTestText(scriptsDirectory + L"RuntimeSize.js", "function Run() { document.title = 'Icon size command passed'; }\n");
 		if(!fixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
 		CString scriptUid; UINT scriptCommand = 0;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
@@ -1046,7 +1056,7 @@ void CMainFrame::RunPortableStateTestScenario()
 		auto metrics = [&](HWND window, UINT dpi, bool requireVisibleScript) {
 			if(!::IsWindow(window)) return false;
 			const HIMAGELIST images = reinterpret_cast<HIMAGELIST>(::SendMessage(window, TB_GETIMAGELIST, 0, 0));
-			int width = 0, height = 0; const int expected = ToolbarFactory::CommandToolbarImageSize(dpi);
+			int width = 0, height = 0; const int expected = UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize(), dpi);
 			const bool imageSizeRead = images != NULL && ::ImageList_GetIconSize(images, &width, &height) != FALSE;
 			const LRESULT buttonSize = ::SendMessage(window, TB_GETBUTTONSIZE, 0, 0);
 			RECT bounds = {}; ::GetWindowRect(window, &bounds);
@@ -1083,7 +1093,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			matrixDetails.AppendFormat("metric-%u=%dx%d,button:%dx%d,toolbar:%d,catalog:%d,script-image:%d,visible:%d,graphic:%d\n",
 				dpi, width, height, LOWORD(buttonSize), HIWORD(buttonSize), bounds.bottom - bounds.top, available, scriptImage, visibleScript, graphicScaled);
 			return imageSizeRead && width == expected && height == expected &&
-				LOWORD(buttonSize) >= UiMetrics::ScaleForDpi(31, dpi) && HIWORD(buttonSize) >= UiMetrics::ScaleForDpi(31, dpi) &&
+				LOWORD(buttonSize) >= UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi) && HIWORD(buttonSize) >= UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize() + 7, dpi) &&
 				bounds.bottom - bounds.top >= HIWORD(buttonSize) && scriptImage && visibleScript && graphicScaled;
 		};
 		const UINT dpis[] = { 96, 120, 144, 168, 192 };
@@ -1092,6 +1102,8 @@ void CMainFrame::RunPortableStateTestScenario()
 		std::vector<HIMAGELIST> previousCustomImages;
 		for(size_t index = 0; index < m_scriptToolbars.Items().size(); ++index)
 			previousCustomImages.push_back(m_scriptToolbars.Items()[index].images);
+		for(int logicalSize : {16, 20, 24, 32}) {
+		_Settings.SetScriptIconSize(logicalSize);
 		for(UINT dpi : dpis)
 		{
 			const bool refreshed = UpdateScriptToolbarDpiMetrics(dpi);
@@ -1124,8 +1136,62 @@ void CMainFrame::RunPortableStateTestScenario()
 			dpiMatrix = dpiMatrix && refreshed && mainImagesChanged && mainMetrics && customMetrics && bandMetrics && mainBand;
 			previousMainImages = m_scriptsToolbarImages;
 		}
+		}
 		const bool restoredDpi = UpdateScriptToolbarDpiMetrics(UiMetrics::DpiForWindow(m_hWnd));
-		const bool passed = created && added && hiddenOk && shown && showOneRow && bandBefore != 0 && bandAfter != 0 && duplicateIds == 0 && restarted && dpiMatrix && restoredDpi;
+		CTreeView& iconTree = m_document_tree.m_tree.m_tree;
+		iconTree.SetScriptMode(true); RefreshNavigationScriptTree();
+		const HTREEITEM scriptItem = iconTree.FindScriptTreeItem(L"runtimesize.js");
+		iconTree.SelectItem(scriptItem);
+		auto commands = [&]() {
+			std::vector<std::vector<int>> result;
+			auto capture = [&](HWND window) {
+				std::vector<int> ids; CToolBarCtrl toolbar(window);
+				for(int i = 0; i < toolbar.GetButtonCount(); ++i) { TBBUTTON button = {}; toolbar.GetButton(i, &button); ids.push_back(button.idCommand); }
+				result.push_back(ids);
+			};
+			capture(m_ScriptsToolbar);
+			for(const auto& runtime : m_scriptToolbars.Items()) if(::IsWindow(runtime.window)) capture(runtime.window);
+			return result;
+		};
+		const auto originalCommands = commands();
+		const CString originalFavorites = _Settings.GetFavoriteScripts();
+		auto runScript = [&]() {
+			if(!m_doc || !scriptCommand) return false;
+			m_doc->m_body.Document()->title = L"Before command";
+			SendMessage(WM_COMMAND, scriptCommand);
+			return CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->title)) == L"Icon size command passed";
+		};
+		const bool scriptBeforeResize = runScript();
+		bool sizesPassed = scriptItem != NULL && scriptBeforeResize;
+		DWORD gdiWarm = 0, userWarm = 0, gdiEnd = 0, userEnd = 0;
+		for(int cycle = 0; cycle < 100; ++cycle) {
+			const int sizes[] = {20, 24, 32, 16}; const int size = sizes[cycle % 4];
+			_Settings.SetScriptIconSize(size);
+			sizesPassed = ApplyScriptIconSize() && sizesPassed;
+			int width = 0, height = 0;
+			const int expected = UiMetrics::ScaleForDpi(size, UiMetrics::DpiForWindow(m_hWnd));
+			sizesPassed = ::ImageList_GetIconSize(m_scriptsToolbarImages, &width, &height) && width == expected && height == expected && sizesPassed;
+			sizesPassed = ::ImageList_GetIconSize(iconTree.ScriptImageList(), &width, &height) && width == expected && height == expected && sizesPassed;
+			sizesPassed = iconTree.GetSelectedItem() == scriptItem && commands() == originalCommands && sizesPassed;
+			int treeImage = 0, treeRow = 0, treeIndent = 0; bool expanders = false;
+			sizesPassed = iconTree.GetScriptTreeMetrics(treeImage, treeRow, treeIndent, expanders) && treeImage == expected &&
+				_Settings.GetFavoriteScripts() == originalFavorites && sizesPassed;
+			const HIMAGELIST commandsImages = reinterpret_cast<HIMAGELIST>(m_CmdToolbar.SendMessage(TB_GETIMAGELIST));
+			sizesPassed = ::ImageList_GetIconSize(commandsImages, &width, &height) &&
+				width == ToolbarFactory::CommandToolbarImageSize(UiMetrics::DpiForWindow(m_hWnd)) && sizesPassed;
+			for(const auto& runtime : m_scriptToolbars.Items()) if(runtime.definition.id != L"scripts-main" && ::IsWindow(runtime.window))
+				sizesPassed = ::ImageList_GetIconSize(runtime.images, &width, &height) && width == expected && height == expected && sizesPassed;
+			if(cycle == 0) matrixDetails.AppendFormat("first-switch=%d,tree-item:%d,script-before:%d\n", sizesPassed, scriptItem != NULL, scriptBeforeResize);
+			::GdiFlush();
+			if(cycle == 19) { gdiWarm = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS); userWarm = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS); }
+		}
+		gdiEnd = ::GetGuiResources(::GetCurrentProcess(), GR_GDIOBJECTS); userEnd = ::GetGuiResources(::GetCurrentProcess(), GR_USEROBJECTS);
+		const bool scriptAfterResize = runScript();
+		matrixDetails.AppendFormat("script-before=%d\nscript-after=%d\n", scriptBeforeResize, scriptAfterResize);
+		sizesPassed = sizesPassed && gdiWarm > 0 && userWarm > 0 && gdiEnd <= gdiWarm + 4 && userEnd <= userWarm + 2 && scriptAfterResize;
+		_Settings.SetScriptIconSize(32); sizesPassed = ApplyScriptIconSize() && sizesPassed; _Settings.Save();
+		matrixDetails.AppendFormat("initial-icon-size=%d\nsize-switches=100\nsize-switches-pass=%d\ngdi-warm=%lu\ngdi-end=%lu\nuser-warm=%lu\nuser-end=%lu\n", initialIconSize, sizesPassed, gdiWarm, gdiEnd, userWarm, userEnd);
+		const bool passed = created && added && hiddenOk && shown && showOneRow && bandBefore != 0 && bandAfter != 0 && duplicateIds == 0 && restarted && dpiMatrix && restoredDpi && sizesPassed;
 		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-result=%d\nshow-result=%d\nshow-one-row=%d\nband-before=%u\nband-after=%u\nduplicate-band-ids=%d\nhide-show=%d\nrestart=%d\nscript-command=%u\ndpi-matrix=%d\ndpi-restored=%d\nresult=%s\n", created, added, hiddenOk, shown, showOneRow, bandBefore, bandAfter, duplicateIds, hiddenOk && shown, restarted, scriptCommand, dpiMatrix, restoredDpi, passed ? "pass" : "fail");
 		report += matrixDetails;
 		WritePortableStateTestText(reportPath, report); PostMessage(WM_CLOSE); return;

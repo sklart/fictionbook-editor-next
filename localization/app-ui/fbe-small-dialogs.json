@@ -2702,6 +2702,10 @@
       "resource": "IDD_SETTINGS_GENERAL", "kind": "COMBOBOX", "targetId": "IDC_INTERFACE_THEME",
       "translations": { "en-US": "Dark", "ru-RU": "Тёмная", "uk-UA": "Темна", "de-DE": "Dunkel", "fr-FR": "Sombre", "es-ES": "Oscuro", "it-IT": "Scuro", "pl-PL": "Ciemny", "pt-PT": "Escuro", "nl-NL": "Donker", "cs-CZ": "Tmavý", "bg-BG": "Тъмна" }
     },
+    "fbe.settings.script_icon_size": {
+      "resource": "IDD_SETTINGS_GENERAL", "kind": "LTEXT", "targetId": "IDC_SCRIPT_ICON_SIZE_LABEL",
+      "translations": { "en-US": "Script icon size:", "ru-RU": "Размер значков скриптов:", "uk-UA": "Розмір значків скриптів:", "de-DE": "Skript-Symbolgröße:", "fr-FR": "Taille des icônes des scripts :", "es-ES": "Tamaño de iconos de scripts:", "it-IT": "Dimensione icone script:", "pl-PL": "Rozmiar ikon skryptów:", "pt-PT": "Tamanho dos ícones de scripts:", "nl-NL": "Grootte scriptpictogrammen:", "cs-CZ": "Velikost ikon skriptů:", "bg-BG": "Размер на иконите на скриптовете:" }
+    },
     "fbe.dialog.idd_options.genre_catalog": {
       "resource": "IDD_SETTINGS_GENERAL",
       "kind": "LTEXT",

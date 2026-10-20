@@ -1,4 +1,4 @@
-﻿// MainFrm.cpp : implmentation of the CMainFrame class
+// MainFrm.cpp : implmentation of the CMainFrame class
 //
 /////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
@@ -2496,6 +2496,30 @@ BOOL CMainFrame::OnIdle()
 
 namespace
 {
+HBITMAP FitScriptBitmap(HBITMAP bitmap, int sourceSize, int targetSize)
+{
+	if(sourceSize >= targetSize) return ToolbarFactory::CreateScaledAlphaBitmap(bitmap, sourceSize, targetSize);
+	HBITMAP alpha = ToolbarFactory::CreateAlphaBitmap(bitmap, sourceSize, sourceSize);
+	DIBSECTION source = {};
+	if(!alpha || ::GetObject(alpha, sizeof(source), &source) != sizeof(source) || !source.dsBm.bmBits) {
+		if(alpha) ::DeleteObject(alpha); return NULL;
+	}
+	BITMAPINFO info = {}; info.bmiHeader.biSize = sizeof(info.bmiHeader);
+	info.bmiHeader.biWidth = targetSize; info.bmiHeader.biHeight = -targetSize;
+	info.bmiHeader.biPlanes = 1; info.bmiHeader.biBitCount = 32;
+	void* pixels = NULL;
+	HBITMAP fitted = ::CreateDIBSection(NULL, &info, DIB_RGB_COLORS, &pixels, NULL, 0);
+	if(fitted && pixels) {
+		memset(pixels, 0, static_cast<size_t>(targetSize) * targetSize * sizeof(DWORD));
+		const int offset = (targetSize - sourceSize) / 2;
+		for(int y = 0; y < sourceSize; ++y)
+			memcpy(static_cast<DWORD*>(pixels) + (y + offset) * targetSize + offset,
+				static_cast<const BYTE*>(source.dsBm.bmBits) + y * source.dsBm.bmWidthBytes, sourceSize * sizeof(DWORD));
+	} else { if(fitted) ::DeleteObject(fitted); fitted = NULL; }
+	::DeleteObject(alpha);
+	return fitted;
+}
+
 int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fallbackIcon, HBITMAP bitmap, int targetSize)
 {
 	if(images == NULL || targetSize <= 0) return -1;
@@ -2514,7 +2538,7 @@ int AddScriptToolbarImage(HIMAGELIST images, const CString& scriptPath, HICON fa
 		BITMAP info = {};
 		if(::GetObject(bitmap, sizeof(info), &info) == sizeof(info) && info.bmWidth == info.bmHeight && info.bmWidth > 0)
 		{
-			HBITMAP scaled = ToolbarFactory::CreateScaledAlphaBitmap(bitmap, info.bmWidth, targetSize);
+			HBITMAP scaled = FitScriptBitmap(bitmap, info.bmWidth, targetSize);
 			const int index = scaled != NULL ? ::ImageList_Add(images, scaled, NULL) : -1;
 			if(scaled != NULL) ::DeleteObject(scaled);
 			if(index >= 0) return index;
@@ -3360,7 +3384,7 @@ bool CMainFrame::CreateScriptToolbarRuntime(ScriptToolbarRuntime& runtime)
 	if(runtime.window != NULL && ::IsWindow(runtime.window)) return PopulateScriptToolbarRuntime(runtime);
 	CImageList images;
 	runtime.window = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, images, IDR_SCRIPTS,
-		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE, ATL_IDW_TOOLBAR, _Settings.GetScriptIconSize());
 	if(runtime.window == NULL) return false;
 	runtime.images = images.Detach();
 	SetDialogFontForToolbarRow(runtime.window);
@@ -3734,7 +3758,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 	CImageList scriptsImages;
 	m_ScriptsToolbar = ToolbarFactory::CreateCommandToolbarCtrl(m_hWnd, scriptsImages, IDR_SCRIPTS,
-		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE);
+		UiMetrics::DpiForWindow(m_hWnd), ATL_SIMPLE_TOOLBAR_PANE_STYLE | TBSTYLE_LIST | CCS_ADJUSTABLE, ATL_IDW_TOOLBAR, _Settings.GetScriptIconSize());
 	if(!m_ScriptsToolbar) return -1;
 	m_scriptsToolbarImages = scriptsImages.Detach();
 	SetDialogFontForToolbarRow(m_ScriptsToolbar);
@@ -4424,8 +4448,8 @@ bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages
 {
 	if(!::IsWindow(window)) return false;
 	CImageList replacement;
-	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_SCRIPTS, dpi)) return false;
-	const int imageSize = ToolbarFactory::CommandToolbarImageSize(dpi);
+	if(!ToolbarFactory::CreateCommandToolbarImages(replacement, IDR_SCRIPTS, dpi, _Settings.GetScriptIconSize())) return false;
+	const int imageSize = UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize(), dpi);
 	std::vector<std::pair<UINT, int> > imageIndices;
 	for(int scriptIndex = 0; scriptIndex < m_scripts.Menu().Count(); ++scriptIndex)
 	{
@@ -4460,7 +4484,7 @@ bool CMainFrame::RebuildScriptToolbarImages(HWND window, HIMAGELIST& ownedImages
 		toolbar.SetButtonInfo(imageIndices[script].first, &button);
 	}
 	ToolbarFactory::SetDialogFontForToolbarRow(window);
-	ToolbarFactory::ApplyCommandToolbarMetrics(window, IDR_SCRIPTS, dpi);
+	ToolbarFactory::ApplyCommandToolbarMetrics(window, IDR_SCRIPTS, dpi, _Settings.GetScriptIconSize());
 	return true;
 }
 
@@ -4481,7 +4505,7 @@ bool CMainFrame::UpdateScriptToolbarDpiMetrics(UINT dpi)
 		if(!m_rebar.GetBandInfo(band, &info) || info.hwndChild != m_ScriptsToolbar) continue;
 		RECT bounds = {}; ::GetWindowRect(m_ScriptsToolbar, &bounds);
 		const LRESULT buttonSize = ::SendMessage(m_ScriptsToolbar, TB_GETBUTTONSIZE, 0, 0);
-		const int height = (std::max)(static_cast<int>(bounds.bottom - bounds.top), static_cast<int>(HIWORD(buttonSize)));
+		const int height = static_cast<int>(HIWORD(buttonSize));
 		info.fMask = RBBIM_CHILDSIZE;
 		info.cyMinChild = info.cyChild = info.cyMaxChild = height;
 		updated = m_rebar.SetBandInfo(band, &info) != FALSE && updated;
@@ -4495,6 +4519,17 @@ bool CMainFrame::UpdateScriptToolbarDpiMetrics(UINT dpi)
 	}
 	m_rebar.SendMessage(WM_SIZE);
 	return updated;
+}
+
+bool CMainFrame::ApplyScriptIconSize()
+{
+	const UINT dpi = UiMetrics::DpiForWindow(m_hWnd);
+	int width = 0, height = 0;
+	if(!::ImageList_GetIconSize(m_scriptsToolbarImages, &width, &height)) return false;
+	if(width != UiMetrics::ScaleForDpi(_Settings.GetScriptIconSize(), dpi) && !UpdateScriptToolbarDpiMetrics(dpi)) return false;
+	m_document_tree.m_tree.m_tree.UpdateScriptDpiMetrics(dpi);
+	UpdateLayout();
+	return true;
 }
 
 LRESULT CMainFrame::OnDpiChanged(UINT, WPARAM wParam, LPARAM lParam, BOOL&)
@@ -7531,7 +7566,9 @@ void CMainFrame::GoTo(int selected_pos)
 bool CMainFrame::ShowSettingsDialog(HWND parent)
 {
 	CSettingsDlg dlg(m_doc ? m_doc->m_body.m_file_path : CString());
-	return dlg.DoModal(parent) == IDOK;
+	if(dlg.DoModal(parent) != IDOK) return false;
+	ApplyScriptIconSize();
+	return true;
 }
 
 LRESULT CMainFrame::OnApplyXmlSourceTheme(UINT, WPARAM, LPARAM, BOOL&)
@@ -7554,6 +7591,7 @@ void CMainFrame::ApplyXmlSourceEditorChanges(bool saveSettings)
 }
 void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 {
+	ApplyScriptIconSize();
 	const EditorView activeView = m_editor_view_state.Current();
 	CWaitCursor hourglass;
 	LONG visible = false;

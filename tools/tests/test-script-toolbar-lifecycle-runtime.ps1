@@ -51,6 +51,7 @@ try {
     Invoke-Lifecycle '--portable' 'script-toolbar-lifecycle-reload-runtime' (Join-Path $portableData 'Diagnostics')
     Reset-PortableLifecycleState
     Invoke-Lifecycle '--portable' 'script-toolbar-runtime-size' (Join-Path $portableData 'Diagnostics')
+    Invoke-Lifecycle '--portable' 'script-icon-size-read' (Join-Path $portableData 'Diagnostics')
     Reset-PortableLifecycleState
     Invoke-Lifecycle '--portable' 'toolbar-layout-adapter-transaction' (Join-Path $portableData 'Diagnostics')
     Reset-PortableLifecycleState
@@ -67,6 +68,7 @@ try {
         Invoke-Lifecycle '--installed' 'script-toolbar-lifecycle-reload-runtime' $installedDiagnostics
         Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-runtime-size' $installedDiagnostics
+        Invoke-Lifecycle '--installed' 'script-icon-size-read' $installedDiagnostics
         Reset-InstalledLifecycleState
         Invoke-Lifecycle '--installed' 'script-toolbar-rollback-persisted-runtime' $installedDiagnostics
         Reset-InstalledLifecycleState

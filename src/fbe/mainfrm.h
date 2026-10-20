@@ -400,6 +400,7 @@ public:
 	bool RebuildCommandToolbarImages(UINT dpi);
 	bool RebuildScriptToolbarImages(HWND toolbar, HIMAGELIST& ownedImages, UINT dpi);
 	bool UpdateScriptToolbarDpiMetrics(UINT dpi);
+	bool ApplyScriptIconSize();
 
 	// source<->html exchange
 	bool SourceToHTML();

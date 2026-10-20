@@ -860,7 +860,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        271
 #define _APS_NEXT_COMMAND_VALUE         58003
-#define _APS_NEXT_CONTROL_VALUE         1820
+#define _APS_NEXT_CONTROL_VALUE         1822
 #define _APS_NEXT_SYMED_VALUE           133
 #endif
 #endif
@@ -893,3 +893,5 @@
 #define IDC_DIAGNOSTIC_CLEAR_HANGS 1817
 #define IDC_HOTKEY_SEARCH 1818
 #define IDC_HOTKEY_SEARCH_LABEL 1819
+#define IDC_SCRIPT_ICON_SIZE_LABEL 1820
+#define IDC_SCRIPT_ICON_SIZE 1821

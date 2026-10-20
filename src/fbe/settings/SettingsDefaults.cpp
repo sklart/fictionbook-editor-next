@@ -50,6 +50,7 @@ void CSettings::SetDefaults()
 	m_toolbars_settings.Empty();
 	m_script_command_ids.Empty();
 	m_favorite_scripts.Empty();
+	m_script_icon_size = 16;
 	m_scripts_toolbar_customize_width = 700;
 	m_scripts_toolbar_customize_height = 500;
 	m_restore_file_position	= false;
