@@ -16,6 +16,9 @@ struct RuntimeStringBinding
 };
 
 const RuntimeStringBinding g_runtimeStringBindings[] = {
+    { IDS_PLUGIN_WINDOW_SAVE_ERROR, L"export_docx.settings.window_error" },
+    { IDS_PLUGIN_SETTINGS_SAVE_ERROR, L"export_docx.settings.save_error" },
+    { IDS_PLUGIN_SETTINGS_CONFLICT, L"export_docx.settings.conflict" },
     { IDR_EXPORTDOCX, L"export_docx.runtime.menu" },
     { IDS_AT_LINE_COLUMN, L"export_docx.runtime.at_line_column" },
     { IDS_AT_S_S, L"export_docx.runtime.at_s_s" },
@@ -167,16 +170,20 @@ std::map<std::wstring, CStringW> g_runtimeKeyStrings;
 
 } // namespace
 
+static bool g_runtimeInitialized = false;
+
 void InitExportDocxRuntimeStrings()
 {
+    g_runtimeInitialized = true;
     g_runtimeStrings.clear();
     g_runtimeKeyStrings.clear();
-    FbeRuntimeLocalization::LoadRuntimeStringFiles(g_hInstance, L"export-docx.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
-    FbeRuntimeLocalization::LoadRuntimeStringFiles(g_hInstance, L"export-docx.json", g_runtimeKeyStrings);
+    FbeRuntimeLocalization::LoadBundledPluginRuntimeStringFiles(g_hInstance, L"export-docx.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
+    FbeRuntimeLocalization::LoadBundledPluginRuntimeStringFiles(g_hInstance, L"export-docx.json", g_runtimeKeyStrings);
 }
 
 CStringW LoadExportDocxString(UINT stringId, LPCWSTR fallback)
 {
+    if(!g_runtimeInitialized) InitExportDocxRuntimeStrings();
     const auto it = g_runtimeStrings.find(stringId);
     if (it != g_runtimeStrings.end() && !it->second.IsEmpty()) {
         return it->second;
@@ -192,6 +199,7 @@ CStringW LoadExportDocxString(UINT stringId, LPCWSTR fallback)
 
 CStringW LoadExportDocxStringByKey(LPCWSTR key, LPCWSTR fallback)
 {
+    if(!g_runtimeInitialized) InitExportDocxRuntimeStrings();
     if (key != nullptr && key[0] != 0) {
         const auto it = g_runtimeKeyStrings.find(std::wstring(key));
         if (it != g_runtimeKeyStrings.end() && !it->second.IsEmpty()) {

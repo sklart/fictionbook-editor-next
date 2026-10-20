@@ -8,7 +8,7 @@ $project = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTML.vcxproj
 $filters = Get-Content -Raw (Join-Path $root 'src\export-html\ExportHTML.vcxproj.filters')
 $pages = @('HtmlExportGeneralPage', 'HtmlExportAppearancePage', 'HtmlExportImagesPage', 'HtmlExportNotesMetadataPage')
 $allSource = $source + $implementation + $resource + $plugin
-foreach ($token in @('class CHtmlExportOptionsDialog : public CDialogImpl', 'IDD_HTML_EXPORT_OPTIONS', 'NOTIFY_HANDLER(IDC_OPTIONS_TABS, TCN_SELCHANGE', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)', 'COMMAND_ID_HANDLER(IDOK, OnOk)', 'COMMAND_ID_HANDLER(IDCANCEL, OnCancel)', 'void Persist()')) { if (-not $source.Contains($token)) { throw "HTML options dialog is missing: $token" } }
+foreach ($token in @('class CHtmlExportOptionsDialog : public CDialogImpl', 'IDD_HTML_EXPORT_OPTIONS', 'NOTIFY_HANDLER(IDC_OPTIONS_TABS, TCN_SELCHANGE', 'MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)', 'COMMAND_ID_HANDLER(IDOK, OnOk)', 'COMMAND_ID_HANDLER(IDCANCEL, OnCancel)', 'HRESULT Persist(const HtmlExportSettings& settings)')) { if (-not $source.Contains($token)) { throw "HTML options dialog is missing: $token" } }
 foreach ($page in $pages) {
     $header = Get-Content -Raw (Join-Path $root "src\export-html\$page.h")
     $pageSource = Get-Content -Raw (Join-Path $root "src\export-html\$page.cpp")
@@ -17,7 +17,7 @@ foreach ($page in $pages) {
     if ($pageSource -match '\b_Settings\.\b|Persist\(|ExportCore|IXSLProcessor|addParameter') { throw "Settings page $page leaks exporter or persistence dependencies." }
 }
 foreach ($token in @('IDD_HTML_EXPORT_OPTIONS DIALOGEX', 'IDD_HTML_EXPORT_GENERAL_PAGE DIALOGEX', 'IDD_HTML_EXPORT_APPEARANCE_PAGE DIALOGEX', 'IDD_HTML_EXPORT_IMAGES_PAGE DIALOGEX', 'IDD_HTML_EXPORT_NOTES_PAGE DIALOGEX', 'DS_CONTROL | WS_CHILD')) { if ($resource -notmatch [regex]::Escape($token)) { throw "HTML options resource is missing: $token" } }
-foreach ($token in @('m_workingSettings=m_settings', 'HtmlExportSettings candidate = m_workingSettings', 'm_workingSettings = candidate', 'SelectPage(0)', 'SelectPage(1)', 'SelectPage(2)', 'SelectPage(3)', 'LayoutPages()', 'options.Persist()')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "V2 HTML transactional or lifecycle regression: $token" } }
+foreach ($token in @('m_workingSettings=m_settings', 'HtmlExportSettings candidate = m_workingSettings', 'm_workingSettings = candidate', 'SelectPage(0)', 'SelectPage(1)', 'SelectPage(2)', 'SelectPage(3)', 'LayoutPages()', 'Persist(candidate)')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "V2 HTML transactional or lifecycle regression: $token" } }
 foreach ($token in @('BuildHtmlModernFileTypes', 'IDS_SAVE_FILE_FILTER', 'IDS_OPEN_CSS_FILTER', 'Outcome::Failed', 'FbeDiagnostic::HResult')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "HTML modern dialog regression: $token" } }
 foreach ($token in @('IDS_OPEN_TEMPLATE_FILTER', 'templatePath', 'usingCustomTemplate', 'ExportHtmlPathsEqual', 'ModernFileDialog', 'FD204')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "Custom XSL regression: $token" } }
 foreach ($token in @('IDS_OPTIONS_ERROR_TEMPLATE', 'GetFileAttributes', 'FILE_ATTRIBUTE_DIRECTORY', 'includeToc && (!translated || depth < 1 || depth > 10)')) { if ($allSource -notmatch [regex]::Escape($token)) { throw "Template or disabled TOC validation regression: $token" } }
@@ -25,12 +25,13 @@ $appearanceSource = Get-Content -Raw (Join-Path $root 'src\export-html\HtmlExpor
 foreach ($token in @('Outcome::Cancelled', 'Outcome::Failed', 'FD205', 'Browse HTML CSS file')) { if ($appearanceSource -notmatch [regex]::Escape($token)) { throw "CSS browse regression: $token" } }
 if ($allSource.Contains('OutputDebugStringW')) { throw 'Modern file dialog errors must use persistent logging.' }
 foreach ($caption in @('HTML with external images', 'XSL files (*.xsl)', 'CSS files (*.css)', 'All files (*.*)')) { if ($allSource.Contains($caption)) { throw "HTML modern dialog contains a hardcoded filter caption: $caption" } }
-if ($plugin -notmatch 'Outcome::Cancelled[\s\S]*Outcome::Failed[\s\S]*options\.Persist\(\)') { throw 'HTML settings must persist only after an accepted save dialog.' }
+if ($plugin -match 'options\.Persist' -or $implementation -notmatch 'OnOk[\s\S]*Persist\(candidate\)[\s\S]*return 0;[\s\S]*m_settings = candidate;[\s\S]*EndDialog\(IDOK\)') { throw 'HTML settings must save inside confirmed options, retain edits after failure, and commit the model only on success.' }
+if ($implementation -notmatch 'Open\(HWND owner\)[\s\S]*LoadSettings\(\)[\s\S]*DoModal\(owner\)' -or $implementation -notmatch 'store.ExpectRevision\(&m_revision\)') { throw 'HTML options must capture the revision at actual opening and check it at confirmation.' }
 if ($implementation -match 'OnInitDialog[^{]*\{[^}]*HtmlExportSettingsStore::Load') { throw 'HTML options OnInitDialog must not reload persistent settings.' }
 if ($plugin -notmatch 'options\.LoadSettings\(\);[\s\S]*ModernFileDialog::Show') { throw 'HTML options must load settings once before opening Save dialog.' }
 if ($implementation -notmatch 'OnCancel[\s\S]*EndDialog\(IDCANCEL\)') { throw 'Nested HTML options Cancel must leave the current object unchanged.' }
 if ($plugin -notmatch 'request\.okButtonLabel\s*=\s*LoadExportHtmlString\(IDS_SAVE_BUTTON\)\.GetString\(\)') { throw 'ExportHTML Save dialog must request the localized Save caption.' }
-$settingsModalIndex = $implementation.IndexOf('options->DoModal(h)')
+$settingsModalIndex = $implementation.IndexOf('options->Open(h)')
 $restoreSaveCaptionIndex = $implementation.IndexOf('fileDialog->SetOkButtonLabel(LoadExportHtmlString(IDS_SAVE_BUTTON))')
 if ($settingsModalIndex -lt 0 -or $restoreSaveCaptionIndex -lt $settingsModalIndex) { throw 'ExportHTML must restore the Save caption after closing export options.' }
 if ($resource -notmatch 'COMBOBOX\s+IDC_CUSTOM_FONT[^\r\n]*CBS_DROPDOWN[^\r\n]*CBS_AUTOHSCROLL') { throw 'Custom font control must be an editable combo box.' }

@@ -284,9 +284,10 @@ int wmain(int argc, wchar_t **argv) {
     return 8;
   wchar_t dir[MAX_PATH] = {};
   GetTempPathW(MAX_PATH, dir);
-  std::wstring root = std::wstring(dir) + L"fbe-export-v2-" +
-                      std::to_wstring(GetCurrentProcessId());
-  CreateDirectoryW(root.c_str(), 0);
+  GUID runId = {}; if(FAILED(CoCreateGuid(&runId))) return 9;
+  wchar_t runText[40] = {}; if(!StringFromGUID2(runId, runText, _countof(runText))) return 9;
+  std::wstring root = std::wstring(dir) + L"fbe-export-v2-" + runText;
+  if(!CreateDirectoryW(root.c_str(), 0)) return Die(L"create unique output directory", HRESULT_FROM_WIN32(GetLastError()));
   std::wstring good = root + L"\\ok";
 #if defined(FBE_TEST_EXPORT_EPUB)
   good += L".epub";

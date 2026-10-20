@@ -8,6 +8,14 @@ The exporter creates EPUB 2.0.1 and EPUB 3.3 OCF containers, with `mimetype` sto
 
 It preserves section IDs and valid internal links; converts FB2 notes and comments with forward/back links; exports cover, annotation, metadata, images, tables, poems, quotes, epigraphs and inline markup. EPUB 3 output also carries collection and baseline accessibility metadata. CSS options include alignment, first-line indentation and hyphenation; settings provide compatibility and detailed presets plus preflight validation and a summary dialog.
 
+Options use four native tabs: Book, Appearance, Navigation and Advanced. Default,
+Compatibility and Detailed EPUB presets remain accessible below every page and
+apply to all parameters. Selecting a preset does not save it; OK saves the
+confirmed values and Cancel restores the original parameters. Failed saves keep
+the window and edits open. Ctrl+Tab and Ctrl+Shift+Tab switch pages; Tab and
+Shift+Tab skip hidden controls. Window position and size are remembered separately;
+see [settings storage](README.md#где-сохраняются-настройки-dll).
+
 ## Batch use and diagnostics
 
 Run `ExportEPUBBatch.exe -Help` for current options. It is suitable for single-file or recursive corpus processing and produces reports suitable for automation. Keep corpus inputs, logs and packages under user-selected folders or `out/`, never in `src`.

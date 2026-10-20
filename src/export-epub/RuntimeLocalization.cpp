@@ -16,6 +16,13 @@ struct RuntimeStringBinding
 };
 
 const RuntimeStringBinding g_runtimeStringBindings[] = {
+    { IDS_OPTIONS_TAB_ADVANCED, L"export_epub.options.tab.advanced" },
+    { IDS_OPTIONS_TAB_NAVIGATION, L"export_epub.options.tab.navigation" },
+    { IDS_OPTIONS_TAB_APPEARANCE, L"export_epub.options.tab.appearance" },
+    { IDS_OPTIONS_TAB_BOOK, L"export_epub.options.tab.book" },
+    { IDS_PLUGIN_WINDOW_SAVE_ERROR, L"export_epub.settings.window_error" },
+    { IDS_PLUGIN_SETTINGS_SAVE_ERROR, L"export_epub.settings.save_error" },
+    { IDS_PLUGIN_SETTINGS_CONFLICT, L"export_epub.settings.conflict" },
     { IDS_EXPORT_ANNOTATION_TITLE, L"export_epub.content.annotation_title" },
     { IDS_EXPORT_BODY_COMMENTS_TITLE, L"export_epub.content.body_comments_title" },
     { IDS_EXPORT_BODY_NOTES_TITLE, L"export_epub.content.body_notes_title" },
@@ -112,15 +119,19 @@ HINSTANCE g_runtimeInstance = nullptr;
 
 } // namespace
 
+static bool g_runtimeInitialized = false;
+
 void InitExportEpubRuntimeStrings(HINSTANCE instance)
 {
+    g_runtimeInitialized = true;
     g_runtimeInstance = instance;
     g_runtimeStrings.clear();
-    FbeRuntimeLocalization::LoadRuntimeStringFiles(g_runtimeInstance, L"export-epub.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
+    FbeRuntimeLocalization::LoadBundledPluginRuntimeStringFiles(g_runtimeInstance, L"export-epub.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
 }
 
 CStringW LoadExportEpubString(UINT stringId, LPCWSTR fallback)
 {
+    if(!g_runtimeInitialized) InitExportEpubRuntimeStrings(_AtlBaseModule.GetModuleInstance());
     const auto it = g_runtimeStrings.find(stringId);
     if (it != g_runtimeStrings.end() && !it->second.IsEmpty()) {
         return it->second;

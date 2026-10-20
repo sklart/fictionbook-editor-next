@@ -21,8 +21,8 @@ $runtimeCpp = Get-Content -Raw -LiteralPath $runtimeCppPath -Encoding UTF8
 $dllMain = Get-Content -Raw -LiteralPath $dllMainPath -Encoding UTF8
 $resource = Get-Content -Raw -LiteralPath $resourcePath -Encoding UTF8
 
-if ($dllMain -notmatch 'InitImportEpubRuntimeStrings\(\);') {
-    throw 'ImportEPUB не вызывает InitImportEpubRuntimeStrings() при загрузке DLL.'
+if ($dllMain -match 'InitImportEpubRuntimeStrings' -or $runtimeCpp -notmatch 'if\(!g_runtimeInitialized\) InitImportEpubRuntimeStrings' -or $runtimeCpp -notmatch 'LoadBundledPluginRuntimeStringFiles') {
+    throw 'Runtime strings must initialize lazily outside DllMain and support the bundled language directory.'
 }
 
 $bindingMatches = [regex]::Matches($runtimeCpp, '\{\s*(IDS_IMPORT_[A-Z0-9_]+)\s*,\s*L"([^"]+)"\s*\}')

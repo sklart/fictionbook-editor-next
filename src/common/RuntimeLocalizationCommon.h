@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <utility>
 
 #include <windows.h>
 #include <atlstr.h>
@@ -535,6 +536,17 @@ inline void LoadRuntimeStringFiles(HINSTANCE moduleInstance, const wchar_t* modu
     const CStringW localeName = GetPreferredRuntimeLocaleName();
     if (!localeName.IsEmpty() && ::lstrcmpiW(localeName, L"en-US") != 0)
         LoadRuntimeStringFile(moduleInstance, localeName, moduleJsonName, strings);
+}
+
+template<typename... Args>
+inline void LoadBundledPluginRuntimeStringFiles(HINSTANCE module, const wchar_t* fileName, Args&&... args)
+{
+    // Bundled DLLs live in Plugins; the shared language directory lives beside
+    // the host executable. Keep a DLL-local language pack's existing priority.
+    const CStringW locale = GetPreferredRuntimeLocaleName();
+    const HINSTANCE host = ::GetModuleHandleW(NULL);
+    if(!RuntimeStringFileExists(module, locale, fileName) && RuntimeStringFileExists(host, locale, fileName)) module = host;
+    LoadRuntimeStringFiles(module, fileName, std::forward<Args>(args)...);
 }
 
 } // namespace FbeRuntimeLocalization

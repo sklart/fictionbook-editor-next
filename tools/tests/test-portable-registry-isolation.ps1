@@ -1,4 +1,4 @@
-<#
+﻿<#
 Exercises both the portable command-line and GUI startup paths while comparing
 all FBE-owned HKCU locations before and after them. Neither path may initialise
 the registry profile, register the embedded typelib or bundled plugins, or touch
@@ -34,6 +34,11 @@ $keys = @(
 $before = @{}
 foreach ($key in $keys) { $before[$key] = Get-RegistrySnapshot $key }
 
+. (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
+$isolation = New-IsolatedFbeRuntime -FbeExe $FbeExecutable -Name 'portable-registry'
+$FbeExecutable = $isolation.Exe
+$passed = $false
+try {
 $stdout = Join-Path $testRoot 'portable.stdout'
 $stderr = Join-Path $testRoot 'portable.stderr'
 Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
@@ -47,7 +52,7 @@ foreach ($key in $keys) {
     if ($after -cne $before[$key]) { throw "Portable runtime CLI changed FBE-owned registry state: $key" }
 }
 
-$guiProcess = Start-Process -FilePath $FbeExecutable -ArgumentList @('--portable') -WorkingDirectory (Split-Path -Parent $FbeExecutable) -PassThru
+$guiProcess = Start-Process -FilePath $FbeExecutable -ArgumentList @('--portable') -WorkingDirectory (Split-Path -Parent $FbeExecutable) -WindowStyle Hidden -PassThru
 try {
     Start-Sleep -Seconds 5
     $guiProcess.Refresh()
@@ -70,3 +75,8 @@ foreach ($key in $keys) {
 # restart, relocation and the Installed/Portable persistence boundaries.
 & (Join-Path $PSScriptRoot 'test-plugin-settings-runtime.ps1') -FbeExe $FbeExecutable
 Write-Host 'Portable CLI, GUI and bundled plug-in registry isolation behavior passed.'
+
+$passed = $true
+} finally {
+    Complete-IsolatedFbeRuntime -Isolation $isolation -Passed $passed
+}

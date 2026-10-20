@@ -1,4 +1,4 @@
-﻿[CmdletBinding()] param([string]$Configuration = 'Release', [string]$BatchExecutable)
+﻿[CmdletBinding()] param([string]$Configuration = 'Release', [string]$BatchExecutable, [ValidateRange(1,20)][int]$RepeatCount = 1)
 $ErrorActionPreference = 'Stop'; $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $BatchExecutable) { $BatchExecutable = Join-Path $root "out\$Configuration\ExportEPUBBatch.exe" }
 $batch = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BatchExecutable)
@@ -24,6 +24,7 @@ function Test-V2EpubContent([string]$Path, [int]$Version) {
     foreach ($marker in @([string][char]0x00D0,[string][char]0x00D1)) { if ($combined.Contains($marker)) { throw "v2 EPUB $Version contains mojibake." } }
 }
 try {
+    for($iteration = 1; $iteration -le $RepeatCount; ++$iteration) {
     $lines = @(& $exe $dll); if ($LASTEXITCODE -ne 0) { throw "ExportEPUB v2 runtime harness failed: $LASTEXITCODE" }
     $epub3 = ($lines | Where-Object { $_ -like 'EPUB3=*' } | Select-Object -First 1) -replace '^EPUB3='; $epub2 = ($lines | Where-Object { $_ -like 'EPUB2=*' } | Select-Object -First 1) -replace '^EPUB2='
     if ([string]::IsNullOrWhiteSpace($epub3) -or [string]::IsNullOrWhiteSpace($epub2)) { throw 'Runtime harness did not return both EPUB paths.' }
@@ -38,4 +39,6 @@ try {
     $batchZip=[IO.Compression.ZipFile]::OpenRead($epub3)
     try {if(-not $batchZip.GetEntry('OEBPS/content.opf') -or -not $batchZip.GetEntry('mimetype')){throw 'Batch overwrite produced incomplete EPUB'}} finally {$batchZip.Dispose()}
     Remove-Item -LiteralPath $epub3,$epub2 -Force -ErrorAction SilentlyContinue; $parent = Split-Path -Parent $epub3; Remove-Item -LiteralPath $parent -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host "ExportEPUB v2 and batch overwrite checks: PASS ($RepeatCount independent runs; no retries)."
 } finally { Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath ($exe -replace '\.exe$','.pdb') -Force -ErrorAction SilentlyContinue }

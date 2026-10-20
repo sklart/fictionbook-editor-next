@@ -21,8 +21,8 @@ $runtimeCpp = Get-Content -Raw -LiteralPath $runtimeCppPath -Encoding UTF8
 $dllMain = Get-Content -Raw -LiteralPath $dllMainPath -Encoding UTF8
 $resource = Get-Content -Raw -LiteralPath $resourcePath -Encoding UTF8
 
-if ($dllMain -notmatch 'InitExportHtmlRuntimeStrings\(\);') {
-    throw 'ExportHTML не вызывает InitExportHtmlRuntimeStrings() при загрузке DLL.'
+if ($dllMain -match 'InitExportHtmlRuntimeStrings' -or $runtimeCpp -notmatch 'if\(!g_runtimeInitialized\) InitExportHtmlRuntimeStrings' -or $runtimeCpp -notmatch 'LoadBundledPluginRuntimeStringFiles') {
+    throw 'Runtime strings must initialize lazily outside DllMain and support the bundled language directory.'
 }
 
 $bindingMatches = [regex]::Matches($runtimeCpp, '\{\s*((?:IDS|IDR)_[A-Z0-9_]+)\s*,\s*L"([^"]+)"\s*\}')

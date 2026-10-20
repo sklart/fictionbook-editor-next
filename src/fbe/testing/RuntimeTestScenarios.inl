@@ -4,6 +4,8 @@
 #define IsFbeTestScenario RuntimeTests::IsScenario
 
 #include "../view/VisualDomNormalizer.h"
+#include "PluginOptionsDialogProbe.h"
+#include "../../common/DeploymentContext.h"
 #include "RuntimeTestPortableState.inl"
 
 LRESULT CMainFrame::OnSourceMemoryBenchmark(UINT, WPARAM, LPARAM, BOOL&)

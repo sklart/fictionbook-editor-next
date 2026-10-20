@@ -46,6 +46,7 @@ class CHtmlExportOptionsDialog : public CDialogImpl<CHtmlExportOptionsDialog>
 public:
     enum { IDD = IDD_HTML_EXPORT_OPTIONS };
     HtmlExportSettings m_settings;
+    FbePluginSettings::Revision m_revision;
     HtmlExportSettings m_workingSettings;
     HtmlExportGeneralPage m_generalPage;
     HtmlExportAppearancePage m_appearancePage;
@@ -66,11 +67,13 @@ public:
     void SetSplitSupported(bool value) { m_splitSupported = value; m_generalPage.SetSplitSupported(value); }
 
     void LoadSettings();
-    void Persist();
+    HRESULT Persist(const HtmlExportSettings& settings);
+    INT_PTR Open(HWND owner);
 
     BEGIN_MSG_MAP(CHtmlExportOptionsDialog)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
+        MESSAGE_HANDLER(WM_CLOSE, OnClose)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         NOTIFY_HANDLER(IDC_OPTIONS_TABS, TCN_SELCHANGE, OnTabChanged)
@@ -85,6 +88,7 @@ public:
     LRESULT OnTabChanged(int, LPNMHDR, BOOL&);
     LRESULT OnOk(WORD, WORD, HWND, BOOL&);
     LRESULT OnCancel(WORD, WORD, HWND, BOOL&);
+    LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL&);
     void SelectPage(int page);
     void LayoutPages();
     void LayoutChrome();

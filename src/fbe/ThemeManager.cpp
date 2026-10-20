@@ -366,6 +366,35 @@ void PaintDarkGroupBox(HWND window)
 	::EndPaint(window, &paint);
 }
 
+void PaintPluginOptionsTabs(HWND window, HDC dc)
+{
+	RECT client = {}; ::GetClientRect(window, &client);
+	::FillRect(dc, &client, ThemeManager::ControlBrush());
+	RECT pane = client; TabCtrl_AdjustRect(window, FALSE, &pane);
+	::InflateRect(&pane, 1, 1);
+	::FillRect(dc, &pane, ThemeManager::WindowBrush());
+	::FrameRect(dc, &pane, ThemeManager::Brush(THEME_COLOR_BORDER));
+	HGDIOBJ oldFont = ::SelectObject(dc, reinterpret_cast<HGDIOBJ>(::SendMessageW(window, WM_GETFONT, 0, 0)));
+	::SetBkMode(dc, TRANSPARENT); ::SetTextColor(dc, ThemeManager::TextColor());
+	const int selected = TabCtrl_GetCurSel(window);
+	for(int index = 0; index < TabCtrl_GetItemCount(window); ++index) {
+		RECT item = {}; TabCtrl_GetItemRect(window, index, &item);
+		::FillRect(dc, &item, index == selected ? ThemeManager::WindowBrush() : ThemeManager::ControlBrush());
+		::FrameRect(dc, &item, ThemeManager::Brush(THEME_COLOR_BORDER));
+		wchar_t text[512] = {}; TCITEMW info = {}; info.mask = TCIF_TEXT; info.pszText = text; info.cchTextMax = _countof(text);
+		TabCtrl_GetItem(window, index, &info);
+		::DrawTextW(dc, text, -1, &item, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+		if(index == selected) {
+			RECT accent = item; accent.top = accent.bottom - (std::max)(1, ::MulDiv(2, UiMetrics::DpiForWindow(window), 96));
+			::FillRect(dc, &accent, ThemeManager::Brush(THEME_COLOR_ACCENT));
+			if(::GetFocus() == window && !(::SendMessageW(window, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
+				::InflateRect(&item, -3, -3); ::DrawFocusRect(dc, &item);
+			}
+		}
+	}
+	if(oldFont) ::SelectObject(dc, oldFont);
+}
+
 LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
 {
 	if(message == WM_NCDESTROY)
@@ -388,6 +417,17 @@ LRESULT CALLBACK ThemeControlSubclassProc(HWND window, UINT message, WPARAM wPar
 		return 0;
 	}
 	if(IsHighContrastEnabled()) return ::DefSubclassProc(window, message, wParam, lParam);
+	if(ThemeManager::IsDark() && IsClass(window, L"FBEImportEPUBOptionsWindow") && message == WM_ERASEBKGND)
+	{
+		RECT client = {}; ::GetClientRect(window, &client);
+		::FillRect(reinterpret_cast<HDC>(wParam), &client, ThemeManager::WindowBrush());
+		return 1;
+	}
+	if(ThemeManager::IsDark() && IsClass(window, WC_TABCONTROLW) && ::GetPropW(window, L"FBE.PluginOptionsTabs")) {
+		if(message == WM_ERASEBKGND) return 1;
+		if(message == WM_PAINT) { PAINTSTRUCT paint = {}; HDC dc = ::BeginPaint(window, &paint); PaintPluginOptionsTabs(window, dc); ::EndPaint(window, &paint); return 0; }
+		if((message == WM_PRINTCLIENT || message == WM_PRINT) && wParam) { PaintPluginOptionsTabs(window, reinterpret_cast<HDC>(wParam)); return 0; }
+	}
 	if(ThemeManager::IsDark() && HasClientEdge(window) && message == WM_NCPAINT)
 	{
 		const LRESULT result = ::DefSubclassProc(window, message, wParam, lParam);

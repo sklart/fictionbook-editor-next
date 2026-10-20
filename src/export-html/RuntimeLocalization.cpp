@@ -13,6 +13,9 @@ struct RuntimeStringBinding {
 };
 
 static const RuntimeStringBinding g_runtimeStringBindings[] = {
+    { IDS_PLUGIN_WINDOW_SAVE_ERROR, L"export_html.settings.window_error" },
+    { IDS_PLUGIN_SETTINGS_SAVE_ERROR, L"export_html.settings.save_error" },
+    { IDS_PLUGIN_SETTINGS_CONFLICT, L"export_html.settings.conflict" },
     { IDR_EXPORTHTML, L"export_html.runtime.menu_name" },
     { IDS_ERROR_OPEN_FILE, L"export_html.runtime.error_open_file" },
     { IDS_ERROR_CREATE_DIRECTORY, L"export_html.runtime.error_create_directory" },
@@ -72,14 +75,18 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 
 static std::map<UINT, CStringW> g_runtimeStrings;
 
+static bool g_runtimeInitialized = false;
+
 void InitExportHtmlRuntimeStrings()
 {
+    g_runtimeInitialized = true;
     g_runtimeStrings.clear();
-    FbeRuntimeLocalization::LoadRuntimeStringFiles(_Module.GetModuleInstance(), L"export-html.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
+    FbeRuntimeLocalization::LoadBundledPluginRuntimeStringFiles(_Module.GetModuleInstance(), L"export-html.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
 }
 
 CString LoadExportHtmlString(UINT id)
 {
+    if(!g_runtimeInitialized) InitExportHtmlRuntimeStrings();
     std::map<UINT, CStringW>::const_iterator it = g_runtimeStrings.find(id);
     if (it != g_runtimeStrings.end())
         return it->second;

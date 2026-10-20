@@ -10,7 +10,6 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
     if (dwReason == DLL_PROCESS_ATTACH)
     {
         g_hInstance = hInstance;
-        InitImportEpubRuntimeStrings();
     }
 
     return _AtlModule.DllMain(dwReason, lpReserved);

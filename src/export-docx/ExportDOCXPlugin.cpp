@@ -2,6 +2,7 @@
 //-V::1048
 #include "stdafx.h"
 #include "../common/PluginSettingsStore.h"
+#include "../common/PluginWindowPlacement.h"
 #include "ExportDOCXPlugin.h"
 
 #include "..\\version.h"
@@ -742,7 +743,7 @@ void NormalizeSettings(DocxExportSettings& s) {
     s.notesEndFallback = (s.notesMode == 2);
 }
 
-void LoadDocxSettings(DocxExportSettings& s) {
+void LoadDocxSettings(DocxExportSettings& s, FbePluginSettings::Revision* revision = nullptr) {
     FbePluginSettings::Store store(L"export-docx", kSettingsRegPath);
     if(FAILED(store.Error())) _com_issue_error(store.Error());
     s.exportImages = FbePluginSettings::ReadDword(store, L"ExportImages", s.exportImages ? 1 : 0) != 0;
@@ -793,11 +794,13 @@ void LoadDocxSettings(DocxExportSettings& s) {
     s.fontSizePt = static_cast<int>(FbePluginSettings::ReadDword(store, L"FontSizePt", static_cast<DWORD>(s.fontSizePt)));
     s.fontName = FbePluginSettings::ReadString(store, L"FontName", s.fontName);
     if(FAILED(store.Error())) _com_issue_error(store.Error());
+    if(revision) *revision = store.CaptureRevision();
     NormalizeSettings(s);
 }
 
-HRESULT SaveDocxSettings(DocxExportSettings s) {
+HRESULT SaveDocxSettings(DocxExportSettings s, const FbePluginSettings::Revision* revision = nullptr) {
     FbePluginSettings::Store store(L"export-docx", kSettingsRegPath);
+    store.ExpectRevision(revision);
     NormalizeSettings(s);
     store.SetDWORDValue(L"ExportImages", s.exportImages ? 1 : 0);
     store.SetDWORDValue(L"ExportCover", s.exportCover ? 1 : 0);
@@ -860,6 +863,7 @@ public:
         //-V1048
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog) //-V1048
         MESSAGE_HANDLER(WM_SIZE, OnSize)
+        MESSAGE_HANDLER(WM_CLOSE, OnClose)
         MESSAGE_HANDLER(WM_GETMINMAXINFO, OnGetMinMaxInfo)
         MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
         MESSAGE_HANDLER(WM_VSCROLL, OnVScroll)
@@ -887,6 +891,7 @@ public:
 private:
     DocxExportSettings& m_settings;
     DocxExportSettings m_original;
+    FbePluginSettings::Revision m_revision;
     HWND m_hToolTip;
     std::vector<CString> m_tooltipText;
     struct DisabledTooltipArea { HWND control; UINT_PTR id; };
@@ -1080,6 +1085,9 @@ private:
     }
 
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL&) {
+        ::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
+        try { LoadDocxSettings(m_settings, &m_revision); m_original = m_settings; }
+        catch(const _com_error& error) { FbePluginSettings::ShowSaveError(m_hWnd, error.Error(), LoadDocxString(IDS_PLUGIN_SETTINGS_SAVE_ERROR, L""), LoadDocxString(IDS_PLUGIN_SETTINGS_CONFLICT, L"")); EndDialog(IDCANCEL); return TRUE; }
         NormalizeSettings(m_settings);
         if (::IsThemeActive() && ::IsAppThemed()) {
             ::EnableThemeDialogTexture(m_hWnd, ETDT_ENABLETAB);
@@ -1156,6 +1164,7 @@ private:
         CenterWindow(GetParent());
         CaptureLayout();
         ConstrainToWorkArea(NULL);
+        FbePluginUi::ReportWindowPlacement(m_hWnd, L"ExportDOCX", false, LoadDocxString(IDS_PLUGIN_WINDOW_SAVE_ERROR, L""));
         LayoutControls();
         return TRUE;
     }
@@ -1321,13 +1330,15 @@ private:
         LRESULT emptyLineMode = SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_GETCURSEL, 0, 0);
         m_settings.emptyLineMode = (emptyLineMode >= 0 && emptyLineMode <= 3) ? static_cast<int>(emptyLineMode) : 2;
         NormalizeSettings(m_settings);
-        if(FbePluginSettings::ShowSaveError(m_hWnd, SaveDocxSettings(m_settings))) return 0;
+        if(FbePluginSettings::ShowSaveError(m_hWnd, SaveDocxSettings(m_settings, &m_revision), LoadDocxString(IDS_PLUGIN_SETTINGS_SAVE_ERROR, L""), LoadDocxString(IDS_PLUGIN_SETTINGS_CONFLICT, L""))) return 0;
+        FbePluginUi::ReportWindowPlacement(m_hWnd, L"ExportDOCX", true, LoadDocxString(IDS_PLUGIN_WINDOW_SAVE_ERROR, L""));
         EndDialog(IDOK);
         return 0;
     }
 
     LRESULT OnCancel(WORD, WORD, HWND, BOOL&) {
         m_settings = m_original;
+        FbePluginUi::ReportWindowPlacement(m_hWnd, L"ExportDOCX", true, LoadDocxString(IDS_PLUGIN_WINDOW_SAVE_ERROR, L""));
         EndDialog(IDCANCEL);
         return 0;
     }
@@ -1339,6 +1350,7 @@ private:
         }
         return 0;
     }
+    LRESULT OnClose(UINT, WPARAM, LPARAM, BOOL& handled) { return OnCancel(0, IDCANCEL, NULL, handled); }
 
     LRESULT OnNcDestroy(UINT, WPARAM, LPARAM, BOOL& handled) {
         if (m_ownedFont) { ::DeleteObject(m_ownedFont); m_ownedFont = NULL; }

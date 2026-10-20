@@ -16,7 +16,6 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 	{
 		g_hInstance = hInstance;
 		DisableThreadLibraryCalls(hInstance);
-		InitExportDocxRuntimeStrings();
 	}
 	return _AtlModule.DllMain(dwReason, lpReserved);
 }

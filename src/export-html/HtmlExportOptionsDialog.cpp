@@ -3,6 +3,7 @@
 #include "RuntimeLocalization.h"
 #include "TemplateResolver.h"
 #include "resource.h"
+#include "../common/PluginWindowPlacement.h"
 
 namespace
 {
@@ -30,17 +31,27 @@ void CHtmlExportOptionsDialog::LoadSettings()
     if(FAILED(store.Error())) _com_issue_error(store.Error());
     HtmlExportSettingsStore::Load(store, m_settings);
     if(FAILED(store.Error())) _com_issue_error(store.Error());
+    m_revision = store.CaptureRevision();
     m_workingSettings=m_settings;
 }
-void CHtmlExportOptionsDialog::Persist()
+HRESULT CHtmlExportOptionsDialog::Persist(const HtmlExportSettings& settings)
 {
     FbePluginSettings::Store store(L"export-html", L"Software\\FBETeam\\FictionBook Editor Next\\PluginSettings\\ExportHTML");
-    HtmlExportSettingsStore::Save(store,m_settings);
+    store.ExpectRevision(&m_revision);
+    HtmlExportSettingsStore::Save(store,settings);
     const HRESULT result = store.Commit();
-    if(FAILED(result)) _com_issue_error(result);
+    if(SUCCEEDED(result)) m_revision = store.CaptureRevision();
+    return result;
+}
+INT_PTR CHtmlExportOptionsDialog::Open(HWND owner)
+{
+    try { LoadSettings(); }
+    catch(const _com_error& error) { FbePluginSettings::ShowSaveError(owner, error.Error(), LoadExportHtmlString(IDS_PLUGIN_SETTINGS_SAVE_ERROR), LoadExportHtmlString(IDS_PLUGIN_SETTINGS_CONFLICT)); return IDCANCEL; }
+    return DoModal(owner);
 }
 LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
+    ::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
     SetWindowText(LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE));
     CTabCtrl tabs = GetDlgItem(IDC_OPTIONS_TABS);
     const UINT titles[] = { IDS_OPTIONS_TAB_GENERAL, IDS_OPTIONS_TAB_APPEARANCE, IDS_OPTIONS_TAB_IMAGES, IDS_OPTIONS_TAB_NOTES };
@@ -88,6 +99,7 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
     LayoutChrome();
     LayoutPages();
     SelectPage(0);
+    FbePluginUi::ReportWindowPlacement(m_hWnd, L"ExportHTML", false, LoadExportHtmlString(IDS_PLUGIN_WINDOW_SAVE_ERROR));
     return TRUE;
 }
 LRESULT CHtmlExportOptionsDialog::OnSize(UINT, WPARAM, LPARAM, BOOL&)
@@ -337,18 +349,24 @@ LRESULT CHtmlExportOptionsDialog::OnOk(WORD, WORD, HWND, BOOL&)
     if (!m_imagesPage.SaveToSettings(candidate, error)) { SelectPage(2); ShowExportHtmlTaskDialog(m_hWnd, IDS_ERROR, NULL, error, TDCBF_OK_BUTTON, TD_ERROR_ICON); return 0; }
     if (!m_notesPage.SaveToSettings(candidate, error)) { SelectPage(3); ShowExportHtmlTaskDialog(m_hWnd, IDS_ERROR, NULL, error, TDCBF_OK_BUTTON, TD_ERROR_ICON); return 0; }
     m_workingSettings = candidate;
-    m_settings = m_workingSettings;
+    if(FbePluginSettings::ShowSaveError(m_hWnd, Persist(candidate), LoadExportHtmlString(IDS_PLUGIN_SETTINGS_SAVE_ERROR), LoadExportHtmlString(IDS_PLUGIN_SETTINGS_CONFLICT))) return 0;
+    m_settings = candidate;
+    FbePluginUi::ReportWindowPlacement(m_hWnd, L"ExportHTML", true, LoadExportHtmlString(IDS_PLUGIN_WINDOW_SAVE_ERROR));
     EndDialog(IDOK);
     return 0;
 }
-LRESULT CHtmlExportOptionsDialog::OnCancel(WORD, WORD, HWND, BOOL&) { EndDialog(IDCANCEL); return 0; }
+LRESULT CHtmlExportOptionsDialog::OnCancel(WORD, WORD, HWND, BOOL&) {
+    FbePluginUi::ReportWindowPlacement(m_hWnd, L"ExportHTML", true, LoadExportHtmlString(IDS_PLUGIN_WINDOW_SAVE_ERROR));
+    EndDialog(IDCANCEL); return 0;
+}
+LRESULT CHtmlExportOptionsDialog::OnClose(UINT, WPARAM, LPARAM, BOOL& handled) { return OnCancel(0, IDCANCEL, NULL, handled); }
 STDMETHODIMP CHtmlFileDialogEvents::OnButtonClicked(IFileDialogCustomize* customize, DWORD id)
 {
     if (id==SettingsButtonId && options) {
         HWND h=owner;
         CComPtr<IOleWindow> w;
         if(customize && SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&w)))) w->GetWindow(&h);
-        options->DoModal(h);
+        options->Open(h);
         if (customize) {
             CComPtr<IFileDialog> fileDialog;
             if (SUCCEEDED(customize->QueryInterface(IID_PPV_ARGS(&fileDialog))) && fileDialog)

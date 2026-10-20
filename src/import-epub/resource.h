@@ -204,3 +204,8 @@
 
 #define IMEPUB_COMPANY_NAME              "sklart"
 #define IMEPUB_LEGAL_COPYRIGHT           "Copyright 2026 Artem Sklyarov aka sklart"
+
+#define IDS_PLUGIN_SETTINGS_SAVE_ERROR 7901
+#define IDS_PLUGIN_SETTINGS_CONFLICT 7902
+
+#define IDS_PLUGIN_WINDOW_SAVE_ERROR 7907

@@ -1,5 +1,7 @@
 #include "StdAfx.h"
 #include "../common/PluginSettingsStore.h"
+#include "../common/PluginOptionsTabs.h"
+#include "../common/PluginWindowPlacement.h"
 #include "ExportEPUBPlugin.h"
 #include "..\\version.h"
 
@@ -2556,7 +2558,7 @@ void WriteBoolSetting(FbePluginSettings::Store& key, const wchar_t* name, bool v
 DWORD ReadDwordSetting(FbePluginSettings::Store& key, const wchar_t* name, DWORD fallback) { return FbePluginSettings::ReadDword(key, name, fallback); }
 void WriteDwordSetting(FbePluginSettings::Store& key, const wchar_t* name, DWORD value) { key.SetDWORDValue(name, value); }
 
-ExportPluginSettings LoadExportSettings()
+ExportPluginSettings LoadExportSettings(FbePluginSettings::Revision* revision = nullptr)
 {
     ExportPluginSettings settings;
     FbePluginSettings::Store key(L"export-epub", SETTINGS_KEY);
@@ -2586,12 +2588,14 @@ ExportPluginSettings LoadExportSettings()
         if (settings.warnLargeXhtmlKb > 8192) settings.warnLargeXhtmlKb = 8192;
         if(FAILED(key.Error())) _com_issue_error(key.Error());
     }
+    if(revision) *revision = key.CaptureRevision();
     return settings;
 }
 
-HRESULT SaveExportSettings(const ExportPluginSettings& settings)
+HRESULT SaveExportSettings(const ExportPluginSettings& settings, const FbePluginSettings::Revision* revision = nullptr)
 {
     FbePluginSettings::Store key(L"export-epub", SETTINGS_KEY);
+    key.ExpectRevision(revision);
     {
         WriteBoolSetting(key, L"IncludeNcxFallbackInEpub3", settings.includeNcxFallbackInEpub3);
         WriteBoolSetting(key, L"IncludeCoverPage", settings.includeCoverPage);
@@ -2619,25 +2623,25 @@ HRESULT SaveExportSettings(const ExportPluginSettings& settings)
 
 void SetDlgBool(HWND hwnd, int id, bool value)
 {
-    CheckDlgButton(hwnd, id, value ? BST_CHECKED : BST_UNCHECKED);
+    SendMessageW(FbePluginUi::FindControl(hwnd, id), BM_SETCHECK, value ? BST_CHECKED : BST_UNCHECKED, 0);
 }
 
 bool GetDlgBool(HWND hwnd, int id)
 {
-    return IsDlgButtonChecked(hwnd, id) == BST_CHECKED;
+    return SendMessageW(FbePluginUi::FindControl(hwnd, id), BM_GETCHECK, 0, 0) == BST_CHECKED;
 }
 
 void SetDlgDword(HWND hwnd, int id, DWORD value)
 {
     CString text;
     text.Format(L"%lu", static_cast<unsigned long>(value));
-    SetDlgItemTextW(hwnd, id, text);
+    SetWindowTextW(FbePluginUi::FindControl(hwnd, id), text);
 }
 
 DWORD GetDlgDword(HWND hwnd, int id, DWORD defaultValue, DWORD minValue, DWORD maxValue)
 {
     wchar_t buf[32] = {};
-    GetDlgItemTextW(hwnd, id, buf, static_cast<int>(_countof(buf)));
+    GetWindowTextW(FbePluginUi::FindControl(hwnd, id), buf, static_cast<int>(_countof(buf)));
     wchar_t* end = nullptr;
     unsigned long value = wcstoul(buf, &end, 10);
     if (end == buf) {
@@ -2651,7 +2655,7 @@ DWORD GetDlgDword(HWND hwnd, int id, DWORD defaultValue, DWORD minValue, DWORD m
 
 void AddTooltip(HWND tooltip, HWND dialog, int controlId, const wchar_t* text)
 {
-    HWND control = GetDlgItem(dialog, controlId);
+    HWND control = FbePluginUi::FindControl(dialog, controlId);
     if (tooltip == nullptr || control == nullptr || text == nullptr || *text == L'\0') {
         return;
     }
@@ -2680,7 +2684,7 @@ void SetDlgItemString(HWND dialog, int controlId, UINT stringId)
 {
     CString text(LoadExportEpubString(stringId));
     if (!text.IsEmpty()) {
-        SetDlgItemTextW(dialog, controlId, text.GetString());
+        SetWindowTextW(FbePluginUi::FindControl(dialog, controlId), text.GetString());
     }
 }
 
@@ -2842,15 +2846,11 @@ int MaxLayoutInt(int left, int right) { return left > right ? left : right; }
 int MinLayoutInt(int left, int right) { return left < right ? left : right; }
 
 struct ExportOptionsDialogContext {
+    FbePluginSettings::Revision revision;
+    ExportPluginSettings original;
     ExportPluginSettings* settings = nullptr;
     fbe::epub::EpubVersion version = fbe::epub::EpubVersion::Epub3;
-    struct Control { HWND window; RECT initial; int id; };
-    std::vector<Control> controls;
-    SIZE initialClient = {};
-    int contentBottom = 0;
-    int footerHeight = 0;
-    int scrollX = 0;
-    int scrollY = 0;
+    FbePluginUi::OptionsTabs tabs;
     UINT initialDpi = 96;
     UINT dpi = 96;
     LOGFONTW initialFont = {};
@@ -2875,30 +2875,26 @@ UINT ExportOptionsDpi(HWND hwnd)
     return dpi ? dpi : 96;
 }
 
-void CaptureExportOptionsLayout(HWND hwnd, ExportOptionsDialogContext& ctx)
+bool CaptureExportOptionsLayout(HWND hwnd, ExportOptionsDialogContext& ctx)
 {
-    ShowScrollBar(hwnd, SB_VERT, FALSE);
-    ShowScrollBar(hwnd, SB_HORZ, FALSE);
-    RECT client = {};
-    GetClientRect(hwnd, &client);
-    ctx.initialClient = { client.right, client.bottom };
     ctx.initialDpi = ctx.dpi = ExportOptionsDpi(hwnd);
-    const HFONT originalFont = reinterpret_cast<HFONT>(SendMessageW(GetDlgItem(hwnd, IDOK), WM_GETFONT, 0, 0));
+    const HFONT originalFont = reinterpret_cast<HFONT>(SendMessageW(FbePluginUi::FindControl(hwnd, IDOK), WM_GETFONT, 0, 0));
     ctx.hasFont = originalFont && GetObjectW(originalFont, sizeof(ctx.initialFont), &ctx.initialFont) != 0;
-    RECT ok = {};
-    GetWindowRect(GetDlgItem(hwnd, IDOK), &ok);
-    MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&ok), 2);
-    ctx.footerHeight = ctx.initialClient.cy - ok.top + MulDiv(8, ctx.dpi, 96);
-    for (HWND child = GetWindow(hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT))
-    {
-        RECT rect = {};
-        GetWindowRect(child, &rect);
-        MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&rect), 2);
-        const int id = GetDlgCtrlID(child);
-        ctx.controls.push_back({ child, rect, id });
-        if (id != IDOK && id != IDCANCEL)
-            ctx.contentBottom = MaxLayoutInt(ctx.contentBottom, rect.bottom + MulDiv(8, ctx.dpi, 96));
-    }
+    for(int id : {IDC_STATIC_OPTIONS_GENERAL, IDC_STATIC_OPTIONS_CSS, IDC_STATIC_OPTIONS_NAVIGATION,
+        IDC_STATIC_OPTIONS_IMAGES, IDC_STATIC_OPTIONS_PRESETS}) ShowWindow(FbePluginUi::FindControl(hwnd, id), SW_HIDE);
+    const std::vector<std::wstring> labels = {
+        LoadExportEpubString(IDS_OPTIONS_TAB_BOOK).GetString(), LoadExportEpubString(IDS_OPTIONS_TAB_APPEARANCE).GetString(),
+        LoadExportEpubString(IDS_OPTIONS_TAB_NAVIGATION).GetString(), LoadExportEpubString(IDS_OPTIONS_TAB_ADVANCED).GetString()};
+    if(!ctx.tabs.Create(hwnd, labels, {IDC_BUTTON_PRESET_DEFAULT, IDC_BUTTON_PRESET_COMPAT, IDC_BUTTON_PRESET_RICH, IDOK, IDCANCEL})) return false;
+    const std::vector<std::vector<int>> pages = {
+        {IDC_CHECK_COVER_PAGE, IDC_CHECK_ANNOTATION_PAGE, IDC_CHECK_TITLE_PAGE, IDC_CHECK_COVER_FIRST_IMAGE, IDC_CHECK_REMOVE_UNUSED_IMAGES},
+        {IDC_CHECK_CSS_JUSTIFY, IDC_CHECK_CSS_FIRST_INDENT, IDC_CHECK_CSS_HYPHENATE},
+        {IDC_CHECK_NCX_FALLBACK, IDC_CHECK_TOC_COVER, IDC_CHECK_TOC_ANNOTATION, IDC_CHECK_TOC_NOTES, IDC_CHECK_NOTE_BACKLINKS, IDC_STATIC_MAX_TOC_DEPTH, IDC_EDIT_MAX_TOC_DEPTH},
+        {IDC_CHECK_WRITE_LOG, IDC_CHECK_SHOW_SUMMARY, IDC_CHECK_OPEN_FILE_AFTER_EXPORT, IDC_CHECK_OPEN_FOLDER_AFTER_EXPORT, IDC_CHECK_SHOW_PREFLIGHT, IDC_STATIC_MAX_XHTML_KB, IDC_EDIT_MAX_XHTML_KB}};
+    for(size_t page = 0; page < pages.size(); ++page)
+        for(int id : pages[page]) if(!ctx.tabs.Add(id, static_cast<int>(page))) return false;
+    SetWindowPos(hwnd, NULL, 0, 0, MulDiv(780, ctx.dpi, 96), MulDiv(500, ctx.dpi, 96), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    return true;
 }
 
 void UpdateExportOptionsFont(HWND hwnd, ExportOptionsDialogContext& ctx)
@@ -2910,88 +2906,13 @@ void UpdateExportOptionsFont(HWND hwnd, ExportOptionsDialogContext& ctx)
     font.lfHeight = MulDiv(font.lfHeight, ctx.dpi, ctx.initialDpi);
     HFONT updated = CreateFontIndirectW(&font);
     if (!updated) return;
-    for (const auto& control : ctx.controls)
-        SendMessageW(control.window, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+    ctx.tabs.SetFont(updated);
     if (tooltip) SendMessageW(tooltip, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
     if (ctx.dpiFont) DeleteObject(ctx.dpiFont);
     ctx.dpiFont = updated;
 }
 
-void LayoutExportOptions(HWND hwnd, ExportOptionsDialogContext& ctx)
-{
-    if (ctx.controls.empty()) return;
-    const auto scale = [&ctx](int value) { return MulDiv(value, ctx.dpi, ctx.initialDpi); };
-    RECT client = {};
-    GetClientRect(hwnd, &client);
-    auto viewportHeight = [&]() { return MaxLayoutInt(0, client.bottom - scale(ctx.footerHeight)); };
-    ShowScrollBar(hwnd, SB_VERT, scale(ctx.contentBottom) > viewportHeight() ? TRUE : FALSE);
-    ShowScrollBar(hwnd, SB_HORZ, scale(ctx.initialClient.cx) > client.right ? TRUE : FALSE);
-    GetClientRect(hwnd, &client);
-    ShowScrollBar(hwnd, SB_VERT, scale(ctx.contentBottom) > viewportHeight() ? TRUE : FALSE);
-    ShowScrollBar(hwnd, SB_HORZ, scale(ctx.initialClient.cx) > client.right ? TRUE : FALSE);
-    GetClientRect(hwnd, &client);
-    const int maxX = MaxLayoutInt(0, scale(ctx.initialClient.cx) - client.right);
-    const int maxY = MaxLayoutInt(0, scale(ctx.contentBottom) - viewportHeight());
-    ctx.scrollX = MinLayoutInt(MaxLayoutInt(ctx.scrollX, 0), maxX);
-    ctx.scrollY = MinLayoutInt(MaxLayoutInt(ctx.scrollY, 0), maxY);
-    SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
-    info.nMin = 0; info.nMax = MaxLayoutInt(0, scale(ctx.initialClient.cx) - 1);
-    info.nPage = client.right; info.nPos = ctx.scrollX;
-    SetScrollInfo(hwnd, SB_HORZ, &info, TRUE);
-    info.nMax = MaxLayoutInt(0, scale(ctx.contentBottom) - 1);
-    info.nPage = viewportHeight(); info.nPos = ctx.scrollY;
-    SetScrollInfo(hwnd, SB_VERT, &info, TRUE);
-    const int extraWidth = MaxLayoutInt(0, client.right - scale(ctx.initialClient.cx));
-    for (const auto& control : ctx.controls)
-    {
-        int x = scale(control.initial.left);
-        int y = scale(control.initial.top);
-        int width = scale(control.initial.right - control.initial.left);
-        const int height = scale(control.initial.bottom - control.initial.top);
-        if (control.id == IDOK || control.id == IDCANCEL)
-        {
-            x = client.right - scale(ctx.initialClient.cx - control.initial.left);
-            y = client.bottom - scale(ctx.initialClient.cy - control.initial.top);
-        }
-        else
-        {
-            x -= ctx.scrollX;
-            y -= ctx.scrollY;
-            if (control.initial.left < ctx.initialClient.cx / 3 &&
-                control.initial.right > ctx.initialClient.cx * 2 / 3) width += extraWidth;
-            else if (control.initial.left > ctx.initialClient.cx / 2) x += extraWidth;
-        }
-        SetWindowPos(control.window, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-    }
-}
-
-void ScrollExportOptions(HWND hwnd, ExportOptionsDialogContext& ctx, bool horizontal, WPARAM command)
-{
-    RECT client = {};
-    GetClientRect(hwnd, &client);
-    const int page = horizontal ? client.right : MaxLayoutInt(0, client.bottom -
-        MulDiv(ctx.footerHeight, ctx.dpi, ctx.initialDpi));
-    const int maximum = MaxLayoutInt(0, MulDiv(horizontal ? ctx.initialClient.cx : ctx.contentBottom,
-        ctx.dpi, ctx.initialDpi) - page);
-    int& position = horizontal ? ctx.scrollX : ctx.scrollY;
-    switch (LOWORD(command))
-    {
-    case SB_LINEUP: position -= MulDiv(24, ctx.dpi, 96); break;
-    case SB_LINEDOWN: position += MulDiv(24, ctx.dpi, 96); break;
-    case SB_PAGEUP: position -= page; break;
-    case SB_PAGEDOWN: position += page; break;
-    case SB_THUMBTRACK: case SB_THUMBPOSITION:
-        { SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
-            GetScrollInfo(hwnd, horizontal ? SB_HORZ : SB_VERT, &info);
-            position = info.nTrackPos; }
-        break;
-    case SB_TOP: position = 0; break;
-    case SB_BOTTOM: position = maximum; break;
-    default: return;
-    }
-    position = MinLayoutInt(MaxLayoutInt(position, 0), maximum);
-    LayoutExportOptions(hwnd, ctx);
-}
+void LayoutExportOptions(HWND, ExportOptionsDialogContext& ctx) { ctx.tabs.Layout(ctx.dpi); }
 
 void ConstrainExportOptionsToWorkArea(HWND hwnd, const RECT* suggested = nullptr)
 {
@@ -3007,24 +2928,7 @@ void ConstrainExportOptionsToWorkArea(HWND hwnd, const RECT* suggested = nullptr
     SetWindowPos(hwnd, nullptr, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-void RevealExportOptionsFocus(HWND hwnd, ExportOptionsDialogContext& ctx)
-{
-    HWND focus = GetFocus();
-    if (!focus || !IsChild(hwnd, focus)) return;
-    const int id = GetDlgCtrlID(focus);
-    if (id == IDOK || id == IDCANCEL) return;
-    RECT rect = {}, client = {};
-    GetWindowRect(focus, &rect);
-    MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&rect), 2);
-    GetClientRect(hwnd, &client);
-    const int viewportBottom = client.bottom - MulDiv(ctx.footerHeight, ctx.dpi, ctx.initialDpi);
-    const int oldX = ctx.scrollX, oldY = ctx.scrollY;
-    if (rect.left < 0) ctx.scrollX += rect.left;
-    else if (rect.right > client.right) ctx.scrollX += rect.right - client.right;
-    if (rect.top < 0) ctx.scrollY += rect.top;
-    else if (rect.bottom > viewportBottom) ctx.scrollY += rect.bottom - viewportBottom;
-    if (ctx.scrollX != oldX || ctx.scrollY != oldY) LayoutExportOptions(hwnd, ctx);
-}
+void RevealExportOptionsFocus(HWND, ExportOptionsDialogContext& ctx) { ctx.tabs.RevealFocus(); }
 
 void FillExportOptionsDialog(HWND hwnd, const ExportPluginSettings& settings)
 {
@@ -3081,6 +2985,7 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
     switch (msg) {
     case WM_INITDIALOG:
+        ::SetPropW(hwnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
         ctx = reinterpret_cast<ExportOptionsDialogContext*>(lParam);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(ctx));
         settings = ctx ? ctx->settings : nullptr;
@@ -3091,15 +2996,20 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         }
 
         if (ctx) {
-            CaptureExportOptionsLayout(hwnd, *ctx);
+            if(!CaptureExportOptionsLayout(hwnd, *ctx)) { EndDialog(hwnd, -1); return TRUE; }
             ConstrainExportOptionsToWorkArea(hwnd);
             LayoutExportOptions(hwnd, *ctx);
         }
         InstallExportOptionsTooltips(hwnd);
+        FbePluginUi::ReportWindowPlacement(hwnd, L"ExportEPUB", false, LoadExportEpubString(IDS_PLUGIN_WINDOW_SAVE_ERROR));
         return TRUE;
 
     case WM_SIZE:
         if (ctx) LayoutExportOptions(hwnd, *ctx);
+        return TRUE;
+
+    case WM_CLOSE:
+        SendMessageW(hwnd, WM_COMMAND, IDCANCEL, 0);
         return TRUE;
 
     case WM_DPICHANGED:
@@ -3114,7 +3024,7 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
             MINMAXINFO* bounds = reinterpret_cast<MINMAXINFO*>(lParam);
             MONITORINFO monitor = { sizeof(monitor) };
             if (GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
-                RECT minimum = { 0, 0, MulDiv(280, ctx->dpi, 96), MulDiv(250, ctx->dpi, 96) };
+                RECT minimum = { 0, 0, MulDiv(420, ctx->dpi, 96), MulDiv(250, ctx->dpi, 96) };
                 using AdjustForDpiProc = BOOL (WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
                 const HMODULE user32 = GetModuleHandleW(L"user32.dll");
                 const auto adjustForDpi = user32 ? reinterpret_cast<AdjustForDpiProc>(
@@ -3131,21 +3041,12 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         }
         return TRUE;
 
-    case WM_VSCROLL:
-        if (ctx && !lParam) { ScrollExportOptions(hwnd, *ctx, false, wParam); return TRUE; }
-        break;
-    case WM_HSCROLL:
-        if (ctx && !lParam) { ScrollExportOptions(hwnd, *ctx, true, wParam); return TRUE; }
-        break;
     case WM_MOUSEWHEEL:
-        if (ctx) {
-            ctx->scrollY -= MulDiv(GET_WHEEL_DELTA_WPARAM(wParam), MulDiv(72, ctx->dpi, 96), WHEEL_DELTA);
-            LayoutExportOptions(hwnd, *ctx);
-            return TRUE;
-        }
+        if(ctx) { ctx->tabs.Wheel(wParam); return TRUE; }
         break;
 
     case WM_DESTROY:
+        if(ctx) ctx->tabs.Detach();
         DestroyExportOptionsTooltips(hwnd);
         return TRUE;
 
@@ -3162,8 +3063,9 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         case IDOK:
             if (settings != nullptr) {
                 ReadExportOptionsDialog(hwnd, *settings);
-                if(FbePluginSettings::ShowSaveError(hwnd, SaveExportSettings(*settings))) return TRUE;
+                if(FbePluginSettings::ShowSaveError(hwnd, SaveExportSettings(*settings, &ctx->revision), LoadExportEpubString(IDS_PLUGIN_SETTINGS_SAVE_ERROR), LoadExportEpubString(IDS_PLUGIN_SETTINGS_CONFLICT))) return TRUE;
             }
+            FbePluginUi::ReportWindowPlacement(hwnd, L"ExportEPUB", true, LoadExportEpubString(IDS_PLUGIN_WINDOW_SAVE_ERROR));
             EndDialog(hwnd, IDOK);
             return TRUE;
 
@@ -3189,12 +3091,14 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
             return TRUE;
 
         case IDCANCEL:
+            FbePluginUi::ReportWindowPlacement(hwnd, L"ExportEPUB", true, LoadExportEpubString(IDS_PLUGIN_WINDOW_SAVE_ERROR));
             EndDialog(hwnd, IDCANCEL);
             return TRUE;
         }
         break;
 
     case WM_NOTIFY:
+        if (ctx && ctx->tabs.Notify(lParam)) return TRUE;
         if (ctx) RevealExportOptionsFocus(hwnd, *ctx);
         break;
     }
@@ -3204,6 +3108,9 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 bool AskExportOptions(HWND owner, ExportPluginSettings& settings, fbe::epub::EpubVersion version)
 {
     ExportOptionsDialogContext ctx;
+    try { settings = LoadExportSettings(&ctx.revision); }
+    catch(const _com_error& error) { FbePluginSettings::ShowSaveError(owner, error.Error(), LoadExportEpubString(IDS_PLUGIN_SETTINGS_SAVE_ERROR), LoadExportEpubString(IDS_PLUGIN_SETTINGS_CONFLICT)); return false; }
+    ctx.original = settings;
     ctx.settings = &settings;
     ctx.version = version;
 
@@ -3212,6 +3119,7 @@ bool AskExportOptions(HWND owner, ExportPluginSettings& settings, fbe::epub::Epu
                                            owner,
                                            ExportOptionsDlgProc,
                                            reinterpret_cast<LPARAM>(&ctx));
+    if(result != IDOK) settings = ctx.original;
     return result == IDOK;
 }
 

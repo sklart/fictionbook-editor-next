@@ -685,6 +685,8 @@ gdiplus.lib;mscms.lib;dbghelp.lib;psapi.lib;libhunspell.lib;pcre2-16-static.lib;
     <ClInclude Include="testing\RuntimeTestScenarios.inl" />
     <ClInclude Include="testing\RuntimeTestScenarioMode.h" />
     <ClInclude Include="testing\RuntimeTestPortableState.inl" />
+    <ClInclude Include="testing\PluginOptionsDialogProbe.h" />
+    <ClInclude Include="testing\RuntimeTestPluginOptions.inl" />
     <ClInclude Include="testing\RuntimeTestArchiveAndLifecycle.inl" />
     <ClInclude Include="testing\RuntimeTestUndoAndContainers.inl" />
     <ClInclude Include="testing\RuntimeTestNavigationAndStructure.inl" />

@@ -529,7 +529,13 @@ public:
             return false;
         }
 #ifdef _WIN32
-        if (FAILED(files_.Commit())) { SetError(error, L"Cannot replace output EPUB file"); return false; }
+        const HRESULT committed = files_.Commit();
+        if (FAILED(committed)) {
+            std::wostringstream message;
+            message << L"Cannot replace output EPUB file (HRESULT 0x" << std::hex << std::uppercase
+                << std::setfill(L'0') << std::setw(8) << static_cast<unsigned long>(committed) << L")";
+            SetError(error, message.str()); return false;
+        }
 #endif
         return true;
     }

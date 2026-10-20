@@ -14,7 +14,6 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 	if (dwReason == DLL_PROCESS_ATTACH)
 	{
 		DisableThreadLibraryCalls(hInstance);
-		InitExportHtmlRuntimeStrings();
 	}
 	return _AtlModule.DllMain(dwReason, lpReserved);
 }

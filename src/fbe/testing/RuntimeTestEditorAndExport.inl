@@ -4,6 +4,7 @@
 #include "RuntimeTestScriptingDialogs.inl"
 #include "RuntimeTestScriptingEnvironment.inl"
 #include "RuntimeTestDocumentTree.inl"
+#include "RuntimeTestPluginOptions.inl"
 	if (IsFbeTestScenario(L"scripting-stage1"))
 	{
 		wchar_t root[32768] = {}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT", root, _countof(root));

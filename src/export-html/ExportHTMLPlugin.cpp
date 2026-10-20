@@ -164,8 +164,7 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 		if(FbePluginSettings::RuntimeDialogProbeRequested()) {
 			CHtmlExportOptionsDialog options;
 			options.LoadSettings();
-			if(options.DoModal((HWND)hWnd) != IDOK) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
-			options.Persist();
+			if(options.Open((HWND)hWnd) != IDOK) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
 			return S_OK;
 		}
 		// * construct doc pointer
@@ -254,7 +253,6 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 			exportSettings = options.m_settings;
 			dlg.m_template = exportSettings.templatePath; dlg.m_customCss = exportSettings.customCss; dlg.m_usingCustomTemplate = exportSettings.usingCustomTemplate;
 			dlg.m_includedesc = exportSettings.includeDescription; dlg.m_tocdepth = exportSettings.tocDepth; dlg.m_imageMaxWidth = exportSettings.imageMaxWidth; dlg.m_imageMaxHeight = exportSettings.imageMaxHeight;
-			options.Persist();
 			dlg.m_ofn.nFilterIndex = static_cast<UINT>(ExportHtmlFormatModeFromFilterIndex(result.filterIndex));
 			::wcsncpy_s(dlg.m_szFileName, _countof(dlg.m_szFileName), result.paths.front().c_str(), _TRUNCATE);
 		}

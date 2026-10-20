@@ -8,6 +8,15 @@ The importer reads EPUB 2/3 containers, OPF metadata/manifest/spine, `nav.xhtml`
 
 The settings dialog controls content/structure, images and SVG, links and notes, cleanup/filtering, validation and logging. Diagnostic output reports missing binaries, unresolved notes, duplicate IDs and suspicious external links.
 
+The dialog has five native tabs: content, images, links and notes, cleanup,
+and diagnostics. Defaults, Import and Cancel remain accessible below the pages.
+Defaults affect every tab; switching tabs preserves edits. Import confirms and
+saves the parameters; Cancel restores the original parameters. The same rules
+apply when opening settings from the file picker. A save error keeps the dialog
+and its edited values open. Ctrl+Tab and Ctrl+Shift+Tab switch pages; Tab and
+Shift+Tab move focus among visible controls. The window position and size are
+remembered independently of confirmation; see [settings storage](README.md#где-сохраняются-настройки-dll).
+
 ## SVG
 
 `ImportEPUBLunaSVG.dll` is an optional helper dynamically loaded from the plug-in directory or beside the batch utility. Its pinned LunaSVG/PlutoVG source is in `third_party/lunasvg`; build products go to `build/lib/lunasvg`. SVG can be kept, rasterized to PNG/JPEG, or skipped. If the helper is unavailable or rendering fails, the importer retains its visible fallback behavior.

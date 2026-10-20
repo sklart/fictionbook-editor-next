@@ -16,6 +16,9 @@ struct RuntimeStringBinding
 };
 
 static const RuntimeStringBinding g_runtimeStringBindings[] = {
+    { IDS_PLUGIN_WINDOW_SAVE_ERROR, L"import_epub.settings.window_error" },
+    { IDS_PLUGIN_SETTINGS_SAVE_ERROR, L"import_epub.settings.save_error" },
+    { IDS_PLUGIN_SETTINGS_CONFLICT, L"import_epub.settings.conflict" },
     { IDS_IMPORT_OPTIONS_BUTTON_CANCEL, L"import_epub.options.button_cancel" },
     { IDS_IMPORT_OPTIONS_BUTTON_DEFAULTS, L"import_epub.options.button_defaults" },
     { IDS_IMPORT_OPTIONS_BUTTON_OK, L"import_epub.options.button_ok" },
@@ -173,15 +176,19 @@ static const RuntimeStringBinding g_runtimeStringBindings[] = {
 
 static std::map<UINT, CStringW> g_runtimeStrings;
 
+static bool g_runtimeInitialized = false;
+
 void InitImportEpubRuntimeStrings()
 {
+    g_runtimeInitialized = true;
     const HINSTANCE instance = g_hInstance != nullptr ? g_hInstance : _AtlBaseModule.GetModuleInstance();
     g_runtimeStrings.clear();
-    FbeRuntimeLocalization::LoadRuntimeStringFiles(instance, L"import-epub.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
+    FbeRuntimeLocalization::LoadBundledPluginRuntimeStringFiles(instance, L"import-epub.json", g_runtimeStringBindings, _countof(g_runtimeStringBindings), g_runtimeStrings);
 }
 
 CStringW LoadImportEpubString(UINT stringId, LPCWSTR fallback)
 {
+    if(!g_runtimeInitialized) InitImportEpubRuntimeStrings();
     std::map<UINT, CStringW>::const_iterator it = g_runtimeStrings.find(stringId);
     if (it != g_runtimeStrings.end() && !it->second.IsEmpty())
         return it->second;

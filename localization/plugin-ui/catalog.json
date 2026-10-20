@@ -16,6 +16,310 @@
     "bg-BG"
   ],
   "strings": {
+    "export_html.settings.window_error": {
+      "source": "Could not restore or remember the window position. The previous saved position has been preserved.",
+      "component": "export-html.settings",
+      "resourceId": "IDS_PLUGIN_WINDOW_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not restore or remember the window position. The previous saved position has been preserved.",
+        "ru-RU": "Не удалось восстановить или запомнить положение окна. Прежнее сохранённое положение не изменено.",
+        "uk-UA": "Не вдалося відновити або запам’ятати положення вікна. Попереднє збережене положення не змінено.",
+        "de-DE": "Die Fensterposition konnte nicht wiederhergestellt oder gespeichert werden. Die zuvor gespeicherte Position bleibt erhalten.",
+        "fr-FR": "Impossible de restaurer ou de mémoriser la position de la fenêtre. La position précédemment enregistrée est conservée.",
+        "es-ES": "No se pudo restaurar o guardar la posición de la ventana. Se conserva la posición guardada anteriormente.",
+        "it-IT": "Impossibile ripristinare o memorizzare la posizione della finestra. La posizione salvata in precedenza è stata mantenuta.",
+        "pl-PL": "Nie można przywrócić ani zapamiętać położenia okna. Poprzednio zapisane położenie nie zostało zmienione.",
+        "pt-PT": "Não foi possível restaurar ou guardar a posição da janela. A posição anteriormente guardada foi mantida.",
+        "nl-NL": "De vensterpositie kon niet worden hersteld of opgeslagen. De eerder opgeslagen positie blijft behouden.",
+        "cs-CZ": "Polohu okna se nepodařilo obnovit nebo uložit. Dříve uložená poloha zůstala zachována.",
+        "bg-BG": "Положението на прозореца не може да бъде възстановено или запомнено. Предишното запазено положение не е променено."
+      }
+    },
+    "export_docx.settings.window_error": {
+      "source": "Could not restore or remember the window position. The previous saved position has been preserved.",
+      "component": "export-docx.settings",
+      "resourceId": "IDS_PLUGIN_WINDOW_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not restore or remember the window position. The previous saved position has been preserved.",
+        "ru-RU": "Не удалось восстановить или запомнить положение окна. Прежнее сохранённое положение не изменено.",
+        "uk-UA": "Не вдалося відновити або запам’ятати положення вікна. Попереднє збережене положення не змінено.",
+        "de-DE": "Die Fensterposition konnte nicht wiederhergestellt oder gespeichert werden. Die zuvor gespeicherte Position bleibt erhalten.",
+        "fr-FR": "Impossible de restaurer ou de mémoriser la position de la fenêtre. La position précédemment enregistrée est conservée.",
+        "es-ES": "No se pudo restaurar o guardar la posición de la ventana. Se conserva la posición guardada anteriormente.",
+        "it-IT": "Impossibile ripristinare o memorizzare la posizione della finestra. La posizione salvata in precedenza è stata mantenuta.",
+        "pl-PL": "Nie można przywrócić ani zapamiętać położenia okna. Poprzednio zapisane położenie nie zostało zmienione.",
+        "pt-PT": "Não foi possível restaurar ou guardar a posição da janela. A posição anteriormente guardada foi mantida.",
+        "nl-NL": "De vensterpositie kon niet worden hersteld of opgeslagen. De eerder opgeslagen positie blijft behouden.",
+        "cs-CZ": "Polohu okna se nepodařilo obnovit nebo uložit. Dříve uložená poloha zůstala zachována.",
+        "bg-BG": "Положението на прозореца не може да бъде възстановено или запомнено. Предишното запазено положение не е променено."
+      }
+    },
+    "import_epub.settings.window_error": {
+      "source": "Could not restore or remember the window position. The previous saved position has been preserved.",
+      "component": "import-epub.settings",
+      "resourceId": "IDS_PLUGIN_WINDOW_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not restore or remember the window position. The previous saved position has been preserved.",
+        "ru-RU": "Не удалось восстановить или запомнить положение окна. Прежнее сохранённое положение не изменено.",
+        "uk-UA": "Не вдалося відновити або запам’ятати положення вікна. Попереднє збережене положення не змінено.",
+        "de-DE": "Die Fensterposition konnte nicht wiederhergestellt oder gespeichert werden. Die zuvor gespeicherte Position bleibt erhalten.",
+        "fr-FR": "Impossible de restaurer ou de mémoriser la position de la fenêtre. La position précédemment enregistrée est conservée.",
+        "es-ES": "No se pudo restaurar o guardar la posición de la ventana. Se conserva la posición guardada anteriormente.",
+        "it-IT": "Impossibile ripristinare o memorizzare la posizione della finestra. La posizione salvata in precedenza è stata mantenuta.",
+        "pl-PL": "Nie można przywrócić ani zapamiętać położenia okna. Poprzednio zapisane położenie nie zostało zmienione.",
+        "pt-PT": "Não foi possível restaurar ou guardar a posição da janela. A posição anteriormente guardada foi mantida.",
+        "nl-NL": "De vensterpositie kon niet worden hersteld of opgeslagen. De eerder opgeslagen positie blijft behouden.",
+        "cs-CZ": "Polohu okna se nepodařilo obnovit nebo uložit. Dříve uložená poloha zůstala zachována.",
+        "bg-BG": "Положението на прозореца не може да бъде възстановено или запомнено. Предишното запазено положение не е променено."
+      }
+    },
+    "export_epub.settings.window_error": {
+      "source": "Could not restore or remember the window position. The previous saved position has been preserved.",
+      "component": "export-epub.settings",
+      "resourceId": "IDS_PLUGIN_WINDOW_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not restore or remember the window position. The previous saved position has been preserved.",
+        "ru-RU": "Не удалось восстановить или запомнить положение окна. Прежнее сохранённое положение не изменено.",
+        "uk-UA": "Не вдалося відновити або запам’ятати положення вікна. Попереднє збережене положення не змінено.",
+        "de-DE": "Die Fensterposition konnte nicht wiederhergestellt oder gespeichert werden. Die zuvor gespeicherte Position bleibt erhalten.",
+        "fr-FR": "Impossible de restaurer ou de mémoriser la position de la fenêtre. La position précédemment enregistrée est conservée.",
+        "es-ES": "No se pudo restaurar o guardar la posición de la ventana. Se conserva la posición guardada anteriormente.",
+        "it-IT": "Impossibile ripristinare o memorizzare la posizione della finestra. La posizione salvata in precedenza è stata mantenuta.",
+        "pl-PL": "Nie można przywrócić ani zapamiętać położenia okna. Poprzednio zapisane położenie nie zostało zmienione.",
+        "pt-PT": "Não foi possível restaurar ou guardar a posição da janela. A posição anteriormente guardada foi mantida.",
+        "nl-NL": "De vensterpositie kon niet worden hersteld of opgeslagen. De eerder opgeslagen positie blijft behouden.",
+        "cs-CZ": "Polohu okna se nepodařilo obnovit nebo uložit. Dříve uložená poloha zůstala zachována.",
+        "bg-BG": "Положението на прозореца не може да бъде възстановено или запомнено. Предишното запазено положение не е променено."
+      }
+    },
+    "export_html.settings.save_error": {
+      "source": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+      "component": "export-html.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+        "ru-RU": "Не удалось сохранить настройки плагина. Введённые значения остаются в этом окне. Устраните причину ошибки и повторите сохранение.",
+        "uk-UA": "Не вдалося зберегти налаштування плагіна. Введені значення залишаються в цьому вікні. Усуньте причину помилки та повторіть збереження.",
+        "de-DE": "Die Plug-in-Einstellungen konnten nicht gespeichert werden. Ihre Eingaben bleiben in diesem Fenster erhalten. Beheben Sie das Problem und versuchen Sie es erneut.",
+        "fr-FR": "Impossible d’enregistrer les paramètres du module. Vos modifications restent dans cette fenêtre. Corrigez le problème et réessayez.",
+        "es-ES": "No se pudieron guardar los ajustes del complemento. Los cambios permanecen en esta ventana. Solucione el problema e inténtelo de nuevo.",
+        "it-IT": "Impossibile salvare le impostazioni del plug-in. Le modifiche restano in questa finestra. Risolvere il problema e riprovare.",
+        "pl-PL": "Nie można zapisać ustawień wtyczki. Zmiany pozostają w tym oknie. Usuń przyczynę błędu i spróbuj ponownie.",
+        "pt-PT": "Não foi possível guardar as definições do módulo. As alterações permanecem nesta janela. Corrija o problema e tente novamente.",
+        "nl-NL": "De plug-ininstellingen konden niet worden opgeslagen. Uw wijzigingen blijven in dit venster behouden. Los het probleem op en probeer het opnieuw.",
+        "cs-CZ": "Nastavení modulu nelze uložit. Změny zůstávají v tomto okně. Odstraňte příčinu chyby a zkuste to znovu.",
+        "bg-BG": "Настройките на приставката не могат да бъдат запазени. Промените остават в този прозорец. Отстранете причината и опитайте отново."
+      }
+    },
+    "export_html.settings.conflict": {
+      "source": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+      "component": "export-html.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_CONFLICT",
+      "translations": {
+        "en-US": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+        "ru-RU": "Эти настройки изменены другим экземпляром программы. Более новый профиль не перезаписан. Введённые значения остаются в окне. Для загрузки актуального профиля нажмите «Отмена» и откройте настройки заново.",
+        "uk-UA": "Ці налаштування змінено іншим екземпляром програми. Новіший профіль не перезаписано. Введені значення залишаються у вікні. Щоб завантажити актуальний профіль, натисніть «Скасувати» та відкрийте налаштування знову.",
+        "de-DE": "Eine andere Instanz hat diese Einstellungen geändert. Das neuere Profil wurde nicht überschrieben. Ihre Eingaben bleiben im Fenster erhalten. Klicken Sie auf Abbrechen und öffnen Sie die Einstellungen erneut, um das aktuelle Profil zu laden.",
+        "fr-FR": "Une autre instance a modifié ces paramètres. Le profil plus récent n’a pas été écrasé. Vos modifications restent dans la fenêtre. Annulez puis rouvrez les paramètres pour charger le profil actuel.",
+        "es-ES": "Otra instancia ha cambiado estos ajustes. No se ha sobrescrito el perfil más reciente. Los cambios permanecen en la ventana. Cancele y vuelva a abrir los ajustes para cargar el perfil actual.",
+        "it-IT": "Un’altra istanza ha modificato queste impostazioni. Il profilo più recente non è stato sovrascritto. Le modifiche restano nella finestra. Annullare e riaprire le impostazioni per caricare il profilo aggiornato.",
+        "pl-PL": "Inna instancja zmieniła te ustawienia. Nowszy profil nie został nadpisany. Zmiany pozostają w oknie. Kliknij Anuluj i otwórz ustawienia ponownie, aby wczytać aktualny profil.",
+        "pt-PT": "Outra instância alterou estas definições. O perfil mais recente não foi substituído. As alterações permanecem na janela. Cancele e reabra as definições para carregar o perfil atual.",
+        "nl-NL": "Een andere instantie heeft deze instellingen gewijzigd. Het nieuwere profiel is niet overschreven. Uw wijzigingen blijven in het venster behouden. Annuleer en open de instellingen opnieuw om het actuele profiel te laden.",
+        "cs-CZ": "Jiná instance změnila toto nastavení. Novější profil nebyl přepsán. Změny zůstávají v okně. Klikněte na Storno a znovu otevřete nastavení, aby se načetl aktuální profil.",
+        "bg-BG": "Друг екземпляр е променил тези настройки. По-новият профил не е презаписан. Промените остават в прозореца. Натиснете „Отказ“ и отворете настройките отново, за да заредите актуалния профил."
+      }
+    },
+    "export_docx.settings.save_error": {
+      "source": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+      "component": "export-docx.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+        "ru-RU": "Не удалось сохранить настройки плагина. Введённые значения остаются в этом окне. Устраните причину ошибки и повторите сохранение.",
+        "uk-UA": "Не вдалося зберегти налаштування плагіна. Введені значення залишаються в цьому вікні. Усуньте причину помилки та повторіть збереження.",
+        "de-DE": "Die Plug-in-Einstellungen konnten nicht gespeichert werden. Ihre Eingaben bleiben in diesem Fenster erhalten. Beheben Sie das Problem und versuchen Sie es erneut.",
+        "fr-FR": "Impossible d’enregistrer les paramètres du module. Vos modifications restent dans cette fenêtre. Corrigez le problème et réessayez.",
+        "es-ES": "No se pudieron guardar los ajustes del complemento. Los cambios permanecen en esta ventana. Solucione el problema e inténtelo de nuevo.",
+        "it-IT": "Impossibile salvare le impostazioni del plug-in. Le modifiche restano in questa finestra. Risolvere il problema e riprovare.",
+        "pl-PL": "Nie można zapisać ustawień wtyczki. Zmiany pozostają w tym oknie. Usuń przyczynę błędu i spróbuj ponownie.",
+        "pt-PT": "Não foi possível guardar as definições do módulo. As alterações permanecem nesta janela. Corrija o problema e tente novamente.",
+        "nl-NL": "De plug-ininstellingen konden niet worden opgeslagen. Uw wijzigingen blijven in dit venster behouden. Los het probleem op en probeer het opnieuw.",
+        "cs-CZ": "Nastavení modulu nelze uložit. Změny zůstávají v tomto okně. Odstraňte příčinu chyby a zkuste to znovu.",
+        "bg-BG": "Настройките на приставката не могат да бъдат запазени. Промените остават в този прозорец. Отстранете причината и опитайте отново."
+      }
+    },
+    "export_docx.settings.conflict": {
+      "source": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+      "component": "export-docx.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_CONFLICT",
+      "translations": {
+        "en-US": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+        "ru-RU": "Эти настройки изменены другим экземпляром программы. Более новый профиль не перезаписан. Введённые значения остаются в окне. Для загрузки актуального профиля нажмите «Отмена» и откройте настройки заново.",
+        "uk-UA": "Ці налаштування змінено іншим екземпляром програми. Новіший профіль не перезаписано. Введені значення залишаються у вікні. Щоб завантажити актуальний профіль, натисніть «Скасувати» та відкрийте налаштування знову.",
+        "de-DE": "Eine andere Instanz hat diese Einstellungen geändert. Das neuere Profil wurde nicht überschrieben. Ihre Eingaben bleiben im Fenster erhalten. Klicken Sie auf Abbrechen und öffnen Sie die Einstellungen erneut, um das aktuelle Profil zu laden.",
+        "fr-FR": "Une autre instance a modifié ces paramètres. Le profil plus récent n’a pas été écrasé. Vos modifications restent dans la fenêtre. Annulez puis rouvrez les paramètres pour charger le profil actuel.",
+        "es-ES": "Otra instancia ha cambiado estos ajustes. No se ha sobrescrito el perfil más reciente. Los cambios permanecen en la ventana. Cancele y vuelva a abrir los ajustes para cargar el perfil actual.",
+        "it-IT": "Un’altra istanza ha modificato queste impostazioni. Il profilo più recente non è stato sovrascritto. Le modifiche restano nella finestra. Annullare e riaprire le impostazioni per caricare il profilo aggiornato.",
+        "pl-PL": "Inna instancja zmieniła te ustawienia. Nowszy profil nie został nadpisany. Zmiany pozostają w oknie. Kliknij Anuluj i otwórz ustawienia ponownie, aby wczytać aktualny profil.",
+        "pt-PT": "Outra instância alterou estas definições. O perfil mais recente não foi substituído. As alterações permanecem na janela. Cancele e reabra as definições para carregar o perfil atual.",
+        "nl-NL": "Een andere instantie heeft deze instellingen gewijzigd. Het nieuwere profiel is niet overschreven. Uw wijzigingen blijven in het venster behouden. Annuleer en open de instellingen opnieuw om het actuele profiel te laden.",
+        "cs-CZ": "Jiná instance změnila toto nastavení. Novější profil nebyl přepsán. Změny zůstávají v okně. Klikněte na Storno a znovu otevřete nastavení, aby se načetl aktuální profil.",
+        "bg-BG": "Друг екземпляр е променил тези настройки. По-новият профил не е презаписан. Промените остават в прозореца. Натиснете „Отказ“ и отворете настройките отново, за да заредите актуалния профил."
+      }
+    },
+    "import_epub.settings.save_error": {
+      "source": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+      "component": "import-epub.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+        "ru-RU": "Не удалось сохранить настройки плагина. Введённые значения остаются в этом окне. Устраните причину ошибки и повторите сохранение.",
+        "uk-UA": "Не вдалося зберегти налаштування плагіна. Введені значення залишаються в цьому вікні. Усуньте причину помилки та повторіть збереження.",
+        "de-DE": "Die Plug-in-Einstellungen konnten nicht gespeichert werden. Ihre Eingaben bleiben in diesem Fenster erhalten. Beheben Sie das Problem und versuchen Sie es erneut.",
+        "fr-FR": "Impossible d’enregistrer les paramètres du module. Vos modifications restent dans cette fenêtre. Corrigez le problème et réessayez.",
+        "es-ES": "No se pudieron guardar los ajustes del complemento. Los cambios permanecen en esta ventana. Solucione el problema e inténtelo de nuevo.",
+        "it-IT": "Impossibile salvare le impostazioni del plug-in. Le modifiche restano in questa finestra. Risolvere il problema e riprovare.",
+        "pl-PL": "Nie można zapisać ustawień wtyczki. Zmiany pozostają w tym oknie. Usuń przyczynę błędu i spróbuj ponownie.",
+        "pt-PT": "Não foi possível guardar as definições do módulo. As alterações permanecem nesta janela. Corrija o problema e tente novamente.",
+        "nl-NL": "De plug-ininstellingen konden niet worden opgeslagen. Uw wijzigingen blijven in dit venster behouden. Los het probleem op en probeer het opnieuw.",
+        "cs-CZ": "Nastavení modulu nelze uložit. Změny zůstávají v tomto okně. Odstraňte příčinu chyby a zkuste to znovu.",
+        "bg-BG": "Настройките на приставката не могат да бъдат запазени. Промените остават в този прозорец. Отстранете причината и опитайте отново."
+      }
+    },
+    "import_epub.settings.conflict": {
+      "source": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+      "component": "import-epub.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_CONFLICT",
+      "translations": {
+        "en-US": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+        "ru-RU": "Эти настройки изменены другим экземпляром программы. Более новый профиль не перезаписан. Введённые значения остаются в окне. Для загрузки актуального профиля нажмите «Отмена» и откройте настройки заново.",
+        "uk-UA": "Ці налаштування змінено іншим екземпляром програми. Новіший профіль не перезаписано. Введені значення залишаються у вікні. Щоб завантажити актуальний профіль, натисніть «Скасувати» та відкрийте налаштування знову.",
+        "de-DE": "Eine andere Instanz hat diese Einstellungen geändert. Das neuere Profil wurde nicht überschrieben. Ihre Eingaben bleiben im Fenster erhalten. Klicken Sie auf Abbrechen und öffnen Sie die Einstellungen erneut, um das aktuelle Profil zu laden.",
+        "fr-FR": "Une autre instance a modifié ces paramètres. Le profil plus récent n’a pas été écrasé. Vos modifications restent dans la fenêtre. Annulez puis rouvrez les paramètres pour charger le profil actuel.",
+        "es-ES": "Otra instancia ha cambiado estos ajustes. No se ha sobrescrito el perfil más reciente. Los cambios permanecen en la ventana. Cancele y vuelva a abrir los ajustes para cargar el perfil actual.",
+        "it-IT": "Un’altra istanza ha modificato queste impostazioni. Il profilo più recente non è stato sovrascritto. Le modifiche restano nella finestra. Annullare e riaprire le impostazioni per caricare il profilo aggiornato.",
+        "pl-PL": "Inna instancja zmieniła te ustawienia. Nowszy profil nie został nadpisany. Zmiany pozostają w oknie. Kliknij Anuluj i otwórz ustawienia ponownie, aby wczytać aktualny profil.",
+        "pt-PT": "Outra instância alterou estas definições. O perfil mais recente não foi substituído. As alterações permanecem na janela. Cancele e reabra as definições para carregar o perfil atual.",
+        "nl-NL": "Een andere instantie heeft deze instellingen gewijzigd. Het nieuwere profiel is niet overschreven. Uw wijzigingen blijven in het venster behouden. Annuleer en open de instellingen opnieuw om het actuele profiel te laden.",
+        "cs-CZ": "Jiná instance změnila toto nastavení. Novější profil nebyl přepsán. Změny zůstávají v okně. Klikněte na Storno a znovu otevřete nastavení, aby se načetl aktuální profil.",
+        "bg-BG": "Друг екземпляр е променил тези настройки. По-новият профил не е презаписан. Промените остават в прозореца. Натиснете „Отказ“ и отворете настройките отново, за да заредите актуалния профил."
+      }
+    },
+    "export_epub.settings.save_error": {
+      "source": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+      "component": "export-epub.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_SAVE_ERROR",
+      "translations": {
+        "en-US": "Could not save plug-in settings. Your changes remain in this window. Fix the problem and try again.",
+        "ru-RU": "Не удалось сохранить настройки плагина. Введённые значения остаются в этом окне. Устраните причину ошибки и повторите сохранение.",
+        "uk-UA": "Не вдалося зберегти налаштування плагіна. Введені значення залишаються в цьому вікні. Усуньте причину помилки та повторіть збереження.",
+        "de-DE": "Die Plug-in-Einstellungen konnten nicht gespeichert werden. Ihre Eingaben bleiben in diesem Fenster erhalten. Beheben Sie das Problem und versuchen Sie es erneut.",
+        "fr-FR": "Impossible d’enregistrer les paramètres du module. Vos modifications restent dans cette fenêtre. Corrigez le problème et réessayez.",
+        "es-ES": "No se pudieron guardar los ajustes del complemento. Los cambios permanecen en esta ventana. Solucione el problema e inténtelo de nuevo.",
+        "it-IT": "Impossibile salvare le impostazioni del plug-in. Le modifiche restano in questa finestra. Risolvere il problema e riprovare.",
+        "pl-PL": "Nie można zapisać ustawień wtyczki. Zmiany pozostają w tym oknie. Usuń przyczynę błędu i spróbuj ponownie.",
+        "pt-PT": "Não foi possível guardar as definições do módulo. As alterações permanecem nesta janela. Corrija o problema e tente novamente.",
+        "nl-NL": "De plug-ininstellingen konden niet worden opgeslagen. Uw wijzigingen blijven in dit venster behouden. Los het probleem op en probeer het opnieuw.",
+        "cs-CZ": "Nastavení modulu nelze uložit. Změny zůstávají v tomto okně. Odstraňte příčinu chyby a zkuste to znovu.",
+        "bg-BG": "Настройките на приставката не могат да бъдат запазени. Промените остават в този прозорец. Отстранете причината и опитайте отново."
+      }
+    },
+    "export_epub.settings.conflict": {
+      "source": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+      "component": "export-epub.settings",
+      "resourceId": "IDS_PLUGIN_SETTINGS_CONFLICT",
+      "translations": {
+        "en-US": "Another instance changed these settings. The newer profile was not overwritten. Your changes remain in this window. Cancel and reopen the settings to load the latest profile.",
+        "ru-RU": "Эти настройки изменены другим экземпляром программы. Более новый профиль не перезаписан. Введённые значения остаются в окне. Для загрузки актуального профиля нажмите «Отмена» и откройте настройки заново.",
+        "uk-UA": "Ці налаштування змінено іншим екземпляром програми. Новіший профіль не перезаписано. Введені значення залишаються у вікні. Щоб завантажити актуальний профіль, натисніть «Скасувати» та відкрийте налаштування знову.",
+        "de-DE": "Eine andere Instanz hat diese Einstellungen geändert. Das neuere Profil wurde nicht überschrieben. Ihre Eingaben bleiben im Fenster erhalten. Klicken Sie auf Abbrechen und öffnen Sie die Einstellungen erneut, um das aktuelle Profil zu laden.",
+        "fr-FR": "Une autre instance a modifié ces paramètres. Le profil plus récent n’a pas été écrasé. Vos modifications restent dans la fenêtre. Annulez puis rouvrez les paramètres pour charger le profil actuel.",
+        "es-ES": "Otra instancia ha cambiado estos ajustes. No se ha sobrescrito el perfil más reciente. Los cambios permanecen en la ventana. Cancele y vuelva a abrir los ajustes para cargar el perfil actual.",
+        "it-IT": "Un’altra istanza ha modificato queste impostazioni. Il profilo più recente non è stato sovrascritto. Le modifiche restano nella finestra. Annullare e riaprire le impostazioni per caricare il profilo aggiornato.",
+        "pl-PL": "Inna instancja zmieniła te ustawienia. Nowszy profil nie został nadpisany. Zmiany pozostają w oknie. Kliknij Anuluj i otwórz ustawienia ponownie, aby wczytać aktualny profil.",
+        "pt-PT": "Outra instância alterou estas definições. O perfil mais recente não foi substituído. As alterações permanecem na janela. Cancele e reabra as definições para carregar o perfil atual.",
+        "nl-NL": "Een andere instantie heeft deze instellingen gewijzigd. Het nieuwere profiel is niet overschreven. Uw wijzigingen blijven in het venster behouden. Annuleer en open de instellingen opnieuw om het actuele profiel te laden.",
+        "cs-CZ": "Jiná instance změnila toto nastavení. Novější profil nebyl přepsán. Změny zůstávají v okně. Klikněte na Storno a znovu otevřete nastavení, aby se načetl aktuální profil.",
+        "bg-BG": "Друг екземпляр е променил тези настройки. По-новият профил не е презаписан. Промените остават в прозореца. Натиснете „Отказ“ и отворете настройките отново, за да заредите актуалния профил."
+      }
+    },
+    "export_epub.options.tab.book": {
+      "source": "Book",
+      "component": "export-epub.options",
+      "resourceId": "IDS_OPTIONS_TAB_BOOK",
+      "translations": {
+        "en-US": "Book",
+        "ru-RU": "Книга",
+        "uk-UA": "Книга",
+        "de-DE": "Buch",
+        "fr-FR": "Livre",
+        "es-ES": "Libro",
+        "it-IT": "Libro",
+        "pl-PL": "Książka",
+        "pt-PT": "Livro",
+        "nl-NL": "Boek",
+        "cs-CZ": "Kniha",
+        "bg-BG": "Книга"
+      }
+    },
+    "export_epub.options.tab.appearance": {
+      "source": "Appearance",
+      "component": "export-epub.options",
+      "resourceId": "IDS_OPTIONS_TAB_APPEARANCE",
+      "translations": {
+        "en-US": "Appearance",
+        "ru-RU": "Оформление",
+        "uk-UA": "Оформлення",
+        "de-DE": "Darstellung",
+        "fr-FR": "Présentation",
+        "es-ES": "Presentación",
+        "it-IT": "Aspetto",
+        "pl-PL": "Wygląd",
+        "pt-PT": "Apresentação",
+        "nl-NL": "Vormgeving",
+        "cs-CZ": "Vzhled",
+        "bg-BG": "Оформление"
+      }
+    },
+    "export_epub.options.tab.navigation": {
+      "source": "Navigation",
+      "component": "export-epub.options",
+      "resourceId": "IDS_OPTIONS_TAB_NAVIGATION",
+      "translations": {
+        "en-US": "Navigation",
+        "ru-RU": "Навигация",
+        "uk-UA": "Навігація",
+        "de-DE": "Navigation",
+        "fr-FR": "Navigation",
+        "es-ES": "Navegación",
+        "it-IT": "Navigazione",
+        "pl-PL": "Nawigacja",
+        "pt-PT": "Navegação",
+        "nl-NL": "Navigatie",
+        "cs-CZ": "Navigace",
+        "bg-BG": "Навигация"
+      }
+    },
+    "export_epub.options.tab.advanced": {
+      "source": "Advanced",
+      "component": "export-epub.options",
+      "resourceId": "IDS_OPTIONS_TAB_ADVANCED",
+      "translations": {
+        "en-US": "Advanced",
+        "ru-RU": "Дополнительно",
+        "uk-UA": "Додатково",
+        "de-DE": "Erweitert",
+        "fr-FR": "Options avancées",
+        "es-ES": "Avanzado",
+        "it-IT": "Avanzate",
+        "pl-PL": "Zaawansowane",
+        "pt-PT": "Avançadas",
+        "nl-NL": "Geavanceerd",
+        "cs-CZ": "Pokročilé",
+        "bg-BG": "Допълнително"
+      }
+    },
     "export_epub.runtime.save_file_filter": {
       "source": "EPUB 3 (*.epub)|*.epub|EPUB 2 (*.epub)|*.epub|All files (*.*)|*.*|",
       "component": "export-epub.runtime",
@@ -5332,22 +5636,22 @@
       }
     },
     "import_epub.options.button_ok": {
-      "source": "OK",
+      "source": "Import",
       "component": "import-epub.options",
       "resourceId": "IDS_IMPORT_OPTIONS_BUTTON_OK",
       "translations": {
-        "en-US": "OK",
-        "ru-RU": "ОК",
-        "uk-UA": "OK",
-        "de-DE": "OK",
-        "fr-FR": "OK",
-        "es-ES": "Aceptar",
-        "it-IT": "OK",
-        "pl-PL": "OK",
-        "pt-PT": "OK",
-        "nl-NL": "OK",
-        "cs-CZ": "OK",
-        "bg-BG": "OK"
+        "en-US": "Import",
+        "ru-RU": "Импорт",
+        "uk-UA": "Імпорт",
+        "de-DE": "Importieren",
+        "fr-FR": "Importer",
+        "es-ES": "Importar",
+        "it-IT": "Importa",
+        "pl-PL": "Importuj",
+        "pt-PT": "Importar",
+        "nl-NL": "Importeren",
+        "cs-CZ": "Importovat",
+        "bg-BG": "Импорт"
       }
     },
     "import_epub.options.button_cancel": {

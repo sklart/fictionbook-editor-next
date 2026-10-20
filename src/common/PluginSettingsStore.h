@@ -11,6 +11,7 @@
 // Value-only settings shared by the four bundled plug-ins. Opening a store
 // never creates a registry key or a file; writes require an explicit Commit.
 namespace FbePluginSettings {
+struct Revision { std::wstring path; std::string bytes; };
 inline bool RuntimeDialogProbeRequested() {
     wchar_t mode[2] = {}, probe[2] = {};
     return ::GetEnvironmentVariableW(L"FBE_NEXT_TEST_MODE", mode, _countof(mode)) == 1 && mode[0] == L'1' &&
@@ -150,6 +151,13 @@ public:
         if(!Parse(text)) error = HRESULT_FROM_WIN32(ERROR_INVALID_DATA);
     }
     HRESULT Error() const { return error; }
+    Revision CaptureRevision() const { return {path, original}; }
+    void ExpectRevision(const Revision* revision) {
+        if(portable && revision) {
+            if(revision->path != path) { error = E_INVALIDARG; return; }
+            original = revision->bytes;
+        }
+    }
     const std::wstring& Path() const { return path; }
     LONG QueryDWORDValue(LPCWSTR name, DWORD& value) {
         if(!portable) return registry.QueryDWORDValue(name, value);
@@ -225,11 +233,13 @@ public:
     }
 };
 
-inline bool ShowSaveError(HWND owner, HRESULT hr) {
+inline bool ShowSaveError(HWND owner, HRESULT hr, LPCWSTR failure, LPCWSTR conflict) {
     if(SUCCEEDED(hr)) return false;
     wchar_t message[512] = {};
     ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, static_cast<DWORD>(hr), 0, message, _countof(message), NULL);
-    CStringW text; text.Format(L"Could not save plug-in settings (0x%08lX).\n%s", static_cast<unsigned long>(hr), message);
+    CStringW text;
+    text.Format(L"%s\n\n0x%08lX\n%s", hr == HRESULT_FROM_WIN32(ERROR_REVISION_MISMATCH) ? conflict : failure,
+        static_cast<unsigned long>(hr), message);
     ::MessageBoxW(owner, text, L"FBE Next", MB_OK | MB_ICONERROR);
     return true;
 }

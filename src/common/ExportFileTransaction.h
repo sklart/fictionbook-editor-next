@@ -67,11 +67,25 @@ public:
             if (file.existed) { const HRESULT backup = Temporary(file.target, file.backup); if (FAILED(backup)) return backup; }
         }
         for (auto& file : files) {
-            const BOOL replaced = file.existed
-                ? ::ReplaceFileW(file.target.c_str(), file.temporary.c_str(), file.backup.c_str(), 0, NULL, NULL)
-                : ::MoveFileExW(file.temporary.c_str(), file.target.c_str(), MOVEFILE_WRITE_THROUGH);
+            BOOL replaced = FALSE;
+            DWORD error = ERROR_SUCCESS;
+            for (unsigned attempt = 0; attempt < 4; ++attempt) {
+                replaced = file.existed
+                    ? ::ReplaceFileW(file.target.c_str(), file.temporary.c_str(), file.backup.c_str(), 0, NULL, NULL)
+                    : ::MoveFileExW(file.temporary.c_str(), file.target.c_str(), MOVEFILE_WRITE_THROUGH);
+                if (replaced) break;
+                error = ::GetLastError();
+                // This failure retains both original names. Retry only that
+                // unchanged state, for at most 70 ms; partial moves roll back.
+                if (!file.existed || error != ERROR_UNABLE_TO_REMOVE_REPLACED || attempt == 3) break;
+                const DWORD target = ::GetFileAttributesW(file.target.c_str());
+                const DWORD temporary = ::GetFileAttributesW(file.temporary.c_str());
+                if (target == INVALID_FILE_ATTRIBUTES || temporary == INVALID_FILE_ATTRIBUTES ||
+                    (target & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) ||
+                    (temporary & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) break;
+                ::Sleep(10u << attempt);
+            }
             if (!replaced) {
-                const DWORD error = ::GetLastError();
                 // ReplaceFile can fail after moving the original to the backup.
                 // Mark that state before rollback so cleanup cannot erase it.
                 if (file.existed && error == ERROR_UNABLE_TO_MOVE_REPLACEMENT_2) file.applied = true;

@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "../common/PluginSettingsStore.h"
+#include "../common/PluginOptionsTabs.h"
+#include "../common/PluginWindowPlacement.h"
 #include "ImportOptionsDialog.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
@@ -36,6 +38,7 @@ namespace
         IDC_OPT_LOG_ON_WARNINGS,
         IDC_OPT_SAVE_INTERMEDIATE_ON_ERROR,
         IDC_OPT_KEEP_TEMP,
+        IDC_SVG_LABEL = 2100,
         IDC_SVG_MODE = 2101,
         IDC_DEFAULTS = 2201,
         IDC_IMPORT = IDOK,
@@ -182,12 +185,12 @@ namespace
     {
         for (int i = 0; i < static_cast<int>(_countof(kChecks)); ++i)
         {
-            HWND chk = GetDlgItem(hwnd, kChecks[i].id);
+            HWND chk = FbePluginUi::FindControl(hwnd, kChecks[i].id);
             if (chk)
                 SendMessageW(chk, BM_SETCHECK, options.*(kChecks[i].field) ? BST_CHECKED : BST_UNCHECKED, 0);
         }
 
-        HWND combo = GetDlgItem(hwnd, IDC_SVG_MODE);
+        HWND combo = FbePluginUi::FindControl(hwnd, IDC_SVG_MODE);
         if (combo)
         {
             int mode = options.svgConversionMode;
@@ -232,12 +235,14 @@ namespace
         OptionsWindow(HWND owner, EpubImportOptions& options)
             : m_owner(owner), m_options(options), m_originalOptions(options), m_hwnd(nullptr), m_tooltip(nullptr), m_done(false), m_result(false),
               m_unexpectedDestroy(false),
-              m_dpi(WindowDpi(owner)), m_font(nullptr), m_contentHeight(0), m_scrollX(0), m_scrollY(0)
+              m_dpi(WindowDpi(owner)), m_font(nullptr)
         {
         }
 
         ImportOptionsDialogResult DoModal()
         {
+            LoadImportOptions(m_options, &m_revision);
+            m_originalOptions = m_options;
             INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_WIN95_CLASSES | ICC_STANDARD_CLASSES };
             InitCommonControlsEx(&icc);
 
@@ -250,8 +255,8 @@ namespace
             wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
             RegisterClassW(&wc);
 
-            const DWORD style = WS_CAPTION | WS_SYSMENU | WS_POPUP | WS_THICKFRAME | WS_VSCROLL | WS_HSCROLL;
-            RECT rc = { 0, 0, Scale(700, m_dpi), Scale(920, m_dpi) };
+            const DWORD style = WS_CAPTION | WS_SYSMENU | WS_POPUP | WS_THICKFRAME | WS_CLIPCHILDREN;
+            RECT rc = { 0, 0, Scale(780, m_dpi), Scale(500, m_dpi) };
             AdjustDialogRect(rc, style, WS_EX_DLGMODALFRAME, m_dpi);
             MONITORINFO monitor = { sizeof(monitor) };
             const HWND monitorWindow = m_owner ? m_owner : GetDesktopWindow();
@@ -278,6 +283,8 @@ namespace
             if (!m_hwnd)
                 return ImportOptionsDialogResult::Error;
 
+            FbePluginUi::ReportWindowPlacement(m_hwnd, L"ImportEPUB", false, LoadText(IDS_PLUGIN_WINDOW_SAVE_ERROR));
+
             if (m_owner)
                 EnableWindow(m_owner, FALSE);
 
@@ -288,7 +295,7 @@ namespace
             BOOL messageResult = 1;
             while (!m_done && (messageResult = GetMessageW(&msg, nullptr, 0, 0)) > 0)
             {
-                if (!IsDialogMessageW(m_hwnd, &msg))
+                if (!m_tabs.ProcessMessage(msg) && !IsDialogMessageW(m_hwnd, &msg))
                 {
                     TranslateMessage(&msg);
                     DispatchMessageW(&msg);
@@ -336,10 +343,11 @@ namespace
             switch (msg)
             {
             case WM_CREATE:
+                ::SetPropW(hwnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
                 m_hwnd = hwnd;
                 CreateControls(hwnd);
                 if (!ControlsReady()) return -1;
-                CaptureControls();
+                if (!CreateTabs()) return -1;
                 UpdateFont();
                 Layout();
                 return 0;
@@ -387,16 +395,8 @@ namespace
                 Layout();
                 return 0;
 
-            case WM_VSCROLL:
-                if (!lp) { Scroll(false, wp); return 0; }
-                break;
-            case WM_HSCROLL:
-                if (!lp) { Scroll(true, wp); return 0; }
-                break;
             case WM_MOUSEWHEEL:
-                m_scrollY -= MulDiv(GET_WHEEL_DELTA_WPARAM(wp), Scale(72, m_dpi), WHEEL_DELTA);
-                Layout();
-                return 0;
+                m_tabs.Wheel(wp); return 0;
 
             case WM_COMMAND:
                 if (HIWORD(wp) == BN_CLICKED)
@@ -405,6 +405,7 @@ namespace
                     {
                     case IDC_IMPORT:
                         ReadOptions();
+                        if(FbePluginSettings::ShowSaveError(m_hwnd, SaveImportOptions(m_options, &m_revision), LoadText(IDS_PLUGIN_SETTINGS_SAVE_ERROR), LoadText(IDS_PLUGIN_SETTINGS_CONFLICT))) return 0;
                         Finish(true);
                         return 0;
                     case IDC_DEFAULTS:
@@ -420,6 +421,7 @@ namespace
                 break;
 
             case WM_NOTIFY:
+                if(m_tabs.Notify(lp)) return 0;
                 RevealFocus();
                 break;
 
@@ -429,6 +431,7 @@ namespace
 
             case WM_NCDESTROY:
                 if (!m_done) { m_unexpectedDestroy = true; m_done = true; }
+                m_tabs.Detach();
                 m_hwnd = nullptr;
                 if (m_font) { DeleteObject(m_font); m_font = nullptr; }
                 return DefWindowProcW(hwnd, msg, wp, lp);
@@ -493,7 +496,7 @@ namespace
                 {
                     CStringW svgLabelText = LoadText(IDS_IMPORT_OPTIONS_SVG_LABEL);
                     HWND svgLabel = CreateWindowW(L"STATIC", svgLabelText,
-                        WS_CHILD | WS_VISIBLE, checkX, itemY + 2, 160, 20, hwnd, nullptr, _AtlBaseModule.GetModuleInstance(), nullptr);
+                        WS_CHILD | WS_VISIBLE, checkX, itemY + 2, 160, 20, hwnd, reinterpret_cast<HMENU>(IDC_SVG_LABEL), _AtlBaseModule.GetModuleInstance(), nullptr);
                     SendMessageW(svgLabel, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
                     AddTooltipString(svgLabel, IDS_IMPORT_OPTIONS_TOOLTIP_SVG_LABEL);
 
@@ -526,7 +529,6 @@ namespace
             SendMessageW(hint, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
 
             const int buttonY = y + 36;
-            m_contentHeight = y + 30;
             CStringW defaultsText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_DEFAULTS);
             CStringW okText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_OK);
             CStringW cancelText = LoadText(IDS_IMPORT_OPTIONS_BUTTON_CANCEL);
@@ -542,26 +544,35 @@ namespace
             AddTooltipString(defaults, IDS_IMPORT_OPTIONS_TOOLTIP_DEFAULTS);
         }
 
-        struct ControlPlacement { HWND window; RECT logical; int id; };
 
         bool ControlsReady() const
         {
-            if (!GetDlgItem(m_hwnd, IDC_SVG_MODE) || !GetDlgItem(m_hwnd, IDC_DEFAULTS) ||
-                !GetDlgItem(m_hwnd, IDC_IMPORT) || !GetDlgItem(m_hwnd, IDC_CANCEL)) return false;
+            if (!FbePluginUi::FindControl(m_hwnd, IDC_SVG_MODE) || !FbePluginUi::FindControl(m_hwnd, IDC_DEFAULTS) ||
+                !FbePluginUi::FindControl(m_hwnd, IDC_IMPORT) || !FbePluginUi::FindControl(m_hwnd, IDC_CANCEL)) return false;
             for (const CheckDef& check : kChecks)
-                if (!GetDlgItem(m_hwnd, check.id)) return false;
+                if (!FbePluginUi::FindControl(m_hwnd, check.id)) return false;
             return true;
         }
 
-        void CaptureControls()
+        bool CreateTabs()
         {
-            for (HWND child = GetWindow(m_hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT))
-            {
-                RECT rect = {};
-                GetWindowRect(child, &rect);
-                MapWindowPoints(nullptr, m_hwnd, reinterpret_cast<POINT*>(&rect), 2);
-                m_controls.push_back({ child, rect, GetDlgCtrlID(child) });
+            // Section headings become tab captions; the explanatory hint is
+            // retained as a tooltip instead of competing for page space.
+            for(HWND child = GetWindow(m_hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT))
+                if(GetDlgCtrlID(child) == 0) ShowWindow(child, SW_HIDE);
+            std::vector<std::wstring> labels;
+            for(const GroupDef& group : kGroups) labels.emplace_back(LoadText(group.titleId).GetString());
+            if(!m_tabs.Create(m_hwnd, labels, {IDC_DEFAULTS, IDC_IMPORT, IDC_CANCEL})) return false;
+            std::vector<std::wstring> tips;
+            for(const GroupDef& group : kGroups) tips.emplace_back(LoadText(group.tooltipId).GetString());
+            tips[0] += L"\n"; tips[0] += LoadText(IDS_IMPORT_OPTIONS_HINT).GetString();
+            m_tabs.SetTooltips(m_tooltip, tips);
+            for(int index = 0; index < static_cast<int>(_countof(kGroups)); ++index) {
+                for(int item = 0; item < kGroups[index].count; ++item)
+                    if(!m_tabs.Add(kGroups[index].items[item], index)) return false;
+                if(kGroups[index].hasSvgMode && (!m_tabs.Add(IDC_SVG_LABEL, index) || !m_tabs.Add(IDC_SVG_MODE, index))) return false;
             }
+            return true;
         }
 
         void UpdateFont()
@@ -573,109 +584,14 @@ namespace
             font.lfHeight = MulDiv(font.lfHeight, static_cast<int>(m_dpi), static_cast<int>(systemDpi));
             HFONT updated = CreateFontIndirectW(&font);
             if (!updated) return;
-            for (const ControlPlacement& control : m_controls)
-                SendMessageW(control.window, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
+            m_tabs.SetFont(updated);
             if (m_tooltip) SendMessageW(m_tooltip, WM_SETFONT, reinterpret_cast<WPARAM>(updated), TRUE);
             if (m_font) DeleteObject(m_font);
             m_font = updated;
         }
 
-        void Layout()
-        {
-            if (!m_hwnd || m_controls.empty()) return;
-            RECT client = {};
-            GetClientRect(m_hwnd, &client);
-            auto viewportHeight = [&]() { return max(0, client.bottom - Scale(56, m_dpi)); };
-            ShowScrollBar(m_hwnd, SB_VERT, Scale(m_contentHeight, m_dpi) > viewportHeight());
-            ShowScrollBar(m_hwnd, SB_HORZ, Scale(700, m_dpi) > client.right);
-            GetClientRect(m_hwnd, &client);
-            ShowScrollBar(m_hwnd, SB_VERT, Scale(m_contentHeight, m_dpi) > viewportHeight());
-            ShowScrollBar(m_hwnd, SB_HORZ, Scale(700, m_dpi) > client.right);
-            GetClientRect(m_hwnd, &client);
-            const int availableWidth = max(0, client.right);
-            const int availableHeight = viewportHeight();
-            const int maxX = max(0, Scale(700, m_dpi) - availableWidth);
-            const int maxY = max(0, Scale(m_contentHeight, m_dpi) - availableHeight);
-            m_scrollX = min(max(m_scrollX, 0), maxX);
-            m_scrollY = min(max(m_scrollY, 0), maxY);
-            SCROLLINFO info = { sizeof(info), SIF_RANGE | SIF_PAGE | SIF_POS };
-            info.nMin = 0; info.nMax = max(0, Scale(700, m_dpi) - 1);
-            info.nPage = availableWidth; info.nPos = m_scrollX;
-            SetScrollInfo(m_hwnd, SB_HORZ, &info, TRUE);
-            info.nMax = max(0, Scale(m_contentHeight, m_dpi) - 1);
-            info.nPage = availableHeight; info.nPos = m_scrollY;
-            SetScrollInfo(m_hwnd, SB_VERT, &info, TRUE);
-            const int extraWidth = max(0, availableWidth - Scale(700, m_dpi));
-            for (const ControlPlacement& control : m_controls)
-            {
-                const RECT& base = control.logical;
-                int x = Scale(base.left, m_dpi);
-                int y = Scale(base.top, m_dpi);
-                int width = Scale(base.right - base.left, m_dpi);
-                const int height = Scale(base.bottom - base.top, m_dpi);
-                if (control.id == IDC_DEFAULTS)
-                {
-                    x = Scale(18, m_dpi); y = client.bottom - Scale(42, m_dpi);
-                }
-                else if (control.id == IDC_IMPORT || control.id == IDC_CANCEL)
-                {
-                    x = availableWidth - Scale(control.id == IDC_IMPORT ? 225 : 125, m_dpi);
-                    y = client.bottom - Scale(42, m_dpi);
-                }
-                else
-                {
-                    x -= m_scrollX; y -= m_scrollY;
-                    if (base.right >= 650) width += extraWidth;
-                }
-                SetWindowPos(control.window, nullptr, x, y, width, height,
-                    SWP_NOZORDER | SWP_NOACTIVATE);
-            }
-        }
-
-        void Scroll(bool horizontal, WPARAM command)
-        {
-            RECT client = {};
-            GetClientRect(m_hwnd, &client);
-            int& position = horizontal ? m_scrollX : m_scrollY;
-            const int page = horizontal ? client.right : max(0, client.bottom - Scale(56, m_dpi));
-            const int maximum = max(0, Scale(horizontal ? 700 : m_contentHeight, m_dpi) - page);
-            switch (LOWORD(command))
-            {
-            case SB_LINEUP: position -= Scale(24, m_dpi); break;
-            case SB_LINEDOWN: position += Scale(24, m_dpi); break;
-            case SB_PAGEUP: position -= page; break;
-            case SB_PAGEDOWN: position += page; break;
-            case SB_THUMBTRACK: case SB_THUMBPOSITION:
-                { SCROLLINFO info = { sizeof(info), SIF_TRACKPOS };
-                    GetScrollInfo(m_hwnd, horizontal ? SB_HORZ : SB_VERT, &info);
-                    position = info.nTrackPos; }
-                break;
-            case SB_TOP: position = 0; break;
-            case SB_BOTTOM: position = maximum; break;
-            default: return;
-            }
-            position = min(max(position, 0), maximum);
-            Layout();
-        }
-
-        void RevealFocus()
-        {
-            HWND focus = GetFocus();
-            if (!focus || !IsChild(m_hwnd, focus)) return;
-            RECT control = {}, client = {};
-            GetWindowRect(focus, &control);
-            MapWindowPoints(nullptr, m_hwnd, reinterpret_cast<POINT*>(&control), 2);
-            GetClientRect(m_hwnd, &client);
-            const int viewportBottom = client.bottom - Scale(56, m_dpi);
-            const int previousX = m_scrollX, previousY = m_scrollY;
-            if (control.left < 0) m_scrollX += control.left;
-            else if (control.right > client.right) m_scrollX += control.right - client.right;
-            if (control.top < 0) m_scrollY += control.top;
-            else if (control.bottom > viewportBottom && GetDlgCtrlID(focus) != IDC_DEFAULTS &&
-                GetDlgCtrlID(focus) != IDC_IMPORT && GetDlgCtrlID(focus) != IDC_CANCEL)
-                m_scrollY += control.bottom - viewportBottom;
-            if (m_scrollX != previousX || m_scrollY != previousY) Layout();
-        }
+        void Layout() { m_tabs.Layout(m_dpi); }
+        void RevealFocus() { m_tabs.RevealFocus(); }
 
         CStringW LoadText(UINT stringId)
         {
@@ -710,11 +626,11 @@ namespace
         {
             for (int i = 0; i < static_cast<int>(_countof(kChecks)); ++i)
             {
-                HWND chk = GetDlgItem(m_hwnd, kChecks[i].id);
+                HWND chk = FbePluginUi::FindControl(m_hwnd, kChecks[i].id);
                 m_options.*(kChecks[i].field) = (SendMessageW(chk, BM_GETCHECK, 0, 0) == BST_CHECKED);
             }
 
-            HWND svgCombo = GetDlgItem(m_hwnd, IDC_SVG_MODE);
+            HWND svgCombo = FbePluginUi::FindControl(m_hwnd, IDC_SVG_MODE);
             if (svgCombo)
             {
                 LRESULT sel = SendMessageW(svgCombo, CB_GETCURSEL, 0, 0);
@@ -725,6 +641,7 @@ namespace
 
         void Finish(bool result)
         {
+            if(m_hwnd) FbePluginUi::ReportWindowPlacement(m_hwnd, L"ImportEPUB", true, LoadText(IDS_PLUGIN_WINDOW_SAVE_ERROR));
             if (!result) m_options = m_originalOptions;
             m_result = result;
             m_done = true;
@@ -738,22 +655,20 @@ namespace
         HWND m_owner;
         EpubImportOptions& m_options;
         EpubImportOptions m_originalOptions;
+        FbePluginSettings::Revision m_revision;
         HWND m_hwnd;
         HWND m_tooltip;
         std::vector<CStringW> m_tooltipText;
-        std::vector<ControlPlacement> m_controls;
+        FbePluginUi::OptionsTabs m_tabs;
         bool m_done;
         bool m_result;
         bool m_unexpectedDestroy;
         UINT m_dpi;
         HFONT m_font;
-        int m_contentHeight;
-        int m_scrollX;
-        int m_scrollY;
     };
 }
 
-void LoadImportOptions(EpubImportOptions& options)
+void LoadImportOptions(EpubImportOptions& options, FbePluginSettings::Revision* revision)
 {
     // Start with code defaults so new options added in future versions get sane values.
     options = EpubImportOptions();
@@ -793,11 +708,13 @@ void LoadImportOptions(EpubImportOptions& options)
         options.svgConversionMode = static_cast<int>(svgMode);
     }
     if(FAILED(key.Error())) _com_issue_error(key.Error());
+    if(revision) *revision = key.CaptureRevision();
 }
 
-HRESULT SaveImportOptions(const EpubImportOptions& options)
+HRESULT SaveImportOptions(const EpubImportOptions& options, const FbePluginSettings::Revision* revision)
 {
     FbePluginSettings::Store key(L"import-epub", kSettingsKey);
+    key.ExpectRevision(revision);
 
     SaveBoolValue(key, L"ImportCover", options.importCover);
     SaveBoolValue(key, L"ImportImages", options.importImages);
@@ -831,5 +748,6 @@ HRESULT SaveImportOptions(const EpubImportOptions& options)
 ImportOptionsDialogResult ShowImportOptionsDialog(HWND owner, EpubImportOptions& options)
 {
     OptionsWindow wnd(owner, options);
-    return wnd.DoModal();
+    try { return wnd.DoModal(); }
+    catch(const _com_error& error) { FbePluginSettings::ShowSaveError(owner, error.Error(), LoadImportEpubString(IDS_PLUGIN_SETTINGS_SAVE_ERROR), LoadImportEpubString(IDS_PLUGIN_SETTINGS_CONFLICT)); return ImportOptionsDialogResult::Error; }
 }
