@@ -18,6 +18,9 @@ try {
     $password='Fbe!'+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))+'9aZ!'
     $user=New-LocalUser -Name $userName -Password (ConvertTo-SecureString $password -AsPlainText -Force) -AccountNeverExpires -PasswordNeverExpires
     $userCreated=$true
+    # New-LocalUser does not add the account to Users. That membership is
+    # required to execute the installed PowerShell/runtime under Program Files.
+    Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName
     $acl=Get-Acl -LiteralPath $root
     $acl.SetAccessRuleProtection($true,$false)
     foreach($sid in @($user.SID,[Security.Principal.SecurityIdentifier]::new('S-1-5-18'),[Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))) {
@@ -46,7 +49,7 @@ try {
 }
 '@
     $worker.Replace('@@SID@@',$user.SID.Value) | Set-Content (Join-Path $root 'worker.ps1') -Encoding utf8
-    $action=New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'pwsh.exe') -Argument ('-NoProfile -NonInteractive -File "'+(Join-Path $root 'worker.ps1')+'"') -WorkingDirectory $root
+    $action=New-ScheduledTaskAction -Execute (Join-Path $PSHOME 'pwsh.exe') -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $root 'worker.ps1')+'"') -WorkingDirectory $root
     $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
     # Password logon is noninteractive; InteractiveToken would share WinSta0.
     Register-ScheduledTask -TaskName $taskName -Action $action -Settings $settings -User "$env:COMPUTERNAME\$userName" -Password $password -RunLevel Limited | Out-Null
@@ -58,7 +61,8 @@ try {
     if(Test-Path -LiteralPath $result){Get-Content -LiteralPath $result | Write-Host}
     if (!(Test-Path -LiteralPath (Join-Path $root 'finished.txt')) -or
         (Get-Content -LiteralPath (Join-Path $root 'finished.txt') -Raw).Trim() -ne 'PASS') {
-        throw 'Private-user OLE Clipboard roundtrip failed or timed out'
+        $info=Get-ScheduledTaskInfo -TaskName $taskName
+        throw ('Private-user OLE Clipboard roundtrip failed or timed out; task result=0x{0:X8}; state={1}' -f $info.LastTaskResult,(Get-ScheduledTask -TaskName $taskName).State)
     }
     Write-Host 'Real OLE Clipboard: PASS (disposable account, separate batch logon and window station)'
 } finally {
