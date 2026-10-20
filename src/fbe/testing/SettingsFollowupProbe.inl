@@ -45,6 +45,13 @@ bool CSettingsDlg::ProbeFollowup()
 {
     SettingsEditSession restoreGlobals(_Settings);
     bool passed = true;
+    const HWND owner = ::GetParent(m_hWnd);
+    ::RemovePropW(owner, L"FBE_SETTINGS_FOLLOWUP_PHASE");
+    auto checkpoint = [&](int phase) {
+        if(!passed && !::GetPropW(owner, L"FBE_SETTINGS_FOLLOWUP_PHASE")) {
+            ::SetPropW(owner, L"FBE_SETTINGS_FOLLOWUP_PHASE", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(phase)));
+        }
+    };
     CString error;
     const CString settingsPath = FbeSettings::SettingsFilePath();
     const CString fixture = SettingsFileTransaction::Temporary(settingsPath);
@@ -73,6 +80,7 @@ bool CSettingsDlg::ProbeFollowup()
     ::DeleteFileW(target);
     { SettingsFileTransaction files; passed = m_spellingPage->PrepareCommit(files, error) && passed; }
     passed = ::GetFileAttributesW(target) == INVALID_FILE_ATTRIBUTES && !FollowupRead(source).empty() && passed;
+    checkpoint(1);
     // A read-only dictionary warns once per changed path, never for the initial unchanged path.
     ::SetFileAttributesW(source, FILE_ATTRIBUTE_READONLY);
     const CString initial = m_spellingPage->m_initialDictionaryPath;
@@ -91,6 +99,7 @@ bool CSettingsDlg::ProbeFollowup()
         ::KillTimer(NULL, timer);
     }
     else passed = false;
+    checkpoint(2);
     ::SetFileAttributesW(source, FILE_ATTRIBUTE_NORMAL);
     m_spellingPage->m_initialDictionaryPath = initial;
     m_spellingPage->m_legacyDirectory = legacy;
@@ -105,15 +114,29 @@ bool CSettingsDlg::ProbeFollowup()
     for(int i = 0; i < XML_SRC_STYLE_TOKEN_COUNT; ++i)
         XmlSourceThemes::GetThemeColor(opening, static_cast<XmlSrcStyleToken>(i), colors[i]);
     CString first, second;
-    passed = XmlSourceThemes::SaveThemeAsUser(L"Followup first", colors, first, error) && passed;
-    passed = XmlSourceThemes::SaveThemeAsUser(L"Followup second", colors, second, error) && passed;
+    const bool firstSaved = XmlSourceThemes::SaveThemeAsUser(L"Followup first", colors, first, error);
+    const bool secondSaved = XmlSourceThemes::SaveThemeAsUser(L"Followup second", colors, second, error);
+    passed = firstSaved && secondSaved && passed;
+    unsigned int themeSteps = (firstSaved ? 1u : 0u) | (secondSaved ? 2u : 0u);
+    DWORD themeError = 0;
     {
         SettingsFileTransaction files;
-        passed = XmlSourceThemes::PrepareSettingsEdit(files, error) && files.Commit() && passed;
+        const bool prepared = XmlSourceThemes::PrepareSettingsEdit(files, error);
+        if(!prepared) {
+            const CStringA diagnostic(CW2A(error, CP_UTF8));
+            FollowupWrite(U::GetSettingsDir() + L"settings-theme-failure.txt", diagnostic);
+        }
+        const bool committed = prepared && files.Commit();
+        themeSteps |= (prepared ? 4u : 0u) | (committed ? 8u : 0u);
+        themeError = files.Error();
+        passed = committed && passed;
     }
+    ::SetPropW(owner, L"FBE_SETTINGS_FOLLOWUP_THEME_STEPS", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(themeSteps)));
+    ::SetPropW(owner, L"FBE_SETTINGS_FOLLOWUP_THEME_ERROR", reinterpret_cast<HANDLE>(static_cast<UINT_PTR>(themeError)));
     const CString firstPath = U::GetSettingsDir() + L"Themes\\" + first + L".fbetheme";
     const CString secondPath = U::GetSettingsDir() + L"Themes\\" + second + L".fbetheme";
     const auto firstBytes = FollowupRead(firstPath), secondBytes = FollowupRead(secondPath);
+    checkpoint(3);
     auto select = [&](const CString& id) {
         m_sourcePage->ReloadSourceThemes(id);
         BOOL handled = FALSE; m_sourcePage->OnSourcePaletteChanged(0, 0, NULL, handled);
@@ -124,20 +147,24 @@ bool CSettingsDlg::ProbeFollowup()
         m_sourcePage->m_source_colors[XML_SRC_COLOR_COMMENT].GetColor() == RGB(21, 43, 65) && passed;
     XmlSourceThemes::EndSettingsEdit(); XmlSourceThemes::BeginSettingsEdit();
     passed = !secondBytes.empty() && FollowupRead(secondPath) == secondBytes && passed;
+    checkpoint(4);
     // A later selection survives deleting a different inactive theme.
     select(first); select(second);
     passed = m_sourcePage->DeleteTheme(second, error) && m_sourcePage->m_draftThemeId == first && passed;
+    checkpoint(5);
     XmlSourceThemes::EndSettingsEdit(); XmlSourceThemes::BeginSettingsEdit();
     // Deleting the original active user theme selects a built-in fallback.
     m_sourcePage->m_openingThemeId = first;
     select(first);
     passed = m_sourcePage->DeleteTheme(first, error) && !XmlSourceThemes::IsUserTheme(m_sourcePage->m_draftThemeId) && passed;
+    checkpoint(6);
     XmlSourceThemes::EndSettingsEdit(); XmlSourceThemes::BeginSettingsEdit();
     select(first);
     passed = m_sourcePage->DeleteTheme(first, error) && passed;
 
     // Settings.xml is last in the batch: a write denial must undo Words.xml and theme deletion.
     passed = _Settings.TrySave(error) && passed;
+    checkpoint(7);
     const auto settingsBefore = FollowupRead(settingsPath);
     const CString wordsPath = FbeSettings::WordsFilePath();
     const auto wordsBefore = FollowupRead(wordsPath);
@@ -152,15 +179,18 @@ bool CSettingsDlg::ProbeFollowup()
         _Settings.GetCreateBackupFile() == backup && _Settings.NeedRestart() == restart &&
         FollowupRead(settingsPath) == settingsBefore && FollowupRead(wordsPath) == wordsBefore &&
         FollowupRead(firstPath) == firstBytes && passed;
+    checkpoint(8);
     ::SetFileAttributesW(settingsPath, FILE_ATTRIBUTE_NORMAL);
     // Failed standalone serialization is observable and cannot rewrite on destruction.
     HANDLE lock = ::CreateFileW(settingsPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     passed = lock != INVALID_HANDLE_VALUE && !_Settings.TrySave(error) && FollowupRead(settingsPath) == settingsBefore && passed;
+    checkpoint(9);
     if(lock != INVALID_HANDLE_VALUE) ::CloseHandle(lock);
     m_generalPage->CheckDlgButton(IDC_CREATE_BACKUP_FILE, BST_CHECKED);
     m_wordsPage->m_words = words; m_wordsPage->m_wordsDirty = dirty;
     XmlSourceThemes::EndSettingsEdit(); XmlSourceThemes::BeginSettingsEdit();
     passed = FollowupRead(firstPath) == firstBytes && FollowupRead(secondPath) == secondBytes && passed;
+    checkpoint(10);
     ::DeleteFileW(firstPath); ::DeleteFileW(secondPath);
     XmlSourceThemes::EndSettingsEdit(); XmlSourceThemes::BeginSettingsEdit();
     m_sourcePage->m_openingThemeId = opening;

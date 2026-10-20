@@ -7,6 +7,7 @@ if (-not $FbeExe) { $FbeExe = Join-Path $PSScriptRoot '..\..\out\Release\FBE.exe
 $FbeExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($FbeExe)
 if(-not (Test-Path -LiteralPath $FbeExe -PathType Leaf)) { throw "Не найден FBE: $FbeExe" }
 $root = Join-Path ([IO.Path]::GetTempPath()) ('fbe-settings-dialog-' + [guid]::NewGuid().ToString('N'))
+$passed = $false
 try {
     Copy-Item -LiteralPath (Split-Path $FbeExe -Parent) -Destination $root -Recurse -Force
     $exe = Join-Path $root 'FBE.exe'; $fixture = Join-Path $root 'settings.fb2'
@@ -15,6 +16,7 @@ try {
     $settingsDirectory = Join-Path $root 'TestData\Settings'
     $settingsFile = Join-Path $settingsDirectory 'Settings.xml'
     New-Item -ItemType Directory -Path $settingsDirectory -Force | Out-Null
+    [IO.File]::WriteAllText($settingsFile, '<?xml version="1.0" encoding="utf-8"?><FBE><Settings ID="0"><DocumentTreeScripts>false</DocumentTreeScripts><InterfaceTheme>0</InterfaceTheme><TextCaretMode>0</TextCaretMode></Settings></FBE>', [Text.UTF8Encoding]::new($false))
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>T</book-title><lang>en</lang></title-info><document-info><id>settings-dialog-test</id><version>1</version></document-info></description><body><section><p>BACKUP_RUNTIME_BEFORE</p></section></body></FictionBook>' | Set-Content -LiteralPath $fixture -Encoding utf8
     $originalFb2Hash = (Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash
     function Invoke-Scenario([string]$Scenario, [string]$Path) {
@@ -40,6 +42,7 @@ try {
             throw 'Settings preview modified the opened FB2 file.'
         }
         Write-Host 'FBE Settings dialog short layout and Keyboard resize smoke passed.'
+        $passed = $true
         return
     }
     $reopened=Invoke-Scenario 'settings-dialog-runtime' $reopenReport
@@ -99,4 +102,8 @@ try {
     foreach($line in 'settings_dialog=0','backup_disabled=1') { if($backupSecond -notmatch [regex]::Escape($line)) { throw "Backup persistence report is missing ${line}: $backupSecond" } }
     if (Test-Path -LiteralPath (Join-Path $root 'Settings.xml')) { throw 'Settings.xml was incorrectly saved next to FBE.exe.' }
     Write-Host 'FBE Settings dialog auto/legacy/manual geometry, move/resize, Apply/OK, and backup-disabled save passed.'
-} finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    $passed = $true
+} finally {
+    if($passed) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    else { Write-Host "Settings runtime failure artifacts: $root" }
+}
