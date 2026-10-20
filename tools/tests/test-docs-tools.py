@@ -58,6 +58,43 @@ class LinksTests(unittest.TestCase):
                 links.local_check(root, '..')
 
 
+class DocumentationStructureTests(unittest.TestCase):
+    def test_reserved_redirect_formats_are_rejected(self):
+        examples = (
+            '# Документ перенесён: тема\nАктуальный вход: [новый](new.md)',
+            '## Прежние якоря\n<a id="old"></a>\n[новый](new.md)',
+            'Этот файл сохраняет совместимость ранее опубликованного пути.\n[new](new.md)',
+            'Объединённый исторический отчёт: archive/settings.md',
+            'Исторический документ перенесён: archive/legacy.txt',
+            '# Старое название\nЭтот файл сохраняет совместимость ранее опубликованного пути.\n## Прежние якоря\n[new](new.md)',
+        )
+        for text in examples:
+            with self.subTest(text=text):
+                self.assertIsNotNone(links.redirect_stub_reason(text))
+
+    def test_research_quotes_and_code_are_not_redirect_pages(self):
+        examples = (
+            '# Исследование ссылок\n> # Документ перенесён: пример\nСодержательный анализ причины дефекта.',
+            '# Техническое решение\n```text\n## Прежние якоря\nЭтот файл сохраняет совместимость ранее опубликованного пути\n```\nВыводы и воспроизводимый тест.',
+            '# Исследование\nФормулировка `Исторический документ перенесён:` цитируется для разбора старого формата.',
+            '# Работа с якорями\n## Прежние якоря\nИсследование алгоритма формирования slug, условий коллизии и исправления причин.',
+        )
+        for text in examples:
+            with self.subTest(text=text):
+                self.assertIsNone(links.redirect_stub_reason(text))
+
+    def test_nested_markdown_and_text_inventory(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'docs/nested').mkdir(parents=True)
+            (root / 'docs/nested/old.txt').write_text('Исторический документ перенесён: new.md', encoding='utf-8')
+            (root / 'docs/research.md').write_text('# Исследование\n> ## Прежние якоря\nПричины и выводы.', encoding='utf-8')
+            self.assertEqual(set(links.redirect_stubs(root)), {'docs/nested/old.txt'})
+
+    def test_repository_contains_no_redirect_documents(self):
+        self.assertEqual(links.redirect_stubs(ROOT), {}, 'Remove redirect pages and update direct links')
+
+
 class ApiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -4,7 +4,7 @@ Guards the one-step MSHTML undo contract for Cite and Poem insertion.
 
 Full runtime automation of the legacy MSHTML selection stack is unavailable in
 CI. This guard verifies the implementation boundary that prevents extra undo
-records; docs/manual-test-plan.md covers the live Ctrl+Z/Ctrl+Y smoke cases.
+records; docs/testing/manual-regression.md covers the live Ctrl+Z/Ctrl+Y smoke cases.
 #>
 [CmdletBinding()]
 param()

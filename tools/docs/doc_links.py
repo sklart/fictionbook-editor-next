@@ -83,6 +83,43 @@ def mask_code(text: str, inline: bool = True) -> str:
     return result
 
 
+def redirect_stub_reason(text: str) -> str | None:
+    """Recognize redirect-page structure, ignoring quoted/code examples.
+
+    These are reserved boilerplate formats, not a ban on discussing migration.
+    A research document quoting the same phrases remains ordinary content.
+    """
+    visible = mask_code(text)
+    lines = [line.strip() for line in visible.splitlines()
+             if line.strip() and not line.lstrip().startswith('>')]
+    if not lines:
+        return None
+    for pattern in (r'^# Документ перенесён:',
+                    r'^Объединённый исторический отчёт:',
+                    r'^Исторический документ перенесён:',
+                    r'^Этот файл сохраняет совместимость ранее опубликованного пути',
+                    r'^## Прежние якоря$'):
+        if re.match(pattern, lines[0]):
+            return 'Redirect boilerplate at the start of a document'
+    # A renamed title must not hide the same compatibility/anchor-only page.
+    if '## Прежние якоря' in lines and any(
+            line.startswith('Этот файл сохраняет совместимость ранее опубликованного пути')
+            for line in lines):
+        return 'Compatibility notice followed by legacy anchor navigation'
+    return None
+
+
+def redirect_stubs(root: Path) -> dict[str, str]:
+    root = root.resolve()
+    findings = {}
+    for path in sorted((root / 'docs').rglob('*')):
+        if path.is_file() and path.suffix.lower() in ('.md', '.txt'):
+            reason = redirect_stub_reason(path.read_text(encoding='utf-8-sig'))
+            if reason:
+                findings[path.relative_to(root).as_posix()] = reason
+    return findings
+
+
 def balanced_end(text: str, start: int, left: str, right: str) -> int | None:
     depth = 1; i = start + 1
     while i < len(text):

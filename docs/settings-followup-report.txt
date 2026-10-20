@@ -1,2 +1,0 @@
-Объединённый исторический отчёт: archive/settings/settings-consolidated.md
-Актуальная архитектура: architecture/settings.md

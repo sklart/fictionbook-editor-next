@@ -135,5 +135,5 @@ if (-not $NoRestartExplorer) {
 }
 
 Write-Host "Modern shell integration is registered."
-Write-Host "Для ручной GUI-проверки свойств используйте docs/property-handler-manual-test.md."
-Write-Host "Для ручной GUI-проверки миниатюр используйте docs/thumbnail-provider-manual-test.md."
+Write-Host "Для ручной GUI-проверки свойств используйте docs/archive/shell/property-handler-manual-test.md."
+Write-Host "Для ручной GUI-проверки миниатюр используйте docs/archive/shell/thumbnail-provider-manual-test.md."

@@ -2,13 +2,13 @@
 
 ## [Unreleased]
 
-- Закрыты остаточные замечания HTML Paste: контролируется отказ PostMessage, быстрые Ctrl+V сохраняют отдельные снимки буфера и порядок вставок без пустых Undo-шагов. Актуализирован статический тест подготовки копии DOM и нативной нормализации; добавлены проверки очереди и ручной smoke-checklist. Отчёт — `docs/html-paste-followup-report.md`.
+- Закрыты остаточные замечания HTML Paste: контролируется отказ PostMessage, быстрые Ctrl+V сохраняют отдельные снимки буфера и порядок вставок без пустых Undo-шагов. Актуализирован статический тест подготовки копии DOM и нативной нормализации; добавлены проверки очереди и ручной smoke-checklist. Отчёт — `docs/architecture/undo.md`.
 
-- Исправлен Undo HTML-вставки и многострочного обычного текста: одна нативная группа сохраняет предыдущую историю, исходные DOM-ссылки и каретку; пустая запись отменённого события OnRealPaste больше не добавляет шаг Undo. При разделении абзаца сохраняется уникальный ID. Проверки и ограничения — в `docs/html-paste-undo-report.md`.
+- Исправлен Undo HTML-вставки и многострочного обычного текста: одна нативная группа сохраняет предыдущую историю, исходные DOM-ссылки и каретку; пустая запись отменённого события OnRealPaste больше не добавляет шаг Undo. При разделении абзаца сохраняется уникальный ID. Проверки и ограничения — в `docs/architecture/undo.md`.
 
-- Завершён контракт Undo: RestoreRedo принимает Do(nullptr) без регистрации обратных записей; исключения нехватки памяти и прочие C++-исключения после изменения binary проходят через компенсацию. Добавлены короткие проверки истории, повторного Undo/Redo и Save → Reopen; отчёт — `docs/undo-contract-completion-report.md`.
+- Завершён контракт Undo: RestoreRedo принимает Do(nullptr) без регистрации обратных записей; исключения нехватки памяти и прочие C++-исключения после изменения binary проходят через компенсацию. Добавлены короткие проверки истории, повторного Undo/Redo и Save → Reopen; отчёт — `docs/architecture/undo.md`.
 
-- Усилена атомарность Undo/Redo импорта изображений и восстановления HTML: ошибки COM, закрытия записи и регистрации обратной операции вызывают откат; сохраняются binary, ссылки, каретка и предыдущая история. Нормализация передаёт HRESULT вызывающему коду; при отказе нормализации Drag & Drop отменяется весь перенос. Добавлены короткие проверки отказов и полного Save → Reopen; отчёт — `docs/undo-atomic-failures-report.md`.
+- Усилена атомарность Undo/Redo импорта изображений и восстановления HTML: ошибки COM, закрытия записи и регистрации обратной операции вызывают откат; сохраняются binary, ссылки, каретка и предыдущая история. Нормализация передаёт HRESULT вызывающему коду; при отказе нормализации Drag & Drop отменяется весь перенос. Добавлены короткие проверки отказов и полного Save → Reopen; отчёт — `docs/architecture/undo.md`.
 
 - Нормализация Drag & Drop ограничена изменёнными контейнерами источника и назначения: перенос между секциями больше не расширяет область до всей книги. Отсоединённые DOM-ссылки отбрасываются; отмена и перенос без изменений не добавляют Undo-операций.
 - Исправлен контракт OLE-группы Drag & Drop: дочерние операции получают исходный менеджер, включая `NULL`; ошибки открытия/закрытия контролируются, вложенные операции и предыдущая история сохраняются.
@@ -424,7 +424,7 @@
 - Видимые настройки ExportEPUB закрыты для всех 12 целевых языков локализации: 30 строк `export_epub.options.*` с общими параметрами, CSS, навигацией, изображениями и preset-кнопками больше не остаются английскими в новых языках.
 - Plugin-level строки ImportEPUB закрыты для всех 12 целевых языков локализации: системный диалог выбора EPUB, стадии импорта, предупреждение частичного импорта и COM/unexpected error сообщения теперь берутся из runtime JSON без английского fallback.
 - Runtime diagnostics ImportEPUB закрыты для всех 12 целевых языков локализации: 62 строки `import_epub.runtime.*`, включая ошибки ZIP/MSXML/OPF, SVG/LunaSVG warnings, placeholder-тексты и финальную XML-проверку FB2, больше не используют английский fallback в новых языках.
-- В `docs/manual-test-plan.md` добавлен отдельный раздел ручной проверки локализации: смена языка FBE, проверка FBE/FBV/ExportHTML/ExportDOCX/ExportEPUB/ImportEPUB, fallback без `Lang` и отсутствие mojibake.
+- В `docs/testing/manual-regression.md` добавлен отдельный раздел ручной проверки локализации: смена языка FBE, проверка FBE/FBV/ExportHTML/ExportDOCX/ExportEPUB/ImportEPUB, fallback без `Lang` и отсутствие mojibake.
 - Runtime-локализация плагинов стала устойчивее к смене языка в уже запущенном FBE: ExportHTML, ExportDOCX, ExportEPUB и ImportEPUB перечитывают свои `Lang/<локаль>/*.json` при входе в экспорт/импорт, поэтому новые окна плагинов берут актуальную locale без перезагрузки DLL.
 - Настройка языка интерфейса FBE расширена до варианта `Определяется системой` и 12 целевых языков локализации. Для русского и украинского сохраняется прежняя модель resource DLL, а остальные языки уже участвуют в runtime JSON-overlay (`Lang/<локаль>/<модуль>.json`) с безопасным fallback на встроенные ресурсы; каталог и тесты синхронизированы с реальным набором языков, включая `bg-BG`. Усиленный `test-runtime-interface-language-contract.ps1` теперь дополнительно сверяет список языков в настройках FBE, mapping `Settings.cpp`, runtime whitelist и ключи `fbe.language.*` в JSON-каталоге.
 - Завершён первый проход выделения общего runtime JSON-loader: `src/common/RuntimeLocalizationCommon.h` содержит проверку поддерживаемых локалей, чтение `FBE_UI_LOCALE`/`interface-locale.txt`, UTF-8 JSON-парсер и централизованный порядок fallback `en-US` → выбранная локаль; FBE, FBV, ExportHTML, ExportDOCX, ExportEPUB и ImportEPUB переведены на этот helper без изменения поведения при отсутствии внешних JSON.
@@ -503,7 +503,7 @@
   для каждого артефакта описано, кому нужен основной установщик, portable,
   Win7-compatible portable и соответствующие debug-символы.
 - Добавлен проверяемый каталог `localization/plugin-ui/catalog.json`: в нём заведены первые стабильные ключи для основных строк окон `ExportHTML`, `ExportDOCX`, `ExportEPUB` и `ImportEPUB`, включая украинский и черновые переводы на основные европейские языки. Новый smoke-тест `tools/tests/test-plugin-localization-catalog.ps1` подключён к `verify-release.ps1` и проверяет полноту переводов по всем целевым языкам.
-- Добавлен документ `docs/localization.md` и стартовый каталог
+- Добавлен документ `docs/reference/localization.md` и стартовый каталог
   `localization/plugin-ui`: они фиксируют будущий Weblate-friendly подход к
   переводам окон плагинов через стабильные текстовые ключи, а не ручное
   редактирование координатных Win32 `.rc`.
@@ -547,8 +547,8 @@
 - Исправлены кракозябры в ExportEPUB: проект плагина и диагностический batch-runner теперь компилируются с `/utf-8`, поэтому русские C++-строки корректно попадают в окна плагина, XHTML/NCX navigation и `<title>` внутри EPUB. В `verify-release.ps1` добавлен регрессионный тест `test-export-epub-cyrillic.ps1`, проверяющий кириллический EPUB без mojibake.
 - Исправлен UX/data-loss сценарий с read-only FB2: при обычном сохранении FBE теперь заранее предупреждает, что файл доступен только для чтения, и предлагает сохранить копию через `Сохранить как...`; отказ от сохранения не сбрасывает dirty-state.
 - Закрыт release-блокер по symbols ZIP: `verify-artifacts.ps1` теперь ожидает PDB новых плагинов `ExportDOCX`, `ExportEPUB` и `ImportEPUB`, синхронно с тем, что кладёт `create-release.ps1`; проверка текущего `out/artifacts` проходит.
-- Зафиксированы итоги ручного тестирования от 2026-06-29 в `docs/manual-test-findings-2026-06-29.md`: базовый smoke/regression FBE пройден с замечаниями, отдельно выделены release-блокер по symbols ZIP, проблемы ExportEPUB/ImportEPUB и UX-хвосты.
-- Добавлена программа ручного тестирования `docs/manual-test-plan.md` с чеклистами `Да` / `Нет` / `Замечания` для проверки FBE, FBV, shell-интеграции, installer/uninstaller и плагинов импорта/экспорта.
+- Зафиксированы итоги ручного тестирования от 2026-06-29 в `docs/archive/validation/manual-test-findings-2026-06-29.md`: базовый smoke/regression FBE пройден с замечаниями, отдельно выделены release-блокер по symbols ZIP, проблемы ExportEPUB/ImportEPUB и UX-хвосты.
+- Добавлена программа ручного тестирования `docs/testing/manual-regression.md` с чеклистами `Да` / `Нет` / `Замечания` для проверки FBE, FBV, shell-интеграции, installer/uninstaller и плагинов импорта/экспорта.
 - Обновлено изображение, используемое в инсталяторе, на более качественную версию.
 - В сборку FBE подключены новые высококачественные иконки приложения `FBE2.ico` и `FBE.ico`.
 - В `ExportEPUB` интегрирован корректирующий пакет для EPUB 2/XHTML 1.1: прямые текстовые фрагменты внутри `div`/`blockquote` оборачиваются в `p.inline-fragment`, `cite`/`epigraph` гарантируют блочное содержимое, блочные элементы больше не вкладываются внутрь `<a>`, локальные `file://` ссылки отбрасываются, а HTTP/HTTPS-ссылки с обратными слэшами нормализуются.
@@ -660,7 +660,7 @@ ew[]/delete[]`.
   `PSGetPropertyDescriptionByName` до и после попытки снять регистрацию
   repo-схемы.
 - Добавлен документ `docs/test-contours.md` с картой тестовых контуров `tools/tests`: что относится к базовому release-gate, что к shell/thumbnail-диагностике, что к Validate/FBV и что остаётся legacy/reference-only набором для безопасной дальнейшей cleanup-ревизии.
-- Добавлен документ `docs/upstream-evpobr-analysis.md` с разбором
+- Добавлен документ `docs/architecture/repository-layout.md` с разбором
   reference-форка `evpobr/fictionbookeditor`: какие старые изменения уже
   учтены в нашей ветке, какие полезны только как исторический reference и
   какие не стоит переносить из-за принятых решений по modern shell-контуру.
@@ -738,7 +738,7 @@ ew[]/delete[]`.
   - `tools/tests/fb2-thumbnail-provider-smoke.cpp`
   - `tools/tests/test-fb2-thumbnail-provider.ps1`
 - Отдельный рабочий план по modern `cover / thumbnail extraction`:
-  `docs/thumbnail-provider-plan.md`.
+  `docs/reference/thumbnail-provider.md`.
 - В релизный контур добавлена отдельная упаковка modern property handler для
   обеих архитектур Проводника:
   - `FBShell.dll` для `Win32 Explorer`;
@@ -794,9 +794,9 @@ ew[]/delete[]`.
   `tools/tests/test-fb2-metadata.ps1`,
   `tools/tests/fb2-metadata-smoke.fb2`.
 - Документация по modern shell-контуру и маппингу свойств:
-  `docs/fbshell-roadmap.md`,
-  `docs/fb2-property-mapping.md`,
-  `docs/shell-extension-modernization.md`.
+  `docs/shell-integration.md`,
+  `docs/reference/fb2-property-mapping.md`,
+  `docs/shell-integration.md`.
 - Актуальный рабочий backlog:
   `docs/todo.md`.
 

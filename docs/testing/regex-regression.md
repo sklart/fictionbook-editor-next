@@ -145,7 +145,7 @@ baseline для завершённой ветки обновления `PCRE2` �
 - одиночная regex-замена в режиме `Код` снова теряет группы захвата и превращает `[\1]` в `[]`;
 - `FirstIndex` или фактическое место замены "съезжают" на кириллице или после перевода строки;
 - `\Q`, `\+` или пустая `\1` в замене начинают работать не так, как описано в
-  [docs/pcre2-compatibility.md](../reference/pcre2-compatibility.md).
+  [docs/reference/pcre2-compatibility.md](../reference/pcre2-compatibility.md).
 
 ## Если проблема повторилась
 

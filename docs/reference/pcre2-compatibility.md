@@ -121,6 +121,6 @@
 1. обновить или пополнить [tools/tests/regex-fixtures.json](../../tools/tests/regex-fixtures.json);
 2. прогнать `.\tools\build\verify-release.ps1`;
 3. отдельно пройти ручной чек-лист из
-   [docs/regex-regression.md](../testing/regex-regression.md);
+   [docs/testing/regex-regression.md](../testing/regex-regression.md);
 4. если спорный случай касается замены, дополнительно смотреть код
    `GetReplStr()` и `GlobalReplace()`.

@@ -6,7 +6,7 @@
 
 Используйте изолированную Windows/VM и известное исходное состояние регистрации. Запишите разрядность Проводника, Windows/MUI, режим установки, выбранные компоненты, commit и SHA DLL. Не проверяйте случайную DLL из `runtime` поверх чужой установленной версии.
 
-Повторяемые процедуры установки и восстановления приведены в [installer maintenance](../reference/installer-shell-maintenance.md). Прежние подробные чек-листы сохранены в [архиве Shell](../archive/shell/README.md).
+Повторяемые процедуры установки и восстановления приведены в [installer maintenance](../reference/installer-shell-maintenance.md). Прежние подробные чек-листы сохранены в [архиве Shell](../archive/README.md).
 
 ## Матрица
 

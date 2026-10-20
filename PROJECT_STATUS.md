@@ -20,7 +20,7 @@
 
 Исторический снимок состояния: 17 июля 2026 года. Он не является актуальным
 статусом: текущие изменения и проверки фиксируются в `CHANGELOG.md`,
-`docs/todo.md` и `docs/architecture/verification-status.md`.
+`docs/todo.md` и `docs/testing/verification-status.md`.
 
 ## Завершено
 

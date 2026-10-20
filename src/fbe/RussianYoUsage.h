@@ -2,7 +2,7 @@
 
 #include <atlstr.h>
 
-// Reviewed exact word forms only. See docs/russian-yo-usage.md for sources.
+// Reviewed exact word forms only. See docs/reference/russian-yo-usage.md for sources.
 // An absent form must never be classified from Hunspell rejection alone.
 inline bool FbeConfirmedRussianYoCorrection(const CString& word, CString& correction)
 {

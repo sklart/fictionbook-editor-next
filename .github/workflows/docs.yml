@@ -36,7 +36,7 @@ jobs:
         with:
           persist-credentials: false
           submodules: false
-      - name: Test documentation tools and isolated audit output
+      - name: Test documentation structure, tools and isolated audit output
         run: python3 tools/tests/test-docs-tools.py
       - name: Check local documentation links and anchors
         run: python3 tools/docs/doc_links.py --root .
