@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "../common/PluginSettingsStore.h"
 #include "ExportEPUBPlugin.h"
 #include "..\\version.h"
 
@@ -2550,44 +2551,17 @@ ExportPluginSettings RichStructureExportSettings()
 
 const wchar_t* SETTINGS_KEY = L"Software\\FBETeam\\FictionBook Editor Next\\Plugins\\ExportEPUB";
 
-bool ReadBoolSetting(HKEY key, const wchar_t* name, bool defaultValue)
-{
-    DWORD value = defaultValue ? 1u : 0u;
-    DWORD type = 0;
-    DWORD size = sizeof(value);
-    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<LPBYTE>(&value), &size) == ERROR_SUCCESS && type == REG_DWORD) {
-        return value != 0;
-    }
-    return defaultValue;
-}
-
-void WriteBoolSetting(HKEY key, const wchar_t* name, bool value)
-{
-    const DWORD dw = value ? 1u : 0u;
-    RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&dw), sizeof(dw));
-}
-
-DWORD ReadDwordSetting(HKEY key, const wchar_t* name, DWORD defaultValue)
-{
-    DWORD value = defaultValue;
-    DWORD type = 0;
-    DWORD size = sizeof(value);
-    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<LPBYTE>(&value), &size) == ERROR_SUCCESS && type == REG_DWORD) {
-        return value;
-    }
-    return defaultValue;
-}
-
-void WriteDwordSetting(HKEY key, const wchar_t* name, DWORD value)
-{
-    RegSetValueExW(key, name, 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(value));
-}
+bool ReadBoolSetting(FbePluginSettings::Store& key, const wchar_t* name, bool fallback) { return FbePluginSettings::ReadDword(key, name, fallback ? 1u : 0u) != 0; }
+void WriteBoolSetting(FbePluginSettings::Store& key, const wchar_t* name, bool value) { key.SetDWORDValue(name, value ? 1u : 0u); }
+DWORD ReadDwordSetting(FbePluginSettings::Store& key, const wchar_t* name, DWORD fallback) { return FbePluginSettings::ReadDword(key, name, fallback); }
+void WriteDwordSetting(FbePluginSettings::Store& key, const wchar_t* name, DWORD value) { key.SetDWORDValue(name, value); }
 
 ExportPluginSettings LoadExportSettings()
 {
     ExportPluginSettings settings;
-    HKEY key = nullptr;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, SETTINGS_KEY, 0, KEY_READ, &key) == ERROR_SUCCESS) {
+    FbePluginSettings::Store key(L"export-epub", SETTINGS_KEY);
+    if(FAILED(key.Error())) _com_issue_error(key.Error());
+    {
         settings.includeNcxFallbackInEpub3 = ReadBoolSetting(key, L"IncludeNcxFallbackInEpub3", settings.includeNcxFallbackInEpub3);
         settings.includeCoverPage = ReadBoolSetting(key, L"IncludeCoverPage", settings.includeCoverPage);
         settings.includeAnnotationPage = ReadBoolSetting(key, L"IncludeAnnotationPage", settings.includeAnnotationPage);
@@ -2610,16 +2584,15 @@ ExportPluginSettings LoadExportSettings()
         settings.maxTocDepth = ReadDwordSetting(key, L"MaxTocDepth", settings.maxTocDepth);
         if (settings.warnLargeXhtmlKb < 64) settings.warnLargeXhtmlKb = 64;
         if (settings.warnLargeXhtmlKb > 8192) settings.warnLargeXhtmlKb = 8192;
-        RegCloseKey(key);
+        if(FAILED(key.Error())) _com_issue_error(key.Error());
     }
     return settings;
 }
 
-void SaveExportSettings(const ExportPluginSettings& settings)
+HRESULT SaveExportSettings(const ExportPluginSettings& settings)
 {
-    HKEY key = nullptr;
-    DWORD disposition = 0;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, SETTINGS_KEY, 0, nullptr, 0, KEY_WRITE, nullptr, &key, &disposition) == ERROR_SUCCESS) {
+    FbePluginSettings::Store key(L"export-epub", SETTINGS_KEY);
+    {
         WriteBoolSetting(key, L"IncludeNcxFallbackInEpub3", settings.includeNcxFallbackInEpub3);
         WriteBoolSetting(key, L"IncludeCoverPage", settings.includeCoverPage);
         WriteBoolSetting(key, L"IncludeAnnotationPage", settings.includeAnnotationPage);
@@ -2640,8 +2613,8 @@ void SaveExportSettings(const ExportPluginSettings& settings)
         WriteBoolSetting(key, L"RemoveUnusedImages", settings.removeUnusedImages);
         WriteDwordSetting(key, L"WarnLargeXhtmlKb", settings.warnLargeXhtmlKb);
         WriteDwordSetting(key, L"MaxTocDepth", settings.maxTocDepth);
-        RegCloseKey(key);
     }
+    return key.Commit();
 }
 
 void SetDlgBool(HWND hwnd, int id, bool value)
@@ -3189,7 +3162,7 @@ INT_PTR CALLBACK ExportOptionsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
         case IDOK:
             if (settings != nullptr) {
                 ReadExportOptionsDialog(hwnd, *settings);
-                SaveExportSettings(*settings);
+                if(FbePluginSettings::ShowSaveError(hwnd, SaveExportSettings(*settings))) return TRUE;
             }
             EndDialog(hwnd, IDOK);
             return TRUE;
@@ -3794,6 +3767,9 @@ HRESULT CExportEPUBPlugin::ExportCore(long hWnd, BSTR filename, IDispatch* doc)
         }
 
         ExportPluginSettings settings = LoadExportSettings();
+
+        if(FbePluginSettings::RuntimeDialogProbeRequested())
+            return AskExportOptions(owner, settings, fbe::epub::EpubVersion::Epub3) ? S_OK : HRESULT_FROM_WIN32(ERROR_CANCELLED);
 
         CString outPath;
         fbe::epub::EpubVersion version = fbe::epub::EpubVersion::Epub3;

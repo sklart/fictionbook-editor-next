@@ -2,6 +2,7 @@
 
 #include <atlbase.h>
 #include <atlstr.h>
+#include "../common/PluginSettingsStore.h"
 
 // Settings remain intentionally value-only.  The dialog owns editing, the
 // exporter owns transformation, and this model owns registry compatibility.
@@ -46,4 +47,6 @@ class HtmlExportSettingsStore
 public:
 	static void Load(CRegKey& registry, HtmlExportSettings& settings);
 	static void Save(CRegKey& registry, const HtmlExportSettings& settings);
+	static void Load(FbePluginSettings::Store& registry, HtmlExportSettings& settings);
+	static void Save(FbePluginSettings::Store& registry, const HtmlExportSettings& settings);
 };

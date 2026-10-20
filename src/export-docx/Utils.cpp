@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../common/DeploymentContext.h"
 
 #include "utils.h"
 #include "resource.h"
@@ -464,6 +465,7 @@ cfexit:
 }
 
 void InitSettings() {
+  if (!DeploymentContext::RegistryPersistenceAllowed()) return;
   TCHAR	  filepath[MAX_PATH];
   DWORD	  pathlen=::GetModuleFileName(g_hInstance,filepath,MAX_PATH);
   TCHAR	  *appname;

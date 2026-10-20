@@ -26,12 +26,18 @@ UINT OptionsWindowDpi(HWND window)
 
 void CHtmlExportOptionsDialog::LoadSettings()
 {
-    HtmlExportSettingsStore::Load(_Settings, m_settings);
+    FbePluginSettings::Store store(L"export-html", L"Software\\FBETeam\\FictionBook Editor Next\\PluginSettings\\ExportHTML");
+    if(FAILED(store.Error())) _com_issue_error(store.Error());
+    HtmlExportSettingsStore::Load(store, m_settings);
+    if(FAILED(store.Error())) _com_issue_error(store.Error());
     m_workingSettings=m_settings;
 }
 void CHtmlExportOptionsDialog::Persist()
 {
-    HtmlExportSettingsStore::Save(_Settings,m_settings);
+    FbePluginSettings::Store store(L"export-html", L"Software\\FBETeam\\FictionBook Editor Next\\PluginSettings\\ExportHTML");
+    HtmlExportSettingsStore::Save(store,m_settings);
+    const HRESULT result = store.Commit();
+    if(FAILED(result)) _com_issue_error(result);
 }
 LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {

@@ -2,10 +2,10 @@
 #include "stdafx.h"
 #include "EpubImport.h"
 
-// Loads/saves persistent EPUB import settings from HKCU.
-// Defaults are used automatically when the registry values are absent.
+// Loads/saves persistent EPUB import settings from the active deployment profile.
+// Defaults are used automatically when the stored values are absent.
 void LoadImportOptions(EpubImportOptions& options);
-void SaveImportOptions(const EpubImportOptions& options);
+HRESULT SaveImportOptions(const EpubImportOptions& options);
 
 enum class ImportOptionsDialogResult { Confirmed, Cancelled, Error };
 

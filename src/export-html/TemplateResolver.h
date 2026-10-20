@@ -1,6 +1,7 @@
 #pragma once
 
 #include "utils.h"
+#include "../common/PluginSettingsStore.h"
 
 inline bool SupportsGlobalXslParameter(IXMLDOMDocument2Ptr document, LPCWSTR name)
 {
@@ -59,10 +60,10 @@ inline bool ExportHtmlLooksLikeOldBundledTemplate(const CString& path)
 		::GetFileAttributes(directory + L"FBE.exe") != INVALID_FILE_ATTRIBUTES;
 }
 
-inline ExportHtmlTemplateSelection ResolveExportHtmlTemplate(CRegKey& settings)
+template<class Key> inline ExportHtmlTemplateSelection ResolveExportHtmlTemplate(Key& settings)
 {
 	const CString bundled = U::GetProgDirFile(L"html.xsl");
-	const CString stored = U::QuerySV(settings, L"Template", L"");
+	const CString stored = FbePluginSettings::PortableFilePath(FbePluginSettings::ReadString(settings, L"Template", L""), false);
 	DWORD useCustom = 0;
 	const bool hasUseCustom = settings.QueryDWORDValue(L"UseCustomTemplate", useCustom) == ERROR_SUCCESS;
 	const bool exists = !stored.IsEmpty() && ::GetFileAttributes(stored) != INVALID_FILE_ATTRIBUTES;
@@ -70,17 +71,5 @@ inline ExportHtmlTemplateSelection ResolveExportHtmlTemplate(CRegKey& settings)
 
 	ExportHtmlTemplateSelection result = ResolveExportHtmlTemplateState(bundled, stored,
 		hasUseCustom, useCustom != 0, exists, legacyBundled);
-	if (result.custom) {
-		if (!hasUseCustom)
-			settings.SetDWORDValue(L"UseCustomTemplate", 1);
-		return result;
-	}
-
-	// Missing, current bundled, and another FBE installation are all migrated
-	// to the XSL next to the currently loaded ExportHTML.dll.
-	result.path = bundled;
-	result.custom = false;
-	settings.DeleteValue(L"Template");
-	settings.SetDWORDValue(L"UseCustomTemplate", 0);
 	return result;
 }

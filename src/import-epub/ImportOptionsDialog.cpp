@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../common/PluginSettingsStore.h"
 #include "ImportOptionsDialog.h"
 #include "resource.h"
 #include "RuntimeLocalization.h"
@@ -165,14 +166,14 @@ namespace
         return value != 0;
     }
 
-    void LoadBoolValue(CRegKey& key, LPCWSTR name, bool& value)
+    void LoadBoolValue(FbePluginSettings::Store& key, LPCWSTR name, bool& value)
     {
         DWORD data = 0;
         if (key.QueryDWORDValue(name, data) == ERROR_SUCCESS)
             value = DwordToBool(data);
     }
 
-    void SaveBoolValue(CRegKey& key, LPCWSTR name, bool value)
+    void SaveBoolValue(FbePluginSettings::Store& key, LPCWSTR name, bool value)
     {
         key.SetDWORDValue(name, BoolToDword(value));
     }
@@ -757,9 +758,8 @@ void LoadImportOptions(EpubImportOptions& options)
     // Start with code defaults so new options added in future versions get sane values.
     options = EpubImportOptions();
 
-    CRegKey key;
-    if (key.Open(HKEY_CURRENT_USER, kSettingsKey, KEY_READ) != ERROR_SUCCESS)
-        return;
+    FbePluginSettings::Store key(L"import-epub", kSettingsKey);
+    if(FAILED(key.Error())) _com_issue_error(key.Error());
 
     LoadBoolValue(key, L"ImportCover", options.importCover);
     LoadBoolValue(key, L"ImportImages", options.importImages);
@@ -792,13 +792,12 @@ void LoadImportOptions(EpubImportOptions& options)
     {
         options.svgConversionMode = static_cast<int>(svgMode);
     }
+    if(FAILED(key.Error())) _com_issue_error(key.Error());
 }
 
-void SaveImportOptions(const EpubImportOptions& options)
+HRESULT SaveImportOptions(const EpubImportOptions& options)
 {
-    CRegKey key;
-    if (key.Create(HKEY_CURRENT_USER, kSettingsKey) != ERROR_SUCCESS)
-        return;
+    FbePluginSettings::Store key(L"import-epub", kSettingsKey);
 
     SaveBoolValue(key, L"ImportCover", options.importCover);
     SaveBoolValue(key, L"ImportImages", options.importImages);
@@ -826,6 +825,7 @@ void SaveImportOptions(const EpubImportOptions& options)
     SaveBoolValue(key, L"SaveIntermediateFb2OnError", options.saveIntermediateFb2OnError);
     SaveBoolValue(key, L"KeepTempOnError", options.keepTempOnError);
     key.SetDWORDValue(L"SvgConversionMode", static_cast<DWORD>(options.svgConversionMode));
+    return key.Commit();
 }
 
 ImportOptionsDialogResult ShowImportOptionsDialog(HWND owner, EpubImportOptions& options)

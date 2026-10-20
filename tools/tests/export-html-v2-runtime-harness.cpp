@@ -358,7 +358,7 @@ int wmain(int argc, wchar_t **argv) {
   SetEnvironmentVariableW(FBE_TEST_WRITE_FAIL,0);
 #endif
   host=new Host;snap=new Snapshot;h=Call(e,host,snap);snap->Release();host->Release();
-  if(FAILED(h) || FileSha256(good).size()!=32) return 24;
+  if(FAILED(h) || FileSha256(good).size()!=32) { Die(L"successful overwrite", h); return 24; }
   std::wcout<<L"Existing output SHA-256 preserved on cancellation and replacement failure; successful overwrite passed\n";
 #ifdef FBE_TEST_EXPORT_DOCX
   std::wstring blocked = root + L"\\missing-output-directory\\blocked.docx";

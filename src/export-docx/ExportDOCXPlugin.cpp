@@ -1,6 +1,7 @@
 // PVS-Studio: WTL message-map macros intentionally assign bHandled inside generated code.
 //-V::1048
 #include "stdafx.h"
+#include "../common/PluginSettingsStore.h"
 #include "ExportDOCXPlugin.h"
 
 #include "..\\version.h"
@@ -561,39 +562,6 @@ struct DocxExportSettings {
 
 static const wchar_t* kSettingsRegPath = L"Software\\FBETeam\\FictionBook Editor Next\\ExportDOCX";
 
-DWORD ReadRegDword(HKEY root, const wchar_t* subkey, const wchar_t* name, DWORD defValue) {
-    CRegKey key;
-    if (key.Open(root, subkey, KEY_READ) != ERROR_SUCCESS) return defValue;
-    DWORD value = defValue;
-    if (key.QueryDWORDValue(name, value) != ERROR_SUCCESS) return defValue;
-    return value;
-}
-
-void WriteRegDword(HKEY root, const wchar_t* subkey, const wchar_t* name, DWORD value) {
-    CRegKey key;
-    if (key.Create(root, subkey) == ERROR_SUCCESS) key.SetDWORDValue(name, value);
-}
-
-CStringW ReadRegString(HKEY root, const wchar_t* subkey, const wchar_t* name, const wchar_t* defValue) {
-    CRegKey key;
-    if (key.Open(root, subkey, KEY_READ) != ERROR_SUCCESS) return CStringW(defValue ? defValue : L"");
-    ULONG chars = 0;
-    if (key.QueryStringValue(name, NULL, &chars) != ERROR_SUCCESS || chars == 0)
-        return CStringW(defValue ? defValue : L"");
-    CStringW value;
-    wchar_t* buf = value.GetBuffer(static_cast<int>(chars));
-    LONG res = key.QueryStringValue(name, buf, &chars);
-    value.ReleaseBuffer();
-    if (res != ERROR_SUCCESS) return CStringW(defValue ? defValue : L"");
-    return value;
-}
-
-void WriteRegString(HKEY root, const wchar_t* subkey, const wchar_t* name, const CStringW& value) {
-    CRegKey key;
-    if (key.Create(root, subkey) == ERROR_SUCCESS) key.SetStringValue(name, value);
-}
-
-
 static bool CStringEqualsNoCase(const CStringW& a, const CStringW& b) {
     return a.CompareNoCase(b) == 0;
 }
@@ -775,103 +743,108 @@ void NormalizeSettings(DocxExportSettings& s) {
 }
 
 void LoadDocxSettings(DocxExportSettings& s) {
-    s.exportImages = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportImages", s.exportImages ? 1 : 0) != 0;
-    s.exportCover = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportCover", s.exportCover ? 1 : 0) != 0;
+    FbePluginSettings::Store store(L"export-docx", kSettingsRegPath);
+    if(FAILED(store.Error())) _com_issue_error(store.Error());
+    s.exportImages = FbePluginSettings::ReadDword(store, L"ExportImages", s.exportImages ? 1 : 0) != 0;
+    s.exportCover = FbePluginSettings::ReadDword(store, L"ExportCover", s.exportCover ? 1 : 0) != 0;
 
-    DWORD legacyFootnotes = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"WordFootnotes", s.wordFootnotes ? 1 : 0);
-    DWORD legacyEndSection = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"NotesEndFallback", s.notesEndFallback ? 1 : 0);
-    s.notesMode = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"NotesMode", legacyFootnotes ? 0 : (legacyEndSection ? 2 : 0)));
+    DWORD legacyFootnotes = FbePluginSettings::ReadDword(store, L"WordFootnotes", s.wordFootnotes ? 1 : 0);
+    DWORD legacyEndSection = FbePluginSettings::ReadDword(store, L"NotesEndFallback", s.notesEndFallback ? 1 : 0);
+    s.notesMode = static_cast<int>(FbePluginSettings::ReadDword(store, L"NotesMode", legacyFootnotes ? 0 : (legacyEndSection ? 2 : 0)));
 
-    s.justifyText = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"JustifyText", s.justifyText ? 1 : 0) != 0;
-    s.firstLineIndent = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"FirstLineIndent", s.firstLineIndent ? 1 : 0) != 0;
-    s.chapterPageBreak = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ChapterPageBreak", s.chapterPageBreak ? 1 : 0) != 0;
-    s.addToc = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddToc", s.addToc ? 1 : 0) != 0;
-    s.exportMetadata = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportMetadata", s.exportMetadata ? 1 : 0) != 0;
-    s.exportHyperlinks = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportHyperlinks", s.exportHyperlinks ? 1 : 0) != 0;
-    s.createBookmarks = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CreateBookmarks", s.createBookmarks ? 1 : 0) != 0;
-    s.enhancedFb2Styles = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"EnhancedFb2Styles", s.enhancedFb2Styles ? 1 : 0) != 0;
-    s.validateDocx = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ValidateDocx", s.validateDocx ? 1 : 0) != 0;
-    s.createReport = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CreateReport", s.createReport ? 1 : 0) != 0;
-    s.limitImageWidth = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"LimitImageWidth", s.limitImageWidth ? 1 : 0) != 0;
-    s.customFont = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CustomFont", s.customFont ? 1 : 0) != 0;
-    s.titlePage = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitlePage", s.titlePage ? 1 : 0) != 0;
-    s.titleIncludeAnnotation = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeAnnotation", s.titleIncludeAnnotation ? 1 : 0) != 0;
-    s.titleIncludeGenres = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeGenres", s.titleIncludeGenres ? 1 : 0) != 0;
-    s.titleIncludeSeries = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeSeries", s.titleIncludeSeries ? 1 : 0) != 0;
-    s.titleIncludeFb2Info = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeFb2Info", s.titleIncludeFb2Info ? 1 : 0) != 0;
-    s.titleIncludeTranslators = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeTranslators", s.titleIncludeTranslators ? 1 : 0) != 0;
-    s.titleIncludePublishInfo = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludePublishInfo", s.titleIncludePublishInfo ? 1 : 0) != 0;
-    s.titleIncludeSrcTitleInfo = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeSrcTitleInfo", s.titleIncludeSrcTitleInfo ? 1 : 0) != 0;
-    s.appendHistory = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AppendHistory", s.appendHistory ? 1 : 0) != 0;
-    s.coverSeparatePage = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CoverSeparatePage", s.coverSeparatePage ? 1 : 0) != 0;
-    s.coverPageBreakAfter = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CoverPageBreakAfter", s.coverPageBreakAfter ? 1 : 0) != 0;
-    s.imageCaptions = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ImageCaptions", s.imageCaptions ? 1 : 0) != 0;
-    s.addTocPageBreak = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddTocPageBreak", s.addTocPageBreak ? 1 : 0) != 0;
-    s.addHeaders = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddHeaders", s.addHeaders ? 1 : 0) != 0;
-    s.addPageNumbers = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddPageNumbers", s.addPageNumbers ? 1 : 0) != 0;
-    s.noTitlePageNumber = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"NoTitlePageNumber", s.noTitlePageNumber ? 1 : 0) != 0;
-    s.restartPageNumbering = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"RestartPageNumbering", s.restartPageNumbering ? 1 : 0) != 0;
-    s.autoHyphenation = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AutoHyphenation", s.autoHyphenation ? 1 : 0) != 0;
-    s.openAfterExport = ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"OpenAfterExport", s.openAfterExport ? 1 : 0) != 0;
-    s.exportPreset = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportPreset", static_cast<DWORD>(s.exportPreset)));
-    s.styleProfile = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"StyleProfile", static_cast<DWORD>(s.styleProfile)));
-    s.pageSize = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"PageSize", static_cast<DWORD>(s.pageSize)));
-    s.docLanguage = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"DocLanguage", static_cast<DWORD>(s.docLanguage)));
-    s.tocDepth = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TocDepth", static_cast<DWORD>(s.tocDepth)));
-    s.emptyLineMode = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"EmptyLineMode", static_cast<DWORD>(s.emptyLineMode)));
-    s.imageMaxWidthCm = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ImageMaxWidthCm", static_cast<DWORD>(s.imageMaxWidthCm)));
-    s.fontSizePt = static_cast<int>(ReadRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"FontSizePt", static_cast<DWORD>(s.fontSizePt)));
-    s.fontName = ReadRegString(HKEY_CURRENT_USER, kSettingsRegPath, L"FontName", s.fontName);
+    s.justifyText = FbePluginSettings::ReadDword(store, L"JustifyText", s.justifyText ? 1 : 0) != 0;
+    s.firstLineIndent = FbePluginSettings::ReadDword(store, L"FirstLineIndent", s.firstLineIndent ? 1 : 0) != 0;
+    s.chapterPageBreak = FbePluginSettings::ReadDword(store, L"ChapterPageBreak", s.chapterPageBreak ? 1 : 0) != 0;
+    s.addToc = FbePluginSettings::ReadDword(store, L"AddToc", s.addToc ? 1 : 0) != 0;
+    s.exportMetadata = FbePluginSettings::ReadDword(store, L"ExportMetadata", s.exportMetadata ? 1 : 0) != 0;
+    s.exportHyperlinks = FbePluginSettings::ReadDword(store, L"ExportHyperlinks", s.exportHyperlinks ? 1 : 0) != 0;
+    s.createBookmarks = FbePluginSettings::ReadDword(store, L"CreateBookmarks", s.createBookmarks ? 1 : 0) != 0;
+    s.enhancedFb2Styles = FbePluginSettings::ReadDword(store, L"EnhancedFb2Styles", s.enhancedFb2Styles ? 1 : 0) != 0;
+    s.validateDocx = FbePluginSettings::ReadDword(store, L"ValidateDocx", s.validateDocx ? 1 : 0) != 0;
+    s.createReport = FbePluginSettings::ReadDword(store, L"CreateReport", s.createReport ? 1 : 0) != 0;
+    s.limitImageWidth = FbePluginSettings::ReadDword(store, L"LimitImageWidth", s.limitImageWidth ? 1 : 0) != 0;
+    s.customFont = FbePluginSettings::ReadDword(store, L"CustomFont", s.customFont ? 1 : 0) != 0;
+    s.titlePage = FbePluginSettings::ReadDword(store, L"TitlePage", s.titlePage ? 1 : 0) != 0;
+    s.titleIncludeAnnotation = FbePluginSettings::ReadDword(store, L"TitleIncludeAnnotation", s.titleIncludeAnnotation ? 1 : 0) != 0;
+    s.titleIncludeGenres = FbePluginSettings::ReadDword(store, L"TitleIncludeGenres", s.titleIncludeGenres ? 1 : 0) != 0;
+    s.titleIncludeSeries = FbePluginSettings::ReadDword(store, L"TitleIncludeSeries", s.titleIncludeSeries ? 1 : 0) != 0;
+    s.titleIncludeFb2Info = FbePluginSettings::ReadDword(store, L"TitleIncludeFb2Info", s.titleIncludeFb2Info ? 1 : 0) != 0;
+    s.titleIncludeTranslators = FbePluginSettings::ReadDword(store, L"TitleIncludeTranslators", s.titleIncludeTranslators ? 1 : 0) != 0;
+    s.titleIncludePublishInfo = FbePluginSettings::ReadDword(store, L"TitleIncludePublishInfo", s.titleIncludePublishInfo ? 1 : 0) != 0;
+    s.titleIncludeSrcTitleInfo = FbePluginSettings::ReadDword(store, L"TitleIncludeSrcTitleInfo", s.titleIncludeSrcTitleInfo ? 1 : 0) != 0;
+    s.appendHistory = FbePluginSettings::ReadDword(store, L"AppendHistory", s.appendHistory ? 1 : 0) != 0;
+    s.coverSeparatePage = FbePluginSettings::ReadDword(store, L"CoverSeparatePage", s.coverSeparatePage ? 1 : 0) != 0;
+    s.coverPageBreakAfter = FbePluginSettings::ReadDword(store, L"CoverPageBreakAfter", s.coverPageBreakAfter ? 1 : 0) != 0;
+    s.imageCaptions = FbePluginSettings::ReadDword(store, L"ImageCaptions", s.imageCaptions ? 1 : 0) != 0;
+    s.addTocPageBreak = FbePluginSettings::ReadDword(store, L"AddTocPageBreak", s.addTocPageBreak ? 1 : 0) != 0;
+    s.addHeaders = FbePluginSettings::ReadDword(store, L"AddHeaders", s.addHeaders ? 1 : 0) != 0;
+    s.addPageNumbers = FbePluginSettings::ReadDword(store, L"AddPageNumbers", s.addPageNumbers ? 1 : 0) != 0;
+    s.noTitlePageNumber = FbePluginSettings::ReadDword(store, L"NoTitlePageNumber", s.noTitlePageNumber ? 1 : 0) != 0;
+    s.restartPageNumbering = FbePluginSettings::ReadDword(store, L"RestartPageNumbering", s.restartPageNumbering ? 1 : 0) != 0;
+    s.autoHyphenation = FbePluginSettings::ReadDword(store, L"AutoHyphenation", s.autoHyphenation ? 1 : 0) != 0;
+    s.openAfterExport = FbePluginSettings::ReadDword(store, L"OpenAfterExport", s.openAfterExport ? 1 : 0) != 0;
+    s.exportPreset = static_cast<int>(FbePluginSettings::ReadDword(store, L"ExportPreset", static_cast<DWORD>(s.exportPreset)));
+    s.styleProfile = static_cast<int>(FbePluginSettings::ReadDword(store, L"StyleProfile", static_cast<DWORD>(s.styleProfile)));
+    s.pageSize = static_cast<int>(FbePluginSettings::ReadDword(store, L"PageSize", static_cast<DWORD>(s.pageSize)));
+    s.docLanguage = static_cast<int>(FbePluginSettings::ReadDword(store, L"DocLanguage", static_cast<DWORD>(s.docLanguage)));
+    s.tocDepth = static_cast<int>(FbePluginSettings::ReadDword(store, L"TocDepth", static_cast<DWORD>(s.tocDepth)));
+    s.emptyLineMode = static_cast<int>(FbePluginSettings::ReadDword(store, L"EmptyLineMode", static_cast<DWORD>(s.emptyLineMode)));
+    s.imageMaxWidthCm = static_cast<int>(FbePluginSettings::ReadDword(store, L"ImageMaxWidthCm", static_cast<DWORD>(s.imageMaxWidthCm)));
+    s.fontSizePt = static_cast<int>(FbePluginSettings::ReadDword(store, L"FontSizePt", static_cast<DWORD>(s.fontSizePt)));
+    s.fontName = FbePluginSettings::ReadString(store, L"FontName", s.fontName);
+    if(FAILED(store.Error())) _com_issue_error(store.Error());
     NormalizeSettings(s);
 }
 
-void SaveDocxSettings(DocxExportSettings s) {
+HRESULT SaveDocxSettings(DocxExportSettings s) {
+    FbePluginSettings::Store store(L"export-docx", kSettingsRegPath);
     NormalizeSettings(s);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportImages", s.exportImages ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportCover", s.exportCover ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"NotesMode", static_cast<DWORD>(s.notesMode));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"WordFootnotes", s.wordFootnotes ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"NotesEndFallback", s.notesEndFallback ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"JustifyText", s.justifyText ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"FirstLineIndent", s.firstLineIndent ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ChapterPageBreak", s.chapterPageBreak ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddToc", s.addToc ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportMetadata", s.exportMetadata ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportHyperlinks", s.exportHyperlinks ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CreateBookmarks", s.createBookmarks ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"EnhancedFb2Styles", s.enhancedFb2Styles ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ValidateDocx", s.validateDocx ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CreateReport", s.createReport ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"LimitImageWidth", s.limitImageWidth ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CustomFont", s.customFont ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitlePage", s.titlePage ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeAnnotation", s.titleIncludeAnnotation ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeGenres", s.titleIncludeGenres ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeSeries", s.titleIncludeSeries ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeFb2Info", s.titleIncludeFb2Info ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeTranslators", s.titleIncludeTranslators ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludePublishInfo", s.titleIncludePublishInfo ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TitleIncludeSrcTitleInfo", s.titleIncludeSrcTitleInfo ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AppendHistory", s.appendHistory ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CoverSeparatePage", s.coverSeparatePage ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"CoverPageBreakAfter", s.coverPageBreakAfter ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ImageCaptions", s.imageCaptions ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddTocPageBreak", s.addTocPageBreak ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddHeaders", s.addHeaders ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AddPageNumbers", s.addPageNumbers ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"NoTitlePageNumber", s.noTitlePageNumber ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"RestartPageNumbering", s.restartPageNumbering ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"AutoHyphenation", s.autoHyphenation ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"OpenAfterExport", s.openAfterExport ? 1 : 0);
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ExportPreset", static_cast<DWORD>(s.exportPreset));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"StyleProfile", static_cast<DWORD>(s.styleProfile));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"PageSize", static_cast<DWORD>(s.pageSize));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"DocLanguage", static_cast<DWORD>(s.docLanguage));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"TocDepth", static_cast<DWORD>(s.tocDepth));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"EmptyLineMode", static_cast<DWORD>(s.emptyLineMode));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"ImageMaxWidthCm", static_cast<DWORD>(s.imageMaxWidthCm));
-    WriteRegDword(HKEY_CURRENT_USER, kSettingsRegPath, L"FontSizePt", static_cast<DWORD>(s.fontSizePt));
-    WriteRegString(HKEY_CURRENT_USER, kSettingsRegPath, L"FontName", s.fontName);
+    store.SetDWORDValue(L"ExportImages", s.exportImages ? 1 : 0);
+    store.SetDWORDValue(L"ExportCover", s.exportCover ? 1 : 0);
+    store.SetDWORDValue(L"NotesMode", static_cast<DWORD>(s.notesMode));
+    store.SetDWORDValue(L"WordFootnotes", s.wordFootnotes ? 1 : 0);
+    store.SetDWORDValue(L"NotesEndFallback", s.notesEndFallback ? 1 : 0);
+    store.SetDWORDValue(L"JustifyText", s.justifyText ? 1 : 0);
+    store.SetDWORDValue(L"FirstLineIndent", s.firstLineIndent ? 1 : 0);
+    store.SetDWORDValue(L"ChapterPageBreak", s.chapterPageBreak ? 1 : 0);
+    store.SetDWORDValue(L"AddToc", s.addToc ? 1 : 0);
+    store.SetDWORDValue(L"ExportMetadata", s.exportMetadata ? 1 : 0);
+    store.SetDWORDValue(L"ExportHyperlinks", s.exportHyperlinks ? 1 : 0);
+    store.SetDWORDValue(L"CreateBookmarks", s.createBookmarks ? 1 : 0);
+    store.SetDWORDValue(L"EnhancedFb2Styles", s.enhancedFb2Styles ? 1 : 0);
+    store.SetDWORDValue(L"ValidateDocx", s.validateDocx ? 1 : 0);
+    store.SetDWORDValue(L"CreateReport", s.createReport ? 1 : 0);
+    store.SetDWORDValue(L"LimitImageWidth", s.limitImageWidth ? 1 : 0);
+    store.SetDWORDValue(L"CustomFont", s.customFont ? 1 : 0);
+    store.SetDWORDValue(L"TitlePage", s.titlePage ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludeAnnotation", s.titleIncludeAnnotation ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludeGenres", s.titleIncludeGenres ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludeSeries", s.titleIncludeSeries ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludeFb2Info", s.titleIncludeFb2Info ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludeTranslators", s.titleIncludeTranslators ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludePublishInfo", s.titleIncludePublishInfo ? 1 : 0);
+    store.SetDWORDValue(L"TitleIncludeSrcTitleInfo", s.titleIncludeSrcTitleInfo ? 1 : 0);
+    store.SetDWORDValue(L"AppendHistory", s.appendHistory ? 1 : 0);
+    store.SetDWORDValue(L"CoverSeparatePage", s.coverSeparatePage ? 1 : 0);
+    store.SetDWORDValue(L"CoverPageBreakAfter", s.coverPageBreakAfter ? 1 : 0);
+    store.SetDWORDValue(L"ImageCaptions", s.imageCaptions ? 1 : 0);
+    store.SetDWORDValue(L"AddTocPageBreak", s.addTocPageBreak ? 1 : 0);
+    store.SetDWORDValue(L"AddHeaders", s.addHeaders ? 1 : 0);
+    store.SetDWORDValue(L"AddPageNumbers", s.addPageNumbers ? 1 : 0);
+    store.SetDWORDValue(L"NoTitlePageNumber", s.noTitlePageNumber ? 1 : 0);
+    store.SetDWORDValue(L"RestartPageNumbering", s.restartPageNumbering ? 1 : 0);
+    store.SetDWORDValue(L"AutoHyphenation", s.autoHyphenation ? 1 : 0);
+    store.SetDWORDValue(L"OpenAfterExport", s.openAfterExport ? 1 : 0);
+    store.SetDWORDValue(L"ExportPreset", static_cast<DWORD>(s.exportPreset));
+    store.SetDWORDValue(L"StyleProfile", static_cast<DWORD>(s.styleProfile));
+    store.SetDWORDValue(L"PageSize", static_cast<DWORD>(s.pageSize));
+    store.SetDWORDValue(L"DocLanguage", static_cast<DWORD>(s.docLanguage));
+    store.SetDWORDValue(L"TocDepth", static_cast<DWORD>(s.tocDepth));
+    store.SetDWORDValue(L"EmptyLineMode", static_cast<DWORD>(s.emptyLineMode));
+    store.SetDWORDValue(L"ImageMaxWidthCm", static_cast<DWORD>(s.imageMaxWidthCm));
+    store.SetDWORDValue(L"FontSizePt", static_cast<DWORD>(s.fontSizePt));
+    store.SetStringValue(L"FontName", s.fontName);
+    return store.Commit();
 }
 
 class CDocxSettingsDialog : public CDialogImpl<CDocxSettingsDialog> {
@@ -1348,7 +1321,7 @@ private:
         LRESULT emptyLineMode = SendDlgItemMessage(IDC_EMPTY_LINE_MODE, CB_GETCURSEL, 0, 0);
         m_settings.emptyLineMode = (emptyLineMode >= 0 && emptyLineMode <= 3) ? static_cast<int>(emptyLineMode) : 2;
         NormalizeSettings(m_settings);
-        SaveDocxSettings(m_settings);
+        if(FbePluginSettings::ShowSaveError(m_hWnd, SaveDocxSettings(m_settings))) return 0;
         EndDialog(IDOK);
         return 0;
     }
@@ -3963,6 +3936,11 @@ HRESULT CExportDOCXPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 
         DocxExportSettings settings;
         LoadDocxSettings(settings);
+
+        if(FbePluginSettings::RuntimeDialogProbeRequested()) {
+            CDocxSettingsDialog dialog(settings);
+            return dialog.DoModal(hwndParent) == IDOK ? S_OK : HRESULT_FROM_WIN32(ERROR_CANCELLED);
+        }
 
         CString outName(filename ? filename : L"");
         int dot = outName.ReverseFind(_T('.'));

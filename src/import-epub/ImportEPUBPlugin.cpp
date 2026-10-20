@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../common/PluginSettingsStore.h"
 #include "MsxmlImport.h"
 #include "ImportEPUBPlugin.h"
 #include "ImportEPUBGuids.h"
@@ -195,8 +196,9 @@ namespace
                 const ImportOptionsDialogResult dialogResult = ShowImportOptionsDialog(owner, edited);
                 if (dialogResult == ImportOptionsDialogResult::Confirmed)
                 {
+                    const HRESULT saved = SaveImportOptions(edited);
+                    if(FbePluginSettings::ShowSaveError(owner, saved)) return saved;
                     *m_options = edited;
-                    SaveImportOptions(*m_options);
                 }
                 else if (dialogResult == ImportOptionsDialogResult::Error)
                 {
@@ -268,8 +270,9 @@ namespace
         }
         if (dialogResult == ImportOptionsDialogResult::Confirmed)
         {
+            const HRESULT saved = SaveImportOptions(edited);
+            if(FbePluginSettings::ShowSaveError(owner, saved)) { optionsDialogFailed = true; return false; }
             options = edited;
-            SaveImportOptions(options);
         }
 
         outPath = buffer;
@@ -487,6 +490,8 @@ STDMETHODIMP CImportEPUBPlugin::Import(IFBEPluginHost* host, BSTR* suggestedFile
     HWND owner = reinterpret_cast<HWND>(static_cast<INT_PTR>(ownerValue));
     EpubImportOptions options;
     LoadImportOptions(options);
+    if(FbePluginSettings::RuntimeDialogProbeRequested())
+        return ShowImportOptionsDialog(owner, options) == ImportOptionsDialogResult::Confirmed ? SaveImportOptions(options) : HRESULT_FROM_WIN32(ERROR_CANCELLED);
     CStringW epubPath;
     bool optionsDialogFailed = false;
     wchar_t mode[4] = {}, scenario[32] = {}, testPath[MAX_PATH] = {};

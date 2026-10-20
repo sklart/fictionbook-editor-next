@@ -161,6 +161,13 @@ HRESULT CExportHTMLPlugin::ExportCore(long hWnd, BSTR filename, IDispatch *doc)
 	HtmlExportSettings exportSettings;
 
 	try {
+		if(FbePluginSettings::RuntimeDialogProbeRequested()) {
+			CHtmlExportOptionsDialog options;
+			options.LoadSettings();
+			if(options.DoModal((HWND)hWnd) != IDOK) return HRESULT_FROM_WIN32(ERROR_CANCELLED);
+			options.Persist();
+			return S_OK;
+		}
 		// * construct doc pointer
 		IXMLDOMDocument2Ptr	    source(doc);
 		// Work on a private DOM copy: export cleanup must not modify the open book.
