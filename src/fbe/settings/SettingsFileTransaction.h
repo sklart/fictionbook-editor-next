@@ -13,7 +13,7 @@ class SettingsFileTransaction
         for(auto it = m_entries.rbegin(); it != m_entries.rend(); ++it)
         {
             if(it->installed) { if(::DeleteFileW(it->destination)) it->installed = false; else m_rollbackFailed = true; }
-            if(it->hadOriginal && ::MoveFileExW(it->backup, it->destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            if(it->hadOriginal && MoveStagedFile(it->backup, it->destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             {
                 it->hadOriginal = false; it->installed = false; it->backup.Empty();
             }
@@ -23,6 +23,26 @@ class SettingsFileTransaction
     bool Fail(DWORD error = ::GetLastError()) { m_error = error; Rollback(); return false; }
 
 public:
+    static BOOL MoveStagedFile(const CString& source, const CString& destination, DWORD flags)
+    {
+        DWORD error = ERROR_SUCCESS;
+        for(unsigned int attempt = 0; attempt < 4; ++attempt)
+        {
+            if(::MoveFileExW(source, destination, flags)) return TRUE;
+            error = ::GetLastError();
+            if(attempt == 3 || (error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION)) break;
+            const DWORD sourceAttributes = ::GetFileAttributesW(source);
+            const DWORD destinationAttributes = ::GetFileAttributesW(destination);
+            if(sourceAttributes == INVALID_FILE_ATTRIBUTES ||
+                (sourceAttributes & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) ||
+                (destinationAttributes != INVALID_FILE_ATTRIBUTES &&
+                 (destinationAttributes & (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))) break;
+            // A short-lived reader may have opened the freshly closed staging file.
+            ::Sleep(10u << attempt);
+        }
+        ::SetLastError(error);
+        return FALSE;
+    }
     static CString Temporary(const CString& destination)
     {
         CString directory(destination);
@@ -47,13 +67,13 @@ public:
                 if(entry.createOnly) return Fail(ERROR_FILE_EXISTS);
                 if(attributes & FILE_ATTRIBUTE_READONLY) return Fail(ERROR_ACCESS_DENIED);
                 entry.backup = Temporary(entry.destination);
-                if(entry.backup.IsEmpty() || !::MoveFileExW(entry.destination, entry.backup, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return Fail();
+                if(entry.backup.IsEmpty() || !MoveStagedFile(entry.destination, entry.backup, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return Fail();
                 entry.hadOriginal = true;
             }
             else if(::GetLastError() != ERROR_FILE_NOT_FOUND) return Fail();
             if(!entry.temporary.IsEmpty())
             {
-                if(!::MoveFileExW(entry.temporary, entry.destination, MOVEFILE_WRITE_THROUGH)) return Fail();
+                if(!MoveStagedFile(entry.temporary, entry.destination, MOVEFILE_WRITE_THROUGH)) return Fail();
                 entry.temporary.Empty(); entry.installed = true;
             }
         }

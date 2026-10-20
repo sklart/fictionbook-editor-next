@@ -186,7 +186,7 @@ foreach($requiredText in @(
 foreach($requiredText in @(
     'MakeAvailableUserThemeId', 'FindExternalTheme(base)', 'ReadLegacyAnsiThemeFile',
     'ParseThemeFile(sourcePath, record, true, &error)', 'FILE_ATTRIBUTE_READONLY',
-    'ExportThemeFile', 'MoveFileExW', 'GetThemeMetadata',
+    'ExportThemeFile', 'SettingsFileTransaction::MoveStagedFile', 'GetThemeMetadata',
     'JsonSkipValue(json, jsonEnd)', 'fbe.theme.error.invalid_format',
     'fbe.theme.error.unsupported_version', 'fbe.theme.error.trailing_json',
     'XmlSourceThemeMetadata', 'baseThemeId', 'record.metadata.isDark', 'fbe.theme.error.invalid_is_dark'

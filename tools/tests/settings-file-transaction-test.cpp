@@ -2,7 +2,22 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <shlwapi.h>
+static CString g_delayedSource;
+static unsigned int g_delayedFailures = 0;
+static DWORD g_delayedError = ERROR_SUCCESS;
+static BOOL WINAPI MoveWithDelayedReader(LPCWSTR source, LPCWSTR destination, DWORD flags)
+{
+    if(g_delayedSource == source && g_delayedFailures)
+    {
+        --g_delayedFailures;
+        ::SetLastError(g_delayedError);
+        return FALSE;
+    }
+    return ::MoveFileExW(source, destination, flags);
+}
+#define MoveFileExW MoveWithDelayedReader
 #include "../../src/fbe/settings/SettingsFileTransaction.h"
+#undef MoveFileExW
 
 static bool Write(const CString& path, const char* text)
 {
@@ -26,6 +41,30 @@ int wmain(int argc, wchar_t** argv)
     if(argc != 2) return 1;
     const CString first = CString(argv[1]) + L"\\first.xml", second = CString(argv[1]) + L"\\second.xml";
     if(!Write(first, "old-first") || !Write(second, "old-second")) return 2;
+    // Model the observed transient rename denials while publishing real files.
+    for(DWORD code : { ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION })
+    {
+        const CString staged = SettingsFileTransaction::Temporary(first);
+        if(staged.IsEmpty() || !Write(staged, "reader-released")) return 19;
+        g_delayedSource = staged; g_delayedFailures = 2; g_delayedError = code;
+        if(!SettingsFileTransaction::MoveStagedFile(staged, first, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ||
+            !Equals(first, "reader-released") || ::GetFileAttributesW(staged) != INVALID_FILE_ATTRIBUTES) return 20;
+        g_delayedSource.Empty();
+        if(!Write(first, "old-first")) return 21;
+    }
+    // A real persistent reader lock remains an error and preserves both files.
+    {
+        const CString staged = SettingsFileTransaction::Temporary(first);
+        if(staged.IsEmpty() || !Write(staged, "still-locked")) return 22;
+        HANDLE reader = ::CreateFileW(staged, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if(reader == INVALID_HANDLE_VALUE) return 23;
+        const bool moved = SettingsFileTransaction::MoveStagedFile(staged, first, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != FALSE;
+        const DWORD error = ::GetLastError();
+        ::CloseHandle(reader);
+        if(moved || (error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION) ||
+            !Equals(first, "old-first") || !Equals(staged, "still-locked")) return 24;
+        ::DeleteFileW(staged);
+    }
     // Failure after the first replacement rolls back all previously installed files.
     HANDLE locked = ::CreateFileW(second, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if(locked == INVALID_HANDLE_VALUE) return 3;

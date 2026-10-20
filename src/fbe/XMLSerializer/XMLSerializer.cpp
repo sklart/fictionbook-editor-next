@@ -134,7 +134,7 @@ bool CXMLSerializer::SaveResults(const _variant_t& xml)
 	try {
 		if(m_doc->save(_bstr_t(temporaryFile)) != S_OK) { ::DeleteFileW(temporaryFile); return false; }
 	} catch(...) { ::DeleteFileW(temporaryFile); throw; }
-	if(!::MoveFileExW(temporaryFile, m_sFile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	if(!SettingsFileTransaction::MoveStagedFile(temporaryFile, m_sFile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
 		const DWORD error = ::GetLastError();
 		::DeleteFileW(temporaryFile);

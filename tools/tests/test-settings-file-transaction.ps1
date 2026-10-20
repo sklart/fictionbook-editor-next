@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Path $fixture | Out-Null
 try {
     & $exe $fixture
     if($LASTEXITCODE -ne 0) { throw "Settings file transaction test failed: $LASTEXITCODE" }
-    Write-Host 'Settings file transaction: rollback after partial failure, cancellation, replacement, deletion and cleanup passed.'
+    Write-Host 'Settings file transaction: transient reader denials, persistent lock, rollback after partial failure, cancellation, replacement, deletion and cleanup passed.'
 } finally {
     $resolved = [IO.Path]::GetFullPath($fixture)
     if($resolved.StartsWith([IO.Path]::GetFullPath($testDirectory) + '\', [StringComparison]::OrdinalIgnoreCase)) { Remove-Item -LiteralPath $resolved -Recurse -Force }

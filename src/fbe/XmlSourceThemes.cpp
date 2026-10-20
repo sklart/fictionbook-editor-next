@@ -812,11 +812,20 @@ bool ExportThemeFile(const CString& id, const CString& name, const DWORD* colors
 	if(file == INVALID_HANDLE_VALUE) { error = ThemeString(L"fbe.theme.error.create_temporary", L"Cannot create temporary theme file."); return false; }
 	DWORD written = 0;
 	const BOOL saved = ::WriteFile(file, &utf8[0], static_cast<DWORD>(utf8.size()), &written, NULL);
+	DWORD saveError = saved ? ERROR_SUCCESS : ::GetLastError();
+	if(saveError == ERROR_SUCCESS && (!saved || written != utf8.size())) saveError = ERROR_WRITE_FAULT;
 	::CloseHandle(file);
-	if(!saved || written != utf8.size() || !::MoveFileExW(temporary, destinationPath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	if(saveError == ERROR_SUCCESS && !SettingsFileTransaction::MoveStagedFile(temporary, destinationPath, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+	{
+		saveError = ::GetLastError();
+		if(saveError == ERROR_SUCCESS) saveError = ERROR_WRITE_FAULT;
+	}
+	if(saveError != ERROR_SUCCESS)
 	{
 		::DeleteFileW(temporary);
 		error = ThemeString(L"fbe.theme.error.save", L"Cannot save exported theme.");
+		error += L"\n" + U::Win32ErrMsg(saveError);
+		::SetLastError(saveError);
 		return false;
 	}
 	return true;
