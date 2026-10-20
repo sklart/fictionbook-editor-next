@@ -48,6 +48,7 @@ protected:
   bool					m_drag;
   HIMAGELIST			m_himlDrag;
 	HTREEITEM				m_current_item;
+	std::set<HTREEITEM> m_current_path;
   CTreeItem				m_move_from;
   CTreeItem				m_move_to;
 	bool m_script_mode;
@@ -83,6 +84,8 @@ protected:
 	std::function<void(UINT)> m_run_script;
 	std::function<void(const CString&)> m_show_script_card;
   std::map<long, HTREEITEM>	m_source_index;
+	// Item lParams retain the COM objects for the lifetime of these keys.
+	std::map<IUnknown*, HTREEITEM> m_identity_index;
   ULONGLONG				m_tree_index_lookup_count;
   ULONGLONG				m_tree_linear_fallback_count;
  // HTREEITEM				m_dragdrop_inserted_item;  
@@ -143,6 +146,7 @@ public:
 	REFLECTED_NOTIFY_CODE_HANDLER(TVN_BEGINDRAG, OnBegindrag)
     REFLECTED_NOTIFY_CODE_HANDLER(TVN_DELETEITEM, OnDeleteItem)
 	REFLECTED_NOTIFY_CODE_HANDLER(NM_CUSTOMDRAW, OnCustomDraw)
+	REFLECTED_NOTIFY_CODE_HANDLER(TVN_ITEMEXPANDED, OnItemExpanded)
    // REFLECTED_NOTIFY_CODE_HANDLER(NM_RCLICK, OnRClick)
   END_MSG_MAP()
     
@@ -169,6 +173,7 @@ public:
   LRESULT OnLeftWithChildren(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
   LRESULT OnMerge(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnCustomDraw(int /* unused: idCtrl */, LPNMHDR header, BOOL& bHandled);
+	LRESULT OnItemExpanded(int, LPNMHDR, BOOL& bHandled) { InvalidateStructurePath(); bHandled = FALSE; return 0; }
 	LRESULT OnMouseLeave(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnScriptPreviewTimer(UINT, WPARAM, LPARAM, BOOL&);
 	LRESULT OnScriptPreviewScroll(UINT, WPARAM, LPARAM, BOOL&);
@@ -184,6 +189,18 @@ public:
   
   LRESULT OnDeleteItem(int /* unused: idCtrl */, LPNMHDR pnmh, BOOL& /* unused: bHandled */) {
     NMTREEVIEW	  *tvn=(NMTREEVIEW*)pnmh;
+	const HTREEITEM item = tvn->itemOld.hItem;
+	if(m_current_path.erase(item)) { InvalidateStructurePath(); m_current_item = NULL; m_current_path.clear(); }
+	if(m_last_lookup_item == item) m_last_lookup_item = NULL;
+	if(m_hItemFirstSel == item) m_hItemFirstSel = NULL;
+	if(m_move_from == item || m_move_to == item) {
+		if(m_drag) EndDrag();
+		if(m_move_from == item) m_move_from.m_hTreeItem = NULL;
+		if(m_move_to == item) m_move_to.m_hTreeItem = NULL;
+		m_insert_type = none;
+	}
+	m_source_index.clear();
+	m_identity_index.clear();
     if (tvn->itemOld.lParam)
       ((MSHTML::IHTMLElement*)tvn->itemOld.lParam)->Release();
     return 0;
@@ -236,6 +253,9 @@ public:
 	bool GetScriptTreeMetrics(int& imageSize, int& itemHeight, int& indent, bool& legacyExpanders) const;
 	bool IsStructuralDragActive() const { return m_drag; }
 	HTREEITEM CurrentStructureItem() const { return m_current_item; }
+	ULONGLONG StructureLinearFallbackCount() const { return m_tree_linear_fallback_count; }
+	int StructureHighlight(HTREEITEM item) const;
+	bool StructureMarkerRect(HTREEITEM item, RECT& bounds) const;
 	// Used by the Ctrl+A command and runtime coverage; visible items mirror the
 	// native tree's keyboard-selection semantics.
 	void SelectAllVisibleItems();
@@ -272,6 +292,8 @@ public:
 protected:
   CTreeItem LocatePosition(MSHTML::IHTMLElement *p);
   void RebuildSourceIndex();
+	void RefreshStructurePosition(const MSHTML::IHTMLDocument2Ptr& view);
+	void InvalidateStructurePath();
   void IndexTreeItem(CTreeItem item);
   bool IsDropChangePosition(UINT flags, HTREEITEM	hitem);
   bool IsParent(CTreeItem	parent, CTreeItem	child);

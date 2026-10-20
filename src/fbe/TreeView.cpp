@@ -174,7 +174,7 @@ static bool  SearchUnder(CTreeItem& ret,CTreeItem ii,MSHTML::IHTMLElement *p) {
     MSHTML::IHTMLElement    *n=(MSHTML::IHTMLElement *)jj.GetData();
     // IHTMLElement::contains is not a reliable self-match on all MSHTML
     // document modes.  A caret can resolve directly to the structural node.
-    if (n && (n == p || n->contains(p))) {
+    if (n && (CComPtr<MSHTML::IHTMLElement>(n).IsEqualObject(p) || n->contains(p))) {
       ret=jj;
       if (jj.HasChildren())
 	SearchUnder(ret,jj,p);
@@ -190,14 +190,24 @@ CTreeItem CTreeView::LocatePosition(MSHTML::IHTMLElement *p) {
   if (GetCount()==0 || !p)
     return ret; // no items at all
 
-	// sourceIndex is stable for the current MSHTML document.  Walk only the
-	// selection's ancestors, rather than asking every tree item contains().
+	// Walk the selection's ancestors. sourceIndex can move after a DOM edit;
+	// canonical COM identity also finds items whose cached index has shifted.
 	try {
 		for (MSHTML::IHTMLElementPtr current(p); current; current = current->parentElement) {
 			const std::map<long, HTREEITEM>::const_iterator found = m_source_index.find(current->sourceIndex);
-			if (found != m_source_index.end()) {
+			if (found != m_source_index.end() &&
+				CComPtr<MSHTML::IHTMLElement>(reinterpret_cast<MSHTML::IHTMLElement*>(GetItemData(found->second))).IsEqualObject(current)) {
 				++m_tree_index_lookup_count;
 				return CTreeItem(found->second, this);
+			}
+			CComPtr<IUnknown> identity;
+			CheckError(current->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity)));
+			const auto stable = m_identity_index.find(identity);
+			if(stable != m_identity_index.end()) {
+				const HTREEITEM item = stable->second;
+				RebuildSourceIndex();
+				++m_tree_index_lookup_count;
+				return CTreeItem(item, this);
 			}
 		}
 	}
@@ -205,6 +215,7 @@ CTreeItem CTreeView::LocatePosition(MSHTML::IHTMLElement *p) {
 
 	++m_tree_linear_fallback_count;
   SearchUnder(ret,ret,p);
+	RebuildSourceIndex();
 
   return ret;
 }
@@ -215,7 +226,12 @@ void CTreeView::IndexTreeItem(CTreeItem item)
 	{
 		MSHTML::IHTMLElementPtr element(reinterpret_cast<MSHTML::IHTMLElement*>(current.GetData()));
 		if (element && element->sourceIndex >= 0)
+		{
 			m_source_index[element->sourceIndex] = current;
+			CComPtr<IUnknown> identity;
+			CheckError(element->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity)));
+			if(identity) m_identity_index[identity] = current;
+		}
 		if (current.HasChildren()) IndexTreeItem(current.GetChild());
 	}
 }
@@ -223,6 +239,7 @@ void CTreeView::IndexTreeItem(CTreeItem item)
 void CTreeView::RebuildSourceIndex()
 {
 	m_source_index.clear();
+	m_identity_index.clear();
 	if (GetCount()) IndexTreeItem(CTreeItem(TVI_ROOT, this).GetChild());
 }
 
@@ -231,10 +248,52 @@ void  CTreeView::HighlightItemAtPos(MSHTML::IHTMLElement *p) {
   if (ii==m_last_lookup_item && static_cast<HTREEITEM>(ii) == m_current_item)
     return;
   m_last_lookup_item=ii;
-  const HTREEITEM previous = m_current_item;
+  InvalidateStructurePath();
   m_current_item = ii != TVI_ROOT ? static_cast<HTREEITEM>(ii) : NULL;
-  if(previous) ::InvalidateRect(m_hWnd, NULL, FALSE);
-  if(m_current_item) ::InvalidateRect(m_hWnd, NULL, FALSE);
+  m_current_path.clear();
+  for(HTREEITEM item = m_current_item; item; item = GetParentItem(item)) m_current_path.insert(item);
+  InvalidateStructurePath();
+}
+
+void CTreeView::InvalidateStructurePath()
+{
+	for(HTREEITEM item : m_current_path)
+	{
+		RECT bounds = {};
+		if(GetItemRect(item, &bounds, FALSE)) ::InvalidateRect(m_hWnd, &bounds, TRUE);
+	}
+}
+
+int CTreeView::StructureHighlight(HTREEITEM item) const
+{
+	if(m_script_mode || !item || m_current_path.find(item) == m_current_path.end()) return 0;
+	HTREEITEM visible = m_current_item;
+	for(HTREEITEM parent = GetParentItem(visible); parent; parent = GetParentItem(parent))
+		if(!(GetItemState(parent, TVIS_EXPANDED) & TVIS_EXPANDED)) visible = parent;
+	return item == visible ? 2 : 1;
+}
+
+bool CTreeView::StructureMarkerRect(HTREEITEM item, RECT& bounds) const
+{
+	const int highlight = StructureHighlight(item);
+	if(!highlight || !GetItemRect(item, &bounds, TRUE)) return false;
+	// Keep the entire marker inside the native label's repaint area.
+	const int thickness = highlight == 2 ? UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(m_hWnd)) : UiMetrics::ScaleForDpi(1, UiMetrics::DpiForWindow(m_hWnd));
+	bounds.top = (std::max)(bounds.top, bounds.bottom - thickness);
+	bounds.right = (std::min)(bounds.right, bounds.left + UiMetrics::ScaleForDpi(24, UiMetrics::DpiForWindow(m_hWnd)));
+	return bounds.right > bounds.left;
+}
+
+void CTreeView::RefreshStructurePosition(const MSHTML::IHTMLDocument2Ptr& view)
+{
+	InvalidateStructurePath();
+	m_current_item = NULL;
+	m_last_lookup_item = NULL;
+	m_current_path.clear();
+	try {
+		MSHTML::IHTMLTxtRangePtr range(view->selection->createRange());
+		if(range) HighlightItemAtPos(range->parentElement());
+	} catch(_com_error&) {}
 }
 
 LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
@@ -246,10 +305,10 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 	const std::map<HTREEITEM, size_t>::const_iterator scriptNode = m_script_nodes.find(item);
 	const bool scriptInfo = m_script_mode && scriptNode != m_script_nodes.end() &&
 		scriptNode->second < m_script_items.size() && !m_script_items[scriptNode->second].isFolder;
-	if(ThemeManager::IsHighContrast() && !scriptInfo) return CDRF_DODEFAULT;
-	if(draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT && item == m_current_item)
+	const int highlight = StructureHighlight(item);
+	if(draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT && highlight)
 	{
-		if(!(GetItemState(m_current_item, TVIS_SELECTED) & TVIS_SELECTED))
+		if(highlight == 2 && !ThemeManager::IsHighContrast() && !(GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED))
 		{
 			draw->clrTextBk = ThemeManager::HoverColor();
 			draw->clrText = ThemeManager::TextColor();
@@ -260,14 +319,15 @@ LRESULT CTreeView::OnCustomDraw(int, LPNMHDR header, BOOL& bHandled)
 		return CDRF_NOTIFYPOSTPAINT;
 	}
 	if(draw->nmcd.dwDrawStage == CDDS_ITEMPREPAINT && scriptInfo) return CDRF_NOTIFYPOSTPAINT;
-	if(draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && item == m_current_item)
+	if(draw->nmcd.dwDrawStage == CDDS_ITEMPOSTPAINT && highlight)
 	{
 		RECT bounds = {};
-		if(GetItemRect(item, &bounds, FALSE))
+		if(StructureMarkerRect(item, bounds))
 		{
-			const int markerWidth = (std::max)(1, UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(m_hWnd)));
-			bounds.right = (std::min)(bounds.right, bounds.left + markerWidth);
-			HBRUSH marker = ::CreateSolidBrush(ThemeManager::AccentColor());
+			const bool selected = (GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED) != 0;
+			const COLORREF color = ThemeManager::IsHighContrast() ? ::GetSysColor(selected ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT) :
+				(selected ? ThemeManager::SelectionTextColor() : (highlight == 2 ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor()));
+			HBRUSH marker = ::CreateSolidBrush(color);
 			if(marker) { ::FillRect(draw->nmcd.hdc, &bounds, marker); ::DeleteObject(marker); }
 		}
 	}
@@ -654,6 +714,11 @@ static void  CompareTreesAndSet(TreeNode *n,CTreeItem ii,bool& fDisableRedraw) {
 }
 
 void  CTreeView::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& view) {
+  InvalidateStructurePath();
+  m_current_path.clear();
+  m_current_item = NULL;
+  m_source_index.clear();
+  m_identity_index.clear();
   m_last_lookup_item=0;
 
   TreeNode  *root=GetDocTree(view);
@@ -671,6 +736,7 @@ void  CTreeView::GetDocumentStructure(const MSHTML::IHTMLDocument2Ptr& view) {
     SetRedraw(TRUE);
   delete root;
 	RebuildSourceIndex();
+	RefreshStructurePosition(view);
 }
 
 void CTreeView::UpdateAll()
@@ -721,6 +787,7 @@ void  CTreeView::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHT
 	MakeNode(&nn,jj);
   }
   catch(_com_error&){ return; }
+	if(!nn.child) { GetDocumentStructure(v); return; }
   
   bool	fDisableRedraw=false;
   // check the item itself
@@ -736,10 +803,17 @@ void  CTreeView::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHT
     ii.SetText(nn.child->text);
   }
 
+  InvalidateStructurePath();
+  m_current_path.clear();
+  m_current_item = NULL;
+  m_last_lookup_item = NULL;
+  m_source_index.clear();
+  m_identity_index.clear();
   CompareTreesAndSet(nn.child,ii,fDisableRedraw);
   if (fDisableRedraw)
     SetRedraw(TRUE);
 	RebuildSourceIndex();
+	RefreshStructurePosition(v);
 
  /* if((bool)selected_elem)
   {
@@ -758,6 +832,7 @@ LRESULT CTreeView::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHand
 {
   // "CTreeViewCtrl::OnCreate()"
   LRESULT lRet = DefWindowProc(uMsg, wParam, lParam);
+	SendMessage(TVM_SETEXTENDEDSTYLE, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
   
   // "OnInitialUpdate"
   m_ImageList.CreateFromImage(IDB_STRUCTURE,16,32,RGB(255,0,255),IMAGE_BITMAP);
@@ -793,6 +868,13 @@ LRESULT CTreeView::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam *
 
 LRESULT CTreeView::OnClick(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	UINT hitFlags = 0;
+	HitTest(CPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)), &hitFlags);
+	if(hitFlags & TVHT_ONITEMBUTTON)
+	{
+		bHandled = FALSE;
+		return 0;
+	}
 	if(m_script_mode)
 	{
 		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -824,8 +906,15 @@ LRESULT CTreeView::OnClick(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam
   return 0;
 }
 
-LRESULT CTreeView::OnDblClick(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM lParam, BOOL& /* unused: bHandled */)
+LRESULT CTreeView::OnDblClick(UINT /* unused: uMsg */, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+	UINT hitFlags = 0;
+	HitTest(CPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)), &hitFlags);
+	if(hitFlags & TVHT_ONITEMBUTTON)
+	{
+		bHandled = TRUE;
+		return DefWindowProc(WM_LBUTTONDOWN, wParam, lParam);
+	}
 	if(m_script_mode)
 	{
 		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -1413,7 +1502,10 @@ void CTreeView::RebuildScriptTree()
 	m_script_info_pressed = NULL;
 	if(::GetCapture() == m_hWnd) ::ReleaseCapture();
 	m_current_item = NULL;
-	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear(); m_favorite_group = NULL;
+	m_current_path.clear();
+	m_last_lookup_item = NULL;
+	m_hItemFirstSel = NULL;
+	DeleteAllItems(); m_script_nodes.clear(); m_source_index.clear(); m_identity_index.clear(); m_favorite_group = NULL;
 	for(size_t favorite = 0; favorite < m_favorite_scripts.size(); ++favorite)
 		for(size_t index = 0; index < m_script_items.size(); ++index)
 		{
@@ -1951,6 +2043,8 @@ bool CTreeView::SetMultiSelection(UINT nFlags, CPoint point)
 	
 	UINT flag;
 	HTREEITEM hItem = HitTest( point, &flag );
+	if(!hItem || !(flag & (TVHT_ONITEMICON | TVHT_ONITEMLABEL | TVHT_ONITEMSTATEICON))) return false;
+	if(nFlags & (MK_CONTROL | MK_SHIFT)) SetFocus();
 
 	if(nFlags & MK_SHIFT)
 	{
@@ -2015,7 +2109,12 @@ bool CTreeView::SetMultiSelection(UINT nFlags, CPoint point)
 		ClearSelection();
 		//SelectItem(hItem);
 		if(flag & TVHT_ONITEMICON || flag & TVHT_ONITEMLABEL)
-			TreeView_SetItemState(*this, hItem, TVIS_SELECTED, TVIS_SELECTED);
+		{
+			// TVIS_SELECTED alone does not move TreeView's native caret.  Shift
+			// ranges and drag notifications must start at the clicked item.
+			SelectItem(hItem);
+			SetItemState(hItem, TVIS_SELECTED, TVIS_SELECTED);
+		}
 		m_hItemFirstSel = NULL;
 	}
 	//		OnLButtonDown(nFlags, point);
