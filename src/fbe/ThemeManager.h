@@ -50,6 +50,7 @@ namespace ThemeManager
 	void SetSelectedTheme(InterfaceTheme theme);
 	InterfaceTheme GetSelectedTheme();
 	bool IsDark();
+	bool IsDarkModeSupported();
 	bool IsHighContrast();
 	COLORREF Color(ThemeColorRole role);
 	COLORREF WindowColor();

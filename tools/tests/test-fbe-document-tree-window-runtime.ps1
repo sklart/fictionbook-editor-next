@@ -14,7 +14,7 @@ $saved = @{}; foreach($name in $names) { $saved[$name] = [Environment]::GetEnvir
 try {
     $null = New-IsolatedFbeSettingsSeed $iso
     $book = [Text.StringBuilder]::new()
-    [void]$book.Append('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>Tree</first-name><last-name>Test</last-name></author><book-title>Nested structure</book-title><lang>en</lang></title-info><document-info><id>tree-window-test</id><version>1.0</version></document-info></description><body>')
+    [void]$book.Append('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose_contemporary</genre><author><first-name>Tree</first-name><last-name>Test</last-name></author><book-title>Nested structure</book-title><lang>en</lang></title-info><document-info><author><nickname>Tree runtime</nickname></author><id>tree-window-test</id><version>1.0</version></document-info></description><body>')
     for($head = 0; $head -lt 12; ++$head) {
         [void]$book.Append("<section id='head$head'><title><p id='head-title$head'>Head $head</p><p id='head-text$head'>Heading text</p></title>")
         for($child = 0; $child -lt 4; ++$child) {
@@ -43,6 +43,9 @@ try {
     $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }
     if($exitCode -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Document Tree window runtime failed ($Mode), exit=$exitCode`n$text" }
     if(([regex]::Matches($text, '(?m)^marker_text_width_theme_\d+=1\r?$')).Count -ne 2) { throw "Document Tree marker width coverage is missing ($Mode)." }
+    foreach($check in @('section_title_extraction','title_normal_fast_layout','title_source_roundtrip','title_edit_undo_redo','clone_section_caption_undo_redo','title_save_reopen_xml')) {
+        if($text -notmatch ('(?m)^' + [regex]::Escape($check) + '=1\r?$')) { throw "Document Tree title coverage is missing ($Mode): $check" }
+    }
     Write-Host $text
     Write-Host "Document Tree window runtime: PASS ($Mode)."
     $passed = $true

@@ -176,4 +176,17 @@ if($generalPage -notlike '*OnInterfaceThemeChanged*' -or $generalPage -notlike '
     $generalPage -notlike '*ThemeManager::SetSelectedTheme(m_originalTheme)*' -or $generalPageHeader -notlike '*CBN_SELCHANGE, OnInterfaceThemeChanged*') {
     throw 'Settings interface-theme live preview and Cancel rollback are missing.'
 }
+foreach($required in @('ConfigureInterfaceTheme(m_darkThemeSupported)', 'if(darkThemeSupported)', 'm_preserveUnavailableDark',
+    '(!m_preserveUnavailableDark || interfaceTheme != INTERFACE_THEME_LIGHT)', 'IDC_INTERFACE_THEME_NOTE')) {
+    if($generalPage -notlike "*$required*") { throw "Unsupported theme choice policy is missing: $required" }
+}
+if($generalPageHeader -notlike '*darkThemeSupported = ThemeManager::IsDarkModeSupported()*') { throw 'Theme choices must default to the real platform capability.' }
+if($manager -notlike '*bool IsDarkModeSupported() { return SupportsDarkMode(); }*' -or
+    $manager -notlike '*bool SupportsDarkMode() { return WindowsBuildNumber() >= 17763; }*') { throw 'Theme choice availability must use the existing OS capability policy.' }
+$catalog = Read-ProjectFile 'localization\app-ui\fbe-small-dialogs.json' | ConvertFrom-Json
+foreach($key in @('fbe.settings.interface_theme.unavailable','fbe.settings.interface_theme.preserved')) {
+    foreach($locale in $catalog.targetLanguages) {
+        if(-not $catalog.strings.$key.translations.$locale) { throw "Missing theme availability localization: $key/$locale" }
+    }
+}
 Write-Host 'Контракт интерфейсных тем прошёл проверку.'

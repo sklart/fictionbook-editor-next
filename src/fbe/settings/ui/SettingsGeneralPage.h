@@ -18,9 +18,13 @@ class CSettingsGeneralPage : public CAxDialogImpl<CSettingsGeneralPage>, public 
 	CComboBox m_updateChannel;
 	CSettingsTooltips m_tooltips;
 	InterfaceTheme m_originalTheme;
+	bool m_preserveUnavailableDark = false;
+	bool m_darkThemeSupported = true;
+	void UpdateThemeNotice();
 	void FitLocalizedLayout();
 
 public:
+	explicit CSettingsGeneralPage(bool darkThemeSupported = ThemeManager::IsDarkModeSupported()) : m_darkThemeSupported(darkThemeSupported) {}
 	enum { IDD = IDD_SETTINGS_GENERAL };
 
 	BEGIN_MSG_MAP(CSettingsGeneralPage)
@@ -28,6 +32,7 @@ public:
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELCHANGE, OnInterfaceThemeChanged)
+		COMMAND_HANDLER(IDC_INTERFACE_THEME, CBN_SELENDOK, OnInterfaceThemeChanged)
 		CHAIN_MSG_MAP(CAxDialogImpl<CSettingsGeneralPage>)
 	END_MSG_MAP()
 
@@ -35,5 +40,6 @@ public:
 	LRESULT OnClickedOK(WORD, WORD, HWND, BOOL&);
 	LRESULT OnClickedCancel(WORD, WORD, HWND, BOOL&);
 	LRESULT OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&);
+	void ConfigureInterfaceTheme(bool darkThemeSupported);
 	bool Validate(); void Commit(); bool CancelChanges();
 };

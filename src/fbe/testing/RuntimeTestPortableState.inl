@@ -62,6 +62,42 @@ static VOID CALLBACK CloseNavigationPopupForTest(HWND, UINT, UINT_PTR timer, DWO
 
 void CMainFrame::RunPortableStateTestScenario()
 {
+    if(IsFbeTestScenario(L"interface-theme-policy-runtime")) {
+        _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK);
+        CSettingsGeneralPage page(false);
+        bool passed = page.Create(m_hWnd) != NULL;
+        if(passed) {
+            page.ConfigureInterfaceTheme(false);
+            const HWND choice = page.GetDlgItem(IDC_INTERFACE_THEME);
+            passed = ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 2 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_LIGHT &&
+                ::GetWindowTextLength(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE)) > 0;
+            RECT notice = {}, openGroup = {}, interfaceGroup = {};
+            ::GetWindowRect(page.GetDlgItem(IDC_INTERFACE_THEME_NOTE), &notice);
+            ::GetWindowRect(page.GetDlgItem(IDC_SETTINGS_OTHER_OPEN_GROUP), &openGroup);
+            ::GetWindowRect(page.GetDlgItem(IDC_OPTIONS_INTERFACE_GROUP), &interfaceGroup);
+            passed = passed && notice.bottom <= openGroup.top && notice.right <= interfaceGroup.right && notice.left >= interfaceGroup.left;
+            page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK;
+            page.CancelChanges(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK;
+            ::SendMessage(choice, CB_SETCURSEL, INTERFACE_THEME_AUTOMATIC, 0);
+            page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_AUTOMATIC;
+            _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK); page.ConfigureInterfaceTheme(false);
+            page.SendMessage(WM_COMMAND, MAKEWPARAM(IDC_INTERFACE_THEME, CBN_SELENDOK), reinterpret_cast<LPARAM>(choice));
+            page.Commit(); passed = passed && _Settings.GetInterfaceTheme() == INTERFACE_THEME_LIGHT;
+            _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK); page.ConfigureInterfaceTheme(true);
+            passed = passed && ::SendMessage(choice, CB_GETCOUNT, 0, 0) == 3 && ::SendMessage(choice, CB_GETCURSEL, 0, 0) == INTERFACE_THEME_DARK;
+            page.DestroyWindow();
+        }
+        _Settings.SetInterfaceTheme(INTERFACE_THEME_DARK, true);
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "controlled-theme-choice-policy=1\nresult=pass\n" : "controlled-theme-choice-policy=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
+    if(IsFbeTestScenario(L"interface-theme-policy-read")) {
+        const bool passed = _Settings.GetInterfaceTheme() == INTERFACE_THEME_DARK && ThemeManager::GetSelectedTheme() == INTERFACE_THEME_DARK;
+        WritePortableStateTestText(CString(DeploymentContext::DiagnosticsDirectory().c_str()) + L"portable-state-report.txt",
+            passed ? "theme-preference-restart=1\nresult=pass\n" : "theme-preference-restart=0\nresult=fail\n");
+        PostMessage(WM_CLOSE); return;
+    }
     if(IsFbeTestScenario(L"script-icon-size-read")) {
         int width = 0, height = 0;
         const int expected = UiMetrics::ScaleForDpi(32, UiMetrics::DpiForWindow(m_hWnd));
@@ -1008,7 +1044,10 @@ void CMainFrame::RunPortableStateTestScenario()
 		::CreateDirectory(scriptsDirectory, NULL);
 		_Settings.SetScriptsFolder(scriptsDirectory, true);
 		const bool fixtureWritten = WritePortableStateTestText(scriptsDirectory + L"RuntimeSize.js", "function Run() { document.title = 'Icon size command passed'; }\n");
-		if(!fixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
+		const CString iconFolder = scriptsDirectory + L"IconFolder\\";
+		::CreateDirectory(iconFolder, NULL);
+		const bool nestedFixtureWritten = WritePortableStateTestText(iconFolder + L"Nested.js", "function Run() {}\n");
+		if(!fixtureWritten || !nestedFixtureWritten || !InitializeScripts()) { WritePortableStateTestText(reportPath, "phase=script-toolbar-runtime-size\nreason=initial-reload\nresult=fail\n"); PostMessage(WM_CLOSE); return; }
 		CString scriptUid; UINT scriptCommand = 0;
 		for(int index = 0; index < m_scripts.Menu().Count(); ++index)
 			if(m_scripts.Menu().Item(index).relativePath.CompareNoCase(L"RuntimeSize.js") == 0)
@@ -1139,9 +1178,13 @@ void CMainFrame::RunPortableStateTestScenario()
 		}
 		const bool restoredDpi = UpdateScriptToolbarDpiMetrics(UiMetrics::DpiForWindow(m_hWnd));
 		CTreeView& iconTree = m_document_tree.m_tree.m_tree;
-		iconTree.SetScriptMode(true); RefreshNavigationScriptTree();
+		_Settings.SetDocumentTreeScripts(true); iconTree.SetScriptMode(true); RefreshNavigationScriptTree();
+		iconTree.SelectItem(iconTree.FindScriptTreeItem(L"runtimesize.js"));
+		const bool favoriteReady = iconTree.ExecuteScriptPopupCommand(NavigationPopupToggleFavorite);
 		const HTREEITEM scriptItem = iconTree.FindScriptTreeItem(L"runtimesize.js");
 		iconTree.SelectItem(scriptItem);
+		const HTREEITEM folderItem = iconTree.FindScriptTreeItem(L"iconfolder");
+		if(folderItem) iconTree.Expand(folderItem, TVE_EXPAND);
 		auto commands = [&]() {
 			std::vector<std::vector<int>> result;
 			auto capture = [&](HWND window) {
@@ -1162,7 +1205,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			return CString(static_cast<LPCWSTR>(m_doc->m_body.Document()->title)) == L"Icon size command passed";
 		};
 		const bool scriptBeforeResize = runScript();
-		bool sizesPassed = scriptItem != NULL && scriptBeforeResize;
+		bool sizesPassed = scriptItem != NULL && folderItem != NULL && favoriteReady && iconTree.IsFavoriteScript(scriptUid) && scriptBeforeResize;
 		DWORD gdiWarm = 0, userWarm = 0, gdiEnd = 0, userEnd = 0;
 		for(int cycle = 0; cycle < 100; ++cycle) {
 			const int sizes[] = {20, 24, 32, 16}; const int size = sizes[cycle % 4];
@@ -1173,6 +1216,7 @@ void CMainFrame::RunPortableStateTestScenario()
 			sizesPassed = ::ImageList_GetIconSize(m_scriptsToolbarImages, &width, &height) && width == expected && height == expected && sizesPassed;
 			sizesPassed = ::ImageList_GetIconSize(iconTree.ScriptImageList(), &width, &height) && width == expected && height == expected && sizesPassed;
 			sizesPassed = iconTree.GetSelectedItem() == scriptItem && commands() == originalCommands && sizesPassed;
+			sizesPassed = folderItem != NULL && (iconTree.GetItemState(folderItem, TVIS_EXPANDED) & TVIS_EXPANDED) != 0 && sizesPassed;
 			int treeImage = 0, treeRow = 0, treeIndent = 0; bool expanders = false;
 			sizesPassed = iconTree.GetScriptTreeMetrics(treeImage, treeRow, treeIndent, expanders) && treeImage == expected &&
 				_Settings.GetFavoriteScripts() == originalFavorites && sizesPassed;
@@ -1190,6 +1234,15 @@ void CMainFrame::RunPortableStateTestScenario()
 		matrixDetails.AppendFormat("script-before=%d\nscript-after=%d\n", scriptBeforeResize, scriptAfterResize);
 		sizesPassed = sizesPassed && gdiWarm > 0 && userWarm > 0 && gdiEnd <= gdiWarm + 4 && userEnd <= userWarm + 2 && scriptAfterResize;
 		_Settings.SetScriptIconSize(32); sizesPassed = ApplyScriptIconSize() && sizesPassed; _Settings.Save();
+		const bool refreshedCatalog = InitializeScripts();
+		int refreshedWidth = 0, refreshedHeight = 0;
+		const int refreshedExpected = UiMetrics::ScaleForDpi(32, UiMetrics::DpiForWindow(m_hWnd));
+		const HTREEITEM refreshedFolder = iconTree.FindScriptTreeItem(L"iconfolder");
+		const bool catalogPassed = refreshedCatalog && runScript() && commands() == originalCommands && iconTree.IsFavoriteScript(scriptUid) &&
+			refreshedFolder != NULL && (iconTree.GetItemState(refreshedFolder, TVIS_EXPANDED) & TVIS_EXPANDED) != 0 &&
+			::ImageList_GetIconSize(m_scriptsToolbarImages, &refreshedWidth, &refreshedHeight) && refreshedWidth == refreshedExpected && refreshedHeight == refreshedExpected;
+		sizesPassed = catalogPassed && sizesPassed;
+		matrixDetails.AppendFormat("catalog-after-resize=%d\n", catalogPassed);
 		matrixDetails.AppendFormat("initial-icon-size=%d\nsize-switches=100\nsize-switches-pass=%d\ngdi-warm=%lu\ngdi-end=%lu\nuser-warm=%lu\nuser-end=%lu\n", initialIconSize, sizesPassed, gdiWarm, gdiEnd, userWarm, userEnd);
 		const bool passed = created && added && hiddenOk && shown && showOneRow && bandBefore != 0 && bandAfter != 0 && duplicateIds == 0 && restarted && dpiMatrix && restoredDpi && sizesPassed;
 		CStringA report; report.Format("phase=script-toolbar-runtime-size\ncreated=%d\nadd-script=%d\nhide-result=%d\nshow-result=%d\nshow-one-row=%d\nband-before=%u\nband-after=%u\nduplicate-band-ids=%d\nhide-show=%d\nrestart=%d\nscript-command=%u\ndpi-matrix=%d\ndpi-restored=%d\nresult=%s\n", created, added, hiddenOk, shown, showOneRow, bandBefore, bandAfter, duplicateIds, hiddenOk && shown, restarted, scriptCommand, dpiMatrix, restoredDpi, passed ? "pass" : "fail");

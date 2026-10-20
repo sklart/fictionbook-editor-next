@@ -79,6 +79,7 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 	SetText(m_hWnd, IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE, L"fbe.dialog.idd_setting_next.show_full_path_in_window_title", L"Show full file path in the window title");
 	SetText(m_hWnd, IDC_FBE_NEXT_UPDATES_GROUP, L"fbe.dialog.idd_setting_next.updates", L"Updates");
 	SetText(m_hWnd, IDC_UPDATE_CHANNEL_LABEL, L"fbe.dialog.idd_setting_next.update_channel", L"Update channel:");
+	ConfigureInterfaceTheme(m_darkThemeSupported);
 	FitLocalizedLayout();
 
 	m_language.SetDroppedWidth(320);
@@ -108,10 +109,6 @@ LRESULT CSettingsGeneralPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 			}
 	}
 	m_language.SetCurSel(selectedLanguage);
-	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.automatic", L"Automatic \x2014 follow Windows"));
-	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.light", L"Light"));
-	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.dark", L"Dark"));
-	m_interfaceTheme.SetCurSel(static_cast<int>(_Settings.GetInterfaceTheme()));
 	for(int size : {16, 20, 24, 32}) {
 		CString iconText; iconText.Format(L"%d \x00d7 %d", size, size);
 		const int index = m_scriptIconSize.AddString(iconText); m_scriptIconSize.SetItemData(index, size);
@@ -235,6 +232,14 @@ void CSettingsGeneralPage::FitLocalizedLayout()
 	separateRows(IDC_OPTIONS_GENRE_CATALOG_LABEL, IDC_GENRE_CATALOG, IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME);
 	separateRows(IDC_INTERFACE_THEME_LABEL, IDC_INTERFACE_THEME, IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE);
 	grow(IDC_OPTIONS_INTERFACE_GROUP, { IDC_SCRIPT_ICON_SIZE_LABEL, IDC_SCRIPT_ICON_SIZE });
+	if(!m_darkThemeSupported) {
+		CRect note = bounds(IDC_INTERFACE_THEME_NOTE);
+		note.left = interfaceGroup.left + margin; note.right = interfaceGroup.right - margin;
+		note.top = max(bounds(IDC_SCRIPT_ICON_SIZE_LABEL).bottom, bounds(IDC_SCRIPT_ICON_SIZE).bottom) + rowGap;
+		note.bottom = note.top + max(minimumTextHeight, measure(IDC_INTERFACE_THEME_NOTE, note.Width(), true).cy + padding);
+		place(IDC_INTERFACE_THEME_NOTE, note);
+		grow(IDC_OPTIONS_INTERFACE_GROUP, {IDC_INTERFACE_THEME_NOTE});
+	}
 	shift(IDC_SETTINGS_OTHER_OPEN_GROUP, { IDC_RESTORE_POS });
 	fitCheckbox(IDC_SETTINGS_OTHER_OPEN_GROUP, IDC_RESTORE_POS, false);
 	grow(IDC_SETTINGS_OTHER_OPEN_GROUP, { IDC_RESTORE_POS });
@@ -276,11 +281,40 @@ LRESULT CSettingsGeneralPage::OnClickedCancel(WORD, WORD, HWND, BOOL&)
 	return ForwardSettingsDialogCommand(m_hWnd, IDCANCEL);
 }
 
-LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD, WORD, HWND, BOOL&)
+void CSettingsGeneralPage::ConfigureInterfaceTheme(bool darkThemeSupported)
+{
+	m_darkThemeSupported = darkThemeSupported;
+	m_originalTheme = _Settings.GetInterfaceTheme();
+	m_preserveUnavailableDark = !darkThemeSupported && m_originalTheme == INTERFACE_THEME_DARK;
+	m_interfaceTheme.ResetContent();
+	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.automatic", L"Automatic \x2014 follow Windows"));
+	m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.light", L"Light"));
+	if(darkThemeSupported) m_interfaceTheme.AddString(FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.dark", L"Dark"));
+	m_interfaceTheme.SetCurSel(m_preserveUnavailableDark ? INTERFACE_THEME_LIGHT : static_cast<int>(m_originalTheme));
+	UpdateThemeNotice();
+}
+
+void CSettingsGeneralPage::UpdateThemeNotice()
+{
+	const bool supported = m_darkThemeSupported;
+	CString notice;
+	if(!supported) {
+		notice = FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.unavailable", L"The dark interface theme requires Windows 10 (1809) or newer. This system uses the standard light appearance.");
+		if(m_preserveUnavailableDark) notice += L" " + FbeLoadRuntimeStringByKey(L"fbe.settings.interface_theme.preserved", L"Your saved dark preference is preserved until you choose another theme.");
+	}
+	::SetDlgItemText(m_hWnd, IDC_INTERFACE_THEME_NOTE, notice);
+	::ShowWindow(GetDlgItem(IDC_INTERFACE_THEME_NOTE), supported ? SW_HIDE : SW_SHOW);
+}
+
+LRESULT CSettingsGeneralPage::OnInterfaceThemeChanged(WORD notification, WORD, HWND, BOOL&)
 {
 	const int selection = m_interfaceTheme.GetCurSel();
 	if(selection >= INTERFACE_THEME_AUTOMATIC && selection <= INTERFACE_THEME_DARK)
 	{
+		if(notification == CBN_SELENDOK || !m_interfaceTheme.GetDroppedState()) {
+			m_preserveUnavailableDark = false;
+			UpdateThemeNotice();
+		}
 		ThemeManager::SetSelectedTheme(static_cast<InterfaceTheme>(selection));
 		ThemeManager::ApplyToAllThreadWindows(::GetCurrentThreadId());
 	}
@@ -293,8 +327,10 @@ void CSettingsGeneralPage::Commit()
 	const int iconSize = m_scriptIconSize.GetCurSel();
 	if(iconSize != CB_ERR) _Settings.SetScriptIconSize(static_cast<int>(m_scriptIconSize.GetItemData(iconSize)));
 	const int interfaceTheme = m_interfaceTheme.GetCurSel();
-	if(interfaceTheme >= INTERFACE_THEME_AUTOMATIC && interfaceTheme <= INTERFACE_THEME_DARK)
+	if(interfaceTheme >= INTERFACE_THEME_AUTOMATIC && interfaceTheme <= INTERFACE_THEME_DARK &&
+		(!m_preserveUnavailableDark || interfaceTheme != INTERFACE_THEME_LIGHT))
 		_Settings.SetInterfaceTheme(static_cast<InterfaceTheme>(interfaceTheme));
+	else if(m_preserveUnavailableDark) ThemeManager::SetSelectedTheme(m_originalTheme);
 	const int encodingIndex = m_defaultEncoding.GetCurSel();
 	if(encodingIndex != CB_ERR) { CString encoding; m_defaultEncoding.GetLBText(encodingIndex, encoding); _Settings.SetDefaultEncoding(encoding); }
 	_Settings.SetKeepEncoding(m_keepEncoding.GetCheck() == BST_CHECKED);

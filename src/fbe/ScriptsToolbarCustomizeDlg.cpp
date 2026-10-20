@@ -447,9 +447,11 @@ void CScriptsToolbarCustomizeDlg::UpdateMetrics()
 		IDC_SCRIPTS_TOOLBAR_CURRENT_LABEL, IDC_SCRIPTS_TOOLBAR_AVAILABLE, IDC_SCRIPTS_TOOLBAR_CURRENT, IDC_SCRIPTS_TOOLBAR_ADD,
 		IDC_SCRIPTS_TOOLBAR_REMOVE, IDC_SCRIPTS_TOOLBAR_UP, IDC_SCRIPTS_TOOLBAR_DOWN, IDC_SCRIPTS_TOOLBAR_RESET, IDCANCEL };
 	for(int i = 0; i < _countof(controls); ++i) ::SendMessage(GetDlgItem(controls[i]), WM_SETFONT, font, TRUE);
-	const int rowHeight = Scale(m_showPanelSelector ? (std::max)(28, m_settings.GetScriptIconSize() + 8) : 28);
-	::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_SETITEMHEIGHT, 0, rowHeight);
-	::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_SETITEMHEIGHT, 0, rowHeight);
+	if(m_showPanelSelector) {
+		const int rowHeight = Scale((std::max)(28, m_settings.GetScriptIconSize() + 8));
+		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_AVAILABLE), LB_SETITEMHEIGHT, 0, rowHeight);
+		::SendMessage(GetDlgItem(IDC_SCRIPTS_TOOLBAR_CURRENT), LB_SETITEMHEIGHT, 0, rowHeight);
+	}
 	m_minimumSize = CSize(Scale(560), Scale(330));
 }
 int CScriptsToolbarCustomizeDlg::Scale(int px) const { return UiMetrics::ScaleForDpi(px, m_dpi); }

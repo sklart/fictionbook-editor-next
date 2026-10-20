@@ -16,7 +16,7 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         UpdateLayout();
         ::SetForegroundWindow(m_hWnd);
         InvalidateUi(UiDirtyAll); m_sel_changed = true; OnIdle();
-        const auto document = m_doc->m_body.Document();
+        auto document = m_doc->m_body.Document();
         auto element = [&](LPCWSTR id) { return MSHTML::IHTMLElementPtr(MSHTML::IHTMLDocument3Ptr(document)->getElementById(id)); };
         auto find = [&](LPCWSTR id) -> HTREEITEM {
             const auto target = element(id);
@@ -412,6 +412,33 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
             FBE_TREE_CHECK(started && !tree.IsStructuralDragActive());
         });
         report += "native_drag_drop_undo_redo=1\n";
+        phase = "clone-section";
+        checkpoint();
+        roundTrip([&]() {
+            m_doc->m_body.Call(L"CloneContainer", element(L"head0"));
+            MSHTML::IHTMLDOMNodePtr clone(MSHTML::IHTMLDOMNodePtr(element(L"head0"))->nextSibling);
+            while(clone && clone->nodeType != 1) clone = clone->nextSibling;
+            FBE_TREE_CHECK(clone != NULL && U::FindTitle(clone).IsEmpty());
+            m_document_tree.GetDocumentStructure(document);
+            m_document_tree.HighlightItemAtPos(MSHTML::IHTMLElementPtr(clone));
+            CString text; FBE_TREE_CHECK(tree.GetItemText(tree.CurrentStructureItem(), text));
+            FBE_TREE_CHECK(text == L"<section>");
+        });
+        report += "clone_section_caption_undo_redo=1\n";
+        phase = "save-reopen";
+        checkpoint();
+        const CString saveXml = xml(), saveCaption = caption(L"head0");
+        const CString savedPath = U::GetProgDir() + L"tree-title-roundtrip.fb2";
+        int saveErrorLine = 0, saveErrorColumn = 0;
+        const bool saveValid = m_doc->Validate(saveErrorLine, saveErrorColumn);
+        report.AppendFormat("save_validation=%d,line:%d,column:%d\n", saveValid, saveErrorLine, saveErrorColumn);
+        FBE_TREE_CHECK(saveValid);
+        FBE_TREE_CHECK(m_doc->Save(savedPath));
+        FBE_TREE_CHECK(LoadFile(savedPath) == OK);
+        document = m_doc->m_body.Document();
+        m_document_tree.GetDocumentStructure(document);
+        FBE_TREE_CHECK(xml() == saveXml && caption(L"head0") == saveCaption);
+        report += "title_save_reopen_xml=1\n";
         phase = "shifted-source-index";
         checkpoint();
         // Deliberately change this disposable fixture without notifying the

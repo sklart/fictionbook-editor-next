@@ -1230,6 +1230,7 @@ void SetSelectedTheme(InterfaceTheme theme)
 }
 
 InterfaceTheme GetSelectedTheme() { return g_selected; }
+bool IsDarkModeSupported() { return SupportsDarkMode(); }
 bool IsDark() { return SupportsDarkMode() && (g_selected == INTERFACE_THEME_DARK || (g_selected == INTERFACE_THEME_AUTOMATIC && g_systemDark)); }
 bool IsHighContrast() { return g_highContrast; }
 void ResetApplyDiagnostics() { g_applyDiagnostics = {}; g_recordApplyDiagnostics = true; }
