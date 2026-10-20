@@ -44,15 +44,43 @@ foreach ($contract in @(
     }
 }
 
+function Get-ApiDocumentationSection([string]$Text, [string]$Member) {
+    # Mentions in later prose are not headings; a heading cannot span lines.
+    $pattern = '(?ms)^### [^\r\n]*\b' + [regex]::Escape($Member) + '\b[^\r\n]*\r?\n.*?(?=^### |\z)'
+    return [regex]::Match($Text, $pattern)
+}
+function Test-JavaScriptExample([string]$Section) {
+    return $Section -match '(?m)^```(?:js|javascript)[ \t]*\r?$'
+}
+
+# Examples must belong to their own method, with either valid fence spelling.
+$sectionFixture = @'
+### `First()`
+No example here.
+### `Second()`
+```javascript
+Second();
+```
+### `Third()`
+```js
+Third();
+```
+A later mention of First must not borrow the Third example.
+'@
+$firstSection = Get-ApiDocumentationSection $sectionFixture 'First'
+if(-not $firstSection.Success -or (Test-JavaScriptExample $firstSection.Value) -or
+   -not (Test-JavaScriptExample (Get-ApiDocumentationSection $sectionFixture 'Second').Value) -or
+   -not (Test-JavaScriptExample (Get-ApiDocumentationSection $sectionFixture 'Third').Value) -or
+   (Get-ApiDocumentationSection $sectionFixture 'FirstExtra').Success) {
+    throw 'Разбор разделов API должен сохранять границы методов и распознавать js/javascript.'
+}
+
 foreach ($member in $documentedMembers) {
-    $section = [regex]::Match(
-        $documentation,
-        "(?ms)^### .*" + [regex]::Escape($member) + ".*?(?=^### |\z)"
-    )
+    $section = Get-ApiDocumentationSection $documentation $member
     if (-not $section.Success) {
         throw "В документации не найден раздел API: $member."
     }
-    if ($section.Value -notmatch '```js') {
+    if (-not (Test-JavaScriptExample $section.Value)) {
         throw "В разделе API отсутствует пример JavaScript: $member."
     }
 }
