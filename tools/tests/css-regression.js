@@ -135,7 +135,8 @@ const sharedDeclarations = [
   ["div#fbw_body table.table th, div#fbw_body table.table td", ["border", "padding", "vertical-align", "text-indent", "word-wrap"]],
   ["div#fbw_body table.table th", ["background-color", "font-weight"]],
   ["div.epigraph p", ["text-indent", "margin"]],
-  ["div.title p", ["text-align", "text-indent"]],
+  ["div#fbw_body div.title", ["padding", "margin-bottom"]],
+  ["div.title p", ["text-align", "text-indent", "margin"]],
   ["p", ["text-indent", "margin-top", "margin-bottom", "text-align"]],
   ["p.subtitle", ["text-align", "font-weight", "text-indent"]],
   ["div#fbNotePreview", ["visibility", "position", "z-index", "box-sizing", "padding", "border", "background", "color", "overflow", "line-height", "text-align", "white-space", "word-spacing", "letter-spacing"]],
@@ -190,7 +191,7 @@ for (const [selector, properties] of sharedDeclarations) {
 assert.strictEqual(normalCss.selectorCounts.get("em"), 1, "main.css: em must have one rule");
 assert.strictEqual(fastCss.selectorCounts.get("em"), 1, "main_fast.css: em must have one rule");
 
-for (const [className, expected] of [["cite", ["0", "2em", "0", "2em"]], ["title", ["0.3em", "0.3em", "0.3em", "0.3em"]]]) {
+for (const [className, expected] of [["cite", ["0", "2em", "0", "2em"]], ["title", ["0", "0.3em", "0", "0.3em"]]]) {
 	const hierarchy = [{ tag: "div", id: "fbw_body", classes: [] }, { tag: "div", id: "", classes: [className] }];
 	const normalPadding = resolveComputedPadding(normalCss, hierarchy);
 	const fastPadding = resolveComputedPadding(fastCss, hierarchy);

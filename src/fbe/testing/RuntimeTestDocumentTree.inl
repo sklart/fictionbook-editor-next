@@ -115,6 +115,27 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         FBE_TREE_CHECK(!U::FindTitleNode(probe));
         FBE_TREE_CHECK(!U::FindTitleNode(NULL));
         report += "section_title_extraction=1\n";
+        phase = "title-layout";
+        const CString layoutXml = xml();
+        const bool layoutDirty = m_doc->DocChanged(), originalFast = m_doc->GetFastMode();
+        for(bool fast : {false, true}) {
+            m_doc->SetFastMode(fast);
+            const auto title = U::FindTitleNode(element(L"head0"));
+            MSHTML::IHTMLCurrentStylePtr style(MSHTML::IHTMLElement2Ptr(title)->currentStyle);
+            FBE_TREE_CHECK(CString(static_cast<LPCWSTR>(_bstr_t(style->paddingTop))) == L"0px");
+            FBE_TREE_CHECK(CString(static_cast<LPCWSTR>(_bstr_t(style->paddingBottom))) == L"0px");
+            const auto first = element(L"head-title0"), second = element(L"head-text0");
+            FBE_TREE_CHECK(first->offsetHeight > 0 && second->offsetHeight > 0);
+            FBE_TREE_CHECK(second->offsetTop >= first->offsetTop + first->offsetHeight);
+            FBE_TREE_CHECK(second->offsetTop - first->offsetTop - first->offsetHeight <= 1);
+            FBE_TREE_CHECK(title->offsetHeight >= first->offsetHeight + second->offsetHeight);
+            FBE_TREE_CHECK(xml() == layoutXml && m_doc->DocChanged() == layoutDirty);
+        }
+        m_doc->SetFastMode(originalFast);
+        ShowView(SOURCE); ShowView(BODY);
+        m_document_tree.GetDocumentStructure(document);
+        FBE_TREE_CHECK(xml() == layoutXml && m_doc->DocChanged() == layoutDirty);
+        report += "title_normal_fast_layout=1\ntitle_source_roundtrip=1\n";
         const CString before = xml();
         const bool dirty = m_doc->DocChanged();
         const auto revision = m_doc->m_body.GetVersionNumber();
