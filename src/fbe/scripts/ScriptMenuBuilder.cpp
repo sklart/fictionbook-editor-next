@@ -44,9 +44,6 @@ void MenuBuilder::BuildSubMenu(HMENU parentMenu, const CString& parentId,
 	const std::function<void(ScriptDescriptor&)>& initializeHotkey,
 	const std::function<void(const ScriptDescriptor&, const VisualResource&, UINT)>& addVisual)
 {
-	int menuPosition = 0;
-	for (int index = 0; index < Count(); ++index)
-		if (Item(index).parentId == parentId) ++menuPosition;
 	for (int index = 0; index < Count(); ++index)
 	{
 		ScriptDescriptor& script = Item(index);
@@ -72,8 +69,7 @@ void MenuBuilder::BuildSubMenu(HMENU parentMenu, const CString& parentId,
 		}
 		item.dwTypeData = script.name.GetBuffer();
 		item.cch = wcslen(script.name);
-		if (script.isFolder) ::InsertMenuItem(parentMenu, 0, TRUE, &item);
-		else ::InsertMenuItem(parentMenu, menuPosition--, TRUE, &item);
+		::InsertMenuItem(parentMenu, static_cast<UINT>(::GetMenuItemCount(parentMenu)), TRUE, &item);
 		if (!script.isFolder || item.wID != 0) addVisual(script, VisualAt(index), item.wID);
 	}
 }

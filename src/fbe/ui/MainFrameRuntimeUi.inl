@@ -7,12 +7,19 @@ void CMainFrame::FillMenuWithHkeys(HMENU menu)
 	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
 	{
 		CHotkeysGroup& group = _Settings.m_hotkey_groups[i];
+		// Script commands already follow the shared hierarchical catalog order.
+		// Locate the system command by identity, never by an assumed array index.
+		if(group.m_reg_name == L"Scripts") {
+			const auto last = std::find_if(group.m_hotkeys.begin(), group.m_hotkeys.end(),
+				[](const CHotkey& hotkey) { return hotkey.m_reg_name == L"LastScript"; });
+			if(last != group.m_hotkeys.end()) std::rotate(group.m_hotkeys.begin(), last, last + 1);
+		}
 		std::vector<CHotkey>::iterator begin = group.m_hotkeys.begin();
 		if((group.m_reg_name == L"Scripts" || group.m_reg_name == L"Plugins")
 			&& begin != group.m_hotkeys.end())
 			++begin;
 
-		std::sort(begin, group.m_hotkeys.end());
+		if(group.m_reg_name != L"Scripts") std::sort(begin, group.m_hotkeys.end());
 		for(unsigned int j = 0; j < group.m_hotkeys.size(); ++j)
 		{
 			CHotkey& hotkey = group.m_hotkeys[j];

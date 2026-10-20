@@ -60,11 +60,20 @@ struct hkIndex
 };
 
 // CSettingsHotkeysDlg
-class CSettingsHotkeysDlg: public CAxDialogImpl<CSettingsHotkeysDlg>, public ISettingsPage
+class CSettingsHotkeysDlg: public CAxDialogImpl<CSettingsHotkeysDlg>, public ISettingsPage, public CMessageFilter
 {
 public:
 	CListBox	m_hkGroups;
-	CListBox	m_hotkeys;
+	CListViewCtrl m_hotkeys;
+	CEdit m_search;
+	bool m_rebuilding = false;
+	bool m_filterRegistered = false;
+	BOOL PreTranslateMessage(MSG* message) override;
+	void RebuildCommandList(bool preserveSelection = false);
+	bool HasSelection() const;
+	LRESULT OnSearchChanged(WORD, WORD, HWND, BOOL&);
+	LRESULT OnCommandSelection(int, LPNMHDR, BOOL&);
+	LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL&);
 	CAccelEdit	m_editHotkey;
 	CButton m_changeKeyb;
 	CComboBox m_keybLayout;
@@ -88,13 +97,15 @@ public:
 
 	BEGIN_MSG_MAP(CSettingsHotkeysDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
 		MESSAGE_HANDLER(WM_USER + 0x401, OnKeyPressed)
 		MESSAGE_HANDLER(WM_USER + 0x402, OnKeyReleased)
 
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOK)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_LIST_HOTKEYS_GROUPS, LBN_SELCHANGE, OnGroupsSelChange)
-		COMMAND_HANDLER(IDC_LIST_HOTKEYS, LBN_SELCHANGE, OnHotkeysSelChange)
+		NOTIFY_HANDLER(IDC_LIST_HOTKEYS, LVN_ITEMCHANGED, OnCommandSelection)
+		COMMAND_HANDLER(IDC_HOTKEY_SEARCH, EN_CHANGE, OnSearchChanged)
 		COMMAND_HANDLER(IDC_EDIT_HOTKEY, EN_SETFOCUS, OnEditSetFocus)
 		COMMAND_HANDLER(IDC_BUTTON_HOTKEY_DELETE, BN_CLICKED, OnBnClickedButtonHotkeyDelete)
 

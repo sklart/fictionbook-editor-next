@@ -69,7 +69,8 @@ bool UiController::Initialize(const CString& folder, const CString& persistedCom
 {
 	if(scriptsMenu == NULL) return false;
 	++m_initializeCount;
-	m_menu.Clear(); ClearLastScript();
+	// Keep the UID across discovery; LastScript() resolves it against the new catalog.
+	m_menu.Clear();
 	if(!m_registryLoaded)
 	{
 		if(!m_registry.Load()) return false;

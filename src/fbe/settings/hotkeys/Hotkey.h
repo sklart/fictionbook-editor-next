@@ -14,6 +14,7 @@ public:
 	ACCEL m_accel;
 	ACCEL m_def_accel;
 	CString m_desc;
+	CString m_displayPath; // UI only; legacy migration continues to use m_desc.
 	wchar_t m_char_val;
 
 	CHotkey();

@@ -269,6 +269,8 @@ public:
 	void RefreshScriptToolbarViewMenu();
 	void InitScriptHotkey(ScriptDescriptor&);
 	CString GetRuntimeToolbarToolTipText(UINT commandId) const;
+	void RebuildRuntimeHotkeys();
+	void RunScriptHotkeyManagementTest();
 	CString m_runtimeToolbarToolTipW;
 	CStringA m_runtimeToolbarToolTipA;
 

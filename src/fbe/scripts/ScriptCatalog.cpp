@@ -30,7 +30,11 @@ void SetNameAndOrder(const CString& fileName, CString& name, CString& order)
 	name = fileName;
 	order = L"0_" + fileName;
 	const int separator = name.Find(L'_');
-	if (separator >= 0 && U::CheckScriptsVersion(fileName))
+	// Unlike U::CheckScriptsVersion, this also handles short numbered folders.
+	bool numbered = separator > 0 && separator + 1 < name.GetLength();
+	for(int index = 0; numbered && index < separator; ++index)
+		numbered = name[index] >= L'0' && name[index] <= L'9';
+	if (numbered)
 	{
 		name = name.Mid(separator + 1);
 		order = fileName;
@@ -50,6 +54,18 @@ bool Catalog::Discover(const CString& root, const CString& mask, ScriptRegistry*
 		const int order = left.order.CompareNoCase(right.order);
 		return order != 0 ? order < 0 : left.relativePath.CompareNoCase(right.relativePath) < 0;
 	});
+	// Every consumer receives the same depth-first folder order. Numbered order
+	// keys retain their established semantics; unnumbered keys use display names.
+	std::vector<ScriptDescriptor> ordered;
+	const auto appendChildren = [&](const auto& self, const CString& parent) -> void {
+		for(const auto& item : m_items)
+			if(item.parentId == parent) {
+				ordered.push_back(item);
+				if(item.isFolder) self(self, item.id);
+			}
+	};
+	appendChildren(appendChildren, CString());
+	m_items.swap(ordered);
 	return registry == NULL || registry->Resolve(m_items);
 }
 

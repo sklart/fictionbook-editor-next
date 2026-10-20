@@ -847,6 +847,12 @@ CString KeycodeToString(WORD keycode)
 
 static CString KeycodeToDisplayString(WORD keycode)
 {
+	if(keycode == VK_OEM_3) {
+		const UINT character = ::MapVirtualKeyExW(keycode, MAPVK_VK_TO_CHAR, ::GetKeyboardLayout(0)) & 0x7fffffff;
+		if(character >= 0x20 && character <= 0xffff) {
+			CString label(static_cast<wchar_t>(character), 1); label.MakeUpper(); return label;
+		}
+	}
 	switch(keycode)
 	{
 	case VK_SPACE: return FbeLoadRuntimeStringByKey(L"fbe.hotkey.key.space", L"Space");

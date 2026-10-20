@@ -574,6 +574,10 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 	CListBox list(window);
 	switch(message)
 	{
+	case WM_NCLBUTTONDOWN:
+		// Native scrollbar tracking must not inherit a stale row drag candidate.
+		dialog->m_dragSource = -1;
+		break;
 	case WM_LBUTTONDOWN:
 		{
 			dialog->ActivateList(list);
@@ -587,7 +591,8 @@ LRESULT CALLBACK CScriptsToolbarCustomizeDlg::CurrentListSubclassProc(HWND windo
 		dialog->ActivateList(list);
 		break;
 	case WM_MOUSEMOVE:
-		if(dialog->m_dragSource >= 0 && !dialog->m_dragging)
+		if(!(wParam & MK_LBUTTON) && !dialog->m_dragging) dialog->m_dragSource = -1;
+		if((wParam & MK_LBUTTON) && dialog->m_dragSource >= 0 && !dialog->m_dragging)
 		{
 			const int threshold = max(2, ::GetSystemMetrics(SM_CXDRAG));
 			if(abs(GET_X_LPARAM(lParam) - dialog->m_dragStartPoint.x) >= threshold || abs(GET_Y_LPARAM(lParam) - dialog->m_dragStartPoint.y) >= threshold)

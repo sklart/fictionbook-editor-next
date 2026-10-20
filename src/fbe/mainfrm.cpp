@@ -25,6 +25,8 @@
 #include "..\\common\\ModernFileDialog.h"
 #include "settings\\ui\\SettingsDlg.h"
 #include "Settings.h"
+#include "settings/hotkeys/HotkeyStore.h"
+#include "settings/SettingsPaths.h"
 #include "XmlSourceThemes.h"
 #include "ThemeManager.h"
 #include "settings\\EditorBackgrounds.h"
@@ -731,10 +733,12 @@ CString CMainFrame::GetRuntimeToolbarToolTipText(UINT commandId) const
 		{
 			const ScriptDescriptor& script = m_scripts.Menu().Item(index);
 			if (!script.isFolder && script.commandId == scriptCommandId)
-				return script.name;
+				return FbeSettings::Hotkeys::CommandTooltip(_Settings.m_hotkey_groups, commandId, script.name);
 		}
 		return CString();
 	}
+	if(commandId == ID_LAST_SCRIPT)
+		return FbeSettings::Hotkeys::CommandTooltip(_Settings.m_hotkey_groups, commandId, FbeLoadCString(IDS_HOTKEY_SCRIPTS_LAST_SCRIPT));
 	for (size_t index = 0; index < kTableToolbarCommandCount; ++index)
 	{
 		const TableToolbarCommand& command = kTableToolbarCommands[index];
@@ -3442,6 +3446,7 @@ bool CMainFrame::InitializeScripts()
 
 bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolbarDefinition>& definitions, bool hasPersistedMainDefinition)
 {
+	const std::vector<CHotkeysGroup> previousHotkeys = _Settings.m_hotkey_groups;
 	ReleaseScriptResources();
 	for(UINT command = ID_SCRIPT_BASE; command <= ID_SCRIPT_BASE + SCRIPT_COMMAND_COUNT; ++command)
 		ThemeManager::UnregisterNativeMenuBitmap(command);
@@ -3483,6 +3488,20 @@ bool CMainFrame::InitializeScriptsFromDefinitions(const std::vector<ScriptToolba
 			ThemeManager::RegisterNativeMenuBitmap(command, visual.NativeMenuBitmap());
 		},
 		[this](ScriptDescriptor& script) { InitScriptHotkey(script); })) _Settings.SetScriptCommandIds(serializedCommandIds);
+	// Recover assignments of scripts that disappeared from the preceding scan.
+	// Current in-memory choices take precedence over the persisted snapshot.
+	_Settings.LoadHotkeyGroups();
+	for(auto& group : _Settings.m_hotkey_groups)
+		if(group.m_reg_name == L"Scripts")
+			for(auto& hotkey : group.m_hotkeys)
+				for(const auto& previousGroup : previousHotkeys)
+					if(previousGroup.m_reg_name == group.m_reg_name)
+						for(const auto& previous : previousGroup.m_hotkeys)
+							if(previous.m_reg_name == hotkey.m_reg_name) {
+								hotkey.m_accel.fVirt = previous.m_accel.fVirt;
+								hotkey.m_accel.key = previous.m_accel.key;
+							}
+	RebuildRuntimeHotkeys();
 	for(size_t toolbarIndex = 0; toolbarIndex < m_scriptToolbars.Items().size(); ++toolbarIndex)
 		if(m_scriptToolbars.Items()[toolbarIndex].definition.id != L"scripts-main" && m_scriptToolbars.Items()[toolbarIndex].definition.visible && !CreateScriptToolbarRuntime(m_scriptToolbars.Items()[toolbarIndex]))
 		{
@@ -4611,6 +4630,23 @@ LRESULT CMainFrame::OnTimer(UINT, WPARAM wParam, LPARAM, BOOL& bHandled)
 	return 0;
 }
 
+#include "testing/RuntimeTestScriptHotkeys.inl"
+
+void CMainFrame::RebuildRuntimeHotkeys()
+{
+	std::vector<ACCEL> accelerators;
+	for(const auto& group : _Settings.m_hotkey_groups)
+		for(const auto& hotkey : group.m_hotkeys)
+			if(hotkey.m_accel.key && hotkey.m_accel.cmd && hotkey.m_accel.fVirt)
+				accelerators.push_back(hotkey.m_accel);
+	HACCEL updated = accelerators.empty() ? NULL : ::CreateAcceleratorTable(accelerators.data(), static_cast<int>(accelerators.size()));
+	if(!accelerators.empty() && !updated) return;
+	if(m_hAccel) ::DestroyAcceleratorTable(m_hAccel);
+	m_hAccel = updated;
+	_Settings.keycodes = static_cast<int>(accelerators.size());
+	if(::IsWindow(m_MenuBar)) FillMenuWithHkeys(m_MenuBar.GetMenu());
+}
+
 LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 {
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-enter");
@@ -4626,27 +4662,10 @@ LRESULT CMainFrame::OnPostCreate(UINT, WPARAM, LPARAM, BOOL&)
 	SetTimer(RECOVERY_TIMER_ID, RECOVERY_INTERVAL_MS);
 
 	_Settings.LoadHotkeyGroups();
-	DestroyAcceleratorTable(m_hAccel);
-
-	LPACCEL lpaccelNew = new ACCEL[_Settings.keycodes];
-	int HKentries = _Settings.keycodes;
-	for(unsigned int i = 0; i < _Settings.m_hotkey_groups.size(); ++i)
-	{
-		CHotkeysGroup& group = _Settings.m_hotkey_groups[i];
-		for(unsigned int j = 0; j < group.m_hotkeys.size(); ++j)
-		{
-			ACCEL accel = group.m_hotkeys[j].m_accel;
-			if(accel.fVirt != NULL && accel.key != NULL && accel.cmd != NULL)
-			{
-				lpaccelNew[--HKentries] = accel;
-			}
-		}
+	RebuildRuntimeHotkeys();
+	if(RuntimeTests::IsScenario(L"script-hotkey-management-runtime")) {
+		RunScriptHotkeyManagementTest(); return 0;
 	}
-
-	m_hAccel = CreateAcceleratorTable(lpaccelNew, _Settings.keycodes);
-	delete[] lpaccelNew;
-
-	FillMenuWithHkeys(m_MenuBar.GetMenu());
 	RunPortableStateTestScenario();
 	StartupTrace::AppendTestStartupBreadcrumb("postcreate-before-runtime-dispatch");
     m_ui_watchdog.Start(m_hWnd);
@@ -7603,6 +7622,7 @@ void CMainFrame::ApplyConfChanges(bool applyDocumentStyles, bool saveSettings)
 	}
 
 	if(saveSettings) { _Settings.SaveHotkeyGroups(); _Settings.Save(); _Settings.SaveWords(); }
+	RebuildRuntimeHotkeys();
 	// Rebuilding source-editor styles must not replace the active visual editor.
 	if(activeView == BODY && m_doc)
 		m_view.ActivateWnd(m_doc->m_body);
@@ -7659,7 +7679,6 @@ void CMainFrame::ReleaseScriptResources()
 		}
 	}
 	m_scripts.Menu().Clear();
-	m_scripts.ClearLastScript();
 	for(int index = m_BtnText.GetSize() - 1; index >= 0; --index)
 	{
 		const int command = m_BtnText.GetKeyAt(index);
@@ -7671,7 +7690,8 @@ void CMainFrame::ReleaseScriptResources()
 	{
 		CHotkeysGroup& group = _Settings.m_hotkey_groups[groupIndex];
 		if(group.m_reg_name != L"Scripts") continue;
-		group.m_hotkeys.clear();
+		group.m_hotkeys.erase(std::remove_if(group.m_hotkeys.begin(), group.m_hotkeys.end(),
+			[](const CHotkey& hotkey) { return hotkey.m_reg_name != L"LastScript"; }), group.m_hotkeys.end());
 	}
 }
 
@@ -7693,6 +7713,17 @@ void CMainFrame::InitScriptHotkey(ScriptDescriptor& script)
 				static_cast<WORD>(commandId),
 				NULL,
 				script.relativePath);
+			ScriptsHotkey.m_displayPath = script.name;
+			CString parent = script.parentId;
+			while(!parent.IsEmpty()) {
+				bool found = false;
+				for(const auto& folder : m_scripts.Menu().Items())
+					if(folder.isFolder && folder.id == parent) {
+						ScriptsHotkey.m_displayPath = folder.name + L"/" + ScriptsHotkey.m_displayPath;
+						parent = folder.parentId; found = true; break;
+					}
+				if(!found) break;
+			}
 			hotkey_groups.at(i).m_hotkeys.push_back(ScriptsHotkey);
 		}
 	}

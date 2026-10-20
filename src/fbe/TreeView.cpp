@@ -13,9 +13,12 @@
 #include "ThemeManager.h"
 #include "toolbars/ToolbarFactory.h"
 #include "scripts/ScriptCardParser.h"
+#include "Settings.h"
+#include "settings/hotkeys/HotkeyStore.h"
 #include <commoncontrols.h>
 
 extern CElementDescMnr _EDMnr;
+extern CSettings _Settings;
 
 static WPARAM TreeCommandWParam(WORD command) { return static_cast<WPARAM>(MAKELONG(0, command)); }
 
@@ -522,7 +525,8 @@ LRESULT CTreeView::OnScriptPreviewTimer(UINT, WPARAM timer, LPARAM, BOOL& bHandl
 				const CString summary = ScriptPreviewSummary(script);
 				ClientToScreen(reinterpret_cast<POINT*>(&bounds));
 				ClientToScreen(reinterpret_cast<POINT*>(&bounds) + 1);
-				m_script_preview.Show(m_hWnd, bounds, script.uid, script.name,
+				m_script_preview.Show(m_hWnd, bounds, script.uid,
+					FbeSettings::Hotkeys::CommandTooltip(_Settings.m_hotkey_groups, ID_SCRIPT_BASE + script.commandId, script.name),
 					summary.IsEmpty() ? FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_empty", L"No description is available yet.") : summary,
 					FbeLoadRuntimeStringByKey(L"fbe.script_card.preview_more", L"More details..."),
 					[this](const CString& uid) { OpenScriptCardUid(uid); },
@@ -1088,7 +1092,7 @@ LRESULT CTreeView::OnLButtonUp(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 					OpenScriptCardUid(m_script_items[found->second].uid);
 			}
 		}
-		bHandled = TRUE;
+		bHandled = pressed != NULL;
 		return 0;
 	}
 	if(m_drag)
@@ -1118,7 +1122,8 @@ LRESULT CTreeView::OnMouseMove(UINT, WPARAM, LPARAM lParam, BOOL& bHandled)
 		::TrackMouseEvent(&tracking);
 		POINT point = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 		UpdateScriptInfoHover(ScriptInfoAt(point));
-		bHandled = TRUE;
+		// Hover bookkeeping must not swallow native scrollbar tracking messages.
+		bHandled = FALSE;
 		return 0;
 	}
 	if(m_drag)
@@ -1463,6 +1468,7 @@ void CTreeView::SetScriptMode(bool value)
 void CTreeView::ApplyModeAppearance()
 {
 	if(!IsWindow()) return;
+	ModifyStyle(0, TVS_INFOTIP);
 	if(m_script_mode)
 	{
 		// A disabled visual style makes the native tree render the familiar
@@ -1478,6 +1484,20 @@ void CTreeView::ApplyModeAppearance()
 		SetItemHeight(-1);
 	}
 	::RedrawWindow(m_hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME);
+}
+
+LRESULT CTreeView::OnScriptInfoTip(int, LPNMHDR header, BOOL& handled)
+{
+	NMTVGETINFOTIP* tip = reinterpret_cast<NMTVGETINFOTIP*>(header);
+	const auto found = m_script_nodes.find(tip->hItem);
+	if(!m_script_mode || found == m_script_nodes.end() || found->second >= m_script_items.size()) {
+		handled = FALSE; return 0;
+	}
+	const auto& script = m_script_items[found->second];
+	const CString text = script.isFolder ? script.name :
+		FbeSettings::Hotkeys::CommandTooltip(_Settings.m_hotkey_groups, ID_SCRIPT_BASE + script.commandId, script.name);
+	if(tip->pszText && tip->cchTextMax > 0) wcsncpy_s(tip->pszText, static_cast<size_t>(tip->cchTextMax), text, _TRUNCATE);
+	return 0;
 }
 
 void CTreeView::UpdateScriptDpiMetrics(UINT dpi)

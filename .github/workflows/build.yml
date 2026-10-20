@@ -175,6 +175,7 @@ jobs:
         run: |
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-script-toolbar-tooltips-runtime.ps1 -FbeExe out/Release/FBE.exe
+          ./tools/tests/test-script-hotkey-management-runtime.ps1 -FbeExe out/Release/FBE.exe
       - name: Run navigation scripts runtime regression
         shell: pwsh
         run: |

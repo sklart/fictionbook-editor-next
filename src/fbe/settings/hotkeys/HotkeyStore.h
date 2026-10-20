@@ -7,4 +7,5 @@ namespace FbeSettings { namespace Hotkeys {
 	void Load(std::vector<CHotkeysGroup>& groups, int& keycodes);
 	CHotkeysGroup* FindGroup(std::vector<CHotkeysGroup>& groups, const CString& name);
 	CHotkey* FindHotkey(CHotkeysGroup& group, const CString& name);
+	CString CommandTooltip(const std::vector<CHotkeysGroup>& groups, UINT command, const CString& text);
 } }

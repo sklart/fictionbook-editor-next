@@ -9,6 +9,7 @@ bool CHotkeysGroup::GetPropertyValue(const CString& propertyName, CProperty& pro
 {
 	if(propertyName == L"GroupName") { property = m_reg_name; return true; }
 	if(propertyName != L"Hotkey") return false;
+	m_ptr_hotkeys.clear();
 	for(unsigned long i = 0; i < m_hotkeys.size(); ++i) m_ptr_hotkeys.push_back(&m_hotkeys[i]);
 	property = m_ptr_hotkeys; property.SetFactory(&m_hotkey_factory); return true;
 }
