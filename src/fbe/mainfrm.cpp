@@ -35,6 +35,7 @@
 #include "scripts/ScriptBinaryEdit.h"
 #include "scripts/ScriptingDialogs.inl"
 #include "scripts/ScriptExtendedDialogs.h"
+#include "scripts/ScriptClipboard.h"
 #include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
@@ -1662,9 +1663,11 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 	if(request->operation == XmlScriptApiOperation::ScriptingDocumentOperation)
 	{
         if (FbeScripts::ExtendedDialogs::modalActive) { request->error = E_UNEXPECTED; return 1; }
-        if (request->scriptingMethod >= 153 && request->scriptingMethod <= 156) {
+        if (request->scriptingMethod >= 153 && request->scriptingMethod <= 160) {
             try {
-                request->returnValue = FbeScripts::ExtendedDialogs::Show(m_hWnd,request->scriptingMethod,request->arguments);
+                request->returnValue = request->scriptingMethod<=156
+                    ? CComVariant(FbeScripts::ExtendedDialogs::Show(m_hWnd,request->scriptingMethod,request->arguments))
+                    : FbeScripts::Clipboard::Operation(m_hWnd,request->scriptingMethod,request->arguments);
                 request->succeeded = true;
             } catch(const _com_error& error) { request->error = error.Error(); }
             catch(const std::bad_alloc&) { request->error = E_OUTOFMEMORY; }

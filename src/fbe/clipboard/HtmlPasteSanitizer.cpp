@@ -162,7 +162,7 @@ bool NameChar(wchar_t c) {
 }
 CString Lower(CString s) { s.MakeLower(); return s; }
 
-bool Decimal(const char* bytes, size_t length, const char* key, size_t& value) {
+bool Decimal(const char* bytes, size_t length, const char* key, size_t& value, size_t maximum = 0) {
   const size_t keyLength = strlen(key);
   for (size_t i = 0; i + keyLength < length; ++i) {
     if (_strnicmp(bytes + i, key, keyLength) != 0) continue;
@@ -172,7 +172,7 @@ bool Decimal(const char* bytes, size_t length, const char* key, size_t& value) {
     size_t result = 0;
     while (p < length && bytes[p] >= '0' && bytes[p] <= '9') {
       const unsigned digit = bytes[p++] - '0';
-      if (result > (length - digit) / 10) return false;
+      if (result > ((maximum ? maximum : length) - digit) / 10) return false;
       result = result * 10 + digit;
     }
     value = result;
@@ -760,14 +760,23 @@ bool HtmlPasteSanitizer::ReadClipboardFragment(HWND owner, CString& html) {
   ClipboardScope clipboard(owner);
   if (!clipboard.Open()) return false;
   HGLOBAL data = static_cast<HGLOBAL>(::GetClipboardData(format));
+  return DecodeClipboardFragment(data, html);
+}
+bool HtmlPasteSanitizer::DecodeClipboardFragment(HGLOBAL data, CString& html, bool strict) {
+  html.Empty();
   const SIZE_T size = data ? ::GlobalSize(data) : 0;
   if (!size || size > kMaxFragmentBytes) return false;
   const char* bytes = static_cast<const char*>(::GlobalLock(data));
   if (!bytes) return false;
   size_t start = 0, end = 0;
-  const bool offsets = Decimal(bytes, size, "StartFragment:", start) &&
+  bool offsets = Decimal(bytes, size, "StartFragment:", start) &&
                        Decimal(bytes, size, "EndFragment:", end) &&
-                       start < end && end <= size;
+                       (strict ? start <= end : start < end) && end <= size;
+  if (strict && offsets) {
+    size_t htmlStart = 0, htmlEnd = 0;
+    offsets = Decimal(bytes, start, "StartHTML:", htmlStart, size) && Decimal(bytes, start, "EndHTML:", htmlEnd, size) &&
+      htmlStart <= start && end <= htmlEnd && htmlEnd <= size && htmlStart > 0;
+  }
   if (offsets) {
     const int count = ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
       bytes + start, static_cast<int>(end - start), NULL, 0);
@@ -779,7 +788,7 @@ bool HtmlPasteSanitizer::ReadClipboardFragment(HWND owner, CString& html) {
     }
   }
   ::GlobalUnlock(data);
-  return offsets && !html.IsEmpty();
+  return offsets && (!html.IsEmpty() || (strict && start == end));
 }
 
 HtmlPasteOutcome HtmlPasteSanitizer::Sanitize(const CString& input,

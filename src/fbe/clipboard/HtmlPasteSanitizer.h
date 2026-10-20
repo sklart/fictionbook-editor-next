@@ -23,6 +23,9 @@ public:
                                     const std::function<bool(const CString&)>& idExists = {});
   static CString NormalizeInternalLinks(const CString& html, const CString& documentUrl);
   static bool ReadClipboardFragment(HWND owner, CString& html);
+  // Shared CF_HTML decoder; strict mode is used by the scripting API without
+  // changing the established paste fallback policy.
+  static bool DecodeClipboardFragment(HGLOBAL data, CString& html, bool strict = false);
   static HtmlPasteOutcome Sanitize(const CString& input,
                                    const CString& nbspReplacement,
                                    CString& output);

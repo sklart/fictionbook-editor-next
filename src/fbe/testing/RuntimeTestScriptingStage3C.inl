@@ -1,4 +1,4 @@
-if (IsFbeTestScenario(L"scripting-stage3c-dialogs")) {
+if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripting-stage3c-clipboard")) {
     bool passed=false; CStringA details="start";
     try {
         wchar_t root[32768]={}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT",root,_countof(root));
@@ -17,7 +17,31 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")) {
         const InterfaceTheme initialTheme=ThemeManager::GetSelectedTheme();
         struct RestoreTheme { InterfaceTheme value; ~RestoreTheme(){ThemeManager::SetSelectedTheme(value);} } restoreTheme={initialTheme};
         FbeScripts::ScriptExecutionScope context(script);
-        for(int index=0;index<8;++index) {
+        if(IsFbeTestScenario(L"scripting-stage3c-clipboard")) {
+            FbeScripts::Clipboard::TestStorage storage;
+            struct ResetClipboardStorage { ~ResetClipboardStorage(){FbeScripts::Clipboard::testStorage=nullptr;} } resetStorage;
+            FbeScripts::Clipboard::testStorage=&storage;
+            invoke(L"stage3cClipboard");
+            FORMATETC marker={static_cast<CLIPFORMAT>(::RegisterClipboardFormatW(L"FBE Next Internal HTML v2")),nullptr,DVASPECT_CONTENT,-1,TYMED_HGLOBAL};
+            if(storage.object->QueryGetData(&marker)!=DV_E_FORMATETC) {details="external HTML marked as internal";CheckError(E_FAIL);}
+            storage.failure=CLIPBRD_E_CANT_OPEN;invoke(L"stage3cBusy");storage.failure=S_OK;
+            for(const auto* malformed:{"Version:1.0\r\nStartFragment:0\r\nEndFragment:5\r\n", "Version:1.0\r\nStartHTML:100\r\nEndHTML:99999999\r\nStartFragment:100\r\nEndFragment:99999999\r\n"}) {
+                std::vector<FbeScripts::Clipboard::Format> formats;
+                formats.push_back({FbeScripts::Clipboard::HtmlFormat(),std::vector<BYTE>(malformed,malformed+strlen(malformed)+1)});
+                storage.object.Attach(new FbeScripts::Clipboard::DataObject(std::move(formats)));invoke(L"stage3cBadHtml");
+            }
+            std::vector<FbeScripts::Clipboard::Format> badText={{CF_UNICODETEXT,{0x41,0x41}}};
+            storage.object.Release();storage.object.Attach(new FbeScripts::Clipboard::DataObject(std::move(badText)));invoke(L"stage3cBadText");
+            FbeScripts::Clipboard::testStorage=nullptr;
+            CHandle ready(::CreateEventW(nullptr,TRUE,FALSE,nullptr)),release(::CreateEventW(nullptr,TRUE,FALSE,nullptr));
+            if(!ready||!release)CheckError(E_OUTOFMEMORY);
+            LONG opened=0;
+            std::thread holder([&](){if(::OpenClipboard(nullptr)){::InterlockedExchange(&opened,1);::SetEvent(ready);::WaitForSingleObject(release,5000);::CloseClipboard();}else ::SetEvent(ready);});
+            ::WaitForSingleObject(ready,2000);HRESULT failure=E_FAIL;
+            if(::InterlockedCompareExchange(&opened,0,0)) {try{invoke(L"stage3cBusy");failure=S_OK;}catch(const _com_error& error){failure=error.Error();}}
+            ::SetEvent(release);holder.join();CheckError(failure);
+            details="isolated OLE formats and real busy access PASS; user clipboard unchanged";
+        } else for(int index=0;index<8;++index) {
             if(index==2) ThemeManager::SetSelectedTheme(INTERFACE_THEME_LIGHT);
             if(index==3) ThemeManager::SetSelectedTheme(INTERFACE_THEME_DARK);
             CString title; title.Format(L"FBE stage3c %lu %d",::GetCurrentProcessId(),index);

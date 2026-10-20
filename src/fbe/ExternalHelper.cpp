@@ -31,7 +31,8 @@ const wchar_t* const ScriptingMethods[] = {
  L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName",
  L"WriteTextFileEx", L"ValidateCurrentDocument", L"LogMessage", L"GetLastScriptingError", L"ClearLastScriptingError",
  L"GetBinaryInfo", L"GenerateUniqueBinaryId", L"AddBinaryFromFile", L"ReplaceBinaryFromFile", L"RemoveBinary", L"SaveAllBinaries",
- L"ShowMessage", L"SelectFromList", L"SelectMultipleFromList", L"ChooseColor"
+ L"ShowMessage", L"SelectFromList", L"SelectMultipleFromList", L"ChooseColor",
+ L"GetClipboardText", L"SetClipboardText", L"GetClipboardHtml", L"SetClipboardHtml"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {

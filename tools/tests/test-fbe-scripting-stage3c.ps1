@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
-    [ValidateSet('dialogs')][string]$Part='dialogs')
+    [ValidateSet('dialogs','clipboard')][string]$Part='dialogs')
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'api3c'
@@ -28,6 +28,27 @@ function Run(){try{
  bad3c(function(){ext.ShowMessage("x");});bad3c(function(){ext.SelectFromList(1);});result3c="PASS";
 }catch(e){result3c=String(e.message||e);}}
 function stage3cResult(){return result3c;}
+function stage3cClipboard(){var step="text";try{
+ var text="FBE45_PRIVATE_CLIPBOARD_CANARY Буфер 😀\r\nСледующая строка";
+ a3c(ext.SetClipboardText(text)&&ext.GetClipboardText()===text,"Unicode text");
+ a3c(ext.GetClipboardHtml()==="","absent HTML");
+ a3c(ext.SetClipboardText("")&&ext.GetClipboardText()==="","empty text");
+ step="html";ext.SetClipboardHtml("<p><b>Кириллица 😀</b></p>","Кириллица 😀");
+ a3c(ext.GetClipboardHtml()==="<p><strong>Кириллица 😀</strong></p>"&&ext.GetClipboardText()==="Кириллица 😀","HTML/UTF8 roundtrip");
+ step="invalid-input";var kept=ext.GetClipboardHtml();
+ bad3c(function(){ext.SetClipboardHtml("<object></object>","x");});
+ bad3c(function(){ext.SetClipboardHtml("<a href='javascript:alert(1)'>x</a>","x");});
+ bad3c(function(){ext.SetClipboardText("bad\ud800");});
+ bad3c(function(){ext.SetClipboardHtml("<p>x</p>","bad\u0000tail");});
+ a3c(ext.GetClipboardHtml()===kept,"prepare failure preserved both formats");
+ step="normalize";ext.SetClipboardHtml("<p onclick='alert(1)'>safe<script>alert(1)</script></p>","safe");
+ var clean=ext.GetClipboardHtml();a3c(clean.indexOf("onclick")<0&&clean.indexOf("script")<0,"active content removed");
+ bad3c(function(){ext.GetClipboardText(1);});bad3c(function(){ext.SetClipboardText(1);});
+ return "PASS";
+}catch(e){return step+": "+String(e.message||e);}}
+function stage3cBusy(){try{bad3c(function(){ext.GetClipboardText();});bad3c(function(){ext.GetClipboardHtml();});return "PASS";}catch(e){return String(e.message||e);}}
+function stage3cBadHtml(){try{bad3c(function(){ext.GetClipboardHtml();});return "PASS";}catch(e){return String(e.message||e);}}
+function stage3cBadText(){try{bad3c(function(){ext.GetClipboardText();});return "PASS";}catch(e){return String(e.message||e);}}
 function stage3cDialog(title,index){try{
  var r,opts='{"title":"'+title+'","prompt":"Выберите элемент","items":[{"id":"a","label":"Кириллица '+new Array(100).join('длинная подпись ')+'"},{"id":"b","label":"Вторая строка"}]';
  if(index===0||index===1){r=j3c(ext.ShowMessage("Сообщение",title,"yesnocancel","question"));a3c(index===0?r.status==="ok"&&r.button==="no":r.status==="cancelled"&&r.button==="cancel","message result");}
@@ -48,5 +69,10 @@ function stage3cDialog(title,index){try{
     $code=Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario "stage3c-$Part" -Report $report -TimeoutSeconds 45
     $text=if(Test-Path $report){Get-Content $report -Raw}else{'missing report'}
     if($code -ne 0 -or $text -notmatch 'result=PASS'){throw "Stage3C $Part failed: $text"}
+    if($Part -eq 'clipboard') {
+        foreach($log in @(Get-ChildItem -LiteralPath $iso.DataPath -Recurse -File -Filter '*.log')) {
+            if((Get-Content -LiteralPath $log.FullName -Raw) -match 'FBE45_PRIVATE_CLIPBOARD_CANARY'){throw 'Clipboard payload leaked into diagnostics'}
+        }
+    }
     Write-Host $text; $passed=$true;Write-Host "Stage3C $Part ($Mode): PASS"
 }finally{foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$old[$name])};Complete-IsolatedFbeRuntime -Isolation $iso -Passed $passed}
