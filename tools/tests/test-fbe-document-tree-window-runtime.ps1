@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso = New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'tree-window'
 $passed = $false
+$report = Join-Path $iso.Root 'tree-window.log'
 $names = @('FBE_NEXT_TEST_MODE','FBE_NEXT_TEST_SCENARIO','FBE_NEXT_TEST_SETTINGS_DIRECTORY')
 $saved = @{}; foreach($name in $names) { $saved[$name] = [Environment]::GetEnvironmentVariable($name,'Process') }
 try {
@@ -30,11 +31,12 @@ try {
     # The second merge candidate intentionally has no ID or title: the
     # production command must refuse to discard either kind of metadata.
     [void]$book.Append('<section id="merge-owner"><title><p>Merge fixture</p></title><section id="merge-first"><p>First text</p></section><section><p>Second text</p></section></section></body></FictionBook>')
-    $fixture = Join-Path $iso.Root 'nested.fb2'; $report = Join-Path $iso.Root 'tree-window.txt'
+    $fixture = Join-Path $iso.Root 'nested.fb2'
     [IO.File]::WriteAllText($fixture, $book.ToString(), [Text.UTF8Encoding]::new($false))
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'document-tree-window-runtime'
     if($Mode -eq 'installed') { $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = Join-Path $iso.DataPath 'Settings' }
     else { $env:FBE_NEXT_TEST_SETTINGS_DIRECTORY = $null }
+    Set-IsolatedRuntimeStage $iso "document-tree-window-runtime/$Mode"
     $process = Start-Process $iso.Exe -ArgumentList @("--$Mode", '-b', $report, $fixture) -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru
     $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'document-tree-window-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
     $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }

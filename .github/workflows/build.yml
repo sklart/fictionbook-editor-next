@@ -267,7 +267,7 @@ jobs:
           ./tools/build/Initialize-CiUtf8.ps1
           ./tools/tests/test-nsis-install-scopes.ps1
           ./tools/tests/test-prerelease-nsis-state.ps1
-      - name: Verify universal release binaries and Dark Theme stabilization runtime
+      - name: Verify universal release binaries, document tree and Dark Theme stabilization runtime
         shell: pwsh
         env:
           FBE_RUNTIME_FAILURE_ARTIFACTS: out/tests/runtime-failure

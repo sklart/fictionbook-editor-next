@@ -208,6 +208,12 @@ if (-not $SkipEarlyRuntimeSuites) {
 & (Join-Path $repoRoot "tools\tests\test-fbe-script-startup-validation-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 }
 
+# Runs once in both local verification and CI, including SkipEarlyRuntimeSuites.
+& (Join-Path $repoRoot "tools\tests\test-fbe-document-tree-selection-contract.ps1")
+foreach ($treeMode in @('portable', 'installed')) {
+    & (Join-Path $repoRoot "tools\tests\test-fbe-document-tree-window-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe") -Mode $treeMode
+}
+
 & (Join-Path $repoRoot "tools\tests\test-issue43-menu-quality-visual-runtime.ps1") -FbeExe (Join-Path $outputDir "FBE.exe")
 
 & (Join-Path $repoRoot "tools\tests\test-fbe-table-visual-mode.ps1")

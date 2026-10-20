@@ -156,6 +156,17 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         input(head, 0, false); input(child, MK_SHIFT, false);
         FBE_TREE_CHECK((tree.GetItemState(head, TVIS_SELECTED) & TVIS_SELECTED) && (tree.GetItemState(child, TVIS_SELECTED) & TVIS_SELECTED));
         report += "ctrl_a_exclude=1\nshift_focus=1\n";
+        phase = "document-context-menu";
+        const auto beforeMenu = selected();
+        RECT contextLabel = {}; FBE_TREE_CHECK(tree.GetItemRect(child, &contextLabel, TRUE) != FALSE);
+        POINT contextPoint = {contextLabel.left + 2, (contextLabel.top + contextLabel.bottom) / 2};
+        tree.ClientToScreen(&contextPoint);
+        const UINT_PTR menuTimer = ::SetTimer(NULL, 0, 100, CloseNavigationPopupForTest);
+        FBE_TREE_CHECK(menuTimer != 0);
+        const LRESULT menuResult = tree.SendMessage(WM_CONTEXTMENU, reinterpret_cast<WPARAM>(tree.m_hWnd), MAKELPARAM(contextPoint.x, contextPoint.y));
+        ::KillTimer(NULL, menuTimer);
+        FBE_TREE_CHECK(menuResult == 1 && selected() == beforeMenu);
+        report += "document_context_menu=1\n";
         phase = "caret-path";
         const auto selection = selected();
         for(LPCWSTR id : {L"leaf-title0", L"leaf-text0", L"leaf0"}) {
