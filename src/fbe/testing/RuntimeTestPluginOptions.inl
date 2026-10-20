@@ -45,6 +45,10 @@ if(IsFbeTestScenario(L"plugin-options-tabs-runtime"))
                     const std::wstring name = std::wstring(names[index]) + L"-" + locale + (theme == INTERFACE_THEME_DARK ? L"-dark" : L"-light");
                     const std::wstring profile = DeploymentContext::SettingsDirectory() + L"Plugins\\" + profiles[index];
                     PluginOptionsProbe::Start(index, PluginOptionsProbe::Action::Inspect, captures, name, profile);
+                    std::map<std::wstring, CStringW> buttonTranslations;
+                    FbeRuntimeLocalization::LoadRuntimeStringFiles(::GetModuleHandleW(NULL), profiles[index], buttonTranslations);
+                    const wchar_t* cancelKeys[] = {L"common.button.cancel", L"export_docx.dialog.settings.cancel", L"import_epub.options.button_cancel", L"export_epub.options.button_cancel"};
+                    PluginOptionsProbe::expectedCancelText = buttonTranslations.at(cancelKeys[index]).GetString();
                     if(index >= 2) {
                         std::map<std::wstring, CStringW> translations;
                         FbeRuntimeLocalization::LoadRuntimeStringFiles(::GetModuleHandleW(NULL), index == 2 ? L"import-epub.json" : L"export-epub.json", translations);
@@ -72,7 +76,7 @@ if(IsFbeTestScenario(L"plugin-options-tabs-runtime"))
             }
         }
         if(xmlBefore != CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)) || dirtyBefore != m_doc->DocChanged()) CheckError(E_FAIL);
-        report += "all_tabs=pass\nkeyboard=pass\ncontrolled_dpi_96_120_144_192=pass\nlight_dark=pass\nru_de_captions=pass\ndocument_preserved=pass\n";
+        report += "all_tabs=pass\nkeyboard=pass\nscroll_fixed_footer=pass\ncontrolled_dpi_96_120_144_192=pass\nlight_dark=pass\nru_de_captions=pass\ndocument_preserved=pass\n";
         passed = true;
     } catch(const _com_error& error) { report.AppendFormat("hresult=0x%08lX\n", static_cast<unsigned long>(error.Error())); }
       catch(...) { report += "exception=1\n"; }

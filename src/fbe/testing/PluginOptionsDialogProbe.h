@@ -17,6 +17,7 @@ inline HWND dialog = NULL, errorDialog = NULL, editedControl = NULL;
 inline LRESULT editedValue = 0;
 inline std::wstring captures, prefix, profile;
 inline std::wstring expectedTitle, expectedConfirmText;
+inline std::wstring expectedCancelText;
 inline bool expectedDarkTabs = false;
 inline std::vector<BYTE> beforeFile;
 inline DWORD originalAttributes = INVALID_FILE_ATTRIBUTES;
@@ -150,6 +151,7 @@ inline void Select(HWND window, HWND tab, int page) {
 inline void Validate(HWND window) {
     RECT client = {}; ::GetClientRect(window, &client);
     std::vector<RECT> footer;
+    size_t fixedButtons = 0;
     for(HWND child = ::GetWindow(window, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) {
         wchar_t kind[32] = {}; ::GetClassNameW(child, kind, _countof(kind));
         if(::lstrcmpiW(kind, L"Button") != 0 || !::IsWindowVisible(child)) continue;
@@ -157,10 +159,18 @@ inline void Validate(HWND window) {
         if(type != BS_PUSHBUTTON && type != BS_DEFPUSHBUTTON) continue;
         RECT bounds = {}; ::GetWindowRect(child, &bounds); ::MapWindowPoints(NULL, window, reinterpret_cast<POINT*>(&bounds), 2);
         FBE_OPTIONS_CHECK(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= client.right && bounds.bottom <= client.bottom);
+        const int id = ::GetDlgCtrlID(child);
+        const bool fixed = id == IDOK || id == IDCANCEL || (plugin == 1 && id == 1123) || (plugin == 2 && id == 2201) || (plugin == 3 && id >= 1023 && id <= 1025);
+        if(fixed) {
+            ++fixedButtons;
+            POINT center = {(bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2};
+            FBE_OPTIONS_CHECK(::RealChildWindowFromPoint(window, center) == child);
+        }
         for(const RECT& previous : footer) { RECT intersection = {}; FBE_OPTIONS_CHECK(!::IntersectRect(&intersection, &bounds, &previous)); }
         footer.push_back(bounds);
     }
-    if(plugin >= 2) FBE_OPTIONS_CHECK(footer.size() == static_cast<size_t>(plugin == 2 ? 3 : 5));
+    const size_t expectedButtons[] = {2, 3, 3, 5};
+    FBE_OPTIONS_CHECK(fixedButtons == expectedButtons[plugin]);
     HWND tab = Tab(window); FBE_OPTIONS_CHECK(tab != NULL);
     if(tab) for(int index = 0; index < TabCtrl_GetItemCount(tab); ++index) {
         wchar_t text[512] = {}; TCITEMW item = {}; item.mask = TCIF_TEXT; item.pszText = text; item.cchTextMax = _countof(text);
@@ -177,6 +187,39 @@ inline void EditVisible(HWND window) {
         ::SendMessageW(editedControl, BM_SETCHECK, editedValue, 0); return;
     }
 }
+inline void ValidateScroll(HWND window) {
+    HWND viewport = NULL;
+    std::map<HWND, RECT> footer;
+    for(HWND child = ::GetWindow(window, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) {
+        if(::GetWindowLongW(child, GWL_EXSTYLE) & WS_EX_CONTROLPARENT) viewport = child;
+        wchar_t kind[32] = {}; ::GetClassNameW(child, kind, _countof(kind));
+        if(::lstrcmpiW(kind, L"Button") == 0 && ::IsWindowVisible(child)) ::GetWindowRect(child, &footer[child]);
+    }
+    FBE_OPTIONS_CHECK(viewport != NULL);
+    if(!viewport) return;
+    const auto before = Snapshot(window);
+    SCROLLINFO info = {sizeof(info), SIF_ALL};
+    FBE_OPTIONS_CHECK(::GetScrollInfo(viewport, SB_VERT, &info) != FALSE);
+    ::SendMessageW(viewport, WM_VSCROLL, SB_BOTTOM, 0);
+    ::GetScrollInfo(viewport, SB_VERT, &info);
+    const int maximum = (std::max)(0, info.nMax - static_cast<int>(info.nPage) + 1);
+    FBE_OPTIONS_CHECK(info.nPos == maximum);
+    if(maximum > 0) {
+        RECT client = {}; ::GetClientRect(viewport, &client);
+        LONG bottom = 0;
+        for(HWND child = ::GetWindow(viewport, GW_CHILD); child; child = ::GetWindow(child, GW_HWNDNEXT)) if(::IsWindowVisible(child)) {
+            RECT r = {}; ::GetWindowRect(child, &r); ::MapWindowPoints(NULL, viewport, reinterpret_cast<POINT*>(&r), 2);
+            bottom = (std::max)(bottom, r.bottom);
+        }
+        FBE_OPTIONS_CHECK(bottom > 0 && bottom <= client.bottom);
+        ::SendMessageW(viewport, WM_MOUSEWHEEL, MAKEWPARAM(0, WHEEL_DELTA), 0);
+        ::GetScrollInfo(viewport, SB_VERT, &info); FBE_OPTIONS_CHECK(info.nPos < maximum);
+    }
+    ::SendMessageW(viewport, WM_VSCROLL, SB_TOP, 0);
+    ::GetScrollInfo(viewport, SB_VERT, &info); FBE_OPTIONS_CHECK(info.nPos == 0);
+    for(const auto& button : footer) { RECT r = {}; ::GetWindowRect(button.first, &r); FBE_OPTIONS_CHECK(::EqualRect(&r, &button.second) != FALSE); }
+    FBE_OPTIONS_CHECK(Snapshot(window) == before);
+}
 inline BOOL CALLBACK Visit(HWND window, LPARAM) {
     if(CloseError(window)) return TRUE;
     // Nested initialization can dispatch timers before all pages exist. The
@@ -191,6 +234,7 @@ inline BOOL CALLBACK Visit(HWND window, LPARAM) {
         wchar_t caption[512] = {}; ::GetWindowTextW(window, caption, _countof(caption));
         if(!expectedTitle.empty()) FBE_OPTIONS_CHECK(expectedTitle == caption);
         if(!expectedConfirmText.empty()) { ::GetWindowTextW(::GetDlgItem(window, IDOK), caption, _countof(caption)); if(expectedConfirmText != caption) errorText = L"confirmation expected=" + expectedConfirmText + L"; actual=" + caption; FBE_OPTIONS_CHECK(expectedConfirmText == caption); }
+        if(!expectedCancelText.empty()) { ::GetWindowTextW(::GetDlgItem(window, IDCANCEL), caption, _countof(caption)); FBE_OPTIONS_CHECK(expectedCancelText == caption); }
         if(PositionProbe()) {
             RECT r = {}; ::GetWindowRect(window, &r);
             MONITORINFO monitor = {sizeof(monitor)}; FBE_OPTIONS_CHECK(::GetMonitorInfoW(::MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST), &monitor) != FALSE);
@@ -217,6 +261,9 @@ inline BOOL CALLBACK Visit(HWND window, LPARAM) {
         // are reported separately from the native monitor's actual DPI.
         HDC dc = ::GetDC(window); const UINT nativeDpi = static_cast<UINT>(::GetDeviceCaps(dc, LOGPIXELSX)); ::ReleaseDC(window, dc);
         if(plugin >= 2 && !PositionProbe()) for(UINT dpi : {96u, 120u, 144u, 192u, nativeDpi}) {
+            RECT compact = {}; ::GetWindowRect(window, &compact); compact.right = compact.left + ::MulDiv(460, dpi, 96); compact.bottom = compact.top + ::MulDiv(340, dpi, 96);
+            ::SendMessageW(window, WM_DPICHANGED, MAKELONG(dpi, dpi), reinterpret_cast<LPARAM>(&compact));
+            for(int page = 0; page < TabCtrl_GetItemCount(tab); ++page) { Select(window, tab, page); Validate(window); ValidateScroll(window); }
             RECT r = {}; ::GetWindowRect(window, &r); r.right = r.left + ::MulDiv(780, dpi, 96); r.bottom = r.top + ::MulDiv(500, dpi, 96);
             ::SendMessageW(window, WM_DPICHANGED, MAKELONG(dpi, dpi), reinterpret_cast<LPARAM>(&r));
             for(int page = 0; page < TabCtrl_GetItemCount(tab); ++page) { Select(window, tab, page); Validate(window); }
@@ -297,7 +344,7 @@ inline void Start(int index, Action requested, const std::wstring& directory, co
     keyboardHook = ::SetWindowsHookExW(WH_GETMESSAGE, KeyboardMessage, NULL, ::GetCurrentThreadId());
     plugin = index; action = requested; captures = directory; prefix = name; profile = settingsPath;
     failedLine = stage = pages = 0; dialog = errorDialog = editedControl = NULL; errorSeen = false; originalAttributes = INVALID_FILE_ATTRIBUTES;
-    beforeFile.clear(); editedSnapshot.clear(); errorText.clear(); expectedTitle.clear(); expectedConfirmText.clear(); expectedDarkTabs = false;
+    beforeFile.clear(); editedSnapshot.clear(); errorText.clear(); expectedTitle.clear(); expectedConfirmText.clear(); expectedCancelText.clear(); expectedDarkTabs = false;
 }
 inline bool Passed() {
     const bool expectedError = action == Action::ReadOnly || action == Action::Conflict || action == Action::Corrupt;

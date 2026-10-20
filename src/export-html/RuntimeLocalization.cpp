@@ -13,6 +13,8 @@ struct RuntimeStringBinding {
 };
 
 static const RuntimeStringBinding g_runtimeStringBindings[] = {
+    { IDOK, L"common.button.ok" },
+    { IDCANCEL, L"common.button.cancel" },
     { IDS_PLUGIN_WINDOW_SAVE_ERROR, L"export_html.settings.window_error" },
     { IDS_PLUGIN_SETTINGS_SAVE_ERROR, L"export_html.settings.save_error" },
     { IDS_PLUGIN_SETTINGS_CONFLICT, L"export_html.settings.conflict" },

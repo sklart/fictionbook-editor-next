@@ -949,7 +949,7 @@ private:
             if (id != IDOK && id != IDCANCEL && id != IDC_RESET_DEFAULTS)
                 m_contentBottom = MaxInt(m_contentBottom, rect.bottom + ::MulDiv(8, m_layoutDpi, 96));
         }
-        m_footer = ::CreateWindowW(WC_STATICW, L"", WS_CHILD | WS_VISIBLE,
+        m_footer = ::CreateWindowW(WC_STATICW, L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
             0, 0, 0, 0, m_hWnd, NULL, g_hInstance, NULL);
     }
 

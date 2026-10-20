@@ -25,7 +25,7 @@ if ($dllMain -match 'InitExportHtmlRuntimeStrings' -or $runtimeCpp -notmatch 'if
     throw 'Runtime strings must initialize lazily outside DllMain and support the bundled language directory.'
 }
 
-$bindingMatches = [regex]::Matches($runtimeCpp, '\{\s*((?:IDS|IDR)_[A-Z0-9_]+)\s*,\s*L"([^"]+)"\s*\}')
+$bindingMatches = [regex]::Matches($runtimeCpp, '\{\s*((?:IDS|IDR)_[A-Z0-9_]+|IDOK|IDCANCEL)\s*,\s*L"([^"]+)"\s*\}')
 if ($bindingMatches.Count -eq 0) {
     throw 'В RuntimeLocalization.cpp не найдены runtime JSON binding-строки ExportHTML.'
 }
@@ -37,10 +37,11 @@ foreach ($match in $bindingMatches) {
     if ($bindings.ContainsKey($resourceId)) {
         throw "Дублирующий ExportHTML runtime binding для $resourceId."
     }
-    if ($key -notlike 'export_html.*') {
+    $commonButton = ($resourceId -eq 'IDOK' -and $key -eq 'common.button.ok') -or ($resourceId -eq 'IDCANCEL' -and $key -eq 'common.button.cancel')
+    if ($key -notlike 'export_html.*' -and -not $commonButton) {
         throw "ExportHTML runtime binding $resourceId ссылается на не-ExportHTML ключ: $key"
     }
-    if ($resource -notmatch ('#define\s+' + [regex]::Escape($resourceId) + '\s+\d+')) {
+    if (-not $commonButton -and $resource -notmatch ('#define\s+' + [regex]::Escape($resourceId) + '\s+\d+')) {
         throw "Resource ID $resourceId из runtime binding не найден в resource.h."
     }
     $bindings[$resourceId] = $key

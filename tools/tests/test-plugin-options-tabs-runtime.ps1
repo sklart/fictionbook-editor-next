@@ -23,12 +23,22 @@ try {
     $report = Join-Path $iso.Root 'plugin-tabs.log'
     $fixture = (Resolve-Path (Join-Path $PSScriptRoot 'fb2-validate-valid-smoke.fb2')).Path
     Set-IsolatedRuntimeStage $iso "plugin-options-tabs-runtime/$Mode"
+    $captureStart = [DateTime]::UtcNow.AddSeconds(-1)
     $process = Start-Process $iso.Exe -ArgumentList @("--$Mode",'-b',$report,$fixture) -WorkingDirectory $iso.Root -WindowStyle Hidden -PassThru
     $code = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'plugin-options-tabs-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
     $text = if(Test-Path $report) { Get-Content $report -Raw } else { '<missing report>' }
     Copy-Item $report (Join-Path $CaptureDirectory 'runtime.log') -ErrorAction SilentlyContinue
     if($code -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Native tabbed plug-in windows failed ($Mode), exit=$code`n$text" }
-    if(@(Get-ChildItem $CaptureDirectory -Filter '*.png').Count -lt 44) { throw 'Missing native tab captures.' }
+    if($text -notmatch '(?m)^scroll_fixed_footer=pass\r?$') { throw 'Missing native scrolling/fixed-footer verification.' }
+    $expectedCaptures = @('html-ru-RU-light', 'docx-ru-RU-light')
+    foreach($plugin in @('import', 'export')) { foreach($locale in @('ru-RU','de-DE')) { foreach($theme in @('light','dark')) { $expectedCaptures += "$plugin-$locale-$theme" } } }
+    foreach($name in $expectedCaptures) {
+        $count = if($name.StartsWith('import-')) { 5 } else { 4 }
+        for($page = 0; $page -lt $count; $page++) {
+            $path = Join-Path $CaptureDirectory "$name-page$page.png"
+            if(!(Test-Path -LiteralPath $path) -or (Get-Item -LiteralPath $path).LastWriteTimeUtc -lt $captureStart) { throw "Missing fresh native tab capture: $path" }
+        }
+    }
     Write-Host $text
     Write-Host "Native plug-in tabs: PASS ($Mode), captures=$CaptureDirectory"
     $passed = $true

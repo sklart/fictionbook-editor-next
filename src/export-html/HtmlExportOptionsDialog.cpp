@@ -53,6 +53,10 @@ LRESULT CHtmlExportOptionsDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL&)
 {
     ::SetPropW(m_hWnd, L"FBE_SKIP_SYSTEM_DIALOG_LOCALIZATION", reinterpret_cast<HANDLE>(1));
     SetWindowText(LoadExportHtmlString(IDS_HTML_EXPORT_OPTIONS_TITLE));
+    for(int id : {IDOK, IDCANCEL}) {
+        const CString text = LoadExportHtmlString(id);
+        if(!text.IsEmpty()) SetDlgItemText(id, text);
+    }
     CTabCtrl tabs = GetDlgItem(IDC_OPTIONS_TABS);
     const UINT titles[] = { IDS_OPTIONS_TAB_GENERAL, IDS_OPTIONS_TAB_APPEARANCE, IDS_OPTIONS_TAB_IMAGES, IDS_OPTIONS_TAB_NOTES };
     for (int index = 0; index < static_cast<int>(_countof(titles)); ++index) {
