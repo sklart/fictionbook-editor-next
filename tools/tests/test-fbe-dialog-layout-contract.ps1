@@ -108,7 +108,9 @@ Assert-Contains $wordsDialog 'IDC_EDIT_NEW,112,160,104,14' 'Words input must fol
 Assert-Contains $wordsDialog 'IDC_BUTTON_ADD,222,160,60,14' 'Words Add button must share the new-word row.'
 Assert-Contains $wordsDialog 'IDC_CHECK_SELALL,"Button".*?,19,142,95,13' 'Words Select all checkbox must fit its localized caption.'
 Assert-Contains $hotkeysDialog 'IDD_HOTKEYS DIALOGEX 0, 0, 300, 292' 'Hotkeys page must use the Settings content width and fit the export action.'
-Assert-Contains $hotkeysDialog 'IDC_LIST_HOTKEYS,99,21,194,88' 'Hotkeys command list must use the available page width.'
+Assert-Contains $hotkeysDialog 'IDC_LIST_HOTKEYS,"SysListView32",[^\r\n]*,99,36,194,73,WS_EX_CLIENTEDGE' 'Hotkeys command list must use the available page width below Search.'
+Assert-Contains $hotkeysDialog 'IDC_HOTKEY_SEARCH,43,4,250,14,ES_AUTOHSCROLL' 'Hotkeys search must fit above the command list.'
+Assert-Contains $hotkeysDialog 'IDC_LIST_HOTKEYS_GROUPS,7,36,86,73,' 'Hotkeys groups must stay aligned with the command list.'
 Assert-Contains $hotkeysDialog 'IDC_KEYB_LAYOUT,92,245,194,30' 'Keyboard-layout combo must use the available page width.'
 Assert-Contains $hotkeysDialog 'IDC_BUTTON_HOTKEY_EXPORT,227,270,59,14' 'Hotkeys export action must remain inside the Settings content area.'
 foreach ($control in @('IDC_CREATE_BACKUP_FILE', 'IDC_SHOW_FULL_PATH_IN_WINDOW_TITLE', 'IDC_UPDATE_CHANNEL')) {
