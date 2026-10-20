@@ -85,14 +85,14 @@ inline References FindReferences(MSHTML::IHTMLDocument2Ptr document, const CStri
     if (referenced.boolVal && !result.any) { result.any = true; result.unknown = true; result.image = true; }
     return result;
 }
-inline Object ReadFile(const CString& path, CString mime)
+inline void ReadFile(const CString& path, CString mime, LoadedObject& result)
 {
     CHandle file(::CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
     if (file == INVALID_HANDLE_VALUE) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
     LARGE_INTEGER size = {};
     if (!::GetFileSizeEx(file, &size)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
     if (size.QuadPart <= 0 || size.QuadPart > 64LL * 1024 * 1024) CheckError(HRESULT_FROM_WIN32(ERROR_FILE_TOO_LARGE));
-    Object result; result.size = static_cast<ULONG>(size.QuadPart);
+    result.size = static_cast<ULONG>(size.QuadPart);
     result.data.vt = VT_ARRAY | VT_UI1; result.data.parray = ::SafeArrayCreateVector(VT_UI1, 0, result.size);
     if (!result.data.parray) CheckError(E_OUTOFMEMORY);
     Bytes bytes(result.data.parray); DWORD read = 0;
@@ -125,12 +125,11 @@ inline Object ReadFile(const CString& path, CString mime)
             static_cast<ULONGLONG>(image.GetWidth()) * image.GetHeight() > 32000000) CheckError(E_INVALIDARG);
     } else if ((!detected.IsEmpty() && detected != mime) || (mime == L"application/pdf" && detected != mime)) CheckError(E_INVALIDARG);
     result.mime = mime;
-    return result;
 }
 struct Edit {
     FB::Doc* owner;
     MSHTML::IHTMLDocument2Ptr document;
-    Object before, after;
+    LoadedObject before, after;
     bool existed, remains;
     std::unique_ptr<Position> binary;
     References references;
@@ -160,7 +159,7 @@ struct Edit {
         }
         CComDispatchDriver script(document->Script);
         const bool attach = undo ? existed : remains;
-        const Object& target = undo ? before : after;
+        LoadedObject& target = undo ? before : after;
         if (!binary && attach) {
             FbeImage::ImageInsertionResult result;
             Bytes bytes(after.data.parray);
@@ -174,9 +173,12 @@ struct Edit {
             if (attach) {
                 binary->Attach();
                 if (existed && remains) {
-                    CComDispatchDriver element(binary->node); CComVariant payload(target.data);
-                    CheckError(element.PutPropertyByName(L"base64data", &payload));
-                    CComVariant args[5] = {target.data, CComVariant(target.mime), CComVariant(target.id), CComVariant(L""), CComVariant(binary->node)};
+                    CComDispatchDriver element(binary->node);
+                    CheckError(element.PutPropertyByName(L"base64data", &target.data));
+                    CComVariant values[4] = {CComVariant(target.mime), CComVariant(target.id), CComVariant(L""), CComVariant(binary->node)};
+                    // Borrow only for the synchronous Invoke; the edit retains
+                    // ownership of the byte array throughout Undo/Redo.
+                    VARIANT args[5] = {target.data, values[0], values[1], values[2], values[3]};
                     CheckError(script.InvokeN(L"BuildBinaryControls", args, 5));
                 }
             } else binary->Detach();
@@ -231,12 +233,12 @@ inline void Mutate(FB::Doc* document, DISPID method, const std::vector<CComVaria
     auto edit = std::make_shared<Edit>(document);
     const auto objects = Objects(edit->document);
     if (method == 149) {
-        edit->after = ReadFile(args[0].bstrVal, args.size() == 3 ? CString(args[2].bstrVal) : CString());
+        ReadFile(args[0].bstrVal, args.size() == 3 ? CString(args[2].bstrVal) : CString(), edit->after);
         edit->after.id = UniqueId(objects, CString(args[1].bstrVal).IsEmpty() ? CString(args[0].bstrVal) : CString(args[1].bstrVal));
     } else {
         auto found = std::find_if(objects.begin(), objects.end(), [&](const auto& object) { return object.id == args[0].bstrVal; });
         if (found == objects.end()) CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND));
-        edit->before = *found; edit->existed = true;
+        Load(*found, edit->before); edit->existed = true;
         edit->binary = std::make_unique<Position>(MSHTML::IHTMLDOMNodePtr(found->element));
         edit->references = FindReferences(edit->document, found->id, edit->covers);
         if (method == 151) {
@@ -244,12 +246,12 @@ inline void Mutate(FB::Doc* document, DISPID method, const std::vector<CComVaria
             if ((edit->references.any && !remove) || edit->references.unknown) CheckError(E_ACCESSDENIED);
             edit->remains = false;
         } else {
-            edit->after = ReadFile(args[1].bstrVal, args.size() == 3 ? CString(args[2].bstrVal) : CString());
+            ReadFile(args[1].bstrVal, args.size() == 3 ? CString(args[2].bstrVal) : CString(), edit->after);
             edit->after.id = found->id; edit->after.element = found->element;
             if (edit->references.image && edit->after.mime.Left(6) != L"image/") CheckError(E_INVALIDARG);
-            if (found->mime == edit->after.mime && found->size == edit->after.size) {
-                Bytes before(found->data.parray), after(edit->after.data.parray);
-                if (!memcmp(before.data, after.data, found->size)) { result = true; return; }
+            if (edit->before.mime == edit->after.mime && edit->before.size == edit->after.size) {
+                Bytes before(edit->before.data.parray), after(edit->after.data.parray);
+                if (!memcmp(before.data, after.data, edit->before.size)) { result = true; return; }
             }
         }
     }

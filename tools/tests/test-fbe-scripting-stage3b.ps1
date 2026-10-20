@@ -47,6 +47,17 @@ function aB(ok,label){if(!ok)throw new Error(label);}
 function rejectB(callback){var rejected=false;try{callback();}catch(error){rejected=true;}aB(rejected,"missing rejection");}
 function Run(){binaryResult="PASS";}
 function resultBinary(){return binaryResult;}
+function probeIdBinary(){window.external.GenerateUniqueBinaryId("png");return "PASS";}
+function probeInfoBinary(){window.external.GetBinaryInfo("png");return "PASS";}
+function probeMissingBinary(){rejectB(function(){e.GetBinaryInfo("missing");});return "PASS";}
+function probeAddBinary(){aB(e.AddBinaryFromFile(@@INPUT@@,"probe")==="probe","probe add");return "PASS";}
+function probeReplaceBinary(){e.ReplaceBinaryFromFile("png",@@REPLACE@@);return "PASS";}
+function probeRemoveBinary(){e.RemoveBinary("CON");return "PASS";}
+function probeSkipBinary(){aB(jB(e.SaveAllBinaries(@@EXPORT@@,"skip")).errors===0,"probe skip");return "PASS";}
+function probeFailBinary(){aB(jB(e.SaveAllBinaries(@@EXPORT@@,"fail")).errors===@@COUNT@@,"probe fail");return "PASS";}
+function probeExportBinary(){aB(jB(e.SaveAllBinaries(@@EXPORT@@,"replace")).saved===@@COUNT@@,"probe export");return "PASS";}
+function probeBrokenBinary(){rejectB(function(){e.GetBinaryInfo("png");});return "PASS";}
+function probePartialBinary(){var r=jB(e.SaveAllBinaries(@@EXPORT@@,"replace"));aB(r.errors===1&&r.saved===@@COUNT@@-1&&r.status==="error","corrupt partial export");return "PASS";}
 function readBinary(){try{
  aB(e.GetScriptingApiVersion()==="1.3.0"&&jB(e.GetScriptingCapabilities()).capabilities.binaryObjects,"binary API version/capability");
  var selected=e.GetSelectionText(), html=e.GetSelectionHtml(), bookmark=e.CreateSelectionBookmark();

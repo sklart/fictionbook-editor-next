@@ -56,6 +56,54 @@ if (IsFbeTestScenario(L"scripting-stage3b"))
         ShowView(BODY);
         {
             FbeScripts::ScriptExecutionScope context(script);
+            static std::vector<CString> reads;
+            struct RestoreObserver {
+                decltype(FbeScripts::Binary::readObserver) previous = FbeScripts::Binary::readObserver;
+                ~RestoreObserver() { FbeScripts::Binary::readObserver = previous; }
+            } restoreObserver;
+            auto probe = [&](LPCWSTR name, size_t count, LPCWSTR target = nullptr) {
+                reads.clear();
+                FbeScripts::Binary::readObserver = [](const CString& id) { reads.push_back(id); };
+                invoke(name);
+                FbeScripts::Binary::readObserver = nullptr;
+                if (reads.size() != count || (target && std::any_of(reads.begin(), reads.end(), [&](const auto& id) { return id != target; }))) {
+                    details = "unexpected base64data reads: "; details += CW2A(name, CP_UTF8); CheckError(E_FAIL);
+                }
+            };
+            const size_t count = FbeScripts::Binary::Objects(m_doc->m_body.Document()).size();
+            probe(L"probeIdBinary", 0); probe(L"probeInfoBinary", 1, L"png"); probe(L"probeMissingBinary", 0);
+            for (const auto name : {L"probeAddBinary", L"probeReplaceBinary", L"probeRemoveBinary"}) {
+                probe(name, name == CString(L"probeAddBinary") ? 0U : 1U,
+                    name == CString(L"probeRemoveBinary") ? L"CON" : L"png");
+                CheckError(static_cast<HRESULT>(m_doc->m_body.ExecCommand(IDM_UNDO)));
+            }
+            probe(L"probeExportBinary", count);
+            std::set<std::wstring> exported;
+            for (const auto& id : reads) exported.insert(std::wstring(id));
+            if (exported.size() != count) { details = "export read an object more than once"; CheckError(E_FAIL); }
+            probe(L"probeSkipBinary", 0); probe(L"probeFailBinary", 0);
+            const auto catalog = FbeScripts::Binary::Objects(m_doc->m_body.Document());
+            const auto png = std::find_if(catalog.begin(), catalog.end(), [](const auto& object) { return object.id == L"png"; });
+            if (png == catalog.end()) CheckError(E_FAIL);
+            FbeScripts::Binary::LoadedObject original; FbeScripts::Binary::Load(*png, original);
+            CComDispatchDriver element(png->element);
+            auto corrupt = [&](CComVariant& value) {
+                CheckError(element.PutPropertyByName(L"base64data", &value));
+                try {
+                    probe(L"probeIdBinary", 0); probe(L"probeBrokenBinary", 1, L"png");
+                    probe(L"probeSkipBinary", 0); probe(L"probeFailBinary", 0); probe(L"probePartialBinary", count);
+                } catch (...) { element.PutPropertyByName(L"base64data", &original.data); throw; }
+                CheckError(element.PutPropertyByName(L"base64data", &original.data));
+            };
+            CComVariant notArray(42L); corrupt(notArray);
+            CComVariant matrix; matrix.vt = VT_ARRAY | VT_UI1;
+            SAFEARRAYBOUND bounds[2] = {{2, 0}, {2, 0}};
+            matrix.parray = ::SafeArrayCreate(VT_UI1, 2, bounds);
+            if (!matrix.parray) CheckError(E_OUTOFMEMORY);
+            corrupt(matrix);
+        }
+        {
+            FbeScripts::ScriptExecutionScope context(script);
             CComPtr<IOleUndoManager> manager; IServiceProviderPtr services(m_doc->m_body.Document());
             CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&manager)));
             auto snapshot = [&]() { return CString(static_cast<LPCWSTR>(m_doc->CreateDOMForAnalysis()->xml)); };
@@ -135,7 +183,17 @@ if (IsFbeTestScenario(L"scripting-stage3b"))
         if (source != FbeScripts::SourceBytes(m_source) || caret != m_source.SendMessage(SCI_GETCURRENTPOS) || anchor != m_source.SendMessage(SCI_GETANCHOR) || !IsSourceActive()) CheckError(E_FAIL);
         ShowView(BODY);
         { FbeScripts::ScriptExecutionScope context(script); invoke(L"persistBinaries"); }
-        const auto expected = FbeScripts::Binary::Objects(m_doc->m_body.Document());
+        // Full payload snapshots belong only to this Save/Reopen assertion,
+        // never to the production metadata catalog.
+        auto snapshotBinaries = [&]() {
+            std::vector<FbeScripts::Binary::LoadedObject> snapshot;
+            for (const auto& object : FbeScripts::Binary::Objects(m_doc->m_body.Document())) {
+                FbeScripts::Binary::LoadedObject loaded; FbeScripts::Binary::Load(object, loaded);
+                snapshot.push_back(std::move(loaded));
+            }
+            return snapshot;
+        };
+        const auto expected = snapshotBinaries();
         auto references = [&]() {
             auto dom = m_doc->CreateDOMForAnalysis();
             auto nodes = dom->selectNodes(L"//*[local-name()='image']/@*[local-name()='href']");
@@ -153,7 +211,7 @@ if (IsFbeTestScenario(L"scripting-stage3b"))
         if (DocChanged()) { details = "Redo to saved binary state must be clean"; CheckError(E_FAIL); }
         if (LoadFile(filename) != OK) { details = "binary reopen failed"; CheckError(E_FAIL); }
         if (expectedReferences != references()) { details = "binary references/covers after reopening"; CheckError(E_FAIL); }
-        const auto restored = FbeScripts::Binary::Objects(m_doc->m_body.Document());
+        const auto restored = snapshotBinaries();
         if (expected.size() != restored.size()) { details = "binary count after reopening"; CheckError(E_FAIL); }
         for (const auto& object : expected) {
             auto found = std::find_if(restored.begin(), restored.end(), [&](const auto& item) { return item.id == object.id; });

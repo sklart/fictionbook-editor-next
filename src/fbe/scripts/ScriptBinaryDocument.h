@@ -6,9 +6,20 @@
 namespace FbeScripts { namespace Binary {
 struct Object {
     CString id, mime;
-    CComVariant data;
     MSHTML::IHTMLElementPtr element;
+    MSHTML::IHTMLElementPtr container;
+};
+// Byte ownership is deliberately separate from catalog metadata. Never copy a
+// SAFEARRAY when enumerating objects or moving a payload into an Undo edit.
+struct LoadedObject : Object {
+    CComVariant data;
     ULONG size = 0;
+    LoadedObject() = default;
+    LoadedObject(const LoadedObject&) = delete;
+    LoadedObject& operator=(const LoadedObject&) = delete;
+    LoadedObject(LoadedObject&& other) : Object(std::move(other)), size(other.size) {
+        CheckError(data.Attach(&other.data));
+    }
 };
 inline std::vector<Object> Objects(MSHTML::IHTMLDocument2Ptr document)
 {
@@ -18,7 +29,7 @@ inline std::vector<Object> Objects(MSHTML::IHTMLDocument2Ptr document)
     MSHTML::IHTMLElementCollectionPtr elements(MSHTML::IHTMLElement2Ptr(container)->getElementsByTagName(L"DIV"));
     std::vector<Object> objects;
     for (long index = 0; index < elements->length; ++index) {
-        Object item; item.element = elements->item(index);
+        Object item; item.element = elements->item(index); item.container = container;
         MSHTML::IHTMLElementCollectionPtr inputs(MSHTML::IHTMLElement2Ptr(item.element)->getElementsByTagName(L"INPUT"));
         for (long input = 0; input < inputs->length; ++input) {
             MSHTML::IHTMLInputElementPtr field(inputs->item(input));
@@ -26,18 +37,35 @@ inline std::vector<Object> Objects(MSHTML::IHTMLDocument2Ptr document)
             if (name == L"id") item.id = static_cast<LPCWSTR>(field->value);
             if (name == L"type") item.mime = static_cast<LPCWSTR>(field->value);
         }
-        CComDispatchDriver driver(item.element);
-        CheckError(driver.GetPropertyByName(L"base64data", &item.data));
-        if (item.data.vt != (VT_ARRAY | VT_UI1) || !item.data.parray || ::SafeArrayGetDim(item.data.parray) != 1) CheckError(E_UNEXPECTED);
-        LONG lower = 0, upper = -1;
-        CheckError(::SafeArrayGetLBound(item.data.parray, 1, &lower));
-        CheckError(::SafeArrayGetUBound(item.data.parray, 1, &upper));
-        const LONGLONG size = static_cast<LONGLONG>(upper) - lower + 1;
-        if (size < 0 || size > ULONG_MAX) CheckError(E_UNEXPECTED);
-        item.size = static_cast<ULONG>(size);
         objects.push_back(std::move(item));
     }
     return objects;
+}
+// An internal observation seam for isolated runtime tests; no payload bytes are
+// exposed or retained, and ordinary calls have no observer installed.
+inline void (*readObserver)(const CString&) = nullptr;
+inline void Load(const Object& object, LoadedObject& result)
+{
+    if (!object.element || !object.container) CheckError(E_UNEXPECTED);
+    MSHTML::IHTMLDOMNodePtr container(object.container), node(object.element);
+    if (!container->parentNode) CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND));
+    for (node = node->parentNode; node && node != container; node = node->parentNode) {}
+    if (!node) CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND));
+    static_cast<Object&>(result) = object;
+    CheckError(result.data.Clear()); result.size = 0;
+    if (readObserver) readObserver(object.id);
+    CComDispatchDriver driver(object.element);
+    CheckError(driver.GetPropertyByName(L"base64data", &result.data));
+    if (result.data.vt != (VT_ARRAY | VT_UI1) || !result.data.parray ||
+        ::SafeArrayGetDim(result.data.parray) != 1 || ::SafeArrayGetElemsize(result.data.parray) != sizeof(BYTE)) CheckError(E_UNEXPECTED);
+    VARTYPE type = VT_EMPTY; CheckError(::SafeArrayGetVartype(result.data.parray, &type));
+    if (type != VT_UI1) CheckError(E_UNEXPECTED);
+    LONG lower = 0, upper = -1;
+    CheckError(::SafeArrayGetLBound(result.data.parray, 1, &lower));
+    CheckError(::SafeArrayGetUBound(result.data.parray, 1, &upper));
+    const LONGLONG size = static_cast<LONGLONG>(upper) - lower + 1;
+    if (size < 0 || size > ULONG_MAX) CheckError(E_UNEXPECTED);
+    result.size = static_cast<ULONG>(size);
 }
 inline CString UniqueId(const std::vector<Object>& objects, const CString& preferred)
 {
@@ -58,7 +86,7 @@ public:
     Bytes(const Bytes&) = delete;
     Bytes& operator=(const Bytes&) = delete;
 };
-inline CString Info(const Object& object)
+inline CString Info(const LoadedObject& object)
 {
     CString dimensions = L"\"width\":null,\"height\":null";
     CString mime = object.mime; mime.MakeLower();
@@ -94,13 +122,14 @@ inline HRESULT ExportOne(const Object& object, const CString& path, bool replace
 {
     CString temporary;
     try {
+        LoadedObject payload; Load(object, payload);
         GUID guid = {}; CheckError(::CoCreateGuid(&guid)); wchar_t token[40] = {}; ::StringFromGUID2(guid, token, _countof(token));
         const int slash = path.ReverseFind(L'\\'); temporary = path.Left(slash + 1) + L".fbe-" + token + L".tmp";
         CHandle file(::CreateFileW(temporary, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL));
         if (file == INVALID_HANDLE_VALUE) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
-        Bytes bytes(object.data.parray); DWORD written = 0;
-        if (!::WriteFile(file, bytes.data, object.size, &written, NULL)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
-        if (written != object.size) CheckError(STG_E_WRITEFAULT);
+        Bytes bytes(payload.data.parray); DWORD written = 0;
+        if (!::WriteFile(file, bytes.data, payload.size, &written, NULL)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
+        if (written != payload.size) CheckError(STG_E_WRITEFAULT);
         if (!::FlushFileBuffers(file)) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
         file.Close();
         if (!::MoveFileExW(temporary, path, MOVEFILE_WRITE_THROUGH | (replace ? MOVEFILE_REPLACE_EXISTING : 0))) CheckError(HRESULT_FROM_WIN32(::GetLastError()));
@@ -150,7 +179,9 @@ inline CComVariant Read(MSHTML::IHTMLDocument2Ptr document, DISPID method, const
     const auto objects = Objects(document);
     if (method == 148) return CComVariant(UniqueId(objects, args[0].bstrVal));
     if (method == 152) return CComVariant(Export(objects, args[0].bstrVal, args.size() == 2 ? CString(args[1].bstrVal) : CString(L"skip")));
-    for (const auto& object : objects) if (object.id == args[0].bstrVal) return CComVariant(Info(object));
+    for (const auto& object : objects) if (object.id == args[0].bstrVal) {
+        LoadedObject payload; Load(object, payload); return CComVariant(Info(payload));
+    }
     CheckError(HRESULT_FROM_WIN32(ERROR_NOT_FOUND)); return CComVariant();
 }
 } }
