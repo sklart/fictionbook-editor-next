@@ -30,7 +30,8 @@ try {
     }
     # The second merge candidate intentionally has no ID or title: the
     # production command must refuse to discard either kind of metadata.
-    [void]$book.Append('<section id="merge-owner"><title><p>Merge fixture</p></title><section id="merge-first"><p>First text</p></section><section><p>Second text</p></section></section></body></FictionBook>')
+    [void]$book.Append('<section id="merge-owner"><title><p>Merge fixture</p></title><section id="merge-first"><p>First text</p></section><section><p>Second text</p></section></section>')
+    [void]$book.Append('<section id="title-unicode"><title><p>СТАДИЯ <strong>ПЕРВАЯ</strong></p><p>Глава <emphasis>первая</emphasis></p></title><p>Text</p></section><section id="title-empty"><title><p> </p></title><p>Text</p></section><section id="title-parent-empty"><section><title><p>Only child title</p></title><p>Text</p></section></section></body></FictionBook>')
     $fixture = Join-Path $iso.Root 'nested.fb2'
     [IO.File]::WriteAllText($fixture, $book.ToString(), [Text.UTF8Encoding]::new($false))
     $env:FBE_NEXT_TEST_MODE = '1'; $env:FBE_NEXT_TEST_SCENARIO = 'document-tree-window-runtime'

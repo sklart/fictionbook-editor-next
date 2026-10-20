@@ -1594,21 +1594,14 @@ void InitSettingsHotkeyGroups()
 #endif
 	MSHTML::IHTMLElementPtr	FindTitleNode(MSHTML::IHTMLDOMNodePtr elem) 
 	{
-		MSHTML::IHTMLDOMNodePtr node(elem->firstChild);
-
-
-		_bstr_t   cls(MSHTML::IHTMLElementPtr(elem)->className);
-
-		if ((bool)node && node->nodeType==1 && U::scmp(node->nodeName,L"DIV")==0) {
-			_bstr_t   nodeClass(MSHTML::IHTMLElementPtr(node)->className);
-			if (U::scmp(nodeClass,L"image")==0) {
-				node=node->nextSibling;
-				if (node->nodeType!=1 || U::scmp(node->nodeName,L"DIV"))
-					return NULL;
-				cls=MSHTML::IHTMLElementPtr(node)->className;
-			}
-			if (U::scmp(cls,L"title")==0)
-				return MSHTML::IHTMLElementPtr(node);
+		if (!elem) return NULL;
+		for (MSHTML::IHTMLDOMNodePtr node(elem->firstChild); node; node=node->nextSibling) {
+			if (node->nodeType!=1) continue;
+			if (U::scmp(node->nodeName,L"DIV")!=0) return NULL;
+			MSHTML::IHTMLElementPtr child(node);
+			_bstr_t cls(child->className);
+			if (U::scmp(cls,L"title")==0) return child;
+			if (U::scmp(cls,L"image")!=0) return NULL;
 		}
 		return NULL;
 	}

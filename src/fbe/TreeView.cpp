@@ -781,6 +781,7 @@ void  CTreeView::UpdateDocumentStructure(const MSHTML::IHTMLDocument2Ptr& v,MSHT
 	{
 		CString txt = (wchar_t*)tn->innerText;
 		U::NormalizeInplace(txt);
+		if(txt.IsEmpty()) txt.Format(L"<%s>", static_cast<LPCWSTR>(_bstr_t(jj->className)));
 		ii.SetText(txt);
 		return;
 	}
