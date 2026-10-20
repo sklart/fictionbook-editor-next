@@ -10,7 +10,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $idl = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\contracts\fbe.idl')
 $fbe = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\FBE.cpp')
 $external = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'src\fbe\ExternalHelper.cpp')
-$versioning = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs\fbelib-typelib-versioning.md')
+$versioning = Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'docs\reference\fbelib-typelib-versioning.md')
 
 $checks = @(
     @{ Pattern = 'id\(29\).*IsDiagnosticTraceEnabled'; Source = $idl; Name = 'diagnostic enabled DISPID' },

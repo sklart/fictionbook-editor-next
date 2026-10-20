@@ -18,7 +18,7 @@ $settingsSource = Read-ProjectFile "src\fbe\Settings.cpp"
 $settingsSerialization = Read-ProjectFile "src\fbe\settings\SettingsSerialization.cpp"
 $mainFrame = Read-ProjectFile "src\fbe\mainfrm.cpp"
 $sourceEditor = Read-ProjectFile "src\fbe\source\ui\SourceEditorControl.cpp"
-$documentation = Read-ProjectFile "docs\xml-source-themes.md"
+$documentation = Read-ProjectFile "docs\reference\xml-source-themes.md"
 $dialogLocalization = Read-ProjectFile "localization\app-ui\fbe-small-dialogs.json"
 
 $requiredTokens = @(
