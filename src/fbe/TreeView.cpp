@@ -277,11 +277,13 @@ bool CTreeView::StructureMarkerRect(HTREEITEM item, RECT& bounds) const
 {
 	const int highlight = StructureHighlight(item);
 	if(!highlight || !GetItemRect(item, &bounds, TRUE)) return false;
-	// Keep the entire marker inside the native label's repaint area.
+	// TVM_GETITEMRECT supplies the native text bounds, including horizontal
+	// scrolling and indentation. Clip only at the visible client edges.
+	RECT client = {};
+	GetClientRect(&client);
 	const int thickness = highlight == 2 ? UiMetrics::ScaleForDpi(3, UiMetrics::DpiForWindow(m_hWnd)) : UiMetrics::ScaleForDpi(1, UiMetrics::DpiForWindow(m_hWnd));
 	bounds.top = (std::max)(bounds.top, bounds.bottom - thickness);
-	bounds.right = (std::min)(bounds.right, bounds.left + UiMetrics::ScaleForDpi(24, UiMetrics::DpiForWindow(m_hWnd)));
-	return bounds.right > bounds.left;
+	return ::IntersectRect(&bounds, &bounds, &client) != FALSE;
 }
 
 void CTreeView::RefreshStructurePosition(const MSHTML::IHTMLDocument2Ptr& view)

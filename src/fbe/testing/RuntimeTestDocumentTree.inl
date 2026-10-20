@@ -35,13 +35,26 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         auto paint = [&]() { tree.UpdateWindow(); ::GdiFlush(); };
         auto verifyMarker = [&](HTREEITEM item) {
             RECT marker = {}; FBE_TREE_CHECK(tree.StructureMarkerRect(item, marker));
+            RECT label = {}, client = {}, expectedRect = {};
+            FBE_TREE_CHECK(tree.GetItemRect(item, &label, TRUE) != FALSE);
+            tree.GetClientRect(&client);
+            const int thickness = UiMetrics::ScaleForDpi(tree.StructureHighlight(item) == 2 ? 3 : 1, UiMetrics::DpiForWindow(tree));
+            label.top = (std::max)(label.top, label.bottom - thickness);
+            FBE_TREE_CHECK(::IntersectRect(&expectedRect, &label, &client) != FALSE);
+            FBE_TREE_CHECK(::EqualRect(&marker, &expectedRect) != FALSE);
             const bool selectedItem = (tree.GetItemState(item, TVIS_SELECTED) & TVIS_SELECTED) != 0;
             const COLORREF expected = ThemeManager::IsHighContrast() ? ::GetSysColor(selectedItem ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT) :
                 (selectedItem ? ThemeManager::SelectionTextColor() : (tree.StructureHighlight(item) == 2 ? ThemeManager::AccentColor() : ThemeManager::SecondaryTextColor()));
-            HDC dc = tree.GetDC(); const COLORREF actual = ::GetPixel(dc, marker.left, marker.bottom - 1); tree.ReleaseDC(dc);
+            HDC dc = tree.GetDC(); const COLORREF actual = ::GetPixel(dc, marker.left, marker.bottom - 1);
+            bool entireLine = true;
+            for(int y = marker.top; y < marker.bottom; ++y)
+                for(int x = marker.left; x < marker.right; ++x)
+                    if(::GetPixel(dc, x, y) != expected) entireLine = false;
+            tree.ReleaseDC(dc);
             if(actual != expected) report.AppendFormat("marker_rank=%d\nmarker_rect=%ld,%ld,%ld,%ld\nmarker_actual=0x%08lX\nmarker_expected=0x%08lX\n",
                 tree.StructureHighlight(item), marker.left, marker.top, marker.right, marker.bottom, actual, expected);
             FBE_TREE_CHECK(actual == expected);
+            FBE_TREE_CHECK(entireLine);
         };
         auto input = [&](HTREEITEM item, UINT modifiers, bool button, UINT down = WM_LBUTTONDOWN) {
             FBE_TREE_CHECK(item != NULL);
@@ -214,6 +227,37 @@ if(IsFbeTestScenario(L"document-tree-window-runtime"))
         for(InterfaceTheme theme : {INTERFACE_THEME_LIGHT, INTERFACE_THEME_DARK}) {
             ThemeManager::SetSelectedTheme(theme); ThemeManager::ApplyToWindow(m_hWnd);
             tree.EnsureVisible(leaf); tree.EnsureVisible(head); tree.SetFocus();
+            phase = "marker-text-width";
+            selectCaret(L"leaf-text0");
+            WCHAR originalLabel[1024] = {};
+            FBE_TREE_CHECK(tree.GetItemText(leaf, originalLabel, _countof(originalLabel)) != FALSE);
+            CString longLabel;
+            for(int repeat = 0; repeat < 100; ++repeat) longLabel += L"Long section title ";
+            for(const CString& text : {CString(L"<section>"), CString(L"\x0413\x043b\x0430\x0432\x0430 \x043f\x0435\x0440\x0432\x0430\x044f"), longLabel}) {
+                FBE_TREE_CHECK(tree.SetItemText(leaf, text) != FALSE);
+                tree.SendMessage(WM_HSCROLL, SB_LEFT);
+                tree.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+                RECT label = {}, client = {};
+                FBE_TREE_CHECK(tree.GetItemRect(leaf, &label, TRUE) != FALSE);
+                tree.GetClientRect(&client);
+                if(text == longLabel) FBE_TREE_CHECK(label.right > client.right);
+                else {
+                    FBE_TREE_CHECK(label.right <= client.right);
+                    FBE_TREE_CHECK(label.right - label.left > UiMetrics::ScaleForDpi(24, UiMetrics::DpiForWindow(tree)));
+                }
+                verifyMarker(leaf); verifyMarker(child); verifyMarker(head);
+                report.AppendFormat("marker_label_width=%ld\nmarker_visible_width=%ld\n", label.right - label.left,
+                    (std::min)(label.right, client.right) - (std::max)(label.left, client.left));
+                if(text == longLabel) {
+                    tree.SendMessage(WM_HSCROLL, SB_RIGHT); paint();
+                    FBE_TREE_CHECK(tree.GetItemRect(leaf, &label, TRUE) != FALSE && label.left < client.left);
+                    verifyMarker(leaf);
+                }
+            }
+            FBE_TREE_CHECK(tree.SetItemText(leaf, originalLabel) != FALSE);
+            tree.SendMessage(WM_HSCROLL, SB_LEFT);
+            tree.RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+            report.AppendFormat("marker_text_width_theme_%d=1\n", static_cast<int>(theme));
             for(int index = 0; index < 24; ++index) {
                 phase.Format("paint-%d-%d", static_cast<int>(theme), index);
                 selectCaret(index % 2 ? L"head-text0" : L"leaf-text0");

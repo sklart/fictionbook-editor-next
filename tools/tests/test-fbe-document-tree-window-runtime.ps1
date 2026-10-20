@@ -41,6 +41,7 @@ try {
     $exitCode = Wait-IsolatedFbeProcess -Process $process -Isolation $iso -Scenario 'document-tree-window-runtime' -Report $report -TimeoutSeconds $TimeoutSeconds
     $text = if(Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '<missing report>' }
     if($exitCode -ne 0 -or $text -notmatch '(?m)^result=pass\r?$') { throw "Document Tree window runtime failed ($Mode), exit=$exitCode`n$text" }
+    if(([regex]::Matches($text, '(?m)^marker_text_width_theme_\d+=1\r?$')).Count -ne 2) { throw "Document Tree marker width coverage is missing ($Mode)." }
     Write-Host $text
     Write-Host "Document Tree window runtime: PASS ($Mode)."
     $passed = $true
