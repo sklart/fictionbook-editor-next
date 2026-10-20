@@ -511,6 +511,7 @@ public:
 		MESSAGE_HANDLER(WM_FBE_APPLY_XML_SOURCE_THEME, OnApplyXmlSourceTheme)
 		MESSAGE_HANDLER(WM_FBE_THEMECHANGED, OnThemeChanged)
 		MESSAGE_HANDLER(AU::WM_SETSTATUSTEXT, OnSetStatusText)
+		MESSAGE_HANDLER(AU::WM_SCRIPT_STATUS_CHANGED, OnScriptStatusChanged)
 		MESSAGE_HANDLER(AU::WM_TRACKPOPUPMENU, OnTrackPopupMenu)
 
 		// incremental search support
@@ -1233,6 +1234,10 @@ public:
   void UpdateStatusBarLayout();
   bool CurrentOverwriteMode() const;
   void RefreshStatusMainPane();
+  LRESULT OnScriptStatusChanged(UINT,WPARAM,LPARAM,BOOL&) {
+    m_status_state.ClearTransientIfExpired(::GetTickCount());
+    RefreshStatusMainPane(); if(m_status.IsWindow())::UpdateWindow(m_status); return 0;
+  }
 	void SetValidationStatus(FBEStatusBar::ValidationStatus status);
   void ResetValidationStatus();
   void ResetStatusForDocument();

@@ -36,6 +36,7 @@
 #include "scripts/ScriptingDialogs.inl"
 #include "scripts/ScriptExtendedDialogs.h"
 #include "scripts/ScriptClipboard.h"
+#include "scripts/ScriptStatus.h"
 #include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
@@ -1380,6 +1381,7 @@ bool  CMainFrame::IsBandVisible(int id) {
 
 void CMainFrame::AttachDocument(FB::Doc *doc)
 {
+    FbeScripts::Status::Invalidate(m_hWnd);
 	HideCaretMarker();
 	if (!doc || !doc->m_body.HasDoc())
 	{
@@ -1663,9 +1665,11 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
 	if(request->operation == XmlScriptApiOperation::ScriptingDocumentOperation)
 	{
         if (FbeScripts::ExtendedDialogs::modalActive) { request->error = E_UNEXPECTED; return 1; }
-        if (request->scriptingMethod >= 153 && request->scriptingMethod <= 160) {
+        if (request->scriptingMethod >= 153 && request->scriptingMethod <= 163) {
             try {
-                request->returnValue = request->scriptingMethod<=156
+                if(request->scriptingMethod>=161)
+                    FbeScripts::Status::Operation(m_hWnd,request->scriptingMethod,request->arguments,request->returnValue);
+                else request->returnValue = request->scriptingMethod<=156
                     ? CComVariant(FbeScripts::ExtendedDialogs::Show(m_hWnd,request->scriptingMethod,request->arguments))
                     : FbeScripts::Clipboard::Operation(m_hWnd,request->scriptingMethod,request->arguments);
                 request->succeeded = true;
@@ -4054,6 +4058,7 @@ LRESULT CMainFrame::OnCreate(UINT, WPARAM, LPARAM, BOOL&)
 
 LRESULT CMainFrame::OnDestroy(UINT /* unused: uMsg */, WPARAM /* unused: wParam */, LPARAM /* unused: lParam */, BOOL& bHandled)
 {
+    FbeScripts::Status::Invalidate(m_hWnd);
     m_ui_watchdog.Stop();
     KillTimer(DIAGNOSTIC_DISCOVERY_TIMER_ID);
     m_diagnostic_crash_discovery.Stop();
@@ -8009,7 +8014,7 @@ void CMainFrame::RefreshStatusMainPane()
 	const bool profileStatus = StartupTrace::Enabled();
 	const ULONGLONG started = profileStatus ? ::GetTickCount64() : 0;
 	m_status.SetPaneText(ID_DEFAULT_PANE,
-		m_status_state.EffectiveMainText(m_incsearch != 0, m_is_fail, m_is_str));
+		m_status_state.EffectiveMainText(m_incsearch != 0, m_is_fail, m_is_str,FbeScripts::Status::Active(m_hWnd)));
 	if (profileStatus) { ++g_idleProfile.statusUpdates; g_idleProfile.statusMilliseconds += ::GetTickCount64() - started; }
 }
 

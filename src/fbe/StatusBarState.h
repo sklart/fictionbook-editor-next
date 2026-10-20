@@ -24,7 +24,7 @@ public:
 	void SetValidation(ValidationStatus status) { m_validation = status; }
 	ValidationStatus Validation() const { return m_validation; }
 	CString EffectiveMainText(bool incrementalSearchActive, bool incrementalSearchFailed,
-		const CString& incrementalSearchText) const;
+		const CString& incrementalSearchText, const CString* scriptText = nullptr) const;
 	void ResetForDocument();
 
 private:

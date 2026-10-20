@@ -27,11 +27,12 @@ bool State::ClearTransientIfExpired(DWORD now)
 }
 
 CString State::EffectiveMainText(bool incrementalSearchActive,
-	bool incrementalSearchFailed, const CString& incrementalSearchText) const
+	bool incrementalSearchFailed, const CString& incrementalSearchText, const CString* scriptText) const
 {
 	if (incrementalSearchActive)
 		return (incrementalSearchFailed ? L"Failing Incremental Search: " :
 			L"Incremental Search: ") + incrementalSearchText;
+	if (scriptText) return *scriptText;
 	return !m_transient.IsEmpty() ? m_transient : m_context;
 }
 

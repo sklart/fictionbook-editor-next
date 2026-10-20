@@ -1,4 +1,4 @@
-if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripting-stage3c-clipboard")) {
+if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripting-stage3c-clipboard")||IsFbeTestScenario(L"scripting-stage3c-status")) {
     bool passed=false; CStringA details="start";
     try {
         wchar_t root[32768]={}; ::GetEnvironmentVariableW(L"FBE_NEXT_SCRIPT_API_ROOT",root,_countof(root));
@@ -17,7 +17,37 @@ if (IsFbeTestScenario(L"scripting-stage3c-dialogs")||IsFbeTestScenario(L"scripti
         const InterfaceTheme initialTheme=ThemeManager::GetSelectedTheme();
         struct RestoreTheme { InterfaceTheme value; ~RestoreTheme(){ThemeManager::SetSelectedTheme(value);} } restoreTheme={initialTheme};
         FbeScripts::ScriptExecutionScope context(script);
-        if(IsFbeTestScenario(L"scripting-stage3c-clipboard")) {
+        if(IsFbeTestScenario(L"scripting-stage3c-status")) {
+            auto pane=[&](int index) {
+                const size_t length=LOWORD(::SendMessageW(m_status,SB_GETTEXTLENGTHW,index,0));
+                std::vector<wchar_t> text(length+1);::SendMessageW(m_status,SB_GETTEXTW,index,reinterpret_cast<LPARAM>(text.data()));return CString(text.data());
+            };
+            auto expect=[&](LPCWSTR value) {if(pane(0)!=value){details="incorrect status pane";CheckError(E_FAIL);}};
+            const int parts=m_status.GetParts(0,nullptr);std::vector<CString> neighbors;
+            for(int i=1;i<parts;++i)neighbors.push_back(pane(i));
+            m_status_state.SetContext(L"context-current");
+            m_status_state.SetTransient(L"system-current",::GetTickCount());RefreshStatusMainPane();
+            {
+                FbeScripts::ScriptExecutionScope parent(script);
+                invoke(L"stage3cPushA");expect(L"outer");invoke(L"stage3cPushB");expect(L"inner");
+                invoke(L"stage3cBadPop");expect(L"inner");invoke(L"stage3cPopB");expect(L"outer");
+                const size_t depth=FbeScripts::ExecutionContexts().size();invoke(L"stage3cNested");expect(L"outer");
+                if(depth!=FbeScripts::ExecutionContexts().size()){details="nested context leaked";CheckError(E_FAIL);}
+                {
+                    FbeScripts::ScriptExecutionScope child(script);invoke(L"stage3cClear");expect(L"outer");
+                }
+                m_incsearch=1;m_is_str=L"probe";RefreshStatusMainPane();
+                if(pane(0).Find(L"probe")<0||pane(0)==L"outer"){details="incremental search priority";CheckError(E_FAIL);}
+                m_incsearch=0;RefreshStatusMainPane();expect(L"outer");
+                invoke(L"stage3cLegacy");expect(L"outer");invoke(L"stage3cPopA");expect(L"legacy-current");
+                invoke(L"stage3cPushA");
+            }
+            expect(L"legacy-current");
+            if(FbeScripts::Status::Active(m_hWnd)){details="completed script retained status";CheckError(E_FAIL);}
+            m_status_state.ClearTransientIfExpired(::GetTickCount()+6000);RefreshStatusMainPane();expect(L"context-current");
+            for(int i=1;i<parts;++i)if(pane(i)!=neighbors[static_cast<size_t>(i-1)]){details="neighboring status pane changed";CheckError(E_FAIL);}
+            details="LIFO, nested cleanup, JScript/COM exceptions, live system status and neighboring panes PASS";
+        } else if(IsFbeTestScenario(L"scripting-stage3c-clipboard")) {
             FbeScripts::Clipboard::TestStorage storage;
             struct ResetClipboardStorage { ~ResetClipboardStorage(){FbeScripts::Clipboard::testStorage=nullptr;} } resetStorage;
             FbeScripts::Clipboard::testStorage=&storage;

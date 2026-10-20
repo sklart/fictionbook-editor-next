@@ -32,7 +32,8 @@ const wchar_t* const ScriptingMethods[] = {
  L"WriteTextFileEx", L"ValidateCurrentDocument", L"LogMessage", L"GetLastScriptingError", L"ClearLastScriptingError",
  L"GetBinaryInfo", L"GenerateUniqueBinaryId", L"AddBinaryFromFile", L"ReplaceBinaryFromFile", L"RemoveBinary", L"SaveAllBinaries",
  L"ShowMessage", L"SelectFromList", L"SelectMultipleFromList", L"ChooseColor",
- L"GetClipboardText", L"SetClipboardText", L"GetClipboardHtml", L"SetClipboardHtml"
+ L"GetClipboardText", L"SetClipboardText", L"GetClipboardHtml", L"SetClipboardHtml",
+ L"PushStatusBarText", L"PopStatusBarText", L"ClearStatusBarText"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param([string]$FbeExe=(Join-Path $PSScriptRoot '../../out/Release/FBE.exe'),
     [ValidateSet('portable','installed')][string]$Mode='portable',
-    [ValidateSet('dialogs','clipboard')][string]$Part='dialogs')
+    [ValidateSet('dialogs','clipboard','status')][string]$Part='dialogs')
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'RuntimeTestIsolation.ps1')
 $iso=New-IsolatedFbeRuntime -FbeExe $FbeExe -Name 'api3c'
@@ -28,6 +28,18 @@ function Run(){try{
  bad3c(function(){ext.ShowMessage("x");});bad3c(function(){ext.SelectFromList(1);});result3c="PASS";
 }catch(e){result3c=String(e.message||e);}}
 function stage3cResult(){return result3c;}
+function stage3cPushA(){window.tokenA=ext.PushStatusBarText("outer");return "PASS";}
+function stage3cPushB(){window.tokenB=ext.PushStatusBarText("inner");return "PASS";}
+function stage3cBadPop(){try{bad3c(function(){ext.PopStatusBarText(window.tokenA);});bad3c(function(){ext.PopStatusBarText("foreign");});return "PASS";}catch(e){return String(e.message||e);}}
+function stage3cPopB(){try{a3c(ext.PopStatusBarText(window.tokenB),"pop B");bad3c(function(){ext.PopStatusBarText(window.tokenB);});return "PASS";}catch(e){return String(e.message||e);}}
+function stage3cPopA(){ext.PopStatusBarText(window.tokenA);return "PASS";}
+function stage3cClear(){ext.PushStatusBarText("local");ext.ClearStatusBarText();return "PASS";}
+function stage3cLegacy(){ext.SetStatusBarText("legacy-current");return "PASS";}
+function stage3cNested(){try{
+ apiRunCmd(@@CHILD@@);a3c(window.childChecked,"foreign parent token");
+ var failed=false;try{apiRunCmd(@@ERROR@@);}catch(e){failed=true;}a3c(failed,"nested JScript failure");
+ failed=false;try{apiRunCmd(@@COMERROR@@);}catch(e){failed=true;}a3c(failed,"nested COM failure");return "PASS";
+}catch(e){return String(e.message||e);}}
 function stage3cClipboard(){var step="text";try{
  var text="FBE45_PRIVATE_CLIPBOARD_CANARY Буфер 😀\r\nСледующая строка";
  a3c(ext.SetClipboardText(text)&&ext.GetClipboardText()===text,"Unicode text");
@@ -60,7 +72,11 @@ function stage3cDialog(title,index){try{
  return "PASS";
 }catch(e){return String(e.message||e);}}
 '@
+    foreach($name in @('CHILD','ERROR','COMERROR')) {$script=$script.Replace(('@@'+$name+'@@'),((Join-Path $root ($name.ToLowerInvariant()+'.js'))|ConvertTo-Json -Compress))}
     $script | Set-Content (Join-Path $root 'stage3c.js') -Encoding utf8
+    'function Run(){var e=window.external;var bad=false;try{e.PopStatusBarText(window.tokenA);}catch(error){bad=true;}window.childChecked=bad;e.PushStatusBarText("child");e.ClearStatusBarText();e.PushStatusBarText("child-leak");}' | Set-Content (Join-Path $root 'child.js') -Encoding utf8
+    'function Run(){window.external.PushStatusBarText("exception-leak");throw new Error("intentional stage3c failure");}' | Set-Content (Join-Path $root 'error.js') -Encoding utf8
+    'function Run(){var e=window.external;e.PushStatusBarText("COM-leak");e.PopStatusBarText("foreign");}' | Set-Content (Join-Path $root 'comerror.js') -Encoding utf8
     $fixture=Join-Path $iso.Root 'api3c.fb2';$report=Join-Path $iso.Root 'api3c.txt'
     '<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>prose</genre><author><first-name>T</first-name><last-name>T</last-name></author><book-title>API3C</book-title><lang>en</lang></title-info><document-info><id>api3c</id><version>1</version></document-info></description><body><section><p>ordinary paragraph</p></section></body></FictionBook>' | Set-Content $fixture -Encoding utf8
     $env:FBE_NEXT_TEST_MODE='1';$env:FBE_NEXT_TEST_SCENARIO="scripting-stage3c-$Part";$env:FBE_NEXT_SCRIPT_API_ROOT=$root
