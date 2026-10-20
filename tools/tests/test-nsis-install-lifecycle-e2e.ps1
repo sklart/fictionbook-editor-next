@@ -42,11 +42,20 @@ function Get-FileState([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '<absent>' }
     return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash + ':' + (Get-Item -LiteralPath $Path).Length)
 }
-function Assert-DisplayVersion([string]$Key, [string]$Directory) {
+function Assert-UninstallMetadata([string]$Key, [string]$Directory) {
     $binaryVersion = (Get-Item -LiteralPath (Join-Path $Directory 'FBE.exe')).VersionInfo
     $expected = '{0}.{1}.{2}' -f $binaryVersion.ProductMajorPart, $binaryVersion.ProductMinorPart, $binaryVersion.ProductBuildPart
-    $actual = (Get-ItemProperty -LiteralPath $Key).DisplayVersion
+    $metadata = Get-ItemProperty -LiteralPath $Key
+    $actual = $metadata.DisplayVersion
     Assert ($actual -ceq $expected) "DisplayVersion '$actual' must match installed FBE.exe version '$expected'."
+    Assert ($metadata.DisplayName -ceq $product) 'DisplayName must contain only the product name.'
+    $command = '"' + (Join-Path $Directory 'uninst.exe') + '"'
+    Assert ($metadata.UninstallString -ceq $command) 'UninstallString must quote the executable path.'
+    Assert ($metadata.QuietUninstallString -ceq "$command /S") 'QuietUninstallString must use the quoted executable and /S.'
+    $date = [DateTime]::ParseExact($metadata.InstallDate, 'yyyyMMdd', [Globalization.CultureInfo]::InvariantCulture)
+    Assert ($date -ge (Get-Date).Date.AddDays(-1) -and $date -le (Get-Date).Date) 'InstallDate must reflect this installation.'
+    $bytes = (Get-ChildItem -LiteralPath $Directory -File -Recurse | Measure-Object -Property Length -Sum).Sum
+    Assert ($metadata.EstimatedSize -eq [math]::Floor($bytes / 1024)) 'EstimatedSize must include all installed components.'
 }
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -59,10 +68,10 @@ try {
     Invoke-Setup @('/S', '/CURRENTUSER')
     Assert (Test-Path (Join-Path $currentDir 'FBE.exe')) 'Current User installation missing FBE.exe.'
     Assert ((Get-ItemProperty -LiteralPath $currentKey).InstallScope -eq 'current') 'Current User installation did not write HKCU scope.'
-    Assert-DisplayVersion $currentKey $currentDir
+    Assert-UninstallMetadata $currentKey $currentDir
     Assert (-not (Test-Path -LiteralPath $machineKey)) 'Current User installation wrote HKLM.'
     Invoke-Setup @('/S', '/CURRENTUSER') # same-scope upgrade
-    Assert-DisplayVersion $currentKey $currentDir
+    Assert-UninstallMetadata $currentKey $currentDir
 
     # The other installed scope must fail before it creates any HKLM state.
     Invoke-Setup @('/S', '/ALLUSERS') @(183)
@@ -76,10 +85,10 @@ try {
     Invoke-Setup @('/S', '/ALLUSERS')
     Assert (Test-Path (Join-Path $machineDir 'FBE.exe')) 'All Users installation missing FBE.exe.'
     Assert ((Get-ItemProperty -LiteralPath $machineKey).InstallScope -eq 'allusers') 'All Users installation did not write HKLM scope.'
-    Assert-DisplayVersion $machineKey $machineDir
+    Assert-UninstallMetadata $machineKey $machineDir
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'All Users installation wrote HKCU.'
     Invoke-Setup @('/S', '/ALLUSERS')
-    Assert-DisplayVersion $machineKey $machineDir
+    Assert-UninstallMetadata $machineKey $machineDir
     Invoke-Setup @('/S', '/CURRENTUSER') @(183)
     Assert (-not (Test-Path -LiteralPath $currentDir)) 'Reverse cross-scope conflict created LocalAppData installation.'
     Assert (-not (Test-Path -LiteralPath $currentKey)) 'Reverse cross-scope conflict created HKCU uninstall state.'

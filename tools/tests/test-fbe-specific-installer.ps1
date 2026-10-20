@@ -179,7 +179,7 @@ function Assert-UninstallRegistryStatePresent {
     if ($State.InstallLocation -ne $ExpectedInstallDirectory) {
         throw "${StageLabel}: uninstall-ключ содержит неожиданный InstallLocation.`nОжидалось: $ExpectedInstallDirectory`nФактически: $($State.InstallLocation)"
     }
-    if ($State.UninstallString -ne $ExpectedUninstallerPath) {
+    if ($State.UninstallString -ne ('"' + $ExpectedUninstallerPath + '"')) {
         throw "${StageLabel}: uninstall-ключ содержит неожиданный UninstallString.`nОжидалось: $ExpectedUninstallerPath`nФактически: $($State.UninstallString)"
     }
     if ($State.SystemIntegrationInstalled -ne 1) {

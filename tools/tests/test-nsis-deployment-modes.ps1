@@ -55,7 +55,7 @@ foreach ($fragment in @(
     'IfSilent 0 +2',
     'SetErrorLevel 1223',
     'WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallScope" "$InstallScope"',
-    'WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayVersion" "${PRODUCT_VER_NUM}"',
+    'WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VER_NUM}"',
     'ReadRegStr $ExistingMachineInstall HKLM "${PRODUCT_UNINST_KEY}" "InstallLocation"',
     'Function CheckOtherScopeConflict',
     'ReadRegStr $0 HKCU "${PRODUCT_UNINST_KEY}" "InstallLocation"',

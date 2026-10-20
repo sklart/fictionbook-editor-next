@@ -1395,8 +1395,8 @@ installed_core_state:
   ${EndIf}
   ; uninstall info must exist for any successful installation, not only when
   ; optional system integration is selected
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayName" "${PRODUCT_NAME_VERSION}"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "DisplayVersion" "${PRODUCT_VER_NUM}"
+  ; Keep the removal command available if later shell maintenance needs a retry.
+  Call WriteUninstallDisplayMetadata
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "CoreVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallScope" "$InstallScope"
   WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "InstallLocation" "$INSTDIR"
@@ -1414,10 +1414,7 @@ installed_core_state:
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "AssociationRegistered" $PreviousAssociationOwned
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "ValidateVerbInstalled" $PreviousValidateOwned
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "PropertyHandlerInstalled" $ShellPreviousProperty
-  WriteRegExpandStr ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteUninstaller "$INSTDIR\uninst.exe"
-  ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
-  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "EstimatedSize" $0
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "SOFTWARE\${PRODUCT_VENDOR}\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
 
 main_section_done:
@@ -1725,6 +1722,28 @@ SubSection !$(Dictionaries) Dictionaries_id
         SectionEnd
 
 SubSectionEnd
+
+Function WriteUninstallDisplayMetadata
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VER_NUM}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" '$\"$INSTDIR\uninst.exe$\"'
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "QuietUninstallString" '$\"$INSTDIR\uninst.exe$\" /S'
+  ; GetTime returns zero-padded day/month and the local installation date.
+  ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "InstallDate" "$2$1$0"
+FunctionEnd
+
+Function FinalizeUninstallMetadata
+  ; All selected language packs, plug-ins, scripts and dictionaries are now on disk.
+  ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" $0
+FunctionEnd
+
+Section "-FinalizeUninstallMetadata"
+  ${If} $DeploymentMode != "portable"
+    Call FinalizeUninstallMetadata
+  ${EndIf}
+SectionEnd
 
 !ifndef FBE_DEPLOYMENT_TEST_SCOPE_PROBE
 Function RestoreElevatedInstallerState
