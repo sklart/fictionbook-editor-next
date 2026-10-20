@@ -60,7 +60,37 @@ public:
   IDispatchPtr script;
   MSHTML::IHTMLDOMNodePtr node, parent, next;
   bool attached = true;
+  std::function<void(bool)> applyState;
+  bool applyBefore = true;
+  HRESULT ApplyState(IOleUndoManager* manager) {
+    try {
+      CComPtr<IOleUndoManager> recordingManager;
+      IServiceProviderPtr services(ScriptDocument(script));
+      CheckError(services->QueryService(SID_SOleUndoManager, IID_IOleUndoManager, reinterpret_cast<void**>(&recordingManager)));
+      BinaryRecordingScope compensation(recordingManager, false), recording(recordingManager);
+      HRESULT failure = S_OK;
+      try {
+        applyState(applyBefore);
+        CheckError(FbeUndo::Inject(L"binary-api-close")); CheckError(recording.Close());
+        if (manager) { CheckError(FbeUndo::Inject(L"binary-api-add")); CheckError(manager->Add(this)); }
+        applyBefore = !applyBefore; return S_OK;
+      } catch (const _com_error& error) { failure = error.Error(); }
+      catch (const std::bad_alloc&) { failure = E_OUTOFMEMORY; }
+      catch (const CAtlException& error) { failure = error.m_hr; }
+      catch (...) { failure = E_UNEXPECTED; }
+      try {
+        if (!recording.IsOpen()) CheckError(compensation.Open());
+        applyState(!applyBefore);
+        CheckError(compensation.Close()); CheckError(recording.Close());
+      } catch (...) { return E_ABORT; }
+      return failure;
+    } catch (const _com_error& error) { return error.Error(); }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const CAtlException& error) { return error.m_hr; }
+    catch (...) { return E_UNEXPECTED; }
+  }
   STDMETHOD(Do)(IOleUndoManager* manager) {
+    if (applyState) return ApplyState(manager);
     try {
       CComPtr<IOleUndoManager> recordingManager;
       IServiceProviderPtr services(ScriptDocument(script));
@@ -149,10 +179,44 @@ public:
   }
   STDMETHOD(GetUnitType)(CLSID* clsid, LONG* id) {
     if (!clsid || !id) return E_POINTER;
-    *clsid = CLSID_NULL; *id = 0; return S_OK;
+    *clsid = applyState ? FbeUndo::UnitClass() : CLSID_NULL; *id = 0; return S_OK;
   }
   STDMETHOD(OnNextAdd)() { return S_OK; }
 };
+
+HRESULT CommitBinaryEdit(const IDispatchPtr& script, IOleUndoManager* manager,
+                         const std::function<void(bool)>& applyState) {
+  if (!manager || !script) return E_POINTER;
+  DWORD state = 0;
+  if (manager->GetOpenParentState(&state) != S_FALSE) return E_UNEXPECTED;
+  try {
+    CComObject<ImportedBinaryUndoUnit>* raw = nullptr;
+    CheckError(CComObject<ImportedBinaryUndoUnit>::CreateInstance(&raw));
+    CComPtr<IOleUndoUnit> unit(raw); raw->script = script; raw->applyState = applyState;
+    FbeUndo::HistoryCheckpoint history(manager);
+    BinaryRecordingScope compensation(manager, false), recording(manager);
+    HRESULT failure = S_OK;
+    try {
+      applyState(false);
+      CheckError(FbeUndo::Inject(L"binary-api-close")); CheckError(recording.Close());
+      CheckError(FbeUndo::Inject(L"binary-api-add")); CheckError(manager->Add(unit));
+      return S_OK;
+    } catch (const _com_error& error) { failure = error.Error(); }
+    catch (const std::bad_alloc&) { failure = E_OUTOFMEMORY; }
+    catch (const CAtlException& error) { failure = error.m_hr; }
+    catch (...) { failure = E_UNEXPECTED; }
+    try {
+      if (!recording.IsOpen()) CheckError(compensation.Open());
+      applyState(true);
+      CheckError(compensation.Close()); CheckError(recording.Close());
+      CheckError(history.Restore(manager));
+    } catch (...) { return E_ABORT; }
+    return failure;
+  } catch (const _com_error& error) { return error.Error(); }
+  catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+  catch (const CAtlException& error) { return error.m_hr; }
+  catch (...) { return E_UNEXPECTED; }
+}
 
 static MSHTML::IHTMLDOMNodePtr BinaryParent(const IDispatchPtr& script) {
   MSHTML::IHTMLDocument2Ptr dom(ScriptDocument(script));

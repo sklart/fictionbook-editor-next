@@ -4,19 +4,26 @@ inline HRESULT InvokeBinary(HWND owner, DISPID method, WORD flags, DISPPARAMS* p
     if (!(flags & DISPATCH_METHOD)) return DISP_E_MEMBERNOTFOUND;
     if (parameters && parameters->cNamedArgs) return DISP_E_NONAMEDARGS;
     const UINT count = parameters ? parameters->cArgs : 0;
-    if (count < 1 || count > (method == 152 ? 2U : 1U)) return DISP_E_BADPARAMCOUNT;
+    const UINT minimum = method == 149 || method == 150 ? 2U : 1U;
+    const UINT maximum = method == 149 || method == 150 ? 3U : (method == 151 || method == 152 ? 2U : 1U);
+    if (count < minimum || count > maximum) return DISP_E_BADPARAMCOUNT;
     if (!parameters->rgvarg) return E_POINTER;
     XmlScriptApiRequest request(XmlScriptApiOperation::ScriptingDocumentOperation);
     request.scriptingMethod = method; request.arguments.resize(count);
     for (UINT index = 0; index < count; ++index) {
         CheckError(::VariantCopyInd(&request.arguments[index], &parameters->rgvarg[count - index - 1]));
-        if (request.arguments[index].vt != VT_BSTR) {
+        const bool boolean = method == 151 && index == 1;
+        if (request.arguments[index].vt != (boolean ? VT_BOOL : VT_BSTR)) {
             if (argumentError) *argumentError = count - index - 1;
             return DISP_E_TYPEMISMATCH;
         }
-        Stage2String(request.arguments[index]);
+        if (!boolean) Stage2String(request.arguments[index]);
     }
     if (method == 152) request.arguments[0] = ApiFilePath(request.arguments[0]);
+    if (method == 149 || method == 150) {
+        const size_t index = method == 149 ? 0 : 1;
+        request.arguments[index] = ApiFilePath(request.arguments[index]);
+    }
     if (!SendXmlScriptRequest(owner, request)) return E_UNEXPECTED;
     if (FAILED(request.error)) return request.error;
     return result ? request.returnValue.Detach(result) : S_OK;

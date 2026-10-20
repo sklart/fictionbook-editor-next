@@ -30,7 +30,7 @@ const wchar_t* const ScriptingMethods[] = {
  L"ReadTextFile", L"WriteTextFile", L"FileExists", L"DirectoryExists", L"CreateDirectory",
  L"CombinePath", L"GetFileName", L"GetDirectoryName", L"GetExtension", L"GetTempDirectory", L"GetTempFileName",
  L"WriteTextFileEx", L"ValidateCurrentDocument", L"LogMessage", L"GetLastScriptingError", L"ClearLastScriptingError",
- L"GetBinaryInfo", L"GenerateUniqueBinaryId", nullptr, nullptr, nullptr, L"SaveAllBinaries"
+ L"GetBinaryInfo", L"GenerateUniqueBinaryId", L"AddBinaryFromFile", L"ReplaceBinaryFromFile", L"RemoveBinary", L"SaveAllBinaries"
 };
 DISPID ScriptingMethodId(LPCWSTR name)
 {
@@ -259,6 +259,7 @@ HRESULT ExternalHelper::Invoke(DISPID dispid, REFIID riid, LCID lcid, WORD flags
 		try { result = InvokeScriptingExtension(dispid, flags, parameters, resultValue, argumentError); }
 		catch (const _com_error& error) { result = error.Error(); }
 		catch (const std::bad_alloc&) { result = E_OUTOFMEMORY; }
+		catch (const CAtlException& error) { result = error.m_hr; }
 		if (FAILED(result) && dispid >= 100 && dispid <= 152 && dispid != 145 && ScriptingMethods[dispid - 100])
 			FbeScripts::RecordApiFailure(ScriptingMethods[dispid - 100], result);
 		return result;

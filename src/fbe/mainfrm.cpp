@@ -30,6 +30,7 @@
 #include "settings\\EditorBackgrounds.h"
 #include "utils.h"
 #include "scripts/ScriptBinaryDocument.h"
+#include "scripts/ScriptBinaryEdit.h"
 #include "KeyboardLayoutSelection.h"
 #include "RuntimeLocalization.h"
 #include "ImageImport.h"
@@ -1657,10 +1658,14 @@ LRESULT CMainFrame::OnXmlScriptApi(UINT, WPARAM, LPARAM data, BOOL&)
             try {
                 if (!m_doc) CheckError(E_UNEXPECTED);
                 if (IsSourceActive()) CheckError(E_NOTIMPL);
-                request->returnValue = FbeScripts::Binary::Read(m_doc->m_body.Document(), request->scriptingMethod, request->arguments);
+                if (request->scriptingMethod >= 149 && request->scriptingMethod <= 151)
+                    FbeScripts::Binary::Mutate(m_doc, request->scriptingMethod, request->arguments, request->returnValue);
+                else request->returnValue = FbeScripts::Binary::Read(m_doc->m_body.Document(), request->scriptingMethod, request->arguments);
                 request->succeeded = true;
             } catch (const _com_error& error) { request->error = error.Error(); }
             catch (const std::bad_alloc&) { request->error = E_OUTOFMEMORY; }
+            catch (const CAtlException& error) { request->error = error.m_hr; }
+            catch (...) { request->error = E_UNEXPECTED; }
             return 1;
         }
 #include "scripts/ScriptingDocumentApi.inl"

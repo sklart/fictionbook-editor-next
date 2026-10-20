@@ -27,7 +27,7 @@ function error3(){return json3(window.external.GetLastScriptingError());}
 function Run(){try{
  var e=window.external;
  if(@@MISSING@@){for(var failureIndex=0;failureIndex<3;failureIndex++){var failed=json3(e.ValidateCurrentDocument("{}"));assert3(failed.status==="error"&&failed.valid===null&&failed.errors[0].code==="validation-unavailable","technical validation failure "+failureIndex);assert3(error3().method==="ValidateCurrentDocument","technical error context");}result3="PASS";return;}
- assert3(e.GetScriptingApiVersion()==="1.2.0","version");
+ assert3(e.GetScriptingApiVersion()==="1.3.0","version");
  var methods=["ValidateCurrentDocument","LogMessage","GetLastScriptingError","ClearLastScriptingError"];
  for(var i=0;i<methods.length;i++)assert3(e.HasScriptingMethod(methods[i]),methods[i]);
  var capabilities=json3(e.GetScriptingCapabilities()).capabilities;
